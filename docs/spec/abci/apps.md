@@ -4,12 +4,14 @@ Please ensure you've first read the spec for [ABCI Methods and Types](abci.md)
 
 Here we cover the following components of ABCI applications:
 
-- [State](#State) - the interplay between ABCI connections and application state
+- [State](#state) - the interplay between ABCI connections and application state
   and the differences between `CheckTx` and `DeliverTx`.
-- [Validator Set Updates](#Validator-Set-Updates) - how validator sets are
+- [Transaction Results](#transaction-results) - rules around transaction
+  results and validity
+- [Validator Set Updates](#validator-updates) - how validator sets are
   changed during `InitChain` and `EndBlock`
-- [Query](#Query) - standards for using the `Query` method
-- [Crash Recovery](#Crash-Recovery) - handshake protocol to synchronize
+- [Query](#query) - standards for using the `Query` method
+- [Crash Recovery](#crash-recovery) - handshake protocol to synchronize
   Tendermint and the application on startup.
 
 ## State
@@ -19,6 +21,8 @@ for an application to maintain a distinct state for each, and for the states to
 be sycnronized during `Commit`.
 
 ### Commit
+
+Application state should only be persisted to disk during `Commit`.
 
 Before `Commit` is called, Tendermint locks and flushes the mempool so that no new messages will
 be received on the mempool connection. This provides an opportunity to safely update all three
@@ -41,13 +45,14 @@ ie. the updates are linearizeable.
 
 ### Mempool Connection
 
-The Mempool Connection should maintain a `CheckTxState` -
-to process pending transactions in the mempool that have
+The Mempool Connection should maintain a `CheckTxState`
+to sequentially process pending transactions in the mempool that have
 not yet been committed. It should be initialized to the latest committed state
-at the end of every `Commit`. Note it may be updated concurrently with the
-DeliverTxState.
+at the end of every `Commit`.
 
-Before calling `Commit`, Tendermint will lock and flush the mempool,
+The CheckTxState may be updated concurrently with the DeliverTxState, as
+messages may be sent concurrently on the Consensus and Mempool connections. However,
+before calling `Commit`, Tendermint will lock and flush the mempool connection,
 ensuring that all existing CheckTx are responded to and no new ones can
 begin.
 
@@ -77,7 +82,66 @@ QueryState should be set to the latest `DeliverTxState` at the end of every `Com
 ie. after the full block has been processed and the state committed to disk.
 Otherwise it should never be modified.
 
+## Transaction Results
+
+`ResponseCheckTx` and `ResponseDeliverTx` contain the same fields, though they
+have slightly different effects.
+
+In both cases, `Info` and `Log` are non-deterministic values for debugging/convenience purposes
+that are otherwise ignored.
+
+In both cases, `GasWanted` and `GasUsed` parameters are currently ignored,
+though see issues
+[#1861](https://github.com/tendermint/tendermint/issues/1861),
+[#2299](https://github.com/tendermint/tendermint/issues/2299) and
+[#2310](https://github.com/tendermint/tendermint/issues/2310) for how this may
+change.
+
+## CheckTx
+
+If `Code != 0`, it will be rejected from the mempool and hence
+not broadcasted to other peers and not included in a proposal block.
+
+`Data` contains the result of the CheckTx transaction execution, if any. It is
+semantically meaningless to Tendermint.
+
+`Tags` include any tags for the execution, though since the transaction has not
+been committed yet, they are effectively ignored by Tendermint.
+
+## DeliverTx
+
+If DeliverTx returns `Code != 0`, the transaction will be considered invalid,
+though it is still included in the block.
+
+`Data` contains the result of the CheckTx transaction execution, if any. It is
+semantically meaningless to Tendermint.
+
+Both the `Code` and `Data` are included in a structure that is hashed into the
+`LastResultsHash` of the next block header.
+
+`Tags` include any tags for the execution, which Tendermint will use to index
+the transaction by. This allows transactions to be queried according to what
+events took place during their execution.
+
+See issue [#1007](https://github.com/tendermint/tendermint/issues/1007) for how
+the tags will be hashed into the next block header.
+
 ## Validator Updates
+
+The application may set the validator set during InitChain, and update it during
+EndBlock.
+
+### InitChain
+
+ResponseInitChain can return a list of validators.
+If the list is empty, Tendermint will use the validators loaded in the genesis
+file.
+If the list is not empty, Tendermint will use it for the validator set.
+This way the application can determine the initial validator set for the
+blockchain.
+
+ResponseInitChain also includes ConsensusParams, but these are presently
+ignored.
 
 ### EndBlock
 
@@ -111,15 +175,7 @@ following rules:
     set with the given power
   - if the validator does already exist, its power will be adjusted to the given power
 
-### InitChain
-
-ResponseInitChain has the option to return a list of validators.
-If the list is not empty, Tendermint will adopt it for the validator set.
-This way the application can determine the initial validator set for the
-blockchain.
-
-ResponseInitChain also includes ConsensusParams, but these are presently
-ignored.
+Note the updates returned in block `H` will only take effect at block `H+2`.
 
 ## Query
 

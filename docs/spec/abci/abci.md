@@ -20,6 +20,9 @@ The `Info Connection` is for initialization and for queries from the user.
 Additionally, there is a `Flush` method that is called on every connection,
 and an `Echo` method that is just for debugging.
 
+More details on managing state across connections can be found in the section on
+[ABCI Applications](apps.md).
+
 ## Errors
 
 Some methods (`Echo, Info, InitChain, BeginBlock, EndBlock, Commit`),
