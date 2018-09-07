@@ -1,4 +1,4 @@
-# ABCI Applications
+# Applications
 
 Please ensure you've first read the spec for [ABCI Methods and Types](abci.md)
 
@@ -73,8 +73,9 @@ block full of invalid transactions if it wants.
 
 ### Info Connection
 
-The Mempool Connection should maintain a `QueryState` for answering queries from the user,
-and for initialization when Tendermint first starts up.
+The Info Connection should maintain a `QueryState` for answering queries from the user,
+and for initialization when Tendermint first starts up (both described further
+below).
 It should always contain the latest committed state associated with the
 latest commited block.
 
@@ -97,7 +98,7 @@ though see issues
 [#2310](https://github.com/tendermint/tendermint/issues/2310) for how this may
 change.
 
-## CheckTx
+### CheckTx
 
 If `Code != 0`, it will be rejected from the mempool and hence
 not broadcasted to other peers and not included in a proposal block.
@@ -108,7 +109,7 @@ semantically meaningless to Tendermint.
 `Tags` include any tags for the execution, though since the transaction has not
 been committed yet, they are effectively ignored by Tendermint.
 
-## DeliverTx
+### DeliverTx
 
 If DeliverTx returns `Code != 0`, the transaction will be considered invalid,
 though it is still included in the block.

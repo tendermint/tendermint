@@ -1,4 +1,4 @@
-# ABCI Methods and Types
+# Methods and Types
 
 ## Overview
 
