@@ -529,9 +529,9 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // Commit
 
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.type_ != VoteTypePrecommit {
+/*	if voteSet.type_ != VoteTypePrecommit {
 		cmn.PanicSanity("Cannot MakeCommit() unless VoteSet.Type is VoteTypePrecommit")
-	}
+	}*/
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
