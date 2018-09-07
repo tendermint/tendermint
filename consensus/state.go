@@ -508,7 +508,6 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 				lastPrecommits = cs.Votes.Prevotes(cs.CommitRound)
 			} else {
 				cmn.PanicSanity(cmn.Fmt("updateToState(state) called but last PoLc don't vote for round0 proposal. of which proposeRound: %v", blockID.ProposeRound))
-
 			}
 		} else {
 			cmn.PanicSanity("updateToState(state) called but last Precommit round didn't have +2/3")
@@ -762,7 +761,6 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		// We've already reset these upon new height,
 		// and meanwhile we might have received a proposal
 		// for round 0.
-		cs.Validators.ProposerOfHeight = cs.Validators.GetProposer().Copy()
 	} else {
 		logger.Info("Resetting Proposal info")
 		if cs.ProposalBlock == nil || cs.Proposal == nil || cs.Proposal.Round != 0 { //retain round 0 proposal
@@ -1527,7 +1525,6 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 					"valid-round", cs.Round, "valid-block-hash", cs.ProposalBlock.Hash())
 				cs.ValidRound = cs.Round
 				cs.ValidBlock = cs.ProposalBlock
-				cs.LockedProposeRound = blockID.ProposeRound
 				cs.ValidBlockParts = cs.ProposalBlockParts
 			}
 			// TODO: In case there is +2/3 majority in Prevotes set for some
