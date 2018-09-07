@@ -12,7 +12,7 @@ ABCI methods are split across 3 separate ABCI *connections*:
 - `Info Connection: Info, SetOption, Query`
 
 The `Consensus Connection` is driven by a consensus protocol and is responsible
-for block exection.
+for block execution.
 The `Mempool Connection` is for validating new transactions, before they're
 shared or included in a block.
 The `Info Connection` is for initialization and for queries from the user.

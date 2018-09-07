@@ -104,11 +104,11 @@ type EvidenceParams struct {
 
 #### BlockSize
 
-The total size of a block is limitted in bytes by the `ConsensusParams.BlockSize.MaxBytes`.
+The total size of a block is limited in bytes by the `ConsensusParams.BlockSize.MaxBytes`.
 Proposed blocks must be less than this size, and will be considered invalid
 otherwise.
 
-Blocks should additionally be limitted by the amount of "gas" consumed by the
+Blocks should additionally be limited by the amount of "gas" consumed by the
 transactions in the block, though this is not yet implemented.
 
 #### TxSize

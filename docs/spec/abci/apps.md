@@ -18,7 +18,7 @@ Here we cover the following components of ABCI applications:
 
 Since Tendermint maintains multiple concurrent ABCI connections, it is typical
 for an application to maintain a distinct state for each, and for the states to
-be sycnronized during `Commit`.
+be synchronized during `Commit`.
 
 ### Commit
 
@@ -41,7 +41,7 @@ the working state for block execution. It should be updated by the calls to
 disk as the "latest committed state" during `Commit`.
 
 Updates made to the DeliverTxState by each method call must be readable by each subsequent method -
-ie. the updates are linearizeable.
+ie. the updates are linearizable.
 
 ### Mempool Connection
 
@@ -77,7 +77,7 @@ The Info Connection should maintain a `QueryState` for answering queries from th
 and for initialization when Tendermint first starts up (both described further
 below).
 It should always contain the latest committed state associated with the
-latest commited block.
+latest committed block.
 
 QueryState should be set to the latest `DeliverTxState` at the end of every `Commit`,
 ie. after the full block has been processed and the state committed to disk.
@@ -218,7 +218,7 @@ storeBlockHeight = height of the last block Tendermint saw a commit for
 stateBlockHeight = height of the last block for which Tendermint completed all
     block processing and saved all ABCI results to disk
 appBlockHeight = height of the last block for which ABCI app succesfully
-    completely Commit
+    completed Commit
 ```
 
 Note we always have `storeBlockHeight >= stateBlockHeight` and `storeBlockHeight >= appBlockHeight`
@@ -226,7 +226,7 @@ Note also we never call Commit on an ABCI app twice for the same height.
 
 The procedure is as follows.
 
-First, some simeple start conditions:
+First, some simple start conditions:
 
 If `appBlockHeight == 0`, then call InitChain.
 
