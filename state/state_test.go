@@ -461,7 +461,7 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 		}
 	}
 
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{block.Hash(), 0,types.PartSetHeader{}}, abciResponses
 }
 
 func makeHeaderPartsResponsesValPowerChange(state State, height int64,
@@ -482,7 +482,7 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 		}
 	}
 
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{block.Hash(), 0,types.PartSetHeader{}}, abciResponses
 }
 
 func makeHeaderPartsResponsesParams(state State, height int64,
@@ -492,7 +492,7 @@ func makeHeaderPartsResponsesParams(state State, height int64,
 	abciResponses := &ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
 	}
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{block.Hash(), 0,types.PartSetHeader{}}, abciResponses
 }
 
 type paramsChangeTestCase struct {
