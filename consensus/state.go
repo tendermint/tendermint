@@ -455,10 +455,14 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 	if len(seenCommit.Precommits) == 0 {
 		cmn.PanicCrisis("Failed to reconstruct LastCommit, lastCommit empty")
 	}
-	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), seenCommit.Precommits[0].Type, state.LastValidators)
+
+	var lastPrecommits *types.VoteSet
 	for _, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
+		}
+		if lastPrecommits == nil{
+			lastPrecommits = types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), precommit.Type, state.LastValidators)
 		}
 		added, err := lastPrecommits.AddVote(precommit)
 		if !added || err != nil {
