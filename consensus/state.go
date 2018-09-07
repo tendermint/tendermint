@@ -761,6 +761,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		// We've already reset these upon new height,
 		// and meanwhile we might have received a proposal
 		// for round 0.
+		cs.Validators.GetProposerOfHeight()
 	} else {
 		logger.Info("Resetting Proposal info")
 		if cs.ProposalBlock == nil || cs.Proposal == nil || cs.Proposal.Round != 0 { //retain round 0 proposal
