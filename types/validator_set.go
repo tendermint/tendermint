@@ -96,7 +96,6 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 	return &ValidatorSet{
 		Validators:       validators,
 		Proposer:         vals.Proposer,
-		ProposerOfHeight: vals.ProposerOfHeight,
 		totalVotingPower: vals.totalVotingPower,
 	}
 }
@@ -159,20 +158,6 @@ func (vals *ValidatorSet) GetProposer() (proposer *Validator) {
 		vals.Proposer = vals.findProposer()
 	}
 	return vals.Proposer.Copy()
-}
-
-func (vals *ValidatorSet) GetProposerOfHeight() (proposer *Validator) {
-	if len(vals.Validators) == 0 {
-		return nil
-	}
-	if vals.ProposerOfHeight == nil {
-		if vals.Proposer != nil {
-			vals.ProposerOfHeight = vals.Proposer
-		} else {
-			vals.ProposerOfHeight = vals.findProposer()
-		}
-	}
-	return vals.ProposerOfHeight.Copy()
 }
 
 func (vals *ValidatorSet) findProposer() *Validator {
@@ -300,7 +285,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		if precommit.Type != VoteTypePrecommit {
 			if precommit.Type == VoteTypePrevote {
 				if precommit.BlockID.ProposeRound != 0 {
-					return fmt.Errorf("Invalid commit -- type is prevote, but not signed for the block of last round 0 proposer, %v", vals.GetProposerOfHeight().Address)
+					return fmt.Errorf("Invalid commit -- type is prevote, but not signed for the block of last round 0 proposer")
 				} else {
 					//passed check
 				}
@@ -387,7 +372,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		if precommit.Type != VoteTypePrecommit {
 			if precommit.Type == VoteTypePrevote {
 				if precommit.BlockID.ProposeRound != 0 {
-					return fmt.Errorf("Invalid commit -- type is prevote, but not signed for the block of last round 0 proposer, %v", vals.GetProposerOfHeight().Address)
+					return fmt.Errorf("Invalid commit -- type is prevote, but not signed for the block of last round 0 proposer")
 				} else {
 					//passed check
 				}
