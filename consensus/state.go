@@ -983,7 +983,7 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 	if cs.isProposalComplete() {
 		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
 	} else {
-		if cs.Proposal.Round == 0 {
+		if cs.Proposal != nil && cs.Proposal.Round == 0 {
 			//round 0 proposal, must receive complete before send prevote
 			return
 		}
@@ -1349,7 +1349,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
-	cs.state.LastProposeInRound0 = proposeInRound0
+
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
 
@@ -1371,6 +1371,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// must be called before we update state
 	cs.recordMetrics(height, block)
 
+	stateCopy.LastProposeInRound0 = proposeInRound0
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
 
@@ -1440,7 +1441,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	// Does not apply
-	if (proposal.Height != cs.Height || proposal.Round != cs.Round) && proposal.Round != 0 {
+	if proposal.Height != cs.Height || proposal.Round != cs.Round && proposal.Round != 0 {
 		return nil
 	}
 
@@ -1457,7 +1458,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 
 	// Verify signature
 	if proposal.Round == 0 {
-		if !cs.Validators.ProposerOfHeight.PubKey.VerifyBytes(proposal.SignBytes(cs.state.ChainID), proposal.Signature) {
+		if !cs.Validators.GetProposerOfHeight().PubKey.VerifyBytes(proposal.SignBytes(cs.state.ChainID), proposal.Signature) {
 			return ErrInvalidProposalSignature
 		}
 	} else {

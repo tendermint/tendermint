@@ -16,10 +16,10 @@ var _ Verifier = (*BaseVerifier)(nil)
 // use the DynamicVerifier.
 // TODO: Handle unbonding time.
 type BaseVerifier struct {
-	chainID             string
-	height              int64
-	round 				int   //propose round, not vote consensus round
-	valset              *types.ValidatorSet
+	chainID   string
+	height    int64
+	lastRound int //propose round, not vote consensus round
+	valset    *types.ValidatorSet
 }
 
 // NewBaseVerifier returns a new Verifier initialized with a validator set at
@@ -29,10 +29,10 @@ func NewBaseVerifier(chainID string, height int64, valset *types.ValidatorSet) *
 		panic("NewBaseVerifier requires a valid valset")
 	}
 	return &BaseVerifier{
-		chainID:             chainID,
-		height:              height,
-		round: 					0,
-		valset:              valset,
+		chainID: chainID,
+		height:  height,
+		round:   0,
+		valset:  valset,
 	}
 }
 
@@ -64,11 +64,11 @@ func (bc *BaseVerifier) Certify(signedHeader types.SignedHeader) error {
 
 	// Check commit signatures.
 	err = bc.valset.VerifyCommit(
-		bc.chainID, signedHeader.Commit.BlockID, bc.round==0,
+		bc.chainID, signedHeader.Commit.BlockID, bc.lastRound == 0,
 		signedHeader.Height, signedHeader.Commit)
 	if err != nil {
 		return cmn.ErrorWrap(err, "in certify")
 	}
-	bc.round = signedHeader.Round
+	bc.lastRound = signedHeader.Round
 	return nil
 }
