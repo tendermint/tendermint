@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -298,7 +298,7 @@ FOR_LOOP:
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
 			err := state.Validators.VerifyCommit(
-				chainID, firstID,state.LastProposeInRound0, first.Height, second.LastCommit)
+				chainID, firstID, first.Round == 0, first.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
 				peerID := bcR.pool.RedoRequest(first.Height)
@@ -318,6 +318,7 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
+				state.LastProposeInRound0 = bcR.store.LoadBlock(first.Height - 1).Round == 0
 				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
