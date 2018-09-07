@@ -9,9 +9,13 @@ peerlink, Ahmah2009, bluele, b00f.
 
 This release includes breaking upgrades in the block header,
 including the long awaited changes for delaying validator set updates by one
-block. It also fixes enforcement on the max size of blocks, and includes a BFT
-timestamp in each block that can be safely used by applications. There are also some
-minor breaking changes to the rpc, config, and ABCI.
+block to better support light clients.
+It also fixes enforcement on the maximum size of blocks, and includes a BFT
+timestamp in each block that can be safely used by applications.
+There are also some minor breaking changes to the rpc, config, and ABCI.
+
+See the [UPGRADING.md](UPGRADING.md#v0.24.0) for details on upgrading to the new
+version.
 
 From here on, breaking changes will be broken down to better reflect how users
 are affected by a change.
@@ -20,6 +24,8 @@ A few more breaking changes are in the works - each will come with a clear
 Architecture Decision Record (ADR) explaining the change. You can review ADRs
 [here](https://github.com/tendermint/tendermint/tree/develop/docs/architecture)
 or in the [open Pull Requests](https://github.com/tendermint/tendermint/pulls).
+You can also check in on the [issues marked as
+breaking](https://github.com/tendermint/tendermint/issues?q=is%3Aopen+is%3Aissue+label%3Abreaking).
 
 BREAKING CHANGES:
 
@@ -84,6 +90,7 @@ FEATURES:
 
 IMPROVEMENTS:
 - [docs] Lint documentation with `write-good` and `stop-words`.
+- [docs] [\#2249](https://github.com/tendermint/tendermint/issues/2249) Refactor, deduplicate, and improve the ABCI docs and spec (with thanks to @ttmc).
 - [scripts] [\#2196](https://github.com/tendermint/tendermint/issues/2196) Added json2wal tool, which is supposed to help our users restore (@bradyjoestar)
   corrupted WAL files and compose test WAL files (@bradyjoestar)
 - [mempool] [\#2234](https://github.com/tendermint/tendermint/issues/2234) Now stores txs by hash inside of the cache, to mitigate memory leakage

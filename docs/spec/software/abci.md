@@ -1,3 +1,3 @@
 # Application Blockchain Interface (ABCI)
 
-This page has [moved](../spec/abci/apps.md).
+This page has [moved](../abci/apps.md).
