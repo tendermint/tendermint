@@ -503,11 +503,11 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 		if cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
 			lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
 		} else if cs.Votes.Prevotes(cs.CommitRound).HasTwoThirdsMajority() {
-			blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
+			blockID, ok := cs.Votes.Prevotes(cs.CommitRound).TwoThirdsMajority()
 			if ok && blockID.ProposeRound == 0 {
 				lastPrecommits = cs.Votes.Prevotes(cs.CommitRound)
 			} else {
-				cmn.PanicSanity("updateToState(state) called but last PoLc don't vote for round0 proposal")
+				cmn.PanicSanity(cmn.Fmt("updateToState(state) called but last PoLc don't vote for round0 proposal. of which proposeRound: %v", blockID.ProposeRound))
 
 			}
 		} else {
@@ -1263,7 +1263,7 @@ func (cs *ConsensusState) tryFinalizeCommit(height int64) {
 	blockID, ok = cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok {
 		blockID, ok = cs.Votes.Prevotes(cs.CommitRound).TwoThirdsMajority()
-		if !ok || blockID.ProposeRound!=0 {
+		if !ok || blockID.ProposeRound != 0 {
 			cmn.PanicSanity("tryFinalizeCommit expects +2/3 precommits or prevotes(if round 0 proposer)")
 
 		}
