@@ -17,9 +17,10 @@ import (
 // TODO: type ?
 const (
 	stepNone      int8 = 0 // Used to distinguish the initial state
-	stepPropose   int8 = 1
-	stepPrevote   int8 = 2
-	stepPrecommit int8 = 3
+	stepSignBlock int8 = 1
+	stepPropose   int8 = 2
+	stepPrevote   int8 = 3
+	stepPrecommit int8 = 4
 )
 
 func voteToStep(vote *types.Vote) int8 {
@@ -287,7 +288,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 }
 
 func (pv *FilePV) signBlock(chainID string, block *types.Block) error {
-	height, round, step := block.Height, block.Round, stepNone
+	height, round, step := block.Height, block.Round, stepSignBlock
 	signBytes := block.SignBytes(chainID)
 
 	sameHRS, err := pv.checkHRS(height, round, step)
