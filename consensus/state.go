@@ -1010,7 +1010,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
 		logger.Info("enterPrevote: Block was locked")
-		cs.signAddVote(types.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header(), cs.LockedProposeRound)
+		cs.signAddVote(types.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header(), cs.LockedBlock.ProposeRound)
 		return
 	}
 
@@ -1146,7 +1146,6 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 		}
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
-		cs.LockedProposeRound = blockID.ProposeRound
 		cs.LockedBlockParts = cs.ProposalBlockParts
 		cs.eventBus.PublishEventLock(cs.RoundStateEvent())
 		cs.signAddVote(types.VoteTypePrecommit, blockID.Hash, blockID.PartsHeader, blockID.ProposeRound)
