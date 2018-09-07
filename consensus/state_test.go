@@ -865,7 +865,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	prop1, propBlock1 := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
 	propBlockHash1 := propBlock1.Hash()
 	propBlockParts1 := propBlock1.MakePartSet(partSize)
-	propBlockID1 := types.BlockID{propBlockHash1, propBlockParts1.Header()}
+	propBlockID1 := types.BlockID{propBlockHash1, vs2.Round+1,propBlockParts1.Header()}
 
 	incrementRound(vs2, vs3, vs4)
 
