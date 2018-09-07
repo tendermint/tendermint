@@ -395,10 +395,11 @@ func (commit *Commit) ValidateBasic() error {
 			continue
 		}
 		// Ensure that all votes are precommits.
-		if precommit.Type != VoteTypePrecommit {
-			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
-				precommit.Type)
-		}
+		/*		if precommit.Type != VoteTypePrecommit {
+					return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
+						precommit.Type)
+				}
+		*/
 		// Ensure that all heights are the same.
 		if precommit.Height != height {
 			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",
@@ -410,6 +411,7 @@ func (commit *Commit) ValidateBasic() error {
 				round, precommit.Round)
 		}
 	}
+
 	return nil
 }
 
@@ -452,8 +454,8 @@ func (commit *Commit) StringIndented(indent string) string {
 
 // SignedHeader is a header along with the commits that prove it.
 type SignedHeader struct {
-	*Header `json:"header"`
-	Commit  *Commit `json:"commit"`
+	*Header        `json:"header"`
+	Commit *Commit `json:"commit"`
 }
 
 // ValidateBasic does basic consistency checks and makes sure the header
@@ -516,7 +518,6 @@ func (sh SignedHeader) StringIndented(indent string) string {
 
 // Data contains the set of transactions included in the block
 type Data struct {
-
 	// Txs that will be applied by state @ block.Height+1.
 	// NOTE: not all txs here are valid.  We're just agreeing on the order first.
 	// This means that block.AppHash does not include these txs.
@@ -600,8 +601,9 @@ func (data *EvidenceData) StringIndented(indent string) string {
 
 // BlockID defines the unique ID of a block as its Hash and its PartSetHeader
 type BlockID struct {
-	Hash        cmn.HexBytes  `json:"hash"`
-	PartsHeader PartSetHeader `json:"parts"`
+	Hash         cmn.HexBytes  `json:"hash"`
+	ProposeRound int           `json:"propose_round"`
+	PartsHeader  PartSetHeader `json:"parts"`
 }
 
 // IsZero returns true if this is the BlockID for a nil-block
@@ -612,7 +614,7 @@ func (blockID BlockID) IsZero() bool {
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equals(other.PartsHeader)
+		blockID.PartsHeader.Equals(other.PartsHeader) && blockID.ProposeRound==other.ProposeRound
 }
 
 // Key returns a machine-readable string representation of the BlockID
@@ -621,12 +623,12 @@ func (blockID BlockID) Key() string {
 	if err != nil {
 		panic(err)
 	}
-	return string(blockID.Hash) + string(bz)
+	return string(blockID.Hash) + string(bz) + string(blockID.ProposeRound)
 }
 
 // String returns a human readable string representation of the BlockID
 func (blockID BlockID) String() string {
-	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
+	return fmt.Sprintf(`%v:%v:%v`, blockID.Hash, blockID.PartsHeader,blockID.ProposeRound)
 }
 
 //-------------------------------------------------------
