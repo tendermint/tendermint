@@ -155,7 +155,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block meta
-	blockMeta := types.NewBlockMeta(block, blockParts)
+	blockMeta := types.NewBlockMeta(block, blockParts,seenCommit.BlockID.ProposeRound)
 	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 

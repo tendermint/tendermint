@@ -38,7 +38,7 @@ func TestApplyBlock(t *testing.T) {
 		MockMempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{block.Hash(),0, block.MakePartSet(testPartSize).Header(),}
 
 	state, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
@@ -59,7 +59,7 @@ func TestBeginBlockValidators(t *testing.T) {
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{prevHash, prevParts}
+	prevBlockID := types.BlockID{prevHash,0, prevParts}
 
 	now := time.Now().UTC()
 	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
@@ -79,7 +79,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		// block for height 2
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address,0)
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
 		require.Nil(t, err, tc.desc)
 
@@ -111,7 +111,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{prevHash, prevParts}
+	prevBlockID := types.BlockID{prevHash,0, prevParts}
 
 	height1, idx1, val1 := int64(8), 0, state.Validators.Validators[0].Address
 	height2, idx2, val2 := int64(3), 1, state.Validators.Validators[1].Address
@@ -138,7 +138,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
 	for _, tc := range testCases {
 
-		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+		block, _ := state.MakeBlock(10,0, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
@@ -269,7 +269,7 @@ func state(nVals, height int) (State, dbm.DB) {
 }
 
 func makeBlock(state State, height int64) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().Address)
+	block, _ := state.MakeBlock(height,0, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().Address)
 	return block
 }
 

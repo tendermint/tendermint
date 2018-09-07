@@ -103,6 +103,7 @@ func (state State) IsEmpty() bool {
 // track rounds, and hence doesn't know the correct proposer. TODO: alleviate this!
 func (state State) MakeBlock(
 	height int64,
+	round int,
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,
@@ -111,6 +112,7 @@ func (state State) MakeBlock(
 
 	// Build base block with block data.
 	block := types.MakeBlock(height, txs, commit, evidence)
+	block.ProposeRound = round
 
 	// Fill rest of header with state data.
 	block.ChainID = state.ChainID

@@ -7,9 +7,9 @@ type BlockMeta struct {
 }
 
 // NewBlockMeta returns a new BlockMeta from the block and its blockParts.
-func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {
+func NewBlockMeta(block *Block, blockParts *PartSet, proposeRound int) *BlockMeta {
 	return &BlockMeta{
-		BlockID: BlockID{block.Hash(), blockParts.Header()},
+		BlockID: BlockID{block.Hash(), proposeRound, blockParts.Header()},
 		Header:  block.Header,
 	}
 }

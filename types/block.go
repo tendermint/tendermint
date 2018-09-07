@@ -17,8 +17,8 @@ import (
 // TODO: add Version byte
 type Block struct {
 	mtx        sync.Mutex
-	Header     `json:"header"`
-	Data       `json:"data"`
+	Header                  `json:"header"`
+	Data                    `json:"data"`
 	Evidence   EvidenceData `json:"evidence"`
 	LastCommit *Commit      `json:"last_commit"`
 }
@@ -219,6 +219,7 @@ type Header struct {
 	// consensus info
 	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
 	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
+	ProposeRound    int          `json:"proposer_round"`
 }
 
 // Hash returns the hash of the header.
@@ -245,6 +246,7 @@ func (h *Header) Hash() cmn.HexBytes {
 		"Results":        aminoHasher(h.LastResultsHash),
 		"Evidence":       aminoHasher(h.EvidenceHash),
 		"Proposer":       aminoHasher(h.ProposerAddress),
+		"ProposeRound":   aminoHasher(h.ProposeRound),
 	})
 }
 
@@ -269,6 +271,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Results:        %v
 %s  Evidence:       %v
 %s  Proposer:       %v
+%s  ProposeRound:       %v
 %s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
@@ -285,6 +288,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
 		indent, h.ProposerAddress,
+		indent, h.ProposeRound,
 		indent, h.Hash())
 }
 
@@ -614,7 +618,7 @@ func (blockID BlockID) IsZero() bool {
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equals(other.PartsHeader) && blockID.ProposeRound==other.ProposeRound
+		blockID.PartsHeader.Equals(other.PartsHeader) && blockID.ProposeRound == other.ProposeRound
 }
 
 // Key returns a machine-readable string representation of the BlockID
@@ -628,7 +632,7 @@ func (blockID BlockID) Key() string {
 
 // String returns a human readable string representation of the BlockID
 func (blockID BlockID) String() string {
-	return fmt.Sprintf(`%v:%v:%v`, blockID.Hash, blockID.PartsHeader,blockID.ProposeRound)
+	return fmt.Sprintf(`%v:%v:%v`, blockID.Hash, blockID.PartsHeader, blockID.ProposeRound)
 }
 
 //-------------------------------------------------------

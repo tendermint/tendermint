@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -292,7 +292,7 @@ FOR_LOOP:
 
 			firstParts := first.MakePartSet(state.ConsensusParams.BlockPartSizeBytes)
 			firstPartsHeader := firstParts.Header()
-			firstID := types.BlockID{first.Hash(), firstPartsHeader}
+			firstID := types.BlockID{first.Hash(), first.ProposeRound, firstPartsHeader}
 			// Finally, verify the first block using the second's commit
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
