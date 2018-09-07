@@ -1129,7 +1129,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	// At this point, +2/3 prevoted for a particular block.
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
-	if cs.LockedBlock.HashesTo(blockID.Hash) {
+	if cs.LockedBlock.HashesTo(blockID.Hash) && cs.LockedBlock.ProposeRound == blockID.ProposeRound {
 		logger.Info("enterPrecommit: +2/3 prevoted locked block. Relocking")
 		cs.LockedRound = round
 		cs.eventBus.PublishEventRelock(cs.RoundStateEvent())
@@ -1138,7 +1138,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	}
 
 	// If +2/3 prevoted for proposal block, stage and precommit it
-	if cs.ProposalBlock.HashesTo(blockID.Hash) {
+	if cs.ProposalBlock.HashesTo(blockID.Hash) && cs.ProposalBlock.ProposeRound == blockID.ProposeRound {
 		logger.Info("enterPrecommit: +2/3 prevoted proposal block. Locking", "hash", blockID.Hash)
 		// Validate the block.
 		if err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
@@ -1219,7 +1219,7 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 	blockID, ok = cs.Votes.Precommits(commitRound).TwoThirdsMajority()
 	if !ok {
 		blockID, ok = cs.Votes.Prevotes(commitRound).TwoThirdsMajority()
-		if !ok || !cs.ProposalBlock.HashesTo(blockID.Hash) || blockID.ProposeRound != 0 {
+		if !ok || !cs.ProposalBlock.HashesTo(blockID.Hash) || cs.ProposalBlock.ProposeRound != 0 || blockID.ProposeRound != 0 {
 			cmn.PanicSanity("enterCommit expects +2/3 precommits or prevotes(if round 0 proposer)")
 
 		}
@@ -1228,7 +1228,7 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 	// The Locked* fields no longer matter.
 	// Move them over to ProposalBlock if they match the commit hash,
 	// otherwise they'll be cleared in updateToState.
-	if cs.LockedBlock.HashesTo(blockID.Hash) {
+	if cs.LockedBlock.HashesTo(blockID.Hash) && cs.LockedBlock.ProposeRound == blockID.ProposeRound {
 		logger.Info("Commit is for locked block. Set ProposalBlock=LockedBlock", "blockHash", blockID.Hash)
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
@@ -1520,7 +1520,8 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		prevotes := cs.Votes.Prevotes(cs.Round)
 		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
 		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
+			if cs.ProposalBlock.HashesTo(blockID.Hash) &&
+				cs.ProposalBlock.ProposeRound == blockID.ProposeRound {
 				cs.Logger.Info("Updating valid block to new proposal block",
 					"valid-round", cs.Round, "valid-block-hash", cs.ProposalBlock.Hash())
 				cs.ValidRound = cs.Round
@@ -1654,7 +1655,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			if !blockID.IsZero() &&
 				(cs.ValidRound < vote.Round) &&
 				(vote.Round <= cs.Round) &&
-				cs.ProposalBlock.HashesTo(blockID.Hash) {
+				cs.ProposalBlock.HashesTo(blockID.Hash) &&
+				cs.ProposalBlock.ProposeRound == blockID.ProposeRound {
 
 				cs.Logger.Info("Updating ValidBlock because of POL.", "validRound", cs.ValidRound, "POLRound", vote.Round)
 				cs.ValidRound = vote.Round
@@ -1672,7 +1674,10 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				if len(blockID.Hash) == 0 {
 					cs.enterNewRound(height, vote.Round+1)
 				} else {
-					if cs.ProposalBlock != nil && blockID.ProposeRound == 0 && cs.ProposalBlock.HashesTo(blockID.Hash) { //has received round 0 proposal and round 0 block is ready
+					if cs.ProposalBlock != nil &&
+						blockID.ProposeRound == 0 &&
+						cs.ProposalBlock.HashesTo(blockID.Hash) &&
+						cs.ProposalBlock.ProposeRound == 0 { //has received round 0 proposal and round 0 block is ready
 						cs.enterPrevote(height, vote.Round) //send our prevote too
 						cs.enterCommit(height, vote.Round)  //round 0 proposal , skip precommit , commit directly
 					} else {

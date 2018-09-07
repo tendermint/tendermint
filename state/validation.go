@@ -105,11 +105,11 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 				len(block.LastCommit.Precommits),
 			)
 		}
-		if block.ProposeRound != state.LastBlockID.ProposeRound {
+		if block.LastCommit.BlockID.ProposeRound != state.LastBlockID.ProposeRound {
 			return fmt.Errorf(
-				"Invalid block proposeRound. Expected %v, got %v",
+				"Invalid block.LastCommit.BlockID.ProposeRound. Expected %v, got %v",
 				state.LastBlockID.ProposeRound,
-				block.ProposeRound,
+				block.LastCommit.BlockID.ProposeRound,
 			)
 		}
 		err := state.LastValidators.VerifyCommit(
