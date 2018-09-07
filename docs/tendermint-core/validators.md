@@ -22,7 +22,7 @@ Validators have a cryptographic key-pair and an associated amount of
 
 There are two ways to become validator.
 
-1.  They can be pre-established in the [genesis state](../../tendermint-core/using-tendermint.md#genesis)
+1.  They can be pre-established in the [genesis state](./using-tendermint.md#genesis)
 2.  The ABCI app responds to the EndBlock message with changes to the
     existing validator set.
 
@@ -36,4 +36,4 @@ The +2/3 set of precommit votes is called a
 [_commit_](../spec/blockchain/blockchain.md#commit). While any +2/3 set of
 precommits for the same block at the same height&round can serve as
 validation, the canonical commit is included in the next block (see
-[LastCommit](../spec/blockchain/blockchain.md#last-commit)).
+[LastCommit](../spec/blockchain/blockchain.md#lastcommit)).
