@@ -149,7 +149,7 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	reapCheck := func(exp int) {
-		txs := mempool.ReapMaxBytes(-1)
+		txs := mempool.ReapMaxBytesMaxGas(-1, -1)
 		require.Equal(t, len(txs), exp, fmt.Sprintf("Expected to reap %v txs but got %v", exp, len(txs)))
 	}
 
