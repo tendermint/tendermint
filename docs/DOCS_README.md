@@ -21,3 +21,11 @@ To update the Table of Contents (layout of the documentation sidebar), edit the
 `config.js` in this directory, while the `README.md` is the landing page for the
 website documentation.
 
+To view the latest documentation on the develop branch, see the staging site:
+
+- https://tendermint-staging.interblock.io/docs/
+
+and the documentation on master branch is found here:
+
+- https://tendermint.com/docs/
+

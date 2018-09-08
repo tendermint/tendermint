@@ -10,8 +10,8 @@ package](https://godoc.org/github.com/tendermint/tendermint/lite).
 ## Overview
 
 The objective of the light client protocol is to get a
-[commit](./validators.md#committing-a-block) for a recent [block
-hash](./block-structure.md#block-hash) where the commit includes a
+[commit](./validators.md#committing-a-block) for a recent block
+hash where the commit includes a
 majority of signatures from the last known validator set. From there,
 all the application state is verifiable with [merkle
 proofs](../spec/blockchain/encoding.md#iavl-tree).
