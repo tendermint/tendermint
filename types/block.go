@@ -143,7 +143,7 @@ func (b *Block) MakePartSet(partSize int) *PartSet {
 
 	// We prefix the byte length, so that unmarshaling
 	// can easily happen via a reader.
-	bz, err := cdc.MarshalBinary(b)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(b)
 	if err != nil {
 		panic(err)
 	}

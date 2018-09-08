@@ -62,9 +62,9 @@ func TestProposalVerifySignature(t *testing.T) {
 
 	// serialize, deserialize and verify again....
 	newProp := new(Proposal)
-	bs, err := cdc.MarshalBinary(prop)
+	bs, err := cdc.MarshalBinaryLengthPrefixed(prop)
 	require.NoError(t, err)
-	err = cdc.UnmarshalBinary(bs, &newProp)
+	err = cdc.UnmarshalBinaryLengthPrefixedBinary(bs, &newProp)
 	require.NoError(t, err)
 
 	// verify the transmitted proposal

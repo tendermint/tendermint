@@ -72,9 +72,9 @@ func TestVoteVerifySignature(t *testing.T) {
 
 	// serialize, deserialize and verify again....
 	precommit := new(Vote)
-	bs, err := cdc.MarshalBinary(vote)
+	bs, err := cdc.MarshalBinaryLengthPrefixed(vote)
 	require.NoError(t, err)
-	err = cdc.UnmarshalBinary(bs, &precommit)
+	err = cdc.UnmarshalBinaryLengthPrefixedBinary(bs, &precommit)
 	require.NoError(t, err)
 
 	// verify the transmitted vote
@@ -144,7 +144,7 @@ func TestMaxVoteBytes(t *testing.T) {
 	err := privVal.SignVote("test_chain_id", vote)
 	require.NoError(t, err)
 
-	bz, err := cdc.MarshalBinary(vote)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(vote)
 	require.NoError(t, err)
 
 	assert.Equal(t, MaxVoteBytes, len(bz))

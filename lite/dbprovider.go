@@ -56,7 +56,7 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 	// We might be overwriting what we already have, but
 	// it makes the logic easier for now.
 	vsKey := validatorSetKey(fc.ChainID(), fc.Height())
-	vsBz, err := dbp.cdc.MarshalBinary(fc.Validators)
+	vsBz, err := dbp.cdc.MarshalBinaryLengthPrefixed(fc.Validators)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
 	// Save the fc.NextValidators.
 	nvsKey := validatorSetKey(fc.ChainID(), fc.Height()+1)
-	nvsBz, err := dbp.cdc.MarshalBinary(fc.NextValidators)
+	nvsBz, err := dbp.cdc.MarshalBinaryLengthPrefixed(fc.NextValidators)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
 	// Save the fc.SignedHeader
 	shKey := signedHeaderKey(fc.ChainID(), fc.Height())
-	shBz, err := dbp.cdc.MarshalBinary(fc.SignedHeader)
+	shBz, err := dbp.cdc.MarshalBinaryLengthPrefixed(fc.SignedHeader)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 			// Found the latest full commit signed header.
 			shBz := itr.Value()
 			sh := types.SignedHeader{}
-			err := dbp.cdc.UnmarshalBinary(shBz, &sh)
+			err := dbp.cdc.UnmarshalBinaryLengthPrefixedBinary(shBz, &sh)
 			if err != nil {
 				return FullCommit{}, err
 			} else {
@@ -150,7 +150,7 @@ func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *ty
 		err = lerr.ErrUnknownValidators(chainID, height)
 		return
 	}
-	err = dbp.cdc.UnmarshalBinary(vsBz, &valset)
+	err = dbp.cdc.UnmarshalBinaryLengthPrefixedBinary(vsBz, &valset)
 	if err != nil {
 		return
 	}

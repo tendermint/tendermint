@@ -337,7 +337,7 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.Chan():
 			c.Logger.Debug("Send Ping")
-			_n, err = cdc.MarshalBinaryWriter(c.bufConnWriter, PacketPing{})
+			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPing{})
 			if err != nil {
 				break SELECTION
 			}
@@ -359,7 +359,7 @@ FOR_LOOP:
 			}
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
-			_n, err = cdc.MarshalBinaryWriter(c.bufConnWriter, PacketPong{})
+			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPong{})
 			if err != nil {
 				break SELECTION
 			}
@@ -477,7 +477,7 @@ FOR_LOOP:
 		var packet Packet
 		var _n int64
 		var err error
-		_n, err = cdc.UnmarshalBinaryReader(c.bufConnReader, &packet, int64(c._maxPacketMsgSize))
+		_n, err = cdc.UnmarshalBinaryLengthPrefixedReader(c.bufConnReader, &packet, int64(c._maxPacketMsgSize))
 		c.recvMonitor.Update(int(_n))
 		if err != nil {
 			if c.IsRunning() {
@@ -553,7 +553,7 @@ func (c *MConnection) stopPongTimer() {
 // maxPacketMsgSize returns a maximum size of PacketMsg, including the overhead
 // of amino encoding.
 func (c *MConnection) maxPacketMsgSize() int {
-	return len(cdc.MustMarshalBinary(PacketMsg{
+	return len(cdc.MustMarshalBinaryLengthPrefixed(PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
 		Bytes:     make([]byte, c.config.MaxPacketMsgPayloadSize),
@@ -723,7 +723,7 @@ func (ch *Channel) nextPacketMsg() PacketMsg {
 // Not goroutine-safe
 func (ch *Channel) writePacketMsgTo(w io.Writer) (n int64, err error) {
 	var packet = ch.nextPacketMsg()
-	n, err = cdc.MarshalBinaryWriter(w, packet)
+	n, err = cdc.MarshalBinaryLengthPrefixedWriter(w, packet)
 	ch.recentlySent += n
 	return
 }
