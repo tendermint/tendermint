@@ -217,7 +217,7 @@ To reset a blockchain, stop the node, remove the `~/.tendermint/data`
 directory and run
 
 ```
-tendermint unsafe_reset_priv_validator
+tendermint unsafe_reset_all
 ```
 
 This final step is necessary to reset the `priv_validator.json`, which
