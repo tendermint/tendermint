@@ -22,10 +22,14 @@ better lite-client proofs (like discussed for tags
 [here](https://github.com/tendermint/tendermint/issues/1007#issuecomment-413917763))
 may play a role.
 
-For now, note that having all type information in a single integer
-places an unfortunate requirement on all users of the `code` system to
-co-ordinate up-front on which `code` means what, hence restricting their ability experiment
-with codes.
+Note that having all type information in a single integer
+precludes an easy coordination method between "module implementers" and "client
+implementers", especially for apps with many "modules". With an unbounded error domain (such as a string), module
+implementers can pick a globally unique prefix & error code set, so client
+implementers could easily implement support for "module A" regardless of which
+particular blockchain network it was running in and which other modules were running with it. With
+only error codes, globally unique codes are difficult/impossible, as the space
+is finite and collisions are likely without an easy way to coordinate.
 
 For instance, while trying to build an ecosystem of modules that can be composed into a single
 ABCI application, the Cosmos-SDK had to hack a higher level "codespace" into the
