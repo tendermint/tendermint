@@ -156,6 +156,10 @@ Visit http://localhost:26657 in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
+::: tip
+Find the RPC Documentation [here](https://tendermint.com/rpc/)
+:::
+
 ### Formatting
 
 The following nuances when sending/formatting transactions should be
