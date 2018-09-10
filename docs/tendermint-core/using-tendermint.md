@@ -225,7 +225,7 @@ new blockchain will not make any blocks.
 ## Configuration
 
 Tendermint uses a `config.toml` for configuration. For details, see [the
-config specification](./tendermint-core/configuration.md).
+config specification](./configuration.md).
 
 Notable options include the socket address of the application
 (`proxy_app`), the listening address of the Tendermint peer
