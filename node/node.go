@@ -241,7 +241,7 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
 
 	// Make MempoolReactor
-	maxBytes := state.ConsensusParams.TxSize.MaxBytes
+	maxBytes := state.ConsensusParams.BlockSize.MaxBytes
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
@@ -750,7 +750,6 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 	}
 	db.SetSync(genesisDocKey, bytes)
 }
-
 
 // splitAndTrimEmpty slices s into all subslices separated by sep and returns a
 // slice of the string s with all leading and trailing Unicode code points

@@ -145,7 +145,7 @@ func (blockExec *BlockExecutor) Commit(state State, block *types.Block) ([]byte,
 		"appHash", fmt.Sprintf("%X", res.Data))
 
 	// Update mempool.
-	maxBytes := state.ConsensusParams.TxSize.MaxBytes
+	maxBytes := state.ConsensusParams.BlockSize.MaxBytes
 	filter := func(tx types.Tx) bool { return len(tx) <= maxBytes }
 	if err := blockExec.mempool.Update(block.Height, block.Txs, filter); err != nil {
 		return nil, err

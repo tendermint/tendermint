@@ -105,7 +105,7 @@ func TestWALCrash(t *testing.T) {
 		{"block with a smaller part size",
 			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
 				// XXX: is there a better way to change BlockPartSizeBytes?
-				cs.state.ConsensusParams.BlockPartSizeBytes = 512
+				// cs.state.ConsensusParams.BlockPartSizeBytes = 512
 				sm.SaveState(stateDB, cs.state)
 				go sendTxs(cs, ctx)
 			},
@@ -397,7 +397,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 }
 
 func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
-	testPartSize := st.ConsensusParams.BlockPartSizeBytes
+	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	blkID := types.BlockID{blk.Hash(), blk.MakePartSet(testPartSize).Header()}
@@ -620,7 +620,7 @@ func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain
 func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
-		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.params.BlockPartSizeBytes).Header()},
+		BlockID: types.BlockID{block.Hash(), block.MakePartSet(types.BlockPartSizeBytes).Header()},
 		Header:  block.Header,
 	}
 }
