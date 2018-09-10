@@ -26,6 +26,7 @@ and a `ValidatorUpdate` (with the pubkey, used for ResponseEndBlock):
 ```
 message Validator {
     bytes address
+    
     int64 power
 }
 
