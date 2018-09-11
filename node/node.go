@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -37,6 +38,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
@@ -427,6 +429,12 @@ func NewNode(config *cfg.Config,
 
 // OnStart starts the Node. It implements cmn.Service.
 func (n *Node) OnStart() error {
+	now := tmtime.Now()
+	genTime := n.genesisDoc.GenesisTime
+	if genTime.After(now) {
+		time.Sleep(genTime.Sub(now))
+	}
+
 	err := n.eventBus.Start()
 	if err != nil {
 		return err
