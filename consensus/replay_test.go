@@ -102,14 +102,6 @@ func TestWALCrash(t *testing.T) {
 		{"empty block",
 			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {},
 			1},
-		{"block with a smaller part size",
-			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
-				// XXX: is there a better way to change BlockPartSizeBytes?
-				// cs.state.ConsensusParams.BlockPartSizeBytes = 512
-				sm.SaveState(stateDB, cs.state)
-				go sendTxs(cs, ctx)
-			},
-			1},
 		{"many non-empty blocks",
 			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
 				go sendTxs(cs, ctx)
