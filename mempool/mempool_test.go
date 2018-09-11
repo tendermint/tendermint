@@ -71,7 +71,7 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 	return txs
 }
 
-func TestReapMaxGasMaxBytes(t *testing.T) {
+func TestReapMaxBytesMaxGas(t *testing.T) {
 	dir, err := ioutil.TempDir("ReapMaxBytesMaxGas", os.TempDir())
 	require.Nil(t, err)
 	app := kvstore.NewPersistentKVStoreApplication(dir)
