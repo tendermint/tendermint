@@ -139,7 +139,7 @@ func (state State) MakeBlock(
 	// IncrementAccum for rounds there.
 	block.ProposerAddress = proposerAddress
 
-	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
+	return block, block.MakePartSet(types.BlockPartSizeBytes)
 }
 
 // MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
