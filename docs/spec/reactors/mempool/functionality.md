@@ -22,7 +22,8 @@ to potentially untrusted actors.
 Internal functionality is exposed via method calls to other
 code compiled into the tendermint binary.
 
-- Reap - get tx to propose in next block
+- ReapMaxBytesMaxGas - get txs to propose in the next block. Guarantees that the
+    size of the txs is less than MaxBytes, and gas is less than MaxGas
 - Update - remove tx that were included in last block
 - ABCI.CheckTx - call ABCI app to validate the tx
 

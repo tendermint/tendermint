@@ -22,7 +22,7 @@ type Mempool interface {
 
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
-	ReapMaxBytes(max int) types.Txs
+	ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs
 	Update(height int64, txs types.Txs, filter func(types.Tx) bool) error
 	Flush()
 	FlushAppConn() error
@@ -34,11 +34,13 @@ type Mempool interface {
 // MockMempool is an empty implementation of a Mempool, useful for testing.
 type MockMempool struct{}
 
+var _ Mempool = MockMempool{}
+
 func (MockMempool) Lock()                                                                {}
 func (MockMempool) Unlock()                                                              {}
 func (MockMempool) Size() int                                                            { return 0 }
 func (MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error                   { return nil }
-func (MockMempool) ReapMaxBytes(max int) types.Txs                                       { return types.Txs{} }
+func (MockMempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs              { return types.Txs{} }
 func (MockMempool) Update(height int64, txs types.Txs, filter func(types.Tx) bool) error { return nil }
 func (MockMempool) Flush()                                                               {}
 func (MockMempool) FlushAppConn() error                                                  { return nil }
