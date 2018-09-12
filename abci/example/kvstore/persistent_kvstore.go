@@ -75,9 +75,7 @@ func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) types.ResponseDeli
 }
 
 func (app *PersistentKVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
-	response := app.app.CheckTx(tx)
-	response.GasWanted = 1
-	return response
+	return app.app.CheckTx(tx)
 }
 
 // Commit will panic if InitChain was not called

@@ -72,19 +72,14 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 }
 
 func TestReapMaxBytesMaxGas(t *testing.T) {
-	dir, err := ioutil.TempDir("ReapMaxBytesMaxGas", os.TempDir())
-	require.Nil(t, err)
-	app := kvstore.NewPersistentKVStoreApplication(dir)
-	defer func() {
-		os.RemoveAll(dir)
-	}()
+	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool := newMempoolWithApp(cc)
 
 	// Ensure gas calculation behaves as expected
 	checkTxs(t, mempool, 1)
 	tx0 := mempool.TxsFront().Value.(*mempoolTx)
-	// assert that persistent kv store has gas wanted = 1.
+	// assert that kv store has gas wanted = 1.
 	require.Equal(t, app.CheckTx(tx0.tx).GasWanted, int64(1), "KVStore had a gas value neq to 1")
 	require.Equal(t, tx0.gasWanted, int64(1), "transactions gas was set incorrectly")
 	// ensure each tx is 20 bytes long
