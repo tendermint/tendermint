@@ -21,5 +21,6 @@ FEATURES:
 
 IMPROVEMENTS:
 - [types] add Address to GenesisValidator [\#1714](https://github.com/tendermint/tendermint/issues/1714)
+- [metrics] `consensus.block_interval_metrics` is now gauge, not histogram (you will be able to see spikes, if any)
 
 BUG FIXES:
