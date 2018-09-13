@@ -47,11 +47,13 @@ func (cli *grpcClient) OnStart() error {
 	if err := cli.BaseService.OnStart(); err != nil {
 		return err
 	}
+	go cli.RunForever()
+
 RETRY_LOOP:
 	for {
 		conn, err := grpc.Dial(cli.addr, grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
 		if err != nil {
-			if cli.mustConnect {
+			if cli.mustConnect && !cli.IsRunning(){
 				return err
 			}
 			cli.Logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
@@ -84,6 +86,14 @@ func (cli *grpcClient) OnStop() {
 	if cli.conn != nil {
 		cli.conn.Close()
 	}
+}
+
+// RunForever waits for an interrupt signal and stops the node.
+func (cli *grpcClient) RunForever() {
+	// Sleep forever and then...
+	cmn.TrapSignal(func() {
+		cli.Stop()
+	})
 }
 
 func (cli *grpcClient) StopForError(err error) {

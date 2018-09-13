@@ -58,13 +58,15 @@ func (cli *socketClient) OnStart() error {
 		return err
 	}
 
+	go cli.RunForever()
+
 	var err error
 	var conn net.Conn
 RETRY_LOOP:
 	for {
 		conn, err = cmn.Connect(cli.addr)
 		if err != nil {
-			if cli.mustConnect {
+			if cli.mustConnect && !cli.IsRunning(){
 				return err
 			}
 			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
@@ -90,6 +92,14 @@ func (cli *socketClient) OnStop() {
 	}
 
 	cli.flushQueue()
+}
+
+// RunForever waits for an interrupt signal and stops the node.
+func (cli *socketClient) RunForever() {
+	// Sleep forever and then...
+	cmn.TrapSignal(func() {
+		cli.Stop()
+	})
 }
 
 // Stop the client and set the error
