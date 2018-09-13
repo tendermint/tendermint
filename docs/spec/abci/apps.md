@@ -4,19 +4,20 @@ Please ensure you've first read the spec for [ABCI Methods and Types](abci.md)
 
 Here we cover the following components of ABCI applications:
 
-- [State](#state) - the interplay between ABCI connections and application state
+- [Connection State](#state) - the interplay between ABCI connections and application state
   and the differences between `CheckTx` and `DeliverTx`.
 - [Transaction Results](#transaction-results) - rules around transaction
   results and validity
 - [Validator Set Updates](#validator-updates) - how validator sets are
   changed during `InitChain` and `EndBlock`
-- [Query](#query) - standards for using the `Query` method
+- [Query](#query) - standards for using the `Query` method and proofs about the
+  application state
 - [Crash Recovery](#crash-recovery) - handshake protocol to synchronize
   Tendermint and the application on startup.
 
 ## State
 
-Since Tendermint maintains multiple concurrent ABCI connections, it is typical
+Since Tendermint maintains three concurrent ABCI connections, it is typical
 for an application to maintain a distinct state for each, and for the states to
 be synchronized during `Commit`.
 
@@ -96,7 +97,7 @@ though see issues
 [#1861](https://github.com/tendermint/tendermint/issues/1861),
 [#2299](https://github.com/tendermint/tendermint/issues/2299) and
 [#2310](https://github.com/tendermint/tendermint/issues/2310) for how this may
-change.
+soon change.
 
 ### CheckTx
 
@@ -180,11 +181,46 @@ Note the updates returned in block `H` will only take effect at block `H+2`.
 
 ## Query
 
-Query is a generic message type with lots of flexibility to enable diverse sets
-of queries from applications. Tendermint has no requirements from the Query
-message for normal operation - that is, the ABCI app developer need not implement Query functionality if they do not wish too.
-That said, Tendermint makes a number of queries to support some optional
-features. These are:
+Query is a generic method with lots of flexibility to enable diverse sets
+of queries on application state. Tendermint makes use of Query to filter new peers
+based on ID and IP, and exposes Query to the user over RPC.
+Note that calls to Query are not replicated across nodes, but rather query the
+local node's state - hence they may provide stale reads. For reads that require
+consensus, a transaction is required.
+
+The most important use of Query is to return Merkle proofs of the application state at some height
+that can be used for efficient application-specific lite-clients.
+
+Note Tendermint has technically no requirements from the Query
+message for normal operation - that is, the ABCI app developer need not implement
+Query functionality if they do not wish too.
+
+### Query Proofs
+
+The Tendermint block header includes a number of hashes, each providing an
+anchor for some type of proof about the blockchain. The `ValidatorsHash` enables
+quick verification of the validator set, the `DataHash` gives quick
+verification of the transactions included in the block, etc.
+
+The `AppHash` is unique in that it is application specific, and allows for
+application-specific Merkle proofs about the state of the application.
+While some applications keep all relevant state in the transactions themselves
+(like Bitcoin and its UTXOs), others maintain a separated state that is
+computed deterministically *from* transactions, but is not contained directly in
+the transactions themselves (like Ethereum contracts and accounts).
+For such applications, the `AppHash` provides a much more efficient way to verify lite-client proofs.
+
+ABCI applications can take advantage of more efficient lite-client proofs for
+their state as follows:
+
+- return the Merkle root of the deterministic application state in
+`ResponseCommit.Data`.
+- it will be included as the `AppHash` in the next block.
+- return efficient Merkle proofs about that application state in `ResponseQuery.Proof`
+  that can be verified using the `AppHash` of the corresponding block.
+
+For instance, this allows an application's lite-client to verify proofs of
+absence in the application state, something which is much less efficient to do using the block hash.
 
 ### Peer Filtering
 

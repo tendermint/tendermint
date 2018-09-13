@@ -28,7 +28,8 @@ send & receive rate per connection (`SendRate`, `RecvRate`).
 ### RPC
 
 Endpoints returning multiple entries are limited by default to return 30
-elements (100 max). See [here](./rpc.md) for more information about the RPC.
+elements (100 max). See the [RPC Documentation](https://tendermint.com/rpc/)
+for more information.
 
 Rate-limiting and authentication are another key aspects to help protect
 against DOS attacks. While in the future we may implement these

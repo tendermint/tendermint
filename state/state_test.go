@@ -373,18 +373,14 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeParams(txsBytes, blockGas, txBytes, txGas, partSize int) types.ConsensusParams {
+func makeParams(txsBytes, blockGas, evidenceAge int) types.ConsensusParams {
 	return types.ConsensusParams{
 		BlockSize: types.BlockSize{
 			MaxBytes: txsBytes,
 			MaxGas:   int64(blockGas),
 		},
-		TxSize: types.TxSize{
-			MaxBytes: txBytes,
-			MaxGas:   int64(txGas),
-		},
-		BlockGossip: types.BlockGossip{
-			BlockPartSizeBytes: partSize,
+		EvidenceParams: types.EvidenceParams{
+			MaxAge: int64(evidenceAge),
 		},
 	}
 }
@@ -394,7 +390,7 @@ func pk() []byte {
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeParams(1, 2, 3, 4, 5)
+	initParams := makeParams(1, 2, 3)
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -405,32 +401,19 @@ func TestApplyUpdates(t *testing.T) {
 		1: {initParams, abci.ConsensusParams{}, initParams},
 		2: {initParams,
 			abci.ConsensusParams{
-				TxSize: &abci.TxSize{
-					MaxBytes: 123,
-				},
-			},
-			makeParams(1, 2, 123, 4, 5)},
-		3: {initParams,
-			abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
-					MaxBytes: 1,
+					MaxBytes: 44,
 					MaxGas:   55,
 				},
 			},
-			makeParams(1, 55, 3, 4, 5)},
-		4: {initParams,
+			makeParams(44, 55, 3)},
+		3: {initParams,
 			abci.ConsensusParams{
-				BlockSize: &abci.BlockSize{
-					MaxBytes: 1,
-				},
-				TxSize: &abci.TxSize{
-					MaxGas: 888,
-				},
-				BlockGossip: &abci.BlockGossip{
-					BlockPartSizeBytes: 2002,
+				EvidenceParams: &abci.EvidenceParams{
+					MaxAge: 66,
 				},
 			},
-			makeParams(1, 2, 3, 888, 2002)},
+			makeParams(1, 2, 66)},
 	}
 
 	for i, tc := range cases {

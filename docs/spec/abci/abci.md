@@ -175,7 +175,8 @@ Commit are included in the header of the next block.
   - `Index (int64)`: The index of the key in the tree.
   - `Key ([]byte)`: The key of the matching data.
   - `Value ([]byte)`: The value of the matching data.
-  - `Proof ([]byte)`: Proof for the data, if requested.
+  - `Proof ([]byte)`: Serialized proof for the data, if requested, to be
+    verified against the `AppHash` for the given Height.
   - `Height (int64)`: The block height from which data was derived.
     Note that this is the height of the block containing the
     application's Merkle root hash, which represents the state as it
@@ -275,13 +276,18 @@ Commit are included in the header of the next block.
 ### Commit
 
 - **Response**:
-  - `Data ([]byte)`: The Merkle root hash
+  - `Data ([]byte)`: The Merkle root hash of the application state
 - **Usage**:
   - Persist the application state.
-  - Return a Merkle root hash of the application state.
-  - It's critical that all application instances return the
-    same hash. If not, they will not be able to agree on the next
-    block, because the hash is included in the next block!
+  - Return an (optional) Merkle root hash of the application state
+  - `ResponseCommit.Data` is included as the `Header.AppHash` in the next block
+    - it may be empty
+  - Later calls to `Query` can return proofs about the application state anchored
+    in this Merkle root hash
+  - Note developers can return whatever they want here (could be nothing, or a
+    constant string, etc.), so long as it is deterministic - it must not be a
+    function of anything that did not come from the
+    BeginBlock/DeliverTx/EndBlock methods.
 
 ## Data Types
 
