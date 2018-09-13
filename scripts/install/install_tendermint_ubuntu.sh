@@ -22,12 +22,12 @@ curl -O https://storage.googleapis.com/golang/go1.10.linux-amd64.tar.gz
 tar -xvf go1.10.linux-amd64.tar.gz
 
 # move go binary and add to path
-mv go /usr/local
+sudo mv go /usr/local
 echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.profile
 
 # create the goApps directory, set GOPATH, and put it on PATH
 mkdir goApps
-echo "export GOPATH=/root/goApps" >> ~/.profile
+echo "export GOPATH=/home/{usename}/goApps" >> ~/.profile
 echo "export PATH=\$PATH:\$GOPATH/bin" >> ~/.profile
 
 source ~/.profile
