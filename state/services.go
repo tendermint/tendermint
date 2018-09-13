@@ -23,7 +23,8 @@ type Mempool interface {
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
 	ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs
-	Update(height int64, txs types.Txs, filter func(types.Tx) bool) error
+	Update(height int64, txs types.Txs,
+		preCheckFilter func(types.Tx) bool, postCheckFilter func(types.Tx, *abci.ResponseCheckTx) bool) error
 	Flush()
 	FlushAppConn() error
 
@@ -36,16 +37,19 @@ type MockMempool struct{}
 
 var _ Mempool = MockMempool{}
 
-func (MockMempool) Lock()                                                                {}
-func (MockMempool) Unlock()                                                              {}
-func (MockMempool) Size() int                                                            { return 0 }
-func (MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error                   { return nil }
-func (MockMempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs              { return types.Txs{} }
-func (MockMempool) Update(height int64, txs types.Txs, filter func(types.Tx) bool) error { return nil }
-func (MockMempool) Flush()                                                               {}
-func (MockMempool) FlushAppConn() error                                                  { return nil }
-func (MockMempool) TxsAvailable() <-chan struct{}                                        { return make(chan struct{}) }
-func (MockMempool) EnableTxsAvailable()                                                  {}
+func (MockMempool) Lock()                                                   {}
+func (MockMempool) Unlock()                                                 {}
+func (MockMempool) Size() int                                               { return 0 }
+func (MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error      { return nil }
+func (MockMempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs { return types.Txs{} }
+func (MockMempool) Update(height int64, txs types.Txs,
+	preCheckFilter func(types.Tx) bool, postCheckFilter func(types.Tx, *abci.ResponseCheckTx) bool) error {
+	return nil
+}
+func (MockMempool) Flush()                        {}
+func (MockMempool) FlushAppConn() error           { return nil }
+func (MockMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
+func (MockMempool) EnableTxsAvailable()           {}
 
 //------------------------------------------------------
 // blockstore

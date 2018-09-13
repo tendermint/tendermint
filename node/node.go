@@ -250,7 +250,18 @@ func NewNode(config *cfg.Config,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
-		mempl.WithFilter(func(tx types.Tx) bool { return len(tx) <= maxDataBytes }),
+		mempl.WithPreCheckFilter(func(tx types.Tx) bool {
+			// We have to account for the amino overhead in the tx size as well
+			aminoOverhead := amino.UvarintSize(uint64(len(tx)))
+			return (len(tx) + aminoOverhead) <= maxDataBytes
+		}),
+		mempl.WithPostCheckFilter(func(tx types.Tx, res *abci.ResponseCheckTx) bool {
+			maxGas := state.ConsensusParams.BlockSize.MaxGas
+			if maxGas == -1 {
+				return true
+			}
+			return res.GasWanted <= maxGas
+		}),
 	)
 	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)

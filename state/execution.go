@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	fail "github.com/ebuchman/fail-test"
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -149,8 +150,19 @@ func (blockExec *BlockExecutor) Commit(state State, block *types.Block) ([]byte,
 		state.ConsensusParams.BlockSize.MaxBytes,
 		state.Validators.Size(),
 	)
-	filter := func(tx types.Tx) bool { return len(tx) <= maxDataBytes }
-	if err := blockExec.mempool.Update(block.Height, block.Txs, filter); err != nil {
+	preFilter := func(tx types.Tx) bool {
+		// We have to account for the amino overhead in the tx size as well
+		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
+		return (len(tx) + aminoOverhead) <= maxDataBytes
+	}
+	postFilter := func(tx types.Tx, res *abci.ResponseCheckTx) bool {
+		maxGas := state.ConsensusParams.MaxGas
+		if maxGas == -1 {
+			return true
+		}
+		return res.GasWanted <= state.ConsensusParams.MaxGas
+	}
+	if err := blockExec.mempool.Update(block.Height, block.Txs, preFilter, postFilter); err != nil {
 		return nil, err
 	}
 

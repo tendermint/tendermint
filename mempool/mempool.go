@@ -81,8 +81,11 @@ type Mempool struct {
 	recheckEnd           *clist.CElement // re-checking stops here
 	notifiedTxsAvailable bool
 	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
-	// Filter mempool to only accept txs for which filter(tx) returns true.
-	filter func(types.Tx) bool
+	// Filter mempool to only accept txs for which preCheckFilter(tx) returns true.
+	// This is called before each check tx
+	preCheckFilter func(types.Tx) bool
+	// Filter mempool to only accept txs for which postCheckFilter(tx) returns true.
+	postCheckFilter func(types.Tx, *abci.ResponseCheckTx) bool
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -142,10 +145,16 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
 }
 
-// WithFilter sets a filter for mempool to only accept txs for which f(tx)
-// returns true.
-func WithFilter(f func(types.Tx) bool) MempoolOption {
-	return func(mem *Mempool) { mem.filter = f }
+// WithPreCheckFilter sets a filter for the mempool to reject a tx if f(tx)
+// returns false. This is ran before CheckTx.
+func WithPreCheckFilter(f func(types.Tx) bool) MempoolOption {
+	return func(mem *Mempool) { mem.preCheckFilter = f }
+}
+
+// WithPostCheckFilter sets a filter for the mempool to reject a tx if f(tx)
+// returns false. This is ran after CheckTx.
+func WithPostCheckFilter(f func(types.Tx, *abci.ResponseCheckTx) bool) MempoolOption {
+	return func(mem *Mempool) { mem.postCheckFilter = f }
 }
 
 // WithMetrics sets the metrics.
@@ -249,7 +258,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 		return ErrMempoolIsFull
 	}
 
-	if mem.filter != nil && !mem.filter(tx) {
+	if mem.preCheckFilter != nil && !mem.preCheckFilter(tx) {
 		return
 	}
 
@@ -299,7 +308,8 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
-		if r.CheckTx.Code == abci.CodeTypeOK {
+		postCheckFilterPasses := (mem.postCheckFilter == nil) || mem.postCheckFilter(tx, r.CheckTx)
+		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckFilterPasses {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter:   mem.counter,
@@ -330,7 +340,8 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			cmn.PanicSanity(fmt.Sprintf("Unexpected tx response from proxy during recheck\n"+
 				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
 		}
-		if r.CheckTx.Code == abci.CodeTypeOK {
+		postCheckFilterPasses := (mem.postCheckFilter == nil) || mem.postCheckFilter(memTx.tx, r.CheckTx)
+		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckFilterPasses {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
@@ -448,7 +459,8 @@ func (mem *Mempool) ReapMaxTxs(max int) types.Txs {
 // Update informs the mempool that the given txs were committed and can be discarded.
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
-func (mem *Mempool) Update(height int64, txs types.Txs, filter func(types.Tx) bool) error {
+func (mem *Mempool) Update(height int64, txs types.Txs,
+	preCheckFilter func(types.Tx) bool, postCheckFilter func(types.Tx, *abci.ResponseCheckTx) bool) error {
 	// First, create a lookup map of txns in new txs.
 	txsMap := make(map[string]struct{}, len(txs))
 	for _, tx := range txs {
@@ -459,8 +471,11 @@ func (mem *Mempool) Update(height int64, txs types.Txs, filter func(types.Tx) bo
 	mem.height = height
 	mem.notifiedTxsAvailable = false
 
-	if filter != nil {
-		mem.filter = filter
+	if preCheckFilter != nil {
+		mem.preCheckFilter = preCheckFilter
+	}
+	if postCheckFilter != nil {
+		mem.postCheckFilter = postCheckFilter
 	}
 
 	// Remove transactions that are already in txs.
