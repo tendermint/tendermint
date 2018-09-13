@@ -150,13 +150,13 @@ func (blockExec *BlockExecutor) Commit(state State, block *types.Block) ([]byte,
 		state.ConsensusParams.BlockSize.MaxBytes,
 		state.Validators.Size(),
 	)
+	maxGas := state.ConsensusParams.MaxGas
 	preFilter := func(tx types.Tx) bool {
 		// We have to account for the amino overhead in the tx size as well
 		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
 		return (len(tx) + aminoOverhead) <= maxDataBytes
 	}
 	postFilter := func(tx types.Tx, res *abci.ResponseCheckTx) bool {
-		maxGas := state.ConsensusParams.MaxGas
 		if maxGas == -1 {
 			return true
 		}

@@ -245,6 +245,7 @@ func NewNode(config *cfg.Config,
 		state.ConsensusParams.BlockSize.MaxBytes,
 		state.Validators.Size(),
 	)
+	maxGas := state.ConsensusParams.BlockSize.MaxGas
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
@@ -256,7 +257,6 @@ func NewNode(config *cfg.Config,
 			return (len(tx) + aminoOverhead) <= maxDataBytes
 		}),
 		mempl.WithPostCheckFilter(func(tx types.Tx, res *abci.ResponseCheckTx) bool {
-			maxGas := state.ConsensusParams.BlockSize.MaxGas
 			if maxGas == -1 {
 				return true
 			}
