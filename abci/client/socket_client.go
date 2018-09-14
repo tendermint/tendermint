@@ -58,7 +58,7 @@ func (cli *socketClient) OnStart() error {
 		return err
 	}
 
-	go cli.RunForever()
+	go cli.catchInterrupt()
 
 	var err error
 	var conn net.Conn
@@ -95,7 +95,7 @@ func (cli *socketClient) OnStop() {
 }
 
 // RunForever waits for an interrupt signal and stops the node.
-func (cli *socketClient) RunForever() {
+func (cli *socketClient) catchInterrupt() {
 	// Sleep forever and then...
 	cmn.TrapSignal(func() {
 		cli.Stop()

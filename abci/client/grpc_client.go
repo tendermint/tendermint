@@ -47,7 +47,7 @@ func (cli *grpcClient) OnStart() error {
 	if err := cli.BaseService.OnStart(); err != nil {
 		return err
 	}
-	go cli.RunForever()
+	go cli.catchInterrupt()
 
 RETRY_LOOP:
 	for {
@@ -89,7 +89,7 @@ func (cli *grpcClient) OnStop() {
 }
 
 // RunForever waits for an interrupt signal and stops the node.
-func (cli *grpcClient) RunForever() {
+func (cli *grpcClient) catchInterrupt() {
 	// Sleep forever and then...
 	cmn.TrapSignal(func() {
 		cli.Stop()
