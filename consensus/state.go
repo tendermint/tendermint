@@ -973,14 +973,8 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 
 	// fire event for how we got here
 	if cs.isProposalComplete() {
-		if err := cs.mempool.CheckBlock(cs.ProposalBlock); err == nil {
-			cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
-		} else {
-			cs.Logger.Error(cmn.Fmt("Current: %v/%v/%v , received a proposalBlock which contains invalid tx . ProposalBlock, %v . err, %v", cs.Height, cs.Round, cs.Step, cs.ProposalBlock, err))
-			cs.Proposal = nil
-			cs.ProposalBlock = nil
-			cs.ProposalBlockParts = nil
-		}
+		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
+
 	} else {
 		// we received +2/3 prevotes for a future round
 		// TODO: catchup event?
@@ -1448,6 +1442,12 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		_, err = cdc.UnmarshalBinaryReader(cs.ProposalBlockParts.GetReader(), &cs.ProposalBlock, int64(cs.state.ConsensusParams.BlockSize.MaxBytes))
 		if err != nil {
 			return true, err
+		}
+		if err = cs.mempool.CheckBlock(cs.ProposalBlock); err != nil {
+			cs.Logger.Error(cmn.Fmt("Current: %v/%v/%v , received a proposalBlock which contains invalid tx . ProposalBlock, %v . err, %v", cs.Height, cs.Round, cs.Step, cs.ProposalBlock, err))
+			cs.Proposal = nil
+			cs.ProposalBlock = nil
+			cs.ProposalBlockParts = nil
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
