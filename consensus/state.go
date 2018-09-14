@@ -1448,6 +1448,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 			cs.Proposal = nil
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = nil
+			return false, err
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
