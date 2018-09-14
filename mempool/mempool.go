@@ -276,8 +276,9 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 func (mem *Mempool) CheckBlock(block *types.Block) error {
 	// Run txs of block.
 	for _, tx := range block.Txs {
-		if err := mem.CheckTx(tx,nil); err != nil {
-			return err
+		reqRes := mem.proxyAppConn.CheckTxAsync(tx)
+		if reqRes.Response.GetCheckTx().Code != abci.CodeTypeOK {
+			return errors.Errorf("tx %v check failed. response: %v",tx,reqRes.Response.GetCheckTx())
 		}
 	}
 	return nil
