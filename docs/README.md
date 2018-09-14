@@ -25,3 +25,8 @@ section](./networks/deploy-testnets.md).
 
 The first step to building application on Tendermint is to [install
 ABCI-CLI](./app-dev/getting-started.md) and play with the example applications.
+
+## Edit the Documentation
+
+See [this file](./DOCS_README.md) for details of the build process and
+considerations when making changes.
