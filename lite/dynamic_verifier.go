@@ -73,7 +73,7 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 		ic.mtx.Unlock()
 		<-pending // pending is chan struct{}
 	} else {
-		pending := make(chan struct{}, 0)
+		pending := make(chan struct{})
 		ic.pendingVerifications[shdr.Height] = pending
 		defer func() {
 			close(pending)
