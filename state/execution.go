@@ -72,6 +72,7 @@ func (blockExec *BlockExecutor) ValidateBlockTxs(block *types.Block) error {
 			return err
 		}
 	}
+	return nil
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
