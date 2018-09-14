@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	fail "github.com/ebuchman/fail-test"
+	"github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -80,7 +80,7 @@ type ConsensusState struct {
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.RWMutex
+	mtx   sync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
@@ -973,7 +973,14 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 
 	// fire event for how we got here
 	if cs.isProposalComplete() {
-		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
+		if err := cs.blockExec.ValidateBlockTxs(cs.ProposalBlock); err != nil {
+			cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
+		} else {
+			cs.Logger.Error(cmn.Fmt("Current: %v/%v/%v , received a proposalBlock which contains invalid tx . ProposalBlock, %v . err, %v", cs.Height, cs.Round, cs.Step, cs.ProposalBlock, err))
+			cs.Proposal = nil
+			cs.ProposalBlock = nil
+			cs.ProposalBlockParts = nil
+		}
 	} else {
 		// we received +2/3 prevotes for a future round
 		// TODO: catchup event?
