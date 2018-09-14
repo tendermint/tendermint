@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/errors"
 )
 
 func TestSIGHUP(t *testing.T) {
@@ -81,7 +82,7 @@ func TestOpenAutoFilePerms(t *testing.T) {
 	// reopen and expect an ErrPermissionsChanged as Cause
 	af, err = OpenAutoFile(name)
 	require.Error(t, err)
-	if e, ok := err.(ErrPermissionsChanged); ok {
+	if e, ok := err.(*errors.ErrPermissionsChanged); ok {
 		t.Logf("%v", e)
 	} else {
 		t.Errorf("unexpected error %v", e)

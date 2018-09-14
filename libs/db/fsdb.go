@@ -10,28 +10,15 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmerrors "github.com/tendermint/tendermint/libs/errors"
 )
 
 const (
 	keyPerm = os.FileMode(0600)
 	dirPerm = os.FileMode(0700)
 )
-
-// ErrPermissionsChanged occurs if the file permission have changed since the file was created.
-type ErrPermissionsChanged struct {
-	name      string
-	got, want os.FileMode
-}
-
-func (e ErrPermissionsChanged) Error() string {
-	return fmt.Sprintf(
-		"file: [%v]\nexpected file permissions: %v, got: %v",
-		e.name,
-		e.want,
-		e.got,
-	)
-}
 
 func init() {
 	registerDBCreator(FSDBBackend, func(name string, dir string) (DB, error) {
@@ -225,7 +212,7 @@ func write(path string, d []byte) error {
 		return err
 	}
 	if fInfo.Mode() != keyPerm {
-		return ErrPermissionsChanged{f.Name(), keyPerm, fInfo.Mode()}
+		return tmerrors.NewErrPermissionsChanged(f.Name(), keyPerm, fInfo.Mode())
 	}
 	_, err = f.Write(d)
 	if err != nil {

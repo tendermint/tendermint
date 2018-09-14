@@ -1,12 +1,12 @@
 package autofile
 
 import (
-	"fmt"
 	"os"
 	"sync"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/errors"
 )
 
 /* AutoFile usage
@@ -35,21 +35,6 @@ const (
 	autoFileOpenDuration = 1000 * time.Millisecond
 	autoFilePerms        = os.FileMode(0600)
 )
-
-// ErrPermissionsChanged occurs if the file permission have changed since the file was created.
-type ErrPermissionsChanged struct {
-	name      string
-	got, want os.FileMode
-}
-
-func (e ErrPermissionsChanged) Error() string {
-	return fmt.Sprintf(
-		"file: [%v]\nexpected file permissions: %v, got: %v",
-		e.name,
-		e.want,
-		e.got,
-	)
-}
 
 // Automatically closes and re-opens file for writing.
 // This is useful for using a log file with the logrotate tool.
@@ -142,7 +127,7 @@ func (af *AutoFile) openFile() error {
 		return err
 	}
 	if fileInfo.Mode() != autoFilePerms {
-		return ErrPermissionsChanged{file.Name(), fileInfo.Mode(), autoFilePerms}
+		return errors.NewErrPermissionsChanged(file.Name(), fileInfo.Mode(), autoFilePerms)
 	}
 	af.file = file
 	return nil
