@@ -62,19 +62,6 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 	return validateBlock(blockExec.db, state, block)
 }
 
-//ValidateBlockTxs validates all txs in this block through calling checkTx in ProxyApp.
-//All txs should be checked ok, otherwise return err
-func (blockExec *BlockExecutor) ValidateBlockTxs(block *types.Block) error {
-	// Run txs of block.
-	for _, tx := range block.Txs {
-		blockExec.proxyApp.DeliverTxAsync(tx)
-		if err := blockExec.proxyApp.Error(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // ApplyBlock validates the block against the state, executes it against the app,
 // fires the relevant events, commits the app, and saves the new state and responses.
 // It's the only function that needs to be called

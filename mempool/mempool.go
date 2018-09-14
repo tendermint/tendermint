@@ -271,6 +271,18 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	return nil
 }
 
+//ValidateBlockTxs validates all txs in this block through calling checkTx in ProxyApp.
+//All txs should be checked ok, otherwise return err
+func (mem *Mempool) CheckTxs(block *types.Block) error {
+	// Run txs of block.
+	for _, tx := range block.Txs {
+		if err := mem.CheckTx(tx,nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ABCI callback function
 func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
 	if mem.recheckCursor == nil {
