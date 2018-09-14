@@ -461,7 +461,7 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		if precommit == nil {
 			continue
 		}
-		if lastPrecommits == nil{
+		if lastPrecommits == nil {
 			lastPrecommits = types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), precommit.Type, state.LastValidators)
 		}
 		added, err := lastPrecommits.AddVote(precommit)
@@ -1679,13 +1679,13 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 					cs.enterNewRound(height, vote.Round+1)
 				} else {
 					if cs.ProposalBlock != nil &&
-						blockID.ProposeRound == 0 &&
-						cs.ProposalBlock.HashesTo(blockID.Hash) &&
-						cs.ProposalBlock.ProposeRound == 0 { //has received round 0 proposal and round 0 block is ready
-						cs.enterPrevote(height, vote.Round) //send our prevote too
-						cs.enterCommit(height, vote.Round)  //round 0 proposal , skip precommit , commit directly
-					} else {
-						cs.enterPrecommit(height, vote.Round)
+						cs.ProposalBlock.HashesTo(blockID.Hash) {
+						if cs.ProposalBlock.ProposeRound == 0 { //has received round 0 proposal and round 0 block is ready
+							cs.enterPrevote(height, vote.Round) //send our prevote too
+							cs.enterCommit(height, vote.Round)  //round 0 proposal , skip precommit , commit directly
+						} else {
+							cs.enterPrecommit(height, vote.Round)
+						}
 					}
 				}
 			} else {

@@ -84,7 +84,7 @@ func TestAddVote(t *testing.T) {
 		Round:            round,
 		Type:             VoteTypePrevote,
 		Timestamp:        time.Now().UTC(),
-		BlockID:          BlockID{nil, PartSetHeader{}},
+		BlockID:          BlockID{nil, 0,PartSetHeader{}},
 	}
 	_, err := signAddVote(val0, vote, voteSet)
 	if err != nil {
@@ -266,7 +266,7 @@ func TestBadVotes(t *testing.T) {
 		Round:            round,
 		Timestamp:        time.Now().UTC(),
 		Type:             VoteTypePrevote,
-		BlockID:          BlockID{nil, PartSetHeader{}},
+		BlockID:          BlockID{nil, 0,PartSetHeader{}},
 	}
 
 	// val0 votes for nil.
