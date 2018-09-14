@@ -40,6 +40,7 @@ func (m MockMempool) Lock()                                              {}
 func (m MockMempool) Unlock()                                            {}
 func (m MockMempool) Size() int                                          { return 0 }
 func (m MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error { return nil }
+func (m MockMempool) CheckBlock(block *types.Block) error                { return nil }
 func (m MockMempool) Reap(n int) types.Txs                               { return types.Txs{} }
 func (m MockMempool) Update(height int64, txs types.Txs) error           { return nil }
 func (m MockMempool) Flush()                                             {}
