@@ -18,13 +18,20 @@ const (
 	dirPerm = os.FileMode(0700)
 )
 
-// PermissionsChangedErr occurs if the file permission have changed since the file was created.
-type PermissionsChangedErr string
-
-func (e PermissionsChangedErr) Error() string {
-	return string(e)
+// ErrPermissionsChanged occurs if the file permission have changed since the file was created.
+type ErrPermissionsChanged struct {
+	name      string
+	got, want os.FileMode
 }
 
+func (e ErrPermissionsChanged) Error() string {
+	return fmt.Sprintf(
+		"file: [%v]\nexpected file permissions: %v, got: %v",
+		e.name,
+		e.want,
+		e.got,
+	)
+}
 
 func init() {
 	registerDBCreator(FSDBBackend, func(name string, dir string) (DB, error) {
@@ -218,8 +225,7 @@ func write(path string, d []byte) error {
 		return err
 	}
 	if fInfo.Mode() != keyPerm {
-		return PermissionsChangedErr(fmt.Sprintf("file: [%v]\nexpected file permissions: %v, got: %v",
-			f.Name(), keyPerm, fInfo.Mode()))
+		return ErrPermissionsChanged{f.Name(), keyPerm, fInfo.Mode()}
 	}
 	_, err = f.Write(d)
 	if err != nil {

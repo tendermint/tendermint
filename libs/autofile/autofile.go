@@ -36,11 +36,19 @@ const (
 	autoFilePerms        = os.FileMode(0600)
 )
 
-// PermissionsChangedErr occurs if the file permission have changed since the file was created.
-type PermissionsChangedErr string
+// ErrPermissionsChanged occurs if the file permission have changed since the file was created.
+type ErrPermissionsChanged struct {
+	name      string
+	got, want os.FileMode
+}
 
-func (e PermissionsChangedErr) Error() string {
-	return string(e)
+func (e ErrPermissionsChanged) Error() string {
+	return fmt.Sprintf(
+		"file: [%v]\nexpected file permissions: %v, got: %v",
+		e.name,
+		e.want,
+		e.got,
+	)
 }
 
 // Automatically closes and re-opens file for writing.
@@ -134,8 +142,7 @@ func (af *AutoFile) openFile() error {
 		return err
 	}
 	if fileInfo.Mode() != autoFilePerms {
-		return PermissionsChangedErr(fmt.Sprintf("file: [%v]\nexpected file permissions: %v, got: %v",
-			file.Name(), autoFilePerms, fileInfo.Mode()))
+		return ErrPermissionsChanged{file.Name(), fileInfo.Mode(), autoFilePerms}
 	}
 	af.file = file
 	return nil

@@ -78,10 +78,10 @@ func TestOpenAutoFilePerms(t *testing.T) {
 	err = af.Close()
 	require.NoError(t, err)
 
-	// reopen and expect an PermissionsChangedErr as Cause
+	// reopen and expect an ErrPermissionsChanged as Cause
 	af, err = OpenAutoFile(name)
 	require.Error(t, err)
-	if e, ok := err.(PermissionsChangedErr); ok {
+	if e, ok := err.(ErrPermissionsChanged); ok {
 		t.Logf("%v", e)
 	} else {
 		t.Errorf("unexpected error %v", e)
