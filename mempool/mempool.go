@@ -271,9 +271,9 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	return nil
 }
 
-//CheckTxs validates all txs in this block through calling checkTx in ProxyApp.
+//CheckTxs checks all txs in this block through calling checkTx in ProxyApp.
 //All txs should be checked ok, otherwise return err
-func (mem *Mempool) CheckTxs(block *types.Block) error {
+func (mem *Mempool) CheckBlock(block *types.Block) error {
 	// Run txs of block.
 	for _, tx := range block.Txs {
 		if err := mem.CheckTx(tx,nil); err != nil {

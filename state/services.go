@@ -22,6 +22,7 @@ type Mempool interface {
 
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
+	CheckBlock(block *types.Block) error
 	Reap(int) types.Txs
 	Update(height int64, txs types.Txs) error
 	Flush()
