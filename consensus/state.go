@@ -973,7 +973,7 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 
 	// fire event for how we got here
 	if cs.isProposalComplete() {
-		if err := cs.blockExec.ValidateBlockTxs(cs.ProposalBlock); err != nil {
+		if err := cs.blockExec.ValidateBlockTxs(cs.ProposalBlock); err == nil {
 			cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
 		} else {
 			cs.Logger.Error(cmn.Fmt("Current: %v/%v/%v , received a proposalBlock which contains invalid tx . ProposalBlock, %v . err, %v", cs.Height, cs.Round, cs.Step, cs.ProposalBlock, err))
