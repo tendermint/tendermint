@@ -275,12 +275,12 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 //All txs should be checked ok, otherwise return err
 func (mem *Mempool) CheckBlock(block *types.Block) error {
 	// check txs of block.
-/*	for _, tx := range block.Txs {
+	for _, tx := range block.Txs {
 		reqRes := mem.proxyAppConn.CheckTxAsync(tx)
 		if reqRes.Response.GetCheckTx().Code != abci.CodeTypeOK {
 			return errors.Errorf("tx %v check failed. response: %v",tx,reqRes.Response.GetCheckTx())
 		}
-	}*/
+	}
 	return nil
 }
 
