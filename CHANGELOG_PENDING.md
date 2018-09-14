@@ -9,13 +9,14 @@ BREAKING CHANGES:
 * Apps
 
 * Go API
-
+  * \#2310 Mempool.ReapMaxBytes -> Mempool.ReapMaxBytesMaxGas
 * Blockchain Protocol
 
 * P2P Protocol
 
 
 FEATURES:
+  * \#2310 Mempool is now aware of the MaxGas requirement
 
 IMPROVEMENTS:
 

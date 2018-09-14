@@ -11,16 +11,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-
-	"github.com/stretchr/testify/require"
 )
 
 func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
@@ -69,6 +69,54 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 		}
 	}
 	return txs
+}
+
+func TestReapMaxBytesMaxGas(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(cc)
+
+	// Ensure gas calculation behaves as expected
+	checkTxs(t, mempool, 1)
+	tx0 := mempool.TxsFront().Value.(*mempoolTx)
+	// assert that kv store has gas wanted = 1.
+	require.Equal(t, app.CheckTx(tx0.tx).GasWanted, int64(1), "KVStore had a gas value neq to 1")
+	require.Equal(t, tx0.gasWanted, int64(1), "transactions gas was set incorrectly")
+	// ensure each tx is 20 bytes long
+	require.Equal(t, len(tx0.tx), 20, "Tx is longer than 20 bytes")
+	mempool.Flush()
+
+	// each table driven test creates numTxsToCreate txs with checkTx, and at the end clears all remaining txs.
+	// each tx has 20 bytes + amino overhead = 21 bytes, 1 gas
+	tests := []struct {
+		numTxsToCreate int
+		maxBytes       int
+		maxGas         int64
+		expectedNumTxs int
+	}{
+		{20, -1, -1, 20},
+		{20, -1, 0, 0},
+		{20, -1, 10, 10},
+		{20, -1, 30, 20},
+		{20, 0, -1, 0},
+		{20, 0, 10, 0},
+		{20, 10, 10, 0},
+		{20, 21, 10, 1},
+		{20, 210, -1, 10},
+		{20, 210, 5, 5},
+		{20, 210, 10, 10},
+		{20, 210, 15, 10},
+		{20, 20000, -1, 20},
+		{20, 20000, 5, 5},
+		{20, 20000, 30, 20},
+	}
+	for tcIndex, tt := range tests {
+		checkTxs(t, mempool, tt.numTxsToCreate)
+		got := mempool.ReapMaxBytesMaxGas(tt.maxBytes, tt.maxGas)
+		assert.Equal(t, tt.expectedNumTxs, len(got), "Got %d txs, expected %d, tc #%d",
+			len(got), tt.expectedNumTxs, tcIndex)
+		mempool.Flush()
+	}
 }
 
 func TestTxsAvailable(t *testing.T) {
@@ -149,7 +197,7 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	reapCheck := func(exp int) {
-		txs := mempool.ReapMaxBytes(-1)
+		txs := mempool.ReapMaxBytesMaxGas(-1, -1)
 		require.Equal(t, len(txs), exp, fmt.Sprintf("Expected to reap %v txs but got %v", exp, len(txs)))
 	}
 

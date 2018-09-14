@@ -8,7 +8,7 @@ Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)) for short.
 [![API Reference](
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/tendermint/tendermint)
-[![Go version](https://img.shields.io/badge/go-1.9.2-blue.svg)](https://github.com/moovweb/gvm)
+[![Go version](https://img.shields.io/badge/go-1.10.4-blue.svg)](https://github.com/moovweb/gvm)
 [![riot.im](https://img.shields.io/badge/riot.im-JOIN%20CHAT-green.svg)](https://riot.im/app/#/room/#tendermint:matrix.org)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
@@ -30,7 +30,7 @@ While Tendermint is being used in production in private, permissioned
 environments, we are still working actively to harden and audit it in preparation
 for use in public blockchains, such as the [Cosmos Network](https://cosmos.network/).
 We are also still making breaking changes to the protocol and the APIs.
-Thus we tag the releases as *alpha software*.
+Thus, we tag the releases as *alpha software*.
 
 In any case, if you intend to run Tendermint in production,
 please [contact us](https://riot.im/app/#/room/#tendermint:matrix.org) :)
@@ -46,7 +46,7 @@ For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.
 
 Requirement|Notes
 ---|---
-Go version | Go1.9 or higher
+Go version | Go1.10 or higher
 
 ## Install
 
@@ -54,10 +54,10 @@ See the [install instructions](/docs/introduction/install.md)
 
 ## Quick Start
 
-- [Single node](/docs/using-tendermint.md)
+- [Single node](/docs/tendermint-core/using-tendermint.md)
 - [Local cluster using docker-compose](/networks/local)
 - [Remote cluster using terraform and ansible](/docs/networks/terraform-and-ansible.md)
-- [Join the public testnet](https://cosmos.network/testnet)
+- [Join the Cosmos testnet](https://cosmos.network/testnet)
 
 ## Resources
 
@@ -66,30 +66,31 @@ See the [install instructions](/docs/introduction/install.md)
 For details about the blockchain data structures and the p2p protocols, see the
 the [Tendermint specification](/docs/spec).
 
-For details on using the software, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
-Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
+For details on using the software, see the [documentation](/docs/) which is also
+hosted at: https://tendermint.com/docs/
 
+### Tools
+
+Benchmarking and monitoring is provided by `tm-bench` and `tm-monitor`, respectively.
+Their code is found [here](/tools) and these binaries need to be built seperately.
+Additional documentation is found [here](/docs/tools).
 
 ### Sub-projects
 
 * [Amino](http://github.com/tendermint/go-amino), a reflection-based improvement on proto3
 * [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
 
-### Tools
-* [Deployment, Benchmarking, and Monitoring](http://tendermint.readthedocs.io/projects/tools/en/develop/index.html#tendermint-tools)
-
 ### Applications
 
 * [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
-* [Ethermint](http://github.com/tendermint/ethermint); Ethereum on Tendermint
-* [Many more](https://tendermint.readthedocs.io/en/master/ecosystem.html#abci-applications)
+* [Ethermint](http://github.com/cosmos/ethermint); Ethereum on Tendermint
+* [Many more](https://tendermint.com/ecosystem)
 
-### More
+### Research
 
 * [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
 * [Original Whitepaper](https://tendermint.com/static/docs/tendermint.pdf)
-* [Tendermint Blog](https://blog.cosmos.network/tendermint/home)
-* [Cosmos Blog](https://blog.cosmos.network)
+* [Blog](https://blog.cosmos.network/tendermint/home)
 
 ## Contributing
 
@@ -129,6 +130,8 @@ data into the new chain.
 
 However, any bump in the PATCH version should be compatible with existing histories
 (if not please open an [issue](https://github.com/tendermint/tendermint/issues)).
+
+For more information on upgrading, see [here](./UPGRADING.md)
 
 ## Code of Conduct
 
