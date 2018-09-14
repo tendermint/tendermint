@@ -53,7 +53,7 @@ RETRY_LOOP:
 	for {
 		conn, err := grpc.Dial(cli.addr, grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
 		if err != nil {
-			if cli.mustConnect && !cli.IsRunning(){
+			if cli.mustConnect && !cli.BaseService.IsRunning(){
 				return err
 			}
 			cli.Logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))

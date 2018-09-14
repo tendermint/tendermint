@@ -66,7 +66,7 @@ RETRY_LOOP:
 	for {
 		conn, err = cmn.Connect(cli.addr)
 		if err != nil {
-			if cli.mustConnect && !cli.IsRunning(){
+			if cli.mustConnect && !cli.BaseService.IsRunning(){
 				return err
 			}
 			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
