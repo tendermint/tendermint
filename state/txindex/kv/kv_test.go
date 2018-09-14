@@ -190,34 +190,34 @@ func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
 }
 
 func benchmarkTxIndex(txsCount int64, b *testing.B) {
-	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{
-		Height: 1,
-		Index:  0,
-		Tx:     tx,
-		Result: abci.ResponseDeliverTx{
-			Data: []byte{0},
-			Code: abci.CodeTypeOK,
-			Log:  "",
-			Tags: []cmn.KVPair{},
-		},
-	}
-
 	dir, err := ioutil.TempDir("", "tx_index_db")
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	store := db.NewDB("tx_index", "leveldb", dir)
+	store := db.NewDB("tx_index", "bboltdb", dir)
 	indexer := NewTxIndex(store)
 
 	batch := txindex.NewBatch(txsCount)
+	txIndex := uint32(0)
 	for i := int64(0); i < txsCount; i++ {
+		tx := cmn.RandBytes(250)
+		txResult := &types.TxResult{
+			Height: 1,
+			Index:  txIndex,
+			Tx:     tx,
+			Result: abci.ResponseDeliverTx{
+				Data: []byte{0},
+				Code: abci.CodeTypeOK,
+				Log:  "",
+				Tags: []cmn.KVPair{},
+			},
+		}
 		if err := batch.Add(txResult); err != nil {
 			b.Fatal(err)
 		}
-		txResult.Index++
+		txIndex++
 	}
 
 	b.ResetTimer()
