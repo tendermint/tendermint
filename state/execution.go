@@ -3,7 +3,7 @@ package state
 import (
 	"fmt"
 
-	fail "github.com/ebuchman/fail-test"
+	"github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/tendermint/abci/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -63,15 +63,15 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 	return validateBlock(blockExec.db, state, block)
 }
 
-
 //CheckTxs checks all txs in this block through calling checkTx in ProxyApp.
 //All txs should be checked ok, otherwise return err
 func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
 	// check txs of block.
 	for _, tx := range block.Txs {
 		reqRes := blockExec.proxyApp.CheckTxAsync(tx)
-		if reqRes.Response.GetCheckTx().Code != abci.CodeTypeOK {
-			return errors.Errorf("tx %v check failed. response: %v",tx,reqRes.Response.GetCheckTx())
+		reqRes.Wait()
+		if reqRes.Response == nil || reqRes.Response.GetCheckTx().Code != abci.CodeTypeOK {
+			return errors.Errorf("tx %v check failed. response: %v", tx, reqRes.Response)
 		}
 	}
 	return nil
