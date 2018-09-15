@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	"github.com/pkg/errors"
 )
 
 //-----------------------------------------------------------------------------
@@ -60,6 +61,20 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
 	return validateBlock(blockExec.db, state, block)
+}
+
+
+//CheckTxs checks all txs in this block through calling checkTx in ProxyApp.
+//All txs should be checked ok, otherwise return err
+func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
+	// check txs of block.
+	for _, tx := range block.Txs {
+		reqRes := blockExec.proxyApp.CheckTxAsync(tx)
+		if reqRes.Response.GetCheckTx().Code != abci.CodeTypeOK {
+			return errors.Errorf("tx %v check failed. response: %v",tx,reqRes.Response.GetCheckTx())
+		}
+	}
+	return nil
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
