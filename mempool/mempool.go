@@ -577,11 +577,10 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 
 	// Use the tx hash in the cache
 	txHash := sha256.Sum256(tx)
-	if _, exists := cache.map_[txHash]; exists {
-		moved := cache.map_[txHash]
+	if moved, exists := cache.map_[txHash]; exists {
+		//relocation the tx
 		cache.list.Remove(moved)
-		cache.list.PushBack(txHash)
-		return false
+		delete(cache.map_,txHash)
 	}
 
 	if cache.list.Len() >= cache.size {
