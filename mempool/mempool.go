@@ -580,7 +580,7 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	if _, exists := cache.map_[txHash]; exists {
 		moved := cache.map_[txHash]
 		cache.list.Remove(moved)
-		cache.list.PushBack(moved)
+		cache.list.PushBack(txHash)
 		return false
 	}
 
