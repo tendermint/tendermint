@@ -21,4 +21,3 @@ FEATURES:
 IMPROVEMENTS:
 
 BUG FIXES:
-- [tm-bench] [\#2369](https://github.com/tendermint/tendermint/issues/2369) [tm-bench] does not respond to CTRL-C(@bradyjoestar)
