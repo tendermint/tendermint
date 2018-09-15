@@ -1,12 +1,15 @@
 package types
 
 import (
+	"math"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -105,7 +108,6 @@ func TestBlockMakePartSet(t *testing.T) {
 func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).MakePartSet(2))
 
-	txs := []Tx{Tx("foo"), Tx("bar")}
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
@@ -116,9 +118,9 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
-	partSet := MakeBlock(h, txs, commit, evList).MakePartSet(1024)
+	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, 3, partSet.Total())
+	assert.Equal(t, 2, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -159,16 +161,16 @@ func TestBlockString(t *testing.T) {
 }
 
 func makeBlockIDRandom() BlockID {
-	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
+	blockHash, blockPartsHeader := crypto.CRandBytes(tmhash.Size), PartSetHeader{123, crypto.CRandBytes(tmhash.Size)}
 	return BlockID{blockHash, blockPartsHeader}
 }
 
-func makeBlockID(hash string, partSetSize int, partSetHash string) BlockID {
+func makeBlockID(hash []byte, partSetSize int, partSetHash []byte) BlockID {
 	return BlockID{
-		Hash: []byte(hash),
+		Hash: hash,
 		PartsHeader: PartSetHeader{
 			Total: partSetSize,
-			Hash:  []byte(partSetHash),
+			Hash:  partSetHash,
 		},
 	}
 
@@ -231,6 +233,40 @@ func TestCommitValidateBasic(t *testing.T) {
 	commit = randCommit()
 	commit.Precommits[0].Round = 100
 	assert.Error(t, commit.ValidateBasic())
+}
+
+func TestMaxHeaderBytes(t *testing.T) {
+	// Construct a UTF-8 string of MaxChainIDLen length using the supplementary
+	// characters.
+	// Each supplementary character takes 4 bytes.
+	// http://www.i18nguy.com/unicode/supplementary-test.html
+	maxChainID := ""
+	for i := 0; i < MaxChainIDLen; i++ {
+		maxChainID += "𠜎"
+	}
+
+	h := Header{
+		ChainID:            maxChainID,
+		Height:             math.MaxInt64,
+		Time:               time.Now().UTC(),
+		NumTxs:             math.MaxInt64,
+		TotalTxs:           math.MaxInt64,
+		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt64, make([]byte, tmhash.Size)),
+		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
+		DataHash:           tmhash.Sum([]byte("data_hash")),
+		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
+		NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
+		ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
+		AppHash:            tmhash.Sum([]byte("app_hash")),
+		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
+		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
+		ProposerAddress:    tmhash.Sum([]byte("proposer_address")),
+	}
+
+	bz, err := cdc.MarshalBinary(h)
+	require.NoError(t, err)
+
+	assert.Equal(t, MaxHeaderBytes, len(bz))
 }
 
 func randCommit() *Commit {

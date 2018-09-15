@@ -15,6 +15,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -84,7 +85,7 @@ func GetConfig() *cfg.Config {
 		globalConfig.P2P.ListenAddress = tm
 		globalConfig.RPC.ListenAddress = rpc
 		globalConfig.RPC.GRPCListenAddress = grpc
-		globalConfig.TxIndex.IndexTags = "app.creator" // see kvstore application
+		globalConfig.TxIndex.IndexTags = "app.creator,tx.height" // see kvstore application
 	}
 	return globalConfig
 }
@@ -120,7 +121,11 @@ func NewTendermint(app abci.Application) *nm.Node {
 	pvFile := config.PrivValidatorFile()
 	pv := privval.LoadOrGenFilePV(pvFile)
 	papp := proxy.NewLocalClientCreator(app)
-	node, err := nm.NewNode(config, pv, papp,
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	if err != nil {
+		panic(err)
+	}
+	node, err := nm.NewNode(config, pv, nodeKey, papp,
 		nm.DefaultGenesisDocProviderFunc(config),
 		nm.DefaultDBProvider,
 		nm.DefaultMetricsProvider(config.Instrumentation),

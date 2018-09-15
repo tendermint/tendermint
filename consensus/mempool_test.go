@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/types"
 )
@@ -89,7 +88,7 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
 		err := cs.mempool.CheckTx(txBytes, nil)
 		if err != nil {
-			panic(cmn.Fmt("Error after CheckTx: %v", err))
+			panic(fmt.Sprintf("Error after CheckTx: %v", err))
 		}
 	}
 }
@@ -100,7 +99,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 
-	NTxs := 10000
+	NTxs := 3000
 	go deliverTxsRange(cs, 0, NTxs)
 
 	startTestRound(cs, height, round)
@@ -126,7 +125,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
 	resDeliver := app.DeliverTx(txBytes)
-	assert.False(t, resDeliver.IsErr(), cmn.Fmt("expected no error. got %v", resDeliver))
+	assert.False(t, resDeliver.IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
 
 	resCommit := app.Commit()
 	assert.True(t, len(resCommit.Data) > 0)
@@ -149,7 +148,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 		// check for the tx
 		for {
-			txs := cs.mempool.Reap(1)
+			txs := cs.mempool.ReapMaxBytesMaxGas(len(txBytes), -1)
 			if len(txs) == 0 {
 				emptyMempoolCh <- struct{}{}
 				return
@@ -190,7 +189,7 @@ func NewCounterApplication() *CounterApplication {
 }
 
 func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
-	return abci.ResponseInfo{Data: cmn.Fmt("txs:%v", app.txCount)}
+	return abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}
 }
 
 func (app *CounterApplication) DeliverTx(tx []byte) abci.ResponseDeliverTx {

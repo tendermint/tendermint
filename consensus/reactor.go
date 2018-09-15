@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (
@@ -241,7 +242,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence,
 				"valIdx", hb.ValidatorIndex, "valAddr", hb.ValidatorAddress)
 		default:
-			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
+			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 
 	case DataChannel:
@@ -262,7 +263,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			}
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
 		default:
-			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
+			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 
 	case VoteChannel:
@@ -287,7 +288,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 		default:
 			// don't punish (leave room for soft upgrades)
-			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
+			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 
 	case VoteSetBitsChannel:
@@ -319,11 +320,11 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			}
 		default:
 			// don't punish (leave room for soft upgrades)
-			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
+			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 
 	default:
-		conR.Logger.Error(cmn.Fmt("Unknown chId %X", chID))
+		conR.Logger.Error(fmt.Sprintf("Unknown chId %X", chID))
 	}
 
 	if err != nil {
@@ -482,7 +483,7 @@ OUTER_LOOP:
 			if prs.ProposalBlockParts == nil {
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					cmn.PanicCrisis(cmn.Fmt("Failed to load block %d when blockStore is at %d",
+					cmn.PanicCrisis(fmt.Sprintf("Failed to load block %d when blockStore is at %d",
 						prs.Height, conR.conS.blockStore.Height()))
 				}
 				ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
@@ -1034,7 +1035,7 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValida
 		NOTE: This is wrong, 'round' could change.
 		e.g. if orig round is not the same as block LastCommit round.
 		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
-			cmn.PanicSanity(cmn.Fmt("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
+			cmn.PanicSanity(fmt.Sprintf("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
 		}
 	*/
 	if ps.PRS.CatchupCommitRound == round {
@@ -1138,7 +1139,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 }
 
 func (ps *PeerState) setHasVote(height int64, round int, type_ byte, index int) {
-	logger := ps.logger.With("peerH/R", cmn.Fmt("%d/%d", ps.PRS.Height, ps.PRS.Round), "H/R", cmn.Fmt("%d/%d", height, round))
+	logger := ps.logger.With("peerH/R", fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round), "H/R", fmt.Sprintf("%d/%d", height, round))
 	logger.Debug("setHasVote", "type", type_, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
@@ -1165,7 +1166,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	psCatchupCommitRound := ps.PRS.CatchupCommitRound
 	psCatchupCommit := ps.PRS.CatchupCommit
 
-	startTime := time.Now().Add(-1 * time.Duration(msg.SecondsSinceStartTime) * time.Second)
+	startTime := tmtime.Now().Add(-1 * time.Duration(msg.SecondsSinceStartTime) * time.Second)
 	ps.PRS.Height = msg.Height
 	ps.PRS.Round = msg.Round
 	ps.PRS.Step = msg.Step

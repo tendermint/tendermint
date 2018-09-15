@@ -2,17 +2,18 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
 	"testing/quick"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestValidatorSetBasic(t *testing.T) {
@@ -219,7 +220,7 @@ func TestProposerSelection3(t *testing.T) {
 		got := vset.GetProposer().Address
 		expected := proposerOrder[j%4].Address
 		if !bytes.Equal(got, expected) {
-			t.Fatalf(cmn.Fmt("vset.Proposer (%X) does not match expected proposer (%X) for (%d, %d)", got, expected, i, j))
+			t.Fatalf(fmt.Sprintf("vset.Proposer (%X) does not match expected proposer (%X) for (%d, %d)", got, expected, i, j))
 		}
 
 		// serialize, deserialize, check proposer
@@ -229,7 +230,7 @@ func TestProposerSelection3(t *testing.T) {
 		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
 			if !bytes.Equal(got, computed.Address) {
-				t.Fatalf(cmn.Fmt("vset.Proposer (%X) does not match computed proposer (%X) for (%d, %d)", got, computed.Address, i, j))
+				t.Fatalf(fmt.Sprintf("vset.Proposer (%X) does not match computed proposer (%X) for (%d, %d)", got, computed.Address, i, j))
 			}
 		}
 
@@ -383,7 +384,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		ValidatorIndex:   0,
 		Height:           height,
 		Round:            0,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 		Type:             VoteTypePrecommit,
 		BlockID:          blockID,
 	}

@@ -1,5 +1,10 @@
 # Application Development Guide
 
+## XXX
+
+This page is undergoing deprecation. All content is being moved to the new [home
+of the ABCI specification](../spec/abci/README.md).
+
 ## ABCI Design
 
 The purpose of ABCI is to provide a clean interface between state
@@ -502,7 +507,7 @@ In go:
 
 ```
 func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-  return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
+  return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
 }
 ```
 

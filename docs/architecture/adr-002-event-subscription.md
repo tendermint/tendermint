@@ -7,8 +7,7 @@ a subset of transactions** (rather than all of them) using `/subscribe?event=X`.
 example, I want to subscribe for all transactions associated with a particular
 account. Same for fetching. The user may want to **fetch transactions based on
 some filter** (rather than fetching all the blocks). For example, I want to get
-all transactions for a particular account in the last two weeks (`tx's block
-time >= '2017-06-05'`).
+all transactions for a particular account in the last two weeks (`tx's block time >= '2017-06-05'`).
 
 Now you can't even subscribe to "all txs" in Tendermint.
 

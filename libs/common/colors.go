@@ -88,7 +88,7 @@ func ColoredBytes(data []byte, textColor, bytesColor func(...interface{}) string
 		if 0x21 <= b && b < 0x7F {
 			s += textColor(string(b))
 		} else {
-			s += bytesColor(Fmt("%02X", b))
+			s += bytesColor(fmt.Sprintf("%02X", b))
 		}
 	}
 	return s

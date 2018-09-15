@@ -36,7 +36,7 @@ tendermint node --proxy_app=kvstore --p2p.persistent_peers=96663a3dd0d7b9d17d4c8
 
 After a few seconds, all the nodes should connect to each other and
 start making blocks! For more information, see the Tendermint Networks
-section of [the guide to using Tendermint](./using-tendermint.md).
+section of [the guide to using Tendermint](../tendermint-core/using-tendermint.md).
 
 But wait! Steps 3, 4 and 5 are quite manual. Instead, use the `tendermint testnet` command. By default, running `tendermint testnet` will create all the
 required files, but it won't populate the list of persistent peers. It will do
@@ -71,4 +71,4 @@ local testnet. Review the target in the Makefile to debug any problems.
 
 ### Cloud
 
-See the [next section](./terraform-and-ansible.html) for details.
+See the [next section](./terraform-and-ansible.md) for details.

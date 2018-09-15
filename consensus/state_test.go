@@ -8,7 +8,6 @@ import (
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/types"
@@ -84,7 +83,7 @@ func TestStateProposerSelection0(t *testing.T) {
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
 	if !bytes.Equal(prop.Address, vss[1].GetAddress()) {
-		panic(cmn.Fmt("expected proposer to be validator %d. Got %X", 1, prop.Address))
+		panic(fmt.Sprintf("expected proposer to be validator %d. Got %X", 1, prop.Address))
 	}
 }
 
@@ -106,7 +105,7 @@ func TestStateProposerSelection2(t *testing.T) {
 		prop := cs1.GetRoundState().Validators.GetProposer()
 		correctProposer := vss[(i+2)%len(vss)].GetAddress()
 		if !bytes.Equal(prop.Address, correctProposer) {
-			panic(cmn.Fmt("expected RoundState.Validators.GetProposer() to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
+			panic(fmt.Sprintf("expected RoundState.Validators.GetProposer() to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
 		}
 
 		rs := cs1.GetRoundState()
@@ -185,7 +184,7 @@ func TestStateBadProposal(t *testing.T) {
 	height, round := cs1.Height, cs1.Round
 	vs2 := vss[1]
 
-	partSize := cs1.state.ConsensusParams.BlockPartSizeBytes
+	partSize := types.BlockPartSizeBytes
 
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
@@ -340,7 +339,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	vs2 := vss[1]
 	height := cs1.Height
 
-	partSize := cs1.state.ConsensusParams.BlockPartSizeBytes
+	partSize := types.BlockPartSizeBytes
 
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
@@ -445,7 +444,7 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and are the proposer
 	if !bytes.Equal(rs.ProposalBlock.Hash(), rs.LockedBlock.Hash()) {
-		panic(cmn.Fmt("Expected proposal block to be locked block. Got %v, Expected %v", rs.ProposalBlock, rs.LockedBlock))
+		panic(fmt.Sprintf("Expected proposal block to be locked block. Got %v, Expected %v", rs.ProposalBlock, rs.LockedBlock))
 	}
 
 	<-voteCh // prevote
@@ -508,7 +507,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := cs1.state.ConsensusParams.BlockPartSizeBytes
+	partSize := types.BlockPartSizeBytes
 
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
@@ -623,7 +622,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := cs1.state.ConsensusParams.BlockPartSizeBytes
+	partSize := types.BlockPartSizeBytes
 
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
@@ -720,7 +719,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := cs1.state.ConsensusParams.BlockPartSizeBytes
+	partSize := types.BlockPartSizeBytes
 
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
@@ -843,7 +842,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := cs1.state.ConsensusParams.BlockPartSizeBytes
+	partSize := types.BlockPartSizeBytes
 
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
@@ -1022,7 +1021,7 @@ func TestStateHalt1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
-	partSize := cs1.state.ConsensusParams.BlockPartSizeBytes
+	partSize := types.BlockPartSizeBytes
 
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)

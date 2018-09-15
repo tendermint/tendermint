@@ -14,6 +14,8 @@ test/p2p/data/
 test/logs
 coverage.txt
 docs/_build
+docs/.vuepress
+docs/dist
 *.log
 abci-cli
 docs/node_modules/
@@ -24,6 +26,8 @@ scripts/cutWALUntil/cutWALUntil
 
 .idea/
 *.iml
+
+.vscode/
 
 libs/pubsub/query/fuzz_test/output
 shunit2
@@ -37,3 +41,5 @@ addrbook.json
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
+
+.vscode

@@ -31,7 +31,7 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 - [Block Sync](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/block_sync): gossip blocks so peers can catch up quickly
 - [Consensus](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/consensus): gossip votes and block parts so new blocks can be committed
 - [Mempool](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/mempool): gossip transactions so they get included in blocks
-- Evidence: TODO
+- Evidence: Forthcoming, see [this issue](https://github.com/tendermint/tendermint/issues/2329).
 
 ### Software
 
@@ -57,7 +57,7 @@ is malicious or faulty.
 A commit in Tendermint is a set of signed messages from more than 2/3 of
 the total weight of the current Validator set. Validators take turns proposing
 blocks and voting on them. Once enough votes are received, the block is considered
-committed. These votes are included in the *next* block as proof that the previous block
+committed. These votes are included in the _next_ block as proof that the previous block
 was committed - they cannot be included in the current block, as that block has already been
 created.
 
@@ -71,8 +71,8 @@ of the latest state of the blockchain. To achieve this, it embeds
 cryptographic commitments to certain information in the block "header".
 This information includes the contents of the block (eg. the transactions),
 the validator set committing the block, as well as the various results returned by the application.
-Note, however, that block execution only occurs *after* a block is committed.
-Thus, application results can only be included in the *next* block.
+Note, however, that block execution only occurs _after_ a block is committed.
+Thus, application results can only be included in the _next_ block.
 
 Also note that information like the transaction results and the validator set are never
 directly included in the block - only their cryptographic digests (Merkle roots) are.

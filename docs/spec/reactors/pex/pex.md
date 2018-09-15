@@ -15,6 +15,9 @@ we will not put them in the address book or gossip them to others.
 All peers except private peers and peers coming from them are tracked using the
 address book.
 
+The rest of our peers are only distinguished by being either
+inbound (they dialed our public address) or outbound (we dialed them).
+
 ## Discovery
 
 Peer discovery begins with a list of seeds.
@@ -26,15 +29,15 @@ and will attempt to maintain persistent connections with them. If the connection
 we will redial every 5s for a few minutes, then switch to an exponential backoff schedule,
 and after about a day of trying, stop dialing the peer.
 
-So long as we have less than `MinNumOutboundPeers`, we periodically request additional peers
+So long as we have less than `MaxNumOutboundPeers`, we periodically request additional peers
 from each of our own. If sufficient time goes by and we still can't find enough peers,
 we try the seeds again.
 
 ## Listening
 
 Peers listen on a configurable ListenAddr that they self-report in their
-NodeInfo during handshakes with other peers. Peers accept up to (MaxNumPeers -
-MinNumOutboundPeers) incoming peers.
+NodeInfo during handshakes with other peers. Peers accept up to
+`MaxNumInboundPeers` incoming peers.
 
 ## Address Book
 
@@ -73,10 +76,11 @@ a trust metric (see below), but it's best to start with something simple.
 
 ## Select Peers to Dial
 
-When we need more peers, we pick them randomly from the addrbook with some
-configurable bias for unvetted peers. The bias should be lower when we have fewer peers
-and can increase as we obtain more, ensuring that our first peers are more trustworthy,
-but always giving us the chance to discover new good peers.
+When we need more peers, we pick addresses randomly from the addrbook with some
+configurable bias for unvetted peers. The bias should be lower when we have
+fewer peers and can increase as we obtain more, ensuring that our first peers
+are more trustworthy, but always giving us the chance to discover new good
+peers.
 
 We track the last time we dialed a peer and the number of unsuccessful attempts
 we've made. If too many attempts are made, we mark the peer as bad.
@@ -85,11 +89,13 @@ Connection attempts are made with exponential backoff (plus jitter). Because
 the selection process happens every `ensurePeersPeriod`, we might not end up
 dialing a peer for much longer than the backoff duration.
 
-If we fail to connect to the peer after 16 tries (with exponential backoff), we remove from address book completely.
+If we fail to connect to the peer after 16 tries (with exponential backoff), we
+remove from address book completely.
 
 ## Select Peers to Exchange
 
 When we’re asked for peers, we select them as follows:
+
 - select at most `maxGetSelection` peers
 - try to select at least `minGetSelection` peers - if we have less than that, select them all.
 - select a random, unbiased `getSelectionPercent` of the peers
@@ -121,4 +127,3 @@ to use it in the PEX.
 See the [trustmetric](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-006-trust-metric.md)
 and [trustmetric useage](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-007-trust-metric-usage.md)
 architecture docs for more details.
-

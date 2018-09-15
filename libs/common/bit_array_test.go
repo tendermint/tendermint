@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -149,7 +150,7 @@ func TestBytes(t *testing.T) {
 	bA.SetIndex(0, true)
 	check := func(bA *BitArray, bz []byte) {
 		if !bytes.Equal(bA.Bytes(), bz) {
-			panic(Fmt("Expected %X but got %X", bz, bA.Bytes()))
+			panic(fmt.Sprintf("Expected %X but got %X", bz, bA.Bytes()))
 		}
 	}
 	check(bA, []byte{0x01})

@@ -9,8 +9,15 @@ import (
 )
 
 var (
+	// ErrAlreadyStarted is returned when somebody tries to start an already
+	// running service.
 	ErrAlreadyStarted = errors.New("already started")
+	// ErrAlreadyStopped is returned when somebody tries to stop an already
+	// stopped service (without resetting it).
 	ErrAlreadyStopped = errors.New("already stopped")
+	// ErrNotStarted is returned when somebody tries to stop a not running
+	// service.
+	ErrNotStarted = errors.New("not started")
 )
 
 // Service defines a service that can be started, stopped, and reset.
@@ -123,10 +130,12 @@ func (bs *BaseService) SetLogger(l log.Logger) {
 func (bs *BaseService) Start() error {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
-			bs.Logger.Error(Fmt("Not starting %v -- already stopped", bs.name), "impl", bs.impl)
+			bs.Logger.Error(fmt.Sprintf("Not starting %v -- already stopped", bs.name), "impl", bs.impl)
+			// revert flag
+			atomic.StoreUint32(&bs.started, 0)
 			return ErrAlreadyStopped
 		}
-		bs.Logger.Info(Fmt("Starting %v", bs.name), "impl", bs.impl)
+		bs.Logger.Info(fmt.Sprintf("Starting %v", bs.name), "impl", bs.impl)
 		err := bs.impl.OnStart()
 		if err != nil {
 			// revert flag
@@ -135,7 +144,7 @@ func (bs *BaseService) Start() error {
 		}
 		return nil
 	}
-	bs.Logger.Debug(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
+	bs.Logger.Debug(fmt.Sprintf("Not starting %v -- already started", bs.name), "impl", bs.impl)
 	return ErrAlreadyStarted
 }
 
@@ -148,12 +157,18 @@ func (bs *BaseService) OnStart() error { return nil }
 // channel. An error will be returned if the service is already stopped.
 func (bs *BaseService) Stop() error {
 	if atomic.CompareAndSwapUint32(&bs.stopped, 0, 1) {
-		bs.Logger.Info(Fmt("Stopping %v", bs.name), "impl", bs.impl)
+		if atomic.LoadUint32(&bs.started) == 0 {
+			bs.Logger.Error(fmt.Sprintf("Not stopping %v -- have not been started yet", bs.name), "impl", bs.impl)
+			// revert flag
+			atomic.StoreUint32(&bs.stopped, 0)
+			return ErrNotStarted
+		}
+		bs.Logger.Info(fmt.Sprintf("Stopping %v", bs.name), "impl", bs.impl)
 		bs.impl.OnStop()
 		close(bs.quit)
 		return nil
 	}
-	bs.Logger.Debug(Fmt("Stopping %v (ignoring: already stopped)", bs.name), "impl", bs.impl)
+	bs.Logger.Debug(fmt.Sprintf("Stopping %v (ignoring: already stopped)", bs.name), "impl", bs.impl)
 	return ErrAlreadyStopped
 }
 
@@ -166,7 +181,7 @@ func (bs *BaseService) OnStop() {}
 // will be returned if the service is running.
 func (bs *BaseService) Reset() error {
 	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
-		bs.Logger.Debug(Fmt("Can't reset %v. Not stopped", bs.name), "impl", bs.impl)
+		bs.Logger.Debug(fmt.Sprintf("Can't reset %v. Not stopped", bs.name), "impl", bs.impl)
 		return fmt.Errorf("can't reset running %s", bs.name)
 	}
 

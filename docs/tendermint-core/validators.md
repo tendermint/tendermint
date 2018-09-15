@@ -2,7 +2,7 @@
 
 Validators are responsible for committing new blocks in the blockchain.
 These validators participate in the consensus protocol by broadcasting
-*votes* which contain cryptographic signatures signed by each
+_votes_ which contain cryptographic signatures signed by each
 validator's private key.
 
 Some Proof-of-Stake consensus algorithms aim to create a "completely"
@@ -22,18 +22,18 @@ Validators have a cryptographic key-pair and an associated amount of
 
 There are two ways to become validator.
 
-1.  They can be pre-established in the [genesis state](../../tendermint-core/using-tendermint.md#genesis)
+1.  They can be pre-established in the [genesis state](./using-tendermint.md#genesis)
 2.  The ABCI app responds to the EndBlock message with changes to the
     existing validator set.
 
 ## Committing a Block
 
-*+2/3 is short for "more than 2/3"*
+_+2/3 is short for "more than 2/3"_
 
 A block is committed when +2/3 of the validator set sign [precommit
 votes](../spec/blockchain/blockchain.md#vote) for that block at the same `round`.
 The +2/3 set of precommit votes is called a
-[*commit*](../spec/blockchain/blockchain.md#commit). While any +2/3 set of
+[_commit_](../spec/blockchain/blockchain.md#commit). While any +2/3 set of
 precommits for the same block at the same height&round can serve as
 validation, the canonical commit is included in the next block (see
-[LastCommit](../spec/blockchain/blockchain.md#last-commit)).
+[LastCommit](../spec/blockchain/blockchain.md#lastcommit)).

@@ -28,6 +28,5 @@ WAL. Then it will go to precommit, and that time it will work because the
 private validator contains the `LastSignBytes` and then we’ll replay the
 precommit from the WAL.
 
-Make sure to read about [WAL
-corruption](https://tendermint.readthedocs.io/projects/tools/en/master/specification/corruption.html#wal-corruption)
+Make sure to read about [WAL corruption](../../../tendermint-core/running-in-production.md#wal-corruption)
 and recovery strategies.

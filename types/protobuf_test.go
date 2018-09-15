@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestABCIPubKey(t *testing.T) {
@@ -41,26 +42,26 @@ func TestABCIValidators(t *testing.T) {
 		VotingPower: 10,
 	}
 
-	abciVal := TM2PB.Validator(tmVal)
-	tmVals, err := PB2TM.Validators([]abci.Validator{abciVal})
+	abciVal := TM2PB.ValidatorUpdate(tmVal)
+	tmVals, err := PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
-	abciVals := TM2PB.Validators(NewValidatorSet(tmVals))
-	assert.Equal(t, []abci.Validator{abciVal}, abciVals)
+	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals))
+	assert.Equal(t, []abci.ValidatorUpdate{abciVal}, abciVals)
 
 	// val with address
 	tmVal.Address = pkEd.Address()
 
-	abciVal = TM2PB.Validator(tmVal)
-	tmVals, err = PB2TM.Validators([]abci.Validator{abciVal})
+	abciVal = TM2PB.ValidatorUpdate(tmVal)
+	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
-	// val with incorrect address
-	abciVal = TM2PB.Validator(tmVal)
-	abciVal.Address = []byte("incorrect!")
-	tmVals, err = PB2TM.Validators([]abci.Validator{abciVal})
+	// val with incorrect pubkey data
+	abciVal = TM2PB.ValidatorUpdate(tmVal)
+	abciVal.PubKey.Data = []byte("incorrect!")
+	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
 	assert.NotNil(t, err)
 	assert.Nil(t, tmVals)
 }
@@ -77,7 +78,7 @@ func TestABCIConsensusParams(t *testing.T) {
 func TestABCIHeader(t *testing.T) {
 	header := &Header{
 		Height:          int64(3),
-		Time:            time.Now(),
+		Time:            tmtime.Now(),
 		NumTxs:          int64(10),
 		ProposerAddress: []byte("cloak"),
 	}
@@ -89,8 +90,8 @@ func TestABCIHeader(t *testing.T) {
 
 func TestABCIEvidence(t *testing.T) {
 	val := NewMockPV()
-	blockID := makeBlockID("blockhash", 1000, "partshash")
-	blockID2 := makeBlockID("blockhash2", 1000, "partshash")
+	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
+	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
 		PubKey: val.GetPubKey(),
@@ -104,32 +105,29 @@ func TestABCIEvidence(t *testing.T) {
 	)
 
 	assert.Equal(t, "duplicate/vote", abciEv.Type)
-
-	// test we do not send pubkeys
-	assert.Empty(t, abciEv.Validator.PubKey)
 }
 
 type pubKeyEddie struct{}
 
-func (pubKeyEddie) Address() Address                                  { return []byte{} }
-func (pubKeyEddie) Bytes() []byte                                     { return []byte{} }
+func (pubKeyEddie) Address() Address                        { return []byte{} }
+func (pubKeyEddie) Bytes() []byte                           { return []byte{} }
 func (pubKeyEddie) VerifyBytes(msg []byte, sig []byte) bool { return false }
-func (pubKeyEddie) Equals(crypto.PubKey) bool                         { return false }
+func (pubKeyEddie) Equals(crypto.PubKey) bool               { return false }
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	pubkey := ed25519.GenPrivKey().PubKey()
 
-	abciVal := TM2PB.ValidatorFromPubKeyAndPower(pubkey, 10)
+	abciVal := TM2PB.NewValidatorUpdate(pubkey, 10)
 	assert.Equal(t, int64(10), abciVal.Power)
 
-	assert.Panics(t, func() { TM2PB.ValidatorFromPubKeyAndPower(nil, 10) })
-	assert.Panics(t, func() { TM2PB.ValidatorFromPubKeyAndPower(pubKeyEddie{}, 10) })
+	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(nil, 10) })
+	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(pubKeyEddie{}, 10) })
 }
 
 func TestABCIValidatorWithoutPubKey(t *testing.T) {
 	pkEd := ed25519.GenPrivKey().PubKey()
 
-	abciVal := TM2PB.ValidatorWithoutPubKey(&Validator{
+	abciVal := TM2PB.Validator(&Validator{
 		Address:     pkEd.Address(),
 		PubKey:      pkEd,
 		VotingPower: 10,

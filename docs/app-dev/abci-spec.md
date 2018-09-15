@@ -1,5 +1,9 @@
 # ABCI Specification
 
+### XXX
+
+DEPRECATED: Moved [here](../spec/abci/abci.md)
+
 ## Message Types
 
 ABCI requests/responses are defined as simple Protobuf messages in [this
@@ -111,14 +115,21 @@ See below for more details on the message types and how they are used.
   - `Time (google.protobuf.Timestamp)`: Genesis time.
   - `ChainID (string)`: ID of the blockchain.
   - `ConsensusParams (ConsensusParams)`: Initial consensus-critical parameters.
-  - `Validators ([]Validator)`: Initial genesis validators.
+  - `Validators ([]ValidatorUpdate)`: Initial genesis validators.
   - `AppStateBytes ([]byte)`: Serialized initial application state. Amino-encoded JSON bytes.
 - **Response**:
   - `ConsensusParams (ConsensusParams)`: Initial
     consensus-critical parameters.
-  - `Validators ([]Validator)`: Initial validator set.
+  - `Validators ([]ValidatorUpdate)`: Initial validator set (if non empty).
 - **Usage**:
   - Called once upon genesis.
+  - If ResponseInitChain.Validators is empty, the initial validator set will be the RequestInitChain.Validators
+  - If ResponseInitChain.Validators is not empty, the initial validator set will be the
+    ResponseInitChain.Validators (regardless of what is in RequestInitChain.Validators).
+  - This allows the app to decide if it wants to accept the initial validator
+    set proposed by tendermint (ie. in the genesis file), or if it wants to use
+    a different one (perhaps computed based on some application specific
+    information in the genesis file).
 
 ### Query
 
@@ -161,15 +172,17 @@ See below for more details on the message types and how they are used.
   - `Hash ([]byte)`: The block's hash. This can be derived from the
     block header.
   - `Header (struct{})`: The block header.
-  - `LastCommitInfo (LastCommitInfo)`: Info about the last commit.
+  - `LastCommitInfo (LastCommitInfo)`: Info about the last commit, including the
+    round, and the list of validators and which ones signed the last block.
   - `ByzantineValidators ([]Evidence)`: List of evidence of
-    validators that acted maliciously
+    validators that acted maliciously.
 - **Response**:
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
 - **Usage**:
   - Signals the beginning of a new block. Called prior to
     any DeliverTxs.
-  - The header is expected to at least contain the Height.
+  - The header contains the height, timestamp, and more - it exactly matches the
+    Tendermint block header. We may seek to generalize this in the future.
   - The `LastCommitInfo` and `ByzantineValidators` can be used to determine
     rewards and punishments for the validators. NOTE validators here do not
     include pubkeys.
@@ -237,7 +250,7 @@ See below for more details on the message types and how they are used.
 - **Request**:
   - `Height (int64)`: Height of the block just executed.
 - **Response**:
-  - `ValidatorUpdates ([]Validator)`: Changes to validator set (set
+  - `ValidatorUpdates ([]ValidatorUpdate)`: Changes to validator set (set
     voting power to 0 to remove).
   - `ConsensusParamUpdates (ConsensusParams)`: Changes to
     consensus-critical time, size, and other parameters.
@@ -245,8 +258,11 @@ See below for more details on the message types and how they are used.
 - **Usage**:
   - Signals the end of a block.
   - Called prior to each Commit, after all transactions.
-  - Validator set and consensus params are updated with the result.
-  - Validator pubkeys are expected to be go-wire encoded.
+  - Validator updates returned for block H:
+    - apply to the NextValidatorsHash of block H+1
+    - apply to the ValidatorsHash (and thus the validator set) for block H+2
+    - apply to the RequestBeginBlock.LastCommitInfo (ie. the last validator set) for block H+3
+  - Consensus params returned for block H apply for block H+1
 
 ### Commit
 
@@ -271,12 +287,17 @@ See below for more details on the message types and how they are used.
   - `NumTxs (int32)`: Number of transactions in the block
   - `TotalTxs (int64)`: Total number of transactions in the blockchain until
     now
-  - `LastBlockHash ([]byte)`: Hash of the previous (parent) block
+  - `LastBlockID (BlockID)`: Hash of the previous (parent) block
+  - `LastCommitHash ([]byte)`: Hash of the previous block's commit
   - `ValidatorsHash ([]byte)`: Hash of the validator set for this block
+  - `NextValidatorsHash ([]byte)`: Hash of the validator set for the next block
+  - `ConsensusHash ([]byte)`: Hash of the consensus parameters for this block
   - `AppHash ([]byte)`: Data returned by the last call to `Commit` - typically the
     Merkle root of the application state after executing the previous block's
     transactions
-  - `Proposer (Validator)`: Original proposer for the block
+  - `LastResultsHash ([]byte)`: Hash of the ABCI results returned by the last block
+  - `EvidenceHash ([]byte)`: Hash of the evidence included in this block
+  - `ProposerAddress ([]byte)`: Original proposer for the block
 - **Usage**:
   - Provided in RequestBeginBlock
   - Provides important context about the current state of the blockchain -
@@ -288,16 +309,27 @@ See below for more details on the message types and how they are used.
 
 - **Fields**:
   - `Address ([]byte)`: Address of the validator (hash of the public key)
+  - `Power (int64)`: Voting power of the validator
+- **Usage**:
+  - Validator identified by address
+  - Used in RequestBeginBlock as part of VoteInfo
+  - Does not include PubKey to avoid sending potentially large quantum pubkeys
+    over the ABCI
+
+### ValidatorUpdate
+
+- **Fields**:
   - `PubKey (PubKey)`: Public key of the validator
   - `Power (int64)`: Voting power of the validator
 - **Usage**:
-  - Provides all identifying information about the validator
+  - Validator identified by PubKey
+  - Used to tell Tendermint to update the validator set
 
-### SigningValidator
+### VoteInfo
 
 - **Fields**:
   - `Validator (Validator)`: A validator
-  - `SignedLastBlock (bool)`: Indicated whether or not the validator signed
+  - `SignedLastBlock (bool)`: Indicates whether or not the validator signed
     the last block
 - **Usage**:
   - Indicates whether a validator signed the last block, allowing for rewards
@@ -330,6 +362,6 @@ See below for more details on the message types and how they are used.
 ### LastCommitInfo
 
 - **Fields**:
-  - `CommitRound (int32)`: Commit round.
-  - `Validators ([]SigningValidator)`: List of validators in the current
-    validator set and whether or not they signed a vote.
+  - `Round (int32)`: Commit round.
+  - `Votes ([]VoteInfo)`: List of validators addresses in the last validator set
+    with their voting power and whether or not they signed a vote.

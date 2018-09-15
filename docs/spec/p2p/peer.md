@@ -29,25 +29,25 @@ Both handshakes have configurable timeouts (they should complete quickly).
 Tendermint implements the Station-to-Station protocol
 using X25519 keys for Diffie-Helman key-exchange and chacha20poly1305 for encryption.
 It goes as follows:
+
 - generate an ephemeral X25519 keypair
 - send the ephemeral public key to the peer
 - wait to receive the peer's ephemeral public key
 - compute the Diffie-Hellman shared secret using the peers ephemeral public key and our ephemeral private key
 - generate two keys to use for encryption (sending and receiving) and a challenge for authentication as follows:
-    - create a hkdf-sha256 instance with the key being the diffie hellman shared secret, and info parameter as
-      `TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN`
-    - get 96 bytes of output from hkdf-sha256
-    - if we had the smaller ephemeral pubkey, use the first 32 bytes for the key for receiving, the second 32 bytes for sending; else the opposite
-    - use the last 32 bytes of output for the challenge
-- use a seperate nonce for receiving and sending. Both nonces start at 0, and should support the full 96 bit nonce range
+  - create a hkdf-sha256 instance with the key being the diffie hellman shared secret, and info parameter as
+    `TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN`
+  - get 96 bytes of output from hkdf-sha256
+  - if we had the smaller ephemeral pubkey, use the first 32 bytes for the key for receiving, the second 32 bytes for sending; else the opposite
+  - use the last 32 bytes of output for the challenge
+- use a separate nonce for receiving and sending. Both nonces start at 0, and should support the full 96 bit nonce range
 - all communications from now on are encrypted in 1024 byte frames,
-using the respective secret and nonce. Each nonce is incremented by one after each use. 
+  using the respective secret and nonce. Each nonce is incremented by one after each use.
 - we now have an encrypted channel, but still need to authenticate
 - sign the common challenge obtained from the hkdf with our persistent private key
 - send the amino encoded persistent pubkey and signature to the peer
 - wait to receive the persistent public key and signature from the peer
 - verify the signature on the challenge using the peer's persistent public key
-
 
 If this is an outgoing connection (we dialed the peer) and we used a peer ID,
 then finally verify that the peer's persistent public key corresponds to the peer ID we dialed,
@@ -69,7 +69,6 @@ an optional whitelist which can be managed through the ABCI app -
 if the whitelist is enabled and the peer does not qualify, the connection is
 terminated.
 
-
 ### Tendermint Version Handshake
 
 The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
@@ -89,6 +88,7 @@ type NodeInfo struct {
 ```
 
 The connection is disconnected if:
+
 - `peer.NodeInfo.ID` is not equal `peerConn.ID`
 - `peer.NodeInfo.Version` is not formatted as `X.X.X` where X are integers known as Major, Minor, and Revision
 - `peer.NodeInfo.Version` Major is not the same as ours
@@ -96,7 +96,6 @@ The connection is disconnected if:
 - `peer.Channels` does not intersect with our known Channels.
 - `peer.NodeInfo.ListenAddr` is malformed or is a DNS host that cannot be
   resolved
-
 
 At this point, if we have not disconnected, the peer is valid.
 It is added to the switch and hence all reactors via the `AddPeer` method.

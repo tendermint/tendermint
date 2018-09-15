@@ -26,7 +26,7 @@ Requires:
 
 - `go` minimum version 1.10
 - `$GOPATH` environment variable must be set
-- `$GOPATH/bin` must be on your `$PATH` (see https://github.com/tendermint/tendermint/wiki/Setting-GOPATH)
+- `$GOPATH/bin` must be on your `$PATH` (see [here](https://github.com/tendermint/tendermint/wiki/Setting-GOPATH))
 
 To install Tendermint, run:
 
@@ -43,8 +43,11 @@ Confirm installation:
 
 ```
 $ tendermint version
-0.23.0-dev
+0.23.0
 ```
+
+Note: see the [releases page](https://github.com/tendermint/tendermint/releases) and the latest version
+should match what you see above.
 
 ## Initialization
 
@@ -142,8 +145,6 @@ tendermint node --home ./mytestnet/node3 --proxy_app=kvstore --p2p.persistent_pe
 
 Note that after the third node is started, blocks will start to stream in
 because >2/3 of validators (defined in the `genesis.json`) have come online.
-Seeds can also be specified in the `config.toml`. See [this
-PR](https://github.com/tendermint/tendermint/pull/792) for more information
-about configuration options.
+Seeds can also be specified in the `config.toml`. See [here](../tendermint-core/configuration.md) for more information about configuration options.
 
 Transactions can then be sent as covered in the single, local node example above.
