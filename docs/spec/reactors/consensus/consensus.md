@@ -23,7 +23,7 @@ processes using `BlockPartMessage`.
 
 Validators in Tendermint communicate by peer-to-peer gossiping protocol. Each validator is connected
 only to a subset of processes called peers. By the gossiping protocol, a validator send to its peers
-all needed  information (`ProposalMessage`, `VoteMessage` and `BlockPartMessage`) so they can
+all needed information (`ProposalMessage`, `VoteMessage` and `BlockPartMessage`) so they can
 reach agreement on some block, and also obtain the content of the chosen block (block parts). As
 part of the gossiping protocol, processes also send auxiliary messages that inform peers about the
 executed steps of the core consensus algorithm (`NewRoundStepMessage` and `CommitStepMessage`), and

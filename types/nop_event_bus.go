@@ -20,58 +20,58 @@ func (NopEventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	return nil
 }
 
-//--- block, tx, and vote events
-
-func (NopEventBus) PublishEventNewBlock(block EventDataNewBlock) error {
+func (NopEventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventNewBlockHeader(header EventDataNewBlockHeader) error {
+func (NopEventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventVote(vote EventDataVote) error {
+func (NopEventBus) PublishEventVote(data EventDataVote) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventTx(tx EventDataTx) error {
+func (NopEventBus) PublishEventTx(data EventDataTx) error {
 	return nil
 }
 
-//--- EventDataRoundState events
-
-func (NopEventBus) PublishEventNewRoundStep(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventNewRoundStep(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventTimeoutPropose(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventTimeoutPropose(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventTimeoutWait(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventTimeoutWait(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventNewRound(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventNewRound(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventCompleteProposal(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventCompleteProposal(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventPolka(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventPolka(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventUnlock(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventUnlock(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventRelock(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventRelock(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventLock(rs EventDataRoundState) error {
+func (NopEventBus) PublishEventLock(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpdates) error {
 	return nil
 }

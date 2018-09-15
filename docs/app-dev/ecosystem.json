@@ -5,24 +5,21 @@
       "url": "https://github.com/cosmos/cosmos-sdk",
       "language": "Go",
       "author": "Cosmos",
-      "description":
-        "A prototypical account based crypto currency state machine supporting plugins"
+      "description": "A prototypical account based crypto currency state machine supporting plugins"
     },
     {
       "name": "cb-ledger",
       "url": "https://github.com/block-finance/cpp-abci",
       "language": "C++",
       "author": "Block Finance",
-      "description":
-        "Custodian Bank Ledger, integrating central banking with the blockchains of tomorrow"
+      "description": "Custodian Bank Ledger, integrating central banking with the blockchains of tomorrow"
     },
     {
       "name": "Clearchain",
       "url": "https://github.com/tendermint/clearchain",
       "language": "Go",
       "author": "FXCLR",
-      "description":
-        "Application to manage a distributed ledger for money transfers that support multi-currency accounts"
+      "description": "Application to manage a distributed ledger for money transfers that support multi-currency accounts"
     },
     {
       "name": "Ethermint",
@@ -43,8 +40,7 @@
       "url": "https://github.com/hyperledger/burrow",
       "language": "Go",
       "author": "Monax Industries",
-      "description":
-        "Ethereum Virtual Machine augmented with native permissioning scheme and global key-value store"
+      "description": "Ethereum Virtual Machine augmented with native permissioning scheme and global key-value store"
     },
     {
       "name": "Merkle AVL Tree",
@@ -72,8 +68,7 @@
       "url": "https://github.com/trusch/passchain",
       "language": "Go",
       "author": "trusch",
-      "description":
-        "Tool to securely store and share passwords, tokens and other short secrets"
+      "description": "Tool to securely store and share passwords, tokens and other short secrets"
     },
     {
       "name": "Passwerk",
@@ -87,8 +82,7 @@
       "url": "https://github.com/davebryson/py-tendermint",
       "language": "Python",
       "author": "Dave Bryson",
-      "description":
-        "A Python microframework for building blockchain applications with Tendermint"
+      "description": "A Python microframework for building blockchain applications with Tendermint"
     },
     {
       "name": "Stratumn SDK",
@@ -102,16 +96,14 @@
       "url": "https://github.com/keppel/lotion",
       "language": "Javascript",
       "author": "Judd Keppel",
-      "description":
-        "A Javascript microframework for building blockchain applications with Tendermint"
+      "description": "A Javascript microframework for building blockchain applications with Tendermint"
     },
     {
       "name": "Tendermint Blockchain Chat App",
       "url": "https://github.com/SaifRehman/tendermint-chat-app/",
       "language": "Javascript",
       "author": "Saif Rehman",
-      "description":
-        "This is a minimal chat application based on Tendermint using Lotion.js in 30 lines of code!. It also includes web/mobile application built using Ionic 3."
+      "description": "This is a minimal chat application based on Tendermint using Lotion.js in 30 lines of code!. It also includes web/mobile application built using Ionic 3."
     },
     {
       "name": "BigchainDB",
@@ -131,7 +123,7 @@
   "abciServers": [
     {
       "name": "abci",
-      "url": "https://github.com/tendermint/abci",
+      "url": "https://github.com/tendermint/tendermint/tree/master/abci",
       "language": "Go",
       "author": "Tendermint"
     },
@@ -184,16 +176,14 @@
       "url": "https://github.com/tendermint/tools",
       "technology": "Docker and Kubernetes",
       "author": "Tendermint",
-      "description":
-        "Deploy a Tendermint test network using Google's kubernetes"
+      "description": "Deploy a Tendermint test network using Google's kubernetes"
     },
     {
       "name": "terraforce",
       "url": "https://github.com/tendermint/tools",
       "technology": "Terraform",
       "author": "Tendermint",
-      "description":
-        "Terraform + our custom terraforce tool; deploy a production Tendermint network with load balancing over multiple AWS availability zones"
+      "description": "Terraform + our custom terraforce tool; deploy a production Tendermint network with load balancing over multiple AWS availability zones"
     },
     {
       "name": "ansible-tendermint",

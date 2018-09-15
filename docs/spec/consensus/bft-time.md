@@ -16,10 +16,10 @@ In the context of Tendermint, time is of type int64 and denotes UNIX time in mil
 corresponds to the number of milliseconds since January 1, 1970. Before defining rules that need to be enforced by the 
 Tendermint consensus protocol, so the properties above holds, we introduce the following definition:
 
-- median of a set of `Vote` messages is equal to the median of `Vote.Time` fields of the corresponding `Vote` messages,
+- median of a Commit is equal to the median of `Vote.Time` fields of the `Vote` messages,
 where the value of `Vote.Time` is counted number of times proportional to the process voting power. As in Tendermint
 the voting power is not uniform (one process one vote), a vote message is actually an aggregator of the same votes whose 
-number is equal to the voting power of the process that has casted the corresponding votes message. 
+number is equal to the voting power of the process that has casted the corresponding votes message.
 
 Let's consider the following example:
  - we have four processes p1, p2, p3 and p4, with the following voting power distribution (p1, 23), (p2, 27), (p3, 10)
@@ -40,17 +40,15 @@ rs.Proposal.Timestamp == rs.ProposalBlock.Header.Time`.
 
 - Furthermore, when creating the `vote` message, the following rules for determining `vote.Time` field should hold: 
 
-    - if `rs.Proposal` is defined then 
-    `vote.Time = max(rs.Proposal.Timestamp + 1, time.Now())`, where `time.Now()` 
-    denotes local Unix time in milliseconds.  
+    - if `rs.LockedBlock` is defined then
+    `vote.Time = max(rs.LockedBlock.Timestamp + config.BlockTimeIota, time.Now())`, where `time.Now()` 
+        denotes local Unix time in milliseconds, and `config.BlockTimeIota` is a configuration parameter that corresponds
+        to the minimum timestamp increment of the next block.
+        
+    - else if `rs.Proposal` is defined then 
+    `vote.Time = max(rs.Proposal.Timestamp + config.BlockTimeIota, time.Now())`,
     
-    - if `rs.Proposal` is not defined and `rs.Votes` contains +2/3 of the corresponding vote messages (votes for the 
-    current height and round, and with the corresponding type (`Prevote` or `Precommit`)), then 
-    
-    `vote.Time = max(median(getVotes(rs.Votes, vote.Height, vote.Round, vote.Type)), time.Now())`,
-    
-    where `getVotes` function returns the votes for particular `Height`, `Round` and `Type`.  
-    The second rule is relevant for the case when a process jumps to a higher round upon receiving +2/3 votes for a higher 
-    round, but the corresponding `Proposal` message for the higher round hasn't been received yet.    
+    - otherwise, `vote.Time = time.Now())`. In this case vote is for `nil` so it is not taken into account for 
+    the timestamp of the next block. 
 
 

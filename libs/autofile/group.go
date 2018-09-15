@@ -199,12 +199,14 @@ func (g *Group) Flush() error {
 }
 
 func (g *Group) processTicks() {
-	select {
-	case <-g.ticker.C:
-		g.checkHeadSizeLimit()
-		g.checkTotalSizeLimit()
-	case <-g.Quit():
-		return
+	for {
+		select {
+		case <-g.ticker.C:
+			g.checkHeadSizeLimit()
+			g.checkTotalSizeLimit()
+		case <-g.Quit():
+			return
+		}
 	}
 }
 
@@ -724,11 +726,11 @@ func (gr *GroupReader) SetIndex(index int) error {
 func MakeSimpleSearchFunc(prefix string, target int) SearchFunc {
 	return func(line string) (int, error) {
 		if !strings.HasPrefix(line, prefix) {
-			return -1, errors.New(cmn.Fmt("Marker line did not have prefix: %v", prefix))
+			return -1, fmt.Errorf("Marker line did not have prefix: %v", prefix)
 		}
 		i, err := strconv.Atoi(line[len(prefix):])
 		if err != nil {
-			return -1, errors.New(cmn.Fmt("Failed to parse marker line: %v", err.Error()))
+			return -1, fmt.Errorf("Failed to parse marker line: %v", err.Error())
 		}
 		if target < i {
 			return 1, nil

@@ -365,10 +365,10 @@ func (pool *BlockPool) debug() string {
 	nextHeight := pool.height + pool.requestersLen()
 	for h := pool.height; h < nextHeight; h++ {
 		if pool.requesters[h] == nil {
-			str += cmn.Fmt("H(%v):X ", h)
+			str += fmt.Sprintf("H(%v):X ", h)
 		} else {
-			str += cmn.Fmt("H(%v):", h)
-			str += cmn.Fmt("B?(%v) ", pool.requesters[h].block != nil)
+			str += fmt.Sprintf("H(%v):", h)
+			str += fmt.Sprintf("B?(%v) ", pool.requesters[h].block != nil)
 		}
 	}
 	return str

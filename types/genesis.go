@@ -2,11 +2,18 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
+)
+
+const (
+	// MaxChainIDLen is a maximum length of the chain ID.
+	MaxChainIDLen = 50
 )
 
 //------------------------------------------------------------
@@ -24,7 +31,7 @@ type GenesisDoc struct {
 	GenesisTime     time.Time          `json:"genesis_time"`
 	ChainID         string             `json:"chain_id"`
 	ConsensusParams *ConsensusParams   `json:"consensus_params,omitempty"`
-	Validators      []GenesisValidator `json:"validators"`
+	Validators      []GenesisValidator `json:"validators,omitempty"`
 	AppHash         cmn.HexBytes       `json:"app_hash"`
 	AppState        json.RawMessage    `json:"app_state,omitempty"`
 }
@@ -51,9 +58,11 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 // ValidateAndComplete checks that all necessary fields are present
 // and fills in defaults for optional fields left empty
 func (genDoc *GenesisDoc) ValidateAndComplete() error {
-
 	if genDoc.ChainID == "" {
 		return cmn.NewError("Genesis doc must include non-empty chain_id")
+	}
+	if len(genDoc.ChainID) > MaxChainIDLen {
+		return cmn.NewError(fmt.Sprintf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen))
 	}
 
 	if genDoc.ConsensusParams == nil {
@@ -64,10 +73,6 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		}
 	}
 
-	if len(genDoc.Validators) == 0 {
-		return cmn.NewError("The genesis file must have at least one validator")
-	}
-
 	for _, v := range genDoc.Validators {
 		if v.Power == 0 {
 			return cmn.NewError("The genesis file cannot contain validators with no voting power: %v", v)
@@ -75,7 +80,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	}
 
 	if genDoc.GenesisTime.IsZero() {
-		genDoc.GenesisTime = time.Now()
+		genDoc.GenesisTime = tmtime.Now()
 	}
 
 	return nil
@@ -107,7 +112,7 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	}
 	genDoc, err := GenesisDocFromJSON(jsonBlob)
 	if err != nil {
-		return nil, cmn.ErrorWrap(err, cmn.Fmt("Error reading GenesisDoc at %v", genDocFile))
+		return nil, cmn.ErrorWrap(err, fmt.Sprintf("Error reading GenesisDoc at %v", genDocFile))
 	}
 	return genDoc, nil
 }

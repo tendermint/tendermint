@@ -35,12 +35,12 @@ Request (`POST http://gaia.zone:26657/`):
 
 ```json
 {
- "id": "",
- "jsonrpc": "2.0",
- "method": "broadcast_sync",
- "params": {
+  "id": "",
+  "jsonrpc": "2.0",
+  "method": "broadcast_sync",
+  "params": {
     "tx": "F012A4BC68..."
- }
+  }
 }
 ```
 
@@ -48,14 +48,14 @@ Response:
 
 ```json
 {
- "error": "",
- "result": {
-     "hash": "E39AAB7A537ABAA237831742DCE1117F187C3C52",
-     "log": "",
-     "data": "",
-     "code": 0
- },
- "id": "",
- "jsonrpc": "2.0"
+  "error": "",
+  "result": {
+    "hash": "E39AAB7A537ABAA237831742DCE1117F187C3C52",
+    "log": "",
+    "data": "",
+    "code": 0
+  },
+  "id": "",
+  "jsonrpc": "2.0"
 }
 ```

@@ -9,10 +9,10 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-func newConsensusParams(blockSize, partSize int) ConsensusParams {
+func newConsensusParams(txsBytes, evidenceAge int) ConsensusParams {
 	return ConsensusParams{
-		BlockSize:   BlockSize{MaxBytes: blockSize},
-		BlockGossip: BlockGossip{BlockPartSizeBytes: partSize},
+		BlockSize:      BlockSize{MaxBytes: txsBytes},
+		EvidenceParams: EvidenceParams{MaxAge: int64(evidenceAge)},
 	}
 }
 
@@ -21,56 +21,45 @@ func TestConsensusParamsValidation(t *testing.T) {
 		params ConsensusParams
 		valid  bool
 	}{
-		{newConsensusParams(1, 1), true},
-		{newConsensusParams(1, 0), false},
-		{newConsensusParams(0, 1), false},
-		{newConsensusParams(0, 0), false},
-		{newConsensusParams(0, 10), false},
-		{newConsensusParams(10, -1), false},
-		{newConsensusParams(47*1024*1024, 400), true},
-		{newConsensusParams(10, 400), true},
-		{newConsensusParams(100*1024*1024, 400), true},
-		{newConsensusParams(101*1024*1024, 400), false},
-		{newConsensusParams(1024*1024*1024, 400), false},
+		// test block size
+		0: {newConsensusParams(1, 1), true},
+		1: {newConsensusParams(0, 1), false},
+		2: {newConsensusParams(47*1024*1024, 1), true},
+		3: {newConsensusParams(10, 1), true},
+		4: {newConsensusParams(100*1024*1024, 1), true},
+		5: {newConsensusParams(101*1024*1024, 1), false},
+		6: {newConsensusParams(1024*1024*1024, 1), false},
+		7: {newConsensusParams(1024*1024*1024, -1), false},
+		// test evidence age
+		8: {newConsensusParams(1, 0), false},
+		9: {newConsensusParams(1, -1), false},
 	}
-	for _, testCase := range testCases {
-		if testCase.valid {
-			assert.NoError(t, testCase.params.Validate(), "expected no error for valid params")
+	for i, tc := range testCases {
+		if tc.valid {
+			assert.NoErrorf(t, tc.params.Validate(), "expected no error for valid params (#%d)", i)
 		} else {
-			assert.Error(t, testCase.params.Validate(), "expected error for non valid params")
+			assert.Errorf(t, tc.params.Validate(), "expected error for non valid params (#%d)", i)
 		}
 	}
 }
 
-func makeParams(blockBytes, blockTx, blockGas, txBytes,
-	txGas, partSize int) ConsensusParams {
-
+func makeParams(txsBytes, blockGas, evidenceAge int) ConsensusParams {
 	return ConsensusParams{
 		BlockSize: BlockSize{
-			MaxBytes: blockBytes,
-			MaxTxs:   blockTx,
+			MaxBytes: txsBytes,
 			MaxGas:   int64(blockGas),
 		},
-		TxSize: TxSize{
-			MaxBytes: txBytes,
-			MaxGas:   int64(txGas),
-		},
-		BlockGossip: BlockGossip{
-			BlockPartSizeBytes: partSize,
+		EvidenceParams: EvidenceParams{
+			MaxAge: int64(evidenceAge),
 		},
 	}
 }
 
 func TestConsensusParamsHash(t *testing.T) {
 	params := []ConsensusParams{
-		makeParams(1, 2, 3, 4, 5, 6),
-		makeParams(7, 2, 3, 4, 5, 6),
-		makeParams(1, 7, 3, 4, 5, 6),
-		makeParams(1, 2, 7, 4, 5, 6),
-		makeParams(1, 2, 3, 7, 5, 6),
-		makeParams(1, 2, 3, 4, 7, 6),
-		makeParams(1, 2, 3, 4, 5, 7),
-		makeParams(6, 5, 4, 3, 2, 1),
+		makeParams(4, 2, 3),
+		makeParams(1, 4, 3),
+		makeParams(1, 2, 4),
 	}
 
 	hashes := make([][]byte, len(params))
@@ -96,47 +85,23 @@ func TestConsensusParamsUpdate(t *testing.T) {
 	}{
 		// empty updates
 		{
-			makeParams(1, 2, 3, 4, 5, 6),
+			makeParams(1, 2, 3),
 			&abci.ConsensusParams{},
-			makeParams(1, 2, 3, 4, 5, 6),
-		},
-		// negative BlockPartSizeBytes
-		{
-			makeParams(1, 2, 3, 4, 5, 6),
-			&abci.ConsensusParams{
-				BlockSize: &abci.BlockSize{
-					MaxBytes: -100,
-					MaxTxs:   -200,
-					MaxGas:   -300,
-				},
-				TxSize: &abci.TxSize{
-					MaxBytes: -400,
-					MaxGas:   -500,
-				},
-				BlockGossip: &abci.BlockGossip{
-					BlockPartSizeBytes: -600,
-				},
-			},
-			makeParams(1, 2, 3, 4, 5, 6),
+			makeParams(1, 2, 3),
 		},
 		// fine updates
 		{
-			makeParams(1, 2, 3, 4, 5, 6),
+			makeParams(1, 2, 3),
 			&abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
 					MaxBytes: 100,
-					MaxTxs:   200,
-					MaxGas:   300,
+					MaxGas:   200,
 				},
-				TxSize: &abci.TxSize{
-					MaxBytes: 400,
-					MaxGas:   500,
-				},
-				BlockGossip: &abci.BlockGossip{
-					BlockPartSizeBytes: 600,
+				EvidenceParams: &abci.EvidenceParams{
+					MaxAge: 300,
 				},
 			},
-			makeParams(100, 200, 300, 400, 500, 600),
+			makeParams(100, 200, 300),
 		},
 	}
 	for _, tc := range testCases {

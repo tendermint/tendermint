@@ -148,10 +148,10 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 	height := block.Height
 	if g, w := height, bs.Height()+1; g != w {
-		cmn.PanicSanity(cmn.Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g))
+		cmn.PanicSanity(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g))
 	}
 	if !blockParts.IsComplete() {
-		cmn.PanicSanity(cmn.Fmt("BlockStore can only save complete block part sets"))
+		cmn.PanicSanity(fmt.Sprintf("BlockStore can only save complete block part sets"))
 	}
 
 	// Save block meta
@@ -188,7 +188,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	if height != bs.Height()+1 {
-		cmn.PanicSanity(cmn.Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.Height()+1, height))
+		cmn.PanicSanity(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.Height()+1, height))
 	}
 	partBytes := cdc.MustMarshalBinaryBare(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
@@ -224,7 +224,7 @@ type BlockStoreStateJSON struct {
 func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 	bytes, err := cdc.MarshalJSON(bsj)
 	if err != nil {
-		cmn.PanicSanity(cmn.Fmt("Could not marshal state bytes: %v", err))
+		cmn.PanicSanity(fmt.Sprintf("Could not marshal state bytes: %v", err))
 	}
 	db.SetSync(blockStoreKey, bytes)
 }

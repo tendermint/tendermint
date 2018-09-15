@@ -34,7 +34,7 @@ fast_sync = true
 db_backend = "leveldb"
 
 # Database directory
-db_path = "data"
+db_dir = "data"
 
 # Output level for logging
 log_level = "state:info,*:error"
@@ -77,6 +77,8 @@ grpc_laddr = ""
 # If you want to accept more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
+# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+# 1024 - 40 - 10 - 50 = 924 = ~900
 grpc_max_open_connections = 900
 
 # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
@@ -87,7 +89,9 @@ unsafe = false
 # If you want to accept more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
-max_open_connections = 450
+# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+# 1024 - 40 - 10 - 50 = 924 = ~900
+max_open_connections = 900
 
 ##### peer to peer configuration options #####
 [p2p]
@@ -108,13 +112,17 @@ upnp = false
 addr_book_file = "addrbook.json"
 
 # Set true for strict address routability rules
+# Set false for private or local networks
 addr_book_strict = true
 
 # Time to wait before flushing messages out on the connection, in ms
 flush_throttle_timeout = 100
 
-# Maximum number of peers to connect to
-max_num_peers = 50
+# Maximum number of inbound peers
+max_num_inbound_peers = 40
+
+# Maximum number of outbound peers to connect to, excluding persistent peers
+max_num_outbound_peers = 10
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = 1024
@@ -186,16 +194,21 @@ peer_query_maj23_sleep_duration = 2000
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
 
-# Comma-separated list of tags to index (by default the only tag is tx hash)
+# Comma-separated list of tags to index (by default the only tag is "tx.hash")
 #
+# You can also index transactions by height by adding "tx.height" tag here.
+# 
 # It's recommended to index only a subset of tags due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
 index_tags = ""
 
-# When set to true, tells indexer to index all tags. Note this may be not
-# desirable (see the comment above). IndexTags has a precedence over
-# IndexAllTags (i.e. when given both, IndexTags will be indexed).
+# When set to true, tells indexer to index all tags (predefined tags:
+# "tx.hash", "tx.height" and all tags from DeliverTx responses). 
+#	
+# Note this may be not desirable (see the comment above). IndexTags has a
+# precedence over IndexAllTags (i.e. when given both, IndexTags will be
+# indexed).
 index_all_tags = false
 
 ##### instrumentation configuration options #####

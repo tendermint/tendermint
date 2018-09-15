@@ -1,12 +1,12 @@
 package types
 
 import (
+	"fmt"
 	"testing"
-	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 var config *cfg.Config // NOTE: must be reset for each _test.go file
@@ -55,14 +55,14 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivVali
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 		Type:             types.VoteTypePrecommit,
 		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()
 	err := privVal.SignVote(chainID, vote)
 	if err != nil {
-		panic(cmn.Fmt("Error signing vote: %v", err))
+		panic(fmt.Sprintf("Error signing vote: %v", err))
 		return nil
 	}
 	return vote

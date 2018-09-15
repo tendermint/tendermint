@@ -1,4 +1,4 @@
-package multisig
+package bitarray
 
 import (
 	"encoding/json"
@@ -30,7 +30,8 @@ func randCompactBitArray(bits int) (*CompactBitArray, []byte) {
 func TestNewBitArrayNeverCrashesOnNegatives(t *testing.T) {
 	bitList := []int{-127, -128, -1 << 31}
 	for _, bits := range bitList {
-		_ = NewCompactBitArray(bits)
+		bA := NewCompactBitArray(bits)
+		require.Nil(t, bA)
 	}
 }
 
@@ -150,7 +151,7 @@ func TestCompactMarshalUnmarshal(t *testing.T) {
 	}
 }
 
-func TestCompactBitArrayTrueIndex(t *testing.T) {
+func TestCompactBitArrayNumOfTrueBitsBefore(t *testing.T) {
 	testCases := []struct {
 		marshalledBA   string
 		bAIndex        []int
@@ -170,7 +171,7 @@ func TestCompactBitArrayTrueIndex(t *testing.T) {
 			require.NoError(t, err)
 
 			for i := 0; i < len(tc.bAIndex); i++ {
-				require.Equal(t, tc.trueValueIndex[i], bA.trueIndex(tc.bAIndex[i]), "tc %d, i %d", tcIndex, i)
+				require.Equal(t, tc.trueValueIndex[i], bA.NumTrueBitsBefore(tc.bAIndex[i]), "tc %d, i %d", tcIndex, i)
 			}
 		})
 	}

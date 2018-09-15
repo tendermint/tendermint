@@ -40,11 +40,11 @@ func TestStateCopy(t *testing.T) {
 	stateCopy := state.Copy()
 
 	assert.True(state.Equals(stateCopy),
-		cmn.Fmt("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
+		fmt.Sprintf("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
 			stateCopy, state))
 
 	stateCopy.LastBlockHeight++
-	assert.False(state.Equals(stateCopy), cmn.Fmt(`expected states to be different. got same
+	assert.False(state.Equals(stateCopy), fmt.Sprintf(`expected states to be different. got same
         %v`, state))
 }
 
@@ -60,7 +60,7 @@ func TestStateSaveLoad(t *testing.T) {
 
 	loadedState := LoadState(stateDB)
 	assert.True(state.Equals(loadedState),
-		cmn.Fmt("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
+		fmt.Sprintf("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
 			loadedState, state))
 }
 
@@ -78,15 +78,15 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	abciResponses := NewABCIResponses(block)
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
 	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: nil}
-	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
-		types.TM2PB.ValidatorFromPubKeyAndPower(ed25519.GenPrivKey().PubKey(), 10),
+	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{
+		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
 	}}
 
 	saveABCIResponses(stateDB, block.Height, abciResponses)
 	loadedABCIResponses, err := LoadABCIResponses(stateDB, block.Height)
 	assert.Nil(err)
 	assert.Equal(abciResponses, loadedABCIResponses,
-		cmn.Fmt("ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
+		fmt.Sprintf("ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
 			loadedABCIResponses, abciResponses))
 }
 
@@ -119,8 +119,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{Code: 383},
 				{Data: []byte("Gotcha!"),
 					Tags: []cmn.KVPair{
-						cmn.KVPair{[]byte("a"), []byte("1")},
-						cmn.KVPair{[]byte("build"), []byte("stuff")},
+						cmn.KVPair{Key: []byte("a"), Value: []byte("1")},
+						cmn.KVPair{Key: []byte("build"), Value: []byte("stuff")},
 					}},
 			},
 			types.ABCIResults{
@@ -373,21 +373,14 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockTx, blockGas, txBytes,
-	txGas, partSize int) types.ConsensusParams {
-
+func makeParams(txsBytes, blockGas, evidenceAge int) types.ConsensusParams {
 	return types.ConsensusParams{
 		BlockSize: types.BlockSize{
-			MaxBytes: blockBytes,
-			MaxTxs:   blockTx,
+			MaxBytes: txsBytes,
 			MaxGas:   int64(blockGas),
 		},
-		TxSize: types.TxSize{
-			MaxBytes: txBytes,
-			MaxGas:   int64(txGas),
-		},
-		BlockGossip: types.BlockGossip{
-			BlockPartSizeBytes: partSize,
+		EvidenceParams: types.EvidenceParams{
+			MaxAge: int64(evidenceAge),
 		},
 	}
 }
@@ -397,7 +390,7 @@ func pk() []byte {
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeParams(1, 2, 3, 4, 5, 6)
+	initParams := makeParams(1, 2, 3)
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -408,32 +401,19 @@ func TestApplyUpdates(t *testing.T) {
 		1: {initParams, abci.ConsensusParams{}, initParams},
 		2: {initParams,
 			abci.ConsensusParams{
-				TxSize: &abci.TxSize{
-					MaxBytes: 123,
+				BlockSize: &abci.BlockSize{
+					MaxBytes: 44,
+					MaxGas:   55,
 				},
 			},
-			makeParams(1, 2, 3, 123, 5, 6)},
+			makeParams(44, 55, 3)},
 		3: {initParams,
 			abci.ConsensusParams{
-				BlockSize: &abci.BlockSize{
-					MaxTxs: 44,
-					MaxGas: 55,
+				EvidenceParams: &abci.EvidenceParams{
+					MaxAge: 66,
 				},
 			},
-			makeParams(1, 44, 55, 4, 5, 6)},
-		4: {initParams,
-			abci.ConsensusParams{
-				BlockSize: &abci.BlockSize{
-					MaxTxs: 789,
-				},
-				TxSize: &abci.TxSize{
-					MaxGas: 888,
-				},
-				BlockGossip: &abci.BlockGossip{
-					BlockPartSizeBytes: 2002,
-				},
-			},
-			makeParams(1, 789, 3, 4, 888, 2002)},
+			makeParams(1, 2, 66)},
 	}
 
 	for i, tc := range cases {
@@ -454,9 +434,9 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []abci.Validator{
-				types.TM2PB.ValidatorFromPubKeyAndPower(val.PubKey, 0),
-				types.TM2PB.ValidatorFromPubKeyAndPower(pubkey, 10),
+			ValidatorUpdates: []abci.ValidatorUpdate{
+				types.TM2PB.NewValidatorUpdate(val.PubKey, 0),
+				types.TM2PB.NewValidatorUpdate(pubkey, 10),
 			},
 		}
 	}
@@ -476,8 +456,8 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []abci.Validator{
-				types.TM2PB.ValidatorFromPubKeyAndPower(val.PubKey, power),
+			ValidatorUpdates: []abci.ValidatorUpdate{
+				types.TM2PB.NewValidatorUpdate(val.PubKey, power),
 			},
 		}
 	}

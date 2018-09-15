@@ -94,7 +94,6 @@ func (cfg *Config) SetRoot(root string) *Config {
 
 // BaseConfig defines the base configuration for a Tendermint node
 type BaseConfig struct {
-
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -102,49 +101,49 @@ type BaseConfig struct {
 	// This should be set in viper so it can unmarshal into this struct
 	RootDir string `mapstructure:"home"`
 
-	// Path to the JSON file containing the initial validator set and other meta data
-	Genesis string `mapstructure:"genesis_file"`
-
-	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
-	PrivValidator string `mapstructure:"priv_validator_file"`
-
-	// A JSON file containing the private key to use for p2p authenticated encryption
-	NodeKey string `mapstructure:"node_key_file"`
-
-	// A custom human readable name for this node
-	Moniker string `mapstructure:"moniker"`
-
-	// TCP or UNIX socket address for Tendermint to listen on for
-	// connections from an external PrivValidator process
-	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
-
 	// TCP or UNIX socket address of the ABCI application,
 	// or the name of an ABCI application compiled in with the Tendermint binary
 	ProxyApp string `mapstructure:"proxy_app"`
 
-	// Mechanism to connect to the ABCI application: socket | grpc
-	ABCI string `mapstructure:"abci"`
-
-	// Output level for logging
-	LogLevel string `mapstructure:"log_level"`
-
-	// TCP or UNIX socket address for the profiling server to listen on
-	ProfListenAddress string `mapstructure:"prof_laddr"`
+	// A custom human readable name for this node
+	Moniker string `mapstructure:"moniker"`
 
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
 	FastSync bool `mapstructure:"fast_sync"`
 
-	// If true, query the ABCI app on connecting to a new peer
-	// so the app can decide if we should keep the connection or not
-	FilterPeers bool `mapstructure:"filter_peers"` // false
-
 	// Database backend: leveldb | memdb
 	DBBackend string `mapstructure:"db_backend"`
 
 	// Database directory
 	DBPath string `mapstructure:"db_dir"`
+
+	// Output level for logging
+	LogLevel string `mapstructure:"log_level"`
+
+	// Path to the JSON file containing the initial validator set and other meta data
+	Genesis string `mapstructure:"genesis_file"`
+
+	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
+	PrivValidator string `mapstructure:"priv_validator_file"`
+
+	// TCP or UNIX socket address for Tendermint to listen on for
+	// connections from an external PrivValidator process
+	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
+
+	// A JSON file containing the private key to use for p2p authenticated encryption
+	NodeKey string `mapstructure:"node_key_file"`
+
+	// Mechanism to connect to the ABCI application: socket | grpc
+	ABCI string `mapstructure:"abci"`
+
+	// TCP or UNIX socket address for the profiling server to listen on
+	ProfListenAddress string `mapstructure:"prof_laddr"`
+
+	// If true, query the ABCI app on connecting to a new peer
+	// so the app can decide if we should keep the connection or not
+	FilterPeers bool `mapstructure:"filter_peers"` // false
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -239,6 +238,8 @@ type RPCConfig struct {
 	// If you want to accept more significant number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
+	// Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+	// 1024 - 40 - 10 - 50 = 924 = ~900
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
 }
 
@@ -248,11 +249,9 @@ func DefaultRPCConfig() *RPCConfig {
 		ListenAddress: "tcp://0.0.0.0:26657",
 
 		GRPCListenAddress:      "",
-		GRPCMaxOpenConnections: 900, // no ipv4
+		GRPCMaxOpenConnections: 900,
 
-		Unsafe: false,
-		// should be < {ulimit -Sn} - {MaxNumPeers} - {N of wal, db and other open files}
-		// 1024 - 50 - 50 = 924 = ~900
+		Unsafe:             false,
 		MaxOpenConnections: 900,
 	}
 }
@@ -293,10 +292,14 @@ type P2PConfig struct {
 	AddrBook string `mapstructure:"addr_book_file"`
 
 	// Set true for strict address routability rules
+	// Set false for private or local networks
 	AddrBookStrict bool `mapstructure:"addr_book_strict"`
 
-	// Maximum number of peers to connect to
-	MaxNumPeers int `mapstructure:"max_num_peers"`
+	// Maximum number of inbound peers
+	MaxNumInboundPeers int `mapstructure:"max_num_inbound_peers"`
+
+	// Maximum number of outbound peers to connect to, excluding persistent peers
+	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
 
 	// Time to wait before flushing messages out on the connection, in ms
 	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
@@ -346,7 +349,8 @@ func DefaultP2PConfig() *P2PConfig {
 		UPNP:                    false,
 		AddrBook:                defaultAddrBookPath,
 		AddrBookStrict:          true,
-		MaxNumPeers:             50,
+		MaxNumInboundPeers:      40,
+		MaxNumOutboundPeers:     10,
 		FlushThrottleTimeout:    100,
 		MaxPacketMsgPayloadSize: 1024,    // 1 kB
 		SendRate:                5120000, // 5 mB/s
@@ -417,8 +421,10 @@ func DefaultMempoolConfig() *MempoolConfig {
 		RecheckEmpty: true,
 		Broadcast:    true,
 		WalPath:      filepath.Join(defaultDataDir, "mempool.wal"),
-		Size:         100000,
-		CacheSize:    100000,
+		// Each signature verification takes .5ms, size reduced until we implement
+		// ABCI Recheck
+		Size:      5000,
+		CacheSize: 10000,
 	}
 }
 
@@ -463,6 +469,9 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters are in milliseconds
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	// Block time parameters in milliseconds. Corresponds to the minimum time increment between consecutive blocks.
+	BlockTimeIota int `mapstructure:"blocktime_iota"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -481,6 +490,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0,
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,
+		BlockTimeIota:               1000,
 	}
 }
 
@@ -497,7 +507,15 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5
 	cfg.PeerQueryMaj23SleepDuration = 250
+	cfg.BlockTimeIota = 10
 	return cfg
+}
+
+// MinValidVoteTime returns the minimum acceptable block time.
+// See the [BFT time spec](https://godoc.org/github.com/tendermint/tendermint/docs/spec/consensus/bft-time.md).
+func (cfg *ConsensusConfig) MinValidVoteTime(lastBlockTime time.Time) time.Time {
+	return lastBlockTime.
+		Add(time.Duration(cfg.BlockTimeIota) * time.Millisecond)
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
@@ -556,8 +574,8 @@ func (cfg *ConsensusConfig) SetWalFile(walFile string) {
 //-----------------------------------------------------------------------------
 // TxIndexConfig
 
-// TxIndexConfig defines the configuration for the transaction
-// indexer, including tags to index.
+// TxIndexConfig defines the configuration for the transaction indexer,
+// including tags to index.
 type TxIndexConfig struct {
 	// What indexer to use for transactions
 	//
@@ -566,16 +584,21 @@ type TxIndexConfig struct {
 	//   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
 
-	// Comma-separated list of tags to index (by default the only tag is tx hash)
+	// Comma-separated list of tags to index (by default the only tag is "tx.hash")
 	//
+	// You can also index transactions by height by adding "tx.height" tag here.
+	// 
 	// It's recommended to index only a subset of tags due to possible memory
 	// bloat. This is, of course, depends on the indexer's DB and the volume of
 	// transactions.
 	IndexTags string `mapstructure:"index_tags"`
 
-	// When set to true, tells indexer to index all tags. Note this may be not
-	// desirable (see the comment above). IndexTags has a precedence over
-	// IndexAllTags (i.e. when given both, IndexTags will be indexed).
+	// When set to true, tells indexer to index all tags (predefined tags:
+	// "tx.hash", "tx.height" and all tags from DeliverTx responses). 
+	//	
+	// Note this may be not desirable (see the comment above). IndexTags has a
+	// precedence over IndexAllTags (i.e. when given both, IndexTags will be
+	// indexed).
 	IndexAllTags bool `mapstructure:"index_all_tags"`
 }
 

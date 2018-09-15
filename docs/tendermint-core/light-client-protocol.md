@@ -10,21 +10,21 @@ package](https://godoc.org/github.com/tendermint/tendermint/lite).
 ## Overview
 
 The objective of the light client protocol is to get a
-[commit](./validators.md#committing-a-block) for a recent [block
-hash](../spec/consensus/consensus.md.md#block-hash) where the commit includes a
+commit for a recent block
+hash where the commit includes a
 majority of signatures from the last known validator set. From there,
 all the application state is verifiable with [merkle
-proofs](./merkle.md#iavl-tree).
+proofs](../spec/blockchain/encoding.md#iavl-tree).
 
 ## Properties
 
--   You get the full collateralized security benefits of Tendermint; No
-    need to wait for confirmations.
--   You get the full speed benefits of Tendermint; transactions
-    commit instantly.
--   You can get the most recent version of the application state
-    non-interactively (without committing anything to the blockchain).
-    For example, this means that you can get the most recent value of a
-    name from the name-registry without worrying about fork censorship
-    attacks, without posting a commit and waiting for confirmations.
-    It's fast, secure, and free!
+- You get the full collateralized security benefits of Tendermint; No
+  need to wait for confirmations.
+- You get the full speed benefits of Tendermint; transactions
+  commit instantly.
+- You can get the most recent version of the application state
+  non-interactively (without committing anything to the blockchain).
+  For example, this means that you can get the most recent value of a
+  name from the name-registry without worrying about fork censorship
+  attacks, without posting a commit and waiting for confirmations.
+  It's fast, secure, and free!

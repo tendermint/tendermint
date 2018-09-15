@@ -1,5 +1,7 @@
 # Pending
 
+Special thanks to external contributors with PRs included in this release:
+
 BREAKING CHANGES:
 - [types] Header ...
 - [state] Add NextValidatorSet, changes on-disk representation of state
@@ -12,6 +14,7 @@ BREAKING CHANGES:
 - [common] SplitAndTrim was deleted
 
 FEATURES:
+  * \#2310 Mempool is now aware of the MaxGas requirement
 
 IMPROVEMENTS:
 

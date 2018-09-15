@@ -92,7 +92,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, err := blockExec.Commit(block)
+	appHash, err := blockExec.Commit(state, block)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -119,7 +119,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 // It returns the result of calling abci.Commit (the AppHash), and an error.
 // The Mempool must be locked during commit and update because state is typically reset on Commit and old txs must be replayed
 // against committed state before new txs are run in the mempool, lest they be invalid.
-func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
+func (blockExec *BlockExecutor) Commit(state State, block *types.Block) ([]byte, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -145,7 +145,12 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 		"appHash", fmt.Sprintf("%X", res.Data))
 
 	// Update mempool.
-	if err := blockExec.mempool.Update(block.Height, block.Txs); err != nil {
+	maxDataBytes := types.MaxDataBytesUnknownEvidence(
+		state.ConsensusParams.BlockSize.MaxBytes,
+		state.Validators.Size(),
+	)
+	filter := func(tx types.Tx) bool { return len(tx) <= maxDataBytes }
+	if err := blockExec.mempool.Update(block.Height, block.Txs, filter); err != nil {
 		return nil, err
 	}
 
@@ -184,16 +189,13 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	signVals, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
+	commitInfo, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
 
 	// Begin block.
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		Hash:   block.Hash(),
-		Header: types.TM2PB.Header(&block.Header),
-		LastCommitInfo: abci.LastCommitInfo{
-			CommitRound: int32(block.LastCommit.Round()),
-			Validators:  signVals,
-		},
+		Hash:                block.Hash(),
+		Header:              types.TM2PB.Header(&block.Header),
+		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
 	})
 	if err != nil {
@@ -220,13 +222,14 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 
 	valUpdates := abciResponses.EndBlock.ValidatorUpdates
 	if len(valUpdates) > 0 {
-		logger.Info("Updates to validators", "updates", abci.ValidatorsString(valUpdates))
+		// TODO: cleanup the formatting
+		logger.Info("Updates to validators", "updates", valUpdates)
 	}
 
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) ([]abci.SigningValidator, []abci.Evidence) {
+func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
 
 	// Sanity check that commit length matches validator set size -
 	// only applies after first block
@@ -240,18 +243,23 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 		}
 	}
 
-	// determine which validators did not sign last block.
-	signVals := make([]abci.SigningValidator, len(lastValSet.Validators))
+	// Collect the vote info (list of validators and whether or not they signed).
+	voteInfos := make([]abci.VoteInfo, len(lastValSet.Validators))
 	for i, val := range lastValSet.Validators {
 		var vote *types.Vote
 		if i < len(block.LastCommit.Precommits) {
 			vote = block.LastCommit.Precommits[i]
 		}
-		val := abci.SigningValidator{
-			Validator:       types.TM2PB.ValidatorWithoutPubKey(val),
+		voteInfo := abci.VoteInfo{
+			Validator:       types.TM2PB.Validator(val),
 			SignedLastBlock: vote != nil,
 		}
-		signVals[i] = val
+		voteInfos[i] = voteInfo
+	}
+
+	commitInfo := abci.LastCommitInfo{
+		Round: int32(block.LastCommit.Round()),
+		Votes: voteInfos,
 	}
 
 	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
@@ -266,15 +274,15 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
 	}
 
-	return signVals, byzVals
+	return commitInfo, byzVals
 
 }
 
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validator) error {
-	updates, err := types.PB2TM.Validators(abciUpdates)
+func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate) error {
+	updates, err := types.PB2TM.ValidatorUpdates(abciUpdates)
 	if err != nil {
 		return err
 	}
@@ -379,6 +387,14 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 			Tx:     tx,
 			Result: *(abciResponses.DeliverTx[i]),
 		}})
+	}
+
+	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
+	if len(abciValUpdates) > 0 {
+		// if there were an error, we would've stopped in updateValidators
+		updates, _ := types.PB2TM.ValidatorUpdates(abciValUpdates)
+		eventBus.PublishEventValidatorSetUpdates(
+			types.EventDataValidatorSetUpdates{ValidatorUpdates: updates})
 	}
 }
 

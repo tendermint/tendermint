@@ -106,7 +106,7 @@ func ReadFile(filePath string) ([]byte, error) {
 func MustReadFile(filePath string) []byte {
 	fileBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		Exit(Fmt("MustReadFile failed: %v", err))
+		Exit(fmt.Sprintf("MustReadFile failed: %v", err))
 		return nil
 	}
 	return fileBytes
@@ -119,7 +119,7 @@ func WriteFile(filePath string, contents []byte, mode os.FileMode) error {
 func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {
 	err := WriteFile(filePath, contents, mode)
 	if err != nil {
-		Exit(Fmt("MustWriteFile failed: %v", err))
+		Exit(fmt.Sprintf("MustWriteFile failed: %v", err))
 	}
 }
 
