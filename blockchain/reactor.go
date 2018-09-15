@@ -290,7 +290,7 @@ FOR_LOOP:
 				didProcessCh <- struct{}{}
 			}
 
-			firstParts := first.MakePartSet(state.ConsensusParams.BlockPartSizeBytes)
+			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 			firstPartsHeader := firstParts.Header()
 			firstID := types.BlockID{first.Hash(), firstPartsHeader}
 			// Finally, verify the first block using the second's commit

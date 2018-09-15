@@ -204,6 +204,28 @@ func (b *Block) StringShort() string {
 
 //-----------------------------------------------------------------------------
 
+// MaxDataBytes returns the maximum size of block's data.
+func MaxDataBytes(maxBytes, valsCount, evidenceCount int) int {
+	return maxBytes -
+		MaxAminoOverheadForBlock -
+		MaxHeaderBytes -
+		(valsCount * MaxVoteBytes) -
+		(evidenceCount * MaxEvidenceBytes)
+}
+
+// MaxDataBytesUnknownEvidence returns the maximum size of block's data when
+// evidence count is unknown. MaxEvidenceBytesPerBlock will be used as the size
+// of evidence.
+func MaxDataBytesUnknownEvidence(maxBytes, valsCount int) int {
+	return maxBytes -
+		MaxAminoOverheadForBlock -
+		MaxHeaderBytes -
+		(valsCount * MaxVoteBytes) -
+		MaxEvidenceBytesPerBlock(maxBytes)
+}
+
+//-----------------------------------------------------------------------------
+
 // Header defines the structure of a Tendermint block header
 // TODO: limit header size
 // NOTE: changes to the Header should be duplicated in the abci Header
