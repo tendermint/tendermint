@@ -70,7 +70,7 @@ func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
 	for _, tx := range block.Txs {
 		reqRes := blockExec.proxyApp.CheckTxAsync(tx)
 		reqRes.Wait()
-		if reqRes.Response == nil || reqRes.Response.GetCheckTx().Code != abci.CodeTypeOK {
+		if reqRes.Response == nil || reqRes.Response.GetCheckTx() == nil || reqRes.Response.GetCheckTx().Code != abci.CodeTypeOK {
 			return errors.Errorf("tx %v check failed. response: %v", tx, reqRes.Response)
 		}
 	}

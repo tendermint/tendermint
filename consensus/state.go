@@ -1454,7 +1454,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 			return true, err
 		}
 		if err = cs.blockExec.CheckBlock(cs.ProposalBlock); err != nil {
-			cs.Logger.Error("Received an invalid proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+			cs.Logger.Error("Received an invalid proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash(),"peer",peerID)
 			cs.Proposal = nil
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = nil
