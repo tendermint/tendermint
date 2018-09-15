@@ -22,7 +22,7 @@ func TestGenerateTxUpdateTxConsistentency(t *testing.T) {
 		hostname         string
 		numTxsToTest     int
 	}{
-		{0, 0, 50, "localhost:26657", 1000},
+		{0, 0, 40, "localhost:26657", 1000},
 		{70, 300, 10000, "localhost:26657", 1000},
 		{0, 50, 100000, "localhost:26657", 1000},
 	}
