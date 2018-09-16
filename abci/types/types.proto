@@ -200,27 +200,21 @@ message ResponseCommit {
 // that can be adjusted by the abci app
 message ConsensusParams {
   BlockSize block_size = 1;
-  TxSize tx_size = 2;
-  BlockGossip block_gossip = 3;
+  EvidenceParams evidence_params = 2;
 }
 
 // BlockSize contains limits on the block size.
 message BlockSize {
+  // Note: must be greater than 0
   int32 max_bytes = 1;
+  // Note: must be greater or equal to -1
   int64 max_gas = 2;
 }
 
-// TxSize contains limits on the tx size.
-message TxSize {
-  int32 max_bytes = 1;
-  int64 max_gas = 2;
-}
-
-// BlockGossip determine consensus critical
-// elements of how blocks are gossiped
-message BlockGossip {
-  // Note: must not be 0
-  int32 block_part_size_bytes = 1;
+// EvidenceParams contains limits on the evidence.
+message EvidenceParams {
+  // Note: must be greater than 0
+  int64 max_age = 1;
 }
 
 message LastCommitInfo {

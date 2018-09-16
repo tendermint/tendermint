@@ -174,9 +174,6 @@ func (c *WSClient) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service.
-func (c *WSClient) OnStop() {}
-
 // Stop overrides cmn.Service#Stop. There is no other way to wait until Quit
 // channel is closed.
 func (c *WSClient) Stop() error {

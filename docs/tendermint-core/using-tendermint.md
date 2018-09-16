@@ -156,6 +156,10 @@ Visit http://localhost:26657 in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
+::: tip
+Find the RPC Documentation [here](https://tendermint.com/rpc/)
+:::
+
 ### Formatting
 
 The following nuances when sending/formatting transactions should be
@@ -209,18 +213,14 @@ Note that raw hex cannot be used in `POST` transactions.
 **WARNING: UNSAFE** Only do this in development and only if you can
 afford to lose all blockchain data!
 
-To reset a blockchain, stop the node, remove the `~/.tendermint/data`
-directory and run
+To reset a blockchain, stop the node and run:
 
 ```
-tendermint unsafe_reset_priv_validator
+tendermint unsafe_reset_all
 ```
 
-This final step is necessary to reset the `priv_validator.json`, which
-otherwise prevents you from making conflicting votes in the consensus
-(something that could get you in trouble if you do it on a real
-blockchain). If you don't reset the `priv_validator.json`, your fresh
-new blockchain will not make any blocks.
+This command will remove the data directory and reset private validator and
+address book files.
 
 ## Configuration
 

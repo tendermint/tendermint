@@ -302,9 +302,10 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 		if r.CheckTx.Code == abci.CodeTypeOK {
 			mem.counter++
 			memTx := &mempoolTx{
-				counter: mem.counter,
-				height:  mem.height,
-				tx:      tx,
+				counter:   mem.counter,
+				height:    mem.height,
+				gasWanted: r.CheckTx.GasWanted,
+				tx:        tx,
 			}
 			mem.txs.PushBack(memTx)
 			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r, "total", mem.Size())
@@ -380,10 +381,11 @@ func (mem *Mempool) notifyTxsAvailable() {
 	}
 }
 
-// ReapMaxBytes reaps transactions from the mempool up to n bytes total.
-// If max is negative, there is no cap on the size of all returned
+// ReapMaxBytesMaxGas reaps transactions from the mempool up to maxBytes bytes total
+// with the condition that the total gasWanted must be less than maxGas.
+// If both maxes are negative, there is no cap on the size of all returned
 // transactions (~ all available transactions).
-func (mem *Mempool) ReapMaxBytes(max int) types.Txs {
+func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs {
 	var buf [binary.MaxVarintLen64]byte
 
 	mem.proxyMtx.Lock()
@@ -394,19 +396,26 @@ func (mem *Mempool) ReapMaxBytes(max int) types.Txs {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	var cur int
+	var totalBytes int
+	var totalGas int64
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
 	// txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max/mem.avgTxSize))
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
+		// Check total size requirement
 		// amino.UvarintSize is not used here because it won't be possible to reuse buf
 		aminoOverhead := binary.PutUvarint(buf[:], uint64(len(memTx.tx)))
-		if max > 0 && cur+len(memTx.tx)+aminoOverhead > max {
+		if maxBytes > -1 && totalBytes+len(memTx.tx)+aminoOverhead > maxBytes {
 			return txs
 		}
-		cur += len(memTx.tx) + aminoOverhead
+		totalBytes += len(memTx.tx) + aminoOverhead
+		// Check total gas requirement
+		if maxGas > -1 && totalGas+memTx.gasWanted > maxGas {
+			return txs
+		}
+		totalGas += memTx.gasWanted
 		txs = append(txs, memTx.tx)
 	}
 	return txs
@@ -513,9 +522,10 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 
 // mempoolTx is a transaction that successfully ran
 type mempoolTx struct {
-	counter int64    // a simple incrementing counter
-	height  int64    // height that this tx had been validated in
-	tx      types.Tx //
+	counter   int64    // a simple incrementing counter
+	height    int64    // height that this tx had been validated in
+	gasWanted int64    // amount of gas this tx states it will require
+	tx        types.Tx //
 }
 
 // Height returns the height for this transaction
