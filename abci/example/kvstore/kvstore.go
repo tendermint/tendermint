@@ -88,7 +88,7 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 }
 
 func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
-	return types.ResponseCheckTx{Code: code.CodeTypeOK}
+	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
 func (app *KVStoreApplication) Commit() types.ResponseCommit {
