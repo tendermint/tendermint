@@ -28,6 +28,14 @@ func registerDBCreator(backend DBBackendType, creator dbCreator, force bool) {
 }
 
 func NewDB(name string, backend DBBackendType, dir string) DB {
+	_, ok := backends[backend]
+	if !ok {
+		var supportType DBBackendType
+		for types := range backends{
+			supportType = supportType + " or " + types
+		}
+		panic(fmt.Sprintf("Unknown db_backend %v , expected either%v \n", backend, supportType[3:]))
+	}
 	db, err := backends[backend](name, dir)
 	if err != nil {
 		panic(fmt.Sprintf("Error initializing DB: %v", err))
