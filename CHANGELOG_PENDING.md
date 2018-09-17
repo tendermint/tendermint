@@ -7,6 +7,7 @@ BREAKING CHANGES:
 * CLI/RPC/Config
 
 * Apps
+  [rpc] /status `result.node_info.other` became a map #[2391](https://github.com/tendermint/tendermint/issues/2391)
 
 * Go API
   * \#2310 Mempool.ReapMaxBytes -> Mempool.ReapMaxBytesMaxGas

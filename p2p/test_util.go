@@ -140,12 +140,21 @@ func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitc
 	sw := NewSwitch(cfg)
 	sw.SetLogger(log.TestingLogger())
 	sw = initSwitch(i, sw)
+	addr := fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023)
 	ni := NodeInfo{
 		ID:         nodeKey.ID(),
 		Moniker:    fmt.Sprintf("switch%d", i),
 		Network:    network,
 		Version:    version,
-		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		ListenAddr: addr,
+		Other: NodeInfoOther{
+			AminoVersion:     "1.0",
+			P2PVersion:       "1.0",
+			ConsensusVersion: "1.0",
+			RPCVersion:       "1.0",
+			TxIndex:          "off",
+			RPCAddress:       addr,
+		},
 	}
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
