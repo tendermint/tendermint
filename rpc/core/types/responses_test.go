@@ -20,14 +20,12 @@ func TestStatusIndexer(t *testing.T) {
 
 	cases := []struct {
 		expected bool
-		other    map[string]string
+		other    p2p.NodeInfoOther
 	}{
-		{false, nil},
-		{false, map[string]string{}},
-		{false, map[string]string{"a": "b"}},
-		{false, map[string]string{"tx_index": "kv", "some": "dood"}},
-		{true, map[string]string{"tx_index": "on"}},
-		{true, map[string]string{"^(": "*^(", "tx_index": "on", "a=n": "b=d="}},
+		{false, p2p.NodeInfoOther{}},
+		{false, p2p.NodeInfoOther{TxIndex: "aa"}},
+		{false, p2p.NodeInfoOther{TxIndex: "off"}},
+		{true, p2p.NodeInfoOther{TxIndex: "on"}},
 	}
 
 	for _, tc := range cases {

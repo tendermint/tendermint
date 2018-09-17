@@ -32,8 +32,29 @@ type NodeInfo struct {
 	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
-	Moniker string            `json:"moniker"` // arbitrary moniker
-	Other   map[string]string `json:"other"`   // other application specific data
+	Moniker string        `json:"moniker"` // arbitrary moniker
+	Other   NodeInfoOther `json:"other"`   // other application specific data
+}
+
+// NodeInfoOther is the misc. applcation specific data
+type NodeInfoOther struct {
+	AminoVersion     string `json:"amino_version"`
+	P2PVersion       string `json:"p2p_version"`
+	ConsensusVersion string `json:"consensus_version"`
+	RPCVersion       string `json:"rpc_version"`
+	TxIndex          string `json:"tx_index"`
+	RPCAddress       string `json:"rpc_address"`
+}
+
+func (o NodeInfoOther) String() string {
+	return fmt.Sprintf(
+		"{amino_version: %v, p2p_version: %v, consensus_version: %v, rpc_version: %v, tx_index: %v}",
+		o.AminoVersion,
+		o.P2PVersion,
+		o.ConsensusVersion,
+		o.RPCVersion,
+		o.TxIndex,
+	)
 }
 
 // Validate checks the self-reported NodeInfo is safe.
@@ -58,11 +79,25 @@ func (info NodeInfo) Validate() error {
 	if !cmn.IsASCIIText(info.Moniker) || cmn.ASCIITrim(info.Moniker) == "" {
 		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v", info.Moniker)
 	}
-	for key, value := range info.Other {
-		if !cmn.IsASCIIText(key) || cmn.ASCIITrim(key) == "" ||
-			!cmn.IsASCIIText(value) || cmn.ASCIITrim(value) == "" {
-			return fmt.Errorf("Both key and value in info.Other[%v]=%v must be valid non-empty ASCII texts without tabs", key, value)
+
+	// Sanitize versions
+	// XXX: Should we be more strict about version and address formats?
+	other := info.Other
+	versions := []string{other.AminoVersion,
+		other.AminoVersion,
+		other.P2PVersion,
+		other.ConsensusVersion,
+		other.RPCVersion}
+	for i, v := range versions {
+		if cmn.ASCIITrim(v) != "" && !cmn.IsASCIIText(v) {
+			return fmt.Errorf("info.Other[%d]=%v must be valid non-empty ASCII text without tabs", i, v)
 		}
+	}
+	if cmn.ASCIITrim(other.TxIndex) != "" && (other.TxIndex != "on" && other.TxIndex != "off") {
+		return fmt.Errorf("info.Other.TxIndex should be either 'on' or 'off', got '%v'", other.TxIndex)
+	}
+	if cmn.ASCIITrim(other.RPCAddress) != "" && !cmn.IsASCIIText(other.RPCAddress) {
+		return fmt.Errorf("info.Other.RPCAddress=%v must be valid non-empty ASCII text without tabs", other.RPCAddress)
 	}
 
 	channels := make(map[byte]struct{})

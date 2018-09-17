@@ -84,10 +84,7 @@ func (s *ResultStatus) TxIndexEnabled() bool {
 	if s == nil {
 		return false
 	}
-	if value, ok := s.NodeInfo.Other["tx_index"]; ok && value == "on" {
-		return true
-	}
-	return false
+	return s.NodeInfo.Other.TxIndex == "on"
 }
 
 // Info about peer connections
