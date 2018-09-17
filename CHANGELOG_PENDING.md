@@ -19,5 +19,6 @@ FEATURES:
   * \#2310 Mempool is now aware of the MaxGas requirement
 
 IMPROVEMENTS:
+- [types] add Address to GenesisValidator [\#1714](https://github.com/tendermint/tendermint/issues/1714)
 
 BUG FIXES:

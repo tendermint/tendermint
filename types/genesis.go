@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -21,9 +22,10 @@ const (
 
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {
-	PubKey crypto.PubKey `json:"pub_key"`
-	Power  int64         `json:"power"`
-	Name   string        `json:"name"`
+	Address Address       `json:"address"`
+	PubKey  crypto.PubKey `json:"pub_key"`
+	Power   int64         `json:"power"`
+	Name    string        `json:"name"`
 }
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
@@ -62,7 +64,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return cmn.NewError("Genesis doc must include non-empty chain_id")
 	}
 	if len(genDoc.ChainID) > MaxChainIDLen {
-		return cmn.NewError(fmt.Sprintf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen))
+		return cmn.NewError("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen)
 	}
 
 	if genDoc.ConsensusParams == nil {
@@ -73,9 +75,15 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		}
 	}
 
-	for _, v := range genDoc.Validators {
+	for i, v := range genDoc.Validators {
 		if v.Power == 0 {
 			return cmn.NewError("The genesis file cannot contain validators with no voting power: %v", v)
+		}
+		if len(v.Address) > 0 && !bytes.Equal(v.PubKey.Address(), v.Address) {
+			return cmn.NewError("Incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
+		}
+		if len(v.Address) == 0 {
+			genDoc.Validators[i].Address = v.PubKey.Address()
 		}
 	}
 
