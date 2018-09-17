@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 var logger = log.NewNopLogger()
@@ -95,7 +95,11 @@ Examples:
 	)
 
 	//catch Interrupt and quit tm-bench
-	go catchInterrupt(transacters)
+	go cmn.TrapSignal(func() {
+		for _, t := range transacters {
+			t.Stop()
+		}
+	})
 
 	// Wait until transacters have begun until we get the start time
 	timeStart := time.Now()
@@ -176,14 +180,4 @@ func startTransacters(
 	wg.Wait()
 
 	return transacters
-}
-
-// RunForever waits for an interrupt signal and stops the node.
-func  catchInterrupt(transacters []*transacter) {
-	// Sleep forever and then...
-	cmn.TrapSignal(func() {
-		for _,e := range transacters {
-			e.Stop()
-		}
-	})
 }
