@@ -121,4 +121,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [p2p] [\#2555](https://github.com/tendermint/tendermint/issues/2555) Fix p2p switch FlushThrottle value (@goolAdapter)
 - [p2p] [\#2668](https://github.com/tendermint/tendermint/issues/2668) Reconnect to originally dialed address (not self-reported
   address) for persistent peers
+- [evidence] [\#2746](https://github.com/tendermint/tendermint/pull/2746) Fix iterator leak
 
