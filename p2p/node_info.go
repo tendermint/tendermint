@@ -32,8 +32,8 @@ type NodeInfo struct {
 	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
-	Moniker string   `json:"moniker"` // arbitrary moniker
-	Other   []string `json:"other"`   // other application specific data
+	Moniker string            `json:"moniker"` // arbitrary moniker
+	Other   map[string]string `json:"other"`   // other application specific data
 }
 
 // Validate checks the self-reported NodeInfo is safe.
@@ -56,11 +56,12 @@ func (info NodeInfo) Validate() error {
 
 	// Sanitize ASCII text fields.
 	if !cmn.IsASCIIText(info.Moniker) || cmn.ASCIITrim(info.Moniker) == "" {
-		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v.", info.Moniker)
+		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v", info.Moniker)
 	}
-	for i, s := range info.Other {
-		if !cmn.IsASCIIText(s) || cmn.ASCIITrim(s) == "" {
-			return fmt.Errorf("info.Other[%v] must be valid non-empty ASCII text without tabs, but got %v.", i, s)
+	for key, value := range info.Other {
+		if !cmn.IsASCIIText(key) || cmn.ASCIITrim(key) == "" ||
+			!cmn.IsASCIIText(value) || cmn.ASCIITrim(value) == "" {
+			return fmt.Errorf("Both key and value in info.Other[%v]=%v must be valid non-empty ASCII texts without tabs", key, value)
 		}
 	}
 

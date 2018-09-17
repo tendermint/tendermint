@@ -2,7 +2,6 @@ package core_types
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -85,11 +84,8 @@ func (s *ResultStatus) TxIndexEnabled() bool {
 	if s == nil {
 		return false
 	}
-	for _, s := range s.NodeInfo.Other {
-		info := strings.Split(s, "=")
-		if len(info) == 2 && info[0] == "tx_index" {
-			return info[1] == "on"
-		}
+	if value, ok := s.NodeInfo.Other["tx_index"]; ok && value == "on" {
+		return true
 	}
 	return false
 }

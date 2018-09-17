@@ -690,12 +690,12 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 			evidence.EvidenceChannel,
 		},
 		Moniker: n.config.Moniker,
-		Other: []string{
-			fmt.Sprintf("amino_version=%v", amino.Version),
-			fmt.Sprintf("p2p_version=%v", p2p.Version),
-			fmt.Sprintf("consensus_version=%v", cs.Version),
-			fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version),
-			fmt.Sprintf("tx_index=%v", txIndexerStatus),
+		Other: map[string]string{
+			"amino_version":     amino.Version,
+			"p2p_version":       p2p.Version,
+			"consensus_version": cs.Version,
+			"rpc_version":       fmt.Sprintf("%v/%v", rpc.Version, rpccore.Version),
+			"tx_index":          txIndexerStatus,
 		},
 	}
 
@@ -704,7 +704,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	}
 
 	rpcListenAddr := n.config.RPC.ListenAddress
-	nodeInfo.Other = append(nodeInfo.Other, fmt.Sprintf("rpc_addr=%v", rpcListenAddr))
+	nodeInfo.Other["rpc_addr"] = rpcListenAddr
 
 	if !n.sw.IsListening() {
 		return nodeInfo
