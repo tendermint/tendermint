@@ -579,10 +579,7 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	txHash := sha256.Sum256(tx)
 	if moved, exists := cache.map_[txHash]; exists {
 		//relocation the tx and push it to front
-		cache.list.Remove(moved)
-		delete(cache.map_, txHash)
-		cache.list.PushFront(txHash)
-		cache.map_[txHash] = cache.list.Front()
+		cache.list.MoveToFront(moved)
 		return false
 	}
 
