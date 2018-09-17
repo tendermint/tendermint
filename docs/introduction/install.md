@@ -77,22 +77,24 @@ make install
 
 ## Compile with CLevelDB support
 
-Make sure you have a roughly compatible version of libstdc++ (tested with
-5.3.1). For example, on Ubuntu:
+Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7)
+with snappy. Example for Ubuntu:
 
 ```
 sudo apt-get update
-sudo apt-get install gcc
-sudo apt-cache show libstdc++6
-Version: 5.3.1-14ubuntu2
-```
+sudo apt install build-essential
 
-Check out leveldb dependency using git (for some reason dep does not check out
-submodules):
+sudo apt-get install libsnappy-dev
 
-```
-cd vendor/github.com/DataDog && rm -rf leveldb
-git clone https://github.com/DataDog/leveldb.git
+wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
+  tar -zxvf v1.20.tar.gz && \
+  cd leveldb-1.20/ && \
+  make && \
+  sudo scp -r out-static/lib* out-shared/lib* /usr/local/lib/ && \
+  cd include/ && \
+  sudo scp -r leveldb /usr/local/include/ && \
+  sudo ldconfig && \
+  rm -f v1.20.tar.gz
 ```
 
 Set database backend to cleveldb:
@@ -105,5 +107,5 @@ db_backend = "cleveldb"
 To build Tendermint, run
 
 ```
-CGO_ENABLED=1 CGO_CXXFLAGS_ALLOW="(-fno-builtin-memcmp|-lpthread)" CGO_CFLAGS_ALLOW="-fno-builtin-memcmp" go build -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`" -tags "tendermint gcc" -o build/tendermint ./cmd/tendermint/
+CGO_LDFLAGS="-lsnappy" go build -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`" -tags "tendermint gcc" -o build/tendermint ./cmd/tendermint/
 ```
