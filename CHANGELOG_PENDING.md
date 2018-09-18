@@ -24,3 +24,4 @@ IMPROVEMENTS:
 - [metrics] `consensus.block_interval_metrics` is now gauge, not histogram (you will be able to see spikes, if any)
 
 BUG FIXES:
+- [node] \#2294 Delay starting node until Genesis time
