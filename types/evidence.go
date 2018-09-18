@@ -52,14 +52,16 @@ func RegisterEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(MockBadEvidence{}, "tendermint/MockBadEvidence", nil)
 }
 
-// MaxEvidenceBytesPerBlock returns the maximum evidence size per block.
+// MaxEvidenceBytesPerBlock returns the maximum evidence size per block -
+// 1/10th of the maximum block size.
 func MaxEvidenceBytesPerBlock(blockMaxBytes int64) int64 {
 	return blockMaxBytes / 10
 }
 
 //-------------------------------------------
 
-// DuplicateVoteEvidence contains evidence a validator signed two conflicting votes.
+// DuplicateVoteEvidence contains evidence a validator signed two conflicting
+// votes.
 type DuplicateVoteEvidence struct {
 	PubKey crypto.PubKey
 	VoteA  *Vote
