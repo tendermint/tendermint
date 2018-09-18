@@ -7,7 +7,7 @@ import "github.com/tendermint/tendermint/types"
 func TxFilter(state State) func(tx types.Tx) bool {
 	maxDataBytes := types.MaxDataBytesUnknownEvidence(
 		state.ConsensusParams.BlockSize.MaxBytes,
-		int64(state.Validators.Size()),
+		state.Validators.Size(),
 	)
 	return func(tx types.Tx) bool { return int64(len(tx)) <= maxDataBytes }
 }

@@ -205,22 +205,22 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 // MaxDataBytes returns the maximum size of block's data.
-func MaxDataBytes(maxBytes, valsCount, evidenceCount int64) int64 {
+func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 	return maxBytes -
 		MaxAminoOverheadForBlock -
 		MaxHeaderBytes -
-		valsCount*MaxVoteBytes -
-		evidenceCount*MaxEvidenceBytes
+		int64(valsCount)*MaxVoteBytes -
+		int64(evidenceCount)*MaxEvidenceBytes
 }
 
 // MaxDataBytesUnknownEvidence returns the maximum size of block's data when
 // evidence count is unknown. MaxEvidenceBytesPerBlock will be used as the size
 // of evidence.
-func MaxDataBytesUnknownEvidence(maxBytes, valsCount int64) int64 {
+func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 	return maxBytes -
 		MaxAminoOverheadForBlock -
 		MaxHeaderBytes -
-		valsCount*MaxVoteBytes -
+		int64(valsCount)*MaxVoteBytes -
 		MaxEvidenceBytesPerBlock(maxBytes)
 }
 

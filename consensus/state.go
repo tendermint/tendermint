@@ -955,8 +955,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	// Mempool validated transactions
 	txs := cs.mempool.ReapMaxBytesMaxGas(types.MaxDataBytes(
 		maxBytes,
-		int64(cs.state.Validators.Size()),
-		int64(len(evidence)),
+		cs.state.Validators.Size(),
+		len(evidence),
 	), maxGas)
 	proposerAddr := cs.privValidator.GetAddress()
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
