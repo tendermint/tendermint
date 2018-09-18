@@ -21,3 +21,4 @@ FEATURES:
 IMPROVEMENTS:
 
 BUG FIXES:
+- [node] \#2294 Delay starting node until Genesis time
