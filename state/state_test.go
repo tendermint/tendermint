@@ -373,14 +373,14 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockGas, evidenceAge int) types.ConsensusParams {
+func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
 	return types.ConsensusParams{
 		BlockSize: types.BlockSize{
-			MaxBytes: int64(blockBytes),
-			MaxGas:   int64(blockGas),
+			MaxBytes: blockBytes,
+			MaxGas:   blockGas,
 		},
 		EvidenceParams: types.EvidenceParams{
-			MaxAge: int64(evidenceAge),
+			MaxAge: evidenceAge,
 		},
 	}
 }
