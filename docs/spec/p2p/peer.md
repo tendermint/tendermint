@@ -92,6 +92,7 @@ type NodeInfoOther struct {
 	ConsensusVersion string
 	RPCVersion       string
 	TxIndex          string
+	RPCAddress       string
 }
 ```
 

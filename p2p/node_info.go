@@ -83,7 +83,8 @@ func (info NodeInfo) Validate() error {
 	// Sanitize versions
 	// XXX: Should we be more strict about version and address formats?
 	other := info.Other
-	versions := []string{other.AminoVersion,
+	versions := []string{
+		other.AminoVersion,
 		other.AminoVersion,
 		other.P2PVersion,
 		other.ConsensusVersion,
