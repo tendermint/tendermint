@@ -287,6 +287,8 @@ func NewNode(config *cfg.Config,
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
+	csm := cs.WithMetrics(csMetrics)
+
 	// Make ConsensusReactor
 	consensusState := cs.NewConsensusState(
 		config.Consensus,
@@ -295,13 +297,13 @@ func NewNode(config *cfg.Config,
 		blockStore,
 		mempool,
 		evidencePool,
-		cs.WithMetrics(csMetrics),
+		csm,
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync)
+	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, csMetrics)
 	consensusReactor.SetLogger(consensusLogger)
 
 	eventBus := types.NewEventBus()

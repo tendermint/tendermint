@@ -1382,6 +1382,8 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.NumTxs.Set(float64(block.NumTxs))
 	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
 	cs.metrics.TotalTxs.Set(float64(block.TotalTxs))
+	cs.metrics.LatestBlockHeight.Set(float64(block.Height))
+
 }
 
 //-----------------------------------------------------------------------------

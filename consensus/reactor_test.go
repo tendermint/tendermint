@@ -45,7 +45,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 	for i := 0; i < N; i++ {
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
-		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		reactors[i] = NewConsensusReactor(css[i], true, NopMetrics()) // so we dont start the consensus states
 		reactors[i].SetLogger(css[i].Logger)
 
 		// eventBus is already started with the cs
@@ -255,7 +255,7 @@ func TestReactorRecordsBlockParts(t *testing.T) {
 
 	// create reactor
 	css := randConsensusNet(1, "consensus_reactor_records_block_parts_test", newMockTickerFunc(true), newPersistentKVStore)
-	reactor := NewConsensusReactor(css[0], false) // so we dont start the consensus states
+	reactor := NewConsensusReactor(css[0], false, NopMetrics()) // so we dont start the consensus states
 	reactor.SetEventBus(css[0].eventBus)
 	reactor.SetLogger(log.TestingLogger())
 	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
@@ -306,7 +306,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 
 	// Create reactor.
 	css := randConsensusNet(1, "consensus_reactor_records_votes_test", newMockTickerFunc(true), newPersistentKVStore)
-	reactor := NewConsensusReactor(css[0], false) // so we dont start the consensus states
+	reactor := NewConsensusReactor(css[0], false, NopMetrics()) // so we dont start the consensus states
 	reactor.SetEventBus(css[0].eventBus)
 	reactor.SetLogger(log.TestingLogger())
 	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })

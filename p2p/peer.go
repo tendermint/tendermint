@@ -13,6 +13,8 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
+const MetricsTickerDuration = 10 * time.Second
+
 var testIPSuffix uint32
 
 // Peer is an interface representing a peer connected on a reactor.
@@ -99,6 +101,11 @@ type peer struct {
 
 	// User data
 	Data *cmn.CMap
+
+	metrics *Metrics
+
+	metricsTicker *time.Ticker
+	quitChan      chan bool
 }
 
 func newPeer(
@@ -108,12 +115,16 @@ func newPeer(
 	reactorsByCh map[byte]Reactor,
 	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
+	metrics *Metrics,
 ) *peer {
 	p := &peer{
-		peerConn: pc,
-		nodeInfo: nodeInfo,
-		channels: nodeInfo.Channels,
-		Data:     cmn.NewCMap(),
+		peerConn:      pc,
+		nodeInfo:      nodeInfo,
+		channels:      nodeInfo.Channels,
+		Data:          cmn.NewCMap(),
+		metrics:       metrics,
+		metricsTicker: time.NewTicker(MetricsTickerDuration),
+		quitChan:      make(chan bool),
 	}
 
 	p.mconn = createMConnection(
@@ -143,12 +154,36 @@ func (p *peer) OnStart() error {
 	if err := p.BaseService.OnStart(); err != nil {
 		return err
 	}
+
 	err := p.mconn.Start()
+	if err != nil {
 	return err
+}
+
+	go func() {
+		for {
+			select {
+			case <-p.metricsTicker.C:
+				status := p.mconn.Status()
+				var sendQueueSize float64
+				for _, chStatus := range status.Channels {
+					sendQueueSize += float64(chStatus.SendQueueSize)
+				}
+
+				p.metrics.PeerPendingSendBytes.With("peer-id", string(p.ID())).Set(sendQueueSize)
+			case <-p.quitChan:
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
+	p.metricsTicker.Stop()
+	p.quitChan <- true
 	p.BaseService.OnStop()
 	p.mconn.Stop() // stop everything and close the conn
 }
@@ -200,7 +235,11 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	return p.mconn.Send(chID, msgBytes)
+	res := p.mconn.Send(chID, msgBytes)
+	if res {
+		p.metrics.PeerSendBytesTotal.With("peer-id", string(p.ID())).Add(float64(len(msgBytes)))
+	}
+	return res
 }
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
@@ -211,7 +250,11 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	return p.mconn.TrySend(chID, msgBytes)
+	res := p.mconn.TrySend(chID, msgBytes)
+	if res {
+		p.metrics.PeerSendBytesTotal.With("peer-id", string(p.ID())).Add(float64(len(msgBytes)))
+	}
+	return res
 }
 
 // Get the data for a given key.
@@ -333,6 +376,7 @@ func createMConnection(
 			// which does onPeerError.
 			panic(fmt.Sprintf("Unknown channel %X", chID))
 		}
+		p.metrics.PeerReceiveBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
 		reactor.Receive(chID, p, msgBytes)
 	}
 

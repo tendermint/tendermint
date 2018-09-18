@@ -30,6 +30,7 @@ scripts/cutWALUntil/cutWALUntil
 .vscode/
 
 libs/pubsub/query/fuzz_test/output
+libs/db/test*
 shunit2
 
 .tendermint-lite

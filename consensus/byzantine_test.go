@@ -72,7 +72,7 @@ func TestByzantine(t *testing.T) {
 		err := eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
 		require.NoError(t, err)
 
-		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		conR := NewConsensusReactor(css[i], true, NopMetrics()) // so we dont start the consensus states
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
