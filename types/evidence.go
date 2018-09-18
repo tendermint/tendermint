@@ -12,7 +12,7 @@ import (
 
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes = 440
+	MaxEvidenceBytes = int64(440)
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -53,7 +53,7 @@ func RegisterEvidences(cdc *amino.Codec) {
 }
 
 // MaxEvidenceBytesPerBlock returns the maximum evidence size per block.
-func MaxEvidenceBytesPerBlock(blockMaxBytes int) int {
+func MaxEvidenceBytesPerBlock(blockMaxBytes int64) int64 {
 	return blockMaxBytes / 10
 }
 

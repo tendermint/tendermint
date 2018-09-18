@@ -266,7 +266,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 	bz, err := cdc.MarshalBinary(h)
 	require.NoError(t, err)
 
-	assert.Equal(t, MaxHeaderBytes, len(bz))
+	assert.EqualValues(t, MaxHeaderBytes, len(bz))
 }
 
 func randCommit() *Commit {

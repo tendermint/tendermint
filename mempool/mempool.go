@@ -385,7 +385,7 @@ func (mem *Mempool) notifyTxsAvailable() {
 // with the condition that the total gasWanted must be less than maxGas.
 // If both maxes are negative, there is no cap on the size of all returned
 // transactions (~ all available transactions).
-func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs {
+func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	var buf [binary.MaxVarintLen64]byte
 
 	mem.proxyMtx.Lock()
@@ -396,7 +396,7 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	var totalBytes int
+	var totalBytes int64
 	var totalGas int64
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
@@ -406,11 +406,11 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs {
 		memTx := e.Value.(*mempoolTx)
 		// Check total size requirement
 		// amino.UvarintSize is not used here because it won't be possible to reuse buf
-		aminoOverhead := binary.PutUvarint(buf[:], uint64(len(memTx.tx)))
-		if maxBytes > -1 && totalBytes+len(memTx.tx)+aminoOverhead > maxBytes {
+		aminoOverhead := int64(binary.PutUvarint(buf[:], uint64(len(memTx.tx))))
+		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
 			return txs
 		}
-		totalBytes += len(memTx.tx) + aminoOverhead
+		totalBytes += int64(len(memTx.tx)) + aminoOverhead
 		// Check total gas requirement
 		if maxGas > -1 && totalGas+memTx.gasWanted > maxGas {
 			return txs

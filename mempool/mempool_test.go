@@ -90,7 +90,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	// each tx has 20 bytes + amino overhead = 21 bytes, 1 gas
 	tests := []struct {
 		numTxsToCreate int
-		maxBytes       int
+		maxBytes       int64
 		maxGas         int64
 		expectedNumTxs int
 	}{

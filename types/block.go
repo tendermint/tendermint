@@ -15,7 +15,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes = 511
+	MaxHeaderBytes = int64(511)
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -24,7 +24,7 @@ const (
 	// 2 fields (2 embedded):               2 bytes
 	// Uvarint length of Data.Txs:          4 bytes
 	// Data.Txs field:                      1 byte
-	MaxAminoOverheadForBlock = 11
+	MaxAminoOverheadForBlock = int64(11)
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -205,22 +205,22 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 // MaxDataBytes returns the maximum size of block's data.
-func MaxDataBytes(maxBytes, valsCount, evidenceCount int) int {
+func MaxDataBytes(maxBytes, valsCount, evidenceCount int64) int64 {
 	return maxBytes -
 		MaxAminoOverheadForBlock -
 		MaxHeaderBytes -
-		(valsCount * MaxVoteBytes) -
-		(evidenceCount * MaxEvidenceBytes)
+		valsCount*MaxVoteBytes -
+		evidenceCount*MaxEvidenceBytes
 }
 
 // MaxDataBytesUnknownEvidence returns the maximum size of block's data when
 // evidence count is unknown. MaxEvidenceBytesPerBlock will be used as the size
 // of evidence.
-func MaxDataBytesUnknownEvidence(maxBytes, valsCount int) int {
+func MaxDataBytesUnknownEvidence(maxBytes, valsCount int64) int64 {
 	return maxBytes -
 		MaxAminoOverheadForBlock -
 		MaxHeaderBytes -
-		(valsCount * MaxVoteBytes) -
+		valsCount*MaxVoteBytes -
 		MaxEvidenceBytesPerBlock(maxBytes)
 }
 
