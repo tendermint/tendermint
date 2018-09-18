@@ -191,7 +191,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 // ```
 func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
-	peers := p2pSwitch.Peers().List()
+	peers := p2pPeers.Peers().List()
 	peerStates := make([]ctypes.PeerStateInfo, len(peers))
 	for i, peer := range peers {
 		peerState := peer.Get(types.PeerStateKey).(*cm.PeerState)

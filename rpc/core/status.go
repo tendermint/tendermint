@@ -91,7 +91,7 @@ func Status() (*ctypes.ResultStatus, error) {
 	}
 
 	result := &ctypes.ResultStatus{
-		NodeInfo: p2pSwitch.NodeInfo(),
+		NodeInfo: p2pTransport.NodeInfo(),
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   latestBlockHash,
 			LatestAppHash:     latestAppHash,

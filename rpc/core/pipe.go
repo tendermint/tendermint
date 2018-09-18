@@ -34,13 +34,16 @@ type Consensus interface {
 	GetRoundStateSimpleJSON() ([]byte, error)
 }
 
-type P2P interface {
-	Listeners() []p2p.Listener
-	Peers() p2p.IPeerSet
-	NumPeers() (outbound, inbound, dialig int)
-	NodeInfo() p2p.NodeInfo
+type transport interface {
+	Listeners() []string
 	IsListening() bool
+	NodeInfo() p2p.NodeInfo
+}
+
+type peers interface {
 	DialPeersAsync(p2p.AddrBook, []string, bool) error
+	NumPeers() (outbound, inbound, dialig int)
+	Peers() p2p.IPeerSet
 }
 
 //----------------------------------------------
@@ -56,7 +59,8 @@ var (
 	blockStore     sm.BlockStore
 	evidencePool   sm.EvidencePool
 	consensusState Consensus
-	p2pSwitch      P2P
+	p2pPeers       peers
+	p2pTransport   transport
 
 	// objects
 	pubKey           crypto.PubKey
@@ -90,8 +94,12 @@ func SetConsensusState(cs Consensus) {
 	consensusState = cs
 }
 
-func SetSwitch(sw P2P) {
-	p2pSwitch = sw
+func SetP2PPeers(p peers) {
+	p2pPeers = p
+}
+
+func SetP2PTransport(t transport) {
+	p2pTransport = t
 }
 
 func SetPubKey(pk crypto.PubKey) {
