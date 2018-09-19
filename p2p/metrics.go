@@ -3,10 +3,8 @@ package p2p
 import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
-
-	"github.com/go-kit/kit/metrics/prometheus"
+	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
-	"github.com/tendermint/tendermint/config"
 )
 
 const MetricsSubsystem = "p2p"
@@ -24,28 +22,28 @@ type Metrics struct {
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
-func PrometheusMetrics() *Metrics {
+func PrometheusMetrics(namespace string) *Metrics {
 	return &Metrics{
 		Peers: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: config.MetricsNamespace,
+			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peers",
 			Help:      "Number of peers.",
 		}, []string{}),
 		PeerReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Namespace: config.MetricsNamespace,
+			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_receive_bytes_total",
 			Help:      "Number of bytes received from a given peer.",
 		}, []string{"peer_id"}),
 		PeerSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Namespace: config.MetricsNamespace,
+			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_send_bytes_total",
 			Help:      "Number of bytes sent to a given peer.",
 		}, []string{"peer_id"}),
 		PeerPendingSendBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: config.MetricsNamespace,
+			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_pending_send_bytes",
 			Help:      "Number of pending bytes to be sent to a given peer.",

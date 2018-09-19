@@ -549,6 +549,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		onPeerError:  sw.StopPeerForError,
 		persistent:   persistent,
 		reactorsByCh: sw.reactorsByCh,
+		metrics:      sw.metrics,
 	})
 	if err != nil {
 		switch e := err.(type) {

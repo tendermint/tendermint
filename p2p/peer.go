@@ -105,26 +105,26 @@ type peer struct {
 	metrics *Metrics
 
 	metricsTicker *time.Ticker
-	quitChan      chan bool
 }
 
+type PeerOption func(*peer)
+
 func newPeer(
-	pc peerConn,
-	mConfig tmconn.MConnConfig,
-	nodeInfo NodeInfo,
-	reactorsByCh map[byte]Reactor,
-	chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}),
-	metrics *Metrics,
+		pc peerConn,
+		mConfig tmconn.MConnConfig,
+		nodeInfo NodeInfo,
+		reactorsByCh map[byte]Reactor,
+		chDescs []*tmconn.ChannelDescriptor,
+		onPeerError func(Peer, interface{}),
+		options ...PeerOption,
 ) *peer {
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
 		channels:      nodeInfo.Channels,
 		Data:          cmn.NewCMap(),
-		metrics:       metrics,
 		metricsTicker: time.NewTicker(MetricsTickerDuration),
-		quitChan:      make(chan bool),
+		metrics:       NopMetrics(),
 	}
 
 	p.mconn = createMConnection(
@@ -136,6 +136,9 @@ func newPeer(
 		mConfig,
 	)
 	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
+	for _, option := range options {
+		option(p)
+	}
 
 	return p
 }
@@ -157,33 +160,16 @@ func (p *peer) OnStart() error {
 
 	err := p.mconn.Start()
 	if err != nil {
-	return err
-}
+		return err
+	}
 
-	go func() {
-		for {
-			select {
-			case <-p.metricsTicker.C:
-				status := p.mconn.Status()
-				var sendQueueSize float64
-				for _, chStatus := range status.Channels {
-					sendQueueSize += float64(chStatus.SendQueueSize)
-				}
-
-				p.metrics.PeerPendingSendBytes.With("peer-id", string(p.ID())).Set(sendQueueSize)
-			case <-p.quitChan:
-				return
-			}
-		}
-	}()
-
+	go p.metricsCollector()
 	return nil
 }
 
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
-	p.quitChan <- true
 	p.BaseService.OnStop()
 	p.mconn.Stop() // stop everything and close the conn
 }
@@ -301,8 +287,8 @@ func (pc *peerConn) CloseConn() {
 // the peer.
 // NOTE: blocking
 func (pc *peerConn) HandshakeTimeout(
-	ourNodeInfo NodeInfo,
-	timeout time.Duration,
+		ourNodeInfo NodeInfo,
+		timeout time.Duration,
 ) (peerNodeInfo NodeInfo, err error) {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
 	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
@@ -357,16 +343,41 @@ func (p *peer) String() string {
 	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
 }
 
+func PeerWithMetrics(metrics *Metrics) PeerOption {
+	return func(p *peer) {
+		if metrics != nil {
+			p.metrics = metrics
+		}
+	}
+}
+
+func (p *peer) metricsCollector() {
+	for {
+		select {
+		case <-p.metricsTicker.C:
+			status := p.mconn.Status()
+			var sendQueueSize float64
+			for _, chStatus := range status.Channels {
+				sendQueueSize += float64(chStatus.SendQueueSize)
+			}
+
+			p.metrics.PeerPendingSendBytes.With("peer-id", string(p.ID())).Set(sendQueueSize)
+		case <-p.Quit():
+			return
+		}
+	}
+}
+
 //------------------------------------------------------------------
 // helper funcs
 
 func createMConnection(
-	conn net.Conn,
-	p *peer,
-	reactorsByCh map[byte]Reactor,
-	chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}),
-	config tmconn.MConnConfig,
+		conn net.Conn,
+		p *peer,
+		reactorsByCh map[byte]Reactor,
+		chDescs []*tmconn.ChannelDescriptor,
+		onPeerError func(Peer, interface{}),
+		config tmconn.MConnConfig,
 ) *tmconn.MConnection {
 
 	onReceive := func(chID byte, msgBytes []byte) {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -46,16 +46,23 @@ type ConsensusReactor struct {
 	metrics *Metrics
 }
 
+type ROption func(*ConsensusReactor)
+
 // NewConsensusReactor returns a new ConsensusReactor with the given
 // consensusState.
-func NewConsensusReactor(consensusState *ConsensusState, fastSync bool, csMetrics *Metrics) *ConsensusReactor {
+func NewConsensusReactor(consensusState *ConsensusState, fastSync bool, options ...ROption) *ConsensusReactor {
 	conR := &ConsensusReactor{
 		conS:     consensusState,
 		fastSync: fastSync,
-		metrics:  csMetrics,
+		metrics: NopMetrics(),
 	}
-	conR.setCatchingUp()
+	conR.setFastSyncing()
 	conR.BaseReactor = *p2p.NewBaseReactor("ConsensusReactor", conR)
+
+	for _, option := range options {
+		option(conR)
+	}
+
 	return conR
 }
 
@@ -98,7 +105,7 @@ func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int
 	conR.mtx.Lock()
 	conR.fastSync = false
 	conR.mtx.Unlock()
-	conR.metrics.CatchingUp.Set(0)
+	conR.metrics.FastSyncing.Set(0)
 
 	if blocksSynced > 0 {
 		// dont bother with the WAL if we fast synced
@@ -819,14 +826,23 @@ func (conR *ConsensusReactor) StringIndented(indent string) string {
 	return s
 }
 
-func (conR *ConsensusReactor) setCatchingUp() {
-	var catchingUp float64
-	if conR.fastSync {
-		catchingUp = 1
-	} else {
-		catchingUp = 0
+func (conR *ConsensusReactor) setFastSyncing() {
+	if conR.metrics == nil {
+		return
 	}
-	conR.metrics.CatchingUp.Set(catchingUp)
+
+	var fastSyncing float64
+	if conR.fastSync {
+		fastSyncing = 1
+	} else {
+		fastSyncing = 0
+	}
+	conR.metrics.FastSyncing.Set(fastSyncing)
+}
+
+// ConRWithMetrics sets the metrics
+func ConRWithMetrics(metrics *Metrics) ROption {
+	return func(conR *ConsensusReactor) { conR.metrics = metrics }
 }
 
 //-----------------------------------------------------------------------------

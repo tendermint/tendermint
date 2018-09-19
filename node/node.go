@@ -107,7 +107,7 @@ type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(), p2p.PrometheusMetrics(), mempl.PrometheusMetrics()
+			return cs.PrometheusMetrics(config.Namespace), p2p.PrometheusMetrics(config.Namespace), mempl.PrometheusMetrics(config.Namespace)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics()
 	}
@@ -287,8 +287,6 @@ func NewNode(config *cfg.Config,
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
-	csm := cs.WithMetrics(csMetrics)
-
 	// Make ConsensusReactor
 	consensusState := cs.NewConsensusState(
 		config.Consensus,
@@ -297,13 +295,13 @@ func NewNode(config *cfg.Config,
 		blockStore,
 		mempool,
 		evidencePool,
-		csm,
+		cs.StateWithMetrics(csMetrics),
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, csMetrics)
+	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ConRWithMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 
 	eventBus := types.NewEventBus()

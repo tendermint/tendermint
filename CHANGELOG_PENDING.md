@@ -22,8 +22,8 @@ FEATURES:
 IMPROVEMENTS:
 - [types] add Address to GenesisValidator [\#1714](https://github.com/tendermint/tendermint/issues/1714)
 - [metrics] `consensus.block_interval_metrics` is now gauge, not histogram (you will be able to see spikes, if any)
-
-- Added additional metrics to p2p and consensus
+- [consensus] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
+- [p2p] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
 
 BUG FIXES:
 - [node] \#2294 Delay starting node until Genesis time
