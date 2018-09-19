@@ -14,7 +14,7 @@ type PrivValidator interface {
 	GetAddress() Address // redundant since .PubKey().Address()
 	GetPubKey() crypto.PubKey
 
-	SignVote(chainID string, vote *Vote) error
+	SignVote(vote *Vote) (SignVoteReply, error)
 	SignProposal(chainID string, proposal *Proposal) error
 	SignHeartbeat(chainID string, heartbeat *Heartbeat) error
 }
@@ -62,14 +62,18 @@ func (pv *MockPV) GetPubKey() crypto.PubKey {
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
-	signBytes := vote.SignBytes(chainID)
+func (pv *MockPV) SignVote(vote *Vote) (SignVoteReply, error) {
+	signBytes := vote.SignBytes()
 	sig, err := pv.privKey.Sign(signBytes)
 	if err != nil {
-		return err
+		// TODO(ismail): encapsulate error into reply!
+		return SignVoteReply{}, err
 	}
-	vote.Signature = sig
-	return nil
+
+	return SignVoteReply{
+		Vote:      *vote,
+		Signature: sig,
+	}, nil
 }
 
 // Implements PrivValidator.

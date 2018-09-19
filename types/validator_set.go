@@ -287,7 +287,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		}
 		_, val := vals.GetByIndex(idx)
 		// Validate signature.
-		precommitSignBytes := precommit.SignBytes(chainID)
+		precommitSignBytes := precommit.SignBytes()
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}

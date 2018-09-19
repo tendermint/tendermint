@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -62,8 +62,9 @@ func MaxEvidenceBytesPerBlock(blockMaxBytes int) int {
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting votes.
 type DuplicateVoteEvidence struct {
 	PubKey crypto.PubKey
-	VoteA  *Vote
-	VoteB  *Vote
+	// TODO(ismail): this probably need to be `SignedVoteReply`s
+	VoteA *SignVoteReply
+	VoteB *SignVoteReply
 }
 
 // String returns a string representation of the evidence.
@@ -74,7 +75,7 @@ func (dve *DuplicateVoteEvidence) String() string {
 
 // Height returns the height this evidence refers to.
 func (dve *DuplicateVoteEvidence) Height() int64 {
-	return dve.VoteA.Height
+	return dve.VoteA.Vote.Height
 }
 
 // Address returns the address of the validator.
@@ -91,39 +92,39 @@ func (dve *DuplicateVoteEvidence) Hash() []byte {
 // To be conflicting, they must be from the same validator, for the same H/R/S, but for different blocks.
 func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 	// H/R/S must be the same
-	if dve.VoteA.Height != dve.VoteB.Height ||
-		dve.VoteA.Round != dve.VoteB.Round ||
-		dve.VoteA.Type != dve.VoteB.Type {
+	if dve.VoteA.Vote.Height != dve.VoteB.Vote.Height ||
+		dve.VoteA.Vote.Round != dve.VoteB.Vote.Round ||
+		dve.VoteA.Vote.Type != dve.VoteB.Vote.Type {
 		return fmt.Errorf("DuplicateVoteEvidence Error: H/R/S does not match. Got %v and %v", dve.VoteA, dve.VoteB)
 	}
 
 	// Address must be the same
-	if !bytes.Equal(dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress) {
-		return fmt.Errorf("DuplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X", dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress)
+	if !bytes.Equal(dve.VoteA.Vote.ValidatorAddress, dve.VoteB.Vote.ValidatorAddress) {
+		return fmt.Errorf("DuplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X", dve.VoteA.Vote.ValidatorAddress, dve.VoteB.Vote.ValidatorAddress)
 	}
 
 	// Index must be the same
-	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
-		return fmt.Errorf("DuplicateVoteEvidence Error: Validator indices do not match. Got %d and %d", dve.VoteA.ValidatorIndex, dve.VoteB.ValidatorIndex)
+	if dve.VoteA.Vote.ValidatorIndex != dve.VoteB.Vote.ValidatorIndex {
+		return fmt.Errorf("DuplicateVoteEvidence Error: Validator indices do not match. Got %d and %d", dve.VoteA.Vote.ValidatorIndex, dve.VoteB.Vote.ValidatorIndex)
 	}
 
 	// BlockIDs must be different
-	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
-		return fmt.Errorf("DuplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote", dve.VoteA.BlockID)
+	if dve.VoteA.Vote.BlockID.Equals(dve.VoteB.Vote.BlockID) {
+		return fmt.Errorf("DuplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote", dve.VoteA.Vote.BlockID)
 	}
 
 	// pubkey must match address (this should already be true, sanity check)
-	addr := dve.VoteA.ValidatorAddress
+	addr := dve.VoteA.Vote.ValidatorAddress
 	if !bytes.Equal(pubKey.Address(), addr) {
 		return fmt.Errorf("DuplicateVoteEvidence FAILED SANITY CHECK - address (%X) doesn't match pubkey (%v - %X)",
 			addr, pubKey, pubKey.Address())
 	}
 
 	// Signatures must be valid
-	if !pubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
+	if !pubKey.VerifyBytes(dve.VoteA.Vote.SignBytes(), dve.VoteA.Signature) {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
 	}
-	if !pubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
+	if !pubKey.VerifyBytes(dve.VoteB.Vote.SignBytes(), dve.VoteB.Signature) {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
 	}
 

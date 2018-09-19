@@ -73,11 +73,26 @@ type Vote struct {
 	Timestamp        time.Time `json:"timestamp"`
 	Type             byte      `json:"type"`
 	BlockID          BlockID   `json:"block_id"` // zero if vote is nil.
-	Signature        []byte    `json:"signature"`
+	ChainID          string    `json:"chain_id"`
 }
 
-func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalJSON(CanonicalVote(chainID, vote))
+type SignVoteRequest struct {
+	Vote Vote
+}
+
+type SignVoteReply struct {
+	Vote      Vote
+	Signature []byte
+	Err       Error
+}
+
+type Error struct {
+	ErrCode     uint16
+	Description string
+}
+
+func (vote *Vote) SignBytes() []byte {
+	bz, err := cdc.MarshalBinary(vote)
 	if err != nil {
 		panic(err)
 	}
