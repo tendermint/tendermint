@@ -37,6 +37,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Generated private validator", "path", privValFile)
 	}
 
+	// node key
 	nodeKeyFile := config.NodeKeyFile()
 	if cmn.FileExists(nodeKeyFile) {
 		logger.Info("Found node key", "path", nodeKeyFile)
