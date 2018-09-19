@@ -85,7 +85,6 @@ func PrometheusMetrics() *Metrics {
 			Help:      "Total power of the byzantine validators.",
 		}, []string{}),
 
-
 		BlockIntervalSeconds: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Subsystem: "consensus",
 			Name:      "block_interval_seconds",
