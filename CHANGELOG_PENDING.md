@@ -19,5 +19,7 @@ FEATURES:
   * \#2310 Mempool is now aware of the MaxGas requirement
 
 IMPROVEMENTS:
+- [mempool] [\#2399](https://github.com/tendermint/tendermint/issues/2399) Make mempool cache a proper LRU (@bradyjoestar)
+
 
 BUG FIXES:
