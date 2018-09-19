@@ -27,12 +27,36 @@ hardware devices and smart contracts using a  binary encoding format ([amino] in
 responses (see details below)
 - include an error type in responses
 
+### Overview
+```
++--------------+                      +----------------+
+|              |     SignXRequest     |                |
+|Remote signer |<---------------------+  tendermint    |
+| (e.g. KMS)   |                      |                |
+|              +--------------------->|                |
++--------------+    SignedXReply      +----------------+
+
+
+SignXRequest {
+    x: X
+}
+
+SignedXReply {
+    x: X
+  sig: Signature
+  err: Error{ 
+    code: int
+    desc: string
+  }
+}
+```
+
 **Note:** There was a related discussion around including a fingerprint of, or, the whole public-key 
 into each sign-request to tell the signer which corresponding private-key to 
 use to sign the message. This is particularly relevant in the context of the KMS
 but is currently not considered in this ADR. 
- 
- 
+
+
 [amino]: https://github.com/tendermint/go-amino/
 
 ### Vote
