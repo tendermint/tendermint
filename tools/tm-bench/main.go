@@ -25,7 +25,7 @@ func main() {
 	flagSet.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
 	flagSet.IntVar(&durationInt, "T", 10, "Exit after the specified amount of time in seconds")
 	flagSet.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
-	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes.")
+	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes, must be greater than or equal to 40.")
 	flagSet.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
 	flagSet.StringVar(&broadcastTxMethod, "broadcast-tx-method", "async", "Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)")
 	flagSet.BoolVar(&verbose, "v", false, "Verbose output")
@@ -66,6 +66,14 @@ Examples:
 		logger = log.NewTMLoggerWithColorFn(log.NewSyncWriter(os.Stdout), colorFn)
 
 		fmt.Printf("Running %ds test @ %s\n", durationInt, flagSet.Arg(0))
+	}
+
+	if txSize < 40 {
+		fmt.Fprintln(
+			os.Stderr,
+			"The size of a transaction must be greater than or equal to 40.",
+		)
+		os.Exit(1)
 	}
 
 	if broadcastTxMethod != "async" &&

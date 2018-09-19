@@ -109,9 +109,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	addOtherNodeAddrToAddrBook(1, 0)
 	addOtherNodeAddrToAddrBook(2, 1)
 
-	for i, sw := range switches {
-		sw.AddListener(p2p.NewDefaultListener("tcp://"+sw.NodeInfo().ListenAddr, "", false, logger.With("pex", i)))
-
+	for _, sw := range switches {
 		err := sw.Start() // start switch and reactors
 		require.Nil(t, err)
 	}
@@ -474,9 +472,6 @@ func testCreatePeerWithConfig(dir string, id int, config *PEXReactorConfig) *p2p
 			return sw
 		},
 	)
-	peer.AddListener(
-		p2p.NewDefaultListener("tcp://"+peer.NodeInfo().ListenAddr, "", false, log.TestingLogger()),
-	)
 	return peer
 }
 
@@ -509,9 +504,6 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 			sw.AddReactor("pex", r)
 			return sw
 		},
-	)
-	seed.AddListener(
-		p2p.NewDefaultListener("tcp://"+seed.NodeInfo().ListenAddr, "", false, log.TestingLogger()),
 	)
 	return seed
 }

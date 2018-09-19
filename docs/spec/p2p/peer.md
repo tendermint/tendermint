@@ -83,7 +83,16 @@ type NodeInfo struct {
   Channels   []int8
 
   Moniker    string
-  Other      []string
+  Other      NodeInfoOther
+}
+
+type NodeInfoOther struct {
+	AminoVersion     string
+	P2PVersion       string
+	ConsensusVersion string
+	RPCVersion       string
+	TxIndex          string
+	RPCAddress       string
 }
 ```
 

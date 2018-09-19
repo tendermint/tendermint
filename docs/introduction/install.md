@@ -48,6 +48,15 @@ to put the binary in `./build`.
 
 The latest `tendermint version` is now installed.
 
+## Run
+
+To start a one-node blockchain with a simple in-process application:
+
+```
+tendermint init
+tendermint node --proxy_app=kvstore
+```
+
 ## Reinstall
 
 If you already have Tendermint installed, and you make updates, simply
@@ -66,11 +75,37 @@ make get_vendor_deps
 make install
 ```
 
-## Run
+## Compile with CLevelDB support
 
-To start a one-node blockchain with a simple in-process application:
+Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7)
+with snappy. Example for Ubuntu:
 
 ```
-tendermint init
-tendermint node --proxy_app=kvstore
+sudo apt-get update
+sudo apt install build-essential
+
+sudo apt-get install libsnappy-dev
+
+wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
+  tar -zxvf v1.20.tar.gz && \
+  cd leveldb-1.20/ && \
+  make && \
+  sudo scp -r out-static/lib* out-shared/lib* /usr/local/lib/ && \
+  cd include/ && \
+  sudo scp -r leveldb /usr/local/include/ && \
+  sudo ldconfig && \
+  rm -f v1.20.tar.gz
+```
+
+Set database backend to cleveldb:
+
+```
+# config/config.toml
+db_backend = "cleveldb"
+```
+
+To build Tendermint, run
+
+```
+CGO_LDFLAGS="-lsnappy" go build -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`" -tags "tendermint gcc" -o build/tendermint ./cmd/tendermint/
 ```

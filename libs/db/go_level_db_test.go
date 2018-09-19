@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -17,6 +18,7 @@ func TestNewGoLevelDB(t *testing.T) {
 	// Test write locks
 	db, err := NewGoLevelDB(name, "")
 	require.Nil(t, err)
+	defer os.RemoveAll("./" + name + ".db")
 	_, err = NewGoLevelDB(name, "")
 	require.NotNil(t, err)
 	db.Close() // Close the db to release the lock

@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -128,87 +127,6 @@ func newPeer(
 	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
 
 	return p
-}
-
-func newOutboundPeerConn(
-	addr *NetAddress,
-	config *config.P2PConfig,
-	persistent bool,
-	ourNodePrivKey crypto.PrivKey,
-) (peerConn, error) {
-	conn, err := dial(addr, config)
-	if err != nil {
-		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
-	}
-
-	pc, err := newPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
-	if err != nil {
-		if cerr := conn.Close(); cerr != nil {
-			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
-		}
-		return peerConn{}, err
-	}
-
-	// ensure dialed ID matches connection ID
-	if addr.ID != pc.ID() {
-		if cerr := conn.Close(); cerr != nil {
-			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
-		}
-		return peerConn{}, ErrSwitchAuthenticationFailure{addr, pc.ID()}
-	}
-
-	return pc, nil
-}
-
-func newInboundPeerConn(
-	conn net.Conn,
-	config *config.P2PConfig,
-	ourNodePrivKey crypto.PrivKey,
-) (peerConn, error) {
-
-	// TODO: issue PoW challenge
-
-	return newPeerConn(conn, config, false, false, ourNodePrivKey, nil)
-}
-
-func newPeerConn(
-	rawConn net.Conn,
-	cfg *config.P2PConfig,
-	outbound, persistent bool,
-	ourNodePrivKey crypto.PrivKey,
-	originalAddr *NetAddress,
-) (pc peerConn, err error) {
-	conn := rawConn
-
-	// Fuzz connection
-	if cfg.TestFuzz {
-		// so we have time to do peer handshakes and get set up
-		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, cfg.TestFuzzConfig)
-	}
-
-	// Set deadline for secret handshake
-	dl := time.Now().Add(cfg.HandshakeTimeout)
-	if err := conn.SetDeadline(dl); err != nil {
-		return pc, cmn.ErrorWrap(
-			err,
-			"Error setting deadline while encrypting connection",
-		)
-	}
-
-	// Encrypt connection
-	conn, err = tmconn.MakeSecretConnection(conn, ourNodePrivKey)
-	if err != nil {
-		return pc, cmn.ErrorWrap(err, "Error creating peer")
-	}
-
-	// Only the information we already have
-	return peerConn{
-		config:       cfg,
-		outbound:     outbound,
-		persistent:   persistent,
-		conn:         conn,
-		originalAddr: originalAddr,
-	}, nil
 }
 
 //---------------------------------------------------
@@ -398,18 +316,6 @@ func (p *peer) String() string {
 
 //------------------------------------------------------------------
 // helper funcs
-
-func dial(addr *NetAddress, cfg *config.P2PConfig) (net.Conn, error) {
-	if cfg.TestDialFail {
-		return nil, fmt.Errorf("dial err (peerConfig.DialFail == true)")
-	}
-
-	conn, err := addr.DialTimeout(cfg.DialTimeout)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
 
 func createMConnection(
 	conn net.Conn,

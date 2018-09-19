@@ -29,10 +29,10 @@ Vagrant.configure("2") do |config|
     usermod -a -G docker vagrant
 
     # install go
-    wget -q https://dl.google.com/go/go1.10.1.linux-amd64.tar.gz
-    tar -xvf go1.10.1.linux-amd64.tar.gz
+    wget -q https://dl.google.com/go/go1.11.linux-amd64.tar.gz
+    tar -xvf go1.11.linux-amd64.tar.gz
     mv go /usr/local
-    rm -f go1.10.1.linux-amd64.tar.gz
+    rm -f go1.11.linux-amd64.tar.gz
 
     # cleanup
     apt-get autoremove -y
