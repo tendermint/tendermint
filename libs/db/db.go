@@ -38,7 +38,7 @@ func NewDB(name string, backend DBBackendType, dir string) DB {
 		for k, _ := range backends {
 			keys = append(keys, string(k))
 		}
-		panic(fmt.Sprintf("Unknown db_backend%s, expected either %s", backend, strings.Join(keys, " or ")))
+		panic(fmt.Sprintf("Unknown db_backend %s, expected either %s", backend, strings.Join(keys, " or ")))
 	}
 
 	db, err := dbCreator(name, dir)
