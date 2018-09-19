@@ -1,6 +1,8 @@
 package state
 
-import "github.com/tendermint/tendermint/types"
+import (
+	"github.com/tendermint/tendermint/types"
+)
 
 // TxFilter returns a function to filter transactions. The function limits the
 // size of a transaction to the maximum block's data size.
