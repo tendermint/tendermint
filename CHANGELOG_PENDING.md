@@ -25,4 +25,4 @@ IMPROVEMENTS:
 
 BUG FIXES:
 - [node] \#2294 Delay starting node until Genesis time
-- [autofile] \#2428 Group.RotateFile need call Flush() before rename.
+- [autofile] \#2428 Group.RotateFile need call Flush() before rename.(@goolAdapter)

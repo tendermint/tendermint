@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	// "sync"
@@ -24,6 +25,7 @@ func TestWALTruncate(t *testing.T) {
 	if err != nil {
 		panic(fmt.Errorf("failed to create temp WAL file: %v", err))
 	}
+	defer os.RemoveAll(walDir)
 
 	walFile := filepath.Join(walDir, "wal")
 
@@ -32,17 +34,23 @@ func TestWALTruncate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wal.group.SetHeadSizeLimit(4096) //cause fragment
+	//this magic number 4K can truncate the content when RotateFile. defaultHeadSizeLimit(10M) is hard to simulate.
+	wal.Group().SetHeadSizeLimit(4096)
+	//this magic number 1 * time.Millisecond make RotateFile check frequently. defaultGroupCheckDuration(5s) is hard to simulate.
+	wal.Group().SetGroupCheckDuration(1 * time.Millisecond)
+
 	wal.Start()
 
-	err = WALGenerateNBlocks(wal.group, 60) //60 block's size nearly 70K
+	//60 block's size nearly 70K, greater than group's headBuf size(4096 * 10), when headBuf is full, truncate content will Flush to the file.
+	//at this time, RotateFile is called, truncate content exist in each file.
+	err = WALGenerateNBlocks(wal.Group(), 60)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Second) //wait groupCheckDuration, make sure RotateFile run
+	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
 
-	wal.group.Flush()
+	wal.Group().Flush()
 
 	h := int64(50)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})

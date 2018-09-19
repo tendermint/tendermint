@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	groupCheckDuration    = 5000 * time.Millisecond
-	defaultHeadSizeLimit  = 10 * 1024 * 1024       // 10MB
-	defaultTotalSizeLimit = 1 * 1024 * 1024 * 1024 // 1GB
-	maxFilesToRemove      = 4                      // needs to be greater than 1
+	defaultGroupCheckDuration = 5000 * time.Millisecond
+	defaultHeadSizeLimit      = 10 * 1024 * 1024       // 10MB
+	defaultTotalSizeLimit     = 1 * 1024 * 1024 * 1024 // 1GB
+	maxFilesToRemove          = 4                      // needs to be greater than 1
 )
 
 /*
@@ -56,16 +56,17 @@ assuming that marker lines are written occasionally.
 type Group struct {
 	cmn.BaseService
 
-	ID             string
-	Head           *AutoFile // The head AutoFile to write to
-	headBuf        *bufio.Writer
-	Dir            string // Directory that contains .Head
-	ticker         *time.Ticker
-	mtx            sync.Mutex
-	headSizeLimit  int64
-	totalSizeLimit int64
-	minIndex       int // Includes head
-	maxIndex       int // Includes head, where Head will move to
+	ID                 string
+	Head               *AutoFile // The head AutoFile to write to
+	headBuf            *bufio.Writer
+	Dir                string // Directory that contains .Head
+	ticker             *time.Ticker
+	mtx                sync.Mutex
+	headSizeLimit      int64
+	totalSizeLimit     int64
+	groupCheckDuration time.Duration
+	minIndex           int // Includes head
+	maxIndex           int // Includes head, where Head will move to
 
 	// TODO: When we start deleting files, we need to start tracking GroupReaders
 	// and their dependencies.
@@ -81,14 +82,15 @@ func OpenGroup(headPath string) (g *Group, err error) {
 	}
 
 	g = &Group{
-		ID:             "group:" + head.ID,
-		Head:           head,
-		headBuf:        bufio.NewWriterSize(head, 4096*10),
-		Dir:            dir,
-		headSizeLimit:  defaultHeadSizeLimit,
-		totalSizeLimit: defaultTotalSizeLimit,
-		minIndex:       0,
-		maxIndex:       0,
+		ID:                 "group:" + head.ID,
+		Head:               head,
+		headBuf:            bufio.NewWriterSize(head, 4096*10),
+		Dir:                dir,
+		headSizeLimit:      defaultHeadSizeLimit,
+		totalSizeLimit:     defaultTotalSizeLimit,
+		groupCheckDuration: defaultGroupCheckDuration,
+		minIndex:           0,
+		maxIndex:           0,
 	}
 	g.BaseService = *cmn.NewBaseService(nil, "Group", g)
 
@@ -101,7 +103,7 @@ func OpenGroup(headPath string) (g *Group, err error) {
 // OnStart implements Service by starting the goroutine that checks file and
 // group limits.
 func (g *Group) OnStart() error {
-	g.ticker = time.NewTicker(groupCheckDuration)
+	g.ticker = time.NewTicker(g.groupCheckDuration)
 	go g.processTicks()
 	return nil
 }
@@ -120,6 +122,20 @@ func (g *Group) Close() {
 	g.mtx.Lock()
 	_ = g.Head.closeFile()
 	g.mtx.Unlock()
+}
+
+// SetGroupCheckDuration allows you to overwrite default groupCheckDuration, this must call before Start().
+func (g *Group) SetGroupCheckDuration(duration time.Duration) {
+	g.mtx.Lock()
+	g.groupCheckDuration = duration
+	g.mtx.Unlock()
+}
+
+// GroupCheckDuration returns the current groupCheckDuration.
+func (g *Group) GroupCheckDuration() time.Duration {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+	return g.groupCheckDuration
 }
 
 // SetHeadSizeLimit allows you to overwrite default head size limit - 10MB.
