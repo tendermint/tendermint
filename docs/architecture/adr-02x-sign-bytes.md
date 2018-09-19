@@ -43,11 +43,35 @@ SignXRequest {
 
 SignedXReply {
     x: X
-  sig: Signature
+  sig: Signature // []byte
   err: Error{ 
     code: int
     desc: string
   }
+}
+```
+
+TODO: Alternatively, the type `X` might directly include the signature. A lot of places expect a vote with a 
+signature and do not necessarily deal with "Replies".
+Still exploring what would work best her. 
+This would look like (exemplified using X = Vote):
+```
+Vote {
+    // all fields besides signature
+}
+
+SignedVote {
+ Vote Vote
+ Signature []byte
+}
+
+SignVoteRequest {
+   Vote Vote
+}
+
+SignedVoteReply {
+    Vote SignedVote
+    Err  Error
 }
 ```
 
@@ -85,15 +109,15 @@ message SignVoteRequest {
 //  amino registered type
 // registered with "tendermint/socketpv/SignedVoteReply"
 message SignedVoteReply { 
-   Vote      vote
-   Signature sig 
-   Error     err
+   Vote      Vote
+   Signature Signature 
+   Err       Error
 }
 
 // we will use this type everywhere below
 message Error {
-  uint type // error code
-  string description // optional description
+  Type        uint  // error code
+  Description string  // optional description
 }
 
 ```
@@ -202,6 +226,7 @@ hardware module and a smart contract. Besides that:
 ### Negative
 
 - relatively huge change / refactoring touching quite some code
+- lot's of places assume a `Vote` with a signature included -> they will need to 
 - need to modify some interfaces 
 
 ### Neutral
