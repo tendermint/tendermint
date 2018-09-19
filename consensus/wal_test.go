@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+
 	// "sync"
 	"testing"
 	"time"
@@ -15,6 +18,46 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestWALTruncate(t *testing.T) {
+	walDir, err := ioutil.TempDir("", "wal")
+	if err != nil {
+		panic(fmt.Errorf("failed to create temp WAL file: %v", err))
+	}
+
+	walFile := filepath.Join(walDir, "wal")
+
+	wal, err := NewWAL(walFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wal.group.SetHeadSizeLimit(4096) //cause fragment
+	wal.Start()
+
+	err = WALGenerateNBlocks(wal.group, 60) //60 block's size nearly 70K
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(5 * time.Second) //wait groupCheckDuration, make sure RotateFile run
+
+	wal.group.Flush()
+
+	h := int64(50)
+	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
+	assert.NoError(t, err, fmt.Sprintf("expected not to err on height %d", h))
+	assert.True(t, found, fmt.Sprintf("expected to find end height for %d", h))
+	assert.NotNil(t, gr, "expected group not to be nil")
+	defer gr.Close()
+
+	dec := NewWALDecoder(gr)
+	msg, err := dec.Decode()
+	assert.NoError(t, err, "expected to decode a message")
+	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
+	assert.True(t, ok, "expected message of type EventDataRoundState")
+	assert.Equal(t, rs.Height, h+1, fmt.Sprintf("wrong height"))
+}
 
 func TestWALEncoderDecoder(t *testing.T) {
 	now := tmtime.Now()

@@ -266,6 +266,14 @@ func (g *Group) RotateFile() {
 
 	headPath := g.Head.Path
 
+	if err := g.headBuf.Flush(); err != nil {
+		panic(err) //panic is used for consistent with below
+	}
+
+	if err := g.Head.Sync(); err != nil {
+		panic(err)
+	}
+
 	if err := g.Head.closeFile(); err != nil {
 		panic(err)
 	}
