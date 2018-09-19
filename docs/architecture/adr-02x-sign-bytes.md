@@ -26,7 +26,14 @@ hardware devices and smart contracts using a  binary encoding format ([amino] in
 - split up the messages exchanged between tendermint and remote signers into requests and 
 responses (see details below)
 - include an error type in responses
+
+**Note:** There was a related discussion around including a fingerprint of, or, the whole public-key 
+into each sign-request to tell the signer which corresponding private-key to 
+use to sign the message. This is particularly relevant in the context of the KMS
+but is currently not considered in this ADR. 
  
+ 
+[amino]: https://github.com/tendermint/go-amino/
 
 ### Vote
 
@@ -101,7 +108,7 @@ message SignProposalReply {
 
 ### Heartbeat
 
-TODO: clarify if heartbeat also needs a fixed offset and update the fields accordingly: 
+**TODO**: clarify if heartbeat also needs a fixed offset and update the fields accordingly: 
 
 ```proto
 message Heartbeat {
