@@ -11,6 +11,7 @@ BREAKING CHANGES:
 
 * Go API
   * \#2310 Mempool.ReapMaxBytes -> Mempool.ReapMaxBytesMaxGas
+  * \#2431 Remove Word256 code in libs/common, due to lack of use
 * Blockchain Protocol
 
 * P2P Protocol
