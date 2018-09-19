@@ -775,15 +775,13 @@ func makeNodeInfo(
 			ConsensusVersion: cs.Version,
 			RPCVersion:       fmt.Sprintf("%v/%v", rpc.Version, rpccore.Version),
 			TxIndex:          txIndexerStatus,
+			RPCAddress:       config.RPC.ListenAddress,
 		},
 	}
 
 	if config.P2P.PexReactor {
 		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
 	}
-
-	rpcListenAddr := config.RPC.ListenAddress
-	nodeInfo.Other.RPCAddress = rpcListenAddr
 
 	lAddr := config.P2P.ExternalAddress
 
