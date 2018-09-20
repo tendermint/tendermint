@@ -227,4 +227,7 @@ prometheus_listen_addr = ":26660"
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = 3
+
+# Instrumentation namespace
+namespace = "tendermint"
 ```
