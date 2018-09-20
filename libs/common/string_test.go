@@ -1,7 +1,6 @@
 package common
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,8 +18,7 @@ func TestIsASCIIText(t *testing.T) {
 		"", "\xC2", "\xC2\xA2", "\xFF", "\x80", "\xF0", "\n", "\t",
 	}
 	for _, v := range notASCIIText {
-		_, err := hex.DecodeString(v)
-		assert.Nil(t, err, "%q is not ascii-text", v)
+		assert.False(t, IsASCIIText(v), "%q is not ascii-text", v)
 	}
 	asciiText := []string{
 		" ", ".", "x", "$", "_", "abcdefg;", "-", "0x00", "0", "123",
