@@ -463,6 +463,7 @@ func (sw *Switch) acceptRoutine() {
 			chDescs:      sw.chDescs,
 			onPeerError:  sw.StopPeerForError,
 			reactorsByCh: sw.reactorsByCh,
+			metrics:      sw.metrics,
 		})
 		if err != nil {
 			switch err.(type) {
