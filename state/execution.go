@@ -66,6 +66,9 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 //CheckTxs checks all txs in this block through calling checkTx in ProxyApp.
 //All txs should be checked ok, otherwise return err
 func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
+	if block == nil || len(block.Txs) == 0 {
+		return nil
+	}
 	txs := make([][]byte, len(block.Txs), len(block.Txs))
 	for _, tx := range block.Txs {
 		txs = append(txs, tx)

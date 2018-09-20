@@ -117,6 +117,11 @@ func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*
 	return &res, nil
 }
 
+func (app *GRPCApplication) CheckBlock(ctx context.Context, req *RequestCheckBlock) (*ResponseCheckBlock, error) {
+	res := app.app.CheckBlock(*req)
+	return &res, nil
+}
+
 func (app *GRPCApplication) Query(ctx context.Context, req *RequestQuery) (*ResponseQuery, error) {
 	res := app.app.Query(*req)
 	return &res, nil
