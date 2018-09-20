@@ -23,7 +23,7 @@ func createTestGroupWithHeadSizeLimit(t *testing.T, headSizeLimit int64) *Group 
 	require.NoError(t, err, "Error creating dir")
 
 	headPath := testDir + "/myfile"
-	g, err := OpenGroup(headPath, WithHeadSizeLimit(headSizeLimit))
+	g, err := OpenGroup(headPath, WithGroupHeadSizeLimit(headSizeLimit))
 	require.NoError(t, err, "Error opening Group")
 	require.NotEqual(t, nil, g, "Failed to create Group")
 

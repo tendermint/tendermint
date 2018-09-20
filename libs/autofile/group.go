@@ -112,15 +112,15 @@ func WithGroupCheckDuration(duration time.Duration) func(*Group) {
 	}
 }
 
-// WithHeadSizeLimit allows you to overwrite default head size limit - 10MB.
-func WithHeadSizeLimit(limit int64) func(*Group) {
+// WithGroupHeadSizeLimit allows you to overwrite default head size limit - 10MB.
+func WithGroupHeadSizeLimit(limit int64) func(*Group) {
 	return func(g *Group) {
 		g.headSizeLimit = limit
 	}
 }
 
-// WithTotalSizeLimit allows you to overwrite default total size limit of the group - 1GB.
-func WithTotalSizeLimit(limit int64) func(*Group) {
+// WithGroupTotalSizeLimit allows you to overwrite default total size limit of the group - 1GB.
+func WithGroupTotalSizeLimit(limit int64) func(*Group) {
 	return func(g *Group) {
 		g.totalSizeLimit = limit
 	}
@@ -148,13 +148,6 @@ func (g *Group) Close() {
 	g.mtx.Lock()
 	_ = g.Head.closeFile()
 	g.mtx.Unlock()
-}
-
-// GroupCheckDuration returns the current groupCheckDuration.
-func (g *Group) GroupCheckDuration() time.Duration {
-	g.mtx.Lock()
-	defer g.mtx.Unlock()
-	return g.groupCheckDuration
 }
 
 // HeadSizeLimit returns the current head size limit.
