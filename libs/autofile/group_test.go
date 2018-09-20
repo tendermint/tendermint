@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -23,11 +24,9 @@ func createTestGroupWithHeadSizeLimit(t *testing.T, headSizeLimit int64) *Group 
 	require.NoError(t, err, "Error creating dir")
 
 	headPath := testDir + "/myfile"
-	g, err := OpenGroup(headPath)
+	g, err := OpenGroup(headPath, autofile.SetHeadSizeLimit(headSizeLimit))
 	require.NoError(t, err, "Error opening Group")
 	require.NotEqual(t, nil, g, "Failed to create Group")
-
-	g.SetHeadSizeLimit(headSizeLimit)
 
 	return g
 }

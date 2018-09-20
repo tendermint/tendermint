@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/libs/autofile"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
@@ -29,17 +30,15 @@ func TestWALTruncate(t *testing.T) {
 
 	walFile := filepath.Join(walDir, "wal")
 
-	wal, err := NewWAL(walFile)
+	//this magic number 4K can truncate the content when RotateFile. defaultHeadSizeLimit(10M) is hard to simulate.
+	//this magic number 1 * time.Millisecond make RotateFile check frequently. defaultGroupCheckDuration(5s) is hard to simulate.
+	wal, err := NewWAL(walFile, autofile.SetHeadSizeLimit(4096), autofile.SetGroupCheckDuration(1*time.Millisecond))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	//this magic number 4K can truncate the content when RotateFile. defaultHeadSizeLimit(10M) is hard to simulate.
-	wal.Group().SetHeadSizeLimit(4096)
-	//this magic number 1 * time.Millisecond make RotateFile check frequently. defaultGroupCheckDuration(5s) is hard to simulate.
-	wal.Group().SetGroupCheckDuration(1 * time.Millisecond)
-
 	wal.Start()
+	defer wal.Stop()
 
 	//60 block's size nearly 70K, greater than group's headBuf size(4096 * 10), when headBuf is full, truncate content will Flush to the file.
 	//at this time, RotateFile is called, truncate content exist in each file.

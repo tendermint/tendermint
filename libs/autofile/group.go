@@ -74,7 +74,7 @@ type Group struct {
 
 // OpenGroup creates a new Group with head at headPath. It returns an error if
 // it fails to open head file.
-func OpenGroup(headPath string) (g *Group, err error) {
+func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err error) {
 	dir := path.Dir(headPath)
 	head, err := OpenAutoFile(headPath)
 	if err != nil {
@@ -92,12 +92,38 @@ func OpenGroup(headPath string) (g *Group, err error) {
 		minIndex:           0,
 		maxIndex:           0,
 	}
+
+	for _, option := range groupOptions {
+		option(g)
+	}
+
 	g.BaseService = *cmn.NewBaseService(nil, "Group", g)
 
 	gInfo := g.readGroupInfo()
 	g.minIndex = gInfo.MinIndex
 	g.maxIndex = gInfo.MaxIndex
 	return
+}
+
+// SetGroupCheckDuration allows you to overwrite default groupCheckDuration.
+func SetGroupCheckDuration(duration time.Duration) func(*Group) {
+	return func(g *Group) {
+		g.groupCheckDuration = duration
+	}
+}
+
+// SetHeadSizeLimit allows you to overwrite default head size limit - 10MB.
+func SetHeadSizeLimit(limit int64) func(*Group) {
+	return func(g *Group) {
+		g.headSizeLimit = limit
+	}
+}
+
+// SetTotalSizeLimit allows you to overwrite default total size limit of the group - 1GB.
+func SetTotalSizeLimit(limit int64) func(*Group) {
+	return func(g *Group) {
+		g.totalSizeLimit = limit
+	}
 }
 
 // OnStart implements Service by starting the goroutine that checks file and
@@ -124,13 +150,6 @@ func (g *Group) Close() {
 	g.mtx.Unlock()
 }
 
-// SetGroupCheckDuration allows you to overwrite default groupCheckDuration, this must call before Start().
-func (g *Group) SetGroupCheckDuration(duration time.Duration) {
-	g.mtx.Lock()
-	g.groupCheckDuration = duration
-	g.mtx.Unlock()
-}
-
 // GroupCheckDuration returns the current groupCheckDuration.
 func (g *Group) GroupCheckDuration() time.Duration {
 	g.mtx.Lock()
@@ -138,26 +157,11 @@ func (g *Group) GroupCheckDuration() time.Duration {
 	return g.groupCheckDuration
 }
 
-// SetHeadSizeLimit allows you to overwrite default head size limit - 10MB.
-func (g *Group) SetHeadSizeLimit(limit int64) {
-	g.mtx.Lock()
-	g.headSizeLimit = limit
-	g.mtx.Unlock()
-}
-
 // HeadSizeLimit returns the current head size limit.
 func (g *Group) HeadSizeLimit() int64 {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 	return g.headSizeLimit
-}
-
-// SetTotalSizeLimit allows you to overwrite default total size limit of the
-// group - 1GB.
-func (g *Group) SetTotalSizeLimit(limit int64) {
-	g.mtx.Lock()
-	g.totalSizeLimit = limit
-	g.mtx.Unlock()
 }
 
 // TotalSizeLimit returns total size limit of the group.
