@@ -647,7 +647,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		err := cs.tryAddVote(msg.Vote, peerID)
+		err = cs.tryAddVote(msg.Vote, peerID)
 		if err == ErrAddingVote {
 			// TODO: punish peer
 			// We probably don't want to stop the peer here. The vote does not
@@ -960,7 +960,6 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	return block, parts
 }
-
 
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
