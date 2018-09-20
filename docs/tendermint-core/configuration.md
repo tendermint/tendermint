@@ -30,7 +30,7 @@ moniker = "anonymous"
 # and verifying their commits
 fast_sync = true
 
-# Database backend: leveldb | memdb
+# Database backend: leveldb | memdb | cleveldb
 db_backend = "leveldb"
 
 # Database directory

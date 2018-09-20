@@ -24,7 +24,10 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 			Network:    "SOMENAME",
 			ListenAddr: "SOMEADDR",
 			Version:    "SOMEVER",
-			Other:      []string{"SOMESTRING", "OTHERSTRING"},
+			Other: p2p.NodeInfoOther{
+				AminoVersion: "SOMESTRING",
+				P2PVersion:   "OTHERSTRING",
+			},
 		},
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   []byte("SOMEBYTES"),
@@ -59,7 +62,10 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
 		Version:    "SOMEVER",
-		Other:      []string{"SOMESTRING", "OTHERSTRING"},
+		Other: p2p.NodeInfoOther{
+			AminoVersion: "SOMESTRING",
+			P2PVersion:   "OTHERSTRING",
+		},
 	}
 	b.StartTimer()
 
@@ -84,7 +90,10 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
 		Version:    "SOMEVER",
-		Other:      []string{"SOMESTRING", "OTHERSTRING"},
+		Other: p2p.NodeInfoOther{
+			AminoVersion: "SOMESTRING",
+			P2PVersion:   "OTHERSTRING",
+		},
 	}
 	b.StartTimer()
 

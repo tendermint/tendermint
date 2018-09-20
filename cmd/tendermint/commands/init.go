@@ -58,6 +58,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
 		genDoc.Validators = []types.GenesisValidator{{
+			Address: pv.GetPubKey().Address(),
 			PubKey: pv.GetPubKey(),
 			Power:  10,
 		}}
