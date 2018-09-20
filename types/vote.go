@@ -12,7 +12,7 @@ import (
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes = int64(200)
+	MaxVoteBytes int64 = 200
 )
 
 var (

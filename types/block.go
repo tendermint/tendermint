@@ -15,7 +15,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes = int64(511)
+	MaxHeaderBytes int64 = 511
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -24,7 +24,7 @@ const (
 	// 2 fields (2 embedded):               2 bytes
 	// Uvarint length of Data.Txs:          4 bytes
 	// Data.Txs field:                      1 byte
-	MaxAminoOverheadForBlock = int64(11)
+	MaxAminoOverheadForBlock int64 = 11
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -216,7 +216,7 @@ func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
-			"Negative MaxDataBytes. BlockSize.MaxBytes=%d is too small to accomodate header&lastCommit&evidence=%d",
+			"Negative MaxDataBytes. BlockSize.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
 			maxBytes,
 			-(maxDataBytes - maxBytes),
 		))
@@ -240,7 +240,7 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
-			"Negative MaxDataBytesUnknownEvidence. BlockSize.MaxBytes=%d is too small to accomodate header&lastCommit&evidence=%d",
+			"Negative MaxDataBytesUnknownEvidence. BlockSize.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
 			maxBytes,
 			-(maxDataBytes - maxBytes),
 		))
