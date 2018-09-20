@@ -1,4 +1,4 @@
-# Light client
+# Light Client
 
 A light client is a process that connects to the Tendermint Full Node(s) and then tries to verify the Merkle proofs
 about the blockchain application. In this document we describe mechanisms that ensures that the Tendermint light client
