@@ -9,7 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	testd "github.com/tendermint/tendermint/types/testdouble"
+	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestGenesisBad(t *testing.T) {
@@ -90,7 +91,7 @@ func TestGenesisSaveAs(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name())
 
-	genDoc := testd.RandomGenesisDoc()
+	genDoc := randomGenesisDoc()
 
 	// save
 	genDoc.SaveAs(tmpfile.Name())
@@ -113,6 +114,16 @@ func TestGenesisSaveAs(t *testing.T) {
 }
 
 func TestGenesisValidatorHash(t *testing.T) {
-	genDoc := testd.RandomGenesisDoc()
+	genDoc := randomGenesisDoc()
 	assert.NotEmpty(t, genDoc.ValidatorHash())
+}
+
+func randomGenesisDoc() *types.GenesisDoc {
+	pubkey := ed25519.GenPrivKey().PubKey()
+	return &types.GenesisDoc{
+		GenesisTime:     tmtime.Now(),
+		ChainID:         "abc",
+		Validators:      []types.GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
+		ConsensusParams: types.DefaultConsensusParams(),
+	}
 }
