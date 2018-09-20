@@ -11,7 +11,11 @@ BREAKING CHANGES:
   * [mempool] \#2310 Mempool tracks the `ResponseCheckTx.GasWanted` and enforces `ConsensusParams.BlockSize.MaxGas` on proposals.
 
 * Go API
-  * [libs/common] \#2431 Remove Word256 code in libs/common, due to lack of use
+  * [libs/common] \#2431 Remove Word256 due to lack of use
+  * [libs/common] \#2452 Remove the following functions due to lack of use:
+    * byteslice.go: cmn.IsZeros, cmn.RightPadBytes, cmn.LeftPadBytes, cmn.PrefixEndBytes
+    * strings.go: cmn.IsHex, cmn.StripHex
+    * int.go: Uint64Slice, all put/get int64 methods
 
 * Blockchain Protocol
 
@@ -21,6 +25,7 @@ BREAKING CHANGES:
 FEATURES:
 
 IMPROVEMENTS:
+- [libs/db] \#2371 Output error instead of panic when the given db_backend is not initialised (@bradyjoestar)
 - [mempool] [\#2399](https://github.com/tendermint/tendermint/issues/2399) Make mempool cache a proper LRU (@bradyjoestar)
 - [types] [\#1714](https://github.com/tendermint/tendermint/issues/1714) Add Address to GenesisValidator
 - [metrics] `consensus.block_interval_metrics` is now gauge, not histogram (you will be able to see spikes, if any)

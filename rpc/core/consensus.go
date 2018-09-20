@@ -261,3 +261,49 @@ func ConsensusState() (*ctypes.ResultConsensusState, error) {
 	bz, err := consensusState.GetRoundStateSimpleJSON()
 	return &ctypes.ResultConsensusState{bz}, err
 }
+
+// Get the consensus parameters  at the given block height.
+// If no height is provided, it will fetch the current consensus params.
+//
+// ```shell
+// curl 'localhost:26657/consensus_params'
+// ```
+//
+// ```go
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// state, err := client.ConsensusParams()
+// ```
+//
+// The above command returns JSON structured like this:
+//
+// ```json
+// {
+//   "jsonrpc": "2.0",
+//   "id": "",
+//   "result": {
+//     "block_height": "1",
+//     "consensus_params": {
+//       "block_size_params": {
+//         "max_txs_bytes": "22020096",
+//         "max_gas": "-1"
+//       },
+//       "evidence_params": {
+//         "max_age": "100000"
+//       }
+//     }
+//   }
+// }
+// ```
+func ConsensusParams(heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
+	height := consensusState.GetState().LastBlockHeight + 1
+	height, err := getHeight(height, heightPtr)
+	if err != nil {
+		return nil, err
+	}
+
+	consensusparams, err := sm.LoadConsensusParams(stateDB, height)
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultConsensusParams{BlockHeight: height, ConsensusParams: consensusparams}, nil
+}
