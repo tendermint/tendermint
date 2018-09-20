@@ -75,7 +75,7 @@ func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
 	}
 	res, err := blockExec.proxyApp.CheckBlockSync(abci.RequestCheckBlock{Block: &abci.Block{Txs: txs}})
 	if err != nil {
-		return err
+		return nil
 	}
 	if res == nil || res.Code != abci.CodeTypeOK {
 		return errors.Errorf("block %v check failed. response: %v", block, res)
