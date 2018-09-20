@@ -1,6 +1,9 @@
 package db
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 //----------------------------------------
 // Main entry
@@ -28,7 +31,18 @@ func registerDBCreator(backend DBBackendType, creator dbCreator, force bool) {
 }
 
 func NewDB(name string, backend DBBackendType, dir string) DB {
-	db, err := backends[backend](name, dir)
+	dbCreator, ok := backends[backend]
+
+	if !ok {
+		var keys []string
+		for k, _ := range backends {
+			keys = append(keys, string(k))
+		}
+		panic(fmt.Sprintf("Unknown db_backend %s, expected either %s", backend, strings.Join(keys, " or ")))
+	}
+
+	db, err := dbCreator(name, dir)
+
 	if err != nil {
 		panic(fmt.Sprintf("Error initializing DB: %v", err))
 	}
