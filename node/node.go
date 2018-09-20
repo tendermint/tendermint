@@ -98,16 +98,17 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 }
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
+type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
+	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(config.Namespace), p2p.PrometheusMetrics(config.Namespace), mempl.PrometheusMetrics(config.Namespace)
+			return cs.PrometheusMetrics(config.Namespace), p2p.PrometheusMetrics(config.Namespace),
+			mempl.PrometheusMetrics(config.Namespace), sm.PrometheusMetrics(config.Namespace)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics()
+		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
 	}
 }
 
@@ -245,7 +246,7 @@ func NewNode(config *cfg.Config,
 		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
 	}
 
-	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider()
 
 	// Make MempoolReactor
 	mempool := mempl.NewMempool(
@@ -289,7 +290,7 @@ func NewNode(config *cfg.Config,
 
 	blockExecLogger := logger.With("module", "state")
 	// make block executor for consensus and blockchain reactors to execute blocks
-	blockExec := sm.NewBlockExecutor(stateDB, blockExecLogger, proxyApp.Consensus(), mempool, evidencePool)
+	blockExec := sm.NewBlockExecutor(stateDB, blockExecLogger, proxyApp.Consensus(), mempool, evidencePool, sm.BlockExecutorWithMetrics(smMetrics))
 
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
