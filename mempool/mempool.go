@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"container/list"
 	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -12,13 +11,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -386,8 +385,6 @@ func (mem *Mempool) notifyTxsAvailable() {
 // If both maxes are negative, there is no cap on the size of all returned
 // transactions (~ all available transactions).
 func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
-	var buf [binary.MaxVarintLen64]byte
-
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -405,8 +402,7 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		// Check total size requirement
-		// amino.UvarintSize is not used here because it won't be possible to reuse buf
-		aminoOverhead := int64(binary.PutUvarint(buf[:], uint64(len(memTx.tx))))
+		aminoOverhead := int64(amino.UvarintSize(uint64(len(memTx.tx))))
 		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
 			return txs
 		}
