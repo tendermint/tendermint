@@ -15,8 +15,8 @@ BREAKING CHANGES:
   * \#2452 Remove the following methods from libs/common due to lack of use:
     * byteslice.go: cmn.IsZeros, cmn.RightPadBytes, cmn.LeftPadBytes, cmn.PrefixEndBytes
     * strings.go: cmn.IsHex, cmn.StripHex
-    * int.go: Uint64Slice
-    
+    * int.go: Uint64Slice, all put/get int64 methods
+
 * Blockchain Protocol
 
 * P2P Protocol
