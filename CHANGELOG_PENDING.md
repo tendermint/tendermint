@@ -12,7 +12,11 @@ BREAKING CHANGES:
 * Go API
   * \#2310 Mempool.ReapMaxBytes -> Mempool.ReapMaxBytesMaxGas
   * \#2431 Remove Word256 code in libs/common, due to lack of use
-  * \#2452 Remove cmn.IsZeros, cmn.RightPadBytes, cmn.LeftPadBytes, cmn.PrefixEndBytes
+  * \#2452 Remove the following methods from libs/common due to lack of use:
+    * byteslice.go: cmn.IsZeros, cmn.RightPadBytes, cmn.LeftPadBytes, cmn.PrefixEndBytes
+    * strings.go: cmn.IsHex, cmn.StripHex
+    * int.go: Uint64Slice
+    
 * Blockchain Protocol
 
 * P2P Protocol
