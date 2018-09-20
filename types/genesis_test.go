@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -118,12 +117,12 @@ func TestGenesisValidatorHash(t *testing.T) {
 	assert.NotEmpty(t, genDoc.ValidatorHash())
 }
 
-func randomGenesisDoc() *types.GenesisDoc {
+func randomGenesisDoc() *GenesisDoc {
 	pubkey := ed25519.GenPrivKey().PubKey()
-	return &types.GenesisDoc{
+	return &GenesisDoc{
 		GenesisTime:     tmtime.Now(),
 		ChainID:         "abc",
-		Validators:      []types.GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
-		ConsensusParams: types.DefaultConsensusParams(),
+		Validators:      []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
+		ConsensusParams: DefaultConsensusParams(),
 	}
 }
