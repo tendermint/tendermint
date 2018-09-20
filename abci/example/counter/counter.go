@@ -81,9 +81,9 @@ func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) CheckBlock(block types.Request_CheckBlock) types.ResponseCheckBlock {
+func (app *CounterApplication) CheckBlock(req types.RequestCheckBlock) types.ResponseCheckBlock {
 	if app.serial {
-		for _, tx := range block.CheckBlock.Block.Txs {
+		for _, tx := range req.Block.Txs {
 			if len(tx) > 8 {
 				return types.ResponseCheckBlock{
 					Code: code.CodeTypeEncodingError,
