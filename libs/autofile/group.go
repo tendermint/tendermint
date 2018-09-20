@@ -303,6 +303,12 @@ func (g *Group) RotateFile() {
 		panic(err)
 	}
 
+	//make sure head file exist, there is a window time between rename and next write
+	//when NewReader(maxIndex), lead to "open /tmp/wal058868562/wal: no such file or directory"
+	if err := g.Head.openFile(); err != nil {
+		panic(err)
+	}
+
 	g.maxIndex++
 }
 
