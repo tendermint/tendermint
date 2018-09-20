@@ -1,7 +1,7 @@
 package types // nolint: goimports
 
 import (
-	context "golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 // Application is an interface that enables any finite, deterministic state machine
@@ -18,7 +18,8 @@ type Application interface {
 	CheckTx(tx []byte) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain with validators and other info from TendermintCore
+	InitChain(RequestInitChain) ResponseInitChain // Initialize blockchain with validators and other info from TendermintCore
+	CheckBlock(RequestCheckBlock) ResponseCheckBlock
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
 	DeliverTx(tx []byte) ResponseDeliverTx           // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
@@ -51,6 +52,10 @@ func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
 
 func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
 	return ResponseCheckTx{Code: CodeTypeOK}
+}
+
+func (BaseApplication) CheckBlock(block RequestCheckBlock) ResponseCheckBlock {
+	return ResponseCheckBlock{Code: CodeTypeOK}
 }
 
 func (BaseApplication) Commit() ResponseCommit {
@@ -109,6 +114,11 @@ func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx
 
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
 	res := app.app.CheckTx(req.Tx)
+	return &res, nil
+}
+
+func (app *GRPCApplication) CheckBlock(ctx context.Context, req *RequestCheckBlock) (*ResponseCheckBlock, error) {
+	res := app.app.CheckBlock(*req)
 	return &res, nil
 }
 

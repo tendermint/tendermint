@@ -3,19 +3,15 @@
 Special thanks to external contributors with PRs included in this release:
 
 BREAKING CHANGES:
-
-* CLI/RPC/Config
-
-* Apps
-  [rpc] /status `result.node_info.other` became a map #[2391](https://github.com/tendermint/tendermint/issues/2391)
-
-* Go API
-  * \#2310 Mempool.ReapMaxBytes -> Mempool.ReapMaxBytesMaxGas
-  * \#2431 Remove Word256 code in libs/common, due to lack of use
-* Blockchain Protocol
-
-* P2P Protocol
-
+- [types] Header ...
+- [state] Add NextValidatorSet, changes on-disk representation of state
+- [state] Validator set changes are delayed by one block (!)
+- [lite] Complete refactor of the package
+- [rpc] `/commit` returns a `signed_header` field instead of everything being
+  top-level
+- [abci] Added address of the original proposer of the block to Header.
+- [abci] Change ABCI Header to match Tendermint exactly
+- [common] SplitAndTrim was deleted
 
 FEATURES:
   * \#2310 Mempool is now aware of the MaxGas requirement

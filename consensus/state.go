@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	fail "github.com/ebuchman/fail-test"
+	"github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -81,7 +81,7 @@ type ConsensusState struct {
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.RWMutex
+	mtx   sync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
@@ -961,7 +961,6 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	return block, parts
 }
 
-
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
 // Enter: any +2/3 prevotes for future round.
@@ -1451,9 +1450,17 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 			&cs.ProposalBlock,
 			int64(cs.state.ConsensusParams.BlockSize.MaxBytes),
 		)
-		if err != nil {
+		if err != nil || cs.ProposalBlock == nil {
 			return true, err
 		}
+		if err = cs.blockExec.CheckBlock(cs.ProposalBlock); err != nil {
+			cs.Logger.Error("Received an invalid proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash(), "peer", peerID)
+			cs.Proposal = nil
+			cs.ProposalBlock = nil
+			cs.ProposalBlockParts = nil
+			return false, nil
+		}
+
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 
