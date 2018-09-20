@@ -41,7 +41,7 @@ type Metrics struct {
 	TotalTxs metrics.Gauge
 	// The latest block height.
 	CommittedHeight metrics.Gauge
-	// Whether or not a node is fast synced. 1 if yes, 0 if no.
+	// Whether or not a node is fast syncing. 1 if yes, 0 if no.
 	FastSyncing metrics.Gauge
 }
 
@@ -132,8 +132,8 @@ func PrometheusMetrics(namespace string) *Metrics {
 		FastSyncing: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "catching_up",
-			Help:      "Whether or not a node is synced. 0 if syncing, 1 if synced.",
+			Name:      "fast_syncing",
+			Help:      "Whether or not a node is fast syncing. 1 if yes, 0 if no.",
 		}, []string{}),
 	}
 }

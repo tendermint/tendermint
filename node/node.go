@@ -295,13 +295,13 @@ func NewNode(config *cfg.Config,
 		blockStore,
 		mempool,
 		evidencePool,
-		cs.StateWithMetrics(csMetrics),
+		cs.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ConRWithMetrics(csMetrics))
+	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 
 	eventBus := types.NewEventBus()

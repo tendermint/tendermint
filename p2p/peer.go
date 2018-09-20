@@ -13,7 +13,7 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-const MetricsTickerDuration = 10 * time.Second
+const metricsTickerDuration = 10 * time.Second
 
 var testIPSuffix uint32
 
@@ -123,7 +123,7 @@ func newPeer(
 		nodeInfo:      nodeInfo,
 		channels:      nodeInfo.Channels,
 		Data:          cmn.NewCMap(),
-		metricsTicker: time.NewTicker(MetricsTickerDuration),
+		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 	}
 
@@ -163,7 +163,7 @@ func (p *peer) OnStart() error {
 		return err
 	}
 
-	go p.metricsCollector()
+	go p.metricsReporter()
 	return nil
 }
 
@@ -343,15 +343,13 @@ func (p *peer) String() string {
 	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
 }
 
-func PeerWithMetrics(metrics *Metrics) PeerOption {
+func PeerMetrics(metrics *Metrics) PeerOption {
 	return func(p *peer) {
-		if metrics != nil {
-			p.metrics = metrics
-		}
+		p.metrics = metrics
 	}
 }
 
-func (p *peer) metricsCollector() {
+func (p *peer) metricsReporter() {
 	for {
 		select {
 		case <-p.metricsTicker.C:

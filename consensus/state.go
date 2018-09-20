@@ -120,8 +120,8 @@ type ConsensusState struct {
 	metrics *Metrics
 }
 
-// CSOption sets an optional parameter on the ConsensusState.
-type CSOption func(*ConsensusState)
+// StateOption sets an optional parameter on the ConsensusState.
+type StateOption func(*ConsensusState)
 
 // NewConsensusState returns a new ConsensusState.
 func NewConsensusState(
@@ -131,7 +131,7 @@ func NewConsensusState(
 	blockStore sm.BlockStore,
 	mempool sm.Mempool,
 	evpool sm.EvidencePool,
-	options ...CSOption,
+	options ...StateOption,
 ) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
@@ -180,8 +180,8 @@ func (cs *ConsensusState) SetEventBus(b *types.EventBus) {
 	cs.blockExec.SetEventBus(b)
 }
 
-// StateWithMetrics sets the metrics.
-func StateWithMetrics(metrics *Metrics) CSOption {
+// StateMetrics sets the metrics.
+func StateMetrics(metrics *Metrics) StateOption {
 	return func(cs *ConsensusState) { cs.metrics = metrics }
 }
 

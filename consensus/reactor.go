@@ -46,17 +46,17 @@ type ConsensusReactor struct {
 	metrics *Metrics
 }
 
-type ROption func(*ConsensusReactor)
+type ReactorOption func(*ConsensusReactor)
 
 // NewConsensusReactor returns a new ConsensusReactor with the given
 // consensusState.
-func NewConsensusReactor(consensusState *ConsensusState, fastSync bool, options ...ROption) *ConsensusReactor {
+func NewConsensusReactor(consensusState *ConsensusState, fastSync bool, options ...ReactorOption) *ConsensusReactor {
 	conR := &ConsensusReactor{
 		conS:     consensusState,
 		fastSync: fastSync,
 		metrics: NopMetrics(),
 	}
-	conR.setFastSyncing()
+	conR.updateFastSyncingMetric()
 	conR.BaseReactor = *p2p.NewBaseReactor("ConsensusReactor", conR)
 
 	for _, option := range options {
@@ -826,11 +826,7 @@ func (conR *ConsensusReactor) StringIndented(indent string) string {
 	return s
 }
 
-func (conR *ConsensusReactor) setFastSyncing() {
-	if conR.metrics == nil {
-		return
-	}
-
+func (conR *ConsensusReactor) updateFastSyncingMetric() {
 	var fastSyncing float64
 	if conR.fastSync {
 		fastSyncing = 1
@@ -840,8 +836,8 @@ func (conR *ConsensusReactor) setFastSyncing() {
 	conR.metrics.FastSyncing.Set(fastSyncing)
 }
 
-// ConRWithMetrics sets the metrics
-func ConRWithMetrics(metrics *Metrics) ROption {
+// ReactorMetrics sets the metrics
+func ReactorMetrics(metrics *Metrics) ReactorOption {
 	return func(conR *ConsensusReactor) { conR.metrics = metrics }
 }
 

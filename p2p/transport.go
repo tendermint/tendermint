@@ -408,7 +408,7 @@ func (mt *MultiplexTransport) wrapPeer(
 		cfg.reactorsByCh,
 		cfg.chDescs,
 		cfg.onPeerError,
-		PeerWithMetrics(cfg.metrics),
+		PeerMetrics(cfg.metrics),
 	)
 
 	// Wait for Peer to Stop so we can cleanup.
