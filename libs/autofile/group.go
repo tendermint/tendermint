@@ -105,22 +105,22 @@ func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err err
 	return
 }
 
-// WithGroupCheckDuration allows you to overwrite default groupCheckDuration.
-func WithGroupCheckDuration(duration time.Duration) func(*Group) {
+// GroupCheckDuration allows you to overwrite default groupCheckDuration.
+func GroupCheckDuration(duration time.Duration) func(*Group) {
 	return func(g *Group) {
 		g.groupCheckDuration = duration
 	}
 }
 
-// WithGroupHeadSizeLimit allows you to overwrite default head size limit - 10MB.
-func WithGroupHeadSizeLimit(limit int64) func(*Group) {
+// GroupHeadSizeLimit allows you to overwrite default head size limit - 10MB.
+func GroupHeadSizeLimit(limit int64) func(*Group) {
 	return func(g *Group) {
 		g.headSizeLimit = limit
 	}
 }
 
-// WithGroupTotalSizeLimit allows you to overwrite default total size limit of the group - 1GB.
-func WithGroupTotalSizeLimit(limit int64) func(*Group) {
+// GroupTotalSizeLimit allows you to overwrite default total size limit of the group - 1GB.
+func GroupTotalSizeLimit(limit int64) func(*Group) {
 	return func(g *Group) {
 		g.totalSizeLimit = limit
 	}

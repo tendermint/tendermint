@@ -32,7 +32,7 @@ func TestWALTruncate(t *testing.T) {
 
 	//this magic number 4K can truncate the content when RotateFile. defaultHeadSizeLimit(10M) is hard to simulate.
 	//this magic number 1 * time.Millisecond make RotateFile check frequently. defaultGroupCheckDuration(5s) is hard to simulate.
-	wal, err := NewWAL(walFile, autofile.WithGroupHeadSizeLimit(4096), autofile.WithGroupCheckDuration(1*time.Millisecond))
+	wal, err := NewWAL(walFile, autofile.GroupHeadSizeLimit(4096), autofile.GroupCheckDuration(1*time.Millisecond))
 	if err != nil {
 		t.Fatal(err)
 	}
