@@ -14,7 +14,7 @@ type AppConnConsensus interface {
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 
-	CheckTxAsync(tx []byte) *abcicli.ReqRes
+	CheckBlockSync(block types.RequestCheckBlock) (*types.ResponseCheckBlock, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(tx []byte) *abcicli.ReqRes
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
@@ -64,6 +64,10 @@ func (app *appConnConsensus) Error() error {
 
 func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	return app.appConn.InitChainSync(req)
+}
+
+func (app *appConnConsensus) CheckBlockSync(req types.RequestCheckBlock) (*types.ResponseCheckBlock, error) {
+	return app.appConn.CheckBlockSync(req)
 }
 
 func (app *appConnConsensus) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {

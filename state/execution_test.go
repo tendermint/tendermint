@@ -367,6 +367,10 @@ func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{}
 }
 
+func (app *testApp) CheckBlock(req abci.RequestCheckBlock) abci.ResponseCheckBlock {
+	return abci.ResponseCheckBlock{}
+}
+
 func (app *testApp) Commit() abci.ResponseCommit {
 	return abci.ResponseCommit{}
 }

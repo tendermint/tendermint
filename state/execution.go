@@ -66,13 +66,16 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 //CheckTxs checks all txs in this block through calling checkTx in ProxyApp.
 //All txs should be checked ok, otherwise return err
 func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
-	// check txs of block.
+	txs := make([][]byte, len(block.Txs), len(block.Txs))
 	for _, tx := range block.Txs {
-		reqRes := blockExec.proxyApp.CheckTxAsync(tx)
-		reqRes.Wait()
-		if reqRes.Response == nil || reqRes.Response.GetCheckTx() == nil || reqRes.Response.GetCheckTx().Code != abci.CodeTypeOK {
-			return errors.Errorf("tx %v check failed. response: %v", tx, reqRes.Response)
-		}
+		txs = append(txs, tx)
+	}
+	res, err := blockExec.proxyApp.CheckBlockSync(abci.RequestCheckBlock{Block: &abci.Block{Txs: txs}})
+	if err != nil {
+		return err
+	}
+	if res == nil || res.Code != abci.CodeTypeOK {
+		return errors.Errorf("block %v check failed. response: %v", block, res)
 	}
 	return nil
 }

@@ -36,6 +36,7 @@ message Request {
     RequestDeliverTx deliver_tx = 19;
     RequestEndBlock end_block = 11;
     RequestCommit commit = 12;
+    RequestCheckBlock check_block = 13;
   }
 }
 
@@ -83,6 +84,10 @@ message RequestCheckTx {
   bytes tx = 1;
 }
 
+message RequestCheckBlock {
+  Block block = 1;
+}
+
 message RequestDeliverTx {
   bytes tx = 1;
 }
@@ -111,6 +116,7 @@ message Response {
     ResponseDeliverTx deliver_tx = 10;
     ResponseEndBlock end_block = 11;
     ResponseCommit commit = 12;
+    ResponseCheckBlock check_block = 13;
   }
 }
 
@@ -170,6 +176,12 @@ message ResponseCheckTx {
   int64 gas_wanted  = 5;
   int64 gas_used = 6;
   repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+}
+
+message ResponseCheckBlock {
+  uint32 code = 1;
+  bytes data = 2;
+  string log = 3; // nondeterministic
 }
 
 message ResponseDeliverTx {
@@ -257,6 +269,10 @@ message BlockID {
   PartSetHeader parts_header = 2 [(gogoproto.nullable)=false];
 }
 
+message Block {
+  repeated bytes txs = 1;
+}
+
 message PartSetHeader {
   int32 total = 1;
   bytes hash = 2;
@@ -304,6 +320,7 @@ service ABCIApplication {
   rpc SetOption(RequestSetOption) returns (ResponseSetOption);
   rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
+  rpc CheckBlock(RequestCheckBlock) returns (ResponseCheckBlock);
   rpc Query(RequestQuery) returns (ResponseQuery);
   rpc Commit(RequestCommit) returns (ResponseCommit);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);

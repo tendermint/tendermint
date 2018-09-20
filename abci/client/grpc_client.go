@@ -204,6 +204,15 @@ func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_InitChain{res}})
 }
 
+func (cli *grpcClient) CheckBlockAsync(params types.RequestCheckBlock) *ReqRes {
+	req := types.ToRequestCheckBlock(params)
+	res, err := cli.client.CheckBlock(context.Background(), req.GetCheckBlock(), grpc.FailFast(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckBlock{res}})
+}
+
 func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
 	req := types.ToRequestBeginBlock(params)
 	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.FailFast(true))
@@ -288,6 +297,11 @@ func (cli *grpcClient) CommitSync() (*types.ResponseCommit, error) {
 func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (*types.ResponseInitChain, error) {
 	reqres := cli.InitChainAsync(params)
 	return reqres.Response.GetInitChain(), cli.Error()
+}
+
+func (cli *grpcClient) CheckBlockSync(params types.RequestCheckBlock) (*types.ResponseCheckBlock, error) {
+	reqres := cli.CheckBlockAsync(params)
+	return reqres.Response.GetCheckBlock(), cli.Error()
 }
 
 func (cli *grpcClient) BeginBlockSync(params types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {

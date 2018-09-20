@@ -105,6 +105,12 @@ func ToRequestCheckTx(tx []byte) *Request {
 	}
 }
 
+func ToRequestCheckBlock(req RequestCheckBlock) *Request {
+	return &Request{
+		Value: &Request_CheckBlock{&req},
+	}
+}
+
 func ToRequestCommit() *Request {
 	return &Request{
 		Value: &Request_Commit{&RequestCommit{}},

@@ -81,6 +81,27 @@ func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
+func (app *CounterApplication) CheckBlock(block types.Request_CheckBlock) types.ResponseCheckBlock {
+	if app.serial {
+		for _, tx := range block.CheckBlock.Block.Txs {
+			if len(tx) > 8 {
+				return types.ResponseCheckBlock{
+					Code: code.CodeTypeEncodingError,
+					Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(tx))}
+			}
+			tx8 := make([]byte, 8)
+			copy(tx8[len(tx8)-len(tx):], tx)
+			txValue := binary.BigEndian.Uint64(tx8)
+			if txValue < uint64(app.txCount) {
+				return types.ResponseCheckBlock{
+					Code: code.CodeTypeBadNonce,
+					Log:  fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)}
+			}
+		}
+	}
+	return types.ResponseCheckBlock{Code: code.CodeTypeOK}
+}
+
 func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
 	app.hashCount++
 	if app.txCount == 0 {
