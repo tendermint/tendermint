@@ -3,7 +3,7 @@
 ## Context
 
 Currently, the messages exchanged between tendermint and a (potentially remote) signer/validator, 
-namely votes, proposals, and hearbeats, are encoded as a JSON string 
+namely votes, proposals, and heartbeats, are encoded as a JSON string 
 (e.g., via `Vote.SignBytes(...)`) and then 
 signed . JSON encoding is sub-optimal for both, hardware wallets 
 and for usage in ethereum smart contracts. Both is laid down in detail in [issue#1622].  
@@ -53,7 +53,7 @@ SignedXReply {
 
 TODO: Alternatively, the type `X` might directly include the signature. A lot of places expect a vote with a 
 signature and do not necessarily deal with "Replies".
-Still exploring what would work best her. 
+Still exploring what would work best here. 
 This would look like (exemplified using X = Vote):
 ```
 Vote {
