@@ -69,7 +69,7 @@ func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
 	if block == nil || len(block.Txs) == 0 {
 		return nil
 	}
-	txs := make([][]byte, len(block.Txs), len(block.Txs))
+	txs := make([][]byte, len(block.Txs))
 	for _, tx := range block.Txs {
 		txs = append(txs, tx)
 	}
