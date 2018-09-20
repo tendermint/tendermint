@@ -185,6 +185,12 @@ func ToResponseCheckTx(res ResponseCheckTx) *Response {
 	}
 }
 
+func ToResponseCheckBlock(res ResponseCheckBlock) *Response {
+	return &Response{
+		Value: &Response_CheckBlock{&res},
+	}
+}
+
 func ToResponseCommit(res ResponseCommit) *Response {
 	return &Response{
 		Value: &Response_Commit{&res},
