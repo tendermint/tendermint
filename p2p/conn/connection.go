@@ -724,7 +724,7 @@ func (ch *Channel) nextPacketMsg() PacketMsg {
 func (ch *Channel) writePacketMsgTo(w io.Writer) (n int64, err error) {
 	var packet = ch.nextPacketMsg()
 	n, err = cdc.MarshalBinaryWriter(w, packet)
-	ch.recentlySent += n
+	atomic.AddInt64(&ch.recentlySent, n)
 	return
 }
 
