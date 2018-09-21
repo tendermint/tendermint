@@ -961,7 +961,6 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	return block, parts
 }
 
-
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
 // Enter: any +2/3 prevotes for future round.

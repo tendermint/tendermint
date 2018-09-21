@@ -7,7 +7,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// Canonical* wraps the structs in types for amino encoding the them for use in SignBytes / the Signable interface.
+// Canonical* wraps the structs in types for amino encoding them for use in SignBytes / the Signable interface.
 
 // TimeFormat is used for generating the sigs
 const TimeFormat = time.RFC3339Nano

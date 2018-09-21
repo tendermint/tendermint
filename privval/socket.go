@@ -180,7 +180,7 @@ func (sc *SocketPV) SignProposal(
 		return err
 	}
 
-	*proposal = *res.(*SignProposalRequest).Proposal
+	*proposal = *res.(*SignedProposalReply).Proposal
 
 	return nil
 }
@@ -200,7 +200,7 @@ func (sc *SocketPV) SignHeartbeat(
 		return err
 	}
 
-	*heartbeat = *res.(*SignHeartbeatRequest).Heartbeat
+	*heartbeat = *res.(*SignedHeartbeatReply).Heartbeat
 
 	return nil
 }
@@ -472,10 +472,18 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 
 		case *SignProposalRequest:
 			err = rs.privVal.SignProposal(rs.chainID, r.Proposal)
-			res = &SignProposalRequest{r.Proposal}
+			if err != nil {
+				res = &SignedProposalReply{nil, &Error{0, err.Error()}}
+			} else {
+				res = &SignedProposalReply{r.Proposal, nil}
+			}
 		case *SignHeartbeatRequest:
 			err = rs.privVal.SignHeartbeat(rs.chainID, r.Heartbeat)
-			res = &SignHeartbeatRequest{r.Heartbeat}
+			if err != nil {
+				res = &SignedHeartbeatReply{nil, &Error{0, err.Error()}}
+			} else {
+				res = &SignedHeartbeatReply{r.Heartbeat, nil}
+			}
 		default:
 			err = fmt.Errorf("unknown msg: %v", r)
 		}
@@ -547,6 +555,7 @@ type SignedHeartbeatReply struct {
 
 // Error allows (remote) validators to include meaningful error descriptions in their reply.
 type Error struct {
+	// TODO(ismail): create an enum of known errors
 	Code        int
 	Description string
 }
