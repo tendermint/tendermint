@@ -1,0 +1,11 @@
+NOTE: this wiki is mostly deprecated and left for archival purposes. Please see the [documentation website](http://tendermint.readthedocs.io/en/master/) which is built from the [docs directory](https://github.com/tendermint/tendermint/tree/master/docs). Additional information about the specification can also be found in that directory.
+
+Tendermint is a high-performance blockchain consensus engine that enables you to run Byzantine fault tolerant applications, written in any programming language, on many machines spread across the globe, with strong security guarantees. Unlike most blockchains, which require you to use an opinionated scripting language or environment, Tendermint makes no assumptions about the application, giving developers the utmost freedom to express their business logic using the tools right for them. This makes it possible to use any programming language, and even to integrate with existing codebases like Bitcoind, go-ethereum, or otherwise.
+
+To achieve this flexibility, Tendermint and the application it powers run in separate UNIX processes, and speak to each other via a simple messaging protocol called [ABCI](https://github.com/tendermint/abci). See the [application developers guide](https://github.com/tendermint/tendermint/wiki/Application-Developers) for more on ABCI.
+
+In addition to flexibility for application developers, the main benefits of using Tendermint (as opposed to using Proof-of-Work systems or other BFT consensus engines), are those guaranteed by the [Tendermint consensus algorithm](Byzantine-Consensus-Algorithm):
+
+* __speed__: Tendermint blocks can commit to finality in the order of 1 second. Tendermint can handle transaction volume at the rate of 10,000 transactions per second for 250byte transactions.  The bottleneck is in the application.
+* __security__: Tendermint consensus is not just fault tolerant, it's optimally Byzantine fault-tolerant, with accountability.  When the blockchain forks, there is a way to determine liability.
+* __scalability__: Unlike PoW, running parallel blockchains does not diminish the speed or security of each chain, so sharding is trivial. The algorithm can scale to hundreds or thousands of validators (depending on desired block times), and will only get better over time with advances in bandwidth and cpu capacity.
