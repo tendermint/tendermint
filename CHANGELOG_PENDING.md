@@ -33,3 +33,4 @@ IMPROVEMENTS:
 
 BUG FIXES:
 - [node] \#2294 Delay starting node until Genesis time
+- [rpc] \#2460 StartHTTPAndTLSServer() now passes StartTLS() errors back to the caller rather than hanging forever.
