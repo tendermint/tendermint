@@ -13,15 +13,22 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
+
+// PreCheckFilterFunc is an optional filter to determine if a transaction should
+// be rejected. Invoked before CheckTx.
+type PreCheckFilterFunc func(types.Tx) bool
+
+// PostCheckFilterFunc is an optional filter executed after CheckTx and rejects
+// transaction if false is returned.
+type PostCheckFilterFunc func(types.Tx, *abci.ResponseCheckTx) bool
 
 /*
 
@@ -83,9 +90,9 @@ type Mempool struct {
 	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
 	// Filter mempool to only accept txs for which preCheckFilter(tx) returns true.
 	// This is called before each check tx
-	preCheckFilter func(types.Tx) bool
+	preCheckFilter PreCheckFilterFunc
 	// Filter mempool to only accept txs for which postCheckFilter(tx) returns true.
-	postCheckFilter func(types.Tx, *abci.ResponseCheckTx) bool
+	postCheckFilter PostCheckFilterFunc
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -147,13 +154,13 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 
 // WithPreCheckFilter sets a filter for the mempool to reject a tx if f(tx)
 // returns false. This is ran before CheckTx.
-func WithPreCheckFilter(f func(types.Tx) bool) MempoolOption {
+func WithPreCheckFilter(f PreCheckFilterFunc) MempoolOption {
 	return func(mem *Mempool) { mem.preCheckFilter = f }
 }
 
 // WithPostCheckFilter sets a filter for the mempool to reject a tx if f(tx)
 // returns false. This is ran after CheckTx.
-func WithPostCheckFilter(f func(types.Tx, *abci.ResponseCheckTx) bool) MempoolOption {
+func WithPostCheckFilter(f PostCheckFilterFunc) MempoolOption {
 	return func(mem *Mempool) { mem.postCheckFilter = f }
 }
 
