@@ -5,10 +5,13 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -59,4 +62,16 @@ func TestMaxOpenConnections(t *testing.T) {
 	if int(failed) >= attempts/2 {
 		t.Errorf("%d requests failed within %d attempts", failed, attempts)
 	}
+}
+
+func TestStartHTTPAndTLSServer(t *testing.T) {
+	// set up fixtures
+	listenerAddr := "tcp://0.0.0.0:0"
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
+
+	// test failure
+	gotListener, err := StartHTTPAndTLSServer(listenerAddr, mux, "", "", log.TestingLogger(), Config{MaxOpenConnections: 1})
+	require.Nil(t, gotListener)
+	require.IsType(t, (*os.PathError)(nil), err)
 }
