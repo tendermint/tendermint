@@ -160,6 +160,7 @@ func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
 		return err
 	}
 
+	// TODO(ismail): handle error if contained in Reply
 	*vote = *res.(*SignedVoteReply).Vote
 
 	return nil
@@ -179,7 +180,7 @@ func (sc *SocketPV) SignProposal(
 	if err != nil {
 		return err
 	}
-
+	// TODO(ismail): handle error if contained in Reply
 	*proposal = *res.(*SignedProposalReply).Proposal
 
 	return nil
@@ -199,7 +200,7 @@ func (sc *SocketPV) SignHeartbeat(
 	if err != nil {
 		return err
 	}
-
+	// TODO(ismail): handle error if contained in Reply
 	*heartbeat = *res.(*SignedHeartbeatReply).Heartbeat
 
 	return nil
