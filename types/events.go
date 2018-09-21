@@ -24,7 +24,7 @@ const (
 	EventTx                  = "Tx"
 	EventUnlock              = "Unlock"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
-	EventVote                = "Vote"
+	EventVote                = "UnsignedVote"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterConcrete(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader", nil)
 	cdc.RegisterConcrete(EventDataTx{}, "tendermint/event/Tx", nil)
 	cdc.RegisterConcrete(EventDataRoundState{}, "tendermint/event/RoundState", nil)
-	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
+	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/UnsignedVote", nil)
 	cdc.RegisterConcrete(EventDataProposalHeartbeat{}, "tendermint/event/ProposalHeartbeat", nil)
 	cdc.RegisterConcrete(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates", nil)
 	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
@@ -80,7 +80,7 @@ type EventDataRoundState struct {
 }
 
 type EventDataVote struct {
-	Vote *Vote
+	Vote *UnsignedVote
 }
 
 type EventDataString string

@@ -149,8 +149,8 @@ func (sc *SocketPV) getPubKey() (crypto.PubKey, error) {
 }
 
 // SignVote implements PrivValidator.
-func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
-	err := writeMsg(sc.conn, &SignVoteMsg{Vote: vote})
+func (sc *SocketPV) SignVote(chainID string, vote *types.UnsignedVote) (*types.SignedVote, error) {
+	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
 		return err
 	}
 
-	*vote = *res.(*SignVoteMsg).Vote
+	*vote = *res.(*SignVoteRequest).Vote
 
 	return nil
 }
@@ -462,9 +462,9 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 			var p crypto.PubKey
 			p = rs.privVal.GetPubKey()
 			res = &PubKeyMsg{p}
-		case *SignVoteMsg:
+		case *SignVoteRequest:
 			err = rs.privVal.SignVote(rs.chainID, r.Vote)
-			res = &SignVoteMsg{r.Vote}
+			res = &SignVoteRequest{r.Vote}
 		case *SignProposalMsg:
 			err = rs.privVal.SignProposal(rs.chainID, r.Proposal)
 			res = &SignProposalMsg{r.Proposal}
@@ -496,7 +496,8 @@ type SocketPVMsg interface{}
 func RegisterSocketPVMsg(cdc *amino.Codec) {
 	cdc.RegisterInterface((*SocketPVMsg)(nil), nil)
 	cdc.RegisterConcrete(&PubKeyMsg{}, "tendermint/socketpv/PubKeyMsg", nil)
-	cdc.RegisterConcrete(&SignVoteMsg{}, "tendermint/socketpv/SignVoteMsg", nil)
+	cdc.RegisterConcrete(&SignVoteRequest{}, "tendermint/socketpv/SignVoteRequest", nil)
+	cdc.RegisterConcrete(&SignedVoteReply{}, "tendermint/socketpv/SignVoteReply", nil)
 	cdc.RegisterConcrete(&SignProposalMsg{}, "tendermint/socketpv/SignProposalMsg", nil)
 	cdc.RegisterConcrete(&SignHeartbeatMsg{}, "tendermint/socketpv/SignHeartbeatMsg", nil)
 }
@@ -506,9 +507,16 @@ type PubKeyMsg struct {
 	PubKey crypto.PubKey
 }
 
-// SignVoteMsg is a PrivValidatorSocket message containing a vote.
-type SignVoteMsg struct {
-	Vote *types.Vote
+// SignVoteRequest is a PrivValidatorSocket message containing a vote.
+type SignVoteRequest struct {
+	Vote *types.UnsignedVote
+}
+
+// SignVoteReply is a PrivValidatorSocket message containing a signed vote and potential
+// errors returned by the (remote) signer.
+type SignedVoteReply struct {
+	Vote  *types.SignedVote
+	Error *types.Error
 }
 
 // SignProposalMsg is a PrivValidatorSocket message containing a Proposal.

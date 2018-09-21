@@ -33,7 +33,7 @@ func (err *ErrVoteConflictingVotes) Error() string {
 	return fmt.Sprintf("Conflicting votes from validator %v", err.PubKey.Address())
 }
 
-func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflictingVotes {
+func NewConflictingVoteError(val *Validator, voteA, voteB *SignedVote) *ErrVoteConflictingVotes {
 	return &ErrVoteConflictingVotes{
 		&DuplicateVoteEvidence{
 			PubKey: val.PubKey,
@@ -65,7 +65,7 @@ func IsVoteTypeValid(type_ byte) bool {
 type Address = cmn.HexBytes
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
-type Vote struct {
+type UnsignedVote struct {
 	ValidatorAddress Address   `json:"validator_address"`
 	ValidatorIndex   int       `json:"validator_index"`
 	Height           int64     `json:"height"`
@@ -76,14 +76,9 @@ type Vote struct {
 	ChainID          string    `json:"chain_id"`
 }
 
-type SignVoteRequest struct {
-	Vote Vote
-}
-
-type SignVoteReply struct {
-	Vote      Vote
+type SignedVote struct {
+	Vote      *UnsignedVote
 	Signature []byte
-	Err       Error
 }
 
 type Error struct {
@@ -91,7 +86,7 @@ type Error struct {
 	Description string
 }
 
-func (vote *Vote) SignBytes() []byte {
+func (vote *UnsignedVote) SignBytes() []byte {
 	bz, err := cdc.MarshalBinary(vote)
 	if err != nil {
 		panic(err)
@@ -99,14 +94,14 @@ func (vote *Vote) SignBytes() []byte {
 	return bz
 }
 
-func (vote *Vote) Copy() *Vote {
+func (vote *UnsignedVote) Copy() *UnsignedVote {
 	voteCopy := *vote
 	return &voteCopy
 }
 
-func (vote *Vote) String() string {
+func (vote *UnsignedVote) String() string {
 	if vote == nil {
-		return "nil-Vote"
+		return "nil-UnsignedVote"
 	}
 	var typeString string
 	switch vote.Type {
@@ -118,20 +113,24 @@ func (vote *Vote) String() string {
 		cmn.PanicSanity("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
+	return fmt.Sprintf("UnsignedVote{%v:%X %v/%02d/%v(%v) %X @ %s}",
 		vote.ValidatorIndex, cmn.Fingerprint(vote.ValidatorAddress),
 		vote.Height, vote.Round, vote.Type, typeString,
 		cmn.Fingerprint(vote.BlockID.Hash),
-		cmn.Fingerprint(vote.Signature),
+		// TODO(ismail): add corresponding
+		//cmn.Fingerprint(vote.Signature),
 		CanonicalTime(vote.Timestamp))
 }
 
-func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
-	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
+func (vote *SignedVote) Verify(pubKey crypto.PubKey) error {
+	if vote == nil || vote.Vote == nil {
+		return errors.New("called verify on nil/empty SignedVote")
+	}
+	if !bytes.Equal(pubKey.Address(), vote.Vote.ValidatorAddress) {
 		return ErrVoteInvalidValidatorAddress
 	}
 
-	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
+	if !pubKey.VerifyBytes(vote.Vote.SignBytes(), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil

@@ -60,7 +60,7 @@ type VoteSet struct {
 
 	mtx           sync.Mutex
 	votesBitArray *cmn.BitArray
-	votes         []*Vote                // Primary votes to share
+	votes         []*SignedVote          // Primary votes to share
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
 	maj23         *BlockID               // First 2/3 majority seen
 	votesByBlock  map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
@@ -79,7 +79,7 @@ func NewVoteSet(chainID string, height int64, round int, type_ byte, valSet *Val
 		type_:         type_,
 		valSet:        valSet,
 		votesBitArray: cmn.NewBitArray(valSet.Size()),
-		votes:         make([]*Vote, valSet.Size()),
+		votes:         make([]*SignedVote, valSet.Size()),
 		sum:           0,
 		maj23:         nil,
 		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
@@ -127,8 +127,8 @@ func (voteSet *VoteSet) Size() int {
 // Conflicting votes return added=*, err=ErrVoteConflictingVotes.
 // NOTE: vote should not be mutated after adding.
 // NOTE: VoteSet must not be nil
-// NOTE: Vote must not be nil
-func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
+// NOTE: UnsignedVote must not be nil
+func (voteSet *VoteSet) AddVote(vote *SignedVote) (added bool, err error) {
 	if voteSet == nil {
 		cmn.PanicSanity("AddVote() on nil VoteSet")
 	}
@@ -139,13 +139,13 @@ func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 }
 
 // NOTE: Validates as much as possible before attempting to verify the signature.
-func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
-	if vote == nil {
+func (voteSet *VoteSet) addVote(vote *SignedVote) (added bool, err error) {
+	if vote == nil || vote.Vote == nil {
 		return false, ErrVoteNil
 	}
-	valIndex := vote.ValidatorIndex
-	valAddr := vote.ValidatorAddress
-	blockKey := vote.BlockID.Key()
+	valIndex := vote.Vote.ValidatorIndex
+	valAddr := vote.Vote.ValidatorAddress
+	blockKey := vote.Vote.BlockID.Key()
 
 	// Ensure that validator index was set
 	if valIndex < 0 {
@@ -155,12 +155,12 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Make sure the step matches.
-	if (vote.Height != voteSet.height) ||
-		(vote.Round != voteSet.round) ||
-		(vote.Type != voteSet.type_) {
+	if (vote.Vote.Height != voteSet.height) ||
+		(vote.Vote.Round != voteSet.round) ||
+		(vote.Vote.Type != voteSet.type_) {
 		return false, errors.Wrapf(ErrVoteUnexpectedStep, "Got %d/%d/%d, expected %d/%d/%d",
 			voteSet.height, voteSet.round, voteSet.type_,
-			vote.Height, vote.Round, vote.Type)
+			vote.Vote.Height, vote.Vote.Round, vote.Vote.Type)
 	}
 
 	// Ensure that signer is a validator.
@@ -186,7 +186,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+	if err := vote.Verify(val.PubKey); err != nil {
 		return false, errors.Wrapf(err, "Failed to verify vote with ChainID %s and PubKey %s", voteSet.chainID, val.PubKey)
 	}
 
@@ -202,8 +202,8 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 }
 
 // Returns (vote, true) if vote exists for valIndex and blockKey.
-func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok bool) {
-	if existing := voteSet.votes[valIndex]; existing != nil && existing.BlockID.Key() == blockKey {
+func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *SignedVote, ok bool) {
+	if existing := voteSet.votes[valIndex]; existing != nil && existing.Vote != nil && existing.Vote.BlockID.Key() == blockKey {
 		return existing, true
 	}
 	if existing := voteSet.votesByBlock[blockKey].getByIndex(valIndex); existing != nil {
@@ -214,12 +214,12 @@ func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok b
 
 // Assumes signature is valid.
 // If conflicting vote exists, returns it.
-func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower int64) (added bool, conflicting *Vote) {
-	valIndex := vote.ValidatorIndex
+func (voteSet *VoteSet) addVerifiedVote(vote *SignedVote, blockKey string, votingPower int64) (added bool, conflicting *SignedVote) {
+	valIndex := vote.Vote.ValidatorIndex
 
 	// Already exists in voteSet.votes?
 	if existing := voteSet.votes[valIndex]; existing != nil {
-		if existing.BlockID.Equals(vote.BlockID) {
+		if existing.Vote.BlockID.Equals(vote.Vote.BlockID) {
 			cmn.PanicSanity("addVerifiedVote does not expect duplicate votes")
 		} else {
 			conflicting = existing
@@ -269,7 +269,7 @@ func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower
 	if origSum < quorum && quorum <= votesByBlock.sum {
 		// Only consider the first quorum reached
 		if voteSet.maj23 == nil {
-			maj23BlockID := vote.BlockID
+			maj23BlockID := vote.Vote.BlockID
 			voteSet.maj23 = &maj23BlockID
 			// And also copy votes over to voteSet.votes
 			for i, vote := range votesByBlock.votes {
@@ -346,7 +346,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *cmn.BitArray {
 }
 
 // NOTE: if validator has conflicting votes, returns "canonical" vote
-func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
+func (voteSet *VoteSet) GetByIndex(valIndex int) *SignedVote {
 	if voteSet == nil {
 		return nil
 	}
@@ -355,7 +355,7 @@ func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
 	return voteSet.votes[valIndex]
 }
 
-func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
+func (voteSet *VoteSet) GetByAddress(address []byte) *SignedVote {
 	if voteSet == nil {
 		return nil
 	}
@@ -433,10 +433,10 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 	defer voteSet.mtx.Unlock()
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
-		if vote == nil {
-			voteStrings[i] = "nil-Vote"
+		if vote == nil || vote.Vote == nil {
+			voteStrings[i] = "nil-UnsignedVote"
 		} else {
-			voteStrings[i] = vote.String()
+			voteStrings[i] = vote.Vote.String()
 		}
 	}
 	return fmt.Sprintf(`VoteSet{
@@ -498,10 +498,10 @@ func (voteSet *VoteSet) VoteStrings() []string {
 func (voteSet *VoteSet) voteStrings() []string {
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
-		if vote == nil {
+		if vote == nil || vote.Vote == nil {
 			voteStrings[i] = "nil-Vote"
 		} else {
-			voteStrings[i] = vote.String()
+			voteStrings[i] = vote.Vote.String()
 		}
 	}
 	return voteStrings
@@ -541,7 +541,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	}
 
 	// For every validator, get the precommit
-	votesCopy := make([]*Vote, len(voteSet.votes))
+	votesCopy := make([]*SignedVote, len(voteSet.votes))
 	copy(votesCopy, voteSet.votes)
 	return &Commit{
 		BlockID:    *voteSet.maj23,
@@ -560,7 +560,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 type blockVotes struct {
 	peerMaj23 bool          // peer claims to have maj23
 	bitArray  *cmn.BitArray // valIndex -> hasVote?
-	votes     []*Vote       // valIndex -> *Vote
+	votes     []*SignedVote // valIndex -> *UnsignedVote
 	sum       int64         // vote sum
 }
 
@@ -568,13 +568,13 @@ func newBlockVotes(peerMaj23 bool, numValidators int) *blockVotes {
 	return &blockVotes{
 		peerMaj23: peerMaj23,
 		bitArray:  cmn.NewBitArray(numValidators),
-		votes:     make([]*Vote, numValidators),
+		votes:     make([]*SignedVote, numValidators),
 		sum:       0,
 	}
 }
 
-func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower int64) {
-	valIndex := vote.ValidatorIndex
+func (vs *blockVotes) addVerifiedVote(vote *SignedVote, votingPower int64) {
+	valIndex := vote.Vote.ValidatorIndex
 	if existing := vs.votes[valIndex]; existing == nil {
 		vs.bitArray.SetIndex(valIndex, true)
 		vs.votes[valIndex] = vote
@@ -582,7 +582,7 @@ func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower int64) {
 	}
 }
 
-func (vs *blockVotes) getByIndex(index int) *Vote {
+func (vs *blockVotes) getByIndex(index int) *SignedVote {
 	if vs == nil {
 		return nil
 	}
@@ -598,6 +598,6 @@ type VoteSetReader interface {
 	Type() byte
 	Size() int
 	BitArray() *cmn.BitArray
-	GetByIndex(int) *Vote
+	GetByIndex(int) *UnsignedVote
 	IsCommit() bool
 }

@@ -70,8 +70,8 @@ func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 	}
 }
 
-func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
-	vote := &types.Vote{
+func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartSetHeader) (*types.UnsignedVote, error) {
+	vote := &types.UnsignedVote{
 		ValidatorIndex:   vs.Index,
 		ValidatorAddress: vs.PrivValidator.GetAddress(),
 		Height:           vs.Height,
@@ -85,7 +85,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSetHeader) *types.Vote {
+func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSetHeader) *types.UnsignedVote {
 	v, err := vs.signVote(voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
@@ -93,8 +93,8 @@ func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSe
 	return v
 }
 
-func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
-	votes := make([]*types.Vote, len(vss))
+func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.UnsignedVote {
+	votes := make([]*types.UnsignedVote, len(vss))
 	for i, vs := range vss {
 		votes[i] = signVote(vs, voteType, hash, header)
 	}
@@ -137,7 +137,7 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	return
 }
 
-func addVotes(to *ConsensusState, votes ...*types.Vote) {
+func addVotes(to *ConsensusState, votes ...*types.UnsignedVote) {
 	for _, vote := range votes {
 		to.peerMsgQueue <- msgInfo{Msg: &VoteMessage{vote}}
 	}
@@ -150,7 +150,7 @@ func signAddVotes(to *ConsensusState, voteType byte, hash []byte, header types.P
 
 func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
-	var vote *types.Vote
+	var vote *types.UnsignedVote
 	if vote = prevotes.GetByAddress(privVal.GetAddress()); vote == nil {
 		panic("Failed to find prevote from validator")
 	}
@@ -167,7 +167,7 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 
 func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
-	var vote *types.Vote
+	var vote *types.UnsignedVote
 	if vote = votes.GetByAddress(privVal.GetAddress()); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
@@ -178,7 +178,7 @@ func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorS
 
 func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
 	precommits := cs.Votes.Precommits(thisRound)
-	var vote *types.Vote
+	var vote *types.UnsignedVote
 	if vote = precommits.GetByAddress(privVal.GetAddress()); vote == nil {
 		panic("Failed to find precommit from validator")
 	}

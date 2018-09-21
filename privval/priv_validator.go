@@ -23,7 +23,7 @@ const (
 	stepPrecommit int8 = 3
 )
 
-func voteToStep(vote *types.Vote) int8 {
+func voteToStep(vote *types.UnsignedVote) int8 {
 	switch vote.Type {
 	case types.VoteTypePrevote:
 		return stepPrevote
@@ -150,7 +150,7 @@ func (pv *FilePV) Reset() {
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
+func (pv *FilePV) SignVote(chainID string, vote *types.UnsignedVote) error {
 	pv.mtx.Lock()
 	defer pv.mtx.Unlock()
 	if err := pv.signVote(chainID, vote); err != nil {
@@ -201,7 +201,7 @@ func (pv *FilePV) checkHRS(height int64, round int, step int8) (bool, error) {
 // signVote checks if the vote is good to sign and sets the vote signature.
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
-func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
+func (pv *FilePV) signVote(chainID string, vote *types.UnsignedVote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 	signBytes := vote.SignBytes(chainID)
 

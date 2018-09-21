@@ -359,7 +359,7 @@ func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
 
 	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventVote,
 		func(data tmevents.EventData) {
-			conR.broadcastHasVoteMessage(data.(*types.Vote))
+			conR.broadcastHasVoteMessage(data.(*types.UnsignedVote))
 		})
 
 	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventProposalHeartbeat,
@@ -391,7 +391,7 @@ func (conR *ConsensusReactor) broadcastNewRoundStepMessages(rs *cstypes.RoundSta
 }
 
 // Broadcasts HasVoteMessage to peers that care.
-func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
+func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.UnsignedVote) {
 	msg := &HasVoteMessage{
 		Height: vote.Height,
 		Round:  vote.Round,
@@ -953,7 +953,7 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 // PickVoteToSend picks a vote to send to the peer.
 // Returns true if a vote was picked.
 // NOTE: `votes` must be the correct Size() for the Height().
-func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote, ok bool) {
+func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.UnsignedVote, ok bool) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1083,7 +1083,7 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 // RecordVote updates internal statistics for this peer by recording the vote.
 // It returns the total number of votes (1 per block). This essentially means
 // the number of blocks for which peer has been sending us votes.
-func (ps *PeerState) RecordVote(vote *types.Vote) int {
+func (ps *PeerState) RecordVote(vote *types.UnsignedVote) int {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1131,7 +1131,7 @@ func (ps *PeerState) BlockPartsSent() int {
 }
 
 // SetHasVote sets the given vote as known by the peer
-func (ps *PeerState) SetHasVote(vote *types.Vote) {
+func (ps *PeerState) SetHasVote(vote *types.UnsignedVote) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1299,7 +1299,7 @@ func RegisterConsensusMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&ProposalMessage{}, "tendermint/Proposal", nil)
 	cdc.RegisterConcrete(&ProposalPOLMessage{}, "tendermint/ProposalPOL", nil)
 	cdc.RegisterConcrete(&BlockPartMessage{}, "tendermint/BlockPart", nil)
-	cdc.RegisterConcrete(&VoteMessage{}, "tendermint/Vote", nil)
+	cdc.RegisterConcrete(&VoteMessage{}, "tendermint/UnsignedVote", nil)
 	cdc.RegisterConcrete(&HasVoteMessage{}, "tendermint/HasVote", nil)
 	cdc.RegisterConcrete(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23", nil)
 	cdc.RegisterConcrete(&VoteSetBitsMessage{}, "tendermint/VoteSetBits", nil)
@@ -1390,12 +1390,12 @@ func (m *BlockPartMessage) String() string {
 
 // VoteMessage is sent when voting for a proposal (or lack thereof).
 type VoteMessage struct {
-	Vote *types.Vote
+	Vote *types.UnsignedVote
 }
 
 // String returns a string representation.
 func (m *VoteMessage) String() string {
-	return fmt.Sprintf("[Vote %v]", m.Vote)
+	return fmt.Sprintf("[UnsignedVote %v]", m.Vote)
 }
 
 //-------------------------------------

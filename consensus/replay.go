@@ -78,7 +78,7 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan
 			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
 		case *VoteMessage:
 			v := msg.Vote
-			cs.Logger.Info("Replay: Vote", "height", v.Height, "round", v.Round, "type", v.Type,
+			cs.Logger.Info("Replay: UnsignedVote", "height", v.Height, "round", v.Round, "type", v.Type,
 				"blockID", v.BlockID, "peer", peerID)
 		}
 

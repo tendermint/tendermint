@@ -113,7 +113,7 @@ func TestSignVote(t *testing.T) {
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes
-	cases := []*types.Vote{
+	cases := []*types.UnsignedVote{
 		newVote(privVal.Address, 0, height, round-1, voteType, block1),   // round regression
 		newVote(privVal.Address, 0, height-1, round, voteType, block1),   // height regression
 		newVote(privVal.Address, 0, height-2, round+4, voteType, block1), // height regression and different round
@@ -229,8 +229,8 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr types.Address, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
-	return &types.Vote{
+func newVote(addr types.Address, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.UnsignedVote {
+	return &types.UnsignedVote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
 		Height:           height,

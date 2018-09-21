@@ -221,17 +221,17 @@ func TestCommitValidateBasic(t *testing.T) {
 
 	// tamper with types
 	commit = randCommit()
-	commit.Precommits[0].Type = VoteTypePrevote
+	commit.Precommits[0].Vote.Type = VoteTypePrevote
 	assert.Error(t, commit.ValidateBasic())
 
 	// tamper with height
 	commit = randCommit()
-	commit.Precommits[0].Height = int64(100)
+	commit.Precommits[0].Vote.Height = int64(100)
 	assert.Error(t, commit.ValidateBasic())
 
 	// tamper with round
 	commit = randCommit()
-	commit.Precommits[0].Round = 100
+	commit.Precommits[0].Vote.Round = 100
 	assert.Error(t, commit.ValidateBasic())
 }
 

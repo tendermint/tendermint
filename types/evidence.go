@@ -34,11 +34,11 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
-	Height() int64                                     // height of the equivocation
-	Address() []byte                                   // address of the equivocating validator
-	Hash() []byte                                      // hash of the evidence
-	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
+	Height() int64                     // height of the equivocation
+	Address() []byte                   // address of the equivocating validator
+	Hash() []byte                      // hash of the evidence
+	Verify(pubKey crypto.PubKey) error // verify the evidence
+	Equal(Evidence) bool               // check equality of evidence
 
 	String() string
 }
@@ -63,8 +63,8 @@ func MaxEvidenceBytesPerBlock(blockMaxBytes int) int {
 type DuplicateVoteEvidence struct {
 	PubKey crypto.PubKey
 	// TODO(ismail): this probably need to be `SignedVoteReply`s
-	VoteA *SignVoteReply
-	VoteB *SignVoteReply
+	VoteA *SignedVote
+	VoteB *SignedVote
 }
 
 // String returns a string representation of the evidence.
@@ -90,7 +90,7 @@ func (dve *DuplicateVoteEvidence) Hash() []byte {
 
 // Verify returns an error if the two votes aren't conflicting.
 // To be conflicting, they must be from the same validator, for the same H/R/S, but for different blocks.
-func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+func (dve *DuplicateVoteEvidence) Verify(pubKey crypto.PubKey) error {
 	// H/R/S must be the same
 	if dve.VoteA.Vote.Height != dve.VoteB.Vote.Height ||
 		dve.VoteA.Vote.Round != dve.VoteB.Vote.Round ||
@@ -161,7 +161,7 @@ func (e MockGoodEvidence) Address() []byte { return e.Address_ }
 func (e MockGoodEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.Address_))
 }
-func (e MockGoodEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
+func (e MockGoodEvidence) Verify(pubKey crypto.PubKey) error { return nil }
 func (e MockGoodEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockGoodEvidence)
 	return e.Height_ == e2.Height_ &&
@@ -176,7 +176,7 @@ type MockBadEvidence struct {
 	MockGoodEvidence
 }
 
-func (e MockBadEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+func (e MockBadEvidence) Verify(pubKey crypto.PubKey) error {
 	return fmt.Errorf("MockBadEvidence")
 }
 func (e MockBadEvidence) Equal(ev Evidence) bool {

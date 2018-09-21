@@ -17,7 +17,7 @@ func randVoteSet(height int64, round int, type_ byte, numValidators int, votingP
 }
 
 // Convenience: Return new vote with different validator address/index
-func withValidator(vote *Vote, addr []byte, idx int) *Vote {
+func withValidator(vote *UnsignedVote, addr []byte, idx int) *UnsignedVote {
 	vote = vote.Copy()
 	vote.ValidatorAddress = addr
 	vote.ValidatorIndex = idx
@@ -25,35 +25,35 @@ func withValidator(vote *Vote, addr []byte, idx int) *Vote {
 }
 
 // Convenience: Return new vote with different height
-func withHeight(vote *Vote, height int64) *Vote {
+func withHeight(vote *UnsignedVote, height int64) *UnsignedVote {
 	vote = vote.Copy()
 	vote.Height = height
 	return vote
 }
 
 // Convenience: Return new vote with different round
-func withRound(vote *Vote, round int) *Vote {
+func withRound(vote *UnsignedVote, round int) *UnsignedVote {
 	vote = vote.Copy()
 	vote.Round = round
 	return vote
 }
 
 // Convenience: Return new vote with different type
-func withType(vote *Vote, type_ byte) *Vote {
+func withType(vote *UnsignedVote, type_ byte) *UnsignedVote {
 	vote = vote.Copy()
 	vote.Type = type_
 	return vote
 }
 
 // Convenience: Return new vote with different blockHash
-func withBlockHash(vote *Vote, blockHash []byte) *Vote {
+func withBlockHash(vote *UnsignedVote, blockHash []byte) *UnsignedVote {
 	vote = vote.Copy()
 	vote.BlockID.Hash = blockHash
 	return vote
 }
 
 // Convenience: Return new vote with different blockParts
-func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
+func withBlockPartsHeader(vote *UnsignedVote, blockPartsHeader PartSetHeader) *UnsignedVote {
 	vote = vote.Copy()
 	vote.BlockID.PartsHeader = blockPartsHeader
 	return vote
@@ -77,7 +77,7 @@ func TestAddVote(t *testing.T) {
 		t.Errorf("There should be no 2/3 majority")
 	}
 
-	vote := &Vote{
+	vote := &UnsignedVote{
 		ValidatorAddress: val0.GetAddress(),
 		ValidatorIndex:   0, // since privValidators are in order
 		Height:           height,
@@ -107,7 +107,7 @@ func Test2_3Majority(t *testing.T) {
 	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
-	voteProto := &Vote{
+	voteProto := &UnsignedVote{
 		ValidatorAddress: nil, // NOTE: must fill in
 		ValidatorIndex:   -1,  // NOTE: must fill in
 		Height:           height,
@@ -164,7 +164,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	blockPartsTotal := 123
 	blockPartsHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 
-	voteProto := &Vote{
+	voteProto := &UnsignedVote{
 		ValidatorAddress: nil, // NOTE: must fill in
 		ValidatorIndex:   -1,  // NOTE: must fill in
 		Height:           height,
@@ -259,7 +259,7 @@ func TestBadVotes(t *testing.T) {
 	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
-	voteProto := &Vote{
+	voteProto := &UnsignedVote{
 		ValidatorAddress: nil,
 		ValidatorIndex:   -1,
 		Height:           height,
@@ -321,7 +321,7 @@ func TestConflicts(t *testing.T) {
 	blockHash1 := cmn.RandBytes(32)
 	blockHash2 := cmn.RandBytes(32)
 
-	voteProto := &Vote{
+	voteProto := &UnsignedVote{
 		ValidatorAddress: nil,
 		ValidatorIndex:   -1,
 		Height:           height,
@@ -450,7 +450,7 @@ func TestMakeCommit(t *testing.T) {
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrecommit, 10, 1)
 	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 
-	voteProto := &Vote{
+	voteProto := &UnsignedVote{
 		ValidatorAddress: nil,
 		ValidatorIndex:   -1,
 		Height:           height,

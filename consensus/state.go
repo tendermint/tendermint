@@ -357,7 +357,7 @@ func (cs *ConsensusState) OpenWAL(walFile string) (WAL, error) {
 // TODO: should these return anything or let callers just use events?
 
 // AddVote inputs a vote.
-func (cs *ConsensusState) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
+func (cs *ConsensusState) AddVote(vote *types.UnsignedVote, peerID p2p.ID) (added bool, err error) {
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}
 	} else {
@@ -961,7 +961,6 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	return block, parts
 }
 
-
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
 // Enter: any +2/3 prevotes for future round.
@@ -1352,7 +1351,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	missingValidators := 0
 	missingValidatorsPower := int64(0)
 	for i, val := range cs.Validators.Validators {
-		var vote *types.Vote
+		var vote *types.UnsignedVote
 		if i < len(block.LastCommit.Precommits) {
 			vote = block.LastCommit.Precommits[i]
 		}
@@ -1488,7 +1487,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
-func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) error {
+func (cs *ConsensusState) tryAddVote(vote *types.UnsignedVote, peerID p2p.ID) error {
 	_, err := cs.addVote(vote, peerID)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
@@ -1515,7 +1514,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) error {
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
+func (cs *ConsensusState) addVote(vote *types.UnsignedVote, peerID p2p.ID) (added bool, err error) {
 	cs.Logger.Debug("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "valIndex", vote.ValidatorIndex, "csHeight", cs.Height)
 
 	// A precommit for the previous height?
@@ -1549,7 +1548,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	// Not necessarily a bad peer, but not favourable behaviour.
 	if vote.Height != cs.Height {
 		err = ErrVoteHeightMismatch
-		cs.Logger.Info("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "err", err)
+		cs.Logger.Info("UnsignedVote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "err", err)
 		return
 	}
 
@@ -1653,11 +1652,11 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	return
 }
 
-func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.UnsignedVote, error) {
 	addr := cs.privValidator.GetAddress()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 
-	vote := &types.Vote{
+	vote := &types.UnsignedVote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   valIndex,
 		Height:           cs.Height,
@@ -1688,7 +1687,7 @@ func (cs *ConsensusState) voteTime() time.Time {
 }
 
 // sign the vote and publish on internalMsgQueue
-func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
+func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.UnsignedVote {
 	// if we don't have a key or we're not in the validator set, do nothing
 	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 		return nil

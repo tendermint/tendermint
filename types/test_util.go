@@ -11,7 +11,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 	// all sign
 	for i := 0; i < len(validators); i++ {
 
-		vote := &Vote{
+		vote := &UnsignedVote{
 			ValidatorAddress: validators[i].GetAddress(),
 			ValidatorIndex:   i,
 			Height:           height,
@@ -30,11 +30,11 @@ func MakeCommit(blockID BlockID, height int64, round int,
 	return voteSet.MakeCommit(), nil
 }
 
-func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
+func signAddVote(privVal PrivValidator, vote *UnsignedVote, voteSet *VoteSet) (signed bool, err error) {
 	vote.ChainID = voteSet.ChainID()
 	repl, err := privVal.SignVote(vote)
 	if err != nil {
 		return false, err
 	}
-	return voteSet.AddVote(vote)
+	return voteSet.AddVote(repl)
 }

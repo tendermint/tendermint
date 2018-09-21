@@ -125,7 +125,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //       "commit_round": -1,
 //       "last_commit": {
 //         "votes": [
-//           "Vote{0:B5B3D40BE539 7184/00/2(Precommit) 14F946FA7EF0 /702B1B1A602A.../ @ 2018-05-12T20:57:27.342Z}"
+//           "UnsignedVote{0:B5B3D40BE539 7184/00/2(Precommit) 14F946FA7EF0 /702B1B1A602A.../ @ 2018-05-12T20:57:27.342Z}"
 //         ],
 //         "votes_bit_array": "x",
 //         "peer_maj_23s": {}
@@ -243,11 +243,11 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 //        {
 //          "round": 0,
 //          "prevotes": [
-//            "nil-Vote"
+//            "nil-UnsignedVote"
 //          ],
 //          "prevotes_bit_array": "BA{1:_} 0/10 = 0.00",
 //          "precommits": [
-//            "nil-Vote"
+//            "nil-UnsignedVote"
 //          ],
 //          "precommits_bit_array": "BA{1:_} 0/10 = 0.00"
 //        }

@@ -80,8 +80,8 @@ func TestSocketPVVote(t *testing.T) {
 
 		ts    = time.Now()
 		vType = types.VoteTypePrecommit
-		want  = &types.Vote{Timestamp: ts, Type: vType}
-		have  = &types.Vote{Timestamp: ts, Type: vType}
+		want  = &types.UnsignedVote{Timestamp: ts, Type: vType}
+		have  = &types.UnsignedVote{Timestamp: ts, Type: vType}
 	)
 	defer sc.Stop()
 	defer rs.Stop()

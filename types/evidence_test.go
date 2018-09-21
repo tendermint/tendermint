@@ -11,25 +11,26 @@ import (
 )
 
 type voteData struct {
-	vote1 *Vote
-	vote2 *Vote
+	vote1 *SignedVote
+	vote2 *SignedVote
 	valid bool
 }
 
-func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
-	v := &Vote{
+func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *SignedVote {
+	v := &UnsignedVote{
 		ValidatorAddress: val.GetAddress(),
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
 		Type:             byte(step),
 		BlockID:          blockID,
+		ChainID:          chainID,
 	}
-	err := val.SignVote(chainID, v)
+	sv, err := val.SignVote(v)
 	if err != nil {
 		panic(err)
 	}
-	return v
+	return sv
 }
 
 func TestEvidence(t *testing.T) {
@@ -45,7 +46,7 @@ func TestEvidence(t *testing.T) {
 
 	vote1 := makeVote(val, chainID, 0, 10, 2, 1, blockID)
 	badVote := makeVote(val, chainID, 0, 10, 2, 1, blockID)
-	err := val2.SignVote(chainID, badVote)
+	signedBadVote, err := val2.SignVote(badVote.Vote)
 	if err != nil {
 		panic(err)
 	}
@@ -61,19 +62,21 @@ func TestEvidence(t *testing.T) {
 		{vote1, makeVote(val, chainID, 0, 10, 3, 1, blockID2), false},    // wrong round
 		{vote1, makeVote(val, chainID, 0, 10, 2, 2, blockID2), false},    // wrong step
 		{vote1, makeVote(val2, chainID, 0, 10, 2, 1, blockID), false},    // wrong validator
-		{vote1, badVote, false},                                          // signed by wrong key
+		{vote1, signedBadVote, false},                                    // signed by wrong key
 	}
 
 	pubKey := val.GetPubKey()
-	for _, c := range cases {
+	for idx, c := range cases {
+		//fmt.Println(idx)
 		ev := &DuplicateVoteEvidence{
 			VoteA: c.vote1,
 			VoteB: c.vote2,
 		}
 		if c.valid {
-			assert.Nil(t, ev.Verify(chainID, pubKey), "evidence should be valid")
+			assert.NoError(t, ev.Verify(pubKey), "evidence should be valid")
 		} else {
-			assert.NotNil(t, ev.Verify(chainID, pubKey), "evidence should be invalid")
+			t.Logf("idx=%v, err=%s", idx, ev.Verify(pubKey))
+			assert.Error(t, ev.Verify(pubKey), "evidence should be invalid")
 		}
 	}
 }

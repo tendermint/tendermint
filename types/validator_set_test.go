@@ -379,7 +379,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	chainID := "mychainID"
 	blockID := BlockID{Hash: []byte("hello")}
 	height := int64(5)
-	vote := &Vote{
+	vote := &UnsignedVote{
 		ValidatorAddress: v1.Address,
 		ValidatorIndex:   0,
 		Height:           height,
@@ -387,13 +387,14 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Timestamp:        tmtime.Now(),
 		Type:             VoteTypePrecommit,
 		BlockID:          blockID,
+		ChainID:          chainID,
 	}
-	sig, err := privKey.Sign(vote.SignBytes(chainID))
+	sig, err := privKey.Sign(vote.SignBytes())
 	assert.NoError(t, err)
-	vote.Signature = sig
+
 	commit := &Commit{
 		BlockID:    blockID,
-		Precommits: []*Vote{vote},
+		Precommits: []*SignedVote{&SignedVote{Vote: vote, Signature: sig}},
 	}
 
 	badChainID := "notmychainID"
@@ -401,7 +402,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	badHeight := height + 1
 	badCommit := &Commit{
 		BlockID:    blockID,
-		Precommits: []*Vote{nil},
+		Precommits: []*SignedVote{nil},
 	}
 
 	// test some error cases
@@ -420,7 +421,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 
 	for i, c := range cases {
 		err := vset.VerifyCommit(c.chainID, c.blockID, c.height, c.commit)
-		assert.NotNil(t, err, i)
+		assert.NotNil(t, err, "test-case: %d", i)
 	}
 
 	// test a good one

@@ -317,7 +317,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 	_, val := css[0].state.Validators.GetByIndex(0)
 
 	// 1) new vote
-	vote := &types.Vote{
+	vote := &types.UnsignedVote{
 		ValidatorIndex:   0,
 		ValidatorAddress: val.Address,
 		Height:           2,

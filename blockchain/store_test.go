@@ -69,7 +69,7 @@ var (
 	partSet     = block.MakePartSet(2)
 	part1       = partSet.GetPart(0)
 	part2       = partSet.GetPart(1)
-	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10,
+	seenCommit1 = &types.Commit{Precommits: []*types.UnsignedVote{{Height: 10,
 		Timestamp: tmtime.Now()}}}
 )
 
@@ -90,7 +90,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	// save a block
 	block := makeBlock(bs.Height()+1, state)
 	validPartSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
+	seenCommit := &types.Commit{Precommits: []*types.UnsignedVote{{Height: 10,
 		Timestamp: tmtime.Now()}}}
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
@@ -110,7 +110,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	// End of setup, test data
 
-	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10,
+	commitAtH10 := &types.Commit{Precommits: []*types.UnsignedVote{{Height: 10,
 		Timestamp: tmtime.Now()}}}
 	tuples := []struct {
 		block      *types.Block
@@ -334,7 +334,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	block := makeBlock(bs.Height()+1, state)
 
 	partSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
+	seenCommit := &types.Commit{Precommits: []*types.UnsignedVote{{Height: 10,
 		Timestamp: tmtime.Now()}}}
 
 	bs.SaveBlock(block, partSet, seenCommit)
