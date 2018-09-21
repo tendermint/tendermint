@@ -585,9 +585,9 @@ func (c *MConnection) Status() ConnectionStatus {
 		status.Channels[i] = ChannelStatus{
 			ID:                channel.desc.ID,
 			SendQueueCapacity: cap(channel.sendQueue),
-			SendQueueSize:     int(channel.sendQueueSize), // TODO use atomic
+			SendQueueSize:     int(atomic.LoadInt32(&channel.sendQueueSize)),
 			Priority:          channel.desc.Priority,
-			RecentlySent:      channel.recentlySent,
+			RecentlySent:      atomic.LoadInt64(&channel.recentlySent),
 		}
 	}
 	return status
@@ -756,7 +756,7 @@ func (ch *Channel) recvPacketMsg(packet PacketMsg) ([]byte, error) {
 func (ch *Channel) updateStats() {
 	// Exponential decay of stats.
 	// TODO: optimize.
-	ch.recentlySent = int64(float64(ch.recentlySent) * 0.8)
+	ch.recentlySent = atomic.SwapInt64(&ch.recentlySent, int64(float64(ch.recentlySent) * 0.8))
 }
 
 //----------------------------------------

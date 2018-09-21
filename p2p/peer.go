@@ -103,20 +103,19 @@ type peer struct {
 	Data *cmn.CMap
 
 	metrics *Metrics
-
 	metricsTicker *time.Ticker
 }
 
 type PeerOption func(*peer)
 
 func newPeer(
-		pc peerConn,
-		mConfig tmconn.MConnConfig,
-		nodeInfo NodeInfo,
-		reactorsByCh map[byte]Reactor,
-		chDescs []*tmconn.ChannelDescriptor,
-		onPeerError func(Peer, interface{}),
-		options ...PeerOption,
+	pc peerConn,
+	mConfig tmconn.MConnConfig,
+	nodeInfo NodeInfo,
+	reactorsByCh map[byte]Reactor,
+	chDescs []*tmconn.ChannelDescriptor,
+	onPeerError func(Peer, interface{}),
+	options ...PeerOption,
 ) *peer {
 	p := &peer{
 		peerConn:      pc,
@@ -158,8 +157,7 @@ func (p *peer) OnStart() error {
 		return err
 	}
 
-	err := p.mconn.Start()
-	if err != nil {
+	if err := p.mconn.Start(); err != nil {
 		return err
 	}
 
@@ -287,8 +285,8 @@ func (pc *peerConn) CloseConn() {
 // the peer.
 // NOTE: blocking
 func (pc *peerConn) HandshakeTimeout(
-		ourNodeInfo NodeInfo,
-		timeout time.Duration,
+	ourNodeInfo NodeInfo,
+	timeout time.Duration,
 ) (peerNodeInfo NodeInfo, err error) {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
 	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
@@ -370,12 +368,12 @@ func (p *peer) metricsReporter() {
 // helper funcs
 
 func createMConnection(
-		conn net.Conn,
-		p *peer,
-		reactorsByCh map[byte]Reactor,
-		chDescs []*tmconn.ChannelDescriptor,
-		onPeerError func(Peer, interface{}),
-		config tmconn.MConnConfig,
+	conn net.Conn,
+	p *peer,
+	reactorsByCh map[byte]Reactor,
+	chDescs []*tmconn.ChannelDescriptor,
+	onPeerError func(Peer, interface{}),
+	config tmconn.MConnConfig,
 ) *tmconn.MConnection {
 
 	onReceive := func(chID byte, msgBytes []byte) {
