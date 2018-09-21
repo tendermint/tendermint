@@ -160,8 +160,13 @@ func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
 		return err
 	}
 
-	// TODO(ismail): handle error if contained in Reply
-	*vote = *res.(*SignedVoteResponse).Vote
+	resp := *res.(*SignedVoteResponse)
+	if resp.Error != nil {
+		return fmt.Errorf("remote error occurred: code: %v, description: %s",
+			resp.Error.Code,
+			resp.Error.Description)
+	}
+	*vote = *resp.Vote
 
 	return nil
 }
@@ -180,8 +185,13 @@ func (sc *SocketPV) SignProposal(
 	if err != nil {
 		return err
 	}
-	// TODO(ismail): handle error if contained in Reply
-	*proposal = *res.(*SignedProposalResponse).Proposal
+	resp := *res.(*SignedProposalResponse)
+	if resp.Error != nil {
+		return fmt.Errorf("remote error occurred: code: %v, description: %s",
+			resp.Error.Code,
+			resp.Error.Description)
+	}
+	*proposal = *resp.Proposal
 
 	return nil
 }
@@ -200,8 +210,14 @@ func (sc *SocketPV) SignHeartbeat(
 	if err != nil {
 		return err
 	}
+	resp := *res.(*SignedHeartbeatResponse)
+	if resp.Error != nil {
+		return fmt.Errorf("remote error occurred: code: %v, description: %s",
+			resp.Error.Code,
+			resp.Error.Description)
+	}
 	// TODO(ismail): handle error if contained in Reply
-	*heartbeat = *res.(*SignedHeartbeatResponse).Heartbeat
+	*heartbeat = *resp.Heartbeat
 
 	return nil
 }
@@ -470,7 +486,6 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 			} else {
 				res = &SignedVoteResponse{r.Vote, nil}
 			}
-
 		case *SignProposalRequest:
 			err = rs.privVal.SignProposal(rs.chainID, r.Proposal)
 			if err != nil {
@@ -490,8 +505,8 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 		}
 
 		if err != nil {
+			// only log the error; we'll reply with an error in res
 			rs.Logger.Error("handleConnection", "err", err)
-			return
 		}
 
 		err = writeMsg(conn, res)

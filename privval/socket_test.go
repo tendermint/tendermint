@@ -20,7 +20,7 @@ import (
 func TestSocketPVAddress(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 	)
 	defer sc.Stop()
 	defer rs.Stop()
@@ -40,7 +40,7 @@ func TestSocketPVAddress(t *testing.T) {
 func TestSocketPVPubKey(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 	)
 	defer sc.Stop()
 	defer rs.Stop()
@@ -59,7 +59,7 @@ func TestSocketPVPubKey(t *testing.T) {
 func TestSocketPVProposal(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		ts             = time.Now()
 		privProposal   = &types.Proposal{Timestamp: ts}
@@ -76,7 +76,7 @@ func TestSocketPVProposal(t *testing.T) {
 func TestSocketPVVote(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		ts    = time.Now()
 		vType = types.VoteTypePrecommit
@@ -94,7 +94,7 @@ func TestSocketPVVote(t *testing.T) {
 func TestSocketPVHeartbeat(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		want = &types.Heartbeat{}
 		have = &types.Heartbeat{}
@@ -231,14 +231,97 @@ func TestRemoteSignerRetry(t *testing.T) {
 	}
 }
 
+func TestRemoteSignVoteErrors(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV())
+
+		ts    = time.Now()
+		vType = types.VoteTypePrecommit
+		vote  = &types.Vote{Timestamp: ts, Type: vType}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
+	require.NoError(t, err)
+
+	res, err := readMsg(sc.conn)
+	require.NoError(t, err)
+
+	resp := *res.(*SignedVoteResponse)
+	require.NotNil(t, resp.Error)
+	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
+
+	err = rs.privVal.SignVote(chainID, vote)
+	require.Error(t, err)
+	err = sc.SignVote(chainID, vote)
+	require.Error(t, err)
+}
+
+func TestRemoteSignProposalErrors(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV())
+
+		ts       = time.Now()
+		proposal = &types.Proposal{Timestamp: ts}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
+	require.NoError(t, err)
+
+	res, err := readMsg(sc.conn)
+	require.NoError(t, err)
+
+	resp := *res.(*SignedProposalResponse)
+	require.NotNil(t, resp.Error)
+	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
+
+	err = rs.privVal.SignProposal(chainID, proposal)
+	require.Error(t, err)
+
+	err = sc.SignProposal(chainID, proposal)
+	require.Error(t, err)
+}
+
+func TestRemoteSignHeartbeatErrors(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV())
+		hb      = &types.Heartbeat{}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	err := writeMsg(sc.conn, &SignHeartbeatRequest{Heartbeat: hb})
+	require.NoError(t, err)
+
+	res, err := readMsg(sc.conn)
+	require.NoError(t, err)
+
+	resp := *res.(*SignedHeartbeatResponse)
+	require.NotNil(t, resp.Error)
+	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
+
+	err = rs.privVal.SignHeartbeat(chainID, hb)
+	require.Error(t, err)
+
+	err = sc.SignHeartbeat(chainID, hb)
+	require.Error(t, err)
+}
+
 func testSetupSocketPair(
 	t *testing.T,
 	chainID string,
+	privValidator types.PrivValidator,
 ) (*SocketPV, *RemoteSigner) {
 	var (
 		addr    = testFreeAddr(t)
 		logger  = log.TestingLogger()
-		privVal = types.NewMockPV()
+		privVal = privValidator
 		readyc  = make(chan struct{})
 		rs      = NewRemoteSigner(
 			logger,
