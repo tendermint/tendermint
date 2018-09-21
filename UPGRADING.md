@@ -3,6 +3,12 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.25.0
+
+This release has minimal impact.
+
+If you use GasWanted in ABCI and want to enforce it, set the MaxGas in the genesis file (default is no max).
+
 ## v0.24.0
 
 New 0.24.0 release contains a lot of changes to the state and types. It's not
