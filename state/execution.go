@@ -116,11 +116,16 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	return state, nil
 }
 
-// Commit locks the mempool, runs the ABCI Commit message, and updates the mempool.
+// Commit locks the mempool, runs the ABCI Commit message, and updates the
+// mempool.
 // It returns the result of calling abci.Commit (the AppHash), and an error.
-// The Mempool must be locked during commit and update because state is typically reset on Commit and old txs must be replayed
-// against committed state before new txs are run in the mempool, lest they be invalid.
-func (blockExec *BlockExecutor) Commit(state State, block *types.Block) ([]byte, error) {
+// The Mempool must be locked during commit and update because state is
+// typically reset on Commit and old txs must be replayed against committed
+// state before new txs are run in the mempool, lest they be invalid.
+func (blockExec *BlockExecutor) Commit(
+	state State,
+	block *types.Block,
+) ([]byte, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -135,7 +140,10 @@ func (blockExec *BlockExecutor) Commit(state State, block *types.Block) ([]byte,
 	// Commit block, get hash back
 	res, err := blockExec.proxyApp.CommitSync()
 	if err != nil {
-		blockExec.logger.Error("Client error during proxyAppConn.CommitSync", "err", err)
+		blockExec.logger.Error(
+			"Client error during proxyAppConn.CommitSync",
+			"err", err,
+		)
 		return nil, err
 	}
 	// ResponseCommit has no error code - just data
@@ -160,13 +168,12 @@ func (blockExec *BlockExecutor) Commit(state State, block *types.Block) ([]byte,
 		if maxGas == -1 {
 			return true
 		}
-		return res.GasWanted <= state.ConsensusParams.MaxGas
-	}
-	if err := blockExec.mempool.Update(block.Height, block.Txs, preFilter, postFilter); err != nil {
-		return nil, err
+		return res.GasWanted <= maxGas
 	}
 
-	return res.Data, nil
+	err = blockExec.mempool.Update(block.Height, block.Txs, preFilter, postFilter)
+
+	return res.Data, err
 }
 
 //---------------------------------------------------------

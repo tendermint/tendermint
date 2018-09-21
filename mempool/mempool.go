@@ -22,13 +22,13 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// PreCheckFilterFunc is an optional filter to determine if a transaction should
-// be rejected. Invoked before CheckTx.
-type PreCheckFilterFunc func(types.Tx) bool
+// PreCheckFunc is an optional filter to determine if a transaction should be
+// rejected. Invoked before CheckTx.
+type PreCheckFunc func(types.Tx) bool
 
-// PostCheckFilterFunc is an optional filter executed after CheckTx and rejects
+// PostCheckFunc is an optional filter executed after CheckTx and rejects
 // transaction if false is returned.
-type PostCheckFilterFunc func(types.Tx, *abci.ResponseCheckTx) bool
+type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) bool
 
 /*
 
@@ -88,11 +88,8 @@ type Mempool struct {
 	recheckEnd           *clist.CElement // re-checking stops here
 	notifiedTxsAvailable bool
 	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
-	// Filter mempool to only accept txs for which preCheckFilter(tx) returns true.
-	// This is called before each check tx
-	preCheckFilter PreCheckFilterFunc
-	// Filter mempool to only accept txs for which postCheckFilter(tx) returns true.
-	postCheckFilter PostCheckFilterFunc
+	preCheck             PreCheckFunc
+	postCheck            PostCheckFunc
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -152,16 +149,16 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
 }
 
-// WithPreCheckFilter sets a filter for the mempool to reject a tx if f(tx)
-// returns false. This is ran before CheckTx.
-func WithPreCheckFilter(f PreCheckFilterFunc) MempoolOption {
-	return func(mem *Mempool) { mem.preCheckFilter = f }
+// WithPreCheck sets a filter for the mempool to reject a tx if f(tx) returns
+// false. This is ran before CheckTx.
+func WithPreCheck(f PreCheckFunc) MempoolOption {
+	return func(mem *Mempool) { mem.preCheck = f }
 }
 
-// WithPostCheckFilter sets a filter for the mempool to reject a tx if f(tx)
-// returns false. This is ran after CheckTx.
-func WithPostCheckFilter(f PostCheckFilterFunc) MempoolOption {
-	return func(mem *Mempool) { mem.postCheckFilter = f }
+// WithPostCheck sets a filter for the mempool to reject a tx if f(tx) returns
+// false. This is ran after CheckTx.
+func WithPostCheck(f PostCheckFunc) MempoolOption {
+	return func(mem *Mempool) { mem.postCheck = f }
 }
 
 // WithMetrics sets the metrics.
@@ -265,7 +262,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 		return ErrMempoolIsFull
 	}
 
-	if mem.preCheckFilter != nil && !mem.preCheckFilter(tx) {
+	if mem.preCheck != nil && !mem.preCheck(tx) {
 		return
 	}
 
@@ -316,7 +313,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
 		if (r.CheckTx.Code == abci.CodeTypeOK) &&
-			mem.isPostCheckFilterPass(tx, r.CheckTx) {
+			mem.isPostCheckPass(tx, r.CheckTx) {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter:   mem.counter,
@@ -352,7 +349,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 				),
 			)
 		}
-		if (r.CheckTx.Code == abci.CodeTypeOK) && mem.isPostCheckFilterPass(memTx.tx, r.CheckTx) {
+		if (r.CheckTx.Code == abci.CodeTypeOK) && mem.isPostCheckPass(memTx.tx, r.CheckTx) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
@@ -473,8 +470,8 @@ func (mem *Mempool) ReapMaxTxs(max int) types.Txs {
 func (mem *Mempool) Update(
 	height int64,
 	txs types.Txs,
-	preCheckFilter PreCheckFilterFunc,
-	postCheckFilter PostCheckFilterFunc,
+	preCheck PreCheckFunc,
+	postCheck PostCheckFunc,
 ) error {
 	// First, create a lookup map of txns in new txs.
 	txsMap := make(map[string]struct{}, len(txs))
@@ -486,11 +483,11 @@ func (mem *Mempool) Update(
 	mem.height = height
 	mem.notifiedTxsAvailable = false
 
-	if preCheckFilter != nil {
-		mem.preCheckFilter = preCheckFilter
+	if preCheck != nil {
+		mem.preCheck = preCheck
 	}
-	if postCheckFilter != nil {
-		mem.postCheckFilter = postCheckFilter
+	if postCheck != nil {
+		mem.postCheck = postCheck
 	}
 
 	// Remove transactions that are already in txs.
@@ -548,8 +545,8 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 	mem.proxyAppConn.FlushAsync()
 }
 
-func (mem *Mempool) isPostCheckFilterPass(tx types.Tx, r *abci.ResponseCheckTx) bool {
-	return mem.postCheckFilter == nil || mem.postCheckFilter(tx, r)
+func (mem *Mempool) isPostCheckPass(tx types.Tx, r *abci.ResponseCheckTx) bool {
+	return mem.postCheck == nil || mem.postCheck(tx, r)
 }
 
 //--------------------------------------------------------------------------------
