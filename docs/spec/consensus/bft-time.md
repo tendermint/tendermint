@@ -1,4 +1,4 @@
-# BFT time in Tendermint 
+# BFT Time
 
 Tendermint provides a deterministic, Byzantine fault-tolerant, source of time. 
 Time in Tendermint is defined with the Time field of the block header. 

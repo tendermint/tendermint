@@ -1,4 +1,4 @@
-# Tendermint Specification
+# Overview
 
 This is a markdown specification of the Tendermint blockchain.
 It defines the base data structures, how they are validated,
