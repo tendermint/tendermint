@@ -315,8 +315,8 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
-		postCheckFilterPasses := (mem.postCheckFilter == nil) || mem.postCheckFilter(tx, r.CheckTx)
-		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckFilterPasses {
+		if (r.CheckTx.Code == abci.CodeTypeOK) &&
+			mem.isPostCheckFilterPass(tx, r.CheckTx) {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter:   mem.counter,
@@ -344,11 +344,15 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
-			cmn.PanicSanity(fmt.Sprintf("Unexpected tx response from proxy during recheck\n"+
-				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
+			cmn.PanicSanity(
+				fmt.Sprintf(
+					"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
+					r.CheckTx.Data,
+					memTx.tx,
+				),
+			)
 		}
-		postCheckFilterPasses := (mem.postCheckFilter == nil) || mem.postCheckFilter(memTx.tx, r.CheckTx)
-		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckFilterPasses {
+		if (r.CheckTx.Code == abci.CodeTypeOK) && mem.isPostCheckFilterPass(memTx.tx, r.CheckTx) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
@@ -466,8 +470,12 @@ func (mem *Mempool) ReapMaxTxs(max int) types.Txs {
 // Update informs the mempool that the given txs were committed and can be discarded.
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
-func (mem *Mempool) Update(height int64, txs types.Txs,
-	preCheckFilter func(types.Tx) bool, postCheckFilter func(types.Tx, *abci.ResponseCheckTx) bool) error {
+func (mem *Mempool) Update(
+	height int64,
+	txs types.Txs,
+	preCheckFilter PreCheckFilterFunc,
+	postCheckFilter PostCheckFilterFunc,
+) error {
 	// First, create a lookup map of txns in new txs.
 	txsMap := make(map[string]struct{}, len(txs))
 	for _, tx := range txs {
@@ -538,6 +546,10 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 		mem.proxyAppConn.CheckTxAsync(tx)
 	}
 	mem.proxyAppConn.FlushAsync()
+}
+
+func (mem *Mempool) isPostCheckFilterPass(tx types.Tx, r *abci.ResponseCheckTx) bool {
+	return mem.postCheckFilter == nil || mem.postCheckFilter(tx, r)
 }
 
 //--------------------------------------------------------------------------------
