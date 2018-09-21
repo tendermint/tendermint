@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -161,7 +161,7 @@ func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
 	}
 
 	// TODO(ismail): handle error if contained in Reply
-	*vote = *res.(*SignedVoteReply).Vote
+	*vote = *res.(*SignedVoteResponse).Vote
 
 	return nil
 }
@@ -181,7 +181,7 @@ func (sc *SocketPV) SignProposal(
 		return err
 	}
 	// TODO(ismail): handle error if contained in Reply
-	*proposal = *res.(*SignedProposalReply).Proposal
+	*proposal = *res.(*SignedProposalResponse).Proposal
 
 	return nil
 }
@@ -201,7 +201,7 @@ func (sc *SocketPV) SignHeartbeat(
 		return err
 	}
 	// TODO(ismail): handle error if contained in Reply
-	*heartbeat = *res.(*SignedHeartbeatReply).Heartbeat
+	*heartbeat = *res.(*SignedHeartbeatResponse).Heartbeat
 
 	return nil
 }
@@ -466,24 +466,24 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 		case *SignVoteRequest:
 			err = rs.privVal.SignVote(rs.chainID, r.Vote)
 			if err != nil {
-				res = &SignedVoteReply{nil, &Error{0, err.Error()}}
+				res = &SignedVoteResponse{nil, &RemoteSignerError{0, err.Error()}}
 			} else {
-				res = &SignedVoteReply{r.Vote, nil}
+				res = &SignedVoteResponse{r.Vote, nil}
 			}
 
 		case *SignProposalRequest:
 			err = rs.privVal.SignProposal(rs.chainID, r.Proposal)
 			if err != nil {
-				res = &SignedProposalReply{nil, &Error{0, err.Error()}}
+				res = &SignedProposalResponse{nil, &RemoteSignerError{0, err.Error()}}
 			} else {
-				res = &SignedProposalReply{r.Proposal, nil}
+				res = &SignedProposalResponse{r.Proposal, nil}
 			}
 		case *SignHeartbeatRequest:
 			err = rs.privVal.SignHeartbeat(rs.chainID, r.Heartbeat)
 			if err != nil {
-				res = &SignedHeartbeatReply{nil, &Error{0, err.Error()}}
+				res = &SignedHeartbeatResponse{nil, &RemoteSignerError{0, err.Error()}}
 			} else {
-				res = &SignedHeartbeatReply{r.Heartbeat, nil}
+				res = &SignedHeartbeatResponse{r.Heartbeat, nil}
 			}
 		default:
 			err = fmt.Errorf("unknown msg: %v", r)
@@ -511,11 +511,11 @@ func RegisterSocketPVMsg(cdc *amino.Codec) {
 	cdc.RegisterInterface((*SocketPVMsg)(nil), nil)
 	cdc.RegisterConcrete(&PubKeyMsg{}, "tendermint/socketpv/PubKeyMsg", nil)
 	cdc.RegisterConcrete(&SignVoteRequest{}, "tendermint/socketpv/SignVoteRequest", nil)
-	cdc.RegisterConcrete(&SignedVoteReply{}, "tendermint/socketpv/SignedVoteReply", nil)
+	cdc.RegisterConcrete(&SignedVoteResponse{}, "tendermint/socketpv/SignedVoteResponse", nil)
 	cdc.RegisterConcrete(&SignProposalRequest{}, "tendermint/socketpv/SignProposalRequest", nil)
-	cdc.RegisterConcrete(&SignedProposalReply{}, "tendermint/socketpv/SignedProposalReply", nil)
+	cdc.RegisterConcrete(&SignedProposalResponse{}, "tendermint/socketpv/SignedProposalResponse", nil)
 	cdc.RegisterConcrete(&SignHeartbeatRequest{}, "tendermint/socketpv/SignHeartbeatRequest", nil)
-	cdc.RegisterConcrete(&SignedHeartbeatReply{}, "tendermint/socketpv/SignedHeartbeatReply", nil)
+	cdc.RegisterConcrete(&SignedHeartbeatResponse{}, "tendermint/socketpv/SignedHeartbeatResponse", nil)
 }
 
 // PubKeyMsg is a PrivValidatorSocket message containing the public key.
@@ -529,9 +529,9 @@ type SignVoteRequest struct {
 }
 
 // SignVoteReply is a PrivValidatorSocket message containing a signed vote along with a potenial error message.
-type SignedVoteReply struct {
+type SignedVoteResponse struct {
 	Vote  *types.Vote
-	Error *Error
+	Error *RemoteSignerError
 }
 
 // SignProposalRequest is a PrivValidatorSocket message containing a Proposal.
@@ -539,9 +539,9 @@ type SignProposalRequest struct {
 	Proposal *types.Proposal
 }
 
-type SignedProposalReply struct {
+type SignedProposalResponse struct {
 	Proposal *types.Proposal
-	Error    *Error
+	Error    *RemoteSignerError
 }
 
 // SignHeartbeatRequest is a PrivValidatorSocket message containing a Heartbeat.
@@ -549,13 +549,13 @@ type SignHeartbeatRequest struct {
 	Heartbeat *types.Heartbeat
 }
 
-type SignedHeartbeatReply struct {
+type SignedHeartbeatResponse struct {
 	Heartbeat *types.Heartbeat
-	Error     *Error
+	Error     *RemoteSignerError
 }
 
-// Error allows (remote) validators to include meaningful error descriptions in their reply.
-type Error struct {
+// RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.
+type RemoteSignerError struct {
 	// TODO(ismail): create an enum of known errors
 	Code        int
 	Description string

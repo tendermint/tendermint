@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -104,11 +104,15 @@ func (vote *Vote) String() string {
 	}
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
-		vote.ValidatorIndex, cmn.Fingerprint(vote.ValidatorAddress),
-		vote.Height, vote.Round, vote.Type, typeString,
+		vote.ValidatorIndex,
+		cmn.Fingerprint(vote.ValidatorAddress),
+		vote.Height,
+		vote.Round,
+		vote.Type,
+		typeString,
 		cmn.Fingerprint(vote.BlockID.Hash),
 		cmn.Fingerprint(vote.Signature),
-		vote.Timestamp)
+		CanonicalTime(vote.Timestamp))
 }
 
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
