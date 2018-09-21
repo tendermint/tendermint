@@ -56,13 +56,14 @@ func StartHTTPServer(
 		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
 	}
 
-	go func() {
-		err := http.Serve(
-			listener,
-			RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
-		)
+	err = http.Serve(
+		listener,
+		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
+	)
+	if err != nil {
 		logger.Info("RPC HTTP server stopped", "err", err)
-	}()
+		return nil, err
+	}
 	return listener, nil
 }
 
