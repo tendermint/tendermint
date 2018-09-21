@@ -77,7 +77,7 @@ type Vote struct {
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalJSON(CanonicalVote(chainID, vote))
+	bz, err := cdc.MarshalBinary(CanonicalizeVote(chainID, vote))
 	if err != nil {
 		panic(err)
 	}
@@ -108,7 +108,7 @@ func (vote *Vote) String() string {
 		vote.Height, vote.Round, vote.Type, typeString,
 		cmn.Fingerprint(vote.BlockID.Hash),
 		cmn.Fingerprint(vote.Signature),
-		CanonicalTime(vote.Timestamp))
+		vote.Timestamp)
 }
 
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {

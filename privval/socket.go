@@ -150,7 +150,7 @@ func (sc *SocketPV) getPubKey() (crypto.PubKey, error) {
 
 // SignVote implements PrivValidator.
 func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
-	err := writeMsg(sc.conn, &SignVoteMsg{Vote: vote})
+	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
 		return err
 	}
 
-	*vote = *res.(*SignVoteMsg).Vote
+	*vote = *res.(*SignedVoteReply).Vote
 
 	return nil
 }
@@ -170,7 +170,7 @@ func (sc *SocketPV) SignProposal(
 	chainID string,
 	proposal *types.Proposal,
 ) error {
-	err := writeMsg(sc.conn, &SignProposalMsg{Proposal: proposal})
+	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (sc *SocketPV) SignProposal(
 		return err
 	}
 
-	*proposal = *res.(*SignProposalMsg).Proposal
+	*proposal = *res.(*SignProposalRequest).Proposal
 
 	return nil
 }
@@ -190,7 +190,7 @@ func (sc *SocketPV) SignHeartbeat(
 	chainID string,
 	heartbeat *types.Heartbeat,
 ) error {
-	err := writeMsg(sc.conn, &SignHeartbeatMsg{Heartbeat: heartbeat})
+	err := writeMsg(sc.conn, &SignHeartbeatRequest{Heartbeat: heartbeat})
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (sc *SocketPV) SignHeartbeat(
 		return err
 	}
 
-	*heartbeat = *res.(*SignHeartbeatMsg).Heartbeat
+	*heartbeat = *res.(*SignHeartbeatRequest).Heartbeat
 
 	return nil
 }
@@ -462,15 +462,20 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 			var p crypto.PubKey
 			p = rs.privVal.GetPubKey()
 			res = &PubKeyMsg{p}
-		case *SignVoteMsg:
+		case *SignVoteRequest:
 			err = rs.privVal.SignVote(rs.chainID, r.Vote)
-			res = &SignVoteMsg{r.Vote}
-		case *SignProposalMsg:
+			if err != nil {
+				res = &SignedVoteReply{nil, &Error{0, err.Error()}}
+			} else {
+				res = &SignedVoteReply{r.Vote, nil}
+			}
+
+		case *SignProposalRequest:
 			err = rs.privVal.SignProposal(rs.chainID, r.Proposal)
-			res = &SignProposalMsg{r.Proposal}
-		case *SignHeartbeatMsg:
+			res = &SignProposalRequest{r.Proposal}
+		case *SignHeartbeatRequest:
 			err = rs.privVal.SignHeartbeat(rs.chainID, r.Heartbeat)
-			res = &SignHeartbeatMsg{r.Heartbeat}
+			res = &SignHeartbeatRequest{r.Heartbeat}
 		default:
 			err = fmt.Errorf("unknown msg: %v", r)
 		}
@@ -496,9 +501,12 @@ type SocketPVMsg interface{}
 func RegisterSocketPVMsg(cdc *amino.Codec) {
 	cdc.RegisterInterface((*SocketPVMsg)(nil), nil)
 	cdc.RegisterConcrete(&PubKeyMsg{}, "tendermint/socketpv/PubKeyMsg", nil)
-	cdc.RegisterConcrete(&SignVoteMsg{}, "tendermint/socketpv/SignVoteMsg", nil)
-	cdc.RegisterConcrete(&SignProposalMsg{}, "tendermint/socketpv/SignProposalMsg", nil)
-	cdc.RegisterConcrete(&SignHeartbeatMsg{}, "tendermint/socketpv/SignHeartbeatMsg", nil)
+	cdc.RegisterConcrete(&SignVoteRequest{}, "tendermint/socketpv/SignVoteRequest", nil)
+	cdc.RegisterConcrete(&SignedVoteReply{}, "tendermint/socketpv/SignedVoteReply", nil)
+	cdc.RegisterConcrete(&SignProposalRequest{}, "tendermint/socketpv/SignProposalRequest", nil)
+	cdc.RegisterConcrete(&SignedProposalReply{}, "tendermint/socketpv/SignedProposalReply", nil)
+	cdc.RegisterConcrete(&SignHeartbeatRequest{}, "tendermint/socketpv/SignHeartbeatRequest", nil)
+	cdc.RegisterConcrete(&SignedHeartbeatReply{}, "tendermint/socketpv/SignedHeartbeatReply", nil)
 }
 
 // PubKeyMsg is a PrivValidatorSocket message containing the public key.
@@ -506,19 +514,41 @@ type PubKeyMsg struct {
 	PubKey crypto.PubKey
 }
 
-// SignVoteMsg is a PrivValidatorSocket message containing a vote.
-type SignVoteMsg struct {
+// SignVoteRequest is a PrivValidatorSocket message containing a vote.
+type SignVoteRequest struct {
 	Vote *types.Vote
 }
 
-// SignProposalMsg is a PrivValidatorSocket message containing a Proposal.
-type SignProposalMsg struct {
+// SignVoteReply is a PrivValidatorSocket message containing a signed vote along with a potenial error message.
+type SignedVoteReply struct {
+	Vote  *types.Vote
+	Error *Error
+}
+
+// SignProposalRequest is a PrivValidatorSocket message containing a Proposal.
+type SignProposalRequest struct {
 	Proposal *types.Proposal
 }
 
-// SignHeartbeatMsg is a PrivValidatorSocket message containing a Heartbeat.
-type SignHeartbeatMsg struct {
+type SignedProposalReply struct {
+	Proposal *types.Proposal
+	Error    *Error
+}
+
+// SignHeartbeatRequest is a PrivValidatorSocket message containing a Heartbeat.
+type SignHeartbeatRequest struct {
 	Heartbeat *types.Heartbeat
+}
+
+type SignedHeartbeatReply struct {
+	Heartbeat *types.Heartbeat
+	Error     *Error
+}
+
+// Error allows (remote) validators to include meaningful error descriptions in their reply.
+type Error struct {
+	Code        int
+	Description string
 }
 
 func readMsg(r io.Reader) (msg SocketPVMsg, err error) {
