@@ -33,4 +33,5 @@ IMPROVEMENTS:
 
 BUG FIXES:
 - [node] \#2294 Delay starting node until Genesis time
+- [consensus] \#2048 Correct peer statistics for marking peer as good
 - [rpc] \#2460 StartHTTPAndTLSServer() now passes StartTLS() errors back to the caller rather than hanging forever.
