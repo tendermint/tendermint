@@ -1,4 +1,4 @@
-# Tendermint Specification
+# Overview
 
 This is a markdown specification of the Tendermint blockchain.
 It defines the base data structures, how they are validated,
@@ -21,6 +21,7 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 ### Consensus Protocol
 
 - [Consensus Algorithm](/docs/spec/consensus/consensus.md)
+- [Creating a proposal](/docs/spec/consensus/creating-proposal.md)
 - [Time](/docs/spec/consensus/bft-time.md)
 - [Light-Client](/docs/spec/consensus/light-client.md)
 

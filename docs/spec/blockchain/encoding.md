@@ -1,4 +1,4 @@
-# Tendermint Encoding
+# Encoding
 
 ## Amino
 

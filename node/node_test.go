@@ -14,6 +14,8 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
+
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -74,4 +76,18 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 	for _, tc := range testCases {
 		assert.Equal(t, tc.expected, splitAndTrimEmpty(tc.s, tc.sep, tc.cutset), "%s", tc.s)
 	}
+}
+
+func TestNodeDelayedStop(t *testing.T) {
+	config := cfg.ResetTestRoot("node_delayed_node_test")
+	now := tmtime.Now()
+
+	// create & start node
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	n.GenesisDoc().GenesisTime = now.Add(5 * time.Second)
+	assert.NoError(t, err)
+
+	n.Start()
+	startTime := tmtime.Now()
+	assert.Equal(t, true, startTime.After(n.GenesisDoc().GenesisTime))
 }

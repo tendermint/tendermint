@@ -42,8 +42,12 @@ func (MockMempool) Unlock()                                                 {}
 func (MockMempool) Size() int                                               { return 0 }
 func (MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error      { return nil }
 func (MockMempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs { return types.Txs{} }
-func (MockMempool) Update(height int64, txs types.Txs,
-	preCheckFilter func(types.Tx) bool, postCheckFilter func(types.Tx, *abci.ResponseCheckTx) bool) error {
+func (MockMempool) Update(
+	_ int64,
+	_ types.Txs,
+	_ mempool.PreCheck,
+	_ mempool.PostCheck,
+) error {
 	return nil
 }
 func (MockMempool) Flush()                        {}
@@ -77,7 +81,7 @@ type BlockStore interface {
 
 // EvidencePool defines the EvidencePool interface used by the ConsensusState.
 type EvidencePool interface {
-	PendingEvidence(int) []types.Evidence
+	PendingEvidence(int64) []types.Evidence
 	AddEvidence(types.Evidence) error
 	Update(*types.Block, State)
 }
@@ -85,6 +89,6 @@ type EvidencePool interface {
 // MockMempool is an empty implementation of a Mempool, useful for testing.
 type MockEvidencePool struct{}
 
-func (m MockEvidencePool) PendingEvidence(int) []types.Evidence { return nil }
-func (m MockEvidencePool) AddEvidence(types.Evidence) error     { return nil }
-func (m MockEvidencePool) Update(*types.Block, State)           {}
+func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
+func (m MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
+func (m MockEvidencePool) Update(*types.Block, State)             {}

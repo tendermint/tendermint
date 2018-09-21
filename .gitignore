@@ -14,7 +14,6 @@ test/p2p/data/
 test/logs
 coverage.txt
 docs/_build
-docs/.vuepress
 docs/dist
 *.log
 abci-cli
