@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	fail "github.com/ebuchman/fail-test"
-	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -154,24 +154,18 @@ func (blockExec *BlockExecutor) Commit(
 		"appHash", fmt.Sprintf("%X", res.Data))
 
 	// Update mempool.
-	maxDataBytes := types.MaxDataBytesUnknownEvidence(
-		state.ConsensusParams.BlockSize.MaxBytes,
-		state.Validators.Size(),
+	err = blockExec.mempool.Update(
+		block.Height,
+		block.Txs,
+		preFilter,
+		mempool.PreCheckAminoMaxBytes(
+			types.MaxDataBytesUnknownEvidence(
+				state.ConsensusParams.BlockSize.MaxBytes,
+				state.Validators.Size(),
+			),
+		),
+		mempool.PostCheckMaxGas(state.ConsensusParams.MaxGas),
 	)
-	maxGas := state.ConsensusParams.MaxGas
-	preFilter := func(tx types.Tx) bool {
-		// We have to account for the amino overhead in the tx size as well
-		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
-		return (len(tx) + aminoOverhead) <= maxDataBytes
-	}
-	postFilter := func(tx types.Tx, res *abci.ResponseCheckTx) bool {
-		if maxGas == -1 {
-			return true
-		}
-		return res.GasWanted <= maxGas
-	}
-
-	err = blockExec.mempool.Update(block.Height, block.Txs, preFilter, postFilter)
 
 	return res.Data, err
 }

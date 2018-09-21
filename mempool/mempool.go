@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
@@ -65,6 +66,27 @@ var (
 	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
 	ErrMempoolIsFull = errors.New("Mempool is full")
 )
+
+// PreCheckAminoMaxBytes checks that the size of the transaction plus the amino
+// overhead is smaller or equal to the expected maxBytes.
+func PreCheckAminoMaxBytes(maxBytes int) PreCheckFunc {
+	return func(tx types.Tx) bool {
+		// We have to account for the amino overhead in the tx size as well
+		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
+		return (len(tx) + aminoOverhead) <= maxBytes
+	}
+}
+
+// PostCheckMaxGas checks that the wanted gas is smaller or equal to the passed
+// maxGas. Returns true if maxGas is -1.
+func PostCheckMaxGas(maxGas int64) PostCheckFunc {
+	return func(tx types.Tx, res *abci.ResponseCheckTx) bool {
+		if maxGas == -1 {
+			return true
+		}
+		return res.GasWanted <= maxGas
+	}
+}
 
 // TxID is the hex encoded hash of the bytes as a types.Tx.
 func TxID(tx []byte) string {

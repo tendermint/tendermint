@@ -241,27 +241,22 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
 
 	// Make MempoolReactor
-	maxDataBytes := types.MaxDataBytesUnknownEvidence(
-		state.ConsensusParams.BlockSize.MaxBytes,
-		state.Validators.Size(),
-	)
-	maxGas := state.ConsensusParams.BlockSize.MaxGas
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheckFilter(func(tx types.Tx) bool {
-			// We have to account for the amino overhead in the tx size as well
-			aminoOverhead := amino.UvarintSize(uint64(len(tx)))
-			return (len(tx) + aminoOverhead) <= maxDataBytes
-		}),
-		mempl.WithPostCheckFilter(func(tx types.Tx, res *abci.ResponseCheckTx) bool {
-			if maxGas == -1 {
-				return true
-			}
-			return res.GasWanted <= maxGas
-		}),
+		mempl.WithPreCheckFilter(
+			mempool.PreCheckAminoMaxBytes(
+				types.MaxDataBytesUnknownEvidence(
+					state.ConsensusParams.BlockSize.MaxBytes,
+					state.Validators.Size(),
+				),
+			),
+		),
+		mempl.WithPostCheckFilter(
+			mempool.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
+		),
 	)
 	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)

@@ -2,6 +2,7 @@ package state
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -23,8 +24,7 @@ type Mempool interface {
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
 	ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs
-	Update(height int64, txs types.Txs,
-		preCheckFilter func(types.Tx) bool, postCheckFilter func(types.Tx, *abci.ResponseCheckTx) bool) error
+	Update(int64, types.Tx, mempool.PreCheckFunc, mempool.PostCheckFunc) error
 	Flush()
 	FlushAppConn() error
 
