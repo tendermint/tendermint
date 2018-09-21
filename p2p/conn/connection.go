@@ -756,7 +756,7 @@ func (ch *Channel) recvPacketMsg(packet PacketMsg) ([]byte, error) {
 func (ch *Channel) updateStats() {
 	// Exponential decay of stats.
 	// TODO: optimize.
-	ch.recentlySent = atomic.SwapInt64(&ch.recentlySent, int64(float64(ch.recentlySent) * 0.8))
+	ch.recentlySent = atomic.SwapInt64(&ch.recentlySent, int64(float64(atomic.LoadInt64(&ch.recentlySent)) * 0.8))
 }
 
 //----------------------------------------
