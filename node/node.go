@@ -190,16 +190,20 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Create the proxyApp, which manages connections (consensus, mempool, query)
-	// and sync tendermint and the app by performing a handshake
-	// and replaying any necessary blocks
-	consensusLogger := logger.With("module", "consensus")
-	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
-	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
+	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
+	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
+	}
+
+	// Create the handshaker, which calls RequestInfo and replays any blocks
+	// as necessary to sync tendermint with the app.
+	consensusLogger := logger.With("module", "consensus")
+	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
+	handshaker.SetLogger(consensusLogger)
+	if err := handshaker.Handshake(proxyApp); err != nil {
+		return nil, fmt.Errorf("Error during handshake: %v", err)
 	}
 
 	// reload the state (it may have been updated by the handshake)
@@ -771,15 +775,13 @@ func makeNodeInfo(
 			ConsensusVersion: cs.Version,
 			RPCVersion:       fmt.Sprintf("%v/%v", rpc.Version, rpccore.Version),
 			TxIndex:          txIndexerStatus,
+			RPCAddress:       config.RPC.ListenAddress,
 		},
 	}
 
 	if config.P2P.PexReactor {
 		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
 	}
-
-	rpcListenAddr := config.RPC.ListenAddress
-	nodeInfo.Other.RPCAddress = rpcListenAddr
 
 	lAddr := config.P2P.ExternalAddress
 
