@@ -23,7 +23,7 @@ type Mempool interface {
 
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
-	ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs
+	ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs
 	Update(int64, types.Txs, mempool.PreCheckFunc, mempool.PostCheckFunc) error
 	Flush()
 	FlushAppConn() error
@@ -37,11 +37,11 @@ type MockMempool struct{}
 
 var _ Mempool = MockMempool{}
 
-func (MockMempool) Lock()                                                   {}
-func (MockMempool) Unlock()                                                 {}
-func (MockMempool) Size() int                                               { return 0 }
-func (MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error      { return nil }
-func (MockMempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs { return types.Txs{} }
+func (MockMempool) Lock()                                            {}
+func (MockMempool) Unlock()                                          {}
+func (MockMempool) Size() int                                        { return 0 }
+func (MockMempool) CheckTx(_ types.Tx, _ func(*abci.Response)) error { return nil }
+func (MockMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs          { return types.Txs{} }
 func (MockMempool) Update(
 	_ int64,
 	_ types.Txs,
