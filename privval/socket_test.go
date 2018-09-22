@@ -313,6 +313,72 @@ func TestRemoteSignHeartbeatErrors(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestErrUnexpectedResponse(t *testing.T) {
+	var (
+		addr    = testFreeAddr(t)
+		logger  = log.TestingLogger()
+		chainID = cmn.RandStr(12)
+		readyc  = make(chan struct{})
+		errc    = make(chan error, 1)
+
+		rs = NewRemoteSigner(
+			logger,
+			chainID,
+			addr,
+			types.NewMockPV(),
+			ed25519.GenPrivKey(),
+		)
+		sc = NewSocketPV(
+			logger,
+			addr,
+			ed25519.GenPrivKey(),
+		)
+	)
+
+	testStartSocketPV(t, readyc, sc)
+	defer sc.Stop()
+	RemoteSignerConnDeadline(time.Millisecond)(rs)
+	RemoteSignerConnRetries(1e6)(rs)
+
+	// we do not want to Start() the remote signer here and instead use the connection to
+	// reply with intentionally wrong replies below:
+	rsConn, err := rs.connect()
+	defer rsConn.Close()
+	require.NoError(t, err)
+	require.NotNil(t, rsConn)
+	<-readyc
+
+	// Heartbeat:
+	go func(errc chan error) {
+		errc <- sc.SignHeartbeat(chainID, &types.Heartbeat{})
+	}(errc)
+	// read request and write wrong response:
+	go testReadWriteResponse(t, &SignedVoteResponse{}, rsConn)
+	err = <-errc
+	require.Error(t, err)
+	require.Equal(t, err, ErrUnexpectedResponse)
+
+	// Proposal:
+	go func(errc chan error) {
+		errc <- sc.SignProposal(chainID, &types.Proposal{})
+	}(errc)
+	// read request and write wrong response:
+	go testReadWriteResponse(t, &SignedHeartbeatResponse{}, rsConn)
+	err = <-errc
+	require.Error(t, err)
+	require.Equal(t, err, ErrUnexpectedResponse)
+
+	// Vote:
+	go func(errc chan error) {
+		errc <- sc.SignVote(chainID, &types.Vote{})
+	}(errc)
+	// read request and write wrong response:
+	go testReadWriteResponse(t, &SignedHeartbeatResponse{}, rsConn)
+	err = <-errc
+	require.Error(t, err)
+	require.Equal(t, err, ErrUnexpectedResponse)
+}
+
 func testSetupSocketPair(
 	t *testing.T,
 	chainID string,
@@ -337,12 +403,7 @@ func testSetupSocketPair(
 		)
 	)
 
-	go func(sc *SocketPV) {
-		require.NoError(t, sc.Start())
-		assert.True(t, sc.IsRunning())
-
-		readyc <- struct{}{}
-	}(sc)
+	testStartSocketPV(t, readyc, sc)
 
 	RemoteSignerConnDeadline(time.Millisecond)(rs)
 	RemoteSignerConnRetries(1e6)(rs)
@@ -353,6 +414,23 @@ func testSetupSocketPair(
 	<-readyc
 
 	return sc, rs
+}
+
+func testReadWriteResponse(t *testing.T, resp SocketPVMsg, rsConn net.Conn) {
+	_, err := readMsg(rsConn)
+	require.NoError(t, err)
+
+	err = writeMsg(rsConn, resp)
+	require.NoError(t, err)
+}
+
+func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *SocketPV) {
+	go func(sc *SocketPV) {
+		require.NoError(t, sc.Start())
+		assert.True(t, sc.IsRunning())
+
+		readyc <- struct{}{}
+	}(sc)
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.
