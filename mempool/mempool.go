@@ -23,11 +23,13 @@ import (
 )
 
 // PreCheckFunc is an optional filter to determine if a transaction should be
-// rejected. Invoked before CheckTx.
+// rejected. Invoked before CheckTx. An example would be to ensure that a
+// transaction isn't exceeded the block size.
 type PreCheckFunc func(types.Tx) bool
 
 // PostCheckFunc is an optional filter executed after CheckTx and rejects
-// transaction if false is returned.
+// transaction if false is returned. An example would be to ensure a
+// transaction doesn't require more gas than available.
 type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) bool
 
 /*
