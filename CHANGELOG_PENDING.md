@@ -18,6 +18,8 @@ BREAKING CHANGES:
     * int.go: Uint64Slice, all put/get int64 methods
 
 * Blockchain Protocol
+  * [types] \#2459 `Vote`/`Proposal`/`Heartbeat` use amino encoding instead of JSON in `SignBytes`.
+  * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer). 
 
 * P2P Protocol
 

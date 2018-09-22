@@ -401,14 +401,22 @@ must be greater than 2/3 of the total voting power of the complete validator set
 
 A vote is a signed message broadcast in the consensus for a particular block at a particular height and round.
 When stored in the blockchain or propagated over the network, votes are encoded in Amino.
-For signing, votes are encoded in JSON, and the ChainID is included, in the form of the `CanonicalSignBytes`.
+For signing, votes are represented via `CanonicalVote` and also encoded using amino (protobuf compatible) via 
+`Vote.SignBytes` which includes the `ChainID`.
 
-We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the CanonicalSignBytes
+We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the `SignBytes`
 using the given ChainID:
 
 ```go
-func (v Vote) Verify(chainID string, pubKey PubKey) bool {
-    return pubKey.Verify(v.Signature, CanonicalSignBytes(chainID, v))
+func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
+	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
+		return ErrVoteInvalidValidatorAddress
+	}
+
+	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
+		return ErrVoteInvalidSignature
+	}
+	return nil
 }
 ```
 
