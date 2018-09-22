@@ -24,7 +24,7 @@ type Mempool interface {
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
 	ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs
-	Update(int64, types.Tx, mempool.PreCheckFunc, mempool.PostCheckFunc) error
+	Update(int64, types.Txs, mempool.PreCheckFunc, mempool.PostCheckFunc) error
 	Flush()
 	FlushAppConn() error
 
@@ -45,8 +45,8 @@ func (MockMempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs { re
 func (MockMempool) Update(
 	_ int64,
 	_ types.Txs,
-	_ mempool.PreCheck,
-	_ mempool.PostCheck,
+	_ mempool.PreCheckFunc,
+	_ mempool.PostCheckFunc,
 ) error {
 	return nil
 }

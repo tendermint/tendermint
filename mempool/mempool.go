@@ -68,11 +68,11 @@ var (
 
 // PreCheckAminoMaxBytes checks that the size of the transaction plus the amino
 // overhead is smaller or equal to the expected maxBytes.
-func PreCheckAminoMaxBytes(maxBytes int) PreCheckFunc {
+func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) bool {
 		// We have to account for the amino overhead in the tx size as well
 		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
-		return (len(tx) + aminoOverhead) <= maxBytes
+		return int64(len(tx)+aminoOverhead) <= maxBytes
 	}
 }
 

@@ -148,16 +148,17 @@ func (blockExec *BlockExecutor) Commit(
 	}
 	// ResponseCommit has no error code - just data
 
-	blockExec.logger.Info("Committed state",
+	blockExec.logger.Info(
+		"Committed state",
 		"height", block.Height,
 		"txs", block.NumTxs,
-		"appHash", fmt.Sprintf("%X", res.Data))
+		"appHash", fmt.Sprintf("%X", res.Data),
+	)
 
 	// Update mempool.
 	err = blockExec.mempool.Update(
 		block.Height,
 		block.Txs,
-		preFilter,
 		mempool.PreCheckAminoMaxBytes(
 			types.MaxDataBytesUnknownEvidence(
 				state.ConsensusParams.BlockSize.MaxBytes,
