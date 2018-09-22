@@ -27,9 +27,10 @@ const (
 
 // Socket errors.
 var (
-	ErrDialRetryMax    = errors.New("dialed maximum retries")
-	ErrConnWaitTimeout = errors.New("waited for remote signer for too long")
-	ErrConnTimeout     = errors.New("remote signer timed out")
+	ErrDialRetryMax       = errors.New("dialed maximum retries")
+	ErrConnWaitTimeout    = errors.New("waited for remote signer for too long")
+	ErrConnTimeout        = errors.New("remote signer timed out")
+	ErrUnexpectedResponse = errors.New("received unexpected response")
 )
 
 var (
@@ -160,7 +161,10 @@ func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
 		return err
 	}
 
-	resp := *res.(*SignedVoteResponse)
+	resp, ok := res.(*SignedVoteResponse)
+	if !ok {
+		return ErrUnexpectedResponse
+	}
 	if resp.Error != nil {
 		return fmt.Errorf("remote error occurred: code: %v, description: %s",
 			resp.Error.Code,
@@ -185,7 +189,10 @@ func (sc *SocketPV) SignProposal(
 	if err != nil {
 		return err
 	}
-	resp := *res.(*SignedProposalResponse)
+	resp, ok := res.(*SignedProposalResponse)
+	if !ok {
+		return ErrUnexpectedResponse
+	}
 	if resp.Error != nil {
 		return fmt.Errorf("remote error occurred: code: %v, description: %s",
 			resp.Error.Code,
@@ -210,13 +217,15 @@ func (sc *SocketPV) SignHeartbeat(
 	if err != nil {
 		return err
 	}
-	resp := *res.(*SignedHeartbeatResponse)
+	resp, ok := res.(*SignedHeartbeatResponse)
+	if !ok {
+		return ErrUnexpectedResponse
+	}
 	if resp.Error != nil {
 		return fmt.Errorf("remote error occurred: code: %v, description: %s",
 			resp.Error.Code,
 			resp.Error.Description)
 	}
-	// TODO(ismail): handle error if contained in Reply
 	*heartbeat = *resp.Heartbeat
 
 	return nil
