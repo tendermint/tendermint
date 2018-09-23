@@ -17,7 +17,7 @@
   vote](https://godoc.org/github.com/tendermint/tendermint/types#FirstPrecommit)
   for something.
 - A vote _at_ `(H,R)` is a vote signed with the bytes for `H` and `R`
-  included in its [sign-bytes](../blockchain/blockchain.md).
+  included in its [sign-bytes](../blockchain/blockchain.md#vote).
 - _+2/3_ is short for "more than 2/3"
 - _1/3+_ is short for "1/3 or more"
 - A set of +2/3 of prevotes for a particular block or `<nil>` at
