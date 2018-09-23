@@ -108,7 +108,7 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	bz, err := cdc.MarshalBinary(ev)
 	require.NoError(t, err)
 
-	assert.Equal(t, MaxEvidenceBytes, len(bz))
+	assert.EqualValues(t, MaxEvidenceBytes, len(bz))
 }
 
 func randomDuplicatedVoteEvidence() *DuplicateVoteEvidence {

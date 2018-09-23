@@ -25,43 +25,43 @@ import (
 // > The above command returns JSON structured like this:
 //
 // ```json
-//{
-//  "jsonrpc": "2.0",
-//  "id": "",
-//  "result": {
-//    "node_info": {
-//      "id": "562dd7f579f0ecee8c94a11a3c1e378c1876f433",
-//      "listen_addr": "192.168.1.2:26656",
-//      "network": "test-chain-I6zScH",
-//      "version": "0.19.0",
-//      "channels": "4020212223303800",
-//      "moniker": "Ethans-MacBook-Pro.local",
-//      "other": [
-//        "amino_version=0.9.8",
-//        "p2p_version=0.5.0",
-//        "consensus_version=v1/0.2.2",
-//        "rpc_version=0.7.0/3",
-//        "tx_index=on",
-//        "rpc_addr=tcp://0.0.0.0:26657"
-//      ]
-//    },
-//    "sync_info": {
-//      "latest_block_hash": "2D4D7055BE685E3CB2410603C92AD37AE557AC59",
-//      "latest_app_hash": "0000000000000000",
-//      "latest_block_height": 231,
-//      "latest_block_time": "2018-04-27T23:18:08.459766485-04:00",
-//      "catching_up": false
-//    },
-//    "validator_info": {
-//      "address": "5875562FF0FFDECC895C20E32FC14988952E99E7",
-//      "pub_key": {
-//        "type": "tendermint/PubKeyEd25519",
-//        "value": "PpDJRUrLG2RgFqYYjawfn/AcAgacSXpLFrmfYYQnuzE="
-//      },
-//      "voting_power": 10
-//    }
-//  }
-//}
+// {
+// "jsonrpc": "2.0",
+// "id": "",
+// "result": {
+//   "node_info": {
+//   		"id": "53729852020041b956e86685e24394e0bee4373f",
+//   		"listen_addr": "10.0.2.15:26656",
+//   		"network": "test-chain-Y1OHx6",
+//   		"version": "0.24.0-2ce1abc2",
+//   		"channels": "4020212223303800",
+//   		"moniker": "ubuntu-xenial",
+//   		"other": {
+//   			"amino_version": "0.12.0",
+//   			"p2p_version": "0.5.0",
+//   			"consensus_version": "v1/0.2.2",
+//   			"rpc_version": "0.7.0/3",
+//   			"tx_index": "on",
+//   			"rpc_addr": "tcp://0.0.0.0:26657"
+//   		}
+//   	},
+//   	"sync_info": {
+//   		"latest_block_hash": "F51538DA498299F4C57AC8162AAFA0254CE08286",
+//   		"latest_app_hash": "0000000000000000",
+//   		"latest_block_height": "18",
+//   		"latest_block_time": "2018-09-17T11:42:19.149920551Z",
+//   		"catching_up": false
+//   	},
+//   	"validator_info": {
+//   		"address": "D9F56456D7C5793815D0E9AF07C3A355D0FC64FD",
+//   		"pub_key": {
+//   			"type": "tendermint/PubKeyEd25519",
+//   			"value": "wVxKNtEsJmR4vvh651LrVoRguPs+6yJJ9Bz174gw9DM="
+//   		},
+//   		"voting_power": "10"
+//   	}
+//   }
+// }
 // ```
 func Status() (*ctypes.ResultStatus, error) {
 	var latestHeight int64 = -1
@@ -91,7 +91,7 @@ func Status() (*ctypes.ResultStatus, error) {
 	}
 
 	result := &ctypes.ResultStatus{
-		NodeInfo: p2pSwitch.NodeInfo(),
+		NodeInfo: p2pTransport.NodeInfo(),
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   latestBlockHash,
 			LatestAppHash:     latestAppHash,

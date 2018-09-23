@@ -2,6 +2,7 @@ package state
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -22,8 +23,8 @@ type Mempool interface {
 
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
-	ReapMaxBytes(max int) types.Txs
-	Update(height int64, txs types.Txs, filter func(types.Tx) bool) error
+	ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs
+	Update(int64, types.Txs, mempool.PreCheckFunc, mempool.PostCheckFunc) error
 	Flush()
 	FlushAppConn() error
 
@@ -34,16 +35,25 @@ type Mempool interface {
 // MockMempool is an empty implementation of a Mempool, useful for testing.
 type MockMempool struct{}
 
-func (MockMempool) Lock()                                                                {}
-func (MockMempool) Unlock()                                                              {}
-func (MockMempool) Size() int                                                            { return 0 }
-func (MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error                   { return nil }
-func (MockMempool) ReapMaxBytes(max int) types.Txs                                       { return types.Txs{} }
-func (MockMempool) Update(height int64, txs types.Txs, filter func(types.Tx) bool) error { return nil }
-func (MockMempool) Flush()                                                               {}
-func (MockMempool) FlushAppConn() error                                                  { return nil }
-func (MockMempool) TxsAvailable() <-chan struct{}                                        { return make(chan struct{}) }
-func (MockMempool) EnableTxsAvailable()                                                  {}
+var _ Mempool = MockMempool{}
+
+func (MockMempool) Lock()                                            {}
+func (MockMempool) Unlock()                                          {}
+func (MockMempool) Size() int                                        { return 0 }
+func (MockMempool) CheckTx(_ types.Tx, _ func(*abci.Response)) error { return nil }
+func (MockMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs          { return types.Txs{} }
+func (MockMempool) Update(
+	_ int64,
+	_ types.Txs,
+	_ mempool.PreCheckFunc,
+	_ mempool.PostCheckFunc,
+) error {
+	return nil
+}
+func (MockMempool) Flush()                        {}
+func (MockMempool) FlushAppConn() error           { return nil }
+func (MockMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
+func (MockMempool) EnableTxsAvailable()           {}
 
 //------------------------------------------------------
 // blockstore
@@ -71,7 +81,7 @@ type BlockStore interface {
 
 // EvidencePool defines the EvidencePool interface used by the ConsensusState.
 type EvidencePool interface {
-	PendingEvidence(int) []types.Evidence
+	PendingEvidence(int64) []types.Evidence
 	AddEvidence(types.Evidence) error
 	Update(*types.Block, State)
 }
@@ -79,6 +89,6 @@ type EvidencePool interface {
 // MockMempool is an empty implementation of a Mempool, useful for testing.
 type MockEvidencePool struct{}
 
-func (m MockEvidencePool) PendingEvidence(int) []types.Evidence { return nil }
-func (m MockEvidencePool) AddEvidence(types.Evidence) error     { return nil }
-func (m MockEvidencePool) Update(*types.Block, State)           {}
+func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
+func (m MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
+func (m MockEvidencePool) Update(*types.Block, State)             {}

@@ -2,7 +2,6 @@ package core_types
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -85,13 +84,7 @@ func (s *ResultStatus) TxIndexEnabled() bool {
 	if s == nil {
 		return false
 	}
-	for _, s := range s.NodeInfo.Other {
-		info := strings.Split(s, "=")
-		if len(info) == 2 && info[0] == "tx_index" {
-			return info[1] == "on"
-		}
-	}
-	return false
+	return s.NodeInfo.Other.TxIndex == "on"
 }
 
 // Info about peer connections
@@ -123,6 +116,12 @@ type Peer struct {
 type ResultValidators struct {
 	BlockHeight int64              `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
+}
+
+// ConsensusParams for given height
+type ResultConsensusParams struct {
+	BlockHeight     int64                 `json:"block_height"`
+	ConsensusParams types.ConsensusParams `json:"consensus_params"`
 }
 
 // Info about the consensus state.

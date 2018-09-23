@@ -1,27 +1,9 @@
 package common
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
 )
-
-// IsHex returns true for non-empty hex-string prefixed with "0x"
-func IsHex(s string) bool {
-	if len(s) > 2 && strings.EqualFold(s[:2], "0x") {
-		_, err := hex.DecodeString(s[2:])
-		return err == nil
-	}
-	return false
-}
-
-// StripHex returns hex string without leading "0x"
-func StripHex(s string) string {
-	if IsHex(s) {
-		return s[2:]
-	}
-	return s
-}
 
 // StringInSlice returns true if a is found the list.
 func StringInSlice(a string, list []string) bool {

@@ -1,6 +1,6 @@
 # Pending
 
-Special thanks to external contributors with PRs included in this release:
+Special thanks to external contributors on this release:
 
 BREAKING CHANGES:
 
@@ -9,11 +9,6 @@ BREAKING CHANGES:
 * Apps
 
 * Go API
-
-* Blockchain Protocol
-
-* P2P Protocol
-
 
 FEATURES:
 

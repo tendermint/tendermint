@@ -4,19 +4,20 @@ Please ensure you've first read the spec for [ABCI Methods and Types](abci.md)
 
 Here we cover the following components of ABCI applications:
 
-- [State](#state) - the interplay between ABCI connections and application state
+- [Connection State](#state) - the interplay between ABCI connections and application state
   and the differences between `CheckTx` and `DeliverTx`.
 - [Transaction Results](#transaction-results) - rules around transaction
   results and validity
 - [Validator Set Updates](#validator-updates) - how validator sets are
   changed during `InitChain` and `EndBlock`
-- [Query](#query) - standards for using the `Query` method
+- [Query](#query) - standards for using the `Query` method and proofs about the
+  application state
 - [Crash Recovery](#crash-recovery) - handshake protocol to synchronize
   Tendermint and the application on startup.
 
 ## State
 
-Since Tendermint maintains multiple concurrent ABCI connections, it is typical
+Since Tendermint maintains three concurrent ABCI connections, it is typical
 for an application to maintain a distinct state for each, and for the states to
 be synchronized during `Commit`.
 
@@ -85,18 +86,50 @@ Otherwise it should never be modified.
 
 ## Transaction Results
 
-`ResponseCheckTx` and `ResponseDeliverTx` contain the same fields, though they
-have slightly different effects.
+`ResponseCheckTx` and `ResponseDeliverTx` contain the same fields.
 
-In both cases, `Info` and `Log` are non-deterministic values for debugging/convenience purposes
+The `Info` and `Log` fields are non-deterministic values for debugging/convenience purposes
 that are otherwise ignored.
 
-In both cases, `GasWanted` and `GasUsed` parameters are currently ignored,
-though see issues
-[#1861](https://github.com/tendermint/tendermint/issues/1861),
-[#2299](https://github.com/tendermint/tendermint/issues/2299) and
-[#2310](https://github.com/tendermint/tendermint/issues/2310) for how this may
-change.
+The `Data` field must be strictly deterministic, but can be arbitrary data.
+
+### Gas
+
+Ethereum introduced the notion of `gas` as an absract representation of the
+cost of resources used by nodes when processing transactions. Every operation in the
+Ethereum Virtual Machine uses some amount of gas, and gas can be accepted at a market-variable price.
+Users propose a maximum amount of gas for their transaction; if the tx uses less, they get
+the difference credited back. Tendermint adopts a similar abstraction,
+though uses it only optionally and weakly, allowing applications to define
+their own sense of the cost of execution.
+
+In Tendermint, the `ConsensusParams.BlockSize.MaxGas` limits the amount of `gas` that can be used in a block.
+The default value is `-1`, meaning no limit, or that the concept of gas is
+meaningless.
+
+Responses contain a `GasWanted` and `GasUsed` field. The former is the maximum
+amount of gas the sender of a tx is willing to use, and the later is how much it actually
+used. Applications should enforce that `GasUsed <= GasWanted` - ie. tx execution
+should halt before it can use more resources than it requested.
+
+When `MaxGas > -1`, Tendermint enforces the following rules:
+
+    - `GasWanted <= MaxGas` for all txs in the mempool
+    - `(sum of GasWanted in a block) <= MaxGas` when proposing a block
+
+If `MaxGas == -1`, no rules about gas are enforced.
+
+Note that Tendermint does not currently enforce anything about Gas in the consensus, only the mempool.
+This means it does not guarantee that committed blocks satisfy these rules!
+It is the application's responsibility to return non-zero response codes when gas limits are exceeded.
+
+The `GasUsed` field is ignored compltely by Tendermint. That said, applications should enforce:
+    - `GasUsed <= GasWanted` for any given transaction
+    - `(sum of GasUsed in a block) <= MaxGas` for every block
+
+In the future, we intend to add a `Priority` field to the responses that can be
+used to explicitly prioritize txs in the mempool for inclusion in a block
+proposal. See [#1861](https://github.com/tendermint/tendermint/issues/1861).
 
 ### CheckTx
 
@@ -141,9 +174,6 @@ If the list is not empty, Tendermint will use it for the validator set.
 This way the application can determine the initial validator set for the
 blockchain.
 
-ResponseInitChain also includes ConsensusParams, but these are presently
-ignored.
-
 ### EndBlock
 
 Updates to the Tendermint validator set can be made by returning
@@ -178,13 +208,108 @@ following rules:
 
 Note the updates returned in block `H` will only take effect at block `H+2`.
 
+## Consensus Parameters
+
+ConsensusParams enforce certain limits in the blockchain, like the maximum size
+of blocks, amount of gas used in a block, and the maximum acceptable age of
+evidence. They can be set in InitChain and updated in EndBlock.
+
+### BlockSize.MaxBytes
+
+The maximum size of a complete Amino encoded block.
+This is enforced by Tendermint consensus.
+
+This implies a maximum tx size that is this MaxBytes, less the expected size of
+the header, the validator set, and any included evidence in the block.
+
+Must have `0 < MaxBytes < 100 MB`.
+
+### BlockSize.MaxGas
+
+The maximum of the sum of `GasWanted` in a proposed block.
+This is *not* enforced by Tendermint consensus.
+It is left to the app to enforce (ie. if txs are included past the
+limit, they should return non-zero codes). It is used by Tendermint to limit the
+txs included in a proposed block.
+
+Must have `MaxGas >= -1`.
+If `MaxGas == -1`, no limit is enforced.
+
+### EvidenceParams.MaxAge
+
+This is the maximum age of evidence.
+This is enforced by Tendermint consensus.
+If a block includes evidence older than this, the block will be rejected
+(validators won't vote for it).
+
+Must have `0 < MaxAge`.
+
+### Updates
+
+The application may set the consensus params during InitChain, and update them during
+EndBlock.
+
+#### InitChain
+
+ResponseInitChain includes a ConsensusParams.
+If its nil, Tendermint will use the params loaded in the genesis
+file. If it's not nil, Tendermint will use it.
+This way the application can determine the initial consensus params for the
+blockchain.
+
+#### EndBlock
+
+ResponseEndBlock includes a ConsensusParams.
+If its nil, Tendermint will do nothing.
+If it's not nil, Tendermint will use it.
+This way the application can update the consensus params over time.
+
+Note the updates returned in block `H` will take effect right away for block
+`H+1`.
+
 ## Query
 
-Query is a generic message type with lots of flexibility to enable diverse sets
-of queries from applications. Tendermint has no requirements from the Query
-message for normal operation - that is, the ABCI app developer need not implement Query functionality if they do not wish too.
-That said, Tendermint makes a number of queries to support some optional
-features. These are:
+Query is a generic method with lots of flexibility to enable diverse sets
+of queries on application state. Tendermint makes use of Query to filter new peers
+based on ID and IP, and exposes Query to the user over RPC.
+
+Note that calls to Query are not replicated across nodes, but rather query the
+local node's state - hence they may return stale reads. For reads that require
+consensus, use a transaction.
+
+The most important use of Query is to return Merkle proofs of the application state at some height
+that can be used for efficient application-specific lite-clients.
+
+Note Tendermint has technically no requirements from the Query
+message for normal operation - that is, the ABCI app developer need not implement
+Query functionality if they do not wish too.
+
+### Query Proofs
+
+The Tendermint block header includes a number of hashes, each providing an
+anchor for some type of proof about the blockchain. The `ValidatorsHash` enables
+quick verification of the validator set, the `DataHash` gives quick
+verification of the transactions included in the block, etc.
+
+The `AppHash` is unique in that it is application specific, and allows for
+application-specific Merkle proofs about the state of the application.
+While some applications keep all relevant state in the transactions themselves
+(like Bitcoin and its UTXOs), others maintain a separated state that is
+computed deterministically *from* transactions, but is not contained directly in
+the transactions themselves (like Ethereum contracts and accounts).
+For such applications, the `AppHash` provides a much more efficient way to verify lite-client proofs.
+
+ABCI applications can take advantage of more efficient lite-client proofs for
+their state as follows:
+
+- return the Merkle root of the deterministic application state in
+`ResponseCommit.Data`.
+- it will be included as the `AppHash` in the next block.
+- return efficient Merkle proofs about that application state in `ResponseQuery.Proof`
+  that can be verified using the `AppHash` of the corresponding block.
+
+For instance, this allows an application's lite-client to verify proofs of
+absence in the application state, something which is much less efficient to do using the block hash.
 
 ### Peer Filtering
 
@@ -199,6 +324,15 @@ using the following paths, with no additional data:
 If either of these queries return a non-zero ABCI code, Tendermint will refuse
 to connect to the peer.
 
+### Paths
+
+Queries are directed at paths, and may optionally include additional data.
+
+The expectation is for there to be some number of high level paths
+differentiating concerns, like `/p2p`, `/store`, and `/app`. Currently,
+Tendermint only uses `/p2p`, for filtering peers. For more advanced use, see the
+implementation of
+[Query in the Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/v0.23.1/baseapp/baseapp.go#L333).
 
 ## Crash Recovery
 

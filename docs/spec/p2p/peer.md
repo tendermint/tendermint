@@ -1,4 +1,4 @@
-# Tendermint Peers
+# Peers
 
 This document explains how Tendermint Peers are identified and how they connect to one another.
 
@@ -83,7 +83,16 @@ type NodeInfo struct {
   Channels   []int8
 
   Moniker    string
-  Other      []string
+  Other      NodeInfoOther
+}
+
+type NodeInfoOther struct {
+	AminoVersion     string
+	P2PVersion       string
+	ConsensusVersion string
+	RPCVersion       string
+	TxIndex          string
+	RPCAddress       string
 }
 ```
 

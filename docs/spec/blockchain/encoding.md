@@ -1,4 +1,4 @@
-# Tendermint Encoding
+# Encoding
 
 ## Amino
 
@@ -269,7 +269,7 @@ similarly derived.
 
 ### IAVL+ Tree
 
-Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/develop/docs/core/multistore.md)
+Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/develop/docs/sdk/core/multistore.md)
 
 ## JSON
 
