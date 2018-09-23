@@ -184,9 +184,10 @@ Note the updates returned in block `H` will only take effect at block `H+2`.
 Query is a generic method with lots of flexibility to enable diverse sets
 of queries on application state. Tendermint makes use of Query to filter new peers
 based on ID and IP, and exposes Query to the user over RPC.
+
 Note that calls to Query are not replicated across nodes, but rather query the
-local node's state - hence they may provide stale reads. For reads that require
-consensus, a transaction is required.
+local node's state - hence they may return stale reads. For reads that require
+consensus, use a transaction.
 
 The most important use of Query is to return Merkle proofs of the application state at some height
 that can be used for efficient application-specific lite-clients.
@@ -235,6 +236,15 @@ using the following paths, with no additional data:
 If either of these queries return a non-zero ABCI code, Tendermint will refuse
 to connect to the peer.
 
+### Paths
+
+Queries are directed at paths, and may optionally include additional data.
+
+The expectation is for there to be some number of high level paths
+differentiating concerns, like `/p2p`, `/store`, and `/app`. Currently,
+Tendermint only uses `/p2p`, for filtering peers. For more advanced use, see the
+implementation of
+[Query in the Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/v0.23.1/baseapp/baseapp.go#L333).
 
 ## Crash Recovery
 
