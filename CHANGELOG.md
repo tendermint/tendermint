@@ -23,7 +23,10 @@ BREAKING CHANGES:
     * The size of block parts in the consensus is now fixed to 64kB
 
 * Apps
-  * [mempool] [\#2360](https://github.com/tendermint/tendermint/issues/2360) Mempool tracks the `ResponseCheckTx.GasWanted` and enforces `ConsensusParams.BlockSize.MaxGas` on proposals.
+  * [mempool] [\#2360](https://github.com/tendermint/tendermint/issues/2360) Mempool tracks the `ResponseCheckTx.GasWanted` and
+    `ConsensusParams.BlockSize.MaxGas` and enforces:
+    - `GasWanted <= MaxGas` for every tx
+    - `(sum of GasWanted in block) <= MaxGas` for block proposal
 
 * Go API
   * [libs/common] [\#2431](https://github.com/tendermint/tendermint/issues/2431) Remove Word256 due to lack of use
@@ -37,11 +40,10 @@ FEATURES:
   params at any height (@scriptonist)
 - [types] [\#1714](https://github.com/tendermint/tendermint/issues/1714) Add Address to GenesisValidator
 - [metrics] [\#2337](https://github.com/tendermint/tendermint/issues/2337) `consensus.block_interval_metrics` is now gauge, not histogram (you will be able to see spikes, if any)
+- [libs] [\#2286](https://github.com/tendermint/tendermint/issues/2286) Panic if `autofile` or `db/fsdb` permissions change from 0600.
 
 IMPROVEMENTS:
 - [libs/db] [\#2371](https://github.com/tendermint/tendermint/issues/2371) Output error instead of panic when the given `db_backend` is not initialised (@bradyjoestar)
-- [libs] [\#2286](https://github.com/tendermint/tendermint/issues/2286) Enforce 0600 permissions on `autofile` and `db/fsdb`
-
 - [mempool] [\#2399](https://github.com/tendermint/tendermint/issues/2399) Make mempool cache a proper LRU (@bradyjoestar)
 - [p2p] [\#2126](https://github.com/tendermint/tendermint/issues/2126) Introduce PeerTransport interface to improve isolation of concerns
 - [libs/common] [\#2326](https://github.com/tendermint/tendermint/issues/2326) Service returns ErrNotStarted
