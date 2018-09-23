@@ -106,14 +106,6 @@ module.exports = {
           "/spec/abci/apps",
           "/spec/abci/client-server"
         ]
-      },
-      {
-        title: "Research",
-        collapsable: false,
-        children: [
-	  "/research/determinism",
-	  "/research/transactional-semantics"
-	]
       }
     ]
   }

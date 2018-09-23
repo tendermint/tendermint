@@ -6,7 +6,7 @@ By default, Tendermint uses the `syndtr/goleveldb` package for it's in-process
 key-value database. Unfortunately, this implementation of LevelDB seems to suffer under heavy load (see
 [#226](https://github.com/syndtr/goleveldb/issues/226)). It may be best to
 install the real C-implementaiton of LevelDB and compile Tendermint to use
-that using `make build_c`. See the [install instructions](../introduction/install) for details.
+that using `make build_c`. See the [install instructions](../introduction/install.md) for details.
 
 Tendermint keeps multiple distinct LevelDB databases in the `$TMROOT/data`:
 
@@ -20,11 +20,11 @@ Tendermint keeps multiple distinct LevelDB databases in the `$TMROOT/data`:
 - `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result tags.
 
 By default, Tendermint will only index txs by their hash, not by their DeliverTx
-result tags. See [indexing transactions](../app-dev/indexing-transactions) for
+result tags. See [indexing transactions](../app-dev/indexing-transactions.md) for
 details.
 
 There is no current strategy for pruning the databases. Consider reducing
-block production by [controlling empty blocks](../tendermint-core/using-tendermint#No-Empty-Blocks)
+block production by [controlling empty blocks](../tendermint-core/using-tendermint.md#no-empty-blocks)
 or by increasing the `consensus.timeout_commit` param. Note both of these are
 local settings and not enforced by the consensus.
 
@@ -50,7 +50,9 @@ logging level, you can do so by running tendermint with
 ## Write Ahead Logs (WAL)
 
 Tendermint uses write ahead logs for the consensus (`cs.wal`) and the mempool
-(`mempool.wal`). Both WALs have a max size of 1GB and are automatically rotated..
+(`mempool.wal`). Both WALs have a max size of 1GB and are automatically rotated.
+
+### Consensus WAL
 
 The `consensus.wal` is used to ensure we can recover from a crash at any point
 in the consensus state machine.
@@ -60,7 +62,9 @@ validator. Since Tendermint validators are expected to never sign a conflicting 
 WAL ensures we can always recover deterministically to the latest state of the consensus without
 using the network or re-signing any consensus messages.
 
-If your `consensus.wal` is corrupted, see [below](#WAL-Corruption).
+If your `consensus.wal` is corrupted, see [below](#wal-corruption).
+
+### Mempool WAL
 
 The `mempool.wal` logs all incoming txs before running CheckTx, but is
 otherwise not used in any programmatic way. It's just a kind of manual
