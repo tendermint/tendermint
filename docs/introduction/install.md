@@ -95,9 +95,9 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
   tar -zxvf v1.20.tar.gz && \
   cd leveldb-1.20/ && \
   make && \
-  sudo scp -r out-static/lib* out-shared/lib* /usr/local/lib/ && \
+  cp -r out-static/lib* out-shared/lib* /usr/local/lib/ && \
   cd include/ && \
-  sudo scp -r leveldb /usr/local/include/ && \
+  cp -r leveldb /usr/local/include/ && \
   sudo ldconfig && \
   rm -f v1.20.tar.gz
 ```

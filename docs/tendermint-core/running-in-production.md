@@ -5,7 +5,7 @@
 By default, Tendermint uses the `syndtr/goleveldb` package for it's in-process
 key-value database. Unfortunately, this implementation of LevelDB seems to suffer under heavy load (see
 [#226](https://github.com/syndtr/goleveldb/issues/226)). It may be best to
-install the real C-implementaiton of LevelDB and compile Tendermint to use
+install the real C-implementation of LevelDB and compile Tendermint to use
 that using `make build_c`. See the [install instructions](../introduction/install.md) for details.
 
 Tendermint keeps multiple distinct LevelDB databases in the `$TMROOT/data`:
