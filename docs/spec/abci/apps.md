@@ -86,18 +86,50 @@ Otherwise it should never be modified.
 
 ## Transaction Results
 
-`ResponseCheckTx` and `ResponseDeliverTx` contain the same fields, though they
-have slightly different effects.
+`ResponseCheckTx` and `ResponseDeliverTx` contain the same fields.
 
-In both cases, `Info` and `Log` are non-deterministic values for debugging/convenience purposes
+The `Info` and `Log` fields are non-deterministic values for debugging/convenience purposes
 that are otherwise ignored.
 
-In both cases, `GasWanted` and `GasUsed` parameters are currently ignored,
-though see issues
-[#1861](https://github.com/tendermint/tendermint/issues/1861),
-[#2299](https://github.com/tendermint/tendermint/issues/2299) and
-[#2310](https://github.com/tendermint/tendermint/issues/2310) for how this may
-soon change.
+The `Data` field must be strictly deterministic, but can be arbitrary data.
+
+### Gas
+
+Ethereum introduced the notion of `gas` as an absract representation of the
+cost of resources used by nodes when processing transactions. Every operation in the
+Ethereum Virtual Machine uses some amount of gas, and gas can be accepted at a market-variable price.
+Users propose a maximum amount of gas for their transaction; if the tx uses less, they get
+the difference credited back. Tendermint adopts a similar abstraction,
+though uses it only optionally and weakly, allowing applications to define
+their own sense of the cost of execution.
+
+In Tendermint, the `ConsensusParams.BlockSize.MaxGas` limits the amount of `gas` that can be used in a block.
+The default value is `-1`, meaning no limit, or that the concept of gas is
+meaningless.
+
+Responses contain a `GasWanted` and `GasUsed` field. The former is the maximum
+amount of gas the sender of a tx is willing to use, and the later is how much it actually
+used. Applications should enforce that `GasUsed <= GasWanted` - ie. tx execution
+should halt before it can use more resources than it requested.
+
+When `MaxGas > -1`, Tendermint enforces the following rules:
+
+    - `GasWanted <= MaxGas` for all txs in the mempool
+    - `(sum of GasWanted in a block) <= MaxGas` when proposing a block
+
+If `MaxGas == -1`, no rules about gas are enforced.
+
+Note that Tendermint does not currently enforce anything about Gas in the consensus, only the mempool.
+This means it does not guarantee that committed blocks satisfy these rules!
+It is the application's responsibility to return non-zero response codes when gas limits are exceeded.
+
+The `GasUsed` field is ignored compltely by Tendermint. That said, applications should enforce:
+    - `GasUsed <= GasWanted` for any given transaction
+    - `(sum of GasUsed in a block) <= MaxGas` for every block
+
+In the future, we intend to add a `Priority` field to the responses that can be
+used to explicitly prioritize txs in the mempool for inclusion in a block
+proposal. See [#1861](https://github.com/tendermint/tendermint/issues/1861).
 
 ### CheckTx
 

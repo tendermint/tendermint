@@ -251,7 +251,7 @@ Commit are included in the header of the next block.
     be non-deterministic.
   - `Info (string)`: Additional information. May
     be non-deterministic.
-  - `GasWanted (int64)`: Amount of gas request for transaction.
+  - `GasWanted (int64)`: Amount of gas requested for transaction.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
