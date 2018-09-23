@@ -77,8 +77,13 @@ make install
 
 ## Compile with CLevelDB support
 
-Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7)
-with snappy. Example for Ubuntu:
+Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7).
+
+Build Tendermint with C libraries: `make build_c`.
+
+### Ubuntu
+
+Install LevelDB with snappy:
 
 ```
 sudo apt-get update
