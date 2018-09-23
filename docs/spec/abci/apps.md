@@ -114,8 +114,8 @@ should halt before it can use more resources than it requested.
 
 When `MaxGas > -1`, Tendermint enforces the following rules:
 
-    - `GasWanted <= MaxGas` for all txs in the mempool
-    - `(sum of GasWanted in a block) <= MaxGas` when proposing a block
+- `GasWanted <= MaxGas` for all txs in the mempool
+- `(sum of GasWanted in a block) <= MaxGas` when proposing a block
 
 If `MaxGas == -1`, no rules about gas are enforced.
 
@@ -124,8 +124,9 @@ This means it does not guarantee that committed blocks satisfy these rules!
 It is the application's responsibility to return non-zero response codes when gas limits are exceeded.
 
 The `GasUsed` field is ignored compltely by Tendermint. That said, applications should enforce:
-    - `GasUsed <= GasWanted` for any given transaction
-    - `(sum of GasUsed in a block) <= MaxGas` for every block
+
+- `GasUsed <= GasWanted` for any given transaction
+- `(sum of GasUsed in a block) <= MaxGas` for every block
 
 In the future, we intend to add a `Priority` field to the responses that can be
 used to explicitly prioritize txs in the mempool for inclusion in a block
