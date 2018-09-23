@@ -9,6 +9,7 @@ import (
 
 	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
+	"sync"
 )
 
 func TestInquirerValidPath(t *testing.T) {
@@ -127,8 +128,6 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	require.Nil(err, "%+v", err)
 	sh = fcz[8].SignedHeader
 	err = cert.Verify(sh)
-	// Trusted commit equals to shdr, invoke return nil without verification
-	err = cert.Verify(sh)
 	require.Nil(err, "%+v", err)
 	assert.Equal(fcz[8].Height(), cert.LastTrustedHeight())
 	fc_, err = trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
@@ -152,4 +151,61 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	err = cert.Verify(sh)
 	require.Nil(err, "%+v", err)
 	assert.Equal(fcz[9].Height(), cert.LastTrustedHeight())
+}
+
+func TestConcurrencyInquirerVerify(t *testing.T) {
+	_, require := assert.New(t), require.New(t)
+	trust := NewDBProvider("trust", dbm.NewMemDB()).SetLimit(10)
+	source := NewDBProvider("source", dbm.NewMemDB())
+
+	// Set up the validators to generate test blocks.
+	var vote int64 = 10
+	keys := genPrivKeys(5)
+	nkeys := keys.Extend(1)
+
+	// Construct a bunch of commits, each with one more height than the last.
+	chainID := "inquiry-test"
+	count := 10
+	consHash := []byte("special-params")
+	fcz := make([]FullCommit, count)
+	for i := 0; i < count; i++ {
+		vals := keys.ToValidators(vote, 0)
+		nextVals := nkeys.ToValidators(vote, 0)
+		h := int64(1 + i)
+		appHash := []byte(fmt.Sprintf("h=%d", h))
+		resHash := []byte(fmt.Sprintf("res=%d", h))
+		fcz[i] = keys.GenFullCommit(
+			chainID, h, nil,
+			vals, nextVals,
+			appHash, consHash, resHash, 0, len(keys))
+		// Extend the keys by 1 each time.
+		keys = nkeys
+		nkeys = nkeys.Extend(1)
+	}
+
+	// Initialize a Verifier with the initial state.
+	err := trust.SaveFullCommit(fcz[0])
+	require.Nil(err)
+	cert := NewDynamicVerifier(chainID, trust, source)
+	cert.SetLogger(log.TestingLogger())
+
+	err = source.SaveFullCommit(fcz[7])
+	err = source.SaveFullCommit(fcz[8])
+	require.Nil(err, "%+v", err)
+	sh := fcz[8].SignedHeader
+
+	var wg sync.WaitGroup
+	count = 100
+	errList := make([]error, count)
+	for i := 0; i < count; i++ {
+		wg.Add(1)
+		go func(index int) {
+			errList[index] = cert.Verify(sh)
+			defer wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	for _, err := range errList {
+		require.Nil(err)
+	}
 }

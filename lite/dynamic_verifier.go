@@ -7,6 +7,7 @@ import (
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
 	"sync"
+	"fmt"
 )
 
 const sizeOfPendingMap = 1024
@@ -91,10 +92,12 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 		// If loading trust commit successfully, and trust commit equal to shdr, then don't verify it,
 		// just return nil.
 		if bytes.Equal(trustedFCSameHeight.SignedHeader.Hash(), shdr.Hash()) {
+			ic.logger.Info(fmt.Sprintf("Load full commit at height %d from cache, there is not need to verify.", shdr.Height))
 			return nil
 		}
 	} else if !lerr.IsErrCommitNotFound(err) {
 		// Return error if it is not CommitNotFound error
+		ic.logger.Info(fmt.Sprintf("Encountered unknown error in loading full commit at height %d.", shdr.Height))
 		return err
 	}
 

@@ -8,12 +8,12 @@ import (
 	lclient "github.com/tendermint/tendermint/lite/client"
 )
 
-func NewVerifier(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger) (*lite.DynamicVerifier, error) {
+func NewVerifier(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger, cacheSize int) (*lite.DynamicVerifier, error) {
 
 	logger = logger.With("module", "lite/proxy")
 	logger.Info("lite/proxy/NewVerifier()...", "chainID", chainID, "rootDir", rootDir, "client", client)
 
-	memProvider := lite.NewDBProvider("trusted.mem", dbm.NewMemDB()).SetLimit(10)
+	memProvider := lite.NewDBProvider("trusted.mem", dbm.NewMemDB()).SetLimit(cacheSize)
 	lvlProvider := lite.NewDBProvider("trusted.lvl", dbm.NewDB("trust-base", dbm.LevelDBBackend, rootDir))
 	trust := lite.NewMultiProvider(
 		memProvider,
