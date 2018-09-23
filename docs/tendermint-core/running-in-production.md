@@ -52,6 +52,8 @@ logging level, you can do so by running tendermint with
 Tendermint uses write ahead logs for the consensus (`cs.wal`) and the mempool
 (`mempool.wal`). Both WALs have a max size of 1GB and are automatically rotated..
 
+### Consensus WAL
+
 The `consensus.wal` is used to ensure we can recover from a crash at any point
 in the consensus state machine.
 It writes all consensus messages (timeouts, proposals, block part, or vote)
@@ -61,6 +63,8 @@ WAL ensures we can always recover deterministically to the latest state of the c
 using the network or re-signing any consensus messages.
 
 If your `consensus.wal` is corrupted, see [below](#WAL-Corruption).
+
+### Mempool WAL
 
 The `mempool.wal` logs all incoming txs before running CheckTx, but is
 otherwise not used in any programmatic way. It's just a kind of manual
