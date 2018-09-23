@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -119,6 +120,62 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	}
 }
 
+func TestMempoolFilters(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(cc)
+	emptyTxArr := []types.Tx{[]byte{}}
+
+	nopPreFilter := func(tx types.Tx) bool { return true }
+	nopPostFilter := func(tx types.Tx, res *abci.ResponseCheckTx) bool { return true }
+
+	// This is the same filter we expect to be used within node/node.go and state/execution.go
+	nBytePreFilter := func(n int) func(tx types.Tx) bool {
+		return func(tx types.Tx) bool {
+			// We have to account for the amino overhead in the tx size as well
+			aminoOverhead := amino.UvarintSize(uint64(len(tx)))
+			return (len(tx) + aminoOverhead) <= n
+		}
+	}
+
+	nGasPostFilter := func(n int64) func(tx types.Tx, res *abci.ResponseCheckTx) bool {
+		return func(tx types.Tx, res *abci.ResponseCheckTx) bool {
+			if n == -1 {
+				return true
+			}
+			return res.GasWanted <= n
+		}
+	}
+
+	// each table driven test creates numTxsToCreate txs with checkTx, and at the end clears all remaining txs.
+	// each tx has 20 bytes + amino overhead = 21 bytes, 1 gas
+	tests := []struct {
+		numTxsToCreate int
+		preFilter      func(tx types.Tx) bool
+		postFilter     func(tx types.Tx, res *abci.ResponseCheckTx) bool
+		expectedNumTxs int
+	}{
+		{10, nopPreFilter, nopPostFilter, 10},
+		{10, nBytePreFilter(10), nopPostFilter, 0},
+		{10, nBytePreFilter(20), nopPostFilter, 0},
+		{10, nBytePreFilter(21), nopPostFilter, 10},
+		{10, nopPreFilter, nGasPostFilter(-1), 10},
+		{10, nopPreFilter, nGasPostFilter(0), 0},
+		{10, nopPreFilter, nGasPostFilter(1), 10},
+		{10, nopPreFilter, nGasPostFilter(3000), 10},
+		{10, nBytePreFilter(10), nGasPostFilter(20), 0},
+		{10, nBytePreFilter(30), nGasPostFilter(20), 10},
+		{10, nBytePreFilter(21), nGasPostFilter(1), 10},
+		{10, nBytePreFilter(21), nGasPostFilter(0), 0},
+	}
+	for tcIndex, tt := range tests {
+		mempool.Update(1, emptyTxArr, tt.preFilter, tt.postFilter)
+		checkTxs(t, mempool, tt.numTxsToCreate)
+		require.Equal(t, tt.expectedNumTxs, mempool.Size(), "mempool had the incorrect size, on test case %d", tcIndex)
+		mempool.Flush()
+	}
+}
+
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
@@ -139,7 +196,7 @@ func TestTxsAvailable(t *testing.T) {
 	// it should fire once now for the new height
 	// since there are still txs left
 	committedTxs, txs := txs[:50], txs[50:]
-	if err := mempool.Update(1, committedTxs, nil); err != nil {
+	if err := mempool.Update(1, committedTxs, nil, nil); err != nil {
 		t.Error(err)
 	}
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
@@ -151,7 +208,7 @@ func TestTxsAvailable(t *testing.T) {
 
 	// now call update with all the txs. it should not fire as there are no txs left
 	committedTxs = append(txs, moreTxs...)
-	if err := mempool.Update(2, committedTxs, nil); err != nil {
+	if err := mempool.Update(2, committedTxs, nil, nil); err != nil {
 		t.Error(err)
 	}
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
@@ -208,7 +265,7 @@ func TestSerialReap(t *testing.T) {
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			txs = append(txs, txBytes)
 		}
-		if err := mempool.Update(0, txs, nil); err != nil {
+		if err := mempool.Update(0, txs, nil, nil); err != nil {
 			t.Error(err)
 		}
 	}
