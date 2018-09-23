@@ -22,14 +22,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// PreCheckFunc is an optional filter to determine if a transaction should be
-// rejected. Invoked before CheckTx. An example would be to ensure that a
-// transaction isn't exceeded the block size.
+// PreCheckFunc is an optional filter executed before CheckTx and rejects
+// transaction if false is returned. An example would be to ensure that a
+// transaction doesn't exceeded the block size.
 type PreCheckFunc func(types.Tx) bool
 
 // PostCheckFunc is an optional filter executed after CheckTx and rejects
 // transaction if false is returned. An example would be to ensure a
-// transaction doesn't require more gas than available.
+// transaction doesn't require more gas than available for the block.
 type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) bool
 
 /*
