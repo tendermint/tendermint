@@ -174,9 +174,6 @@ If the list is not empty, Tendermint will use it for the validator set.
 This way the application can determine the initial validator set for the
 blockchain.
 
-ResponseInitChain also includes ConsensusParams, but these are presently
-ignored.
-
 ### EndBlock
 
 Updates to the Tendermint validator set can be made by returning
@@ -210,6 +207,65 @@ following rules:
   - if the validator does already exist, its power will be adjusted to the given power
 
 Note the updates returned in block `H` will only take effect at block `H+2`.
+
+## Consensus Parameters
+
+ConsensusParams enforce certain limits in the blockchain, like the maximum size
+of blocks, amount of gas used in a block, and the maximum acceptable age of
+evidence. They can be set in InitChain and updated in EndBlock.
+
+### BlockSize.MaxBytes
+
+The maximum size of a complete Amino encoded block.
+This is enforced by Tendermint consensus.
+
+This implies a maximum tx size that is this MaxBytes, less the expected size of
+the header, the validator set, and any included evidence in the block.
+
+Must have `0 < MaxBytes < 100 MB`.
+
+### BlockSize.MaxGas
+
+The maximum of the sum of `GasWanted` in a proposed block.
+This is *not* enforced by Tendermint consensus.
+It is left to the app to enforce (ie. if txs are included past the
+limit, they should return non-zero codes). It is used by Tendermint to limit the
+txs included in a proposed block.
+
+Must have `MaxGas >= -1`.
+If `MaxGas == -1`, no limit is enforced.
+
+### EvidenceParams.MaxAge
+
+This is the maximum age of evidence.
+This is enforced by Tendermint consensus.
+If a block includes evidence older than this, the block will be rejected
+(validators won't vote for it).
+
+Must have `0 < MaxAge`.
+
+### Updates
+
+The application may set the consensus params during InitChain, and update them during
+EndBlock.
+
+#### InitChain
+
+ResponseInitChain includes a ConsensusParams.
+If its nil, Tendermint will use the params loaded in the genesis
+file. If it's not nil, Tendermint will use it.
+This way the application can determine the initial consensus params for the
+blockchain.
+
+#### EndBlock
+
+ResponseEndBlock includes a ConsensusParams.
+If its nil, Tendermint will do nothing.
+If it's not nil, Tendermint will use it.
+This way the application can update the consensus params over time.
+
+Note the updates returned in block `H` will take effect right away for block
+`H+1`.
 
 ## Query
 
