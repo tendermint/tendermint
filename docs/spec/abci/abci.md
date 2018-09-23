@@ -48,16 +48,50 @@ Keys and values in tags must be UTF-8 encoded strings (e.g.
 
 ## Determinism
 
-Some methods (`SetOption, Query, CheckTx, DeliverTx`) return
-non-deterministic data in the form of `Info` and `Log`. The `Log` is
-intended for the literal output from the application's logger, while the
-`Info` is any additional info that should be returned.
-
-All other fields in the `Response*` of all methods must be strictly deterministic.
+ABCI applications must implement deterministic finite-state machines to be
+securely replicated by the Tendermint consensus. This means block execution
+over the Consensus Connection must be strictly deterministic: given the same
+ordered set of requests, all nodes will compute identical responses, for all
+BeginBlock, DeliverTx, EndBlock, and Commit. This is critical, because the
+responses are included in the header of the next block, either via a Merkle root
+or directly, so all nodes must agree on exactly what they are.
 
 For this reason, it is recommended that applications not be exposed to any
 external user or process except via the ABCI connections to a consensus engine
-like Tendermint Core.
+like Tendermint Core. The application must only change its state based on input
+from block execution (BeginBlock, DeliverTx, EndBlock, Commit), and not through
+any other kind of request. This is the only way to ensure all nodes see the same
+transactions and compute the same results.
+
+If there is some non-determinism in the state machine, consensus will eventually
+fail as nodes disagree over the correct values for the block header. The
+non-determinism must be fixed and the nodes restarted.
+
+Sources of non-determinism in applications may include:
+
+- Hardware failures
+    - Cosmic rays, overheating, etc.
+- Node-dependent state
+    - Random numbers
+    - Time
+- Underspecification
+    - Library version changes
+    - Race conditions
+    - Floating point numbers
+    - JSON serialization
+    - Iterating through hash-tables/maps/dictionaries
+- External Sources
+    - Filesystem
+    - Network calls (eg. some external REST API service)
+
+See [#56](https://github.com/tendermint/abci/issues/56) for original discussion.
+
+Note that some methods (`SetOption, Query, CheckTx, DeliverTx`) return
+explicitly non-deterministic data in the form of `Info` and `Log` fields. The `Log` is
+intended for the literal output from the application's logger, while the
+`Info` is any additional info that should be returned. These are the only fields
+that are not included in block header computations, so we don't need agreement
+on them. All other fields in the `Response*` must be strictly deterministic.
 
 ## Block Execution
 
