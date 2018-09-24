@@ -586,14 +586,6 @@ func (n *Node) OnStop() {
 	}
 }
 
-// RunForever waits for an interrupt signal and stops the node.
-func (n *Node) RunForever() {
-	// Sleep forever and then...
-	cmn.TrapSignal(func() {
-		n.Stop()
-	})
-}
-
 // ConfigureRPC sets all variables in rpccore so they will serve
 // rpc calls from this node
 func (n *Node) ConfigureRPC() {
