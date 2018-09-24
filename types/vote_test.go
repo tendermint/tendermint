@@ -145,5 +145,5 @@ func TestMaxVoteBytes(t *testing.T) {
 	bz, err := cdc.MarshalBinary(vote)
 	require.NoError(t, err)
 
-	assert.Equal(t, MaxVoteBytes, len(bz))
+	assert.EqualValues(t, MaxVoteBytes, len(bz))
 }

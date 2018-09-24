@@ -91,6 +91,10 @@ type ConsensusState struct {
 	internalMsgQueue chan msgInfo
 	timeoutTicker    TimeoutTicker
 
+	// information about about added votes and block parts are written on this channel
+	// so statistics can be computed by reactor
+	statsMsgQueue chan msgInfo
+
 	// we use eventBus to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
 	eventBus *types.EventBus
@@ -141,6 +145,7 @@ func NewConsensusState(
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
+		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
 		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
@@ -639,7 +644,11 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		_, err = cs.addProposalBlockPart(msg, peerID)
+		added, err := cs.addProposalBlockPart(msg, peerID)
+		if added {
+			cs.statsMsgQueue <- mi
+		}
+
 		if err != nil && msg.Round != cs.Round {
 			cs.Logger.Debug("Received block part from wrong round", "height", cs.Height, "csRound", cs.Round, "blockRound", msg.Round)
 			err = nil
@@ -647,7 +656,11 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		err := cs.tryAddVote(msg.Vote, peerID)
+		added, err := cs.tryAddVote(msg.Vote, peerID)
+		if added {
+			cs.statsMsgQueue <- mi
+		}
+
 		if err == ErrAddingVote {
 			// TODO: punish peer
 			// We probably don't want to stop the peer here. The vote does not
@@ -953,8 +966,11 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	// bound evidence to 1/10th of the block
 	evidence := cs.evpool.PendingEvidence(types.MaxEvidenceBytesPerBlock(maxBytes))
 	// Mempool validated transactions
-	txs := cs.mempool.ReapMaxBytesMaxGas(types.MaxDataBytes(maxBytes, cs.state.Validators.Size(), len(evidence)), maxGas)
-
+	txs := cs.mempool.ReapMaxBytesMaxGas(types.MaxDataBytes(
+		maxBytes,
+		cs.state.Validators.Size(),
+		len(evidence),
+	), maxGas)
 	proposerAddr := cs.privValidator.GetAddress()
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
 
@@ -1451,7 +1467,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 			int64(cs.state.ConsensusParams.BlockSize.MaxBytes),
 		)
 		if err != nil {
-			return true, err
+			return added, err
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
@@ -1481,35 +1497,35 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}
-		return true, nil
+		return added, nil
 	}
 	return added, nil
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
-func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) error {
-	_, err := cs.addVote(vote, peerID)
+func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
+	added, err := cs.addVote(vote, peerID)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, add it to the cs.evpool.
 		// If it's otherwise invalid, punish peer.
 		if err == ErrVoteHeightMismatch {
-			return err
+			return added, err
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.GetAddress()) {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
-				return err
+				return added, err
 			}
 			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
-			return err
+			return added, err
 		} else {
 			// Probably an invalid signature / Bad peer.
 			// Seems this can also err sometimes with "Unexpected step" - perhaps not from a bad peer ?
 			cs.Logger.Error("Error attempting to add vote", "err", err)
-			return ErrAddingVote
+			return added, ErrAddingVote
 		}
 	}
-	return nil
+	return added, nil
 }
 
 //-----------------------------------------------------------------------------

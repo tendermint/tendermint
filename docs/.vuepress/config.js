@@ -66,18 +66,19 @@ module.exports = {
           "/app-dev/ecosystem"
         ]
       },
+      {
         title: "Tendermint Spec",
         collapsable: true,
         children: [
-          "/spec/README",
+          "/spec/",
           "/spec/blockchain/blockchain",
           "/spec/blockchain/encoding",
           "/spec/blockchain/state",
-          "/spec/consensus/abci",
+          "/spec/software/abci",
           "/spec/consensus/bft-time",
           "/spec/consensus/consensus",
           "/spec/consensus/light-client",
-          "/spec/consensus/wal",
+          "/spec/software/wal",
           "/spec/p2p/config",
           "/spec/p2p/connection",
           "/spec/p2p/node",
@@ -105,14 +106,6 @@ module.exports = {
           "/spec/abci/apps",
           "/spec/abci/client-server"
         ]
-      },
-      {
-        title: "Research",
-        collapsable: false,
-        children: [
-	  "/research/determinism",
-	  "/research/transactional-semantics"
-	]
       }
     ]
   }
