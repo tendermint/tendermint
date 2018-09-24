@@ -12,7 +12,7 @@ import (
 // TimeFormat is used for generating the sigs
 const TimeFormat = time.RFC3339Nano
 
-type CanonicallockID struct {
+type CanonicalBlockID struct {
 	Hash        cmn.HexBytes           `json:"hash,omitempty"`
 	PartsHeader CanonicalPartSetHeader `json:"parts,omitempty"`
 }
@@ -27,20 +27,20 @@ type CanonicalProposal struct {
 	Type             string                 `json:"@type"`
 	BlockPartsHeader CanonicalPartSetHeader `json:"block_parts_header"`
 	Height           int64                  `json:"height"`
-	POLBlockID       CanonicallockID        `json:"pol_block_id"`
+	POLBlockID       CanonicalBlockID       `json:"pol_block_id"`
 	POLRound         int                    `json:"pol_round"`
 	Round            int                    `json:"round"`
 	Timestamp        time.Time              `json:"timestamp"`
 }
 
 type CanonicalVote struct {
-	ChainID   string          `json:"@chain_id"`
-	Type      string          `json:"@type"`
-	BlockID   CanonicallockID `json:"block_id"`
-	Height    int64           `json:"height"`
-	Round     int             `json:"round"`
-	Timestamp time.Time       `json:"timestamp"`
-	VoteType  byte            `json:"type"`
+	ChainID   string           `json:"@chain_id"`
+	Type      string           `json:"@type"`
+	BlockID   CanonicalBlockID `json:"block_id"`
+	Height    int64            `json:"height"`
+	Round     int              `json:"round"`
+	Timestamp time.Time        `json:"timestamp"`
+	VoteType  byte             `json:"type"`
 }
 
 type CanonicalHeartbeat struct {
@@ -56,8 +56,8 @@ type CanonicalHeartbeat struct {
 //-----------------------------------
 // Canonicalize the structs
 
-func CanonicalizeBlockID(blockID BlockID) CanonicallockID {
-	return CanonicallockID{
+func CanonicalizeBlockID(blockID BlockID) CanonicalBlockID {
+	return CanonicalBlockID{
 		Hash:        blockID.Hash,
 		PartsHeader: CanonicalizePartSetHeader(blockID.PartsHeader),
 	}
