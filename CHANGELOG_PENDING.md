@@ -9,9 +9,11 @@ BREAKING CHANGES:
 * Apps
 
 * Go API
+- [node] Remove node.RunForever
 
 FEATURES:
 
 IMPROVEMENTS:
 
 BUG FIXES:
+- [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time

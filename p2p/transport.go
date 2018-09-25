@@ -207,7 +207,11 @@ func (mt *MultiplexTransport) Dial(
 func (mt *MultiplexTransport) Close() error {
 	close(mt.closec)
 
-	return mt.listener.Close()
+	if mt.listener != nil {
+		return mt.listener.Close()
+	}
+
+	return nil
 }
 
 // Listen implements transportLifecycle.
