@@ -46,9 +46,9 @@ type AutoFile struct {
 	ID   string
 	Path string
 
-	closeTicker       *time.Ticker
-	closeTickerStopCh chan struct{} // closed when closeTicker is stopped
-	hup               chan os.Signal
+	closeTicker      *time.Ticker
+	closeTickerStopc chan struct{} // closed when closeTicker is stopped
+	hupc             chan os.Signal
 
 	mtx  sync.Mutex
 	file *os.File
@@ -59,10 +59,10 @@ type AutoFile struct {
 // permissions got changed (should be 0600)).
 func OpenAutoFile(path string) (*AutoFile, error) {
 	af := &AutoFile{
-		ID:                cmn.RandStr(12) + ":" + path,
-		Path:              path,
-		closeTicker:       time.NewTicker(autoFileClosePeriod),
-		closeTickerStopCh: make(chan struct{}),
+		ID:               cmn.RandStr(12) + ":" + path,
+		Path:             path,
+		closeTicker:      time.NewTicker(autoFileClosePeriod),
+		closeTickerStopc: make(chan struct{}),
 	}
 	if err := af.openFile(); err != nil {
 		af.Close()
@@ -70,10 +70,10 @@ func OpenAutoFile(path string) (*AutoFile, error) {
 	}
 
 	// Close file on SIGHUP.
-	af.hup = make(chan os.Signal, 1)
-	signal.Notify(af.hup, syscall.SIGHUP)
+	af.hupc = make(chan os.Signal, 1)
+	signal.Notify(af.hupc, syscall.SIGHUP)
 	go func() {
-		for range af.hup {
+		for range af.hupc {
 			af.closeFile()
 		}
 	}()
@@ -85,9 +85,9 @@ func OpenAutoFile(path string) (*AutoFile, error) {
 
 func (af *AutoFile) Close() error {
 	af.closeTicker.Stop()
-	close(af.closeTickerStopCh)
-	if af.hup != nil {
-		close(af.hup)
+	close(af.closeTickerStopc)
+	if af.hupc != nil {
+		close(af.hupc)
 	}
 	return af.closeFile()
 }
@@ -97,7 +97,7 @@ func (af *AutoFile) closeFileRoutine() {
 		select {
 		case <-af.closeTicker.C:
 			af.closeFile()
-		case <-af.closeTickerStopCh:
+		case <-af.closeTickerStopc:
 			return
 		}
 	}
