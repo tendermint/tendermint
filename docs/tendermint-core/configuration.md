@@ -115,14 +115,14 @@ addr_book_file = "addrbook.json"
 # Set false for private or local networks
 addr_book_strict = true
 
-# Time to wait before flushing messages out on the connection, in ms
-flush_throttle_timeout = 100
-
 # Maximum number of inbound peers
 max_num_inbound_peers = 40
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = 10
+
+# Time to wait before flushing messages out on the connection, in ms
+flush_throttle_timeout = 100
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = 1024
@@ -144,6 +144,13 @@ seed_mode = false
 
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private_peer_ids = ""
+
+# Toggle to disable guard against peers connecting from the same ip.
+allow_duplicate_ip = true
+
+# Peer connection configuration.
+handshake_timeout = "20s"
+dial_timeout = "3s"
 
 ##### mempool configuration options #####
 [mempool]
