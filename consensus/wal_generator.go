@@ -52,13 +52,13 @@ func WALGenerateNBlocks(wr io.Writer, numBlocks int) (err error) {
 		return errors.Wrap(err, "failed to make genesis state")
 	}
 	blockStore := bc.NewBlockStore(blockStoreDB)
-	handshaker := NewHandshaker(stateDB, state, blockStore, genDoc)
-	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app), handshaker)
+	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return errors.Wrap(err, "failed to start proxy app connections")
 	}
 	defer proxyApp.Stop()
+
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {

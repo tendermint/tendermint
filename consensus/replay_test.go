@@ -351,7 +351,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
-		proxyApp := proxy.NewAppConns(clientCreator2, nil)
+		proxyApp := proxy.NewAppConns(clientCreator2)
 		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey())
 		buildAppStateFromChain(proxyApp, stateDB, state, chain, nBlocks, mode)
 	}
@@ -359,11 +359,14 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	handshaker := NewHandshaker(stateDB, state, store, genDoc)
-	proxyApp := proxy.NewAppConns(clientCreator2, handshaker)
+	proxyApp := proxy.NewAppConns(clientCreator2)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
 	defer proxyApp.Stop()
+	if err := handshaker.Handshake(proxyApp); err != nil {
+		t.Fatalf("Error on abci handshake: %v", err)
+	}
 
 	// get the latest app hash from the app
 	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{Version: ""})
@@ -439,7 +442,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
 	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), "1")))
-	proxyApp := proxy.NewAppConns(clientCreator, nil) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
+	proxyApp := proxy.NewAppConns(clientCreator) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
@@ -643,11 +646,14 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	handshaker := NewHandshaker(stateDB, state, store, genDoc)
-	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
+	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
 	defer proxyApp.Stop()
+	if err := handshaker.Handshake(proxyApp); err != nil {
+		t.Fatalf("Error on abci handshake: %v", err)
+	}
 
 	// reload the state, check the validator set was updated
 	state = sm.LoadState(stateDB)

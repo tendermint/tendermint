@@ -266,7 +266,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 	bz, err := cdc.MarshalBinary(h)
 	require.NoError(t, err)
 
-	assert.Equal(t, MaxHeaderBytes, len(bz))
+	assert.EqualValues(t, MaxHeaderBytes, len(bz))
 }
 
 func randCommit() *Commit {
@@ -278,4 +278,61 @@ func randCommit() *Commit {
 		panic(err)
 	}
 	return commit
+}
+
+func TestBlockMaxDataBytes(t *testing.T) {
+	testCases := []struct {
+		maxBytes      int64
+		valsCount     int
+		evidenceCount int
+		panics        bool
+		result        int64
+	}{
+		0: {-10, 1, 0, true, 0},
+		1: {10, 1, 0, true, 0},
+		2: {721, 1, 0, true, 0},
+		3: {722, 1, 0, false, 0},
+		4: {723, 1, 0, false, 1},
+	}
+
+	for i, tc := range testCases {
+		if tc.panics {
+			assert.Panics(t, func() {
+				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount)
+			}, "#%v", i)
+		} else {
+			assert.Equal(t,
+				tc.result,
+				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount),
+				"#%v", i)
+		}
+	}
+}
+
+func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
+	testCases := []struct {
+		maxBytes  int64
+		valsCount int
+		panics    bool
+		result    int64
+	}{
+		0: {-10, 1, true, 0},
+		1: {10, 1, true, 0},
+		2: {801, 1, true, 0},
+		3: {802, 1, false, 0},
+		4: {803, 1, false, 1},
+	}
+
+	for i, tc := range testCases {
+		if tc.panics {
+			assert.Panics(t, func() {
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount)
+			}, "#%v", i)
+		} else {
+			assert.Equal(t,
+				tc.result,
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount),
+				"#%v", i)
+		}
+	}
 }

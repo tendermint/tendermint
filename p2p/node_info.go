@@ -48,12 +48,13 @@ type NodeInfoOther struct {
 
 func (o NodeInfoOther) String() string {
 	return fmt.Sprintf(
-		"{amino_version: %v, p2p_version: %v, consensus_version: %v, rpc_version: %v, tx_index: %v}",
+		"{amino_version: %v, p2p_version: %v, consensus_version: %v, rpc_version: %v, tx_index: %v, rpc_address: %v}",
 		o.AminoVersion,
 		o.P2PVersion,
 		o.ConsensusVersion,
 		o.RPCVersion,
 		o.TxIndex,
+		o.RPCAddress,
 	)
 }
 
@@ -84,7 +85,6 @@ func (info NodeInfo) Validate() error {
 	// XXX: Should we be more strict about version and address formats?
 	other := info.Other
 	versions := []string{
-		other.AminoVersion,
 		other.AminoVersion,
 		other.P2PVersion,
 		other.ConsensusVersion,
