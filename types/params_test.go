@@ -9,30 +9,23 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-func newConsensusParams(txsBytes, evidenceAge int) ConsensusParams {
-	return ConsensusParams{
-		BlockSize:      BlockSize{MaxBytes: txsBytes},
-		EvidenceParams: EvidenceParams{MaxAge: int64(evidenceAge)},
-	}
-}
-
 func TestConsensusParamsValidation(t *testing.T) {
 	testCases := []struct {
 		params ConsensusParams
 		valid  bool
 	}{
 		// test block size
-		0: {newConsensusParams(1, 1), true},
-		1: {newConsensusParams(0, 1), false},
-		2: {newConsensusParams(47*1024*1024, 1), true},
-		3: {newConsensusParams(10, 1), true},
-		4: {newConsensusParams(100*1024*1024, 1), true},
-		5: {newConsensusParams(101*1024*1024, 1), false},
-		6: {newConsensusParams(1024*1024*1024, 1), false},
-		7: {newConsensusParams(1024*1024*1024, -1), false},
+		0: {makeParams(1, 0, 1), true},
+		1: {makeParams(0, 0, 1), false},
+		2: {makeParams(47*1024*1024, 0, 1), true},
+		3: {makeParams(10, 0, 1), true},
+		4: {makeParams(100*1024*1024, 0, 1), true},
+		5: {makeParams(101*1024*1024, 0, 1), false},
+		6: {makeParams(1024*1024*1024, 0, 1), false},
+		7: {makeParams(1024*1024*1024, 0, -1), false},
 		// test evidence age
-		8: {newConsensusParams(1, 0), false},
-		9: {newConsensusParams(1, -1), false},
+		8: {makeParams(1, 0, 0), false},
+		9: {makeParams(1, 0, -1), false},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
@@ -43,14 +36,14 @@ func TestConsensusParamsValidation(t *testing.T) {
 	}
 }
 
-func makeParams(txsBytes, blockGas, evidenceAge int) ConsensusParams {
+func makeParams(blockBytes, blockGas, evidenceAge int64) ConsensusParams {
 	return ConsensusParams{
 		BlockSize: BlockSize{
-			MaxBytes: txsBytes,
-			MaxGas:   int64(blockGas),
+			MaxBytes: blockBytes,
+			MaxGas:   blockGas,
 		},
 		EvidenceParams: EvidenceParams{
-			MaxAge: int64(evidenceAge),
+			MaxAge: evidenceAge,
 		},
 	}
 }

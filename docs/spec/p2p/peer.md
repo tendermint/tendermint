@@ -1,4 +1,4 @@
-# Tendermint Peers
+# Peers
 
 This document explains how Tendermint Peers are identified and how they connect to one another.
 

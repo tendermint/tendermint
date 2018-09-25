@@ -148,7 +148,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 		// check for the tx
 		for {
-			txs := cs.mempool.ReapMaxBytesMaxGas(len(txBytes), -1)
+			txs := cs.mempool.ReapMaxBytesMaxGas(int64(len(txBytes)), -1)
 			if len(txs) == 0 {
 				emptyMempoolCh <- struct{}{}
 				return
