@@ -18,4 +18,5 @@ IMPROVEMENTS:
 - [p2p] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
 
 BUG FIXES:
+- [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
