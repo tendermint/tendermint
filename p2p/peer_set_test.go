@@ -24,6 +24,7 @@ func randPeer(ip net.IP) *peer {
 			ID:         nodeKey.ID(),
 			ListenAddr: fmt.Sprintf("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),
 		},
+		metrics: NopMetrics(),
 	}
 
 	p.ip = ip

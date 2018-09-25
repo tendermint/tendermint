@@ -43,16 +43,27 @@ type ConsensusReactor struct {
 	mtx      sync.RWMutex
 	fastSync bool
 	eventBus *types.EventBus
+
+	metrics *Metrics
 }
+
+type ReactorOption func(*ConsensusReactor)
 
 // NewConsensusReactor returns a new ConsensusReactor with the given
 // consensusState.
-func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *ConsensusReactor {
+func NewConsensusReactor(consensusState *ConsensusState, fastSync bool, options ...ReactorOption) *ConsensusReactor {
 	conR := &ConsensusReactor{
 		conS:     consensusState,
 		fastSync: fastSync,
+		metrics: NopMetrics(),
 	}
+	conR.updateFastSyncingMetric()
 	conR.BaseReactor = *p2p.NewBaseReactor("ConsensusReactor", conR)
+
+	for _, option := range options {
+		option(conR)
+	}
+
 	return conR
 }
 
@@ -98,6 +109,7 @@ func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int
 	conR.mtx.Lock()
 	conR.fastSync = false
 	conR.mtx.Unlock()
+	conR.metrics.FastSyncing.Set(0)
 
 	if blocksSynced > 0 {
 		// dont bother with the WAL if we fast synced
@@ -848,6 +860,21 @@ func (conR *ConsensusReactor) StringIndented(indent string) string {
 	}
 	s += indent + "}"
 	return s
+}
+
+func (conR *ConsensusReactor) updateFastSyncingMetric() {
+	var fastSyncing float64
+	if conR.fastSync {
+		fastSyncing = 1
+	} else {
+		fastSyncing = 0
+	}
+	conR.metrics.FastSyncing.Set(fastSyncing)
+}
+
+// ReactorMetrics sets the metrics
+func ReactorMetrics(metrics *Metrics) ReactorOption {
+	return func(conR *ConsensusReactor) { conR.metrics = metrics }
 }
 
 //-----------------------------------------------------------------------------
