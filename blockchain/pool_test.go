@@ -12,20 +12,64 @@ import (
 )
 
 func init() {
-	peerTimeout = 2 * time.Second
+	minimumTimeout = 2 * time.Second
 }
 
 type testPeer struct {
-	id     p2p.ID
-	height int64
+	id        p2p.ID
+	height    int64
+	inputChan chan inputData
 }
 
-func makePeers(numPeers int, minHeight, maxHeight int64) map[p2p.ID]testPeer {
+type inputData struct {
+	t       *testing.T
+	pool    *BlockPool
+	request BlockRequest
+}
+
+func (p testPeer) runInputRoutine() {
+	go func() {
+		for {
+			select {
+			case input, ok := <-p.inputChan:
+				if !ok {
+					return
+				} else {
+					p.simulateInput(input)
+				}
+			}
+		}
+	}()
+}
+
+// Request desired, pretend like we got the block immediately.
+func (p testPeer) simulateInput(input inputData) {
+	block := &types.Block{Header: types.Header{Height: input.request.Height}}
+	input.pool.AddBlockHeader(input.request.PeerID, input.request.Height, 123)
+	input.pool.AddBlock(input.request.PeerID, block, 123)
+	input.t.Logf("Added block from peer %v (height: %v)", input.request.PeerID, input.request.Height)
+}
+
+type testPeers map[p2p.ID]testPeer
+
+func (ps testPeers) start() {
+	for _, v := range ps {
+		v.runInputRoutine()
+	}
+}
+
+func (ps testPeers) stop() {
+	for _, v := range ps {
+		close(v.inputChan)
+	}
+}
+
+func makePeers(numPeers int, minHeight, maxHeight int64) testPeers {
 	peers := make(map[p2p.ID]testPeer, numPeers)
 	for i := 0; i < numPeers; i++ {
 		peerID := p2p.ID(cmn.RandStr(12))
 		height := minHeight + cmn.RandInt63n(maxHeight-minHeight)
-		peers[peerID] = testPeer{peerID, height}
+		peers[peerID] = testPeer{peerID, height, make(chan inputData, 10)}
 	}
 	return peers
 }
@@ -44,6 +88,9 @@ func TestBasic(t *testing.T) {
 	}
 
 	defer pool.Stop()
+
+	peers.start()
+	defer peers.stop()
 
 	// Introduce each peer.
 	go func() {
@@ -77,12 +124,8 @@ func TestBasic(t *testing.T) {
 			if request.Height == 300 {
 				return // Done!
 			}
-			// Request desired, pretend like we got the block immediately.
-			go func() {
-				block := &types.Block{Header: types.Header{Height: request.Height}}
-				pool.AddBlock(request.PeerID, block, 123)
-				t.Logf("Added block from peer %v (height: %v)", request.PeerID, request.Height)
-			}()
+
+			peers[request.PeerID].inputChan <- inputData{t, pool, request}
 		}
 	}
 }
