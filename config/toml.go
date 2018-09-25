@@ -178,8 +178,8 @@ max_num_inbound_peers = {{ .P2P.MaxNumInboundPeers }}
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = {{ .P2P.MaxNumOutboundPeers }}
 
-# Time to wait before flushing messages out on the connection, in ms
-flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
+# Time to wait before flushing messages out on the connection
+flush_throttle_timeout = "{{ .P2P.FlushThrottleTimeout }}"
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = {{ .P2P.MaxPacketMsgPayloadSize }}
@@ -228,25 +228,24 @@ cache_size = {{ .Mempool.CacheSize }}
 
 wal_file = "{{ js .Consensus.WalPath }}"
 
-# All timeouts are in milliseconds
-timeout_propose = {{ .Consensus.TimeoutPropose }}
-timeout_propose_delta = {{ .Consensus.TimeoutProposeDelta }}
-timeout_prevote = {{ .Consensus.TimeoutPrevote }}
-timeout_prevote_delta = {{ .Consensus.TimeoutPrevoteDelta }}
-timeout_precommit = {{ .Consensus.TimeoutPrecommit }}
-timeout_precommit_delta = {{ .Consensus.TimeoutPrecommitDelta }}
-timeout_commit = {{ .Consensus.TimeoutCommit }}
+timeout_propose = "{{ .Consensus.TimeoutPropose }}"
+timeout_propose_delta = "{{ .Consensus.TimeoutProposeDelta }}"
+timeout_prevote = "{{ .Consensus.TimeoutPrevote }}"
+timeout_prevote_delta = "{{ .Consensus.TimeoutPrevoteDelta }}"
+timeout_precommit = "{{ .Consensus.TimeoutPrecommit }}"
+timeout_precommit_delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
+timeout_commit = "{{ .Consensus.TimeoutCommit }}"
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 
-# EmptyBlocks mode and possible interval between empty blocks in seconds
+# EmptyBlocks mode and possible interval between empty blocks
 create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
-create_empty_blocks_interval = {{ .Consensus.CreateEmptyBlocksInterval }}
+create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 
-# Reactor sleep duration parameters are in milliseconds
-peer_gossip_sleep_duration = {{ .Consensus.PeerGossipSleepDuration }}
-peer_query_maj23_sleep_duration = {{ .Consensus.PeerQueryMaj23SleepDuration }}
+# Reactor sleep duration parameters
+peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
+peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
 ##### transactions indexer configuration options #####
 [tx_index]

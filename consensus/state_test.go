@@ -21,8 +21,8 @@ func init() {
 	config = ResetConfig("consensus_state_test")
 }
 
-func ensureProposeTimeout(timeoutPropose int) time.Duration {
-	return time.Duration(timeoutPropose*2) * time.Millisecond
+func ensureProposeTimeout(timeoutPropose time.Duration) time.Duration {
+	return time.Duration(timeoutPropose.Nanoseconds()*2) * time.Nanosecond
 }
 
 /*
