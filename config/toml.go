@@ -99,7 +99,7 @@ priv_validator_file = "{{ js .BaseConfig.PrivValidator }}"
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
-node_key_file = "{{ js .BaseConfig.NodeKey}}"
+node_key_file = "{{ js .BaseConfig.NodeKey }}"
 
 # Mechanism to connect to the ABCI application: socket | grpc
 abci = "{{ .BaseConfig.ABCI }}"

@@ -16,6 +16,7 @@ FEATURES:
 IMPROVEMENTS:
 - [consensus] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
 - [p2p] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
+- [config] added ValidateBasic method, which performs basic checks
 
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)

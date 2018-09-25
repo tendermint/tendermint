@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -35,6 +36,9 @@ func ParseConfig() (*cfg.Config, error) {
 	}
 	conf.SetRoot(conf.RootDir)
 	cfg.EnsureRoot(conf.RootDir)
+	if err = conf.ValidateBasic(); err != nil {
+		return nil, fmt.Errorf("Error in config file: %v", err)
+	}
 	return conf, err
 }
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -87,6 +88,88 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
 	return cfg
+}
+
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *Config) ValidateBasic() error {
+	// RPCConfig
+	if cfg.RPC.GRPCMaxOpenConnections < 0 {
+		return errors.New("[rpc] grpc_max_open_connections can't be negative")
+	}
+	if cfg.RPC.MaxOpenConnections < 0 {
+		return errors.New("[rpc] max_open_connections can't be negative")
+	}
+
+	// P2PConfig
+	if cfg.P2P.MaxNumInboundPeers < 0 {
+		return errors.New("[p2p] max_num_inbound_peers can't be negative")
+	}
+	if cfg.P2P.MaxNumOutboundPeers < 0 {
+		return errors.New("[p2p] max_num_outbound_peers can't be negative")
+	}
+	if cfg.P2P.FlushThrottleTimeout < 0 {
+		return errors.New("[p2p] flush_throttle_timeout can't be negative")
+	}
+	if cfg.P2P.MaxPacketMsgPayloadSize < 0 {
+		return errors.New("[p2p] max_packet_msg_payload_size can't be negative")
+	}
+	if cfg.P2P.SendRate < 0 {
+		return errors.New("[p2p] send_rate can't be negative")
+	}
+	if cfg.P2P.RecvRate < 0 {
+		return errors.New("[p2p] recv_rate can't be negative")
+	}
+
+	// MempoolConfig
+	if cfg.Mempool.Size < 0 {
+		return errors.New("[mempool] size can't be negative")
+	}
+	if cfg.Mempool.CacheSize < 0 {
+		return errors.New("[mempool] cache_size can't be negative")
+	}
+
+	// ConsensusConfig
+	if cfg.Consensus.TimeoutPropose < 0 {
+		return errors.New("[consensus] timeout_propose can't be negative")
+	}
+	if cfg.Consensus.TimeoutProposeDelta < 0 {
+		return errors.New("[consensus] timeout_propose_delta can't be negative")
+	}
+	if cfg.Consensus.TimeoutPrevote < 0 {
+		return errors.New("[consensus] timeout_prevote can't be negative")
+	}
+	if cfg.Consensus.TimeoutPrevoteDelta < 0 {
+		return errors.New("[consensus] timeout_prevote_delta can't be negative")
+	}
+	if cfg.Consensus.TimeoutPrecommit < 0 {
+		return errors.New("[consensus] timeout_precommit can't be negative")
+	}
+	if cfg.Consensus.TimeoutPrecommitDelta < 0 {
+		return errors.New("[consensus] timeout_precommit_delta can't be negative")
+	}
+	if cfg.Consensus.TimeoutCommit < 0 {
+		return errors.New("[consensus] timeout_commit can't be negative")
+	}
+	if cfg.Consensus.CreateEmptyBlocksInterval < 0 {
+		return errors.New("[consensus] create_empty_blocks_interval can't be negative")
+	}
+	if cfg.Consensus.PeerGossipSleepDuration < 0 {
+		return errors.New("[consensus] peer_gossip_sleep_duration can't be negative")
+	}
+	if cfg.Consensus.PeerQueryMaj23SleepDuration < 0 {
+		return errors.New("[consensus] peer_query_maj23_sleep_duration can't be negative")
+	}
+	if cfg.Consensus.BlockTimeIota < 0 {
+		return errors.New("[consensus] blocktime_iota can't be negative")
+	}
+
+	// InstrumentationConfig
+	if cfg.Instrumentation.MaxOpenConnections < 0 {
+		return errors.New("[instrumentation] max_open_connections can't be negative")
+	}
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
