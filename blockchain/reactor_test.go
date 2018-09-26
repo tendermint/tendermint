@@ -156,17 +156,14 @@ func TestNoBlockResponse(t *testing.T) {
 	}
 
 	for {
-		if reactorPairs[1].reactor.pool.IsCaughtUp() {
+		if reactorPairs[1].reactor.pool.IsCaughtUp() && (maxBlockHeight-1) == reactorPairs[1].reactor.store.Height() {
 			break
 		}
 
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	//give blockchain some time to apply block
-	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, maxBlockHeight, reactorPairs[0].reactor.store.Height())
-	assert.Equal(t, maxBlockHeight-1, reactorPairs[1].reactor.store.Height())
 
 	for _, tt := range tests {
 		block := reactorPairs[1].reactor.store.LoadBlock(tt.height)
@@ -216,17 +213,14 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}()
 
 	for {
-		if reactorPairs[3].reactor.pool.IsCaughtUp() {
+		if reactorPairs[3].reactor.pool.IsCaughtUp() && (maxBlockHeight-1) == reactorPairs[3].reactor.store.Height() {
 			break
 		}
 
 		time.Sleep(1 * time.Second)
 	}
 
-	//give blockchain some time to apply block
-	time.Sleep(100 * time.Millisecond)
 	//at this time, reactors[0-3] is the newest
-	assert.Equal(t, maxBlockHeight-1, reactorPairs[1].reactor.store.Height())
 	assert.Equal(t, 3, reactorPairs[1].reactor.Switch.Peers().Size())
 
 	//mark reactorPairs[3] is an invalid peer
