@@ -162,7 +162,8 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block})
-		return src.TrySend(BlockchainChannel, msgBytes)
+		msgBytesHeader := cdc.MustMarshalBinaryBare(&bcBlockResponseHeaderMessage{Height: msg.Height, BlockLength: int32(len(msgBytes))})
+		return src.TrySend(BlockchainChannel, msgBytesHeader) && src.TrySend(BlockchainChannel, msgBytes)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
@@ -187,6 +188,9 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		if queued := bcR.respondToPeer(msg, src); !queued {
 			// Unfortunately not queued since the queue is full.
 		}
+	case *bcBlockResponseHeaderMessage:
+		// Got a block header.
+		bcR.pool.AddBlockHeader(src.ID(), msg.Height, msg.BlockLength)
 	case *bcBlockResponseMessage:
 		// Got a block.
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
@@ -258,8 +262,10 @@ FOR_LOOP:
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
-				conR := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
-				conR.SwitchToConsensus(state, blocksSynced)
+				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
+				if ok {
+					conR.SwitchToConsensus(state, blocksSynced)
+				}
 
 				break FOR_LOOP
 			}
@@ -307,6 +313,13 @@ FOR_LOOP:
 					// NOTE: we've already removed the peer's request, but we
 					// still need to clean up the rest.
 					bcR.Switch.StopPeerForError(peer, fmt.Errorf("BlockchainReactor validation error: %v", err))
+				}
+				peerID2 := bcR.pool.RedoRequest(second.Height)
+				peer2 := bcR.Switch.Peers().Get(peerID2)
+				if peer2 != nil && peer2 != peer {
+					// NOTE: we've already removed the peer's request, but we
+					// still need to clean up the rest.
+					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("BlockchainReactor validation error: %v", err))
 				}
 				continue FOR_LOOP
 			} else {
@@ -358,6 +371,7 @@ func RegisterBlockchainMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*BlockchainMessage)(nil), nil)
 	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/blockchain/BlockRequest", nil)
 	cdc.RegisterConcrete(&bcBlockResponseMessage{}, "tendermint/blockchain/BlockResponse", nil)
+	cdc.RegisterConcrete(&bcBlockResponseHeaderMessage{}, "tendermint/blockchain/BlockResponseHeader", nil)
 	cdc.RegisterConcrete(&bcNoBlockResponseMessage{}, "tendermint/blockchain/NoBlockResponse", nil)
 	cdc.RegisterConcrete(&bcStatusResponseMessage{}, "tendermint/blockchain/StatusResponse", nil)
 	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/blockchain/StatusRequest", nil)
@@ -397,6 +411,15 @@ type bcBlockResponseMessage struct {
 
 func (m *bcBlockResponseMessage) String() string {
 	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
+}
+
+type bcBlockResponseHeaderMessage struct {
+	Height      int64
+	BlockLength int32
+}
+
+func (m *bcBlockResponseHeaderMessage) String() string {
+	return fmt.Sprintf("[bcBlockResponseHeaderMessage h:%v, l:%v]", m.Height, m.BlockLength)
 }
 
 //-------------------------------------
