@@ -20,3 +20,5 @@ IMPROVEMENTS:
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
+- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for 
+timeoutPrecommit before starting next round
