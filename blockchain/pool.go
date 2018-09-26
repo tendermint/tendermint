@@ -155,6 +155,8 @@ func (pool *BlockPool) IsCaughtUp() bool {
 
 	// some conditions to determine if we're caught up
 	receivedBlockOrTimedOut := (pool.height > 0 || time.Since(pool.startTime) > 5*time.Second)
+	// peer will not apply the heighest block, so when the heighest node exited, the rest node's max height is pool.maxPeerHeight-1
+	// we relax consider pool.height >= (pool.maxPeerHeight-1) to avoid stuck.
 	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
 	return isCaughtUp
@@ -479,7 +481,7 @@ type bpRequester struct {
 	pool       *BlockPool
 	height     int64
 	gotBlockCh chan struct{}
-	redoCh     chan p2p.ID
+	redoCh     chan p2p.ID //redo may send multitime, add peerId to identify repeat
 
 	mtx    sync.Mutex
 	peerID p2p.ID

@@ -18,7 +18,7 @@ func init() {
 type testPeer struct {
 	id        p2p.ID
 	height    int64
-	inputChan chan inputData
+	inputChan chan inputData //make sure each peer's data is sequential
 }
 
 type inputData struct {
@@ -29,15 +29,8 @@ type inputData struct {
 
 func (p testPeer) runInputRoutine() {
 	go func() {
-		for {
-			select {
-			case input, ok := <-p.inputChan:
-				if !ok {
-					return
-				} else {
-					p.simulateInput(input)
-				}
-			}
+		for input := range p.inputChan {
+			p.simulateInput(input)
 		}
 	}()
 }

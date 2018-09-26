@@ -25,3 +25,4 @@ IMPROVEMENTS:
 
 BUG FIXES:
 - [node] \#2294 Delay starting node until Genesis time
+- [fastsync] \#2456 and \#2457 Fix fastsync bug(@goolAdapter)

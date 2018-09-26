@@ -163,6 +163,8 @@ func TestNoBlockResponse(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
+	assert.True(t, reactorPairs[1].reactor.store.Height() == 64)
+
 	for _, tt := range tests {
 		block := reactorPairs[1].reactor.store.LoadBlock(tt.height)
 		if tt.existent {
@@ -197,7 +199,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	reactorPairs[2] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
 	reactorPairs[3] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
 
-	switchs := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
+	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
 		return s
 
@@ -219,21 +221,23 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	//at this time, reactors[0-3] is the newest
+	assert.True(t, reactorPairs[1].reactor.store.Height() == 147)
 	assert.True(t, reactorPairs[1].reactor.Switch.Peers().Size() == 3)
 
+	//mark reactorPairs[3] is an invalid peer
 	reactorPairs[3].reactor.store = otherChain.reactor.store
 
 	lastReactorPair := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
 	reactorPairs = append(reactorPairs, lastReactorPair)
 
-	switchs = append(switchs, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
+	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
 		return s
 
 	}, p2p.Connect2Switches)...)
 
 	for i := 0; i < len(reactorPairs)-1; i++ {
-		p2p.Connect2Switches(switchs, i, len(reactorPairs)-1)
+		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
 	}
 
 	for {
