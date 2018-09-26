@@ -18,6 +18,11 @@ Since there is only one list of tags, recording data for multiple such events in
 a single Check/DeliverTx/Begin/EndBlock must be done using prefixes in the key
 space.
 
+Alternatively, groups of tags that constitute an event can be separated by a
+special tag that denotes a break between the events. This would allow
+straightforward encoding of multiple events into a single list of tags without
+prefixing, at the cost of these "special" tags to separate the different events.
+
 TODO: brief description of how the indexing works
 
 ## Decision

@@ -2,7 +2,9 @@ package autofile
 
 import (
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -32,50 +34,70 @@ if err != nil {
 */
 
 const (
-	autoFileOpenDuration = 1000 * time.Millisecond
-	autoFilePerms        = os.FileMode(0600)
+	autoFileClosePeriod = 1000 * time.Millisecond
+	autoFilePerms       = os.FileMode(0600)
 )
 
-// Automatically closes and re-opens file for writing.
+// AutoFile automatically closes and re-opens file for writing. The file is
+// automatically setup to close itself every 1s and upon receiving SIGHUP.
+//
 // This is useful for using a log file with the logrotate tool.
 type AutoFile struct {
-	ID            string
-	Path          string
-	ticker        *time.Ticker
-	tickerStopped chan struct{} // closed when ticker is stopped
-	mtx           sync.Mutex
-	file          *os.File
+	ID   string
+	Path string
+
+	closeTicker      *time.Ticker
+	closeTickerStopc chan struct{} // closed when closeTicker is stopped
+	hupc             chan os.Signal
+
+	mtx  sync.Mutex
+	file *os.File
 }
 
-func OpenAutoFile(path string) (af *AutoFile, err error) {
-	af = &AutoFile{
-		ID:            cmn.RandStr(12) + ":" + path,
-		Path:          path,
-		ticker:        time.NewTicker(autoFileOpenDuration),
-		tickerStopped: make(chan struct{}),
+// OpenAutoFile creates an AutoFile in the path (with random ID). If there is
+// an error, it will be of type *PathError or *ErrPermissionsChanged (if file's
+// permissions got changed (should be 0600)).
+func OpenAutoFile(path string) (*AutoFile, error) {
+	af := &AutoFile{
+		ID:               cmn.RandStr(12) + ":" + path,
+		Path:             path,
+		closeTicker:      time.NewTicker(autoFileClosePeriod),
+		closeTickerStopc: make(chan struct{}),
 	}
-	if err = af.openFile(); err != nil {
-		return
+	if err := af.openFile(); err != nil {
+		af.Close()
+		return nil, err
 	}
-	go af.processTicks()
-	sighupWatchers.addAutoFile(af)
-	return
+
+	// Close file on SIGHUP.
+	af.hupc = make(chan os.Signal, 1)
+	signal.Notify(af.hupc, syscall.SIGHUP)
+	go func() {
+		for range af.hupc {
+			af.closeFile()
+		}
+	}()
+
+	go af.closeFileRoutine()
+
+	return af, nil
 }
 
 func (af *AutoFile) Close() error {
-	af.ticker.Stop()
-	close(af.tickerStopped)
-	err := af.closeFile()
-	sighupWatchers.removeAutoFile(af)
-	return err
+	af.closeTicker.Stop()
+	close(af.closeTickerStopc)
+	if af.hupc != nil {
+		close(af.hupc)
+	}
+	return af.closeFile()
 }
 
-func (af *AutoFile) processTicks() {
+func (af *AutoFile) closeFileRoutine() {
 	for {
 		select {
-		case <-af.ticker.C:
+		case <-af.closeTicker.C:
 			af.closeFile()
-		case <-af.tickerStopped:
+		case <-af.closeTickerStopc:
 			return
 		}
 	}
@@ -89,6 +111,7 @@ func (af *AutoFile) closeFile() (err error) {
 	if file == nil {
 		return nil
 	}
+
 	af.file = nil
 	return file.Close()
 }

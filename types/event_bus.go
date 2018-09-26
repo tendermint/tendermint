@@ -45,7 +45,7 @@ func (b *EventBus) SetLogger(l log.Logger) {
 }
 
 func (b *EventBus) OnStart() error {
-	return b.pubsub.OnStart()
+	return b.pubsub.Start()
 }
 
 func (b *EventBus) OnStop() {

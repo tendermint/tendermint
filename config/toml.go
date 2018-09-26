@@ -284,6 +284,9 @@ prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
+
+# Instrumentation namespace
+namespace = "{{ .Instrumentation.Namespace }}"
 `
 
 /****** these are for test settings ***********/

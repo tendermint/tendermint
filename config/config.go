@@ -634,6 +634,9 @@ type InstrumentationConfig struct {
 	// you increase your OS limits.
 	// 0 - unlimited.
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
+
+	// Tendermint instrumentation namespace.
+	Namespace string `mapstructure:"namespace"`
 }
 
 // DefaultInstrumentationConfig returns a default configuration for metrics
@@ -643,6 +646,7 @@ func DefaultInstrumentationConfig() *InstrumentationConfig {
 		Prometheus:           false,
 		PrometheusListenAddr: ":26660",
 		MaxOpenConnections:   3,
+		Namespace:            "tendermint",
 	}
 }
 

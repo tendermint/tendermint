@@ -7,22 +7,23 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	amino "github.com/tendermint/go-amino"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/evidence"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -40,9 +41,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-
-	_ "net/http/pprof"
-	"strings"
 )
 
 //------------------------------------------------------------------------------
@@ -107,7 +105,7 @@ type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(), p2p.PrometheusMetrics(), mempl.PrometheusMetrics()
+			return cs.PrometheusMetrics(config.Namespace), p2p.PrometheusMetrics(config.Namespace), mempl.PrometheusMetrics(config.Namespace)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics()
 	}
@@ -190,16 +188,20 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Create the proxyApp, which manages connections (consensus, mempool, query)
-	// and sync tendermint and the app by performing a handshake
-	// and replaying any necessary blocks
-	consensusLogger := logger.With("module", "consensus")
-	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
-	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
+	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
+	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
+	}
+
+	// Create the handshaker, which calls RequestInfo and replays any blocks
+	// as necessary to sync tendermint with the app.
+	consensusLogger := logger.With("module", "consensus")
+	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
+	handshaker.SetLogger(consensusLogger)
+	if err := handshaker.Handshake(proxyApp); err != nil {
+		return nil, fmt.Errorf("Error during handshake: %v", err)
 	}
 
 	// reload the state (it may have been updated by the handshake)
@@ -246,16 +248,22 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
 
 	// Make MempoolReactor
-	maxDataBytes := types.MaxDataBytesUnknownEvidence(
-		state.ConsensusParams.BlockSize.MaxBytes,
-		state.Validators.Size(),
-	)
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
-		mempl.WithFilter(func(tx types.Tx) bool { return len(tx) <= maxDataBytes }),
+		mempl.WithPreCheck(
+			mempl.PreCheckAminoMaxBytes(
+				types.MaxDataBytesUnknownEvidence(
+					state.ConsensusParams.BlockSize.MaxBytes,
+					state.Validators.Size(),
+				),
+			),
+		),
+		mempl.WithPostCheck(
+			mempl.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
+		),
 	)
 	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)
@@ -295,13 +303,13 @@ func NewNode(config *cfg.Config,
 		blockStore,
 		mempool,
 		evidencePool,
-		cs.WithMetrics(csMetrics),
+		cs.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync)
+	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 
 	eventBus := types.NewEventBus()
@@ -578,14 +586,6 @@ func (n *Node) OnStop() {
 	}
 }
 
-// RunForever waits for an interrupt signal and stops the node.
-func (n *Node) RunForever() {
-	// Sleep forever and then...
-	cmn.TrapSignal(func() {
-		n.Stop()
-	})
-}
-
 // ConfigureRPC sets all variables in rpccore so they will serve
 // rpc calls from this node
 func (n *Node) ConfigureRPC() {
@@ -771,15 +771,13 @@ func makeNodeInfo(
 			ConsensusVersion: cs.Version,
 			RPCVersion:       fmt.Sprintf("%v/%v", rpc.Version, rpccore.Version),
 			TxIndex:          txIndexerStatus,
+			RPCAddress:       config.RPC.ListenAddress,
 		},
 	}
 
 	if config.P2P.PexReactor {
 		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
 	}
-
-	rpcListenAddr := config.RPC.ListenAddress
-	nodeInfo.Other.RPCAddress = rpcListenAddr
 
 	lAddr := config.P2P.ExternalAddress
 

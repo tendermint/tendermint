@@ -118,6 +118,12 @@ type ResultValidators struct {
 	Validators  []*types.Validator `json:"validators"`
 }
 
+// ConsensusParams for given height
+type ResultConsensusParams struct {
+	BlockHeight     int64                 `json:"block_height"`
+	ConsensusParams types.ConsensusParams `json:"consensus_params"`
+}
+
 // Info about the consensus state.
 // UNSTABLE
 type ResultDumpConsensusState struct {
