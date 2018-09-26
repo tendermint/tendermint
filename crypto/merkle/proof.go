@@ -9,6 +9,11 @@ import (
 //----------------------------------------
 // ProofOp gets converted to an instance of ProofOperator:
 
+// ProofOperator is a layer for calculating intermediate Merkle root
+// Run() takes a list of bytes because it can be more than one
+// for example in range proofs
+// ProofOp() defines custom encoding which can be decoded later with
+// OpDecoder
 type ProofOperator interface {
 	Run([][]byte) ([][]byte, error)
 	GetKey() []byte
@@ -18,6 +23,9 @@ type ProofOperator interface {
 //----------------------------------------
 // Operations on a list of ProofOperators
 
+// ProofOperators is a slice of ProofOperator(s)
+// Each operator will be applied to the input value sequencially
+// and the last Merkle root will be verified with already known data
 type ProofOperators []ProofOperator
 
 func (poz ProofOperators) VerifyValue(root []byte, keypath string, value []byte) (err error) {
