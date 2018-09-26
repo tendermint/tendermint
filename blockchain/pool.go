@@ -155,7 +155,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 
 	// some conditions to determine if we're caught up
 	receivedBlockOrTimedOut := (pool.height > 0 || time.Since(pool.startTime) > 5*time.Second)
-	// peer will not apply the heighest block, so when the heighest node exited, the rest node's max height is pool.maxPeerHeight-1
+	// peer will not apply the max height block, so when the max height node exited, the rest node's max height is pool.maxPeerHeight-1
 	// we relax consider pool.height >= (pool.maxPeerHeight-1) to avoid stuck.
 	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
