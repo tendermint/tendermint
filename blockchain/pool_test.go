@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	peerTimeout = 2 * time.Second
+	minimumTimeout = 2 * time.Second
 }
 
 type testPeer struct {
@@ -38,6 +38,7 @@ func (p testPeer) runInputRoutine() {
 // Request desired, pretend like we got the block immediately.
 func (p testPeer) simulateInput(input inputData) {
 	block := &types.Block{Header: types.Header{Height: input.request.Height}}
+	input.pool.AddBlockHeader(input.request.PeerID, input.request.Height, 123)
 	input.pool.AddBlock(input.request.PeerID, block, 123)
 	input.t.Logf("Added block from peer %v (height: %v)", input.request.PeerID, input.request.Height)
 }
