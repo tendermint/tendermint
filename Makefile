@@ -35,7 +35,7 @@ install:
 ########################################
 ### Protobuf
 
-protoc_all: protoc_libs protoc_abci protoc_grpc
+protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc
 
 %.pb.go: %.proto
 	## If you get the following error,

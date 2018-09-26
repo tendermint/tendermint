@@ -23,6 +23,9 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
+// ProofOp defines an operation used for calculating Merkle root
+// The data could be arbitrary format, providing nessecary data
+// for example neighbouring node hash
 type ProofOp struct {
 	Type                 string   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	Key                  []byte   `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
@@ -36,7 +39,7 @@ func (m *ProofOp) Reset()         { *m = ProofOp{} }
 func (m *ProofOp) String() string { return proto.CompactTextString(m) }
 func (*ProofOp) ProtoMessage()    {}
 func (*ProofOp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_merkle_f65960c9013283ec, []int{0}
+	return fileDescriptor_merkle_5d3f6051907285da, []int{0}
 }
 func (m *ProofOp) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -86,6 +89,7 @@ func (m *ProofOp) GetData() []byte {
 	return nil
 }
 
+// Proof is Merkle proof defined by the list of ProofOps
 type Proof struct {
 	Ops                  []ProofOp `protobuf:"bytes,1,rep,name=ops" json:"ops"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
@@ -97,7 +101,7 @@ func (m *Proof) Reset()         { *m = Proof{} }
 func (m *Proof) String() string { return proto.CompactTextString(m) }
 func (*Proof) ProtoMessage()    {}
 func (*Proof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_merkle_f65960c9013283ec, []int{1}
+	return fileDescriptor_merkle_5d3f6051907285da, []int{1}
 }
 func (m *Proof) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -768,9 +772,9 @@ var (
 	ErrIntOverflowMerkle   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("crypto/merkle/merkle.proto", fileDescriptor_merkle_f65960c9013283ec) }
+func init() { proto.RegisterFile("crypto/merkle/merkle.proto", fileDescriptor_merkle_5d3f6051907285da) }
 
-var fileDescriptor_merkle_f65960c9013283ec = []byte{
+var fileDescriptor_merkle_5d3f6051907285da = []byte{
 	// 200 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4a, 0x2e, 0xaa, 0x2c,
 	0x28, 0xc9, 0xd7, 0xcf, 0x4d, 0x2d, 0xca, 0xce, 0x49, 0x85, 0x52, 0x7a, 0x05, 0x45, 0xf9, 0x25,

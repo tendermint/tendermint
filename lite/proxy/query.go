@@ -34,7 +34,7 @@ func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rp
 	}
 
 	resp := res.Response
-	val, height, proof = resp.Value, resp.Height, resp.Proof
+	val, height = resp.Value, resp.Height
 	return val, height, proof, err
 }
 
