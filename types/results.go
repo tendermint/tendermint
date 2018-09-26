@@ -54,20 +54,20 @@ func (a ABCIResults) Bytes() []byte {
 func (a ABCIResults) Hash() []byte {
 	// NOTE: we copy the impl of the merkle tree for txs -
 	// we should be consistent and either do it for both or not.
-	return merkle.SimpleHashFromHashers(a.toHashers())
+	return merkle.SimpleHashFromByteSlices(a.toByteSlices())
 }
 
 // ProveResult returns a merkle proof of one result from the set
 func (a ABCIResults) ProveResult(i int) merkle.SimpleProof {
-	_, proofs := merkle.SimpleProofsFromHashers(a.toHashers())
+	_, proofs := merkle.SimpleProofsFromByteSlices(a.toByteSlices())
 	return *proofs[i]
 }
 
-func (a ABCIResults) toHashers() []merkle.Hasher {
+func (a ABCIResults) toByteSlices() [][]byte {
 	l := len(a)
-	hashers := make([]merkle.Hasher, l)
+	byteslices := make([][]byte, l)
 	for i := 0; i < l; i++ {
-		hashers[i] = a[i]
+		byteslices[i] = cdc.MustMarshalBinaryBare(a[i])
 	}
-	return hashers
+	return byteslices
 }

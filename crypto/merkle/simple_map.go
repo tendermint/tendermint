@@ -1,7 +1,6 @@
 package merkle
 
 import (
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -35,7 +34,7 @@ func (sm *simpleMap) Set(key string, value Hasher) {
 	})
 }
 
-// Hash Merkle root hash of items sorted by key
+// Hash computes the Merkle root hash of items sorted by key
 // (UNSTABLE: and by value too if duplicate key).
 func (sm *simpleMap) Hash() []byte {
 	sm.Sort()
@@ -66,23 +65,17 @@ func (sm *simpleMap) KVPairs() cmn.KVPairs {
 // then hashed.
 type KVPair cmn.KVPair
 
-func (kv KVPair) Hash() []byte {
-	hasher := tmhash.New()
-	err := encodeByteSlice(hasher, kv.Key)
-	if err != nil {
-		panic(err)
-	}
-	err = encodeByteSlice(hasher, kv.Value)
-	if err != nil {
-		panic(err)
-	}
-	return hasher.Sum(nil)
+func (kv KVPair) Bytes() []byte {
+	val := make([]byte, len(kv.Key)+len(kv.Value))
+	copy(val, kv.Key)
+	copy(val[len(kv.Key):], kv.Value)
+	return val
 }
 
 func hashKVPairs(kvs cmn.KVPairs) []byte {
-	kvsH := make([]Hasher, len(kvs))
+	kvsH := make([][]byte, len(kvs))
 	for i, kvp := range kvs {
-		kvsH[i] = KVPair(kvp)
+		kvsH[i] = KVPair(kvp).Bytes()
 	}
-	return SimpleHashFromHashers(kvsH)
+	return SimpleHashFromByteSlices(kvsH)
 }

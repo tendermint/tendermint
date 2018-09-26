@@ -82,6 +82,20 @@ func (v *Validator) Hash() []byte {
 	})
 }
 
+// hashBytes computes the bytes to be hashed of a validator with a given voting power.
+// It excludes the Accum value, which changes with every round.
+func (v *Validator) hashBytes() []byte {
+	return cdc.MustMarshalBinaryBare(struct {
+		Address     Address
+		PubKey      crypto.PubKey
+		VotingPower int64
+	}{
+		v.Address,
+		v.PubKey,
+		v.VotingPower,
+	})
+}
+
 //----------------------------------------
 // RandValidator
 

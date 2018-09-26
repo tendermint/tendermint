@@ -480,11 +480,11 @@ func (commit *Commit) Hash() cmn.HexBytes {
 		return nil
 	}
 	if commit.hash == nil {
-		bs := make([]merkle.Hasher, len(commit.Precommits))
+		bzs := make([][]byte, len(commit.Precommits))
 		for i, precommit := range commit.Precommits {
-			bs[i] = aminoHasher(precommit)
+			bzs[i] = cdc.MustMarshalBinaryBare(precommit)
 		}
-		commit.hash = merkle.SimpleHashFromHashers(bs)
+		commit.hash = merkle.SimpleHashFromByteSlices(bzs)
 	}
 	return commit.hash
 }
@@ -699,11 +699,8 @@ type hasher struct {
 func (h hasher) Hash() []byte {
 	hasher := tmhash.New()
 	if h.item != nil && !cmn.IsTypedNil(h.item) && !cmn.IsEmpty(h.item) {
-		bz, err := cdc.MarshalBinaryBare(h.item)
-		if err != nil {
-			panic(err)
-		}
-		_, err = hasher.Write(bz)
+		bz := cdc.MustMarshalBinaryBare(h.item)
+		_, err := hasher.Write(bz)
 		if err != nil {
 			panic(err)
 		}
