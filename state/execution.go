@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/pkg/errors"
 )
 
 //-----------------------------------------------------------------------------
@@ -76,9 +75,11 @@ func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
 	res, err := blockExec.proxyApp.CheckBlockSync(abci.RequestCheckBlock{Block: &abci.Block{Txs: txs}})
 	if err != nil {
 		return nil
+		//return err
 	}
 	if res == nil || res.Code != abci.CodeTypeOK {
-		return errors.Errorf("block %v check failed. response: %v", block, res)
+		return nil
+		//return errors.Errorf("block %v check failed. response: %v", block, res)
 	}
 	return nil
 }
