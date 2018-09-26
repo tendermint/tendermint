@@ -2,12 +2,11 @@ package lite
 
 import (
 	"bytes"
-
+	"fmt"
+	"sync"
 	log "github.com/tendermint/tendermint/libs/log"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
-	"sync"
-	"fmt"
 )
 
 const sizeOfPendingMap = 1024

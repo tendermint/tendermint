@@ -2,14 +2,13 @@ package lite
 
 import (
 	"fmt"
+	"sync"
 	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
-	"sync"
 )
 
 func TestInquirerValidPath(t *testing.T) {
