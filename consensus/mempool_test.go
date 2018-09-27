@@ -181,7 +181,6 @@ type CounterApplication struct {
 	abci.BaseApplication
 
 	txCount        int
-	checkTxCount   int
 	mempoolTxCount int
 }
 
@@ -213,20 +212,6 @@ func (app *CounterApplication) CheckTx(tx []byte) abci.ResponseCheckTx {
 	}
 	app.mempoolTxCount++
 	return abci.ResponseCheckTx{Code: code.CodeTypeOK}
-}
-
-func (app *CounterApplication) CheckBlock(req abci.RequestCheckBlock) abci.ResponseCheckBlock {
-	app.checkTxCount=app.txCount
-	for _, tx := range req.Block.Txs {
-		txValue := txAsUint64(tx)
-		if txValue != uint64(app.checkTxCount) {
-			return abci.ResponseCheckBlock{
-				Code: code.CodeTypeBadNonce,
-				Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue)}
-		}
-		app.checkTxCount++
-	}
-	return abci.ResponseCheckBlock{Code: code.CodeTypeOK}
 }
 
 func txAsUint64(tx []byte) uint64 {

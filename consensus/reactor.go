@@ -518,7 +518,7 @@ OUTER_LOOP:
 		// Now consider sending other things, like the Proposal itself.
 
 		// Send Proposal && ProposalPOL BitArray?
-		if rs.Proposal != nil && (!prs.Proposal && !prs.Round0Proposal) || (!prs.Round0Proposal && rs.Proposal.Round == 0) {
+		if rs.Proposal != nil && ((!prs.Proposal && !prs.Round0Proposal) || (!prs.Round0Proposal && rs.Proposal.Round == 0)) {
 			// Proposal: share the proposal metadata with peer.
 			{
 				msg := &ProposalMessage{Proposal: rs.Proposal}
