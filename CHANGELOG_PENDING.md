@@ -20,3 +20,4 @@ IMPROVEMENTS:
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
+- [state] \#2491 Store ABCIResponses only for the last block

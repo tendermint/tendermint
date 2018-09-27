@@ -31,7 +31,7 @@ func TestApplyBlock(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer proxyApp.Stop()
 
 	state, stateDB := state(1, 1)
@@ -43,7 +43,19 @@ func TestApplyBlock(t *testing.T) {
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 	state, err = blockExec.ApplyBlock(state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
+
+	// Test we store results for the current height and do not store results for
+	// the previous height.
+	abciResponses, err := LoadABCIResponses(stateDB, block.Height)
+	if assert.NoError(t, err) {
+		assert.NotNil(t, abciResponses)
+	}
+	abciResponses2, err := LoadABCIResponses(stateDB, block.Height-1)
+	assert.Nil(t, abciResponses2)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrNoABCIResponsesForHeight{block.Height - 1}, err)
+	}
 
 	// TODO check state and mempool
 }

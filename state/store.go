@@ -152,11 +152,16 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 	return abciResponses, nil
 }
 
-// SaveABCIResponses persists the ABCIResponses to the database.
+// saveABCIResponses persists the ABCIResponses to the database.
 // This is useful in case we crash after app.Commit and before s.Save().
 // Responses are indexed by height so they can also be loaded later to produce Merkle proofs.
 func saveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
 	db.SetSync(calcABCIResponsesKey(height), abciResponses.Bytes())
+}
+
+// deleteABCIResponses deletes ABCIResponses for the given height.
+func deleteABCIResponses(db dbm.DB, height int64) {
+	db.Delete(calcABCIResponsesKey(height))
 }
 
 //-----------------------------------------------------------------------------
