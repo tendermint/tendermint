@@ -45,7 +45,6 @@ type Client interface {
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
-	CheckBlockSync(types.RequestCheckBlock) (*types.ResponseCheckBlock, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 }

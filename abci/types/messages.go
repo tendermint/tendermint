@@ -105,12 +105,6 @@ func ToRequestCheckTx(tx []byte) *Request {
 	}
 }
 
-func ToRequestCheckBlock(req RequestCheckBlock) *Request {
-	return &Request{
-		Value: &Request_CheckBlock{&req},
-	}
-}
-
 func ToRequestCommit() *Request {
 	return &Request{
 		Value: &Request_Commit{&RequestCommit{}},
@@ -182,12 +176,6 @@ func ToResponseDeliverTx(res ResponseDeliverTx) *Response {
 func ToResponseCheckTx(res ResponseCheckTx) *Response {
 	return &Response{
 		Value: &Response_CheckTx{&res},
-	}
-}
-
-func ToResponseCheckBlock(res ResponseCheckBlock) *Response {
-	return &Response{
-		Value: &Response_CheckBlock{&res},
 	}
 }
 

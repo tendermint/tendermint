@@ -201,13 +201,6 @@ func (app *localClient) InitChainSync(req types.RequestInitChain) (*types.Respon
 	return &res, nil
 }
 
-func (app *localClient) CheckBlockSync(req types.RequestCheckBlock) (*types.ResponseCheckBlock, error) {
-	app.mtx.Lock()
-	res := app.Application.CheckBlock(req)
-	app.mtx.Unlock()
-	return &res, nil
-}
-
 func (app *localClient) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
 	app.mtx.Lock()
 	res := app.Application.BeginBlock(req)

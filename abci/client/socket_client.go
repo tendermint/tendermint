@@ -325,12 +325,6 @@ func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.Respo
 	return reqres.Response.GetInitChain(), cli.Error()
 }
 
-func (cli *socketClient) CheckBlockSync(req types.RequestCheckBlock) (*types.ResponseCheckBlock,error){
-	reqres := cli.queueRequest(types.ToRequestCheckBlock(req))
-	cli.FlushSync()
-	return reqres.Response.GetCheckBlock(), cli.Error()
-}
-
 func (cli *socketClient) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
 	reqres := cli.queueRequest(types.ToRequestBeginBlock(req))
 	cli.FlushSync()
@@ -397,8 +391,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_DeliverTx)
 	case *types.Request_CheckTx:
 		_, ok = res.Value.(*types.Response_CheckTx)
-	case *types.Request_CheckBlock:
-		_, ok = res.Value.(*types.Response_CheckBlock)
 	case *types.Request_Commit:
 		_, ok = res.Value.(*types.Response_Commit)
 	case *types.Request_Query:
