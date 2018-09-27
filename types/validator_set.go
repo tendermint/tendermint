@@ -22,9 +22,9 @@ import (
 // NOTE: All get/set to validators should copy the value for safety.
 type ValidatorSet struct {
 	// NOTE: persisted via reflect, must be exported.
-	Validators []*Validator `json:"validators"`
-	Proposer   *Validator   `json:"proposer"`
-
+	Validators       []*Validator `json:"validators"`
+	Proposer         *Validator   `json:"proposer"`
+	ProposerOfHeight *Validator   `json:"proposer_of_height"`
 	// cached (unexported)
 	totalVotingPower int64
 }
@@ -160,6 +160,20 @@ func (vals *ValidatorSet) GetProposer() (proposer *Validator) {
 	return vals.Proposer.Copy()
 }
 
+func (vals *ValidatorSet) GetProposerOfHeight() (proposer *Validator) {
+	if len(vals.Validators) == 0 {
+		return nil
+	}
+	if vals.ProposerOfHeight == nil {
+		if vals.Proposer != nil {
+			vals.ProposerOfHeight = vals.Proposer
+		} else {
+			vals.ProposerOfHeight = vals.findProposer()
+		}
+	}
+	return vals.ProposerOfHeight.Copy()
+}
+
 func (vals *ValidatorSet) findProposer() *Validator {
 	var proposer *Validator
 	for _, val := range vals.Validators {
@@ -283,7 +297,15 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 			return fmt.Errorf("Invalid commit -- wrong round: want %v got %v", round, precommit.Round)
 		}
 		if precommit.Type != VoteTypePrecommit {
-			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
+			if precommit.Type == VoteTypePrevote {
+				if precommit.BlockID.ProposeRound != 0 {
+					return fmt.Errorf("Invalid commit -- type is prevote, but not signed for the block of last round 0 proposer")
+				} else {
+					//passed check
+				}
+			} else {
+				return fmt.Errorf("Invalid commit -- invalid vote type @ index %v", idx)
+			}
 		}
 		_, val := vals.GetByIndex(idx)
 		// Validate signature.
@@ -362,7 +384,15 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 			return cmn.NewError("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
 		if precommit.Type != VoteTypePrecommit {
-			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
+			if precommit.Type == VoteTypePrevote {
+				if precommit.BlockID.ProposeRound != 0 {
+					return fmt.Errorf("Invalid commit -- type is prevote, but not signed for the block of last round 0 proposer")
+				} else {
+					//passed check
+				}
+			} else {
+				return fmt.Errorf("Invalid commit -- invalid vote type @ index %v", idx)
+			}
 		}
 		// See if this validator is in oldVals.
 		idx, val := oldVals.GetByAddress(precommit.ValidatorAddress)

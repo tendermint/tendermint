@@ -13,11 +13,12 @@ import (
 // PeerRoundState contains the known state of a peer.
 // NOTE: Read-only when returned by PeerState.GetRoundState().
 type PeerRoundState struct {
-	Height                   int64               `json:"height"`                      // Height peer is at
-	Round                    int                 `json:"round"`                       // Round peer is at, -1 if unknown.
-	Step                     RoundStepType       `json:"step"`                        // Step peer is at
-	StartTime                time.Time           `json:"start_time"`                  // Estimated start of round 0 at this height
-	Proposal                 bool                `json:"proposal"`                    // True if peer has proposal for this round
+	Height                   int64               `json:"height"`     // Height peer is at
+	Round                    int                 `json:"round"`      // Round peer is at, -1 if unknown.
+	Step                     RoundStepType       `json:"step"`       // Step peer is at
+	StartTime                time.Time           `json:"start_time"` // Estimated start of round 0 at this height
+	Proposal                 bool                `json:"proposal"`
+	Round0Proposal           bool                `json:"round0_proposal"`             // True if peer has proposal for this round
 	ProposalBlockPartsHeader types.PartSetHeader `json:"proposal_block_parts_header"` //
 	ProposalBlockParts       *cmn.BitArray       `json:"proposal_block_parts"`        //
 	ProposalPOLRound         int                 `json:"proposal_pol_round"`          // Proposal's POL round. -1 if none.

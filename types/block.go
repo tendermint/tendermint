@@ -280,6 +280,7 @@ type Header struct {
 	// consensus info
 	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
 	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
+	ProposeRound    int          `json:"proposer_round"`
 }
 
 // Hash returns the hash of the header.
@@ -306,6 +307,7 @@ func (h *Header) Hash() cmn.HexBytes {
 		"Results":        aminoHasher(h.LastResultsHash),
 		"Evidence":       aminoHasher(h.EvidenceHash),
 		"Proposer":       aminoHasher(h.ProposerAddress),
+		"ProposeRound":   aminoHasher(h.ProposeRound),
 	})
 }
 
@@ -330,6 +332,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Results:        %v
 %s  Evidence:       %v
 %s  Proposer:       %v
+%s  ProposeRound:       %v
 %s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
@@ -346,6 +349,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
 		indent, h.ProposerAddress,
+		indent, h.ProposeRound,
 		indent, h.Hash())
 }
 
@@ -456,10 +460,11 @@ func (commit *Commit) ValidateBasic() error {
 			continue
 		}
 		// Ensure that all votes are precommits.
-		if precommit.Type != VoteTypePrecommit {
-			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
-				precommit.Type)
-		}
+		/*		if precommit.Type != VoteTypePrecommit {
+					return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
+						precommit.Type)
+				}
+		*/
 		// Ensure that all heights are the same.
 		if precommit.Height != height {
 			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",
@@ -661,8 +666,9 @@ func (data *EvidenceData) StringIndented(indent string) string {
 
 // BlockID defines the unique ID of a block as its Hash and its PartSetHeader
 type BlockID struct {
-	Hash        cmn.HexBytes  `json:"hash"`
-	PartsHeader PartSetHeader `json:"parts"`
+	Hash         cmn.HexBytes  `json:"hash"`
+	ProposeRound int           `json:"propose_round"`
+	PartsHeader  PartSetHeader `json:"parts"`
 }
 
 // IsZero returns true if this is the BlockID for a nil-block
@@ -673,7 +679,7 @@ func (blockID BlockID) IsZero() bool {
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
-		blockID.PartsHeader.Equals(other.PartsHeader)
+		blockID.PartsHeader.Equals(other.PartsHeader) && blockID.ProposeRound == other.ProposeRound
 }
 
 // Key returns a machine-readable string representation of the BlockID
@@ -682,12 +688,12 @@ func (blockID BlockID) Key() string {
 	if err != nil {
 		panic(err)
 	}
-	return string(blockID.Hash) + string(bz)
+	return string(blockID.Hash) + string(bz) + string(blockID.ProposeRound)
 }
 
 // String returns a human readable string representation of the BlockID
 func (blockID BlockID) String() string {
-	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
+	return fmt.Sprintf(`%v:%v:%v`, blockID.Hash, blockID.PartsHeader, blockID.ProposeRound)
 }
 
 //-------------------------------------------------------

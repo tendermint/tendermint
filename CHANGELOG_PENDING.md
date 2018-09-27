@@ -3,7 +3,6 @@
 Special thanks to external contributors on this release:
 
 BREAKING CHANGES:
-
 * CLI/RPC/Config
 
 * Apps

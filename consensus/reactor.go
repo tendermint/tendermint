@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -55,7 +55,7 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool, options 
 	conR := &ConsensusReactor{
 		conS:     consensusState,
 		fastSync: fastSync,
-		metrics: NopMetrics(),
+		metrics:  NopMetrics(),
 	}
 	conR.updateFastSyncingMetric()
 	conR.BaseReactor = *p2p.NewBaseReactor("ConsensusReactor", conR)
@@ -429,9 +429,9 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 
 func makeRoundStepMessages(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
 	nrsMsg = &NewRoundStepMessage{
-		Height: rs.Height,
-		Round:  rs.Round,
-		Step:   rs.Step,
+		Height:                rs.Height,
+		Round:                 rs.Round,
+		Step:                  rs.Step,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
@@ -518,7 +518,7 @@ OUTER_LOOP:
 		// Now consider sending other things, like the Proposal itself.
 
 		// Send Proposal && ProposalPOL BitArray?
-		if rs.Proposal != nil && !prs.Proposal {
+		if rs.Proposal != nil && ((!prs.Proposal && !prs.Round0Proposal) || (!prs.Round0Proposal && rs.Proposal.Round == 0)) {
 			// Proposal: share the proposal metadata with peer.
 			{
 				msg := &ProposalMessage{Proposal: rs.Proposal}
@@ -961,14 +961,23 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	if ps.PRS.Height != proposal.Height || ps.PRS.Round != proposal.Round {
+	if (ps.PRS.Height != proposal.Height || ps.PRS.Round != proposal.Round) && proposal.Round != 0 {
 		return
 	}
 	if ps.PRS.Proposal {
-		return
+		if proposal.Round == 0 {
+			if ps.PRS.Round0Proposal{
+				return
+			}else{
+				ps.PRS.Round0Proposal = true
+			}
+		}else{
+			return
+		}
+	}else{
+		ps.PRS.Proposal = true
 	}
 
-	ps.PRS.Proposal = true
 	ps.PRS.ProposalBlockPartsHeader = proposal.BlockPartsHeader
 	ps.PRS.ProposalBlockParts = cmn.NewBitArray(proposal.BlockPartsHeader.Total)
 	ps.PRS.ProposalPOLRound = proposal.POLRound
@@ -1221,14 +1230,16 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	ps.PRS.Step = msg.Step
 	ps.PRS.StartTime = startTime
 	if psHeight != msg.Height || psRound != msg.Round {
-		ps.PRS.Proposal = false
-		ps.PRS.ProposalBlockPartsHeader = types.PartSetHeader{}
-		ps.PRS.ProposalBlockParts = nil
-		ps.PRS.ProposalPOLRound = -1
-		ps.PRS.ProposalPOL = nil
-		// We'll update the BitArray capacity later.
-		ps.PRS.Prevotes = nil
-		ps.PRS.Precommits = nil
+		if !ps.PRS.Round0Proposal{ //if peer has round0 proposal, keep the status
+			ps.PRS.Proposal = false
+			ps.PRS.ProposalBlockPartsHeader = types.PartSetHeader{}
+			ps.PRS.ProposalBlockParts = nil
+			ps.PRS.ProposalPOLRound = -1
+			ps.PRS.ProposalPOL = nil
+			// We'll update the BitArray capacity later.
+			ps.PRS.Prevotes = nil
+			ps.PRS.Precommits = nil
+		}
 	}
 	if psHeight == msg.Height && psRound != msg.Round && msg.Round == psCatchupCommitRound {
 		// Peer caught up to CatchupCommitRound.

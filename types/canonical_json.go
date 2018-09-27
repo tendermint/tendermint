@@ -13,8 +13,9 @@ import (
 const TimeFormat = time.RFC3339Nano
 
 type CanonicalJSONBlockID struct {
-	Hash        cmn.HexBytes               `json:"hash,omitempty"`
-	PartsHeader CanonicalJSONPartSetHeader `json:"parts,omitempty"`
+	Hash         cmn.HexBytes               `json:"hash,omitempty"`
+	ProposeRound int                        `json:"propose_round,omitempty"`
+	PartsHeader  CanonicalJSONPartSetHeader `json:"parts,omitempty"`
 }
 
 type CanonicalJSONPartSetHeader struct {
@@ -58,8 +59,9 @@ type CanonicalJSONHeartbeat struct {
 
 func CanonicalBlockID(blockID BlockID) CanonicalJSONBlockID {
 	return CanonicalJSONBlockID{
-		Hash:        blockID.Hash,
-		PartsHeader: CanonicalPartSetHeader(blockID.PartsHeader),
+		Hash:         blockID.Hash,
+		ProposeRound: blockID.ProposeRound,
+		PartsHeader:  CanonicalPartSetHeader(blockID.PartsHeader),
 	}
 }
 
