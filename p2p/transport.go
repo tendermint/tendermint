@@ -351,6 +351,32 @@ func (mt *MultiplexTransport) upgrade(
 		}
 	}
 
+	nodeID := nodeInfo.NetAddress().ID
+
+	// Ensure connection key matches self reported key.
+	if connID := PubKeyToID(secretConn.RemotePubKey()); connID != nodeID {
+		return nil, NodeInfo{}, ErrRejected{
+			conn: c,
+			id:   connID,
+			err: fmt.Errorf(
+				"conn.ID (%v) NodeInfo.ID (%v) missmatch",
+				connID,
+				nodeID,
+			),
+			isAuthFailure: true,
+		}
+	}
+
+	// Reject self.
+	if mt.nodeInfo.NetAddress().ID == nodeID {
+		return nil, NodeInfo{}, ErrRejected{
+			addr:   *nodeInfo.NetAddress(),
+			conn:   c,
+			id:     nodeID,
+			isSelf: true,
+		}
+	}
+
 	if err := nodeInfo.Validate(); err != nil {
 		return nil, NodeInfo{}, ErrRejected{
 			conn:              c,
@@ -359,35 +385,11 @@ func (mt *MultiplexTransport) upgrade(
 		}
 	}
 
-	// Ensure connection key matches self reported key.
-	if connID := PubKeyToID(secretConn.RemotePubKey()); connID != nodeInfo.ID {
-		return nil, NodeInfo{}, ErrRejected{
-			conn: c,
-			id:   connID,
-			err: fmt.Errorf(
-				"conn.ID (%v) NodeInfo.ID (%v) missmatch",
-				connID,
-				nodeInfo.ID,
-			),
-			isAuthFailure: true,
-		}
-	}
-
-	// Reject self.
-	if mt.nodeInfo.ID == nodeInfo.ID {
-		return nil, NodeInfo{}, ErrRejected{
-			addr:   *NewNetAddress(nodeInfo.ID, c.RemoteAddr()),
-			conn:   c,
-			id:     nodeInfo.ID,
-			isSelf: true,
-		}
-	}
-
 	if err := mt.nodeInfo.CompatibleWith(nodeInfo); err != nil {
 		return nil, NodeInfo{}, ErrRejected{
 			conn:           c,
 			err:            err,
-			id:             nodeInfo.ID,
+			id:             nodeInfo.ID(),
 			isIncompatible: true,
 		}
 	}

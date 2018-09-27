@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/version"
 
 	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
@@ -82,11 +83,21 @@ func createOutboundPeerAndPerformHandshake(
 		return nil, err
 	}
 	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		ID:       addr.ID,
-		Moniker:  "host_peer",
-		Network:  "testing",
-		Version:  "123.123.123",
-		Channels: []byte{testCh},
+		Address: AddressInfo{
+			ID:      addr.ID,
+			Moniker: "host_peer",
+		},
+		Network: NetworkInfo{"testing"},
+		Version: VersionInfo{
+			Software: version.Software{
+				Tendermint: "123.123.123",
+			},
+		},
+		Services: ServiceInfo{
+			Peers: PeerServices{
+				Channels: []byte{testCh},
+			},
+		},
 	}, 1*time.Second)
 	if err != nil {
 		return nil, err
@@ -192,12 +203,17 @@ func (rp *remotePeer) accept(l net.Listener) {
 		}
 
 		_, err = handshake(pc.conn, time.Second, NodeInfo{
-			ID:         rp.Addr().ID,
-			Moniker:    "remote_peer",
-			Network:    "testing",
-			Version:    "123.123.123",
-			ListenAddr: l.Addr().String(),
-			Channels:   rp.channels,
+			Address: AddressInfo{
+				ID:         rp.Addr().ID,
+				Moniker:    "remote_peer",
+				ListenAddr: l.Addr().String(),
+			},
+			Network: NetworkInfo{"testing"},
+			Services: ServiceInfo{
+				Peers: PeerServices{
+					Channels: rp.channels,
+				},
+			},
 		})
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
