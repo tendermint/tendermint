@@ -17,7 +17,7 @@ type Metrics struct {
 	// Histogram of transaction sizes, in bytes.
 	TxSizeBytes metrics.Histogram
 	// Number of failed transactions.
-	FailedTxs metrics.Gauge
+	FailedTxs metrics.Counter
 	// Number of times transactions are rechecked in the mempool.
 	RecheckTimes metrics.Counter
 }
@@ -36,9 +36,9 @@ func PrometheusMetrics(namespace string) *Metrics {
 			Subsystem: MetricsSubsytem,
 			Name:      "tx_size_bytes",
 			Help:      "Transaction sizes in bytes.",
-			Buckets:   stdprometheus.ExponentialBuckets(1, 2, 10),
+			Buckets:   stdprometheus.ExponentialBuckets(1, 2, 24),
 		}, []string{}),
-		FailedTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		FailedTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsytem,
 			Name:      "failed_txs",
@@ -58,7 +58,7 @@ func NopMetrics() *Metrics {
 	return &Metrics{
 		Size:         discard.NewGauge(),
 		TxSizeBytes:  discard.NewHistogram(),
-		FailedTxs:    discard.NewGauge(),
+		FailedTxs:    discard.NewCounter(),
 		RecheckTimes: discard.NewCounter(),
 	}
 }

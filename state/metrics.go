@@ -20,7 +20,7 @@ func PrometheusMetrics(namespace string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "block_processing_time",
-			Help:      "Time between BeginBlock and EndBlock.",
+			Help:      "Time between BeginBlock and EndBlock in ms.",
 			Buckets:   stdprometheus.LinearBuckets(1, 10, 10),
 		}, []string{}),
 	}
