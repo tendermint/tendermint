@@ -38,14 +38,16 @@ func voteToStep(vote *types.Vote) int8 {
 // FilePV implements PrivValidator using data persisted to disk
 // to prevent double signing.
 // NOTE: the directory containing the pv.filePath must already exist.
+// It includes the LastSignature and LastSignBytes so we don't lose the signature
+// if the process crashes after signing but before the resulting consensus message is processed.
 type FilePV struct {
 	Address       types.Address  `json:"address"`
 	PubKey        crypto.PubKey  `json:"pub_key"`
 	LastHeight    int64          `json:"last_height"`
 	LastRound     int            `json:"last_round"`
 	LastStep      int8           `json:"last_step"`
-	LastSignature []byte         `json:"last_signature,omitempty"` // so we dont lose signatures XXX Why would we lose signatures?
-	LastSignBytes cmn.HexBytes   `json:"last_signbytes,omitempty"` // so we dont lose signatures XXX Why would we lose signatures?
+	LastSignature []byte         `json:"last_signature,omitempty"`
+	LastSignBytes cmn.HexBytes   `json:"last_signbytes,omitempty"`
 	PrivKey       crypto.PrivKey `json:"priv_key"`
 
 	// For persistence.
