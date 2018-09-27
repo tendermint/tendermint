@@ -57,6 +57,7 @@ func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsen
 		mempool:  mempool,
 		evpool:   evpool,
 		logger:   logger,
+		metrics:  NopMetrics(),
 	}
 
 	for _, option := range options {
