@@ -254,7 +254,8 @@ message Header {
 
 message BlockID {
   bytes hash = 1;
-  PartSetHeader parts_header = 2 [(gogoproto.nullable)=false];
+  uint32 propose_round = 2;
+  PartSetHeader parts_header = 3 [(gogoproto.nullable)=false];
 }
 
 message PartSetHeader {
