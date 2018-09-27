@@ -28,12 +28,12 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
 
-	ensureNewStep(newBlockCh) // first block gets committed
-	ensureNoNewStep(newBlockCh)
+	ensureNewStep(t, newBlockCh) // first block gets committed
+	ensureNoNewStep(t, newBlockCh)
 	deliverTxsRange(cs, 0, 1)
-	ensureNewStep(newBlockCh) // commit txs
-	ensureNewStep(newBlockCh) // commit updated app hash
-	ensureNoNewStep(newBlockCh)
+	ensureNewStep(t, newBlockCh) // commit txs
+	ensureNewStep(t, newBlockCh) // commit updated app hash
+	ensureNoNewStep(t, newBlockCh)
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
@@ -46,9 +46,9 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
 
-	ensureNewStep(newBlockCh)   // first block gets committed
-	ensureNoNewStep(newBlockCh) // then we dont make a block ...
-	ensureNewStep(newBlockCh)   // until the CreateEmptyBlocksInterval has passed
+	ensureNewStep(t, newBlockCh)   // first block gets committed
+	ensureNoNewStep(t, newBlockCh) // then we dont make a block ...
+	ensureNewStep(t, newBlockCh)   // until the CreateEmptyBlocksInterval has passed
 }
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
@@ -72,13 +72,13 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	}
 	startTestRound(cs, height, round)
 
-	ensureNewStep(newRoundCh) // first round at first height
-	ensureNewStep(newBlockCh) // first block gets committed
-	ensureNewStep(newRoundCh) // first round at next height
-	deliverTxsRange(cs, 0, 1) // we deliver txs, but dont set a proposal so we get the next round
+	ensureNewStep(t, newRoundCh) // first round at first height
+	ensureNewStep(t, newBlockCh) // first block gets committed
+	ensureNewStep(t, newRoundCh) // first round at next height
+	deliverTxsRange(cs, 0, 1)    // we deliver txs, but dont set a proposal so we get the next round
 	<-timeoutCh
-	ensureNewStep(newRoundCh) // wait for the next round
-	ensureNewStep(newBlockCh) // now we can commit the block
+	ensureNewStep(t, newRoundCh) // wait for the next round
+	ensureNewStep(t, newBlockCh) // now we can commit the block
 }
 
 func deliverTxsRange(cs *ConsensusState, start, end int) {

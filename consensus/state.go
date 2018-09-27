@@ -1654,7 +1654,6 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
 				cs.enterNewRound(cs.Height, 0)
 			}
-
 		} else if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
 			cs.enterNewRound(height, vote.Round)
 			cs.enterPrecommit(height, vote.Round)
