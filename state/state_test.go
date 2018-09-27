@@ -7,13 +7,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	crypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -82,8 +82,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
 	}}
 
-	saveABCIResponses(stateDB, block.Height, abciResponses)
-	loadedABCIResponses, err := LoadABCIResponses(stateDB, block.Height)
+	saveABCIResponses(stateDB, abciResponses)
+	loadedABCIResponses, err := LoadABCIResponses(stateDB)
 	assert.Nil(err)
 	assert.Equal(abciResponses, loadedABCIResponses,
 		fmt.Sprintf("ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
@@ -94,8 +94,6 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 func TestABCIResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
-	assert := assert.New(t)
 
 	cases := [...]struct {
 		// Height is implied to equal index+2,
@@ -133,29 +131,19 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		},
 	}
 
-	// Query all before, this should return error.
-	for i := range cases {
-		h := int64(i + 1)
-		res, err := LoadABCIResponses(stateDB, h)
-		assert.Error(err, "%d: %#v", i, res)
-	}
+	res, err := LoadABCIResponses(stateDB)
+	assert.Error(t, err, "%#v", res)
 
-	// Add all cases.
 	for i, tc := range cases {
-		h := int64(i + 1) // last block height, one below what we save
 		responses := &ABCIResponses{
 			DeliverTx: tc.added,
 			EndBlock:  &abci.ResponseEndBlock{},
 		}
-		saveABCIResponses(stateDB, h, responses)
-	}
+		saveABCIResponses(stateDB, responses)
 
-	// Query all before, should return expected value.
-	for i, tc := range cases {
-		h := int64(i + 1)
-		res, err := LoadABCIResponses(stateDB, h)
-		assert.NoError(err, "%d", i)
-		assert.Equal(tc.expected.Hash(), res.ResultsHash(), "%d", i)
+		res, err = LoadABCIResponses(stateDB)
+		assert.NoError(t, err, "%d", i)
+		assert.Equal(t, tc.expected.Hash(), res.ResultsHash(), "%d", i)
 	}
 }
 

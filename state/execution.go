@@ -82,12 +82,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	fail.Fail() // XXX
 
 	// Save the results before we commit.
-	saveABCIResponses(blockExec.db, block.Height, abciResponses)
-
-	// Delete the results for the previous height (not needed anymore).
-	if block.Height > 0 {
-		deleteABCIResponses(blockExec.db, block.Height-1)
-	}
+	saveABCIResponses(blockExec.db,abciResponses)
 
 	fail.Fail() // XXX
 

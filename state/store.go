@@ -9,6 +9,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	abciResponsesKey = []byte("abciResponsesKey")
+)
+
 //------------------------------------------------------------------------
 
 func calcValidatorsKey(height int64) []byte {
@@ -17,10 +21,6 @@ func calcValidatorsKey(height int64) []byte {
 
 func calcConsensusParamsKey(height int64) []byte {
 	return []byte(fmt.Sprintf("consensusParamsKey:%v", height))
-}
-
-func calcABCIResponsesKey(height int64) []byte {
-	return []byte(fmt.Sprintf("abciResponsesKey:%v", height))
 }
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
@@ -134,10 +134,10 @@ func (arz *ABCIResponses) ResultsHash() []byte {
 // LoadABCIResponses loads the ABCIResponses for the given height from the database.
 // This is useful for recovering from crashes where we called app.Commit and before we called
 // s.Save(). It can also be used to produce Merkle proofs of the result of txs.
-func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
-	buf := db.Get(calcABCIResponsesKey(height))
+func LoadABCIResponses(db dbm.DB) (*ABCIResponses, error) {
+	buf := db.Get(abciResponsesKey)
 	if len(buf) == 0 {
-		return nil, ErrNoABCIResponsesForHeight{height}
+		return nil, ErrNoABCIResponses
 	}
 
 	abciResponses := new(ABCIResponses)
@@ -154,14 +154,8 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 
 // saveABCIResponses persists the ABCIResponses to the database.
 // This is useful in case we crash after app.Commit and before s.Save().
-// Responses are indexed by height so they can also be loaded later to produce Merkle proofs.
-func saveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
-	db.SetSync(calcABCIResponsesKey(height), abciResponses.Bytes())
-}
-
-// deleteABCIResponses deletes ABCIResponses for the given height.
-func deleteABCIResponses(db dbm.DB, height int64) {
-	db.Delete(calcABCIResponsesKey(height))
+func saveABCIResponses(db dbm.DB, abciResponses *ABCIResponses) {
+	db.SetSync(abciResponsesKey, abciResponses.Bytes())
 }
 
 //-----------------------------------------------------------------------------

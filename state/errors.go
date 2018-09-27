@@ -1,6 +1,9 @@
 package state
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type (
 	ErrInvalidBlock error
@@ -39,10 +42,10 @@ type (
 	ErrNoConsensusParamsForHeight struct {
 		Height int64
 	}
+)
 
-	ErrNoABCIResponsesForHeight struct {
-		Height int64
-	}
+var (
+	ErrNoABCIResponses = errors.New("Could not find results")
 )
 
 func (e ErrUnknownBlock) Error() string {
@@ -70,8 +73,4 @@ func (e ErrNoValSetForHeight) Error() string {
 
 func (e ErrNoConsensusParamsForHeight) Error() string {
 	return fmt.Sprintf("Could not find consensus params for height #%d", e.Height)
-}
-
-func (e ErrNoABCIResponsesForHeight) Error() string {
-	return fmt.Sprintf("Could not find results for height #%d", e.Height)
 }

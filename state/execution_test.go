@@ -45,16 +45,10 @@ func TestApplyBlock(t *testing.T) {
 	state, err = blockExec.ApplyBlock(state, blockID, block)
 	require.NoError(t, err)
 
-	// Test we store results for the current height and do not store results for
-	// the previous height.
-	abciResponses, err := LoadABCIResponses(stateDB, block.Height)
+	// test we save results
+	abciResponses, err := LoadABCIResponses(stateDB)
 	if assert.NoError(t, err) {
 		assert.NotNil(t, abciResponses)
-	}
-	abciResponses2, err := LoadABCIResponses(stateDB, block.Height-1)
-	assert.Nil(t, abciResponses2)
-	if assert.Error(t, err) {
-		assert.Equal(t, ErrNoABCIResponsesForHeight{block.Height - 1}, err)
 	}
 
 	// TODO check state and mempool

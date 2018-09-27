@@ -345,7 +345,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We ran Commit, but didn't save the state, so replayBlock with mock app
-			abciResponses, err := sm.LoadABCIResponses(h.stateDB, storeBlockHeight)
+			abciResponses, err := sm.LoadABCIResponses(h.stateDB)
 			if err != nil {
 				return nil, err
 			}
