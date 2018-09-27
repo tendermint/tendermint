@@ -28,12 +28,12 @@ import (
 // 	"result": {
 // 		"response": {
 // 			"log": "exists",
-// 			"height": 0,
+// 			"height": "0",
 // 			"proof": "010114FED0DAD959F36091AD761C922ABA3CBF1D8349990101020103011406AA2262E2F448242DF2C2607C3CDC705313EE3B0001149D16177BC71E445476174622EA559715C293740C",
 // 			"value": "61626364",
 // 			"key": "61626364",
-// 			"index": -1,
-// 			"code": 0
+// 			"index": "-1",
+// 			"code": "0"
 // 		}
 // 	},
 // 	"id": "",

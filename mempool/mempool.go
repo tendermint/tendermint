@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"container/list"
 	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -12,16 +11,26 @@ import (
 
 	"github.com/pkg/errors"
 
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
+
+// PreCheckFunc is an optional filter executed before CheckTx and rejects
+// transaction if false is returned. An example would be to ensure that a
+// transaction doesn't exceeded the block size.
+type PreCheckFunc func(types.Tx) bool
+
+// PostCheckFunc is an optional filter executed after CheckTx and rejects
+// transaction if false is returned. An example would be to ensure a
+// transaction doesn't require more gas than available for the block.
+type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) bool
 
 /*
 
@@ -59,6 +68,27 @@ var (
 	ErrMempoolIsFull = errors.New("Mempool is full")
 )
 
+// PreCheckAminoMaxBytes checks that the size of the transaction plus the amino
+// overhead is smaller or equal to the expected maxBytes.
+func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
+	return func(tx types.Tx) bool {
+		// We have to account for the amino overhead in the tx size as well
+		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
+		return int64(len(tx)+aminoOverhead) <= maxBytes
+	}
+}
+
+// PostCheckMaxGas checks that the wanted gas is smaller or equal to the passed
+// maxGas. Returns true if maxGas is -1.
+func PostCheckMaxGas(maxGas int64) PostCheckFunc {
+	return func(tx types.Tx, res *abci.ResponseCheckTx) bool {
+		if maxGas == -1 {
+			return true
+		}
+		return res.GasWanted <= maxGas
+	}
+}
+
 // TxID is the hex encoded hash of the bytes as a types.Tx.
 func TxID(tx []byte) string {
 	return fmt.Sprintf("%X", types.Tx(tx).Hash())
@@ -81,8 +111,8 @@ type Mempool struct {
 	recheckEnd           *clist.CElement // re-checking stops here
 	notifiedTxsAvailable bool
 	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
-	// Filter mempool to only accept txs for which filter(tx) returns true.
-	filter func(types.Tx) bool
+	preCheck             PreCheckFunc
+	postCheck            PostCheckFunc
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -142,10 +172,16 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
 }
 
-// WithFilter sets a filter for mempool to only accept txs for which f(tx)
-// returns true.
-func WithFilter(f func(types.Tx) bool) MempoolOption {
-	return func(mem *Mempool) { mem.filter = f }
+// WithPreCheck sets a filter for the mempool to reject a tx if f(tx) returns
+// false. This is ran before CheckTx.
+func WithPreCheck(f PreCheckFunc) MempoolOption {
+	return func(mem *Mempool) { mem.preCheck = f }
+}
+
+// WithPostCheck sets a filter for the mempool to reject a tx if f(tx) returns
+// false. This is ran after CheckTx.
+func WithPostCheck(f PostCheckFunc) MempoolOption {
+	return func(mem *Mempool) { mem.postCheck = f }
 }
 
 // WithMetrics sets the metrics.
@@ -249,7 +285,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 		return ErrMempoolIsFull
 	}
 
-	if mem.filter != nil && !mem.filter(tx) {
+	if mem.preCheck != nil && !mem.preCheck(tx) {
 		return
 	}
 
@@ -299,7 +335,8 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
-		if r.CheckTx.Code == abci.CodeTypeOK {
+		if (r.CheckTx.Code == abci.CodeTypeOK) &&
+			mem.isPostCheckPass(tx, r.CheckTx) {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter:   mem.counter,
@@ -327,10 +364,15 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
-			cmn.PanicSanity(fmt.Sprintf("Unexpected tx response from proxy during recheck\n"+
-				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
+			cmn.PanicSanity(
+				fmt.Sprintf(
+					"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
+					r.CheckTx.Data,
+					memTx.tx,
+				),
+			)
 		}
-		if r.CheckTx.Code == abci.CodeTypeOK {
+		if (r.CheckTx.Code == abci.CodeTypeOK) && mem.isPostCheckPass(memTx.tx, r.CheckTx) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
@@ -385,9 +427,7 @@ func (mem *Mempool) notifyTxsAvailable() {
 // with the condition that the total gasWanted must be less than maxGas.
 // If both maxes are negative, there is no cap on the size of all returned
 // transactions (~ all available transactions).
-func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs {
-	var buf [binary.MaxVarintLen64]byte
-
+func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -396,7 +436,7 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	var totalBytes int
+	var totalBytes int64
 	var totalGas int64
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
@@ -405,12 +445,11 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes int, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		// Check total size requirement
-		// amino.UvarintSize is not used here because it won't be possible to reuse buf
-		aminoOverhead := binary.PutUvarint(buf[:], uint64(len(memTx.tx)))
-		if maxBytes > -1 && totalBytes+len(memTx.tx)+aminoOverhead > maxBytes {
+		aminoOverhead := int64(amino.UvarintSize(uint64(len(memTx.tx))))
+		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
 			return txs
 		}
-		totalBytes += len(memTx.tx) + aminoOverhead
+		totalBytes += int64(len(memTx.tx)) + aminoOverhead
 		// Check total gas requirement
 		if maxGas > -1 && totalGas+memTx.gasWanted > maxGas {
 			return txs
@@ -448,7 +487,12 @@ func (mem *Mempool) ReapMaxTxs(max int) types.Txs {
 // Update informs the mempool that the given txs were committed and can be discarded.
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
-func (mem *Mempool) Update(height int64, txs types.Txs, filter func(types.Tx) bool) error {
+func (mem *Mempool) Update(
+	height int64,
+	txs types.Txs,
+	preCheck PreCheckFunc,
+	postCheck PostCheckFunc,
+) error {
 	// First, create a lookup map of txns in new txs.
 	txsMap := make(map[string]struct{}, len(txs))
 	for _, tx := range txs {
@@ -459,8 +503,11 @@ func (mem *Mempool) Update(height int64, txs types.Txs, filter func(types.Tx) bo
 	mem.height = height
 	mem.notifiedTxsAvailable = false
 
-	if filter != nil {
-		mem.filter = filter
+	if preCheck != nil {
+		mem.preCheck = preCheck
+	}
+	if postCheck != nil {
+		mem.postCheck = postCheck
 	}
 
 	// Remove transactions that are already in txs.
@@ -516,6 +563,10 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 		mem.proxyAppConn.CheckTxAsync(tx)
 	}
 	mem.proxyAppConn.FlushAsync()
+}
+
+func (mem *Mempool) isPostCheckPass(tx types.Tx, r *abci.ResponseCheckTx) bool {
+	return mem.postCheck == nil || mem.postCheck(tx, r)
 }
 
 //--------------------------------------------------------------------------------

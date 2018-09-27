@@ -7,9 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	p2pdummy "github.com/tendermint/tendermint/p2p/dummy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -17,8 +21,8 @@ func init() {
 	config = ResetConfig("consensus_state_test")
 }
 
-func ensureProposeTimeout(timeoutPropose int) time.Duration {
-	return time.Duration(timeoutPropose*2) * time.Millisecond
+func ensureProposeTimeout(timeoutPropose time.Duration) time.Duration {
+	return time.Duration(timeoutPropose.Nanoseconds()*2) * time.Nanosecond
 }
 
 /*
@@ -1079,6 +1083,80 @@ func TestStateHalt1(t *testing.T) {
 	if rs.Height != 2 {
 		panic("expected height to increment")
 	}
+}
+
+func TestStateOutputsBlockPartsStats(t *testing.T) {
+	// create dummy peer
+	cs, _ := randConsensusState(1)
+	peer := p2pdummy.NewPeer()
+
+	// 1) new block part
+	parts := types.NewPartSetFromData(cmn.RandBytes(100), 10)
+	msg := &BlockPartMessage{
+		Height: 1,
+		Round:  0,
+		Part:   parts.GetPart(0),
+	}
+
+	cs.ProposalBlockParts = types.NewPartSetFromHeader(parts.Header())
+	cs.handleMsg(msgInfo{msg, peer.ID()})
+
+	statsMessage := <-cs.statsMsgQueue
+	require.Equal(t, msg, statsMessage.Msg, "")
+	require.Equal(t, peer.ID(), statsMessage.PeerID, "")
+
+	// sending the same part from different peer
+	cs.handleMsg(msgInfo{msg, "peer2"})
+
+	// sending the part with the same height, but different round
+	msg.Round = 1
+	cs.handleMsg(msgInfo{msg, peer.ID()})
+
+	// sending the part from the smaller height
+	msg.Height = 0
+	cs.handleMsg(msgInfo{msg, peer.ID()})
+
+	// sending the part from the bigger height
+	msg.Height = 3
+	cs.handleMsg(msgInfo{msg, peer.ID()})
+
+	select {
+	case <-cs.statsMsgQueue:
+		t.Errorf("Should not output stats message after receiving the known block part!")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+}
+
+func TestStateOutputVoteStats(t *testing.T) {
+	cs, vss := randConsensusState(2)
+	// create dummy peer
+	peer := p2pdummy.NewPeer()
+
+	vote := signVote(vss[1], types.VoteTypePrecommit, []byte("test"), types.PartSetHeader{})
+
+	voteMessage := &VoteMessage{vote}
+	cs.handleMsg(msgInfo{voteMessage, peer.ID()})
+
+	statsMessage := <-cs.statsMsgQueue
+	require.Equal(t, voteMessage, statsMessage.Msg, "")
+	require.Equal(t, peer.ID(), statsMessage.PeerID, "")
+
+	// sending the same part from different peer
+	cs.handleMsg(msgInfo{&VoteMessage{vote}, "peer2"})
+
+	// sending the vote for the bigger height
+	incrementHeight(vss[1])
+	vote = signVote(vss[1], types.VoteTypePrecommit, []byte("test"), types.PartSetHeader{})
+
+	cs.handleMsg(msgInfo{&VoteMessage{vote}, peer.ID()})
+
+	select {
+	case <-cs.statsMsgQueue:
+		t.Errorf("Should not output stats message after receiving the known vote or vote from bigger height")
+	case <-time.After(50 * time.Millisecond):
+	}
+
 }
 
 // subscribe subscribes test client to the given query and returns a channel with cap = 1.

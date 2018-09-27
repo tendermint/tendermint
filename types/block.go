@@ -15,7 +15,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes = 511
+	MaxHeaderBytes int64 = 511
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -24,7 +24,7 @@ const (
 	// 2 fields (2 embedded):               2 bytes
 	// Uvarint length of Data.Txs:          4 bytes
 	// Data.Txs field:                      1 byte
-	MaxAminoOverheadForBlock = 11
+	MaxAminoOverheadForBlock int64 = 11
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -205,23 +205,48 @@ func (b *Block) StringShort() string {
 //-----------------------------------------------------------------------------
 
 // MaxDataBytes returns the maximum size of block's data.
-func MaxDataBytes(maxBytes, valsCount, evidenceCount int) int {
-	return maxBytes -
+//
+// XXX: Panics on negative result.
+func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
+	maxDataBytes := maxBytes -
 		MaxAminoOverheadForBlock -
 		MaxHeaderBytes -
-		(valsCount * MaxVoteBytes) -
-		(evidenceCount * MaxEvidenceBytes)
+		int64(valsCount)*MaxVoteBytes -
+		int64(evidenceCount)*MaxEvidenceBytes
+
+	if maxDataBytes < 0 {
+		panic(fmt.Sprintf(
+			"Negative MaxDataBytes. BlockSize.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
+			maxBytes,
+			-(maxDataBytes - maxBytes),
+		))
+	}
+
+	return maxDataBytes
+
 }
 
 // MaxDataBytesUnknownEvidence returns the maximum size of block's data when
 // evidence count is unknown. MaxEvidenceBytesPerBlock will be used as the size
 // of evidence.
-func MaxDataBytesUnknownEvidence(maxBytes, valsCount int) int {
-	return maxBytes -
+//
+// XXX: Panics on negative result.
+func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
+	maxDataBytes := maxBytes -
 		MaxAminoOverheadForBlock -
 		MaxHeaderBytes -
-		(valsCount * MaxVoteBytes) -
+		int64(valsCount)*MaxVoteBytes -
 		MaxEvidenceBytesPerBlock(maxBytes)
+
+	if maxDataBytes < 0 {
+		panic(fmt.Sprintf(
+			"Negative MaxDataBytesUnknownEvidence. BlockSize.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
+			maxBytes,
+			-(maxDataBytes - maxBytes),
+		))
+	}
+
+	return maxDataBytes
 }
 
 //-----------------------------------------------------------------------------

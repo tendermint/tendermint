@@ -1,25 +1,23 @@
 # Pending
 
-Special thanks to external contributors with PRs included in this release:
+Special thanks to external contributors on this release:
 
 BREAKING CHANGES:
-- [types] Header ...
-- [state] Add NextValidatorSet, changes on-disk representation of state
-- [state] Validator set changes are delayed by one block (!)
-- [lite] Complete refactor of the package
-- [rpc] `/commit` returns a `signed_header` field instead of everything being
-  top-level
-- [abci] Added address of the original proposer of the block to Header.
-- [abci] Change ABCI Header to match Tendermint exactly
-- [common] SplitAndTrim was deleted
+* CLI/RPC/Config
+
+* Apps
+
+* Go API
+- [node] Remove node.RunForever
+- [config] \#2232 timeouts as time.Duration, not ints
 
 FEATURES:
-  * \#2310 Mempool is now aware of the MaxGas requirement
 
 IMPROVEMENTS:
-- [mempool] [\#2399](https://github.com/tendermint/tendermint/issues/2399) Make mempool cache a proper LRU (@bradyjoestar)
-- [types] add Address to GenesisValidator [\#1714](https://github.com/tendermint/tendermint/issues/1714)
-- [metrics] `consensus.block_interval_metrics` is now gauge, not histogram (you will be able to see spikes, if any)
+- [consensus] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
+- [p2p] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
+- [config] \#2232 added ValidateBasic method, which performs basic checks
 
 BUG FIXES:
-- [node] \#2294 Delay starting node until Genesis time
+- [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
+- [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time

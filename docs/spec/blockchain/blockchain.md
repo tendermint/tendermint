@@ -1,4 +1,4 @@
-# Tendermint Blockchain
+# Blockchain
 
 Here we describe the data structures in the Tendermint blockchain and the rules for validating them.
 

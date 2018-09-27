@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/config"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -41,6 +41,7 @@ type peerConfig struct {
 	onPeerError          func(Peer, interface{})
 	outbound, persistent bool
 	reactorsByCh         map[byte]Reactor
+	metrics              *Metrics
 }
 
 // Transport emits and connects to Peers. The implementation of Peer is left to
@@ -207,7 +208,11 @@ func (mt *MultiplexTransport) Dial(
 func (mt *MultiplexTransport) Close() error {
 	close(mt.closec)
 
-	return mt.listener.Close()
+	if mt.listener != nil {
+		return mt.listener.Close()
+	}
+
+	return nil
 }
 
 // Listen implements transportLifecycle.
@@ -407,6 +412,7 @@ func (mt *MultiplexTransport) wrapPeer(
 		cfg.reactorsByCh,
 		cfg.chDescs,
 		cfg.onPeerError,
+		PeerMetrics(cfg.metrics),
 	)
 
 	// Wait for Peer to Stop so we can cleanup.

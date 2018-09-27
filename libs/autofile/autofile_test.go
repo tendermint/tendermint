@@ -3,7 +3,6 @@ package autofile
 import (
 	"io/ioutil"
 	"os"
-	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -37,13 +36,10 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send SIGHUP to self.
-	oldSighupCounter := atomic.LoadInt32(&sighupCounter)
 	syscall.Kill(syscall.Getpid(), syscall.SIGHUP)
 
 	// Wait a bit... signals are not handled synchronously.
-	for atomic.LoadInt32(&sighupCounter) == oldSighupCounter {
-		time.Sleep(time.Millisecond * 10)
-	}
+	time.Sleep(time.Millisecond * 10)
 
 	// Write more to the file.
 	_, err = af.Write([]byte("Line 3\n"))
@@ -87,7 +83,4 @@ func TestOpenAutoFilePerms(t *testing.T) {
 	} else {
 		t.Errorf("unexpected error %v", e)
 	}
-
-	err = af.Close()
-	require.NoError(t, err)
 }
