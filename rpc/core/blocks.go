@@ -3,9 +3,14 @@ package core
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
+	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -320,6 +325,10 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 // BlockResults gets ABCIResults at a given height.
 // If no height is provided, it will fetch results for the latest block.
 //
+// Results for the latest height are fetched from the state database, for
+// earlier heights - using the indexer. Note: indexer does not store EndBlock
+// ("end_block": null).
+//
 // Results are for the height of the block containing the txs.
 // Thus response.results[5] is the results of executing getBlock(h).Txs[5]
 //
@@ -357,17 +366,63 @@ func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 		return nil, err
 	}
 
-	// load the results
-	results, err := sm.LoadABCIResponses(stateDB, height)
-	if err != nil {
-		return nil, err
+	// for last height, use state DB
+	if height == storeHeight {
+		results, err := sm.LoadABCIResponses(stateDB)
+		if err != nil {
+			return nil, err
+		}
+		return &ctypes.ResultBlockResults{
+			Height:  height,
+			Results: results,
+		}, nil
 	}
 
-	res := &ctypes.ResultBlockResults{
-		Height:  height,
-		Results: results,
+	// for other heights, use indexer
+	// if index is disabled, return error
+	if _, ok := txIndexer.(*null.TxIndex); ok {
+		return nil, fmt.Errorf("Transaction indexing is disabled")
 	}
-	return res, nil
+
+	var deliverTxs []*abci.ResponseDeliverTx
+
+	// If Tendermint is configured to index txs by height, use it for faster search.
+	if txIndexer.IsTagIndexed(types.TxHeightKey) {
+		results, err := txIndexer.Search(
+			tmquery.MustParse(fmt.Sprintf("%s = %d", types.TxHeightKey, height)),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to search indexer for txs")
+		}
+		deliverTxs = make([]*abci.ResponseDeliverTx, len(results))
+		for i, r := range results {
+			deliverTxs[i] = &r.Result
+		}
+	} else { // otherwise, load the whole block and fetch txs one by one
+		block := blockStore.LoadBlock(height)
+		if block != nil {
+			deliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
+
+			for i, tx := range block.Data.Txs {
+				r, err := txIndexer.Get(tx.Hash())
+				if err != nil {
+					return nil, errors.Wrapf(err, "Failed to get Tx (%X) from indexer", tx.Hash())
+				}
+				if r == nil {
+					return nil, fmt.Errorf("Tx (%X) not found", tx.Hash())
+				}
+				deliverTxs[i] = &r.Result
+			}
+		}
+	}
+
+	return &ctypes.ResultBlockResults{
+		Height: height,
+		Results: &sm.ABCIResponses{
+			DeliverTx: deliverTxs,
+			EndBlock:  nil,
+		},
+	}, nil
 }
 
 func getHeight(currentHeight int64, heightPtr *int64) (int64, error) {

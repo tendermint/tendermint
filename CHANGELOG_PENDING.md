@@ -5,6 +5,7 @@ Special thanks to external contributors on this release:
 BREAKING CHANGES:
 
 * CLI/RPC/Config
+- [rpc] `/block_results` now uses indexer to fetch block results for heights < `latestBlockHeight`
 
 * Apps
 

@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
-
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
@@ -52,6 +52,11 @@ func IndexAllTags() func(*TxIndex) {
 	return func(txi *TxIndex) {
 		txi.indexAllTags = true
 	}
+}
+
+// IsTagIndexed returns true if the tag is being indexed, false - otherwise.
+func (txi *TxIndex) IsTagIndexed(tag string) bool {
+	return txi.indexAllTags || cmn.StringInSlice(tag, txi.tagsToIndex)
 }
 
 // Get gets transaction from the TxIndex storage and returns it or nil if the

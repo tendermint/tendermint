@@ -22,6 +22,9 @@ type TxIndexer interface {
 
 	// Search allows you to query for transactions.
 	Search(q *query.Query) ([]*types.TxResult, error)
+
+	// IsTagIndexed returns true if the tag is being indexed, false - otherwise.
+	IsTagIndexed(tag string) bool
 }
 
 //----------------------------------------------------
