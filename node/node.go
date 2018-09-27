@@ -13,17 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-<<<<<<< HEAD
-
-	"github.com/tendermint/go-amino"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
-=======
 	amino "github.com/tendermint/go-amino"
->>>>>>> 4c4a95ca53b17dd3a73eb03669cf6013d46e1bdf
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -42,8 +32,8 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	"github.com/tendermint/tendermint/rpc/lib"
-	"github.com/tendermint/tendermint/rpc/lib/server"
+	rpc "github.com/tendermint/tendermint/rpc/lib"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
