@@ -5,6 +5,7 @@ Special thanks to external contributors on this release:
 BREAKING CHANGES:
 
 * CLI/RPC/Config
+- [config] \#2232 timeouts as time.Duration, not ints
 
 * Apps
 
