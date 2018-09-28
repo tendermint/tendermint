@@ -503,7 +503,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Recheck:      true,
 		RecheckEmpty: true,
 		Broadcast:    true,
-		WalPath:      filepath.Join(defaultDataDir, "mempool.wal"),
+		WalPath:      "",
 		// Each signature verification takes .5ms, size reduced until we implement
 		// ABCI Recheck
 		Size:      5000,
