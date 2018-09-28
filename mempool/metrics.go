@@ -36,7 +36,7 @@ func PrometheusMetrics(namespace string) *Metrics {
 			Subsystem: MetricsSubsytem,
 			Name:      "tx_size_bytes",
 			Help:      "Transaction sizes in bytes.",
-			Buckets:   stdprometheus.ExponentialBuckets(1, 2, 24),
+			Buckets:   stdprometheus.ExponentialBuckets(1, 3, 17),
 		}, []string{}),
 		FailedTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
