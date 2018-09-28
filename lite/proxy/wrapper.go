@@ -134,10 +134,10 @@ func (w Wrapper) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	}
 	rpcclient.WaitForHeight(w.Client, *height, nil)
 	res, err := w.Client.Commit(height)
-	// if we got it, then certify it
+	// if we got it, then verify it
 	if err == nil {
 		sh := res.SignedHeader
-		err = w.cert.Certify(sh)
+		err = w.cert.Verify(sh)
 	}
 	return res, err
 }

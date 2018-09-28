@@ -54,11 +54,11 @@ validator set, and that the height of the commit is at least height (or
 greater).
 
 SignedHeader.Commit may be signed by a different validator set, it can get
-certified with a BaseVerifier as long as sufficient signatures from the
+verified with a BaseVerifier as long as sufficient signatures from the
 previous validator set are present in the commit.
 
 DynamicVerifier - this Verifier implements an auto-update and persistence
-strategy to certify any SignedHeader of the blockchain.
+strategy to verify any SignedHeader of the blockchain.
 
 ## Provider and PersistentProvider
 
