@@ -552,7 +552,7 @@ type SignVoteRequest struct {
 	Vote *types.Vote
 }
 
-// SignVoteReply is a PrivValidatorSocket message containing a signed vote along with a potenial error message.
+// SignedVoteResponse is a PrivValidatorSocket message containing a signed vote along with a potenial error message.
 type SignedVoteResponse struct {
 	Vote  *types.Vote
 	Error *RemoteSignerError

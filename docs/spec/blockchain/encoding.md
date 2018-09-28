@@ -298,14 +298,22 @@ Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
 
 ### Signed Messages
 
-Signed messages (eg. votes, proposals) in the consensus are encoded using Amino-JSON, rather than in the standard binary format
-(NOTE: this is subject to change: https://github.com/tendermint/tendermint/issues/1622)
+Signed messages (eg. votes, proposals) in the consensus are encoded using Amino.
 
-When signing, the elements of a message are sorted by key and prepended with
-a `@chain_id` and `@type` field.
-We call this encoding the CanonicalSignBytes. For instance, CanonicalSignBytes for a vote would look
-like:
+When signing, the elements of a message are sorted alphabetically by key and prepended with
+a `chain_id` and `type` field.
+We call this encoding the SignBytes. For instance, SignBytes for a vote is the Amino encoding of the following struct:
 
-```json
-{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"8B01023386C371778ECB6368573E539AFC3CC860","parts":{"hash":"72DB3D959635DFF1BB567BEDAA70573392C51596","total":"1000000"}},"height":"12345","round":"2","timestamp":"2017-12-25T03:00:01.234Z","type":2}
+```go
+type CanonicalVote struct {
+	ChainID   string
+	Type      string
+	BlockID   CanonicalBlockID
+	Height    int64
+	Round     int
+	Timestamp time.Time
+	VoteType  byte
+}
 ```
+
+NOTE: see [#1622](https://github.com/tendermint/tendermint/issues/1622) for how field ordering will change
