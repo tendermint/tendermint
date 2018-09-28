@@ -513,9 +513,7 @@ func (mem *Mempool) Update(
 	// Remove transactions that are already in txs.
 	goodTxs := mem.filterTxs(txsMap)
 	// Recheck mempool txs if any txs were committed in the block
-	// NOTE: in some apps a tx could be invalidated due to EndBlock,
-	//	so we really still do need to recheck, but this is for debugging
-	if mem.config.Recheck && (mem.config.RecheckEmpty || len(goodTxs) > 0) {
+	if mem.config.Recheck && len(goodTxs) > 0 {
 		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs), "height", height)
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
