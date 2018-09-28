@@ -150,7 +150,7 @@ func TestSub3(t *testing.T) {
 	}
 	for i := 0; i < bA3.Bits; i++ {
 		expected := bA1.GetIndex(i)
-		if i < bA2.Bits && bA2.GetIndex(i) || i>=bA2.Bits{
+		if i < bA2.Bits && bA2.GetIndex(i){
 			expected = false
 		}
 		if bA3.GetIndex(i) != expected {

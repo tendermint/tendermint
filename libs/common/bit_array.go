@@ -196,12 +196,6 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 			for idx := i * 64; idx < o.Bits; idx++ {
 				c.setIndex(idx, c.getIndex(idx) && !o.getIndex(idx))
 			}
-			for idx := o.Bits; idx < (i+1)*64; idx++ {
-				c.setIndex(idx, false)
-			}
-		}
-		for i := len(o.Elems); i < len(c.Elems); i++ {
-			c.Elems[i] = 0
 		}
 		return c
 	}
