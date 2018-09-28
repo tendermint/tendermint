@@ -188,14 +188,20 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	}()
 	if bA.Bits > o.Bits {
 		c := bA.copy()
-		for i := len(o.Elems); i < len(c.Elems)-1; i++ {
-			c.Elems[i] &= ^c.Elems[i]
+		for i := 0; i < len(o.Elems)-1; i++ {
+			c.Elems[i] &= ^o.Elems[i]
 		}
 		i := len(o.Elems) - 1
 		if i >= 0 {
 			for idx := i * 64; idx < o.Bits; idx++ {
 				c.setIndex(idx, c.getIndex(idx) && !o.getIndex(idx))
 			}
+			for idx := o.Bits; idx < (i+1)*64; idx++ {
+				c.setIndex(idx, false)
+			}
+		}
+		for i := len(o.Elems); i < len(c.Elems); i++ {
+			c.Elems[i] = 0
 		}
 		return c
 	}
