@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -102,4 +103,30 @@ func (pv *MockPV) String() string {
 func (pv *MockPV) DisableChecks() {
 	// Currently this does nothing,
 	// as MockPV has no safety checks at all.
+}
+
+type erroringMockPV struct {
+	*MockPV
+}
+
+var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
+
+// Implements PrivValidator.
+func (pv *erroringMockPV) SignVote(chainID string, vote *Vote) error {
+	return ErroringMockPVErr
+}
+
+// Implements PrivValidator.
+func (pv *erroringMockPV) SignProposal(chainID string, proposal *Proposal) error {
+	return ErroringMockPVErr
+}
+
+// signHeartbeat signs the heartbeat without any checking.
+func (pv *erroringMockPV) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
+	return ErroringMockPVErr
+}
+
+// NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.
+func NewErroringMockPV() *erroringMockPV {
+	return &erroringMockPV{&MockPV{ed25519.GenPrivKey()}}
 }
