@@ -118,11 +118,12 @@ CHANGELOG even if they don't lead to MINOR version bumps:
 - rpc/client
 - config
 - node
-- libs/bech32
-- libs/common
-- libs/db
-- libs/errors
-- libs/log
+- libs
+  - bech32
+  - common
+  - db
+  - errors
+  - log
 
 Exported objects in these packages that are not covered by the versioning scheme
 are explicitly marked by `// UNSTABLE` in their go doc comment and may change at any
