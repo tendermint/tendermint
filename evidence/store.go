@@ -79,11 +79,12 @@ func NewEvidenceStore(db dbm.DB) *EvidenceStore {
 func (store *EvidenceStore) PriorityEvidence() (evidence []types.Evidence) {
 	// reverse the order so highest priority is first
 	l := store.listEvidence(baseKeyOutqueue, -1)
-	l2 := make([]types.Evidence, len(l))
-	for i := range l {
-		l2[i] = l[len(l)-1-i]
+	for i := len(l)/2 - 1; i >= 0; i-- {
+		opp := len(l) - 1 - i
+		l[i], l[opp] = l[opp], l[i]
 	}
-	return l2
+
+	return l
 }
 
 // PendingEvidence returns known uncommitted evidence up to maxBytes.
