@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
+
 	log "github.com/tendermint/tendermint/libs/log"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
@@ -25,10 +26,9 @@ type DynamicVerifier struct {
 	// This is a source of new info, like a node rpc, or other import method.
 	source Provider
 
-	// pending map for synchronize concurrent verification requests
+	// pending map to synchronize concurrent verification requests
+	mtx                  sync.Mutex
 	pendingVerifications map[int64]chan struct{}
-
-	mtx sync.Mutex
 }
 
 // NewDynamicVerifier returns a new DynamicVerifier. It uses the

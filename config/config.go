@@ -20,7 +20,7 @@ const (
 // generate the config.toml. Please reflect any changes
 // made here in the defaultConfigTemplate constant in
 // config/toml.go
-// NOTE: tmlibs/cli must know to look in the config dir!
+// NOTE: libs/cli must know to look in the config dir!
 var (
 	DefaultTendermintDir = ".tendermint"
 	defaultConfigDir     = "config"
