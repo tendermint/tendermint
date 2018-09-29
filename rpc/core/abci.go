@@ -1,8 +1,6 @@
 package core
 
 import (
-	"fmt"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -12,7 +10,7 @@ import (
 // Query the application for some information.
 //
 // ```shell
-// curl 'localhost:26657/abci_query?path=""&data="abcd"&trusted=false'
+// curl 'localhost:26657/abci_query?path=""&data="abcd"&prove=false'
 // ```
 //
 // ```go
@@ -47,18 +45,14 @@ import (
 // |-----------+--------+---------+----------+------------------------------------------------|
 // | path      | string | false   | false    | Path to the data ("/a/b/c")                    |
 // | data      | []byte | false   | true     | Data                                           |
-// | height    | int64 | 0       | false    | Height (0 means latest)                        |
-// | trusted   | bool   | false   | false    | Does not include a proof of the data inclusion |
-func ABCIQuery(path string, data cmn.HexBytes, height int64, trusted bool) (*ctypes.ResultABCIQuery, error) {
-	if height < 0 {
-		return nil, fmt.Errorf("height must be non-negative")
-	}
-
+// | height    | int64  | 0       | false    | Height (0 means latest)                        |
+// | prove     | bool   | false   | false    | Includes proof if true                         |
+func ABCIQuery(path string, data cmn.HexBytes, height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
 	resQuery, err := proxyAppQuery.QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
 		Height: height,
-		Prove:  !trusted,
+		Prove:  prove,
 	})
 	if err != nil {
 		return nil, err
