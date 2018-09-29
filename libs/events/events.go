@@ -31,7 +31,7 @@ type EventSwitch interface {
 	cmn.Service
 	Fireable
 
-	AddListenerForEvent(listenerID, event string, cb EventCallback)
+	AddListenerForEvent(listenerID, event string, cb EventCallback) error
 	RemoveListenerForEvent(event string, listenerID string)
 	RemoveListener(listenerID string)
 }
