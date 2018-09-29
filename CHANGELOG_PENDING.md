@@ -6,6 +6,7 @@ BREAKING CHANGES:
 
 * CLI/RPC/Config
 - [config] `mempool.wal` is disabled by default
+- [types] \#2512 Remove the pubkey field from the validator hash 
 
 * Apps
 
