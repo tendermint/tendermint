@@ -79,9 +79,8 @@ func NewEvidenceStore(db dbm.DB) *EvidenceStore {
 func (store *EvidenceStore) PriorityEvidence() (evidence []types.Evidence) {
 	// reverse the order so highest priority is first
 	l := store.listEvidence(baseKeyOutqueue, -1)
-	for i := len(l)/2 - 1; i >= 0; i-- {
-		opp := len(l) - 1 - i
-		l[i], l[opp] = l[opp], l[i]
+	for i, j := 0, len(l)-1; i < j; i, j = i+1, j-1 {
+		l[i], l[j] = l[j], l[i]
 	}
 
 	return l
