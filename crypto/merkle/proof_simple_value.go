@@ -25,7 +25,7 @@ type SimpleValueOp struct {
 	key []byte
 
 	// To encode in ProofOp.Data
-	Proof *SimpleProof `json:"simple-proof"`
+	Proof *SimpleProof `json:"simple_proof"`
 }
 
 var _ ProofOperator = SimpleValueOp{}
