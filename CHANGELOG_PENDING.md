@@ -37,4 +37,4 @@ IMPROVEMENTS:
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
-- [event] \#2518 fix event concurrency flaw (@goolAdapter)
+- [libs/event] \#2518 fix event concurrency flaw (@goolAdapter)
