@@ -35,6 +35,8 @@ import (
 	kp.AppendKey([]byte{0x01, 0x02, 0x03}, KeyEncodingURL)
 	kp.String() // Should return "/App/IBC/x:010203"
 
+	NOTE: Key paths must begin with a `/`.
+
 	NOTE: All encodings *MUST* work compatibly, such that you can choose to use
 	whatever encoding, and the decoded keys will always be the same.  In other
 	words, it's just as good to encode all three keys using URL encoding or HEX
@@ -52,7 +54,7 @@ type keyEncoding int
 const (
 	KeyEncodingURL keyEncoding = iota
 	KeyEncodingHex
-	KeyEncodingMax
+	KeyEncodingMax // Number of known encodings. Used for testing
 )
 
 type Key struct {
@@ -81,6 +83,8 @@ func (pth KeyPath) String() string {
 	return res
 }
 
+// Decode a path to a list of keys. Path must begin with `/`.
+// Each key must use a known encoding.
 func KeyPathToKeys(path string) (keys [][]byte, err error) {
 	if path == "" || path[0] != '/' {
 		return nil, cmn.NewError("key path string must start with a forward slash '/'")
