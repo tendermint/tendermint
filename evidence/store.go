@@ -98,6 +98,7 @@ func (store *EvidenceStore) PendingEvidence(maxBytes int64) (evidence []types.Ev
 func (store *EvidenceStore) listEvidence(prefixKey string, maxBytes int64) (evidence []types.Evidence) {
 	var bytes int64
 	iter := dbm.IteratePrefix(store.db, []byte(prefixKey))
+	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		val := iter.Value()
 
