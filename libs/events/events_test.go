@@ -202,8 +202,8 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 	go inputRemoveListener(t, evsw, done1)
 	go inputAddListenerForEvent(t, evsw, done2)
 
-	_ = <-done1
-	_ = <-done2
+	<-done1
+	<-done2
 
 	evsw.RemoveListener("listener") // make sure remove last
 
