@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,7 +20,7 @@ const (
 // generate the config.toml. Please reflect any changes
 // made here in the defaultConfigTemplate constant in
 // config/toml.go
-// NOTE: tmlibs/cli must know to look in the config dir!
+// NOTE: libs/cli must know to look in the config dir!
 var (
 	DefaultTendermintDir = ".tendermint"
 	defaultConfigDir     = "config"
@@ -87,6 +88,88 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
 	return cfg
+}
+
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *Config) ValidateBasic() error {
+	// RPCConfig
+	if cfg.RPC.GRPCMaxOpenConnections < 0 {
+		return errors.New("[rpc] grpc_max_open_connections can't be negative")
+	}
+	if cfg.RPC.MaxOpenConnections < 0 {
+		return errors.New("[rpc] max_open_connections can't be negative")
+	}
+
+	// P2PConfig
+	if cfg.P2P.MaxNumInboundPeers < 0 {
+		return errors.New("[p2p] max_num_inbound_peers can't be negative")
+	}
+	if cfg.P2P.MaxNumOutboundPeers < 0 {
+		return errors.New("[p2p] max_num_outbound_peers can't be negative")
+	}
+	if cfg.P2P.FlushThrottleTimeout < 0 {
+		return errors.New("[p2p] flush_throttle_timeout can't be negative")
+	}
+	if cfg.P2P.MaxPacketMsgPayloadSize < 0 {
+		return errors.New("[p2p] max_packet_msg_payload_size can't be negative")
+	}
+	if cfg.P2P.SendRate < 0 {
+		return errors.New("[p2p] send_rate can't be negative")
+	}
+	if cfg.P2P.RecvRate < 0 {
+		return errors.New("[p2p] recv_rate can't be negative")
+	}
+
+	// MempoolConfig
+	if cfg.Mempool.Size < 0 {
+		return errors.New("[mempool] size can't be negative")
+	}
+	if cfg.Mempool.CacheSize < 0 {
+		return errors.New("[mempool] cache_size can't be negative")
+	}
+
+	// ConsensusConfig
+	if cfg.Consensus.TimeoutPropose < 0 {
+		return errors.New("[consensus] timeout_propose can't be negative")
+	}
+	if cfg.Consensus.TimeoutProposeDelta < 0 {
+		return errors.New("[consensus] timeout_propose_delta can't be negative")
+	}
+	if cfg.Consensus.TimeoutPrevote < 0 {
+		return errors.New("[consensus] timeout_prevote can't be negative")
+	}
+	if cfg.Consensus.TimeoutPrevoteDelta < 0 {
+		return errors.New("[consensus] timeout_prevote_delta can't be negative")
+	}
+	if cfg.Consensus.TimeoutPrecommit < 0 {
+		return errors.New("[consensus] timeout_precommit can't be negative")
+	}
+	if cfg.Consensus.TimeoutPrecommitDelta < 0 {
+		return errors.New("[consensus] timeout_precommit_delta can't be negative")
+	}
+	if cfg.Consensus.TimeoutCommit < 0 {
+		return errors.New("[consensus] timeout_commit can't be negative")
+	}
+	if cfg.Consensus.CreateEmptyBlocksInterval < 0 {
+		return errors.New("[consensus] create_empty_blocks_interval can't be negative")
+	}
+	if cfg.Consensus.PeerGossipSleepDuration < 0 {
+		return errors.New("[consensus] peer_gossip_sleep_duration can't be negative")
+	}
+	if cfg.Consensus.PeerQueryMaj23SleepDuration < 0 {
+		return errors.New("[consensus] peer_query_maj23_sleep_duration can't be negative")
+	}
+	if cfg.Consensus.BlockTimeIota < 0 {
+		return errors.New("[consensus] blocktime_iota can't be negative")
+	}
+
+	// InstrumentationConfig
+	if cfg.Instrumentation.MaxOpenConnections < 0 {
+		return errors.New("[instrumentation] max_open_connections can't be negative")
+	}
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -301,8 +384,8 @@ type P2PConfig struct {
 	// Maximum number of outbound peers to connect to, excluding persistent peers
 	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
 
-	// Time to wait before flushing messages out on the connection, in ms
-	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
+	// Time to wait before flushing messages out on the connection
+	FlushThrottleTimeout time.Duration `mapstructure:"flush_throttle_timeout"`
 
 	// Maximum size of a message packet payload, in bytes
 	MaxPacketMsgPayloadSize int `mapstructure:"max_packet_msg_payload_size"`
@@ -351,7 +434,7 @@ func DefaultP2PConfig() *P2PConfig {
 		AddrBookStrict:          true,
 		MaxNumInboundPeers:      40,
 		MaxNumOutboundPeers:     10,
-		FlushThrottleTimeout:    100,
+		FlushThrottleTimeout:    100 * time.Millisecond,
 		MaxPacketMsgPayloadSize: 1024,    // 1 kB
 		SendRate:                5120000, // 5 mB/s
 		RecvRate:                5120000, // 5 mB/s
@@ -416,9 +499,9 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Recheck:   true,
-		Broadcast: true,
-		WalPath:   filepath.Join(defaultDataDir, "mempool.wal"),
+		Recheck:      true,
+		Broadcast:    true,
+		WalPath:      "",
 		// Each signature verification takes .5ms, size reduced until we implement
 		// ABCI Recheck
 		Size:      5000,
@@ -448,72 +531,70 @@ type ConsensusConfig struct {
 	WalPath string `mapstructure:"wal_file"`
 	walFile string // overrides WalPath if set
 
-	// All timeouts are in milliseconds
-	TimeoutPropose        int `mapstructure:"timeout_propose"`
-	TimeoutProposeDelta   int `mapstructure:"timeout_propose_delta"`
-	TimeoutPrevote        int `mapstructure:"timeout_prevote"`
-	TimeoutPrevoteDelta   int `mapstructure:"timeout_prevote_delta"`
-	TimeoutPrecommit      int `mapstructure:"timeout_precommit"`
-	TimeoutPrecommitDelta int `mapstructure:"timeout_precommit_delta"`
-	TimeoutCommit         int `mapstructure:"timeout_commit"`
+	TimeoutPropose        time.Duration `mapstructure:"timeout_propose"`
+	TimeoutProposeDelta   time.Duration `mapstructure:"timeout_propose_delta"`
+	TimeoutPrevote        time.Duration `mapstructure:"timeout_prevote"`
+	TimeoutPrevoteDelta   time.Duration `mapstructure:"timeout_prevote_delta"`
+	TimeoutPrecommit      time.Duration `mapstructure:"timeout_precommit"`
+	TimeoutPrecommitDelta time.Duration `mapstructure:"timeout_precommit_delta"`
+	TimeoutCommit         time.Duration `mapstructure:"timeout_commit"`
 
 	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
 
-	// EmptyBlocks mode and possible interval between empty blocks in seconds
-	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
-	CreateEmptyBlocksInterval int  `mapstructure:"create_empty_blocks_interval"`
+	// EmptyBlocks mode and possible interval between empty blocks
+	CreateEmptyBlocks         bool          `mapstructure:"create_empty_blocks"`
+	CreateEmptyBlocksInterval time.Duration `mapstructure:"create_empty_blocks_interval"`
 
-	// Reactor sleep duration parameters are in milliseconds
-	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
-	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
+	// Reactor sleep duration parameters
+	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
+	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
 
-	// Block time parameters in milliseconds. Corresponds to the minimum time increment between consecutive blocks.
-	BlockTimeIota int `mapstructure:"blocktime_iota"`
+	// Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
+	BlockTimeIota time.Duration `mapstructure:"blocktime_iota"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
 		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
-		TimeoutPropose:              3000,
-		TimeoutProposeDelta:         500,
-		TimeoutPrevote:              1000,
-		TimeoutPrevoteDelta:         500,
-		TimeoutPrecommit:            1000,
-		TimeoutPrecommitDelta:       500,
-		TimeoutCommit:               1000,
+		TimeoutPropose:              3000 * time.Millisecond,
+		TimeoutProposeDelta:         500 * time.Millisecond,
+		TimeoutPrevote:              1000 * time.Millisecond,
+		TimeoutPrevoteDelta:         500 * time.Millisecond,
+		TimeoutPrecommit:            1000 * time.Millisecond,
+		TimeoutPrecommitDelta:       500 * time.Millisecond,
+		TimeoutCommit:               1000 * time.Millisecond,
 		SkipTimeoutCommit:           false,
 		CreateEmptyBlocks:           true,
-		CreateEmptyBlocksInterval:   0,
-		PeerGossipSleepDuration:     100,
-		PeerQueryMaj23SleepDuration: 2000,
-		BlockTimeIota:               1000,
+		CreateEmptyBlocksInterval:   0 * time.Second,
+		PeerGossipSleepDuration:     100 * time.Millisecond,
+		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
+		BlockTimeIota:               1000 * time.Millisecond,
 	}
 }
 
 // TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
 	cfg := DefaultConsensusConfig()
-	cfg.TimeoutPropose = 100
-	cfg.TimeoutProposeDelta = 1
-	cfg.TimeoutPrevote = 10
-	cfg.TimeoutPrevoteDelta = 1
-	cfg.TimeoutPrecommit = 10
-	cfg.TimeoutPrecommitDelta = 1
-	cfg.TimeoutCommit = 10
+	cfg.TimeoutPropose = 100 * time.Millisecond
+	cfg.TimeoutProposeDelta = 1 * time.Millisecond
+	cfg.TimeoutPrevote = 10 * time.Millisecond
+	cfg.TimeoutPrevoteDelta = 1 * time.Millisecond
+	cfg.TimeoutPrecommit = 10 * time.Millisecond
+	cfg.TimeoutPrecommitDelta = 1 * time.Millisecond
+	cfg.TimeoutCommit = 10 * time.Millisecond
 	cfg.SkipTimeoutCommit = true
-	cfg.PeerGossipSleepDuration = 5
-	cfg.PeerQueryMaj23SleepDuration = 250
-	cfg.BlockTimeIota = 10
+	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
+	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
+	cfg.BlockTimeIota = 10 * time.Millisecond
 	return cfg
 }
 
 // MinValidVoteTime returns the minimum acceptable block time.
 // See the [BFT time spec](https://godoc.org/github.com/tendermint/tendermint/docs/spec/consensus/bft-time.md).
 func (cfg *ConsensusConfig) MinValidVoteTime(lastBlockTime time.Time) time.Time {
-	return lastBlockTime.
-		Add(time.Duration(cfg.BlockTimeIota) * time.Millisecond)
+	return lastBlockTime.Add(cfg.BlockTimeIota)
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
@@ -521,39 +602,30 @@ func (cfg *ConsensusConfig) WaitForTxs() bool {
 	return !cfg.CreateEmptyBlocks || cfg.CreateEmptyBlocksInterval > 0
 }
 
-// EmptyBlocks returns the amount of time to wait before proposing an empty block or starting the propose timer if there are no txs available
-func (cfg *ConsensusConfig) EmptyBlocksInterval() time.Duration {
-	return time.Duration(cfg.CreateEmptyBlocksInterval) * time.Second
-}
-
 // Propose returns the amount of time to wait for a proposal
 func (cfg *ConsensusConfig) Propose(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPropose+cfg.TimeoutProposeDelta*round) * time.Millisecond
+	return time.Duration(
+		cfg.TimeoutPropose.Nanoseconds()+cfg.TimeoutProposeDelta.Nanoseconds()*int64(round),
+	) * time.Nanosecond
 }
 
 // Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
 func (cfg *ConsensusConfig) Prevote(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPrevote+cfg.TimeoutPrevoteDelta*round) * time.Millisecond
+	return time.Duration(
+		cfg.TimeoutPrevote.Nanoseconds()+cfg.TimeoutPrevoteDelta.Nanoseconds()*int64(round),
+	) * time.Nanosecond
 }
 
 // Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
 func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPrecommit+cfg.TimeoutPrecommitDelta*round) * time.Millisecond
+	return time.Duration(
+		cfg.TimeoutPrecommit.Nanoseconds()+cfg.TimeoutPrecommitDelta.Nanoseconds()*int64(round),
+	) * time.Nanosecond
 }
 
 // Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
 func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
-	return t.Add(time.Duration(cfg.TimeoutCommit) * time.Millisecond)
-}
-
-// PeerGossipSleep returns the amount of time to sleep if there is nothing to send from the ConsensusReactor
-func (cfg *ConsensusConfig) PeerGossipSleep() time.Duration {
-	return time.Duration(cfg.PeerGossipSleepDuration) * time.Millisecond
-}
-
-// PeerQueryMaj23Sleep returns the amount of time to sleep after each VoteSetMaj23Message is sent in the ConsensusReactor
-func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
-	return time.Duration(cfg.PeerQueryMaj23SleepDuration) * time.Millisecond
+	return t.Add(cfg.TimeoutCommit)
 }
 
 // WalFile returns the full path to the write-ahead log file
@@ -632,6 +704,9 @@ type InstrumentationConfig struct {
 	// you increase your OS limits.
 	// 0 - unlimited.
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
+
+	// Tendermint instrumentation namespace.
+	Namespace string `mapstructure:"namespace"`
 }
 
 // DefaultInstrumentationConfig returns a default configuration for metrics
@@ -641,6 +716,7 @@ func DefaultInstrumentationConfig() *InstrumentationConfig {
 		Prometheus:           false,
 		PrometheusListenAddr: ":26660",
 		MaxOpenConnections:   3,
+		Namespace:            "tendermint",
 	}
 }
 

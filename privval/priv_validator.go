@@ -313,21 +313,18 @@ func (pv *FilePV) String() string {
 // returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
-	var lastVote, newVote types.CanonicalJSONVote
-	if err := cdc.UnmarshalJSON(lastSignBytes, &lastVote); err != nil {
+	var lastVote, newVote types.CanonicalVote
+	if err := cdc.UnmarshalBinary(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
-	if err := cdc.UnmarshalJSON(newSignBytes, &newVote); err != nil {
+	if err := cdc.UnmarshalBinary(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
-	lastTime, err := time.Parse(types.TimeFormat, lastVote.Timestamp)
-	if err != nil {
-		panic(err)
-	}
+	lastTime := lastVote.Timestamp
 
 	// set the times to the same value and check equality
-	now := types.CanonicalTime(tmtime.Now())
+	now := tmtime.Now()
 	lastVote.Timestamp = now
 	newVote.Timestamp = now
 	lastVoteBytes, _ := cdc.MarshalJSON(lastVote)
@@ -339,25 +336,21 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
-	var lastProposal, newProposal types.CanonicalJSONProposal
-	if err := cdc.UnmarshalJSON(lastSignBytes, &lastProposal); err != nil {
+	var lastProposal, newProposal types.CanonicalProposal
+	if err := cdc.UnmarshalBinary(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	if err := cdc.UnmarshalJSON(newSignBytes, &newProposal); err != nil {
+	if err := cdc.UnmarshalBinary(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
 
-	lastTime, err := time.Parse(types.TimeFormat, lastProposal.Timestamp)
-	if err != nil {
-		panic(err)
-	}
-
+	lastTime := lastProposal.Timestamp
 	// set the times to the same value and check equality
-	now := types.CanonicalTime(tmtime.Now())
+	now := tmtime.Now()
 	lastProposal.Timestamp = now
 	newProposal.Timestamp = now
-	lastProposalBytes, _ := cdc.MarshalJSON(lastProposal)
-	newProposalBytes, _ := cdc.MarshalJSON(newProposal)
+	lastProposalBytes, _ := cdc.MarshalBinary(lastProposal)
+	newProposalBytes, _ := cdc.MarshalBinary(newProposal)
 
 	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }

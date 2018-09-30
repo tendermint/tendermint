@@ -115,14 +115,14 @@ addr_book_file = "addrbook.json"
 # Set false for private or local networks
 addr_book_strict = true
 
-# Time to wait before flushing messages out on the connection, in ms
-flush_throttle_timeout = 100
-
 # Maximum number of inbound peers
 max_num_inbound_peers = 40
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = 10
+
+# Time to wait before flushing messages out on the connection
+flush_throttle_timeout = "100ms"
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = 1024
@@ -145,6 +145,13 @@ seed_mode = false
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private_peer_ids = ""
 
+# Toggle to disable guard against peers connecting from the same ip.
+allow_duplicate_ip = true
+
+# Peer connection configuration.
+handshake_timeout = "20s"
+dial_timeout = "3s"
+
 ##### mempool configuration options #####
 [mempool]
 
@@ -163,25 +170,24 @@ cache_size = 100000
 
 wal_file = "data/cs.wal/wal"
 
-# All timeouts are in milliseconds
-timeout_propose = 3000
-timeout_propose_delta = 500
-timeout_prevote = 1000
-timeout_prevote_delta = 500
-timeout_precommit = 1000
-timeout_precommit_delta = 500
-timeout_commit = 1000
+timeout_propose = "3000ms"
+timeout_propose_delta = "500ms"
+timeout_prevote = "1000ms"
+timeout_prevote_delta = "500ms"
+timeout_precommit = "1000ms"
+timeout_precommit_delta = "500ms"
+timeout_commit = "1000ms"
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = false
 
-# EmptyBlocks mode and possible interval between empty blocks in seconds
+# EmptyBlocks mode and possible interval between empty blocks
 create_empty_blocks = true
-create_empty_blocks_interval = 0
+create_empty_blocks_interval = "0s"
 
-# Reactor sleep duration parameters are in milliseconds
-peer_gossip_sleep_duration = 100
-peer_query_maj23_sleep_duration = 2000
+# Reactor sleep duration parameters
+peer_gossip_sleep_duration = "100ms"
+peer_query_maj23_sleep_duration = "2000ms"
 
 ##### transactions indexer configuration options #####
 [tx_index]
@@ -226,4 +232,7 @@ prometheus_listen_addr = ":26660"
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = 3
+
+# Instrumentation namespace
+namespace = "tendermint"
 ```

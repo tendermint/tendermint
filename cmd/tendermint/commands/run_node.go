@@ -2,6 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -49,19 +52,31 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 		Use:   "node",
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Create & start node
 			n, err := nodeProvider(config, logger)
 			if err != nil {
 				return fmt.Errorf("Failed to create node: %v", err)
 			}
+
+			// Stop upon receiving SIGTERM or CTRL-C
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+			go func() {
+				for sig := range c {
+					logger.Error(fmt.Sprintf("captured %v, exiting...", sig))
+					if n.IsRunning() {
+						n.Stop()
+					}
+					os.Exit(1)
+				}
+			}()
 
 			if err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
 			}
 			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 
-			// Trap signal, run forever.
-			n.RunForever()
+			// Run forever
+			select {}
 
 			return nil
 		},

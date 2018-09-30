@@ -124,8 +124,8 @@ type ConsensusState struct {
 	metrics *Metrics
 }
 
-// CSOption sets an optional parameter on the ConsensusState.
-type CSOption func(*ConsensusState)
+// StateOption sets an optional parameter on the ConsensusState.
+type StateOption func(*ConsensusState)
 
 // NewConsensusState returns a new ConsensusState.
 func NewConsensusState(
@@ -135,7 +135,7 @@ func NewConsensusState(
 	blockStore sm.BlockStore,
 	mempool sm.Mempool,
 	evpool sm.EvidencePool,
-	options ...CSOption,
+	options ...StateOption,
 ) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
@@ -185,8 +185,8 @@ func (cs *ConsensusState) SetEventBus(b *types.EventBus) {
 	cs.blockExec.SetEventBus(b)
 }
 
-// WithMetrics sets the metrics.
-func WithMetrics(metrics *Metrics) CSOption {
+// StateMetrics sets the metrics.
+func StateMetrics(metrics *Metrics) StateOption {
 	return func(cs *ConsensusState) { cs.metrics = metrics }
 }
 
@@ -782,7 +782,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	waitForTxs := cs.config.WaitForTxs() && round == 0 && !cs.needProofBlock(height)
 	if waitForTxs {
 		if cs.config.CreateEmptyBlocksInterval > 0 {
-			cs.scheduleTimeout(cs.config.EmptyBlocksInterval(), height, round, cstypes.RoundStepNewRound)
+			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round, cstypes.RoundStepNewRound)
 		}
 		go cs.proposalHeartbeat(height, round)
 	} else {
@@ -1397,6 +1397,8 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.NumTxs.Set(float64(block.NumTxs))
 	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
 	cs.metrics.TotalTxs.Set(float64(block.TotalTxs))
+	cs.metrics.CommittedHeight.Set(float64(block.Height))
+
 }
 
 //-----------------------------------------------------------------------------

@@ -35,7 +35,7 @@ install:
 ########################################
 ### Protobuf
 
-protoc_all: protoc_libs protoc_abci protoc_grpc
+protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc
 
 %.pb.go: %.proto
 	## If you get the following error,
@@ -136,6 +136,8 @@ grpc_dbserver:
 	protoc -I db/remotedb/proto/ db/remotedb/proto/defs.proto --go_out=plugins=grpc:db/remotedb/proto
 
 protoc_grpc: rpc/grpc/types.pb.go
+
+protoc_merkle: crypto/merkle/merkle.pb.go
 
 ########################################
 ### Testing

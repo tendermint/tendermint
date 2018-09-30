@@ -5,7 +5,7 @@
 By default, Tendermint uses the `syndtr/goleveldb` package for it's in-process
 key-value database. Unfortunately, this implementation of LevelDB seems to suffer under heavy load (see
 [#226](https://github.com/syndtr/goleveldb/issues/226)). It may be best to
-install the real C-implementaiton of LevelDB and compile Tendermint to use
+install the real C-implementation of LevelDB and compile Tendermint to use
 that using `make build_c`. See the [install instructions](../introduction/install.md) for details.
 
 Tendermint keeps multiple distinct LevelDB databases in the `$TMROOT/data`:
@@ -73,6 +73,10 @@ may never make it into the blockchain if those nodes crash before being able to
 propose it. Clients must monitor their txs by subscribing over websockets,
 polling for them, or using `/broadcast_tx_commit`. In the worst case, txs can be
 resent from the mempool WAL manually.
+
+For the above reasons, the `mempool.wal` is disabled by default. To enable, set
+`mempool.wal_dir` to where you want the WAL to be located (e.g.
+`data/mempool.wal`).
 
 ## DOS Exposure and Mitigation
 

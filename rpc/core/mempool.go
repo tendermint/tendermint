@@ -36,7 +36,7 @@ import (
 // 		"hash": "E39AAB7A537ABAA237831742DCE1117F187C3C52",
 // 		"log": "",
 // 		"data": "",
-// 		"code": 0
+// 		"code": "0"
 // 	},
 // 	"id": "",
 // 	"jsonrpc": "2.0"
@@ -74,7 +74,7 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // 	"jsonrpc": "2.0",
 // 	"id": "",
 // 	"result": {
-// 		"code": 0,
+// 		"code": "0",
 // 		"data": "",
 // 		"log": "",
 // 		"hash": "0D33F2F03A5234F38706E43004489E061AC40A2E"
@@ -126,17 +126,17 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // {
 // 	"error": "",
 // 	"result": {
-// 		"height": 26682,
+// 		"height": "26682",
 // 		"hash": "75CA0F856A4DA078FC4911580360E70CEFB2EBEE",
 // 		"deliver_tx": {
 // 			"log": "",
 // 			"data": "",
-// 			"code": 0
+// 			"code": "0"
 // 		},
 // 		"check_tx": {
 // 			"log": "",
 // 			"data": "",
-// 			"code": 0
+// 			"code": "0"
 // 		}
 // 	},
 // 	"id": "",
@@ -227,7 +227,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 //   "error": "",
 //   "result": {
 //     "txs": [],
-//     "n_txs": 0
+//     "n_txs": "0"
 //   },
 //   "id": "",
 //   "jsonrpc": "2.0"
@@ -265,7 +265,7 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 //   "error": "",
 //   "result": {
 //     "txs": null,
-//     "n_txs": 0
+//     "n_txs": "0"
 //   },
 //   "id": "",
 //   "jsonrpc": "2.0"

@@ -33,7 +33,7 @@ curl 'localhost:26657/broadcast_tx_sync?tx="abc"'
 		"hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF",
 		"log": "",
 		"data": "",
-		"code": 0
+		"code": "0"
 	},
 	"id": "",
 	"jsonrpc": "2.0"
