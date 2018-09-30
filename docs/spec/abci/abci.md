@@ -190,9 +190,9 @@ Commit are included in the header of the next block.
     of Path.
   - `Path (string)`: Path of request, like an HTTP GET path. Can be
     used with or in liue of Data.
-  - Apps MUST interpret '/store' as a query by key on the
+    - Apps MUST interpret '/store' as a query by key on the
     underlying store. The key SHOULD be specified in the Data field.
-  - Apps SHOULD allow queries over specific types like
+    - Apps SHOULD allow queries over specific types like
     '/accounts/...' or '/votes/...'
   - `Height (int64)`: The block height for which you want the query
     (default=0 returns data for the latest committed block). Note
@@ -209,7 +209,7 @@ Commit are included in the header of the next block.
   - `Index (int64)`: The index of the key in the tree.
   - `Key ([]byte)`: The key of the matching data.
   - `Value ([]byte)`: The value of the matching data.
-  - `Proof ([]byte)`: Serialized proof for the data, if requested, to be
+  - `Proof (Proof)`: Serialized proof for the value data, if requested, to be
     verified against the `AppHash` for the given Height.
   - `Height (int64)`: The block height from which data was derived.
     Note that this is the height of the block containing the
@@ -218,6 +218,8 @@ Commit are included in the header of the next block.
 - **Usage**:
   - Query for data from the application at current or past height.
   - Optionally return Merkle proof.
+  - Merkle proof includes self-describing `type` field to support many types
+  of Merkle trees and encoding formats.
 
 ### BeginBlock
 
@@ -413,3 +415,44 @@ Commit are included in the header of the next block.
   - `Round (int32)`: Commit round.
   - `Votes ([]VoteInfo)`: List of validators addresses in the last validator set
     with their voting power and whether or not they signed a vote.
+
+###  ConsensusParams
+
+- **Fields**:
+  - `BlockSize (BlockSize)`: Parameters limiting the size of a block.
+  - `EvidenceParams (EvidenceParams)`: Parameters limiting the validity of
+    evidence of byzantine behaviour.
+
+### BlockSize
+
+- **Fields**:
+  - `MaxBytes (int64)`: Max size of a block, in bytes.
+  - `MaxGas (int64)`: Max sum of `GasWanted` in a proposed block.
+    - NOTE: blocks that violate this may be committed if there are Byzantine proposers.
+        It's the application's responsibility to handle this when processing a
+        block!
+
+### EvidenceParams
+
+- **Fields**:
+  - `MaxAge (int64)`: Max age of evidence, in blocks. Evidence older than this
+    is considered stale and ignored.
+        - This should correspond with an app's "unbonding period" or other
+          similar mechanism for handling Nothing-At-Stake attacks.
+        - NOTE: this should change to time (instead of blocks)!
+
+### Proof
+
+- **Fields**:
+  - `Ops ([]ProofOp)`: List of chained Merkle proofs, of possibly different types
+    - The Merkle root of one op is the value being proven in the next op.
+    - The Merkle root of the final op should equal the ultimate root hash being
+      verified against.
+
+### ProofOp
+
+- **Fields**:
+  - `Type (string)`: Type of Merkle proof and how it's encoded.
+  - `Key ([]byte)`: Key in the Merkle tree that this proof is for.
+  - `Data ([]byte)`: Encoded Merkle proof for the key.
+
