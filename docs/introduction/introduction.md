@@ -1,6 +1,6 @@
 # What is Tendermint?
 
-Link deprecated. See [What is Tendermint?](what-is-tendermint.md).
+DEPRECATED! See [What is Tendermint?](what-is-tendermint.md).
 
 Tendermint is software for securely and consistently replicating an
 application on many machines. By securely, we mean that Tendermint works
