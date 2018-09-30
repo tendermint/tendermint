@@ -17,7 +17,7 @@ To get started quickly with an example application, see the [quick start guide](
 To learn about application development on Tendermint, see the [Application Blockchain Interface](spec/abci).
 
 For more details on using Tendermint, see the respective documentation for
-[Tendermint Core](tendermint-core), [some tools](tools), and [network deployments](networks).
+[Tendermint Core](tendermint-core), [benchmarking and monitoring](tools), and [network deployments](networks).
 
 ## Contribute
 

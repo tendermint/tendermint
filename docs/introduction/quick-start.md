@@ -1,4 +1,4 @@
-# Tendermint Quick Start
+# Quick Start
 
 ## Overview
 
