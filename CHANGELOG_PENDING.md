@@ -5,6 +5,7 @@ Special thanks to external contributors on this release:
 BREAKING CHANGES:
 
 * CLI/RPC/Config
+  * [config] \#2505 Remove Mempool.RecheckEmpty (it was effectively useless anyways)
   * [config] `mempool.wal` is disabled by default
   * [rpc] \#2298 `/abci_query` takes `prove` argument instead of `trusted` and switches the default
     behaviour to `prove=false`

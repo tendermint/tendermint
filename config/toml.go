@@ -213,7 +213,6 @@ dial_timeout = "{{ .P2P.DialTimeout }}"
 [mempool]
 
 recheck = {{ .Mempool.Recheck }}
-recheck_empty = {{ .Mempool.RecheckEmpty }}
 broadcast = {{ .Mempool.Broadcast }}
 wal_dir = "{{ js .Mempool.WalPath }}"
 
