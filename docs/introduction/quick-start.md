@@ -1,4 +1,4 @@
-# Tendermint
+# Tendermint Quick Start
 
 ## Overview
 
@@ -9,45 +9,21 @@ works and want to get started right away, continue.
 
 ### Quick Install
 
-On a fresh Ubuntu 16.04 machine can be done with [this script](https://git.io/fFfOR), like so:
+To quickly get Tendermint installed on a fresh
+Ubuntu 16.04 machine, use [this script](https://git.io/fFfOR).
+
+WARNING: do not run this on your local machine.
 
 ```
 curl -L https://git.io/fFfOR | bash
 source ~/.profile
 ```
 
-WARNING: do not run the above on your local machine.
-
 The script is also used to facilitate cluster deployment below.
 
 ### Manual Install
 
-Requires:
-
-- `go` minimum version 1.10
-- `$GOPATH` environment variable must be set
-- `$GOPATH/bin` must be on your `$PATH` (see [here](https://github.com/tendermint/tendermint/wiki/Setting-GOPATH))
-
-To install Tendermint, run:
-
-```
-go get github.com/tendermint/tendermint
-cd $GOPATH/src/github.com/tendermint/tendermint
-make get_tools && make get_vendor_deps
-make install
-```
-
-Note that `go get` may return an error but it can be ignored.
-
-Confirm installation:
-
-```
-$ tendermint version
-0.23.0
-```
-
-Note: see the [releases page](https://github.com/tendermint/tendermint/releases) and the latest version
-should match what you see above.
+For manual installation, see the [install instructions](install.md)
 
 ## Initialization
 

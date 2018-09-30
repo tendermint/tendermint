@@ -7,9 +7,9 @@ file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.pro
 
 ABCI methods are split across 3 separate ABCI *connections*:
 
-- `Consensus Connection: InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
-- `Mempool Connection: CheckTx`
-- `Info Connection: Info, SetOption, Query`
+- `Consensus Connection`: `InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
+- `Mempool Connection`: `CheckTx`
+- `Info Connection`: `Info, SetOption, Query`
 
 The `Consensus Connection` is driven by a consensus protocol and is responsible
 for block execution.
