@@ -5,12 +5,13 @@ Special thanks to external contributors on this release:
 BREAKING CHANGES:
 
 * CLI/RPC/Config
+  * [config] \#2232 timeouts as time.Duration, not ints
   * [config] \#2505 Remove Mempool.RecheckEmpty (it was effectively useless anyways)
   * [config] `mempool.wal` is disabled by default
   * [rpc] \#2298 `/abci_query` takes `prove` argument instead of `trusted` and switches the default
     behaviour to `prove=false`
-  * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer).
-
+  * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
+  
 * Apps
   * [abci] \#2298 ResponseQuery.Proof is now a structured merkle.Proof, not just
     arbitrary bytes

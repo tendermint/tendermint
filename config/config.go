@@ -1,11 +1,12 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -93,83 +94,22 @@ func (cfg *Config) SetRoot(root string) *Config {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *Config) ValidateBasic() error {
-	// RPCConfig
-	if cfg.RPC.GRPCMaxOpenConnections < 0 {
-		return errors.New("[rpc] grpc_max_open_connections can't be negative")
+	if err := cfg.RPC.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [rpc] section")
 	}
-	if cfg.RPC.MaxOpenConnections < 0 {
-		return errors.New("[rpc] max_open_connections can't be negative")
+	if err := cfg.P2P.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [p2p] section")
 	}
-
-	// P2PConfig
-	if cfg.P2P.MaxNumInboundPeers < 0 {
-		return errors.New("[p2p] max_num_inbound_peers can't be negative")
+	if err := cfg.Mempool.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [mempool] section")
 	}
-	if cfg.P2P.MaxNumOutboundPeers < 0 {
-		return errors.New("[p2p] max_num_outbound_peers can't be negative")
+	if err := cfg.Consensus.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [consensus] section")
 	}
-	if cfg.P2P.FlushThrottleTimeout < 0 {
-		return errors.New("[p2p] flush_throttle_timeout can't be negative")
-	}
-	if cfg.P2P.MaxPacketMsgPayloadSize < 0 {
-		return errors.New("[p2p] max_packet_msg_payload_size can't be negative")
-	}
-	if cfg.P2P.SendRate < 0 {
-		return errors.New("[p2p] send_rate can't be negative")
-	}
-	if cfg.P2P.RecvRate < 0 {
-		return errors.New("[p2p] recv_rate can't be negative")
-	}
-
-	// MempoolConfig
-	if cfg.Mempool.Size < 0 {
-		return errors.New("[mempool] size can't be negative")
-	}
-	if cfg.Mempool.CacheSize < 0 {
-		return errors.New("[mempool] cache_size can't be negative")
-	}
-
-	// ConsensusConfig
-	if cfg.Consensus.TimeoutPropose < 0 {
-		return errors.New("[consensus] timeout_propose can't be negative")
-	}
-	if cfg.Consensus.TimeoutProposeDelta < 0 {
-		return errors.New("[consensus] timeout_propose_delta can't be negative")
-	}
-	if cfg.Consensus.TimeoutPrevote < 0 {
-		return errors.New("[consensus] timeout_prevote can't be negative")
-	}
-	if cfg.Consensus.TimeoutPrevoteDelta < 0 {
-		return errors.New("[consensus] timeout_prevote_delta can't be negative")
-	}
-	if cfg.Consensus.TimeoutPrecommit < 0 {
-		return errors.New("[consensus] timeout_precommit can't be negative")
-	}
-	if cfg.Consensus.TimeoutPrecommitDelta < 0 {
-		return errors.New("[consensus] timeout_precommit_delta can't be negative")
-	}
-	if cfg.Consensus.TimeoutCommit < 0 {
-		return errors.New("[consensus] timeout_commit can't be negative")
-	}
-	if cfg.Consensus.CreateEmptyBlocksInterval < 0 {
-		return errors.New("[consensus] create_empty_blocks_interval can't be negative")
-	}
-	if cfg.Consensus.PeerGossipSleepDuration < 0 {
-		return errors.New("[consensus] peer_gossip_sleep_duration can't be negative")
-	}
-	if cfg.Consensus.PeerQueryMaj23SleepDuration < 0 {
-		return errors.New("[consensus] peer_query_maj23_sleep_duration can't be negative")
-	}
-	if cfg.Consensus.BlockTimeIota < 0 {
-		return errors.New("[consensus] blocktime_iota can't be negative")
-	}
-
-	// InstrumentationConfig
-	if cfg.Instrumentation.MaxOpenConnections < 0 {
-		return errors.New("[instrumentation] max_open_connections can't be negative")
-	}
-
-	return nil
+	return errors.Wrap(
+		cfg.Instrumentation.ValidateBasic(),
+		"Error in [instrumentation] section",
+	)
 }
 
 //-----------------------------------------------------------------------------
@@ -348,6 +288,18 @@ func TestRPCConfig() *RPCConfig {
 	return cfg
 }
 
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *RPCConfig) ValidateBasic() error {
+	if cfg.GRPCMaxOpenConnections < 0 {
+		return errors.New("grpc_max_open_connections can't be negative")
+	}
+	if cfg.MaxOpenConnections < 0 {
+		return errors.New("max_open_connections can't be negative")
+	}
+	return nil
+}
+
 //-----------------------------------------------------------------------------
 // P2PConfig
 
@@ -463,6 +415,30 @@ func (cfg *P2PConfig) AddrBookFile() string {
 	return rootify(cfg.AddrBook, cfg.RootDir)
 }
 
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *P2PConfig) ValidateBasic() error {
+	if cfg.MaxNumInboundPeers < 0 {
+		return errors.New("max_num_inbound_peers can't be negative")
+	}
+	if cfg.MaxNumOutboundPeers < 0 {
+		return errors.New("max_num_outbound_peers can't be negative")
+	}
+	if cfg.FlushThrottleTimeout < 0 {
+		return errors.New("flush_throttle_timeout can't be negative")
+	}
+	if cfg.MaxPacketMsgPayloadSize < 0 {
+		return errors.New("max_packet_msg_payload_size can't be negative")
+	}
+	if cfg.SendRate < 0 {
+		return errors.New("send_rate can't be negative")
+	}
+	if cfg.RecvRate < 0 {
+		return errors.New("recv_rate can't be negative")
+	}
+	return nil
+}
+
 // FuzzConnConfig is a FuzzedConnection configuration.
 type FuzzConnConfig struct {
 	Mode         int
@@ -519,6 +495,18 @@ func TestMempoolConfig() *MempoolConfig {
 // WalDir returns the full path to the mempool's write-ahead log
 func (cfg *MempoolConfig) WalDir() string {
 	return rootify(cfg.WalPath, cfg.RootDir)
+}
+
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *MempoolConfig) ValidateBasic() error {
+	if cfg.Size < 0 {
+		return errors.New("size can't be negative")
+	}
+	if cfg.CacheSize < 0 {
+		return errors.New("cache_size can't be negative")
+	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -641,6 +629,45 @@ func (cfg *ConsensusConfig) SetWalFile(walFile string) {
 	cfg.walFile = walFile
 }
 
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *ConsensusConfig) ValidateBasic() error {
+	if cfg.TimeoutPropose < 0 {
+		return errors.New("timeout_propose can't be negative")
+	}
+	if cfg.TimeoutProposeDelta < 0 {
+		return errors.New("timeout_propose_delta can't be negative")
+	}
+	if cfg.TimeoutPrevote < 0 {
+		return errors.New("timeout_prevote can't be negative")
+	}
+	if cfg.TimeoutPrevoteDelta < 0 {
+		return errors.New("timeout_prevote_delta can't be negative")
+	}
+	if cfg.TimeoutPrecommit < 0 {
+		return errors.New("timeout_precommit can't be negative")
+	}
+	if cfg.TimeoutPrecommitDelta < 0 {
+		return errors.New("timeout_precommit_delta can't be negative")
+	}
+	if cfg.TimeoutCommit < 0 {
+		return errors.New("timeout_commit can't be negative")
+	}
+	if cfg.CreateEmptyBlocksInterval < 0 {
+		return errors.New("create_empty_blocks_interval can't be negative")
+	}
+	if cfg.PeerGossipSleepDuration < 0 {
+		return errors.New("peer_gossip_sleep_duration can't be negative")
+	}
+	if cfg.PeerQueryMaj23SleepDuration < 0 {
+		return errors.New("peer_query_maj23_sleep_duration can't be negative")
+	}
+	if cfg.BlockTimeIota < 0 {
+		return errors.New("blocktime_iota can't be negative")
+	}
+	return nil
+}
+
 //-----------------------------------------------------------------------------
 // TxIndexConfig
 
@@ -724,6 +751,15 @@ func DefaultInstrumentationConfig() *InstrumentationConfig {
 // reporting.
 func TestInstrumentationConfig() *InstrumentationConfig {
 	return DefaultInstrumentationConfig()
+}
+
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *InstrumentationConfig) ValidateBasic() error {
+	if cfg.MaxOpenConnections < 0 {
+		return errors.New("max_open_connections can't be negative")
+	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
