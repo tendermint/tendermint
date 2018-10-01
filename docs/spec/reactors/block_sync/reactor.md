@@ -120,6 +120,9 @@ handleMsg(pool, m):
       else
         try to send bcNoBlockResponseMessage(m.Height) to p
 
+    upon receiving bcBlockResponseHeaderMessage m from peer p:
+      update bcBlockResponseMessage timeout dynamically
+
     upon receiving bcBlockResponseMessage m from peer p:
       pool.mtx.Lock()
       requester = pool.requesters[m.Height]
@@ -137,7 +140,7 @@ handleMsg(pool, m):
             peer.timeout.Stop()
             // NOTE: we don't send Quit signal to the corresponding requester task!
         else
-          trigger peer timeout to expire after peerTimeout
+          trigger peer timeout to expire after minimumTimeout
       pool.mtx.Unlock()
 
 
