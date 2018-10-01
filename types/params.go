@@ -99,8 +99,6 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	}
 
 	// we must defensively consider any structs may be nil
-	// XXX: it's cast city over here. It's ok because we only do int32->int
-	// but still, watch it champ.
 	if params2.BlockSize != nil {
 		res.BlockSize.MaxBytes = params2.BlockSize.MaxBytes
 		res.BlockSize.MaxGas = params2.BlockSize.MaxGas

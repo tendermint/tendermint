@@ -247,8 +247,12 @@ Must have `0 < MaxAge`.
 
 ### Updates
 
-The application may set the consensus params during InitChain, and update them during
-EndBlock.
+The application may set the ConsensusParams during InitChain, and update them during
+EndBlock. If the ConsensusParams is empty, it will be ignored. Each field
+that is not empty will be applied in full. For instance, if updating the
+BlockSize.MaxBytes, applications must also set the other BlockSize fields (like
+BlockSize.MaxGas), even if they are unchanged, as they will otherwise cause the
+value to be updated to 0.
 
 #### InitChain
 
@@ -311,6 +315,30 @@ their state as follows:
 
 For instance, this allows an application's lite-client to verify proofs of
 absence in the application state, something which is much less efficient to do using the block hash.
+
+Some applications (eg. Ethereum, Cosmos-SDK) have multiple "levels" of Merkle trees,
+where the leaves of one tree are the root hashes of others. To support this, and
+the general variability in Merkle proofs, the `ResponseQuery.Proof` has some minimal structure:
+
+```
+message Proof {
+  repeated ProofOp ops
+}
+
+message ProofOp {
+  string type = 1;
+  bytes key = 2;
+  bytes data = 3;
+}
+```
+
+Each `ProofOp` contains a proof for a single key in a single Merkle tree, of the specified `type`.
+This allows ABCI to support many different kinds of Merkle trees, encoding
+formats, and proofs (eg. of presence and absence) just by varying the `type`.
+The `data` contains the actual encoded proof, encoded according to the `type`.
+When verifying the full proof, the root hash for one ProofOp is the value being
+verified for the next ProofOp in the list. The root hash of the final ProofOp in
+the list should match the `AppHash` being verified against.
 
 ### Peer Filtering
 

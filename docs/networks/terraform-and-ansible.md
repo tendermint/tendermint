@@ -29,7 +29,7 @@ export SSH_KEY_FILE="$HOME/.ssh/id_rsa.pub"
 
 These will be used by both `terraform` and `ansible`.
 
-### Terraform
+## Terraform
 
 This step will create four Digital Ocean droplets. First, go to the
 correct directory:
@@ -49,7 +49,7 @@ and you will get a list of IP addresses that belong to your droplets.
 
 With the droplets created and running, let's setup Ansible.
 
-### Ansible
+## Ansible
 
 The playbooks in [the ansible
 directory](https://github.com/tendermint/tendermint/tree/master/networks/remote/ansible)
@@ -144,7 +144,7 @@ Peek at the logs with the status role:
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet status.yml
 ```
 
-### Logging
+## Logging
 
 The crudest way is the status role described above. You can also ship
 logs to Logz.io, an Elastic stack (Elastic search, Logstash and Kibana)
@@ -160,7 +160,7 @@ go get github.com/mheese/journalbeat
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
 ```
 
-### Cleanup
+## Cleanup
 
 To remove your droplets, run:
 

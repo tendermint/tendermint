@@ -190,7 +190,7 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	}
 
 	// Check hash proof
-	if !part.Proof.Verify(part.Index, ps.total, part.Hash(), ps.Hash()) {
+	if part.Proof.Verify(ps.Hash(), part.Hash()) != nil {
 		return false, ErrPartSetInvalidProof
 	}
 
