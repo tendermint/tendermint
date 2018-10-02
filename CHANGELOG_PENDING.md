@@ -11,7 +11,7 @@ BREAKING CHANGES:
   * [rpc] \#2298 `/abci_query` takes `prove` argument instead of `trusted` and switches the default
     behaviour to `prove=false`
   * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
-  
+
 * Apps
   * [abci] \#2298 ResponseQuery.Proof is now a structured merkle.Proof, not just
     arbitrary bytes
@@ -40,3 +40,4 @@ BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
+- [common/bit_array] Fixed a bug in the `Or` function
