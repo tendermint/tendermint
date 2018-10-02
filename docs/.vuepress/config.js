@@ -11,12 +11,12 @@ module.exports = {
     nav: [{ text: "Back to Tendermint", link: "https://tendermint.com" }],
     sidebar: [
       {
-        title: "Getting Started",
+        title: "Introduction",
         collapsable: false,
         children: [
           "/introduction/quick-start",
           "/introduction/install",
-          "/introduction/introduction"
+          "/introduction/what-is-tendermint"
         ]
       },
       {
@@ -48,7 +48,7 @@ module.exports = {
         title: "Networks",
         collapsable: false,
         children: [
-          "/networks/deploy-testnets",
+          "/networks/docker-compose",
           "/networks/terraform-and-ansible",
         ]
       },

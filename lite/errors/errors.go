@@ -41,6 +41,12 @@ func (e errUnknownValidators) Error() string {
 		e.chainID, e.height)
 }
 
+type errEmptyTree struct{}
+
+func (e errEmptyTree) Error() string {
+	return "Tree is empty"
+}
+
 //----------------------------------------
 // Methods for above error types
 
@@ -106,6 +112,21 @@ func ErrUnknownValidators(chainID string, height int64) error {
 func IsErrUnknownValidators(err error) bool {
 	if err_, ok := err.(cmn.Error); ok {
 		_, ok := err_.Data().(errUnknownValidators)
+		return ok
+	}
+	return false
+}
+
+//-----------------
+// ErrEmptyTree
+
+func ErrEmptyTree() error {
+	return cmn.ErrorWrap(errEmptyTree{}, "")
+}
+
+func IsErrEmptyTree(err error) bool {
+	if err_, ok := err.(cmn.Error); ok {
+		_, ok := err_.Data().(errEmptyTree)
 		return ok
 	}
 	return false

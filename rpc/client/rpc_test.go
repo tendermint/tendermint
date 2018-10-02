@@ -166,10 +166,10 @@ func TestAppCalls(t *testing.T) {
 		if err := client.WaitForHeight(c, apph, nil); err != nil {
 			t.Error(err)
 		}
-		_qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: true})
+		_qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Prove: false})
 		qres := _qres.Response
 		if assert.Nil(err) && assert.True(qres.IsOK()) {
-			// assert.Equal(k, data.GetKey())  // only returned for proofs
+			assert.Equal(k, qres.Key)
 			assert.EqualValues(v, qres.Value)
 		}
 
@@ -221,10 +221,12 @@ func TestAppCalls(t *testing.T) {
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 
 		// and we got a proof that works!
-		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
+		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Prove: true})
 		pres := _pres.Response
 		assert.Nil(err)
 		assert.True(pres.IsOK())
+
+		// XXX Test proof
 	}
 }
 
@@ -310,7 +312,7 @@ func TestTx(t *testing.T) {
 				// time to verify the proof
 				proof := ptx.Proof
 				if tc.prove && assert.EqualValues(t, tx, proof.Data) {
-					assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+					assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
 				}
 			}
 		}
@@ -348,7 +350,7 @@ func TestTxSearch(t *testing.T) {
 		// time to verify the proof
 		proof := ptx.Proof
 		if assert.EqualValues(t, tx, proof.Data) {
-			assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+			assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
 		}
 
 		// query by height
@@ -362,7 +364,7 @@ func TestTxSearch(t *testing.T) {
 		require.Len(t, result.Txs, 0)
 
 		// we query using a tag (see kvstore application)
-		result, err = c.TxSearch("app.creator='jae'", false, 1, 30)
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")

@@ -2,11 +2,15 @@ package lite
 
 import (
 	"bytes"
+	"fmt"
+	"sync"
 
 	log "github.com/tendermint/tendermint/libs/log"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
 )
+
+const sizeOfPendingMap = 1024
 
 var _ Verifier = (*DynamicVerifier)(nil)
 
@@ -21,6 +25,10 @@ type DynamicVerifier struct {
 	trusted PersistentProvider
 	// This is a source of new info, like a node rpc, or other import method.
 	source Provider
+
+	// pending map to synchronize concurrent verification requests
+	mtx                  sync.Mutex
+	pendingVerifications map[int64]chan struct{}
 }
 
 // NewDynamicVerifier returns a new DynamicVerifier. It uses the
@@ -31,10 +39,11 @@ type DynamicVerifier struct {
 // files.Provider.  The source provider should be a client.HTTPProvider.
 func NewDynamicVerifier(chainID string, trusted PersistentProvider, source Provider) *DynamicVerifier {
 	return &DynamicVerifier{
-		logger:  log.NewNopLogger(),
-		chainID: chainID,
-		trusted: trusted,
-		source:  source,
+		logger:               log.NewNopLogger(),
+		chainID:              chainID,
+		trusted:              trusted,
+		source:               source,
+		pendingVerifications: make(map[int64]chan struct{}, sizeOfPendingMap),
 	}
 }
 
@@ -56,7 +65,40 @@ func (ic *DynamicVerifier) ChainID() string {
 // ic.trusted and ic.source to prove the new validators.  On success, it will
 // try to store the SignedHeader in ic.trusted if the next
 // validator can be sourced.
-func (ic *DynamicVerifier) Certify(shdr types.SignedHeader) error {
+func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
+
+	// Performs synchronization for multi-threads verification at the same height.
+	ic.mtx.Lock()
+	if pending := ic.pendingVerifications[shdr.Height]; pending != nil {
+		ic.mtx.Unlock()
+		<-pending // pending is chan struct{}
+	} else {
+		pending := make(chan struct{})
+		ic.pendingVerifications[shdr.Height] = pending
+		defer func() {
+			close(pending)
+			ic.mtx.Lock()
+			delete(ic.pendingVerifications, shdr.Height)
+			ic.mtx.Unlock()
+		}()
+		ic.mtx.Unlock()
+	}
+	//Get the exact trusted commit for h, and if it is
+	// equal to shdr, then don't even verify it,
+	// and just return nil.
+	trustedFCSameHeight, err := ic.trusted.LatestFullCommit(ic.chainID, shdr.Height, shdr.Height)
+	if err == nil {
+		// If loading trust commit successfully, and trust commit equal to shdr, then don't verify it,
+		// just return nil.
+		if bytes.Equal(trustedFCSameHeight.SignedHeader.Hash(), shdr.Hash()) {
+			ic.logger.Info(fmt.Sprintf("Load full commit at height %d from cache, there is not need to verify.", shdr.Height))
+			return nil
+		}
+	} else if !lerr.IsErrCommitNotFound(err) {
+		// Return error if it is not CommitNotFound error
+		ic.logger.Info(fmt.Sprintf("Encountered unknown error in loading full commit at height %d.", shdr.Height))
+		return err
+	}
 
 	// Get the latest known full commit <= h-1 from our trusted providers.
 	// The full commit at h-1 contains the valset to sign for h.
@@ -94,9 +136,9 @@ func (ic *DynamicVerifier) Certify(shdr types.SignedHeader) error {
 		}
 	}
 
-	// Certify the signed header using the matching valset.
+	// Verify the signed header using the matching valset.
 	cert := NewBaseVerifier(ic.chainID, trustedFC.Height()+1, trustedFC.NextValidators)
-	err = cert.Certify(shdr)
+	err = cert.Verify(shdr)
 	if err != nil {
 		return err
 	}

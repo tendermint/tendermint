@@ -79,11 +79,11 @@ func NewEvidenceStore(db dbm.DB) *EvidenceStore {
 func (store *EvidenceStore) PriorityEvidence() (evidence []types.Evidence) {
 	// reverse the order so highest priority is first
 	l := store.listEvidence(baseKeyOutqueue, -1)
-	l2 := make([]types.Evidence, len(l))
-	for i := range l {
-		l2[i] = l[len(l)-1-i]
+	for i, j := 0, len(l)-1; i < j; i, j = i+1, j-1 {
+		l[i], l[j] = l[j], l[i]
 	}
-	return l2
+
+	return l
 }
 
 // PendingEvidence returns known uncommitted evidence up to maxBytes.
@@ -98,6 +98,7 @@ func (store *EvidenceStore) PendingEvidence(maxBytes int64) (evidence []types.Ev
 func (store *EvidenceStore) listEvidence(prefixKey string, maxBytes int64) (evidence []types.Evidence) {
 	var bytes int64
 	iter := dbm.IteratePrefix(store.db, []byte(prefixKey))
+	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		val := iter.Value()
 

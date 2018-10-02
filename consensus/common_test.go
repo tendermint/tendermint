@@ -322,16 +322,15 @@ func ensureNoNewStep(t *testing.T, stepCh <-chan interface{}) {
 		"not moving to the next step")
 }
 
-func ensureNoNewTimeout(t *testing.T, stepCh <-chan interface{}, timeout int) {
-	timeoutDuration := time.Duration(timeout*5) * time.Millisecond
+func ensureNoNewTimeout(t *testing.T, stepCh <-chan interface{}, timeout int64) {
+	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
 	ensureNoNewEvent(t, stepCh, timeoutDuration, "We should be stuck waiting, "+
 		"not moving to the next step")
 }
 
 func ensureNewEvent(t *testing.T, ch <-chan interface{}, timeout time.Duration, errorMessage string) {
-	timer := time.NewTimer(timeout)
 	select {
-	case <-timer.C:
+	case <-time.After(timeout):
 		t.Error(errorMessage)
 	case <-ch:
 		break
@@ -348,8 +347,8 @@ func ensureNewRound(t *testing.T, roundCh <-chan interface{}) {
 		"Timeout expired while waiting for NewRound event")
 }
 
-func ensureNewTimeout(t *testing.T, timeoutCh <-chan interface{}, timeout int) {
-	timeoutDuration := time.Duration(timeout*5) * time.Millisecond
+func ensureNewTimeout(t *testing.T, timeoutCh <-chan interface{}, timeout int64) {
+	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
 	ensureNewEvent(t, timeoutCh, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }

@@ -709,7 +709,6 @@ func (h hasher) Hash() []byte {
 		}
 	}
 	return hasher.Sum(nil)
-
 }
 
 func aminoHash(item interface{}) []byte {

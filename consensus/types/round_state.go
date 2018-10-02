@@ -107,8 +107,8 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
-	// XXX: copy the RoundState
-	// if we want to avoid this, we may need synchronous events after all
+	// copy the RoundState.
+	// TODO: if we want to avoid this, we may need synchronous events after all
 	rsCopy := *rs
 	edrs := types.EventDataRoundState{
 		Height:     rs.Height,
