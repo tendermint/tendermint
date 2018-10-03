@@ -10,10 +10,17 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+type ErrListenerWasRemoved struct {
+	listener string
+}
+
+func (e ErrListenerWasRemoved) Error() string {
+	return fmt.Sprintf("listener %s was removed.", e.listener)
+}
+
 // Generic event data can be typed and registered with tendermint/go-amino
 // via concrete implementation of this interface
 type EventData interface {
-	//AssertIsEventData()
 }
 
 // reactors and other modules should export
@@ -59,7 +66,7 @@ func (evsw *eventSwitch) OnStart() error {
 
 func (evsw *eventSwitch) OnStop() {}
 
-func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventCallback) (err error) {
+func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventCallback) error {
 	// Get/Create eventCell and listener
 	evsw.mtx.Lock()
 	eventCell := evsw.eventCells[event]
@@ -74,6 +81,7 @@ func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventC
 	}
 	evsw.mtx.Unlock()
 
+	var err error
 	// Add event and listener
 	if err = listener.AddEvent(event); err == nil {
 		eventCell.AddListener(listenerID, cb)
@@ -208,8 +216,9 @@ func (evl *eventListener) AddEvent(event string) error {
 	defer evl.mtx.Unlock()
 
 	if evl.removed {
-		return fmt.Errorf("listener was removed.")
+		return &ErrListenerWasRemoved{listener: evl.id}
 	}
+
 	evl.events = append(evl.events, event)
 	return nil
 }

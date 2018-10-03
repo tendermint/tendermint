@@ -166,29 +166,29 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	}
 }
 
-var stopInputEvent = false
-var roundCount = 2000
-
-func inputRemoveListener(t *testing.T, evsw EventSwitch, done chan uint64) {
+func inputRemoveListener(t *testing.T, evsw EventSwitch, done chan uint64, roundCount int) {
 	for i := 0; i < roundCount; i++ {
 		evsw.RemoveListener("listener")
 	}
 	done <- 1
 }
 
-func inputAddListenerForEvent(t *testing.T, evsw EventSwitch, done chan uint64) {
+func inputAddListenerForEvent(t *testing.T, evsw EventSwitch, done chan uint64, roundCount int, stopInputEvent *bool) {
 	for i := 0; i < roundCount; i++ {
 		index := i
 		evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
 			func(data EventData) {
 				t.Errorf("should not run callback for %d.\n", index)
-				stopInputEvent = true
+				*stopInputEvent = true
 			})
 	}
 	done <- 1
 }
 
 func TestAddAndRemoveListenerConcurrency(t *testing.T) {
+	var stopInputEvent = false
+	var roundCount = 2000
+
 	evsw := NewEventSwitch()
 	err := evsw.Start()
 	if err != nil {
@@ -199,8 +199,8 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 	done1 := make(chan uint64)
 	done2 := make(chan uint64)
 
-	go inputRemoveListener(t, evsw, done1)
-	go inputAddListenerForEvent(t, evsw, done2)
+	go inputRemoveListener(t, evsw, done1, roundCount)
+	go inputAddListenerForEvent(t, evsw, done2, roundCount, &stopInputEvent)
 
 	<-done1
 	<-done2
