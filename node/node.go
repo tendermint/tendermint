@@ -359,7 +359,6 @@ func NewNode(config *cfg.Config,
 
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
-	// XXX: Query format subject to change
 	if config.FilterPeers {
 		connFilters = append(
 			connFilters,

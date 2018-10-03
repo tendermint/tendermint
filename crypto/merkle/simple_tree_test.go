@@ -1,12 +1,12 @@
 package merkle
 
 import (
-	"bytes"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	. "github.com/tendermint/tendermint/libs/test"
-
-	"testing"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
@@ -30,60 +30,43 @@ func TestSimpleProof(t *testing.T) {
 
 	rootHash2, proofs := SimpleProofsFromHashers(items)
 
-	if !bytes.Equal(rootHash, rootHash2) {
-		t.Errorf("Unmatched root hashes: %X vs %X", rootHash, rootHash2)
-	}
+	require.Equal(t, rootHash, rootHash2, "Unmatched root hashes: %X vs %X", rootHash, rootHash2)
 
 	// For each item, check the trail.
 	for i, item := range items {
 		itemHash := item.Hash()
 		proof := proofs[i]
 
-		// Verify success
-		ok := proof.Verify(i, total, itemHash, rootHash)
-		if !ok {
-			t.Errorf("Verification failed for index %v.", i)
-		}
+		// Check total/index
+		require.Equal(t, proof.Index, i, "Unmatched indicies: %d vs %d", proof.Index, i)
 
-		// Wrong item index should make it fail
-		{
-			ok = proof.Verify((i+1)%total, total, itemHash, rootHash)
-			if ok {
-				t.Errorf("Expected verification to fail for wrong index %v.", i)
-			}
-		}
+		require.Equal(t, proof.Total, total, "Unmatched totals: %d vs %d", proof.Total, total)
+
+		// Verify success
+		err := proof.Verify(rootHash, itemHash)
+		require.NoError(t, err, "Verificatior failed: %v.", err)
 
 		// Trail too long should make it fail
 		origAunts := proof.Aunts
 		proof.Aunts = append(proof.Aunts, cmn.RandBytes(32))
-		{
-			ok = proof.Verify(i, total, itemHash, rootHash)
-			if ok {
-				t.Errorf("Expected verification to fail for wrong trail length.")
-			}
-		}
+		err = proof.Verify(rootHash, itemHash)
+		require.Error(t, err, "Expected verification to fail for wrong trail length")
+
 		proof.Aunts = origAunts
 
 		// Trail too short should make it fail
 		proof.Aunts = proof.Aunts[0 : len(proof.Aunts)-1]
-		{
-			ok = proof.Verify(i, total, itemHash, rootHash)
-			if ok {
-				t.Errorf("Expected verification to fail for wrong trail length.")
-			}
-		}
+		err = proof.Verify(rootHash, itemHash)
+		require.Error(t, err, "Expected verification to fail for wrong trail length")
+
 		proof.Aunts = origAunts
 
 		// Mutating the itemHash should make it fail.
-		ok = proof.Verify(i, total, MutateByteSlice(itemHash), rootHash)
-		if ok {
-			t.Errorf("Expected verification to fail for mutated leaf hash")
-		}
+		err = proof.Verify(rootHash, MutateByteSlice(itemHash))
+		require.Error(t, err, "Expected verification to fail for mutated leaf hash")
 
 		// Mutating the rootHash should make it fail.
-		ok = proof.Verify(i, total, itemHash, MutateByteSlice(rootHash))
-		if ok {
-			t.Errorf("Expected verification to fail for mutated root hash")
-		}
+		err = proof.Verify(MutateByteSlice(rootHash), itemHash)
+		require.Error(t, err, "Expected verification to fail for mutated root hash")
 	}
 }

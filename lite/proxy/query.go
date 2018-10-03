@@ -3,127 +3,95 @@ package proxy
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	cmn "github.com/tendermint/tendermint/libs/common"
 
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/lite"
+	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-// KeyProof represents a proof of existence or absence of a single key.
-// Copied from iavl repo. TODO
-type KeyProof interface {
-	// Verify verfies the proof is valid. To verify absence,
-	// the value should be nil.
-	Verify(key, value, root []byte) error
-
-	// Root returns the root hash of the proof.
-	Root() []byte
-
-	// Serialize itself
-	Bytes() []byte
-}
-
 // GetWithProof will query the key on the given node, and verify it has
 // a valid proof, as defined by the Verifier.
 //
 // If there is any error in checking, returns an error.
-// If val is non-empty, proof should be KeyExistsProof
-// If val is empty, proof should be KeyMissingProof
-func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
+func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
 	cert lite.Verifier) (
-	val cmn.HexBytes, height int64, proof KeyProof, err error) {
+	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
 
 	if reqHeight < 0 {
-		err = errors.Errorf("Height cannot be negative")
+		err = cmn.NewError("Height cannot be negative")
 		return
 	}
 
-	_resp, proof, err := GetWithProofOptions("/key", key,
-		rpcclient.ABCIQueryOptions{Height: int64(reqHeight)},
+	res, err := GetWithProofOptions(prt, "/key", key,
+		rpcclient.ABCIQueryOptions{Height: int64(reqHeight), Prove: true},
 		node, cert)
-	if _resp != nil {
-		resp := _resp.Response
-		val, height = resp.Value, resp.Height
+	if err != nil {
+		return
 	}
+
+	resp := res.Response
+	val, height = resp.Value, resp.Height
 	return val, height, proof, err
 }
 
-// GetWithProofOptions is useful if you want full access to the ABCIQueryOptions
-func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOptions,
+// GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
+// XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
+func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts rpcclient.ABCIQueryOptions,
 	node rpcclient.Client, cert lite.Verifier) (
-	*ctypes.ResultABCIQuery, KeyProof, error) {
+	*ctypes.ResultABCIQuery, error) {
 
-	_resp, err := node.ABCIQueryWithOptions(path, key, opts)
+	if !opts.Prove {
+		return nil, cmn.NewError("require ABCIQueryOptions.Prove to be true")
+	}
+
+	res, err := node.ABCIQueryWithOptions(path, key, opts)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	resp := _resp.Response
+	resp := res.Response
 
-	// make sure the proof is the proper height
+	// Validate the response, e.g. height.
 	if resp.IsErr() {
-		err = errors.Errorf("Query error for key %d: %d", key, resp.Code)
-		return nil, nil, err
+		err = cmn.NewError("Query error for key %d: %d", key, resp.Code)
+		return nil, err
 	}
-	if len(resp.Key) == 0 || len(resp.Proof) == 0 {
-		return nil, nil, ErrNoData()
+
+	if len(resp.Key) == 0 || resp.Proof == nil {
+		return nil, lerr.ErrEmptyTree()
 	}
 	if resp.Height == 0 {
-		return nil, nil, errors.New("Height returned is zero")
+		return nil, cmn.NewError("Height returned is zero")
 	}
 
 	// AppHash for height H is in header H+1
 	signedHeader, err := GetCertifiedCommit(resp.Height+1, node, cert)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	_ = signedHeader
-	return &ctypes.ResultABCIQuery{Response: resp}, nil, nil
-
-	/* // TODO refactor so iavl stuff is not in tendermint core
-	   // https://github.com/tendermint/tendermint/issues/1183
-	if len(resp.Value) > 0 {
-		// The key was found, construct a proof of existence.
-		proof, err := iavl.ReadKeyProof(resp.Proof)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "Error reading proof")
-		}
-
-		eproof, ok := proof.(*iavl.KeyExistsProof)
-		if !ok {
-			return nil, nil, errors.New("Expected KeyExistsProof for non-empty value")
-		}
-
-		// Validate the proof against the certified header to ensure data integrity.
-		err = eproof.Verify(resp.Key, resp.Value, signedHeader.AppHash)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "Couldn't verify proof")
-		}
-		return &ctypes.ResultABCIQuery{Response: resp}, eproof, nil
-	}
-
-	// The key wasn't found, construct a proof of non-existence.
-	proof, err := iavl.ReadKeyProof(resp.Proof)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "Error reading proof")
-	}
-
-	aproof, ok := proof.(*iavl.KeyAbsentProof)
-	if !ok {
-		return nil, nil, errors.New("Expected KeyAbsentProof for empty Value")
+		return nil, err
 	}
 
 	// Validate the proof against the certified header to ensure data integrity.
-	err = aproof.Verify(resp.Key, nil, signedHeader.AppHash)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "Couldn't verify proof")
+	if resp.Value != nil {
+		// Value exists
+		// XXX How do we encode the key into a string...
+		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, string(resp.Key), resp.Value)
+		if err != nil {
+			return nil, cmn.ErrorWrap(err, "Couldn't verify value proof")
+		}
+		return &ctypes.ResultABCIQuery{Response: resp}, nil
+	} else {
+		// Value absent
+		// Validate the proof against the certified header to ensure data integrity.
+		// XXX How do we encode the key into a string...
+		err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
+		if err != nil {
+			return nil, cmn.ErrorWrap(err, "Couldn't verify absence proof")
+		}
+		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	}
-	return &ctypes.ResultABCIQuery{Response: resp}, aproof, ErrNoData()
-	*/
 }
 
 // GetCertifiedCommit gets the signed header for a given height and certifies
@@ -146,7 +114,7 @@ func GetCertifiedCommit(h int64, client rpcclient.Client, cert lite.Verifier) (t
 			h, sh.Height)
 	}
 
-	if err = cert.Certify(sh); err != nil {
+	if err = cert.Verify(sh); err != nil {
 		return types.SignedHeader{}, err
 	}
 

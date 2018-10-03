@@ -113,9 +113,9 @@ func (e *CElement) NextWaitChan() <-chan struct{} {
 // Nonblocking, may return nil if at the end.
 func (e *CElement) Next() *CElement {
 	e.mtx.RLock()
-	defer e.mtx.RUnlock()
-
-	return e.next
+	val := e.next
+	e.mtx.RUnlock()
+	return val
 }
 
 // Nonblocking, may return nil if at the end.

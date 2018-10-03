@@ -30,6 +30,7 @@ var (
 	nodeAddr   string
 	chainID    string
 	home       string
+	cacheSize  int
 )
 
 func init() {
@@ -37,6 +38,7 @@ func init() {
 	LiteCmd.Flags().StringVar(&nodeAddr, "node", "tcp://localhost:26657", "Connect to a Tendermint node at this address")
 	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
+	LiteCmd.Flags().IntVar(&cacheSize, "cache-size", 10, "Specify the memory trust store cache size")
 }
 
 func ensureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
@@ -69,7 +71,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	node := rpcclient.NewHTTP(nodeAddr, "/websocket")
 
 	logger.Info("Constructing Verifier...")
-	cert, err := proxy.NewVerifier(chainID, home, node, logger)
+	cert, err := proxy.NewVerifier(chainID, home, node, logger, cacheSize)
 	if err != nil {
 		return cmn.ErrorWrap(err, "constructing Verifier")
 	}

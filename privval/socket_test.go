@@ -20,7 +20,7 @@ import (
 func TestSocketPVAddress(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 	)
 	defer sc.Stop()
 	defer rs.Stop()
@@ -40,7 +40,7 @@ func TestSocketPVAddress(t *testing.T) {
 func TestSocketPVPubKey(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 	)
 	defer sc.Stop()
 	defer rs.Stop()
@@ -59,7 +59,7 @@ func TestSocketPVPubKey(t *testing.T) {
 func TestSocketPVProposal(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		ts             = time.Now()
 		privProposal   = &types.Proposal{Timestamp: ts}
@@ -76,7 +76,7 @@ func TestSocketPVProposal(t *testing.T) {
 func TestSocketPVVote(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		ts    = time.Now()
 		vType = types.VoteTypePrecommit
@@ -94,7 +94,7 @@ func TestSocketPVVote(t *testing.T) {
 func TestSocketPVHeartbeat(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		want = &types.Heartbeat{}
 		have = &types.Heartbeat{}
@@ -231,14 +231,163 @@ func TestRemoteSignerRetry(t *testing.T) {
 	}
 }
 
+func TestRemoteSignVoteErrors(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV())
+
+		ts    = time.Now()
+		vType = types.VoteTypePrecommit
+		vote  = &types.Vote{Timestamp: ts, Type: vType}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
+	require.NoError(t, err)
+
+	res, err := readMsg(sc.conn)
+	require.NoError(t, err)
+
+	resp := *res.(*SignedVoteResponse)
+	require.NotNil(t, resp.Error)
+	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
+
+	err = rs.privVal.SignVote(chainID, vote)
+	require.Error(t, err)
+	err = sc.SignVote(chainID, vote)
+	require.Error(t, err)
+}
+
+func TestRemoteSignProposalErrors(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV())
+
+		ts       = time.Now()
+		proposal = &types.Proposal{Timestamp: ts}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
+	require.NoError(t, err)
+
+	res, err := readMsg(sc.conn)
+	require.NoError(t, err)
+
+	resp := *res.(*SignedProposalResponse)
+	require.NotNil(t, resp.Error)
+	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
+
+	err = rs.privVal.SignProposal(chainID, proposal)
+	require.Error(t, err)
+
+	err = sc.SignProposal(chainID, proposal)
+	require.Error(t, err)
+}
+
+func TestRemoteSignHeartbeatErrors(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV())
+		hb      = &types.Heartbeat{}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	err := writeMsg(sc.conn, &SignHeartbeatRequest{Heartbeat: hb})
+	require.NoError(t, err)
+
+	res, err := readMsg(sc.conn)
+	require.NoError(t, err)
+
+	resp := *res.(*SignedHeartbeatResponse)
+	require.NotNil(t, resp.Error)
+	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
+
+	err = rs.privVal.SignHeartbeat(chainID, hb)
+	require.Error(t, err)
+
+	err = sc.SignHeartbeat(chainID, hb)
+	require.Error(t, err)
+}
+
+func TestErrUnexpectedResponse(t *testing.T) {
+	var (
+		addr    = testFreeAddr(t)
+		logger  = log.TestingLogger()
+		chainID = cmn.RandStr(12)
+		readyc  = make(chan struct{})
+		errc    = make(chan error, 1)
+
+		rs = NewRemoteSigner(
+			logger,
+			chainID,
+			addr,
+			types.NewMockPV(),
+			ed25519.GenPrivKey(),
+		)
+		sc = NewSocketPV(
+			logger,
+			addr,
+			ed25519.GenPrivKey(),
+		)
+	)
+
+	testStartSocketPV(t, readyc, sc)
+	defer sc.Stop()
+	RemoteSignerConnDeadline(time.Millisecond)(rs)
+	RemoteSignerConnRetries(1e6)(rs)
+
+	// we do not want to Start() the remote signer here and instead use the connection to
+	// reply with intentionally wrong replies below:
+	rsConn, err := rs.connect()
+	defer rsConn.Close()
+	require.NoError(t, err)
+	require.NotNil(t, rsConn)
+	<-readyc
+
+	// Heartbeat:
+	go func(errc chan error) {
+		errc <- sc.SignHeartbeat(chainID, &types.Heartbeat{})
+	}(errc)
+	// read request and write wrong response:
+	go testReadWriteResponse(t, &SignedVoteResponse{}, rsConn)
+	err = <-errc
+	require.Error(t, err)
+	require.Equal(t, err, ErrUnexpectedResponse)
+
+	// Proposal:
+	go func(errc chan error) {
+		errc <- sc.SignProposal(chainID, &types.Proposal{})
+	}(errc)
+	// read request and write wrong response:
+	go testReadWriteResponse(t, &SignedHeartbeatResponse{}, rsConn)
+	err = <-errc
+	require.Error(t, err)
+	require.Equal(t, err, ErrUnexpectedResponse)
+
+	// Vote:
+	go func(errc chan error) {
+		errc <- sc.SignVote(chainID, &types.Vote{})
+	}(errc)
+	// read request and write wrong response:
+	go testReadWriteResponse(t, &SignedHeartbeatResponse{}, rsConn)
+	err = <-errc
+	require.Error(t, err)
+	require.Equal(t, err, ErrUnexpectedResponse)
+}
+
 func testSetupSocketPair(
 	t *testing.T,
 	chainID string,
+	privValidator types.PrivValidator,
 ) (*SocketPV, *RemoteSigner) {
 	var (
 		addr    = testFreeAddr(t)
 		logger  = log.TestingLogger()
-		privVal = types.NewMockPV()
+		privVal = privValidator
 		readyc  = make(chan struct{})
 		rs      = NewRemoteSigner(
 			logger,
@@ -254,12 +403,7 @@ func testSetupSocketPair(
 		)
 	)
 
-	go func(sc *SocketPV) {
-		require.NoError(t, sc.Start())
-		assert.True(t, sc.IsRunning())
-
-		readyc <- struct{}{}
-	}(sc)
+	testStartSocketPV(t, readyc, sc)
 
 	RemoteSignerConnDeadline(time.Millisecond)(rs)
 	RemoteSignerConnRetries(1e6)(rs)
@@ -270,6 +414,23 @@ func testSetupSocketPair(
 	<-readyc
 
 	return sc, rs
+}
+
+func testReadWriteResponse(t *testing.T, resp SocketPVMsg, rsConn net.Conn) {
+	_, err := readMsg(rsConn)
+	require.NoError(t, err)
+
+	err = writeMsg(rsConn, resp)
+	require.NoError(t, err)
+}
+
+func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *SocketPV) {
+	go func(sc *SocketPV) {
+		require.NoError(t, sc.Start())
+		assert.True(t, sc.IsRunning())
+
+		readyc <- struct{}{}
+	}(sc)
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.

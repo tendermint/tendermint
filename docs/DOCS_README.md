@@ -20,7 +20,8 @@ a private website repository has make targets consumed by a standard Jenkins tas
 ## README
 
 The [README.md](./README.md) is also the landing page for the documentation
-on the website.
+on the website. During the Jenkins build, the current commit is added to the bottom
+of the README.
 
 ## Config.js
 
@@ -33,6 +34,8 @@ of the sidebar.
 
 **NOTE:** Strongly consider the existing links - both within this directory
 and to the website docs - when moving or deleting files.
+
+Links to directories *MUST* end in a `/`.
 
 Relative links should be used nearly everywhere, having discovered and weighed the following:
 

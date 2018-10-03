@@ -20,7 +20,7 @@ Blocks/sec     0.818     0.386      1        9
 
 ## Quick Start
 
-[Install Tendermint](../introduction/install)
+[Install Tendermint](../introduction/install.md)
 This currently is setup to work on tendermint's develop branch. Please ensure
 you are on that. (If not, update `tendermint` and `tmlibs` in gopkg.toml to use
 the master branch.)

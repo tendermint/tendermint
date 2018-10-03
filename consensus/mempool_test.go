@@ -38,7 +38,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
-	config.Consensus.CreateEmptyBlocksInterval = int(ensureTimeout.Seconds())
+	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()
