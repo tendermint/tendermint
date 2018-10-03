@@ -1,6 +1,7 @@
 # Pending
 
 Special thanks to external contributors on this release:
+@goolAdapter, @bradyjoestar
 
 BREAKING CHANGES:
 
@@ -41,3 +42,4 @@ BUG FIXES:
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function
+- [common/bit_array] Fixed a bug in the `Sub` function (@bradyjoestar)
