@@ -189,7 +189,7 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	if bA.Bits > o.Bits {
 		c := bA.copy()
 		for i := 0; i < len(o.Elems)-1; i++ {
-			c.Elems[i] &= ^c.Elems[i]
+			c.Elems[i] &= ^o.Elems[i]
 		}
 		i := len(o.Elems) - 1
 		if i >= 0 {
