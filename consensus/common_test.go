@@ -307,73 +307,73 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 
 //-------------------------------------------------------------------------------
 
-func ensureNoNewEvent(t *testing.T, ch <-chan interface{}, timeout time.Duration,
+func ensureNoNewEvent(ch <-chan interface{}, timeout time.Duration,
 	errorMessage string) {
 	select {
 	case <-time.After(timeout):
 		break
 	case <-ch:
-		t.Error(errorMessage)
+		panic(errorMessage)
 	}
 }
 
-func ensureNoNewStep(t *testing.T, stepCh <-chan interface{}) {
-	ensureNoNewEvent(t, stepCh, ensureTimeout, "We should be stuck waiting, "+
+func ensureNoNewStep(stepCh <-chan interface{}) {
+	ensureNoNewEvent(stepCh, ensureTimeout, "We should be stuck waiting, "+
 		"not moving to the next step")
 }
 
-func ensureNoNewTimeout(t *testing.T, stepCh <-chan interface{}, timeout int64) {
+func ensureNoNewTimeout(stepCh <-chan interface{}, timeout int64) {
 	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
-	ensureNoNewEvent(t, stepCh, timeoutDuration, "We should be stuck waiting, "+
+	ensureNoNewEvent(stepCh, timeoutDuration, "We should be stuck waiting, "+
 		"not moving to the next step")
 }
 
-func ensureNewEvent(t *testing.T, ch <-chan interface{}, timeout time.Duration, errorMessage string) {
+func ensureNewEvent(ch <-chan interface{}, timeout time.Duration, errorMessage string) {
 	select {
 	case <-time.After(timeout):
-		t.Error(errorMessage)
+		panic(errorMessage)
 	case <-ch:
 		break
 	}
 }
 
-func ensureNewStep(t *testing.T, stepCh <-chan interface{}) {
-	ensureNewEvent(t, stepCh, ensureTimeout,
+func ensureNewStep(stepCh <-chan interface{}) {
+	ensureNewEvent(stepCh, ensureTimeout,
 		"Timeout expired while waiting for NewStep event")
 }
 
-func ensureNewRound(t *testing.T, roundCh <-chan interface{}) {
-	ensureNewEvent(t, roundCh, ensureTimeout,
+func ensureNewRound(roundCh <-chan interface{}) {
+	ensureNewEvent(roundCh, ensureTimeout,
 		"Timeout expired while waiting for NewRound event")
 }
 
-func ensureNewTimeout(t *testing.T, timeoutCh <-chan interface{}, timeout int64) {
+func ensureNewTimeout(timeoutCh <-chan interface{}, timeout int64) {
 	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
-	ensureNewEvent(t, timeoutCh, timeoutDuration,
+	ensureNewEvent(timeoutCh, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }
 
-func ensureNewProposal(t *testing.T, proposalCh <-chan interface{}) {
-	ensureNewEvent(t, proposalCh, ensureTimeout,
+func ensureNewProposal(proposalCh <-chan interface{}) {
+	ensureNewEvent(proposalCh, ensureTimeout,
 		"Timeout expired while waiting for NewProposal event")
 }
 
-func ensureNewBlock(t *testing.T, blockCh <-chan interface{}) {
-	ensureNewEvent(t, blockCh, ensureTimeout,
+func ensureNewBlock(blockCh <-chan interface{}) {
+	ensureNewEvent(blockCh, ensureTimeout,
 		"Timeout expired while waiting for NewBlock event")
 }
 
-func ensureNewVote(t *testing.T, voteCh <-chan interface{}) {
-	ensureNewEvent(t, voteCh, ensureTimeout,
+func ensureNewVote(voteCh <-chan interface{}) {
+	ensureNewEvent(voteCh, ensureTimeout,
 		"Timeout expired while waiting for NewVote event")
 }
 
-func ensureNewUnlock(t *testing.T, unlockCh <-chan interface{}) {
-	ensureNewEvent(t, unlockCh, ensureTimeout,
+func ensureNewUnlock(unlockCh <-chan interface{}) {
+	ensureNewEvent(unlockCh, ensureTimeout,
 		"Timeout expired while waiting for NewUnlock event")
 }
 
-func ensureVote(t *testing.T, voteCh chan interface{}, height int64, round int,
+func ensureVote(voteCh chan interface{}, height int64, round int,
 	voteType byte) {
 	select {
 	case <-time.After(ensureTimeout):
@@ -381,19 +381,19 @@ func ensureVote(t *testing.T, voteCh chan interface{}, height int64, round int,
 	case v := <-voteCh:
 		edv, ok := v.(types.EventDataVote)
 		if !ok {
-			t.Errorf(fmt.Sprintf("expected a *types.Vote, "+
+			panic(fmt.Sprintf("expected a *types.Vote, "+
 				"got %v. wrong subscription channel?",
 				reflect.TypeOf(v)))
 		}
 		vote := edv.Vote
 		if vote.Height != height {
-			t.Error(fmt.Sprintf("expected height %v, got %v", height, vote.Height))
+			panic(fmt.Sprintf("expected height %v, got %v", height, vote.Height))
 		}
 		if vote.Round != round {
-			t.Error(fmt.Sprintf("expected round %v, got %v", round, vote.Round))
+			panic(fmt.Sprintf("expected round %v, got %v", round, vote.Round))
 		}
 		if vote.Type != voteType {
-			t.Error(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
+			panic(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
 		}
 	}
 }
