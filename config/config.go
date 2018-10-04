@@ -475,9 +475,9 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Recheck:      true,
-		Broadcast:    true,
-		WalPath:      "",
+		Recheck:   true,
+		Broadcast: true,
+		WalPath:   "",
 		// Each signature verification takes .5ms, size reduced until we implement
 		// ABCI Recheck
 		Size:      5000,
