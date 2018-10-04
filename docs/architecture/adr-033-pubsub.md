@@ -76,7 +76,7 @@ memory leaks and/or memory usage increase.
 
 Go channels are de-facto standard for carrying data between goroutines.
 
-Question: Does it worth switching to callback functions?
+**Question: Does it worth switching to callback functions?**
 
 ### Why `Subscribe()` accepts an `out` channel?
 
