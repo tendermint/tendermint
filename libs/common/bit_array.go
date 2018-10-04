@@ -241,17 +241,16 @@ func (bA *BitArray) PickRandom() (int, bool) {
 	if bA == nil {
 		return 0, false
 	}
-	bA.mtx.Lock()
 
+	bA.mtx.Lock()
 	trueIndices := bA.getTrueIndices()
-	// no bits set to true
-	if len(trueIndices) == 0 {
+	bA.mtx.Unlock()
+
+	if len(trueIndices) == 0 { // no bits set to true
 		return 0, false
 	}
-	index := trueIndices[RandIntn(len(trueIndices))]
 
-	bA.mtx.Unlock()
-	return index, true
+	return trueIndices[RandIntn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {
