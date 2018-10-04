@@ -33,20 +33,20 @@ docker run -it --rm -p "26670:26670" --link=tm tendermint/monitor tm:26657
 
 ### Using Binaries
 
-[Install Tendermint](https://github.com/tendermint/tendermint#install)
+[Install Tendermint](../introduction/install.md).
 
-then run:
+Start a Tendermint node:
 
 ```
 tendermint init
 tendermint node --proxy_app=kvstore
 ```
 
+In another window, run the monitor:
+
 ```
 tm-monitor localhost:26657
 ```
-
-with the last command being in a seperate window.
 
 ## Usage
 

@@ -26,7 +26,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
-// Define these here for compatibility but use tmlibs/common.KVPair.
+// Define these here for compatibility but use libs/common.KVPair.
 type KVPair struct {
 	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value                []byte   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
@@ -82,7 +82,7 @@ func (m *KVPair) GetValue() []byte {
 	return nil
 }
 
-// Define these here for compatibility but use tmlibs/common.KI64Pair.
+// Define these here for compatibility but use libs/common.KI64Pair.
 type KI64Pair struct {
 	Key                  []byte   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value                int64    `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`

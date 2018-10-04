@@ -1,8 +1,10 @@
-# Local Cluster with Docker Compose
+# Docker Compose
 
-DEPRECATED!
+With Docker Compose, we can spin up local testnets in a single command:
 
-See the [docs](https://tendermint.com/docs/networks/docker-compose.html).
+```
+make localnet-start
+```
 
 ## Requirements
 
