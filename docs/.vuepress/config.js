@@ -14,6 +14,7 @@ module.exports = {
         title: "Introduction",
         collapsable: false,
         children: [
+          "/introduction/",
           "/introduction/quick-start",
           "/introduction/install",
           "/introduction/what-is-tendermint"
@@ -23,6 +24,7 @@ module.exports = {
         title: "Tendermint Core",
         collapsable: false,
         children: [
+          "/tendermint-core/",
           "/tendermint-core/using-tendermint",
           "/tendermint-core/configuration",
           "/tendermint-core/rpc",
@@ -40,14 +42,16 @@ module.exports = {
         title: "Tools",
         collapsable: false,
         children:  [
-	  "tools/benchmarking",
-	  "tools/monitoring"
+	  "/tools/",
+	  "/tools/benchmarking",
+	  "/tools/monitoring"
 	]
       },
       {
         title: "Networks",
         collapsable: false,
         children: [
+          "/networks/",
           "/networks/docker-compose",
           "/networks/terraform-and-ansible",
         ]
@@ -99,7 +103,7 @@ module.exports = {
 	]
       },
       {
-        title: "ABCI Specification",
+        title: "ABCI Spec",
         collapsable: false,
         children: [
           "/spec/abci/abci",
