@@ -1,0 +1,97 @@
+
+Upgrade Issues/Examples
+
+- Authenticated encryption
+    - currently, first exchange is random 32-byte pubkeys, no protocol identification
+    - should be a struct like `{ AuthEncVersion, ConnectionType }
+    - should AuthEncVersion just be P2PVersion?
+
+- NodeInfo
+    - Make it a bunch of structs, since we can easily add fields to the end of structs
+    - If we want to change the high level structure, we would need code to:
+        - first read out the version by deserializing into `{ Version }` or possibly { {Version} }`
+        - then unmarshal again but into the correct struct version
+    - So we'd have structs like `NodeInfoV6` and `NodeInfoV7`. Both would have `Version` as first field, but otherwise could be totally different.
+    - Note the NodeInfo is embedded in RPC response types, so if there's a new version, it will break the RPC response. We either would need to:
+        - keep using the old version in the RPC response
+        - offer both versions some how (?!)
+            - could be included in the same response
+            - or do we version the endpoints?
+
+- New reactor messages
+    - Increment the P2PVersion and don't send the new msgs to peers below that version
+
+- Updated reactor message:
+    - Can add fields, but generally just make new ones
+    - If a field type was updated, also bump P2P version (?)
+
+Examples of Updates to Block:
+
+- Add new field to header
+    - eg v5 has a field that v4 doesnt
+    - v5 nodes accept v4 headers without the field
+    - v4 nodes accept v5 headers with the field, just ignoring it
+    - v5 nodes enforce rules on v5 headers
+
+- Change how a hash is computed in the header
+    - eg v5 uses hash of X, v4 uses hash of Y
+    - structs are compatible, but verification will fail
+    - v5 could verify hashes in v4 headers
+        - would require version info to be threaded through more data structures
+            - eg. make `.Hash()` depend on a version number
+            - eg. version the data types themselves (eg. `ValidatorV4`, `ValidatorV5`)
+    - v4 headers could not verify v5 headers
+
+
+State
+- not really part of protocol (we don't hash it)
+- used in many places
+- persisted to disk
+- can easily add fields
+- we should put a version at the top
+
+
+
+In general we have the following kinds of changes:
+
+- Adding fields
+    - Easy, just do it
+
+- Re-arranging fields or changing field types
+    - Read the version first
+    - Then deserialize into the correct versioned type
+    - Code may need to support multiple versions of a type (eg. two versions of Vote or Header)
+
+- Merklizing ...
+
+- New types
+
+
+
+
+
+## Older notes / Example Scenarios
+
+- Starting two versions of a new network, both named "gaia-8000", but with different initial state.
+    - The ChainID will include `gaia-8000` and some reference to the initial state (eg. its hash)
+- A single network, but peers are running different compatible protocol versions, eg.
+    - to support a new reactor or new reactor message type
+        - like HasBlockPart in the consensus, or BatchOfTxs in the mempool
+        - should still be able to talk to some peers that cant understand these messages
+    - to add fields to a reactor message type
+        - Amino should allow this
+        - NOTE: the field will have to fit in the existing "maxMsgSize" and other versions have to be able to ignore it and be compatible ..
+    - to soft fork - ie. implement some form of additional restrictions on the ruleset
+    - NOT to add fields to hashed datastructures or change the state machine since these things need to be verified and integrity driven and
+        thus require incompatible upgrades
+- A single network upgrades to an incompatible protocol version
+    - to add a new field to the header
+        - Amino is supposed to allow us to add new fields, but we don't actually want to do
+            this in a way that supports peers that haven't upgraded because we need to verify
+        - Could be a new merkle root of something we want, the proposer, or some application data
+    - to remove some fields from the Commit structure eg. so it just contains a signature
+    - to execute blocks before proposing them so the AppHash is included in the block (not the next one)
+    - to add a new transaction type to the state machine
+    - to change the way the state machine processes an existing transaction
+    - to change the state of the state machine at some height
+
