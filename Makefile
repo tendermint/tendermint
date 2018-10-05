@@ -1,7 +1,7 @@
 GOTOOLS = \
 	github.com/mitchellh/gox \
 	github.com/golang/dep/cmd/dep \
-	gopkg.in/alecthomas/gometalinter.v2 \
+	github.com/alecthomas/gometalinter \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/square/certstrap
 PACKAGES=$(shell go list ./...)
@@ -75,11 +75,12 @@ check_tools:
 
 get_tools:
 	@echo "--> Installing tools"
-	go get -u -v $(GOTOOLS)
-	@gometalinter.v2 --install
+	./scripts/get_tools.sh
+	@echo "--> Downloading linters (this may take awhile)"
+	./../../alecthomas/gometalinter/scripts/install.sh -b $(GOBIN)
 
 update_tools:
-	@echo "--> Updating tools"
+	@echo "--> Updating tools to their latest versions, not the recommended versions"
 	go get -u -v $(GOTOOLS)
 
 #Update dependencies
@@ -224,7 +225,7 @@ fmt:
 
 metalinter:
 	@echo "--> Running linter"
-	@gometalinter.v2 $(LINT_FLAGS) --disable-all  \
+	@gometalinter $(LINT_FLAGS) --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
 	 	--enable=misspell \
@@ -253,7 +254,7 @@ metalinter:
 
 metalinter_all:
 	@echo "--> Running linter (all)"
-	gometalinter.v2 $(LINT_FLAGS) --enable-all --disable=lll ./...
+	gometalinter $(LINT_FLAGS) --enable-all --disable=lll ./...
 
 DESTINATION = ./index.html.md
 
