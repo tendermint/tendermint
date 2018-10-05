@@ -45,3 +45,4 @@ timeoutPrecommit before starting next round
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function
 - [common/bit_array] Fixed a bug in the `Sub` function (@bradyjoestar)
+- [common] \#2534 make bit array's PickRandom choose uniformly from true bits
