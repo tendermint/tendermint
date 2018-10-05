@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -9,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Returns an empty kvstore peer
@@ -20,11 +18,8 @@ func randPeer(ip net.IP) *peer {
 
 	nodeKey := NodeKey{PrivKey: ed25519.GenPrivKey()}
 	p := &peer{
-		nodeInfo: NodeInfo{
-			ID:         nodeKey.ID(),
-			ListenAddr: fmt.Sprintf("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),
-		},
-		metrics: NopMetrics(),
+		nodeInfo: randNodeInfoFromID(nodeKey.ID()),
+		metrics:  NopMetrics(),
 	}
 
 	p.ip = ip

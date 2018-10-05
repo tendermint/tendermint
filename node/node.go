@@ -753,8 +753,8 @@ func makeNodeInfo(
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
-	nodeInfo := p2p.NodeInfo{
-		ID:      nodeID,
+	nodeInfo := p2p.DefaultNodeInfo{
+		ID_:     nodeID,
 		Network: chainID,
 		Version: version.Version,
 		Channels: []byte{
@@ -764,7 +764,7 @@ func makeNodeInfo(
 			evidence.EvidenceChannel,
 		},
 		Moniker: config.Moniker,
-		Other: p2p.NodeInfoOther{
+		Other: p2p.DefaultNodeInfoOther{
 			AminoVersion:     amino.Version,
 			P2PVersion:       p2p.Version,
 			ConsensusVersion: cs.Version,

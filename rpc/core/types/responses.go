@@ -74,9 +74,9 @@ type ValidatorInfo struct {
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      p2p.NodeInfo  `json:"node_info"`
-	SyncInfo      SyncInfo      `json:"sync_info"`
-	ValidatorInfo ValidatorInfo `json:"validator_info"`
+	NodeInfo      p2p.DefaultNodeInfo `json:"node_info"`
+	SyncInfo      SyncInfo            `json:"sync_info"`
+	ValidatorInfo ValidatorInfo       `json:"validator_info"`
 }
 
 // Is TxIndexing enabled

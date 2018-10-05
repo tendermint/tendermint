@@ -24,12 +24,9 @@ func CreateRandomPeer(outbound bool) *peer {
 		peerConn: peerConn{
 			outbound: outbound,
 		},
-		nodeInfo: NodeInfo{
-			ID:         netAddr.ID,
-			ListenAddr: netAddr.DialString(),
-		},
-		mconn:   &conn.MConnection{},
-		metrics: NopMetrics(),
+		nodeInfo: testNodeInfoFromNetAddr(netAddr),
+		mconn:    &conn.MConnection{},
+		metrics:  NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
@@ -48,6 +45,13 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 		}
 	}
 	return
+}
+
+func testNodeInfoFromNetAddr(netAddr *NetAddress) NodeInfo {
+	return DefaultNodeInfo{
+		ID_:        netAddr.ID,
+		ListenAddr: netAddr.DialString(),
+	}
 }
 
 //------------------------------------------------------------------
@@ -152,6 +156,28 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
+func testRandNodeInfo(id int, network, version string) (NodeInfo, NodeKey) {
+	nodeKey := NodeKey{
+		PrivKey: ed25519.GenPrivKey(),
+	}
+	ni := DefaultNodeInfo{
+		ID_:        nodeKey.ID(),
+		Moniker:    fmt.Sprintf("switch%d", id),
+		Network:    network,
+		Version:    version,
+		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		Other: DefaultNodeInfoOther{
+			AminoVersion:     "1.0",
+			P2PVersion:       "1.0",
+			ConsensusVersion: "1.0",
+			RPCVersion:       "1.0",
+			TxIndex:          "off",
+			RPCAddress:       fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		},
+	}
+	return ni, nodeKey
+}
+
 func MakeSwitch(
 	cfg *config.P2PConfig,
 	i int,
@@ -159,29 +185,11 @@ func MakeSwitch(
 	initSwitch func(int, *Switch) *Switch,
 	opts ...SwitchOption,
 ) *Switch {
-	var (
-		nodeKey = NodeKey{
-			PrivKey: ed25519.GenPrivKey(),
-		}
-		ni = NodeInfo{
-			ID:         nodeKey.ID(),
-			Moniker:    fmt.Sprintf("switch%d", i),
-			Network:    network,
-			Version:    version,
-			ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-			Other: NodeInfoOther{
-				AminoVersion:     "1.0",
-				P2PVersion:       "1.0",
-				ConsensusVersion: "1.0",
-				RPCVersion:       "1.0",
-				TxIndex:          "off",
-				RPCAddress:       fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-			},
-		}
-	)
+	ni, nodeKey := testRandNodeInfo(i, network, version)
 
+	//addr := ni.NetAddress()
 	addr, err := NewNetAddressStringWithOptionalID(
-		IDAddressString(nodeKey.ID(), ni.ListenAddr),
+		IDAddressString(nodeKey.ID(), ni.(DefaultNodeInfo).ListenAddr),
 	)
 	if err != nil {
 		panic(err)
@@ -198,9 +206,11 @@ func MakeSwitch(
 	sw.SetLogger(log.TestingLogger())
 	sw.SetNodeKey(&nodeKey)
 
+	ni_ := ni.(DefaultNodeInfo)
 	for ch := range sw.reactorsByCh {
-		ni.Channels = append(ni.Channels, ch)
+		ni_.Channels = append(ni_.Channels, ch)
 	}
+	ni = ni_
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.

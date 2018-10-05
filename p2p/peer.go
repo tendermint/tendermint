@@ -120,7 +120,7 @@ func newPeer(
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.Channels,
+		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
 		Data:          cmn.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
@@ -177,7 +177,7 @@ func (p *peer) OnStop() {
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return p.nodeInfo.ID
+	return p.nodeInfo.ID()
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.
@@ -287,15 +287,16 @@ func (pc *peerConn) CloseConn() {
 func (pc *peerConn) HandshakeTimeout(
 	ourNodeInfo NodeInfo,
 	timeout time.Duration,
-) (peerNodeInfo NodeInfo, err error) {
+) (NodeInfo, error) {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
 	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error setting deadline")
+		return nil, cmn.ErrorWrap(err, "Error setting deadline")
 	}
 
+	var peerNodeInfo DefaultNodeInfo
 	var trs, _ = cmn.Parallel(
 		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.MarshalBinaryWriter(pc.conn, ourNodeInfo)
+			_, err = cdc.MarshalBinaryWriter(pc.conn, ourNodeInfo.(DefaultNodeInfo))
 			return
 		},
 		func(_ int) (val interface{}, err error, abort bool) {
@@ -308,12 +309,12 @@ func (pc *peerConn) HandshakeTimeout(
 		},
 	)
 	if err := trs.FirstError(); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error during handshake")
+		return nil, cmn.ErrorWrap(err, "Error during handshake")
 	}
 
 	// Remove deadline
 	if err := pc.conn.SetDeadline(time.Time{}); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error removing deadline")
+		return nil, cmn.ErrorWrap(err, "Error removing deadline")
 	}
 
 	return peerNodeInfo, nil

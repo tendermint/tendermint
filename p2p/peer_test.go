@@ -81,8 +81,8 @@ func createOutboundPeerAndPerformHandshake(
 	if err != nil {
 		return nil, err
 	}
-	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		ID:       addr.ID,
+	nodeInfo, err := pc.HandshakeTimeout(DefaultNodeInfo{
+		ID_:      addr.ID,
 		Moniker:  "host_peer",
 		Network:  "testing",
 		Version:  "123.123.123",
@@ -191,8 +191,8 @@ func (rp *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 
-		_, err = handshake(pc.conn, time.Second, NodeInfo{
-			ID:         rp.Addr().ID,
+		_, err = handshake(pc.conn, time.Second, DefaultNodeInfo{
+			ID_:        rp.Addr().ID,
 			Moniker:    "remote_peer",
 			Network:    "testing",
 			Version:    "123.123.123",
