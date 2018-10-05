@@ -1,7 +1,9 @@
-# ADR 021: check block txs before prevote
+# ADR 029: Check block txs before prevote
 
 ## Changelog
 
+04-10-2018: Update with link to issue
+[#2384](https://github.com/tendermint/tendermint/issues/2384) and reason for rejection
 19-09-2018: Initial Draft
 
 ## Context
@@ -13,11 +15,11 @@ We currently check a tx's validity through 2 ways.
 
 The 1st is called when external tx comes in, so the node should be a proposer this time. The 2nd is called when external block comes in and reach the commit phase, the node doesn't need to be the proposer of the block, however it should check the txs in that block.
 
-In the 2nd situation, if there are many invalid txs in the block, it would be too late for all nodes to discover that most txs in the block are invalid, and we'd better not record invalid txs in the blockchain too. 
+In the 2nd situation, if there are many invalid txs in the block, it would be too late for all nodes to discover that most txs in the block are invalid, and we'd better not record invalid txs in the blockchain too.
 
 ## Proposed solution
 
-Therefore, we should find a way to check the txs' validity before send out a prevote. Currently we have cs.isProposalComplete() to judge whether a block is complete. We can have 
+Therefore, we should find a way to check the txs' validity before send out a prevote. Currently we have cs.isProposalComplete() to judge whether a block is complete. We can have
 
 ```
 func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
@@ -104,7 +106,11 @@ An optional optimization is alter the deliverTx to deliverBlock. For the block h
 
 ## Status
 
-Proposed.
+Rejected
+
+## Decision
+
+Performance impact is considered too great. See [#2384](https://github.com/tendermint/tendermint/issues/2384)
 
 ## Consequences
 
@@ -115,5 +121,8 @@ Proposed.
 ### Negative
 
 - add a new interface method. app logic needs to adjust to appeal to it.
+- sending all the tx data over the ABCI twice
+- potentially redundant validations (eg. signature checks in both CheckBlock and
+  DeliverTx)
 
 ### Neutral
