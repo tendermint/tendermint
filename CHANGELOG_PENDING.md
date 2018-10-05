@@ -26,6 +26,7 @@ BREAKING CHANGES:
 
 * Blockchain Protocol
   * [types] \#2459 `Vote`/`Proposal`/`Heartbeat` use amino encoding instead of JSON in `SignBytes`.
+  * [types] \#2512 Remove the pubkey field from the validator hash 
 
 * P2P Protocol
 
