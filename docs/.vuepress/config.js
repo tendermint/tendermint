@@ -106,6 +106,7 @@ module.exports = {
         title: "ABCI Spec",
         collapsable: false,
         children: [
+          "/spec/abci/",
           "/spec/abci/abci",
           "/spec/abci/apps",
           "/spec/abci/client-server"
