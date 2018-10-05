@@ -11,22 +11,25 @@ module.exports = {
     nav: [{ text: "Back to Tendermint", link: "https://tendermint.com" }],
     sidebar: [
       {
-        title: "Getting Started",
+        title: "Introduction",
         collapsable: false,
         children: [
+          "/introduction/",
           "/introduction/quick-start",
           "/introduction/install",
-          "/introduction/introduction"
+          "/introduction/what-is-tendermint"
         ]
       },
       {
         title: "Tendermint Core",
         collapsable: false,
         children: [
+          "/tendermint-core/",
           "/tendermint-core/using-tendermint",
           "/tendermint-core/configuration",
           "/tendermint-core/rpc",
           "/tendermint-core/running-in-production",
+          "/tendermint-core/fast-sync",
           "/tendermint-core/how-to-read-logs",
           "/tendermint-core/block-structure",
           "/tendermint-core/light-client-protocol",
@@ -36,21 +39,25 @@ module.exports = {
         ]
       },
       {
-        title: "Tendermint Tools",
+        title: "Tools",
         collapsable: false,
-        children: ["tools/benchmarking", "tools/monitoring"]
+        children:  [
+	  "/tools/",
+	  "/tools/benchmarking",
+	  "/tools/monitoring"
+	]
       },
       {
-        title: "Tendermint Networks",
+        title: "Networks",
         collapsable: false,
         children: [
-          "/networks/deploy-testnets",
+          "/networks/",
+          "/networks/docker-compose",
           "/networks/terraform-and-ansible",
-          "/networks/fast-sync"
         ]
       },
       {
-        title: "Application Development",
+        title: "Apps",
         collapsable: false,
         children: [
           "/app-dev/getting-started",
@@ -64,18 +71,45 @@ module.exports = {
         ]
       },
       {
-        title: "ABCI Specification",
+        title: "Tendermint Spec",
+        collapsable: true,
+        children: [
+          "/spec/",
+          "/spec/blockchain/blockchain",
+          "/spec/blockchain/encoding",
+          "/spec/blockchain/state",
+          "/spec/software/abci",
+          "/spec/consensus/bft-time",
+          "/spec/consensus/consensus",
+          "/spec/consensus/light-client",
+          "/spec/software/wal",
+          "/spec/p2p/config",
+          "/spec/p2p/connection",
+          "/spec/p2p/node",
+          "/spec/p2p/peer",
+          "/spec/reactors/block_sync/reactor",
+          "/spec/reactors/block_sync/impl",
+          "/spec/reactors/consensus/consensus",
+          "/spec/reactors/consensus/consensus-reactor",
+          "/spec/reactors/consensus/proposer-selection",
+          "/spec/reactors/evidence/reactor",
+          "/spec/reactors/mempool/concurrency",
+          "/spec/reactors/mempool/config",
+          "/spec/reactors/mempool/functionality",
+          "/spec/reactors/mempool/messages",
+          "/spec/reactors/mempool/reactor",
+          "/spec/reactors/pex/pex",
+          "/spec/reactors/pex/reactor",
+	]
+      },
+      {
+        title: "ABCI Spec",
         collapsable: false,
         children: [
           "/spec/abci/abci",
           "/spec/abci/apps",
           "/spec/abci/client-server"
         ]
-      },
-      {
-        title: "Research",
-        collapsable: false,
-        children: ["/research/determinism", "/research/transactional-semantics"]
       }
     ]
   }

@@ -6,13 +6,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
+
+const metricsTickerDuration = 10 * time.Second
 
 var testIPSuffix uint32
 
@@ -100,7 +101,12 @@ type peer struct {
 
 	// User data
 	Data *cmn.CMap
+
+	metrics       *Metrics
+	metricsTicker *time.Ticker
 }
+
+type PeerOption func(*peer)
 
 func newPeer(
 	pc peerConn,
@@ -109,12 +115,15 @@ func newPeer(
 	reactorsByCh map[byte]Reactor,
 	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
+	options ...PeerOption,
 ) *peer {
 	p := &peer{
-		peerConn: pc,
-		nodeInfo: nodeInfo,
-		channels: nodeInfo.Channels,
-		Data:     cmn.NewCMap(),
+		peerConn:      pc,
+		nodeInfo:      nodeInfo,
+		channels:      nodeInfo.Channels,
+		Data:          cmn.NewCMap(),
+		metricsTicker: time.NewTicker(metricsTickerDuration),
+		metrics:       NopMetrics(),
 	}
 
 	p.mconn = createMConnection(
@@ -126,89 +135,11 @@ func newPeer(
 		mConfig,
 	)
 	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
+	for _, option := range options {
+		option(p)
+	}
 
 	return p
-}
-
-func newOutboundPeerConn(
-	addr *NetAddress,
-	config *config.P2PConfig,
-	persistent bool,
-	ourNodePrivKey crypto.PrivKey,
-) (peerConn, error) {
-	conn, err := dial(addr, config)
-	if err != nil {
-		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
-	}
-
-	pc, err := newPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
-	if err != nil {
-		if cerr := conn.Close(); cerr != nil {
-			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
-		}
-		return peerConn{}, err
-	}
-
-	// ensure dialed ID matches connection ID
-	if addr.ID != pc.ID() {
-		if cerr := conn.Close(); cerr != nil {
-			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
-		}
-		return peerConn{}, ErrSwitchAuthenticationFailure{addr, pc.ID()}
-	}
-
-	return pc, nil
-}
-
-func newInboundPeerConn(
-	conn net.Conn,
-	config *config.P2PConfig,
-	ourNodePrivKey crypto.PrivKey,
-) (peerConn, error) {
-
-	// TODO: issue PoW challenge
-
-	return newPeerConn(conn, config, false, false, ourNodePrivKey, nil)
-}
-
-func newPeerConn(
-	rawConn net.Conn,
-	cfg *config.P2PConfig,
-	outbound, persistent bool,
-	ourNodePrivKey crypto.PrivKey,
-	originalAddr *NetAddress,
-) (pc peerConn, err error) {
-	conn := rawConn
-
-	// Fuzz connection
-	if cfg.TestFuzz {
-		// so we have time to do peer handshakes and get set up
-		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, cfg.TestFuzzConfig)
-	}
-
-	// Set deadline for secret handshake
-	dl := time.Now().Add(cfg.HandshakeTimeout)
-	if err := conn.SetDeadline(dl); err != nil {
-		return pc, cmn.ErrorWrap(
-			err,
-			"Error setting deadline while encrypting connection",
-		)
-	}
-
-	// Encrypt connection
-	conn, err = tmconn.MakeSecretConnection(conn, ourNodePrivKey)
-	if err != nil {
-		return pc, cmn.ErrorWrap(err, "Error creating peer")
-	}
-
-	// Only the information we already have
-	return peerConn{
-		config:       cfg,
-		outbound:     outbound,
-		persistent:   persistent,
-		conn:         conn,
-		originalAddr: originalAddr,
-	}, nil
 }
 
 //---------------------------------------------------
@@ -225,12 +156,18 @@ func (p *peer) OnStart() error {
 	if err := p.BaseService.OnStart(); err != nil {
 		return err
 	}
-	err := p.mconn.Start()
-	return err
+
+	if err := p.mconn.Start(); err != nil {
+		return err
+	}
+
+	go p.metricsReporter()
+	return nil
 }
 
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
+	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
 	p.mconn.Stop() // stop everything and close the conn
 }
@@ -282,7 +219,11 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	return p.mconn.Send(chID, msgBytes)
+	res := p.mconn.Send(chID, msgBytes)
+	if res {
+		p.metrics.PeerSendBytesTotal.With("peer-id", string(p.ID())).Add(float64(len(msgBytes)))
+	}
+	return res
 }
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
@@ -293,7 +234,11 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	return p.mconn.TrySend(chID, msgBytes)
+	res := p.mconn.TrySend(chID, msgBytes)
+	if res {
+		p.metrics.PeerSendBytesTotal.With("peer-id", string(p.ID())).Add(float64(len(msgBytes)))
+	}
+	return res
 }
 
 // Get the data for a given key.
@@ -396,20 +341,31 @@ func (p *peer) String() string {
 	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
 }
 
+func PeerMetrics(metrics *Metrics) PeerOption {
+	return func(p *peer) {
+		p.metrics = metrics
+	}
+}
+
+func (p *peer) metricsReporter() {
+	for {
+		select {
+		case <-p.metricsTicker.C:
+			status := p.mconn.Status()
+			var sendQueueSize float64
+			for _, chStatus := range status.Channels {
+				sendQueueSize += float64(chStatus.SendQueueSize)
+			}
+
+			p.metrics.PeerPendingSendBytes.With("peer-id", string(p.ID())).Set(sendQueueSize)
+		case <-p.Quit():
+			return
+		}
+	}
+}
+
 //------------------------------------------------------------------
 // helper funcs
-
-func dial(addr *NetAddress, cfg *config.P2PConfig) (net.Conn, error) {
-	if cfg.TestDialFail {
-		return nil, fmt.Errorf("dial err (peerConfig.DialFail == true)")
-	}
-
-	conn, err := addr.DialTimeout(cfg.DialTimeout)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
 
 func createMConnection(
 	conn net.Conn,
@@ -427,6 +383,7 @@ func createMConnection(
 			// which does onPeerError.
 			panic(fmt.Sprintf("Unknown channel %X", chID))
 		}
+		p.metrics.PeerReceiveBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
 		reactor.Receive(chID, p, msgBytes)
 	}
 

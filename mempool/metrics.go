@@ -3,7 +3,6 @@ package mempool
 import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
-
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 )
@@ -16,9 +15,10 @@ type Metrics struct {
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
-func PrometheusMetrics() *Metrics {
+func PrometheusMetrics(namespace string) *Metrics {
 	return &Metrics{
 		Size: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
 			Subsystem: "mempool",
 			Name:      "size",
 			Help:      "Size of the mempool (number of uncommitted transactions).",

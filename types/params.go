@@ -23,7 +23,7 @@ type ConsensusParams struct {
 
 // BlockSize contain limits on the block size.
 type BlockSize struct {
-	MaxBytes int   `json:"max_txs_bytes"`
+	MaxBytes int64 `json:"max_bytes"`
 	MaxGas   int64 `json:"max_gas"`
 }
 
@@ -99,10 +99,8 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	}
 
 	// we must defensively consider any structs may be nil
-	// XXX: it's cast city over here. It's ok because we only do int32->int
-	// but still, watch it champ.
 	if params2.BlockSize != nil {
-		res.BlockSize.MaxBytes = int(params2.BlockSize.MaxBytes)
+		res.BlockSize.MaxBytes = params2.BlockSize.MaxBytes
 		res.BlockSize.MaxGas = params2.BlockSize.MaxGas
 	}
 	if params2.EvidenceParams != nil {

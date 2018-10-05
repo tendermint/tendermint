@@ -1,4 +1,4 @@
-# Tendermint Peer Discovery
+# Peer Discovery
 
 A Tendermint P2P network has different kinds of nodes with different requirements for connectivity to one another.
 This document describes what kind of nodes Tendermint should enable and how they should work.

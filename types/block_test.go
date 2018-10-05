@@ -1,6 +1,7 @@
 package types
 
 import (
+	"crypto/rand"
 	"math"
 	"testing"
 	"time"
@@ -8,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -45,51 +45,37 @@ func TestBlockValidateBasic(t *testing.T) {
 	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, txs, commit, evList)
-	require.NotNil(t, block)
-	block.ProposerAddress = valSet.GetProposer().Address
-
-	// proper block must pass
-	err = block.ValidateBasic()
-	require.NoError(t, err)
-
-	// tamper with NumTxs
-	block = MakeBlock(h, txs, commit, evList)
-	block.NumTxs++
-	err = block.ValidateBasic()
-	require.Error(t, err)
-
-	// remove 1/2 the commits
-	block = MakeBlock(h, txs, commit, evList)
-	block.LastCommit.Precommits = commit.Precommits[:commit.Size()/2]
-	block.LastCommit.hash = nil // clear hash or change wont be noticed
-	err = block.ValidateBasic()
-	require.Error(t, err)
-
-	// tamper with LastCommitHash
-	block = MakeBlock(h, txs, commit, evList)
-	block.LastCommitHash = []byte("something else")
-	err = block.ValidateBasic()
-	require.Error(t, err)
-
-	// tamper with data
-	block = MakeBlock(h, txs, commit, evList)
-	block.Data.Txs[0] = Tx("something else")
-	block.Data.hash = nil // clear hash or change wont be noticed
-	err = block.ValidateBasic()
-	require.Error(t, err)
-
-	// tamper with DataHash
-	block = MakeBlock(h, txs, commit, evList)
-	block.DataHash = cmn.RandBytes(len(block.DataHash))
-	err = block.ValidateBasic()
-	require.Error(t, err)
-
-	// tamper with evidence
-	block = MakeBlock(h, txs, commit, evList)
-	block.EvidenceHash = []byte("something else")
-	err = block.ValidateBasic()
-	require.Error(t, err)
+	testCases := []struct {
+		testName      string
+		malleateBlock func(*Block)
+		expErr        bool
+	}{
+		{"Make Block", func(blk *Block) {}, false},
+		{"Make Block w/ proposer Addr", func(blk *Block) { blk.ProposerAddress = valSet.GetProposer().Address }, false},
+		{"Increase NumTxs", func(blk *Block) { blk.NumTxs++ }, true},
+		{"Remove 1/2 the commits", func(blk *Block) {
+			blk.LastCommit.Precommits = commit.Precommits[:commit.Size()/2]
+			blk.LastCommit.hash = nil // clear hash or change wont be noticed
+		}, true},
+		{"Remove LastCommitHash", func(blk *Block) { blk.LastCommitHash = []byte("something else") }, true},
+		{"Tampered Data", func(blk *Block) {
+			blk.Data.Txs[0] = Tx("something else")
+			blk.Data.hash = nil // clear hash or change wont be noticed
+		}, true},
+		{"Tampered DataHash", func(blk *Block) {
+			blk.DataHash = cmn.RandBytes(len(blk.DataHash))
+		}, true},
+		{"Tampered EvidenceHash", func(blk *Block) {
+			blk.EvidenceHash = []byte("something else")
+		}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			block := MakeBlock(h, txs, commit, evList)
+			tc.malleateBlock(block)
+			assert.Equal(t, tc.expErr, block.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }
 
 func TestBlockHash(t *testing.T) {
@@ -161,7 +147,11 @@ func TestBlockString(t *testing.T) {
 }
 
 func makeBlockIDRandom() BlockID {
-	blockHash, blockPartsHeader := crypto.CRandBytes(tmhash.Size), PartSetHeader{123, crypto.CRandBytes(tmhash.Size)}
+	blockHash := make([]byte, tmhash.Size)
+	partSetHash := make([]byte, tmhash.Size)
+	rand.Read(blockHash)
+	rand.Read(partSetHash)
+	blockPartsHeader := PartSetHeader{123, partSetHash}
 	return BlockID{blockHash, blockPartsHeader}
 }
 
@@ -211,28 +201,25 @@ func TestCommit(t *testing.T) {
 }
 
 func TestCommitValidateBasic(t *testing.T) {
-	commit := randCommit()
-	assert.NoError(t, commit.ValidateBasic())
-
-	// nil precommit is OK
-	commit = randCommit()
-	commit.Precommits[0] = nil
-	assert.NoError(t, commit.ValidateBasic())
-
-	// tamper with types
-	commit = randCommit()
-	commit.Precommits[0].Type = VoteTypePrevote
-	assert.Error(t, commit.ValidateBasic())
-
-	// tamper with height
-	commit = randCommit()
-	commit.Precommits[0].Height = int64(100)
-	assert.Error(t, commit.ValidateBasic())
-
-	// tamper with round
-	commit = randCommit()
-	commit.Precommits[0].Round = 100
-	assert.Error(t, commit.ValidateBasic())
+	testCases := []struct {
+		testName       string
+		malleateCommit func(*Commit)
+		expectErr      bool
+	}{
+		{"Random Commit", func(com *Commit) {}, false},
+		{"Nil precommit", func(com *Commit) { com.Precommits[0] = nil }, false},
+		{"Incorrect signature", func(com *Commit) { com.Precommits[0].Signature = []byte{0} }, false},
+		{"Incorrect type", func(com *Commit) { com.Precommits[0].Type = VoteTypePrevote }, true},
+		{"Incorrect height", func(com *Commit) { com.Precommits[0].Height = int64(100) }, true},
+		{"Incorrect round", func(com *Commit) { com.Precommits[0].Round = 100 }, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			com := randCommit()
+			tc.malleateCommit(com)
+			assert.Equal(t, tc.expectErr, com.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }
 
 func TestMaxHeaderBytes(t *testing.T) {
@@ -266,7 +253,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 	bz, err := cdc.MarshalBinary(h)
 	require.NoError(t, err)
 
-	assert.Equal(t, MaxHeaderBytes, len(bz))
+	assert.EqualValues(t, MaxHeaderBytes, len(bz))
 }
 
 func randCommit() *Commit {
@@ -278,4 +265,61 @@ func randCommit() *Commit {
 		panic(err)
 	}
 	return commit
+}
+
+func TestBlockMaxDataBytes(t *testing.T) {
+	testCases := []struct {
+		maxBytes      int64
+		valsCount     int
+		evidenceCount int
+		panics        bool
+		result        int64
+	}{
+		0: {-10, 1, 0, true, 0},
+		1: {10, 1, 0, true, 0},
+		2: {721, 1, 0, true, 0},
+		3: {722, 1, 0, false, 0},
+		4: {723, 1, 0, false, 1},
+	}
+
+	for i, tc := range testCases {
+		if tc.panics {
+			assert.Panics(t, func() {
+				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount)
+			}, "#%v", i)
+		} else {
+			assert.Equal(t,
+				tc.result,
+				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount),
+				"#%v", i)
+		}
+	}
+}
+
+func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
+	testCases := []struct {
+		maxBytes  int64
+		valsCount int
+		panics    bool
+		result    int64
+	}{
+		0: {-10, 1, true, 0},
+		1: {10, 1, true, 0},
+		2: {801, 1, true, 0},
+		3: {802, 1, false, 0},
+		4: {803, 1, false, 1},
+	}
+
+	for i, tc := range testCases {
+		if tc.panics {
+			assert.Panics(t, func() {
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount)
+			}, "#%v", i)
+		} else {
+			assert.Equal(t,
+				tc.result,
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount),
+				"#%v", i)
+		}
+	}
 }

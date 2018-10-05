@@ -7,8 +7,7 @@ application you want to run. So, to run a complete blockchain that does
 something useful, you must start two programs: one is Tendermint Core,
 the other is your application, which can be written in any programming
 language. Recall from [the intro to
-ABCI](../introduction/introduction.md#ABCI-Overview) that Tendermint Core handles all
-the p2p and consensus stuff, and just forwards transactions to the
+ABCI](../introduction/what-is-tendermint.md#abci-overview) that Tendermint Core handles all the p2p and consensus stuff, and just forwards transactions to the
 application when they need to be validated, or when they're ready to be
 committed to a block.
 

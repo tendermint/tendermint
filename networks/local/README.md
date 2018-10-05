@@ -1,5 +1,9 @@
 # Local Cluster with Docker Compose
 
+DEPRECATED!
+
+See the [docs](https://tendermint.com/docs/networks/docker-compose.html).
+
 ## Requirements
 
 - [Install tendermint](/docs/install.md)

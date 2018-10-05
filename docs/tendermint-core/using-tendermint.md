@@ -305,6 +305,12 @@ can take on the order of a second. For a quick result, use
 `broadcast_tx_sync`, but the transaction will not be committed until
 later, and by that point its effect on the state may change.
 
+Note the mempool does not provide strong guarantees - just because a tx passed
+CheckTx (ie. was accepted into the mempool), doesn't mean it will be committed,
+as nodes with the tx in their mempool may crash before they get to propose.
+For more information, see the [mempool
+write-ahead-log](../tendermint-core/running-in-production.md#mempool-wal)
+
 ## Tendermint Networks
 
 When `tendermint init` is run, both a `genesis.json` and

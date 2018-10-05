@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes = 200
+	MaxVoteBytes int64 = 200
 )
 
 var (
@@ -61,8 +61,8 @@ func IsVoteTypeValid(type_ byte) bool {
 	}
 }
 
-// Address is hex bytes. TODO: crypto.Address
-type Address = cmn.HexBytes
+// Address is hex bytes.
+type Address = crypto.Address
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
@@ -77,7 +77,7 @@ type Vote struct {
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalJSON(CanonicalVote(chainID, vote))
+	bz, err := cdc.MarshalBinary(CanonicalizeVote(chainID, vote))
 	if err != nil {
 		panic(err)
 	}
@@ -104,8 +104,12 @@ func (vote *Vote) String() string {
 	}
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
-		vote.ValidatorIndex, cmn.Fingerprint(vote.ValidatorAddress),
-		vote.Height, vote.Round, vote.Type, typeString,
+		vote.ValidatorIndex,
+		cmn.Fingerprint(vote.ValidatorAddress),
+		vote.Height,
+		vote.Round,
+		vote.Type,
+		typeString,
 		cmn.Fingerprint(vote.BlockID.Hash),
 		cmn.Fingerprint(vote.Signature),
 		CanonicalTime(vote.Timestamp))

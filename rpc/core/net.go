@@ -23,7 +23,7 @@ import (
 // {
 // 	"error": "",
 // 	"result": {
-//		"n_peers": 0,
+//		"n_peers": "0",
 // 		"peers": [],
 // 		"listeners": [
 // 			"Listener(@10.0.2.15:26656)"
@@ -35,13 +35,8 @@ import (
 // }
 // ```
 func NetInfo() (*ctypes.ResultNetInfo, error) {
-	listening := p2pSwitch.IsListening()
-	listeners := []string{}
-	for _, listener := range p2pSwitch.Listeners() {
-		listeners = append(listeners, listener.String())
-	}
 	peers := []ctypes.Peer{}
-	for _, peer := range p2pSwitch.Peers().List() {
+	for _, peer := range p2pPeers.Peers().List() {
 		peers = append(peers, ctypes.Peer{
 			NodeInfo:         peer.NodeInfo(),
 			IsOutbound:       peer.IsOutbound(),
@@ -52,8 +47,8 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 	// PRO: useful info
 	// CON: privacy
 	return &ctypes.ResultNetInfo{
-		Listening: listening,
-		Listeners: listeners,
+		Listening: p2pTransport.IsListening(),
+		Listeners: p2pTransport.Listeners(),
 		NPeers:    len(peers),
 		Peers:     peers,
 	}, nil
@@ -65,7 +60,7 @@ func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	}
 	// starts go routines to dial each peer after random delays
 	logger.Info("DialSeeds", "addrBook", addrBook, "seeds", seeds)
-	err := p2pSwitch.DialPeersAsync(addrBook, seeds, false)
+	err := p2pPeers.DialPeersAsync(addrBook, seeds, false)
 	if err != nil {
 		return &ctypes.ResultDialSeeds{}, err
 	}
@@ -78,7 +73,7 @@ func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, 
 	}
 	// starts go routines to dial each peer after random delays
 	logger.Info("DialPeers", "addrBook", addrBook, "peers", peers, "persistent", persistent)
-	err := p2pSwitch.DialPeersAsync(addrBook, peers, persistent)
+	err := p2pPeers.DialPeersAsync(addrBook, peers, persistent)
 	if err != nil {
 		return &ctypes.ResultDialPeers{}, err
 	}
@@ -107,7 +102,7 @@ func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, 
 // 			"validators": [
 // 				{
 // 					"name": "",
-// 					"power": 10,
+// 					"power": "10",
 // 					"pub_key": {
 // 						"data": "68DFDA7E50F82946E7E8546BED37944A422CD1B831E70DF66BA3B8430593944D",
 // 						"type": "ed25519"
