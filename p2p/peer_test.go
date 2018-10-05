@@ -81,13 +81,10 @@ func createOutboundPeerAndPerformHandshake(
 	if err != nil {
 		return nil, err
 	}
-	nodeInfo, err := pc.HandshakeTimeout(DefaultNodeInfo{
-		ID_:      addr.ID,
-		Moniker:  "host_peer",
-		Network:  "testing",
-		Version:  "123.123.123",
-		Channels: []byte{testCh},
-	}, 1*time.Second)
+	nodeInfo, err := pc.HandshakeTimeout(
+		testNodeInfoFromIDAndName(addr.ID, "host_peer"),
+		1*time.Second,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -191,14 +188,8 @@ func (rp *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 
-		_, err = handshake(pc.conn, time.Second, DefaultNodeInfo{
-			ID_:        rp.Addr().ID,
-			Moniker:    "remote_peer",
-			Network:    "testing",
-			Version:    "123.123.123",
-			ListenAddr: l.Addr().String(),
-			Channels:   rp.channels,
-		})
+		_, err = handshake(pc.conn, time.Second,
+			testNodeInfoFromRemotePeer(rp, l))
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}
@@ -215,5 +206,16 @@ func (rp *remotePeer) accept(l net.Listener) {
 			return
 		default:
 		}
+	}
+}
+
+func testNodeInfoFromRemotePeer(rp *remotePeer, l net.Listener) NodeInfo {
+	return DefaultNodeInfo{
+		ID_:        rp.Addr().ID,
+		Moniker:    "remote_peer",
+		Network:    "testing",
+		Version:    "123.123.123",
+		ListenAddr: l.Addr().String(),
+		Channels:   rp.channels,
 	}
 }

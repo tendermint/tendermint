@@ -139,7 +139,7 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 			var (
 				pv     = ed25519.GenPrivKey()
 				dialer = NewMultiplexTransport(
-					randNodeInfoFromID(PubKeyToID(pv.PubKey())),
+					testNodeInfoFromID(PubKeyToID(pv.PubKey())),
 					NodeKey{
 						PrivKey: pv,
 					},
@@ -207,7 +207,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 
 	var (
 		fastNodePV   = ed25519.GenPrivKey()
-		fastNodeInfo = randNodeInfoFromIDAndName(PubKeyToID(fastNodePV.PubKey()), "fastnode")
+		fastNodeInfo = testNodeInfoFromIDAndName(PubKeyToID(fastNodePV.PubKey()), "fastnode")
 		errc         = make(chan error)
 		fastc        = make(chan struct{})
 		slowc        = make(chan struct{})
@@ -244,7 +244,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		}
 
 		_, err = handshake(sc, 20*time.Millisecond,
-			randNodeInfoFromIDAndName(
+			testNodeInfoFromIDAndName(
 				PubKeyToID(ed25519.GenPrivKey().PubKey()),
 				"slow_peer",
 			))
@@ -306,7 +306,7 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 		var (
 			pv     = ed25519.GenPrivKey()
 			dialer = NewMultiplexTransport(
-				randNodeInfoFromIDAndName(PubKeyToID(pv.PubKey()), ""), // Should not be empty
+				testNodeInfoFromIDAndName(PubKeyToID(pv.PubKey()), ""), // Should not be empty
 				NodeKey{
 					PrivKey: pv,
 				},
@@ -349,7 +349,7 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 
 	go func() {
 		dialer := NewMultiplexTransport(
-			randNodeInfoFromIDAndName(
+			testNodeInfoFromIDAndName(
 				PubKeyToID(ed25519.GenPrivKey().PubKey()), "dialer",
 			),
 			NodeKey{
@@ -395,7 +395,7 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 		var (
 			pv     = ed25519.GenPrivKey()
 			dialer = NewMultiplexTransport(
-				randNodeInfoFromIDNameNetwork(PubKeyToID(pv.PubKey()), "dialer", "incompatible-network"),
+				testNodeInfoFromIDNameNetwork(PubKeyToID(pv.PubKey()), "dialer", "incompatible-network"),
 				NodeKey{
 					PrivKey: pv,
 				},
@@ -503,7 +503,7 @@ func TestTransportHandshake(t *testing.T) {
 
 	var (
 		peerPV       = ed25519.GenPrivKey()
-		peerNodeInfo = randNodeInfoFromID(PubKeyToID(peerPV.PubKey()))
+		peerNodeInfo = testNodeInfoFromID(PubKeyToID(peerPV.PubKey()))
 	)
 
 	go func() {
@@ -552,7 +552,7 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 	var (
 		pv = ed25519.GenPrivKey()
 		mt = NewMultiplexTransport(
-			randNodeInfoFromIDAndName(
+			testNodeInfoFromIDAndName(
 				PubKeyToID(pv.PubKey()), "transport",
 			),
 			NodeKey{
@@ -615,15 +615,15 @@ func (c *testTransportConn) Write(_ []byte) (int, error) {
 //----------------------------------------------------------------
 // rand node info for tests
 
-func randNodeInfoFromID(id ID) NodeInfo {
-	return randNodeInfoFromIDAndName(id, "host_peer")
+func testNodeInfoFromID(id ID) NodeInfo {
+	return testNodeInfoFromIDAndName(id, "host_peer")
 }
 
-func randNodeInfoFromIDAndName(id ID, name string) NodeInfo {
-	return randNodeInfoFromIDNameNetwork(id, name, "testing")
+func testNodeInfoFromIDAndName(id ID, name string) NodeInfo {
+	return testNodeInfoFromIDNameNetwork(id, name, "testing")
 }
 
-func randNodeInfoFromIDNameNetwork(id ID, name, network string) NodeInfo {
+func testNodeInfoFromIDNameNetwork(id ID, name, network string) NodeInfo {
 	return DefaultNodeInfo{
 		ID_:        id,
 		ListenAddr: fmt.Sprintf("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),

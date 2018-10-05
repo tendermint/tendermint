@@ -123,11 +123,8 @@ func TestSwitches(t *testing.T) {
 	ch2Msg := []byte("channel bar")
 
 	bch := s1.Broadcast(byte(0x00), ch0Msg)
-	<-bch
 	bch = s1.Broadcast(byte(0x01), ch1Msg)
-	<-bch
 	bch = s1.Broadcast(byte(0x02), ch2Msg)
-	<-bch
 
 	assertMsgReceivedWithTimeout(t, ch0Msg, byte(0x00), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 	assertMsgReceivedWithTimeout(t, ch1Msg, byte(0x01), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
