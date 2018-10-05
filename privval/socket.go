@@ -18,11 +18,11 @@ import (
 )
 
 const (
-	defaultAcceptDeadlineSeconds = 3
-	defaultConnDeadlineSeconds   = 3
-	defaultConnHeartBeatSeconds  = 30
-	defaultConnWaitSeconds       = 60
-	defaultDialRetries           = 10
+	defaultAcceptDeadlineSeconds = 30 // tendermint waits this long for remote val to connect
+	defaultConnDeadlineSeconds   = 3  // must be set before each read
+	defaultConnHeartBeatSeconds  = 30 // tcp keep-alive period
+	defaultConnWaitSeconds       = 60 // XXX: is this redundant with the accept deadline?
+	defaultDialRetries           = 10 // try to connect to tendermint this many times
 )
 
 // Socket errors.
@@ -31,12 +31,6 @@ var (
 	ErrConnWaitTimeout    = errors.New("waited for remote signer for too long")
 	ErrConnTimeout        = errors.New("remote signer timed out")
 	ErrUnexpectedResponse = errors.New("received unexpected response")
-)
-
-var (
-	acceptDeadline = time.Second * defaultAcceptDeadlineSeconds
-	connDeadline   = time.Second * defaultConnDeadlineSeconds
-	connHeartbeat  = time.Second * defaultConnHeartBeatSeconds
 )
 
 // SocketPVOption sets an optional parameter on the SocketPV.
@@ -93,9 +87,9 @@ func NewSocketPV(
 ) *SocketPV {
 	sc := &SocketPV{
 		addr:            socketAddr,
-		acceptDeadline:  acceptDeadline,
-		connDeadline:    connDeadline,
-		connHeartbeat:   connHeartbeat,
+		acceptDeadline:  time.Second * defaultAcceptDeadlineSeconds,
+		connDeadline:    time.Second * defaultConnDeadlineSeconds,
+		connHeartbeat:   time.Second * defaultConnHeartBeatSeconds,
 		connWaitTimeout: time.Second * defaultConnWaitSeconds,
 		privKey:         privKey,
 	}
@@ -441,7 +435,7 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 			continue
 		}
 
-		if err := conn.SetDeadline(time.Now().Add(connDeadline)); err != nil {
+		if err := conn.SetDeadline(time.Now().Add(time.Second * defaultConnDeadlineSeconds)); err != nil {
 			err = cmn.ErrorWrap(err, "setting connection timeout failed")
 			rs.Logger.Error(
 				"connect",
@@ -587,6 +581,14 @@ type RemoteSignerError struct {
 
 func readMsg(r io.Reader) (msg SocketPVMsg, err error) {
 	const maxSocketPVMsgSize = 1024 * 10
+
+	// set deadline before trying to read
+	conn := r.(net.Conn)
+	if err := conn.SetDeadline(time.Now().Add(time.Second * defaultConnDeadlineSeconds)); err != nil {
+		err = cmn.ErrorWrap(err, "setting connection timeout failedin readMsg")
+		return msg, err
+	}
+
 	_, err = cdc.UnmarshalBinaryReader(r, &msg, maxSocketPVMsgSize)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
