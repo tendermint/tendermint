@@ -33,3 +33,7 @@ fi
 echo
 echo "* [$(date +"%T")] running p2p tests on a local docker network"
 bash "$DIR/../p2p/test.sh" tester
+
+echo
+echo "* [$(date +"%T")] copying log files out of docker container in $LOGS_DIR"
+docker cp rsyslog:/var/log $LOGS_DIR
