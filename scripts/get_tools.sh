@@ -16,7 +16,7 @@ mkdir -p mitchellh
 cd mitchellh
 if cd gox; then git fetch origin; else git clone https://github.com/mitchellh/gox.git; cd gox; fi
 git checkout -q 51ed453898ca5579fea9ad1f08dff6b121d9f2e8
-go build
+go install
 cd ../../
 
 ## install dep
@@ -25,7 +25,7 @@ cd golang
 if cd dep; then git fetch origin; else git clone https://github.com/golang/dep.git; cd dep; fi
 git checkout -q 22125cfaa6ddc71e145b1535d4b7ee9744fefff2
 cd cmd/dep
-go build
+go install
 cd ../../../../
 
 ## install gometalinter v2.0.11
@@ -33,7 +33,7 @@ mkdir -p alecthomas
 cd alecthomas
 if cd gometalinter; then git fetch origin; else git clone https://github.com/alecthomas/gometalinter.git; cd gometalinter; fi
 git checkout -q 17a7ffa42374937bfecabfb8d2efbd4db0c26741
-go build
+go install
 cd ../../
 
 ## install protoc-gen-gogo
@@ -42,7 +42,7 @@ cd gogo
 if cd protobuf; then git fetch origin; else git clone https://github.com/gogo/protobuf.git; cd protobuf; fi
 git checkout -q 61dbc136cf5d2f08d68a011382652244990a53a9
 cd protoc-gen-gogo
-go build
+go install
 cd ../../../
 
 ## install certstrap
@@ -50,7 +50,7 @@ mkdir -p square
 cd square
 if cd certstrap; then git fetch origin; else git clone https://github.com/square/certstrap.git; cd certstrap; fi
 git checkout -q e27060a3643e814151e65b9807b6b06d169580a7
-go build
+go install
 cd ../../
 
 popd
