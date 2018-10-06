@@ -585,7 +585,7 @@ func readMsg(r io.Reader) (msg SocketPVMsg, err error) {
 	// set deadline before trying to read
 	conn := r.(net.Conn)
 	if err := conn.SetDeadline(time.Now().Add(time.Second * defaultConnDeadlineSeconds)); err != nil {
-		err = cmn.ErrorWrap(err, "setting connection timeout failedin readMsg")
+		err = cmn.ErrorWrap(err, "setting connection timeout failed in readMsg")
 		return msg, err
 	}
 
