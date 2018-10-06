@@ -49,6 +49,7 @@ func TestNewNetAddressStringWithOptionalID(t *testing.T) {
 
 		{"tcp://@127.0.0.1:8080", "", false},
 		{"tcp://@", "", false},
+		{"tcp://:26656", "", false},
 		{"", "", false},
 		{"@", "", false},
 		{" @", "", false},
