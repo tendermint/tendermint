@@ -26,7 +26,7 @@ BREAKING CHANGES:
 
 * Blockchain Protocol
   * [types] \#2459 `Vote`/`Proposal`/`Heartbeat` use amino encoding instead of JSON in `SignBytes`.
-  * [types] \#2512 Remove the pubkey field from the validator hash 
+  * [types] \#2512 Remove the pubkey field from the validator hash
 
 * P2P Protocol
 
@@ -41,9 +41,11 @@ IMPROVEMENTS:
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
-- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for 
+- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for
 timeoutPrecommit before starting next round
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function
 - [common/bit_array] Fixed a bug in the `Sub` function (@bradyjoestar)
-- [common] \#2534 make bit array's PickRandom choose uniformly from true bits
+- [common] \#2534 Make bit array's PickRandom choose uniformly from true bits
+- [consensus] \#1637 Limit the amount of evidence that can be included in a
+  block
