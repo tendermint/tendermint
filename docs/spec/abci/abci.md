@@ -29,9 +29,14 @@ Some methods (`Echo, Info, InitChain, BeginBlock, EndBlock, Commit`),
 don't return errors because an error would indicate a critical failure
 in the application and there's nothing Tendermint can do. The problem
 should be addressed and both Tendermint and the application restarted.
+
 All other methods (`SetOption, Query, CheckTx, DeliverTx`) return an
 application-specific response `Code uint32`, where only `0` is reserved
 for `OK`.
+
+Finally, `Query`, `CheckTx`, and `DeliverTx` include a `Codespace string`, whose
+intended use is to disambiguate `Code` values returned by different domains of the
+application. The `Codespace` is a namespace for the `Code`.
 
 ## Tags
 
@@ -215,6 +220,7 @@ Commit are included in the header of the next block.
     Note that this is the height of the block containing the
     application's Merkle root hash, which represents the state as it
     was after committing the block at Height-1
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - Query for data from the application at current or past height.
   - Optionally return Merkle proof.
@@ -257,6 +263,7 @@ Commit are included in the header of the next block.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - Technically optional - not involved in processing blocks.
   - Guardian of the mempool: every node runs CheckTx before letting a
@@ -284,6 +291,7 @@ Commit are included in the header of the next block.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - The workhorse of the application - non-optional.
   - Execute the transaction in full.
