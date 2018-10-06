@@ -301,6 +301,8 @@ jobs:
       - run: mkdir -p $GOPATH/src/github.com/tendermint
       - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
       - run: bash test/p2p/circleci.sh
+      - store_artifacts:
+          path: $GOPATH/src/github.com/tendermint/tendermint/test/logs
 
   upload_coverage:
     <<: *defaults
