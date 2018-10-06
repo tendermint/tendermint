@@ -50,10 +50,13 @@ func TestNewNetAddressStringWithOptionalID(t *testing.T) {
 
 		{"no node id when expected", "tcp://@127.0.0.1:8080", "", false},
 		{"no node id or IP", "tcp://@", "", false},
+    {"tcp://:26656", "", false},
 		{"empty", "", "", false},
 		{"node id delimiter 1", "@", "", false},
 		{"node id delimiter 2", " @", "", false},
 		{"node id delimiter 3", " @ ", "", false},
+
+
 	}
 
 	for _, tc := range testCases {
