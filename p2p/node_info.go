@@ -20,7 +20,7 @@ func MaxNodeInfoSize() int {
 
 type NodeInfo interface {
 	ID() ID
-	Validate() error
+	ValidateBasic() error
 	CompatibleWith(other NodeInfo) error
 	NetAddress() *NetAddress
 	String() string
@@ -72,7 +72,7 @@ func (info DefaultNodeInfo) ID() ID {
 	return info.ID_
 }
 
-// Validate checks the self-reported DefaultNodeInfo is safe.
+// ValidateBasic checks the self-reported DefaultNodeInfo is safe.
 // It returns an error if there
 // are too many Channels, if there are any duplicate Channels,
 // if the ListenAddr is malformed, or if the ListenAddr is a host name
@@ -85,7 +85,7 @@ func (info DefaultNodeInfo) ID() ID {
 // International clients could then use punycode (or we could use
 // url-encoding), and we just need to be careful with how we handle that in our
 // clients. (e.g. off by default).
-func (info DefaultNodeInfo) Validate() error {
+func (info DefaultNodeInfo) ValidateBasic() error {
 	if len(info.Channels) > maxNumChannels {
 		return fmt.Errorf("info.Channels is too long (%v). Max is %v", len(info.Channels), maxNumChannels)
 	}

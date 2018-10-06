@@ -187,16 +187,9 @@ func MakeSwitch(
 ) *Switch {
 	ni, nodeKey := testRandNodeInfo(i, network, version)
 
-	//addr := ni.NetAddress()
-	addr, err := NewNetAddressStringWithOptionalID(
-		IDAddressString(nodeKey.ID(), ni.(DefaultNodeInfo).ListenAddr),
-	)
-	if err != nil {
-		panic(err)
-	}
-
 	t := NewMultiplexTransport(ni, nodeKey)
 
+	addr := ni.NetAddress()
 	if err := t.Listen(*addr); err != nil {
 		panic(err)
 	}
