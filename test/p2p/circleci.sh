@@ -6,7 +6,7 @@ SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ] ; do SOURCE="$(readlink "$SOURCE")"; done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-LOGS_DIR="$DIR/../logs"
+LOGS_DIR="$DIR/logs"
 echo
 echo "* [$(date +"%T")] cleaning up $LOGS_DIR"
 rm -rf "$LOGS_DIR"
@@ -35,5 +35,5 @@ echo "* [$(date +"%T")] running p2p tests on a local docker network"
 bash "$DIR/../p2p/test.sh" tester
 
 echo
-echo "* [$(date +"%T")] copying log files out of docker container in $LOGS_DIR"
+echo "* [$(date +"%T")] copying log files out of docker container into $LOGS_DIR"
 docker cp rsyslog:/var/log $LOGS_DIR
