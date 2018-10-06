@@ -26,7 +26,7 @@ BREAKING CHANGES:
 
 * Blockchain Protocol
   * [types] \#2459 `Vote`/`Proposal`/`Heartbeat` use amino encoding instead of JSON in `SignBytes`.
-  * [types] \#2512 Remove the pubkey field from the validator hash 
+  * [types] \#2512 Remove the pubkey field from the validator hash
 
 * P2P Protocol
 
@@ -37,11 +37,13 @@ IMPROVEMENTS:
 - [consensus] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
 - [p2p] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
 - [config] \#2232 added ValidateBasic method, which performs basic checks
+- [crypto/ed25519] \#2558 Switch to use latest `golang.org/x/crypto` through our fork at
+  github.com/tendermint/crypto
 
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
-- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for 
+- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for
 timeoutPrecommit before starting next round
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function
