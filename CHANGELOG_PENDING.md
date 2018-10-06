@@ -26,12 +26,13 @@ BREAKING CHANGES:
 
 * Blockchain Protocol
   * [types] \#2459 `Vote`/`Proposal`/`Heartbeat` use amino encoding instead of JSON in `SignBytes`.
-  * [types] \#2512 Remove the pubkey field from the validator hash 
+  * [types] \#2512 Remove the pubkey field from the validator hash
 
 * P2P Protocol
 
 FEATURES:
 - [crypto/merkle] \#2298 General Merkle Proof scheme for chaining various types of Merkle trees together
+- [abci] \#2557 Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
 
 IMPROVEMENTS:
 - [consensus] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
@@ -41,7 +42,7 @@ IMPROVEMENTS:
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
-- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for 
+- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for
 timeoutPrecommit before starting next round
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function
