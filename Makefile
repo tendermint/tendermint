@@ -80,8 +80,8 @@ get_tools:
 	$(GOPATH)/src/github.com/alecthomas/gometalinter/scripts/install.sh -b $(GOBIN)
 
 update_tools:
-	@echo "--> Updating tools to their latest versions, not the recommended versions"
-	go get -u -v $(GOTOOLS)
+	@echo "--> Updating tools"
+	./scripts/get_tools.sh
 
 #Update dependencies
 get_vendor_deps:
