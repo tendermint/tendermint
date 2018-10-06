@@ -29,7 +29,8 @@ func TestSimpleWithKDF(t *testing.T) {
 
 	plaintext := []byte("sometext")
 	secretPass := []byte("somesecret")
-	secret, err := bcrypt.GenerateFromPassword(secretPass, 12)
+	salt := []byte("somesaltsomesalt") // len 16
+	secret, err := bcrypt.GenerateFromPassword(salt, secretPass, 12)
 	if err != nil {
 		t.Error(err)
 	}
