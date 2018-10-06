@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # This file downloads all of the binary dependencies we have,
 # and checks out a specific git hash.
 #
@@ -8,7 +9,7 @@
 # github.com/gogo/protobuf/protoc-gen-gogo
 # github.com/square/certstrap
 
-cd $GOPATH/src/github.com
+pushd "$GOPATH/src/github.com"
 
 ## install gox
 mkdir -p mitchellh
@@ -27,11 +28,11 @@ cd cmd/dep
 go build
 cd ../../../../
 
-## install gometalinter
+## install gometalinter v2.0.11
 mkdir -p alecthomas
 cd alecthomas
 if cd gometalinter; then git fetch origin; else git clone https://github.com/alecthomas/gometalinter.git; cd gometalinter; fi
-git checkout -q 8edca99e8a88355e29f550113bcba6ecfa39ae11
+git checkout -q 17a7ffa42374937bfecabfb8d2efbd4db0c26741
 go build
 cd ../../
 
@@ -52,4 +53,4 @@ git checkout -q e27060a3643e814151e65b9807b6b06d169580a7
 go build
 cd ../../
 
-cd $GOPATH/src/github.com/tendermint/tendermint
+popd

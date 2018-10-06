@@ -10,7 +10,7 @@ INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protob
 BUILD_TAGS?='tendermint'
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
-LINT_FLAGS = --exclude '.*\.pb\.go' --vendor --deadline=600s
+LINT_FLAGS = --exclude '.*\.pb\.go' --exclude 'vendor/*' --vendor --deadline=600s
 
 all: check build test install
 
@@ -77,7 +77,7 @@ get_tools:
 	@echo "--> Installing tools"
 	./scripts/get_tools.sh
 	@echo "--> Downloading linters (this may take awhile)"
-	./../../alecthomas/gometalinter/scripts/install.sh -b $(GOBIN)
+	$(GOPATH)/src/github.com/alecthomas/gometalinter/scripts/install.sh -b $(GOBIN)
 
 update_tools:
 	@echo "--> Updating tools to their latest versions, not the recommended versions"
