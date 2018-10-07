@@ -36,50 +36,22 @@ var (
 
 var (
 	acceptDeadline = time.Second * defaultAcceptDeadlineSeconds
-	connDeadline   = time.Second * defaultConnDeadlineSeconds
+	connTimeout    = time.Second * defaultConnDeadlineSeconds
 	connHeartbeat  = time.Second * defaultConnHeartBeatSeconds
 )
-
-// SocketPVOption sets an optional parameter on the SocketPV.
-type SocketPVOption func(*SocketPV)
-
-// SocketPVAcceptDeadline sets the deadline for the SocketPV listener.
-// A zero time value disables the deadline.
-func SocketPVAcceptDeadline(deadline time.Duration) SocketPVOption {
-	return func(sc *SocketPV) { sc.acceptDeadline = deadline }
-}
-
-// SocketPVConnDeadline sets the read and write deadline for connections
-// from external signing processes.
-func SocketPVConnDeadline(deadline time.Duration) SocketPVOption {
-	return func(sc *SocketPV) { sc.connDeadline = deadline }
-}
-
-// SocketPVHeartbeat sets the period on which to check the liveness of the
-// connected Signer connections.
-func SocketPVHeartbeat(period time.Duration) SocketPVOption {
-	return func(sc *SocketPV) { sc.connHeartbeat = period }
-}
-
-// SocketPVConnWait sets the timeout duration before connection of external
-// signing processes are considered to be unsuccessful.
-func SocketPVConnWait(timeout time.Duration) SocketPVOption {
-	return func(sc *SocketPV) { sc.connWaitTimeout = timeout }
-}
 
 // SocketPV implements PrivValidator, it uses a socket to request signatures
 // from an external process.
 type SocketPV struct {
 	cmn.BaseService
+	*RemoteSignerClient
 
 	addr            string
 	acceptDeadline  time.Duration
-	connDeadline    time.Duration
-	connHeartbeat   time.Duration
+	connTimeout     time.Duration
 	connWaitTimeout time.Duration
 	privKey         ed25519.PrivKeyEd25519
 
-	conn       net.Conn
 	listener   net.Listener
 	lock       sync.Mutex
 	cancelPing chan bool
@@ -97,175 +69,15 @@ func NewSocketPV(
 	sc := &SocketPV{
 		addr:            socketAddr,
 		acceptDeadline:  acceptDeadline,
-		connDeadline:    connDeadline,
-		connHeartbeat:   connHeartbeat,
+		connTimeout:     connTimeout,
 		connWaitTimeout: time.Second * defaultConnWaitSeconds,
 		privKey:         privKey,
 	}
 
 	sc.BaseService = *cmn.NewBaseService(logger, "SocketPV", sc)
+	sc.RemoteSignerClient = NewRemoteSignerClient(sc.Logger, nil)
 
 	return sc
-}
-
-// GetAddress implements PrivValidator.
-func (sc *SocketPV) GetAddress() types.Address {
-	addr, err := sc.getAddress()
-	if err != nil {
-		panic(err)
-	}
-
-	return addr
-}
-
-// Address is an alias for PubKey().Address().
-func (sc *SocketPV) getAddress() (cmn.HexBytes, error) {
-	p, err := sc.getPubKey()
-	if err != nil {
-		return nil, err
-	}
-
-	return p.Address(), nil
-}
-
-// GetPubKey implements PrivValidator.
-func (sc *SocketPV) GetPubKey() crypto.PubKey {
-	pubKey, err := sc.getPubKey()
-	if err != nil {
-		panic(err)
-	}
-
-	return pubKey
-}
-
-func (sc *SocketPV) getPubKey() (crypto.PubKey, error) {
-	sc.lock.Lock()
-	defer sc.lock.Unlock()
-
-	err := writeMsg(sc.conn, &PubKeyMsg{})
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := readMsg(sc.conn)
-	if err != nil {
-		return nil, err
-	}
-
-	return res.(*PubKeyMsg).PubKey, nil
-}
-
-// SignVote implements PrivValidator.
-func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
-	sc.lock.Lock()
-	defer sc.lock.Unlock()
-
-	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
-	if err != nil {
-		return err
-	}
-
-	res, err := readMsg(sc.conn)
-	if err != nil {
-		return err
-	}
-
-	resp, ok := res.(*SignedVoteResponse)
-	if !ok {
-		return ErrUnexpectedResponse
-	}
-	if resp.Error != nil {
-		return fmt.Errorf("remote error occurred: code: %v, description: %s",
-			resp.Error.Code,
-			resp.Error.Description)
-	}
-	*vote = *resp.Vote
-
-	return nil
-}
-
-// SignProposal implements PrivValidator.
-func (sc *SocketPV) SignProposal(
-	chainID string,
-	proposal *types.Proposal,
-) error {
-	sc.lock.Lock()
-	defer sc.lock.Unlock()
-
-	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
-	if err != nil {
-		return err
-	}
-
-	res, err := readMsg(sc.conn)
-	if err != nil {
-		return err
-	}
-	resp, ok := res.(*SignedProposalResponse)
-	if !ok {
-		return ErrUnexpectedResponse
-	}
-	if resp.Error != nil {
-		return fmt.Errorf("remote error occurred: code: %v, description: %s",
-			resp.Error.Code,
-			resp.Error.Description)
-	}
-	*proposal = *resp.Proposal
-
-	return nil
-}
-
-// SignHeartbeat implements PrivValidator.
-func (sc *SocketPV) SignHeartbeat(
-	chainID string,
-	heartbeat *types.Heartbeat,
-) error {
-	sc.lock.Lock()
-	defer sc.lock.Unlock()
-
-	err := writeMsg(sc.conn, &SignHeartbeatRequest{Heartbeat: heartbeat})
-	if err != nil {
-		return err
-	}
-
-	res, err := readMsg(sc.conn)
-	if err != nil {
-		return err
-	}
-	resp, ok := res.(*SignedHeartbeatResponse)
-	if !ok {
-		return ErrUnexpectedResponse
-	}
-	if resp.Error != nil {
-		return fmt.Errorf("remote error occurred: code: %v, description: %s",
-			resp.Error.Code,
-			resp.Error.Description)
-	}
-	*heartbeat = *resp.Heartbeat
-
-	return nil
-}
-
-// Ping is used to check connection health.
-func (sc *SocketPV) Ping() error {
-	sc.lock.Lock()
-	defer sc.lock.Unlock()
-
-	err := writeMsg(sc.conn, &PingRequest{})
-	if err != nil {
-		return err
-	}
-
-	res, err := readMsg(sc.conn)
-	if err != nil {
-		return err
-	}
-	_, ok := res.(*PingResponse)
-	if !ok {
-		return ErrUnexpectedResponse
-	}
-
-	return nil
 }
 
 // OnStart implements cmn.Service.
@@ -290,37 +102,30 @@ func (sc *SocketPV) OnStart() error {
 		return err
 	}
 
-	// Start a routine to keep the connection alive
-	sc.cancelPing = make(chan bool, 1)
-	go func() {
-		for {
-			select {
-			case <-time.Tick(sc.connHeartbeat):
-				err := sc.Ping()
-				if err != nil {
-					sc.Logger.Error(
-						"Ping",
-						"err", err,
-					)
-				}
-			case <-sc.cancelPing:
-				return
-			}
-		}
-	}()
-
 	sc.conn = conn
+
+	err = sc.RemoteSignerClient.Start()
+	if err != nil {
+		err = cmn.ErrorWrap(err, "failed to start RemoteSignerClient")
+		sc.Logger.Error(
+			"OnStart",
+			"err", err,
+		)
+
+		return err
+	}
 
 	return nil
 }
 
 // OnStop implements cmn.Service.
 func (sc *SocketPV) OnStop() {
-	if sc.cancelPing != nil {
-		select {
-		case sc.cancelPing <- true:
-		default:
-		}
+	if err := sc.RemoteSignerClient.Stop(); err != nil {
+		err = cmn.ErrorWrap(err, "failed to stop RemoteSignerClient")
+		sc.Logger.Error(
+			"OnStop",
+			"err", err,
+		)
 	}
 
 	if sc.conn != nil {
@@ -371,7 +176,7 @@ func (sc *SocketPV) listen() error {
 	sc.listener = newTCPTimeoutListener(
 		ln,
 		sc.acceptDeadline,
-		sc.connDeadline,
+		sc.connTimeout,
 		sc.connHeartbeat,
 	)
 
@@ -504,7 +309,7 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 			continue
 		}
 
-		if err := conn.SetDeadline(time.Now().Add(connDeadline)); err != nil {
+		if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
 			err = cmn.ErrorWrap(err, "setting connection timeout failed")
 			rs.Logger.Error(
 				"connect",
@@ -547,39 +352,7 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 			return
 		}
 
-		var res SocketPVMsg
-
-		switch r := req.(type) {
-		case *PubKeyMsg:
-			var p crypto.PubKey
-			p = rs.privVal.GetPubKey()
-			res = &PubKeyMsg{p}
-		case *SignVoteRequest:
-			err = rs.privVal.SignVote(rs.chainID, r.Vote)
-			if err != nil {
-				res = &SignedVoteResponse{nil, &RemoteSignerError{0, err.Error()}}
-			} else {
-				res = &SignedVoteResponse{r.Vote, nil}
-			}
-		case *SignProposalRequest:
-			err = rs.privVal.SignProposal(rs.chainID, r.Proposal)
-			if err != nil {
-				res = &SignedProposalResponse{nil, &RemoteSignerError{0, err.Error()}}
-			} else {
-				res = &SignedProposalResponse{r.Proposal, nil}
-			}
-		case *SignHeartbeatRequest:
-			err = rs.privVal.SignHeartbeat(rs.chainID, r.Heartbeat)
-			if err != nil {
-				res = &SignedHeartbeatResponse{nil, &RemoteSignerError{0, err.Error()}}
-			} else {
-				res = &SignedHeartbeatResponse{r.Heartbeat, nil}
-			}
-		case *PingRequest:
-			res = &PingResponse{}
-		default:
-			err = fmt.Errorf("unknown msg: %v", r)
-		}
+		res, err := handleRequest(req, rs.chainID, rs.privVal)
 
 		if err != nil {
 			// only log the error; we'll reply with an error in res
@@ -592,6 +365,45 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 			return
 		}
 	}
+}
+
+func handleRequest(req SocketPVMsg, chainID string, privVal types.PrivValidator) (SocketPVMsg, error) {
+	var res SocketPVMsg
+	var err error
+
+	switch r := req.(type) {
+	case *PubKeyMsg:
+		var p crypto.PubKey
+		p = privVal.GetPubKey()
+		res = &PubKeyMsg{p}
+	case *SignVoteRequest:
+		err = privVal.SignVote(chainID, r.Vote)
+		if err != nil {
+			res = &SignedVoteResponse{nil, &RemoteSignerError{0, err.Error()}}
+		} else {
+			res = &SignedVoteResponse{r.Vote, nil}
+		}
+	case *SignProposalRequest:
+		err = privVal.SignProposal(chainID, r.Proposal)
+		if err != nil {
+			res = &SignedProposalResponse{nil, &RemoteSignerError{0, err.Error()}}
+		} else {
+			res = &SignedProposalResponse{r.Proposal, nil}
+		}
+	case *SignHeartbeatRequest:
+		err = privVal.SignHeartbeat(chainID, r.Heartbeat)
+		if err != nil {
+			res = &SignedHeartbeatResponse{nil, &RemoteSignerError{0, err.Error()}}
+		} else {
+			res = &SignedHeartbeatResponse{r.Heartbeat, nil}
+		}
+	case *PingRequest:
+		res = &PingResponse{}
+	default:
+		err = fmt.Errorf("unknown msg: %v", r)
+	}
+
+	return res, err
 }
 
 //---------------------------------------------------------

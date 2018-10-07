@@ -104,14 +104,14 @@ func TestSocketPVVoteResetDeadline(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	time.Sleep(800 * time.Microsecond)
+	time.Sleep(3 * time.Millisecond)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
 	assert.Equal(t, want.Signature, have.Signature)
 
 	// This would exceed the deadline if it was not extended by the previous message
-	time.Sleep(800 * time.Microsecond)
+	time.Sleep(3 * time.Millisecond)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
@@ -131,7 +131,7 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	time.Sleep(2 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
@@ -154,21 +154,6 @@ func TestSocketPVHeartbeat(t *testing.T) {
 	assert.Equal(t, want.Signature, have.Signature)
 }
 
-func TestSocketPVAcceptDeadline(t *testing.T) {
-	var (
-		sc = NewSocketPV(
-			log.TestingLogger(),
-			"127.0.0.1:0",
-			ed25519.GenPrivKey(),
-		)
-	)
-	defer sc.Stop()
-
-	SocketPVAcceptDeadline(time.Millisecond)(sc)
-
-	assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnWaitTimeout)
-}
-
 func TestSocketPVDeadline(t *testing.T) {
 	var (
 		addr    = testFreeAddr(t)
@@ -180,8 +165,8 @@ func TestSocketPVDeadline(t *testing.T) {
 		)
 	)
 
-	SocketPVConnDeadline(100 * time.Millisecond)(sc)
-	SocketPVConnWait(500 * time.Millisecond)(sc)
+	sc.connTimeout = 100 * time.Millisecond
+	sc.connWaitTimeout = 500 * time.Millisecond
 
 	go func(sc *SocketPV) {
 		defer close(listenc)
@@ -210,19 +195,6 @@ func TestSocketPVDeadline(t *testing.T) {
 
 	_, err := sc.getPubKey()
 	assert.Equal(t, err.(cmn.Error).Data(), ErrConnTimeout)
-}
-
-func TestSocketPVWait(t *testing.T) {
-	sc := NewSocketPV(
-		log.TestingLogger(),
-		"127.0.0.1:0",
-		ed25519.GenPrivKey(),
-	)
-	defer sc.Stop()
-
-	SocketPVConnWait(time.Millisecond)(sc)
-
-	assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnWaitTimeout)
 }
 
 func TestRemoteSignerRetry(t *testing.T) {
@@ -447,12 +419,12 @@ func testSetupSocketPair(
 		)
 	)
 
-	testStartSocketPV(t, readyc, sc)
-
-	SocketPVConnDeadline(time.Millisecond)(sc)
-	SocketPVHeartbeat(500 * time.Microsecond)(sc)
-	RemoteSignerConnDeadline(time.Millisecond)(rs)
+	sc.connTimeout = 5 * time.Millisecond
+	sc.connHeartbeat = 2 * time.Millisecond
+	RemoteSignerConnDeadline(5 * time.Millisecond)(rs)
 	RemoteSignerConnRetries(1e6)(rs)
+
+	testStartSocketPV(t, readyc, sc)
 
 	require.NoError(t, rs.Start())
 	assert.True(t, rs.IsRunning())
