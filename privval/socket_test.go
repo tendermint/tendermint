@@ -91,6 +91,53 @@ func TestSocketPVVote(t *testing.T) {
 	assert.Equal(t, want.Signature, have.Signature)
 }
 
+func TestSocketPVVoteResetDeadline(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
+
+		ts    = time.Now()
+		vType = types.VoteTypePrecommit
+		want  = &types.Vote{Timestamp: ts, Type: vType}
+		have  = &types.Vote{Timestamp: ts, Type: vType}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	time.Sleep(800 * time.Microsecond)
+
+	require.NoError(t, rs.privVal.SignVote(chainID, want))
+	require.NoError(t, sc.SignVote(chainID, have))
+	assert.Equal(t, want.Signature, have.Signature)
+
+	// This would exceed the deadline if it was not extended by the previous message
+	time.Sleep(800 * time.Microsecond)
+
+	require.NoError(t, rs.privVal.SignVote(chainID, want))
+	require.NoError(t, sc.SignVote(chainID, have))
+	assert.Equal(t, want.Signature, have.Signature)
+}
+
+func TestSocketPVVoteKeepalive(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
+
+		ts    = time.Now()
+		vType = types.VoteTypePrecommit
+		want  = &types.Vote{Timestamp: ts, Type: vType}
+		have  = &types.Vote{Timestamp: ts, Type: vType}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	time.Sleep(2 * time.Millisecond)
+
+	require.NoError(t, rs.privVal.SignVote(chainID, want))
+	require.NoError(t, sc.SignVote(chainID, have))
+	assert.Equal(t, want.Signature, have.Signature)
+}
+
 func TestSocketPVHeartbeat(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
@@ -160,9 +207,6 @@ func TestSocketPVDeadline(t *testing.T) {
 	}
 
 	<-listenc
-
-	// Sleep to guarantee deadline has been hit.
-	time.Sleep(20 * time.Microsecond)
 
 	_, err := sc.getPubKey()
 	assert.Equal(t, err.(cmn.Error).Data(), ErrConnTimeout)
@@ -405,6 +449,8 @@ func testSetupSocketPair(
 
 	testStartSocketPV(t, readyc, sc)
 
+	SocketPVConnDeadline(time.Millisecond)(sc)
+	SocketPVHeartbeat(500 * time.Microsecond)(sc)
 	RemoteSignerConnDeadline(time.Millisecond)(rs)
 	RemoteSignerConnRetries(1e6)(rs)
 
