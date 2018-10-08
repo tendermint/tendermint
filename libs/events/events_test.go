@@ -17,6 +17,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
+	defer evsw.Stop()
 	messages := make(chan EventData)
 	evsw.AddListenerForEvent("listener", "event",
 		func(data EventData) {
@@ -37,6 +38,7 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
+	defer evsw.Stop()
 	doneSum := make(chan uint64)
 	doneSending := make(chan uint64)
 	numbers := make(chan uint64, 4)
@@ -66,6 +68,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
+	defer evsw.Stop()
 	doneSum := make(chan uint64)
 	doneSending1 := make(chan uint64)
 	doneSending2 := make(chan uint64)
@@ -111,6 +114,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
+	defer evsw.Stop()
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -162,6 +166,54 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	}
 }
 
+func TestAddAndRemoveListenerConcurrency(t *testing.T) {
+	var (
+		stopInputEvent = false
+		roundCount     = 2000
+	)
+
+	evsw := NewEventSwitch()
+	err := evsw.Start()
+	if err != nil {
+		t.Errorf("Failed to start EventSwitch, error: %v", err)
+	}
+	defer evsw.Stop()
+
+	done1 := make(chan struct{})
+	done2 := make(chan struct{})
+
+	go func() {
+		for i := 0; i < roundCount; i++ {
+			evsw.RemoveListener("listener")
+		}
+		done1 <- struct{}{}
+	}()
+
+	go func() {
+		for i := 0; i < roundCount; i++ {
+			index := i //it necessary for closure
+			evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
+				func(data EventData) {
+					t.Errorf("should not run callback for %d.\n", index)
+					stopInputEvent = true
+				})
+		}
+		done2 <- struct{}{}
+	}()
+
+	<-done1
+	<-done2
+
+	close(done1)
+	close(done2)
+
+	evsw.RemoveListener("listener") // make sure remove last
+
+	for i := 0; i < roundCount && !stopInputEvent; i++ {
+		evsw.FireEvent(fmt.Sprintf("event%d", i), uint64(1001))
+	}
+}
+
 // TestAddAndRemoveListener sets up an EventSwitch, subscribes a listener to
 // two events, fires a thousand integers for the first event, then unsubscribes
 // the listener and fires a thousand integers for the second event.
@@ -171,6 +223,7 @@ func TestAddAndRemoveListener(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
+	defer evsw.Stop()
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -216,6 +269,7 @@ func TestRemoveListener(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
+	defer evsw.Stop()
 	count := 10
 	sum1, sum2 := 0, 0
 	// add some listeners and make sure they work
@@ -269,6 +323,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
+	defer evsw.Stop()
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
 	doneSending1 := make(chan uint64)

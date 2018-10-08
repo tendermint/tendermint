@@ -4,15 +4,23 @@ Pub-Sub in go with event caching
 package events
 
 import (
+	"fmt"
 	"sync"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+type ErrListenerWasRemoved struct {
+	listener string
+}
+
+func (e ErrListenerWasRemoved) Error() string {
+	return fmt.Sprintf("listener %s was removed", e.listener)
+}
+
 // Generic event data can be typed and registered with tendermint/go-amino
 // via concrete implementation of this interface
 type EventData interface {
-	//AssertIsEventData()
 }
 
 // reactors and other modules should export
@@ -30,7 +38,7 @@ type EventSwitch interface {
 	cmn.Service
 	Fireable
 
-	AddListenerForEvent(listenerID, event string, cb EventCallback)
+	AddListenerForEvent(listenerID, event string, cb EventCallback) error
 	RemoveListenerForEvent(event string, listenerID string)
 	RemoveListener(listenerID string)
 }
@@ -58,7 +66,7 @@ func (evsw *eventSwitch) OnStart() error {
 
 func (evsw *eventSwitch) OnStop() {}
 
-func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventCallback) {
+func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventCallback) error {
 	// Get/Create eventCell and listener
 	evsw.mtx.Lock()
 	eventCell := evsw.eventCells[event]
@@ -74,8 +82,12 @@ func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventC
 	evsw.mtx.Unlock()
 
 	// Add event and listener
-	eventCell.AddListener(listenerID, cb)
-	listener.AddEvent(event)
+	err := listener.AddEvent(event)
+	if err == nil {
+		eventCell.AddListener(listenerID, cb)
+	}
+
+	return err
 }
 
 func (evsw *eventSwitch) RemoveListener(listenerID string) {
@@ -168,10 +180,15 @@ func (cell *eventCell) RemoveListener(listenerID string) int {
 
 func (cell *eventCell) FireEvent(data EventData) {
 	cell.mtx.RLock()
+	var listenerCopy []EventCallback
 	for _, listener := range cell.listeners {
-		listener(data)
+		listenerCopy = append(listenerCopy, listener)
 	}
 	cell.mtx.RUnlock()
+
+	for _, listener := range listenerCopy {
+		listener(data)
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -194,14 +211,16 @@ func newEventListener(id string) *eventListener {
 	}
 }
 
-func (evl *eventListener) AddEvent(event string) {
+func (evl *eventListener) AddEvent(event string) error {
 	evl.mtx.Lock()
 	defer evl.mtx.Unlock()
 
 	if evl.removed {
-		return
+		return ErrListenerWasRemoved{listener: evl.id}
 	}
+
 	evl.events = append(evl.events, event)
+	return nil
 }
 
 func (evl *eventListener) GetEvents() []string {
