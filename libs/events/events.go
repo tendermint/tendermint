@@ -81,9 +81,9 @@ func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventC
 	}
 	evsw.mtx.Unlock()
 
-	var err error
 	// Add event and listener
-	if err = listener.AddEvent(event); err == nil {
+	err := listener.AddEvent(event)
+	if err == nil {
 		eventCell.AddListener(listenerID, cb)
 	}
 
