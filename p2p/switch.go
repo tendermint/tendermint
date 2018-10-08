@@ -103,7 +103,7 @@ func NewSwitch(
 	sw.rng = cmn.NewRand()
 
 	mConfig := conn.DefaultMConnConfig()
-	mConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
+	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
 	mConfig.SendRate = cfg.SendRate
 	mConfig.RecvRate = cfg.RecvRate
 	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
