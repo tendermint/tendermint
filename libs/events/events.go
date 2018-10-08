@@ -10,12 +10,12 @@ import (
 
 // ErrListenerWasRemoved is returned by AddEvent if the listener was removed.
 type ErrListenerWasRemoved struct {
-	listener string
+	listenerID string
 }
 
 // Error implements the error interface.
 func (e ErrListenerWasRemoved) Error() string {
-	return fmt.Sprintf("listener %s was removed", e.listener)
+	return fmt.Sprintf("listener #%s was removed", e.listenerID)
 }
 
 // EventData is a generic event data can be typed and registered with
@@ -89,13 +89,13 @@ func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventC
 	}
 	evsw.mtx.Unlock()
 
-	// Add event and listener
-	err := listener.AddEvent(event)
-	if err == nil {
-		eventCell.AddListener(listenerID, cb)
+	// Add event and listener.
+	if err := listener.AddEvent(event); err != nil {
+		return err
 	}
+	eventCell.AddListener(listenerID, cb)
 
-	return err
+	return nil
 }
 
 func (evsw *eventSwitch) RemoveListener(listenerID string) {
@@ -188,14 +188,14 @@ func (cell *eventCell) RemoveListener(listenerID string) int {
 
 func (cell *eventCell) FireEvent(data EventData) {
 	cell.mtx.RLock()
-	var listenerCopy []EventCallback
-	for _, listener := range cell.listeners {
-		listenerCopy = append(listenerCopy, listener)
+	var eventCallbacks []EventCallback
+	for _, cb := range cell.listeners {
+		eventCallbacks = append(eventCallbacks, cb)
 	}
 	cell.mtx.RUnlock()
 
-	for _, listener := range listenerCopy {
-		listener(data)
+	for _, cb := range eventCallbacks {
+		cb(data)
 	}
 }
 
@@ -221,27 +221,27 @@ func newEventListener(id string) *eventListener {
 
 func (evl *eventListener) AddEvent(event string) error {
 	evl.mtx.Lock()
-	defer evl.mtx.Unlock()
 
 	if evl.removed {
-		return ErrListenerWasRemoved{listener: evl.id}
+		evl.mtx.Unlock()
+		return ErrListenerWasRemoved{listenerID: evl.id}
 	}
 
 	evl.events = append(evl.events, event)
+	evl.mtx.Unlock()
 	return nil
 }
 
 func (evl *eventListener) GetEvents() []string {
 	evl.mtx.RLock()
-	defer evl.mtx.RUnlock()
-
 	events := make([]string, len(evl.events))
 	copy(events, evl.events)
+	evl.mtx.RUnlock()
 	return events
 }
 
 func (evl *eventListener) SetRemoved() {
 	evl.mtx.Lock()
-	defer evl.mtx.Unlock()
 	evl.removed = true
+	evl.mtx.Unlock()
 }
