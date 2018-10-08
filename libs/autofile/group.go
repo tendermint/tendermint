@@ -280,7 +280,7 @@ func (g *Group) RotateFile() {
 	headPath := g.Head.Path
 
 	if err := g.headBuf.Flush(); err != nil {
-		panic(err) //panic is used for consistent with below
+		panic(err)
 	}
 
 	if err := g.Head.Sync(); err != nil {
@@ -293,12 +293,6 @@ func (g *Group) RotateFile() {
 
 	indexPath := filePathForIndex(headPath, g.maxIndex, g.maxIndex+1)
 	if err := os.Rename(headPath, indexPath); err != nil {
-		panic(err)
-	}
-
-	//make sure head file exist, there is a window time between rename and next write
-	//when NewReader(maxIndex), lead to "open /tmp/wal058868562/wal: no such file or directory"
-	if err := g.Head.openFile(); err != nil {
 		panic(err)
 	}
 
@@ -684,7 +678,6 @@ func (gr *GroupReader) ReadLine() (string, error) {
 // IF index > gr.Group.maxIndex, returns io.EOF
 // CONTRACT: caller should hold gr.mtx
 func (gr *GroupReader) openFile(index int) error {
-
 	// Lock on Group to ensure that head doesn't move in the meanwhile.
 	gr.Group.mtx.Lock()
 	defer gr.Group.mtx.Unlock()
@@ -694,7 +687,7 @@ func (gr *GroupReader) openFile(index int) error {
 	}
 
 	curFilePath := filePathForIndex(gr.Head.Path, index, gr.Group.maxIndex)
-	curFile, err := os.Open(curFilePath)
+	curFile, err := os.OpenFile(curFilePath, os.O_RDONLY|os.O_CREATE, autoFilePerms)
 	if err != nil {
 		return err
 	}

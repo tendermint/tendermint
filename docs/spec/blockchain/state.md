@@ -45,7 +45,7 @@ processing transactions, like gas variables and tags - see
 ### Validator
 
 A validator is an active participant in the consensus with a public key and a voting power.
-Validator's also contain an address which is derived from the PubKey:
+Validator's also contain an address field, which is a hash digest of the PubKey.
 
 ```go
 type Validator struct {
@@ -54,6 +54,9 @@ type Validator struct {
     VotingPower int64
 }
 ```
+
+When hashing the Validator struct, the pubkey is not hashed,
+because the address is already the hash of the pubkey.
 
 The `state.Validators`, `state.LastValidators`, and `state.NextValidators`, must always by sorted by validator address,
 so that there is a canonical order for computing the SimpleMerkleRoot.

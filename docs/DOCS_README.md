@@ -35,6 +35,8 @@ of the sidebar.
 **NOTE:** Strongly consider the existing links - both within this directory
 and to the website docs - when moving or deleting files.
 
+Links to directories *MUST* end in a `/`.
+
 Relative links should be used nearly everywhere, having discovered and weighed the following:
 
 ### Relative

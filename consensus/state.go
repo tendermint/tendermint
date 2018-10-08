@@ -1642,21 +1642,14 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		precommits := cs.Votes.Precommits(vote.Round)
 		cs.Logger.Info("Added to precommit", "vote", vote, "precommits", precommits.StringShort())
 		blockID, ok := precommits.TwoThirdsMajority()
-		if ok {
-			if len(blockID.Hash) == 0 {
-				cs.enterNewRound(height, vote.Round+1)
-			} else {
-				cs.enterNewRound(height, vote.Round)
-				cs.enterPrecommit(height, vote.Round)
-				cs.enterCommit(height, vote.Round)
+		if ok && len(blockID.Hash) != 0 {
+			// Executed as TwoThirdsMajority could be from a higher round
+			cs.enterNewRound(height, vote.Round)
+			cs.enterPrecommit(height, vote.Round)
+			cs.enterCommit(height, vote.Round)
 
-				if cs.config.SkipTimeoutCommit && precommits.HasAll() {
-					// if we have all the votes now,
-					// go straight to new round (skip timeout commit)
-					// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
-					cs.enterNewRound(cs.Height, 0)
-				}
-
+			if cs.config.SkipTimeoutCommit && precommits.HasAll() {
+				cs.enterNewRound(cs.Height, 0)
 			}
 		} else if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
 			cs.enterNewRound(height, vote.Round)

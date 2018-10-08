@@ -61,8 +61,8 @@ func IsVoteTypeValid(type_ byte) bool {
 	}
 }
 
-// Address is hex bytes. TODO: crypto.Address
-type Address = cmn.HexBytes
+// Address is hex bytes.
+type Address = crypto.Address
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {

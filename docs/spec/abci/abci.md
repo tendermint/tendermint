@@ -7,9 +7,9 @@ file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.pro
 
 ABCI methods are split across 3 separate ABCI *connections*:
 
-- `Consensus Connection: InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
-- `Mempool Connection: CheckTx`
-- `Info Connection: Info, SetOption, Query`
+- `Consensus Connection`: `InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
+- `Mempool Connection`: `CheckTx`
+- `Info Connection`: `Info, SetOption, Query`
 
 The `Consensus Connection` is driven by a consensus protocol and is responsible
 for block execution.
@@ -29,9 +29,14 @@ Some methods (`Echo, Info, InitChain, BeginBlock, EndBlock, Commit`),
 don't return errors because an error would indicate a critical failure
 in the application and there's nothing Tendermint can do. The problem
 should be addressed and both Tendermint and the application restarted.
+
 All other methods (`SetOption, Query, CheckTx, DeliverTx`) return an
 application-specific response `Code uint32`, where only `0` is reserved
 for `OK`.
+
+Finally, `Query`, `CheckTx`, and `DeliverTx` include a `Codespace string`, whose
+intended use is to disambiguate `Code` values returned by different domains of the
+application. The `Codespace` is a namespace for the `Code`.
 
 ## Tags
 
@@ -190,9 +195,9 @@ Commit are included in the header of the next block.
     of Path.
   - `Path (string)`: Path of request, like an HTTP GET path. Can be
     used with or in liue of Data.
-  - Apps MUST interpret '/store' as a query by key on the
+    - Apps MUST interpret '/store' as a query by key on the
     underlying store. The key SHOULD be specified in the Data field.
-  - Apps SHOULD allow queries over specific types like
+    - Apps SHOULD allow queries over specific types like
     '/accounts/...' or '/votes/...'
   - `Height (int64)`: The block height for which you want the query
     (default=0 returns data for the latest committed block). Note
@@ -209,15 +214,18 @@ Commit are included in the header of the next block.
   - `Index (int64)`: The index of the key in the tree.
   - `Key ([]byte)`: The key of the matching data.
   - `Value ([]byte)`: The value of the matching data.
-  - `Proof ([]byte)`: Serialized proof for the data, if requested, to be
+  - `Proof (Proof)`: Serialized proof for the value data, if requested, to be
     verified against the `AppHash` for the given Height.
   - `Height (int64)`: The block height from which data was derived.
     Note that this is the height of the block containing the
     application's Merkle root hash, which represents the state as it
     was after committing the block at Height-1
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - Query for data from the application at current or past height.
   - Optionally return Merkle proof.
+  - Merkle proof includes self-describing `type` field to support many types
+  of Merkle trees and encoding formats.
 
 ### BeginBlock
 
@@ -255,6 +263,7 @@ Commit are included in the header of the next block.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - Technically optional - not involved in processing blocks.
   - Guardian of the mempool: every node runs CheckTx before letting a
@@ -282,6 +291,7 @@ Commit are included in the header of the next block.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - The workhorse of the application - non-optional.
   - Execute the transaction in full.
@@ -413,3 +423,44 @@ Commit are included in the header of the next block.
   - `Round (int32)`: Commit round.
   - `Votes ([]VoteInfo)`: List of validators addresses in the last validator set
     with their voting power and whether or not they signed a vote.
+
+###  ConsensusParams
+
+- **Fields**:
+  - `BlockSize (BlockSize)`: Parameters limiting the size of a block.
+  - `EvidenceParams (EvidenceParams)`: Parameters limiting the validity of
+    evidence of byzantine behaviour.
+
+### BlockSize
+
+- **Fields**:
+  - `MaxBytes (int64)`: Max size of a block, in bytes.
+  - `MaxGas (int64)`: Max sum of `GasWanted` in a proposed block.
+    - NOTE: blocks that violate this may be committed if there are Byzantine proposers.
+        It's the application's responsibility to handle this when processing a
+        block!
+
+### EvidenceParams
+
+- **Fields**:
+  - `MaxAge (int64)`: Max age of evidence, in blocks. Evidence older than this
+    is considered stale and ignored.
+        - This should correspond with an app's "unbonding period" or other
+          similar mechanism for handling Nothing-At-Stake attacks.
+        - NOTE: this should change to time (instead of blocks)!
+
+### Proof
+
+- **Fields**:
+  - `Ops ([]ProofOp)`: List of chained Merkle proofs, of possibly different types
+    - The Merkle root of one op is the value being proven in the next op.
+    - The Merkle root of the final op should equal the ultimate root hash being
+      verified against.
+
+### ProofOp
+
+- **Fields**:
+  - `Type (string)`: Type of Merkle proof and how it's encoded.
+  - `Key ([]byte)`: Key in the Merkle tree that this proof is for.
+  - `Data ([]byte)`: Encoded Merkle proof for the key.
+

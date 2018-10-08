@@ -19,7 +19,7 @@ const (
 // StartProxy will start the websocket manager on the client,
 // set up the rpc routes to proxy via the given client,
 // and start up an http/rpc server on the location given by bind (eg. :1234)
-func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger) error {
+func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpenConnections int) error {
 	err := c.Start()
 	if err != nil {
 		return err
@@ -38,8 +38,7 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger) error 
 	core.SetLogger(logger)
 	mux.HandleFunc(wsEndpoint, wm.WebsocketHandler)
 
-	// TODO: limit max number of open connections rpc.Config{MaxOpenConnections: X}
-	_, err = rpc.StartHTTPServer(listenAddr, mux, logger, rpc.Config{})
+	_, err = rpc.StartHTTPServer(listenAddr, mux, logger, rpc.Config{MaxOpenConnections: maxOpenConnections})
 
 	return err
 }

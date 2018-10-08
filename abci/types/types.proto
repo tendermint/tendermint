@@ -157,6 +157,7 @@ message ResponseQuery {
   bytes value = 7;
   merkle.Proof proof = 8;
   int64 height = 9;
+  string codespace = 10;
 }
 
 message ResponseBeginBlock {
@@ -171,6 +172,7 @@ message ResponseCheckTx {
   int64 gas_wanted  = 5;
   int64 gas_used = 6;
   repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  string codespace = 8;
 }
 
 message ResponseDeliverTx {
@@ -181,6 +183,7 @@ message ResponseDeliverTx {
   int64 gas_wanted = 5;
   int64 gas_used = 6;
   repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  string codespace = 8;
 }
 
 message ResponseEndBlock {
