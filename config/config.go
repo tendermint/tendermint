@@ -405,7 +405,7 @@ func DefaultP2PConfig() *P2PConfig {
 func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://0.0.0.0:36656"
-	cfg.FlushThrottleTimeout = 10
+	cfg.FlushThrottleTimeout = 10 * time.Millisecond
 	cfg.AllowDuplicateIP = true
 	return cfg
 }

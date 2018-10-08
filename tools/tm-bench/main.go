@@ -4,16 +4,16 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-kit/kit/log/term"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
-	"os/signal"
-	"syscall"
 )
 
 var logger = log.NewNopLogger()
@@ -53,8 +53,7 @@ Examples:
 
 	if verbose {
 		if outputFormat == "json" {
-			fmt.Fprintln(os.Stderr, "Verbose mode not supported with json output.")
-			os.Exit(1)
+			printErrorAndExit("Verbose mode not supported with json output.")
 		}
 		// Color errors red
 		colorFn := func(keyvals ...interface{}) term.FgBgColor {
@@ -71,21 +70,13 @@ Examples:
 	}
 
 	if txSize < 40 {
-		fmt.Fprintln(
-			os.Stderr,
-			"The size of a transaction must be greater than or equal to 40.",
-		)
-		os.Exit(1)
+		printErrorAndExit("The size of a transaction must be greater than or equal to 40.")
 	}
 
 	if broadcastTxMethod != "async" &&
 		broadcastTxMethod != "sync" &&
 		broadcastTxMethod != "commit" {
-		fmt.Fprintln(
-			os.Stderr,
-			"broadcast-tx-method should be either 'sync', 'async' or 'commit'.",
-		)
-		os.Exit(1)
+		printErrorAndExit("broadcast-tx-method should be either 'sync', 'async' or 'commit'.")
 	}
 
 	var (
@@ -103,10 +94,10 @@ Examples:
 		"broadcast_tx_"+broadcastTxMethod,
 	)
 
-	//catch Interrupt and quit tm-bench
+	// Quit when interrupted or received SIGTERM.
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		for sig := range c {
 			fmt.Printf("captured %v, exiting...\n", sig)
 			for _, t := range transacters {
@@ -116,7 +107,7 @@ Examples:
 		}
 	}()
 
-	// Wait until transacters have begun until we get the start time
+	// Wait until transacters have begun until we get the start time.
 	timeStart := time.Now()
 	logger.Info("Time last transacter started", "t", timeStart)
 
@@ -143,8 +134,7 @@ Examples:
 		durationInt,
 	)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		printErrorAndExit(err.Error())
 	}
 
 	printStatistics(stats, outputFormat)
@@ -195,4 +185,9 @@ func startTransacters(
 	wg.Wait()
 
 	return transacters
+}
+
+func printErrorAndExit(err string) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }
