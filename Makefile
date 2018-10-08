@@ -183,6 +183,9 @@ test_p2p:
 	cd ..
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester
+	# the `docker cp` takes a really long time; uncomment for debugging
+	#
+	# mkdir -p test/p2p/logs && docker cp rsyslog:/var/log test/p2p/logs
 
 test_integrations:
 	make build_docker_test_image

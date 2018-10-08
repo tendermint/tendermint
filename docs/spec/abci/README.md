@@ -1,4 +1,4 @@
-# ABCI
+# Overview
 
 ABCI is the interface between Tendermint (a state-machine replication engine)
 and your application (the actual state machine). It consists of a set of
@@ -11,9 +11,9 @@ This allows Tendermint to run applications written in any programming language.
 
 This specification is split as follows:
 
-- [Methods and Types](abci.md) - complete details on all ABCI methods and
+- [Methods and Types](./abci.md) - complete details on all ABCI methods and
   message types
-- [Applications](apps.md) - how to manage ABCI application state and other
+- [Applications](./apps.md) - how to manage ABCI application state and other
   details about building ABCI applications
-- [Client and Server](client-server.md) - for those looking to implement their
+- [Client and Server](./client-server.md) - for those looking to implement their
   own ABCI application servers

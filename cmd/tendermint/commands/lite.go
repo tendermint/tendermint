@@ -26,10 +26,11 @@ just with added trust and running locally.`,
 }
 
 var (
-	listenAddr string
-	nodeAddr   string
-	chainID    string
-	home       string
+	listenAddr            string
+	nodeAddr              string
+	chainID               string
+	home                  string
+	maxOpenConnections    int
 	cacheSize  int
 )
 
@@ -38,6 +39,7 @@ func init() {
 	LiteCmd.Flags().StringVar(&nodeAddr, "node", "tcp://localhost:26657", "Connect to a Tendermint node at this address")
 	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
+	LiteCmd.Flags().IntVar(&maxOpenConnections,"max-open-connections",900,"Maximum number of simultaneous connections (including WebSocket).")
 	LiteCmd.Flags().IntVar(&cacheSize, "cache-size", 10, "Specify the memory trust store cache size")
 }
 
@@ -79,7 +81,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	sc := proxy.SecureClient(node, cert)
 
 	logger.Info("Starting proxy...")
-	err = proxy.StartProxy(sc, listenAddr, logger)
+	err = proxy.StartProxy(sc, listenAddr, logger, maxOpenConnections)
 	if err != nil {
 		return cmn.ErrorWrap(err, "starting proxy")
 	}
