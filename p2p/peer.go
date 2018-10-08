@@ -102,7 +102,7 @@ type peer struct {
 	// User data
 	Data *cmn.CMap
 
-	metrics *Metrics
+	metrics       *Metrics
 	metricsTicker *time.Ticker
 }
 

@@ -73,11 +73,9 @@ func (v *Validator) String() string {
 func (v *Validator) Hash() []byte {
 	return aminoHash(struct {
 		Address     Address
-		PubKey      crypto.PubKey
 		VotingPower int64
 	}{
 		v.Address,
-		v.PubKey,
 		v.VotingPower,
 	})
 }
