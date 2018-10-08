@@ -1,6 +1,4 @@
-/*
-Pub-Sub in go with event caching
-*/
+// Package events - Pub-Sub in go with event caching
 package events
 
 import (
@@ -10,30 +8,40 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+// ErrListenerWasRemoved is returned by AddEvent if the listener was removed.
 type ErrListenerWasRemoved struct {
 	listener string
 }
 
+// Error implements the error interface.
 func (e ErrListenerWasRemoved) Error() string {
 	return fmt.Sprintf("listener %s was removed", e.listener)
 }
 
-// Generic event data can be typed and registered with tendermint/go-amino
-// via concrete implementation of this interface
-type EventData interface {
-}
+// EventData is a generic event data can be typed and registered with
+// tendermint/go-amino via concrete implementation of this interface.
+type EventData interface{}
 
-// reactors and other modules should export
-// this interface to become eventable
+// Eventable is the interface reactors and other modules must export to become
+// eventable.
 type Eventable interface {
 	SetEventSwitch(evsw EventSwitch)
 }
 
-// an event switch or cache implements fireable
+// Fireable is the interface that wraps the FireEvent method.
+//
+// FireEvent fires an event with the given name and data.
 type Fireable interface {
 	FireEvent(event string, data EventData)
 }
 
+// EventSwitch is the interface for synchronous pubsub, where listeners
+// subscribe to certain events and, when an event is fired (see Fireable),
+// notified via a callback function.
+//
+// Listeners are added by calling AddListenerForEvent function.
+// They can be removed by calling either RemoveListenerForEvent or
+// RemoveListener (for all events).
 type EventSwitch interface {
 	cmn.Service
 	Fireable
@@ -67,7 +75,7 @@ func (evsw *eventSwitch) OnStart() error {
 func (evsw *eventSwitch) OnStop() {}
 
 func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventCallback) error {
-	// Get/Create eventCell and listener
+	// Get/Create eventCell and listener.
 	evsw.mtx.Lock()
 	eventCell := evsw.eventCells[event]
 	if eventCell == nil {
@@ -91,7 +99,7 @@ func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventC
 }
 
 func (evsw *eventSwitch) RemoveListener(listenerID string) {
-	// Get and remove listener
+	// Get and remove listener.
 	evsw.mtx.RLock()
 	listener := evsw.listeners[listenerID]
 	evsw.mtx.RUnlock()
