@@ -166,28 +166,11 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	}
 }
 
-func inputRemoveListener(t *testing.T, evsw EventSwitch, done chan uint64, roundCount int) {
-	for i := 0; i < roundCount; i++ {
-		evsw.RemoveListener("listener")
-	}
-	done <- 1
-}
-
-func inputAddListenerForEvent(t *testing.T, evsw EventSwitch, done chan uint64, roundCount int, stopInputEvent *bool) {
-	for i := 0; i < roundCount; i++ {
-		index := i
-		evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
-			func(data EventData) {
-				t.Errorf("should not run callback for %d.\n", index)
-				*stopInputEvent = true
-			})
-	}
-	done <- 1
-}
-
 func TestAddAndRemoveListenerConcurrency(t *testing.T) {
-	var stopInputEvent = false
-	var roundCount = 2000
+	var (
+		stopInputEvent = false
+		roundCount     = 2000
+	)
 
 	evsw := NewEventSwitch()
 	err := evsw.Start()
@@ -196,11 +179,27 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 	}
 	defer evsw.Stop()
 
-	done1 := make(chan uint64)
-	done2 := make(chan uint64)
+	done1 := make(chan struct{})
+	done2 := make(chan struct{})
 
-	go inputRemoveListener(t, evsw, done1, roundCount)
-	go inputAddListenerForEvent(t, evsw, done2, roundCount, &stopInputEvent)
+	go func() {
+		for i := 0; i < roundCount; i++ {
+			evsw.RemoveListener("listener")
+		}
+		done1 <- struct{}{}
+	}()
+
+	go func() {
+		for i := 0; i < roundCount; i++ {
+			index := i //it necessary for closure
+			evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
+				func(data EventData) {
+					t.Errorf("should not run callback for %d.\n", index)
+					stopInputEvent = true
+				})
+		}
+		done2 <- struct{}{}
+	}()
 
 	<-done1
 	<-done2

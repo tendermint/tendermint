@@ -15,7 +15,7 @@ type ErrListenerWasRemoved struct {
 }
 
 func (e ErrListenerWasRemoved) Error() string {
-	return fmt.Sprintf("listener %s was removed.", e.listener)
+	return fmt.Sprintf("listener %s was removed", e.listener)
 }
 
 // Generic event data can be typed and registered with tendermint/go-amino
@@ -216,7 +216,7 @@ func (evl *eventListener) AddEvent(event string) error {
 	defer evl.mtx.Unlock()
 
 	if evl.removed {
-		return &ErrListenerWasRemoved{listener: evl.id}
+		return ErrListenerWasRemoved{listener: evl.id}
 	}
 
 	evl.events = append(evl.events, event)
