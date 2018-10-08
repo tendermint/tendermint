@@ -12,6 +12,8 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
+	"os/signal"
+	"syscall"
 )
 
 var logger = log.NewNopLogger()
@@ -100,6 +102,19 @@ Examples:
 		txSize,
 		"broadcast_tx_"+broadcastTxMethod,
 	)
+
+	//catch Interrupt and quit tm-bench
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		for sig := range c {
+			fmt.Printf("captured %v, exiting...\n", sig)
+			for _, t := range transacters {
+				t.Stop()
+			}
+			os.Exit(1)
+		}
+	}()
 
 	// Wait until transacters have begun until we get the start time
 	timeStart := time.Now()
