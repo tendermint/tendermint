@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -22,9 +25,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -97,6 +97,9 @@ func TestReactorBasic(t *testing.T) {
 
 // Ensure we can process blocks with evidence
 func TestReactorWithEvidence(t *testing.T) {
+	types.RegisterMockEvidences(cdc)
+	types.RegisterMockEvidences(types.GetCodec())
+
 	nValidators := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
