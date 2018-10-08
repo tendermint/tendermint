@@ -215,7 +215,7 @@ func NewNode(config *cfg.Config,
 			// TODO: persist this key so external signer
 			// can actually authenticate us
 			privKey = ed25519.GenPrivKey()
-			pvsc    = privval.NewSocketPV(
+			pvsc    = privval.NewTCPVal(
 				logger.With("module", "privval"),
 				config.PrivValidatorListenAddr,
 				privKey,
@@ -579,7 +579,7 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if pvsc, ok := n.privValidator.(*privval.SocketPV); ok {
+	if pvsc, ok := n.privValidator.(*privval.TCPVal); ok {
 		if err := pvsc.Stop(); err != nil {
 			n.Logger.Error("Error stopping priv validator socket client", "err", err)
 		}

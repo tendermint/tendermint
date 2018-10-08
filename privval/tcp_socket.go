@@ -74,7 +74,7 @@ func (ln tcpTimeoutListener) Accept() (net.Conn, error) {
 }
 
 // Read implements net.Listener.
-func (c timeoutConn) Read(b []byte) (int, error) {
+func (c timeoutConn) Read(b []byte) (n int, err error) {
 	// Reset deadline
 	c.Conn.SetReadDeadline(time.Now().Add(c.connDeadline))
 
@@ -82,7 +82,7 @@ func (c timeoutConn) Read(b []byte) (int, error) {
 }
 
 // Write implements net.Listener.
-func (c timeoutConn) Write(b []byte) (int, error) {
+func (c timeoutConn) Write(b []byte) (n int, err error) {
 	// Reset deadline
 	c.Conn.SetWriteDeadline(time.Now().Add(c.connDeadline))
 

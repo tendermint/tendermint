@@ -1,9 +1,7 @@
 package privval
 
 import (
-	"io"
 	"net"
-	"sync"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -11,88 +9,98 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// IPCPV implements PrivValidator, it uses a unix socket to request signatures
+// IPCValOption sets an optional parameter on the SocketPV.
+type IPCValOption func(*IPCVal)
+
+// IPCValConnTimeout sets the read and write timeout for connections
+// from external signing processes.
+func IPCValConnTimeout(timeout time.Duration) IPCValOption {
+	return func(sc *IPCVal) { sc.connTimeout = timeout }
+}
+
+// IPCValHeartbeat sets the period on which to check the liveness of the
+// connected Signer connections.
+func IPCValHeartbeat(period time.Duration) IPCValOption {
+	return func(sc *IPCVal) { sc.connHeartbeat = period }
+}
+
+// IPCVal implements PrivValidator, it uses a unix socket to request signatures
 // from an external process.
-type IPCPV struct {
+type IPCVal struct {
 	cmn.BaseService
 	*RemoteSignerClient
 
 	addr string
 
-	connTimeout time.Duration
+	connTimeout   time.Duration
+	connHeartbeat time.Duration
 
-	lock       sync.Mutex
-	cancelPing chan bool
+	conn       net.Conn
+	cancelPing chan struct{}
 }
 
-// Check that IPCPV implements PrivValidator.
-var _ types.PrivValidator = (*IPCPV)(nil)
+// Check that IPCVal implements PrivValidator.
+var _ types.PrivValidator = (*IPCVal)(nil)
 
-// NewIPCPV returns an instance of IPCPV.
-func NewIPCPV(
+// NewIPCVal returns an instance of IPCVal.
+func NewIPCVal(
 	logger log.Logger,
 	socketAddr string,
-) *IPCPV {
-	sc := &IPCPV{
-		addr:        socketAddr,
-		connTimeout: connTimeout,
+) *IPCVal {
+	sc := &IPCVal{
+		addr:          socketAddr,
+		connTimeout:   connTimeout,
+		connHeartbeat: connHeartbeat,
 	}
 
-	sc.BaseService = *cmn.NewBaseService(logger, "IPCPV", sc)
-	sc.RemoteSignerClient = NewRemoteSignerClient(logger, nil)
+	sc.BaseService = *cmn.NewBaseService(logger, "IPCVal", sc)
 
 	return sc
 }
 
 // OnStart implements cmn.Service.
-func (sc *IPCPV) OnStart() error {
+func (sc *IPCVal) OnStart() error {
 	err := sc.connect()
 	if err != nil {
-		err = cmn.ErrorWrap(err, "failed to connect")
-		sc.Logger.Error(
-			"OnStart",
-			"err", err,
-		)
-
+		sc.Logger.Error("OnStart", "err", err)
 		return err
 	}
 
-	err = sc.RemoteSignerClient.Start()
-	if err != nil {
-		err = cmn.ErrorWrap(err, "failed to start RemoteSignerClient")
-		sc.Logger.Error(
-			"OnStart",
-			"err", err,
-		)
+	sc.RemoteSignerClient = NewRemoteSignerClient(sc.conn)
 
-		return err
-	}
+	// Start a routine to keep the connection alive
+	sc.cancelPing = make(chan struct{}, 1)
+	go func() {
+		for {
+			select {
+			case <-time.Tick(sc.connHeartbeat):
+				err := sc.Ping()
+				if err != nil {
+					sc.Logger.Error("Ping", "err", err)
+				}
+			case <-sc.cancelPing:
+				return
+			}
+		}
+	}()
 
 	return nil
 }
 
 // OnStop implements cmn.Service.
-func (sc *IPCPV) OnStop() {
-	if err := sc.RemoteSignerClient.Stop(); err != nil {
-		err = cmn.ErrorWrap(err, "failed to stop RemoteSignerClient")
-		sc.Logger.Error(
-			"OnStop",
-			"err", err,
-		)
+func (sc *IPCVal) OnStop() {
+	if sc.cancelPing != nil {
+		close(sc.cancelPing)
 	}
 
 	if sc.conn != nil {
 		if err := sc.conn.Close(); err != nil {
-			err = cmn.ErrorWrap(err, "failed to close connection")
-			sc.Logger.Error(
-				"OnStop",
-				"err", err,
-			)
+			sc.Logger.Error("OnStop", "err", err)
 		}
 	}
 }
 
-func (sc *IPCPV) connect() error {
+func (sc *IPCVal) connect() error {
 	la, err := net.ResolveUnixAddr("unix", sc.addr)
 	if err != nil {
 		return err
@@ -103,116 +111,7 @@ func (sc *IPCPV) connect() error {
 		return err
 	}
 
-	// Wrap in a timeoutConn
 	sc.conn = newTimeoutConn(conn, sc.connTimeout)
 
 	return nil
-}
-
-//---------------------------------------------------------
-
-// IPCRemoteSigner is a RPC implementation of PrivValidator that listens on a unix socket.
-type IPCRemoteSigner struct {
-	cmn.BaseService
-
-	addr         string
-	chainID      string
-	connDeadline time.Duration
-	connRetries  int
-	privVal      types.PrivValidator
-
-	listener *net.UnixListener
-}
-
-// NewIPCRemoteSigner returns an instance of IPCRemoteSigner.
-func NewIPCRemoteSigner(
-	logger log.Logger,
-	chainID, socketAddr string,
-	privVal types.PrivValidator,
-) *IPCRemoteSigner {
-	rs := &IPCRemoteSigner{
-		addr:         socketAddr,
-		chainID:      chainID,
-		connDeadline: time.Second * defaultConnDeadlineSeconds,
-		connRetries:  defaultDialRetries,
-		privVal:      privVal,
-	}
-
-	rs.BaseService = *cmn.NewBaseService(logger, "IPCRemoteSigner", rs)
-
-	return rs
-}
-
-// OnStart implements cmn.Service.
-func (rs *IPCRemoteSigner) OnStart() error {
-	err := rs.listen()
-	if err != nil {
-		err = cmn.ErrorWrap(err, "listen")
-		rs.Logger.Error("OnStart", "err", err)
-		return err
-	}
-
-	go func() {
-		for {
-			conn, err := rs.listener.AcceptUnix()
-			if err != nil {
-				return
-			}
-			go rs.handleConnection(conn)
-		}
-	}()
-
-	return nil
-}
-
-// OnStop implements cmn.Service.
-func (rs *IPCRemoteSigner) OnStop() {
-	if rs.listener != nil {
-		if err := rs.listener.Close(); err != nil {
-			rs.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
-		}
-	}
-}
-
-func (rs *IPCRemoteSigner) listen() error {
-	la, err := net.ResolveUnixAddr("unix", rs.addr)
-	if err != nil {
-		return err
-	}
-
-	rs.listener, err = net.ListenUnix("unix", la)
-
-	return err
-}
-
-func (rs *IPCRemoteSigner) handleConnection(conn net.Conn) {
-	for {
-		if !rs.IsRunning() {
-			return // Ignore error from listener closing.
-		}
-
-		// Reset the connection deadline
-		conn.SetDeadline(time.Now().Add(rs.connDeadline))
-
-		req, err := readMsg(conn)
-		if err != nil {
-			if err != io.EOF {
-				rs.Logger.Error("handleConnection", "err", err)
-			}
-			return
-		}
-
-		res, err := handleRequest(req, rs.chainID, rs.privVal)
-
-		if err != nil {
-			// only log the error; we'll reply with an error in res
-			rs.Logger.Error("handleConnection", "err", err)
-		}
-
-		err = writeMsg(conn, res)
-		if err != nil {
-			rs.Logger.Error("handleConnection", "err", err)
-			return
-		}
-	}
 }

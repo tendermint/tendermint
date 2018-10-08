@@ -158,17 +158,17 @@ func TestSocketPVDeadline(t *testing.T) {
 	var (
 		addr    = testFreeAddr(t)
 		listenc = make(chan struct{})
-		sc      = NewSocketPV(
+		sc      = NewTCPVal(
 			log.TestingLogger(),
 			addr,
 			ed25519.GenPrivKey(),
 		)
 	)
 
-	sc.connTimeout = 100 * time.Millisecond
-	sc.connWaitTimeout = 500 * time.Millisecond
+	TCPValConnTimeout(100 * time.Millisecond)(sc)
+	TCPValConnWait(500 * time.Millisecond)(sc)
 
-	go func(sc *SocketPV) {
+	go func(sc *TCPVal) {
 		defer close(listenc)
 
 		require.NoError(t, sc.Start())
@@ -237,7 +237,7 @@ func TestRemoteSignerRetry(t *testing.T) {
 	RemoteSignerConnDeadline(time.Millisecond)(rs)
 	RemoteSignerConnRetries(retries)(rs)
 
-	assert.Equal(t, rs.Start().(cmn.Error).Data(), ErrDialRetryMax)
+	assert.Equal(t, rs.Start(), ErrDialRetryMax)
 
 	select {
 	case attempts := <-attemptc:
@@ -344,7 +344,7 @@ func TestErrUnexpectedResponse(t *testing.T) {
 			types.NewMockPV(),
 			ed25519.GenPrivKey(),
 		)
-		sc = NewSocketPV(
+		sc = NewTCPVal(
 			logger,
 			addr,
 			ed25519.GenPrivKey(),
@@ -399,7 +399,7 @@ func testSetupSocketPair(
 	t *testing.T,
 	chainID string,
 	privValidator types.PrivValidator,
-) (*SocketPV, *RemoteSigner) {
+) (*TCPVal, *RemoteSigner) {
 	var (
 		addr    = testFreeAddr(t)
 		logger  = log.TestingLogger()
@@ -412,15 +412,15 @@ func testSetupSocketPair(
 			privVal,
 			ed25519.GenPrivKey(),
 		)
-		sc = NewSocketPV(
+		sc = NewTCPVal(
 			logger,
 			addr,
 			ed25519.GenPrivKey(),
 		)
 	)
 
-	sc.connTimeout = 5 * time.Millisecond
-	sc.connHeartbeat = 2 * time.Millisecond
+	TCPValConnTimeout(5 * time.Millisecond)(sc)
+	TCPValHeartbeat(2 * time.Millisecond)(sc)
 	RemoteSignerConnDeadline(5 * time.Millisecond)(rs)
 	RemoteSignerConnRetries(1e6)(rs)
 
@@ -434,7 +434,7 @@ func testSetupSocketPair(
 	return sc, rs
 }
 
-func testReadWriteResponse(t *testing.T, resp SocketPVMsg, rsConn net.Conn) {
+func testReadWriteResponse(t *testing.T, resp RemoteSignerMsg, rsConn net.Conn) {
 	_, err := readMsg(rsConn)
 	require.NoError(t, err)
 
@@ -442,8 +442,8 @@ func testReadWriteResponse(t *testing.T, resp SocketPVMsg, rsConn net.Conn) {
 	require.NoError(t, err)
 }
 
-func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *SocketPV) {
-	go func(sc *SocketPV) {
+func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *TCPVal) {
+	go func(sc *TCPVal) {
 		require.NoError(t, sc.Start())
 		assert.True(t, sc.IsRunning())
 

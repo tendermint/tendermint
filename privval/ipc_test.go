@@ -1,15 +1,16 @@
 package privval
 
 import (
+	"io/ioutil"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
-	"io/ioutil"
-	"os"
-	"testing"
-	"time"
 )
 
 func TestIPCPVVote(t *testing.T) {
@@ -81,9 +82,11 @@ func testSetupIPCSocketPair(
 	t *testing.T,
 	chainID string,
 	privValidator types.PrivValidator,
-) (*IPCPV, *IPCRemoteSigner) {
+) (*IPCVal, *IPCRemoteSigner) {
+	addr, err := testUnixAddr()
+	require.NoError(t, err)
+
 	var (
-		addr    = testUnixAddr()
 		logger  = log.TestingLogger()
 		privVal = privValidator
 		readyc  = make(chan struct{})
@@ -93,15 +96,16 @@ func testSetupIPCSocketPair(
 			addr,
 			privVal,
 		)
-		sc = NewIPCPV(
+		sc = NewIPCVal(
 			logger,
 			addr,
 		)
 	)
 
-	rs.connDeadline = time.Millisecond * 5
-	sc.connTimeout = time.Millisecond * 5
-	sc.connHeartbeat = time.Millisecond
+	IPCValConnTimeout(5 * time.Millisecond)(sc)
+	IPCValHeartbeat(time.Millisecond)(sc)
+
+	IPCRemoteSignerConnDeadline(time.Millisecond * 5)(rs)
 
 	testStartIPCRemoteSigner(t, readyc, rs)
 
@@ -122,13 +126,21 @@ func testStartIPCRemoteSigner(t *testing.T, readyc chan struct{}, rs *IPCRemoteS
 	}(rs)
 }
 
-func testUnixAddr() string {
+func testUnixAddr() (string, error) {
 	f, err := ioutil.TempFile("/tmp", "nettest")
 	if err != nil {
-		panic(err)
+		return "", err
 	}
+
 	addr := f.Name()
-	f.Close()
-	os.Remove(addr)
-	return addr
+	err = f.Close()
+	if err != nil {
+		return "", err
+	}
+	err = os.Remove(addr)
+	if err != nil {
+		return "", err
+	}
+
+	return addr, nil
 }
