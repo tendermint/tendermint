@@ -1408,10 +1408,6 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 //-----------------------------------------------------------------------------
 
 func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
-	// We are now receiving PoLc Block, don't interrupt it
-	if cs.LockedBlockID != nil {
-		return nil
-	}
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil {
@@ -1420,6 +1416,14 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 
 	// Does not apply
 	if proposal.Height != cs.Height || proposal.Round != cs.Round {
+		return nil
+	}
+
+	// We are now receiving PoLc Block, don't interrupt it. Unless the proposal is matched with LockedBlockID
+	if cs.LockedBlockID != nil && !cs.LockedBlockID.PartsHeader.Equals(proposal.BlockPartsHeader){
+		if !cs.ProposalBlockParts.HasHeader(proposal.BlockPartsHeader){
+			panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v",cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
+		}
 		return nil
 	}
 
@@ -1440,7 +1444,9 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	cs.Proposal = proposal
-	cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	if cs.LockedBlockID == nil{
+		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	}
 	cs.Logger.Info("Received proposal", "proposal", proposal)
 	return nil
 }
