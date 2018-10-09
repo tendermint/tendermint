@@ -105,7 +105,7 @@ type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(), p2p.PrometheusMetrics(), mempl.PrometheusMetrics()
+			return cs.PrometheusMetrics(config.Namespace), p2p.PrometheusMetrics(config.Namespace), mempl.PrometheusMetrics(config.Namespace)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics()
 	}
@@ -303,13 +303,13 @@ func NewNode(config *cfg.Config,
 		blockStore,
 		mempool,
 		evidencePool,
-		cs.WithMetrics(csMetrics),
+		cs.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync)
+	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 
 	eventBus := types.NewEventBus()
@@ -359,7 +359,6 @@ func NewNode(config *cfg.Config,
 
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
-	// XXX: Query format subject to change
 	if config.FilterPeers {
 		connFilters = append(
 			connFilters,
@@ -584,14 +583,6 @@ func (n *Node) OnStop() {
 			n.Logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
 	}
-}
-
-// RunForever waits for an interrupt signal and stops the node.
-func (n *Node) RunForever() {
-	// Sleep forever and then...
-	cmn.TrapSignal(func() {
-		n.Stop()
-	})
 }
 
 // ConfigureRPC sets all variables in rpccore so they will serve

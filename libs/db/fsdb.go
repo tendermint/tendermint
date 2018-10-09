@@ -85,14 +85,15 @@ func (db *FSDB) SetSync(key []byte, value []byte) {
 }
 
 // NOTE: Implements atomicSetDeleter.
-func (db *FSDB) SetNoLock(key []byte, value []byte) {
+func (db *FSDB) SetNoLock(key []byte, value []byte) error {
 	key = escapeKey(key)
 	value = nonNilBytes(value)
 	path := db.nameToPath(key)
 	err := write(path, value)
 	if err != nil {
-		panic(errors.Wrapf(err, "Setting key %s (0x%X)", string(key), key))
+		return errors.Wrapf(err, "Setting key %s (0x%X)", string(key), key)
 	}
+	return nil
 }
 
 func (db *FSDB) Delete(key []byte) {

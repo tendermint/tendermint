@@ -35,7 +35,7 @@ install:
 ########################################
 ### Protobuf
 
-protoc_all: protoc_libs protoc_abci protoc_grpc
+protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc
 
 %.pb.go: %.proto
 	## If you get the following error,
@@ -137,6 +137,8 @@ grpc_dbserver:
 
 protoc_grpc: rpc/grpc/types.pb.go
 
+protoc_merkle: crypto/merkle/merkle.pb.go
+
 ########################################
 ### Testing
 
@@ -180,6 +182,9 @@ test_p2p:
 	cd ..
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester
+	# the `docker cp` takes a really long time; uncomment for debugging
+	#
+	# mkdir -p test/p2p/logs && docker cp rsyslog:/var/log test/p2p/logs
 
 test_integrations:
 	make build_docker_test_image

@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -27,9 +27,10 @@ const (
 
 // Socket errors.
 var (
-	ErrDialRetryMax    = errors.New("dialed maximum retries")
-	ErrConnWaitTimeout = errors.New("waited for remote signer for too long")
-	ErrConnTimeout     = errors.New("remote signer timed out")
+	ErrDialRetryMax       = errors.New("dialed maximum retries")
+	ErrConnWaitTimeout    = errors.New("waited for remote signer for too long")
+	ErrConnTimeout        = errors.New("remote signer timed out")
+	ErrUnexpectedResponse = errors.New("received unexpected response")
 )
 
 var (
@@ -150,7 +151,7 @@ func (sc *SocketPV) getPubKey() (crypto.PubKey, error) {
 
 // SignVote implements PrivValidator.
 func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
-	err := writeMsg(sc.conn, &SignVoteMsg{Vote: vote})
+	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
 	if err != nil {
 		return err
 	}
@@ -160,7 +161,16 @@ func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
 		return err
 	}
 
-	*vote = *res.(*SignVoteMsg).Vote
+	resp, ok := res.(*SignedVoteResponse)
+	if !ok {
+		return ErrUnexpectedResponse
+	}
+	if resp.Error != nil {
+		return fmt.Errorf("remote error occurred: code: %v, description: %s",
+			resp.Error.Code,
+			resp.Error.Description)
+	}
+	*vote = *resp.Vote
 
 	return nil
 }
@@ -170,7 +180,7 @@ func (sc *SocketPV) SignProposal(
 	chainID string,
 	proposal *types.Proposal,
 ) error {
-	err := writeMsg(sc.conn, &SignProposalMsg{Proposal: proposal})
+	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
 	if err != nil {
 		return err
 	}
@@ -179,8 +189,16 @@ func (sc *SocketPV) SignProposal(
 	if err != nil {
 		return err
 	}
-
-	*proposal = *res.(*SignProposalMsg).Proposal
+	resp, ok := res.(*SignedProposalResponse)
+	if !ok {
+		return ErrUnexpectedResponse
+	}
+	if resp.Error != nil {
+		return fmt.Errorf("remote error occurred: code: %v, description: %s",
+			resp.Error.Code,
+			resp.Error.Description)
+	}
+	*proposal = *resp.Proposal
 
 	return nil
 }
@@ -190,7 +208,7 @@ func (sc *SocketPV) SignHeartbeat(
 	chainID string,
 	heartbeat *types.Heartbeat,
 ) error {
-	err := writeMsg(sc.conn, &SignHeartbeatMsg{Heartbeat: heartbeat})
+	err := writeMsg(sc.conn, &SignHeartbeatRequest{Heartbeat: heartbeat})
 	if err != nil {
 		return err
 	}
@@ -199,8 +217,16 @@ func (sc *SocketPV) SignHeartbeat(
 	if err != nil {
 		return err
 	}
-
-	*heartbeat = *res.(*SignHeartbeatMsg).Heartbeat
+	resp, ok := res.(*SignedHeartbeatResponse)
+	if !ok {
+		return ErrUnexpectedResponse
+	}
+	if resp.Error != nil {
+		return fmt.Errorf("remote error occurred: code: %v, description: %s",
+			resp.Error.Code,
+			resp.Error.Description)
+	}
+	*heartbeat = *resp.Heartbeat
 
 	return nil
 }
@@ -462,22 +488,34 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 			var p crypto.PubKey
 			p = rs.privVal.GetPubKey()
 			res = &PubKeyMsg{p}
-		case *SignVoteMsg:
+		case *SignVoteRequest:
 			err = rs.privVal.SignVote(rs.chainID, r.Vote)
-			res = &SignVoteMsg{r.Vote}
-		case *SignProposalMsg:
+			if err != nil {
+				res = &SignedVoteResponse{nil, &RemoteSignerError{0, err.Error()}}
+			} else {
+				res = &SignedVoteResponse{r.Vote, nil}
+			}
+		case *SignProposalRequest:
 			err = rs.privVal.SignProposal(rs.chainID, r.Proposal)
-			res = &SignProposalMsg{r.Proposal}
-		case *SignHeartbeatMsg:
+			if err != nil {
+				res = &SignedProposalResponse{nil, &RemoteSignerError{0, err.Error()}}
+			} else {
+				res = &SignedProposalResponse{r.Proposal, nil}
+			}
+		case *SignHeartbeatRequest:
 			err = rs.privVal.SignHeartbeat(rs.chainID, r.Heartbeat)
-			res = &SignHeartbeatMsg{r.Heartbeat}
+			if err != nil {
+				res = &SignedHeartbeatResponse{nil, &RemoteSignerError{0, err.Error()}}
+			} else {
+				res = &SignedHeartbeatResponse{r.Heartbeat, nil}
+			}
 		default:
 			err = fmt.Errorf("unknown msg: %v", r)
 		}
 
 		if err != nil {
+			// only log the error; we'll reply with an error in res
 			rs.Logger.Error("handleConnection", "err", err)
-			return
 		}
 
 		err = writeMsg(conn, res)
@@ -496,9 +534,12 @@ type SocketPVMsg interface{}
 func RegisterSocketPVMsg(cdc *amino.Codec) {
 	cdc.RegisterInterface((*SocketPVMsg)(nil), nil)
 	cdc.RegisterConcrete(&PubKeyMsg{}, "tendermint/socketpv/PubKeyMsg", nil)
-	cdc.RegisterConcrete(&SignVoteMsg{}, "tendermint/socketpv/SignVoteMsg", nil)
-	cdc.RegisterConcrete(&SignProposalMsg{}, "tendermint/socketpv/SignProposalMsg", nil)
-	cdc.RegisterConcrete(&SignHeartbeatMsg{}, "tendermint/socketpv/SignHeartbeatMsg", nil)
+	cdc.RegisterConcrete(&SignVoteRequest{}, "tendermint/socketpv/SignVoteRequest", nil)
+	cdc.RegisterConcrete(&SignedVoteResponse{}, "tendermint/socketpv/SignedVoteResponse", nil)
+	cdc.RegisterConcrete(&SignProposalRequest{}, "tendermint/socketpv/SignProposalRequest", nil)
+	cdc.RegisterConcrete(&SignedProposalResponse{}, "tendermint/socketpv/SignedProposalResponse", nil)
+	cdc.RegisterConcrete(&SignHeartbeatRequest{}, "tendermint/socketpv/SignHeartbeatRequest", nil)
+	cdc.RegisterConcrete(&SignedHeartbeatResponse{}, "tendermint/socketpv/SignedHeartbeatResponse", nil)
 }
 
 // PubKeyMsg is a PrivValidatorSocket message containing the public key.
@@ -506,19 +547,42 @@ type PubKeyMsg struct {
 	PubKey crypto.PubKey
 }
 
-// SignVoteMsg is a PrivValidatorSocket message containing a vote.
-type SignVoteMsg struct {
+// SignVoteRequest is a PrivValidatorSocket message containing a vote.
+type SignVoteRequest struct {
 	Vote *types.Vote
 }
 
-// SignProposalMsg is a PrivValidatorSocket message containing a Proposal.
-type SignProposalMsg struct {
+// SignedVoteResponse is a PrivValidatorSocket message containing a signed vote along with a potenial error message.
+type SignedVoteResponse struct {
+	Vote  *types.Vote
+	Error *RemoteSignerError
+}
+
+// SignProposalRequest is a PrivValidatorSocket message containing a Proposal.
+type SignProposalRequest struct {
 	Proposal *types.Proposal
 }
 
-// SignHeartbeatMsg is a PrivValidatorSocket message containing a Heartbeat.
-type SignHeartbeatMsg struct {
+type SignedProposalResponse struct {
+	Proposal *types.Proposal
+	Error    *RemoteSignerError
+}
+
+// SignHeartbeatRequest is a PrivValidatorSocket message containing a Heartbeat.
+type SignHeartbeatRequest struct {
 	Heartbeat *types.Heartbeat
+}
+
+type SignedHeartbeatResponse struct {
+	Heartbeat *types.Heartbeat
+	Error     *RemoteSignerError
+}
+
+// RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.
+type RemoteSignerError struct {
+	// TODO(ismail): create an enum of known errors
+	Code        int
+	Description string
 }
 
 func readMsg(r io.Reader) (msg SocketPVMsg, err error) {

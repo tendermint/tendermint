@@ -2,12 +2,24 @@ package merkle
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// SimpleProof represents a simple merkle proof.
+// SimpleProof represents a simple Merkle proof.
+// NOTE: The convention for proofs is to include leaf hashes but to
+// exclude the root hash.
+// This convention is implemented across IAVL range proofs as well.
+// Keep this consistent unless there's a very good reason to change
+// everything.  This also affects the generalized proof system as
+// well.
 type SimpleProof struct {
-	Aunts [][]byte `json:"aunts"` // Hashes from leaf's sibling to a root's child.
+	Total    int      `json:"total"`     // Total number of items.
+	Index    int      `json:"index"`     // Index of item to prove.
+	LeafHash []byte   `json:"leaf_hash"` // Hash of item value.
+	Aunts    [][]byte `json:"aunts"`     // Hashes from leaf's sibling to a root's child.
 }
 
 // SimpleProofsFromHashers computes inclusion proof for given items.
@@ -18,7 +30,10 @@ func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleP
 	proofs = make([]*SimpleProof, len(items))
 	for i, trail := range trails {
 		proofs[i] = &SimpleProof{
-			Aunts: trail.FlattenAunts(),
+			Total:    len(items),
+			Index:    i,
+			LeafHash: trail.Hash,
+			Aunts:    trail.FlattenAunts(),
 		}
 	}
 	return
@@ -49,11 +64,33 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs map[strin
 	return
 }
 
-// Verify that leafHash is a leaf hash of the simple-merkle-tree
-// which hashes to rootHash.
-func (sp *SimpleProof) Verify(index int, total int, leafHash []byte, rootHash []byte) bool {
-	computedHash := computeHashFromAunts(index, total, leafHash, sp.Aunts)
-	return computedHash != nil && bytes.Equal(computedHash, rootHash)
+// Verify that the SimpleProof proves the root hash.
+// Check sp.Index/sp.Total manually if needed
+func (sp *SimpleProof) Verify(rootHash []byte, leafHash []byte) error {
+	if sp.Total < 0 {
+		return errors.New("Proof total must be positive")
+	}
+	if sp.Index < 0 {
+		return errors.New("Proof index cannot be negative")
+	}
+	if !bytes.Equal(sp.LeafHash, leafHash) {
+		return cmn.NewError("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
+	}
+	computedHash := sp.ComputeRootHash()
+	if !bytes.Equal(computedHash, rootHash) {
+		return cmn.NewError("invalid root hash: wanted %X got %X", rootHash, computedHash)
+	}
+	return nil
+}
+
+// Compute the root hash given a leaf hash.  Does not verify the result.
+func (sp *SimpleProof) ComputeRootHash() []byte {
+	return computeHashFromAunts(
+		sp.Index,
+		sp.Total,
+		sp.LeafHash,
+		sp.Aunts,
+	)
 }
 
 // String implements the stringer interface for SimpleProof.

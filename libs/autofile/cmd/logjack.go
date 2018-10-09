@@ -39,13 +39,12 @@ func main() {
 	}
 
 	// Open Group
-	group, err := auto.OpenGroup(headPath)
+	group, err := auto.OpenGroup(headPath, auto.GroupHeadSizeLimit(chopSize), auto.GroupTotalSizeLimit(limitSize))
 	if err != nil {
 		fmt.Printf("logjack couldn't create output file %v\n", headPath)
 		os.Exit(1)
 	}
-	group.SetHeadSizeLimit(chopSize)
-	group.SetTotalSizeLimit(limitSize)
+
 	err = group.Start()
 	if err != nil {
 		fmt.Printf("logjack couldn't start with file %v\n", headPath)

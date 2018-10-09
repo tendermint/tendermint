@@ -8,6 +8,6 @@ import (
 // Verifier must know the current or recent set of validitors by some other
 // means.
 type Verifier interface {
-	Certify(sheader types.SignedHeader) error
+	Verify(sheader types.SignedHeader) error
 	ChainID() string
 }

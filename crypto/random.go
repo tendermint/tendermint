@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"crypto/aes"
 	"crypto/cipher"
 	crand "crypto/rand"
 	"crypto/sha256"
@@ -9,9 +8,17 @@ import (
 	"io"
 	"sync"
 
+	"golang.org/x/crypto/chacha20poly1305"
+
 	. "github.com/tendermint/tendermint/libs/common"
 )
 
+// The randomness here is derived from xoring a chacha20 keystream with
+// output from crypto/rand's OS Entropy Reader. (Due to fears of the OS'
+// entropy being backdoored)
+//
+// For forward secrecy of produced randomness, the internal chacha key is hashed
+// and thereby rotated after each call.
 var gRandInfo *randInfo
 
 func init() {
@@ -61,11 +68,10 @@ func CReader() io.Reader {
 //--------------------------------------------------------------------------------
 
 type randInfo struct {
-	mtx          sync.Mutex
-	seedBytes    [32]byte
-	cipherAES256 cipher.Block
-	streamAES256 cipher.Stream
-	reader       io.Reader
+	mtx       sync.Mutex
+	seedBytes [chacha20poly1305.KeySize]byte
+	chacha    cipher.AEAD
+	reader    io.Reader
 }
 
 // You can call this as many times as you'd like.
@@ -79,30 +85,35 @@ func (ri *randInfo) MixEntropy(seedBytes []byte) {
 	h.Write(seedBytes)
 	h.Write(ri.seedBytes[:])
 	hashBytes := h.Sum(nil)
-	hashBytes32 := [32]byte{}
-	copy(hashBytes32[:], hashBytes)
-	ri.seedBytes = xorBytes32(ri.seedBytes, hashBytes32)
-	// Create new cipher.Block
-	var err error
-	ri.cipherAES256, err = aes.NewCipher(ri.seedBytes[:])
+	copy(ri.seedBytes[:], hashBytes)
+	chacha, err := chacha20poly1305.New(ri.seedBytes[:])
 	if err != nil {
-		PanicSanity("Error creating AES256 cipher: " + err.Error())
+		panic("Initializing chacha20 failed")
 	}
-	// Create new stream
-	ri.streamAES256 = cipher.NewCTR(ri.cipherAES256, randBytes(aes.BlockSize))
+	ri.chacha = chacha
 	// Create new reader
-	ri.reader = &cipher.StreamReader{S: ri.streamAES256, R: crand.Reader}
+	ri.reader = &cipher.StreamReader{S: ri, R: crand.Reader}
+}
+
+func (ri *randInfo) XORKeyStream(dst, src []byte) {
+	// nonce being 0 is safe due to never re-using a key.
+	emptyNonce := make([]byte, 12)
+	tmpDst := ri.chacha.Seal([]byte{}, emptyNonce, src, []byte{0})
+	// this removes the poly1305 tag as well, since chacha is a stream cipher
+	// and we truncate at input length.
+	copy(dst, tmpDst[:len(src)])
+	// hash seedBytes for forward secrecy, and initialize new chacha instance
+	newSeed := sha256.Sum256(ri.seedBytes[:])
+	chacha, err := chacha20poly1305.New(newSeed[:])
+	if err != nil {
+		panic("Initializing chacha20 failed")
+	}
+	ri.chacha = chacha
 }
 
 func (ri *randInfo) Read(b []byte) (n int, err error) {
 	ri.mtx.Lock()
-	defer ri.mtx.Unlock()
-	return ri.reader.Read(b)
-}
-
-func xorBytes32(bytesA [32]byte, bytesB [32]byte) (res [32]byte) {
-	for i, b := range bytesA {
-		res[i] = b ^ bytesB[i]
-	}
-	return res
+	n, err = ri.reader.Read(b)
+	ri.mtx.Unlock()
+	return
 }

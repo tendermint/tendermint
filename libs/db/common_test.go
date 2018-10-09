@@ -57,7 +57,7 @@ func checkKeyPanics(t *testing.T, itr Iterator) {
 }
 
 func checkValuePanics(t *testing.T, itr Iterator) {
-	assert.Panics(t, func() { itr.Key() }, "checkValuePanics expected panic but didn't")
+	assert.Panics(t, func() { itr.Value() }, "checkValuePanics expected panic but didn't")
 }
 
 func newTempDB(t *testing.T, backend DBBackendType) (db DB, dbDir string) {
@@ -104,12 +104,14 @@ func (mdb *mockDB) SetSync([]byte, []byte) {
 	mdb.calls["SetSync"]++
 }
 
-func (mdb *mockDB) SetNoLock([]byte, []byte) {
+func (mdb *mockDB) SetNoLock([]byte, []byte) error {
 	mdb.calls["SetNoLock"]++
+	return nil
 }
 
-func (mdb *mockDB) SetNoLockSync([]byte, []byte) {
+func (mdb *mockDB) SetNoLockSync([]byte, []byte) error {
 	mdb.calls["SetNoLockSync"]++
+	return nil
 }
 
 func (mdb *mockDB) Delete([]byte) {

@@ -28,7 +28,8 @@ func CreateRandomPeer(outbound bool) *peer {
 			ID:         netAddr.ID,
 			ListenAddr: netAddr.DialString(),
 		},
-		mconn: &conn.MConnection{},
+		mconn:   &conn.MConnection{},
+		metrics: NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p

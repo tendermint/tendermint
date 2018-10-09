@@ -81,7 +81,7 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	app.state.Size += 1
 
 	tags := []cmn.KVPair{
-		{Key: []byte("app.creator"), Value: []byte("jae")},
+		{Key: []byte("app.creator"), Value: []byte("Cosmoshi Netowoko")},
 		{Key: []byte("app.key"), Value: key},
 	}
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
@@ -114,6 +114,7 @@ func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery type
 		}
 		return
 	} else {
+		resQuery.Key = reqQuery.Data
 		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Value = value
 		if value != nil {
