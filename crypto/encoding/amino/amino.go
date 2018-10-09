@@ -1,8 +1,11 @@
 package cryptoAmino
 
 import (
-	amino "github.com/tendermint/go-amino"
+	"errors"
 
+	"reflect"
+
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/multisig"
@@ -10,6 +13,7 @@ import (
 )
 
 var cdc = amino.NewCodec()
+var routeTable = make(map[reflect.Type]string, 3)
 
 func init() {
 	// NOTE: It's important that there be no conflicts here,
@@ -19,6 +23,23 @@ func init() {
 	// https://github.com/tendermint/go-amino/issues/9
 	// is resolved
 	RegisterAmino(cdc)
+
+	// TODO: Have amino provide a way to go from concrete struct to route directly.
+	// Its currently a private API
+	routeTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoRoute
+	routeTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoRoute
+	routeTable[reflect.TypeOf(&multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
+}
+
+// PubkeyAminoRoute returns the amino route of a pubkey
+// cdc is currently passed in, as eventually this will not be using
+// a package level codec.
+func PubkeyAminoRoute(cdc *amino.Codec, key crypto.PubKey) (string, error) {
+	route, ok := routeTable[reflect.TypeOf(key)]
+	if !ok {
+		return "", errors.New("Pubkey type not known")
+	}
+	return route, nil
 }
 
 // RegisterAmino registers all crypto related types in the given (amino) codec.
