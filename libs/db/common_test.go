@@ -104,12 +104,14 @@ func (mdb *mockDB) SetSync([]byte, []byte) {
 	mdb.calls["SetSync"]++
 }
 
-func (mdb *mockDB) SetNoLock([]byte, []byte) {
+func (mdb *mockDB) SetNoLock([]byte, []byte) error {
 	mdb.calls["SetNoLock"]++
+	return nil
 }
 
-func (mdb *mockDB) SetNoLockSync([]byte, []byte) {
+func (mdb *mockDB) SetNoLockSync([]byte, []byte) error {
 	mdb.calls["SetNoLockSync"]++
+	return nil
 }
 
 func (mdb *mockDB) Delete([]byte) {

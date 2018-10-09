@@ -6,8 +6,8 @@ import (
 
 type atomicSetDeleter interface {
 	Mutex() *sync.Mutex
-	SetNoLock(key, value []byte)
-	SetNoLockSync(key, value []byte)
+	SetNoLock(key, value []byte) error
+	SetNoLockSync(key, value []byte) error
 	DeleteNoLock(key []byte)
 	DeleteNoLockSync(key []byte)
 }

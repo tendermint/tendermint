@@ -68,16 +68,17 @@ func (db *MemDB) SetSync(key []byte, value []byte) {
 }
 
 // Implements atomicSetDeleter.
-func (db *MemDB) SetNoLock(key []byte, value []byte) {
-	db.SetNoLockSync(key, value)
+func (db *MemDB) SetNoLock(key []byte, value []byte) error {
+	return db.SetNoLockSync(key, value)
 }
 
 // Implements atomicSetDeleter.
-func (db *MemDB) SetNoLockSync(key []byte, value []byte) {
+func (db *MemDB) SetNoLockSync(key []byte, value []byte) error {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
 
 	db.db[string(key)] = value
+	return nil
 }
 
 // Implements DB.

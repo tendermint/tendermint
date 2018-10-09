@@ -63,19 +63,19 @@ func (ddb debugDB) SetSync(key []byte, value []byte) {
 }
 
 // Implements atomicSetDeleter.
-func (ddb debugDB) SetNoLock(key []byte, value []byte) {
+func (ddb debugDB) SetNoLock(key []byte, value []byte) error {
 	fmt.Printf("%v.SetNoLock(%v, %v)\n", ddb.label,
 		cmn.ColoredBytes(key, cmn.Yellow, cmn.Blue),
 		cmn.ColoredBytes(value, cmn.Green, cmn.Blue))
-	ddb.db.(atomicSetDeleter).SetNoLock(key, value)
+	return ddb.db.(atomicSetDeleter).SetNoLock(key, value)
 }
 
 // Implements atomicSetDeleter.
-func (ddb debugDB) SetNoLockSync(key []byte, value []byte) {
+func (ddb debugDB) SetNoLockSync(key []byte, value []byte) error {
 	fmt.Printf("%v.SetNoLockSync(%v, %v)\n", ddb.label,
 		cmn.ColoredBytes(key, cmn.Yellow, cmn.Blue),
 		cmn.ColoredBytes(value, cmn.Green, cmn.Blue))
-	ddb.db.(atomicSetDeleter).SetNoLockSync(key, value)
+	return ddb.db.(atomicSetDeleter).SetNoLockSync(key, value)
 }
 
 // Implements DB.
