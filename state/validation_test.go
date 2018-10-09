@@ -80,9 +80,37 @@ func TestValidateBlockCommit(t *testing.T) {
 /*
 	TODO(#2589):
 	- test good/bad evidence in block
-	- test max evidence in block
 */
 func TestValidateBlockEvidence(t *testing.T) {
+	var height int64 = 1 // TODO(#2589): generalize
+	state, stateDB := state(1, int(height))
+
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
+
+	// make some evidence
+	addr, _ := state.Validators.GetByIndex(0)
+	goodEvidence := types.NewMockGoodEvidence(height, 0, addr)
+
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	block.Evidence.Evidence = []types.Evidence{goodEvidence, goodEvidence}
+	block.EvidenceHash = block.Evidence.Hash()
+	err := blockExec.ValidateBlock(state, block)
+	require.NoError(t, err)
+
+	// A block with too much evidence fails.
+	maxBlockSize := state.ConsensusParams.BlockSize.MaxBytes
+	maxEvidenceBytes := types.MaxEvidenceBytesPerBlock(maxBlockSize)
+	maxEvidence := maxEvidenceBytes / types.MaxEvidenceBytes
+	require.True(t, maxEvidence > 2)
+	for i := int64(0); i < maxEvidence; i++ {
+		block.Evidence.Evidence = append(block.Evidence.Evidence, goodEvidence)
+	}
+	block.EvidenceHash = block.Evidence.Hash()
+	err = blockExec.ValidateBlock(state, block)
+	require.Error(t, err)
+	_, ok := err.(*types.ErrEvidenceOverflow)
+	require.True(t, ok)
 }
 
 /*
