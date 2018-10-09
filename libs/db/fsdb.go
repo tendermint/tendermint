@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
-	tmerrors "github.com/tendermint/tendermint/libs/errors"
 )
 
 const (
@@ -212,7 +212,8 @@ func write(path string, d []byte) error {
 		return err
 	}
 	if fInfo.Mode() != keyPerm {
-		return tmerrors.NewErrPermissionsChanged(f.Name(), keyPerm, fInfo.Mode())
+		log.Printf("WARNING: Expected file %v to have permissions: %v, got: %v\n",
+			f.Name(), keyPerm, fInfo.Mode())
 	}
 	_, err = f.Write(d)
 	if err != nil {

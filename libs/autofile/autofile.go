@@ -1,6 +1,7 @@
 package autofile
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -8,7 +9,6 @@ import (
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/errors"
 )
 
 /* AutoFile usage
@@ -152,7 +152,8 @@ func (af *AutoFile) openFile() error {
 		return err
 	}
 	if fileInfo.Mode() != autoFilePerms {
-		return errors.NewErrPermissionsChanged(file.Name(), fileInfo.Mode(), autoFilePerms)
+		log.Printf("WARNING: Expected file %v to have permissions: %v, got: %v\n",
+			file.Name(), autoFilePerms, fileInfo.Mode())
 	}
 	af.file = file
 	return nil
