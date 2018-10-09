@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	fail "github.com/ebuchman/fail-test"
+	"github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -81,7 +81,7 @@ type ConsensusState struct {
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.RWMutex
+	mtx   sync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
@@ -534,6 +534,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
+	cs.LockedBlockID = nil
 	cs.ValidRound = 0
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
@@ -1161,6 +1162,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
 		cs.ProposalBlock = nil
+		cs.LockedBlockID = &blockID
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
@@ -1404,6 +1406,10 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 //-----------------------------------------------------------------------------
 
 func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
+	// We are now receiving PoLc Block, don't interrupt it
+	if cs.LockedBlockID != nil {
+		return nil
+	}
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil {
@@ -1457,6 +1463,10 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		return false, nil
 	}
 
+	if cs.LockedBlockID!=nil && cs.ProposalBlockParts.HasHeader(cs.LockedBlockID.PartsHeader){
+		panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v",cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
+	}
+
 	added, err = cs.ProposalBlockParts.AddPart(part)
 	if err != nil {
 		return added, err
@@ -1470,6 +1480,11 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		)
 		if err != nil {
 			return added, err
+		}
+		if cs.LockedBlockID != nil {
+			defer func() {
+				cs.LockedBlockID = nil
+			}()
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
@@ -1603,6 +1618,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				cs.LockedRound = 0
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
+				cs.LockedBlockID = nil
 				cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 			}
 
