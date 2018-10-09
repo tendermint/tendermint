@@ -1164,7 +1164,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
 		cs.ProposalBlock = nil
 		cs.LockedRound = cs.Round
-		cs.LockedBlockID = &types.BlockID{blockID.Hash,blockID.PartsHeader}
+		cs.LockedBlockID = &types.BlockID{blockID.Hash, blockID.PartsHeader}
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
@@ -1420,11 +1420,14 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	// We are now receiving PoLc Block, don't interrupt it. Unless the proposal is matched with LockedBlockID
-	if cs.LockedBlockID != nil && !cs.LockedBlockID.PartsHeader.Equals(proposal.BlockPartsHeader){
-		if !cs.ProposalBlockParts.HasHeader(proposal.BlockPartsHeader){
-			panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v",cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
+	if cs.LockedBlockID != nil {
+		if cs.LockedBlockID.PartsHeader.Equals(proposal.BlockPartsHeader) {
+			if !cs.ProposalBlockParts.HasHeader(proposal.BlockPartsHeader) {
+				panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v", cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
+			}
+		} else {
+			return nil
 		}
-		return nil
 	}
 
 	// We don't care about the proposal if we're already in cstypes.RoundStepCommit.
@@ -1444,7 +1447,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	cs.Proposal = proposal
-	if cs.LockedBlockID == nil{
+	if cs.LockedBlockID == nil {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
 	}
 	cs.Logger.Info("Received proposal", "proposal", proposal)
@@ -1471,8 +1474,8 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		return false, nil
 	}
 
-	if cs.LockedBlockID!=nil && !cs.ProposalBlockParts.HasHeader(cs.LockedBlockID.PartsHeader){
-		panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v",cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
+	if cs.LockedBlockID != nil && !cs.ProposalBlockParts.HasHeader(cs.LockedBlockID.PartsHeader) {
+		panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v", cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
 	}
 
 	added, err = cs.ProposalBlockParts.AddPart(part)
