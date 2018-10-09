@@ -30,6 +30,10 @@ installFromGithub() {
 		mkdir -p "$repo"
 		git clone "https://github.com/$repo.git" "$repo"
 	fi
+	if [ ! -z ${subdir+x} ] && [ ! -d "$repo/$subdir" ]; then
+		echo "ERROR: no such directory $repo/$subdir"
+		exit 1
+	fi
 	pushd "$repo" && \
 		git fetch origin && \
 		git checkout -q "$commit" && \
