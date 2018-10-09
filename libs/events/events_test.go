@@ -22,6 +22,8 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	messages := make(chan EventData)
 	evsw.AddListenerForEvent("listener", "event",
 		func(data EventData) {
+			// test there's no deadlock if we remove the listener inside a callback
+			evsw.RemoveListener("listener")
 			messages <- data
 		})
 	go evsw.FireEvent("event", "data")
