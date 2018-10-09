@@ -1162,7 +1162,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
 		cs.ProposalBlock = nil
-		cs.LockedBlockID = &blockID
+		cs.LockedBlockID = &types.BlockID{blockID.Hash,blockID.PartsHeader}
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
@@ -1463,7 +1463,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		return false, nil
 	}
 
-	if cs.LockedBlockID!=nil && cs.ProposalBlockParts.HasHeader(cs.LockedBlockID.PartsHeader){
+	if cs.LockedBlockID!=nil && !cs.ProposalBlockParts.HasHeader(cs.LockedBlockID.PartsHeader){
 		panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v",cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
 	}
 
