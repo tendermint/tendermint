@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/encoding/amino"
 )
 
@@ -14,4 +14,9 @@ func init() {
 func RegisterBlockAmino(cdc *amino.Codec) {
 	cryptoAmino.RegisterAmino(cdc)
 	RegisterEvidences(cdc)
+}
+
+// GetCodec returns a codec used by the package. For testing purposes only.
+func GetCodec() *amino.Codec {
+	return cdc
 }
