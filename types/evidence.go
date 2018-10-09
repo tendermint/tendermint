@@ -21,13 +21,30 @@ type ErrEvidenceInvalid struct {
 	ErrorValue error
 }
 
-func NewEvidenceInvalidErr(ev Evidence, err error) *ErrEvidenceInvalid {
+// NewErrEvidenceInvalid returns a new EvidenceInvalid with the given err.
+func NewErrEvidenceInvalid(ev Evidence, err error) *ErrEvidenceInvalid {
 	return &ErrEvidenceInvalid{ev, err}
 }
 
 // Error returns a string representation of the error.
 func (err *ErrEvidenceInvalid) Error() string {
 	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.ErrorValue, err.Evidence)
+}
+
+// ErrEvidenceOverflow is for when there is too much evidence in a block.
+type ErrEvidenceOverflow struct {
+	MaxBytes int64
+	GotBytes int64
+}
+
+// NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
+func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
+	return &ErrEvidenceOverflow{max, got}
+}
+
+// Error returns a string representation of the error.
+func (err *ErrEvidenceOverflow) Error() string {
+	return fmt.Sprintf("Too much evidence: Max %d bytes, got %d bytes", err.MaxBytes, err.GotBytes)
 }
 
 //-------------------------------------------
