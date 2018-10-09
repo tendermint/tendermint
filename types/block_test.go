@@ -3,6 +3,7 @@ package types
 import (
 	"crypto/rand"
 	"math"
+	"os"
 	"testing"
 	"time"
 
@@ -12,6 +13,13 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
+
+func TestMain(m *testing.M) {
+	RegisterMockEvidences(cdc)
+
+	code := m.Run()
+	os.Exit(code)
+}
 
 func TestBlockAddEvidence(t *testing.T) {
 	txs := []Tx{Tx("foo"), Tx("bar")}

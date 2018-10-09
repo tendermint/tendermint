@@ -6,14 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/go-kit/kit/log/term"
-
+	cfg "github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )

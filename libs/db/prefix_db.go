@@ -265,6 +265,8 @@ func (pb prefixBatch) WriteSync() {
 //----------------------------------------
 // prefixIterator
 
+var _ Iterator = (*prefixIterator)(nil)
+
 // Strips prefix while iterating from Iterator.
 type prefixIterator struct {
 	prefix []byte
@@ -274,9 +276,9 @@ type prefixIterator struct {
 	valid  bool
 }
 
-func newPrefixIterator(prefix, start, end []byte, source Iterator) prefixIterator {
+func newPrefixIterator(prefix, start, end []byte, source Iterator) *prefixIterator {
 	if !source.Valid() || !bytes.HasPrefix(source.Key(), prefix) {
-		return prefixIterator{
+		return &prefixIterator{
 			prefix: prefix,
 			start:  start,
 			end:    end,
@@ -284,7 +286,7 @@ func newPrefixIterator(prefix, start, end []byte, source Iterator) prefixIterato
 			valid:  false,
 		}
 	} else {
-		return prefixIterator{
+		return &prefixIterator{
 			prefix: prefix,
 			start:  start,
 			end:    end,
@@ -294,15 +296,15 @@ func newPrefixIterator(prefix, start, end []byte, source Iterator) prefixIterato
 	}
 }
 
-func (itr prefixIterator) Domain() (start []byte, end []byte) {
+func (itr *prefixIterator) Domain() (start []byte, end []byte) {
 	return itr.start, itr.end
 }
 
-func (itr prefixIterator) Valid() bool {
+func (itr *prefixIterator) Valid() bool {
 	return itr.valid && itr.source.Valid()
 }
 
-func (itr prefixIterator) Next() {
+func (itr *prefixIterator) Next() {
 	if !itr.valid {
 		panic("prefixIterator invalid, cannot call Next()")
 	}
@@ -314,21 +316,21 @@ func (itr prefixIterator) Next() {
 	}
 }
 
-func (itr prefixIterator) Key() (key []byte) {
+func (itr *prefixIterator) Key() (key []byte) {
 	if !itr.valid {
 		panic("prefixIterator invalid, cannot call Key()")
 	}
 	return stripPrefix(itr.source.Key(), itr.prefix)
 }
 
-func (itr prefixIterator) Value() (value []byte) {
+func (itr *prefixIterator) Value() (value []byte) {
 	if !itr.valid {
 		panic("prefixIterator invalid, cannot call Value()")
 	}
 	return itr.source.Value()
 }
 
-func (itr prefixIterator) Close() {
+func (itr *prefixIterator) Close() {
 	itr.source.Close()
 }
 

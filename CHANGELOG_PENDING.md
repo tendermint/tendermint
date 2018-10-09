@@ -32,11 +32,13 @@ BREAKING CHANGES:
 
 FEATURES:
 - [crypto/merkle] \#2298 General Merkle Proof scheme for chaining various types of Merkle trees together
+- [abci] \#2557 Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
 
 IMPROVEMENTS:
 - [consensus] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
 - [p2p] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
 - [config] \#2232 added ValidateBasic method, which performs basic checks
+- [crypto] \#2099 make crypto random use chacha, and have forward secrecy of generated randomness
 
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
@@ -49,3 +51,5 @@ timeoutPrecommit before starting next round
 - [common] \#2534 Make bit array's PickRandom choose uniformly from true bits
 - [consensus] \#1637 Limit the amount of evidence that can be included in a
   block
+- [p2p] \#2555 fix p2p switch FlushThrottle value (@goolAdapter)
+- [libs/event] \#2518 fix event concurrency flaw (@goolAdapter)
