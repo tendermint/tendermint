@@ -12,18 +12,22 @@ collecting and providing various statistics to the user:
 Assuming your application is running in another container with the name
 `app`:
 
-    docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
-    docker run -it --rm -v "/tmp:/tendermint" -p "26657:26657" --name=tm --link=app tendermint/tendermint node --proxy_app=tcp://app:26658
+```
+docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
+docker run -it --rm -v "/tmp:/tendermint" -p "26657:26657" --name=tm --link=app tendermint/tendermint node --proxy_app=tcp://app:26658
 
-    docker run -it --rm -p "26670:26670" --link=tm tendermint/monitor tm:26657
+docker run -it --rm -p "26670:26670" --link=tm tendermint/monitor tm:26657
+```
 
 If you don't have an application yet, but still want to try monitor out,
 use `kvstore`:
 
-    docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
-    docker run -it --rm -v "/tmp:/tendermint" -p "26657:26657" --name=tm tendermint/tendermint node --proxy_app=kvstore
+```
+docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
+docker run -it --rm -v "/tmp:/tendermint" -p "26657:26657" --name=tm tendermint/tendermint node --proxy_app=kvstore
 
-    docker run -it --rm -p "26670:26670" --link=tm tendermint/monitor tm:26657
+docker run -it --rm -p "26670:26670" --link=tm tendermint/monitor tm:26657
+```
 
 ### Using Binaries
 
@@ -31,40 +35,49 @@ use `kvstore`:
 
 then run:
 
-    tendermint init
-    tendermint node --proxy_app=kvstore
+```
+tendermint init
+tendermint node --proxy_app=kvstore
 
-    tm-monitor localhost:26657
+tm-monitor localhost:26657
+```
 
-with the last command being in a seperate window.
+with the last command being in a separate window.
 
 ## Usage
 
-    tm-monitor [-v] [-no-ton] [-listen-addr="tcp://0.0.0.0:26670"] [endpoints]
+```
+Tendermint monitor watches over one or more Tendermint core
+applications, collecting and providing various statistics to the user.
 
-    Examples:
-            # monitor single instance
-            tm-monitor localhost:26657
+Usage:
+        tm-monitor [-no-ton] [-listen-addr="tcp://0.0.0.0:26670"] [endpoints]
 
-            # monitor a few instances by providing comma-separated list of RPC endpoints
-            tm-monitor host1:26657,host2:26657
-    Flags:
-      -listen-addr string
-            HTTP and Websocket server listen address (default "tcp://0.0.0.0:26670")
-      -no-ton
-            Do not show ton (table of nodes)
-      -v    verbose logging
+Examples:
+        # monitor single instance
+        tm-monitor localhost:26657
+
+        # monitor a few instances by providing comma-separated list of RPC endpoints
+        tm-monitor host1:26657,host2:26657
+Flags:
+  -listen-addr string
+        HTTP and Websocket server listen address (default "tcp://0.0.0.0:26670")
+  -no-ton
+        Do not show ton (table of nodes)
+```
 
 ### RPC UI
 
 Run `tm-monitor` and visit http://localhost:26670 You should see the
 list of the available RPC endpoints:
 
-    http://localhost:26670/status
-    http://localhost:26670/status/network
-    http://localhost:26670/monitor?endpoint=_
-    http://localhost:26670/status/node?name=_
-    http://localhost:26670/unmonitor?endpoint=_
+```
+http://localhost:26670/status
+http://localhost:26670/status/network
+http://localhost:26670/monitor?endpoint=_
+http://localhost:26670/status/node?name=_
+http://localhost:26670/unmonitor?endpoint=_
+```
 
 The API is available as GET requests with URI encoded parameters, or as
 JSONRPC POST requests. The JSONRPC methods are also exposed over
@@ -72,6 +85,8 @@ websocket.
 
 ## Development
 
-    make get_tools
-    make get_vendor_deps
-    make test
+```
+make get_tools
+make get_vendor_deps
+make test
+```
