@@ -1162,6 +1162,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
 		cs.ProposalBlock = nil
+		cs.LockedRound = cs.Round
 		cs.LockedBlockID = &types.BlockID{blockID.Hash,blockID.PartsHeader}
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
@@ -1482,6 +1483,8 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 			return added, err
 		}
 		if cs.LockedBlockID != nil {
+			cs.LockedBlock = cs.ProposalBlock
+			cs.LockedBlockParts = cs.ProposalBlockParts
 			defer func() {
 				cs.LockedBlockID = nil
 			}()
