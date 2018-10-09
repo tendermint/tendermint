@@ -4,6 +4,7 @@ GOTOOLS = \
 	github.com/alecthomas/gometalinter \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/square/certstrap
+GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
