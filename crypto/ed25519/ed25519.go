@@ -7,7 +7,7 @@ import (
 	"io"
 
 	amino "github.com/tendermint/go-amino"
-	"golang.org/x/crypto/ed25519"
+	"golang.org/x/crypto/ed25519" // forked to github.com/tendermint/crypto
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -66,7 +66,7 @@ func (privKey PrivKeyEd25519) PubKey() crypto.PubKey {
 	}
 
 	if !initialized {
-		panic("pubkey bytes should always be initialized!")
+		panic("Expected PrivKeyEd25519 to include concatenated pubkey bytes")
 	}
 
 	var pubkeyBytes [PubKeyEd25519Size]byte

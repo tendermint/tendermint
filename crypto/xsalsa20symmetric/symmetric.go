@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/crypto/nacl/secretbox" // forked to github.com/tendermint/crypto
+
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"golang.org/x/crypto/nacl/secretbox"
 )
 
 // TODO, make this into a struct that implements crypto.Symmetric.
