@@ -1,8 +1,6 @@
 package cryptoAmino
 
 import (
-	"errors"
-
 	"reflect"
 
 	amino "github.com/tendermint/go-amino"
@@ -13,6 +11,11 @@ import (
 )
 
 var cdc = amino.NewCodec()
+
+// routeTable is used to map public key concrete types back
+// to their amino routes. This should eventually be handled
+// by amino. Example usage:
+// routeTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoRoute
 var routeTable = make(map[reflect.Type]string, 3)
 
 func init() {
@@ -34,12 +37,9 @@ func init() {
 // PubkeyAminoRoute returns the amino route of a pubkey
 // cdc is currently passed in, as eventually this will not be using
 // a package level codec.
-func PubkeyAminoRoute(cdc *amino.Codec, key crypto.PubKey) (string, error) {
-	route, ok := routeTable[reflect.TypeOf(key)]
-	if !ok {
-		return "", errors.New("Pubkey type not known")
-	}
-	return route, nil
+func PubkeyAminoRoute(cdc *amino.Codec, key crypto.PubKey) (string, bool) {
+	route, found := routeTable[reflect.TypeOf(key)]
+	return route, found
 }
 
 // RegisterAmino registers all crypto related types in the given (amino) codec.
