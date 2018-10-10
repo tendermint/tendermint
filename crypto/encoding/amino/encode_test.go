@@ -120,32 +120,29 @@ func TestNilEncodings(t *testing.T) {
 	var e, f crypto.PrivKey
 	checkAminoJSON(t, &e, &f, true)
 	assert.EqualValues(t, e, f)
-
 }
 
 func TestPubKeyInvalidDataProperReturnsEmpty(t *testing.T) {
 	pk, err := PubKeyFromBytes([]byte("foo"))
-	require.NotNil(t, err, "expecting a non-nil error")
-	require.Nil(t, pk, "expecting an empty public key on error")
+	require.NotNil(t, err)
+	require.Nil(t, pk)
 }
 
 func TestPubkeyAminoRoute(t *testing.T) {
 	tests := []struct {
-		key     crypto.PubKey
-		want    string
-		wantErr bool
+		key   crypto.PubKey
+		want  string
+		found bool
 	}{
-		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoRoute, false},
-		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoRoute, false},
-		{&multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, false},
+		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoRoute, true},
+		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoRoute, true},
+		{&multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
 	}
 	for i, tc := range tests {
-		got, err := PubkeyAminoRoute(cdc, tc.key)
-		if tc.wantErr {
-			require.Error(t, err, "tc %d", i)
-		} else {
-			require.NoError(t, err, "tc %d", i)
-			require.Equal(t, tc.want, got, "tc %d", i)
+		got, found := PubkeyAminoRoute(cdc, tc.key)
+		require.Equal(t, tc.found, found, "not equal on tc %d", i)
+		if tc.found {
+			require.Equal(t, tc.want, got, "not equal on tc %d", i)
 		}
 	}
 }
