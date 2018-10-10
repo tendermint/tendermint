@@ -124,8 +124,8 @@ func TestNilEncodings(t *testing.T) {
 
 func TestPubKeyInvalidDataProperReturnsEmpty(t *testing.T) {
 	pk, err := PubKeyFromBytes([]byte("foo"))
-	require.NotNil(t, err, "expecting a non-nil error")
-	require.Nil(t, pk, "oute, ok := expecting an empty public key on error")
+	require.NotNil(t, err)
+	require.Nil(t, pk)
 }
 
 func TestPubkeyAminoRoute(t *testing.T) {
