@@ -1492,8 +1492,13 @@ func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) 
 				// than 1/3. We should trigger in the future accountability
 				// procedure at this point.
 			}
-		}else{
-			return true,nil
+			if cs.Step <= cstypes.RoundStepPropose {
+				// Move onto the next step
+				cs.enterPrevote(height, cs.Round)
+			} else if cs.Step == cstypes.RoundStepCommit {
+				// If we're waiting on the proposal block...
+				cs.tryFinalizeCommit(height)
+			}
 		}
 	}else{
 		added, err = cs.LockedBlockParts.AddPart(part)
@@ -1527,8 +1532,15 @@ func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) 
 						cs.LockedBlock = nil
 						return false,nil
 					}
-				}else {
-					return added,nil
+
+					if cs.Step <= cstypes.RoundStepPropose {
+						// Move onto the next step
+						cs.enterPrevote(height, cs.Round)
+					} else if cs.Step == cstypes.RoundStepCommit {
+						// If we're waiting on the proposal block...
+						cs.ProposalBlock = cs.LockedBlock
+						cs.tryFinalizeCommit(height)
+					}
 				}
 			}else{
 				return false,nil
@@ -1537,13 +1549,7 @@ func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) 
 			return false,err
 		}
 	}
-	if cs.Step <= cstypes.RoundStepPropose {
-		// Move onto the next step
-		cs.enterPrevote(height, cs.Round)
-	} else if cs.Step == cstypes.RoundStepCommit {
-		// If we're waiting on the proposal block...
-		cs.tryFinalizeCommit(height)
-	}
+
 	return added, nil
 }
 
