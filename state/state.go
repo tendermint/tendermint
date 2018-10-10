@@ -118,10 +118,7 @@ func (state State) MakeBlock(
 
 	// Set time
 	if height == 1 {
-		block.Time = tmtime.Now()
-		if block.Time.Before(state.LastBlockTime) {
-			block.Time = state.LastBlockTime // state.LastBlockTime for height == 1 is genesis time
-		}
+		block.Time = state.LastBlockTime // genesis time
 	} else {
 		block.Time = MedianTime(commit, state.LastValidators)
 	}
