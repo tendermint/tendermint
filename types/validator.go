@@ -76,7 +76,7 @@ func (v *Validator) Hash() []byte {
 	return tmhash.Sum(v.Bytes())
 }
 
-// Bytes computes the unique ID of a validator with a given voting power.
+// Bytes computes the unique encoding of a validator with a given voting power.
 // These are the bytes that gets hashed in consensus. It excludes pubkey
 // as its redundant with the address. This also excludes accum which changes
 // every round.

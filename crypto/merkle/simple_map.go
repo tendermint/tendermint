@@ -23,7 +23,8 @@ func newSimpleMap() *simpleMap {
 	}
 }
 
-// Set hashes the key and value and appends it to the kv pairs.
+// Set creates a kv pair of the key and the hash of the value,
+// and then appends it to simpleMap's kv pairs.
 func (sm *simpleMap) Set(key string, value []byte) {
 	sm.sorted = false
 
@@ -69,6 +70,8 @@ func (sm *simpleMap) KVPairs() cmn.KVPairs {
 // then hashed.
 type KVPair cmn.KVPair
 
+// Bytes returns key || value, with both the
+// key and value length prefixed.
 func (kv KVPair) Bytes() []byte {
 	var b bytes.Buffer
 	err := amino.EncodeByteSlice(&b, kv.Key)
