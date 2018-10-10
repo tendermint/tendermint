@@ -45,7 +45,7 @@ BUG FIXES:
 - [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
 - [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for
 timeoutPrecommit before starting next round
-- [consensus] [\#1745] (https://github.com/tendermint/tendermint/issues/1745) wait for 
+- [consensus] [\#1745](https://github.com/tendermint/tendermint/issues/1745) wait for 
 Proposal or timeoutProposal before entering prevote 
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function

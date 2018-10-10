@@ -39,8 +39,8 @@ const (
 )
 
 // genesis, chain_id, priv_val
-var config *cfg.Config              // NOTE: must be reset for each _test.go file
-var ensureTimeout = time.Second * 1 // must be in seconds because CreateEmptyBlocksInterval is
+var config *cfg.Config // NOTE: must be reset for each _test.go file
+var ensureTimeout = time.Millisecond * 100
 
 func ensureDir(dir string, mode os.FileMode) {
 	if err := cmn.EnsureDir(dir, mode); err != nil {
@@ -318,37 +318,51 @@ func ensureNoNewEvent(ch <-chan interface{}, timeout time.Duration,
 }
 
 func ensureNoNewEventOnChannel(ch <-chan interface{}) {
-	ensureNoNewEvent(ch, ensureTimeout, "We should be stuck waiting, "+
-		"not receiving new event on the channel")
+	ensureNoNewEvent(
+		ch,
+		ensureTimeout,
+		"We should be stuck waiting, not receiving new event on the channel")
 }
 
 func ensureNoNewRoundStep(stepCh <-chan interface{}) {
-	ensureNoNewEvent(stepCh, ensureTimeout, "We should be stuck waiting, "+
-		"not receiving NewRoundStep event")
+	ensureNoNewEvent(
+		stepCh,
+		ensureTimeout,
+		"We should be stuck waiting, not receiving NewRoundStep event")
 }
 
 func ensureNoNewUnlock(unlockCh <-chan interface{}) {
-	ensureNoNewEvent(unlockCh, ensureTimeout, "We should be stuck waiting, "+
-		"not receiving Unlock event")
+	ensureNoNewEvent(
+		unlockCh,
+		ensureTimeout,
+		"We should be stuck waiting, not receiving Unlock event")
 }
 
 func ensureNoNewTimeout(stepCh <-chan interface{}, timeout int64) {
 	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
-	ensureNoNewEvent(stepCh, timeoutDuration, "We should be stuck waiting, "+
-		"not receiving NewTimeout event")
+	ensureNoNewEvent(
+		stepCh,
+		timeoutDuration,
+		"We should be stuck waiting, not receiving NewTimeout event")
 }
 
-func ensureNewEvent(ch <-chan interface{}, height int64, round int,
-	timeout time.Duration, errorMessage string) {
+func ensureNewEvent(
+	ch <-chan interface{},
+	height int64,
+	round int,
+	timeout time.Duration,
+	errorMessage string) {
+
 	select {
 	case <-time.After(timeout):
 		panic(errorMessage)
 	case ev := <-ch:
 		rs, ok := ev.(types.EventDataRoundState)
 		if !ok {
-			panic(fmt.Sprintf("expected a *types.EventDataRoundState, "+
-				"got %v. wrong subscription channel?",
-				reflect.TypeOf(rs)))
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataRoundState, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
 		}
 		if rs.Height != height {
 			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
@@ -361,7 +375,11 @@ func ensureNewEvent(ch <-chan interface{}, height int64, round int,
 }
 
 func ensureNewRoundStep(stepCh <-chan interface{}, height int64, round int) {
-	ensureNewEvent(stepCh, height, round, ensureTimeout,
+	ensureNewEvent(
+		stepCh,
+		height,
+		round,
+		ensureTimeout,
 		"Timeout expired while waiting for NewStep event")
 }
 
@@ -392,7 +410,7 @@ func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
 }
 
 func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, timeout int64) {
-	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
+	timeoutDuration := time.Duration(timeout*3) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }
@@ -434,7 +452,7 @@ func ensureNewBlockHeader(blockCh <-chan interface{}, height int64, blockHash cm
 			panic(fmt.Sprintf("expected height %v, got %v", height, blockHeader.Header.Height))
 		}
 		if !bytes.Equal(blockHeader.Header.Hash(), blockHash) {
-			panic(fmt.Sprintf("expected header %v, got %v", blockHash, blockHeader.Header.Hash()))
+			panic(fmt.Sprintf("expected header %X, got %X", blockHash, blockHeader.Header.Hash()))
 		}
 	}
 }
@@ -474,7 +492,6 @@ func ensureNewEventOnChannel(ch <-chan interface{}) {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for new activity on the channel")
 	case <-ch:
-		break
 	}
 }
 

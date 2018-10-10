@@ -502,7 +502,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
-	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlockHeader)
 
@@ -526,8 +526,6 @@ func TestStateLockPOLRelock(t *testing.T) {
 	ensureVote(voteCh, height, round, types.VoteTypePrevote) // prevote
 
 	signAddVotes(cs1, types.VoteTypePrevote, theBlockHash, theBlockParts, vs2, vs3, vs4)
-	// prevotes
-	discardVotesFromChan(t, voteCh, 3, height, round)
 
 	ensureVote(voteCh, height, round, types.VoteTypePrecommit) // our precommit
 	// the proposed block should now be locked and our precommit added
@@ -536,8 +534,6 @@ func TestStateLockPOLRelock(t *testing.T) {
 	// add precommits from the rest
 	signAddVotes(cs1, types.VoteTypePrecommit, nil, types.PartSetHeader{}, vs2, vs4)
 	signAddVotes(cs1, types.VoteTypePrecommit, theBlockHash, theBlockParts, vs3)
-	// precommites
-	discardVotesFromChan(t, voteCh, 3, height, round)
 
 	// before we timeout to the new round set the new proposal
 	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
@@ -574,16 +570,12 @@ func TestStateLockPOLRelock(t *testing.T) {
 
 	// now lets add prevotes from everyone else for the new block
 	signAddVotes(cs1, types.VoteTypePrevote, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
-	// prevotes
-	discardVotesFromChan(t, voteCh, 3, height, round)
 
 	ensureVote(voteCh, height, round, types.VoteTypePrecommit)
 	// we should have unlocked and locked on the new block
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
 
 	signAddVotes(cs1, types.VoteTypePrecommit, propBlockHash, propBlockParts.Header(), vs2, vs3)
-	discardVotesFromChan(t, voteCh, 2, height, round)
-
 	ensureNewBlockHeader(newBlockCh, height, propBlockHash)
 
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -991,10 +983,6 @@ func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 	incrementRound(vss[1:]...)
 	signAddVotes(cs1, types.VoteTypePrevote, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
-	time.Sleep(50 * time.Millisecond)
-	rs := cs1.GetRoundState()
-	assert.True(t, rs.Step == cstypes.RoundStepPropose) // P0 does not prevote before timeoutPropose expires
-
 	ensureNewTimeout(timeoutProposeCh, height, round, cs1.config.TimeoutPropose.Nanoseconds())
 
 	ensureVote(voteCh, height, round, types.VoteTypePrevote)
@@ -1232,11 +1220,4 @@ func subscribe(eventBus *types.EventBus, q tmpubsub.Query) <-chan interface{} {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
 	}
 	return out
-}
-
-// discardVotesFromChan reads n values from the channel.
-func discardVotesFromChan(t *testing.T, ch <-chan interface{}, n int, height int64, round int) {
-	for i := 0; i < n; i++ {
-		ensureNewVote(ch, height, round)
-	}
 }
