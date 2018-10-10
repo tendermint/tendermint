@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	fail "github.com/ebuchman/fail-test"
+	"github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -81,7 +81,7 @@ type ConsensusState struct {
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.RWMutex
+	mtx   sync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
@@ -644,7 +644,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		added, err := cs.addProposalBlockPart(msg, peerID)
+		added, err := cs.tryAddBlockPart(msg, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
@@ -1160,8 +1160,8 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
-		cs.ProposalBlock = nil
-		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
+		cs.LockedBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
+		cs.LockedRound = cs.Round
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 	cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
@@ -1439,7 +1439,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit, once we have the full block.
-func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
+func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -1449,7 +1449,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 	}
 
 	// We're not expecting a block part.
-	if cs.ProposalBlockParts == nil {
+	if cs.ProposalBlockParts == nil && cs.LockedBlockParts == nil {
 		// NOTE: this can happen when we've gone to a higher round and
 		// then receive parts from the previous round - not necessarily a bad peer.
 		cs.Logger.Info("Received a block part when we're not expecting any",
@@ -1461,45 +1461,88 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 	if err != nil {
 		return added, err
 	}
-	if added && cs.ProposalBlockParts.IsComplete() {
-		// Added and completed!
-		_, err = cdc.UnmarshalBinaryReader(
-			cs.ProposalBlockParts.GetReader(),
-			&cs.ProposalBlock,
-			int64(cs.state.ConsensusParams.BlockSize.MaxBytes),
-		)
+	if added {
+		if cs.ProposalBlockParts.IsComplete() {
+			// Added and completed!
+			_, err = cdc.UnmarshalBinaryReader(
+				cs.ProposalBlockParts.GetReader(),
+				&cs.ProposalBlock,
+				int64(cs.state.ConsensusParams.BlockSize.MaxBytes),
+			)
+			if err != nil {
+				return added, err
+			}
+			// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
+			cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+
+			// Update Valid* if we can.
+			prevotes := cs.Votes.Prevotes(cs.Round)
+			blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
+			if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+				if cs.ProposalBlock.HashesTo(blockID.Hash) {
+					cs.Logger.Info("Updating valid block to new proposal block",
+						"valid-round", cs.Round, "valid-block-hash", cs.ProposalBlock.Hash())
+					cs.ValidRound = cs.Round
+					cs.ValidBlock = cs.ProposalBlock
+					cs.ValidBlockParts = cs.ProposalBlockParts
+				}
+				// TODO: In case there is +2/3 majority in Prevotes set for some
+				// block and cs.ProposalBlock contains different block, either
+				// proposer is faulty or voting power of faulty processes is more
+				// than 1/3. We should trigger in the future accountability
+				// procedure at this point.
+			}
+		}else{
+			return true,nil
+		}
+	}else{
+		added, err = cs.LockedBlockParts.AddPart(part)
 		if err != nil {
 			return added, err
-		}
-		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
-		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+			if added {
+				if cs.LockedBlockParts.IsComplete() {
+					// Added and completed!
+					_, err = cdc.UnmarshalBinaryReader(
+						cs.ProposalBlockParts.GetReader(),
+						&cs.LockedBlock,
+						int64(cs.state.ConsensusParams.BlockSize.MaxBytes),
+					)
+					if err != nil {
+						return added, err
+					}
+					// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
+					cs.Logger.Info("Received complete locked block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 
-		// Update Valid* if we can.
-		prevotes := cs.Votes.Prevotes(cs.Round)
-		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
-				cs.Logger.Info("Updating valid block to new proposal block",
-					"valid-round", cs.Round, "valid-block-hash", cs.ProposalBlock.Hash())
-				cs.ValidRound = cs.Round
-				cs.ValidBlock = cs.ProposalBlock
-				cs.ValidBlockParts = cs.ProposalBlockParts
+					// Update Valid* if we can.
+					prevotes := cs.Votes.Prevotes(cs.LockedRound)
+					blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
+					if !hasTwoThirds {
+						panic(fmt.Errorf("can't find a PoLc in lockedRound %v",cs.LockedRound))
+					}
+					if cs.LockedRound > cs.Round{
+						panic(fmt.Errorf("lockedRound %v > current round %v , this should not happen",cs.LockedRound, cs.Round))
+					}
+					if !cs.LockedBlock.HashesTo(blockID.Hash){
+						cs.LockedBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
+						cs.LockedBlock = nil
+						return false,nil
+					}
+				}else {
+					return added,nil
+				}
+			}else{
+				return false,nil
 			}
-			// TODO: In case there is +2/3 majority in Prevotes set for some
-			// block and cs.ProposalBlock contains different block, either
-			// proposer is faulty or voting power of faulty processes is more
-			// than 1/3. We should trigger in the future accountability
-			// procedure at this point.
+		}else{
+			return false,err
 		}
-
-		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
-			// Move onto the next step
-			cs.enterPrevote(height, cs.Round)
-		} else if cs.Step == cstypes.RoundStepCommit {
-			// If we're waiting on the proposal block...
-			cs.tryFinalizeCommit(height)
-		}
-		return added, nil
+	}
+	if cs.Step <= cstypes.RoundStepPropose {
+		// Move onto the next step
+		cs.enterPrevote(height, cs.Round)
+	} else if cs.Step == cstypes.RoundStepCommit {
+		// If we're waiting on the proposal block...
+		cs.tryFinalizeCommit(height)
 	}
 	return added, nil
 }
