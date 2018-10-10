@@ -65,6 +65,13 @@ func (b *Block) ValidateBasic() error {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
+	if b.Height < 0 {
+		return fmt.Errorf(
+			"Negative Block.Header.Height: %v",
+			b.Height,
+		)
+	}
+
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
 		return fmt.Errorf(
