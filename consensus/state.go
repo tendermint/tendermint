@@ -1239,6 +1239,8 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
+			cs.LockedBlockID = &types.BlockID{blockID.Hash, blockID.PartsHeader}
+			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 		} else {
 			// We just need to keep waiting.
 		}
