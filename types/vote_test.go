@@ -53,6 +53,37 @@ func TestVoteSignable(t *testing.T) {
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Vote.")
 }
 
+func TestVoteSignableTestVectors(t *testing.T) {
+	//chainID := "test_chain_id"
+	tests := []struct {
+		vote    *Vote
+		chainID string
+		want    []byte
+	}{
+		// XXX: Here Height and Round are skipped. This probably will be cumbersome to to parse in the HSM:
+		{&Vote{}, "", []byte{0xb, 0x22, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff}},
+		// with proper (fixed size) height and round:
+		{
+			&Vote{Height: 1, Round: 1},
+			"",
+			[]byte{
+				0x1d,                                   // total length
+				0x9,                                    // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				// remaining fields:
+				0x22, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+		},
+	}
+	for _, tc := range tests {
+		got, err := cdc.MarshalBinary(CanonicalizeVote(tc.chainID, tc.vote))
+		require.NoError(t, err)
+
+		require.Equal(t, tc.want, got, "Got unexpected sign bytes for Vote.")
+	}
+}
+
 func TestVoteVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
 	pubkey := privVal.GetPubKey()
