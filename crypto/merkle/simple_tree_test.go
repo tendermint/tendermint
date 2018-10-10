@@ -21,20 +21,20 @@ func TestSimpleProof(t *testing.T) {
 
 	total := 100
 
-	items := make([]Hasher, total)
+	items := make([][]byte, total)
 	for i := 0; i < total; i++ {
 		items[i] = testItem(cmn.RandBytes(tmhash.Size))
 	}
 
-	rootHash := SimpleHashFromHashers(items)
+	rootHash := SimpleHashFromByteSlices(items)
 
-	rootHash2, proofs := SimpleProofsFromHashers(items)
+	rootHash2, proofs := SimpleProofsFromByteSlices(items)
 
 	require.Equal(t, rootHash, rootHash2, "Unmatched root hashes: %X vs %X", rootHash, rootHash2)
 
 	// For each item, check the trail.
 	for i, item := range items {
-		itemHash := item.Hash()
+		itemHash := tmhash.Sum(item)
 		proof := proofs[i]
 
 		// Check total/index

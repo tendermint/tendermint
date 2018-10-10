@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
+
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -104,7 +106,7 @@ func (dve *DuplicateVoteEvidence) Address() []byte {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return aminoHasher(dve).Hash()
+	return tmhash.Sum(cdcEncode(dve))
 }
 
 // Verify returns an error if the two votes aren't conflicting.
@@ -157,8 +159,8 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	}
 
 	// just check their hashes
-	dveHash := aminoHasher(dve).Hash()
-	evHash := aminoHasher(ev).Hash()
+	dveHash := tmhash.Sum(cdcEncode(dve))
+	evHash := tmhash.Sum(cdcEncode(ev))
 	return bytes.Equal(dveHash, evHash)
 }
 

@@ -82,10 +82,10 @@ func (params *ConsensusParams) Validate() error {
 
 // Hash returns a merkle hash of the parameters to store in the block header
 func (params *ConsensusParams) Hash() []byte {
-	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
-		"block_size_max_bytes":    aminoHasher(params.BlockSize.MaxBytes),
-		"block_size_max_gas":      aminoHasher(params.BlockSize.MaxGas),
-		"evidence_params_max_age": aminoHasher(params.EvidenceParams.MaxAge),
+	return merkle.SimpleHashFromMap(map[string][]byte{
+		"block_size_max_bytes":    cdcEncode(params.BlockSize.MaxBytes),
+		"block_size_max_gas":      cdcEncode(params.BlockSize.MaxGas),
+		"evidence_params_max_age": cdcEncode(params.EvidenceParams.MaxAge),
 	})
 }
 

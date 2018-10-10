@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -22,10 +23,10 @@ type SimpleProof struct {
 	Aunts    [][]byte `json:"aunts"`     // Hashes from leaf's sibling to a root's child.
 }
 
-// SimpleProofsFromHashers computes inclusion proof for given items.
+// SimpleProofsFromByteSlices computes inclusion proof for given items.
 // proofs[0] is the proof for items[0].
-func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleProof) {
-	trails, rootSPN := trailsFromHashers(items)
+func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*SimpleProof) {
+	trails, rootSPN := trailsFromByteSlices(items)
 	rootHash = rootSPN.Hash
 	proofs = make([]*SimpleProof, len(items))
 	for i, trail := range trails {
@@ -42,19 +43,19 @@ func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleP
 // SimpleProofsFromMap generates proofs from a map. The keys/values of the map will be used as the keys/values
 // in the underlying key-value pairs.
 // The keys are sorted before the proofs are computed.
-func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs map[string]*SimpleProof, keys []string) {
+func SimpleProofsFromMap(m map[string][]byte) (rootHash []byte, proofs map[string]*SimpleProof, keys []string) {
 	sm := newSimpleMap()
 	for k, v := range m {
 		sm.Set(k, v)
 	}
 	sm.Sort()
 	kvs := sm.kvs
-	kvsH := make([]Hasher, 0, len(kvs))
-	for _, kvp := range kvs {
-		kvsH = append(kvsH, KVPair(kvp))
+	kvsBytes := make([][]byte, len(kvs))
+	for i, kvp := range kvs {
+		kvsBytes[i] = KVPair(kvp).Bytes()
 	}
 
-	rootHash, proofList := SimpleProofsFromHashers(kvsH)
+	rootHash, proofList := SimpleProofsFromByteSlices(kvsBytes)
 	proofs = make(map[string]*SimpleProof)
 	keys = make([]string, len(proofList))
 	for i, kvp := range kvs {
@@ -175,17 +176,17 @@ func (spn *SimpleProofNode) FlattenAunts() [][]byte {
 
 // trails[0].Hash is the leaf hash for items[0].
 // trails[i].Parent.Parent....Parent == root for all i.
-func trailsFromHashers(items []Hasher) (trails []*SimpleProofNode, root *SimpleProofNode) {
+func trailsFromByteSlices(items [][]byte) (trails []*SimpleProofNode, root *SimpleProofNode) {
 	// Recursive impl.
 	switch len(items) {
 	case 0:
 		return nil, nil
 	case 1:
-		trail := &SimpleProofNode{items[0].Hash(), nil, nil, nil}
+		trail := &SimpleProofNode{tmhash.Sum(items[0]), nil, nil, nil}
 		return []*SimpleProofNode{trail}, trail
 	default:
-		lefts, leftRoot := trailsFromHashers(items[:(len(items)+1)/2])
-		rights, rightRoot := trailsFromHashers(items[(len(items)+1)/2:])
+		lefts, leftRoot := trailsFromByteSlices(items[:(len(items)+1)/2])
+		rights, rightRoot := trailsFromByteSlices(items[(len(items)+1)/2:])
 		rootHash := SimpleHashFromTwoHashes(leftRoot.Hash, rightRoot.Hash)
 		root := &SimpleProofNode{rootHash, nil, nil, nil}
 		leftRoot.Parent = root

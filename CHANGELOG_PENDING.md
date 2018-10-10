@@ -23,6 +23,7 @@ BREAKING CHANGES:
   * [rpc/client] \#2298 `ABCIQueryOptions.Trusted` -> `ABCIQueryOptions.Prove`
   * [types] \#2298 Remove `Index` and `Total` fields from `TxProof`.
   * [crypto/merkle & lite] \#2298 Various changes to accomodate General Merkle trees
+  * [crypto/merkle] \#2595 Remove all Hasher objects in favor of byte slices
 
 * Blockchain Protocol
   * [types] \#2459 `Vote`/`Proposal`/`Heartbeat` use amino encoding instead of JSON in `SignBytes`.
