@@ -1432,7 +1432,9 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	cs.Proposal = proposal
-	cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	if cs.ProposalBlockParts == nil { //it can be not nil because lockedBlockParts receive mechanism. In that case, don't overwrite it.
+		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	}
 	cs.Logger.Info("Received proposal", "proposal", proposal)
 	return nil
 }
@@ -1539,6 +1541,7 @@ func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) 
 					} else if cs.Step == cstypes.RoundStepCommit {
 						// If we're waiting on the proposal block...
 						cs.ProposalBlock = cs.LockedBlock
+						cs.ProposalBlockParts = cs.LockedBlockParts  //help to transfer them to other peers
 						cs.tryFinalizeCommit(height)
 					}
 				}
