@@ -18,11 +18,12 @@ func SimpleHashFromTwoHashes(left, right []byte) []byte {
 	return hasher.Sum(nil)
 }
 
-// SimpleHashFromHashers computes a Merkle tree from items that can be hashed.
-func SimpleHashFromHashers(items []Hasher) []byte {
+// SimpleHashFromByteSlices computes a Merkle tree where the leaves are the byte slice,
+// in the provided order.
+func SimpleHashFromByteSlices(items [][]byte) []byte {
 	hashes := make([][]byte, len(items))
 	for i, item := range items {
-		hash := item.Hash()
+		hash := tmhash.Sum(item)
 		hashes[i] = hash
 	}
 	return simpleHashFromHashes(hashes)
@@ -32,7 +33,7 @@ func SimpleHashFromHashers(items []Hasher) []byte {
 // Like calling SimpleHashFromHashers with
 // `item = []byte(Hash(key) | Hash(value))`,
 // sorted by `item`.
-func SimpleHashFromMap(m map[string]Hasher) []byte {
+func SimpleHashFromMap(m map[string][]byte) []byte {
 	sm := newSimpleMap()
 	for k, v := range m {
 		sm.Set(k, v)

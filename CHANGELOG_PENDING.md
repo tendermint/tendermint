@@ -23,6 +23,7 @@ BREAKING CHANGES:
   * [rpc/client] \#2298 `ABCIQueryOptions.Trusted` -> `ABCIQueryOptions.Prove`
   * [types] \#2298 Remove `Index` and `Total` fields from `TxProof`.
   * [crypto/merkle & lite] \#2298 Various changes to accomodate General Merkle trees
+  * [crypto/merkle] \#2595 Remove all Hasher objects in favor of byte slices
 
 * Blockchain Protocol
   * [types] \#2459 `Vote`/`Proposal`/`Heartbeat` use amino encoding instead of JSON in `SignBytes`.
@@ -32,6 +33,7 @@ BREAKING CHANGES:
 
 FEATURES:
 - [crypto/merkle] \#2298 General Merkle Proof scheme for chaining various types of Merkle trees together
+- [abci] \#2557 Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
 
 IMPROVEMENTS:
 - [consensus] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169) add additional metrics
@@ -39,6 +41,8 @@ IMPROVEMENTS:
 - [config] \#2232 added ValidateBasic method, which performs basic checks
 - [crypto/ed25519] \#2558 Switch to use latest `golang.org/x/crypto` through our fork at
   github.com/tendermint/crypto
+- [tools] \#2238 Binary dependencies are now locked to a specific git commit
+- [crypto] \#2099 make crypto random use chacha, and have forward secrecy of generated randomness
 
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
@@ -47,5 +51,9 @@ BUG FIXES:
 timeoutPrecommit before starting next round
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function
-- [common/bit_array] Fixed a bug in the `Sub` function (@bradyjoestar)
-- [common] \#2534 make bit array's PickRandom choose uniformly from true bits
+- [common/bit_array] Fixed a bug in the `Sub` function (@james-ray)
+- [common] \#2534 Make bit array's PickRandom choose uniformly from true bits
+- [consensus] \#1637 Limit the amount of evidence that can be included in a
+  block
+- [p2p] \#2555 fix p2p switch FlushThrottle value (@goolAdapter)
+- [libs/event] \#2518 fix event concurrency flaw (@goolAdapter)
