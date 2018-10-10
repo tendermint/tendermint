@@ -13,7 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -32,8 +32,8 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	rpc "github.com/tendermint/tendermint/rpc/lib"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	"github.com/tendermint/tendermint/rpc/lib"
+	"github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
@@ -290,7 +290,14 @@ func NewNode(config *cfg.Config,
 
 	blockExecLogger := logger.With("module", "state")
 	// make block executor for consensus and blockchain reactors to execute blocks
-	blockExec := sm.NewBlockExecutor(stateDB, blockExecLogger, proxyApp.Consensus(), mempool, evidencePool, sm.BlockExecutorWithMetrics(smMetrics))
+	blockExec := sm.NewBlockExecutor(
+		stateDB,
+		blockExecLogger,
+		proxyApp.Consensus(),
+		mempool,
+		evidencePool,
+		sm.BlockExecutorWithMetrics(smMetrics),
+	)
 
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)

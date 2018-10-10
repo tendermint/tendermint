@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -827,12 +827,12 @@ func (conR *ConsensusReactor) peerStatsRoutine() {
 			case *VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
 					conR.Switch.MarkPeerAsGood(peer)
-	}
+				}
 			case *BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
 					conR.Switch.MarkPeerAsGood(peer)
+				}
 			}
-}
 		case <-conR.conS.Quit():
 			return
 
