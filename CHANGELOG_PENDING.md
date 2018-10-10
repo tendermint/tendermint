@@ -48,7 +48,7 @@ BUG FIXES:
 timeoutPrecommit before starting next round
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function
-- [common/bit_array] Fixed a bug in the `Sub` function (@bradyjoestar)
+- [common/bit_array] Fixed a bug in the `Sub` function (@james-ray)
 - [common] \#2534 Make bit array's PickRandom choose uniformly from true bits
 - [consensus] \#1637 Limit the amount of evidence that can be included in a
   block
