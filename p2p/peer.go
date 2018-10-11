@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"net"
-	"sync/atomic"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -43,9 +42,11 @@ type peerConn struct {
 	outbound     bool
 	persistent   bool
 	config       *config.P2PConfig
-	conn         net.Conn // source connection
-	ip           net.IP
+	conn         net.Conn    // source connection
 	originalAddr *NetAddress // nil for inbound connections
+
+	// cached RemoteIP()
+	ip net.IP
 }
 
 // ID only exists for SecretConnection.
@@ -57,14 +58,6 @@ func (pc peerConn) ID() ID {
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
 	if pc.ip != nil {
-		return pc.ip
-	}
-
-	// In test cases a conn could not be present at all or be an in-memory
-	// implementation where we want to return a fake ip.
-	if pc.conn == nil || pc.conn.RemoteAddr().String() == "pipe" {
-		pc.ip = net.IP{172, 16, 0, byte(atomic.AddUint32(&testIPSuffix, 1))}
-
 		return pc.ip
 	}
 
