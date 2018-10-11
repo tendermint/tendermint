@@ -45,15 +45,20 @@ func SimpleHashFromMap(m map[string][]byte) []byte {
 
 // Expects hashes!
 func simpleHashFromHashes(hashes [][]byte) []byte {
-	// Recursive impl.
-	switch len(hashes) {
+	return simpleHashFromHashesInPlace(hashes, 0, len(hashes))
+}
+
+func simpleHashFromHashesInPlace(hashes [][]byte, start, end int) []byte {
+	// In place recursive impl.
+	numHashes := end - start
+	switch numHashes {
 	case 0:
 		return nil
 	case 1:
-		return hashes[0]
+		return hashes[start]
 	default:
-		left := simpleHashFromHashes(hashes[:(len(hashes)+1)/2])
-		right := simpleHashFromHashes(hashes[(len(hashes)+1)/2:])
+		left := simpleHashFromHashesInPlace(hashes, start, start+(numHashes+1)/2)
+		right := simpleHashFromHashesInPlace(hashes, start+(numHashes+1)/2, end)
 		return SimpleHashFromTwoHashes(left, right)
 	}
 }

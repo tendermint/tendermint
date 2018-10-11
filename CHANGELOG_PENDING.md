@@ -43,6 +43,7 @@ IMPROVEMENTS:
   github.com/tendermint/crypto
 - [tools] \#2238 Binary dependencies are now locked to a specific git commit
 - [crypto] \#2099 make crypto random use chacha, and have forward secrecy of generated randomness
+- [crypto] \#2604 Reduce memory allocations within merkle.SimpleHashFromByteSlices (previously) merkle.SimpleHashFromByters
 
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
