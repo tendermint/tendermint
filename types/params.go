@@ -83,9 +83,11 @@ func (params *ConsensusParams) Validate() error {
 // Hash returns a merkle hash of the parameters to store in the block header
 func (params *ConsensusParams) Hash() []byte {
 	hasher := tmhash.New()
-	hasher.Write(cdcEncode(params.BlockSize.MaxBytes))
-	hasher.Write(cdcEncode(params.BlockSize.MaxGas))
-	hasher.Write(cdcEncode(params.EvidenceParams.MaxAge))
+	bz := cdcEncode(params)
+	if bz == nil {
+		panic("cannot fail to encode ConsensusParams")
+	}
+	hasher.Write(bz)
 	return hasher.Sum(nil)
 }
 
