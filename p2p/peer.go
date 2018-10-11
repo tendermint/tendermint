@@ -142,6 +142,15 @@ func newPeer(
 	return p
 }
 
+// String representation.
+func (p *peer) String() string {
+	if p.outbound {
+		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
+	}
+
+	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
+}
+
 //---------------------------------------------------
 // Implements cmn.Service
 
@@ -272,52 +281,12 @@ func (p *peer) hasChannel(chID byte) bool {
 }
 
 //---------------------------------------------------
-// methods used by the Switch
+// methods only used for testing
+// TODO: can we remove these?
 
-// CloseConn should be called by the Switch if the peer was created but never
-// started.
+// CloseConn closes the underlying connection
 func (pc *peerConn) CloseConn() {
 	pc.conn.Close() // nolint: errcheck
-}
-
-// HandshakeTimeout performs the Tendermint P2P handshake between a given node
-// and the peer by exchanging their NodeInfo. It sets the received nodeInfo on
-// the peer.
-// NOTE: blocking
-func (pc *peerConn) HandshakeTimeout(
-	ourNodeInfo NodeInfo,
-	timeout time.Duration,
-) (NodeInfo, error) {
-	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return nil, cmn.ErrorWrap(err, "Error setting deadline")
-	}
-
-	var peerNodeInfo DefaultNodeInfo
-	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.MarshalBinaryWriter(pc.conn, ourNodeInfo.(DefaultNodeInfo))
-			return
-		},
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.UnmarshalBinaryReader(
-				pc.conn,
-				&peerNodeInfo,
-				int64(MaxNodeInfoSize()),
-			)
-			return
-		},
-	)
-	if err := trs.FirstError(); err != nil {
-		return nil, cmn.ErrorWrap(err, "Error during handshake")
-	}
-
-	// Remove deadline
-	if err := pc.conn.SetDeadline(time.Time{}); err != nil {
-		return nil, cmn.ErrorWrap(err, "Error removing deadline")
-	}
-
-	return peerNodeInfo, nil
 }
 
 // Addr returns peer's remote network address.
@@ -333,14 +302,7 @@ func (p *peer) CanSend(chID byte) bool {
 	return p.mconn.CanSend(chID)
 }
 
-// String representation.
-func (p *peer) String() string {
-	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
-	}
-
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
-}
+//---------------------------------------------------
 
 func PeerMetrics(metrics *Metrics) PeerOption {
 	return func(p *peer) {

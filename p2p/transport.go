@@ -437,10 +437,11 @@ func handshake(
 		errc = make(chan error, 2)
 
 		peerNodeInfo DefaultNodeInfo
+		ourNodeInfo  = nodeInfo.(DefaultNodeInfo)
 	)
 
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.MarshalBinaryWriter(c, nodeInfo.(DefaultNodeInfo))
+		_, err := cdc.MarshalBinaryWriter(c, ourNodeInfo)
 		errc <- err
 	}(errc, c)
 	go func(errc chan<- error, c net.Conn) {
