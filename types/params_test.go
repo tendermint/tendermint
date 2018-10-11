@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -15,17 +16,17 @@ func TestConsensusParamsValidation(t *testing.T) {
 		valid  bool
 	}{
 		// test block size
-		0: {makeParams(1, 0, 1), true},
-		1: {makeParams(0, 0, 1), false},
-		2: {makeParams(47*1024*1024, 0, 1), true},
-		3: {makeParams(10, 0, 1), true},
-		4: {makeParams(100*1024*1024, 0, 1), true},
-		5: {makeParams(101*1024*1024, 0, 1), false},
-		6: {makeParams(1024*1024*1024, 0, 1), false},
-		7: {makeParams(1024*1024*1024, 0, -1), false},
+		0: {makeParams(1, 0, 10*time.Second), true},
+		1: {makeParams(0, 0, 10*time.Second), false},
+		2: {makeParams(47*1024*1024, 0, 10*time.Second), true},
+		3: {makeParams(10, 0, 10*time.Second), true},
+		4: {makeParams(100*1024*1024, 0, 10*time.Second), true},
+		5: {makeParams(101*1024*1024, 0, 10*time.Second), false},
+		6: {makeParams(1024*1024*1024, 0, 10*time.Second), false},
+		7: {makeParams(1024*1024*1024, 0, -10*time.Second), false},
 		// test evidence age
 		8: {makeParams(1, 0, 0), false},
-		9: {makeParams(1, 0, -1), false},
+		9: {makeParams(1, 0, -1*time.Millisecond), false},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
@@ -36,7 +37,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockGas, evidenceAge int64) ConsensusParams {
+func makeParams(blockBytes, blockGas int64, evidenceAge time.Duration) ConsensusParams {
 	return ConsensusParams{
 		BlockSize: BlockSize{
 			MaxBytes: blockBytes,
@@ -50,14 +51,9 @@ func makeParams(blockBytes, blockGas, evidenceAge int64) ConsensusParams {
 
 func TestConsensusParamsHash(t *testing.T) {
 	params := []ConsensusParams{
-		makeParams(4, 2, 3),
-		makeParams(1, 4, 3),
-		makeParams(1, 2, 4),
-		makeParams(2, 5, 7),
-		makeParams(1, 7, 6),
-		makeParams(9, 5, 4),
-		makeParams(7, 8, 9),
-		makeParams(4, 6, 5),
+		makeParams(4, 2, 3*time.Second),
+		makeParams(1, 4, 3*time.Second),
+		makeParams(1, 2, 4*time.Second),
 	}
 
 	hashes := make([][]byte, len(params))
@@ -76,6 +72,7 @@ func TestConsensusParamsHash(t *testing.T) {
 }
 
 func TestConsensusParamsUpdate(t *testing.T) {
+	newMaxAge := 300 * time.Second
 	testCases := []struct {
 		params        ConsensusParams
 		updates       *abci.ConsensusParams
@@ -83,23 +80,23 @@ func TestConsensusParamsUpdate(t *testing.T) {
 	}{
 		// empty updates
 		{
-			makeParams(1, 2, 3),
+			makeParams(1, 2, 3*time.Second),
 			&abci.ConsensusParams{},
-			makeParams(1, 2, 3),
+			makeParams(1, 2, 3*time.Second),
 		},
 		// fine updates
 		{
-			makeParams(1, 2, 3),
+			makeParams(1, 2, 3*time.Second),
 			&abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
 					MaxBytes: 100,
 					MaxGas:   200,
 				},
 				EvidenceParams: &abci.EvidenceParams{
-					MaxAge: 300,
+					MaxAge: &newMaxAge,
 				},
 			},
-			makeParams(100, 200, 300),
+			makeParams(100, 200, 300*time.Second),
 		},
 	}
 	for _, tc := range testCases {

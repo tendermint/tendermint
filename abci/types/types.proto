@@ -5,6 +5,7 @@ package types;
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
 import "github.com/tendermint/tendermint/libs/common/types.proto";
 import "github.com/tendermint/tendermint/crypto/merkle/merkle.proto";
 
@@ -217,8 +218,8 @@ message BlockSize {
 
 // EvidenceParams contains limits on the evidence.
 message EvidenceParams {
-  // Note: must be greater than 0
-  int64 max_age = 1;
+  // Note: must be greater than 0 if provided
+  google.protobuf.Duration max_age = 1 [(gogoproto.stdduration)=true];
 }
 
 message LastCommitInfo {

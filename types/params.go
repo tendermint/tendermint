@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -29,7 +31,7 @@ type BlockSize struct {
 
 // EvidenceParams determine how we handle evidence of malfeasance
 type EvidenceParams struct {
-	MaxAge int64 `json:"max_age"` // only accept new evidence more recent than this
+	MaxAge time.Duration `json:"max_age"` // only accept new evidence more recent than this
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -51,7 +53,7 @@ func DefaultBlockSize() BlockSize {
 // DefaultEvidenceParams Params returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxAge: 100000, // 27.8 hrs at 1block/s
+		MaxAge: 48 * time.Hour,
 	}
 }
 
@@ -109,7 +111,9 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		res.BlockSize.MaxGas = params2.BlockSize.MaxGas
 	}
 	if params2.EvidenceParams != nil {
-		res.EvidenceParams.MaxAge = params2.EvidenceParams.MaxAge
+		if params2.EvidenceParams.MaxAge != nil {
+			res.EvidenceParams.MaxAge = *params2.EvidenceParams.MaxAge
+		}
 	}
 	return res
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -386,7 +387,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
+func makeParams(blockBytes, blockGas int64, evidenceAge time.Duration) types.ConsensusParams {
 	return types.ConsensusParams{
 		BlockSize: types.BlockSize{
 			MaxBytes: blockBytes,
@@ -403,7 +404,8 @@ func pk() []byte {
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeParams(1, 2, 3)
+	initParams := makeParams(1, 2, 3*time.Second)
+	newMaxAge := 66 * time.Second
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -419,14 +421,14 @@ func TestApplyUpdates(t *testing.T) {
 					MaxGas:   55,
 				},
 			},
-			makeParams(44, 55, 3)},
+			makeParams(44, 55, 3*time.Second)},
 		3: {initParams,
 			abci.ConsensusParams{
 				EvidenceParams: &abci.EvidenceParams{
-					MaxAge: 66,
+					MaxAge: &newMaxAge,
 				},
 			},
-			makeParams(1, 2, 66)},
+			makeParams(1, 2, 66*time.Second)},
 	}
 
 	for i, tc := range cases {

@@ -119,7 +119,7 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 			MaxGas:   params.BlockSize.MaxGas,
 		},
 		EvidenceParams: &abci.EvidenceParams{
-			MaxAge: params.EvidenceParams.MaxAge,
+			MaxAge: &params.EvidenceParams.MaxAge,
 		},
 	}
 }
@@ -209,13 +209,14 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 }
 
 func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
-	return ConsensusParams{
+	params := ConsensusParams{
 		BlockSize: BlockSize{
 			MaxBytes: csp.BlockSize.MaxBytes,
 			MaxGas:   csp.BlockSize.MaxGas,
 		},
-		EvidenceParams: EvidenceParams{
-			MaxAge: csp.EvidenceParams.MaxAge,
-		},
 	}
+	if csp.EvidenceParams.MaxAge != nil {
+		params.EvidenceParams.MaxAge = *csp.EvidenceParams.MaxAge
+	}
+	return params
 }

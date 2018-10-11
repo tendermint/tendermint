@@ -14,6 +14,7 @@ import (
 // NOTE: Read-only when returned by PeerState.GetRoundState().
 type PeerRoundState struct {
 	Height                   int64               `json:"height"`                      // Height peer is at
+	LastBlockTime            time.Time           `json:"last_block_time"`             // Time the last block was created at.
 	Round                    int                 `json:"round"`                       // Round peer is at, -1 if unknown.
 	Step                     RoundStepType       `json:"step"`                        // Step peer is at
 	StartTime                time.Time           `json:"start_time"`                  // Estimated start of round 0 at this height
@@ -38,7 +39,7 @@ func (prs PeerRoundState) String() string {
 // StringIndented returns a string representation of the PeerRoundState
 func (prs PeerRoundState) StringIndented(indent string) string {
 	return fmt.Sprintf(`PeerRoundState{
-%s  %v/%v/%v @%v
+%s  %v/%v/%v @%v (last block time @%v)
 %s  Proposal %v -> %v
 %s  POL      %v (round %v)
 %s  Prevotes   %v
@@ -46,7 +47,7 @@ func (prs PeerRoundState) StringIndented(indent string) string {
 %s  LastCommit %v (round %v)
 %s  Catchup    %v (round %v)
 %s}`,
-		indent, prs.Height, prs.Round, prs.Step, prs.StartTime,
+		indent, prs.Height, prs.Round, prs.Step, prs.StartTime, prs.LastBlockTime,
 		indent, prs.ProposalBlockPartsHeader, prs.ProposalBlockParts,
 		indent, prs.ProposalPOL, prs.ProposalPOLRound,
 		indent, prs.Prevotes,

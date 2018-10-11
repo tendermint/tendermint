@@ -8,8 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/go-amino"
-
+	amino "github.com/tendermint/go-amino"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmevents "github.com/tendermint/tendermint/libs/events"
@@ -438,6 +437,7 @@ func makeRoundStepMessages(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage,
 	if rs.Step == cstypes.RoundStepCommit {
 		csMsg = &CommitStepMessage{
 			Height:           rs.Height,
+			Time:             rs.CommitTime,
 			BlockPartsHeader: rs.ProposalBlockParts.Header(),
 			BlockParts:       rs.ProposalBlockParts.BitArray(),
 		}
@@ -948,12 +948,20 @@ func (ps *PeerState) ToJSON() ([]byte, error) {
 	return cdc.MarshalJSON(ps)
 }
 
-// GetHeight returns an atomic snapshot of the PeerRoundState's height
-// used by the mempool to ensure peers are caught up before broadcasting new txs
+// GetHeight returns an atomic snapshot of the PeerRoundState's height used by
+// the mempool to ensure peers are caught up before broadcasting new txs.
 func (ps *PeerState) GetHeight() int64 {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return ps.PRS.Height
+}
+
+// GetLastBlockTime returns an atomic snapshot of the PeerRoundState's last
+// block time used by the evidence reactor when sending evidence.
+func (ps *PeerState) GetLastBlockTime() time.Time {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	return ps.PRS.LastBlockTime
 }
 
 // SetHasProposal sets the given proposal as known for the peer.
@@ -1263,6 +1271,7 @@ func (ps *PeerState) ApplyCommitStepMessage(msg *CommitStepMessage) {
 
 	ps.PRS.ProposalBlockPartsHeader = msg.BlockPartsHeader
 	ps.PRS.ProposalBlockParts = msg.BlockParts
+	ps.PRS.LastBlockTime = msg.Time
 }
 
 // ApplyProposalPOLMessage updates the peer state for the new proposal POL.
@@ -1386,13 +1395,14 @@ func (m *NewRoundStepMessage) String() string {
 // CommitStepMessage is sent when a block is committed.
 type CommitStepMessage struct {
 	Height           int64
+	Time             time.Time
 	BlockPartsHeader types.PartSetHeader
 	BlockParts       *cmn.BitArray
 }
 
 // String returns a string representation.
 func (m *CommitStepMessage) String() string {
-	return fmt.Sprintf("[CommitStep H:%v BP:%v BA:%v]", m.Height, m.BlockPartsHeader, m.BlockParts)
+	return fmt.Sprintf("[CommitStep H:%v T:%v BP:%v BA:%v]", m.Height, m.Time, m.BlockPartsHeader, m.BlockParts)
 }
 
 //-------------------------------------

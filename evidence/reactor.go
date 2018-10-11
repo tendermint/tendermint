@@ -91,7 +91,7 @@ func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	}
 }
 
-// SetEventSwitch implements events.Eventable.
+// SetEventBus implements events.Eventable.
 func (evR *EvidenceReactor) SetEventBus(b *types.EventBus) {
 	evR.eventBus = b
 }
@@ -166,10 +166,11 @@ func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evid
 	// peerHeight - maxAge < evidenceHeight < peerHeight
 	maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
 	peerHeight := peerState.GetHeight()
+	peerLastBlockTime := peerState.GetLastBlockTime()
 	if peerHeight < evHeight {
 		// peer is behind. sleep while he catches up
 		return nil, true
-	} else if peerHeight > evHeight+maxAge {
+	} else if peerLastBlockTime.Sub(ev.Time()) > maxAge {
 		// evidence is too old, skip
 		// NOTE: if evidence is too old for an honest peer,
 		// then we're behind and either it already got committed or it never will!
@@ -185,6 +186,7 @@ func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evid
 // PeerState describes the state of a peer.
 type PeerState interface {
 	GetHeight() int64
+	GetLastBlockTime() time.Time
 }
 
 //-----------------------------------------------------------------------------

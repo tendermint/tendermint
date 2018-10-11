@@ -3,6 +3,7 @@ package evidence
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -128,19 +129,27 @@ func (evpool *EvidencePool) MarkEvidenceAsCommitted(height int64, evidence []typ
 
 	// remove committed evidence from the clist
 	maxAge := evpool.State().ConsensusParams.EvidenceParams.MaxAge
-	evpool.removeEvidence(height, maxAge, blockEvidenceMap)
-
+	evpool.removeEvidence(
+		height,
+		evpool.State().LastBlockTime,
+		maxAge,
+		blockEvidenceMap,
+	)
 }
 
-func (evpool *EvidencePool) removeEvidence(height, maxAge int64, blockEvidenceMap map[string]struct{}) {
+func (evpool *EvidencePool) removeEvidence(
+	height int64,
+	lastBlockTime time.Time,
+	maxAge time.Duration,
+	blockEvidenceMap map[string]struct{},
+) {
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
 		ev := e.Value.(types.Evidence)
+		evAge := lastBlockTime.Sub(ev.Time())
 
 		// Remove the evidence if it's already in a block
 		// or if it's now too old.
-		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok ||
-			ev.Height() < height-maxAge {
-
+		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok || evAge > maxAge {
 			// remove from clist
 			evpool.evidenceList.Remove(e)
 			e.DetachPrev()
