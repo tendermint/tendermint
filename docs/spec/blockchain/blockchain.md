@@ -311,10 +311,10 @@ next validator sets Merkle root.
 ### ConsensusParamsHash
 
 ```go
-block.ConsensusParamsHash == SimpleMerkleRoot(state.ConsensusParams)
+block.ConsensusParamsHash == tmhash(amino(state.ConsensusParams))
 ```
 
-Simple Merkle root of the consensus parameters.
+Hash of the amino-encoded consensus parameters.
 
 ### AppHash
 
