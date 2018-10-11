@@ -185,11 +185,11 @@ func MakeSwitch(
 	initSwitch func(int, *Switch) *Switch,
 	opts ...SwitchOption,
 ) *Switch {
-	ni, nodeKey := testRandNodeInfo(i, network, version)
+	nodeInfo, nodeKey := testRandNodeInfo(i, network, version)
 
-	t := NewMultiplexTransport(ni, nodeKey)
+	t := NewMultiplexTransport(nodeInfo, nodeKey)
 
-	addr := ni.NetAddress()
+	addr := nodeInfo.NetAddress()
 	if err := t.Listen(*addr); err != nil {
 		panic(err)
 	}
@@ -199,16 +199,16 @@ func MakeSwitch(
 	sw.SetLogger(log.TestingLogger())
 	sw.SetNodeKey(&nodeKey)
 
-	ni_ := ni.(DefaultNodeInfo)
+	ni := nodeInfo.(DefaultNodeInfo)
 	for ch := range sw.reactorsByCh {
-		ni_.Channels = append(ni_.Channels, ch)
+		ni.Channels = append(ni.Channels, ch)
 	}
-	ni = ni_
+	nodeInfo = ni
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = ni
-	sw.SetNodeInfo(ni)
+	t.nodeInfo = nodeInfo
+	sw.SetNodeInfo(nodeInfo)
 
 	return sw
 }

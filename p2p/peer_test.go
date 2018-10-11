@@ -187,8 +187,7 @@ func (rp *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 
-		_, err = handshake(pc.conn, time.Second,
-			testNodeInfoFromRemotePeer(rp, l))
+		_, err = handshake(pc.conn, time.Second, rp.nodeInfo(l))
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}
@@ -208,7 +207,7 @@ func (rp *remotePeer) accept(l net.Listener) {
 	}
 }
 
-func testNodeInfoFromRemotePeer(rp *remotePeer, l net.Listener) NodeInfo {
+func (rp *remotePeer) nodeInfo(l net.Listener) NodeInfo {
 	return DefaultNodeInfo{
 		ID_:        rp.Addr().ID,
 		Moniker:    "remote_peer",
