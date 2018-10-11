@@ -80,7 +80,10 @@ func (params *ConsensusParams) Validate() error {
 	return nil
 }
 
-// Hash returns a merkle hash of the parameters to store in the block header
+// Hash returns a hash of the parameters to store in the block header
+// No Merkle tree here, only three values are hashed here
+// thus benefit from saving space < drawbacks from proofs' overhead
+// Revisit this function if new fields are added to ConsensusParams
 func (params *ConsensusParams) Hash() []byte {
 	hasher := tmhash.New()
 	bz := cdcEncode(params)
