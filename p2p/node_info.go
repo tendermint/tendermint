@@ -18,12 +18,24 @@ func MaxNodeInfoSize() int {
 	return maxNodeInfoSize
 }
 
+// NodeInfo exposes basic info of a node
+// and determines if we're compatible
 type NodeInfo interface {
+	nodeInfoAddress
+	nodeInfoTransport
+}
+
+// nodeInfoAddress exposes just the core info of a node
+type nodeInfoAddress interface {
 	ID() ID
+	NetAddress() *NetAddress
+}
+
+// nodeInfoTransport is validates a nodeInfo and checks
+// our compatibility with it. It's for use in the handshake.
+type nodeInfoTransport interface {
 	ValidateBasic() error
 	CompatibleWith(other NodeInfo) error
-	NetAddress() *NetAddress
-	String() string
 }
 
 // DefaultNodeInfo is the basic node information exchanged
@@ -53,18 +65,6 @@ type DefaultNodeInfoOther struct {
 	RPCVersion       string `json:"rpc_version"`
 	TxIndex          string `json:"tx_index"`
 	RPCAddress       string `json:"rpc_address"`
-}
-
-func (o DefaultNodeInfoOther) String() string {
-	return fmt.Sprintf(
-		"{amino_version: %v, p2p_version: %v, consensus_version: %v, rpc_version: %v, tx_index: %v, rpc_address: %v}",
-		o.AminoVersion,
-		o.P2PVersion,
-		o.ConsensusVersion,
-		o.RPCVersion,
-		o.TxIndex,
-		o.RPCAddress,
-	)
 }
 
 // ID returns the node's peer ID.
@@ -200,11 +200,6 @@ func (info DefaultNodeInfo) NetAddress() *NetAddress {
 		}
 	}
 	return netAddr
-}
-
-func (info DefaultNodeInfo) String() string {
-	return fmt.Sprintf("DefaultNodeInfo{id: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}",
-		info.ID_, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {
