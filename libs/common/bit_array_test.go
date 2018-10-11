@@ -107,16 +107,29 @@ func TestSub(t *testing.T) {
 }
 
 func TestPickRandom(t *testing.T) {
-	for idx := 0; idx < 123; idx++ {
-		bA1 := NewBitArray(123)
-		bA1.SetIndex(idx, true)
-		index, ok := bA1.PickRandom()
-		if !ok {
-			t.Fatal("Expected to pick element but got none")
-		}
-		if index != idx {
-			t.Fatalf("Expected to pick element at %v but got wrong index", idx)
-		}
+	empty16Bits := "________________"
+	empty64Bits := empty16Bits + empty16Bits + empty16Bits + empty16Bits
+	testCases := []struct {
+		bA string
+		ok bool
+	}{
+		{`null`, false},
+		{`"x"`, true},
+		{`"` + empty16Bits + `"`, false},
+		{`"x` + empty16Bits + `"`, true},
+		{`"` + empty16Bits + `x"`, true},
+		{`"x` + empty16Bits + `x"`, true},
+		{`"` + empty64Bits + `"`, false},
+		{`"x` + empty64Bits + `"`, true},
+		{`"` + empty64Bits + `x"`, true},
+		{`"x` + empty64Bits + `x"`, true},
+	}
+	for _, tc := range testCases {
+		var bitArr *BitArray
+		err := json.Unmarshal([]byte(tc.bA), &bitArr)
+		require.NoError(t, err)
+		_, ok := bitArr.PickRandom()
+		require.Equal(t, tc.ok, ok, "PickRandom got an unexpected result on input %s", tc.bA)
 	}
 }
 

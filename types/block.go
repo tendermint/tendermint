@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -290,22 +289,22 @@ func (h *Header) Hash() cmn.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
-	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
-		"ChainID":        aminoHasher(h.ChainID),
-		"Height":         aminoHasher(h.Height),
-		"Time":           aminoHasher(h.Time),
-		"NumTxs":         aminoHasher(h.NumTxs),
-		"TotalTxs":       aminoHasher(h.TotalTxs),
-		"LastBlockID":    aminoHasher(h.LastBlockID),
-		"LastCommit":     aminoHasher(h.LastCommitHash),
-		"Data":           aminoHasher(h.DataHash),
-		"Validators":     aminoHasher(h.ValidatorsHash),
-		"NextValidators": aminoHasher(h.NextValidatorsHash),
-		"App":            aminoHasher(h.AppHash),
-		"Consensus":      aminoHasher(h.ConsensusHash),
-		"Results":        aminoHasher(h.LastResultsHash),
-		"Evidence":       aminoHasher(h.EvidenceHash),
-		"Proposer":       aminoHasher(h.ProposerAddress),
+	return merkle.SimpleHashFromMap(map[string][]byte{
+		"ChainID":        cdcEncode(h.ChainID),
+		"Height":         cdcEncode(h.Height),
+		"Time":           cdcEncode(h.Time),
+		"NumTxs":         cdcEncode(h.NumTxs),
+		"TotalTxs":       cdcEncode(h.TotalTxs),
+		"LastBlockID":    cdcEncode(h.LastBlockID),
+		"LastCommit":     cdcEncode(h.LastCommitHash),
+		"Data":           cdcEncode(h.DataHash),
+		"Validators":     cdcEncode(h.ValidatorsHash),
+		"NextValidators": cdcEncode(h.NextValidatorsHash),
+		"App":            cdcEncode(h.AppHash),
+		"Consensus":      cdcEncode(h.ConsensusHash),
+		"Results":        cdcEncode(h.LastResultsHash),
+		"Evidence":       cdcEncode(h.EvidenceHash),
+		"Proposer":       cdcEncode(h.ProposerAddress),
 	})
 }
 
@@ -480,11 +479,11 @@ func (commit *Commit) Hash() cmn.HexBytes {
 		return nil
 	}
 	if commit.hash == nil {
-		bs := make([]merkle.Hasher, len(commit.Precommits))
+		bs := make([][]byte, len(commit.Precommits))
 		for i, precommit := range commit.Precommits {
-			bs[i] = aminoHasher(precommit)
+			bs[i] = cdcEncode(precommit)
 		}
-		commit.hash = merkle.SimpleHashFromHashers(bs)
+		commit.hash = merkle.SimpleHashFromByteSlices(bs)
 	}
 	return commit.hash
 }
@@ -688,34 +687,4 @@ func (blockID BlockID) Key() string {
 // String returns a human readable string representation of the BlockID
 func (blockID BlockID) String() string {
 	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
-}
-
-//-------------------------------------------------------
-
-type hasher struct {
-	item interface{}
-}
-
-func (h hasher) Hash() []byte {
-	hasher := tmhash.New()
-	if h.item != nil && !cmn.IsTypedNil(h.item) && !cmn.IsEmpty(h.item) {
-		bz, err := cdc.MarshalBinaryBare(h.item)
-		if err != nil {
-			panic(err)
-		}
-		_, err = hasher.Write(bz)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return hasher.Sum(nil)
-}
-
-func aminoHash(item interface{}) []byte {
-	h := hasher{item}
-	return h.Hash()
-}
-
-func aminoHasher(item interface{}) merkle.Hasher {
-	return hasher{item}
 }

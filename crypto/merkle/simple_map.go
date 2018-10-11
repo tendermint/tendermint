@@ -1,6 +1,9 @@
 package merkle
 
 import (
+	"bytes"
+
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -20,14 +23,15 @@ func newSimpleMap() *simpleMap {
 	}
 }
 
-// Set hashes the key and value and appends it to the kv pairs.
-func (sm *simpleMap) Set(key string, value Hasher) {
+// Set creates a kv pair of the key and the hash of the value,
+// and then appends it to simpleMap's kv pairs.
+func (sm *simpleMap) Set(key string, value []byte) {
 	sm.sorted = false
 
 	// The value is hashed, so you can
 	// check for equality with a cached value (say)
 	// and make a determination to fetch or not.
-	vhash := value.Hash()
+	vhash := tmhash.Sum(value)
 
 	sm.kvs = append(sm.kvs, cmn.KVPair{
 		Key:   []byte(key),
@@ -66,23 +70,25 @@ func (sm *simpleMap) KVPairs() cmn.KVPairs {
 // then hashed.
 type KVPair cmn.KVPair
 
-func (kv KVPair) Hash() []byte {
-	hasher := tmhash.New()
-	err := encodeByteSlice(hasher, kv.Key)
+// Bytes returns key || value, with both the
+// key and value length prefixed.
+func (kv KVPair) Bytes() []byte {
+	var b bytes.Buffer
+	err := amino.EncodeByteSlice(&b, kv.Key)
 	if err != nil {
 		panic(err)
 	}
-	err = encodeByteSlice(hasher, kv.Value)
+	err = amino.EncodeByteSlice(&b, kv.Value)
 	if err != nil {
 		panic(err)
 	}
-	return hasher.Sum(nil)
+	return b.Bytes()
 }
 
 func hashKVPairs(kvs cmn.KVPairs) []byte {
-	kvsH := make([]Hasher, len(kvs))
+	kvsH := make([][]byte, len(kvs))
 	for i, kvp := range kvs {
-		kvsH[i] = KVPair(kvp)
+		kvsH[i] = KVPair(kvp).Bytes()
 	}
-	return SimpleHashFromHashers(kvsH)
+	return SimpleHashFromByteSlices(kvsH)
 }

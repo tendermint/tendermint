@@ -72,6 +72,11 @@
 ## Some repos dont have releases.
 ## Pin to revision
 
+[[constraint]]
+  name = "golang.org/x/crypto"
+  source = "github.com/tendermint/crypto"
+  revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
+
 [[override]]
   name = "github.com/jmhodges/levigo"
   revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
