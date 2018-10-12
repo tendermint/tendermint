@@ -48,6 +48,19 @@ func TestStateCopy(t *testing.T) {
         %v`, state))
 }
 
+//TestMakeGenesisStateNilValidators tests state's consistency when genesis file's validators field is nil.
+func TestMakeGenesisStateNilValidators(t *testing.T) {
+	doc := types.GenesisDoc{
+		ChainID:    "dummy",
+		Validators: nil,
+	}
+	require.Nil(t, doc.ValidateAndComplete())
+	state, err := MakeGenesisState(&doc)
+	require.Nil(t, err)
+	require.Equal(t, 0, len(state.Validators.Validators))
+	require.Equal(t, 0, len(state.NextValidators.Validators))
+}
+
 // TestStateSaveLoad tests saving and loading State from a db.
 func TestStateSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
