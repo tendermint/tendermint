@@ -15,3 +15,4 @@ FEATURES:
 IMPROVEMENTS:
 
 BUG FIXES:
+- [state] \#2616 Pass nil to NewValidatorSet() when genesis file's Validators field is nil
