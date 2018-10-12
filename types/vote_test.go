@@ -63,7 +63,7 @@ func TestVoteSignableTestVectors(t *testing.T) {
 	}{
 		{
 			CanonicalizeVote("", &Vote{}),
-			// XXX: Here Height and Round are skipped. This probably will be cumbersome to to parse in the HSM:
+			// NOTE: Height and Round are skipped here. This case needs to be considered while parsing.
 			[]byte{0xb, 0x2a, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
 		},
 		// with proper (fixed size) height and round:
