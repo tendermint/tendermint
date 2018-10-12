@@ -214,15 +214,15 @@ func TestStateBadProposal(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 
 	// wait for prevote
-	ensureVote(voteCh, height, round, types.VoteTypePrevote)
+	ensureVote(voteCh, height, round, byte(types.PrevoteType))
 	validatePrevote(t, cs1, round, vss[0], nil)
 
 	// add bad prevote from vs2 and wait for it
 	signAddVotes(cs1, byte(types.PrevoteType), propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
-	ensureVote(voteCh, height, round, types.VoteTypePrevote)
+	ensureVote(voteCh, height, round, byte(types.PrevoteType))
 
 	// wait for precommit
-	ensureVote(voteCh, height, round, types.VoteTypePrecommit)
+	ensureVote(voteCh, height, round, byte(types.PrecommitType))
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, nil)
 	signAddVotes(cs1, byte(types.PrecommitType), propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 }
@@ -255,10 +255,10 @@ func TestStateFullRound1(t *testing.T) {
 	ensureNewProposal(propCh, height, round)
 	propBlockHash := cs.GetRoundState().ProposalBlock.Hash()
 
-	ensureVote(voteCh, height, round, types.VoteTypePrevote) // wait for prevote
+	ensureVote(voteCh, height, round, byte(types.PrevoteType)) // wait for prevote
 	validatePrevote(t, cs, round, vss[0], propBlockHash)
 
-	ensureVote(voteCh, height, round, types.VoteTypePrecommit) // wait for precommit
+	ensureVote(voteCh, height, round, byte(types.PrecommitType)) // wait for precommit
 
 	// we're going to roll right into new height
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -276,8 +276,8 @@ func TestStateFullRoundNil(t *testing.T) {
 	cs.enterPrevote(height, round)
 	cs.startRoutines(4)
 
-	ensureVote(voteCh, height, round, types.VoteTypePrevote)   // prevote
-	ensureVote(voteCh, height, round, types.VoteTypePrecommit) // precommit
+	ensureVote(voteCh, height, round, byte(types.PrevoteType))   // prevote
+	ensureVote(voteCh, height, round, byte(types.PrecommitType)) // precommit
 
 	// should prevote and precommit nil
 	validatePrevoteAndPrecommit(t, cs, round, 0, vss[0], nil, nil)
@@ -296,7 +296,7 @@ func TestStateFullRound2(t *testing.T) {
 	// start round and wait for propose and prevote
 	startTestRound(cs1, height, round)
 
-	ensureVote(voteCh, height, round, types.VoteTypePrevote) // prevote
+	ensureVote(voteCh, height, round, byte(types.PrevoteType)) // prevote
 
 	// we should be stuck in limbo waiting for more prevotes
 	rs := cs1.GetRoundState()
@@ -304,9 +304,9 @@ func TestStateFullRound2(t *testing.T) {
 
 	// prevote arrives from vs2:
 	signAddVotes(cs1, byte(types.PrevoteType), propBlockHash, propPartsHeader, vs2)
-	ensureVote(voteCh, height, round, types.VoteTypePrevote) // prevote
+	ensureVote(voteCh, height, round, byte(types.PrevoteType)) // prevote
 
-	ensureVote(voteCh, height, round, types.VoteTypePrecommit) //precommit
+	ensureVote(voteCh, height, round, byte(types.PrecommitType)) //precommit
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, 0, 0, vss[0], propBlockHash, propBlockHash)
 
@@ -353,12 +353,12 @@ func TestStateLockNoPOL(t *testing.T) {
 	theBlockHash := roundState.ProposalBlock.Hash()
 	thePartSetHeader := roundState.ProposalBlockParts.Header()
 
-	ensureVote(voteCh, height, round, types.VoteTypePrevote) // prevote
+	ensureVote(voteCh, height, round, byte(types.PrevoteType)) // prevote
 
 	// we should now be stuck in limbo forever, waiting for more prevotes
 	// prevote arrives from vs2:
 	signAddVotes(cs1, byte(types.PrevoteType), theBlockHash, thePartSetHeader, vs2)
-	ensureVote(voteCh, height, round,byte(types.PrevoteType)) // prevote
+	ensureVote(voteCh, height, round, byte(types.PrevoteType)) // prevote
 
 	ensureVote(voteCh, height, round, byte(types.PrecommitType)) // precommit
 	// the proposed block should now be locked and our precommit added
@@ -567,7 +567,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 
 	// go to prevote, prevote for locked block (not proposal), move on
-	ensureVote(voteCh, height, round, types.VoteTypePrevote)
+	ensureVote(voteCh, height, round, byte(types.PrevoteType))
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
 	// now lets add prevotes from everyone else for the new block
@@ -873,7 +873,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 
 	ensureNoNewUnlock(unlockCh)
-	ensureVote(voteCh, height, round, types.VoteTypePrevote)
+	ensureVote(voteCh, height, round, byte(types.PrevoteType))
 	validatePrevote(t, cs1, round, vss[0], propBlockHash1)
 
 }
