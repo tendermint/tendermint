@@ -120,7 +120,7 @@ func newPeer(
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.Channels,
+		channels:      nodeInfo.Services.Peers.Channels,
 		Data:          cmn.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
@@ -177,7 +177,7 @@ func (p *peer) OnStop() {
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return p.nodeInfo.ID
+	return p.nodeInfo.ID()
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.

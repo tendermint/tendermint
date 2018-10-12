@@ -25,6 +25,11 @@ const (
 	ABCIVersion = ABCISemVer
 )
 
+type Software struct {
+	Tendermint string
+	App        string
+}
+
 // Protocol is used for implementation agnostic versioning.
 type Protocol uint64
 

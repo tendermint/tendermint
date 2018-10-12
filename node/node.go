@@ -780,6 +780,9 @@ func makeNodeInfo(
 			TxIndex:          txIndexerStatus,
 			RPCAddress:       config.RPC.ListenAddress,
 		},
+		NodeVersion: p2p.NodeVersion{
+			P2P: version.P2PProtocol,
+		},
 	}
 
 	if config.P2P.PexReactor {

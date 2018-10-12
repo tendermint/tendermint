@@ -25,8 +25,10 @@ func CreateRandomPeer(outbound bool) *peer {
 			outbound: outbound,
 		},
 		nodeInfo: NodeInfo{
-			ID:         netAddr.ID,
-			ListenAddr: netAddr.DialString(),
+			Address: AddressInfo{
+				ID:         netAddr.ID,
+				ListenAddr: netAddr.DialString(),
+			},
 		},
 		mconn:   &conn.MConnection{},
 		metrics: NopMetrics(),
@@ -164,24 +166,24 @@ func MakeSwitch(
 			PrivKey: ed25519.GenPrivKey(),
 		}
 		ni = NodeInfo{
-			ID:         nodeKey.ID(),
-			Moniker:    fmt.Sprintf("switch%d", i),
-			Network:    network,
-			Version:    version,
-			ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-			Other: NodeInfoOther{
-				AminoVersion:     "1.0",
-				P2PVersion:       "1.0",
-				ConsensusVersion: "1.0",
-				RPCVersion:       "1.0",
-				TxIndex:          "off",
-				RPCAddress:       fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+			Address: AddressInfo{
+				ID:         nodeKey.ID(),
+				ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+				Moniker:    fmt.Sprintf("switch%d", i),
+			},
+			Network: NetworkInfo{network},
+			Version: VersionInfo{}, // version,
+			Services: ServiceInfo{
+				Users: UserServices{
+					TxIndex:    "off",
+					RPCAddress: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+				},
 			},
 		}
 	)
 
 	addr, err := NewNetAddressStringWithOptionalID(
-		IDAddressString(nodeKey.ID(), ni.ListenAddr),
+		IDAddressString(nodeKey.ID(), ni.Address.ListenAddr),
 	)
 	if err != nil {
 		panic(err)
@@ -199,7 +201,7 @@ func MakeSwitch(
 	sw.SetNodeKey(&nodeKey)
 
 	for ch := range sw.reactorsByCh {
-		ni.Channels = append(ni.Channels, ch)
+		ni.Services.Peers.Channels = append(ni.Services.Peers.Channels, ch)
 	}
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly

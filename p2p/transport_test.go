@@ -138,7 +138,6 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 						ID:         PubKeyToID(pv.PubKey()),
 						ListenAddr: "127.0.0.1:0",
 						Moniker:    "dialer",
-						Version:    "1.0.0",
 					},
 					NodeKey{
 						PrivKey: pv,
@@ -208,10 +207,11 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 	var (
 		fastNodePV   = ed25519.GenPrivKey()
 		fastNodeInfo = NodeInfo{
-			ID:         PubKeyToID(fastNodePV.PubKey()),
-			ListenAddr: "127.0.0.1:0",
-			Moniker:    "fastNode",
-			Version:    "1.0.0",
+			Address: AddressInfo{
+				ID:         PubKeyToID(fastNodePV.PubKey()),
+				ListenAddr: "127.0.0.1:0",
+				Moniker:    "fastNode",
+			},
 		}
 		errc  = make(chan error)
 		fastc = make(chan struct{})
@@ -249,9 +249,11 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		}
 
 		_, err = handshake(sc, 20*time.Millisecond, NodeInfo{
-			ID:         PubKeyToID(ed25519.GenPrivKey().PubKey()),
-			ListenAddr: "127.0.0.1:0",
-			Moniker:    "slow_peer",
+			Address: AddressInfo{
+				ID:         PubKeyToID(ed25519.GenPrivKey().PubKey()),
+				ListenAddr: "127.0.0.1:0",
+				Moniker:    "slow_peer",
+			},
 		})
 		if err != nil {
 			errc <- err
@@ -312,10 +314,11 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 			pv     = ed25519.GenPrivKey()
 			dialer = NewMultiplexTransport(
 				NodeInfo{
-					ID:         PubKeyToID(pv.PubKey()),
-					ListenAddr: "127.0.0.1:0",
-					Moniker:    "", // Should not be empty.
-					Version:    "1.0.0",
+					Address: AddressInfo{
+						ID:         PubKeyToID(pv.PubKey()),
+						ListenAddr: "127.0.0.1:0",
+						Moniker:    "", // Should not be empty.
+					},
 				},
 				NodeKey{
 					PrivKey: pv,
@@ -360,10 +363,11 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	go func() {
 		dialer := NewMultiplexTransport(
 			NodeInfo{
-				ID:         PubKeyToID(ed25519.GenPrivKey().PubKey()),
-				ListenAddr: "127.0.0.1:0",
-				Moniker:    "dialer",
-				Version:    "1.0.0",
+				Address: AddressInfo{
+					ID:         PubKeyToID(ed25519.GenPrivKey().PubKey()),
+					ListenAddr: "127.0.0.1:0",
+					Moniker:    "dialer",
+				},
 			},
 			NodeKey{
 				PrivKey: ed25519.GenPrivKey(),
@@ -409,10 +413,11 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 			pv     = ed25519.GenPrivKey()
 			dialer = NewMultiplexTransport(
 				NodeInfo{
-					ID:         PubKeyToID(pv.PubKey()),
-					ListenAddr: "127.0.0.1:0",
-					Moniker:    "dialer",
-					Version:    "2.0.0",
+					Address: AddressInfo{
+						ID:         PubKeyToID(pv.PubKey()),
+						ListenAddr: "127.0.0.1:0",
+						Moniker:    "dialer",
+					},
 				},
 				NodeKey{
 					PrivKey: pv,
@@ -522,7 +527,9 @@ func TestTransportHandshake(t *testing.T) {
 	var (
 		peerPV       = ed25519.GenPrivKey()
 		peerNodeInfo = NodeInfo{
-			ID: PubKeyToID(peerPV.PubKey()),
+			Address: AddressInfo{
+				ID: PubKeyToID(peerPV.PubKey()),
+			},
 		}
 	)
 
@@ -573,10 +580,11 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 		pv = ed25519.GenPrivKey()
 		mt = NewMultiplexTransport(
 			NodeInfo{
-				ID:         PubKeyToID(pv.PubKey()),
-				ListenAddr: "127.0.0.1:0",
-				Moniker:    "transport",
-				Version:    "1.0.0",
+				Address: AddressInfo{
+					ID:         PubKeyToID(pv.PubKey()),
+					ListenAddr: "127.0.0.1:0",
+					Moniker:    "transport",
+				},
 			},
 			NodeKey{
 				PrivKey: pv,

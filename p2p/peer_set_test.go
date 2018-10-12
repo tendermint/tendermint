@@ -21,8 +21,10 @@ func randPeer(ip net.IP) *peer {
 	nodeKey := NodeKey{PrivKey: ed25519.GenPrivKey()}
 	p := &peer{
 		nodeInfo: NodeInfo{
-			ID:         nodeKey.ID(),
-			ListenAddr: fmt.Sprintf("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),
+			Address: AddressInfo{
+				ID:         nodeKey.ID(),
+				ListenAddr: fmt.Sprintf("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),
+			},
 		},
 		metrics: NopMetrics(),
 	}
