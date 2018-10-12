@@ -282,7 +282,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		if precommit.Round != round {
 			return fmt.Errorf("Invalid commit -- wrong round: want %v got %v", round, precommit.Round)
 		}
-		if precommit.Type != VoteTypePrecommit {
+		if precommit.Type != PrecommitType {
 			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
 		_, val := vals.GetByIndex(idx)
@@ -361,7 +361,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		if precommit.Round != round {
 			return cmn.NewError("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
-		if precommit.Type != VoteTypePrecommit {
+		if precommit.Type != PrecommitType {
 			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
 		}
 		// See if this validator is in oldVals.

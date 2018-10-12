@@ -542,7 +542,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 				return nil, nil, err
 			}
 		case *types.Vote:
-			if p.Type == types.VoteTypePrecommit {
+			if p.Type == types.PrecommitType {
 				thisBlockCommit = &types.Commit{
 					BlockID:    p.BlockID,
 					Precommits: []*types.Vote{p},

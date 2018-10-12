@@ -79,7 +79,7 @@ func TestSocketPVVote(t *testing.T) {
 		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		ts    = time.Now()
-		vType = types.VoteTypePrecommit
+		vType = types.PrecommitType
 		want  = &types.Vote{Timestamp: ts, Type: vType}
 		have  = &types.Vote{Timestamp: ts, Type: vType}
 	)
@@ -237,7 +237,7 @@ func TestRemoteSignVoteErrors(t *testing.T) {
 		sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV())
 
 		ts    = time.Now()
-		vType = types.VoteTypePrecommit
+		vType = types.PrecommitType
 		vote  = &types.Vote{Timestamp: ts, Type: vType}
 	)
 	defer sc.Stop()
