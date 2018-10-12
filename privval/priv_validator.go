@@ -25,9 +25,9 @@ const (
 
 func voteToStep(vote *types.Vote) int8 {
 	switch vote.Type {
-	case byte(types.PrevoteType):
+	case types.PrevoteType:
 		return stepPrevote
-	case byte(types.PrecommitType):
+	case types.PrecommitType:
 		return stepPrecommit
 	default:
 		cmn.PanicSanity("Unknown vote type")

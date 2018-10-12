@@ -22,7 +22,7 @@ func makeVote(val PrivValidator, chainID string, valIndex int, height int64, rou
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             byte(step),
+		Type:             SignedMsgType(step),
 		BlockID:          blockID,
 	}
 	err := val.SignVote(chainID, v)

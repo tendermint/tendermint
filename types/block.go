@@ -388,7 +388,7 @@ func (commit *Commit) FirstPrecommit() *Vote {
 		}
 	}
 	return &Vote{
-		Type: byte(PrecommitType),
+		Type: PrecommitType,
 	}
 }
 
@@ -462,7 +462,7 @@ func (commit *Commit) ValidateBasic() error {
 			continue
 		}
 		// Ensure that all votes are precommits.
-		if precommit.Type != byte(PrecommitType) {
+		if precommit.Type != PrecommitType {
 			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
 				precommit.Type)
 		}

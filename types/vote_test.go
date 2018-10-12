@@ -32,7 +32,7 @@ func exampleVote(t byte) *Vote {
 		Height:           12345,
 		Round:            2,
 		Timestamp:        stamp,
-		Type:             t,
+		Type:             SignedMsgType(t),
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
@@ -68,7 +68,7 @@ func TestVoteSignableTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreCommit):
 		{
-			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: byte(PrecommitType)}),
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrecommitType}),
 			[]byte{
 				0x1f,                                   // total length
 				0x11,                                   // (field_number << 3) | wire_type (version is missing)
@@ -83,7 +83,7 @@ func TestVoteSignableTestVectors(t *testing.T) {
 		},
 		// with proper (fixed size) height and round (PreVote):
 		{
-			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: byte(PrevoteType)}),
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrevoteType}),
 			[]byte{
 				0x1f,                                   // total length
 				0x11,                                   // (field_number << 3) | wire_type (version is missing)
@@ -177,12 +177,12 @@ func TestVoteVerifySignature(t *testing.T) {
 func TestIsVoteTypeValid(t *testing.T) {
 	tc := []struct {
 		name string
-		in   byte
+		in   SignedMsgType
 		out  bool
 	}{
-		{"Prevote", byte(PrevoteType), true},
-		{"Precommit", byte(PrecommitType), true},
-		{"InvalidType", byte(3), false},
+		{"Prevote", PrevoteType, true},
+		{"Precommit", PrecommitType, true},
+		{"InvalidType", SignedMsgType(0x3), false},
 	}
 
 	for _, tt := range tc {
@@ -220,7 +220,7 @@ func TestMaxVoteBytes(t *testing.T) {
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt64,
 		Timestamp:        tmtime.Now(),
-		Type:             byte(PrevoteType),
+		Type:             PrevoteType,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{

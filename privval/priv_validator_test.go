@@ -235,7 +235,7 @@ func newVote(addr types.Address, idx int, height int64, round int, typ byte, blo
 		ValidatorIndex:   idx,
 		Height:           height,
 		Round:            round,
-		Type:             typ,
+		Type:             types.SignedMsgType(typ),
 		Timestamp:        tmtime.Now(),
 		BlockID:          blockID,
 	}

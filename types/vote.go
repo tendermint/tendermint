@@ -48,14 +48,14 @@ type Address = crypto.Address
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	ValidatorAddress Address   `json:"validator_address"`
-	ValidatorIndex   int       `json:"validator_index"`
-	Height           int64     `json:"height"`
-	Round            int       `json:"round"`
-	Timestamp        time.Time `json:"timestamp"`
-	Type             byte      `json:"type"`
-	BlockID          BlockID   `json:"block_id"` // zero if vote is nil.
-	Signature        []byte    `json:"signature"`
+	ValidatorAddress Address       `json:"validator_address"`
+	ValidatorIndex   int           `json:"validator_index"`
+	Height           int64         `json:"height"`
+	Round            int           `json:"round"`
+	Timestamp        time.Time     `json:"timestamp"`
+	Type             SignedMsgType `json:"type"`
+	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
+	Signature        []byte        `json:"signature"`
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
@@ -77,9 +77,9 @@ func (vote *Vote) String() string {
 	}
 	var typeString string
 	switch vote.Type {
-	case byte(PrevoteType):
+	case PrevoteType:
 		typeString = "Prevote"
-	case byte(PrecommitType):
+	case PrecommitType:
 		typeString = "Precommit"
 	default:
 		cmn.PanicSanity("Unknown vote type")

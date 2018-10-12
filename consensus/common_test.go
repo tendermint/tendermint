@@ -71,7 +71,7 @@ func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 	}
 }
 
-func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+func (vs *validatorStub) signVote(voteType types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,
 		ValidatorAddress: vs.PrivValidator.GetAddress(),
@@ -86,7 +86,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSetHeader) *types.Vote {
+func signVote(vs *validatorStub, voteType types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
 	v, err := vs.signVote(voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
@@ -94,7 +94,7 @@ func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSe
 	return v
 }
 
-func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
+func signVotes(voteType types.SignedMsgType, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
 		votes[i] = signVote(vs, voteType, hash, header)
@@ -144,7 +144,7 @@ func addVotes(to *ConsensusState, votes ...*types.Vote) {
 	}
 }
 
-func signAddVotes(to *ConsensusState, voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) {
+func signAddVotes(to *ConsensusState, voteType types.SignedMsgType, hash []byte, header types.PartSetHeader, vss ...*validatorStub) {
 	votes := signVotes(voteType, hash, header, vss...)
 	addVotes(to, votes...)
 }
@@ -463,7 +463,7 @@ func ensureNewUnlock(unlockCh <-chan interface{}, height int64, round int) {
 }
 
 func ensureVote(voteCh <-chan interface{}, height int64, round int,
-	voteType byte) {
+	voteType types.SignedMsgType) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewVote event")

@@ -55,7 +55,7 @@ type VoteSet struct {
 	chainID string
 	height  int64
 	round   int
-	type_   byte
+	type_   SignedMsgType
 	valSet  *ValidatorSet
 
 	mtx           sync.Mutex
@@ -68,7 +68,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height int64, round int, type_ byte, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int64, round int, type_ SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		cmn.PanicSanity("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -109,7 +109,7 @@ func (voteSet *VoteSet) Type() byte {
 	if voteSet == nil {
 		return 0x00
 	}
-	return voteSet.type_
+	return byte(voteSet.type_)
 }
 
 func (voteSet *VoteSet) Size() int {
@@ -381,7 +381,7 @@ func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
 	}
-	if voteSet.type_ != byte(PrecommitType) {
+	if voteSet.type_ != PrecommitType {
 		return false
 	}
 	voteSet.mtx.Lock()
@@ -529,7 +529,7 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // Commit
 
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.type_ != byte(PrecommitType) {
+	if voteSet.type_ != PrecommitType {
 		cmn.PanicSanity("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()

@@ -7,14 +7,14 @@ const (
 	PrevoteType   SignedMsgType = 0x01
 	PrecommitType SignedMsgType = 0x02
 	// To separate (canonicalized) Vote and Proposal messages:
-	ProposalType SignedMsgType = 0x03
+	ProposalType SignedMsgType = 0x10
 )
 
-func IsVoteTypeValid(type_ byte) bool {
+func IsVoteTypeValid(type_ SignedMsgType) bool {
 	switch type_ {
-	case byte(PrevoteType):
+	case PrevoteType:
 		return true
-	case byte(PrecommitType):
+	case PrecommitType:
 		return true
 	default:
 		return false
