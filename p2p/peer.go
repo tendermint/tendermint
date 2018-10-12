@@ -20,10 +20,12 @@ var testIPSuffix uint32
 type Peer interface {
 	cmn.Service
 
-	ID() ID             // peer's cryptographic ID
-	RemoteIP() net.IP   // remote IP of the connection
+	ID() ID           // peer's cryptographic ID
+	RemoteIP() net.IP // remote IP of the connection
+
 	IsOutbound() bool   // did we dial the peer
 	IsPersistent() bool // do we redial this peer when we disconnect
+
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
 
