@@ -1535,6 +1535,9 @@ func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) 
 						return false, nil
 					}
 
+					cs.ProposalBlock=cs.LockedBlock
+					cs.ProposalBlockParts = cs.LockedBlockParts //overwrite cs.ProposalBlockParts to help convergence
+
 					if cs.Step <= cstypes.RoundStepPropose {
 						// got a lockedBlock, we can vote now
 						cs.enterPrevote(height, cs.Round)
