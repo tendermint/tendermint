@@ -1,13 +1,18 @@
 package types
 
+// SignedMsgType is a type of signed message in the consensus.
 type SignedMsgType byte
 
 const (
-	// Types of votes
+	// Votes
 	PrevoteType   SignedMsgType = 0x01
 	PrecommitType SignedMsgType = 0x02
-	// To separate (canonicalized) Vote and Proposal messages:
-	ProposalType SignedMsgType = 0x10
+
+	// Proposals
+	ProposalType SignedMsgType = 0x20
+
+	// Heartbeat
+	HeartbeatType SignedMsgType = 0x30
 )
 
 func IsVoteTypeValid(type_ SignedMsgType) bool {

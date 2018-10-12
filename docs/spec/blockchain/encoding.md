@@ -300,8 +300,9 @@ Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
 
 Signed messages (eg. votes, proposals) in the consensus are encoded using Amino.
 
-When signing, the elements of a message are sorted alphabetically by key and prepended with
-a `chain_id` and `type` field.
+When signing, the elements of a message are re-ordered so the fixed-length fields
+are first, making it easy to quickly check the version, height, round, and type.
+The `ChainID` is also appended to the end.
 We call this encoding the SignBytes. For instance, SignBytes for a vote is the Amino encoding of the following struct:
 
 ```go
@@ -310,11 +311,12 @@ type CanonicalVote struct {
 	Height    int64            `binary:"fixed64"`
 	Round     int64            `binary:"fixed64"`
 	VoteType  byte
-	Timestamp time.Time 
+	Timestamp time.Time
 	BlockID   CanonicalBlockID
 	ChainID   string
 }
 ```
-The field ordering and the fixed sized encoding for the first three fields is optimized to ease parsing of SignBytes 
-in HSMs. It creates fixed offsets for relevant fields that need to be read in this context. 
-See [#1622](https://github.com/tendermint/tendermint/issues/1622) for more details. 
+
+The field ordering and the fixed sized encoding for the first three fields is optimized to ease parsing of SignBytes
+in HSMs. It creates fixed offsets for relevant fields that need to be read in this context.
+See [#1622](https://github.com/tendermint/tendermint/issues/1622) for more details.
