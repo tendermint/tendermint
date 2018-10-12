@@ -11,12 +11,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmerrors "github.com/tendermint/tendermint/libs/errors"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -217,7 +218,9 @@ func (mem *Mempool) InitWAL() {
 			cmn.PanicSanity(errors.Wrap(err, "Error ensuring Mempool wal dir"))
 		}
 		af, err := auto.OpenAutoFile(walDir + "/wal")
-		if err != nil {
+		if e, ok := err.(*tmerrors.ErrPermissionsChanged); ok {
+			mem.logger.Error("%v", e)
+		} else if err != nil {
 			cmn.PanicSanity(errors.Wrap(err, "Error opening Mempool wal file"))
 		}
 		mem.wal = af
