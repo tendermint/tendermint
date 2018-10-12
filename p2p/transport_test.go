@@ -11,6 +11,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
+var defaultNodeName = "host_peer"
+
 func emptyNodeInfo() NodeInfo {
 	return DefaultNodeInfo{}
 }
@@ -124,6 +126,7 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 		t.Errorf("expected ErrFilterTimeout")
 	}
 }
+
 func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 	mt := testSetupMultiplexTransport(t)
 

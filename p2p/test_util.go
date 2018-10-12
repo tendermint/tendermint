@@ -241,8 +241,6 @@ func testPeerConn(
 //----------------------------------------------------------------
 // rand node info
 
-var defaultNodeName = "host_peer"
-
 func testNodeInfo(id ID, name string) NodeInfo {
 	return testNodeInfoWithNetwork(id, name, "testing")
 }
