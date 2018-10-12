@@ -23,16 +23,18 @@ type CanonicalPartSetHeader struct {
 }
 
 type CanonicalProposal struct {
+	Version          uint64                 `amino:"write_empty" json:"version" binary:"fixed64"`
 	Height           int64                  `json:"height" binary:"fixed64"`
 	Round            int64                  `json:"round" binary:"fixed64"`
+	POLRound         int64                  `json:"pol_round" binary:"fixed64"`
+	Timestamp        time.Time              `json:"timestamp"`
 	ChainID          string                 `json:"@chain_id"`
 	BlockPartsHeader CanonicalPartSetHeader `json:"block_parts_header"`
 	POLBlockID       CanonicalBlockID       `json:"pol_block_id"`
-	POLRound         int                    `json:"pol_round"`
-	Timestamp        time.Time              `json:"timestamp"`
 }
 
 type CanonicalVote struct {
+	Version   uint64           `amino:"write_empty" json:"version" binary:"fixed64"`
 	Height    int64            `amino:"write_empty" json:"height" binary:"fixed64"`
 	Round     int64            `amino:"write_empty" json:"round"  binary:"fixed64"`
 	VoteType  byte             `json:"type"`
@@ -42,11 +44,11 @@ type CanonicalVote struct {
 }
 
 type CanonicalHeartbeat struct {
+	Version          uint64  `amino:"write_empty" json:"version" binary:"fixed64"`
 	Height           int64   `json:"height" binary:"fixed64"`
 	Round            int     `json:"height" binary:"fixed64"`
+	Sequence         int     `json:"sequence" binary:"fixed64"`
 	ChainID          string  `json:"@chain_id"`
-	Type             string  `json:"@type"`
-	Sequence         int     `json:"sequence"`
 	ValidatorAddress Address `json:"validator_address"`
 	ValidatorIndex   int     `json:"validator_index"`
 }
@@ -70,36 +72,35 @@ func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
 
 func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
 	return CanonicalProposal{
+		Height:           proposal.Height,
+		Round:            int64(proposal.Round),
+		POLRound:         int64(proposal.POLRound),
+		Timestamp:        proposal.Timestamp,
 		ChainID:          chainID,
 		BlockPartsHeader: CanonicalizePartSetHeader(proposal.BlockPartsHeader),
-		Height:           proposal.Height,
-		Timestamp:        proposal.Timestamp,
 		POLBlockID:       CanonicalizeBlockID(proposal.POLBlockID),
-		POLRound:         proposal.POLRound,
-		Round:            int64(proposal.Round),
 	}
 }
 
 func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 	return CanonicalVote{
-		ChainID: chainID,
-		BlockID: CanonicalizeBlockID(vote.BlockID),
-		Height:  vote.Height,
+		Height: vote.Height,
 		// XXX make sure we don't cause any trouble by casting here; currently, amino doesn't support fixed size for int
 		// XXX same for proposal etc
 		Round:     int64(vote.Round),
-		Timestamp: vote.Timestamp,
 		VoteType:  vote.Type,
+		Timestamp: vote.Timestamp,
+		BlockID:   CanonicalizeBlockID(vote.BlockID),
+		ChainID:   chainID,
 	}
 }
 
 func CanonicalizeHeartbeat(chainID string, heartbeat *Heartbeat) CanonicalHeartbeat {
 	return CanonicalHeartbeat{
-		ChainID:          chainID,
-		Type:             "heartbeat",
 		Height:           heartbeat.Height,
 		Round:            heartbeat.Round,
 		Sequence:         heartbeat.Sequence,
+		ChainID:          chainID,
 		ValidatorAddress: heartbeat.ValidatorAddress,
 		ValidatorIndex:   heartbeat.ValidatorIndex,
 	}

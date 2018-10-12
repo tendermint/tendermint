@@ -55,32 +55,51 @@ func TestVoteSignable(t *testing.T) {
 
 func TestVoteSignableTestVectors(t *testing.T) {
 	//chainID := "test_chain_id"
+	voteWithVersion := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
+	voteWithVersion.Version = 123
+
 	tests := []struct {
-		vote    *Vote
-		chainID string
-		want    []byte
+		canonicalVote CanonicalVote
+		want          []byte
 	}{
-		// XXX: Here Height and Round are skipped. This probably will be cumbersome to to parse in the HSM:
-		{&Vote{}, "", []byte{0xb, 0x22, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff}},
+		{
+			CanonicalizeVote("", &Vote{}),
+			// XXX: Here Height and Round are skipped. This probably will be cumbersome to to parse in the HSM:
+			[]byte{0xb, 0x2a, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+		},
 		// with proper (fixed size) height and round:
 		{
-			&Vote{Height: 1, Round: 1},
-			"",
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1}),
 			[]byte{
 				0x1d,                                   // total length
-				0x9,                                    // (field_number << 3) | wire_type
+				0x11,                                   // (field_number << 3) | wire_type (version is missing)
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
-				0x11,                                   // (field_number << 3) | wire_type
+				0x19,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
 				// remaining fields:
-				0x22, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+				0x2a, // (field_number << 3) | wire_type
+				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+		},
+		// containing version:
+		{
+			voteWithVersion,
+			[]byte{
+				0x26,                                    // total length
+				0x9,                                     // (field_number << 3) | wire_type
+				0x7b, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // version (123)
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				// remaining fields:
+				0x2a, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
 		},
 	}
-	for _, tc := range tests {
-		got, err := cdc.MarshalBinary(CanonicalizeVote(tc.chainID, tc.vote))
+	for i, tc := range tests {
+		got, err := cdc.MarshalBinary(tc.canonicalVote)
 		require.NoError(t, err)
 
-		require.Equal(t, tc.want, got, "Got unexpected sign bytes for Vote.")
+		require.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
 	}
 }
 
