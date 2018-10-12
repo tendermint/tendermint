@@ -320,7 +320,7 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	peer := p2p.CreateRandomPeer(false)
 
 	pexR, book := createReactor(&PEXReactorConfig{})
-	book.AddPrivateIDs([]string{string(peer.NodeInfo().ID)})
+	book.AddPrivateIDs([]string{string(peer.NodeInfo().ID())})
 	defer teardownReactor(book)
 
 	// we have to send a request to receive responses
@@ -391,8 +391,8 @@ func (mp mockPeer) ID() p2p.ID         { return mp.addr.ID }
 func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
 func (mp mockPeer) IsPersistent() bool { return mp.persistent }
 func (mp mockPeer) NodeInfo() p2p.NodeInfo {
-	return p2p.NodeInfo{
-		ID:         mp.addr.ID,
+	return p2p.DefaultNodeInfo{
+		ID_:        mp.addr.ID,
 		ListenAddr: mp.addr.DialString(),
 	}
 }
@@ -402,7 +402,6 @@ func (mockPeer) Send(byte, []byte) bool        { return false }
 func (mockPeer) TrySend(byte, []byte) bool     { return false }
 func (mockPeer) Set(string, interface{})       {}
 func (mockPeer) Get(string) interface{}        { return nil }
-func (mockPeer) OriginalAddr() *p2p.NetAddress { return nil }
 
 func assertPeersWithTimeout(
 	t *testing.T,

@@ -1,8 +1,11 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -37,8 +40,12 @@ import (
 func NetInfo() (*ctypes.ResultNetInfo, error) {
 	peers := []ctypes.Peer{}
 	for _, peer := range p2pPeers.Peers().List() {
+		nodeInfo, ok := peer.NodeInfo().(p2p.DefaultNodeInfo)
+		if !ok {
+			return nil, fmt.Errorf("peer.NodeInfo() is not DefaultNodeInfo")
+		}
 		peers = append(peers, ctypes.Peer{
-			NodeInfo:         peer.NodeInfo(),
+			NodeInfo:         nodeInfo,
 			IsOutbound:       peer.IsOutbound(),
 			ConnectionStatus: peer.Status(),
 		})

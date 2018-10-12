@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -17,12 +18,32 @@ func MaxNodeInfoSize() int {
 	return maxNodeInfoSize
 }
 
-// NodeInfo is the basic node information exchanged
+// NodeInfo exposes basic info of a node
+// and determines if we're compatible
+type NodeInfo interface {
+	nodeInfoAddress
+	nodeInfoTransport
+}
+
+// nodeInfoAddress exposes just the core info of a node.
+type nodeInfoAddress interface {
+	ID() ID
+	NetAddress() *NetAddress
+}
+
+// nodeInfoTransport is validates a nodeInfo and checks
+// our compatibility with it. It's for use in the handshake.
+type nodeInfoTransport interface {
+	ValidateBasic() error
+	CompatibleWith(other NodeInfo) error
+}
+
+// DefaultNodeInfo is the basic node information exchanged
 // between two peers during the Tendermint P2P handshake.
-type NodeInfo struct {
+type DefaultNodeInfo struct {
 	// Authenticate
 	// TODO: replace with NetAddress
-	ID         ID     `json:"id"`          // authenticated identifier
+	ID_        ID     `json:"id"`          // authenticated identifier
 	ListenAddr string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility.
@@ -32,12 +53,12 @@ type NodeInfo struct {
 	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
-	Moniker string        `json:"moniker"` // arbitrary moniker
-	Other   NodeInfoOther `json:"other"`   // other application specific data
+	Moniker string               `json:"moniker"` // arbitrary moniker
+	Other   DefaultNodeInfoOther `json:"other"`   // other application specific data
 }
 
-// NodeInfoOther is the misc. applcation specific data
-type NodeInfoOther struct {
+// DefaultNodeInfoOther is the misc. applcation specific data
+type DefaultNodeInfoOther struct {
 	AminoVersion     string `json:"amino_version"`
 	P2PVersion       string `json:"p2p_version"`
 	ConsensusVersion string `json:"consensus_version"`
@@ -46,19 +67,12 @@ type NodeInfoOther struct {
 	RPCAddress       string `json:"rpc_address"`
 }
 
-func (o NodeInfoOther) String() string {
-	return fmt.Sprintf(
-		"{amino_version: %v, p2p_version: %v, consensus_version: %v, rpc_version: %v, tx_index: %v, rpc_address: %v}",
-		o.AminoVersion,
-		o.P2PVersion,
-		o.ConsensusVersion,
-		o.RPCVersion,
-		o.TxIndex,
-		o.RPCAddress,
-	)
+// ID returns the node's peer ID.
+func (info DefaultNodeInfo) ID() ID {
+	return info.ID_
 }
 
-// Validate checks the self-reported NodeInfo is safe.
+// ValidateBasic checks the self-reported DefaultNodeInfo is safe.
 // It returns an error if there
 // are too many Channels, if there are any duplicate Channels,
 // if the ListenAddr is malformed, or if the ListenAddr is a host name
@@ -71,7 +85,7 @@ func (o NodeInfoOther) String() string {
 // International clients could then use punycode (or we could use
 // url-encoding), and we just need to be careful with how we handle that in our
 // clients. (e.g. off by default).
-func (info NodeInfo) Validate() error {
+func (info DefaultNodeInfo) ValidateBasic() error {
 	if len(info.Channels) > maxNumChannels {
 		return fmt.Errorf("info.Channels is too long (%v). Max is %v", len(info.Channels), maxNumChannels)
 	}
@@ -111,14 +125,19 @@ func (info NodeInfo) Validate() error {
 	}
 
 	// ensure ListenAddr is good
-	_, err := NewNetAddressString(IDAddressString(info.ID, info.ListenAddr))
+	_, err := NewNetAddressString(IDAddressString(info.ID(), info.ListenAddr))
 	return err
 }
 
-// CompatibleWith checks if two NodeInfo are compatible with eachother.
+// CompatibleWith checks if two DefaultNodeInfo are compatible with eachother.
 // CONTRACT: two nodes are compatible if the major version matches and network match
 // and they have at least one channel in common.
-func (info NodeInfo) CompatibleWith(other NodeInfo) error {
+func (info DefaultNodeInfo) CompatibleWith(other_ NodeInfo) error {
+	other, ok := other_.(DefaultNodeInfo)
+	if !ok {
+		return fmt.Errorf("wrong NodeInfo type. Expected DefaultNodeInfo, got %v", reflect.TypeOf(other_))
+	}
+
 	iMajor, _, _, iErr := splitVersion(info.Version)
 	oMajor, _, _, oErr := splitVersion(other.Version)
 
@@ -164,28 +183,23 @@ OUTER_LOOP:
 	return nil
 }
 
-// NetAddress returns a NetAddress derived from the NodeInfo -
+// NetAddress returns a NetAddress derived from the DefaultNodeInfo -
 // it includes the authenticated peer ID and the self-reported
 // ListenAddr. Note that the ListenAddr is not authenticated and
 // may not match that address actually dialed if its an outbound peer.
-func (info NodeInfo) NetAddress() *NetAddress {
-	netAddr, err := NewNetAddressString(IDAddressString(info.ID, info.ListenAddr))
+func (info DefaultNodeInfo) NetAddress() *NetAddress {
+	netAddr, err := NewNetAddressString(IDAddressString(info.ID(), info.ListenAddr))
 	if err != nil {
 		switch err.(type) {
 		case ErrNetAddressLookup:
 			// XXX If the peer provided a host name  and the lookup fails here
 			// we're out of luck.
-			// TODO: use a NetAddress in NodeInfo
+			// TODO: use a NetAddress in DefaultNodeInfo
 		default:
 			panic(err) // everything should be well formed by now
 		}
 	}
 	return netAddr
-}
-
-func (info NodeInfo) String() string {
-	return fmt.Sprintf("NodeInfo{id: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}",
-		info.ID, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {

@@ -198,7 +198,7 @@ func (tp *bcrTestPeer) TrySend(chID byte, msgBytes []byte) bool {
 }
 
 func (tp *bcrTestPeer) Send(chID byte, msgBytes []byte) bool { return tp.TrySend(chID, msgBytes) }
-func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo               { return p2p.NodeInfo{} }
+func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo               { return p2p.DefaultNodeInfo{} }
 func (tp *bcrTestPeer) Status() p2p.ConnectionStatus         { return p2p.ConnectionStatus{} }
 func (tp *bcrTestPeer) ID() p2p.ID                           { return tp.id }
 func (tp *bcrTestPeer) IsOutbound() bool                     { return false }
@@ -206,4 +206,3 @@ func (tp *bcrTestPeer) IsPersistent() bool                   { return true }
 func (tp *bcrTestPeer) Get(s string) interface{}             { return s }
 func (tp *bcrTestPeer) Set(string, interface{})              {}
 func (tp *bcrTestPeer) RemoteIP() net.IP                     { return []byte{127, 0, 0, 1} }
-func (tp *bcrTestPeer) OriginalAddr() *p2p.NetAddress        { return nil }

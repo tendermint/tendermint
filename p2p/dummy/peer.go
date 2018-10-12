@@ -42,7 +42,7 @@ func (p *peer) IsPersistent() bool {
 
 // NodeInfo always returns empty node info.
 func (p *peer) NodeInfo() p2p.NodeInfo {
-	return p2p.NodeInfo{}
+	return p2p.DefaultNodeInfo{}
 }
 
 // RemoteIP always returns localhost.
@@ -76,10 +76,5 @@ func (p *peer) Get(key string) interface{} {
 	if value, ok := p.kv[key]; ok {
 		return value
 	}
-	return nil
-}
-
-// OriginalAddr always returns nil.
-func (p *peer) OriginalAddr() *p2p.NetAddress {
 	return nil
 }

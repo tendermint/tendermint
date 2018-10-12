@@ -19,8 +19,6 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-const testCh = 0x01
-
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
@@ -81,18 +79,14 @@ func createOutboundPeerAndPerformHandshake(
 	if err != nil {
 		return nil, err
 	}
-	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		ID:       addr.ID,
-		Moniker:  "host_peer",
-		Network:  "testing",
-		Version:  "123.123.123",
-		Channels: []byte{testCh},
-	}, 1*time.Second)
+	timeout := 1 * time.Second
+	ourNodeInfo := testNodeInfo(addr.ID, "host_peer")
+	peerNodeInfo, err := handshake(pc.conn, timeout, ourNodeInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newPeer(pc, mConfig, nodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
+	p := newPeer(pc, mConfig, peerNodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }
@@ -120,7 +114,7 @@ func testOutboundPeerConn(
 		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
 	}
 
-	pc, err := testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
+	pc, err := testPeerConn(conn, config, true, persistent, ourNodePrivKey)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
 			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
@@ -191,14 +185,7 @@ func (rp *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 
-		_, err = handshake(pc.conn, time.Second, NodeInfo{
-			ID:         rp.Addr().ID,
-			Moniker:    "remote_peer",
-			Network:    "testing",
-			Version:    "123.123.123",
-			ListenAddr: l.Addr().String(),
-			Channels:   rp.channels,
-		})
+		_, err = handshake(pc.conn, time.Second, rp.nodeInfo(l))
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}
@@ -215,5 +202,16 @@ func (rp *remotePeer) accept(l net.Listener) {
 			return
 		default:
 		}
+	}
+}
+
+func (rp *remotePeer) nodeInfo(l net.Listener) NodeInfo {
+	return DefaultNodeInfo{
+		ID_:        rp.Addr().ID,
+		Moniker:    "remote_peer",
+		Network:    "testing",
+		Version:    "123.123.123",
+		ListenAddr: l.Addr().String(),
+		Channels:   rp.channels,
 	}
 }

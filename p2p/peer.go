@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"net"
-	"sync/atomic"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -15,19 +14,18 @@ import (
 
 const metricsTickerDuration = 10 * time.Second
 
-var testIPSuffix uint32
-
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
 
-	ID() ID             // peer's cryptographic ID
-	RemoteIP() net.IP   // remote IP of the connection
+	ID() ID           // peer's cryptographic ID
+	RemoteIP() net.IP // remote IP of the connection
+
 	IsOutbound() bool   // did we dial the peer
 	IsPersistent() bool // do we redial this peer when we disconnect
+
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
-	OriginalAddr() *NetAddress
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -40,12 +38,13 @@ type Peer interface {
 
 // peerConn contains the raw connection and its config.
 type peerConn struct {
-	outbound     bool
-	persistent   bool
-	config       *config.P2PConfig
-	conn         net.Conn // source connection
-	ip           net.IP
-	originalAddr *NetAddress // nil for inbound connections
+	outbound   bool
+	persistent bool
+	config     *config.P2PConfig
+	conn       net.Conn // source connection
+
+	// cached RemoteIP()
+	ip net.IP
 }
 
 // ID only exists for SecretConnection.
@@ -57,14 +56,6 @@ func (pc peerConn) ID() ID {
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
 	if pc.ip != nil {
-		return pc.ip
-	}
-
-	// In test cases a conn could not be present at all or be an in-memory
-	// implementation where we want to return a fake ip.
-	if pc.conn == nil || pc.conn.RemoteAddr().String() == "pipe" {
-		pc.ip = net.IP{172, 16, 0, byte(atomic.AddUint32(&testIPSuffix, 1))}
-
 		return pc.ip
 	}
 
@@ -120,7 +111,7 @@ func newPeer(
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.Channels,
+		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
 		Data:          cmn.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
@@ -140,6 +131,15 @@ func newPeer(
 	}
 
 	return p
+}
+
+// String representation.
+func (p *peer) String() string {
+	if p.outbound {
+		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
+	}
+
+	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
 }
 
 //---------------------------------------------------
@@ -177,7 +177,7 @@ func (p *peer) OnStop() {
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return p.nodeInfo.ID
+	return p.nodeInfo.ID()
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.
@@ -193,15 +193,6 @@ func (p *peer) IsPersistent() bool {
 // NodeInfo returns a copy of the peer's NodeInfo.
 func (p *peer) NodeInfo() NodeInfo {
 	return p.nodeInfo
-}
-
-// OriginalAddr returns the original address, which was used to connect with
-// the peer. Returns nil for inbound peers.
-func (p *peer) OriginalAddr() *NetAddress {
-	if p.peerConn.outbound {
-		return p.peerConn.originalAddr
-	}
-	return nil
 }
 
 // Status returns the peer's ConnectionStatus.
@@ -272,51 +263,12 @@ func (p *peer) hasChannel(chID byte) bool {
 }
 
 //---------------------------------------------------
-// methods used by the Switch
+// methods only used for testing
+// TODO: can we remove these?
 
-// CloseConn should be called by the Switch if the peer was created but never
-// started.
+// CloseConn closes the underlying connection
 func (pc *peerConn) CloseConn() {
 	pc.conn.Close() // nolint: errcheck
-}
-
-// HandshakeTimeout performs the Tendermint P2P handshake between a given node
-// and the peer by exchanging their NodeInfo. It sets the received nodeInfo on
-// the peer.
-// NOTE: blocking
-func (pc *peerConn) HandshakeTimeout(
-	ourNodeInfo NodeInfo,
-	timeout time.Duration,
-) (peerNodeInfo NodeInfo, err error) {
-	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error setting deadline")
-	}
-
-	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.MarshalBinaryWriter(pc.conn, ourNodeInfo)
-			return
-		},
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.UnmarshalBinaryReader(
-				pc.conn,
-				&peerNodeInfo,
-				int64(MaxNodeInfoSize()),
-			)
-			return
-		},
-	)
-	if err := trs.FirstError(); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error during handshake")
-	}
-
-	// Remove deadline
-	if err := pc.conn.SetDeadline(time.Time{}); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error removing deadline")
-	}
-
-	return peerNodeInfo, nil
 }
 
 // Addr returns peer's remote network address.
@@ -332,14 +284,7 @@ func (p *peer) CanSend(chID byte) bool {
 	return p.mconn.CanSend(chID)
 }
 
-// String representation.
-func (p *peer) String() string {
-	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
-	}
-
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
-}
+//---------------------------------------------------
 
 func PeerMetrics(metrics *Metrics) PeerOption {
 	return func(p *peer) {

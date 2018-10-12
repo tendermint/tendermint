@@ -14,6 +14,19 @@ import (
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
+const testCh = 0x01
+
+//------------------------------------------------
+
+type mockNodeInfo struct {
+	addr *NetAddress
+}
+
+func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
+func (ni mockNodeInfo) NetAddress() *NetAddress             { return ni.addr }
+func (ni mockNodeInfo) ValidateBasic() error                { return nil }
+func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
+
 func AddPeerToSwitch(sw *Switch, peer Peer) {
 	sw.peers.Add(peer)
 }
@@ -24,12 +37,9 @@ func CreateRandomPeer(outbound bool) *peer {
 		peerConn: peerConn{
 			outbound: outbound,
 		},
-		nodeInfo: NodeInfo{
-			ID:         netAddr.ID,
-			ListenAddr: netAddr.DialString(),
-		},
-		mconn:   &conn.MConnection{},
-		metrics: NopMetrics(),
+		nodeInfo: mockNodeInfo{netAddr},
+		mconn:    &conn.MConnection{},
+		metrics:  NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
@@ -159,36 +169,15 @@ func MakeSwitch(
 	initSwitch func(int, *Switch) *Switch,
 	opts ...SwitchOption,
 ) *Switch {
-	var (
-		nodeKey = NodeKey{
-			PrivKey: ed25519.GenPrivKey(),
-		}
-		ni = NodeInfo{
-			ID:         nodeKey.ID(),
-			Moniker:    fmt.Sprintf("switch%d", i),
-			Network:    network,
-			Version:    version,
-			ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-			Other: NodeInfoOther{
-				AminoVersion:     "1.0",
-				P2PVersion:       "1.0",
-				ConsensusVersion: "1.0",
-				RPCVersion:       "1.0",
-				TxIndex:          "off",
-				RPCAddress:       fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-			},
-		}
-	)
 
-	addr, err := NewNetAddressStringWithOptionalID(
-		IDAddressString(nodeKey.ID(), ni.ListenAddr),
-	)
-	if err != nil {
-		panic(err)
+	nodeKey := NodeKey{
+		PrivKey: ed25519.GenPrivKey(),
 	}
+	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
 
-	t := NewMultiplexTransport(ni, nodeKey)
+	t := NewMultiplexTransport(nodeInfo, nodeKey)
 
+	addr := nodeInfo.NetAddress()
 	if err := t.Listen(*addr); err != nil {
 		panic(err)
 	}
@@ -198,14 +187,16 @@ func MakeSwitch(
 	sw.SetLogger(log.TestingLogger())
 	sw.SetNodeKey(&nodeKey)
 
+	ni := nodeInfo.(DefaultNodeInfo)
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
 	}
+	nodeInfo = ni
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = ni
-	sw.SetNodeInfo(ni)
+	t.nodeInfo = nodeInfo
+	sw.SetNodeInfo(nodeInfo)
 
 	return sw
 }
@@ -215,7 +206,7 @@ func testInboundPeerConn(
 	config *config.P2PConfig,
 	ourNodePrivKey crypto.PrivKey,
 ) (peerConn, error) {
-	return testPeerConn(conn, config, false, false, ourNodePrivKey, nil)
+	return testPeerConn(conn, config, false, false, ourNodePrivKey)
 }
 
 func testPeerConn(
@@ -223,7 +214,6 @@ func testPeerConn(
 	cfg *config.P2PConfig,
 	outbound, persistent bool,
 	ourNodePrivKey crypto.PrivKey,
-	originalAddr *NetAddress,
 ) (pc peerConn, err error) {
 	conn := rawConn
 
@@ -241,10 +231,27 @@ func testPeerConn(
 
 	// Only the information we already have
 	return peerConn{
-		config:       cfg,
-		outbound:     outbound,
-		persistent:   persistent,
-		conn:         conn,
-		originalAddr: originalAddr,
+		config:     cfg,
+		outbound:   outbound,
+		persistent: persistent,
+		conn:       conn,
 	}, nil
+}
+
+//----------------------------------------------------------------
+// rand node info
+
+func testNodeInfo(id ID, name string) NodeInfo {
+	return testNodeInfoWithNetwork(id, name, "testing")
+}
+
+func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
+	return DefaultNodeInfo{
+		ID_:        id,
+		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		Moniker:    name,
+		Network:    network,
+		Version:    "123.123.123",
+		Channels:   []byte{testCh},
+	}
 }

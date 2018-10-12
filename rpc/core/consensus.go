@@ -2,7 +2,6 @@ package core
 
 import (
 	cm "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -201,7 +200,7 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 		}
 		peerStates[i] = ctypes.PeerStateInfo{
 			// Peer basic info.
-			NodeAddress: p2p.IDAddressString(peer.ID(), peer.NodeInfo().ListenAddr),
+			NodeAddress: peer.NodeInfo().NetAddress().String(),
 			// Peer consensus state.
 			PeerState: peerStateJSON,
 		}

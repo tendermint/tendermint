@@ -5,6 +5,7 @@ import (
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -91,7 +92,7 @@ func Status() (*ctypes.ResultStatus, error) {
 	}
 
 	result := &ctypes.ResultStatus{
-		NodeInfo: p2pTransport.NodeInfo(),
+		NodeInfo: p2pTransport.NodeInfo().(p2p.DefaultNodeInfo),
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   latestBlockHash,
 			LatestAppHash:     latestAppHash,
