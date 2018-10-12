@@ -230,6 +230,15 @@ It must equal the weighted median of the timestamps of the valid votes in the bl
 Note: the timestamp of a vote must be greater by at least one millisecond than that of the
 block being voted on.
 
+The timestamp of the first block must be equal to the genesis time (since
+there's no votes to compute the median).
+
+```
+if block.Header.Height == 1 {
+    block.Header.Timestamp == genesisTime
+}
+```
+
 See the section on [BFT time](../consensus/bft-time.md) for more details.
 
 ### NumTxs
