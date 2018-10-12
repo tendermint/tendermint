@@ -116,7 +116,7 @@ func testOutboundPeerConn(
 		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
 	}
 
-	pc, err := testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
+	pc, err := testPeerConn(conn, config, true, persistent, ourNodePrivKey)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
 			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())

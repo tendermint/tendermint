@@ -218,7 +218,7 @@ func testInboundPeerConn(
 	config *config.P2PConfig,
 	ourNodePrivKey crypto.PrivKey,
 ) (peerConn, error) {
-	return testPeerConn(conn, config, false, false, ourNodePrivKey, nil)
+	return testPeerConn(conn, config, false, false, ourNodePrivKey)
 }
 
 func testPeerConn(
@@ -226,7 +226,6 @@ func testPeerConn(
 	cfg *config.P2PConfig,
 	outbound, persistent bool,
 	ourNodePrivKey crypto.PrivKey,
-	originalAddr *NetAddress,
 ) (pc peerConn, err error) {
 	conn := rawConn
 
@@ -244,10 +243,9 @@ func testPeerConn(
 
 	// Only the information we already have
 	return peerConn{
-		config:       cfg,
-		outbound:     outbound,
-		persistent:   persistent,
-		conn:         conn,
-		originalAddr: originalAddr,
+		config:     cfg,
+		outbound:   outbound,
+		persistent: persistent,
+		conn:       conn,
 	}, nil
 }

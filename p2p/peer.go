@@ -26,7 +26,6 @@ type Peer interface {
 	IsPersistent() bool // do we redial this peer when we disconnect
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
-	OriginalAddr() *NetAddress
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -39,11 +38,10 @@ type Peer interface {
 
 // peerConn contains the raw connection and its config.
 type peerConn struct {
-	outbound     bool
-	persistent   bool
-	config       *config.P2PConfig
-	conn         net.Conn    // source connection
-	originalAddr *NetAddress // nil for inbound connections
+	outbound   bool
+	persistent bool
+	config     *config.P2PConfig
+	conn       net.Conn // source connection
 
 	// cached RemoteIP()
 	ip net.IP
@@ -195,15 +193,6 @@ func (p *peer) IsPersistent() bool {
 // NodeInfo returns a copy of the peer's NodeInfo.
 func (p *peer) NodeInfo() NodeInfo {
 	return p.nodeInfo
-}
-
-// OriginalAddr returns the original address, which was used to connect with
-// the peer. Returns nil for inbound peers.
-func (p *peer) OriginalAddr() *NetAddress {
-	if p.peerConn.outbound {
-		return p.peerConn.originalAddr
-	}
-	return nil
 }
 
 // Status returns the peer's ConnectionStatus.
