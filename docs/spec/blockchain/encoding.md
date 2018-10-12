@@ -306,14 +306,14 @@ We call this encoding the SignBytes. For instance, SignBytes for a vote is the A
 
 ```go
 type CanonicalVote struct {
-	ChainID   string
-	Type      string
-	BlockID   CanonicalBlockID
-	Height    int64
-	Round     int
-	Timestamp time.Time
+	Version   uint64           `binary:"fixed64"`
+	Height    int64            `binary:"fixed64"`
+	Round     int64            `binary:"fixed64"`
 	VoteType  byte
+	Timestamp time.Time 
+	BlockID   CanonicalBlockID
+	ChainID   string
 }
 ```
-
-NOTE: see [#1622](https://github.com/tendermint/tendermint/issues/1622) for how field ordering will change
+The field ordering and the fixed sized encoding for the first three fields is optimized to ease parsing of SignBytes 
+in HSMs. It creates fixed offsets for relevant fields that need to be read in this context.
