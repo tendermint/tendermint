@@ -82,7 +82,7 @@ func createOutboundPeerAndPerformHandshake(
 		return nil, err
 	}
 	timeout := 1 * time.Second
-	ourNodeInfo := testNodeInfoFromIDAndName(addr.ID, "host_peer")
+	ourNodeInfo := testNodeInfo(addr.ID, "host_peer")
 	peerNodeInfo, err := handshake(pc.conn, timeout, ourNodeInfo)
 	if err != nil {
 		return nil, err

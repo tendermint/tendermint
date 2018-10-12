@@ -14,6 +14,15 @@ import (
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
+type mockNodeInfo struct {
+	addr *NetAddress
+}
+
+func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
+func (ni mockNodeInfo) NetAddress() *NetAddress             { return ni.addr }
+func (ni mockNodeInfo) ValidateBasic() error                { return nil }
+func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
+
 func AddPeerToSwitch(sw *Switch, peer Peer) {
 	sw.peers.Add(peer)
 }
@@ -24,7 +33,7 @@ func CreateRandomPeer(outbound bool) *peer {
 		peerConn: peerConn{
 			outbound: outbound,
 		},
-		nodeInfo: testNodeInfoFromNetAddr(netAddr),
+		nodeInfo: mockNodeInfo{netAddr},
 		mconn:    &conn.MConnection{},
 		metrics:  NopMetrics(),
 	}
@@ -45,13 +54,6 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 		}
 	}
 	return
-}
-
-func testNodeInfoFromNetAddr(netAddr *NetAddress) NodeInfo {
-	return DefaultNodeInfo{
-		ID_:        netAddr.ID,
-		ListenAddr: netAddr.DialString(),
-	}
 }
 
 //------------------------------------------------------------------
