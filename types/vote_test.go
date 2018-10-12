@@ -117,6 +117,16 @@ func TestVoteSignableTestVectors(t *testing.T) {
 	}
 }
 
+func TestVoteProposalNotEq(t *testing.T) {
+	cv := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
+	p := CanonicalizeProposal("", &Proposal{Height: 1, Round: 1})
+	vb, err := cdc.MarshalBinary(cv)
+	require.NoError(t, err)
+	pb, err := cdc.MarshalBinary(p)
+	require.NoError(t, err)
+	require.NotEqual(t, vb, pb)
+}
+
 func TestVoteVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
 	pubkey := privVal.GetPubKey()

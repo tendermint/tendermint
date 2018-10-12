@@ -13,44 +13,44 @@ import (
 const TimeFormat = time.RFC3339Nano
 
 type CanonicalBlockID struct {
-	Hash        cmn.HexBytes           `json:"hash,omitempty"`
-	PartsHeader CanonicalPartSetHeader `json:"parts,omitempty"`
+	Hash        cmn.HexBytes
+	PartsHeader CanonicalPartSetHeader
 }
 
 type CanonicalPartSetHeader struct {
-	Hash  cmn.HexBytes `json:"hash,omitempty"`
-	Total int          `json:"total,omitempty"`
+	Hash  cmn.HexBytes
+	Total int
 }
 
 type CanonicalProposal struct {
-	Version          uint64                 `json:"version" binary:"fixed64"`
-	Height           int64                  `json:"height" binary:"fixed64"`
-	Round            int64                  `json:"round" binary:"fixed64"`
-	POLRound         int64                  `json:"pol_round" binary:"fixed64"`
-	Timestamp        time.Time              `json:"timestamp"`
-	ChainID          string                 `json:"@chain_id"`
-	BlockPartsHeader CanonicalPartSetHeader `json:"block_parts_header"`
-	POLBlockID       CanonicalBlockID       `json:"pol_block_id"`
+	Version          uint64 `binary:"fixed64"`
+	Height           int64  `binary:"fixed64"`
+	Round            int64  `binary:"fixed64"`
+	POLRound         int64  `binary:"fixed64"`
+	Timestamp        time.Time
+	BlockPartsHeader CanonicalPartSetHeader
+	POLBlockID       CanonicalBlockID
+	ChainID          string
 }
 
 type CanonicalVote struct {
-	Version   uint64           `json:"version" binary:"fixed64"`
-	Height    int64            `json:"height" binary:"fixed64"`
-	Round     int64            `json:"round"  binary:"fixed64"`
-	VoteType  byte             `json:"type"`
-	Timestamp time.Time        `json:"timestamp"`
-	BlockID   CanonicalBlockID `json:"block_id"`
-	ChainID   string           `json:"@chain_id"`
+	Version   uint64 `binary:"fixed64"`
+	Height    int64  `binary:"fixed64"`
+	Round     int64  `binary:"fixed64"`
+	VoteType  byte
+	Timestamp time.Time
+	BlockID   CanonicalBlockID
+	ChainID   string
 }
 
 type CanonicalHeartbeat struct {
-	Version          uint64  `json:"version" binary:"fixed64"`
-	Height           int64   `json:"height" binary:"fixed64"`
-	Round            int     `json:"height" binary:"fixed64"`
-	Sequence         int     `json:"sequence" binary:"fixed64"`
-	ChainID          string  `json:"@chain_id"`
-	ValidatorAddress Address `json:"validator_address"`
-	ValidatorIndex   int     `json:"validator_index"`
+	Version          uint64 `binary:"fixed64"`
+	Height           int64  `binary:"fixed64"`
+	Round            int    `binary:"fixed64"`
+	Sequence         int    `binary:"fixed64"`
+	ValidatorAddress Address
+	ValidatorIndex   int
+	ChainID          string
 }
 
 //-----------------------------------
