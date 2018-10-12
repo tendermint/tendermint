@@ -23,7 +23,7 @@ type CanonicalPartSetHeader struct {
 }
 
 type CanonicalProposal struct {
-	Version          uint64                 `amino:"write_empty" json:"version" binary:"fixed64"`
+	Version          uint64                 `json:"version" binary:"fixed64"`
 	Height           int64                  `json:"height" binary:"fixed64"`
 	Round            int64                  `json:"round" binary:"fixed64"`
 	POLRound         int64                  `json:"pol_round" binary:"fixed64"`
@@ -34,9 +34,9 @@ type CanonicalProposal struct {
 }
 
 type CanonicalVote struct {
-	Version   uint64           `amino:"write_empty" json:"version" binary:"fixed64"`
-	Height    int64            `amino:"write_empty" json:"height" binary:"fixed64"`
-	Round     int64            `amino:"write_empty" json:"round"  binary:"fixed64"`
+	Version   uint64           `json:"version" binary:"fixed64"`
+	Height    int64            `json:"height" binary:"fixed64"`
+	Round     int64            `json:"round"  binary:"fixed64"`
 	VoteType  byte             `json:"type"`
 	Timestamp time.Time        `json:"timestamp"`
 	BlockID   CanonicalBlockID `json:"block_id"`
@@ -44,7 +44,7 @@ type CanonicalVote struct {
 }
 
 type CanonicalHeartbeat struct {
-	Version          uint64  `amino:"write_empty" json:"version" binary:"fixed64"`
+	Version          uint64  `json:"version" binary:"fixed64"`
 	Height           int64   `json:"height" binary:"fixed64"`
 	Round            int     `json:"height" binary:"fixed64"`
 	Sequence         int     `json:"sequence" binary:"fixed64"`
@@ -73,7 +73,7 @@ func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
 func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
 	return CanonicalProposal{
 		Height:           proposal.Height,
-		Round:            int64(proposal.Round),
+		Round:            int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		POLRound:         int64(proposal.POLRound),
 		Timestamp:        proposal.Timestamp,
 		ChainID:          chainID,
@@ -84,10 +84,8 @@ func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal 
 
 func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 	return CanonicalVote{
-		Height: vote.Height,
-		// XXX make sure we don't cause any trouble by casting here; currently, amino doesn't support fixed size for int
-		// XXX same for proposal etc
-		Round:     int64(vote.Round),
+		Height:    vote.Height,
+		Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		VoteType:  vote.Type,
 		Timestamp: vote.Timestamp,
 		BlockID:   CanonicalizeBlockID(vote.BlockID),
