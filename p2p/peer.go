@@ -14,8 +14,6 @@ import (
 
 const metricsTickerDuration = 10 * time.Second
 
-var testIPSuffix uint32
-
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
