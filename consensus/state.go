@@ -1494,7 +1494,7 @@ func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) 
 				// than 1/3. We should trigger in the future accountability
 				// procedure at this point.
 			}
-			if cs.Step <= cstypes.RoundStepPropose {
+			if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
 				// Move onto the next step
 				cs.enterPrevote(height, cs.Round)
 			} else if cs.Step == cstypes.RoundStepCommit {
@@ -1502,7 +1502,7 @@ func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) 
 				cs.tryFinalizeCommit(height)
 			}
 		}
-	}else{
+	} else {
 		added, err = cs.LockedBlockParts.AddPart(part)
 		if err != nil {
 			return added, err
@@ -1524,32 +1524,28 @@ func (cs *ConsensusState) tryAddBlockPart(msg *BlockPartMessage, peerID p2p.ID) 
 					prevotes := cs.Votes.Prevotes(cs.LockedRound)
 					blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
 					if !hasTwoThirds {
-						panic(fmt.Errorf("can't find a PoLc in lockedRound %v",cs.LockedRound))
+						panic(fmt.Errorf("can't find a PoLc in lockedRound %v", cs.LockedRound))
 					}
-					if cs.LockedRound > cs.Round{
-						panic(fmt.Errorf("lockedRound %v > current round %v , this should not happen",cs.LockedRound, cs.Round))
+					if cs.LockedRound > cs.Round {
+						panic(fmt.Errorf("lockedRound %v > current round %v , this should not happen", cs.LockedRound, cs.Round))
 					}
-					if !cs.LockedBlock.HashesTo(blockID.Hash){
+					if !cs.LockedBlock.HashesTo(blockID.Hash) {
 						cs.LockedBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 						cs.LockedBlock = nil
-						return false,nil
+						return false, nil
 					}
 
 					if cs.Step <= cstypes.RoundStepPropose {
-						// Move onto the next step
+						// got a lockedBlock, we can vote now
 						cs.enterPrevote(height, cs.Round)
-					} else if cs.Step == cstypes.RoundStepCommit {
-						// If we're waiting on the proposal block...
-						cs.ProposalBlock = cs.LockedBlock
-						cs.ProposalBlockParts = cs.LockedBlockParts  //help to transfer them to other peers
-						cs.tryFinalizeCommit(height)
 					}
+
 				}
-			}else{
-				return false,nil
+			} else {
+				return false, nil
 			}
-		}else{
-			return false,err
+		} else {
+			return false, err
 		}
 	}
 
