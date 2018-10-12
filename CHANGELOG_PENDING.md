@@ -28,6 +28,7 @@ BREAKING CHANGES:
 * Blockchain Protocol
   * [types] \#2459 `Vote`/`Proposal`/`Heartbeat` use amino encoding instead of JSON in `SignBytes`.
   * [types] \#2512 Remove the pubkey field from the validator hash
+  * [types] \#2598 Reorder fields and use fixed sized encoding for some in Canonical(Vote|Proposal|Heartbeat) for `SignBytes` 
   * [state] \#2587 require block.Time of the fist block to be genesis time
 
 * P2P Protocol
