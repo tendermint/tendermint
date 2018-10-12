@@ -59,3 +59,4 @@ timeoutPrecommit before starting next round
 - [p2p] \#2555 fix p2p switch FlushThrottle value (@goolAdapter)
 - [libs/event] \#2518 fix event concurrency flaw (@goolAdapter)
 - [state] \#2616 Pass nil to NewValidatorSet() when genesis file's Validators field is nil
+- [fastsync] \#2457 fix fastsync may stuck by a wrong block (@goolAdapter)

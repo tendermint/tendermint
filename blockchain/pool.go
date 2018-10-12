@@ -170,7 +170,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 
 	// some conditions to determine if we're caught up
 	receivedBlockOrTimedOut := (pool.height > 0 || time.Since(pool.startTime) > 5*time.Second)
-	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= pool.maxPeerHeight
+	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
 	return isCaughtUp
 }
@@ -252,7 +252,8 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 			peer.decrPending(blockSize)
 		}
 	} else {
-		// Bad peer?
+		pool.Logger.Info("invalid peer", "peer", peerID, "blockHeight", block.Height)
+		pool.sendError(errors.New("invalid peer"), peerID)
 	}
 }
 
@@ -292,7 +293,7 @@ func (pool *BlockPool) RemovePeer(peerID p2p.ID) {
 func (pool *BlockPool) removePeer(peerID p2p.ID) {
 	for _, requester := range pool.requesters {
 		if requester.getPeerID() == peerID {
-			requester.redo()
+			requester.redo(peerID)
 		}
 	}
 	delete(pool.peers, peerID)
@@ -326,6 +327,10 @@ func (pool *BlockPool) makeNextRequester() {
 	defer pool.mtx.Unlock()
 
 	nextHeight := pool.height + pool.requestersLen()
+	if nextHeight > pool.maxPeerHeight {
+		return
+	}
+
 	request := newBPRequester(pool, nextHeight)
 	// request.SetLogger(pool.Logger.With("height", nextHeight))
 
@@ -453,7 +458,7 @@ type bpRequester struct {
 	pool       *BlockPool
 	height     int64
 	gotBlockCh chan struct{}
-	redoCh     chan struct{}
+	redoCh     chan p2p.ID //redo may send multitime, add peerId to identify repeat
 
 	mtx    sync.Mutex
 	peerID p2p.ID
@@ -465,7 +470,7 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 		pool:       pool,
 		height:     height,
 		gotBlockCh: make(chan struct{}, 1),
-		redoCh:     make(chan struct{}, 1),
+		redoCh:     make(chan p2p.ID, 1),
 
 		peerID: "",
 		block:  nil,
@@ -524,9 +529,9 @@ func (bpr *bpRequester) reset() {
 // Tells bpRequester to pick another peer and try again.
 // NOTE: Nonblocking, and does nothing if another redo
 // was already requested.
-func (bpr *bpRequester) redo() {
+func (bpr *bpRequester) redo(peerId p2p.ID) {
 	select {
-	case bpr.redoCh <- struct{}{}:
+	case bpr.redoCh <- peerId:
 	default:
 	}
 }
@@ -565,9 +570,13 @@ OUTER_LOOP:
 				return
 			case <-bpr.Quit():
 				return
-			case <-bpr.redoCh:
-				bpr.reset()
-				continue OUTER_LOOP
+			case peerID := <-bpr.redoCh:
+				if peerID == bpr.peerID {
+					bpr.reset()
+					continue OUTER_LOOP
+				} else {
+					continue WAIT_LOOP
+				}
 			case <-bpr.gotBlockCh:
 				// We got a block!
 				// Continue the for-loop and wait til Quit.
