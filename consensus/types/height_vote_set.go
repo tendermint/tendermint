@@ -99,8 +99,8 @@ func (hvs *HeightVoteSet) addRound(round int) {
 		cmn.PanicSanity("addRound() for an existing round")
 	}
 	// log.Debug("addRound(round)", "round", round)
-	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, types.VoteTypePrevote, hvs.valSet)
-	precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, types.VoteTypePrecommit, hvs.valSet)
+	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, byte(types.PrevoteType), hvs.valSet)
+	precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, byte(types.PrecommitType), hvs.valSet)
 	hvs.roundVoteSets[round] = RoundVoteSet{
 		Prevotes:   prevotes,
 		Precommits: precommits,
@@ -134,13 +134,13 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 func (hvs *HeightVoteSet) Prevotes(round int) *types.VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	return hvs.getVoteSet(round, types.VoteTypePrevote)
+	return hvs.getVoteSet(round, byte(types.PrevoteType))
 }
 
 func (hvs *HeightVoteSet) Precommits(round int) *types.VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	return hvs.getVoteSet(round, types.VoteTypePrecommit)
+	return hvs.getVoteSet(round, byte(types.PrecommitType))
 }
 
 // Last round and blockID that has +2/3 prevotes for a particular block or nil.
@@ -149,7 +149,7 @@ func (hvs *HeightVoteSet) POLInfo() (polRound int, polBlockID types.BlockID) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	for r := hvs.round; r >= 0; r-- {
-		rvs := hvs.getVoteSet(r, types.VoteTypePrevote)
+		rvs := hvs.getVoteSet(r, byte(types.PrevoteType))
 		polBlockID, ok := rvs.TwoThirdsMajority()
 		if ok {
 			return r, polBlockID
@@ -164,9 +164,9 @@ func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *types.VoteSet {
 		return nil
 	}
 	switch type_ {
-	case types.VoteTypePrevote:
+	case byte(types.PrevoteType):
 		return rvs.Prevotes
-	case types.VoteTypePrecommit:
+	case byte(types.PrecommitType):
 		return rvs.Precommits
 	default:
 		cmn.PanicSanity(fmt.Sprintf("Unexpected vote type %X", type_))

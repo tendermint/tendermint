@@ -13,11 +13,11 @@ import (
 )
 
 func examplePrevote() *Vote {
-	return exampleVote(VoteTypePrevote)
+	return exampleVote(byte(PrevoteType))
 }
 
 func examplePrecommit() *Vote {
-	return exampleVote(VoteTypePrecommit)
+	return exampleVote(byte(PrecommitType))
 }
 
 func exampleVote(t byte) *Vote {
@@ -64,52 +64,66 @@ func TestVoteSignableTestVectors(t *testing.T) {
 		{
 			CanonicalizeVote("", &Vote{}),
 			// NOTE: Height and Round are skipped here. This case needs to be considered while parsing.
-			[]byte{0x11, 0x2a, 0x4, 0x76, 0x6f, 0x74, 0x65, 0x32, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+			[]byte{0xb, 0x2a, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
 		},
-		// with proper (fixed size) height and round:
+		// with proper (fixed size) height and round (PreCommit):
 		{
-			CanonicalizeVote("", &Vote{Height: 1, Round: 1}),
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: byte(PrecommitType)}),
 			[]byte{
-				0x23,                                   // total length
+				0x1f,                                   // total length
 				0x11,                                   // (field_number << 3) | wire_type (version is missing)
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
-				0x2a, 0x4, 0x76, 0x6f, 0x74, 0x65, 0x32,
+				0x20, // (field_number << 3) | wire_type
+				0x2,  // PrecommitType
+				0x2a, // (field_number << 3) | wire_type
 				// remaining fields (timestamp):
-				0x9, // (field_number << 3) | wire_type
-				0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
 		},
-		// containing version:
+		// with proper (fixed size) height and round (PreVote):
+		{
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: byte(PrevoteType)}),
+			[]byte{
+				0x1f,                                   // total length
+				0x11,                                   // (field_number << 3) | wire_type (version is missing)
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				0x20, // (field_number << 3) | wire_type
+				0x1,  // PrevoteType
+				0x2a, // (field_number << 3) | wire_type
+				// remaining fields (timestamp):
+				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+		},
+		// containing version (empty type)
 		{
 			voteWithVersion,
 			[]byte{
-				0x2c,                                    // total length
+				0x26,                                    // total length
 				0x9,                                     // (field_number << 3) | wire_type
 				0x7b, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // version (123)
 				0x11,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
-				// remaining fields (type & timestamp):
-				0x2a, 0x4, 0x76, 0x6f, 0x74, 0x65, 0x32, // type
+				// remaining fields (timestamp):
+				0x2a,
 				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
 		},
 		// containing non-empty chain_id:
 		{
 			CanonicalizeVote("test_chain_id", &Vote{Height: 1, Round: 1}),
 			[]byte{
-				0x32,                                   // total length
+				0x2c,                                   // total length
 				0x11,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
 				// remaining fields:
-				0x2a,
-				0x4, 0x76, 0x6f, 0x74, 0x65, 0x32,
-				0x9,                                               // (field_number << 3) | wire_type (here: 5 << 3 | 2)
-				0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff, // timestamp
-				0x42,                                                                               // (field_number << 3) | wire_type
+				0x2a,                                                   // (field_number << 3) | wire_type
+				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff, // timestamp
+				0x3a,                                                                               // (field_number << 3) | wire_type
 				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64}, // chainID
 		},
 	}
@@ -166,8 +180,8 @@ func TestIsVoteTypeValid(t *testing.T) {
 		in   byte
 		out  bool
 	}{
-		{"Prevote", VoteTypePrevote, true},
-		{"Precommit", VoteTypePrecommit, true},
+		{"Prevote", byte(PrevoteType), true},
+		{"Precommit", byte(PrecommitType), true},
 		{"InvalidType", byte(3), false},
 	}
 
@@ -206,7 +220,7 @@ func TestMaxVoteBytes(t *testing.T) {
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt64,
 		Timestamp:        tmtime.Now(),
-		Type:             VoteTypePrevote,
+		Type:             byte(PrevoteType),
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{

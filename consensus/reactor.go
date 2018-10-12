@@ -237,9 +237,9 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			// (and consequently shows which we don't have)
 			var ourVotes *cmn.BitArray
 			switch msg.Type {
-			case types.VoteTypePrevote:
+			case byte(types.PrevoteType):
 				ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(msg.BlockID)
-			case types.VoteTypePrecommit:
+			case byte(types.PrecommitType):
 				ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
 			default:
 				conR.Logger.Error("Bad VoteSetBitsMessage field Type")
@@ -317,9 +317,9 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			if height == msg.Height {
 				var ourVotes *cmn.BitArray
 				switch msg.Type {
-				case types.VoteTypePrevote:
+				case byte(types.PrevoteType):
 					ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(msg.BlockID)
-				case types.VoteTypePrecommit:
+				case byte(types.PrecommitType):
 					ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
 				default:
 					conR.Logger.Error("Bad VoteSetBitsMessage field Type")
@@ -739,7 +739,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
-						Type:    types.VoteTypePrevote,
+						Type:    byte(types.PrevoteType),
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -756,7 +756,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
-						Type:    types.VoteTypePrecommit,
+						Type:    byte(types.PrecommitType),
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -773,7 +773,7 @@ OUTER_LOOP:
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.ProposalPOLRound,
-						Type:    types.VoteTypePrevote,
+						Type:    byte(types.PrevoteType),
 						BlockID: maj23,
 					}))
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -792,7 +792,7 @@ OUTER_LOOP:
 				peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 					Height:  prs.Height,
 					Round:   commit.Round(),
-					Type:    types.VoteTypePrecommit,
+					Type:    byte(types.PrecommitType),
 					BlockID: commit.BlockID,
 				}))
 				time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
@@ -1049,25 +1049,25 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ byte) *cmn.B
 	if ps.PRS.Height == height {
 		if ps.PRS.Round == round {
 			switch type_ {
-			case types.VoteTypePrevote:
+			case byte(types.PrevoteType):
 				return ps.PRS.Prevotes
-			case types.VoteTypePrecommit:
+			case byte(types.PrecommitType):
 				return ps.PRS.Precommits
 			}
 		}
 		if ps.PRS.CatchupCommitRound == round {
 			switch type_ {
-			case types.VoteTypePrevote:
+			case byte(types.PrevoteType):
 				return nil
-			case types.VoteTypePrecommit:
+			case byte(types.PrecommitType):
 				return ps.PRS.CatchupCommit
 			}
 		}
 		if ps.PRS.ProposalPOLRound == round {
 			switch type_ {
-			case types.VoteTypePrevote:
+			case byte(types.PrevoteType):
 				return ps.PRS.ProposalPOL
-			case types.VoteTypePrecommit:
+			case byte(types.PrecommitType):
 				return nil
 			}
 		}
@@ -1076,9 +1076,9 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ byte) *cmn.B
 	if ps.PRS.Height == height+1 {
 		if ps.PRS.LastCommitRound == round {
 			switch type_ {
-			case types.VoteTypePrevote:
+			case byte(types.PrevoteType):
 				return nil
-			case types.VoteTypePrecommit:
+			case byte(types.PrecommitType):
 				return ps.PRS.LastCommit
 			}
 		}

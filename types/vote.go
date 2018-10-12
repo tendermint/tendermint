@@ -43,24 +43,6 @@ func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflic
 	}
 }
 
-// Types of votes
-// TODO Make a new type "VoteType"
-const (
-	VoteTypePrevote   = byte(0x01)
-	VoteTypePrecommit = byte(0x02)
-)
-
-func IsVoteTypeValid(type_ byte) bool {
-	switch type_ {
-	case VoteTypePrevote:
-		return true
-	case VoteTypePrecommit:
-		return true
-	default:
-		return false
-	}
-}
-
 // Address is hex bytes.
 type Address = crypto.Address
 
@@ -95,9 +77,9 @@ func (vote *Vote) String() string {
 	}
 	var typeString string
 	switch vote.Type {
-	case VoteTypePrevote:
+	case byte(PrevoteType):
 		typeString = "Prevote"
-	case VoteTypePrecommit:
+	case byte(PrecommitType):
 		typeString = "Precommit"
 	default:
 		cmn.PanicSanity("Unknown vote type")

@@ -101,7 +101,7 @@ func TestSignVote(t *testing.T) {
 	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
 	block2 := types.BlockID{[]byte{3, 2, 1}, types.PartSetHeader{}}
 	height, round := int64(10), 1
-	voteType := types.VoteTypePrevote
+	voteType := byte(types.PrevoteType)
 
 	// sign a vote for first time
 	vote := newVote(privVal.Address, 0, height, round, voteType, block1)
@@ -206,7 +206,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	// test vote
 	{
-		voteType := types.VoteTypePrevote
+		voteType := byte(types.PrevoteType)
 		blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
 		vote := newVote(privVal.Address, 0, height, round, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)

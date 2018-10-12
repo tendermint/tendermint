@@ -26,7 +26,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, byte(PrecommitType), 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -46,7 +46,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, byte(PrecommitType), 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -106,7 +106,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, byte(PrecommitType), 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -123,7 +123,7 @@ func TestBlockHashesTo(t *testing.T) {
 
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, byte(PrecommitType), 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -190,14 +190,14 @@ func TestNilDataHashDoesntCrash(t *testing.T) {
 func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, byte(PrecommitType), 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
 	assert.NotNil(t, commit.FirstPrecommit())
 	assert.Equal(t, h-1, commit.Height())
 	assert.Equal(t, 1, commit.Round())
-	assert.Equal(t, VoteTypePrecommit, commit.Type())
+	assert.Equal(t, byte(PrecommitType), commit.Type())
 	if commit.Size() <= 0 {
 		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
 	}
@@ -218,7 +218,7 @@ func TestCommitValidateBasic(t *testing.T) {
 		{"Random Commit", func(com *Commit) {}, false},
 		{"Nil precommit", func(com *Commit) { com.Precommits[0] = nil }, false},
 		{"Incorrect signature", func(com *Commit) { com.Precommits[0].Signature = []byte{0} }, false},
-		{"Incorrect type", func(com *Commit) { com.Precommits[0].Type = VoteTypePrevote }, true},
+		{"Incorrect type", func(com *Commit) { com.Precommits[0].Type = byte(PrevoteType) }, true},
 		{"Incorrect height", func(com *Commit) { com.Precommits[0].Height = int64(100) }, true},
 		{"Incorrect round", func(com *Commit) { com.Precommits[0].Round = 100 }, true},
 	}
@@ -268,7 +268,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 func randCommit() *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, byte(PrecommitType), 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	if err != nil {
 		panic(err)
