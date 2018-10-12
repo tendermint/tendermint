@@ -19,8 +19,6 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-const testCh = 0x01
-
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 

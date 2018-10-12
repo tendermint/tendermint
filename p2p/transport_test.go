@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func emptyNodeInfo() NodeInfo {
@@ -610,24 +609,4 @@ func (c *testTransportConn) SetWriteDeadline(_ time.Time) error {
 
 func (c *testTransportConn) Write(_ []byte) (int, error) {
 	return -1, fmt.Errorf("Write() not implemented")
-}
-
-//----------------------------------------------------------------
-// rand node info for tests
-
-var defaultNodeName = "host_peer"
-
-func testNodeInfo(id ID, name string) NodeInfo {
-	return testNodeInfoWithNetwork(id, name, "testing")
-}
-
-func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
-	return DefaultNodeInfo{
-		ID_:        id,
-		ListenAddr: fmt.Sprintf("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),
-		Moniker:    name,
-		Network:    network,
-		Version:    "123.123.123",
-		Channels:   []byte{testCh},
-	}
 }

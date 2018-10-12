@@ -281,6 +281,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 
 	if peer.IsPersistent() {
 		// TODO: use the original address dialed, not the self reported one
+		// See #2618.
 		addr := peer.NodeInfo().NetAddress()
 		go sw.reconnectToPeer(addr)
 	}

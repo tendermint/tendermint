@@ -25,7 +25,7 @@ type NodeInfo interface {
 	nodeInfoTransport
 }
 
-// nodeInfoAddress exposes just the core info of a node
+// nodeInfoAddress exposes just the core info of a node.
 type nodeInfoAddress interface {
 	ID() ID
 	NetAddress() *NetAddress

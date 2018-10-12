@@ -14,6 +14,10 @@ import (
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
+const testCh = 0x01
+
+//------------------------------------------------
+
 type mockNodeInfo struct {
 	addr *NetAddress
 }
@@ -158,28 +162,6 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-func testRandNodeInfo(id int, network, version string) (NodeInfo, NodeKey) {
-	nodeKey := NodeKey{
-		PrivKey: ed25519.GenPrivKey(),
-	}
-	ni := DefaultNodeInfo{
-		ID_:        nodeKey.ID(),
-		Moniker:    fmt.Sprintf("switch%d", id),
-		Network:    network,
-		Version:    version,
-		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-		Other: DefaultNodeInfoOther{
-			AminoVersion:     "1.0",
-			P2PVersion:       "1.0",
-			ConsensusVersion: "1.0",
-			RPCVersion:       "1.0",
-			TxIndex:          "off",
-			RPCAddress:       fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-		},
-	}
-	return ni, nodeKey
-}
-
 func MakeSwitch(
 	cfg *config.P2PConfig,
 	i int,
@@ -187,7 +169,11 @@ func MakeSwitch(
 	initSwitch func(int, *Switch) *Switch,
 	opts ...SwitchOption,
 ) *Switch {
-	nodeInfo, nodeKey := testRandNodeInfo(i, network, version)
+
+	nodeKey := NodeKey{
+		PrivKey: ed25519.GenPrivKey(),
+	}
+	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
 
 	t := NewMultiplexTransport(nodeInfo, nodeKey)
 
@@ -250,4 +236,24 @@ func testPeerConn(
 		persistent: persistent,
 		conn:       conn,
 	}, nil
+}
+
+//----------------------------------------------------------------
+// rand node info
+
+var defaultNodeName = "host_peer"
+
+func testNodeInfo(id ID, name string) NodeInfo {
+	return testNodeInfoWithNetwork(id, name, "testing")
+}
+
+func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
+	return DefaultNodeInfo{
+		ID_:        id,
+		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		Moniker:    name,
+		Network:    network,
+		Version:    "123.123.123",
+		Channels:   []byte{testCh},
+	}
 }
