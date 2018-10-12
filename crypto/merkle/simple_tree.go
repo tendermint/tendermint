@@ -21,12 +21,16 @@ func SimpleHashFromTwoHashes(left, right []byte) []byte {
 // SimpleHashFromByteSlices computes a Merkle tree where the leaves are the byte slice,
 // in the provided order.
 func SimpleHashFromByteSlices(items [][]byte) []byte {
-	hashes := make([][]byte, len(items))
-	for i, item := range items {
-		hash := tmhash.Sum(item)
-		hashes[i] = hash
+	switch len(items) {
+	case 0:
+		return nil
+	case 1:
+		return tmhash.Sum(items[0])
+	default:
+		left := SimpleHashFromByteSlices(items[:(len(items)+1)/2])
+		right := SimpleHashFromByteSlices(items[(len(items)+1)/2:])
+		return SimpleHashFromTwoHashes(left, right)
 	}
-	return simpleHashFromHashes(hashes)
 }
 
 // SimpleHashFromMap computes a Merkle tree from sorted map.
@@ -39,21 +43,4 @@ func SimpleHashFromMap(m map[string][]byte) []byte {
 		sm.Set(k, v)
 	}
 	return sm.Hash()
-}
-
-//----------------------------------------------------------------
-
-// Expects hashes!
-func simpleHashFromHashes(hashes [][]byte) []byte {
-	// Recursive impl.
-	switch len(hashes) {
-	case 0:
-		return nil
-	case 1:
-		return hashes[0]
-	default:
-		left := simpleHashFromHashes(hashes[:(len(hashes)+1)/2])
-		right := simpleHashFromHashes(hashes[(len(hashes)+1)/2:])
-		return SimpleHashFromTwoHashes(left, right)
-	}
 }
