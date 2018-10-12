@@ -342,7 +342,7 @@ func ResetTestRoot(testName string) *Config {
 }
 
 var testGenesis = `{
-  "genesis_time": "0001-01-01T00:00:00.000Z",
+  "genesis_time": "2017-10-10T08:20:13.695936996Z",
   "chain_id": "tendermint_test",
   "validators": [
     {

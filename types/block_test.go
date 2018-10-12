@@ -3,6 +3,7 @@ package types
 import (
 	"crypto/rand"
 	"math"
+	"os"
 	"testing"
 	"time"
 
@@ -12,6 +13,13 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
+
+func TestMain(m *testing.M) {
+	RegisterMockEvidences(cdc)
+
+	code := m.Run()
+	os.Exit(code)
+}
 
 func TestBlockAddEvidence(t *testing.T) {
 	txs := []Tx{Tx("foo"), Tx("bar")}
@@ -52,6 +60,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	}{
 		{"Make Block", func(blk *Block) {}, false},
 		{"Make Block w/ proposer Addr", func(blk *Block) { blk.ProposerAddress = valSet.GetProposer().Address }, false},
+		{"Negative Height", func(blk *Block) { blk.Height = -1 }, true},
 		{"Increase NumTxs", func(blk *Block) { blk.NumTxs++ }, true},
 		{"Remove 1/2 the commits", func(blk *Block) {
 			blk.LastCommit.Precommits = commit.Precommits[:commit.Size()/2]
@@ -73,7 +82,7 @@ func TestBlockValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			block := MakeBlock(h, txs, commit, evList)
 			tc.malleateBlock(block)
-			assert.Equal(t, tc.expErr, block.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			assert.Equal(t, tc.expErr, block.ValidateBasic() != nil, "ValidateBasic had an unexpected result")
 		})
 	}
 }

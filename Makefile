@@ -1,16 +1,17 @@
 GOTOOLS = \
 	github.com/mitchellh/gox \
 	github.com/golang/dep/cmd/dep \
-	gopkg.in/alecthomas/gometalinter.v2 \
+	github.com/alecthomas/gometalinter \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/square/certstrap
+GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
-LINT_FLAGS = --exclude '.*\.pb\.go' --vendor --deadline=600s
+LINT_FLAGS = --exclude '.*\.pb\.go' --exclude 'vendor/*' --vendor --deadline=600s
 
 all: check build test install
 
@@ -75,12 +76,13 @@ check_tools:
 
 get_tools:
 	@echo "--> Installing tools"
-	go get -u -v $(GOTOOLS)
-	@gometalinter.v2 --install
+	./scripts/get_tools.sh
+	@echo "--> Downloading linters (this may take awhile)"
+	$(GOPATH)/src/github.com/alecthomas/gometalinter/scripts/install.sh -b $(GOBIN)
 
 update_tools:
 	@echo "--> Updating tools"
-	go get -u -v $(GOTOOLS)
+	./scripts/get_tools.sh
 
 #Update dependencies
 get_vendor_deps:
@@ -227,7 +229,7 @@ fmt:
 
 metalinter:
 	@echo "--> Running linter"
-	@gometalinter.v2 $(LINT_FLAGS) --disable-all  \
+	@gometalinter $(LINT_FLAGS) --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
 	 	--enable=misspell \
@@ -256,7 +258,7 @@ metalinter:
 
 metalinter_all:
 	@echo "--> Running linter (all)"
-	gometalinter.v2 $(LINT_FLAGS) --enable-all --disable=lll ./...
+	gometalinter $(LINT_FLAGS) --enable-all --disable=lll ./...
 
 DESTINATION = ./index.html.md
 

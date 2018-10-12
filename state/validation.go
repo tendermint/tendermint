@@ -123,15 +123,28 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 				block.Time,
 			)
 		}
+	} else if block.Height == 1 {
+		genesisTime := state.LastBlockTime
+		if !block.Time.Equal(genesisTime) {
+			return fmt.Errorf(
+				"Block time %v is not equal to genesis time %v",
+				block.Time,
+				genesisTime,
+			)
+		}
+	}
+
+	// Limit the amount of evidence
+	maxEvidenceBytes := types.MaxEvidenceBytesPerBlock(state.ConsensusParams.BlockSize.MaxBytes)
+	evidenceBytes := int64(len(block.Evidence.Evidence)) * types.MaxEvidenceBytes
+	if evidenceBytes > maxEvidenceBytes {
+		return types.NewErrEvidenceOverflow(maxEvidenceBytes, evidenceBytes)
 	}
 
 	// Validate all evidence.
-	// TODO: Each check requires loading an old validator set.
-	// We should cap the amount of evidence per block
-	// to prevent potential proposer DoS.
 	for _, ev := range block.Evidence.Evidence {
 		if err := VerifyEvidence(stateDB, state, ev); err != nil {
-			return types.NewEvidenceInvalidErr(ev, err)
+			return types.NewErrEvidenceInvalid(ev, err)
 		}
 	}
 

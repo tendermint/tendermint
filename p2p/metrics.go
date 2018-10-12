@@ -3,7 +3,7 @@ package p2p
 import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
-	prometheus "github.com/go-kit/kit/metrics/prometheus"
+	"github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 )
 
@@ -19,6 +19,8 @@ type Metrics struct {
 	PeerSendBytesTotal metrics.Counter
 	// Pending bytes to be sent to a given peer.
 	PeerPendingSendBytes metrics.Gauge
+	// Number of transactions submitted by each peer.
+	NumTxs metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -48,6 +50,12 @@ func PrometheusMetrics(namespace string) *Metrics {
 			Name:      "peer_pending_send_bytes",
 			Help:      "Number of pending bytes to be sent to a given peer.",
 		}, []string{"peer_id"}),
+		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "num_txs",
+			Help:      "Number of transactions submitted by each peer.",
+		}, []string{"peer_id"}),
 	}
 }
 
@@ -58,5 +66,6 @@ func NopMetrics() *Metrics {
 		PeerReceiveBytesTotal: discard.NewCounter(),
 		PeerSendBytesTotal:    discard.NewCounter(),
 		PeerPendingSendBytes:  discard.NewGauge(),
+		NumTxs:                discard.NewGauge(),
 	}
 }

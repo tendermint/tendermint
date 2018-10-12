@@ -454,8 +454,9 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.TimeoutPrecommit.Nanoseconds())
 
+	cs2, _ := randConsensusState(2) // needed so generated block is different than locked block
 	// before we time out into new round, set next proposal block
-	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
+	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
 	if prop == nil || propBlock == nil {
 		t.Fatal("Failed to create proposal block with vs2")
 	}
@@ -478,7 +479,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 	ensureVote(voteCh, height, round, types.VoteTypePrevote) // prevote
 	// prevote for locked block (not proposal)
-	validatePrevote(t, cs1, 0, vss[0], cs1.LockedBlock.Hash())
+	validatePrevote(t, cs1, 3, vss[0], cs1.LockedBlock.Hash())
 
 	// prevote for proposed block
 	signAddVotes(cs1, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
