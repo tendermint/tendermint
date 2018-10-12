@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	fail "github.com/ebuchman/fail-test"
+	"github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -81,7 +81,7 @@ type ConsensusState struct {
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.RWMutex
+	mtx   sync.RWMutex
 	cstypes.RoundState
 	triggeredTimeoutPrecommit bool
 	state                     sm.State // State until height-1.
@@ -535,6 +535,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
+	cs.LockedBlockID = nil
 	cs.ValidRound = 0
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
@@ -1125,6 +1126,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 			cs.LockedRound = 0
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
+			cs.LockedBlockID = nil
 			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 		}
 		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
@@ -1166,6 +1168,8 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
 		cs.ProposalBlock = nil
+		cs.LockedRound = cs.Round
+		cs.LockedBlockID = &types.BlockID{blockID.Hash, blockID.PartsHeader}
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
@@ -1243,6 +1247,8 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
+			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
+			cs.LockedBlockID = &types.BlockID{blockID.Hash, blockID.PartsHeader}
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 		} else {
 			// We just need to keep waiting.
@@ -1424,6 +1430,17 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 		return nil
 	}
 
+	// We are now receiving PoLc Block, don't interrupt it. Unless the proposal is matched with LockedBlockID
+	if cs.LockedBlockID != nil {
+		if cs.LockedBlockID.PartsHeader.Equals(proposal.BlockPartsHeader) {
+			if !cs.ProposalBlockParts.HasHeader(proposal.BlockPartsHeader) {
+				panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v", cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
+			}
+		} else {
+			return nil
+		}
+	}
+
 	// We don't care about the proposal if we're already in cstypes.RoundStepCommit.
 	if cstypes.RoundStepCommit <= cs.Step {
 		return nil
@@ -1441,7 +1458,9 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	cs.Proposal = proposal
-	cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	if cs.LockedBlockID == nil {
+		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	}
 	cs.Logger.Info("Received proposal", "proposal", proposal)
 	return nil
 }
@@ -1466,6 +1485,10 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		return false, nil
 	}
 
+	if cs.LockedBlockID != nil && !cs.ProposalBlockParts.HasHeader(cs.LockedBlockID.PartsHeader) {
+		panic(fmt.Sprintf("cs.LockedBlockID's PartsHeader %v doesn't match with cs.ProposalBlockParts %v", cs.LockedBlockID.PartsHeader, cs.ProposalBlockParts))
+	}
+
 	added, err = cs.ProposalBlockParts.AddPart(part)
 	if err != nil {
 		return added, err
@@ -1479,6 +1502,13 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		)
 		if err != nil {
 			return added, err
+		}
+		if cs.LockedBlockID != nil {
+			cs.LockedBlock = cs.ProposalBlock
+			cs.LockedBlockParts = cs.ProposalBlockParts
+			defer func() {
+				cs.LockedBlockID = nil
+			}()
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
@@ -1615,6 +1645,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				cs.LockedRound = 0
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
+				cs.LockedBlockID = nil
 				cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 			}
 

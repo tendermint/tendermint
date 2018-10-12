@@ -69,6 +69,7 @@ type RoundState struct {
 	ProposalBlockParts *types.PartSet      `json:"proposal_block_parts"`
 	LockedRound        int                 `json:"locked_round"`
 	LockedBlock        *types.Block        `json:"locked_block"`
+	LockedBlockID      *types.BlockID      `json:"locked_block_id"`
 	LockedBlockParts   *types.PartSet      `json:"locked_block_parts"`
 	ValidRound         int                 `json:"valid_round"`       // Last known round with POL for non-nil valid block.
 	ValidBlock         *types.Block        `json:"valid_block"`       // Last known block of POL mentioned above.
@@ -135,6 +136,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  ProposalBlock: %v %v
 %s  LockedRound:   %v
 %s  LockedBlock:   %v %v
+%s  LockedBlockID:   %v
 %s  ValidRound:   %v
 %s  ValidBlock:   %v %v
 %s  Votes:         %v
@@ -149,6 +151,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.ProposalBlockParts.StringShort(), rs.ProposalBlock.StringShort(),
 		indent, rs.LockedRound,
 		indent, rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort(),
+		indent, rs.LockedBlockID,
 		indent, rs.ValidRound,
 		indent, rs.ValidBlockParts.StringShort(), rs.ValidBlock.StringShort(),
 		indent, rs.Votes.StringIndented(indent+"  "),
