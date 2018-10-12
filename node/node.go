@@ -106,7 +106,7 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace), p2p.PrometheusMetrics(config.Namespace),
-			mempl.PrometheusMetrics(config.Namespace), sm.PrometheusMetrics(config.Namespace)
+				mempl.PrometheusMetrics(config.Namespace), sm.PrometheusMetrics(config.Namespace)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
 	}
