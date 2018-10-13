@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	nm "github.com/tendermint/tendermint/node"
@@ -130,6 +131,10 @@ func (Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
 func (Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
 	return core.TxSearch(query, prove, page, perPage)
+}
+
+func (Local) BroadcastDuplicateVote(pubkey crypto.PubKey, vote1 types.Vote, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error) {
+	return core.BroadcastDuplicateVote(pubkey, vote1, vote2)
 }
 
 func (c *Local) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {

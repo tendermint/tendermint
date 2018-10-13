@@ -21,6 +21,7 @@ implementation.
 */
 
 import (
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -51,6 +52,7 @@ type SignClient interface {
 	Validators(height *int64) (*ctypes.ResultValidators, error)
 	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
 	TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error)
+	BroadcastDuplicateVote(pubkey crypto.PubKey, vote1 types.Vote, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error)
 }
 
 // HistoryClient shows us data from genesis to now in large chunks.

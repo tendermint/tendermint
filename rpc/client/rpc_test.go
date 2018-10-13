@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -369,5 +371,125 @@ func TestTxSearch(t *testing.T) {
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
+	}
+}
+
+func deepcpVote(vote *types.Vote) (res *types.Vote) {
+	res = &types.Vote{
+		ValidatorAddress: make([]byte, len(vote.ValidatorAddress)),
+		ValidatorIndex:   vote.ValidatorIndex,
+		Height:           vote.Height,
+		Round:            vote.Round,
+		Type:             vote.Type,
+		BlockID: types.BlockID{
+			Hash:        make([]byte, len(vote.BlockID.Hash)),
+			PartsHeader: vote.BlockID.PartsHeader,
+		},
+		Signature: make([]byte, len(vote.Signature)),
+	}
+	copy(res.ValidatorAddress, vote.ValidatorAddress)
+	copy(res.BlockID.Hash, vote.BlockID.Hash)
+	copy(res.Signature, vote.Signature)
+	return
+}
+
+func newEvidence(t *testing.T, val *privval.FilePV, vote1 *types.Vote, vote2 *types.Vote, chainID string) types.DuplicateVoteEvidence {
+	var err error
+	vote1_ := deepcpVote(vote1)
+	vote1_.Signature, err = val.PrivKey.Sign(vote1_.SignBytes(chainID))
+	require.NoError(t, err)
+	vote2_ := deepcpVote(vote2)
+	vote2_.Signature, err = val.PrivKey.Sign(vote2_.SignBytes(chainID))
+	require.NoError(t, err)
+
+	return types.DuplicateVoteEvidence{
+		PubKey: val.PubKey,
+		VoteA:  vote1_,
+		VoteB:  vote2_,
+	}
+}
+
+func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.DuplicateVoteEvidence, fakes []types.DuplicateVoteEvidence) {
+	vote := &types.Vote{
+		ValidatorAddress: val.Address,
+		ValidatorIndex:   0,
+		Height:           1,
+		Round:            0,
+		Type:             types.VoteTypePrevote,
+		BlockID: types.BlockID{
+			Hash:        []byte{0x00},
+			PartsHeader: types.PartSetHeader{},
+		},
+	}
+
+	vote2 := deepcpVote(vote)
+	vote2.BlockID.Hash = []byte{0x01}
+
+	ev = newEvidence(t, val, vote, vote2, chainID)
+
+	fakes = make([]types.DuplicateVoteEvidence, 41)
+
+	// different address
+	vote2 = deepcpVote(vote)
+	for i := 0; i < 10; i++ {
+		rand.Read(vote2.ValidatorAddress)
+		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
+	}
+	// different index
+	vote2 = deepcpVote(vote)
+	for i := 10; i < 20; i++ {
+		vote2.ValidatorIndex = rand.Int()%100 + 1
+		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
+	}
+	// different height
+	vote2 = deepcpVote(vote)
+	for i := 20; i < 30; i++ {
+		vote2.Height = rand.Int63()%1000 + 100
+		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
+	}
+	// different round
+	vote2 = deepcpVote(vote)
+	for i := 30; i < 40; i++ {
+		vote2.Round = rand.Int()%10 + 1
+		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
+	}
+	// different type
+	vote2 = deepcpVote(vote)
+	vote2.Type = types.VoteTypePrecommit
+	fakes[40] = newEvidence(t, val, vote, vote2, chainID)
+	return
+}
+
+func TestBroadcastDuplicateVote(t *testing.T) {
+	config := rpctest.GetConfig()
+	chainID := config.ChainID()
+	pv := privval.LoadOrGenFilePV(config.PrivValidatorFile())
+
+	ev, fakes := makeEvidences(t, pv, chainID)
+
+	for i, c := range GetClients() {
+		t.Logf("client %d", i)
+
+		result, err := c.BroadcastDuplicateVote(ev.PubKey, *ev.VoteA, *ev.VoteB)
+		require.Nil(t, err, "Error broadcasting evidence, evidence %v", ev.String())
+
+		info, err := c.BlockchainInfo(0, 0)
+		require.NoError(t, err)
+		client.WaitForHeight(c, info.LastHeight+1, nil)
+
+		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, evidence %v, result %+v", ev.String(), result)
+
+		result2, err := c.ABCIQuery("/key", ev.PubKey.Address())
+		require.Nil(t, err, "Error querying evidence, evidence %v", ev.String())
+		qres := result2.Response
+		require.True(t, qres.IsOK(), "Response not OK, evidence %v", ev.String())
+
+		require.EqualValues(t, []byte{}, qres.Value, "Value not equal with expected, evidence %v, value %v", ev.String(), string(qres.Value))
+
+		for _, fake := range fakes {
+			_, err := c.BroadcastDuplicateVote(fake.PubKey, *fake.VoteA, *fake.VoteB)
+			require.Error(t, err, "Broadcasting fake evidence succeed, evidence %v", fake.String())
+		}
+
 	}
 }

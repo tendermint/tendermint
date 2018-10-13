@@ -65,6 +65,7 @@ type Evidence interface {
 func RegisterEvidences(cdc *amino.Codec) {
 	cdc.RegisterInterface((*Evidence)(nil), nil)
 	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
+	cdc.RegisterConcrete(&MockGoodEvidence{}, "tendermint/MockGoodEvidence", nil)
 }
 
 func RegisterMockEvidences(cdc *amino.Codec) {
