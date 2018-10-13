@@ -103,7 +103,7 @@ func NewSwitch(
 	sw.rng = cmn.NewRand()
 
 	mConfig := conn.DefaultMConnConfig()
-	mConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
+	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
 	mConfig.SendRate = cfg.SendRate
 	mConfig.RecvRate = cfg.RecvRate
 	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
@@ -280,12 +280,9 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
-		addr := peer.OriginalAddr()
-		if addr == nil {
-			// FIXME: persistent peers can't be inbound right now.
-			// self-reported address for inbound persistent peers
-			addr = peer.NodeInfo().NetAddress()
-		}
+		// TODO: use the original address dialed, not the self reported one
+		// See #2618.
+		addr := peer.NodeInfo().NetAddress()
 		go sw.reconnectToPeer(addr)
 	}
 }
@@ -560,9 +557,13 @@ func (sw *Switch) addOutboundPeerWithConfig(
 				// to avoid dialing in the future.
 				sw.addrBook.RemoveAddress(addr)
 				sw.addrBook.AddOurAddress(addr)
+
+				return err
 			}
 		}
 
+		// retry persistent peers after
+		// any dial error besides IsSelf()
 		if persistent {
 			go sw.reconnectToPeer(addr)
 		}

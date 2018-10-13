@@ -44,6 +44,9 @@ type Metrics struct {
 	CommittedHeight metrics.Gauge
 	// Whether or not a node is fast syncing. 1 if yes, 0 if no.
 	FastSyncing metrics.Gauge
+
+	// Number of blockparts transmitted by peer.
+	BlockParts metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -136,6 +139,12 @@ func PrometheusMetrics(namespace string) *Metrics {
 			Name:      "fast_syncing",
 			Help:      "Whether or not a node is fast syncing. 1 if yes, 0 if no.",
 		}, []string{}),
+		BlockParts: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "block_parts",
+			Help:      "Number of blockparts transmitted by peer.",
+		}, []string{"peer_id"}),
 	}
 }
 
@@ -160,5 +169,6 @@ func NopMetrics() *Metrics {
 		TotalTxs:        discard.NewGauge(),
 		CommittedHeight: discard.NewGauge(),
 		FastSyncing:     discard.NewGauge(),
+		BlockParts:      discard.NewCounter(),
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
+
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -21,13 +23,30 @@ type ErrEvidenceInvalid struct {
 	ErrorValue error
 }
 
-func NewEvidenceInvalidErr(ev Evidence, err error) *ErrEvidenceInvalid {
+// NewErrEvidenceInvalid returns a new EvidenceInvalid with the given err.
+func NewErrEvidenceInvalid(ev Evidence, err error) *ErrEvidenceInvalid {
 	return &ErrEvidenceInvalid{ev, err}
 }
 
 // Error returns a string representation of the error.
 func (err *ErrEvidenceInvalid) Error() string {
 	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.ErrorValue, err.Evidence)
+}
+
+// ErrEvidenceOverflow is for when there is too much evidence in a block.
+type ErrEvidenceOverflow struct {
+	MaxBytes int64
+	GotBytes int64
+}
+
+// NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
+func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
+	return &ErrEvidenceOverflow{max, got}
+}
+
+// Error returns a string representation of the error.
+func (err *ErrEvidenceOverflow) Error() string {
+	return fmt.Sprintf("Too much evidence: Max %d bytes, got %d bytes", err.MaxBytes, err.GotBytes)
 }
 
 //-------------------------------------------
@@ -46,8 +65,9 @@ type Evidence interface {
 func RegisterEvidences(cdc *amino.Codec) {
 	cdc.RegisterInterface((*Evidence)(nil), nil)
 	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
+}
 
-	// mocks
+func RegisterMockEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(MockGoodEvidence{}, "tendermint/MockGoodEvidence", nil)
 	cdc.RegisterConcrete(MockBadEvidence{}, "tendermint/MockBadEvidence", nil)
 }
@@ -86,7 +106,7 @@ func (dve *DuplicateVoteEvidence) Address() []byte {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return aminoHasher(dve).Hash()
+	return tmhash.Sum(cdcEncode(dve))
 }
 
 // Verify returns an error if the two votes aren't conflicting.
@@ -139,8 +159,8 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	}
 
 	// just check their hashes
-	dveHash := aminoHasher(dve).Hash()
-	evHash := aminoHasher(ev).Hash()
+	dveHash := tmhash.Sum(cdcEncode(dve))
+	evHash := tmhash.Sum(cdcEncode(ev))
 	return bytes.Equal(dveHash, evHash)
 }
 

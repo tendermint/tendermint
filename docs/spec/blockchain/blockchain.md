@@ -230,6 +230,15 @@ It must equal the weighted median of the timestamps of the valid votes in the bl
 Note: the timestamp of a vote must be greater by at least one millisecond than that of the
 block being voted on.
 
+The timestamp of the first block must be equal to the genesis time (since
+there's no votes to compute the median).
+
+```
+if block.Header.Height == 1 {
+    block.Header.Timestamp == genesisTime
+}
+```
+
 See the section on [BFT time](../consensus/bft-time.md) for more details.
 
 ### NumTxs
@@ -401,8 +410,9 @@ must be greater than 2/3 of the total voting power of the complete validator set
 
 A vote is a signed message broadcast in the consensus for a particular block at a particular height and round.
 When stored in the blockchain or propagated over the network, votes are encoded in Amino.
-For signing, votes are represented via `CanonicalVote` and also encoded using amino (protobuf compatible) via 
-`Vote.SignBytes` which includes the `ChainID`.
+For signing, votes are represented via `CanonicalVote` and also encoded using amino (protobuf compatible) via
+`Vote.SignBytes` which includes the `ChainID`, and uses a different ordering of
+the fields.
 
 We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the `SignBytes`
 using the given ChainID:

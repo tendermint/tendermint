@@ -143,6 +143,7 @@ func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, r
 				}
 				return
 			}
+
 		case <-time.After(timeout):
 			t.Fatalf("Expected to have received 1 message in channel #%v, got zero", channel)
 		}

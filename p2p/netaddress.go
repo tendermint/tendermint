@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 

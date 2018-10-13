@@ -3,6 +3,7 @@ package types
 import (
 	"crypto/rand"
 	"math"
+	"os"
 	"testing"
 	"time"
 
@@ -13,12 +14,19 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+func TestMain(m *testing.M) {
+	RegisterMockEvidences(cdc)
+
+	code := m.Run()
+	os.Exit(code)
+}
+
 func TestBlockAddEvidence(t *testing.T) {
 	txs := []Tx{Tx("foo"), Tx("bar")}
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -38,7 +46,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -52,6 +60,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	}{
 		{"Make Block", func(blk *Block) {}, false},
 		{"Make Block w/ proposer Addr", func(blk *Block) { blk.ProposerAddress = valSet.GetProposer().Address }, false},
+		{"Negative Height", func(blk *Block) { blk.Height = -1 }, true},
 		{"Increase NumTxs", func(blk *Block) { blk.NumTxs++ }, true},
 		{"Remove 1/2 the commits", func(blk *Block) {
 			blk.LastCommit.Precommits = commit.Precommits[:commit.Size()/2]
@@ -73,7 +82,7 @@ func TestBlockValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			block := MakeBlock(h, txs, commit, evList)
 			tc.malleateBlock(block)
-			assert.Equal(t, tc.expErr, block.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			assert.Equal(t, tc.expErr, block.ValidateBasic() != nil, "ValidateBasic had an unexpected result")
 		})
 	}
 }
@@ -97,7 +106,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -114,7 +123,7 @@ func TestBlockHashesTo(t *testing.T) {
 
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -181,14 +190,14 @@ func TestNilDataHashDoesntCrash(t *testing.T) {
 func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
 	assert.NotNil(t, commit.FirstPrecommit())
 	assert.Equal(t, h-1, commit.Height())
 	assert.Equal(t, 1, commit.Round())
-	assert.Equal(t, VoteTypePrecommit, commit.Type())
+	assert.Equal(t, PrecommitType, SignedMsgType(commit.Type()))
 	if commit.Size() <= 0 {
 		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
 	}
@@ -209,7 +218,7 @@ func TestCommitValidateBasic(t *testing.T) {
 		{"Random Commit", func(com *Commit) {}, false},
 		{"Nil precommit", func(com *Commit) { com.Precommits[0] = nil }, false},
 		{"Incorrect signature", func(com *Commit) { com.Precommits[0].Signature = []byte{0} }, false},
-		{"Incorrect type", func(com *Commit) { com.Precommits[0].Type = VoteTypePrevote }, true},
+		{"Incorrect type", func(com *Commit) { com.Precommits[0].Type = PrevoteType }, true},
 		{"Incorrect height", func(com *Commit) { com.Precommits[0].Height = int64(100) }, true},
 		{"Incorrect round", func(com *Commit) { com.Precommits[0].Round = 100 }, true},
 	}
@@ -259,7 +268,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 func randCommit() *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	if err != nil {
 		panic(err)
