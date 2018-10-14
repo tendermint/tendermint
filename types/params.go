@@ -87,7 +87,7 @@ func (params *ConsensusParams) Validate() error {
 	}
 
 	if len(params.ValidatorPubkeyTypes) == 0 {
-		return cmn.NewError("len(ValidatorPubkeyTypes) must be greater than 0.")
+		return cmn.NewError("len(ValidatorPubkeyTypes) must be greater than 0")
 	}
 
 	return nil
