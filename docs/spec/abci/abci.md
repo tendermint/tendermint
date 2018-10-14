@@ -430,6 +430,8 @@ Commit are included in the header of the next block.
   - `BlockSize (BlockSize)`: Parameters limiting the size of a block.
   - `EvidenceParams (EvidenceParams)`: Parameters limiting the validity of
     evidence of byzantine behaviour.
+  - `ValidatorPubkeyTypes ([]string)`: List of amino routes for the pubkeys
+    which validators may use.
 
 ### BlockSize
 
