@@ -34,6 +34,8 @@ BREAKING CHANGES:
       `SignedMsgType` to enumerate.
   * [types] \#2512 Remove the pubkey field from the validator hash
   * [state] \#2587 Require block.Time of the fist block to be genesis time
+  * [abci] \#2636 Add ValidatorPubkeyTypes field to ConsensusParams. 
+  (Used to control which pubkey types validators can use, by amino route)
 
 * P2P Protocol
 

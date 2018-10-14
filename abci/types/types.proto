@@ -205,6 +205,7 @@ message ResponseCommit {
 message ConsensusParams {
   BlockSize block_size = 1;
   EvidenceParams evidence_params = 2;
+  repeated string validator_pubkey_types = 3;
 }
 
 // BlockSize contains limits on the block size.

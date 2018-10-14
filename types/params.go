@@ -2,6 +2,7 @@ package types
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -17,8 +18,9 @@ const (
 // ConsensusParams contains consensus critical parameters that determine the
 // validity of blocks.
 type ConsensusParams struct {
-	BlockSize      `json:"block_size_params"`
-	EvidenceParams `json:"evidence_params"`
+	BlockSize            `json:"block_size_params"`
+	EvidenceParams       `json:"evidence_params"`
+	ValidatorPubkeyTypes []string `json:"validator_pubkey_types"` // amino routes accepted for validator pubkeys
 }
 
 // BlockSize contain limits on the block size.
@@ -37,6 +39,7 @@ func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
 		DefaultBlockSize(),
 		DefaultEvidenceParams(),
+		DefaultValidatorPubkeyTypes(),
 	}
 }
 
@@ -53,6 +56,12 @@ func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
 		MaxAge: 100000, // 27.8 hrs at 1block/s
 	}
+}
+
+// DefaultValidatorPubkeyTypes Params returns a default set of pubkey types to
+// be accepted for validators.
+func DefaultValidatorPubkeyTypes() []string {
+	return []string{ed25519.PubKeyAminoRoute}
 }
 
 // Validate validates the ConsensusParams to ensure all values are within their
@@ -77,6 +86,10 @@ func (params *ConsensusParams) Validate() error {
 			params.EvidenceParams.MaxAge)
 	}
 
+	if len(params.ValidatorPubkeyTypes) == 0 {
+		return cmn.NewError("len(ValidatorPubkeyTypes) must be greater than 0.")
+	}
+
 	return nil
 }
 
@@ -87,6 +100,27 @@ func (params *ConsensusParams) Hash() []byte {
 		"block_size_max_gas":      cdcEncode(params.BlockSize.MaxGas),
 		"evidence_params_max_age": cdcEncode(params.EvidenceParams.MaxAge),
 	})
+}
+
+func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
+	if params.BlockSize == params2.BlockSize &&
+		params.EvidenceParams == params2.EvidenceParams &&
+		stringSliceEqual(params.ValidatorPubkeyTypes, params2.ValidatorPubkeyTypes) {
+		return true
+	}
+	return false
+}
+
+func stringSliceEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.
@@ -105,6 +139,9 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	}
 	if params2.EvidenceParams != nil {
 		res.EvidenceParams.MaxAge = params2.EvidenceParams.MaxAge
+	}
+	if params2.ValidatorPubkeyTypes != nil {
+		res.ValidatorPubkeyTypes = params2.ValidatorPubkeyTypes
 	}
 	return res
 }

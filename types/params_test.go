@@ -5,8 +5,16 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
+
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
+)
+
+var (
+	valEd25519   = []string{ed25519.PubKeyAminoRoute}
+	valSecp256k1 = []string{secp256k1.PubKeyAminoRoute}
 )
 
 func TestConsensusParamsValidation(t *testing.T) {
@@ -15,17 +23,19 @@ func TestConsensusParamsValidation(t *testing.T) {
 		valid  bool
 	}{
 		// test block size
-		0: {makeParams(1, 0, 1), true},
-		1: {makeParams(0, 0, 1), false},
-		2: {makeParams(47*1024*1024, 0, 1), true},
-		3: {makeParams(10, 0, 1), true},
-		4: {makeParams(100*1024*1024, 0, 1), true},
-		5: {makeParams(101*1024*1024, 0, 1), false},
-		6: {makeParams(1024*1024*1024, 0, 1), false},
-		7: {makeParams(1024*1024*1024, 0, -1), false},
+		0: {makeParams(1, 0, 1, valEd25519), true},
+		1: {makeParams(0, 0, 1, valEd25519), false},
+		2: {makeParams(47*1024*1024, 0, 1, valEd25519), true},
+		3: {makeParams(10, 0, 1, valEd25519), true},
+		4: {makeParams(100*1024*1024, 0, 1, valEd25519), true},
+		5: {makeParams(101*1024*1024, 0, 1, valEd25519), false},
+		6: {makeParams(1024*1024*1024, 0, 1, valEd25519), false},
+		7: {makeParams(1024*1024*1024, 0, -1, valEd25519), false},
 		// test evidence age
-		8: {makeParams(1, 0, 0), false},
-		9: {makeParams(1, 0, -1), false},
+		8: {makeParams(1, 0, 0, valEd25519), false},
+		9: {makeParams(1, 0, -1, valEd25519), false},
+		// test no pubkey type provided
+		10: {makeParams(1, 0, 1, []string{}), false},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
@@ -36,7 +46,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockGas, evidenceAge int64) ConsensusParams {
+func makeParams(blockBytes, blockGas, evidenceAge int64, pubkeyTypes []string) ConsensusParams {
 	return ConsensusParams{
 		BlockSize: BlockSize{
 			MaxBytes: blockBytes,
@@ -45,14 +55,15 @@ func makeParams(blockBytes, blockGas, evidenceAge int64) ConsensusParams {
 		EvidenceParams: EvidenceParams{
 			MaxAge: evidenceAge,
 		},
+		ValidatorPubkeyTypes: pubkeyTypes,
 	}
 }
 
 func TestConsensusParamsHash(t *testing.T) {
 	params := []ConsensusParams{
-		makeParams(4, 2, 3),
-		makeParams(1, 4, 3),
-		makeParams(1, 2, 4),
+		makeParams(4, 2, 3, valEd25519),
+		makeParams(1, 4, 3, valEd25519),
+		makeParams(1, 2, 4, valEd25519),
 	}
 
 	hashes := make([][]byte, len(params))
@@ -78,13 +89,13 @@ func TestConsensusParamsUpdate(t *testing.T) {
 	}{
 		// empty updates
 		{
-			makeParams(1, 2, 3),
+			makeParams(1, 2, 3, valEd25519),
 			&abci.ConsensusParams{},
-			makeParams(1, 2, 3),
+			makeParams(1, 2, 3, valEd25519),
 		},
 		// fine updates
 		{
-			makeParams(1, 2, 3),
+			makeParams(1, 2, 3, valEd25519),
 			&abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
 					MaxBytes: 100,
@@ -93,8 +104,9 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				EvidenceParams: &abci.EvidenceParams{
 					MaxAge: 300,
 				},
+				ValidatorPubkeyTypes: valSecp256k1,
 			},
-			makeParams(100, 200, 300),
+			makeParams(100, 200, 300, valSecp256k1),
 		},
 	}
 	for _, tc := range testCases {
