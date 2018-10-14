@@ -4,8 +4,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
-// SimpleHashFromTwoHashes is the basic operation of the Merkle tree: Hash(left | right).
-func SimpleHashFromTwoHashes(left, right []byte) []byte {
+// simpleHashFromTwoHashes is the basic operation of the Merkle tree: Hash(left | right).
+func simpleHashFromTwoHashes(left, right []byte) []byte {
 	var hasher = tmhash.New()
 	err := encodeByteSlice(hasher, left)
 	if err != nil {
@@ -29,7 +29,7 @@ func SimpleHashFromByteSlices(items [][]byte) []byte {
 	default:
 		left := SimpleHashFromByteSlices(items[:(len(items)+1)/2])
 		right := SimpleHashFromByteSlices(items[(len(items)+1)/2:])
-		return SimpleHashFromTwoHashes(left, right)
+		return simpleHashFromTwoHashes(left, right)
 	}
 }
 

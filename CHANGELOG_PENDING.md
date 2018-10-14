@@ -24,6 +24,7 @@ BREAKING CHANGES:
   * [types] \#2298 Remove `Index` and `Total` fields from `TxProof`.
   * [crypto/merkle & lite] \#2298 Various changes to accomodate General Merkle trees
   * [crypto/merkle] \#2595 Remove all Hasher objects in favor of byte slices
+  * [crypto/merkle] \#2635 merkle.SimpleHashFromTwoHashes is no longer exported
   * [types] \#2598 `VoteTypeXxx` are now
 
 * Blockchain Protocol
