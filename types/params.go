@@ -2,7 +2,7 @@ package types
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -80,13 +80,18 @@ func (params *ConsensusParams) Validate() error {
 	return nil
 }
 
-// Hash returns a merkle hash of the parameters to store in the block header
+// Hash returns a hash of the parameters to store in the block header
+// No Merkle tree here, only three values are hashed here
+// thus benefit from saving space < drawbacks from proofs' overhead
+// Revisit this function if new fields are added to ConsensusParams
 func (params *ConsensusParams) Hash() []byte {
-	return merkle.SimpleHashFromMap(map[string][]byte{
-		"block_size_max_bytes":    cdcEncode(params.BlockSize.MaxBytes),
-		"block_size_max_gas":      cdcEncode(params.BlockSize.MaxGas),
-		"evidence_params_max_age": cdcEncode(params.EvidenceParams.MaxAge),
-	})
+	hasher := tmhash.New()
+	bz := cdcEncode(params)
+	if bz == nil {
+		panic("cannot fail to encode ConsensusParams")
+	}
+	hasher.Write(bz)
+	return hasher.Sum(nil)
 }
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.
