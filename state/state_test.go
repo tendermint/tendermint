@@ -405,7 +405,6 @@ func pk() []byte {
 
 func TestApplyUpdates(t *testing.T) {
 	initParams := makeParams(1, 2, 3*time.Second)
-	newMaxAge := 66 * time.Second
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -425,7 +424,7 @@ func TestApplyUpdates(t *testing.T) {
 		3: {initParams,
 			abci.ConsensusParams{
 				EvidenceParams: &abci.EvidenceParams{
-					MaxAge: &newMaxAge,
+					MaxAge: 66 * time.Second,
 				},
 			},
 			makeParams(1, 2, 66*time.Second)},

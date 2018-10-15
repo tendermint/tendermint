@@ -72,7 +72,6 @@ func TestConsensusParamsHash(t *testing.T) {
 }
 
 func TestConsensusParamsUpdate(t *testing.T) {
-	newMaxAge := 300 * time.Second
 	testCases := []struct {
 		params        ConsensusParams
 		updates       *abci.ConsensusParams
@@ -93,7 +92,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 					MaxGas:   200,
 				},
 				EvidenceParams: &abci.EvidenceParams{
-					MaxAge: &newMaxAge,
+					MaxAge: 300 * time.Second,
 				},
 			},
 			makeParams(100, 200, 300*time.Second),
