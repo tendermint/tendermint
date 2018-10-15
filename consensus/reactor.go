@@ -429,9 +429,9 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 
 func makeRoundStepMessages(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
 	nrsMsg = &NewRoundStepMessage{
-		Height: rs.Height,
-		Round:  rs.Round,
-		Step:   rs.Step,
+		Height:                rs.Height,
+		Round:                 rs.Round,
+		Step:                  rs.Step,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
@@ -459,6 +459,7 @@ func (conR *ConsensusReactor) sendNewRoundStepMessages(peer p2p.Peer) {
 func (conR *ConsensusReactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
 	logger := conR.Logger.With("peer", peer)
 
+	var lastLockedPartSetHeader types.PartSetHeader
 OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
@@ -505,9 +506,42 @@ OUTER_LOOP:
 			continue OUTER_LOOP
 		}
 
-		// If height and round don't match, sleep.
-		if (rs.Height != prs.Height) || (rs.Round != prs.Round) {
-			//logger.Info("Peer Height|Round mismatch, sleeping", "peerHeight", prs.Height, "peerRound", prs.Round, "peer", peer)
+		// If height doesn't match, sleep.
+		if rs.Height != prs.Height {
+			//logger.Info("Peer Height mismatch, sleeping", "peerHeight", prs.Height, "peer", peer)
+			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
+			continue OUTER_LOOP
+		}
+
+		if rs.LockedRound >= prs.Round {
+			if rs.LockedBlock == nil || !lastLockedPartSetHeader.Equals(rs.LockedBlockParts.Header()) { //LockedBlock changed
+				if prs.LockedBlockParts != nil {
+					prs.LockedBlockParts = nil
+				}
+			} else if !rs.ProposalBlockParts.Header().Equals(rs.LockedBlockParts.Header()) {
+				if prs.LockedBlockParts == nil {
+					prs.LockedBlockParts = cmn.NewBitArray(rs.LockedBlockParts.Total())
+				}
+				lastLockedPartSetHeader = rs.LockedBlockParts.Header()
+				if index, ok := rs.LockedBlockParts.BitArray().Sub(prs.LockedBlockParts.Copy()).PickRandom(); ok {
+					part := rs.LockedBlockParts.GetPart(index)
+					msg := &BlockPartMessage{
+						Height: rs.Height, // This tells peer that this part applies to us.
+						Round:  rs.Round,  // This tells peer that this part applies to us.
+						Part:   part,
+					}
+					logger.Debug("Sending block part", "height", prs.Height, "round", prs.Round)
+					if peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg)) {
+						ps.SetHasLockedBlockPart(prs.Height, prs.Round, index)
+					}
+					continue OUTER_LOOP
+				}
+			}
+		}
+
+		// If round doesn't match, sleep.
+		if rs.Round != prs.Round {
+			//logger.Info("Peer Round mismatch, sleeping", "peerRound", prs.Round, "peer", peer)
 			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 			continue OUTER_LOOP
 		}
@@ -1000,6 +1034,18 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int, index int)
 	ps.PRS.ProposalBlockParts.SetIndex(index, true)
 }
 
+// SetHasLockedBlockPart sets the given block part index as known for the peer.
+func (ps *PeerState) SetHasLockedBlockPart(height int64, round int, index int) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.PRS.Height != height || ps.PRS.Round != round {
+		return
+	}
+
+	ps.PRS.LockedBlockParts.SetIndex(index, true)
+}
+
 // PickSendVote picks a vote and sends it to the peer.
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
@@ -1224,6 +1270,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		ps.PRS.Proposal = false
 		ps.PRS.ProposalBlockPartsHeader = types.PartSetHeader{}
 		ps.PRS.ProposalBlockParts = nil
+		ps.PRS.LockedBlockParts = nil
 		ps.PRS.ProposalPOLRound = -1
 		ps.PRS.ProposalPOL = nil
 		// We'll update the BitArray capacity later.
