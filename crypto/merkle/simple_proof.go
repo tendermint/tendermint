@@ -134,13 +134,13 @@ func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][
 			if leftHash == nil {
 				return nil
 			}
-			return SimpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
+			return simpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
 		}
 		rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
 		if rightHash == nil {
 			return nil
 		}
-		return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
+		return simpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
 	}
 }
 
@@ -187,7 +187,7 @@ func trailsFromByteSlices(items [][]byte) (trails []*SimpleProofNode, root *Simp
 	default:
 		lefts, leftRoot := trailsFromByteSlices(items[:(len(items)+1)/2])
 		rights, rightRoot := trailsFromByteSlices(items[(len(items)+1)/2:])
-		rootHash := SimpleHashFromTwoHashes(leftRoot.Hash, rightRoot.Hash)
+		rootHash := simpleHashFromTwoHashes(leftRoot.Hash, rightRoot.Hash)
 		root := &SimpleProofNode{rootHash, nil, nil, nil}
 		leftRoot.Parent = root
 		leftRoot.Right = rightRoot

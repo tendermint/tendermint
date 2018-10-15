@@ -576,7 +576,6 @@ func (sh SignedHeader) StringIndented(indent string) string {
 		indent, sh.Header.StringIndented(indent+"  "),
 		indent, sh.Commit.StringIndented(indent+"  "),
 		indent)
-	return ""
 }
 
 //-----------------------------------------------------------------------------
@@ -660,7 +659,6 @@ func (data *EvidenceData) StringIndented(indent string) string {
 %s}#%v`,
 		indent, strings.Join(evStrings, "\n"+indent+"  "),
 		indent, data.hash)
-	return ""
 }
 
 //--------------------------------------------------------------------------------
