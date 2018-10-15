@@ -443,11 +443,10 @@ Commit are included in the header of the next block.
 ### EvidenceParams
 
 - **Fields**:
-  - `MaxAge (int64)`: Max age of evidence, in blocks. Evidence older than this
-    is considered stale and ignored.
+  - `MaxAge (google.protobuf.Duration)`: Max age of evidence. Evidence older
+    than this is considered stale and ignored.
         - This should correspond with an app's "unbonding period" or other
           similar mechanism for handling Nothing-At-Stake attacks.
-        - NOTE: this should change to time (instead of blocks)!
 
 ### Proof
 

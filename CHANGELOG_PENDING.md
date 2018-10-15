@@ -12,10 +12,17 @@ BREAKING CHANGES:
   * [rpc] \#2298 `/abci_query` takes `prove` argument instead of `trusted` and switches the default
     behaviour to `prove=false`
   * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
+  * [genesis] \#2565 `consensus_params.evidence_params.max_age` is now `time.Duration` (nanosecond count)
+        ```json
+        "evidence_params": {
+          "max_age": "172800000000000"
+        }
+        ```
 
 * Apps
   * [abci] \#2298 ResponseQuery.Proof is now a structured merkle.Proof, not just
     arbitrary bytes
+  * [abci] \#2565 InitChain `ConsensusParams.EvidenceParams.MaxAge` is now `google.protobuf.Duration` (see https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/duration)
 
 * Go API
   * [node] Remove node.RunForever
