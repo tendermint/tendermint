@@ -28,7 +28,6 @@ const (
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
-// TODO: add Version byte
 type Block struct {
 	mtx        sync.Mutex
 	Header     `json:"header"`
@@ -259,7 +258,6 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 //-----------------------------------------------------------------------------
 
 // Header defines the structure of a Tendermint block header
-// TODO: limit header size
 // NOTE: changes to the Header should be duplicated in the abci Header
 // and in /docs/spec/blockchain/blockchain.md
 type Header struct {
@@ -543,8 +541,6 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 	if sh.Commit == nil {
 		return errors.New("SignedHeader missing commit (precommit votes).")
 	}
-
-	// TODO: Check Version?
 
 	// Check ChainID.
 	if sh.ChainID != chainID {
