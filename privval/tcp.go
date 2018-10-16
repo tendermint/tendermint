@@ -16,14 +16,12 @@ const (
 	defaultAcceptDeadlineSeconds = 3
 	defaultConnDeadlineSeconds   = 3
 	defaultConnHeartBeatSeconds  = 2
-	defaultConnWaitSeconds       = 60
 	defaultDialRetries           = 10
 )
 
 // Socket errors.
 var (
 	ErrDialRetryMax       = errors.New("dialed maximum retries")
-	ErrConnWaitTimeout    = errors.New("waited for remote signer for too long")
 	ErrConnTimeout        = errors.New("remote signer timed out")
 	ErrUnexpectedResponse = errors.New("received unexpected response")
 )
@@ -55,28 +53,22 @@ func TCPValHeartbeat(period time.Duration) TCPValOption {
 	return func(sc *TCPVal) { sc.connHeartbeat = period }
 }
 
-// TCPValConnWait sets the timeout duration before connection of external
-// signing processes are considered to be unsuccessful.
-func TCPValConnWait(timeout time.Duration) TCPValOption {
-	return func(sc *TCPVal) { sc.connWaitTimeout = timeout }
-}
-
 // TCPVal implements PrivValidator, it uses a socket to request signatures
 // from an external process.
 type TCPVal struct {
 	cmn.BaseService
 	*RemoteSignerClient
 
-	addr            string
-	acceptDeadline  time.Duration
-	connTimeout     time.Duration
-	connHeartbeat   time.Duration
-	connWaitTimeout time.Duration
-	privKey         ed25519.PrivKeyEd25519
+	addr           string
+	acceptDeadline time.Duration
+	connTimeout    time.Duration
+	connHeartbeat  time.Duration
+	privKey        ed25519.PrivKeyEd25519
 
 	conn       net.Conn
 	listener   net.Listener
 	cancelPing chan struct{}
+	pingTicker *time.Ticker
 }
 
 // Check that TCPVal implements PrivValidator.
@@ -89,12 +81,11 @@ func NewTCPVal(
 	privKey ed25519.PrivKeyEd25519,
 ) *TCPVal {
 	sc := &TCPVal{
-		addr:            socketAddr,
-		acceptDeadline:  acceptDeadline,
-		connTimeout:     connTimeout,
-		connHeartbeat:   connHeartbeat,
-		connWaitTimeout: time.Second * defaultConnWaitSeconds,
-		privKey:         privKey,
+		addr:           socketAddr,
+		acceptDeadline: acceptDeadline,
+		connTimeout:    connTimeout,
+		connHeartbeat:  connHeartbeat,
+		privKey:        privKey,
 	}
 
 	sc.BaseService = *cmn.NewBaseService(logger, "TCPVal", sc)
@@ -121,10 +112,11 @@ func (sc *TCPVal) OnStart() error {
 
 	// Start a routine to keep the connection alive
 	sc.cancelPing = make(chan struct{}, 1)
+	sc.pingTicker = time.NewTicker(sc.connHeartbeat)
 	go func() {
 		for {
 			select {
-			case <-time.Tick(sc.connHeartbeat):
+			case <-sc.pingTicker.C:
 				err := sc.Ping()
 				if err != nil {
 					sc.Logger.Error(
@@ -133,6 +125,7 @@ func (sc *TCPVal) OnStart() error {
 					)
 				}
 			case <-sc.cancelPing:
+				sc.pingTicker.Stop()
 				return
 			}
 		}
@@ -217,7 +210,5 @@ func (sc *TCPVal) waitConnection() (net.Conn, error) {
 		return conn, nil
 	case err := <-errc:
 		return nil, err
-	case <-time.After(sc.connWaitTimeout):
-		return nil, ErrConnWaitTimeout
 	}
 }

@@ -34,22 +34,12 @@ func NewRemoteSignerClient(
 
 // GetAddress implements PrivValidator.
 func (sc *RemoteSignerClient) GetAddress() types.Address {
-	addr, err := sc.getAddress()
+	pubKey, err := sc.getPubKey()
 	if err != nil {
 		panic(err)
 	}
 
-	return addr
-}
-
-// Address is an alias for PubKey().Address().
-func (sc *RemoteSignerClient) getAddress() (cmn.HexBytes, error) {
-	p, err := sc.getPubKey()
-	if err != nil {
-		return nil, err
-	}
-
-	return p.Address(), nil
+	return pubKey.Address()
 }
 
 // GetPubKey implements PrivValidator.

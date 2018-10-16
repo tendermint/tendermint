@@ -37,6 +37,7 @@ type IPCVal struct {
 
 	conn       net.Conn
 	cancelPing chan struct{}
+	pingTicker *time.Ticker
 }
 
 // Check that IPCVal implements PrivValidator.
@@ -70,15 +71,17 @@ func (sc *IPCVal) OnStart() error {
 
 	// Start a routine to keep the connection alive
 	sc.cancelPing = make(chan struct{}, 1)
+	sc.pingTicker = time.NewTicker(sc.connHeartbeat)
 	go func() {
 		for {
 			select {
-			case <-time.Tick(sc.connHeartbeat):
+			case <-sc.pingTicker.C:
 				err := sc.Ping()
 				if err != nil {
 					sc.Logger.Error("Ping", "err", err)
 				}
 			case <-sc.cancelPing:
+				sc.pingTicker.Stop()
 				return
 			}
 		}

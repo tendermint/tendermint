@@ -27,8 +27,7 @@ func TestSocketPVAddress(t *testing.T) {
 
 	serverAddr := rs.privVal.GetAddress()
 
-	clientAddr, err := sc.getAddress()
-	require.NoError(t, err)
+	clientAddr := sc.GetAddress()
 
 	assert.Equal(t, serverAddr, clientAddr)
 
@@ -166,7 +165,6 @@ func TestSocketPVDeadline(t *testing.T) {
 	)
 
 	TCPValConnTimeout(100 * time.Millisecond)(sc)
-	TCPValConnWait(500 * time.Millisecond)(sc)
 
 	go func(sc *TCPVal) {
 		defer close(listenc)
