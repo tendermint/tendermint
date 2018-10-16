@@ -15,6 +15,7 @@ validation.
 
 ```go
 type State struct {
+    Version     Version
     LastResults []Result
     AppHash []byte
 

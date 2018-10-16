@@ -338,6 +338,7 @@ Commit are included in the header of the next block.
 ### Header
 
 - **Fields**:
+  - `Version (Version)`: Version of the blockchain and the application
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
   - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
@@ -362,6 +363,15 @@ Commit are included in the header of the next block.
     especially height and time.
   - Provides the proposer of the current block, for use in proposer-based
     reward mechanisms.
+
+### Version
+
+- **Fields**:
+  - `Block (uint64)`: Protocol version of the blockchain data structures.
+  - `App (uint64)`: Protocol version of the application.
+- **Usage**:
+  - Block version should be static in the life of a blockchain.
+  - App version may be updated over time by the application.
 
 ### Validator
 
