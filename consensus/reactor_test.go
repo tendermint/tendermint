@@ -25,7 +25,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func init() {
@@ -265,36 +264,6 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 
 	assert.Equal(t, true, ps.VotesSent() > 0, "number of votes sent should have increased")
 	assert.Equal(t, true, ps.BlockPartsSent() > 0, "number of votes sent should have increased")
-}
-
-// Test we record last block times from other peers.
-func TestReactorRecordsLastBlockTime(t *testing.T) {
-	timeStart := tmtime.Now()
-
-	N := 4
-	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
-	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-	// Wait a couple of blocks.
-	timeoutWaitGroup(t, N, func(j int) {
-		<-eventChans[j]
-	}, css)
-	timeoutWaitGroup(t, N, func(j int) {
-		<-eventChans[j]
-	}, css)
-
-	// Get peer
-	peer := reactors[1].Switch.Peers().List()[0]
-	// Get peer state
-	ps := peer.Get(types.PeerStateKey).(*PeerState)
-
-	assert.NotNil(t, ps.GetLastBlockTime())
-	assert.True(t, ps.GetLastBlockTime().After(timeStart),
-		"LastBlockTime should be some time after the time we started tests (%v), got %v",
-		timeStart,
-		ps.GetLastBlockTime(),
-	)
 }
 
 //-------------------------------------------------------------

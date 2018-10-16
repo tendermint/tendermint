@@ -153,29 +153,17 @@ func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 // Returns the message to send the peer, or nil if the evidence is invalid for the peer.
 // If message is nil, return true if we should sleep and try again.
 func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evidence) (msg EvidenceMessage, retry bool) {
-
-	// make sure the peer is up to date
-	evHeight := ev.Height()
 	peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
 	if !ok {
 		evR.Logger.Info("Found peer without PeerState", "peer", peer)
 		return nil, true
 	}
 
-	// NOTE: We only send evidence to peers where
-	// peerHeight - maxAge < evidenceHeight < peerHeight
-	maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
+	// NOTE: We only send evidence to peers where evidenceHeight < peerHeight
 	peerHeight := peerState.GetHeight()
-	peerLastBlockTime := peerState.GetLastBlockTime()
-	if peerHeight < evHeight {
+	if peerHeight < ev.Height() {
 		// peer is behind. sleep while he catches up
 		return nil, true
-	} else if peerLastBlockTime.Sub(ev.Time()) > maxAge {
-		// evidence is too old, skip
-		// NOTE: if evidence is too old for an honest peer,
-		// then we're behind and either it already got committed or it never will!
-		evR.Logger.Info("Not sending peer old evidence", "peerHeight", peerHeight, "evHeight", evHeight, "maxAge", maxAge, "peer", peer)
-		return nil, false
 	}
 
 	// send evidence
@@ -186,7 +174,6 @@ func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evid
 // PeerState describes the state of a peer.
 type PeerState interface {
 	GetHeight() int64
-	GetLastBlockTime() time.Time
 }
 
 //-----------------------------------------------------------------------------

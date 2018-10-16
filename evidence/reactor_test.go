@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // evidenceLogger is a TestingLogger which uses a different
@@ -133,7 +132,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	// set the peer height on each reactor
 	for _, r := range reactors {
 		for _, peer := range r.Switch.Peers().List() {
-			ps := testPeerState{height, tmtime.Now()}
+			ps := testPeerState{height}
 			peer.Set(types.PeerStateKey, ps)
 		}
 	}
@@ -146,17 +145,12 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 type testPeerState struct {
 	height int64
-	time   time.Time
 }
 
 var _ PeerState = (*testPeerState)(nil)
 
 func (ps testPeerState) GetHeight() int64 {
 	return ps.height
-}
-
-func (ps testPeerState) GetLastBlockTime() time.Time {
-	return ps.time
 }
 
 func TestReactorSelectiveBroadcast(t *testing.T) {
@@ -173,7 +167,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	// make reactors from statedb
 	reactors := makeAndConnectEvidenceReactors(config, []dbm.DB{stateDB1, stateDB2})
 	peer := reactors[0].Switch.Peers().List()[0]
-	ps := testPeerState{height2, tmtime.Now()}
+	ps := testPeerState{height2}
 	peer.Set(types.PeerStateKey, ps)
 
 	// send a bunch of valid evidence to the first reactor's evpool
