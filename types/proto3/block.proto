@@ -15,29 +15,35 @@ message BlockID {
 
 message Header {
   // basic block info
-  string ChainID = 1;
-  sint64 Height = 2;
-  Timestamp Time = 3;
-  sint64 NumTxs = 4;
-  sint64 TotalTxs = 5;
+  Version Version = 1;
+  string ChainID = 2;
+  sint64 Height = 3;
+  Timestamp Time = 4;
+  sint64 NumTxs = 5;
+  sint64 TotalTxs = 6;
 
   // prev block info
-  BlockID LastBlockID = 6;
+  BlockID LastBlockID = 7;
 
   // hashes of block data
-  bytes LastCommitHash = 7; // commit from validators from the last block
-  bytes DataHash = 8; // transactions
+  bytes LastCommitHash = 8; // commit from validators from the last block
+  bytes DataHash = 9; // transactions
 
   // hashes from the app output from the prev block
-  bytes ValidatorsHash = 9; // validators for the current block
-  bytes NextValidatorsHash = 10; // validators for the next block
-  bytes ConsensusHash = 11; // consensus params for current block
-  bytes AppHash = 12; // state after txs from the previous block
-  bytes LastResultsHash = 13; // root hash of all results from the txs from the previous block
+  bytes ValidatorsHash = 10; // validators for the current block
+  bytes NextValidatorsHash = 11; // validators for the next block
+  bytes ConsensusHash = 12; // consensus params for current block
+  bytes AppHash = 13; // state after txs from the previous block
+  bytes LastResultsHash = 14; // root hash of all results from the txs from the previous block
 
   // consensus info
-  bytes EvidenceHash = 14; // evidence included in the block
-  bytes ProposerAddress = 15; // original proposer of the block
+  bytes EvidenceHash = 15; // evidence included in the block
+  bytes ProposerAddress = 16; // original proposer of the block
+}
+
+message Version {
+  uint64 Block = 1;
+  uint64 App = 2;
 }
 
 // Timestamp wraps how amino encodes time. Note that this is different from the protobuf well-known type
