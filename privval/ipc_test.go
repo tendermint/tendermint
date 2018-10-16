@@ -20,7 +20,7 @@ func TestIPCPVVote(t *testing.T) {
 		sc, rs  = testSetupIPCSocketPair(t, chainID, types.NewMockPV())
 
 		ts    = time.Now()
-		vType = types.VoteTypePrecommit
+		vType = types.PrecommitType
 		want  = &types.Vote{Timestamp: ts, Type: vType}
 		have  = &types.Vote{Timestamp: ts, Type: vType}
 	)
@@ -38,7 +38,7 @@ func TestIPCPVVoteResetDeadline(t *testing.T) {
 		sc, rs  = testSetupIPCSocketPair(t, chainID, types.NewMockPV())
 
 		ts    = time.Now()
-		vType = types.VoteTypePrecommit
+		vType = types.PrecommitType
 		want  = &types.Vote{Timestamp: ts, Type: vType}
 		have  = &types.Vote{Timestamp: ts, Type: vType}
 	)
@@ -65,7 +65,7 @@ func TestIPCPVVoteKeepalive(t *testing.T) {
 		sc, rs  = testSetupIPCSocketPair(t, chainID, types.NewMockPV())
 
 		ts    = time.Now()
-		vType = types.VoteTypePrecommit
+		vType = types.PrecommitType
 		want  = &types.Vote{Timestamp: ts, Type: vType}
 		have  = &types.Vote{Timestamp: ts, Type: vType}
 	)

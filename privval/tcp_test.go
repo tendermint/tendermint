@@ -96,7 +96,7 @@ func TestSocketPVVoteResetDeadline(t *testing.T) {
 		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		ts    = time.Now()
-		vType = types.VoteTypePrecommit
+		vType = types.PrecommitType
 		want  = &types.Vote{Timestamp: ts, Type: vType}
 		have  = &types.Vote{Timestamp: ts, Type: vType}
 	)
@@ -123,7 +123,7 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
 
 		ts    = time.Now()
-		vType = types.VoteTypePrecommit
+		vType = types.PrecommitType
 		want  = &types.Vote{Timestamp: ts, Type: vType}
 		have  = &types.Vote{Timestamp: ts, Type: vType}
 	)
