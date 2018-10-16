@@ -20,6 +20,13 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	}
 
 	// Validate basic info.
+	if block.Version != state.Version.Consensus {
+		return fmt.Errorf(
+			"Wrong Block.Header.Version. Expected %v, got %v",
+			state.Version.Consensus,
+			block.Version,
+		)
+	}
 	if block.ChainID != state.ChainID {
 		return fmt.Errorf(
 			"Wrong Block.Header.ChainID. Expected %v, got %v",
