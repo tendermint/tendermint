@@ -27,7 +27,7 @@ echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.profile
 
 # create the goApps directory, set GOPATH, and put it on PATH
 mkdir goApps
-echo "export GOPATH=/home/{usename}/goApps" >> ~/.profile
+echo "export GOPATH=$HOME/goApps" >> ~/.profile
 echo "export PATH=\$PATH:\$GOPATH/bin" >> ~/.profile
 
 source ~/.profile
