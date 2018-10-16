@@ -208,6 +208,15 @@ func NewNode(config *cfg.Config,
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
 
+	if state.Version.Consensus.Block != version.BlockProtocol {
+		return nil, fmt.Errorf(
+			"Block version of the software does not match that of the state.\n"+
+				"Got version.BlockProtocol=%v, state.Version.Consensus.Block=%v",
+			version.BlockProtocol,
+			state.Version.Consensus.Block,
+		)
+	}
+
 	// If an address is provided, listen on the socket for a
 	// connection from an external signing process.
 	if config.PrivValidatorListenAddr != "" {
