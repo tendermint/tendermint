@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 //-------------------------------------------------------
@@ -119,7 +120,7 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 			MaxGas:   params.BlockSize.MaxGas,
 		},
 		EvidenceParams: &abci.EvidenceParams{
-			MaxAge: params.EvidenceParams.MaxAge,
+			MaxAge: params.EvidenceParams.MaxAge.Duration,
 		},
 	}
 }
@@ -219,7 +220,7 @@ func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
 		}
 	}
 	if csp.EvidenceParams != nil {
-		params.EvidenceParams.MaxAge = csp.EvidenceParams.MaxAge
+		params.EvidenceParams.MaxAge = tmtime.DurationPretty{csp.EvidenceParams.MaxAge}
 	}
 
 	return params

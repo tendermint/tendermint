@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
@@ -394,7 +395,7 @@ func makeParams(blockBytes, blockGas int64, evidenceAge time.Duration) types.Con
 			MaxGas:   blockGas,
 		},
 		EvidenceParams: types.EvidenceParams{
-			MaxAge: evidenceAge,
+			MaxAge: tmtime.DurationPretty{evidenceAge},
 		},
 	}
 }

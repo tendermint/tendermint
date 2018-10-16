@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestConsensusParamsValidation(t *testing.T) {
@@ -44,7 +45,7 @@ func makeParams(blockBytes, blockGas int64, evidenceAge time.Duration) Consensus
 			MaxGas:   blockGas,
 		},
 		EvidenceParams: EvidenceParams{
-			MaxAge: evidenceAge,
+			MaxAge: tmtime.DurationPretty{evidenceAge},
 		},
 	}
 }

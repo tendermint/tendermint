@@ -169,7 +169,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 // - it was properly signed by the alleged equivocator
 func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error {
 	evidenceAge := state.LastBlockTime.Sub(evidence.Time())
-	maxAge := state.ConsensusParams.EvidenceParams.MaxAge
+	maxAge := state.ConsensusParams.EvidenceParams.MaxAge.Duration
 	if evidenceAge > maxAge {
 		return fmt.Errorf("Evidence from %v is too old. Expecting evidence no older than %v",
 			evidence.Time(), state.LastBlockTime.Add(-maxAge))

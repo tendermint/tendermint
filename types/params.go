@@ -6,6 +6,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (
@@ -31,7 +32,7 @@ type BlockSize struct {
 
 // EvidenceParams determine how we handle evidence of malfeasance
 type EvidenceParams struct {
-	MaxAge time.Duration `json:"max_age"` // only accept new evidence more recent than this
+	MaxAge tmtime.DurationPretty `json:"max_age"` // only accept new evidence more recent than this
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -53,7 +54,7 @@ func DefaultBlockSize() BlockSize {
 // DefaultEvidenceParams Params returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxAge: 48 * time.Hour,
+		MaxAge: tmtime.DurationPretty{48 * time.Hour},
 	}
 }
 
@@ -74,9 +75,9 @@ func (params *ConsensusParams) Validate() error {
 			params.BlockSize.MaxGas)
 	}
 
-	if params.EvidenceParams.MaxAge <= 0 {
+	if params.EvidenceParams.MaxAge.Duration <= 0 {
 		return cmn.NewError("EvidenceParams.MaxAge must be greater than 0. Got %d",
-			params.EvidenceParams.MaxAge)
+			params.EvidenceParams.MaxAge.Duration)
 	}
 
 	return nil
@@ -111,7 +112,7 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		res.BlockSize.MaxGas = params2.BlockSize.MaxGas
 	}
 	if params2.EvidenceParams != nil {
-		res.EvidenceParams.MaxAge = params2.EvidenceParams.MaxAge
+		res.EvidenceParams.MaxAge = tmtime.DurationPretty{params2.EvidenceParams.MaxAge}
 	}
 	return res
 }

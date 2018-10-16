@@ -15,7 +15,7 @@ BREAKING CHANGES:
   * [genesis] \#2565 `consensus_params.evidence_params.max_age` is now `time.Duration` (nanosecond count)
         ```json
         "evidence_params": {
-          "max_age": "172800000000000"
+          "max_age": "48h0m0s"
         }
         ```
 

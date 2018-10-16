@@ -39,7 +39,7 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
 			EvidenceParams: types.EvidenceParams{
-				MaxAge: 1000000,
+				MaxAge: tmtime.DurationPretty{1000000},
 			},
 		},
 	}
