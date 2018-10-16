@@ -101,7 +101,7 @@ type BlockGossip struct {
 }
 
 type EvidenceParams struct {
-	MaxAge int64
+	MaxAge time.Duration
 }
 ```
 
@@ -129,5 +129,5 @@ size of each part is `ConsensusParams.BlockGossip.BlockPartSizeBytes`.
 For evidence in a block to be valid, it must satisfy:
 
 ```
-block.Header.Height - evidence.Height < ConsensusParams.EvidenceParams.MaxAge
+block.Header.Time - evidence.Time < ConsensusParams.EvidenceParams.MaxAge
 ```
