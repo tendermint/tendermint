@@ -59,6 +59,8 @@ BUG FIXES:
 timeoutPrecommit before starting next round
 - [consensus] [\#1745](https://github.com/tendermint/tendermint/issues/1745) wait for
 Proposal or timeoutProposal before entering prevote
+- [consensus] [\#2583](https://github.com/tendermint/tendermint/issues/2583) ensure valid 
+block property with faulty proposer
 - [evidence] \#2515 fix db iter leak (@goolAdapter)
 - [common/bit_array] Fixed a bug in the `Or` function
 - [common/bit_array] Fixed a bug in the `Sub` function (@james-ray)

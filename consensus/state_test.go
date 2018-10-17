@@ -964,6 +964,110 @@ func TestProposeValidBlock(t *testing.T) {
 	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), rs.ValidBlock.Hash()))
 }
 
+// What we want:
+// P0 miss to lock B but set valid block to B after receiving delayed prevote.
+func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
+	cs1, vss := randConsensusState(4)
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, cs1.Round
+
+	partSize := types.BlockPartSizeBytes
+
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	validBlockCh := subscribe(cs1.eventBus, types.EventQueryValidBlock)
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
+
+	// start round and wait for propose and prevote
+	startTestRound(cs1, cs1.Height, round)
+	ensureNewRound(newRoundCh, height, round)
+
+	ensureNewProposal(proposalCh, height, round)
+	rs := cs1.GetRoundState()
+	propBlock := rs.ProposalBlock
+	propBlockHash := propBlock.Hash()
+	propBlockParts := propBlock.MakePartSet(partSize)
+
+	ensurePrevote(voteCh, height, round)
+	validatePrevote(t, cs1, round, vss[0], propBlockHash)
+
+	// vs2 send prevote for propBlock
+	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs2)
+
+	// vs3 send prevote nil
+	signAddVotes(cs1, types.PrevoteType, nil, types.PartSetHeader{}, vs3)
+
+	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.TimeoutPrevote.Nanoseconds())
+
+	ensurePrecommit(voteCh, height, round)
+	// we should have precommitted
+	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
+
+	// vs2 send (delayed) prevote for propBlock
+	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs4)
+
+	ensureNewValidBlock(validBlockCh, height, round)
+
+	rs = cs1.GetRoundState()
+
+	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), propBlockHash))
+	assert.True(t, rs.ValidBlockParts.Header().Equals(propBlockParts.Header()))
+	assert.True(t, rs.ValidRound == round)
+}
+
+// What we want:
+// P0 miss to lock B as Proposal Block is missing, but set valid block to B after
+// receiving delayed Block Proposal.
+func TestSetValidBlockOnDelayedProposal(t *testing.T) {
+	cs1, vss := randConsensusState(4)
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, cs1.Round
+
+	partSize := types.BlockPartSizeBytes
+
+	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
+	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	validBlockCh := subscribe(cs1.eventBus, types.EventQueryValidBlock)
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
+
+	round = round + 1 // move to round in which P0 is not proposer
+	incrementRound(vs2, vs3, vs4)
+
+	startTestRound(cs1, cs1.Height, round)
+	ensureNewRound(newRoundCh, height, round)
+
+	ensureNewTimeout(timeoutProposeCh, height, round, cs1.config.TimeoutPropose.Nanoseconds())
+
+	ensurePrevote(voteCh, height, round)
+	validatePrevote(t, cs1, round, vss[0], nil)
+
+	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
+	propBlockHash := propBlock.Hash()
+	propBlockParts := propBlock.MakePartSet(partSize)
+
+	// vs2, vs3 and vs4 send prevote for propBlock
+	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+	ensureNewValidBlock(validBlockCh, height, round)
+
+	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.TimeoutPrevote.Nanoseconds())
+
+	ensurePrecommit(voteCh, height, round)
+	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
+
+	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(20 * time.Millisecond)
+	rs := cs1.GetRoundState()
+
+	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), propBlockHash))
+	assert.True(t, rs.ValidBlockParts.Header().Equals(propBlockParts.Header()))
+	assert.True(t, rs.ValidRound == round)
+}
+
 // 4 vals, 3 Nil Precommits at P0
 // What we want:
 // P0 waits for timeoutPrecommit before starting next round
@@ -1074,6 +1178,38 @@ func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], nil)
+}
+
+// What we want:
+// P0 emit NewValidBlock event upon receiving 2/3+ Precommit for B but hasn't received block B yet
+func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
+	cs1, vss := randConsensusState(4)
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, 1
+
+	incrementRound(vs2, vs3, vs4)
+
+	partSize := types.BlockPartSizeBytes
+
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	validBlockCh := subscribe(cs1.eventBus, types.EventQueryValidBlock)
+
+	_, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round)
+	propBlockHash := propBlock.Hash()
+	propBlockParts := propBlock.MakePartSet(partSize)
+
+	// start round in which PO is not proposer
+	startTestRound(cs1, height, round)
+	ensureNewRound(newRoundCh, height, round)
+
+	// vs2, vs3 and vs4 send prevote for propBlock
+	signAddVotes(cs1, types.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+	ensureNewValidBlock(validBlockCh, height, round)
+
+	rs := cs1.GetRoundState()
+	assert.True(t, rs.Step == cstypes.RoundStepCommit)
+	assert.True(t, rs.ProposalBlock == nil)
+	assert.True(t, rs.ProposalBlockParts.Header().Equals(propBlockParts.Header()))
 }
 
 //------------------------------------------------------------------------------------------

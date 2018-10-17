@@ -174,7 +174,7 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	// Send our state to peer.
 	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
 	if !conR.FastSync() {
-		conR.sendNewRoundStepMessages(peer)
+		conR.sendNewRoundStepMessage(peer)
 	}
 }
 
@@ -215,8 +215,8 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
 			ps.ApplyNewRoundStepMessage(msg)
-		case *CommitStepMessage:
-			ps.ApplyCommitStepMessage(msg)
+		case *NewValidBlockMessage:
+			ps.ApplyNewValidBlockMessage(msg)
 		case *HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
 		case *VoteSetMaj23Message:
@@ -368,6 +368,11 @@ func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
 			conR.broadcastNewRoundStepMessages(data.(*cstypes.RoundState))
 		})
 
+	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventValidBlock,
+		func(data tmevents.EventData) {
+			conR.broadcastNewValidBlockMessage(data.(*cstypes.RoundState))
+		})
+
 	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventVote,
 		func(data tmevents.EventData) {
 			conR.broadcastHasVoteMessage(data.(*types.Vote))
@@ -392,13 +397,18 @@ func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(hb *types.Heartb
 }
 
 func (conR *ConsensusReactor) broadcastNewRoundStepMessages(rs *cstypes.RoundState) {
-	nrsMsg, csMsg := makeRoundStepMessages(rs)
-	if nrsMsg != nil {
-		conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
+	nrsMsg := makeRoundStepMessage(rs)
+	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
+}
+
+func (conR *ConsensusReactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
+	csMsg := &NewValidBlockMessage{
+		Height:           rs.Height,
+		Round:            rs.Round,
+		BlockPartsHeader: rs.ProposalBlockParts.Header(),
+		BlockParts:       rs.ProposalBlockParts.BitArray(),
 	}
-	if csMsg != nil {
-		conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(csMsg))
-	}
+	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(csMsg))
 }
 
 // Broadcasts HasVoteMessage to peers that care.
@@ -427,7 +437,7 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 	*/
 }
 
-func makeRoundStepMessages(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
+func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) {
 	nrsMsg = &NewRoundStepMessage{
 		Height:                rs.Height,
 		Round:                 rs.Round,
@@ -435,25 +445,13 @@ func makeRoundStepMessages(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
-	if rs.Step == cstypes.RoundStepCommit {
-		csMsg = &CommitStepMessage{
-			Height:           rs.Height,
-			BlockPartsHeader: rs.ProposalBlockParts.Header(),
-			BlockParts:       rs.ProposalBlockParts.BitArray(),
-		}
-	}
 	return
 }
 
-func (conR *ConsensusReactor) sendNewRoundStepMessages(peer p2p.Peer) {
+func (conR *ConsensusReactor) sendNewRoundStepMessage(peer p2p.Peer) {
 	rs := conR.conS.GetRoundState()
-	nrsMsg, csMsg := makeRoundStepMessages(rs)
-	if nrsMsg != nil {
-		peer.Send(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
-	}
-	if csMsg != nil {
-		peer.Send(StateChannel, cdc.MustMarshalBinaryBare(csMsg))
-	}
+	nrsMsg := makeRoundStepMessage(rs)
+	peer.Send(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
 }
 
 func (conR *ConsensusReactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
@@ -524,6 +522,7 @@ OUTER_LOOP:
 				msg := &ProposalMessage{Proposal: rs.Proposal}
 				logger.Debug("Sending proposal", "height", prs.Height, "round", prs.Round)
 				if peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg)) {
+					// NOTE[ZM]: A peer might have received different proposal msg so this Proposal msg will be rejected!
 					ps.SetHasProposal(rs.Proposal)
 				}
 			}
@@ -964,7 +963,8 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 	if ps.PRS.Height != proposal.Height || ps.PRS.Round != proposal.Round {
 		return
 	}
-	if ps.PRS.Proposal {
+	// ps.PRS.ProposalBlockParts is set due to NewValidBlockMessage
+	if ps.PRS.Proposal || ps.PRS.ProposalBlockParts != nil {
 		return
 	}
 
@@ -1211,7 +1211,6 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	// Just remember these values.
 	psHeight := ps.PRS.Height
 	psRound := ps.PRS.Round
-	//psStep := ps.PRS.Step
 	psCatchupCommitRound := ps.PRS.CatchupCommitRound
 	psCatchupCommit := ps.PRS.CatchupCommit
 
@@ -1252,12 +1251,12 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	}
 }
 
-// ApplyCommitStepMessage updates the peer state for the new commit.
-func (ps *PeerState) ApplyCommitStepMessage(msg *CommitStepMessage) {
+// ApplyNewValidBlockMessage updates the peer state for the new valid block.
+func (ps *PeerState) ApplyNewValidBlockMessage(msg *NewValidBlockMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	if ps.PRS.Height != msg.Height {
+	if ps.PRS.Height != msg.Height && ps.PRS.Round != msg.Round {
 		return
 	}
 
@@ -1344,7 +1343,7 @@ type ConsensusMessage interface{}
 func RegisterConsensusMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*ConsensusMessage)(nil), nil)
 	cdc.RegisterConcrete(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage", nil)
-	cdc.RegisterConcrete(&CommitStepMessage{}, "tendermint/CommitStep", nil)
+	cdc.RegisterConcrete(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage", nil)
 	cdc.RegisterConcrete(&ProposalMessage{}, "tendermint/Proposal", nil)
 	cdc.RegisterConcrete(&ProposalPOLMessage{}, "tendermint/ProposalPOL", nil)
 	cdc.RegisterConcrete(&BlockPartMessage{}, "tendermint/BlockPart", nil)
@@ -1384,15 +1383,17 @@ func (m *NewRoundStepMessage) String() string {
 //-------------------------------------
 
 // CommitStepMessage is sent when a block is committed.
-type CommitStepMessage struct {
+type NewValidBlockMessage struct {
 	Height           int64
+	Round            int
 	BlockPartsHeader types.PartSetHeader
 	BlockParts       *cmn.BitArray
 }
 
 // String returns a string representation.
-func (m *CommitStepMessage) String() string {
-	return fmt.Sprintf("[CommitStep H:%v BP:%v BA:%v]", m.Height, m.BlockPartsHeader, m.BlockParts)
+func (m *NewValidBlockMessage) String() string {
+	return fmt.Sprintf("[ValidBlockMessage H:%v R:%v BP:%v BA:%v]",
+		m.Height, m.Round, m.BlockPartsHeader, m.BlockParts)
 }
 
 //-------------------------------------

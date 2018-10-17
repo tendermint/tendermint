@@ -904,13 +904,6 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	polRound, polBlockID := cs.Votes.POLInfo()
 	proposal := types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
-		// Set fields
-		/*  fields set by setProposal and addBlockPart
-		cs.Proposal = proposal
-		cs.ProposalBlock = block
-		cs.ProposalBlockParts = blockParts
-		*/
-
 		// send proposal and block parts on internal msg queue
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
 		for i := 0; i < blockParts.Total(); i++ {
@@ -1240,6 +1233,8 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
+			cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent())
+			cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
 		} else {
 			// We just need to keep waiting.
 		}
@@ -1420,11 +1415,6 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 		return nil
 	}
 
-	// We don't care about the proposal if we're already in cstypes.RoundStepCommit.
-	if cstypes.RoundStepCommit <= cs.Step {
-		return nil
-	}
-
 	// Verify POLRound, which must be -1 or between 0 and proposal.Round exclusive.
 	if proposal.POLRound != -1 &&
 		(proposal.POLRound < 0 || proposal.Round <= proposal.POLRound) {
@@ -1437,7 +1427,12 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	cs.Proposal = proposal
-	cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	// We don't update cs.ProposalBlockParts if it is already set.
+	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
+	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
+	if cs.ProposalBlockParts == nil {
+		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	}
 	cs.Logger.Info("Received proposal", "proposal", proposal)
 	return nil
 }
@@ -1616,16 +1611,26 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 
 			// Update Valid* if we can.
 			// NOTE: our proposal block may be nil or not what received a polka..
-			// TODO: we may want to still update the ValidBlock and obtain it via gossipping
-			if len(blockID.Hash) != 0 &&
-				(cs.ValidRound < vote.Round) &&
-				(vote.Round <= cs.Round) &&
-				cs.ProposalBlock.HashesTo(blockID.Hash) {
+			if len(blockID.Hash) != 0 && (cs.ValidRound < vote.Round) && (vote.Round == cs.Round) {
 
-				cs.Logger.Info("Updating ValidBlock because of POL.", "validRound", cs.ValidRound, "POLRound", vote.Round)
-				cs.ValidRound = vote.Round
-				cs.ValidBlock = cs.ProposalBlock
-				cs.ValidBlockParts = cs.ProposalBlockParts
+				if cs.ProposalBlock.HashesTo(blockID.Hash) {
+					cs.Logger.Info(
+						"Updating ValidBlock because of POL.", "validRound", cs.ValidRound, "POLRound", vote.Round)
+					cs.ValidRound = vote.Round
+					cs.ValidBlock = cs.ProposalBlock
+					cs.ValidBlockParts = cs.ProposalBlockParts
+				} else {
+					cs.Logger.Info(
+						"Valid block we don't know about. Set ProposalBlock=nil",
+						"proposal", cs.ProposalBlock.Hash(), "blockId", blockID.Hash)
+					// We're getting the wrong block.
+					cs.ProposalBlock = nil
+				}
+				if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
+					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
+				}
+				cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
+				cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent())
 			}
 		}
 
@@ -1634,7 +1639,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			// Round-skip if there is any 2/3+ of votes ahead of us
 			cs.enterNewRound(height, vote.Round)
 		} else if cs.Round == vote.Round && cstypes.RoundStepPrevote <= cs.Step { // current round
-			if prevotes.HasTwoThirdsMajority() {
+			blockID, ok := prevotes.TwoThirdsMajority()
+			if ok && (cs.isProposalComplete() || len(blockID.Hash) == 0) {
 				cs.enterPrecommit(height, vote.Round)
 			} else if prevotes.HasTwoThirdsAny() {
 				cs.enterPrevoteWait(height, vote.Round)
