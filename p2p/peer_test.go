@@ -207,7 +207,7 @@ func (rp *remotePeer) accept(l net.Listener) {
 
 func (rp *remotePeer) nodeInfo(l net.Listener) NodeInfo {
 	return DefaultNodeInfo{
-		Version:    initNodeInfoVersion,
+		Version:    InitNodeInfoVersion,
 		ID_:        rp.Addr().ID,
 		Moniker:    "remote_peer",
 		Network:    "testing",

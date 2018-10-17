@@ -49,7 +49,7 @@ type Version struct {
 	App   version.Protocol
 }
 
-var initNodeInfoVersion = Version{
+var InitNodeInfoVersion = Version{
 	P2P:   version.P2PProtocol,
 	Block: version.BlockProtocol,
 	App:   0,
