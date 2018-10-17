@@ -247,11 +247,11 @@ func testNodeInfo(id ID, name string) NodeInfo {
 
 func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 	return DefaultNodeInfo{
+		Version:    initNodeInfoVersion,
 		ID_:        id,
 		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
 		Moniker:    name,
 		Network:    network,
-		Version:    "123.123.123",
 		Channels:   []byte{testCh},
 	}
 }

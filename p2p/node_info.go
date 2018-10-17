@@ -3,9 +3,9 @@ package p2p
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -18,8 +18,10 @@ func MaxNodeInfoSize() int {
 	return maxNodeInfoSize
 }
 
+//-------------------------------------------------------------
+
 // NodeInfo exposes basic info of a node
-// and determines if we're compatible
+// and determines if we're compatible.
 type NodeInfo interface {
 	nodeInfoAddress
 	nodeInfoTransport
@@ -31,16 +33,38 @@ type nodeInfoAddress interface {
 	NetAddress() *NetAddress
 }
 
-// nodeInfoTransport is validates a nodeInfo and checks
+// nodeInfoTransport validates a nodeInfo and checks
 // our compatibility with it. It's for use in the handshake.
 type nodeInfoTransport interface {
 	ValidateBasic() error
 	CompatibleWith(other NodeInfo) error
 }
 
+//-------------------------------------------------------------
+
+// Version contains the protocol versions for the software.
+type Version struct {
+	P2P   version.Protocol
+	Block version.Protocol
+	App   version.Protocol
+}
+
+var initNodeInfoVersion = Version{
+	P2P:   version.P2PProtocol,
+	Block: version.BlockProtocol,
+	App:   0,
+}
+
+//-------------------------------------------------------------
+
+// Assert DefaultNodeInfo satisfies NodeInfo
+var _ NodeInfo = DefaultNodeInfo{}
+
 // DefaultNodeInfo is the basic node information exchanged
 // between two peers during the Tendermint P2P handshake.
 type DefaultNodeInfo struct {
+	Version Version `json:"version"`
+
 	// Authenticate
 	// TODO: replace with NetAddress
 	ID_        ID     `json:"id"`          // authenticated identifier
@@ -48,9 +72,9 @@ type DefaultNodeInfo struct {
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
-	Network  string       `json:"network"`  // network/chain ID
-	Version  string       `json:"version"`  // major.minor.revision
-	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
+	Network         string       `json:"network"`          // network/chain ID
+	SoftwareVersion string       `json:"software_version"` // major.minor.revision
+	Channels        cmn.HexBytes `json:"channels"`         // channels this node knows about
 
 	// ASCIIText fields
 	Moniker string               `json:"moniker"` // arbitrary moniker
@@ -59,12 +83,8 @@ type DefaultNodeInfo struct {
 
 // DefaultNodeInfoOther is the misc. applcation specific data
 type DefaultNodeInfoOther struct {
-	AminoVersion     string `json:"amino_version"`
-	P2PVersion       string `json:"p2p_version"`
-	ConsensusVersion string `json:"consensus_version"`
-	RPCVersion       string `json:"rpc_version"`
-	TxIndex          string `json:"tx_index"`
-	RPCAddress       string `json:"rpc_address"`
+	TxIndex    string `json:"tx_index"`
+	RPCAddress string `json:"rpc_address"`
 }
 
 // ID returns the node's peer ID.
@@ -94,25 +114,16 @@ func (info DefaultNodeInfo) ValidateBasic() error {
 	if !cmn.IsASCIIText(info.Moniker) || cmn.ASCIITrim(info.Moniker) == "" {
 		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v", info.Moniker)
 	}
-
-	// Sanitize versions
-	// XXX: Should we be more strict about version and address formats?
 	other := info.Other
-	versions := []string{
-		other.AminoVersion,
-		other.P2PVersion,
-		other.ConsensusVersion,
-		other.RPCVersion}
-	for i, v := range versions {
-		if cmn.ASCIITrim(v) != "" && !cmn.IsASCIIText(v) {
-			return fmt.Errorf("info.Other[%d]=%v must be valid non-empty ASCII text without tabs", i, v)
-		}
+	txIndex := other.TxIndex
+	switch txIndex {
+	case "", "on", "off":
+	default:
+		return fmt.Errorf("info.Other.TxIndex should be either 'on' or 'off', got '%v'", txIndex)
 	}
-	if cmn.ASCIITrim(other.TxIndex) != "" && (other.TxIndex != "on" && other.TxIndex != "off") {
-		return fmt.Errorf("info.Other.TxIndex should be either 'on' or 'off', got '%v'", other.TxIndex)
-	}
-	if cmn.ASCIITrim(other.RPCAddress) != "" && !cmn.IsASCIIText(other.RPCAddress) {
-		return fmt.Errorf("info.Other.RPCAddress=%v must be valid non-empty ASCII text without tabs", other.RPCAddress)
+	// XXX: Should we be more strict about address formats?
+	if len(other.RPCAddress) > 0 && !cmn.IsASCIIText(other.RPCAddress) {
+		return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", other.RPCAddress)
 	}
 
 	channels := make(map[byte]struct{})
@@ -130,7 +141,7 @@ func (info DefaultNodeInfo) ValidateBasic() error {
 }
 
 // CompatibleWith checks if two DefaultNodeInfo are compatible with eachother.
-// CONTRACT: two nodes are compatible if the major version matches and network match
+// CONTRACT: two nodes are compatible if the Block version and network match
 // and they have at least one channel in common.
 func (info DefaultNodeInfo) CompatibleWith(other_ NodeInfo) error {
 	other, ok := other_.(DefaultNodeInfo)
@@ -138,22 +149,8 @@ func (info DefaultNodeInfo) CompatibleWith(other_ NodeInfo) error {
 		return fmt.Errorf("wrong NodeInfo type. Expected DefaultNodeInfo, got %v", reflect.TypeOf(other_))
 	}
 
-	iMajor, _, _, iErr := splitVersion(info.Version)
-	oMajor, _, _, oErr := splitVersion(other.Version)
-
-	// if our own version number is not formatted right, we messed up
-	if iErr != nil {
-		return iErr
-	}
-
-	// version number must be formatted correctly ("x.x.x")
-	if oErr != nil {
-		return oErr
-	}
-
-	// major version must match
-	if iMajor != oMajor {
-		return fmt.Errorf("Peer is on a different major version. Got %v, expected %v", oMajor, iMajor)
+	if info.Version.Block != other.Version.Block {
+		return fmt.Errorf("Peer is on a different Block version. Got %v, expected %v", other.Version.Block, info.Version.Block)
 	}
 
 	// nodes must be on the same network
@@ -200,12 +197,4 @@ func (info DefaultNodeInfo) NetAddress() *NetAddress {
 		}
 	}
 	return netAddr
-}
-
-func splitVersion(version string) (string, string, string, error) {
-	spl := strings.Split(version, ".")
-	if len(spl) != 3 {
-		return "", "", "", fmt.Errorf("Invalid version format %v", version)
-	}
-	return spl[0], spl[1], spl[2], nil
 }
