@@ -27,8 +27,7 @@ func TestSocketPVAddress(t *testing.T) {
 
 	serverAddr := rs.privVal.GetAddress()
 
-	clientAddr, err := sc.getAddress()
-	require.NoError(t, err)
+	clientAddr := sc.GetAddress()
 
 	assert.Equal(t, serverAddr, clientAddr)
 
@@ -91,6 +90,53 @@ func TestSocketPVVote(t *testing.T) {
 	assert.Equal(t, want.Signature, have.Signature)
 }
 
+func TestSocketPVVoteResetDeadline(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
+
+		ts    = time.Now()
+		vType = types.PrecommitType
+		want  = &types.Vote{Timestamp: ts, Type: vType}
+		have  = &types.Vote{Timestamp: ts, Type: vType}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	time.Sleep(3 * time.Millisecond)
+
+	require.NoError(t, rs.privVal.SignVote(chainID, want))
+	require.NoError(t, sc.SignVote(chainID, have))
+	assert.Equal(t, want.Signature, have.Signature)
+
+	// This would exceed the deadline if it was not extended by the previous message
+	time.Sleep(3 * time.Millisecond)
+
+	require.NoError(t, rs.privVal.SignVote(chainID, want))
+	require.NoError(t, sc.SignVote(chainID, have))
+	assert.Equal(t, want.Signature, have.Signature)
+}
+
+func TestSocketPVVoteKeepalive(t *testing.T) {
+	var (
+		chainID = cmn.RandStr(12)
+		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
+
+		ts    = time.Now()
+		vType = types.PrecommitType
+		want  = &types.Vote{Timestamp: ts, Type: vType}
+		have  = &types.Vote{Timestamp: ts, Type: vType}
+	)
+	defer sc.Stop()
+	defer rs.Stop()
+
+	time.Sleep(10 * time.Millisecond)
+
+	require.NoError(t, rs.privVal.SignVote(chainID, want))
+	require.NoError(t, sc.SignVote(chainID, have))
+	assert.Equal(t, want.Signature, have.Signature)
+}
+
 func TestSocketPVHeartbeat(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
@@ -107,36 +153,20 @@ func TestSocketPVHeartbeat(t *testing.T) {
 	assert.Equal(t, want.Signature, have.Signature)
 }
 
-func TestSocketPVAcceptDeadline(t *testing.T) {
-	var (
-		sc = NewSocketPV(
-			log.TestingLogger(),
-			"127.0.0.1:0",
-			ed25519.GenPrivKey(),
-		)
-	)
-	defer sc.Stop()
-
-	SocketPVAcceptDeadline(time.Millisecond)(sc)
-
-	assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnWaitTimeout)
-}
-
 func TestSocketPVDeadline(t *testing.T) {
 	var (
 		addr    = testFreeAddr(t)
 		listenc = make(chan struct{})
-		sc      = NewSocketPV(
+		sc      = NewTCPVal(
 			log.TestingLogger(),
 			addr,
 			ed25519.GenPrivKey(),
 		)
 	)
 
-	SocketPVConnDeadline(100 * time.Millisecond)(sc)
-	SocketPVConnWait(500 * time.Millisecond)(sc)
+	TCPValConnTimeout(100 * time.Millisecond)(sc)
 
-	go func(sc *SocketPV) {
+	go func(sc *TCPVal) {
 		defer close(listenc)
 
 		require.NoError(t, sc.Start())
@@ -161,24 +191,8 @@ func TestSocketPVDeadline(t *testing.T) {
 
 	<-listenc
 
-	// Sleep to guarantee deadline has been hit.
-	time.Sleep(20 * time.Microsecond)
-
 	_, err := sc.getPubKey()
 	assert.Equal(t, err.(cmn.Error).Data(), ErrConnTimeout)
-}
-
-func TestSocketPVWait(t *testing.T) {
-	sc := NewSocketPV(
-		log.TestingLogger(),
-		"127.0.0.1:0",
-		ed25519.GenPrivKey(),
-	)
-	defer sc.Stop()
-
-	SocketPVConnWait(time.Millisecond)(sc)
-
-	assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnWaitTimeout)
 }
 
 func TestRemoteSignerRetry(t *testing.T) {
@@ -221,7 +235,7 @@ func TestRemoteSignerRetry(t *testing.T) {
 	RemoteSignerConnDeadline(time.Millisecond)(rs)
 	RemoteSignerConnRetries(retries)(rs)
 
-	assert.Equal(t, rs.Start().(cmn.Error).Data(), ErrDialRetryMax)
+	assert.Equal(t, rs.Start(), ErrDialRetryMax)
 
 	select {
 	case attempts := <-attemptc:
@@ -328,7 +342,7 @@ func TestErrUnexpectedResponse(t *testing.T) {
 			types.NewMockPV(),
 			ed25519.GenPrivKey(),
 		)
-		sc = NewSocketPV(
+		sc = NewTCPVal(
 			logger,
 			addr,
 			ed25519.GenPrivKey(),
@@ -383,7 +397,7 @@ func testSetupSocketPair(
 	t *testing.T,
 	chainID string,
 	privValidator types.PrivValidator,
-) (*SocketPV, *RemoteSigner) {
+) (*TCPVal, *RemoteSigner) {
 	var (
 		addr    = testFreeAddr(t)
 		logger  = log.TestingLogger()
@@ -396,17 +410,19 @@ func testSetupSocketPair(
 			privVal,
 			ed25519.GenPrivKey(),
 		)
-		sc = NewSocketPV(
+		sc = NewTCPVal(
 			logger,
 			addr,
 			ed25519.GenPrivKey(),
 		)
 	)
 
-	testStartSocketPV(t, readyc, sc)
-
-	RemoteSignerConnDeadline(time.Millisecond)(rs)
+	TCPValConnTimeout(5 * time.Millisecond)(sc)
+	TCPValHeartbeat(2 * time.Millisecond)(sc)
+	RemoteSignerConnDeadline(5 * time.Millisecond)(rs)
 	RemoteSignerConnRetries(1e6)(rs)
+
+	testStartSocketPV(t, readyc, sc)
 
 	require.NoError(t, rs.Start())
 	assert.True(t, rs.IsRunning())
@@ -416,7 +432,7 @@ func testSetupSocketPair(
 	return sc, rs
 }
 
-func testReadWriteResponse(t *testing.T, resp SocketPVMsg, rsConn net.Conn) {
+func testReadWriteResponse(t *testing.T, resp RemoteSignerMsg, rsConn net.Conn) {
 	_, err := readMsg(rsConn)
 	require.NoError(t, err)
 
@@ -424,8 +440,8 @@ func testReadWriteResponse(t *testing.T, resp SocketPVMsg, rsConn net.Conn) {
 	require.NoError(t, err)
 }
 
-func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *SocketPV) {
-	go func(sc *SocketPV) {
+func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *TCPVal) {
+	go func(sc *TCPVal) {
 		require.NoError(t, sc.Start())
 		assert.True(t, sc.IsRunning())
 
