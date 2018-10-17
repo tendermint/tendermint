@@ -44,9 +44,9 @@ type nodeInfoTransport interface {
 
 // Version contains the protocol versions for the software.
 type Version struct {
-	P2P   version.Protocol
-	Block version.Protocol
-	App   version.Protocol
+	P2P   version.Protocol `json:"p2p"`
+	Block version.Protocol `json:"block"`
+	App   version.Protocol `json:"app"`
 }
 
 var InitNodeInfoVersion = Version{

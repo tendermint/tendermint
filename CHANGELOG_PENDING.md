@@ -14,6 +14,11 @@ BREAKING CHANGES:
   * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
   * [state] \#2644 Add Version field to State, breaking the format of State as
     encoded on disk.
+  * [rpc] \#2654 Update version fields in `node_info` in `/status` and
+    `/net_info`:
+    * Rename `node_info.version` to `node_info.software_version`
+    * Remove all `node_info.other.*_version` fields
+
 
 * Apps
   * [abci] \#2298 ResponseQuery.Proof is now a structured merkle.Proof, not just
@@ -43,6 +48,9 @@ BREAKING CHANGES:
   * [state] \#2644 Require block.Version to match state.Version
 
 * P2P Protocol
+  * [p2p] \#2654 Add `Version` struct with protocol versions to top of
+    DefaultNodeInfo and require `Version.Block` to match during peer handshake
+
 
 FEATURES:
 - [crypto/merkle] \#2298 General Merkle Proof scheme for chaining various types of Merkle trees together
