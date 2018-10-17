@@ -12,10 +12,13 @@ BREAKING CHANGES:
   * [rpc] \#2298 `/abci_query` takes `prove` argument instead of `trusted` and switches the default
     behaviour to `prove=false`
   * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
+  * [state] \#2644 Add Version field to State, breaking the format of State as
+    encoded on disk.
 
 * Apps
   * [abci] \#2298 ResponseQuery.Proof is now a structured merkle.Proof, not just
     arbitrary bytes
+  * [abci] \#2644 Add Version to Header and shift all fields by one
 
 * Go API
   * [node] Remove node.RunForever
@@ -25,7 +28,8 @@ BREAKING CHANGES:
   * [crypto/merkle & lite] \#2298 Various changes to accomodate General Merkle trees
   * [crypto/merkle] \#2595 Remove all Hasher objects in favor of byte slices
   * [crypto/merkle] \#2635 merkle.SimpleHashFromTwoHashes is no longer exported
-  * [types] \#2598 `VoteTypeXxx` are now
+  * [types] \#2598 `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg. `PrevoteType`,
+    `PrecommitType`.
 
 * Blockchain Protocol
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
@@ -34,7 +38,9 @@ BREAKING CHANGES:
     * \#2598 Change `Type` field fromt `string` to `byte` and use new
       `SignedMsgType` to enumerate.
   * [types] \#2512 Remove the pubkey field from the validator hash
+  * [types] \#2644 Add Version struct to Header
   * [state] \#2587 Require block.Time of the fist block to be genesis time
+  * [state] \#2644 Require block.Version to match state.Version
 
 * P2P Protocol
 

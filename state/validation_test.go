@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
@@ -26,13 +27,20 @@ func TestValidateBlockHeader(t *testing.T) {
 	err := blockExec.ValidateBlock(state, block)
 	require.NoError(t, err)
 
+	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
+	wrongVersion1 := state.Version.Consensus
+	wrongVersion1.Block += 1
+	wrongVersion2 := state.Version.Consensus
+	wrongVersion2.App += 1
 
 	// Manipulation of any header field causes failure.
 	testCases := []struct {
 		name          string
 		malleateBlock func(block *types.Block)
 	}{
+		{"Version wrong1", func(block *types.Block) { block.Version = wrongVersion1 }},
+		{"Version wrong2", func(block *types.Block) { block.Version = wrongVersion2 }},
 		{"ChainID wrong", func(block *types.Block) { block.ChainID = "not-the-real-one" }},
 		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
 		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 3600 * 24) }},
