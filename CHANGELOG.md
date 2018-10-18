@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.25.1
+
+*October 17, 2018*
+
+BUG FIXES:
+
+- [state] [\#2616](https://github.com/tendermint/tendermint/issues/2616) Fix panic when genesis file's `validators` field is nil
+- [consensus] [\#2634](https://github.com/tendermint/tendermint/issues/2634) Set `NextValidators` during replay
+
 ## v0.25.0
 
 *September 22, 2018*
@@ -164,8 +173,8 @@ BUG FIXES:
 *August 22nd, 2018*
 
 BUG FIXES:
-- [libs/autofile] \#2261 Fix log rotation so it actually happens.
-    - Fixes issues with consensus WAL growing unbounded ala \#2259
+- [libs/autofile] [\#2261](https://github.com/tendermint/tendermint/issues/2261) Fix log rotation so it actually happens.
+    - Fixes issues with consensus WAL growing unbounded ala [\#2259](https://github.com/tendermint/tendermint/issues/2259)
 
 ## 0.23.0
 
