@@ -28,6 +28,10 @@ const (
 // Protocol is used for implementation agnostic versioning.
 type Protocol uint64
 
+func (p Protocol) Uint64() uint64 {
+	return uint64(p)
+}
+
 var (
 	// P2PProtocol versions all p2p behaviour and msgs.
 	P2PProtocol Protocol = 4

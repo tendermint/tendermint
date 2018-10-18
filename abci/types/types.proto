@@ -48,7 +48,9 @@ message RequestFlush {
 }
 
 message RequestInfo {
-  string version = 1;
+  string software_version = 1;
+  uint64 block_version = 2;
+  uint64 p2p_version = 3;
 }
 
 // nondeterministic

@@ -19,7 +19,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -227,7 +226,7 @@ func (h *Handshaker) NBlocks() int {
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{Version: version.Version})
+	res, err := proxyApp.Query().InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("Error calling Info: %v", err)
 	}
