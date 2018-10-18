@@ -9,10 +9,11 @@ import (
 	"sync"
 
 	"golang.org/x/crypto/chacha20poly1305"
-
-	. "github.com/tendermint/tendermint/libs/common"
 )
 
+// NOTE: This is ignored for now until we have time
+// to properly review the MixEntropy function - https://github.com/tendermint/tendermint/issues/2099.
+//
 // The randomness here is derived from xoring a chacha20 keystream with
 // output from crypto/rand's OS Entropy Reader. (Due to fears of the OS'
 // entropy being backdoored)
@@ -26,6 +27,7 @@ func init() {
 	gRandInfo.MixEntropy(randBytes(32)) // Init
 }
 
+// WARNING: This function needs review - https://github.com/tendermint/tendermint/issues/2099.
 // Mix additional bytes of randomness, e.g. from hardware, user-input, etc.
 // It is OK to call it multiple times.  It does not diminish security.
 func MixEntropy(seedBytes []byte) {
@@ -37,20 +39,28 @@ func randBytes(numBytes int) []byte {
 	b := make([]byte, numBytes)
 	_, err := crand.Read(b)
 	if err != nil {
-		PanicCrisis(err)
+		panic(err)
 	}
 	return b
 }
 
+// This only uses the OS's randomness
+func CRandBytes(numBytes int) []byte {
+	return randBytes(numBytes)
+}
+
+/* TODO: uncomment after reviewing MixEntropy - https://github.com/tendermint/tendermint/issues/2099
 // This uses the OS and the Seed(s).
 func CRandBytes(numBytes int) []byte {
-	b := make([]byte, numBytes)
-	_, err := gRandInfo.Read(b)
-	if err != nil {
-		PanicCrisis(err)
-	}
-	return b
+	return randBytes(numBytes)
+		b := make([]byte, numBytes)
+		_, err := gRandInfo.Read(b)
+		if err != nil {
+			panic(err)
+		}
+		return b
 }
+*/
 
 // CRandHex returns a hex encoded string that's floor(numDigits/2) * 2 long.
 //
@@ -60,10 +70,17 @@ func CRandHex(numDigits int) string {
 	return hex.EncodeToString(CRandBytes(numDigits / 2))
 }
 
+// Returns a crand.Reader.
+func CReader() io.Reader {
+	return crand.Reader
+}
+
+/* TODO: uncomment after reviewing MixEntropy - https://github.com/tendermint/tendermint/issues/2099
 // Returns a crand.Reader mixed with user-supplied entropy
 func CReader() io.Reader {
 	return gRandInfo
 }
+*/
 
 //--------------------------------------------------------------------------------
 
@@ -75,7 +92,7 @@ type randInfo struct {
 }
 
 // You can call this as many times as you'd like.
-// XXX TODO review
+// XXX/TODO: review - https://github.com/tendermint/tendermint/issues/2099
 func (ri *randInfo) MixEntropy(seedBytes []byte) {
 	ri.mtx.Lock()
 	defer ri.mtx.Unlock()
