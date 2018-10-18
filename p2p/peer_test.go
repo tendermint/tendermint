@@ -207,11 +207,12 @@ func (rp *remotePeer) accept(l net.Listener) {
 
 func (rp *remotePeer) nodeInfo(l net.Listener) NodeInfo {
 	return DefaultNodeInfo{
-		ID_:        rp.Addr().ID,
-		Moniker:    "remote_peer",
-		Network:    "testing",
-		Version:    "123.123.123",
-		ListenAddr: l.Addr().String(),
-		Channels:   rp.channels,
+		ProtocolVersion: InitProtocolVersion,
+		ID_:             rp.Addr().ID,
+		ListenAddr:      l.Addr().String(),
+		Network:         "testing",
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        rp.channels,
+		Moniker:         "remote_peer",
 	}
 }

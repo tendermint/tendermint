@@ -75,22 +75,25 @@ The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
 
 ```golang
 type NodeInfo struct {
+  Version    p2p.Version
   ID         p2p.ID
   ListenAddr string
 
   Network    string
-  Version    string
+  SoftwareVersion    string
   Channels   []int8
 
   Moniker    string
   Other      NodeInfoOther
 }
 
+type Version struct {
+	P2P uint64
+	Block uint64
+	App uint64
+}
+
 type NodeInfoOther struct {
-	AminoVersion     string
-	P2PVersion       string
-	ConsensusVersion string
-	RPCVersion       string
 	TxIndex          string
 	RPCAddress       string
 }
@@ -99,8 +102,7 @@ type NodeInfoOther struct {
 The connection is disconnected if:
 
 - `peer.NodeInfo.ID` is not equal `peerConn.ID`
-- `peer.NodeInfo.Version` is not formatted as `X.X.X` where X are integers known as Major, Minor, and Revision
-- `peer.NodeInfo.Version` Major is not the same as ours
+- `peer.NodeInfo.Version.Block` does not match ours
 - `peer.NodeInfo.Network` is not the same as ours
 - `peer.Channels` does not intersect with our known Channels.
 - `peer.NodeInfo.ListenAddr` is malformed or is a DNS host that cannot be

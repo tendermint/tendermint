@@ -32,7 +32,6 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	"github.com/tendermint/tendermint/rpc/lib"
 	"github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
@@ -771,9 +770,10 @@ func makeNodeInfo(
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.DefaultNodeInfo{
-		ID_:     nodeID,
-		Network: chainID,
-		Version: version.Version,
+		ProtocolVersion: p2p.InitProtocolVersion,
+		ID_:             nodeID,
+		Network:         chainID,
+		Version:         version.TMCoreSemVer,
 		Channels: []byte{
 			bc.BlockchainChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
@@ -782,12 +782,8 @@ func makeNodeInfo(
 		},
 		Moniker: config.Moniker,
 		Other: p2p.DefaultNodeInfoOther{
-			AminoVersion:     amino.Version,
-			P2PVersion:       p2p.Version,
-			ConsensusVersion: cs.Version,
-			RPCVersion:       fmt.Sprintf("%v/%v", rpc.Version, rpccore.Version),
-			TxIndex:          txIndexerStatus,
-			RPCAddress:       config.RPC.ListenAddress,
+			TxIndex:    txIndexerStatus,
+			RPCAddress: config.RPC.ListenAddress,
 		},
 	}
 
