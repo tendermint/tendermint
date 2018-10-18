@@ -770,10 +770,10 @@ func makeNodeInfo(
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.DefaultNodeInfo{
-		Version:         p2p.InitNodeInfoVersion,
+		ProtocolVersion: p2p.InitProtocolVersion,
 		ID_:             nodeID,
 		Network:         chainID,
-		SoftwareVersion: version.TMCoreSemVer,
+		Version:         version.TMCoreSemVer,
 		Channels: []byte{
 			bc.BlockchainChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,

@@ -247,11 +247,16 @@ func testNodeInfo(id ID, name string) NodeInfo {
 
 func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 	return DefaultNodeInfo{
-		Version:    InitNodeInfoVersion,
-		ID_:        id,
-		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-		Moniker:    name,
-		Network:    network,
-		Channels:   []byte{testCh},
+		ProtocolVersion: InitProtocolVersion,
+		ID_:             id,
+		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		Network:         network,
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        []byte{testCh},
+		Moniker:         name,
+		Other: DefaultNodeInfoOther{
+			TxIndex:    "on",
+			RPCAddress: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		},
 	}
 }

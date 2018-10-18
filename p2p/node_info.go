@@ -42,14 +42,14 @@ type nodeInfoTransport interface {
 
 //-------------------------------------------------------------
 
-// Version contains the protocol versions for the software.
-type Version struct {
+// ProtocolVersion contains the protocol versions for the software.
+type ProtocolVersion struct {
 	P2P   version.Protocol `json:"p2p"`
 	Block version.Protocol `json:"block"`
 	App   version.Protocol `json:"app"`
 }
 
-var InitNodeInfoVersion = Version{
+var InitProtocolVersion = ProtocolVersion{
 	P2P:   version.P2PProtocol,
 	Block: version.BlockProtocol,
 	App:   0,
@@ -63,7 +63,7 @@ var _ NodeInfo = DefaultNodeInfo{}
 // DefaultNodeInfo is the basic node information exchanged
 // between two peers during the Tendermint P2P handshake.
 type DefaultNodeInfo struct {
-	Version Version `json:"version"`
+	ProtocolVersion ProtocolVersion `json:"protocol_version"`
 
 	// Authenticate
 	// TODO: replace with NetAddress
@@ -72,9 +72,9 @@ type DefaultNodeInfo struct {
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
-	Network         string       `json:"network"`          // network/chain ID
-	SoftwareVersion string       `json:"software_version"` // major.minor.revision
-	Channels        cmn.HexBytes `json:"channels"`         // channels this node knows about
+	Network  string       `json:"network"`  // network/chain ID
+	Version  string       `json:"version"`  // major.minor.revision
+	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
 	Moniker string               `json:"moniker"` // arbitrary moniker
@@ -106,26 +106,28 @@ func (info DefaultNodeInfo) ID() ID {
 // url-encoding), and we just need to be careful with how we handle that in our
 // clients. (e.g. off by default).
 func (info DefaultNodeInfo) ValidateBasic() error {
+
+	// ID is already validated.
+
+	// Validate ListenAddr.
+	_, err := NewNetAddressString(IDAddressString(info.ID(), info.ListenAddr))
+	if err != nil {
+		return err
+	}
+
+	// Network is validated in CompatibleWith.
+
+	// Validate Version
+	if len(info.Version) > 0 &&
+		(!cmn.IsASCIIText(info.Version) || cmn.ASCIITrim(info.Version) == "") {
+
+		return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got %v", info.Version)
+	}
+
+	// Validate Channels - ensure max and check for duplicates.
 	if len(info.Channels) > maxNumChannels {
 		return fmt.Errorf("info.Channels is too long (%v). Max is %v", len(info.Channels), maxNumChannels)
 	}
-
-	// Sanitize ASCII text fields.
-	if !cmn.IsASCIIText(info.Moniker) || cmn.ASCIITrim(info.Moniker) == "" {
-		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v", info.Moniker)
-	}
-	other := info.Other
-	txIndex := other.TxIndex
-	switch txIndex {
-	case "", "on", "off":
-	default:
-		return fmt.Errorf("info.Other.TxIndex should be either 'on' or 'off', got '%v'", txIndex)
-	}
-	// XXX: Should we be more strict about address formats?
-	if len(other.RPCAddress) > 0 && !cmn.IsASCIIText(other.RPCAddress) {
-		return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", other.RPCAddress)
-	}
-
 	channels := make(map[byte]struct{})
 	for _, ch := range info.Channels {
 		_, ok := channels[ch]
@@ -135,9 +137,26 @@ func (info DefaultNodeInfo) ValidateBasic() error {
 		channels[ch] = struct{}{}
 	}
 
-	// ensure ListenAddr is good
-	_, err := NewNetAddressString(IDAddressString(info.ID(), info.ListenAddr))
-	return err
+	// Validate Moniker.
+	if !cmn.IsASCIIText(info.Moniker) || cmn.ASCIITrim(info.Moniker) == "" {
+		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v", info.Moniker)
+	}
+
+	// Validate Other.
+	other := info.Other
+	txIndex := other.TxIndex
+	switch txIndex {
+	case "", "on", "off":
+	default:
+		return fmt.Errorf("info.Other.TxIndex should be either 'on' or 'off', got '%v'", txIndex)
+	}
+	// XXX: Should we be more strict about address formats?
+	rpcAddr := other.RPCAddress
+	if len(rpcAddr) > 0 && (!cmn.IsASCIIText(rpcAddr) || cmn.ASCIITrim(rpcAddr) == "") {
+		return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", rpcAddr)
+	}
+
+	return nil
 }
 
 // CompatibleWith checks if two DefaultNodeInfo are compatible with eachother.
@@ -149,8 +168,9 @@ func (info DefaultNodeInfo) CompatibleWith(other_ NodeInfo) error {
 		return fmt.Errorf("wrong NodeInfo type. Expected DefaultNodeInfo, got %v", reflect.TypeOf(other_))
 	}
 
-	if info.Version.Block != other.Version.Block {
-		return fmt.Errorf("Peer is on a different Block version. Got %v, expected %v", other.Version.Block, info.Version.Block)
+	if info.ProtocolVersion.Block != other.ProtocolVersion.Block {
+		return fmt.Errorf("Peer is on a different Block version. Got %v, expected %v",
+			other.ProtocolVersion.Block, info.ProtocolVersion.Block)
 	}
 
 	// nodes must be on the same network
