@@ -198,17 +198,25 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	// Make validators slice
-	validators := make([]*types.Validator, len(genDoc.Validators))
-	for i, val := range genDoc.Validators {
-		pubKey := val.PubKey
-		address := pubKey.Address()
+	var validatorSet, nextValidatorSet *types.ValidatorSet
+	if genDoc.Validators == nil {
+		validatorSet = types.NewValidatorSet(nil)
+		nextValidatorSet = types.NewValidatorSet(nil)
+	} else {
+		validators := make([]*types.Validator, len(genDoc.Validators))
+		for i, val := range genDoc.Validators {
+			pubKey := val.PubKey
+			address := pubKey.Address()
 
-		// Make validator
-		validators[i] = &types.Validator{
-			Address:     address,
-			PubKey:      pubKey,
-			VotingPower: val.Power,
+			// Make validator
+			validators[i] = &types.Validator{
+				Address:     address,
+				PubKey:      pubKey,
+				VotingPower: val.Power,
+			}
 		}
+		validatorSet = types.NewValidatorSet(validators)
+		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementAccum(1)
 	}
 
 	return State{
@@ -219,8 +227,8 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		NextValidators:              types.NewValidatorSet(validators).CopyIncrementAccum(1),
-		Validators:                  types.NewValidatorSet(validators),
+		NextValidators:              nextValidatorSet,
+		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: 1,
 

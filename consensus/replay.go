@@ -287,6 +287,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 				return nil, err
 			}
 			state.Validators = types.NewValidatorSet(vals)
+			state.NextValidators = types.NewValidatorSet(vals)
 		}
 		if res.ConsensusParams != nil {
 			state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)
