@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+    amino "github.com/tendermint/go-amino"
 )
 
 const (
@@ -719,4 +720,92 @@ func aminoHash(item interface{}) []byte {
 
 func aminoHasher(item interface{}) merkle.Hasher {
 	return hasher{item}
+}
+
+//marshal,unmarshal and size 
+
+var bamino = amino.NewCodec()
+
+func (bc *Block) Encode() ([]byte, error) {
+	return bamino.MarshalBinary(&bm)
+}
+
+func (bc *Block) Decode(bs []byte) error {
+	err := bamino.UnmarshalBinary(bs, &bm)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+func (bc *Block) Unmarshal(bs []byte) error {
+	return bamino.Decode(bs)
+}
+
+func (bc *Block) Marshal() ([]byte, error) {
+	return bamino.Encode()
+}
+
+func (bc *Block) MarshalTo(data []byte) (int, error) {
+	bs, err := bc.Encode()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+func (bc *Block) MarshalJSON() ([]byte, error) {
+	return bk.MarshalJSON(bc)
+}
+
+func (bc *Block) UnmarshalJSON(data []byte) (err error) {
+	return bk.UnmarshalJSON(data, &bc)
+}
+
+//marshal,unmarshal and size methods
+var bm = amino.NewCodec()
+
+func (b *BlockMeta) Encode() ([]byte, error) {
+	return bm.MarshalBinary(&bm)
+}
+
+func (b *BlockMeta) Decode(bs []byte) error {
+	err := bm.UnmarshalBinary(bs, &bm)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+//
+func (b *BlockMeta) Unmarshal(bs []byte) error {
+	return b.Decode(bs)
+}
+
+func (b *BlockMeta) Marshal() ([]byte, error) {
+	return b.Encode()
+}
+
+func (b *BlockMeta) MarshalTo(data []byte) (int, error) {
+	bs, err := b.Encode()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+func (b *BlockMeta) Size() int {
+	bs, _ := b.Encode()
+	return len(bs)
+}
+
+
+func (b BlockMeta) MarshalJSON() ([]byte, error) {
+	return bm.MarshalJSON(b)
+}
+
+func (b *BlockMeta) UnmarshalJSON(data []byte) (err error) {
+	return bm.UnmarshalJSON(data, &b)
 }
