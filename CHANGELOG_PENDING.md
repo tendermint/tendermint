@@ -59,6 +59,8 @@ BREAKING CHANGES:
       `SignedMsgType` to enumerate.
   * [types] \#2512 Remove the pubkey field from the validator hash
   * [types] \#2644 Add Version struct to Header
+  * [types] \#2609 ConsensusParams.Hash() is the hash of the amino encoded
+    struct instead of the Merkle tree of the fields
   * [state] \#2587 Require block.Time of the fist block to be genesis time
   * [state] \#2644 Require block.Version to match state.Version
 
