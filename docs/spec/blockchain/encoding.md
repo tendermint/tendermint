@@ -307,7 +307,6 @@ We call this encoding the SignBytes. For instance, SignBytes for a vote is the A
 
 ```go
 type CanonicalVote struct {
-	Version   uint64           `binary:"fixed64"`
 	Height    int64            `binary:"fixed64"`
 	Round     int64            `binary:"fixed64"`
 	VoteType  byte
