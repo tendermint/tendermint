@@ -523,7 +523,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	res, err := client.InfoSync(types.RequestInfo{Version: version})
+	res, err := client.InfoSync(types.RequestInfo{SoftwareVersion: version})
 	if err != nil {
 		return err
 	}
