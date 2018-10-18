@@ -171,7 +171,7 @@ func (mt *MultiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 
 		cfg.outbound = false
 
-		return mt.wrapPeer(a.conn, a.nodeInfo, cfg), nil
+		return mt.wrapPeer(a.conn, a.nodeInfo, cfg, nil), nil
 	case <-mt.closec:
 		return nil, &ErrTransportClosed{}
 	}
@@ -199,7 +199,7 @@ func (mt *MultiplexTransport) Dial(
 
 	cfg.outbound = true
 
-	p := mt.wrapPeer(secretConn, nodeInfo, cfg)
+	p := mt.wrapPeer(secretConn, nodeInfo, cfg, &addr)
 
 	return p, nil
 }
@@ -399,14 +399,19 @@ func (mt *MultiplexTransport) wrapPeer(
 	c net.Conn,
 	ni NodeInfo,
 	cfg peerConfig,
+	dialedAddr *NetAddress,
 ) Peer {
+
+	peerConn := newPeerConn(
+		cfg.outbound,
+		cfg.persistent,
+		&mt.p2pConfig,
+		c,
+		dialedAddr,
+	)
+
 	p := newPeer(
-		peerConn{
-			conn:       c,
-			config:     &mt.p2pConfig,
-			outbound:   cfg.outbound,
-			persistent: cfg.persistent,
-		},
+		peerConn,
 		mt.mConfig,
 		ni,
 		cfg.reactorsByCh,

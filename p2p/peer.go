@@ -50,6 +50,22 @@ type peerConn struct {
 	ip net.IP
 }
 
+func newPeerConn(
+	outbound, persistent bool,
+	config *config.P2PConfig,
+	conn net.Conn,
+	originalAddr *NetAddress,
+) peerConn {
+
+	return peerConn{
+		outbound:     outbound,
+		persistent:   persistent,
+		config:       config,
+		conn:         conn,
+		originalAddr: originalAddr,
+	}
+}
+
 // ID only exists for SecretConnection.
 // NOTE: Will panic if conn is not *SecretConnection.
 func (pc peerConn) ID() ID {
