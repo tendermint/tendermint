@@ -359,7 +359,13 @@ func NewNode(config *cfg.Config,
 
 	var (
 		p2pLogger = logger.With("module", "p2p")
-		nodeInfo  = makeNodeInfo(config, nodeKey.ID(), txIndexer, genDoc.ChainID)
+		nodeInfo  = makeNodeInfo(
+			config,
+			nodeKey.ID(),
+			txIndexer,
+			genDoc.ChainID,
+			p2p.ProtocolVersionWithApp(state.Version.Consensus.App),
+		)
 	)
 
 	// Setup Transport.
@@ -764,13 +770,14 @@ func makeNodeInfo(
 	nodeID p2p.ID,
 	txIndexer txindex.TxIndexer,
 	chainID string,
+	protocolVersion p2p.ProtocolVersion,
 ) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.DefaultNodeInfo{
-		ProtocolVersion: p2p.InitProtocolVersion,
+		ProtocolVersion: protocolVersion,
 		ID_:             nodeID,
 		Network:         chainID,
 		Version:         version.TMCoreSemVer,
