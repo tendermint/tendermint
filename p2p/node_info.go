@@ -148,7 +148,7 @@ func (info DefaultNodeInfo) ValidateBasic() error {
 	switch txIndex {
 	case "", "on", "off":
 	default:
-		return fmt.Errorf("info.Other.TxIndex should be either 'on' or 'off', got '%v'", txIndex)
+		return fmt.Errorf("info.Other.TxIndex should be either 'on', 'off', or empty string, got '%v'", txIndex)
 	}
 	// XXX: Should we be more strict about address formats?
 	rpcAddr := other.RPCAddress
