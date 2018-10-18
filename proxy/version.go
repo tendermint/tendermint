@@ -9,7 +9,7 @@ import (
 // the abci.RequestInfo message during handshake with the app.
 // It contains only compile-time version information.
 var RequestInfo = abci.RequestInfo{
-	SoftwareVersion: version.Version,
-	BlockVersion:    version.BlockProtocol.Uint64(),
-	P2PVersion:      version.P2PProtocol.Uint64(),
+	Version:      version.Version,
+	BlockVersion: version.BlockProtocol.Uint64(),
+	P2PVersion:   version.P2PProtocol.Uint64(),
 }

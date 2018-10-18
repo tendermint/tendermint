@@ -21,6 +21,8 @@ BREAKING CHANGES:
   * [abci] \#2298 ResponseQuery.Proof is now a structured merkle.Proof, not just
     arbitrary bytes
   * [abci] \#2644 Add Version to Header and shift all fields by one
+  * [abci] \#2662 Bump the field numbers for some `ResponseInfo` fields to make room for
+      `AppVersion`
 
 * Go API
   * [node] Remove node.RunForever
@@ -52,6 +54,7 @@ BREAKING CHANGES:
 FEATURES:
 - [crypto/merkle] \#2298 General Merkle Proof scheme for chaining various types of Merkle trees together
 - [abci] \#2557 Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
+- [abci] \#2662 Add `BlockVersion` and `P2PVersion` to `RequestInfo`
 
 IMPROVEMENTS:
 - Additional Metrics

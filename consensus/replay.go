@@ -238,11 +238,11 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 	appHash := res.LastBlockAppHash
 
-	h.logger.Info("ABCI Handshake",
-		"appHeight", blockHeight,
-		"appHash", fmt.Sprintf("%X", appHash),
-		"appSoftwareVersion", res.SoftwareVersion,
-		"appProtocolVersion", res.AppVersion,
+	h.logger.Info("ABCI Handshake App Info",
+		"height", blockHeight,
+		"hash", fmt.Sprintf("%X", appHash),
+		"software-version", res.Version,
+		"protocol-version", res.AppVersion,
 	)
 
 	// Set AppVersion on the state.

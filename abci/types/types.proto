@@ -48,7 +48,7 @@ message RequestFlush {
 }
 
 message RequestInfo {
-  string software_version = 1;
+  string version = 1;
   uint64 block_version = 2;
   uint64 p2p_version = 3;
 }
@@ -132,7 +132,7 @@ message ResponseFlush {
 message ResponseInfo {
   string data = 1;
 
-  string software_version = 2;
+  string version = 2;
   uint64 app_version = 3;
 
   int64 last_block_height = 4;
