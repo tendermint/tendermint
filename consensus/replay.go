@@ -11,6 +11,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/version"
 	//auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -237,9 +238,16 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 	appHash := res.LastBlockAppHash
 
-	h.logger.Info("ABCI Handshake", "appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
+	h.logger.Info("ABCI Handshake",
+		"appHeight", blockHeight,
+		"appHash", fmt.Sprintf("%X", appHash),
+		"appSoftwareVersion", res.SoftwareVersion,
+		"appProtocolVersion", res.AppVersion,
+	)
 
-	// TODO: check app version.
+	// Set AppVersion on the state.
+	// XXX: this feels a bit sketchy ...
+	h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
 
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)

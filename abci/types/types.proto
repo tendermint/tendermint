@@ -131,9 +131,12 @@ message ResponseFlush {
 
 message ResponseInfo {
   string data = 1;
-  string version = 2;
-  int64 last_block_height = 3;
-  bytes last_block_app_hash = 4;
+
+  string software_version = 2;
+  uint64 app_version = 3;
+
+  int64 last_block_height = 4;
+  bytes last_block_app_hash = 5;
 }
 
 // nondeterministic
