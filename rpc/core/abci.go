@@ -3,8 +3,8 @@ package core
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 // Query the application for some information.
@@ -87,7 +87,7 @@ func ABCIQuery(path string, data cmn.HexBytes, height int64, prove bool) (*ctype
 // }
 // ```
 func ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	resInfo, err := proxyAppQuery.InfoSync(abci.RequestInfo{Version: version.Version})
+	resInfo, err := proxyAppQuery.InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return nil, err
 	}
