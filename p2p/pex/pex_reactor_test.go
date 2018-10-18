@@ -402,6 +402,7 @@ func (mockPeer) Send(byte, []byte) bool        { return false }
 func (mockPeer) TrySend(byte, []byte) bool     { return false }
 func (mockPeer) Set(string, interface{})       {}
 func (mockPeer) Get(string) interface{}        { return nil }
+func (mockPeer) OriginalAddr() *p2p.NetAddress { return nil }
 
 func assertPeersWithTimeout(
 	t *testing.T,

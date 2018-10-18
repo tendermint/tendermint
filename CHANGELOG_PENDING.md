@@ -82,3 +82,5 @@ Proposal or timeoutProposal before entering prevote
 - [p2p] \#2555 fix p2p switch FlushThrottle value (@goolAdapter)
 - [libs/event] \#2518 fix event concurrency flaw (@goolAdapter)
 - [state] \#2616 Pass nil to NewValidatorSet() when genesis file's Validators field is nil
+- [p2p] \#2668 Reconnect to originally dialed address (not self-reported
+  address) for persistent peers

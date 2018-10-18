@@ -26,6 +26,7 @@ type Peer interface {
 
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
+	OriginalAddr() *NetAddress
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -43,8 +44,26 @@ type peerConn struct {
 	config     *config.P2PConfig
 	conn       net.Conn // source connection
 
+	originalAddr *NetAddress // nil for inbound connections
+
 	// cached RemoteIP()
 	ip net.IP
+}
+
+func newPeerConn(
+	outbound, persistent bool,
+	config *config.P2PConfig,
+	conn net.Conn,
+	originalAddr *NetAddress,
+) peerConn {
+
+	return peerConn{
+		outbound:     outbound,
+		persistent:   persistent,
+		config:       config,
+		conn:         conn,
+		originalAddr: originalAddr,
+	}
 }
 
 // ID only exists for SecretConnection.
@@ -193,6 +212,15 @@ func (p *peer) IsPersistent() bool {
 // NodeInfo returns a copy of the peer's NodeInfo.
 func (p *peer) NodeInfo() NodeInfo {
 	return p.nodeInfo
+}
+
+// OriginalAddr returns the original address, which was used to connect with
+// the peer. Returns nil for inbound peers.
+func (p *peer) OriginalAddr() *NetAddress {
+	if p.peerConn.outbound {
+		return p.peerConn.originalAddr
+	}
+	return nil
 }
 
 // Status returns the peer's ConnectionStatus.
