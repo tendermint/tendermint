@@ -134,10 +134,13 @@ Commit are included in the header of the next block.
 ### Info
 
 - **Request**:
-  - `Version (string)`: The Tendermint version
+  - `Version (string)`: The Tendermint software semantic version
+  - `BlockVersion (uint64)`: The Tendermint Block Protocol version
+  - `P2PVersion (uint64)`: The Tendermint P2P Protocol version
 - **Response**:
   - `Data (string)`: Some arbitrary information
-  - `Version (Version)`: Version information
+  - `Version (string)`: The application software semantic version
+  - `AppVersion (uint64)`: The application protocol version
   - `LastBlockHeight (int64)`: Latest block for which the app has
     called Commit
   - `LastBlockAppHash ([]byte)`: Latest result of Commit
@@ -145,6 +148,7 @@ Commit are included in the header of the next block.
   - Return information about the application state.
   - Used to sync Tendermint with the application during a handshake
     that happens on startup.
+  - The returned `AppVersion` will be included in the Header of every block.
   - Tendermint expects `LastBlockAppHash` and `LastBlockHeight` to
     be updated during `Commit`, ensuring that `Commit` is never
     called twice for the same block height.
