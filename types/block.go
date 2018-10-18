@@ -296,23 +296,23 @@ func (h *Header) Hash() cmn.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
-	return merkle.SimpleHashFromMap(map[string][]byte{
-		"Version":            cdcEncode(h.Version),
-		"ChainID":            cdcEncode(h.ChainID),
-		"Height":             cdcEncode(h.Height),
-		"Time":               cdcEncode(h.Time),
-		"NumTxs":             cdcEncode(h.NumTxs),
-		"TotalTxs":           cdcEncode(h.TotalTxs),
-		"LastBlockID":        cdcEncode(h.LastBlockID),
-		"LastCommitHash":     cdcEncode(h.LastCommitHash),
-		"DataHash":           cdcEncode(h.DataHash),
-		"ValidatorsHash":     cdcEncode(h.ValidatorsHash),
-		"NextValidatorsHash": cdcEncode(h.NextValidatorsHash),
-		"AppHash":            cdcEncode(h.AppHash),
-		"ConsensusHash":      cdcEncode(h.ConsensusHash),
-		"LastResultsHash":    cdcEncode(h.LastResultsHash),
-		"EvidenceHash":       cdcEncode(h.EvidenceHash),
-		"ProposerAddress":    cdcEncode(h.ProposerAddress),
+	return merkle.SimpleHashFromByteSlices([][]byte{
+		cdcEncode(h.Version),
+		cdcEncode(h.ChainID),
+		cdcEncode(h.Height),
+		cdcEncode(h.Time),
+		cdcEncode(h.NumTxs),
+		cdcEncode(h.TotalTxs),
+		cdcEncode(h.LastBlockID),
+		cdcEncode(h.LastCommitHash),
+		cdcEncode(h.DataHash),
+		cdcEncode(h.ValidatorsHash),
+		cdcEncode(h.NextValidatorsHash),
+		cdcEncode(h.ConsensusHash),
+		cdcEncode(h.AppHash),
+		cdcEncode(h.LastResultsHash),
+		cdcEncode(h.EvidenceHash),
+		cdcEncode(h.ProposerAddress),
 	})
 }
 
