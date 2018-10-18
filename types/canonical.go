@@ -23,7 +23,6 @@ type CanonicalPartSetHeader struct {
 }
 
 type CanonicalProposal struct {
-	Version          uint64        `binary:"fixed64"`
 	Height           int64         `binary:"fixed64"`
 	Round            int64         `binary:"fixed64"`
 	Type             SignedMsgType // type alias for byte
@@ -35,7 +34,6 @@ type CanonicalProposal struct {
 }
 
 type CanonicalVote struct {
-	Version   uint64        `binary:"fixed64"`
 	Height    int64         `binary:"fixed64"`
 	Round     int64         `binary:"fixed64"`
 	Type      SignedMsgType // type alias for byte
@@ -45,9 +43,8 @@ type CanonicalVote struct {
 }
 
 type CanonicalHeartbeat struct {
-	Version          uint64 `binary:"fixed64"`
-	Height           int64  `binary:"fixed64"`
-	Round            int    `binary:"fixed64"`
+	Height           int64 `binary:"fixed64"`
+	Round            int   `binary:"fixed64"`
 	Type             byte
 	Sequence         int `binary:"fixed64"`
 	ValidatorAddress Address
@@ -74,7 +71,6 @@ func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
 
 func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
 	return CanonicalProposal{
-		Version:          0, // TODO
 		Height:           proposal.Height,
 		Round:            int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		Type:             ProposalType,
@@ -88,7 +84,6 @@ func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal 
 
 func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 	return CanonicalVote{
-		Version:   0, // TODO
 		Height:    vote.Height,
 		Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		Type:      vote.Type,
@@ -100,7 +95,6 @@ func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 
 func CanonicalizeHeartbeat(chainID string, heartbeat *Heartbeat) CanonicalHeartbeat {
 	return CanonicalHeartbeat{
-		Version:          0, // TODO
 		Height:           heartbeat.Height,
 		Round:            heartbeat.Round,
 		Type:             byte(HeartbeatType),
