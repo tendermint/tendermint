@@ -70,6 +70,52 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 	return reactors, eventChans, eventBuses
 }
 
+func startConsensusNetWithByzantineProcess(t *testing.T, css []*ConsensusState, N int) ([]*ConsensusReactor, []chan interface{}, []*types.EventBus) {
+	reactors := make([]*ConsensusReactor, N)
+	eventChans := make([]chan interface{}, N)
+	eventBuses := make([]*types.EventBus, N)
+	for i := 0; i < N; i++ {
+		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
+		if err != nil {	t.Fatal(err)}*/
+		if i == 1 {
+			// faulty process
+			css[i].doPrevote = func(j int) func(height int64, round int) {
+				return func(height int64, round int) {
+					css[j].signAddVote(types.PrevoteType, nil, types.PartSetHeader{})
+				}
+			}(i)
+			css[i].decideProposal = func(height int64, round int) {}
+		}
+
+		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		reactors[i].SetLogger(css[i].Logger)
+
+		// eventBus is already started with the cs
+		eventBuses[i] = css[i].eventBus
+		reactors[i].SetEventBus(eventBuses[i])
+
+		eventChans[i] = make(chan interface{}, 1)
+		err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
+		require.NoError(t, err)
+	}
+	// make connected switches and start all reactors
+	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("CONSENSUS", reactors[i])
+		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
+		return s
+	}, p2p.Connect2Switches)
+
+	// now that everyone is connected,  start the state machines
+	// If we started the state machines before everyone was connected,
+	// we'd block when the cs fires NewBlockEvent and the peers are trying to start their reactors
+	// TODO: is this still true with new pubsub?
+	for i := 0; i < N-1; i++ {
+		s := reactors[i].conS.GetState()
+		reactors[i].SwitchToConsensus(s, 0)
+	}
+	return reactors, eventChans, eventBuses
+}
+
 func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuses []*types.EventBus) {
 	logger.Info("stopConsensusNet", "n", len(reactors))
 	for i, r := range reactors {
@@ -93,6 +139,28 @@ func TestReactorBasic(t *testing.T) {
 	timeoutWaitGroup(t, N, func(j int) {
 		<-eventChans[j]
 	}, css)
+}
+
+// Ensure a testnet makes blocks
+func TestRoundSynchronisation(t *testing.T) {
+	N := 4
+	NewTimeoutTicker()
+	css := randConsensusNet(N, "consensus_reactor_test", NewTimeoutTicker, newCounter)
+	reactors, eventChans, eventBuses := startConsensusNetWithByzantineProcess(t, css, N)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	time.Sleep(10 * time.Second)
+	rs1 := css[1].GetRoundState()
+	css[1].Logger.Info("At round:", rs1.Round)
+
+	rs3 := css[3].GetRoundState()
+	css[3].Logger.Info("At round:", rs3.Round)
+	// start slow reactor
+	s := reactors[N-1].conS.GetState()
+	reactors[N-1].SwitchToConsensus(s, 0)
+
+	// wait till P1 makes the first new block
+	<-eventChans[1]
 }
 
 // Ensure we can process blocks with evidence
