@@ -24,7 +24,10 @@ var gRandInfo *randInfo
 
 func init() {
 	gRandInfo = &randInfo{}
-	gRandInfo.MixEntropy(randBytes(32)) // Init
+
+	// TODO: uncomment after reviewing MixEntropy -
+	// https://github.com/tendermint/tendermint/issues/2099
+	// gRandInfo.MixEntropy(randBytes(32)) // Init
 }
 
 // WARNING: This function needs review - https://github.com/tendermint/tendermint/issues/2099.
