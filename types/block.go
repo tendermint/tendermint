@@ -258,8 +258,10 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 //-----------------------------------------------------------------------------
 
 // Header defines the structure of a Tendermint block header
-// NOTE: changes to the Header should be duplicated in the abci Header
-// and in /docs/spec/blockchain/blockchain.md
+// NOTE: changes to the Header should be duplicated in:
+//  - header.Hash()
+// 	- abci.Header
+//  - /docs/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
 	Version  version.Consensus `json:"version"`
@@ -289,6 +291,8 @@ type Header struct {
 }
 
 // Hash returns the hash of the header.
+// It computes a Merkle tree from the header fields
+// ordered as they appear in the Header.
 // Returns nil if ValidatorHash is missing,
 // since a Header is not valid unless there is
 // a ValidatorsHash (corresponding to the validator set).
