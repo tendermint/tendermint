@@ -5,8 +5,8 @@
 *October 19, 2018*
 
 Special thanks to external contributors on this release:
-@goolAdapter, @bradyjoestar, @HaoyangLiu, @Slamper, @james-ray,
-@overbool, @connorwstein, @phymbert, @Uzair1995
+@bradyjoestar, @connorwstein, @goolAdapter, @HaoyangLiu,
+@james-ray, @overbool, @phymbert, @Slamper, @Uzair1995
 
 This release is primarily about adding Version fields to various data structures,
 optimizing consensus messages for signing and verification in
@@ -80,7 +80,6 @@ IMPROVEMENTS:
 - [config] \#2232 Added ValidateBasic method, which performs basic checks
 - [crypto/ed25519] \#2558 Switch to use latest `golang.org/x/crypto` through our fork at
   github.com/tendermint/crypto
-- [crypto] \#2099 make random use chacha, and have forward secrecy of generated randomness
 - [tools] \#2238 Binary dependencies are now locked to a specific git commit
 
 BUG FIXES:
