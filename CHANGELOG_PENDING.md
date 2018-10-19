@@ -1,7 +1,23 @@
 # Pending
 
+## v0.26.0
+
+*October 19, 2018*
+
 Special thanks to external contributors on this release:
-@goolAdapter, @bradyjoestar
+@bradyjoestar, @connorwstein, @goolAdapter, @HaoyangLiu,
+@james-ray, @overbool, @phymbert, @Slamper, @Uzair1995
+
+This release is primarily about adding Version fields to various data structures,
+optimizing consensus messages for signing and verification in
+restricted environments (like HSMs and the Ethereum Virtual Machine), and
+aligning the consensus code with the [specification](https://arxiv.org/abs/1807.04938).
+It also includes our first take at a generalized merkle proof system.
+
+See the [UPGRADING.md](UPGRADING.md#v0.26.0) for details on upgrading to the new
+version.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 BREAKING CHANGES:
 
@@ -9,11 +25,11 @@ BREAKING CHANGES:
   * [config] \#2232 timeouts as time.Duration, not ints
   * [config] \#2505 Remove Mempool.RecheckEmpty (it was effectively useless anyways)
   * [config] `mempool.wal` is disabled by default
-  * [rpc] \#2298 `/abci_query` takes `prove` argument instead of `trusted` and switches the default
-    behaviour to `prove=false`
   * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
   * [state] \#2644 Add Version field to State, breaking the format of State as
     encoded on disk.
+  * [rpc] \#2298 `/abci_query` takes `prove` argument instead of `trusted` and switches the default
+    behaviour to `prove=false`
   * [rpc] \#2654 Remove all `node_info.other.*_version` fields in `/status` and
     `/net_info`
 
@@ -25,13 +41,13 @@ BREAKING CHANGES:
       `AppVersion`
 
 * Go API
-  * [node] Remove node.RunForever
   * [config] \#2232 timeouts as time.Duration, not ints
-  * [rpc/client] \#2298 `ABCIQueryOptions.Trusted` -> `ABCIQueryOptions.Prove`
-  * [types] \#2298 Remove `Index` and `Total` fields from `TxProof`.
   * [crypto/merkle & lite] \#2298 Various changes to accomodate General Merkle trees
   * [crypto/merkle] \#2595 Remove all Hasher objects in favor of byte slices
   * [crypto/merkle] \#2635 merkle.SimpleHashFromTwoHashes is no longer exported
+  * [node] Remove node.RunForever
+  * [rpc/client] \#2298 `ABCIQueryOptions.Trusted` -> `ABCIQueryOptions.Prove`
+  * [types] \#2298 Remove `Index` and `Total` fields from `TxProof`.
   * [types] \#2598 `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg. `PrevoteType`,
     `PrecommitType`.
 
@@ -43,6 +59,8 @@ BREAKING CHANGES:
       `SignedMsgType` to enumerate.
   * [types] \#2512 Remove the pubkey field from the validator hash
   * [types] \#2644 Add Version struct to Header
+  * [types] \#2609 ConsensusParams.Hash() is the hash of the amino encoded
+    struct instead of the Merkle tree of the fields
   * [state] \#2587 Require block.Time of the fist block to be genesis time
   * [state] \#2644 Require block.Version to match state.Version
   * [types] \#2670 Header.Hash() builds Merkle tree out of fields in the same
@@ -52,11 +70,10 @@ BREAKING CHANGES:
   * [p2p] \#2654 Add `ProtocolVersion` struct with protocol versions to top of
     DefaultNodeInfo and require `ProtocolVersion.Block` to match during peer handshake
 
-
 FEATURES:
-- [crypto/merkle] \#2298 General Merkle Proof scheme for chaining various types of Merkle trees together
 - [abci] \#2557 Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
 - [abci] \#2662 Add `BlockVersion` and `P2PVersion` to `RequestInfo`
+- [crypto/merkle] \#2298 General Merkle Proof scheme for chaining various types of Merkle trees together
 
 IMPROVEMENTS:
 - Additional Metrics
@@ -66,23 +83,25 @@ IMPROVEMENTS:
 - [crypto/ed25519] \#2558 Switch to use latest `golang.org/x/crypto` through our fork at
   github.com/tendermint/crypto
 - [tools] \#2238 Binary dependencies are now locked to a specific git commit
-- [crypto] \#2099 make crypto random use chacha, and have forward secrecy of generated randomness
 
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
-- [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
-- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) wait for
-timeoutPrecommit before starting next round
-- [consensus] [\#1745](https://github.com/tendermint/tendermint/issues/1745) wait for
-Proposal or timeoutProposal before entering prevote
-- [evidence] \#2515 fix db iter leak (@goolAdapter)
-- [common/bit_array] Fixed a bug in the `Or` function
-- [common/bit_array] Fixed a bug in the `Sub` function (@james-ray)
-- [common] \#2534 Make bit array's PickRandom choose uniformly from true bits
+- [common] Fixed a bug in the `BitArray.Or` method
+- [common] Fixed a bug in the `BitArray.Sub` method (@james-ray)
+- [common] \#2534 Fix `BitArray.PickRandom` to choose uniformly from true bits
+- [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) Wait for
+  timeoutPrecommit before starting next round
+- [consensus] [\#1745](https://github.com/tendermint/tendermint/issues/1745) Wait for
+  Proposal or timeoutProposal before entering prevote
+- [consensus] \#2642 Only propose ValidBlock, not LockedBlock
+- [consensus] \#2642 Initialized ValidRound and LockedRound to -1
 - [consensus] \#1637 Limit the amount of evidence that can be included in a
   block
-- [p2p] \#2555 fix p2p switch FlushThrottle value (@goolAdapter)
-- [libs/event] \#2518 fix event concurrency flaw (@goolAdapter)
+- [evidence] \#2515 Fix db iter leak (@goolAdapter)
+- [libs/event] \#2518 Fix event concurrency flaw (@goolAdapter)
+- [node] \#2434 Make node respond to signal interrupts while sleeping for genesis time
 - [state] \#2616 Pass nil to NewValidatorSet() when genesis file's Validators field is nil
+- [p2p] \#2555 Fix p2p switch FlushThrottle value (@goolAdapter)
 - [p2p] \#2668 Reconnect to originally dialed address (not self-reported
   address) for persistent peers
+
