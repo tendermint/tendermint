@@ -45,6 +45,8 @@ BREAKING CHANGES:
   * [types] \#2644 Add Version struct to Header
   * [state] \#2587 Require block.Time of the fist block to be genesis time
   * [state] \#2644 Require block.Version to match state.Version
+  * [types] \#2670 Header.Hash() builds Merkle tree out of fields in the same
+    order they appear in the header, instead of sorting by field name
 
 * P2P Protocol
   * [p2p] \#2654 Add `ProtocolVersion` struct with protocol versions to top of

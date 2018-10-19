@@ -216,7 +216,7 @@ prefix) before being concatenated together and hashed.
 
 Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
 For `struct` arguments, we compute a `[][]byte` containing the hash of each
-field in the struct sorted by the hash of the field name.
+field in the struct, in the same order the fields appear in the struct.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
 
 ### Simple Merkle Proof
