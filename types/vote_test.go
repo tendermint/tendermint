@@ -70,12 +70,12 @@ func TestVoteSignableTestVectors(t *testing.T) {
 			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrecommitType}),
 			[]byte{
 				0x1f,                                   // total length
-				0x9,                                    // (field_number << 3) | wire_type
-				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x8,                                    // (field_number << 3) | wire_type
+				0x2,                                    // PrecommitType
 				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
-				0x18, // (field_number << 3) | wire_type
-				0x2,  // PrecommitType
 				0x22, // (field_number << 3) | wire_type
 				// remaining fields (timestamp):
 				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
@@ -85,12 +85,12 @@ func TestVoteSignableTestVectors(t *testing.T) {
 			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrevoteType}),
 			[]byte{
 				0x1f,                                   // total length
-				0x9,                                    // (field_number << 3) | wire_type
-				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x8,                                    // (field_number << 3) | wire_type
+				0x1,                                    // PrevoteType
 				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
-				0x18, // (field_number << 3) | wire_type
-				0x1,  // PrevoteType
 				0x22, // (field_number << 3) | wire_type
 				// remaining fields (timestamp):
 				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
@@ -99,9 +99,9 @@ func TestVoteSignableTestVectors(t *testing.T) {
 			vote,
 			[]byte{
 				0x1d,                                   // total length
-				0x9,                                    // (field_number << 3) | wire_type
-				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
 				// remaining fields (timestamp):
 				0x22,
@@ -112,9 +112,9 @@ func TestVoteSignableTestVectors(t *testing.T) {
 			CanonicalizeVote("test_chain_id", &Vote{Height: 1, Round: 1}),
 			[]byte{
 				0x2c,                                   // total length
-				0x9,                                    // (field_number << 3) | wire_type
-				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
 				// remaining fields:
 				0x22,                                                   // (field_number << 3) | wire_type

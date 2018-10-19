@@ -301,7 +301,7 @@ Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
 Signed messages (eg. votes, proposals) in the consensus are encoded using Amino.
 
 When signing, the elements of a message are re-ordered so the fixed-length fields
-are first, making it easy to quickly check the version, height, round, and type.
+are first, making it easy to quickly check the type, height, and round.
 The `ChainID` is also appended to the end.
 We call this encoding the SignBytes. For instance, SignBytes for a vote is the Amino encoding of the following struct:
 
@@ -309,7 +309,7 @@ We call this encoding the SignBytes. For instance, SignBytes for a vote is the A
 type CanonicalVote struct {
 	Height    int64            `binary:"fixed64"`
 	Round     int64            `binary:"fixed64"`
-	VoteType  byte
+	Type      byte
 	Timestamp time.Time
 	BlockID   CanonicalBlockID
 	ChainID   string
