@@ -4,12 +4,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/tendermint/go-amino"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestABCIPubKey(t *testing.T) {
@@ -76,16 +80,53 @@ func TestABCIConsensusParams(t *testing.T) {
 }
 
 func TestABCIHeader(t *testing.T) {
-	header := &Header{
-		Height:          int64(3),
-		Time:            tmtime.Now(),
-		NumTxs:          int64(10),
-		ProposerAddress: []byte("cloak"),
+	// build a full header
+	var height int64 = 5
+	var numTxs int64 = 3
+	header := newHeader(
+		height, numTxs,
+		[]byte("lastCommitHash"), []byte("dataHash"), []byte("evidenceHash"),
+	)
+	protocolVersion := version.Consensus{7, 8}
+	timestamp := time.Now()
+	lastBlockID := BlockID{
+		Hash: []byte("hash"),
+		PartsHeader: PartSetHeader{
+			Total: 10,
+			Hash:  []byte("hash"),
+		},
 	}
-	abciHeader := TM2PB.Header(header)
+	var totalTxs int64 = 100
+	header.Populate(
+		protocolVersion, "chainID",
+		timestamp, lastBlockID, totalTxs,
+		[]byte("valHash"), []byte("nextValHash"),
+		[]byte("consHash"), []byte("appHash"), []byte("lastResultsHash"),
+		[]byte("proposerAddress"),
+	)
 
-	assert.Equal(t, int64(3), abciHeader.Height)
-	assert.Equal(t, []byte("cloak"), abciHeader.ProposerAddress)
+	cdc := amino.NewCodec()
+	headerBz := cdc.MustMarshalBinaryBare(header)
+
+	pbHeader := TM2PB.Header(header)
+	pbHeaderBz, err := proto.Marshal(&pbHeader)
+	assert.NoError(t, err)
+
+	// assert some fields match
+	assert.EqualValues(t, protocolVersion.Block, pbHeader.Version.Block)
+	assert.EqualValues(t, protocolVersion.App, pbHeader.Version.App)
+	assert.EqualValues(t, "chainID", pbHeader.ChainID)
+	assert.EqualValues(t, height, pbHeader.Height)
+	assert.EqualValues(t, timestamp, pbHeader.Time)
+	assert.EqualValues(t, numTxs, pbHeader.NumTxs)
+	assert.EqualValues(t, totalTxs, pbHeader.TotalTxs)
+	assert.EqualValues(t, lastBlockID.Hash, pbHeader.LastBlockId.Hash)
+	assert.EqualValues(t, []byte("lastCommitHash"), pbHeader.LastCommitHash)
+	assert.Equal(t, []byte("proposerAddress"), pbHeader.ProposerAddress)
+
+	// assert the encodings match
+	assert.EqualValues(t, headerBz, pbHeaderBz)
+
 }
 
 func TestABCIEvidence(t *testing.T) {
