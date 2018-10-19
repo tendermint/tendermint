@@ -24,7 +24,7 @@ BREAKING CHANGES:
 * CLI/RPC/Config
   * [config] \#2232 timeouts as time.Duration, not ints
   * [config] \#2505 Remove Mempool.RecheckEmpty (it was effectively useless anyways)
-  * [config] `mempool.wal` is disabled by default
+  * [config] \#2490 `mempool.wal` is disabled by default
   * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
   * [state] \#2644 Add Version field to State, breaking the format of State as
     encoded on disk.
@@ -45,7 +45,7 @@ BREAKING CHANGES:
   * [crypto/merkle & lite] \#2298 Various changes to accomodate General Merkle trees
   * [crypto/merkle] \#2595 Remove all Hasher objects in favor of byte slices
   * [crypto/merkle] \#2635 merkle.SimpleHashFromTwoHashes is no longer exported
-  * [node] Remove node.RunForever
+  * [node] \#2479 Remove node.RunForever
   * [rpc/client] \#2298 `ABCIQueryOptions.Trusted` -> `ABCIQueryOptions.Prove`
   * [types] \#2298 Remove `Index` and `Total` fields from `TxProof`.
   * [types] \#2598 `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg. `PrevoteType`,
@@ -86,8 +86,8 @@ IMPROVEMENTS:
 
 BUG FIXES:
 - [autofile] \#2428 Group.RotateFile need call Flush() before rename (@goolAdapter)
-- [common] Fixed a bug in the `BitArray.Or` method
-- [common] Fixed a bug in the `BitArray.Sub` method (@james-ray)
+- [common] \#2533 Fixed a bug in the `BitArray.Or` method
+- [common] \#2506 Fixed a bug in the `BitArray.Sub` method (@james-ray)
 - [common] \#2534 Fix `BitArray.PickRandom` to choose uniformly from true bits
 - [consensus] [\#1690](https://github.com/tendermint/tendermint/issues/1690) Wait for
   timeoutPrecommit before starting next round
