@@ -664,6 +664,14 @@ OUTER_LOOP:
 
 func (conR *ConsensusReactor) gossipVotesForHeight(logger log.Logger, rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
 
+	// If we are in a higher round than our peer, send him precommit
+	if prs.Round < rs.Round {
+		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
+			logger.Debug("Picked rs.Precommits(prs.Round) to send", "round", prs.Round)
+			return true
+		}
+	}
+
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
 		if ps.PickSendVote(rs.LastCommit) {
