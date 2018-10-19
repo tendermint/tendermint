@@ -12,10 +12,17 @@ BREAKING CHANGES:
   * [rpc] \#2298 `/abci_query` takes `prove` argument instead of `trusted` and switches the default
     behaviour to `prove=false`
   * [privval] \#2459 Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
+  * [state] \#2644 Add Version field to State, breaking the format of State as
+    encoded on disk.
+  * [rpc] \#2654 Remove all `node_info.other.*_version` fields in `/status` and
+    `/net_info`
 
 * Apps
   * [abci] \#2298 ResponseQuery.Proof is now a structured merkle.Proof, not just
     arbitrary bytes
+  * [abci] \#2644 Add Version to Header and shift all fields by one
+  * [abci] \#2662 Bump the field numbers for some `ResponseInfo` fields to make room for
+      `AppVersion`
 
 * Go API
   * [node] Remove node.RunForever
@@ -25,7 +32,8 @@ BREAKING CHANGES:
   * [crypto/merkle & lite] \#2298 Various changes to accomodate General Merkle trees
   * [crypto/merkle] \#2595 Remove all Hasher objects in favor of byte slices
   * [crypto/merkle] \#2635 merkle.SimpleHashFromTwoHashes is no longer exported
-  * [types] \#2598 `VoteTypeXxx` are now
+  * [types] \#2598 `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg. `PrevoteType`,
+    `PrecommitType`.
 
 * Blockchain Protocol
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
@@ -34,13 +42,21 @@ BREAKING CHANGES:
     * \#2598 Change `Type` field fromt `string` to `byte` and use new
       `SignedMsgType` to enumerate.
   * [types] \#2512 Remove the pubkey field from the validator hash
+  * [types] \#2644 Add Version struct to Header
   * [state] \#2587 Require block.Time of the fist block to be genesis time
+  * [state] \#2644 Require block.Version to match state.Version
+  * [types] \#2670 Header.Hash() builds Merkle tree out of fields in the same
+    order they appear in the header, instead of sorting by field name
 
 * P2P Protocol
+  * [p2p] \#2654 Add `ProtocolVersion` struct with protocol versions to top of
+    DefaultNodeInfo and require `ProtocolVersion.Block` to match during peer handshake
+
 
 FEATURES:
 - [crypto/merkle] \#2298 General Merkle Proof scheme for chaining various types of Merkle trees together
 - [abci] \#2557 Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
+- [abci] \#2662 Add `BlockVersion` and `P2PVersion` to `RequestInfo`
 
 IMPROVEMENTS:
 - Additional Metrics
@@ -70,3 +86,5 @@ block property with faulty proposer
 - [p2p] \#2555 fix p2p switch FlushThrottle value (@goolAdapter)
 - [libs/event] \#2518 fix event concurrency flaw (@goolAdapter)
 - [state] \#2616 Pass nil to NewValidatorSet() when genesis file's Validators field is nil
+- [p2p] \#2668 Reconnect to originally dialed address (not self-reported
+  address) for persistent peers

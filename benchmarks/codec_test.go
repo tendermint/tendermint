@@ -14,14 +14,15 @@ import (
 
 func testNodeInfo(id p2p.ID) p2p.DefaultNodeInfo {
 	return p2p.DefaultNodeInfo{
-		ID_:        id,
-		Moniker:    "SOMENAME",
-		Network:    "SOMENAME",
-		ListenAddr: "SOMEADDR",
-		Version:    "SOMEVER",
+		ProtocolVersion: p2p.InitProtocolVersion,
+		ID_:             id,
+		Moniker:         "SOMENAME",
+		Network:         "SOMENAME",
+		ListenAddr:      "SOMEADDR",
+		Version:         "SOMEVER",
 		Other: p2p.DefaultNodeInfoOther{
-			AminoVersion: "SOMESTRING",
-			P2PVersion:   "OTHERSTRING",
+			TxIndex:    "on",
+			RPCAddress: "0.0.0.0:26657",
 		},
 	}
 }
