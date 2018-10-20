@@ -79,6 +79,19 @@ func TestABCIConsensusParams(t *testing.T) {
 	assert.Equal(t, *cp, cp2)
 }
 
+func newHeader(
+	height, numTxs int64,
+	commitHash, dataHash, evidenceHash []byte,
+) *Header {
+	return &Header{
+		Height:         height,
+		NumTxs:         numTxs,
+		LastCommitHash: commitHash,
+		DataHash:       dataHash,
+		EvidenceHash:   evidenceHash,
+	}
+}
+
 func TestABCIHeader(t *testing.T) {
 	// build a full header
 	var height int64 = 5
