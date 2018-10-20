@@ -290,19 +290,6 @@ type Header struct {
 	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
 }
 
-func newHeader(
-	height, numTxs int64,
-	commitHash, dataHash, evidenceHash []byte,
-) *Header {
-	return &Header{
-		Height:         height,
-		NumTxs:         numTxs,
-		LastCommitHash: commitHash,
-		DataHash:       dataHash,
-		EvidenceHash:   evidenceHash,
-	}
-}
-
 // Populate the Header with state-derived data.
 // Call this after MakeBlock to complete the Header.
 func (h *Header) Populate(
