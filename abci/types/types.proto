@@ -70,7 +70,7 @@ message RequestInitChain {
 message RequestQuery {
   bytes data = 1;
   string path = 2;
-  int64 height = 3;
+  sint64 height = 3;
   bool prove = 4;
 }
 
@@ -91,7 +91,7 @@ message RequestDeliverTx {
 }
 
 message RequestEndBlock {
-  int64 height = 1;
+  sint64 height = 1;
 }
 
 message RequestCommit {
@@ -135,7 +135,7 @@ message ResponseInfo {
   string version = 2;
   uint64 app_version = 3;
 
-  int64 last_block_height = 4;
+  sint64 last_block_height = 4;
   bytes last_block_app_hash = 5;
 }
 
@@ -157,11 +157,11 @@ message ResponseQuery {
   // bytes data = 2; // use "value" instead.
   string log = 3; // nondeterministic
   string info = 4; // nondeterministic
-  int64 index = 5;
+  sint64 index = 5;
   bytes key = 6;
   bytes value = 7;
   merkle.Proof proof = 8;
-  int64 height = 9;
+  sint64 height = 9;
   string codespace = 10;
 }
 
@@ -174,8 +174,8 @@ message ResponseCheckTx {
   bytes data = 2;
   string log = 3; // nondeterministic
   string info = 4; // nondeterministic
-  int64 gas_wanted  = 5;
-  int64 gas_used = 6;
+  sint64 gas_wanted  = 5;
+  sint64 gas_used = 6;
   repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
   string codespace = 8;
 }
@@ -185,8 +185,8 @@ message ResponseDeliverTx {
   bytes data = 2;
   string log = 3; // nondeterministic
   string info = 4; // nondeterministic
-  int64 gas_wanted = 5;
-  int64 gas_used = 6;
+  sint64 gas_wanted = 5;
+  sint64 gas_used = 6;
   repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
   string codespace = 8;
 }
@@ -215,19 +215,19 @@ message ConsensusParams {
 // BlockSize contains limits on the block size.
 message BlockSize {
   // Note: must be greater than 0
-  int64 max_bytes = 1;
+  sint64 max_bytes = 1;
   // Note: must be greater or equal to -1
-  int64 max_gas = 2;
+  sint64 max_gas = 2;
 }
 
 // EvidenceParams contains limits on the evidence.
 message EvidenceParams {
   // Note: must be greater than 0
-  int64 max_age = 1;
+  sint64 max_age = 1;
 }
 
 message LastCommitInfo {
-  int32 round = 1;
+  sint32 round = 1;
   repeated VoteInfo votes = 2 [(gogoproto.nullable)=false];
 }
 
@@ -238,10 +238,10 @@ message Header {
   // basic block info
   Version version = 1 [(gogoproto.nullable)=false];
   string chain_id = 2 [(gogoproto.customname)="ChainID"];
-  int64 height = 3;
+  sint64 height = 3;
   google.protobuf.Timestamp time = 4 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
-  int64 num_txs = 5;
-  int64 total_txs = 6;
+  sint64 num_txs = 5;
+  sint64 total_txs = 6;
 
   // prev block info
   BlockID last_block_id = 7 [(gogoproto.nullable)=false];
@@ -274,7 +274,7 @@ message BlockID {
 }
 
 message PartSetHeader {
-  int32 total = 1;
+  sint32 total = 1;
   bytes hash = 2;
 }
 
@@ -282,13 +282,13 @@ message PartSetHeader {
 message Validator {
   bytes address = 1;
   //PubKey pub_key = 2 [(gogoproto.nullable)=false];
-  int64 power = 3;
+  sint64 power = 3;
 }
 
 // ValidatorUpdate
 message ValidatorUpdate {
   PubKey pub_key = 1 [(gogoproto.nullable)=false];
-  int64 power = 2;
+  sint64 power = 2;
 }
 
 // VoteInfo
@@ -305,9 +305,9 @@ message PubKey {
 message Evidence {
   string type = 1;
   Validator validator = 2 [(gogoproto.nullable)=false];
-  int64 height = 3;
+  sint64 height = 3;
   google.protobuf.Timestamp time = 4 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
-  int64 total_voting_power = 5;
+  sint64 total_voting_power = 5;
 }
 
 //----------------------------------------

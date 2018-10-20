@@ -79,7 +79,7 @@ func TestABCIConsensusParams(t *testing.T) {
 	assert.Equal(t, *cp, cp2)
 }
 
-func _TestABCIbeader(t *testing.T) {
+func TestABCIHeader(t *testing.T) {
 	// build a full header
 	var height int64 = 5
 	var numTxs int64 = 3
@@ -126,7 +126,6 @@ func _TestABCIbeader(t *testing.T) {
 
 	// assert the encodings match
 	assert.EqualValues(t, headerBz, pbHeaderBz)
-
 }
 
 func TestABCIEvidence(t *testing.T) {
