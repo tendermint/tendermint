@@ -52,7 +52,7 @@ BREAKING CHANGES:
     `PrecommitType`.
 
 * Blockchain Protocol
-  * [abci] \#2636 Add ValidatorPubkeyTypes field to ConsensusParams. 
+  * [abci] [\#2636](https://github.com/tendermint/tendermint/issues/2636) Add ValidatorParams field to ConsensusParams.
   (Used to control which pubkey types validators can use, by amino route)
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
     * [\#2459](https://github.com/tendermint/tendermint/issues/2459) Use amino encoding instead of JSON in `SignBytes`.
