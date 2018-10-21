@@ -532,10 +532,10 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
 	cs.ProposalBlockParts = nil
-	cs.LockedRound = 0
+	cs.LockedRound = -1
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
-	cs.ValidRound = 0
+	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
@@ -889,10 +889,7 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	var blockParts *types.PartSet
 
 	// Decide on block
-	if cs.LockedBlock != nil {
-		// If we're locked onto a block, just choose that.
-		block, blockParts = cs.LockedBlock, cs.LockedBlockParts
-	} else if cs.ValidBlock != nil {
+	if cs.ValidBlock != nil {
 		// If there is valid block, choose that.
 		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
@@ -983,7 +980,6 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
-// Enter: any +2/3 prevotes for future round.
 // Prevote for LockedBlock if we're locked, or ProposalBlock if valid.
 // Otherwise vote nil.
 func (cs *ConsensusState) enterPrevote(height int64, round int) {
@@ -1072,8 +1068,8 @@ func (cs *ConsensusState) enterPrevoteWait(height int64, round int) {
 }
 
 // Enter: `timeoutPrevote` after any +2/3 prevotes.
+// Enter: `timeoutPrecommit` after any +2/3 precommits.
 // Enter: +2/3 precomits for block or nil.
-// Enter: any +2/3 precommits for next round.
 // Lock & precommit the ProposalBlock if we have enough prevotes for it (a POL in this round)
 // else, unlock an existing lock and precommit nil if +2/3 of prevotes were nil,
 // else, precommit nil otherwise.
@@ -1122,7 +1118,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 			logger.Info("enterPrecommit: +2/3 prevoted for nil.")
 		} else {
 			logger.Info("enterPrecommit: +2/3 prevoted for nil. Unlocking")
-			cs.LockedRound = 0
+			cs.LockedRound = -1
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
 			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
@@ -1161,7 +1157,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	// Fetch that block, unlock, and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
 	// TODO: In the future save the POL prevotes for justification.
-	cs.LockedRound = 0
+	cs.LockedRound = -1
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
@@ -1612,7 +1608,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				!cs.LockedBlock.HashesTo(blockID.Hash) {
 
 				cs.Logger.Info("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
-				cs.LockedRound = 0
+				cs.LockedRound = -1
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
 				cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())

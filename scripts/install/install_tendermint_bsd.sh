@@ -17,16 +17,15 @@ set BRANCH=master
 
 sudo pkg update
 
-sudo pkg upgrade -y
 sudo pkg install -y gmake
 sudo pkg install -y git
 
 # get and unpack golang
-curl -O https://storage.googleapis.com/golang/go1.10.freebsd-amd64.tar.gz
-tar -xvf go1.10.freebsd-amd64.tar.gz
+curl -O https://storage.googleapis.com/golang/go1.11.freebsd-amd64.tar.gz
+tar -xvf go1.11.freebsd-amd64.tar.gz
 
-# move go binary and add to path
-mv go /usr/local
+# move go folder and add go binary to path
+sudo mv go /usr/local
 set path=($path /usr/local/go/bin)
 
 
@@ -41,7 +40,7 @@ source ~/.tcshrc
 # get the code and move into repo
 set REPO=github.com/tendermint/tendermint
 go get $REPO
-cd $GOPATH/src/$REPO
+cd "$GOPATH/src/$REPO"
 
 # build & install master
 git checkout $BRANCH

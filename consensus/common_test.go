@@ -487,6 +487,14 @@ func ensureVote(voteCh <-chan interface{}, height int64, round int,
 	}
 }
 
+func ensurePrecommit(voteCh <-chan interface{}, height int64, round int) {
+	ensureVote(voteCh, height, round, types.PrecommitType)
+}
+
+func ensurePrevote(voteCh <-chan interface{}, height int64, round int) {
+	ensureVote(voteCh, height, round, types.PrevoteType)
+}
+
 func ensureNewEventOnChannel(ch <-chan interface{}) {
 	select {
 	case <-time.After(ensureTimeout):

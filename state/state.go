@@ -8,12 +8,36 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/tendermint/tendermint/version"
 )
 
 // database keys
 var (
 	stateKey = []byte("stateKey")
 )
+
+//-----------------------------------------------------------------------------
+
+// Version is for versioning the State.
+// It holds the Block and App version needed for making blocks,
+// and the software version to support upgrades to the format of
+// the State as stored on disk.
+type Version struct {
+	Consensus version.Consensus
+	Software  string
+}
+
+// initStateVersion sets the Consensus.Block and Software versions,
+// but leaves the Consensus.App version blank.
+// The Consensus.App version will be set during the Handshake, once
+// we hear from the app what protocol version it is running.
+var initStateVersion = Version{
+	Consensus: version.Consensus{
+		Block: version.BlockProtocol,
+		App:   0,
+	},
+	Software: version.TMCoreSemVer,
+}
 
 //-----------------------------------------------------------------------------
 
@@ -25,6 +49,8 @@ var (
 // Instead, use state.Copy() or state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
+	Version Version
+
 	// immutable
 	ChainID string
 
@@ -59,6 +85,7 @@ type State struct {
 // Copy makes a copy of the State for mutating.
 func (state State) Copy() State {
 	return State{
+		Version: state.Version,
 		ChainID: state.ChainID,
 
 		LastBlockHeight:  state.LastBlockHeight,
@@ -114,6 +141,7 @@ func (state State) MakeBlock(
 	block := types.MakeBlock(height, txs, commit, evidence)
 
 	// Fill rest of header with state data.
+	block.Version = state.Version.Consensus
 	block.ChainID = state.ChainID
 
 	// Set time
@@ -217,7 +245,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	return State{
-
+		Version: initStateVersion,
 		ChainID: genDoc.ChainID,
 
 		LastBlockHeight: 0,

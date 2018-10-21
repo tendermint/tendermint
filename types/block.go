@@ -10,11 +10,12 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/version"
 )
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes int64 = 511
+	MaxHeaderBytes int64 = 534
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -27,7 +28,6 @@ const (
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
-// TODO: add Version byte
 type Block struct {
 	mtx        sync.Mutex
 	Header     `json:"header"`
@@ -258,16 +258,18 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 //-----------------------------------------------------------------------------
 
 // Header defines the structure of a Tendermint block header
-// TODO: limit header size
-// NOTE: changes to the Header should be duplicated in the abci Header
-// and in /docs/spec/blockchain/blockchain.md
+// NOTE: changes to the Header should be duplicated in:
+//  - header.Hash()
+// 	- abci.Header
+//  - /docs/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
-	ChainID  string    `json:"chain_id"`
-	Height   int64     `json:"height"`
-	Time     time.Time `json:"time"`
-	NumTxs   int64     `json:"num_txs"`
-	TotalTxs int64     `json:"total_txs"`
+	Version  version.Consensus `json:"version"`
+	ChainID  string            `json:"chain_id"`
+	Height   int64             `json:"height"`
+	Time     time.Time         `json:"time"`
+	NumTxs   int64             `json:"num_txs"`
+	TotalTxs int64             `json:"total_txs"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
@@ -289,6 +291,8 @@ type Header struct {
 }
 
 // Hash returns the hash of the header.
+// It computes a Merkle tree from the header fields
+// ordered as they appear in the Header.
 // Returns nil if ValidatorHash is missing,
 // since a Header is not valid unless there is
 // a ValidatorsHash (corresponding to the validator set).
@@ -296,22 +300,23 @@ func (h *Header) Hash() cmn.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
-	return merkle.SimpleHashFromMap(map[string][]byte{
-		"ChainID":        cdcEncode(h.ChainID),
-		"Height":         cdcEncode(h.Height),
-		"Time":           cdcEncode(h.Time),
-		"NumTxs":         cdcEncode(h.NumTxs),
-		"TotalTxs":       cdcEncode(h.TotalTxs),
-		"LastBlockID":    cdcEncode(h.LastBlockID),
-		"LastCommit":     cdcEncode(h.LastCommitHash),
-		"Data":           cdcEncode(h.DataHash),
-		"Validators":     cdcEncode(h.ValidatorsHash),
-		"NextValidators": cdcEncode(h.NextValidatorsHash),
-		"App":            cdcEncode(h.AppHash),
-		"Consensus":      cdcEncode(h.ConsensusHash),
-		"Results":        cdcEncode(h.LastResultsHash),
-		"Evidence":       cdcEncode(h.EvidenceHash),
-		"Proposer":       cdcEncode(h.ProposerAddress),
+	return merkle.SimpleHashFromByteSlices([][]byte{
+		cdcEncode(h.Version),
+		cdcEncode(h.ChainID),
+		cdcEncode(h.Height),
+		cdcEncode(h.Time),
+		cdcEncode(h.NumTxs),
+		cdcEncode(h.TotalTxs),
+		cdcEncode(h.LastBlockID),
+		cdcEncode(h.LastCommitHash),
+		cdcEncode(h.DataHash),
+		cdcEncode(h.ValidatorsHash),
+		cdcEncode(h.NextValidatorsHash),
+		cdcEncode(h.ConsensusHash),
+		cdcEncode(h.AppHash),
+		cdcEncode(h.LastResultsHash),
+		cdcEncode(h.EvidenceHash),
+		cdcEncode(h.ProposerAddress),
 	})
 }
 
@@ -321,6 +326,7 @@ func (h *Header) StringIndented(indent string) string {
 		return "nil-Header"
 	}
 	return fmt.Sprintf(`Header{
+%s  Version:        %v
 %s  ChainID:        %v
 %s  Height:         %v
 %s  Time:           %v
@@ -337,6 +343,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Evidence:       %v
 %s  Proposer:       %v
 %s}#%v`,
+		indent, h.Version,
 		indent, h.ChainID,
 		indent, h.Height,
 		indent, h.Time,
@@ -538,6 +545,7 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 	if sh.Commit == nil {
 		return errors.New("SignedHeader missing commit (precommit votes).")
 	}
+
 	// Check ChainID.
 	if sh.ChainID != chainID {
 		return fmt.Errorf("Header belongs to another chain '%s' not '%s'",
@@ -576,7 +584,6 @@ func (sh SignedHeader) StringIndented(indent string) string {
 		indent, sh.Header.StringIndented(indent+"  "),
 		indent, sh.Commit.StringIndented(indent+"  "),
 		indent)
-	return ""
 }
 
 //-----------------------------------------------------------------------------
@@ -660,7 +667,6 @@ func (data *EvidenceData) StringIndented(indent string) string {
 %s}#%v`,
 		indent, strings.Join(evStrings, "\n"+indent+"  "),
 		indent, data.hash)
-	return ""
 }
 
 //--------------------------------------------------------------------------------

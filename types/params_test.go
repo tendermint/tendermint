@@ -66,6 +66,11 @@ func TestConsensusParamsHash(t *testing.T) {
 		makeParams(4, 2, 3, valEd25519),
 		makeParams(1, 4, 3, valEd25519),
 		makeParams(1, 2, 4, valEd25519),
+		makeParams(2, 5, 7, valEd25519),
+		makeParams(1, 7, 6, valEd25519),
+		makeParams(9, 5, 4, valEd25519),
+		makeParams(7, 8, 9, valEd25519),
+		makeParams(4, 6, 5, valEd25519),
 	}
 
 	hashes := make([][]byte, len(params))

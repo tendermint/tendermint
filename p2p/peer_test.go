@@ -114,7 +114,7 @@ func testOutboundPeerConn(
 		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
 	}
 
-	pc, err := testPeerConn(conn, config, true, persistent, ourNodePrivKey)
+	pc, err := testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
 			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
@@ -207,11 +207,12 @@ func (rp *remotePeer) accept(l net.Listener) {
 
 func (rp *remotePeer) nodeInfo(l net.Listener) NodeInfo {
 	return DefaultNodeInfo{
-		ID_:        rp.Addr().ID,
-		Moniker:    "remote_peer",
-		Network:    "testing",
-		Version:    "123.123.123",
-		ListenAddr: l.Addr().String(),
-		Channels:   rp.channels,
+		ProtocolVersion: InitProtocolVersion,
+		ID_:             rp.Addr().ID,
+		ListenAddr:      l.Addr().String(),
+		Network:         "testing",
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        rp.channels,
+		Moniker:         "remote_peer",
 	}
 }

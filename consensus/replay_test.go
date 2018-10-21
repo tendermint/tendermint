@@ -20,6 +20,7 @@ import (
 	crypto "github.com/tendermint/tendermint/crypto"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/version"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -337,7 +338,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatalf(err.Error())
 	}
 
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), kvstore.ProtocolVersion)
 	store.chain = chain
 	store.commits = commits
 
@@ -352,7 +353,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2)
-		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey())
+		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey(), kvstore.ProtocolVersion)
 		buildAppStateFromChain(proxyApp, stateDB, state, chain, nBlocks, mode)
 	}
 
@@ -442,7 +443,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
 	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), "1")))
-	proxyApp := proxy.NewAppConns(clientCreator) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
+	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
@@ -588,9 +589,10 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 }
 
 // fresh state and mock store
-func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (dbm.DB, sm.State, *mockBlockStore) {
+func stateAndStore(config *cfg.Config, pubKey crypto.PubKey, appVersion version.Protocol) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	state.Version.Consensus.App = appVersion
 	store := NewMockBlockStore(config, state.ConsensusParams)
 	return stateDB, state, store
 }
@@ -639,7 +641,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 
 	config := ResetConfig("proxy_test_")
 	privVal := privval.LoadFilePV(config.PrivValidatorFile())
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)
 
 	oldValAddr := state.Validators.Validators[0].Address
 

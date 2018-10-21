@@ -18,15 +18,21 @@ const (
 	// TMCoreSemVer is the current version of Tendermint Core.
 	// It's the Semantic Version of the software.
 	// Must be a string because scripts like dist.sh read this file.
-	TMCoreSemVer = "0.25.0"
+	TMCoreSemVer = "0.26.0"
 
 	// ABCISemVer is the semantic version of the ABCI library
-	ABCISemVer  = "0.14.0"
+	ABCISemVer  = "0.15.0"
 	ABCIVersion = ABCISemVer
 )
 
 // Protocol is used for implementation agnostic versioning.
 type Protocol uint64
+
+// Uint64 returns the Protocol version as a uint64,
+// eg. for compatibility with ABCI types.
+func (p Protocol) Uint64() uint64 {
+	return uint64(p)
+}
 
 var (
 	// P2PProtocol versions all p2p behaviour and msgs.
