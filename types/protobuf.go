@@ -121,7 +121,9 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 		EvidenceParams: &abci.EvidenceParams{
 			MaxAge: params.EvidenceParams.MaxAge,
 		},
-		ValidatorPubkeyTypes: params.ValidatorPubkeyTypes,
+		ValidatorParams: &abci.ValidatorParams{
+			ValidatorPubkeyTypes: params.Validator.ValidatorPubkeyTypes,
+		},
 	}
 }
 
@@ -218,6 +220,8 @@ func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
 		EvidenceParams: EvidenceParams{
 			MaxAge: csp.EvidenceParams.MaxAge,
 		},
-		ValidatorPubkeyTypes: csp.ValidatorPubkeyTypes,
+		Validator: ValidatorParams{
+			ValidatorPubkeyTypes: csp.ValidatorParams.ValidatorPubkeyTypes,
+		},
 	}
 }

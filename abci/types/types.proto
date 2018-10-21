@@ -205,7 +205,7 @@ message ResponseCommit {
 message ConsensusParams {
   BlockSize block_size = 1;
   EvidenceParams evidence_params = 2;
-  repeated string validator_pubkey_types = 3;
+  ValidatorParams validator_params = 3;
 }
 
 // BlockSize contains limits on the block size.
@@ -220,6 +220,11 @@ message BlockSize {
 message EvidenceParams {
   // Note: must be greater than 0
   int64 max_age = 1;
+}
+
+// ValidatorParams contains limits on validators.
+message ValidatorParams {
+  repeated string validator_pubkey_types = 3;
 }
 
 message LastCommitInfo {

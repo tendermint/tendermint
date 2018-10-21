@@ -55,7 +55,9 @@ func makeParams(blockBytes, blockGas, evidenceAge int64, pubkeyTypes []string) C
 		EvidenceParams: EvidenceParams{
 			MaxAge: evidenceAge,
 		},
-		ValidatorPubkeyTypes: pubkeyTypes,
+		Validator: ValidatorParams{
+			ValidatorPubkeyTypes: pubkeyTypes,
+		},
 	}
 }
 
@@ -104,7 +106,9 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				EvidenceParams: &abci.EvidenceParams{
 					MaxAge: 300,
 				},
-				ValidatorPubkeyTypes: valSecp256k1,
+				ValidatorParams: &abci.ValidatorParams{
+					ValidatorPubkeyTypes: valSecp256k1,
+				},
 			},
 			makeParams(100, 200, 300, valSecp256k1),
 		},
