@@ -49,16 +49,20 @@ type ProtocolVersion struct {
 	App   version.Protocol `json:"app"`
 }
 
-// InitProtocolVersion populates the Block and P2P versions, but not the App.
-var InitProtocolVersion = ProtocolVersionWithApp(0)
+// defaultProtocolVersion populates the Block and P2P versions using
+// the global values, but not the App.
+var defaultProtocolVersion = NewProtocolVersion(
+	version.P2PProtocol,
+	version.BlockProtocol,
+	0,
+)
 
-// ProtocolVersionWithApp returns a fully populated ProtocolVersion
-// using the provided App version and the Block and P2P versions defined in the `version` package.
-func ProtocolVersionWithApp(appVersion version.Protocol) ProtocolVersion {
+// NewProtocolVersion returns a fully populated ProtocolVersion.
+func NewProtocolVersion(p2p, block, app version.Protocol) ProtocolVersion {
 	return ProtocolVersion{
-		P2P:   version.P2PProtocol,
-		Block: version.BlockProtocol,
-		App:   appVersion,
+		P2P:   p2p,
+		Block: block,
+		App:   app,
 	}
 }
 
