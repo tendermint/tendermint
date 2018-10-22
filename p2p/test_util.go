@@ -3,7 +3,9 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"time"
 
+	crypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -11,6 +13,19 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
+
+const testCh = 0x01
+
+//------------------------------------------------
+
+type mockNodeInfo struct {
+	addr *NetAddress
+}
+
+func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
+func (ni mockNodeInfo) NetAddress() *NetAddress             { return ni.addr }
+func (ni mockNodeInfo) ValidateBasic() error                { return nil }
+func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
 func AddPeerToSwitch(sw *Switch, peer Peer) {
 	sw.peers.Add(peer)
@@ -22,11 +37,9 @@ func CreateRandomPeer(outbound bool) *peer {
 		peerConn: peerConn{
 			outbound: outbound,
 		},
-		nodeInfo: NodeInfo{
-			ID:         netAddr.ID,
-			ListenAddr: netAddr.DialString(),
-		},
-		mconn: &conn.MConnection{},
+		nodeInfo: mockNodeInfo{netAddr},
+		mconn:    &conn.MConnection{},
+		metrics:  NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
@@ -104,14 +117,32 @@ func Connect2Switches(switches []*Switch, i, j int) {
 }
 
 func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
-	pc, err := newInboundPeerConn(conn, sw.config, sw.nodeKey.PrivKey)
+	pc, err := testInboundPeerConn(conn, sw.config, sw.nodeKey.PrivKey)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)
 		}
 		return err
 	}
-	if err = sw.addPeer(pc); err != nil {
+
+	ni, err := handshake(conn, 50*time.Millisecond, sw.nodeInfo)
+	if err != nil {
+		if err := conn.Close(); err != nil {
+			sw.Logger.Error("Error closing connection", "err", err)
+		}
+		return err
+	}
+
+	p := newPeer(
+		pc,
+		sw.mConfig,
+		ni,
+		sw.reactorsByCh,
+		sw.chDescs,
+		sw.StopPeerForError,
+	)
+
+	if err = sw.addPeer(p); err != nil {
 		pc.CloseConn()
 		return err
 	}
@@ -131,26 +162,103 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
-	// new switch, add reactors
-	// TODO: let the config be passed in?
-	nodeKey := &NodeKey{
+func MakeSwitch(
+	cfg *config.P2PConfig,
+	i int,
+	network, version string,
+	initSwitch func(int, *Switch) *Switch,
+	opts ...SwitchOption,
+) *Switch {
+
+	nodeKey := NodeKey{
 		PrivKey: ed25519.GenPrivKey(),
 	}
-	sw := NewSwitch(cfg)
-	sw.SetLogger(log.TestingLogger())
-	sw = initSwitch(i, sw)
-	ni := NodeInfo{
-		ID:         nodeKey.ID(),
-		Moniker:    fmt.Sprintf("switch%d", i),
-		Network:    network,
-		Version:    version,
-		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
+
+	t := NewMultiplexTransport(nodeInfo, nodeKey)
+
+	addr := nodeInfo.NetAddress()
+	if err := t.Listen(*addr); err != nil {
+		panic(err)
 	}
+
+	// TODO: let the config be passed in?
+	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
+	sw.SetLogger(log.TestingLogger())
+	sw.SetNodeKey(&nodeKey)
+
+	ni := nodeInfo.(DefaultNodeInfo)
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
 	}
-	sw.SetNodeInfo(ni)
-	sw.SetNodeKey(nodeKey)
+	nodeInfo = ni
+
+	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
+	// populated and we don't have to do those awkward overrides and setters.
+	t.nodeInfo = nodeInfo
+	sw.SetNodeInfo(nodeInfo)
+
 	return sw
+}
+
+func testInboundPeerConn(
+	conn net.Conn,
+	config *config.P2PConfig,
+	ourNodePrivKey crypto.PrivKey,
+) (peerConn, error) {
+	return testPeerConn(conn, config, false, false, ourNodePrivKey, nil)
+}
+
+func testPeerConn(
+	rawConn net.Conn,
+	cfg *config.P2PConfig,
+	outbound, persistent bool,
+	ourNodePrivKey crypto.PrivKey,
+	originalAddr *NetAddress,
+) (pc peerConn, err error) {
+	conn := rawConn
+
+	// Fuzz connection
+	if cfg.TestFuzz {
+		// so we have time to do peer handshakes and get set up
+		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, cfg.TestFuzzConfig)
+	}
+
+	// Encrypt connection
+	conn, err = upgradeSecretConn(conn, cfg.HandshakeTimeout, ourNodePrivKey)
+	if err != nil {
+		return pc, cmn.ErrorWrap(err, "Error creating peer")
+	}
+
+	// Only the information we already have
+	return peerConn{
+		config:       cfg,
+		outbound:     outbound,
+		persistent:   persistent,
+		conn:         conn,
+		originalAddr: originalAddr,
+	}, nil
+}
+
+//----------------------------------------------------------------
+// rand node info
+
+func testNodeInfo(id ID, name string) NodeInfo {
+	return testNodeInfoWithNetwork(id, name, "testing")
+}
+
+func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
+	return DefaultNodeInfo{
+		ProtocolVersion: InitProtocolVersion,
+		ID_:             id,
+		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		Network:         network,
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        []byte{testCh},
+		Moniker:         name,
+		Other: DefaultNodeInfoOther{
+			TxIndex:    "on",
+			RPCAddress: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		},
+	}
 }

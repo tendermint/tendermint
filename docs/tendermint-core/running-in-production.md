@@ -1,5 +1,41 @@
 # Running in production
 
+## Database
+
+By default, Tendermint uses the `syndtr/goleveldb` package for it's in-process
+key-value database. Unfortunately, this implementation of LevelDB seems to suffer under heavy load (see
+[#226](https://github.com/syndtr/goleveldb/issues/226)). It may be best to
+install the real C-implementation of LevelDB and compile Tendermint to use
+that using `make build_c`. See the [install instructions](../introduction/install.md) for details.
+
+Tendermint keeps multiple distinct LevelDB databases in the `$TMROOT/data`:
+
+- `blockstore.db`: Keeps the entire blockchain - stores blocks,
+  block commits, and block meta data, each indexed by height. Used to sync new
+  peers.
+- `evidence.db`: Stores all verified evidence of misbehaviour.
+- `state.db`: Stores the current blockchain state (ie. height, validators,
+  consensus params). Only grows if consensus params or validators change. Also
+  used to temporarily store intermediate results during block processing.
+- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result tags.
+
+By default, Tendermint will only index txs by their hash, not by their DeliverTx
+result tags. See [indexing transactions](../app-dev/indexing-transactions.md) for
+details.
+
+There is no current strategy for pruning the databases. Consider reducing
+block production by [controlling empty blocks](../tendermint-core/using-tendermint.md#no-empty-blocks)
+or by increasing the `consensus.timeout_commit` param. Note both of these are
+local settings and not enforced by the consensus.
+
+We're working on [state
+syncing](https://github.com/tendermint/tendermint/issues/828),
+which will enable history to be thrown away
+and recent application state to be directly synced. We'll need to develop solutions
+for archival nodes that allow queries on historical transactions and states.
+The Cosmos project has had much success just dumping the latest state of a
+blockchain to disk and starting a new chain from that state.
+
 ## Logging
 
 Default logging level (`main:info,state:info,*:`) should suffice for
@@ -10,6 +46,37 @@ modules can be found [here](./how-to-read-logs.md#list-of-modules). If
 you're trying to debug Tendermint or asked to provide logs with debug
 logging level, you can do so by running tendermint with
 `--log_level="*:debug"`.
+
+## Write Ahead Logs (WAL)
+
+Tendermint uses write ahead logs for the consensus (`cs.wal`) and the mempool
+(`mempool.wal`). Both WALs have a max size of 1GB and are automatically rotated.
+
+### Consensus WAL
+
+The `consensus.wal` is used to ensure we can recover from a crash at any point
+in the consensus state machine.
+It writes all consensus messages (timeouts, proposals, block part, or vote)
+to a single file, flushing to disk before processing messages from its own
+validator. Since Tendermint validators are expected to never sign a conflicting vote, the
+WAL ensures we can always recover deterministically to the latest state of the consensus without
+using the network or re-signing any consensus messages.
+
+If your `consensus.wal` is corrupted, see [below](#wal-corruption).
+
+### Mempool WAL
+
+The `mempool.wal` logs all incoming txs before running CheckTx, but is
+otherwise not used in any programmatic way. It's just a kind of manual
+safe guard. Note the mempool provides no durability guarantees - a tx sent to one or many nodes
+may never make it into the blockchain if those nodes crash before being able to
+propose it. Clients must monitor their txs by subscribing over websockets,
+polling for them, or using `/broadcast_tx_commit`. In the worst case, txs can be
+resent from the mempool WAL manually.
+
+For the above reasons, the `mempool.wal` is disabled by default. To enable, set
+`mempool.wal_dir` to where you want the WAL to be located (e.g.
+`data/mempool.wal`).
 
 ## DOS Exposure and Mitigation
 
@@ -28,7 +95,8 @@ send & receive rate per connection (`SendRate`, `RecvRate`).
 ### RPC
 
 Endpoints returning multiple entries are limited by default to return 30
-elements (100 max). See [here](./rpc.md) for more information about the RPC.
+elements (100 max). See the [RPC Documentation](https://tendermint.com/rpc/)
+for more information.
 
 Rate-limiting and authentication are another key aspects to help protect
 against DOS attacks. While in the future we may implement these

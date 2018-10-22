@@ -42,13 +42,13 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Next: we need to set a switch in order for peers to be added in
-	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig())
+	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig(), nil)
 
 	// Lastly: let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		firstBlock := makeBlock(blockHeight, state)
 		secondBlock := makeBlock(blockHeight+1, state)
-		firstParts := firstBlock.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
+		firstParts := firstBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockStore.SaveBlock(firstBlock, firstParts, secondBlock.LastCommit)
 	}
 
@@ -198,7 +198,7 @@ func (tp *bcrTestPeer) TrySend(chID byte, msgBytes []byte) bool {
 }
 
 func (tp *bcrTestPeer) Send(chID byte, msgBytes []byte) bool { return tp.TrySend(chID, msgBytes) }
-func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo               { return p2p.NodeInfo{} }
+func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo               { return p2p.DefaultNodeInfo{} }
 func (tp *bcrTestPeer) Status() p2p.ConnectionStatus         { return p2p.ConnectionStatus{} }
 func (tp *bcrTestPeer) ID() p2p.ID                           { return tp.id }
 func (tp *bcrTestPeer) IsOutbound() bool                     { return false }

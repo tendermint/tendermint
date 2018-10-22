@@ -4,49 +4,72 @@ Tendermint blockchain benchmarking tool:
 
 - https://github.com/tendermint/tools/tree/master/tm-bench
 
-For example, the following:
-
-    tm-bench -T 10 -r 1000 localhost:26657
+For example, the following: `tm-bench -T 30 -r 10000 localhost:26657`
 
 will output:
 
-    Stats          Avg       StdDev     Max      Total     
-    Txs/sec        818       532        1549     9000      
-    Blocks/sec     0.818     0.386      1        9
+```
+Stats          Avg       StdDev     Max      Total
+Txs/sec        3981      1993       5000     119434
+Blocks/sec     0.800     0.400      1        24
+```
 
+NOTE: **tm-bench only works with build-in `kvstore` ABCI application**. For it
+to work with your application, you will need to modify `generateTx` function.
+In the future, we plan to support scriptable transactions (see
+[\#1938](https://github.com/tendermint/tendermint/issues/1938)).
 
 ## Quick Start
 
+### Docker
+
+```
+docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
+docker run -it --rm -v "/tmp:/tendermint" -p "26657:26657" --name=tm tendermint/tendermint node --proxy_app=kvstore
+
+docker run -it --rm --link=tm tendermint/bench tm:26657
+```
+
+### Using binaries
+
 [Install Tendermint](https://github.com/tendermint/tendermint#install)
-This currently is setup to work on tendermint's develop branch. Please ensure
-you are on that. (If not, update `tendermint` and `tmlibs` in gopkg.toml to use
-  the master branch.)
 
 then run:
 
-    tendermint init
-    tendermint node --proxy_app=kvstore
+```
+tendermint init
+tendermint node --proxy_app=kvstore
 
-    tm-bench localhost:26657
+tm-bench localhost:26657
+```
 
-with the last command being in a seperate window.
+with the last command being in a separate window.
 
 ## Usage
 
-    tm-bench [-c 1] [-T 10] [-r 1000] [-s 250] [endpoints]
+```
+Tendermint blockchain benchmarking tool.
 
-    Examples:
-            tm-bench localhost:26657
-    Flags:
-      -T int
-            Exit after the specified amount of time in seconds (default 10)
-      -c int
-            Connections to keep open per endpoint (default 1)
-      -r int
-            Txs per second to send in a connection (default 1000)
-      -s int
-            Size per tx in bytes
-      -v    Verbose output
+Usage:
+        tm-bench [-c 1] [-T 10] [-r 1000] [-s 250] [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]
+
+Examples:
+        tm-bench localhost:26657
+Flags:
+  -T int
+        Exit after the specified amount of time in seconds (default 10)
+  -broadcast-tx-method string
+        Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest) (default "async")
+  -c int
+        Connections to keep open per endpoint (default 1)
+  -output-format string
+        Output format: plain or json (default "plain")
+  -r int
+        Txs per second to send in a connection (default 1000)
+  -s int
+        The size of a transaction in bytes, must be greater than or equal to 40. (default 250)
+  -v    Verbose output
+```
 
 ## How stats are collected
 
@@ -72,9 +95,11 @@ that tm-bench sends.
 Similarly the end of the duration will likely end mid-way through tendermint
 trying to build the next block.
 
-Each of the connections is handled via two separate goroutines. 
+Each of the connections is handled via two separate goroutines.
 
 ## Development
 
-    make get_vendor_deps
-    make test
+```
+make get_vendor_deps
+make test
+```

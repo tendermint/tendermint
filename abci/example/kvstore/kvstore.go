@@ -10,11 +10,14 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/version"
 )
 
 var (
 	stateKey        = []byte("stateKey")
 	kvPairPrefixKey = []byte("kvPairKey:")
+
+	ProtocolVersion version.Protocol = 0x1
 )
 
 type State struct {
@@ -65,7 +68,11 @@ func NewKVStoreApplication() *KVStoreApplication {
 }
 
 func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size)}
+	return types.ResponseInfo{
+		Data:       fmt.Sprintf("{\"size\":%v}", app.state.Size),
+		Version:    version.ABCIVersion,
+		AppVersion: ProtocolVersion.Uint64(),
+	}
 }
 
 // tx is either "key=value" or just arbitrary bytes
@@ -81,14 +88,14 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	app.state.Size += 1
 
 	tags := []cmn.KVPair{
-		{Key: []byte("app.creator"), Value: []byte("jae")},
+		{Key: []byte("app.creator"), Value: []byte("Cosmoshi Netowoko")},
 		{Key: []byte("app.key"), Value: key},
 	}
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
 }
 
 func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
-	return types.ResponseCheckTx{Code: code.CodeTypeOK}
+	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
 func (app *KVStoreApplication) Commit() types.ResponseCommit {
@@ -114,6 +121,7 @@ func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery type
 		}
 		return
 	} else {
+		resQuery.Key = reqQuery.Data
 		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Value = value
 		if value != nil {

@@ -7,9 +7,9 @@ file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.pro
 
 ABCI methods are split across 3 separate ABCI *connections*:
 
-- `Consensus Connection: InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
-- `Mempool Connection: CheckTx`
-- `Info Connection: Info, SetOption, Query`
+- `Consensus Connection`: `InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
+- `Mempool Connection`: `CheckTx`
+- `Info Connection`: `Info, SetOption, Query`
 
 The `Consensus Connection` is driven by a consensus protocol and is responsible
 for block execution.
@@ -29,9 +29,14 @@ Some methods (`Echo, Info, InitChain, BeginBlock, EndBlock, Commit`),
 don't return errors because an error would indicate a critical failure
 in the application and there's nothing Tendermint can do. The problem
 should be addressed and both Tendermint and the application restarted.
+
 All other methods (`SetOption, Query, CheckTx, DeliverTx`) return an
 application-specific response `Code uint32`, where only `0` is reserved
 for `OK`.
+
+Finally, `Query`, `CheckTx`, and `DeliverTx` include a `Codespace string`, whose
+intended use is to disambiguate `Code` values returned by different domains of the
+application. The `Codespace` is a namespace for the `Code`.
 
 ## Tags
 
@@ -48,16 +53,50 @@ Keys and values in tags must be UTF-8 encoded strings (e.g.
 
 ## Determinism
 
-Some methods (`SetOption, Query, CheckTx, DeliverTx`) return
-non-deterministic data in the form of `Info` and `Log`. The `Log` is
-intended for the literal output from the application's logger, while the
-`Info` is any additional info that should be returned.
-
-All other fields in the `Response*` of all methods must be strictly deterministic.
+ABCI applications must implement deterministic finite-state machines to be
+securely replicated by the Tendermint consensus. This means block execution
+over the Consensus Connection must be strictly deterministic: given the same
+ordered set of requests, all nodes will compute identical responses, for all
+BeginBlock, DeliverTx, EndBlock, and Commit. This is critical, because the
+responses are included in the header of the next block, either via a Merkle root
+or directly, so all nodes must agree on exactly what they are.
 
 For this reason, it is recommended that applications not be exposed to any
 external user or process except via the ABCI connections to a consensus engine
-like Tendermint Core.
+like Tendermint Core. The application must only change its state based on input
+from block execution (BeginBlock, DeliverTx, EndBlock, Commit), and not through
+any other kind of request. This is the only way to ensure all nodes see the same
+transactions and compute the same results.
+
+If there is some non-determinism in the state machine, consensus will eventually
+fail as nodes disagree over the correct values for the block header. The
+non-determinism must be fixed and the nodes restarted.
+
+Sources of non-determinism in applications may include:
+
+- Hardware failures
+    - Cosmic rays, overheating, etc.
+- Node-dependent state
+    - Random numbers
+    - Time
+- Underspecification
+    - Library version changes
+    - Race conditions
+    - Floating point numbers
+    - JSON serialization
+    - Iterating through hash-tables/maps/dictionaries
+- External Sources
+    - Filesystem
+    - Network calls (eg. some external REST API service)
+
+See [#56](https://github.com/tendermint/abci/issues/56) for original discussion.
+
+Note that some methods (`SetOption, Query, CheckTx, DeliverTx`) return
+explicitly non-deterministic data in the form of `Info` and `Log` fields. The `Log` is
+intended for the literal output from the application's logger, while the
+`Info` is any additional info that should be returned. These are the only fields
+that are not included in block header computations, so we don't need agreement
+on them. All other fields in the `Response*` must be strictly deterministic.
 
 ## Block Execution
 
@@ -95,10 +134,13 @@ Commit are included in the header of the next block.
 ### Info
 
 - **Request**:
-  - `Version (string)`: The Tendermint version
+  - `Version (string)`: The Tendermint software semantic version
+  - `BlockVersion (uint64)`: The Tendermint Block Protocol version
+  - `P2PVersion (uint64)`: The Tendermint P2P Protocol version
 - **Response**:
   - `Data (string)`: Some arbitrary information
-  - `Version (Version)`: Version information
+  - `Version (string)`: The application software semantic version
+  - `AppVersion (uint64)`: The application protocol version
   - `LastBlockHeight (int64)`: Latest block for which the app has
     called Commit
   - `LastBlockAppHash ([]byte)`: Latest result of Commit
@@ -106,6 +148,7 @@ Commit are included in the header of the next block.
   - Return information about the application state.
   - Used to sync Tendermint with the application during a handshake
     that happens on startup.
+  - The returned `AppVersion` will be included in the Header of every block.
   - Tendermint expects `LastBlockAppHash` and `LastBlockHeight` to
     be updated during `Commit`, ensuring that `Commit` is never
     called twice for the same block height.
@@ -156,9 +199,9 @@ Commit are included in the header of the next block.
     of Path.
   - `Path (string)`: Path of request, like an HTTP GET path. Can be
     used with or in liue of Data.
-  - Apps MUST interpret '/store' as a query by key on the
+    - Apps MUST interpret '/store' as a query by key on the
     underlying store. The key SHOULD be specified in the Data field.
-  - Apps SHOULD allow queries over specific types like
+    - Apps SHOULD allow queries over specific types like
     '/accounts/...' or '/votes/...'
   - `Height (int64)`: The block height for which you want the query
     (default=0 returns data for the latest committed block). Note
@@ -175,14 +218,18 @@ Commit are included in the header of the next block.
   - `Index (int64)`: The index of the key in the tree.
   - `Key ([]byte)`: The key of the matching data.
   - `Value ([]byte)`: The value of the matching data.
-  - `Proof ([]byte)`: Proof for the data, if requested.
+  - `Proof (Proof)`: Serialized proof for the value data, if requested, to be
+    verified against the `AppHash` for the given Height.
   - `Height (int64)`: The block height from which data was derived.
     Note that this is the height of the block containing the
     application's Merkle root hash, which represents the state as it
     was after committing the block at Height-1
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - Query for data from the application at current or past height.
   - Optionally return Merkle proof.
+  - Merkle proof includes self-describing `type` field to support many types
+  of Merkle trees and encoding formats.
 
 ### BeginBlock
 
@@ -216,10 +263,11 @@ Commit are included in the header of the next block.
     be non-deterministic.
   - `Info (string)`: Additional information. May
     be non-deterministic.
-  - `GasWanted (int64)`: Amount of gas request for transaction.
+  - `GasWanted (int64)`: Amount of gas requested for transaction.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - Technically optional - not involved in processing blocks.
   - Guardian of the mempool: every node runs CheckTx before letting a
@@ -247,6 +295,7 @@ Commit are included in the header of the next block.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - The workhorse of the application - non-optional.
   - Execute the transaction in full.
@@ -275,19 +324,25 @@ Commit are included in the header of the next block.
 ### Commit
 
 - **Response**:
-  - `Data ([]byte)`: The Merkle root hash
+  - `Data ([]byte)`: The Merkle root hash of the application state
 - **Usage**:
   - Persist the application state.
-  - Return a Merkle root hash of the application state.
-  - It's critical that all application instances return the
-    same hash. If not, they will not be able to agree on the next
-    block, because the hash is included in the next block!
+  - Return an (optional) Merkle root hash of the application state
+  - `ResponseCommit.Data` is included as the `Header.AppHash` in the next block
+    - it may be empty
+  - Later calls to `Query` can return proofs about the application state anchored
+    in this Merkle root hash
+  - Note developers can return whatever they want here (could be nothing, or a
+    constant string, etc.), so long as it is deterministic - it must not be a
+    function of anything that did not come from the
+    BeginBlock/DeliverTx/EndBlock methods.
 
 ## Data Types
 
 ### Header
 
 - **Fields**:
+  - `Version (Version)`: Version of the blockchain and the application
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
   - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
@@ -312,6 +367,15 @@ Commit are included in the header of the next block.
     especially height and time.
   - Provides the proposer of the current block, for use in proposer-based
     reward mechanisms.
+
+### Version
+
+- **Fields**:
+  - `Block (uint64)`: Protocol version of the blockchain data structures.
+  - `App (uint64)`: Protocol version of the application.
+- **Usage**:
+  - Block version should be static in the life of a blockchain.
+  - App version may be updated over time by the application.
 
 ### Validator
 
@@ -373,3 +437,44 @@ Commit are included in the header of the next block.
   - `Round (int32)`: Commit round.
   - `Votes ([]VoteInfo)`: List of validators addresses in the last validator set
     with their voting power and whether or not they signed a vote.
+
+###  ConsensusParams
+
+- **Fields**:
+  - `BlockSize (BlockSize)`: Parameters limiting the size of a block.
+  - `EvidenceParams (EvidenceParams)`: Parameters limiting the validity of
+    evidence of byzantine behaviour.
+
+### BlockSize
+
+- **Fields**:
+  - `MaxBytes (int64)`: Max size of a block, in bytes.
+  - `MaxGas (int64)`: Max sum of `GasWanted` in a proposed block.
+    - NOTE: blocks that violate this may be committed if there are Byzantine proposers.
+        It's the application's responsibility to handle this when processing a
+        block!
+
+### EvidenceParams
+
+- **Fields**:
+  - `MaxAge (int64)`: Max age of evidence, in blocks. Evidence older than this
+    is considered stale and ignored.
+        - This should correspond with an app's "unbonding period" or other
+          similar mechanism for handling Nothing-At-Stake attacks.
+        - NOTE: this should change to time (instead of blocks)!
+
+### Proof
+
+- **Fields**:
+  - `Ops ([]ProofOp)`: List of chained Merkle proofs, of possibly different types
+    - The Merkle root of one op is the value being proven in the next op.
+    - The Merkle root of the final op should equal the ultimate root hash being
+      verified against.
+
+### ProofOp
+
+- **Fields**:
+  - `Type (string)`: Type of Merkle proof and how it's encoded.
+  - `Key ([]byte)`: Key in the Merkle tree that this proof is for.
+  - `Data ([]byte)`: Encoded Merkle proof for the key.
+

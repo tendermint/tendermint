@@ -75,73 +75,61 @@ func TestOr(t *testing.T) {
 	}
 }
 
-func TestSub1(t *testing.T) {
-
-	bA1, _ := randBitArray(31)
-	bA2, _ := randBitArray(51)
-	bA3 := bA1.Sub(bA2)
-
-	bNil := (*BitArray)(nil)
-	require.Equal(t, bNil.Sub(bA1), (*BitArray)(nil))
-	require.Equal(t, bA1.Sub(nil), (*BitArray)(nil))
-	require.Equal(t, bNil.Sub(nil), (*BitArray)(nil))
-
-	if bA3.Bits != bA1.Bits {
-		t.Error("Expected bA1 bits")
+func TestSub(t *testing.T) {
+	testCases := []struct {
+		initBA        string
+		subtractingBA string
+		expectedBA    string
+	}{
+		{`null`, `null`, `null`},
+		{`"x"`, `null`, `null`},
+		{`null`, `"x"`, `null`},
+		{`"x"`, `"x"`, `"_"`},
+		{`"xxxxxx"`, `"x_x_x_"`, `"_x_x_x"`},
+		{`"x_x_x_"`, `"xxxxxx"`, `"______"`},
+		{`"xxxxxx"`, `"x_x_x_xxxx"`, `"_x_x_x"`},
+		{`"x_x_x_xxxx"`, `"xxxxxx"`, `"______xxxx"`},
+		{`"xxxxxxxxxx"`, `"x_x_x_"`, `"_x_x_xxxxx"`},
+		{`"x_x_x_"`, `"xxxxxxxxxx"`, `"______"`},
 	}
-	if len(bA3.Elems) != len(bA1.Elems) {
-		t.Error("Expected bA1 elems length")
-	}
-	for i := 0; i < bA3.Bits; i++ {
-		expected := bA1.GetIndex(i)
-		if bA2.GetIndex(i) {
-			expected = false
-		}
-		if bA3.GetIndex(i) != expected {
-			t.Error("Wrong bit from bA3", i, bA1.GetIndex(i), bA2.GetIndex(i), bA3.GetIndex(i))
-		}
-	}
-}
+	for _, tc := range testCases {
+		var bA *BitArray
+		err := json.Unmarshal([]byte(tc.initBA), &bA)
+		require.Nil(t, err)
 
-func TestSub2(t *testing.T) {
+		var o *BitArray
+		err = json.Unmarshal([]byte(tc.subtractingBA), &o)
+		require.Nil(t, err)
 
-	bA1, _ := randBitArray(51)
-	bA2, _ := randBitArray(31)
-	bA3 := bA1.Sub(bA2)
-
-	bNil := (*BitArray)(nil)
-	require.Equal(t, bNil.Sub(bA1), (*BitArray)(nil))
-	require.Equal(t, bA1.Sub(nil), (*BitArray)(nil))
-	require.Equal(t, bNil.Sub(nil), (*BitArray)(nil))
-
-	if bA3.Bits != bA1.Bits {
-		t.Error("Expected bA1 bits")
-	}
-	if len(bA3.Elems) != len(bA1.Elems) {
-		t.Error("Expected bA1 elems length")
-	}
-	for i := 0; i < bA3.Bits; i++ {
-		expected := bA1.GetIndex(i)
-		if i < bA2.Bits && bA2.GetIndex(i) {
-			expected = false
-		}
-		if bA3.GetIndex(i) != expected {
-			t.Error("Wrong bit from bA3")
-		}
+		got, _ := json.Marshal(bA.Sub(o))
+		require.Equal(t, tc.expectedBA, string(got), "%s minus %s doesn't equal %s", tc.initBA, tc.subtractingBA, tc.expectedBA)
 	}
 }
 
 func TestPickRandom(t *testing.T) {
-	for idx := 0; idx < 123; idx++ {
-		bA1 := NewBitArray(123)
-		bA1.SetIndex(idx, true)
-		index, ok := bA1.PickRandom()
-		if !ok {
-			t.Fatal("Expected to pick element but got none")
-		}
-		if index != idx {
-			t.Fatalf("Expected to pick element at %v but got wrong index", idx)
-		}
+	empty16Bits := "________________"
+	empty64Bits := empty16Bits + empty16Bits + empty16Bits + empty16Bits
+	testCases := []struct {
+		bA string
+		ok bool
+	}{
+		{`null`, false},
+		{`"x"`, true},
+		{`"` + empty16Bits + `"`, false},
+		{`"x` + empty16Bits + `"`, true},
+		{`"` + empty16Bits + `x"`, true},
+		{`"x` + empty16Bits + `x"`, true},
+		{`"` + empty64Bits + `"`, false},
+		{`"x` + empty64Bits + `"`, true},
+		{`"` + empty64Bits + `x"`, true},
+		{`"x` + empty64Bits + `x"`, true},
+	}
+	for _, tc := range testCases {
+		var bitArr *BitArray
+		err := json.Unmarshal([]byte(tc.bA), &bitArr)
+		require.NoError(t, err)
+		_, ok := bitArr.PickRandom()
+		require.Equal(t, tc.ok, ok, "PickRandom got an unexpected result on input %s", tc.bA)
 	}
 }
 

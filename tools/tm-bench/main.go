@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-kit/kit/log/term"
@@ -25,7 +27,7 @@ func main() {
 	flagSet.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
 	flagSet.IntVar(&durationInt, "T", 10, "Exit after the specified amount of time in seconds")
 	flagSet.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
-	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes.")
+	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes, must be greater than or equal to 40.")
 	flagSet.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
 	flagSet.StringVar(&broadcastTxMethod, "broadcast-tx-method", "async", "Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)")
 	flagSet.BoolVar(&verbose, "v", false, "Verbose output")
@@ -51,8 +53,7 @@ Examples:
 
 	if verbose {
 		if outputFormat == "json" {
-			fmt.Fprintln(os.Stderr, "Verbose mode not supported with json output.")
-			os.Exit(1)
+			printErrorAndExit("Verbose mode not supported with json output.")
 		}
 		// Color errors red
 		colorFn := func(keyvals ...interface{}) term.FgBgColor {
@@ -68,14 +69,14 @@ Examples:
 		fmt.Printf("Running %ds test @ %s\n", durationInt, flagSet.Arg(0))
 	}
 
+	if txSize < 40 {
+		printErrorAndExit("The size of a transaction must be greater than or equal to 40.")
+	}
+
 	if broadcastTxMethod != "async" &&
 		broadcastTxMethod != "sync" &&
 		broadcastTxMethod != "commit" {
-		fmt.Fprintln(
-			os.Stderr,
-			"broadcast-tx-method should be either 'sync', 'async' or 'commit'.",
-		)
-		os.Exit(1)
+		printErrorAndExit("broadcast-tx-method should be either 'sync', 'async' or 'commit'.")
 	}
 
 	var (
@@ -93,7 +94,20 @@ Examples:
 		"broadcast_tx_"+broadcastTxMethod,
 	)
 
-	// Wait until transacters have begun until we get the start time
+	// Quit when interrupted or received SIGTERM.
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for sig := range c {
+			fmt.Printf("captured %v, exiting...\n", sig)
+			for _, t := range transacters {
+				t.Stop()
+			}
+			os.Exit(1)
+		}
+	}()
+
+	// Wait until transacters have begun until we get the start time.
 	timeStart := time.Now()
 	logger.Info("Time last transacter started", "t", timeStart)
 
@@ -120,8 +134,7 @@ Examples:
 		durationInt,
 	)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		printErrorAndExit(err.Error())
 	}
 
 	printStatistics(stats, outputFormat)
@@ -172,4 +185,9 @@ func startTransacters(
 	wg.Wait()
 
 	return transacters
+}
+
+func printErrorAndExit(err string) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }

@@ -1,4 +1,4 @@
-FROM alpine:3.6
+FROM alpine:3.8
 
 WORKDIR /app
 COPY tm-monitor /app/tm-monitor

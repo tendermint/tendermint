@@ -8,12 +8,36 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/tendermint/tendermint/version"
 )
 
 // database keys
 var (
 	stateKey = []byte("stateKey")
 )
+
+//-----------------------------------------------------------------------------
+
+// Version is for versioning the State.
+// It holds the Block and App version needed for making blocks,
+// and the software version to support upgrades to the format of
+// the State as stored on disk.
+type Version struct {
+	Consensus version.Consensus
+	Software  string
+}
+
+// initStateVersion sets the Consensus.Block and Software versions,
+// but leaves the Consensus.App version blank.
+// The Consensus.App version will be set during the Handshake, once
+// we hear from the app what protocol version it is running.
+var initStateVersion = Version{
+	Consensus: version.Consensus{
+		Block: version.BlockProtocol,
+		App:   0,
+	},
+	Software: version.TMCoreSemVer,
+}
 
 //-----------------------------------------------------------------------------
 
@@ -25,6 +49,8 @@ var (
 // Instead, use state.Copy() or state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
+	Version Version
+
 	// immutable
 	ChainID string
 
@@ -59,6 +85,7 @@ type State struct {
 // Copy makes a copy of the State for mutating.
 func (state State) Copy() State {
 	return State{
+		Version: state.Version,
 		ChainID: state.ChainID,
 
 		LastBlockHeight:  state.LastBlockHeight,
@@ -114,14 +141,12 @@ func (state State) MakeBlock(
 	block := types.MakeBlock(height, txs, commit, evidence)
 
 	// Fill rest of header with state data.
+	block.Version = state.Version.Consensus
 	block.ChainID = state.ChainID
 
 	// Set time
 	if height == 1 {
-		block.Time = tmtime.Now()
-		if block.Time.Before(state.LastBlockTime) {
-			block.Time = state.LastBlockTime // state.LastBlockTime for height == 1 is genesis time
-		}
+		block.Time = state.LastBlockTime // genesis time
 	} else {
 		block.Time = MedianTime(commit, state.LastValidators)
 	}
@@ -139,7 +164,7 @@ func (state State) MakeBlock(
 	// IncrementAccum for rounds there.
 	block.ProposerAddress = proposerAddress
 
-	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
+	return block, block.MakePartSet(types.BlockPartSizeBytes)
 }
 
 // MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
@@ -198,29 +223,37 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	// Make validators slice
-	validators := make([]*types.Validator, len(genDoc.Validators))
-	for i, val := range genDoc.Validators {
-		pubKey := val.PubKey
-		address := pubKey.Address()
+	var validatorSet, nextValidatorSet *types.ValidatorSet
+	if genDoc.Validators == nil {
+		validatorSet = types.NewValidatorSet(nil)
+		nextValidatorSet = types.NewValidatorSet(nil)
+	} else {
+		validators := make([]*types.Validator, len(genDoc.Validators))
+		for i, val := range genDoc.Validators {
+			pubKey := val.PubKey
+			address := pubKey.Address()
 
-		// Make validator
-		validators[i] = &types.Validator{
-			Address:     address,
-			PubKey:      pubKey,
-			VotingPower: val.Power,
+			// Make validator
+			validators[i] = &types.Validator{
+				Address:     address,
+				PubKey:      pubKey,
+				VotingPower: val.Power,
+			}
 		}
+		validatorSet = types.NewValidatorSet(validators)
+		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementAccum(1)
 	}
 
 	return State{
-
+		Version: initStateVersion,
 		ChainID: genDoc.ChainID,
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		NextValidators:              types.NewValidatorSet(validators).CopyIncrementAccum(1),
-		Validators:                  types.NewValidatorSet(validators),
+		NextValidators:              nextValidatorSet,
+		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: 1,
 

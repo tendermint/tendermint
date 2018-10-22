@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	golog "log"
 	"net"
 	"testing"
@@ -17,8 +18,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
-
-const testCh = 0x01
 
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -76,24 +75,62 @@ func createOutboundPeerAndPerformHandshake(
 	}
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
 	pk := ed25519.GenPrivKey()
-	pc, err := newOutboundPeerConn(addr, config, false, pk)
+	pc, err := testOutboundPeerConn(addr, config, false, pk)
 	if err != nil {
 		return nil, err
 	}
-	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		ID:       addr.ID,
-		Moniker:  "host_peer",
-		Network:  "testing",
-		Version:  "123.123.123",
-		Channels: []byte{testCh},
-	}, 1*time.Second)
+	timeout := 1 * time.Second
+	ourNodeInfo := testNodeInfo(addr.ID, "host_peer")
+	peerNodeInfo, err := handshake(pc.conn, timeout, ourNodeInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newPeer(pc, mConfig, nodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
+	p := newPeer(pc, mConfig, peerNodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
+}
+
+func testDial(addr *NetAddress, cfg *config.P2PConfig) (net.Conn, error) {
+	if cfg.TestDialFail {
+		return nil, fmt.Errorf("dial err (peerConfig.DialFail == true)")
+	}
+
+	conn, err := addr.DialTimeout(cfg.DialTimeout)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+func testOutboundPeerConn(
+	addr *NetAddress,
+	config *config.P2PConfig,
+	persistent bool,
+	ourNodePrivKey crypto.PrivKey,
+) (peerConn, error) {
+	conn, err := testDial(addr, config)
+	if err != nil {
+		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
+	}
+
+	pc, err := testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
+	if err != nil {
+		if cerr := conn.Close(); cerr != nil {
+			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
+		}
+		return peerConn{}, err
+	}
+
+	// ensure dialed ID matches connection ID
+	if addr.ID != pc.ID() {
+		if cerr := conn.Close(); cerr != nil {
+			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
+		}
+		return peerConn{}, ErrSwitchAuthenticationFailure{addr, pc.ID()}
+	}
+
+	return pc, nil
 }
 
 type remotePeer struct {
@@ -143,19 +180,12 @@ func (rp *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to accept conn: %+v", err)
 		}
 
-		pc, err := newInboundPeerConn(conn, rp.Config, rp.PrivKey)
+		pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
 		if err != nil {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 
-		_, err = pc.HandshakeTimeout(NodeInfo{
-			ID:         rp.Addr().ID,
-			Moniker:    "remote_peer",
-			Network:    "testing",
-			Version:    "123.123.123",
-			ListenAddr: l.Addr().String(),
-			Channels:   rp.channels,
-		}, 1*time.Second)
+		_, err = handshake(pc.conn, time.Second, rp.nodeInfo(l))
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}
@@ -172,5 +202,17 @@ func (rp *remotePeer) accept(l net.Listener) {
 			return
 		default:
 		}
+	}
+}
+
+func (rp *remotePeer) nodeInfo(l net.Listener) NodeInfo {
+	return DefaultNodeInfo{
+		ProtocolVersion: InitProtocolVersion,
+		ID_:             rp.Addr().ID,
+		ListenAddr:      l.Addr().String(),
+		Network:         "testing",
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        rp.channels,
+		Moniker:         "remote_peer",
 	}
 }

@@ -13,11 +13,11 @@ import (
 )
 
 func examplePrevote() *Vote {
-	return exampleVote(VoteTypePrevote)
+	return exampleVote(byte(PrevoteType))
 }
 
 func examplePrecommit() *Vote {
-	return exampleVote(VoteTypePrecommit)
+	return exampleVote(byte(PrecommitType))
 }
 
 func exampleVote(t byte) *Vote {
@@ -32,7 +32,7 @@ func exampleVote(t byte) *Vote {
 		Height:           12345,
 		Round:            2,
 		Timestamp:        stamp,
-		Type:             t,
+		Type:             SignedMsgType(t),
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
@@ -46,13 +46,99 @@ func exampleVote(t byte) *Vote {
 func TestVoteSignable(t *testing.T) {
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")
-	signStr := string(signBytes)
 
-	expected := `{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"8B01023386C371778ECB6368573E539AFC3CC860","parts":{"hash":"72DB3D959635DFF1BB567BEDAA70573392C51596","total":"1000000"}},"height":"12345","round":"2","timestamp":"2017-12-25T03:00:01.234Z","type":2}`
-	if signStr != expected {
-		// NOTE: when this fails, you probably want to fix up consensus/replay_test too
-		t.Errorf("Got unexpected sign string for Vote. Expected:\n%v\nGot:\n%v", expected, signStr)
+	expected, err := cdc.MarshalBinary(CanonicalizeVote("test_chain_id", vote))
+	require.NoError(t, err)
+
+	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Vote.")
+}
+
+func TestVoteSignableTestVectors(t *testing.T) {
+	vote := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
+
+	tests := []struct {
+		canonicalVote CanonicalVote
+		want          []byte
+	}{
+		{
+			CanonicalizeVote("", &Vote{}),
+			// NOTE: Height and Round are skipped here. This case needs to be considered while parsing.
+			[]byte{0xb, 0x22, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+		},
+		// with proper (fixed size) height and round (PreCommit):
+		{
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrecommitType}),
+			[]byte{
+				0x1f,                                   // total length
+				0x8,                                    // (field_number << 3) | wire_type
+				0x2,                                    // PrecommitType
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				0x22, // (field_number << 3) | wire_type
+				// remaining fields (timestamp):
+				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+		},
+		// with proper (fixed size) height and round (PreVote):
+		{
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrevoteType}),
+			[]byte{
+				0x1f,                                   // total length
+				0x8,                                    // (field_number << 3) | wire_type
+				0x1,                                    // PrevoteType
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				0x22, // (field_number << 3) | wire_type
+				// remaining fields (timestamp):
+				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+		},
+		{
+			vote,
+			[]byte{
+				0x1d,                                   // total length
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				// remaining fields (timestamp):
+				0x22,
+				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+		},
+		// containing non-empty chain_id:
+		{
+			CanonicalizeVote("test_chain_id", &Vote{Height: 1, Round: 1}),
+			[]byte{
+				0x2c,                                   // total length
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				// remaining fields:
+				0x22,                                                   // (field_number << 3) | wire_type
+				0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff, // timestamp
+				0x32,                                                                               // (field_number << 3) | wire_type
+				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64}, // chainID
+		},
 	}
+	for i, tc := range tests {
+		got, err := cdc.MarshalBinary(tc.canonicalVote)
+		require.NoError(t, err)
+
+		require.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
+	}
+}
+
+func TestVoteProposalNotEq(t *testing.T) {
+	cv := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
+	p := CanonicalizeProposal("", &Proposal{Height: 1, Round: 1})
+	vb, err := cdc.MarshalBinary(cv)
+	require.NoError(t, err)
+	pb, err := cdc.MarshalBinary(p)
+	require.NoError(t, err)
+	require.NotEqual(t, vb, pb)
 }
 
 func TestVoteVerifySignature(t *testing.T) {
@@ -87,12 +173,12 @@ func TestVoteVerifySignature(t *testing.T) {
 func TestIsVoteTypeValid(t *testing.T) {
 	tc := []struct {
 		name string
-		in   byte
+		in   SignedMsgType
 		out  bool
 	}{
-		{"Prevote", VoteTypePrevote, true},
-		{"Precommit", VoteTypePrecommit, true},
-		{"InvalidType", byte(3), false},
+		{"Prevote", PrevoteType, true},
+		{"Precommit", PrecommitType, true},
+		{"InvalidType", SignedMsgType(0x3), false},
 	}
 
 	for _, tt := range tc {
@@ -130,7 +216,7 @@ func TestMaxVoteBytes(t *testing.T) {
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt64,
 		Timestamp:        tmtime.Now(),
-		Type:             VoteTypePrevote,
+		Type:             PrevoteType,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
@@ -147,5 +233,5 @@ func TestMaxVoteBytes(t *testing.T) {
 	bz, err := cdc.MarshalBinaryLengthPrefixed(vote)
 	require.NoError(t, err)
 
-	assert.Equal(t, MaxVoteBytes, len(bz))
+	assert.EqualValues(t, MaxVoteBytes, len(bz))
 }

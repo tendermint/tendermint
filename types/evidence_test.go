@@ -22,7 +22,7 @@ func makeVote(val PrivValidator, chainID string, valIndex int, height int64, rou
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             byte(step),
+		Type:             SignedMsgType(step),
 		BlockID:          blockID,
 	}
 	err := val.SignVote(chainID, v)
@@ -61,7 +61,7 @@ func TestEvidence(t *testing.T) {
 		{vote1, makeVote(val, chainID, 0, 10, 3, 1, blockID2), false},    // wrong round
 		{vote1, makeVote(val, chainID, 0, 10, 2, 2, blockID2), false},    // wrong step
 		{vote1, makeVote(val2, chainID, 0, 10, 2, 1, blockID), false},    // wrong validator
-		{vote1, badVote, false},                                          // signed by wrong key
+		{vote1, badVote, false}, // signed by wrong key
 	}
 
 	pubKey := val.GetPubKey()
@@ -108,7 +108,7 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
 	require.NoError(t, err)
 
-	assert.Equal(t, MaxEvidenceBytes, len(bz))
+	assert.EqualValues(t, MaxEvidenceBytes, len(bz))
 }
 
 func randomDuplicatedVoteEvidence() *DuplicateVoteEvidence {

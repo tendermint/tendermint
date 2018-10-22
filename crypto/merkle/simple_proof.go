@@ -2,23 +2,39 @@ package merkle
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// SimpleProof represents a simple merkle proof.
+// SimpleProof represents a simple Merkle proof.
+// NOTE: The convention for proofs is to include leaf hashes but to
+// exclude the root hash.
+// This convention is implemented across IAVL range proofs as well.
+// Keep this consistent unless there's a very good reason to change
+// everything.  This also affects the generalized proof system as
+// well.
 type SimpleProof struct {
-	Aunts [][]byte `json:"aunts"` // Hashes from leaf's sibling to a root's child.
+	Total    int      `json:"total"`     // Total number of items.
+	Index    int      `json:"index"`     // Index of item to prove.
+	LeafHash []byte   `json:"leaf_hash"` // Hash of item value.
+	Aunts    [][]byte `json:"aunts"`     // Hashes from leaf's sibling to a root's child.
 }
 
-// SimpleProofsFromHashers computes inclusion proof for given items.
+// SimpleProofsFromByteSlices computes inclusion proof for given items.
 // proofs[0] is the proof for items[0].
-func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleProof) {
-	trails, rootSPN := trailsFromHashers(items)
+func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*SimpleProof) {
+	trails, rootSPN := trailsFromByteSlices(items)
 	rootHash = rootSPN.Hash
 	proofs = make([]*SimpleProof, len(items))
 	for i, trail := range trails {
 		proofs[i] = &SimpleProof{
-			Aunts: trail.FlattenAunts(),
+			Total:    len(items),
+			Index:    i,
+			LeafHash: trail.Hash,
+			Aunts:    trail.FlattenAunts(),
 		}
 	}
 	return
@@ -27,19 +43,19 @@ func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleP
 // SimpleProofsFromMap generates proofs from a map. The keys/values of the map will be used as the keys/values
 // in the underlying key-value pairs.
 // The keys are sorted before the proofs are computed.
-func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs map[string]*SimpleProof, keys []string) {
+func SimpleProofsFromMap(m map[string][]byte) (rootHash []byte, proofs map[string]*SimpleProof, keys []string) {
 	sm := newSimpleMap()
 	for k, v := range m {
 		sm.Set(k, v)
 	}
 	sm.Sort()
 	kvs := sm.kvs
-	kvsH := make([]Hasher, 0, len(kvs))
-	for _, kvp := range kvs {
-		kvsH = append(kvsH, KVPair(kvp))
+	kvsBytes := make([][]byte, len(kvs))
+	for i, kvp := range kvs {
+		kvsBytes[i] = KVPair(kvp).Bytes()
 	}
 
-	rootHash, proofList := SimpleProofsFromHashers(kvsH)
+	rootHash, proofList := SimpleProofsFromByteSlices(kvsBytes)
 	proofs = make(map[string]*SimpleProof)
 	keys = make([]string, len(proofList))
 	for i, kvp := range kvs {
@@ -49,11 +65,33 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs map[strin
 	return
 }
 
-// Verify that leafHash is a leaf hash of the simple-merkle-tree
-// which hashes to rootHash.
-func (sp *SimpleProof) Verify(index int, total int, leafHash []byte, rootHash []byte) bool {
-	computedHash := computeHashFromAunts(index, total, leafHash, sp.Aunts)
-	return computedHash != nil && bytes.Equal(computedHash, rootHash)
+// Verify that the SimpleProof proves the root hash.
+// Check sp.Index/sp.Total manually if needed
+func (sp *SimpleProof) Verify(rootHash []byte, leafHash []byte) error {
+	if sp.Total < 0 {
+		return errors.New("Proof total must be positive")
+	}
+	if sp.Index < 0 {
+		return errors.New("Proof index cannot be negative")
+	}
+	if !bytes.Equal(sp.LeafHash, leafHash) {
+		return cmn.NewError("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
+	}
+	computedHash := sp.ComputeRootHash()
+	if !bytes.Equal(computedHash, rootHash) {
+		return cmn.NewError("invalid root hash: wanted %X got %X", rootHash, computedHash)
+	}
+	return nil
+}
+
+// Compute the root hash given a leaf hash.  Does not verify the result.
+func (sp *SimpleProof) ComputeRootHash() []byte {
+	return computeHashFromAunts(
+		sp.Index,
+		sp.Total,
+		sp.LeafHash,
+		sp.Aunts,
+	)
 }
 
 // String implements the stringer interface for SimpleProof.
@@ -96,13 +134,13 @@ func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][
 			if leftHash == nil {
 				return nil
 			}
-			return SimpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
+			return simpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
 		}
 		rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
 		if rightHash == nil {
 			return nil
 		}
-		return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
+		return simpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
 	}
 }
 
@@ -138,18 +176,18 @@ func (spn *SimpleProofNode) FlattenAunts() [][]byte {
 
 // trails[0].Hash is the leaf hash for items[0].
 // trails[i].Parent.Parent....Parent == root for all i.
-func trailsFromHashers(items []Hasher) (trails []*SimpleProofNode, root *SimpleProofNode) {
+func trailsFromByteSlices(items [][]byte) (trails []*SimpleProofNode, root *SimpleProofNode) {
 	// Recursive impl.
 	switch len(items) {
 	case 0:
 		return nil, nil
 	case 1:
-		trail := &SimpleProofNode{items[0].Hash(), nil, nil, nil}
+		trail := &SimpleProofNode{tmhash.Sum(items[0]), nil, nil, nil}
 		return []*SimpleProofNode{trail}, trail
 	default:
-		lefts, leftRoot := trailsFromHashers(items[:(len(items)+1)/2])
-		rights, rightRoot := trailsFromHashers(items[(len(items)+1)/2:])
-		rootHash := SimpleHashFromTwoHashes(leftRoot.Hash, rightRoot.Hash)
+		lefts, leftRoot := trailsFromByteSlices(items[:(len(items)+1)/2])
+		rights, rightRoot := trailsFromByteSlices(items[(len(items)+1)/2:])
+		rootHash := simpleHashFromTwoHashes(leftRoot.Hash, rightRoot.Hash)
 		root := &SimpleProofNode{rootHash, nil, nil, nil}
 		leftRoot.Parent = root
 		leftRoot.Right = rightRoot

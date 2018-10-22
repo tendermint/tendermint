@@ -57,14 +57,13 @@ func checkKeyPanics(t *testing.T, itr Iterator) {
 }
 
 func checkValuePanics(t *testing.T, itr Iterator) {
-	assert.Panics(t, func() { itr.Key() }, "checkValuePanics expected panic but didn't")
+	assert.Panics(t, func() { itr.Value() }, "checkValuePanics expected panic but didn't")
 }
 
-func newTempDB(t *testing.T, backend DBBackendType) (db DB) {
+func newTempDB(t *testing.T, backend DBBackendType) (db DB, dbDir string) {
 	dirname, err := ioutil.TempDir("", "db_common_test")
 	require.Nil(t, err)
-	db = NewDB("testdb", backend, dirname)
-	return db
+	return NewDB("testdb", backend, dirname), dirname
 }
 
 //----------------------------------------

@@ -9,31 +9,27 @@ import (
 )
 
 func TestStatusIndexer(t *testing.T) {
-	assert := assert.New(t)
-
 	var status *ResultStatus
-	assert.False(status.TxIndexEnabled())
+	assert.False(t, status.TxIndexEnabled())
 
 	status = &ResultStatus{}
-	assert.False(status.TxIndexEnabled())
+	assert.False(t, status.TxIndexEnabled())
 
-	status.NodeInfo = p2p.NodeInfo{}
-	assert.False(status.TxIndexEnabled())
+	status.NodeInfo = p2p.DefaultNodeInfo{}
+	assert.False(t, status.TxIndexEnabled())
 
 	cases := []struct {
 		expected bool
-		other    []string
+		other    p2p.DefaultNodeInfoOther
 	}{
-		{false, nil},
-		{false, []string{}},
-		{false, []string{"a=b"}},
-		{false, []string{"tx_indexiskv", "some=dood"}},
-		{true, []string{"tx_index=on", "tx_index=other"}},
-		{true, []string{"^(*^(", "tx_index=on", "a=n=b=d="}},
+		{false, p2p.DefaultNodeInfoOther{}},
+		{false, p2p.DefaultNodeInfoOther{TxIndex: "aa"}},
+		{false, p2p.DefaultNodeInfoOther{TxIndex: "off"}},
+		{true, p2p.DefaultNodeInfoOther{TxIndex: "on"}},
 	}
 
 	for _, tc := range cases {
 		status.NodeInfo.Other = tc.other
-		assert.Equal(tc.expected, status.TxIndexEnabled())
+		assert.Equal(t, tc.expected, status.TxIndexEnabled())
 	}
 }

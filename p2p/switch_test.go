@@ -3,7 +3,6 @@ package p2p
 import (
 	"bytes"
 	"fmt"
-	"net"
 	"sync"
 	"testing"
 	"time"
@@ -11,10 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
-
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -145,39 +143,11 @@ func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, r
 				}
 				return
 			}
+
 		case <-time.After(timeout):
 			t.Fatalf("Expected to have received 1 message in channel #%v, got zero", channel)
 		}
 	}
-}
-
-func TestConnAddrFilter(t *testing.T) {
-	s1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	defer s1.Stop()
-	defer s2.Stop()
-
-	c1, c2 := conn.NetPipe()
-
-	s1.SetAddrFilter(func(addr net.Addr) error {
-		if addr.String() == c1.RemoteAddr().String() {
-			return fmt.Errorf("Error: pipe is blacklisted")
-		}
-		return nil
-	})
-
-	// connect to good peer
-	go func() {
-		err := s1.addPeerWithConnection(c1)
-		assert.NotNil(t, err, "expected err")
-	}()
-	go func() {
-		err := s2.addPeerWithConnection(c2)
-		assert.NotNil(t, err, "expected err")
-	}()
-
-	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
-	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
 func TestSwitchFiltersOutItself(t *testing.T) {
@@ -194,11 +164,16 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	// addr should be rejected in addPeer based on the same ID
 	err := s1.DialPeerWithAddress(rp.Addr(), false)
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrSwitchConnectToSelf{rp.Addr()}.Error(), err.Error())
+		if err, ok := err.(ErrRejected); ok {
+			if !err.IsSelf() {
+				t.Errorf("expected self to be rejected")
+			}
+		} else {
+			t.Errorf("expected ErrRejected")
+		}
 	}
 
 	assert.True(t, s1.addrBook.OurAddress(rp.Addr()))
-
 	assert.False(t, s1.addrBook.HasAddress(rp.Addr()))
 
 	rp.Stop()
@@ -206,46 +181,124 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	assertNoPeersAfterTimeout(t, s1, 100*time.Millisecond)
 }
 
+func TestSwitchPeerFilter(t *testing.T) {
+	var (
+		filters = []PeerFilterFunc{
+			func(_ IPeerSet, _ Peer) error { return nil },
+			func(_ IPeerSet, _ Peer) error { return fmt.Errorf("denied!") },
+			func(_ IPeerSet, _ Peer) error { return nil },
+		}
+		sw = MakeSwitch(
+			cfg,
+			1,
+			"testing",
+			"123.123.123",
+			initSwitchFunc,
+			SwitchPeerFilters(filters...),
+		)
+	)
+	defer sw.Stop()
+
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	defer rp.Stop()
+
+	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
+		chDescs:      sw.chDescs,
+		onPeerError:  sw.StopPeerForError,
+		reactorsByCh: sw.reactorsByCh,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = sw.addPeer(p)
+	if err, ok := err.(ErrRejected); ok {
+		if !err.IsFiltered() {
+			t.Errorf("expected peer to be filtered")
+		}
+	} else {
+		t.Errorf("expected ErrRejected")
+	}
+}
+
+func TestSwitchPeerFilterTimeout(t *testing.T) {
+	var (
+		filters = []PeerFilterFunc{
+			func(_ IPeerSet, _ Peer) error {
+				time.Sleep(10 * time.Millisecond)
+				return nil
+			},
+		}
+		sw = MakeSwitch(
+			cfg,
+			1,
+			"testing",
+			"123.123.123",
+			initSwitchFunc,
+			SwitchFilterTimeout(5*time.Millisecond),
+			SwitchPeerFilters(filters...),
+		)
+	)
+	defer sw.Stop()
+
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	defer rp.Stop()
+
+	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
+		chDescs:      sw.chDescs,
+		onPeerError:  sw.StopPeerForError,
+		reactorsByCh: sw.reactorsByCh,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = sw.addPeer(p)
+	if _, ok := err.(ErrFilterTimeout); !ok {
+		t.Errorf("expected ErrFilterTimeout")
+	}
+}
+
+func TestSwitchPeerFilterDuplicate(t *testing.T) {
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+
+	// simulate remote peer
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	defer rp.Stop()
+
+	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
+		chDescs:      sw.chDescs,
+		onPeerError:  sw.StopPeerForError,
+		reactorsByCh: sw.reactorsByCh,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := sw.addPeer(p); err != nil {
+		t.Fatal(err)
+	}
+
+	err = sw.addPeer(p)
+	if err, ok := err.(ErrRejected); ok {
+		if !err.IsDuplicate() {
+			t.Errorf("expected peer to be duplicate")
+		}
+	} else {
+		t.Errorf("expected ErrRejected")
+	}
+}
+
 func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
 	time.Sleep(timeout)
 	if sw.Peers().Size() != 0 {
 		t.Fatalf("Expected %v to not connect to some peers, got %d", sw, sw.Peers().Size())
 	}
-}
-
-func TestConnIDFilter(t *testing.T) {
-	s1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	defer s1.Stop()
-	defer s2.Stop()
-
-	c1, c2 := conn.NetPipe()
-
-	s1.SetIDFilter(func(id ID) error {
-		if id == s2.nodeInfo.ID {
-			return fmt.Errorf("Error: pipe is blacklisted")
-		}
-		return nil
-	})
-
-	s2.SetIDFilter(func(id ID) error {
-		if id == s1.nodeInfo.ID {
-			return fmt.Errorf("Error: pipe is blacklisted")
-		}
-		return nil
-	})
-
-	go func() {
-		err := s1.addPeerWithConnection(c1)
-		assert.NotNil(t, err, "expected error")
-	}()
-	go func() {
-		err := s2.addPeerWithConnection(c2)
-		assert.NotNil(t, err, "expected error")
-	}()
-
-	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
-	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
@@ -263,19 +316,23 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	pc, err := newOutboundPeerConn(rp.Addr(), cfg, false, sw.nodeKey.PrivKey)
-	require.Nil(err)
-	err = sw.addPeer(pc)
+	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
+		chDescs:      sw.chDescs,
+		onPeerError:  sw.StopPeerForError,
+		reactorsByCh: sw.reactorsByCh,
+	})
 	require.Nil(err)
 
-	peer := sw.Peers().Get(rp.ID())
-	require.NotNil(peer)
+	err = sw.addPeer(p)
+	require.Nil(err)
+
+	require.NotNil(sw.Peers().Get(rp.ID()))
 
 	// simulate failure by closing connection
-	pc.CloseConn()
+	p.(*peer).CloseConn()
 
 	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
-	assert.False(peer.IsRunning())
+	assert.False(p.IsRunning())
 }
 
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
@@ -293,17 +350,20 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	pc, err := newOutboundPeerConn(rp.Addr(), cfg, true, sw.nodeKey.PrivKey)
-	//	sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey,
+	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
+		chDescs:      sw.chDescs,
+		onPeerError:  sw.StopPeerForError,
+		persistent:   true,
+		reactorsByCh: sw.reactorsByCh,
+	})
 	require.Nil(err)
 
-	require.Nil(sw.addPeer(pc))
+	require.Nil(sw.addPeer(p))
 
-	peer := sw.Peers().Get(rp.ID())
-	require.NotNil(peer)
+	require.NotNil(sw.Peers().Get(rp.ID()))
 
 	// simulate failure by closing connection
-	pc.CloseConn()
+	p.(*peer).CloseConn()
 
 	// TODO: remove sleep, detect the disconnection, wait for reconnect
 	npeers := sw.Peers().Size()
@@ -315,7 +375,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 		}
 	}
 	assert.NotZero(npeers)
-	assert.False(peer.IsRunning())
+	assert.False(p.IsRunning())
 
 	// simulate another remote peer
 	rp = &remotePeer{

@@ -4,9 +4,17 @@
 
 - How to / should we version the authenticated encryption handshake itself (ie.
   upfront protocol negotiation for the P2PVersion)
+- How to / should we version ABCI itself? Should it just be absorbed by the
+  BlockVersion?
 
 ## Changelog
 
+- 18-09-2018: Updates after working a bit on implementation
+    - ABCI Handshake needs to happen independently of starting the app
+      conns so we can see the result
+    - Add question about ABCI protocol version
+- 16-08-2018: Updates after discussion with SDK team
+    - Remove signalling for next version from Header/ABCI
 - 03-08-2018: Updates from discussion with Jae:
   - ProtocolVersion contains Block/AppVersion, not Current/Next
   - signal upgrades to Tendermint using EndBlock fields
@@ -19,17 +27,17 @@
 
 ## Context
 
+Here we focus on software-agnostic protocol versions.
+
 The Software Version is covered by SemVer and described elsewhere.
 It is not relevant to the protocol description, suffice to say that if any protocol version
 changes, the software version changes, but not necessarily vice versa.
 
-Software version shoudl be included in NodeInfo for convenience/diagnostics.
+Software version should be included in NodeInfo for convenience/diagnostics.
 
 We are also interested in versioning across different blockchains in a
 meaningful way, for instance to differentiate branches of a contentious
 hard-fork. We leave that for a later ADR.
-
-Here we focus on protocol versions.
 
 ## Requirements
 
@@ -86,11 +94,9 @@ to connect to peers with older version.
 
 Each component of the software is independently versioned in a modular way and its easy to mix and match and upgrade.
 
-Good luck pal ;)
-
 ## Proposal
 
-Each of BlockVersion, AppVersion, P2PVersion is a monotonically increasing int64.
+Each of BlockVersion, AppVersion, P2PVersion, is a monotonically increasing uint64.
 
 To use these versions, we need to update the block Header, the p2p NodeInfo, and the ABCI.
 
@@ -100,19 +106,16 @@ Block Header should include a `Version` struct as its first field like:
 
 ```
 type Version struct {
-    CurrentVersion ProtocolVersion
-    ChainID string
-
-    NextVersion ProtocolVersion
-}
-
-type ProtocolVersion struct {
-    BlockVersion int64
-    AppVersion int64
+    Block uint64
+    App uint64
 }
 ```
 
-Note this effectively makes BlockVersion the first field in the block Header.
+Here, `Version.Block` defines the rules for the current block, while
+`Version.App` defines the app version that processed the last block and computed
+the `AppHash` in the current block. Together they provide a complete description
+of the consensus-critical protocol.
+
 Since we have settled on a proto3 header, the ability to read the BlockVersion out of the serialized header is unanimous.
 
 Using a Version struct gives us more flexibility to add fields without breaking
@@ -120,8 +123,6 @@ the header.
 
 The ProtocolVersion struct includes both the Block and App versions - it should
 serve as a complete description of the consensus-critical protocol.
-Using the `NextVersion` field, proposer's can signal their readiness to upgrade
-to a new Block and/or App version.
 
 ### NodeInfo
 
@@ -129,23 +130,21 @@ NodeInfo should include a Version struct as its first field like:
 
 ```
 type Version struct {
-    P2PVersion int64
+    P2P uint64
+    Block uint64
+    App uint64
 
-    ChainID string
-    BlockVersion int64
-    AppVersion int64
-    SoftwareVersion string
+    Other []string
 }
 ```
 
-Note this effectively makes P2PVersion the first field in the NodeInfo, so it
+Note this effectively makes `Version.P2P` the first field in the NodeInfo, so it
 should be easy to read this out of the serialized header if need be to facilitate an upgrade.
 
-The SoftwareVersion here should include the name of the software client and
+The `Version.Other` here should include additional information like the name of the software client and
 it's SemVer version - this is for convenience only. Eg.
-`tendermint-core/v0.22.8`.
-
-The other versions and ChainID will determine peer compatibility (described below).
+`tendermint-core/v0.22.8`. It's a `[]string` so it can include information about
+the version of Tendermint, of the app, of Tendermint libraries, etc.
 
 ### ABCI
 
@@ -158,15 +157,20 @@ version information.
 We also need to be able to update versions in the life of a blockchain. The
 natural place to do this is EndBlock.
 
+Note that currently the result of the Handshake isn't exposed anywhere, as the
+handshaking happens inside the `proxy.AppConns` abstraction. We will need to
+remove the handshaking from the `proxy` package so we can call it independently
+and get the result, which should contain the application version.
+
 #### Info
 
 RequestInfo should add support for protocol versions like:
 
 ```
 message RequestInfo {
-  string software_version
-  int64 block_version
-  int64 p2p_version
+  string version
+  uint64 block_version
+  uint64 p2p_version
 }
 ```
 
@@ -176,51 +180,54 @@ Similarly, ResponseInfo should return the versions:
 message ResponseInfo {
   string data
 
-  string software_version
-  int64 app_version
+  string version
+  uint64 app_version
 
   int64 last_block_height
   bytes last_block_app_hash
 }
 ```
 
+The existing `version` fields should be called `software_version` but we leave
+them for now to reduce the number of breaking changes.
+
 #### EndBlock
 
 Updating the version could be done either with new fields or by using the
 existing `tags`. Since we're trying to communicate information that will be
 included in Tendermint block Headers, it should be native to the ABCI, and not
-something embedded through some scheme in the tags.
+something embedded through some scheme in the tags. Thus, version updates should
+be communicated through EndBlock.
 
-ResponseEndBlock will include a new field `version_updates`:
+EndBlock already contains `ConsensusParams`. We can add version information to
+the ConsensusParams as well:
 
 ```
-message ResponseEndBlock {
-  repeated Validator validator_updates
-  ConsensusParams consensus_param_updates
-  repeated common.KVPair tags
+message ConsensusParams {
 
-  VersionUpdates version_updates
+  BlockSize block_size
+  EvidenceParams evidence_params
+  VersionParams version
 }
 
-message VersionUpdates {
-  ProtocolVersion current_version
-  ProtocolVersion next_version
-}
-
-message ProtocolVersion {
-    int64 block_version
-    int64 app_version
+message VersionParams {
+    uint64 block_version
+    uint64 app_version
 }
 ```
 
-Tendermint will use the information in VersionUpdates for the next block it
-proposes.
+For now, the `block_version` will be ignored, as we do not allow block version
+to be updated live. If the `app_version` is set, it signals that the app's
+protocol version has changed, and the new `app_version` will be included in the
+`Block.Header.Version.App` for the next block.
 
 ### BlockVersion
 
 BlockVersion is included in both the Header and the NodeInfo.
 
-Changing BlockVersion should happen quite infrequently and ideally only for extreme emergency.
+Changing BlockVersion should happen quite infrequently and ideally only for
+critical upgrades. For now, it is not encoded in ABCI, though it's always
+possible to use tags to signal an external process to co-ordinate an upgrade.
 
 Note Ethereum has not had to make an upgrade like this (everything has been at state machine level, AFAIK).
 
@@ -251,7 +258,7 @@ this is the first byte of a 32-byte ed25519 pubkey.
 
 AppVersion is also included in the block Header and the NodeInfo.
 
-AppVersion essentially defines how the AppHash and Results are computed.
+AppVersion essentially defines how the AppHash and LastResults are computed.
 
 ### Peer Compatibility
 

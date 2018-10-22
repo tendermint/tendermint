@@ -39,7 +39,13 @@ func TestByzantine(t *testing.T) {
 	switches := make([]*p2p.Switch, N)
 	p2pLogger := logger.With("module", "p2p")
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.NewSwitch(config.P2P)
+		switches[i] = p2p.MakeSwitch(
+			config.P2P,
+			i,
+			"foo", "1.0.0",
+			func(i int, sw *p2p.Switch) *p2p.Switch {
+				return sw
+			})
 		switches[i].SetLogger(p2pLogger.With("validator", i))
 	}
 
@@ -220,8 +226,8 @@ func sendProposalAndParts(height int64, round int, cs *ConsensusState, peer p2p.
 
 	// votes
 	cs.mtx.Lock()
-	prevote, _ := cs.signVote(types.VoteTypePrevote, blockHash, parts.Header())
-	precommit, _ := cs.signVote(types.VoteTypePrecommit, blockHash, parts.Header())
+	prevote, _ := cs.signVote(types.PrevoteType, blockHash, parts.Header())
+	precommit, _ := cs.signVote(types.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
 
 	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{prevote}))

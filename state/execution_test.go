@@ -29,7 +29,7 @@ var (
 
 func TestApplyBlock(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
-	proxyApp := proxy.NewAppConns(cc, nil)
+	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop()
@@ -52,7 +52,7 @@ func TestApplyBlock(t *testing.T) {
 func TestBeginBlockValidators(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc, nil)
+	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop()
@@ -64,7 +64,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
 	now := tmtime.Now()
-	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
+	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}
 	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
 
 	testCases := []struct {
@@ -105,7 +105,7 @@ func TestBeginBlockValidators(t *testing.T) {
 func TestBeginBlockByzantineValidators(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc, nil)
+	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop()
@@ -135,7 +135,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 			types.TM2PB.Evidence(ev2, valSet, now)}},
 	}
 
-	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
+	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}
 	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
 	votes := []*types.Vote{vote0, vote1}
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
@@ -239,7 +239,7 @@ func TestUpdateValidators(t *testing.T) {
 func TestEndBlockValidatorUpdates(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc, nil)
+	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop()
@@ -307,7 +307,10 @@ func state(nVals, height int) (State, dbm.DB) {
 		secret := []byte(fmt.Sprintf("test%d", i))
 		pk := ed25519.GenPrivKeyFromSecret(secret)
 		vals[i] = types.GenesisValidator{
-			pk.PubKey(), 1000, fmt.Sprintf("test%d", i),
+			pk.PubKey().Address(),
+			pk.PubKey(),
+			1000,
+			fmt.Sprintf("test%d", i),
 		}
 	}
 	s, _ := MakeGenesisState(&types.GenesisDoc{

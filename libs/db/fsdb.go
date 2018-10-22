@@ -10,7 +10,9 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmerrors "github.com/tendermint/tendermint/libs/errors"
 )
 
 const (
@@ -205,6 +207,13 @@ func write(path string, d []byte) error {
 		return err
 	}
 	defer f.Close()
+	fInfo, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if fInfo.Mode() != keyPerm {
+		return tmerrors.NewErrPermissionsChanged(f.Name(), keyPerm, fInfo.Mode())
+	}
 	_, err = f.Write(d)
 	if err != nil {
 		return err

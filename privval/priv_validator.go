@@ -25,9 +25,9 @@ const (
 
 func voteToStep(vote *types.Vote) int8 {
 	switch vote.Type {
-	case types.VoteTypePrevote:
+	case types.PrevoteType:
 		return stepPrevote
-	case types.VoteTypePrecommit:
+	case types.PrecommitType:
 		return stepPrecommit
 	default:
 		cmn.PanicSanity("Unknown vote type")
@@ -38,14 +38,16 @@ func voteToStep(vote *types.Vote) int8 {
 // FilePV implements PrivValidator using data persisted to disk
 // to prevent double signing.
 // NOTE: the directory containing the pv.filePath must already exist.
+// It includes the LastSignature and LastSignBytes so we don't lose the signature
+// if the process crashes after signing but before the resulting consensus message is processed.
 type FilePV struct {
 	Address       types.Address  `json:"address"`
 	PubKey        crypto.PubKey  `json:"pub_key"`
 	LastHeight    int64          `json:"last_height"`
 	LastRound     int            `json:"last_round"`
 	LastStep      int8           `json:"last_step"`
-	LastSignature []byte         `json:"last_signature,omitempty"` // so we dont lose signatures XXX Why would we lose signatures?
-	LastSignBytes cmn.HexBytes   `json:"last_signbytes,omitempty"` // so we dont lose signatures XXX Why would we lose signatures?
+	LastSignature []byte         `json:"last_signature,omitempty"`
+	LastSignBytes cmn.HexBytes   `json:"last_signbytes,omitempty"`
 	PrivKey       crypto.PrivKey `json:"priv_key"`
 
 	// For persistence.
@@ -311,21 +313,18 @@ func (pv *FilePV) String() string {
 // returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
-	var lastVote, newVote types.CanonicalJSONVote
-	if err := cdc.UnmarshalJSON(lastSignBytes, &lastVote); err != nil {
+	var lastVote, newVote types.CanonicalVote
+	if err := cdc.UnmarshalBinary(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
-	if err := cdc.UnmarshalJSON(newSignBytes, &newVote); err != nil {
+	if err := cdc.UnmarshalBinary(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
-	lastTime, err := time.Parse(types.TimeFormat, lastVote.Timestamp)
-	if err != nil {
-		panic(err)
-	}
+	lastTime := lastVote.Timestamp
 
 	// set the times to the same value and check equality
-	now := types.CanonicalTime(tmtime.Now())
+	now := tmtime.Now()
 	lastVote.Timestamp = now
 	newVote.Timestamp = now
 	lastVoteBytes, _ := cdc.MarshalJSON(lastVote)
@@ -337,25 +336,21 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
-	var lastProposal, newProposal types.CanonicalJSONProposal
-	if err := cdc.UnmarshalJSON(lastSignBytes, &lastProposal); err != nil {
+	var lastProposal, newProposal types.CanonicalProposal
+	if err := cdc.UnmarshalBinary(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	if err := cdc.UnmarshalJSON(newSignBytes, &newProposal); err != nil {
+	if err := cdc.UnmarshalBinary(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
 
-	lastTime, err := time.Parse(types.TimeFormat, lastProposal.Timestamp)
-	if err != nil {
-		panic(err)
-	}
-
+	lastTime := lastProposal.Timestamp
 	// set the times to the same value and check equality
-	now := types.CanonicalTime(tmtime.Now())
+	now := tmtime.Now()
 	lastProposal.Timestamp = now
 	newProposal.Timestamp = now
-	lastProposalBytes, _ := cdc.MarshalJSON(lastProposal)
-	newProposalBytes, _ := cdc.MarshalJSON(newProposal)
+	lastProposalBytes, _ := cdc.MarshalBinary(lastProposal)
+	newProposalBytes, _ := cdc.MarshalBinary(newProposal)
 
 	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }

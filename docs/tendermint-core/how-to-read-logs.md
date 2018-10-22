@@ -127,7 +127,7 @@ little overview what they do.
   found
   [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
   You can subscribe to them by calling `subscribe` RPC method. Refer
-  to [RPC docs](./specification/rpc.md) for additional information.
+  to [RPC docs](./rpc.md) for additional information.
 - `mempool` Mempool module handles all incoming transactions, whenever
   they are coming from peers or the application.
 - `p2p` Provides an abstraction around peer-to-peer communication. For

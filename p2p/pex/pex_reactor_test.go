@@ -109,9 +109,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	addOtherNodeAddrToAddrBook(1, 0)
 	addOtherNodeAddrToAddrBook(2, 1)
 
-	for i, sw := range switches {
-		sw.AddListener(p2p.NewDefaultListener("tcp://"+sw.NodeInfo().ListenAddr, "", false, logger.With("pex", i)))
-
+	for _, sw := range switches {
 		err := sw.Start() // start switch and reactors
 		require.Nil(t, err)
 	}
@@ -322,7 +320,7 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	peer := p2p.CreateRandomPeer(false)
 
 	pexR, book := createReactor(&PEXReactorConfig{})
-	book.AddPrivateIDs([]string{string(peer.NodeInfo().ID)})
+	book.AddPrivateIDs([]string{string(peer.NodeInfo().ID())})
 	defer teardownReactor(book)
 
 	// we have to send a request to receive responses
@@ -393,8 +391,8 @@ func (mp mockPeer) ID() p2p.ID         { return mp.addr.ID }
 func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
 func (mp mockPeer) IsPersistent() bool { return mp.persistent }
 func (mp mockPeer) NodeInfo() p2p.NodeInfo {
-	return p2p.NodeInfo{
-		ID:         mp.addr.ID,
+	return p2p.DefaultNodeInfo{
+		ID_:        mp.addr.ID,
 		ListenAddr: mp.addr.DialString(),
 	}
 }
@@ -474,9 +472,6 @@ func testCreatePeerWithConfig(dir string, id int, config *PEXReactorConfig) *p2p
 			return sw
 		},
 	)
-	peer.AddListener(
-		p2p.NewDefaultListener("tcp://"+peer.NodeInfo().ListenAddr, "", false, log.TestingLogger()),
-	)
 	return peer
 }
 
@@ -509,9 +504,6 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 			sw.AddReactor("pex", r)
 			return sw
 		},
-	)
-	seed.AddListener(
-		p2p.NewDefaultListener("tcp://"+seed.NodeInfo().ListenAddr, "", false, log.TestingLogger()),
 	)
 	return seed
 }

@@ -69,8 +69,8 @@ func TestValidTxProof(t *testing.T) {
 			leaf := txs[i]
 			leafHash := leaf.Hash()
 			proof := txs.Proof(i)
-			assert.Equal(t, i, proof.Index, "%d: %d", h, i)
-			assert.Equal(t, len(txs), proof.Total, "%d: %d", h, i)
+			assert.Equal(t, i, proof.Proof.Index, "%d: %d", h, i)
+			assert.Equal(t, len(txs), proof.Proof.Total, "%d: %d", h, i)
 			assert.EqualValues(t, root, proof.RootHash, "%d: %d", h, i)
 			assert.EqualValues(t, leaf, proof.Data, "%d: %d", h, i)
 			assert.EqualValues(t, leafHash, proof.LeafHash(), "%d: %d", h, i)
@@ -128,7 +128,7 @@ func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 			// This can happen if we have a slightly different total (where the
 			// path ends up the same). If it is something else, we have a real
 			// problem.
-			assert.NotEqual(t, proof.Total, good.Total, "bad: %#v\ngood: %#v", proof, good)
+			assert.NotEqual(t, proof.Proof.Total, good.Proof.Total, "bad: %#v\ngood: %#v", proof, good)
 		}
 	}
 }

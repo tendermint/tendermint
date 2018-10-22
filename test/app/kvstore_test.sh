@@ -41,7 +41,7 @@ set -e
 # we should not be able to look up the value
 RESPONSE=`abci-cli query \"$VALUE\"`
 set +e
-A=`echo $RESPONSE | grep $VALUE`
+A=`echo $RESPONSE | grep \"value: $VALUE\"`
 if [[ $? == 0 ]]; then
     echo "Found '$VALUE' for $VALUE when we should not have. Response:"
     echo "$RESPONSE"

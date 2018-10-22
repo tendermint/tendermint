@@ -10,10 +10,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/p2p"
+	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/version"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
+
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -74,4 +80,36 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 	for _, tc := range testCases {
 		assert.Equal(t, tc.expected, splitAndTrimEmpty(tc.s, tc.sep, tc.cutset), "%s", tc.s)
 	}
+}
+
+func TestNodeDelayedStop(t *testing.T) {
+	config := cfg.ResetTestRoot("node_delayed_node_test")
+	now := tmtime.Now()
+
+	// create & start node
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	n.GenesisDoc().GenesisTime = now.Add(5 * time.Second)
+	assert.NoError(t, err)
+
+	n.Start()
+	startTime := tmtime.Now()
+	assert.Equal(t, true, startTime.After(n.GenesisDoc().GenesisTime))
+}
+
+func TestNodeSetAppVersion(t *testing.T) {
+	config := cfg.ResetTestRoot("node_app_version_test")
+
+	// create & start node
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	assert.NoError(t, err, "expected no err on DefaultNewNode")
+
+	// default config uses the kvstore app
+	var appVersion version.Protocol = kvstore.ProtocolVersion
+
+	// check version is set in state
+	state := sm.LoadState(n.stateDB)
+	assert.Equal(t, state.Version.Consensus.App, appVersion)
+
+	// check version is set in node info
+	assert.Equal(t, n.nodeInfo.(p2p.DefaultNodeInfo).ProtocolVersion.App, appVersion)
 }
