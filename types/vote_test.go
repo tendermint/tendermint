@@ -47,7 +47,7 @@ func TestVoteSignable(t *testing.T) {
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")
 
-	expected, err := cdc.MarshalBinary(CanonicalizeVote("test_chain_id", vote))
+	expected, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote("test_chain_id", vote))
 	require.NoError(t, err)
 
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Vote.")
@@ -124,7 +124,7 @@ func TestVoteSignableTestVectors(t *testing.T) {
 		},
 	}
 	for i, tc := range tests {
-		got, err := cdc.MarshalBinary(tc.canonicalVote)
+		got, err := cdc.MarshalBinaryLengthPrefixed(tc.canonicalVote)
 		require.NoError(t, err)
 
 		require.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
@@ -134,9 +134,9 @@ func TestVoteSignableTestVectors(t *testing.T) {
 func TestVoteProposalNotEq(t *testing.T) {
 	cv := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
 	p := CanonicalizeProposal("", &Proposal{Height: 1, Round: 1})
-	vb, err := cdc.MarshalBinary(cv)
+	vb, err := cdc.MarshalBinaryLengthPrefixed(cv)
 	require.NoError(t, err)
-	pb, err := cdc.MarshalBinary(p)
+	pb, err := cdc.MarshalBinaryLengthPrefixed(p)
 	require.NoError(t, err)
 	require.NotEqual(t, vb, pb)
 }

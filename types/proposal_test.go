@@ -27,7 +27,7 @@ func TestProposalSignable(t *testing.T) {
 	chainID := "test_chain_id"
 	signBytes := testProposal.SignBytes(chainID)
 
-	expected, err := cdc.MarshalBinary(CanonicalizeProposal(chainID, testProposal))
+	expected, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeProposal(chainID, testProposal))
 	require.NoError(t, err)
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Proposal")
 }

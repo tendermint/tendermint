@@ -39,7 +39,7 @@ func TestHeartbeatWriteSignBytes(t *testing.T) {
 	{
 		testHeartbeat := &Heartbeat{ValidatorIndex: 1, Height: 10, Round: 1}
 		signBytes := testHeartbeat.SignBytes(chainID)
-		expected, err := cdc.MarshalBinary(CanonicalizeHeartbeat(chainID, testHeartbeat))
+		expected, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeHeartbeat(chainID, testHeartbeat))
 		require.NoError(t, err)
 		require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Heartbeat")
 	}
@@ -47,7 +47,7 @@ func TestHeartbeatWriteSignBytes(t *testing.T) {
 	{
 		testHeartbeat := &Heartbeat{}
 		signBytes := testHeartbeat.SignBytes(chainID)
-		expected, err := cdc.MarshalBinary(CanonicalizeHeartbeat(chainID, testHeartbeat))
+		expected, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeHeartbeat(chainID, testHeartbeat))
 		require.NoError(t, err)
 		require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Heartbeat")
 	}
