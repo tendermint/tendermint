@@ -30,17 +30,9 @@ func TestABCIValidators(t *testing.T) {
 	pkEd := ed25519.GenPrivKey().PubKey()
 
 	// correct validator
-	tmValExpected := &Validator{
-		Address:     pkEd.Address(),
-		PubKey:      pkEd,
-		VotingPower: 10,
-	}
+	tmValExpected := NewValidator(pkEd, 10)
 
-	tmVal := &Validator{
-		Address:     pkEd.Address(),
-		PubKey:      pkEd,
-		VotingPower: 10,
-	}
+	tmVal := NewValidator(pkEd, 10)
 
 	abciVal := TM2PB.ValidatorUpdate(tmVal)
 	tmVals, err := PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
@@ -127,11 +119,7 @@ func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 func TestABCIValidatorWithoutPubKey(t *testing.T) {
 	pkEd := ed25519.GenPrivKey().PubKey()
 
-	abciVal := TM2PB.Validator(&Validator{
-		Address:     pkEd.Address(),
-		PubKey:      pkEd,
-		VotingPower: 10,
-	})
+	abciVal := TM2PB.Validator(NewValidator(pkEd, 10))
 
 	// pubkey must be nil
 	tmValExpected := abci.Validator{

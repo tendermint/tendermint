@@ -249,7 +249,7 @@ func testNodeInfo(id ID, name string) NodeInfo {
 
 func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 	return DefaultNodeInfo{
-		ProtocolVersion: InitProtocolVersion,
+		ProtocolVersion: defaultProtocolVersion,
 		ID_:             id,
 		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
 		Network:         network,

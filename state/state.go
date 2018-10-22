@@ -222,7 +222,6 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		return State{}, fmt.Errorf("Error in genesis file: %v", err)
 	}
 
-	// Make validators slice
 	var validatorSet, nextValidatorSet *types.ValidatorSet
 	if genDoc.Validators == nil {
 		validatorSet = types.NewValidatorSet(nil)
@@ -230,15 +229,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	} else {
 		validators := make([]*types.Validator, len(genDoc.Validators))
 		for i, val := range genDoc.Validators {
-			pubKey := val.PubKey
-			address := pubKey.Address()
-
-			// Make validator
-			validators[i] = &types.Validator{
-				Address:     address,
-				PubKey:      pubKey,
-				VotingPower: val.Power,
-			}
+			validators[i] = types.NewValidator(val.PubKey, val.Power)
 		}
 		validatorSet = types.NewValidatorSet(validators)
 		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementAccum(1)
