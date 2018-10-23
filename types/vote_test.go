@@ -160,7 +160,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	precommit := new(Vote)
 	bs, err := cdc.MarshalBinaryLengthPrefixed(vote)
 	require.NoError(t, err)
-	err = cdc.UnmarshalBinaryLengthPrefixedBinary(bs, &precommit)
+	err = cdc.UnmarshalBinaryLengthPrefixed(bs, &precommit)
 	require.NoError(t, err)
 
 	// verify the transmitted vote

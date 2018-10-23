@@ -59,7 +59,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	newProp := new(Proposal)
 	bs, err := cdc.MarshalBinaryLengthPrefixed(prop)
 	require.NoError(t, err)
-	err = cdc.UnmarshalBinaryLengthPrefixedBinary(bs, &newProp)
+	err = cdc.UnmarshalBinaryLengthPrefixed(bs, &newProp)
 	require.NoError(t, err)
 
 	// verify the transmitted proposal

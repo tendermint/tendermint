@@ -121,7 +121,7 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 			// Found the latest full commit signed header.
 			shBz := itr.Value()
 			sh := types.SignedHeader{}
-			err := dbp.cdc.UnmarshalBinaryLengthPrefixedBinary(shBz, &sh)
+			err := dbp.cdc.UnmarshalBinaryLengthPrefixed(shBz, &sh)
 			if err != nil {
 				return FullCommit{}, err
 			} else {
@@ -150,7 +150,7 @@ func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *ty
 		err = lerr.ErrUnknownValidators(chainID, height)
 		return
 	}
-	err = dbp.cdc.UnmarshalBinaryLengthPrefixedBinary(vsBz, &valset)
+	err = dbp.cdc.UnmarshalBinaryLengthPrefixed(vsBz, &valset)
 	if err != nil {
 		return
 	}

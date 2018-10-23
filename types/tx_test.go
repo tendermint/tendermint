@@ -81,7 +81,7 @@ func TestValidTxProof(t *testing.T) {
 			var p2 TxProof
 			bin, err := cdc.MarshalBinaryLengthPrefixed(proof)
 			assert.Nil(t, err)
-			err = cdc.UnmarshalBinaryLengthPrefixedBinary(bin, &p2)
+			err = cdc.UnmarshalBinaryLengthPrefixed(bin, &p2)
 			if assert.Nil(t, err, "%d: %d: %+v", h, i, err) {
 				assert.Nil(t, p2.Validate(root), "%d: %d", h, i)
 			}
@@ -120,7 +120,7 @@ func testTxProofUnchangable(t *testing.T) {
 // This makes sure that the proof doesn't deserialize into something valid.
 func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 	var proof TxProof
-	err := cdc.UnmarshalBinaryLengthPrefixedBinary(bad, &proof)
+	err := cdc.UnmarshalBinaryLengthPrefixed(bad, &proof)
 	if err == nil {
 		err = proof.Validate(root)
 		if err == nil {
