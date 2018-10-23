@@ -242,11 +242,15 @@ func TestMaxHeaderBytes(t *testing.T) {
 		maxChainID += "𠜎"
 	}
 
+	// time is varint encoded so need to pick the max.
+	// year int, month Month, day, hour, min, sec, nsec int, loc *Location
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+
 	h := Header{
 		Version:            version.Consensus{math.MaxInt64, math.MaxInt64},
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
-		Time:               time.Now().UTC(),
+		Time:               timestamp,
 		NumTxs:             math.MaxInt64,
 		TotalTxs:           math.MaxInt64,
 		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt64, make([]byte, tmhash.Size)),
@@ -288,9 +292,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {744, 1, 0, true, 0},
-		3: {745, 1, 0, false, 0},
-		4: {746, 1, 0, false, 1},
+		2: {750, 1, 0, true, 0},
+		3: {751, 1, 0, false, 0},
+		4: {752, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -316,9 +320,9 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {826, 1, true, 0},
-		3: {827, 1, false, 0},
-		4: {828, 1, false, 1},
+		2: {833, 1, true, 0},
+		3: {834, 1, false, 0},
+		4: {835, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
