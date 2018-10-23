@@ -15,7 +15,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes int64 = 534
+	MaxHeaderBytes int64 = 537
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -257,11 +257,11 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 
 //-----------------------------------------------------------------------------
 
-// Header defines the structure of a Tendermint block header
+// Header defines the structure of a Tendermint block header.
 // NOTE: changes to the Header should be duplicated in:
-//  - header.Hash()
-// 	- abci.Header
-//  - /docs/spec/blockchain/blockchain.md
+// - header.Hash()
+// - abci.Header
+// - /docs/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
 	Version  version.Consensus `json:"version"`
@@ -288,6 +288,28 @@ type Header struct {
 	// consensus info
 	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
 	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
+}
+
+// Populate the Header with state-derived data.
+// Call this after MakeBlock to complete the Header.
+func (h *Header) Populate(
+	version version.Consensus, chainID string,
+	timestamp time.Time, lastBlockID BlockID, totalTxs int64,
+	valHash, nextValHash []byte,
+	consensusHash, appHash, lastResultsHash []byte,
+	proposerAddress Address,
+) {
+	h.Version = version
+	h.ChainID = chainID
+	h.Time = timestamp
+	h.LastBlockID = lastBlockID
+	h.TotalTxs = totalTxs
+	h.ValidatorsHash = valHash
+	h.NextValidatorsHash = nextValHash
+	h.ConsensusHash = consensusHash
+	h.AppHash = appHash
+	h.LastResultsHash = lastResultsHash
+	h.ProposerAddress = proposerAddress
 }
 
 // Hash returns the hash of the header.
