@@ -126,6 +126,184 @@ func TestConsensusXXX(t *testing.T) {
 }
 ```
 
+
+## Consensus Executor
+
+## Consensus Core
+
+```go
+type Event interface{}
+
+type EventNewHeight struct {
+    Height           int64
+    ValidatorSetSize int
+    ValidatorId      int
+}
+
+type EventNewRound struct {
+    Height           int64
+    Round            int
+}
+
+type EventProposal struct {
+    Height           int64
+    Round            int
+    Timestamp        Time
+    BlockID          BlockID
+    POLRound         int
+    Sender           int   
+}
+
+type Majority23PrevotesBlock struct {
+    Height           int64
+    Round            int
+    BlockID          BlockID
+}
+
+type Majority23PrecommitBlock struct {
+    Height           int64
+    Round            int
+    BlockID          BlockID
+}
+
+type Majority23PrevotesAny struct {
+    Height           int64
+    Round            int
+}
+
+type Majority23PrecommitAny struct {
+    Height           int64
+    Round            int
+}
+
+type TimeoutPropose struct {
+    Height           int64
+    Round            int
+}
+
+type TimeoutPrevotes struct {
+    Height           int64
+    Round            int
+}
+
+type TimeoutPrecommit struct {
+    Height           int64
+    Round            int
+}
+
+
+type Message interface{}
+
+type MessageProposal struct {
+    Height           int64
+    Round            int
+    BlockID          BlockID
+    POLRound         int
+}
+
+type VoteType int
+
+const (
+	VoteTypeUnknown VoteType = iota
+	Prevote
+	Precommit
+)
+
+
+type MessageVote struct {
+    Height           int64
+    Round            int
+    BlockID          BlockID
+    Type             VoteType
+}
+
+
+type MessageDecision struct {
+    Height           int64
+    Round            int
+    BlockID          BlockID
+}
+
+type TriggerTimeout struct {
+    Height           int64
+    Round            int
+    Duration         Duration
+}
+
+
+type RoundStep int
+
+const (
+	RoundStepUnknown RoundStep = iota
+	RoundStepPropose       
+	RoundStepPrevote
+	RoundStepPrecommit
+	RoundStepCommit
+)
+
+type State struct {
+	Height           int64
+	Round            int
+	Step             RoundStep
+	LockedValue      BlockID
+	LockedRound      int
+	ValidValue       BlockID
+	ValidRound       int
+	ValidatorSetSize int
+	ValidatorId      int
+}
+
+func proposer(height int64, round int) int {}
+
+func Consensus(event Event, state State) (State, Message, TriggerTimeout) {
+    switch event := event.(type) {
+    	case EventNewHeight:
+    		if event.Height > state.Height {
+    		    state.Height = event.Height
+    		    state.Round = -1
+    		    state.Step = RoundStepPropose
+    		    state.LockedValue = nil
+    		    state.LockedRound = -1
+    		    state.ValidValue = nil
+    		    state.ValidRound = -1
+    		    state. ValidatorSetSize = event.ValidatorSetSize
+    		    state.ValidatorId = event.ValidatorId
+    		    return state, nil 
+    		} 
+    	
+    	case EventNewRound:
+    		if event.Height == state.Height and event.Round > state.Round {
+               state.Round = eventRound
+               state.Step = RoundStepPropose
+               msg = nil
+               if proposer(state.Height, state.Round) == state.ValidatorId {
+                   msg =  MessageProposal { state.Height, state.Round, state.ValidValue, state.ValidRound }
+               }
+               timeout = TriggerTimeout { state.Height, state.Round, timeoutPropose(state.Round) }
+               return state, msg, timeout
+            }
+    	
+    	case EventProposal:
+    		if event.Height == state.Height and event.Round == state.Round and 
+    	       event.Sender == proposal(state.Height, state.Round) and state.Step == RoundStepPropose { 
+    	       	msg = nil    
+    	       	if event.POLRound >= state.LockedRound or event.BlockID == state.BlockID or state.LockedRound == -1 {
+    	       		msg = MessageVote { state.Height, state.Round, event.BlockID, Prevote }
+    	       	}
+    	       	state.Step = RoundStepPrevote
+    	       	return state, msg, nil
+            }
+    	
+    	case TimeoutPropose:
+    		if event.Height == state.Height and event.Round == state.Round and state.Step == RoundStepPropose {
+    		    state.Step = RoundStepPrevote
+    		    return state, nil, nil
+            }
+    	
+    	...
+	}
+```
+
 ### Implementation roadmap
 
 * implement proposed implementation
