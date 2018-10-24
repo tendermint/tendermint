@@ -136,7 +136,7 @@ Upon entering `Propose`: - The designated proposer proposes a block at
 
 The `Propose` step ends: - After `timeoutProposeR` after entering
 `Propose`. --> goto `Prevote(H,R)` - After receiving proposal block
-and all prevotes at `PoLC-Round`. --> goto `Prevote(H,R)` - After
+and all prevotes at `PoLC-Round`. --> goto `Precommit(H,R)` - After
 [common exit conditions](#common-exit-conditions)
 
 ### Prevote Step (height:H,round:R)
