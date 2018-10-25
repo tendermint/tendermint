@@ -265,7 +265,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 		ProposerAddress:    tmhash.Sum([]byte("proposer_address")),
 	}
 
-	bz, err := cdc.MarshalBinary(h)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(h)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, MaxHeaderBytes, len(bz))

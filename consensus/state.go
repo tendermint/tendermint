@@ -1468,7 +1468,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		// Added and completed!
-		_, err = cdc.UnmarshalBinaryReader(
+		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(
 			cs.ProposalBlockParts.GetReader(),
 			&cs.ProposalBlock,
 			int64(cs.state.ConsensusParams.BlockSize.MaxBytes),

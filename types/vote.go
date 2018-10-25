@@ -59,7 +59,7 @@ type Vote struct {
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinary(CanonicalizeVote(chainID, vote))
+	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
 	if err != nil {
 		panic(err)
 	}

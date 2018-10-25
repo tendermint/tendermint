@@ -314,10 +314,10 @@ func (pv *FilePV) String() string {
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastVote, newVote types.CanonicalVote
-	if err := cdc.UnmarshalBinary(lastSignBytes, &lastVote); err != nil {
+	if err := cdc.UnmarshalBinaryLengthPrefixed(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
-	if err := cdc.UnmarshalBinary(newSignBytes, &newVote); err != nil {
+	if err := cdc.UnmarshalBinaryLengthPrefixed(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
@@ -337,10 +337,10 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastProposal, newProposal types.CanonicalProposal
-	if err := cdc.UnmarshalBinary(lastSignBytes, &lastProposal); err != nil {
+	if err := cdc.UnmarshalBinaryLengthPrefixed(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	if err := cdc.UnmarshalBinary(newSignBytes, &newProposal); err != nil {
+	if err := cdc.UnmarshalBinaryLengthPrefixed(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
 
@@ -349,8 +349,8 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (ti
 	now := tmtime.Now()
 	lastProposal.Timestamp = now
 	newProposal.Timestamp = now
-	lastProposalBytes, _ := cdc.MarshalBinary(lastProposal)
-	newProposalBytes, _ := cdc.MarshalBinary(newProposal)
+	lastProposalBytes, _ := cdc.MarshalBinaryLengthPrefixed(lastProposal)
+	newProposalBytes, _ := cdc.MarshalBinaryLengthPrefixed(newProposal)
 
 	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }
