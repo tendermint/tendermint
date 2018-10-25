@@ -140,14 +140,22 @@ func (n *Network) NodeIsOnline(name string) {
 
 // NewNode is called when the new node is added to the monitor.
 func (n *Network) NewNode(name string) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	n.NumNodesMonitored++
 	n.NumNodesMonitoredOnline++
+	n.updateHealth()
 }
 
 // NodeDeleted is called when the node is deleted from under the monitor.
 func (n *Network) NodeDeleted(name string) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	n.NumNodesMonitored--
 	n.NumNodesMonitoredOnline--
+	n.updateHealth()
 }
 
 func (n *Network) updateHealth() {
