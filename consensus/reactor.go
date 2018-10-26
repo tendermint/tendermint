@@ -8,8 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/go-amino"
-
+	amino "github.com/tendermint/go-amino"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmevents "github.com/tendermint/tendermint/libs/events"
@@ -205,6 +204,13 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		conR.Switch.StopPeerForError(src, err)
 		return
 	}
+
+	if err = msg.ValidateBasic(); err != nil {
+		conR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+		conR.Switch.StopPeerForError(src, err)
+		return
+	}
+
 	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	// Get peer states
@@ -1339,7 +1345,9 @@ func (ps *PeerState) StringIndented(indent string) string {
 // Messages
 
 // ConsensusMessage is a message that can be sent and received on the ConsensusReactor
-type ConsensusMessage interface{}
+type ConsensusMessage interface {
+	ValidateBasic() error
+}
 
 func RegisterConsensusMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*ConsensusMessage)(nil), nil)
@@ -1375,6 +1383,23 @@ type NewRoundStepMessage struct {
 	LastCommitRound       int
 }
 
+// ValidateBasic performs basic validation.
+func (m *NewRoundStepMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if m.SecondsSinceStartTime < 0 {
+		return errors.New("Negative SecondsSinceStartTime")
+	}
+	if m.LastCommitRound < -1 {
+		return errors.New("Negative LastCommitRound (-1 is exception)")
+	}
+	return nil
+}
+
 // String returns a string representation.
 func (m *NewRoundStepMessage) String() string {
 	return fmt.Sprintf("[NewRoundStep H:%v R:%v S:%v LCR:%v]",
@@ -1390,6 +1415,22 @@ type CommitStepMessage struct {
 	BlockParts       *cmn.BitArray
 }
 
+// ValidateBasic performs basic validation.
+func (m *CommitStepMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if err := m.BlockPartsHeader.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
+	}
+	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
+		return fmt.Errorf("BlockParts bit array size %d not equal to BlockPartsHeader.Total %d",
+			m.BlockParts.Size(),
+			m.BlockPartsHeader.Total)
+	}
+	return nil
+}
+
 // String returns a string representation.
 func (m *CommitStepMessage) String() string {
 	return fmt.Sprintf("[CommitStep H:%v BP:%v BA:%v]", m.Height, m.BlockPartsHeader, m.BlockParts)
@@ -1400,6 +1441,11 @@ func (m *CommitStepMessage) String() string {
 // ProposalMessage is sent when a new block is proposed.
 type ProposalMessage struct {
 	Proposal *types.Proposal
+}
+
+// ValidateBasic performs basic validation.
+func (m *ProposalMessage) ValidateBasic() error {
+	return m.Proposal.ValidateBasic()
 }
 
 // String returns a string representation.
@@ -1416,6 +1462,18 @@ type ProposalPOLMessage struct {
 	ProposalPOL      *cmn.BitArray
 }
 
+// ValidateBasic performs basic validation.
+func (m *ProposalPOLMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if m.ProposalPOLRound < 0 {
+		return errors.New("Negative ProposalPOLRound")
+	}
+	// XXX: should we assert ProposalPOL.Size() > 0
+	return nil
+}
+
 // String returns a string representation.
 func (m *ProposalPOLMessage) String() string {
 	return fmt.Sprintf("[ProposalPOL H:%v POLR:%v POL:%v]", m.Height, m.ProposalPOLRound, m.ProposalPOL)
@@ -1430,6 +1488,20 @@ type BlockPartMessage struct {
 	Part   *types.Part
 }
 
+// ValidateBasic performs basic validation.
+func (m *BlockPartMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if err := m.Part.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong Part: %v", err)
+	}
+	return nil
+}
+
 // String returns a string representation.
 func (m *BlockPartMessage) String() string {
 	return fmt.Sprintf("[BlockPart H:%v R:%v P:%v]", m.Height, m.Round, m.Part)
@@ -1440,6 +1512,11 @@ func (m *BlockPartMessage) String() string {
 // VoteMessage is sent when voting for a proposal (or lack thereof).
 type VoteMessage struct {
 	Vote *types.Vote
+}
+
+// ValidateBasic performs basic validation.
+func (m *VoteMessage) ValidateBasic() error {
+	return m.Vote.ValidateBasic()
 }
 
 // String returns a string representation.
@@ -1457,6 +1534,20 @@ type HasVoteMessage struct {
 	Index  int
 }
 
+// ValidateBasic performs basic validation.
+func (m *HasVoteMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if m.Index < 0 {
+		return errors.New("Negative Index")
+	}
+	return nil
+}
+
 // String returns a string representation.
 func (m *HasVoteMessage) String() string {
 	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
@@ -1470,6 +1561,20 @@ type VoteSetMaj23Message struct {
 	Round   int
 	Type    types.SignedMsgType
 	BlockID types.BlockID
+}
+
+// ValidateBasic performs basic validation.
+func (m *VoteSetMaj23Message) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if err := m.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong BlockID: %v", err)
+	}
+	return nil
 }
 
 // String returns a string representation.
@@ -1488,6 +1593,21 @@ type VoteSetBitsMessage struct {
 	Votes   *cmn.BitArray
 }
 
+// ValidateBasic performs basic validation.
+func (m *VoteSetBitsMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if err := m.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong BlockID: %v", err)
+	}
+	// XXX: should we assert number of votes > 0?
+	return nil
+}
+
 // String returns a string representation.
 func (m *VoteSetBitsMessage) String() string {
 	return fmt.Sprintf("[VSB %v/%02d/%v %v %v]", m.Height, m.Round, m.Type, m.BlockID, m.Votes)
@@ -1498,6 +1618,11 @@ func (m *VoteSetBitsMessage) String() string {
 // ProposalHeartbeatMessage is sent to signal that a node is alive and waiting for transactions for a proposal.
 type ProposalHeartbeatMessage struct {
 	Heartbeat *types.Heartbeat
+}
+
+// ValidateBasic performs basic validation.
+func (m *ProposalHeartbeatMessage) ValidateBasic() error {
+	return m.Heartbeat.ValidateBasic()
 }
 
 // String returns a string representation.

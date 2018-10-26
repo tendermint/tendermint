@@ -36,6 +36,14 @@ func (part *Part) Hash() []byte {
 	return part.hash
 }
 
+// ValidateBasic performs basic validation.
+func (part *Part) ValidateBasic() error {
+	if part.Index < 0 {
+		return errors.New("Negative Index")
+	}
+	return nil
+}
+
 func (part *Part) String() string {
 	return part.StringIndented("")
 }
@@ -68,6 +76,21 @@ func (psh PartSetHeader) IsZero() bool {
 
 func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 	return psh.Total == other.Total && bytes.Equal(psh.Hash, other.Hash)
+}
+
+// ValidateBasic performs basic validation.
+func (psh PartSetHeader) ValidateBasic() error {
+	if psh.Total < 0 {
+		return errors.New("Negative Total")
+	}
+	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
+	if len(psh.Hash) > 0 && len(psh.Hash) != tmhash.Size {
+		return fmt.Errorf("Expected Hash size to be %d bytes, got %d bytes",
+			tmhash.Size,
+			len(psh.Hash),
+		)
+	}
+	return nil
 }
 
 //-------------------------------------

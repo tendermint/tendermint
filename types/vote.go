@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -106,5 +107,29 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
+	return nil
+}
+
+// ValidateBasic performs basic validation.
+func (vote *Vote) ValidateBasic() error {
+	if len(vote.ValidatorAddress) != tmhash.Size {
+		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
+			tmhash.Size,
+			len(vote.ValidatorAddress),
+		)
+	}
+	if vote.ValidatorIndex < 0 {
+		return errors.New("Negative ValidatorIndex")
+	}
+	if vote.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if vote.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if err := vote.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong BlockID: %v", err)
+	}
+	// should we check signature size? > 0 or exact size?
 	return nil
 }

@@ -44,6 +44,27 @@ func NewProposal(height int64, round int, blockPartsHeader PartSetHeader, polRou
 	}
 }
 
+// ValidateBasic performs basic validation.
+func (p *Proposal) ValidateBasic() error {
+	if p.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if p.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if err := p.BlockPartsHeader.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
+	}
+	if p.POLRound < -1 {
+		return errors.New("Negative POLRound (exception: -1)")
+	}
+	if err := p.POLBlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong POLBlockID: %v", err)
+	}
+	// XXX: check Signature size?
+	return nil
+}
+
 // String returns a string representation of the Proposal.
 func (p *Proposal) String() string {
 	return fmt.Sprintf("Proposal{%v/%v %v (%v,%v) %X @ %s}",

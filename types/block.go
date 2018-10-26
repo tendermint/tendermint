@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/version"
 )
@@ -717,6 +718,21 @@ func (blockID BlockID) Key() string {
 		panic(err)
 	}
 	return string(blockID.Hash) + string(bz)
+}
+
+// ValidateBasic performs basic validation.
+func (blockID BlockID) ValidateBasic() error {
+	// Hash can be empty in case of POLBlockID in Proposal.
+	if len(blockID.Hash) > 0 && len(blockID.Hash) != tmhash.Size {
+		return fmt.Errorf("Expected Hash size to be %d bytes, got %d bytes",
+			tmhash.Size,
+			len(blockID.Hash),
+		)
+	}
+	if err := blockID.PartsHeader.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong PartsHeader: %v", err)
+	}
+	return nil
 }
 
 // String returns a human readable string representation of the BlockID

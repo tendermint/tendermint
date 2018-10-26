@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -49,4 +51,28 @@ func (heartbeat *Heartbeat) String() string {
 		heartbeat.ValidatorIndex, cmn.Fingerprint(heartbeat.ValidatorAddress),
 		heartbeat.Height, heartbeat.Round, heartbeat.Sequence,
 		fmt.Sprintf("/%X.../", cmn.Fingerprint(heartbeat.Signature[:])))
+}
+
+// ValidateBasic performs basic validation.
+func (heartbeat *Heartbeat) ValidateBasic() error {
+	if len(heartbeat.ValidatorAddress) != tmhash.Size {
+		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
+			tmhash.Size,
+			len(heartbeat.ValidatorAddress),
+		)
+	}
+	if heartbeat.ValidatorIndex < 0 {
+		return errors.New("Negative ValidatorIndex")
+	}
+	if heartbeat.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if heartbeat.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if heartbeat.Sequence < 0 {
+		return errors.New("Negative Sequence")
+	}
+	// should we check signature size? > 0 or exact size?
+	return nil
 }
