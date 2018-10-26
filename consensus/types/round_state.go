@@ -162,3 +162,26 @@ func (rs *RoundState) StringShort() string {
 	return fmt.Sprintf(`RoundState{H:%v R:%v S:%v ST:%v}`,
 		rs.Height, rs.Round, rs.Step, rs.StartTime)
 }
+
+// Protobuf Compatiablity
+
+func (rs *RoundStateSimple) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, rs)
+}
+
+func (rs *RoundStateSimple) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(rs)
+}
+
+func (rs *RoundStateSimple) MarshalTo(data []byte) (int, error) {
+	bs, err := rs.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+func (rs *RoundStateSimple) Size() int {
+	bs, _ := rs.Marshal()
+	return len(bs)
+}

@@ -55,3 +55,26 @@ func (prs PeerRoundState) StringIndented(indent string) string {
 		indent, prs.CatchupCommit, prs.CatchupCommitRound,
 		indent)
 }
+
+
+// Protobuf Compatiablity
+func (ps *PeerRoundState) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, ps)
+}
+
+func (ps *PeerRoundState) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(ps)
+}
+
+func (ps *PeerRoundState) MarshalTo(data []byte) (int, error) {
+	bs, err := ps.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+func (ps *PeerRoundState) Size() int {
+	bs, _ := ps.Marshal()
+	return len(bs)
+}

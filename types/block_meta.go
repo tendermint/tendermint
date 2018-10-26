@@ -13,3 +13,25 @@ func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {
 		Header:  block.Header,
 	}
 }
+
+// Protobuf Compatiablity
+func (bm *BlockMeta) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, bm)
+}
+
+func (bm *BlockMeta) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(bm)
+}
+
+func (bm *BlockMeta) MarshalTo(data []byte) (int, error) {
+	bs, err := bm.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+func (bm *BlockMeta) Size() int {
+	bs, _ := bm.Marshal()
+	return len(bs)
+}

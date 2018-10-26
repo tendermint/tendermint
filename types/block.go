@@ -723,3 +723,20 @@ func (blockID BlockID) Key() string {
 func (blockID BlockID) String() string {
 	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
 }
+// Protobuf Compatiablity
+
+func (bc *Block) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, bc)
+}
+
+func (bc *Block) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(bc)
+}
+
+func (bc *Block) MarshalTo(data []byte) (int, error) {
+	bs, err := bc.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
