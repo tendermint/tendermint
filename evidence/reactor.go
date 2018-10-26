@@ -74,6 +74,13 @@ func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		evR.Switch.StopPeerForError(src, err)
 		return
 	}
+
+	if err = msg.ValidateBasic(); err != nil {
+		evR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+		evR.Switch.StopPeerForError(src, err)
+		return
+	}
+
 	evR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	switch msg := msg.(type) {
@@ -191,7 +198,9 @@ type PeerState interface {
 // Messages
 
 // EvidenceMessage is a message sent or received by the EvidenceReactor.
-type EvidenceMessage interface{}
+type EvidenceMessage interface {
+	ValidateBasic() error
+}
 
 func RegisterEvidenceMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*EvidenceMessage)(nil), nil)
@@ -209,9 +218,19 @@ func decodeMsg(bz []byte) (msg EvidenceMessage, err error) {
 
 //-------------------------------------
 
-// EvidenceMessage contains a list of evidence.
+// EvidenceListMessage contains a list of evidence.
 type EvidenceListMessage struct {
 	Evidence []types.Evidence
+}
+
+// ValidateBasic performs basic validation.
+func (m *EvidenceListMessage) ValidateBasic() error {
+	for i, ev := range m.Evidence {
+		if err := ev.ValidateBasic(); err != nil {
+			return fmt.Errorf("Invalid evidence (#%d): %v", i, err)
+		}
+	}
+	return nil
 }
 
 // String returns a string representation of the EvidenceListMessage.
