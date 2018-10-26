@@ -58,7 +58,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"
-  version = "v0.13.0"
+  revision = "c28d73b5e5011c069281a91b6798f9984c051c77"
 
 [[constraint]]
   name = "google.golang.org/grpc"

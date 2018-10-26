@@ -365,12 +365,11 @@
   revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
 
 [[projects]]
-  digest = "1:5f52e817b6c9d52ddba70dece0ea31134d82a52c05bce98fbc739ab2a832df28"
+  digest = "1:10b3a599325740c84a7c81f3f3cb2e1fdb70b3ea01b7fa28495567a2519df431"
   name = "github.com/tendermint/go-amino"
   packages = ["."]
   pruneopts = "UT"
-  revision = "cb07448b240918aa8d8df4505153549b86b77134"
-  version = "v0.13.0"
+  revision = "c28d73b5e5011c069281a91b6798f9984c051c77"
 
 [[projects]]
   digest = "1:72b71e3a29775e5752ed7a8012052a3dee165e27ec18cedddae5288058f09acf"
@@ -415,14 +414,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d1da39c9bac61327dbef1d8ef9f210425e99fd2924b6fb5f0bc587a193353637"
+  digest = "1:f8a3e7aae5f4b17c68ec3640e534eae65e93c306601baecd62b9d4bdbc75e0c1"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "8a28ead16f52c8aaeffbf79239b251dfdf6c4f96"
+  revision = "731415f00dce967a133e841b3079eda31c996761"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
