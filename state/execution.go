@@ -398,9 +398,13 @@ func updateState(
 		lastHeightParamsChanged = header.Height + 1
 	}
 
+	// TODO: allow app to upgrade version
+	nextVersion := state.Version
+
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
+		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
 		LastBlockHeight:                  header.Height,
 		LastBlockTotalTx:                 state.LastBlockTotalTx + header.NumTxs,

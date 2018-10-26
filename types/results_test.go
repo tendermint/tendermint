@@ -43,7 +43,7 @@ func TestABCIResults(t *testing.T) {
 	}
 }
 
-func TestABCIBytes(t *testing.T) {
+func TestABCIResultsBytes(t *testing.T) {
 	results := NewResults([]*abci.ResponseDeliverTx{
 		{Code: 0, Data: []byte{}},
 		{Code: 0, Data: []byte("one")},

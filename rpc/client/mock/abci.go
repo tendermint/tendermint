@@ -3,10 +3,10 @@ package mock
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 // ABCIApp will send all abci related request to the named app,
@@ -23,7 +23,7 @@ var (
 )
 
 func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	return &ctypes.ResultABCIInfo{a.App.Info(abci.RequestInfo{Version: version.Version})}, nil
+	return &ctypes.ResultABCIInfo{a.App.Info(proxy.RequestInfo)}, nil
 }
 
 func (a ABCIApp) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {

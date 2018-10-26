@@ -134,10 +134,13 @@ Commit are included in the header of the next block.
 ### Info
 
 - **Request**:
-  - `Version (string)`: The Tendermint version
+  - `Version (string)`: The Tendermint software semantic version
+  - `BlockVersion (uint64)`: The Tendermint Block Protocol version
+  - `P2PVersion (uint64)`: The Tendermint P2P Protocol version
 - **Response**:
   - `Data (string)`: Some arbitrary information
-  - `Version (Version)`: Version information
+  - `Version (string)`: The application software semantic version
+  - `AppVersion (uint64)`: The application protocol version
   - `LastBlockHeight (int64)`: Latest block for which the app has
     called Commit
   - `LastBlockAppHash ([]byte)`: Latest result of Commit
@@ -145,6 +148,7 @@ Commit are included in the header of the next block.
   - Return information about the application state.
   - Used to sync Tendermint with the application during a handshake
     that happens on startup.
+  - The returned `AppVersion` will be included in the Header of every block.
   - Tendermint expects `LastBlockAppHash` and `LastBlockHeight` to
     be updated during `Commit`, ensuring that `Commit` is never
     called twice for the same block height.
@@ -338,6 +342,7 @@ Commit are included in the header of the next block.
 ### Header
 
 - **Fields**:
+  - `Version (Version)`: Version of the blockchain and the application
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
   - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
@@ -362,6 +367,15 @@ Commit are included in the header of the next block.
     especially height and time.
   - Provides the proposer of the current block, for use in proposer-based
     reward mechanisms.
+
+### Version
+
+- **Fields**:
+  - `Block (uint64)`: Protocol version of the blockchain data structures.
+  - `App (uint64)`: Protocol version of the application.
+- **Usage**:
+  - Block version should be static in the life of a blockchain.
+  - App version may be updated over time by the application.
 
 ### Validator
 

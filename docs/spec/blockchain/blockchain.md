@@ -8,6 +8,7 @@ The Tendermint blockchains consists of a short list of basic data types:
 
 - `Block`
 - `Header`
+- `Version`
 - `BlockID`
 - `Time`
 - `Data` (for transactions)
@@ -38,6 +39,7 @@ the data in the current block, the previous block, and the results returned by t
 ```go
 type Header struct {
 	// basic block info
+	Version  Version
 	ChainID  string
 	Height   int64
 	Time     Time
@@ -64,6 +66,19 @@ type Header struct {
 ```
 
 Further details on each of these fields is described below.
+
+## Version
+
+The `Version` contains the protocol version for the blockchain and the
+application as two `uint64` values:
+
+```go
+type Version struct {
+    Block   uint64
+    App     uint64
+}
+```
+
 
 ## BlockID
 
@@ -200,6 +215,15 @@ See [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockc
 
 A Header is valid if its corresponding fields are valid.
 
+### Version
+
+```
+block.Version.Block == state.Version.Block
+block.Version.App == state.Version.App
+```
+
+The block version must match the state version.
+
 ### ChainID
 
 ```
@@ -320,10 +344,10 @@ next validator sets Merkle root.
 ### ConsensusParamsHash
 
 ```go
-block.ConsensusParamsHash == SimpleMerkleRoot(state.ConsensusParams)
+block.ConsensusParamsHash == tmhash(amino(state.ConsensusParams))
 ```
 
-Simple Merkle root of the consensus parameters.
+Hash of the amino-encoded consensus parameters.
 
 ### AppHash
 

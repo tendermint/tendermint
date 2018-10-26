@@ -24,7 +24,7 @@ func TestErrorPanic(t *testing.T) {
 	var err = capturePanic()
 
 	assert.Equal(t, pnk{"something"}, err.Data())
-	assert.Equal(t, "Error{{something}}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "{something}", fmt.Sprintf("%v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), "This is the message in ErrorWrap(r, message).")
 	assert.Contains(t, fmt.Sprintf("%#v", err), "Stack Trace:\n    0")
 }
@@ -34,7 +34,7 @@ func TestErrorWrapSomething(t *testing.T) {
 	var err = ErrorWrap("something", "formatter%v%v", 0, 1)
 
 	assert.Equal(t, "something", err.Data())
-	assert.Equal(t, "Error{something}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "something", fmt.Sprintf("%v", err))
 	assert.Regexp(t, `formatter01\n`, fmt.Sprintf("%#v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), "Stack Trace:\n    0")
 }
@@ -46,7 +46,7 @@ func TestErrorWrapNothing(t *testing.T) {
 	assert.Equal(t,
 		FmtError{"formatter%v%v", []interface{}{0, 1}},
 		err.Data())
-	assert.Equal(t, "Error{formatter01}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "formatter01", fmt.Sprintf("%v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), `Data: common.FmtError{format:"formatter%v%v", args:[]interface {}{0, 1}}`)
 	assert.Contains(t, fmt.Sprintf("%#v", err), "Stack Trace:\n    0")
 }
@@ -58,7 +58,7 @@ func TestErrorNewError(t *testing.T) {
 	assert.Equal(t,
 		FmtError{"formatter%v%v", []interface{}{0, 1}},
 		err.Data())
-	assert.Equal(t, "Error{formatter01}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "formatter01", fmt.Sprintf("%v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), `Data: common.FmtError{format:"formatter%v%v", args:[]interface {}{0, 1}}`)
 	assert.NotContains(t, fmt.Sprintf("%#v", err), "Stack Trace")
 }
@@ -70,7 +70,7 @@ func TestErrorNewErrorWithStacktrace(t *testing.T) {
 	assert.Equal(t,
 		FmtError{"formatter%v%v", []interface{}{0, 1}},
 		err.Data())
-	assert.Equal(t, "Error{formatter01}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "formatter01", fmt.Sprintf("%v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), `Data: common.FmtError{format:"formatter%v%v", args:[]interface {}{0, 1}}`)
 	assert.Contains(t, fmt.Sprintf("%#v", err), "Stack Trace:\n    0")
 }
@@ -85,7 +85,7 @@ func TestErrorNewErrorWithTrace(t *testing.T) {
 	assert.Equal(t,
 		FmtError{"formatter%v%v", []interface{}{0, 1}},
 		err.Data())
-	assert.Equal(t, "Error{formatter01}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "formatter01", fmt.Sprintf("%v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), `Data: common.FmtError{format:"formatter%v%v", args:[]interface {}{0, 1}}`)
 	dump := fmt.Sprintf("%#v", err)
 	assert.NotContains(t, dump, "Stack Trace")

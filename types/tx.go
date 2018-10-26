@@ -31,18 +31,13 @@ type Txs []Tx
 
 // Hash returns the simple Merkle root hash of the transactions.
 func (txs Txs) Hash() []byte {
-	// Recursive impl.
-	// Copied from tendermint/crypto/merkle to avoid allocations
-	switch len(txs) {
-	case 0:
-		return nil
-	case 1:
-		return txs[0].Hash()
-	default:
-		left := Txs(txs[:(len(txs)+1)/2]).Hash()
-		right := Txs(txs[(len(txs)+1)/2:]).Hash()
-		return merkle.SimpleHashFromTwoHashes(left, right)
+	// These allocations will be removed once Txs is switched to [][]byte,
+	// ref #2603. This is because golang does not allow type casting slices without unsafe
+	txBzs := make([][]byte, len(txs))
+	for i := 0; i < len(txs); i++ {
+		txBzs[i] = txs[i]
 	}
+	return merkle.SimpleHashFromByteSlices(txBzs)
 }
 
 // Index returns the index of this transaction in the list, or -1 if not found

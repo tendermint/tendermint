@@ -319,9 +319,11 @@ func TestStateMakeBlock(t *testing.T) {
 	defer tearDown(t)
 
 	proposerAddress := state.Validators.GetProposer().Address
+	stateVersion := state.Version.Consensus
 	block := makeBlock(state, 2)
 
-	// test we set proposer address
+	// test we set some fields
+	assert.Equal(t, stateVersion, block.Version)
 	assert.Equal(t, proposerAddress, block.ProposerAddress)
 }
 

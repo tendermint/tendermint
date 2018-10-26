@@ -32,7 +32,6 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	"github.com/tendermint/tendermint/rpc/lib"
 	"github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
@@ -196,8 +195,8 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
 
-	// Create the handshaker, which calls RequestInfo and replays any blocks
-	// as necessary to sync tendermint with the app.
+	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
+	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
@@ -205,8 +204,20 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("Error during handshake: %v", err)
 	}
 
-	// reload the state (it may have been updated by the handshake)
+	// Reload the state. It will have the Version.Consensus.App set by the
+	// Handshake, and may have other modifications as well (ie. depending on
+	// what happened during block replay).
 	state = sm.LoadState(stateDB)
+
+	// Ensure the state's block version matches that of the software.
+	if state.Version.Consensus.Block != version.BlockProtocol {
+		return nil, fmt.Errorf(
+			"Block version of the software does not match that of the state.\n"+
+				"Got version.BlockProtocol=%v, state.Version.Consensus.Block=%v",
+			version.BlockProtocol,
+			state.Version.Consensus.Block,
+		)
+	}
 
 	// If an address is provided, listen on the socket for a
 	// connection from an external signing process.
@@ -215,7 +226,7 @@ func NewNode(config *cfg.Config,
 			// TODO: persist this key so external signer
 			// can actually authenticate us
 			privKey = ed25519.GenPrivKey()
-			pvsc    = privval.NewSocketPV(
+			pvsc    = privval.NewTCPVal(
 				logger.With("module", "privval"),
 				config.PrivValidatorListenAddr,
 				privKey,
@@ -351,7 +362,17 @@ func NewNode(config *cfg.Config,
 
 	var (
 		p2pLogger = logger.With("module", "p2p")
-		nodeInfo  = makeNodeInfo(config, nodeKey.ID(), txIndexer, genDoc.ChainID)
+		nodeInfo  = makeNodeInfo(
+			config,
+			nodeKey.ID(),
+			txIndexer,
+			genDoc.ChainID,
+			p2p.NewProtocolVersion(
+				version.P2PProtocol, // global
+				state.Version.Consensus.Block,
+				state.Version.Consensus.App,
+			),
+		)
 	)
 
 	// Setup Transport.
@@ -579,7 +600,7 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if pvsc, ok := n.privValidator.(*privval.SocketPV); ok {
+	if pvsc, ok := n.privValidator.(*privval.TCPVal); ok {
 		if err := pvsc.Stop(); err != nil {
 			n.Logger.Error("Error stopping priv validator socket client", "err", err)
 		}
@@ -756,15 +777,17 @@ func makeNodeInfo(
 	nodeID p2p.ID,
 	txIndexer txindex.TxIndexer,
 	chainID string,
+	protocolVersion p2p.ProtocolVersion,
 ) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.DefaultNodeInfo{
-		ID_:     nodeID,
-		Network: chainID,
-		Version: version.Version,
+		ProtocolVersion: protocolVersion,
+		ID_:             nodeID,
+		Network:         chainID,
+		Version:         version.TMCoreSemVer,
 		Channels: []byte{
 			bc.BlockchainChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
@@ -773,12 +796,8 @@ func makeNodeInfo(
 		},
 		Moniker: config.Moniker,
 		Other: p2p.DefaultNodeInfoOther{
-			AminoVersion:     amino.Version,
-			P2PVersion:       p2p.Version,
-			ConsensusVersion: cs.Version,
-			RPCVersion:       fmt.Sprintf("%v/%v", rpc.Version, rpccore.Version),
-			TxIndex:          txIndexerStatus,
-			RPCAddress:       config.RPC.ListenAddress,
+			TxIndex:    txIndexerStatus,
+			RPCAddress: config.RPC.ListenAddress,
 		},
 	}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/version"
 	//auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -19,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -227,7 +227,7 @@ func (h *Handshaker) NBlocks() int {
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{Version: version.Version})
+	res, err := proxyApp.Query().InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("Error calling Info: %v", err)
 	}
@@ -238,9 +238,15 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 	appHash := res.LastBlockAppHash
 
-	h.logger.Info("ABCI Handshake", "appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
+	h.logger.Info("ABCI Handshake App Info",
+		"height", blockHeight,
+		"hash", fmt.Sprintf("%X", appHash),
+		"software-version", res.Version,
+		"protocol-version", res.AppVersion,
+	)
 
-	// TODO: check app version.
+	// Set AppVersion on the state.
+	h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
 
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
@@ -287,6 +293,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 				return nil, err
 			}
 			state.Validators = types.NewValidatorSet(vals)
+			state.NextValidators = types.NewValidatorSet(vals)
 		}
 		if res.ConsensusParams != nil {
 			state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)

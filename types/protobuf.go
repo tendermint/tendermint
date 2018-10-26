@@ -34,6 +34,10 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) abci.Header {
 	return abci.Header{
+		Version: abci.Version{
+			Block: header.Version.Block.Uint64(),
+			App:   header.Version.App.Uint64(),
+		},
 		ChainID:  header.ChainID,
 		Height:   header.Height,
 		Time:     header.Time,
@@ -45,10 +49,11 @@ func (tm2pb) Header(header *Header) abci.Header {
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
 
-		ValidatorsHash:  header.ValidatorsHash,
-		ConsensusHash:   header.ConsensusHash,
-		AppHash:         header.AppHash,
-		LastResultsHash: header.LastResultsHash,
+		ValidatorsHash:     header.ValidatorsHash,
+		NextValidatorsHash: header.NextValidatorsHash,
+		ConsensusHash:      header.ConsensusHash,
+		AppHash:            header.AppHash,
+		LastResultsHash:    header.LastResultsHash,
 
 		EvidenceHash:    header.EvidenceHash,
 		ProposerAddress: header.ProposerAddress,

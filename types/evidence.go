@@ -14,7 +14,7 @@ import (
 
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes int64 = 440
+	MaxEvidenceBytes int64 = 444
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -55,6 +55,7 @@ func (err *ErrEvidenceOverflow) Error() string {
 type Evidence interface {
 	Height() int64                                     // height of the equivocation
 	Address() []byte                                   // address of the equivocating validator
+	Bytes() []byte                                     // bytes which compromise the evidence
 	Hash() []byte                                      // hash of the evidence
 	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
 	Equal(Evidence) bool                               // check equality of evidence
@@ -88,6 +89,8 @@ type DuplicateVoteEvidence struct {
 	VoteB  *Vote
 }
 
+var _ Evidence = &DuplicateVoteEvidence{}
+
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
 	return fmt.Sprintf("VoteA: %v; VoteB: %v", dve.VoteA, dve.VoteB)
@@ -102,6 +105,11 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 // Address returns the address of the validator.
 func (dve *DuplicateVoteEvidence) Address() []byte {
 	return dve.PubKey.Address()
+}
+
+// Hash returns the hash of the evidence.
+func (dve *DuplicateVoteEvidence) Bytes() []byte {
+	return cdcEncode(dve)
 }
 
 // Hash returns the hash of the evidence.
@@ -172,6 +180,8 @@ type MockGoodEvidence struct {
 	Address_ []byte
 }
 
+var _ Evidence = &MockGoodEvidence{}
+
 // UNSTABLE
 func NewMockGoodEvidence(height int64, idx int, address []byte) MockGoodEvidence {
 	return MockGoodEvidence{height, address}
@@ -180,6 +190,9 @@ func NewMockGoodEvidence(height int64, idx int, address []byte) MockGoodEvidence
 func (e MockGoodEvidence) Height() int64   { return e.Height_ }
 func (e MockGoodEvidence) Address() []byte { return e.Address_ }
 func (e MockGoodEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.Address_))
+}
+func (e MockGoodEvidence) Bytes() []byte {
 	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.Address_))
 }
 func (e MockGoodEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
@@ -216,18 +229,14 @@ type EvidenceList []Evidence
 
 // Hash returns the simple merkle root hash of the EvidenceList.
 func (evl EvidenceList) Hash() []byte {
-	// Recursive impl.
-	// Copied from crypto/merkle to avoid allocations
-	switch len(evl) {
-	case 0:
-		return nil
-	case 1:
-		return evl[0].Hash()
-	default:
-		left := EvidenceList(evl[:(len(evl)+1)/2]).Hash()
-		right := EvidenceList(evl[(len(evl)+1)/2:]).Hash()
-		return merkle.SimpleHashFromTwoHashes(left, right)
+	// These allocations are required because Evidence is not of type Bytes, and
+	// golang slices can't be typed cast. This shouldn't be a performance problem since
+	// the Evidence size is capped.
+	evidenceBzs := make([][]byte, len(evl))
+	for i := 0; i < len(evl); i++ {
+		evidenceBzs[i] = evl[i].Bytes()
 	}
+	return merkle.SimpleHashFromByteSlices(evidenceBzs)
 }
 
 func (evl EvidenceList) String() string {

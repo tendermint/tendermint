@@ -28,6 +28,7 @@ func (mp *mockPeer) IsPersistent() bool                      { return true }
 func (mp *mockPeer) Get(s string) interface{}                { return s }
 func (mp *mockPeer) Set(string, interface{})                 {}
 func (mp *mockPeer) RemoteIP() net.IP                        { return mp.ip }
+func (mp *mockPeer) OriginalAddr() *NetAddress               { return nil }
 
 // Returns a mock peer
 func newMockPeer(ip net.IP) *mockPeer {

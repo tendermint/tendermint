@@ -206,7 +206,7 @@ func testInboundPeerConn(
 	config *config.P2PConfig,
 	ourNodePrivKey crypto.PrivKey,
 ) (peerConn, error) {
-	return testPeerConn(conn, config, false, false, ourNodePrivKey)
+	return testPeerConn(conn, config, false, false, ourNodePrivKey, nil)
 }
 
 func testPeerConn(
@@ -214,6 +214,7 @@ func testPeerConn(
 	cfg *config.P2PConfig,
 	outbound, persistent bool,
 	ourNodePrivKey crypto.PrivKey,
+	originalAddr *NetAddress,
 ) (pc peerConn, err error) {
 	conn := rawConn
 
@@ -231,10 +232,11 @@ func testPeerConn(
 
 	// Only the information we already have
 	return peerConn{
-		config:     cfg,
-		outbound:   outbound,
-		persistent: persistent,
-		conn:       conn,
+		config:       cfg,
+		outbound:     outbound,
+		persistent:   persistent,
+		conn:         conn,
+		originalAddr: originalAddr,
 	}, nil
 }
 
@@ -247,11 +249,16 @@ func testNodeInfo(id ID, name string) NodeInfo {
 
 func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 	return DefaultNodeInfo{
-		ID_:        id,
-		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-		Moniker:    name,
-		Network:    network,
-		Version:    "123.123.123",
-		Channels:   []byte{testCh},
+		ProtocolVersion: defaultProtocolVersion,
+		ID_:             id,
+		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		Network:         network,
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        []byte{testCh},
+		Moniker:         name,
+		Other: DefaultNodeInfoOther{
+			TxIndex:    "on",
+			RPCAddress: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		},
 	}
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestMain(m *testing.M) {
@@ -241,10 +242,15 @@ func TestMaxHeaderBytes(t *testing.T) {
 		maxChainID += "𠜎"
 	}
 
+	// time is varint encoded so need to pick the max.
+	// year int, month Month, day, hour, min, sec, nsec int, loc *Location
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+
 	h := Header{
+		Version:            version.Consensus{math.MaxInt64, math.MaxInt64},
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
-		Time:               time.Now().UTC(),
+		Time:               timestamp,
 		NumTxs:             math.MaxInt64,
 		TotalTxs:           math.MaxInt64,
 		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt64, make([]byte, tmhash.Size)),
@@ -259,7 +265,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 		ProposerAddress:    tmhash.Sum([]byte("proposer_address")),
 	}
 
-	bz, err := cdc.MarshalBinary(h)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(h)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, MaxHeaderBytes, len(bz))
@@ -286,9 +292,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {721, 1, 0, true, 0},
-		3: {722, 1, 0, false, 0},
-		4: {723, 1, 0, false, 1},
+		2: {750, 1, 0, true, 0},
+		3: {751, 1, 0, false, 0},
+		4: {752, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -314,9 +320,9 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {801, 1, true, 0},
-		3: {802, 1, false, 0},
-		4: {803, 1, false, 1},
+		2: {833, 1, true, 0},
+		3: {834, 1, false, 0},
+		4: {835, 1, false, 1},
 	}
 
 	for i, tc := range testCases {

@@ -96,7 +96,7 @@ Each component of the software is independently versioned in a modular way and i
 
 ## Proposal
 
-Each of BlockVersion, AppVersion, P2PVersion, is a monotonically increasing int64.
+Each of BlockVersion, AppVersion, P2PVersion, is a monotonically increasing uint64.
 
 To use these versions, we need to update the block Header, the p2p NodeInfo, and the ABCI.
 
@@ -106,8 +106,8 @@ Block Header should include a `Version` struct as its first field like:
 
 ```
 type Version struct {
-    Block int64
-    App int64
+    Block uint64
+    App uint64
 }
 ```
 
@@ -130,9 +130,9 @@ NodeInfo should include a Version struct as its first field like:
 
 ```
 type Version struct {
-    P2P int64
-    Block int64
-    App int64
+    P2P uint64
+    Block uint64
+    App uint64
 
     Other []string
 }
@@ -168,9 +168,9 @@ RequestInfo should add support for protocol versions like:
 
 ```
 message RequestInfo {
-  string software_version
-  int64 block_version
-  int64 p2p_version
+  string version
+  uint64 block_version
+  uint64 p2p_version
 }
 ```
 
@@ -180,39 +180,46 @@ Similarly, ResponseInfo should return the versions:
 message ResponseInfo {
   string data
 
-  string software_version
-  int64 app_version
+  string version
+  uint64 app_version
 
   int64 last_block_height
   bytes last_block_app_hash
 }
 ```
 
+The existing `version` fields should be called `software_version` but we leave
+them for now to reduce the number of breaking changes.
+
 #### EndBlock
 
 Updating the version could be done either with new fields or by using the
 existing `tags`. Since we're trying to communicate information that will be
 included in Tendermint block Headers, it should be native to the ABCI, and not
-something embedded through some scheme in the tags.
+something embedded through some scheme in the tags. Thus, version updates should
+be communicated through EndBlock.
 
-ResponseEndBlock will include a new field `version_updates`:
+EndBlock already contains `ConsensusParams`. We can add version information to
+the ConsensusParams as well:
 
 ```
-message ResponseEndBlock {
-  repeated Validator validator_updates
-  ConsensusParams consensus_param_updates
-  repeated common.KVPair tags
+message ConsensusParams {
 
-  VersionUpdate version_update
+  BlockSize block_size
+  EvidenceParams evidence_params
+  VersionParams version
 }
 
-message VersionUpdate {
-    int64 app_version
+message VersionParams {
+    uint64 block_version
+    uint64 app_version
 }
 ```
 
-Tendermint will use the information in VersionUpdate for the next block it
-proposes.
+For now, the `block_version` will be ignored, as we do not allow block version
+to be updated live. If the `app_version` is set, it signals that the app's
+protocol version has changed, and the new `app_version` will be included in the
+`Block.Header.Version.App` for the next block.
 
 ### BlockVersion
 
