@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto/secp256k1"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -158,6 +160,8 @@ func TestUpdateValidators(t *testing.T) {
 	pubkey2 := ed25519.GenPrivKey().PubKey()
 	val2 := types.NewValidator(pubkey2, 20)
 
+	secpKey := secp256k1.GenPrivKey().PubKey()
+
 	defaultValidatorParams := types.ValidatorParams{[]string{types.ABCIPubKeyTypeEd25519}}
 
 	testCases := []struct {
@@ -217,6 +221,16 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
+			defaultValidatorParams,
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			true,
+		},
+		{
+			"adding a validator with pubkey thats not in validator params results in error",
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(secpKey), Power: -100}},
 			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{val1}),
