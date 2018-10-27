@@ -24,6 +24,12 @@ const (
 	ABCIPubKeyTypeSecp256k1 = "secp256k1"
 )
 
+// TODO: Make non-global by allowing for registration of more pubkey types
+var ABCIPubKeyTypesToAminoRoutes = map[string]string{
+	ABCIPubKeyTypeEd25519:   ed25519.PubKeyAminoRoute,
+	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyAminoRoute,
+}
+
 //-------------------------------------------------------
 
 // TM2PB is used for converting Tendermint ABCI to protobuf ABCI.

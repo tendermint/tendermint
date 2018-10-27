@@ -2,7 +2,6 @@ package types
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -65,7 +64,7 @@ func DefaultEvidenceParams() EvidenceParams {
 // DefaultValidatorParams returns a default ValidatorParams, which allows
 // only ed25519 pubkeys.
 func DefaultValidatorParams() ValidatorParams {
-	return ValidatorParams{[]string{ed25519.PubKeyAminoRoute}}
+	return ValidatorParams{[]string{ABCIPubKeyTypeEd25519}}
 }
 
 // Validate validates the ConsensusParams to ensure all values are within their
@@ -94,6 +93,15 @@ func (params *ConsensusParams) Validate() error {
 		return cmn.NewError("len(ValidatorParams.ValidatorPubkeyTypes) must be greater than 0")
 	}
 
+	// Check if keyType is a known ABCIPubKeyType
+	for i := 0; i < len(params.Validator.ValidatorPubkeyTypes); i++ {
+		keyType := params.Validator.ValidatorPubkeyTypes[i]
+		if _, ok := ABCIPubKeyTypesToAminoRoutes[keyType]; !ok {
+			return cmn.NewError("params.Validator.ValidatorPubkeyTypes[%d], %s, is an unknown pubkey type",
+				i, keyType)
+		}
+	}
+
 	return nil
 }
 
@@ -112,12 +120,9 @@ func (params *ConsensusParams) Hash() []byte {
 }
 
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
-	if params.BlockSize == params2.BlockSize &&
+	return params.BlockSize == params2.BlockSize &&
 		params.EvidenceParams == params2.EvidenceParams &&
-		stringSliceEqual(params.Validator.ValidatorPubkeyTypes, params2.Validator.ValidatorPubkeyTypes) {
-		return true
-	}
-	return false
+		stringSliceEqual(params.Validator.ValidatorPubkeyTypes, params2.Validator.ValidatorPubkeyTypes)
 }
 
 func stringSliceEqual(a, b []string) bool {

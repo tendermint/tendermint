@@ -5,16 +5,13 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
-
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 var (
-	valEd25519   = []string{ed25519.PubKeyAminoRoute}
-	valSecp256k1 = []string{secp256k1.PubKeyAminoRoute}
+	valEd25519   = []string{ABCIPubKeyTypeEd25519}
+	valSecp256k1 = []string{ABCIPubKeyTypeSecp256k1}
 )
 
 func TestConsensusParamsValidation(t *testing.T) {
@@ -36,6 +33,8 @@ func TestConsensusParamsValidation(t *testing.T) {
 		9: {makeParams(1, 0, -1, valEd25519), false},
 		// test no pubkey type provided
 		10: {makeParams(1, 0, 1, []string{}), false},
+		// test invalid pubkey type provided
+		11: {makeParams(1, 0, 1, []string{"potatos make good pubkeys"}), false},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
