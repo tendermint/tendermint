@@ -158,11 +158,14 @@ func TestUpdateValidators(t *testing.T) {
 	pubkey2 := ed25519.GenPrivKey().PubKey()
 	val2 := types.NewValidator(pubkey2, 20)
 
+	defaultValidatorParams := types.ValidatorParams{[]string{types.ABCIPubKeyTypeEd25519}}
+
 	testCases := []struct {
 		name string
 
-		currentSet  *types.ValidatorSet
-		abciUpdates []abci.ValidatorUpdate
+		currentSet      *types.ValidatorSet
+		abciUpdates     []abci.ValidatorUpdate
+		validatorParams types.ValidatorParams
 
 		resultingSet *types.ValidatorSet
 		shouldErr    bool
@@ -172,6 +175,7 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 20}},
+			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{val1, val2}),
 			false,
@@ -181,6 +185,7 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey1), Power: 20}},
+			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{types.NewValidator(pubkey1, 20)}),
 			false,
@@ -190,6 +195,7 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1, val2}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
+			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			false,
@@ -200,6 +206,7 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
+			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
@@ -210,6 +217,7 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
+			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
@@ -218,7 +226,7 @@ func TestUpdateValidators(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := updateValidators(tc.currentSet, tc.abciUpdates)
+			err := updateValidators(tc.currentSet, tc.abciUpdates, tc.validatorParams)
 			if tc.shouldErr {
 				assert.Error(t, err)
 			} else {

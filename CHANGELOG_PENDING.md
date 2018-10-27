@@ -67,6 +67,7 @@ BREAKING CHANGES:
   * [state] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Require block.Version to match state.Version
   * [types] [\#2670](https://github.com/tendermint/tendermint/issues/2670) Header.Hash() builds Merkle tree out of fields in the same
     order they appear in the header, instead of sorting by field name
+  * [state] \#2714 Validators can now only use pubkeys allowed within ConsensusParams.ValidatorParams
 
 * P2P Protocol
   * [p2p] [\#2654](https://github.com/tendermint/tendermint/issues/2654) Add `ProtocolVersion` struct with protocol versions to top of
