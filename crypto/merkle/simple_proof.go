@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -67,7 +66,8 @@ func SimpleProofsFromMap(m map[string][]byte) (rootHash []byte, proofs map[strin
 
 // Verify that the SimpleProof proves the root hash.
 // Check sp.Index/sp.Total manually if needed
-func (sp *SimpleProof) Verify(rootHash []byte, leafHash []byte) error {
+func (sp *SimpleProof) Verify(rootHash []byte, leaf []byte) error {
+	leafHash := leafHash(leaf)
 	if sp.Total < 0 {
 		return errors.New("Proof total must be positive")
 	}
@@ -182,7 +182,7 @@ func trailsFromByteSlices(items [][]byte) (trails []*SimpleProofNode, root *Simp
 	case 0:
 		return nil, nil
 	case 1:
-		trail := &SimpleProofNode{tmhash.Sum(items[0]), nil, nil, nil}
+		trail := &SimpleProofNode{leafHash(items[0]), nil, nil, nil}
 		return []*SimpleProofNode{trail}, trail
 	default:
 		lefts, leftRoot := trailsFromByteSlices(items[:(len(items)+1)/2])

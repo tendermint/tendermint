@@ -38,7 +38,7 @@ func TestABCIResults(t *testing.T) {
 
 	for i, res := range results {
 		proof := results.ProveResult(i)
-		valid := proof.Verify(root, res.Hash())
+		valid := proof.Verify(root, res.Bytes())
 		assert.NoError(t, valid, "%d", i)
 	}
 }
