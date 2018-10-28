@@ -294,6 +294,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
+		// TODO check that the netAddr is valid!
 		// NOTE: GetSelection methods should never return nil addrs
 		if netAddr == nil {
 			return cmn.NewError("received nil addr")
