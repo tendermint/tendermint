@@ -3,6 +3,82 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.26.0
+
+New 0.26.0 release contains a lot of changes to core data types. It is not
+compatible to the old versions and there is no straight forward way to update
+old data to be compatible with the new version.
+
+To reset the state do:
+
+```
+$ tendermint unsafe_reset_all
+```
+
+Here we summarize some other notable changes to be mindful of.
+
+### Config Changes
+
+All timeouts must be changed from integers to strings with their duration, for
+instance `flush_throttle_timeout = 100` would be changed to
+`flush_throttle_timeout = "100ms"` and `timeout_propose = 3000` would be changed
+to `timeout_propose = "3s"`.
+
+### RPC Changes
+
+The default behaviour of `/abci_query` has been changed to not return a proof,
+and the name of the parameter that controls this has been changed from `trusted`
+to `prove`. To get proofs with your queries, ensure you set `prove=true`.
+
+Various version fields like `amino_version`, `p2p_version`, `consensus_version`,
+and `rpc_version` have been removed from the `node_info.other` and are
+consolidated under the tendermint semantic version (ie. `node_info.version`) and
+the new `block` and `p2p` protocol versions under `node_info.protocol_version`..
+
+### ABCI Changes
+
+Field numbers were bumped in the `Header` and `ResponseInfo` messages to make
+room for new `version` fields. It should be straight forward to recompile the
+protobuf file for these changes.
+
+#### Proofs
+
+The `ResponseQuery.Proof` field is now structured as a `[]ProofOp` to support
+generalized Merkle tree constructions where the leaves of one Merkle tree are
+the root of another. If you don't need this functionaluty, and you used to
+return `<proof bytes>` here, you should instead return a single `ProofOp` with
+just the `Data` field set:
+
+```
+[]ProofOp{
+    ProofOp{
+        Data: <proof bytes>,
+    }
+}
+```
+
+For more information, see:
+
+- [ADR-026](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/docs/architecture/adr-026-general-merkle-proof.md)
+- [Relevant ABCI
+  documentation](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/docs/spec/abci/apps.md#query-proofs)
+- [Description of
+  keys](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/crypto/merkle/proof_key_path.go#L14)
+
+### Go API Changes
+
+#### crypto.merkle
+
+The `merkle.Hasher` interface was removed. Functions which used to take `Hasher`
+now simply take `[]byte`. This means that any objects being Merklized should be
+serialized before they are passed in.
+
+#### node
+
+The `node.RunForever` function was removed. Signal handling and running forever
+should instead be explicitly configured by the caller. See how we do it
+[here](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/cmd/tendermint/commands/run_node.go#L60).
+
 ## v0.25.0
 
 This release has minimal impact.

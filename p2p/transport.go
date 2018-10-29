@@ -446,11 +446,11 @@ func handshake(
 	)
 
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.MarshalBinaryWriter(c, ourNodeInfo)
+		_, err := cdc.MarshalBinaryLengthPrefixedWriter(c, ourNodeInfo)
 		errc <- err
 	}(errc, c)
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.UnmarshalBinaryReader(
+		_, err := cdc.UnmarshalBinaryLengthPrefixedReader(
 			c,
 			&peerNodeInfo,
 			int64(MaxNodeInfoSize()),

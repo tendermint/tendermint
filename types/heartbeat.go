@@ -23,7 +23,7 @@ type Heartbeat struct {
 // SignBytes returns the Heartbeat bytes for signing.
 // It panics if the Heartbeat is nil.
 func (heartbeat *Heartbeat) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinary(CanonicalizeHeartbeat(chainID, heartbeat))
+	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeHeartbeat(chainID, heartbeat))
 	if err != nil {
 		panic(err)
 	}

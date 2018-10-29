@@ -4,7 +4,7 @@ package proto3;
 
 
 message PartSetHeader {
-  sint32 Total = 1;
+  int32 Total = 1;
   bytes Hash = 2;
 }
 
@@ -17,10 +17,10 @@ message Header {
   // basic block info
   Version Version = 1;
   string ChainID = 2;
-  sint64 Height = 3;
+  int64 Height = 3;
   Timestamp Time = 4;
-  sint64 NumTxs = 5;
-  sint64 TotalTxs = 6;
+  int64 NumTxs = 5;
+  int64 TotalTxs = 6;
 
   // prev block info
   BlockID LastBlockID = 7;
@@ -46,11 +46,12 @@ message Version {
   uint64 App = 2;
 }
 
-// Timestamp wraps how amino encodes time. Note that this is different from the protobuf well-known type
-// protobuf/timestamp.proto in the sense that there seconds and nanos are varint encoded. See:
+// Timestamp wraps how amino encodes time.
+// This is the protobuf well-known type protobuf/timestamp.proto
+// See:
 // https://github.com/google/protobuf/blob/d2980062c859649523d5fd51d6b55ab310e47482/src/google/protobuf/timestamp.proto#L123-L135
-// Also nanos do not get skipped if they are zero in amino.
+// NOTE/XXX: nanos do not get skipped if they are zero in amino.
 message Timestamp {
-  sfixed64 seconds = 1;
-  sfixed32 nanos = 2;
+  int64 seconds = 1;
+  int32 nanos = 2;
 }
