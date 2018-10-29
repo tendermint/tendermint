@@ -2,7 +2,7 @@
 
 ## v0.26.0
 
-*October 19, 2018*
+*October 29, 2018*
 
 Special thanks to external contributors on this release:
 @bradyjoestar, @connorwstein, @goolAdapter, @HaoyangLiu,
@@ -17,9 +17,14 @@ It also includes our first take at a generalized merkle proof system.
 See the [UPGRADING.md](UPGRADING.md#v0.26.0) for details on upgrading to the new
 version.
 
+Please note that we are still making breaking changes to the protocols.
+While the new Version fields should help us to keep the software backwards compatible
+even while upgrading the protocols, we cannot guarantee that new releases will
+be compatible with old chains just yet. Thanks for bearing with us!
+
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
-BREAKING CHANGES:
+### BREAKING CHANGES:
 
 * CLI/RPC/Config
   * [config] [\#2232](https://github.com/tendermint/tendermint/issues/2232) timeouts as time.Duration, not ints
@@ -50,7 +55,6 @@ BREAKING CHANGES:
   * [types] [\#2298](https://github.com/tendermint/tendermint/issues/2298) Remove `Index` and `Total` fields from `TxProof`.
   * [types] [\#2598](https://github.com/tendermint/tendermint/issues/2598) `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg. `PrevoteType`,
     `PrecommitType`.
-  * [types] [\#2682](https://github.com/tendermint/tendermint/issues/2682) Use proto3 `varint` encoding for ints that are usually unsigned (instead of zigzag encoding).  
 
 * Blockchain Protocol
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
@@ -66,17 +70,18 @@ BREAKING CHANGES:
   * [state] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Require block.Version to match state.Version
   * [types] [\#2670](https://github.com/tendermint/tendermint/issues/2670) Header.Hash() builds Merkle tree out of fields in the same
     order they appear in the header, instead of sorting by field name
+  * [types] [\#2682](https://github.com/tendermint/tendermint/issues/2682) Use proto3 `varint` encoding for ints that are usually unsigned (instead of zigzag encoding).
 
 * P2P Protocol
   * [p2p] [\#2654](https://github.com/tendermint/tendermint/issues/2654) Add `ProtocolVersion` struct with protocol versions to top of
     DefaultNodeInfo and require `ProtocolVersion.Block` to match during peer handshake
 
-FEATURES:
+### FEATURES:
 - [abci] [\#2557](https://github.com/tendermint/tendermint/issues/2557) Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
 - [abci] [\#2662](https://github.com/tendermint/tendermint/issues/2662) Add `BlockVersion` and `P2PVersion` to `RequestInfo`
 - [crypto/merkle] [\#2298](https://github.com/tendermint/tendermint/issues/2298) General Merkle Proof scheme for chaining various types of Merkle trees together
 
-IMPROVEMENTS:
+### IMPROVEMENTS:
 - Additional Metrics
     - [consensus] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169)
     - [p2p] [\#2169](https://github.com/cosmos/cosmos-sdk/issues/2169)
@@ -85,7 +90,7 @@ IMPROVEMENTS:
   github.com/tendermint/crypto
 - [tools] [\#2238](https://github.com/tendermint/tendermint/issues/2238) Binary dependencies are now locked to a specific git commit
 
-BUG FIXES:
+### BUG FIXES:
 - [autofile] [\#2428](https://github.com/tendermint/tendermint/issues/2428) Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [common] [\#2533](https://github.com/tendermint/tendermint/issues/2533) Fixed a bug in the `BitArray.Or` method
 - [common] [\#2506](https://github.com/tendermint/tendermint/issues/2506) Fixed a bug in the `BitArray.Sub` method (@james-ray)
