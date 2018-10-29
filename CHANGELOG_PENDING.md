@@ -50,6 +50,7 @@ BREAKING CHANGES:
   * [types] [\#2298](https://github.com/tendermint/tendermint/issues/2298) Remove `Index` and `Total` fields from `TxProof`.
   * [types] [\#2598](https://github.com/tendermint/tendermint/issues/2598) `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg. `PrevoteType`,
     `PrecommitType`.
+  * [types] [\#2682](https://github.com/tendermint/tendermint/issues/2682) Use proto3 `varint` encoding for ints that are usually unsigned (instead of zigzag encoding).  
 
 * Blockchain Protocol
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
