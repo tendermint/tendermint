@@ -66,6 +66,9 @@ var (
 
 	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
 	ErrMempoolIsFull = errors.New("Mempool is full")
+
+	// ErrPreCheck means the tx bytes are invalid - ie. too big.
+	ErrPreCheck = errors.New("Tx failed precheck")
 )
 
 // PreCheckAminoMaxBytes checks that the size of the transaction plus the amino
@@ -286,7 +289,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	}
 
 	if mem.preCheck != nil && !mem.preCheck(tx) {
-		return
+		return ErrPreCheck
 	}
 
 	// CACHE
@@ -346,7 +349,13 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:        tx,
 			}
 			mem.txs.PushBack(memTx)
-			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r, "total", mem.Size())
+			mem.logger.Info("Added good transaction",
+				"tx", TxID(tx),
+				"res", r,
+				"height", memTx.height,
+				"total", mem.Size(),
+				"counter", memTx.counter,
+			)
 			mem.metrics.TxSizeBytes.Observe(float64(len(tx)))
 			mem.notifyTxsAvailable()
 		} else {
