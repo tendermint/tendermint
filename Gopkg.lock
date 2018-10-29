@@ -36,13 +36,6 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:c7644c73a3d23741fdba8a99b1464e021a224b7e205be497271a8003a15ca41b"
-  name = "github.com/ebuchman/fail-test"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
-
-[[projects]]
   digest = "1:544229a3ca0fb2dd5ebc2896d3d2ff7ce096d9751635301e44e37e761349ee70"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
@@ -503,7 +496,6 @@
   input-imports = [
     "github.com/btcsuite/btcutil/base58",
     "github.com/btcsuite/btcutil/bech32",
-    "github.com/ebuchman/fail-test",
     "github.com/fortytw2/leaktest",
     "github.com/go-kit/kit/log",
     "github.com/go-kit/kit/log/level",
