@@ -47,7 +47,8 @@ func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflic
 // Address is hex bytes.
 type Address = crypto.Address
 
-// Represents a prevote, precommit, or commit vote from validators for consensus.
+// Vote represents a prevote, precommit, or commit vote from validators for
+// consensus.
 type Vote struct {
 	Type             SignedMsgType `json:"type"`
 	Height           int64         `json:"height"`
@@ -130,6 +131,11 @@ func (vote *Vote) ValidateBasic() error {
 	if err := vote.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}
-	// should we check signature size? > 0 or exact size?
+	if len(vote.Signature) == 0 {
+		return errors.New("Signature is missing")
+	}
+	if len(vote.Signature) > MaxSignatureSize {
+		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+	}
 	return nil
 }

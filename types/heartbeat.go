@@ -73,6 +73,11 @@ func (heartbeat *Heartbeat) ValidateBasic() error {
 	if heartbeat.Sequence < 0 {
 		return errors.New("Negative Sequence")
 	}
-	// should we check signature size? > 0 or exact size?
+	if len(heartbeat.Signature) == 0 {
+		return errors.New("Signature is missing")
+	}
+	if len(heartbeat.Signature) > MaxSignatureSize {
+		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+	}
 	return nil
 }

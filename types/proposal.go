@@ -61,7 +61,12 @@ func (p *Proposal) ValidateBasic() error {
 	if err := p.POLBlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong POLBlockID: %v", err)
 	}
-	// XXX: check Signature size?
+	if len(p.Signature) == 0 {
+		return errors.New("Signature is missing")
+	}
+	if len(p.Signature) > MaxSignatureSize {
+		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+	}
 	return nil
 }
 

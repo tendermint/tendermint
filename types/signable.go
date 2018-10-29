@@ -1,5 +1,11 @@
 package types
 
+const (
+	// MaxSignatureSize is a maximum allowed signature size for the Heartbeat,
+	// Proposal and Vote.
+	MaxSignatureSize = 64
+)
+
 // Signable is an interface for all signable things.
 // It typically removes signatures before serializing.
 // SignBytes returns the bytes to be signed

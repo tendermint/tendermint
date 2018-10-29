@@ -1470,7 +1470,9 @@ func (m *ProposalPOLMessage) ValidateBasic() error {
 	if m.ProposalPOLRound < 0 {
 		return errors.New("Negative ProposalPOLRound")
 	}
-	// XXX: should we assert ProposalPOL.Size() > 0
+	if m.ProposalPOL.Size() == 0 {
+		return errors.New("Empty ProposalPOL bit array")
+	}
 	return nil
 }
 
@@ -1604,7 +1606,7 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 	if err := m.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}
-	// XXX: should we assert number of votes > 0?
+	// NOTE: Votes.Size() can be zero if the node does not have any
 	return nil
 }
 
