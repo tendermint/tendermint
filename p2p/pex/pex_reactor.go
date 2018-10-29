@@ -294,16 +294,24 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
-		// TODO check that the netAddr is valid!
-		// NOTE: GetSelection methods should never return nil addrs
-		if netAddr == nil {
-			return cmn.NewError("received nil addr")
+		// Validate netAddr.
+		// TODO: extract validating logic from NewNetAddressStringWithOptionalID
+		// and put it in netAddr#Valid (#2722)
+		na, err := p2p.NewNetAddressString(netAddr.String())
+		if err != nil {
+			r.Logger.Error("Failed to add new address", "err", err)
+			continue
 		}
 
-		err := r.book.AddAddress(netAddr, srcAddr)
-		r.logErrAddrBook(err)
+		// NOTE: we check netAddr validity and routability in book#AddAddress.
+		err = r.book.AddAddress(na, srcAddr)
+		if err != nil {
+			r.logErrAddrBook(err)
+			continue
+		}
 
-		// If this address came from a seed node, try to connect to it without waiting.
+		// If this address came from a seed node, try to connect to it without
+		// waiting.
 		for _, seedAddr := range r.seedAddrs {
 			if seedAddr.Equals(srcAddr) {
 				r.ensurePeers()
