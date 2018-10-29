@@ -1006,6 +1006,12 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 	// we should have precommitted
 	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
 
+	rs = cs1.GetRoundState()
+
+	assert.True(t, rs.ValidBlock == nil)
+	assert.True(t, rs.ValidBlockParts == nil)
+	assert.True(t, rs.ValidRound == -1)
+
 	// vs2 send (delayed) prevote for propBlock
 	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs4)
 
@@ -1033,6 +1039,7 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	validBlockCh := subscribe(cs1.eventBus, types.EventQueryValidBlock)
 	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 
 	round = round + 1 // move to round in which P0 is not proposer
 	incrementRound(vs2, vs3, vs4)
@@ -1062,7 +1069,7 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(20 * time.Millisecond)
+	ensureNewProposal(proposalCh, height, round)
 	rs := cs1.GetRoundState()
 
 	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), propBlockHash))
@@ -1204,7 +1211,7 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	startTestRound(cs1, height, round)
 	ensureNewRound(newRoundCh, height, round)
 
-	// vs2, vs3 and vs4 send prevote for propBlock
+	// vs2, vs3 and vs4 send precommit for propBlock
 	signAddVotes(cs1, types.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 	ensureNewValidBlock(validBlockCh, height, round)
 
@@ -1212,6 +1219,48 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	assert.True(t, rs.Step == cstypes.RoundStepCommit)
 	assert.True(t, rs.ProposalBlock == nil)
 	assert.True(t, rs.ProposalBlockParts.Header().Equals(propBlockParts.Header()))
+
+}
+
+// What we want:
+// P0 receives 2/3+ Precommit for B for round 0, while being in round 1. It emits NewValidBlock event.
+// After receiving block, it executes block and moves to the next height.
+func TestCommitFromPreviousRound(t *testing.T) {
+	cs1, vss := randConsensusState(4)
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, 1
+
+	partSize := types.BlockPartSizeBytes
+
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	validBlockCh := subscribe(cs1.eventBus, types.EventQueryValidBlock)
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+
+	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round)
+	propBlockHash := propBlock.Hash()
+	propBlockParts := propBlock.MakePartSet(partSize)
+
+	// start round in which PO is not proposer
+	startTestRound(cs1, height, round)
+	ensureNewRound(newRoundCh, height, round)
+
+	// vs2, vs3 and vs4 send precommit for propBlock for the previous round
+	signAddVotes(cs1, types.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+
+	ensureNewValidBlock(validBlockCh, height, round)
+
+	rs := cs1.GetRoundState()
+	assert.True(t, rs.Step == cstypes.RoundStepCommit)
+	assert.True(t, rs.CommitRound == vs2.Round)
+	assert.True(t, rs.ProposalBlock == nil)
+	assert.True(t, rs.ProposalBlockParts.Header().Equals(propBlockParts.Header()))
+
+	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+
+	ensureNewProposal(proposalCh, height, round)
+	ensureNewRound(newRoundCh, height+1, 0)
 }
 
 //------------------------------------------------------------------------------------------

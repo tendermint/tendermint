@@ -365,7 +365,7 @@ func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
 	const subscriber = "consensus-reactor"
 	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventNewRoundStep,
 		func(data tmevents.EventData) {
-			conR.broadcastNewRoundStepMessages(data.(*cstypes.RoundState))
+			conR.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
 		})
 
 	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventValidBlock,
@@ -396,7 +396,7 @@ func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(hb *types.Heartb
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(msg))
 }
 
-func (conR *ConsensusReactor) broadcastNewRoundStepMessages(rs *cstypes.RoundState) {
+func (conR *ConsensusReactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg := makeRoundStepMessage(rs)
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
 }
@@ -407,6 +407,7 @@ func (conR *ConsensusReactor) broadcastNewValidBlockMessage(rs *cstypes.RoundSta
 		Round:            rs.Round,
 		BlockPartsHeader: rs.ProposalBlockParts.Header(),
 		BlockParts:       rs.ProposalBlockParts.BitArray(),
+		IsCommit:         rs.Step == cstypes.RoundStepCommit,
 	}
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(csMsg))
 }
@@ -963,12 +964,18 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 	if ps.PRS.Height != proposal.Height || ps.PRS.Round != proposal.Round {
 		return
 	}
-	// ps.PRS.ProposalBlockParts is set due to NewValidBlockMessage
-	if ps.PRS.Proposal || ps.PRS.ProposalBlockParts != nil {
+
+	if ps.PRS.Proposal {
 		return
 	}
 
 	ps.PRS.Proposal = true
+
+	// ps.PRS.ProposalBlockParts is set due to NewValidBlockMessage
+	if ps.PRS.ProposalBlockParts != nil {
+		return
+	}
+
 	ps.PRS.ProposalBlockPartsHeader = proposal.BlockPartsHeader
 	ps.PRS.ProposalBlockParts = cmn.NewBitArray(proposal.BlockPartsHeader.Total)
 	ps.PRS.ProposalPOLRound = proposal.POLRound
@@ -1256,7 +1263,11 @@ func (ps *PeerState) ApplyNewValidBlockMessage(msg *NewValidBlockMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	if ps.PRS.Height != msg.Height && ps.PRS.Round != msg.Round {
+	if ps.PRS.Height != msg.Height {
+		return
+	}
+
+	if ps.PRS.Round != msg.Round && !msg.IsCommit {
 		return
 	}
 
@@ -1388,12 +1399,13 @@ type NewValidBlockMessage struct {
 	Round            int
 	BlockPartsHeader types.PartSetHeader
 	BlockParts       *cmn.BitArray
+	IsCommit         bool
 }
 
 // String returns a string representation.
 func (m *NewValidBlockMessage) String() string {
-	return fmt.Sprintf("[ValidBlockMessage H:%v R:%v BP:%v BA:%v]",
-		m.Height, m.Round, m.BlockPartsHeader, m.BlockParts)
+	return fmt.Sprintf("[ValidBlockMessage H:%v R:%v BP:%v BA:%v IsCommit:%v]",
+		m.Height, m.Round, m.BlockPartsHeader, m.BlockParts, m.IsCommit)
 }
 
 //-------------------------------------
