@@ -92,6 +92,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   github.com/tendermint/crypto
 - [tools] [\#2238](https://github.com/tendermint/tendermint/issues/2238) Binary dependencies are now locked to a specific git commit
 - [libs/log] [\#2706](https://github.com/tendermint/tendermint/issues/2706) Add year to log format
+- [consensus] [\#2683] validate all incoming messages
+- [evidence] [\#2683] validate all incoming messages
+- [blockchain] [\#2683] validate all incoming messages
 
 ### BUG FIXES:
 - [autofile] [\#2428](https://github.com/tendermint/tendermint/issues/2428) Group.RotateFile need call Flush() before rename (@goolAdapter)
