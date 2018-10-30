@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
 )
@@ -20,22 +21,19 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 
 	// Validate basic info.
 	if block.Version != state.Version.Consensus {
-		return fmt.Errorf(
-			"Wrong Block.Header.Version. Expected %v, got %v",
+		return fmt.Errorf("Wrong Block.Header.Version. Expected %v, got %v",
 			state.Version.Consensus,
 			block.Version,
 		)
 	}
 	if block.ChainID != state.ChainID {
-		return fmt.Errorf(
-			"Wrong Block.Header.ChainID. Expected %v, got %v",
+		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v",
 			state.ChainID,
 			block.ChainID,
 		)
 	}
 	if block.Height != state.LastBlockHeight+1 {
-		return fmt.Errorf(
-			"Wrong Block.Header.Height. Expected %v, got %v",
+		return fmt.Errorf("Wrong Block.Header.Height. Expected %v, got %v",
 			state.LastBlockHeight+1,
 			block.Height,
 		)
@@ -43,16 +41,15 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 
 	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
-		return fmt.Errorf(
-			"Wrong Block.Header.LastBlockID.  Expected %v, got %v",
+		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v",
 			state.LastBlockID,
 			block.LastBlockID,
 		)
 	}
+
 	newTxs := int64(len(block.Data.Txs))
 	if block.TotalTxs != state.LastBlockTotalTx+newTxs {
-		return fmt.Errorf(
-			"Wrong Block.Header.TotalTxs. Expected %v, got %v",
+		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v",
 			state.LastBlockTotalTx+newTxs,
 			block.TotalTxs,
 		)
@@ -60,46 +57,44 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 
 	// Validate app info
 	if !bytes.Equal(block.AppHash, state.AppHash) {
-		return fmt.Errorf(
-			"Wrong Block.Header.AppHash.  Expected %X, got %v",
+		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v",
 			state.AppHash,
 			block.AppHash,
 		)
 	}
 	if !bytes.Equal(block.ConsensusHash, state.ConsensusParams.Hash()) {
-		return fmt.Errorf(
-			"Wrong Block.Header.ConsensusHash.  Expected %X, got %v",
+		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v",
 			state.ConsensusParams.Hash(),
 			block.ConsensusHash,
 		)
 	}
 	if !bytes.Equal(block.LastResultsHash, state.LastResultsHash) {
-		return fmt.Errorf(
-			"Wrong Block.Header.LastResultsHash.  Expected %X, got %v",
+		return fmt.Errorf("Wrong Block.Header.LastResultsHash.  Expected %X, got %v",
 			state.LastResultsHash,
 			block.LastResultsHash,
 		)
 	}
 	if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
-		return fmt.Errorf(
-			"Wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
+		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
 			state.Validators.Hash(),
 			block.ValidatorsHash,
 		)
 	}
 	if !bytes.Equal(block.NextValidatorsHash, state.NextValidators.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v", state.NextValidators.Hash(), block.NextValidatorsHash)
+		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v",
+			state.NextValidators.Hash(),
+			block.NextValidatorsHash,
+		)
 	}
 
 	// Validate block LastCommit.
 	if block.Height == 1 {
 		if len(block.LastCommit.Precommits) != 0 {
-			return errors.New("Block at height 1 (first block) should have no LastCommit precommits")
+			return errors.New("Block at height 1 can't have LastCommit precommits")
 		}
 	} else {
 		if len(block.LastCommit.Precommits) != state.LastValidators.Size() {
-			return fmt.Errorf(
-				"Invalid block commit size. Expected %v, got %v",
+			return fmt.Errorf("Invalid block commit size. Expected %v, got %v",
 				state.LastValidators.Size(),
 				len(block.LastCommit.Precommits),
 			)
@@ -114,8 +109,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	// Validate block Time
 	if block.Height > 1 {
 		if !block.Time.After(state.LastBlockTime) {
-			return fmt.Errorf(
-				"Block time %v not greater than last block time %v",
+			return fmt.Errorf("Block time %v not greater than last block time %v",
 				block.Time,
 				state.LastBlockTime,
 			)
@@ -123,8 +117,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 
 		medianTime := MedianTime(block.LastCommit, state.LastValidators)
 		if !block.Time.Equal(medianTime) {
-			return fmt.Errorf(
-				"Invalid block time. Expected %v, got %v",
+			return fmt.Errorf("Invalid block time. Expected %v, got %v",
 				medianTime,
 				block.Time,
 			)
@@ -132,8 +125,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	} else if block.Height == 1 {
 		genesisTime := state.LastBlockTime
 		if !block.Time.Equal(genesisTime) {
-			return fmt.Errorf(
-				"Block time %v is not equal to genesis time %v",
+			return fmt.Errorf("Block time %v is not equal to genesis time %v",
 				block.Time,
 				genesisTime,
 			)
@@ -157,9 +149,9 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	// NOTE: We can't actually verify it's the right proposer because we dont
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
-	if !state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf(
-			"Block.Header.ProposerAddress, %X, is not a validator",
+	if len(block.ProposerAddress) != crypto.AddressSize ||
+		!state.Validators.HasAddress(block.ProposerAddress) {
+		return fmt.Errorf("Block.Header.ProposerAddress, %X, is not a validator",
 			block.ProposerAddress,
 		)
 	}

@@ -79,11 +79,12 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.EvidenceHash = []byte("something else")
 		}, true},
 	}
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
 			block := MakeBlock(h, txs, commit, evList)
 			tc.malleateBlock(block)
-			assert.Equal(t, tc.expErr, block.ValidateBasic() != nil, "ValidateBasic had an unexpected result")
+			err = block.ValidateBasic()
+			assert.Equal(t, tc.expErr, err != nil, "#%d: %v", i, err)
 		})
 	}
 }

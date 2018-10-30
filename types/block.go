@@ -9,7 +9,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/version"
@@ -70,10 +69,6 @@ func (b *Block) ValidateBasic() error {
 		return errors.New("Negative Header.Height")
 	}
 
-	if err := ValidateTime(b.Time); err != nil {
-		return err
-	}
-
 	// Validate num txs.
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
@@ -82,18 +77,11 @@ func (b *Block) ValidateBasic() error {
 			b.NumTxs,
 		)
 	}
-	if b.TotalTxs < b.NumTxs {
-		return errors.New("Header.TotalTxs is less than Header.NumTxs")
-	}
-
-	if err := b.LastBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong Header.LastBlockID: %v", err)
-	}
 
 	// Validate evidence.
-	for _, ev := range b.Evidence.Evidence {
+	for i, ev := range b.Evidence.Evidence {
 		if err := ev.ValidateBasic(); err != nil {
-			return err
+			return errors.Wrapf(err, "Wrong evidence #%d", i)
 		}
 	}
 
@@ -103,7 +91,7 @@ func (b *Block) ValidateBasic() error {
 			return errors.New("nil LastCommit")
 		}
 		if err := b.LastCommit.ValidateBasic(); err != nil {
-			return err
+			return errors.Wrap(err, "Wrong LastCommit")
 		}
 	}
 	if err := ValidateHash(b.LastCommitHash); err != nil {
@@ -141,16 +129,10 @@ func (b *Block) ValidateBasic() error {
 		return errors.Wrap(err, "Wrong Header.EvidenceHash")
 	}
 	if !bytes.Equal(b.EvidenceHash, b.Evidence.Hash()) {
-		return fmt.Errorf(
-			"Wrong Header.EvidenceHash. Expected %v, got %v",
+		return fmt.Errorf("Wrong Header.EvidenceHash. Expected %v, got %v",
 			b.EvidenceHash,
 			b.Evidence.Hash(),
 		)
-	}
-
-	if len(b.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("Expected len(Header.ProposerAddress) to be %d",
-			crypto.AddressSize)
 	}
 
 	return nil
