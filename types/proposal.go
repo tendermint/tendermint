@@ -46,8 +46,7 @@ func NewProposal(height int64, round int, blockPartsHeader PartSetHeader, polRou
 
 // String returns a string representation of the Proposal.
 func (p *Proposal) String() string {
-	return fmt.Sprintf("Proposal{%X(Proposal) %v/%v %v (%v,%v) %X @ %s}",
-		p.Type,
+	return fmt.Sprintf("Proposal{%v/%v %v (%v,%v) %X @ %s}",
 		p.Height,
 		p.Round,
 		p.BlockPartsHeader,
