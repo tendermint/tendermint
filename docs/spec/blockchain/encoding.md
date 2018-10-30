@@ -176,13 +176,12 @@ greater, for example:
 h0  h1          h3  h4             h0  h1  h2  h3  h4  h5
 ```
 
-Tendermint always uses the `TMHASH` hash function, which is the first 20-bytes
-of the SHA256:
+Tendermint always uses the `TMHASH` hash function, which is equivalent to
+SHA256:
 
 ```
 func TMHASH(bz []byte) []byte {
-    shasum := SHA256(bz)
-    return shasum[:20]
+    return SHA256(bz)
 }
 ```
 
