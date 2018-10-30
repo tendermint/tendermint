@@ -52,10 +52,8 @@ func (p *Proposal) ValidateBasic() error {
 	if p.Round < 0 {
 		return errors.New("Negative Round")
 	}
-	now := tmtime.Now()
-	oneYear := 8766 * time.Hour
-	if p.Timestamp.Before(now.Add(-oneYear)) || p.Timestamp.After(now.Add(oneYear)) {
-		return fmt.Errorf("Time drifted too much. Expected: -1 < %v < 1 year", now)
+	if err := ValidateTime(p.Timestamp); err != nil {
+		return err
 	}
 	if err := p.BlockPartsHeader.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)

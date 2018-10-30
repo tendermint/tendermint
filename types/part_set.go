@@ -2,10 +2,11 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -87,11 +88,8 @@ func (psh PartSetHeader) ValidateBasic() error {
 		return errors.New("Negative Total")
 	}
 	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
-	if len(psh.Hash) > 0 && len(psh.Hash) != tmhash.Size {
-		return fmt.Errorf("Expected Hash size to be %d bytes, got %d bytes",
-			tmhash.Size,
-			len(psh.Hash),
-		)
+	if err := ValidateHash(psh.Hash); err != nil {
+		return errors.Wrap(err, "Wrong Hash")
 	}
 	return nil
 }

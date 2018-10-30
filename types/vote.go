@@ -8,7 +8,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (
@@ -128,10 +127,8 @@ func (vote *Vote) ValidateBasic() error {
 	if vote.Round < 0 {
 		return errors.New("Negative Round")
 	}
-	now := tmtime.Now()
-	oneYear := 8766 * time.Hour
-	if vote.Timestamp.Before(now.Add(-oneYear)) || vote.Timestamp.After(now.Add(oneYear)) {
-		return fmt.Errorf("Time drifted too much. Expected: -1 < %v < 1 year", now)
+	if err := ValidateTime(vote.Timestamp); err != nil {
+		return err
 	}
 	if !IsVoteTypeValid(vote.Type) {
 		return errors.New("Invalid Type")

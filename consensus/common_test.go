@@ -610,8 +610,6 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
-	db := dbm.NewMemDB() // remove this ?
-	sm.SaveState(db, s0)
 	return s0, privValidators
 }
 
