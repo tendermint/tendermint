@@ -57,6 +57,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     `PrecommitType`.
 
 * Blockchain Protocol
+  * [abci] [\#2636](https://github.com/tendermint/tendermint/issues/2636) Add ValidatorParams field to ConsensusParams.
+  (Used to control which pubkey types validators can use, by abci type)
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
     * [\#2459](https://github.com/tendermint/tendermint/issues/2459) Use amino encoding instead of JSON in `SignBytes`.
     * [\#2598](https://github.com/tendermint/tendermint/issues/2598) Reorder fields and use fixed sized encoding.

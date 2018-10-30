@@ -164,7 +164,7 @@ func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evid
 
 	// NOTE: We only send evidence to peers where
 	// peerHeight - maxAge < evidenceHeight < peerHeight
-	maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
+	maxAge := evR.evpool.State().ConsensusParams.Evidence.MaxAge
 	peerHeight := peerState.GetHeight()
 	if peerHeight < evHeight {
 		// peer is behind. sleep while he catches up

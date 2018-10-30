@@ -186,7 +186,7 @@ func (blockExec *BlockExecutor) Commit(
 				state.Validators.Size(),
 			),
 		),
-		mempool.PostCheckMaxGas(state.ConsensusParams.MaxGas),
+		mempool.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
 	)
 
 	return res.Data, err

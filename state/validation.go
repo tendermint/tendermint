@@ -178,7 +178,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	height := state.LastBlockHeight
 
 	evidenceAge := height - evidence.Height()
-	maxAge := state.ConsensusParams.EvidenceParams.MaxAge
+	maxAge := state.ConsensusParams.Evidence.MaxAge
 	if evidenceAge > maxAge {
 		return fmt.Errorf("Evidence from height %d is too old. Min height is %d",
 			evidence.Height(), height-maxAge)
