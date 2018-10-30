@@ -66,32 +66,30 @@ func (b *Block) ValidateBasic() error {
 	defer b.mtx.Unlock()
 
 	if b.Height < 0 {
-		return fmt.Errorf(
-			"Negative Block.Header.Height: %v",
-			b.Height,
-		)
+		return fmt.Errorf("Negative Block.Header.Height: %v", b.Height)
 	}
 
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
-		return fmt.Errorf(
-			"Wrong Block.Header.NumTxs. Expected %v, got %v",
+		return fmt.Errorf("Wrong Block.Header.NumTxs. Expected %v, got %v",
 			newTxs,
 			b.NumTxs,
 		)
 	}
+
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
-		return fmt.Errorf(
-			"Wrong Block.Header.LastCommitHash.  Expected %v, got %v",
+		return fmt.Errorf("Wrong Block.Header.LastCommitHash. Expected %v, got %v",
 			b.LastCommitHash,
 			b.LastCommit.Hash(),
 		)
 	}
+
 	if b.Header.Height != 1 {
 		if err := b.LastCommit.ValidateBasic(); err != nil {
 			return err
 		}
 	}
+
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
 		return fmt.Errorf(
 			"Wrong Block.Header.DataHash.  Expected %v, got %v",
@@ -99,6 +97,7 @@ func (b *Block) ValidateBasic() error {
 			b.Data.Hash(),
 		)
 	}
+
 	if !bytes.Equal(b.EvidenceHash, b.Evidence.Hash()) {
 		return fmt.Errorf(
 			"Wrong Block.Header.EvidenceHash.  Expected %v, got %v",
@@ -106,6 +105,7 @@ func (b *Block) ValidateBasic() error {
 			b.Evidence.Hash(),
 		)
 	}
+
 	return nil
 }
 

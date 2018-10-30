@@ -1383,8 +1383,8 @@ type NewRoundStepMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *NewRoundStepMessage) ValidateBasic() error {
-	if m.Height < 1 {
-		return errors.New("Negative or zero Height")
+	if m.Height < 0 {
+		return errors.New("Negative Height")
 	}
 	if m.Round < 0 {
 		return errors.New("Negative Round")
@@ -1395,9 +1395,9 @@ func (m *NewRoundStepMessage) ValidateBasic() error {
 	if m.SecondsSinceStartTime < 0 {
 		return errors.New("Negative SecondsSinceStartTime")
 	}
-	if (m.Height == 1 && m.LastCommitRound < -1) ||
+	if (m.Height == 1 && m.LastCommitRound != -1) ||
 		(m.Height > 1 && m.LastCommitRound < 0) {
-		return errors.New("Negative LastCommitRound")
+		return errors.New("Invalid LastCommitRound (for 1st block: -1, for others: >= 0)")
 	}
 	return nil
 }
