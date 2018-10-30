@@ -146,14 +146,14 @@ The vote includes information about the validator signing it.
 
 ```go
 type Vote struct {
-    ValidatorAddress    []byte
-    ValidatorIndex      int
-    Height              int64
-    Round               int
-    Timestamp           Time
-    Type                int8
-    BlockID             BlockID
-    Signature           []byte
+	Type             SignedMsgType  // byte
+	Height           int64
+	Round            int
+	Timestamp        time.Time
+	BlockID          BlockID
+	ValidatorAddress Address
+	ValidatorIndex   int
+	Signature        []byte
 }
 ```
 
