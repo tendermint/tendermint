@@ -85,16 +85,17 @@ func (vote *Vote) String() string {
 		cmn.PanicSanity("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
-		vote.ValidatorIndex,
-		cmn.Fingerprint(vote.ValidatorAddress),
-		vote.Height,
-		vote.Round,
+	return fmt.Sprintf("Vote{%v(%v) %v/%02d @ %s %X %v:%X   %X}",
 		vote.Type,
 		typeString,
+		vote.Height,
+		vote.Round,
+		CanonicalTime(vote.Timestamp),
 		cmn.Fingerprint(vote.BlockID.Hash),
+		vote.ValidatorIndex,
+		cmn.Fingerprint(vote.ValidatorAddress),
 		cmn.Fingerprint(vote.Signature),
-		CanonicalTime(vote.Timestamp))
+	)
 }
 
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
