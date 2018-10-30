@@ -272,7 +272,7 @@ func randValidatorSet(numValidators int) *ValidatorSet {
 }
 
 func (valSet *ValidatorSet) toBytes() []byte {
-	bz, err := cdc.MarshalBinary(valSet)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(valSet)
 	if err != nil {
 		panic(err)
 	}
@@ -280,7 +280,7 @@ func (valSet *ValidatorSet) toBytes() []byte {
 }
 
 func (valSet *ValidatorSet) fromBytes(b []byte) {
-	err := cdc.UnmarshalBinary(b, &valSet)
+	err := cdc.UnmarshalBinaryLengthPrefixed(b, &valSet)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(err)
@@ -385,7 +385,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Height:           height,
 		Round:            0,
 		Timestamp:        tmtime.Now(),
-		Type:             VoteTypePrecommit,
+		Type:             PrecommitType,
 		BlockID:          blockID,
 	}
 	sig, err := privKey.Sign(vote.SignBytes(chainID))

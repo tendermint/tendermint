@@ -216,7 +216,7 @@ prefix) before being concatenated together and hashed.
 
 Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
 For `struct` arguments, we compute a `[][]byte` containing the hash of each
-field in the struct sorted by the hash of the field name.
+field in the struct, in the same order the fields appear in the struct.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
 
 ### Simple Merkle Proof
@@ -300,20 +300,22 @@ Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
 
 Signed messages (eg. votes, proposals) in the consensus are encoded using Amino.
 
-When signing, the elements of a message are sorted alphabetically by key and prepended with
-a `chain_id` and `type` field.
+When signing, the elements of a message are re-ordered so the fixed-length fields
+are first, making it easy to quickly check the type, height, and round.
+The `ChainID` is also appended to the end.
 We call this encoding the SignBytes. For instance, SignBytes for a vote is the Amino encoding of the following struct:
 
 ```go
 type CanonicalVote struct {
-	ChainID   string
-	Type      string
-	BlockID   CanonicalBlockID
-	Height    int64
-	Round     int
+	Type      byte
+	Height    int64            `binary:"fixed64"`
+	Round     int64            `binary:"fixed64"`
 	Timestamp time.Time
-	VoteType  byte
+	BlockID   CanonicalBlockID
+	ChainID   string
 }
 ```
 
-NOTE: see [#1622](https://github.com/tendermint/tendermint/issues/1622) for how field ordering will change
+The field ordering and the fixed sized encoding for the first three fields is optimized to ease parsing of SignBytes
+in HSMs. It creates fixed offsets for relevant fields that need to be read in this context.
+See [#1622](https://github.com/tendermint/tendermint/issues/1622) for more details.

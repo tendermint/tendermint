@@ -1,6 +1,7 @@
 module.exports = {
-  title: "Tendermint Core",
-  description: "Documentation for Tendermint Core",
+  title: "Tendermint Documentation",
+  description: "Documentation for Tendermint Core.",
+  ga: "UA-51029217-1",
   dest: "./dist/docs",
   base: "/docs/",
   markdown: {

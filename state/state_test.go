@@ -319,9 +319,11 @@ func TestStateMakeBlock(t *testing.T) {
 	defer tearDown(t)
 
 	proposerAddress := state.Validators.GetProposer().Address
+	stateVersion := state.Version.Consensus
 	block := makeBlock(state, 2)
 
-	// test we set proposer address
+	// test we set some fields
+	assert.Equal(t, stateVersion, block.Version)
 	assert.Equal(t, proposerAddress, block.ProposerAddress)
 }
 
@@ -388,11 +390,11 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
 	return types.ConsensusParams{
-		BlockSize: types.BlockSize{
+		BlockSize: types.BlockSizeParams{
 			MaxBytes: blockBytes,
 			MaxGas:   blockGas,
 		},
-		EvidenceParams: types.EvidenceParams{
+		Evidence: types.EvidenceParams{
 			MaxAge: evidenceAge,
 		},
 	}
@@ -414,7 +416,7 @@ func TestApplyUpdates(t *testing.T) {
 		1: {initParams, abci.ConsensusParams{}, initParams},
 		2: {initParams,
 			abci.ConsensusParams{
-				BlockSize: &abci.BlockSize{
+				BlockSize: &abci.BlockSizeParams{
 					MaxBytes: 44,
 					MaxGas:   55,
 				},
@@ -422,7 +424,7 @@ func TestApplyUpdates(t *testing.T) {
 			makeParams(44, 55, 3)},
 		3: {initParams,
 			abci.ConsensusParams{
-				EvidenceParams: &abci.EvidenceParams{
+				Evidence: &abci.EvidenceParams{
 					MaxAge: 66,
 				},
 			},

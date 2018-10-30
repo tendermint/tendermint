@@ -12,7 +12,7 @@ import (
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes int64 = 200
+	MaxVoteBytes int64 = 199
 )
 
 var (
@@ -43,41 +43,23 @@ func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflic
 	}
 }
 
-// Types of votes
-// TODO Make a new type "VoteType"
-const (
-	VoteTypePrevote   = byte(0x01)
-	VoteTypePrecommit = byte(0x02)
-)
-
-func IsVoteTypeValid(type_ byte) bool {
-	switch type_ {
-	case VoteTypePrevote:
-		return true
-	case VoteTypePrecommit:
-		return true
-	default:
-		return false
-	}
-}
-
 // Address is hex bytes.
 type Address = crypto.Address
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	ValidatorAddress Address   `json:"validator_address"`
-	ValidatorIndex   int       `json:"validator_index"`
-	Height           int64     `json:"height"`
-	Round            int       `json:"round"`
-	Timestamp        time.Time `json:"timestamp"`
-	Type             byte      `json:"type"`
-	BlockID          BlockID   `json:"block_id"` // zero if vote is nil.
-	Signature        []byte    `json:"signature"`
+	Type             SignedMsgType `json:"type"`
+	Height           int64         `json:"height"`
+	Round            int           `json:"round"`
+	Timestamp        time.Time     `json:"timestamp"`
+	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
+	ValidatorAddress Address       `json:"validator_address"`
+	ValidatorIndex   int           `json:"validator_index"`
+	Signature        []byte        `json:"signature"`
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinary(CanonicalizeVote(chainID, vote))
+	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
 	if err != nil {
 		panic(err)
 	}
@@ -95,9 +77,9 @@ func (vote *Vote) String() string {
 	}
 	var typeString string
 	switch vote.Type {
-	case VoteTypePrevote:
+	case PrevoteType:
 		typeString = "Prevote"
-	case VoteTypePrecommit:
+	case PrecommitType:
 		typeString = "Precommit"
 	default:
 		cmn.PanicSanity("Unknown vote type")
@@ -112,7 +94,8 @@ func (vote *Vote) String() string {
 		typeString,
 		cmn.Fingerprint(vote.BlockID.Hash),
 		cmn.Fingerprint(vote.Signature),
-		CanonicalTime(vote.Timestamp))
+		CanonicalTime(vote.Timestamp),
+	)
 }
 
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {

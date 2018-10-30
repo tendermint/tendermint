@@ -22,7 +22,7 @@ func makeVote(val PrivValidator, chainID string, valIndex int, height int64, rou
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             byte(step),
+		Type:             SignedMsgType(step),
 		BlockID:          blockID,
 	}
 	err := val.SignVote(chainID, v)
@@ -105,7 +105,7 @@ func TestMaxEvidenceBytes(t *testing.T) {
 		VoteB:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
 	}
 
-	bz, err := cdc.MarshalBinary(ev)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, MaxEvidenceBytes, len(bz))

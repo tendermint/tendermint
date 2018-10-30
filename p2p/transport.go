@@ -171,7 +171,7 @@ func (mt *MultiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 
 		cfg.outbound = false
 
-		return mt.wrapPeer(a.conn, a.nodeInfo, cfg), nil
+		return mt.wrapPeer(a.conn, a.nodeInfo, cfg, nil), nil
 	case <-mt.closec:
 		return nil, &ErrTransportClosed{}
 	}
@@ -199,7 +199,7 @@ func (mt *MultiplexTransport) Dial(
 
 	cfg.outbound = true
 
-	p := mt.wrapPeer(secretConn, nodeInfo, cfg)
+	p := mt.wrapPeer(secretConn, nodeInfo, cfg, &addr)
 
 	return p, nil
 }
@@ -335,7 +335,7 @@ func (mt *MultiplexTransport) upgrade(
 
 	secretConn, err = upgradeSecretConn(c, mt.handshakeTimeout, mt.nodeKey.PrivKey)
 	if err != nil {
-		return nil, NodeInfo{}, ErrRejected{
+		return nil, nil, ErrRejected{
 			conn:          c,
 			err:           fmt.Errorf("secrect conn failed: %v", err),
 			isAuthFailure: true,
@@ -344,15 +344,15 @@ func (mt *MultiplexTransport) upgrade(
 
 	nodeInfo, err = handshake(secretConn, mt.handshakeTimeout, mt.nodeInfo)
 	if err != nil {
-		return nil, NodeInfo{}, ErrRejected{
+		return nil, nil, ErrRejected{
 			conn:          c,
 			err:           fmt.Errorf("handshake failed: %v", err),
 			isAuthFailure: true,
 		}
 	}
 
-	if err := nodeInfo.Validate(); err != nil {
-		return nil, NodeInfo{}, ErrRejected{
+	if err := nodeInfo.ValidateBasic(); err != nil {
+		return nil, nil, ErrRejected{
 			conn:              c,
 			err:               err,
 			isNodeInfoInvalid: true,
@@ -360,34 +360,34 @@ func (mt *MultiplexTransport) upgrade(
 	}
 
 	// Ensure connection key matches self reported key.
-	if connID := PubKeyToID(secretConn.RemotePubKey()); connID != nodeInfo.ID {
-		return nil, NodeInfo{}, ErrRejected{
+	if connID := PubKeyToID(secretConn.RemotePubKey()); connID != nodeInfo.ID() {
+		return nil, nil, ErrRejected{
 			conn: c,
 			id:   connID,
 			err: fmt.Errorf(
 				"conn.ID (%v) NodeInfo.ID (%v) missmatch",
 				connID,
-				nodeInfo.ID,
+				nodeInfo.ID(),
 			),
 			isAuthFailure: true,
 		}
 	}
 
 	// Reject self.
-	if mt.nodeInfo.ID == nodeInfo.ID {
-		return nil, NodeInfo{}, ErrRejected{
-			addr:   *NewNetAddress(nodeInfo.ID, c.RemoteAddr()),
+	if mt.nodeInfo.ID() == nodeInfo.ID() {
+		return nil, nil, ErrRejected{
+			addr:   *NewNetAddress(nodeInfo.ID(), c.RemoteAddr()),
 			conn:   c,
-			id:     nodeInfo.ID,
+			id:     nodeInfo.ID(),
 			isSelf: true,
 		}
 	}
 
 	if err := mt.nodeInfo.CompatibleWith(nodeInfo); err != nil {
-		return nil, NodeInfo{}, ErrRejected{
+		return nil, nil, ErrRejected{
 			conn:           c,
 			err:            err,
-			id:             nodeInfo.ID,
+			id:             nodeInfo.ID(),
 			isIncompatible: true,
 		}
 	}
@@ -399,14 +399,19 @@ func (mt *MultiplexTransport) wrapPeer(
 	c net.Conn,
 	ni NodeInfo,
 	cfg peerConfig,
+	dialedAddr *NetAddress,
 ) Peer {
+
+	peerConn := newPeerConn(
+		cfg.outbound,
+		cfg.persistent,
+		&mt.p2pConfig,
+		c,
+		dialedAddr,
+	)
+
 	p := newPeer(
-		peerConn{
-			conn:       c,
-			config:     &mt.p2pConfig,
-			outbound:   cfg.outbound,
-			persistent: cfg.persistent,
-		},
+		peerConn,
 		mt.mConfig,
 		ni,
 		cfg.reactorsByCh,
@@ -430,21 +435,22 @@ func handshake(
 	nodeInfo NodeInfo,
 ) (NodeInfo, error) {
 	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return NodeInfo{}, err
+		return nil, err
 	}
 
 	var (
 		errc = make(chan error, 2)
 
-		peerNodeInfo NodeInfo
+		peerNodeInfo DefaultNodeInfo
+		ourNodeInfo  = nodeInfo.(DefaultNodeInfo)
 	)
 
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.MarshalBinaryWriter(c, nodeInfo)
+		_, err := cdc.MarshalBinaryLengthPrefixedWriter(c, ourNodeInfo)
 		errc <- err
 	}(errc, c)
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.UnmarshalBinaryReader(
+		_, err := cdc.UnmarshalBinaryLengthPrefixedReader(
 			c,
 			&peerNodeInfo,
 			int64(MaxNodeInfoSize()),
@@ -455,7 +461,7 @@ func handshake(
 	for i := 0; i < cap(errc); i++ {
 		err := <-errc
 		if err != nil {
-			return NodeInfo{}, err
+			return nil, err
 		}
 	}
 

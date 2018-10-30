@@ -8,6 +8,7 @@ The Tendermint blockchains consists of a short list of basic data types:
 
 - `Block`
 - `Header`
+- `Version`
 - `BlockID`
 - `Time`
 - `Data` (for transactions)
@@ -38,6 +39,7 @@ the data in the current block, the previous block, and the results returned by t
 ```go
 type Header struct {
 	// basic block info
+	Version  Version
 	ChainID  string
 	Height   int64
 	Time     Time
@@ -64,6 +66,19 @@ type Header struct {
 ```
 
 Further details on each of these fields is described below.
+
+## Version
+
+The `Version` contains the protocol version for the blockchain and the
+application as two `uint64` values:
+
+```go
+type Version struct {
+    Block   uint64
+    App     uint64
+}
+```
+
 
 ## BlockID
 
@@ -131,14 +146,14 @@ The vote includes information about the validator signing it.
 
 ```go
 type Vote struct {
-    ValidatorAddress    []byte
-    ValidatorIndex      int
-    Height              int64
-    Round               int
-    Timestamp           Time
-    Type                int8
-    BlockID             BlockID
-    Signature           []byte
+	Type             SignedMsgType  // byte
+	Height           int64
+	Round            int
+	Timestamp        time.Time
+	BlockID          BlockID
+	ValidatorAddress Address
+	ValidatorIndex   int
+	Signature        []byte
 }
 ```
 
@@ -199,6 +214,15 @@ See [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockc
 ### Header
 
 A Header is valid if its corresponding fields are valid.
+
+### Version
+
+```
+block.Version.Block == state.Version.Block
+block.Version.App == state.Version.App
+```
+
+The block version must match the state version.
 
 ### ChainID
 
@@ -320,10 +344,10 @@ next validator sets Merkle root.
 ### ConsensusParamsHash
 
 ```go
-block.ConsensusParamsHash == SimpleMerkleRoot(state.ConsensusParams)
+block.ConsensusParamsHash == tmhash(amino(state.ConsensusParams))
 ```
 
-Simple Merkle root of the consensus parameters.
+Hash of the amino-encoded consensus parameters.
 
 ### AppHash
 
@@ -410,8 +434,9 @@ must be greater than 2/3 of the total voting power of the complete validator set
 
 A vote is a signed message broadcast in the consensus for a particular block at a particular height and round.
 When stored in the blockchain or propagated over the network, votes are encoded in Amino.
-For signing, votes are represented via `CanonicalVote` and also encoded using amino (protobuf compatible) via 
-`Vote.SignBytes` which includes the `ChainID`.
+For signing, votes are represented via `CanonicalVote` and also encoded using amino (protobuf compatible) via
+`Vote.SignBytes` which includes the `ChainID`, and uses a different ordering of
+the fields.
 
 We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the `SignBytes`
 using the given ChainID:

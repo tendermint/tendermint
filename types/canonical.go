@@ -13,44 +13,43 @@ import (
 const TimeFormat = time.RFC3339Nano
 
 type CanonicalBlockID struct {
-	Hash        cmn.HexBytes           `json:"hash,omitempty"`
-	PartsHeader CanonicalPartSetHeader `json:"parts,omitempty"`
+	Hash        cmn.HexBytes
+	PartsHeader CanonicalPartSetHeader
 }
 
 type CanonicalPartSetHeader struct {
-	Hash  cmn.HexBytes `json:"hash,omitempty"`
-	Total int          `json:"total,omitempty"`
+	Hash  cmn.HexBytes
+	Total int
 }
 
 type CanonicalProposal struct {
-	ChainID          string                 `json:"@chain_id"`
-	Type             string                 `json:"@type"`
-	BlockPartsHeader CanonicalPartSetHeader `json:"block_parts_header"`
-	Height           int64                  `json:"height"`
-	POLBlockID       CanonicalBlockID       `json:"pol_block_id"`
-	POLRound         int                    `json:"pol_round"`
-	Round            int                    `json:"round"`
-	Timestamp        time.Time              `json:"timestamp"`
+	Type             SignedMsgType // type alias for byte
+	Height           int64         `binary:"fixed64"`
+	Round            int64         `binary:"fixed64"`
+	POLRound         int64         `binary:"fixed64"`
+	Timestamp        time.Time
+	BlockPartsHeader CanonicalPartSetHeader
+	POLBlockID       CanonicalBlockID
+	ChainID          string
 }
 
 type CanonicalVote struct {
-	ChainID   string           `json:"@chain_id"`
-	Type      string           `json:"@type"`
-	BlockID   CanonicalBlockID `json:"block_id"`
-	Height    int64            `json:"height"`
-	Round     int              `json:"round"`
-	Timestamp time.Time        `json:"timestamp"`
-	VoteType  byte             `json:"type"`
+	Type      SignedMsgType // type alias for byte
+	Height    int64         `binary:"fixed64"`
+	Round     int64         `binary:"fixed64"`
+	Timestamp time.Time
+	BlockID   CanonicalBlockID
+	ChainID   string
 }
 
 type CanonicalHeartbeat struct {
-	ChainID          string  `json:"@chain_id"`
-	Type             string  `json:"@type"`
-	Height           int64   `json:"height"`
-	Round            int     `json:"round"`
-	Sequence         int     `json:"sequence"`
-	ValidatorAddress Address `json:"validator_address"`
-	ValidatorIndex   int     `json:"validator_index"`
+	Type             byte
+	Height           int64 `binary:"fixed64"`
+	Round            int   `binary:"fixed64"`
+	Sequence         int   `binary:"fixed64"`
+	ValidatorAddress Address
+	ValidatorIndex   int
+	ChainID          string
 }
 
 //-----------------------------------
@@ -72,38 +71,37 @@ func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
 
 func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
 	return CanonicalProposal{
-		ChainID:          chainID,
-		Type:             "proposal",
-		BlockPartsHeader: CanonicalizePartSetHeader(proposal.BlockPartsHeader),
+		Type:             ProposalType,
 		Height:           proposal.Height,
+		Round:            int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		POLRound:         int64(proposal.POLRound),
 		Timestamp:        proposal.Timestamp,
+		BlockPartsHeader: CanonicalizePartSetHeader(proposal.BlockPartsHeader),
 		POLBlockID:       CanonicalizeBlockID(proposal.POLBlockID),
-		POLRound:         proposal.POLRound,
-		Round:            proposal.Round,
+		ChainID:          chainID,
 	}
 }
 
 func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 	return CanonicalVote{
-		ChainID:   chainID,
-		Type:      "vote",
-		BlockID:   CanonicalizeBlockID(vote.BlockID),
+		Type:      vote.Type,
 		Height:    vote.Height,
-		Round:     vote.Round,
+		Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		Timestamp: vote.Timestamp,
-		VoteType:  vote.Type,
+		BlockID:   CanonicalizeBlockID(vote.BlockID),
+		ChainID:   chainID,
 	}
 }
 
 func CanonicalizeHeartbeat(chainID string, heartbeat *Heartbeat) CanonicalHeartbeat {
 	return CanonicalHeartbeat{
-		ChainID:          chainID,
-		Type:             "heartbeat",
+		Type:             byte(HeartbeatType),
 		Height:           heartbeat.Height,
 		Round:            heartbeat.Round,
 		Sequence:         heartbeat.Sequence,
 		ValidatorAddress: heartbeat.ValidatorAddress,
 		ValidatorIndex:   heartbeat.ValidatorIndex,
+		ChainID:          chainID,
 	}
 }
 

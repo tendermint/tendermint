@@ -20,6 +20,13 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	}
 
 	// Validate basic info.
+	if block.Version != state.Version.Consensus {
+		return fmt.Errorf(
+			"Wrong Block.Header.Version. Expected %v, got %v",
+			state.Version.Consensus,
+			block.Version,
+		)
+	}
 	if block.ChainID != state.ChainID {
 		return fmt.Errorf(
 			"Wrong Block.Header.ChainID. Expected %v, got %v",
@@ -171,7 +178,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	height := state.LastBlockHeight
 
 	evidenceAge := height - evidence.Height()
-	maxAge := state.ConsensusParams.EvidenceParams.MaxAge
+	maxAge := state.ConsensusParams.Evidence.MaxAge
 	if evidenceAge > maxAge {
 		return fmt.Errorf("Evidence from height %d is too old. Min height is %d",
 			evidence.Height(), height-maxAge)

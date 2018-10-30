@@ -24,6 +24,13 @@ type tcpTimeoutListener struct {
 	period         time.Duration
 }
 
+// timeoutConn wraps a net.Conn to standardise protocol timeouts / deadline resets.
+type timeoutConn struct {
+	net.Conn
+
+	connDeadline time.Duration
+}
+
 // newTCPTimeoutListener returns an instance of tcpTimeoutListener.
 func newTCPTimeoutListener(
 	ln net.Listener,
@@ -35,6 +42,16 @@ func newTCPTimeoutListener(
 		acceptDeadline: acceptDeadline,
 		connDeadline:   connDeadline,
 		period:         period,
+	}
+}
+
+// newTimeoutConn returns an instance of newTCPTimeoutConn.
+func newTimeoutConn(
+	conn net.Conn,
+	connDeadline time.Duration) *timeoutConn {
+	return &timeoutConn{
+		conn,
+		connDeadline,
 	}
 }
 
@@ -50,17 +67,24 @@ func (ln tcpTimeoutListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	if err := tc.SetDeadline(time.Now().Add(ln.connDeadline)); err != nil {
-		return nil, err
-	}
+	// Wrap the conn in our timeout wrapper
+	conn := newTimeoutConn(tc, ln.connDeadline)
 
-	if err := tc.SetKeepAlive(true); err != nil {
-		return nil, err
-	}
+	return conn, nil
+}
 
-	if err := tc.SetKeepAlivePeriod(ln.period); err != nil {
-		return nil, err
-	}
+// Read implements net.Listener.
+func (c timeoutConn) Read(b []byte) (n int, err error) {
+	// Reset deadline
+	c.Conn.SetReadDeadline(time.Now().Add(c.connDeadline))
 
-	return tc, nil
+	return c.Conn.Read(b)
+}
+
+// Write implements net.Listener.
+func (c timeoutConn) Write(b []byte) (n int, err error) {
+	// Reset deadline
+	c.Conn.SetWriteDeadline(time.Now().Add(c.connDeadline))
+
+	return c.Conn.Write(b)
 }

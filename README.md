@@ -36,7 +36,7 @@ We are also still making breaking changes to the protocol and the APIs.
 Thus, we tag the releases as *alpha software*.
 
 In any case, if you intend to run Tendermint in production,
-please [contact us](https://riot.im/app/#/room/#tendermint:matrix.org) :)
+please [contact us](mailto:partners@tendermint.com) and [join the chat](https://riot.im/app/#/room/#tendermint:matrix.org).
 
 ## Security
 

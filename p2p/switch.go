@@ -560,9 +560,13 @@ func (sw *Switch) addOutboundPeerWithConfig(
 				// to avoid dialing in the future.
 				sw.addrBook.RemoveAddress(addr)
 				sw.addrBook.AddOurAddress(addr)
+
+				return err
 			}
 		}
 
+		// retry persistent peers after
+		// any dial error besides IsSelf()
 		if persistent {
 			go sw.reconnectToPeer(addr)
 		}
