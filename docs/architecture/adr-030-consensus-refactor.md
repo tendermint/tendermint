@@ -136,14 +136,10 @@ type Event interface{}
 
 type EventNewHeight struct {
     Height           int64
-    ValidatorSetSize int
     ValidatorId      int
 }
 
-type EventNewRound struct {
-    Height           int64
-    Round            int
-}
+type EventNewRound HeightAndRound
 
 type EventProposal struct {
     Height           int64
@@ -166,30 +162,16 @@ type Majority23PrecommitBlock struct {
     BlockID          BlockID
 }
 
-type Majority23PrevotesAny struct {
+type HeightAndRound struct {
     Height           int64
     Round            int
 }
 
-type Majority23PrecommitAny struct {
-    Height           int64
-    Round            int
-}
-
-type TimeoutPropose struct {
-    Height           int64
-    Round            int
-}
-
-type TimeoutPrevotes struct {
-    Height           int64
-    Round            int
-}
-
-type TimeoutPrecommit struct {
-    Height           int64
-    Round            int
-}
+type Majority23PrevotesAny HeightAndRound
+type Majority23PrecommitAny HeightAndRound
+type TimeoutPropose HeightAndRound
+type TimeoutPrevotes HeightAndRound
+type TimeoutPrecommit HeightAndRound
 
 
 type Message interface{}
@@ -249,14 +231,17 @@ type State struct {
 	LockedRound      int
 	ValidValue       BlockID
 	ValidRound       int
-	ValidatorSetSize int
 	ValidatorId      int
+	ValidatorSetSize int
 }
 
 func proposer(height int64, round int) int {}
+func getValue() BlockID {}
 
 func Consensus(event Event, state State) (State, Message, TriggerTimeout) {
-    switch event := event.(type) {
+    msg = nil
+    timeout = nil
+	switch event := event.(type) {
     	case EventNewHeight:
     		if event.Height > state.Height {
     		    state.Height = event.Height
@@ -266,42 +251,185 @@ func Consensus(event Event, state State) (State, Message, TriggerTimeout) {
     		    state.LockedRound = -1
     		    state.ValidValue = nil
     		    state.ValidRound = -1
-    		    state. ValidatorSetSize = event.ValidatorSetSize
     		    state.ValidatorId = event.ValidatorId
-    		    return state, nil 
     		} 
+    	    return state, msg, timeout
     	
     	case EventNewRound:
     		if event.Height == state.Height and event.Round > state.Round {
                state.Round = eventRound
                state.Step = RoundStepPropose
-               msg = nil
                if proposer(state.Height, state.Round) == state.ValidatorId {
-                   msg =  MessageProposal { state.Height, state.Round, state.ValidValue, state.ValidRound }
+                   proposal = state.ValidValue
+                   if proposal == nil {
+                   	    proposal = getValue()
+                   }
+                   msg =  MessageProposal { state.Height, state.Round, proposal, state.ValidRound }
                }
                timeout = TriggerTimeout { state.Height, state.Round, timeoutPropose(state.Round) }
-               return state, msg, timeout
             }
+    	    return state, msg, timeout
     	
     	case EventProposal:
     		if event.Height == state.Height and event.Round == state.Round and 
     	       event.Sender == proposal(state.Height, state.Round) and state.Step == RoundStepPropose { 
-    	       	msg = nil    
     	       	if event.POLRound >= state.LockedRound or event.BlockID == state.BlockID or state.LockedRound == -1 {
     	       		msg = MessageVote { state.Height, state.Round, event.BlockID, Prevote }
     	       	}
     	       	state.Step = RoundStepPrevote
-    	       	return state, msg, nil
             }
+    	    return state, msg, timeout
     	
     	case TimeoutPropose:
     		if event.Height == state.Height and event.Round == state.Round and state.Step == RoundStepPropose {
-    		    state.Step = RoundStepPrevote
-    		    return state, nil, nil
+    		    msg = MessageVote { state.Height, state.Round, nil, Prevote }
+    			state.Step = RoundStepPrevote
             }
+    	    return state, msg, timeout
     	
-    	...
+    	case Majority23PrevotesBlock:
+    		if event.Height == state.Height and event.Round == state.Round and state.Step >= RoundStepPrevote and event.Round > state.ValidRound {
+    		    state.ValidRound = event.Round
+    		    state.ValidValue = event.BlockID
+    		    if state.Step == RoundStepPrevote {
+    		    	state.LockedRound = event.Round
+    		    	state.LockedValue = event.BlockID
+    		    	msg = MessageVote { state.Height, state.Round, event.BlockID, Precommit }
+    		    	state.Step = RoundStepPrecommit
+    		    }
+            }
+    	    return state, msg, timeout
+    	
+    	case Majority23PrevotesAny:
+    		if event.Height == state.Height and event.Round == state.Round and state.Step == RoundStepPrevote {
+    			timeout = TriggerTimeout { state.Height, state.Round, timeoutPrevote(state.Round) }
+    		}
+    	    return state, msg, timeout
+    	
+    	case TimeoutPrevote:
+    		if event.Height == state.Height and event.Round == state.Round and state.Step == RoundStepPrevote {
+    			msg = MessageVote { state.Height, state.Round, nil, Precommit }
+    			state.Step = RoundStepPrecommit
+    		}
+    	    return state, msg, timeout
+    	
+    	case Majority23PrecommitBlock:
+    		if event.Height == state.Height {
+    		    state.Step = RoundStepCommit
+    		    state.LockedValue = event.BlockID
+    		}
+    	    return state, msg, timeout
+    		
+    	case Majority23PrecommitAny:
+    		if event.Height == state.Height and event.Round == state.Round {
+    			timeout = TriggerTimeout { state.Height, state.Round, timeoutPrecommit(state.Round) }
+    		}
+    	    return state, msg, timeout
+    	
+    	case TimeoutPrecommit:
+            if event.Height == state.Height and event.Round == state.Round {
+            	state.Round = state.Round + 1
+            }
+    	    return state, msg, timeout
 	}
+}	
+
+func ConsensusExecutor() {
+	proposal = nil
+	votes = HeightVoteSet { Height: 1 }
+	state = State {
+		Height:       1
+		Round:        0          
+		Step:         RoundStepPropose
+		LockedValue:  nil
+		LockedRound:  -1
+		ValidValue:   nil
+		ValidRound:   -1
+	}
+	
+	event = EventNewHeight {1, id}
+	state, msg, timeout = Consensus(event, state)
+	
+	event = EventNewRound {state.Height, 0}
+	state, msg, timeout = Consensus(event, state)
+	
+	if msg != nil {
+		send msg
+	}
+	
+	if timeout != nil {
+		trigger timeout
+	}
+	
+	for {
+		select {
+		    case message := <- msgCh:
+		    	switch msg := message.(type) {
+		    	    case MessageProposal:
+		    	        
+		    	    case MessageVote:	
+		    	    	if msg.Height == state.Height {
+		    	    		newVote = votes.AddVote(msg)
+		    	    		if newVote {
+		    	    			switch msg.Type {
+                                	case Prevote:
+                                		prevotes = votes.Prevotes(msg.Round)
+                                		if prevotes.WeakCertificate() and msg.Round > state.Round {
+                                			event = EventNewRound { msg.Height, msg.Round }
+                                			state, msg, timeout = Consensus(event, state)
+                                			state = handleStateChange(state, msg, timeout)
+                                		}	
+                                		
+                                		if blockID, ok = prevotes.TwoThirdsMajority(); ok and blockID != nil {
+                                		    if msg.Round == state.Round and hasBlock(blockID) {
+                                		    	event = Majority23PrevotesBlock { msg.Height, msg.Round, blockID }
+                                		    	state, msg, timeout = Consensus(event, state)
+                                		    	state = handleStateChange(state, msg, timeout)
+                                		    } 
+                                		    if proposal != nil and proposal.POLRound == msg.Round and hasBlock(blockID) {
+                                		        event = EventProposal {
+                                                        Height: state.Height
+                                                        Round:  state.Round
+                                                        BlockID: blockID
+                                                        POLRound: proposal.POLRound
+                                                        Sender: message.Sender
+                                		        }
+                                		        state, msg, timeout = Consensus(event, state)
+                                		        state = handleStateChange(state, msg, timeout)
+                                		    }
+                                		}
+                                		
+                                		if prevotes.HasTwoThirdsAny() and msg.Round == state.Round {
+                                			event = Majority23PrevotesAny { msg.Height, msg.Round, blockID }
+                                			state, msg, timeout = Consensus(event, state)
+                                            state = handleStateChange(state, msg, timeout)
+                                		}
+                                		
+                                	case Precommit:	
+                                		
+		    	    		    }
+		    	    	    }
+		    	        }
+		    case timeout := <- timeoutCh:
+		    
+		    case block := <- blockCh:	
+		    	
+		}
+	}
+}
+	
+func handleStateChange(state, msg, timeout) State {
+	if state.Step == Commit {
+		state = ExecuteBlock(state.LockedValue)
+	}	
+	if msg != nil {
+		send msg
+	}	
+	if timeout != nil {
+		trigger timeout
+	}	
+}
+
 ```
 
 ### Implementation roadmap
