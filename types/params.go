@@ -17,13 +17,13 @@ const (
 // ConsensusParams contains consensus critical parameters that determine the
 // validity of blocks.
 type ConsensusParams struct {
-	BlockSize      `json:"block_size_params"`
-	EvidenceParams `json:"evidence_params"`
-	Validator      ValidatorParams `json:"validator_params"`
+	BlockSize BlockSizeParams `json:"block_size"`
+	Evidence  EvidenceParams  `json:"evidence"`
+	Validator ValidatorParams `json:"validator"`
 }
 
-// BlockSize contain limits on the block size.
-type BlockSize struct {
+// BlockSizeParams define limits on the block size.
+type BlockSizeParams struct {
 	MaxBytes int64 `json:"max_bytes"`
 	MaxGas   int64 `json:"max_gas"`
 }
@@ -33,22 +33,24 @@ type EvidenceParams struct {
 	MaxAge int64 `json:"max_age"` // only accept new evidence more recent than this
 }
 
+// ValidatorParams restrict the public key types validators can use.
+// NOTE: uses ABCI pubkey naming, not Amino routes.
 type ValidatorParams struct {
-	ValidatorPubkeyTypes []string `json:"validator_pubkey_types"` // amino routes accepted for validator pubkeys
+	PubKeyTypes []string `json:"pub_key_types"`
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
-		DefaultBlockSize(),
+		DefaultBlockSizeParams(),
 		DefaultEvidenceParams(),
 		DefaultValidatorParams(),
 	}
 }
 
-// DefaultBlockSize returns a default BlockSize.
-func DefaultBlockSize() BlockSize {
-	return BlockSize{
+// DefaultBlockSizeParams returns a default BlockSizeParams.
+func DefaultBlockSizeParams() BlockSizeParams {
+	return BlockSizeParams{
 		MaxBytes: 22020096, // 21MB
 		MaxGas:   -1,
 	}
@@ -84,20 +86,20 @@ func (params *ConsensusParams) Validate() error {
 			params.BlockSize.MaxGas)
 	}
 
-	if params.EvidenceParams.MaxAge <= 0 {
+	if params.Evidence.MaxAge <= 0 {
 		return cmn.NewError("EvidenceParams.MaxAge must be greater than 0. Got %d",
-			params.EvidenceParams.MaxAge)
+			params.Evidence.MaxAge)
 	}
 
-	if len(params.Validator.ValidatorPubkeyTypes) == 0 {
-		return cmn.NewError("len(ValidatorParams.ValidatorPubkeyTypes) must be greater than 0")
+	if len(params.Validator.PubKeyTypes) == 0 {
+		return cmn.NewError("len(Validator.PubKeyTypes) must be greater than 0")
 	}
 
 	// Check if keyType is a known ABCIPubKeyType
-	for i := 0; i < len(params.Validator.ValidatorPubkeyTypes); i++ {
-		keyType := params.Validator.ValidatorPubkeyTypes[i]
+	for i := 0; i < len(params.Validator.PubKeyTypes); i++ {
+		keyType := params.Validator.PubKeyTypes[i]
 		if _, ok := ABCIPubKeyTypesToAminoRoutes[keyType]; !ok {
-			return cmn.NewError("params.Validator.ValidatorPubkeyTypes[%d], %s, is an unknown pubkey type",
+			return cmn.NewError("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
 				i, keyType)
 		}
 	}
@@ -121,8 +123,8 @@ func (params *ConsensusParams) Hash() []byte {
 
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 	return params.BlockSize == params2.BlockSize &&
-		params.EvidenceParams == params2.EvidenceParams &&
-		stringSliceEqual(params.Validator.ValidatorPubkeyTypes, params2.Validator.ValidatorPubkeyTypes)
+		params.Evidence == params2.Evidence &&
+		stringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
 func stringSliceEqual(a, b []string) bool {
@@ -151,11 +153,11 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		res.BlockSize.MaxBytes = params2.BlockSize.MaxBytes
 		res.BlockSize.MaxGas = params2.BlockSize.MaxGas
 	}
-	if params2.EvidenceParams != nil {
-		res.EvidenceParams.MaxAge = params2.EvidenceParams.MaxAge
+	if params2.Evidence != nil {
+		res.Evidence.MaxAge = params2.Evidence.MaxAge
 	}
-	if params2.ValidatorParams != nil {
-		res.Validator.ValidatorPubkeyTypes = params2.ValidatorParams.ValidatorPubkeyTypes
+	if params2.Validator != nil {
+		res.Validator.PubKeyTypes = params2.Validator.PubKeyTypes
 	}
 	return res
 }
