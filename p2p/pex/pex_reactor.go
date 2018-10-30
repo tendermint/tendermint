@@ -288,25 +288,32 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
-		return cmn.NewError("Received unsolicited pexAddrsMessage")
+		return errors.New("Unsolicited pexAddrsMessage")
 	}
 	r.requestsSent.Delete(id)
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
-		// Validate netAddr.
+		// Validate netAddr. Disconnect from a peer if it sends us invalid data.
+		if netAddr == nil {
+			return errors.New("nil address in pexAddrsMessage")
+		}
 		// TODO: extract validating logic from NewNetAddressStringWithOptionalID
 		// and put it in netAddr#Valid (#2722)
 		na, err := p2p.NewNetAddressString(netAddr.String())
 		if err != nil {
-			r.Logger.Error("Failed to add new address", "err", err)
-			continue
+			return fmt.Errorf("%s address in pexAddrsMessage is invalid: %v",
+				netAddr.String(),
+				err,
+			)
 		}
 
 		// NOTE: we check netAddr validity and routability in book#AddAddress.
 		err = r.book.AddAddress(na, srcAddr)
 		if err != nil {
 			r.logErrAddrBook(err)
+			// XXX: should we be strict about incoming data and disconnect from a
+			// peer here too?
 			continue
 		}
 

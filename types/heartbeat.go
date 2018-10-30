@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -55,9 +55,9 @@ func (heartbeat *Heartbeat) String() string {
 
 // ValidateBasic performs basic validation.
 func (heartbeat *Heartbeat) ValidateBasic() error {
-	if len(heartbeat.ValidatorAddress) != tmhash.Size {
+	if len(heartbeat.ValidatorAddress) != crypto.AddressSize {
 		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
-			tmhash.Size,
+			crypto.AddressSize,
 			len(heartbeat.ValidatorAddress),
 		)
 	}

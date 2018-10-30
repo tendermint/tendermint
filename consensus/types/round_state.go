@@ -28,6 +28,11 @@ const (
 	// NOTE: RoundStepNewHeight acts as RoundStepCommitWait.
 )
 
+// IsValid returns true if the step is valid, false if unknown/undefined.
+func (rs RoundStepType) IsValid() bool {
+	return uint8(rs) >= 0x01 && uint8(rs) <= 0x08
+}
+
 // String returns a string
 func (rs RoundStepType) String() string {
 	switch rs {

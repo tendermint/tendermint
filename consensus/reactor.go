@@ -248,8 +248,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			case types.PrecommitType:
 				ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
 			default:
-				conR.Logger.Error("Bad VoteSetBitsMessage field Type")
-				return
+				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
 			}
 			src.TrySend(VoteSetBitsChannel, cdc.MustMarshalBinaryBare(&VoteSetBitsMessage{
 				Height:  msg.Height,
@@ -328,8 +327,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				case types.PrecommitType:
 					ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
 				default:
-					conR.Logger.Error("Bad VoteSetBitsMessage field Type")
-					return
+					panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
 				}
 				ps.ApplyVoteSetBitsMessage(msg, ourVotes)
 			} else {
@@ -1385,17 +1383,21 @@ type NewRoundStepMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *NewRoundStepMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("Negative Height")
+	if m.Height < 1 {
+		return errors.New("Negative or zero Height")
 	}
 	if m.Round < 0 {
 		return errors.New("Negative Round")
 	}
+	if !m.Step.IsValid() {
+		return errors.New("Invalid Step")
+	}
 	if m.SecondsSinceStartTime < 0 {
 		return errors.New("Negative SecondsSinceStartTime")
 	}
-	if m.LastCommitRound < -1 {
-		return errors.New("Negative LastCommitRound (-1 is exception)")
+	if (m.Height == 1 && m.LastCommitRound < -1) ||
+		(m.Height > 1 && m.LastCommitRound < 0) {
+		return errors.New("Negative LastCommitRound")
 	}
 	return nil
 }
@@ -1544,6 +1546,9 @@ func (m *HasVoteMessage) ValidateBasic() error {
 	if m.Round < 0 {
 		return errors.New("Negative Round")
 	}
+	if !types.IsVoteTypeValid(m.Type) {
+		return errors.New("Invalid Type")
+	}
 	if m.Index < 0 {
 		return errors.New("Negative Index")
 	}
@@ -1572,6 +1577,9 @@ func (m *VoteSetMaj23Message) ValidateBasic() error {
 	}
 	if m.Round < 0 {
 		return errors.New("Negative Round")
+	}
+	if !types.IsVoteTypeValid(m.Type) {
+		return errors.New("Invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
@@ -1602,6 +1610,9 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 	}
 	if m.Round < 0 {
 		return errors.New("Negative Round")
+	}
+	if !types.IsVoteTypeValid(m.Type) {
+		return errors.New("Invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)

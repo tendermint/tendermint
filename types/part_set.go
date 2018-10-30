@@ -41,6 +41,9 @@ func (part *Part) ValidateBasic() error {
 	if part.Index < 0 {
 		return errors.New("Negative Index")
 	}
+	if len(part.Bytes) > BlockPartSizeBytes {
+		return fmt.Errorf("Too big (max: %d)", BlockPartSizeBytes)
+	}
 	return nil
 }
 

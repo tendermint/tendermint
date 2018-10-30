@@ -1,7 +1,13 @@
 package crypto
 
 import (
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+)
+
+const (
+	// AddressSize is a size of the address.
+	AddressSize = tmhash.Size
 )
 
 type PrivKey interface {
