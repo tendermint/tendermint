@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	fail "github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
