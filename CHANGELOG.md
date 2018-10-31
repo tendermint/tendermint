@@ -2,11 +2,11 @@
 
 ## v0.26.0
 
-*October 29, 2018*
+*October 31, 2018*
 
 Special thanks to external contributors on this release:
 @bradyjoestar, @connorwstein, @goolAdapter, @HaoyangLiu,
-@james-ray, @overbool, @phymbert, @Slamper, @Uzair1995
+@james-ray, @overbool, @phymbert, @Slamper, @Uzair1995, @yutianwu
 
 This release is primarily about adding Version fields to various data structures,
 optimizing consensus messages for signing and verification in
@@ -37,6 +37,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     behaviour to `prove=false`
   * [rpc] [\#2654](https://github.com/tendermint/tendermint/issues/2654) Remove all `node_info.other.*_version` fields in `/status` and
     `/net_info`
+  * [rpc] [\#2636](https://github.com/tendermint/tendermint/issues/2636) Remove
+    `_params` suffix from fields in `consensus_params`.
 
 * Apps
   * [abci] [\#2298](https://github.com/tendermint/tendermint/issues/2298) ResponseQuery.Proof is now a structured merkle.Proof, not just
@@ -44,6 +46,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   * [abci] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Add Version to Header and shift all fields by one
   * [abci] [\#2662](https://github.com/tendermint/tendermint/issues/2662) Bump the field numbers for some `ResponseInfo` fields to make room for
       `AppVersion`
+  * [abci] [\#2636](https://github.com/tendermint/tendermint/issues/2636) Updates to ConsensusParams
+    * Remove `Params` suffix from field names
+    * Add `Params` suffix to message types
+    * Add new field and type, `Validator ValidatorParams`, to control what types of validator keys are allowed.
 
 * Go API
   * [config] [\#2232](https://github.com/tendermint/tendermint/issues/2232) timeouts as time.Duration, not ints
@@ -53,28 +59,44 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   * [node] [\#2479](https://github.com/tendermint/tendermint/issues/2479) Remove node.RunForever
   * [rpc/client] [\#2298](https://github.com/tendermint/tendermint/issues/2298) `ABCIQueryOptions.Trusted` -> `ABCIQueryOptions.Prove`
   * [types] [\#2298](https://github.com/tendermint/tendermint/issues/2298) Remove `Index` and `Total` fields from `TxProof`.
-  * [types] [\#2598](https://github.com/tendermint/tendermint/issues/2598) `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg. `PrevoteType`,
-    `PrecommitType`.
+  * [types] [\#2598](https://github.com/tendermint/tendermint/issues/2598)
+    `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg.
+    `PrevoteType`, `PrecommitType`.
+  * [types] [\#2636](https://github.com/tendermint/tendermint/issues/2636) Rename fields in ConsensusParams to remove `Params` suffixes
+  * [types] [\#2730](https://github.com/tendermint/tendermint/issues/2730) Align
+    order of fields in `Vote` and `Proposal` to align with their SignBytes
+  * [types] [\#2735](https://github.com/tendermint/tendermint/issues/2735) Simplify Proposal message to align with spec
 
 * Blockchain Protocol
+  * [state] [\#2587](https://github.com/tendermint/tendermint/issues/2587) Require block.Time of the fist block to be genesis time
+  * [state] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Require block.Version to match state.Version
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
     * [\#2459](https://github.com/tendermint/tendermint/issues/2459) Use amino encoding instead of JSON in `SignBytes`.
     * [\#2598](https://github.com/tendermint/tendermint/issues/2598) Reorder fields and use fixed sized encoding.
     * [\#2598](https://github.com/tendermint/tendermint/issues/2598) Change `Type` field fromt `string` to `byte` and use new
       `SignedMsgType` to enumerate.
+  * [types] [\#2730](https://github.com/tendermint/tendermint/issues/2730) Use
+    same order for fields in `Vote` as in the SignBytes
   * [types] [\#2512](https://github.com/tendermint/tendermint/issues/2512) Remove the pubkey field from the validator hash
   * [types] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Add Version struct to Header
   * [types] [\#2609](https://github.com/tendermint/tendermint/issues/2609) ConsensusParams.Hash() is the hash of the amino encoded
     struct instead of the Merkle tree of the fields
-  * [state] [\#2587](https://github.com/tendermint/tendermint/issues/2587) Require block.Time of the fist block to be genesis time
-  * [state] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Require block.Version to match state.Version
   * [types] [\#2670](https://github.com/tendermint/tendermint/issues/2670) Header.Hash() builds Merkle tree out of fields in the same
     order they appear in the header, instead of sorting by field name
   * [types] [\#2682](https://github.com/tendermint/tendermint/issues/2682) Use proto3 `varint` encoding for ints that are usually unsigned (instead of zigzag encoding).
+  * [types] [\#2636](https://github.com/tendermint/tendermint/issues/2636) Add Validator field to ConsensusParams
+      (Used to control which pubkey types validators can use, by abci type).
 
 * P2P Protocol
+  * [consensus] [\#2652](https://github.com/tendermint/tendermint/issues/2652)
+    Replace `CommitStepMessage` with `NewValidBlockMessage`
+  * [consensus] [\#2735](https://github.com/tendermint/tendermint/issues/2735) Simplify `Proposal` message to align with spec
+  * [consensus] [\#2730](https://github.com/tendermint/tendermint/issues/2730)
+    Add `Type` field to `Proposal` and use same order of fields as in the
+    SignBytes
   * [p2p] [\#2654](https://github.com/tendermint/tendermint/issues/2654) Add `ProtocolVersion` struct with protocol versions to top of
     DefaultNodeInfo and require `ProtocolVersion.Block` to match during peer handshake
+
 
 ### FEATURES:
 - [abci] [\#2557](https://github.com/tendermint/tendermint/issues/2557) Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
@@ -88,6 +110,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [config] [\#2232](https://github.com/tendermint/tendermint/issues/2232) Added ValidateBasic method, which performs basic checks
 - [crypto/ed25519] [\#2558](https://github.com/tendermint/tendermint/issues/2558) Switch to use latest `golang.org/x/crypto` through our fork at
   github.com/tendermint/crypto
+- [libs/log] [\#2707](https://github.com/tendermint/tendermint/issues/2707) Add year to log format (@yutianwu)
 - [tools] [\#2238](https://github.com/tendermint/tendermint/issues/2238) Binary dependencies are now locked to a specific git commit
 
 ### BUG FIXES:
@@ -103,6 +126,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] [\#2642](https://github.com/tendermint/tendermint/issues/2642) Initialized ValidRound and LockedRound to -1
 - [consensus] [\#1637](https://github.com/tendermint/tendermint/issues/1637) Limit the amount of evidence that can be included in a
   block
+- [consensus] [\#2652](https://github.com/tendermint/tendermint/issues/2652) Ensure valid block property with faulty proposer
 - [evidence] [\#2515](https://github.com/tendermint/tendermint/issues/2515) Fix db iter leak (@goolAdapter)
 - [libs/event] [\#2518](https://github.com/tendermint/tendermint/issues/2518) Fix event concurrency flaw (@goolAdapter)
 - [node] [\#2434](https://github.com/tendermint/tendermint/issues/2434) Make node respond to signal interrupts while sleeping for genesis time
