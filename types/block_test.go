@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/version"
@@ -116,7 +117,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, 2, partSet.Total())
+	assert.Equal(t, 3, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -262,7 +263,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 		AppHash:            tmhash.Sum([]byte("app_hash")),
 		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
 		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
-		ProposerAddress:    tmhash.Sum([]byte("proposer_address")),
+		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
 	}
 
 	bz, err := cdc.MarshalBinaryLengthPrefixed(h)
@@ -292,9 +293,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {742, 1, 0, true, 0},
-		3: {743, 1, 0, false, 0},
-		4: {744, 1, 0, false, 1},
+		2: {886, 1, 0, true, 0},
+		3: {887, 1, 0, false, 0},
+		4: {888, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -320,9 +321,9 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {824, 1, true, 0},
-		3: {825, 1, false, 0},
-		4: {826, 1, false, 1},
+		2: {984, 1, true, 0},
+		3: {985, 1, false, 0},
+		4: {986, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
