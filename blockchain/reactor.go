@@ -427,9 +427,6 @@ func (m *bcBlockResponseMessage) ValidateBasic() error {
 	}
 
 	// Note we are more strict about the fields below  in state#ValidateBlock.
-	if err := types.ValidateTime(m.Block.Time); err != nil {
-		return err
-	}
 	if m.Block.TotalTxs < m.Block.NumTxs {
 		return errors.New("Header.TotalTxs is less than Header.NumTxs")
 	}
