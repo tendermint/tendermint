@@ -15,6 +15,8 @@ echo "starting tendermint peer ID=$ID"
 # NOTE: $NODE_FLAGS should be unescaped (no quotes). otherwise it will be
 # treated as one flag.
 
+# test/p2p/data/mach$((ID-1)) data is generated in test/docker/Dockerfile using
+# the tendermint testnet command.
 if [[ "$ID" == "x" ]]; then # Set "x" to "1" to print to console.
 	docker run \
 		--net="$NETWORK_NAME" \

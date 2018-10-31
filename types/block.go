@@ -81,7 +81,7 @@ func (b *Block) ValidateBasic() error {
 	// Validate evidence.
 	for i, ev := range b.Evidence.Evidence {
 		if err := ev.ValidateBasic(); err != nil {
-			return errors.Wrapf(err, "Wrong evidence #%d", i)
+			return fmt.Errorf("Invalid evidence (#%d): %v", i, err)
 		}
 	}
 
