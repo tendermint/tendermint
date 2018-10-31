@@ -263,7 +263,7 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	// Send our state to peer.
 	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
 	if !br.reactor.fastSync {
-		br.reactor.sendNewRoundStepMessages(peer)
+		br.reactor.sendNewRoundStepMessage(peer)
 	}
 }
 func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {

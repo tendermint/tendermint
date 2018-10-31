@@ -102,6 +102,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   timeoutPrecommit before starting next round
 - [consensus] [\#1745](https://github.com/tendermint/tendermint/issues/1745) Wait for
   Proposal or timeoutProposal before entering prevote
+- [consensus] [\#2583](https://github.com/tendermint/tendermint/issues/2583) ensure valid 
+  block property with faulty proposer
 - [consensus] [\#2642](https://github.com/tendermint/tendermint/issues/2642) Only propose ValidBlock, not LockedBlock
 - [consensus] [\#2642](https://github.com/tendermint/tendermint/issues/2642) Initialized ValidRound and LockedRound to -1
 - [consensus] [\#1637](https://github.com/tendermint/tendermint/issues/1637) Limit the amount of evidence that can be included in a
