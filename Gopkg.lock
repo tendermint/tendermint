@@ -408,14 +408,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5207b4bc950fd0e45544263103af3e119c94fba6717f9d61931f7a19a7c0706a"
+  digest = "1:6f86e2f2e2217cd4d74dec6786163cf80e4d2b99adb341ecc60a45113b844dca"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "f7626d0b1519d8323581a047ca8b372ebf28de9a"
+  revision = "7e31e0c00fa05cb5fbf4347b585621d6709e19a4"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"

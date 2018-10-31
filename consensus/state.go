@@ -901,15 +901,9 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	}
 
 	// Make proposal
-	polRound, polBlockID := cs.Votes.POLInfo()
-	proposal := types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
+	propBlockId := types.BlockID{block.Hash(), blockParts.Header()}
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
-		// Set fields
-		/*  fields set by setProposal and addBlockPart
-		cs.Proposal = proposal
-		cs.ProposalBlock = block
-		cs.ProposalBlockParts = blockParts
-		*/
 
 		// send proposal and block parts on internal msg queue
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
@@ -1437,7 +1431,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	cs.Proposal = proposal
-	cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartsHeader)
 	cs.Logger.Info("Received proposal", "proposal", proposal)
 	return nil
 }

@@ -429,9 +429,9 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 
 func makeRoundStepMessages(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
 	nrsMsg = &NewRoundStepMessage{
-		Height: rs.Height,
-		Round:  rs.Round,
-		Step:   rs.Step,
+		Height:                rs.Height,
+		Round:                 rs.Round,
+		Step:                  rs.Step,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
@@ -969,8 +969,8 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 	}
 
 	ps.PRS.Proposal = true
-	ps.PRS.ProposalBlockPartsHeader = proposal.BlockPartsHeader
-	ps.PRS.ProposalBlockParts = cmn.NewBitArray(proposal.BlockPartsHeader.Total)
+	ps.PRS.ProposalBlockPartsHeader = proposal.BlockID.PartsHeader
+	ps.PRS.ProposalBlockParts = cmn.NewBitArray(proposal.BlockID.PartsHeader.Total)
 	ps.PRS.ProposalPOLRound = proposal.POLRound
 	ps.PRS.ProposalPOL = nil // Nil until ProposalPOLMessage received.
 }

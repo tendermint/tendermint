@@ -106,6 +106,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] [\#2642](https://github.com/tendermint/tendermint/issues/2642) Initialized ValidRound and LockedRound to -1
 - [consensus] [\#1637](https://github.com/tendermint/tendermint/issues/1637) Limit the amount of evidence that can be included in a
   block
+- [consensus] [\#2646](https://github.com/tendermint/tendermint/issues/2646) Simplify Proposal message (align with spec)
 - [evidence] [\#2515](https://github.com/tendermint/tendermint/issues/2515) Fix db iter leak (@goolAdapter)
 - [libs/event] [\#2518](https://github.com/tendermint/tendermint/issues/2518) Fix event concurrency flaw (@goolAdapter)
 - [node] [\#2434](https://github.com/tendermint/tendermint/issues/2434) Make node respond to signal interrupts while sleeping for genesis time

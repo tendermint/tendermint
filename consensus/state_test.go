@@ -197,7 +197,9 @@ func TestStateBadProposal(t *testing.T) {
 	stateHash[0] = byte((stateHash[0] + 1) % 255)
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
-	proposal := types.NewProposal(vs2.Height, round, propBlockParts.Header(), -1, types.BlockID{})
+	proposal := types.NewProposal(
+		vs2.Height, round, -1,
+		types.BlockID{propBlock.Hash(), propBlockParts.Header()})
 	if err := vs2.SignProposal(config.ChainID(), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
@@ -811,6 +813,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	_, propBlock0 := decideProposal(cs1, vss[0], height, round)
 	propBlockHash0 := propBlock0.Hash()
 	propBlockParts0 := propBlock0.MakePartSet(partSize)
+	propBlockID0 := types.BlockID{propBlockHash0, propBlockParts0.Header()}
 
 	// the others sign a polka but we don't see it
 	prevotes := signVotes(types.PrevoteType, propBlockHash0, propBlockParts0.Header(), vs2, vs3, vs4)
@@ -819,7 +822,6 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	prop1, propBlock1 := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
 	propBlockHash1 := propBlock1.Hash()
 	propBlockParts1 := propBlock1.MakePartSet(partSize)
-	propBlockID1 := types.BlockID{propBlockHash1, propBlockParts1.Header()}
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -854,7 +856,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 
 	round = round + 1 // moving to the next round
 	// in round 2 we see the polkad block from round 0
-	newProp := types.NewProposal(height, round, propBlockParts0.Header(), 0, propBlockID1)
+	newProp := types.NewProposal(height, round, 0, propBlockID0)
 	if err := vs3.SignProposal(config.ChainID(), newProp); err != nil {
 		t.Fatal(err)
 	}
@@ -909,7 +911,7 @@ func TestProposeValidBlock(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], propBlockHash)
 
-	// the others sign a polka but we don't see it
+	// the others sign a polka
 	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
@@ -964,6 +966,8 @@ func TestProposeValidBlock(t *testing.T) {
 	rs = cs1.GetRoundState()
 	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), propBlockHash))
 	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), rs.ValidBlock.Hash()))
+	assert.True(t, rs.Proposal.POLRound == rs.ValidRound)
+	assert.True(t, bytes.Equal(rs.Proposal.BlockID.Hash, rs.ValidBlock.Hash()))
 }
 
 // 4 vals, 3 Nil Precommits at P0
