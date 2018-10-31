@@ -420,6 +420,11 @@ func ensureNewProposal(proposalCh <-chan interface{}, height int64, round int) {
 		"Timeout expired while waiting for NewProposal event")
 }
 
+func ensureNewValidBlock(validBlockCh <-chan interface{}, height int64, round int) {
+	ensureNewEvent(validBlockCh, height, round, ensureTimeout,
+		"Timeout expired while waiting for NewValidBlock event")
+}
+
 func ensureNewBlock(blockCh <-chan interface{}, height int64) {
 	select {
 	case <-time.After(ensureTimeout):

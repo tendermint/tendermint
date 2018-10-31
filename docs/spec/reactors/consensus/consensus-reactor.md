@@ -129,11 +129,11 @@ handleMessage(msg):
         Reset prs.CatchupCommitRound and prs.CatchupCommit
 ```
 
-### CommitStepMessage handler
+### NewValidBlockMessage handler
 
 ```
 handleMessage(msg):
-    if prs.Height == msg.Height then
+    if prs.Height == msg.Height && prs.Round == msg.Round then
         prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
         prs.ProposalBlockParts = msg.BlockParts
 ```
@@ -161,8 +161,8 @@ handleMessage(msg):
 handleMessage(msg):
     if prs.Height != msg.Height || prs.Round != msg.Round || prs.Proposal then return
     prs.Proposal = true
-    prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
-    prs.ProposalBlockParts = empty set
+    if prs.ProposalBlockParts == empty set then // otherwise it is set in NewValidBlockMessage handler
+      prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
     prs.ProposalPOLRound = msg.POLRound
     prs.ProposalPOL = nil
     Send msg through internal peerMsgQueue to ConsensusState service
