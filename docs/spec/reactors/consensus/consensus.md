@@ -26,7 +26,7 @@ only to a subset of processes called peers. By the gossiping protocol, a validat
 all needed information (`ProposalMessage`, `VoteMessage` and `BlockPartMessage`) so they can
 reach agreement on some block, and also obtain the content of the chosen block (block parts). As
 part of the gossiping protocol, processes also send auxiliary messages that inform peers about the
-executed steps of the core consensus algorithm (`NewRoundStepMessage` and `CommitStepMessage`), and
+executed steps of the core consensus algorithm (`NewRoundStepMessage` and `NewValidBlockMessage`), and
 also messages that inform peers what votes the process has seen (`HasVoteMessage`,
 `VoteSetMaj23Message` and `VoteSetBitsMessage`). These messages are then used in the gossiping
 protocol to determine what messages a process should send to its peers.
@@ -132,22 +132,25 @@ type NewRoundStepMessage struct {
 }
 ```
 
-## CommitStepMessage
+## NewValidBlockMessage
 
-CommitStepMessage is sent when an agreement on some block is reached. It contains height for which
-agreement is reached, block parts header that describes the decided block and is used to obtain all
+NewValidBlockMessage is sent when a validator observes a valid block B in some round r, 
+i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
+It contains height and round in which valid block is observed, block parts header that describes 
+the valid block and is used to obtain all
 block parts, and a bit array of the block parts a process currently has, so its peers can know what
 parts it is missing so they can send them.
+In case the block is also committed, then IsCommit flag is set to true.
 
 ```go
-type CommitStepMessage struct {
+type NewValidBlockMessage struct {
     Height           int64
-    BlockID          BlockID
+    Round            int    
+    BlockPartsHeader PartSetHeader
     BlockParts       BitArray
+    IsCommit         bool
 }
 ```
-
-TODO: We use BlockID instead of BlockPartsHeader (in current implementation) for symmetry.
 
 ## ProposalPOLMessage
 
