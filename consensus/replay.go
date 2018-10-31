@@ -264,8 +264,12 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 // Replay all blocks since appBlockHeight and ensure the result matches the current state.
 // Returns the final AppHash or an error.
-func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight int64, proxyApp proxy.AppConns) ([]byte, error) {
-
+func (h *Handshaker) ReplayBlocks(
+	state sm.State,
+	appHash []byte,
+	appBlockHeight int64,
+	proxyApp proxy.AppConns,
+) ([]byte, error) {
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
 	h.logger.Info("ABCI Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
