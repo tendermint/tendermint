@@ -140,8 +140,8 @@ func TestSignProposal(t *testing.T) {
 	require.Nil(t, err)
 	privVal := GenFilePV(tempFile.Name())
 
-	block1 := types.PartSetHeader{5, []byte{1, 2, 3}}
-	block2 := types.PartSetHeader{10, []byte{3, 2, 1}}
+	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{5, []byte{1, 2, 3}}}
+	block2 := types.BlockID{[]byte{3, 2, 1}, types.PartSetHeader{10, []byte{3, 2, 1}}}
 	height, round := int64(10), 1
 
 	// sign a proposal for first time
@@ -179,7 +179,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	require.Nil(t, err)
 	privVal := GenFilePV(tempFile.Name())
 
-	block1 := types.PartSetHeader{5, []byte{1, 2, 3}}
+	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{5, []byte{1, 2, 3}}}
 	height, round := int64(10), 1
 	chainID := "mychainid"
 
@@ -241,11 +241,11 @@ func newVote(addr types.Address, idx int, height int64, round int, typ byte, blo
 	}
 }
 
-func newProposal(height int64, round int, partsHeader types.PartSetHeader) *types.Proposal {
+func newProposal(height int64, round int, blockID types.BlockID) *types.Proposal {
 	return &types.Proposal{
-		Height:           height,
-		Round:            round,
-		BlockPartsHeader: partsHeader,
-		Timestamp:        tmtime.Now(),
+		Height:    height,
+		Round:     round,
+		BlockID:   blockID,
+		Timestamp: tmtime.Now(),
 	}
 }
