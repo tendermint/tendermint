@@ -130,8 +130,8 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	}
 
 	// Make proposal
-	polRound, polBlockID := cs1.Votes.POLInfo()
-	proposal = types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
+	polRound, propBlockID := cs1.ValidRound, types.BlockID{block.Hash(), blockParts.Header()}
+	proposal = types.NewProposal(height, round, polRound, propBlockID)
 	if err := vs.SignProposal(cs1.state.ChainID, proposal); err != nil {
 		panic(err)
 	}
@@ -418,6 +418,11 @@ func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, tim
 func ensureNewProposal(proposalCh <-chan interface{}, height int64, round int) {
 	ensureNewEvent(proposalCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for NewProposal event")
+}
+
+func ensureNewValidBlock(validBlockCh <-chan interface{}, height int64, round int) {
+	ensureNewEvent(validBlockCh, height, round, ensureTimeout,
+		"Timeout expired while waiting for NewValidBlock event")
 }
 
 func ensureNewBlock(blockCh <-chan interface{}, height int64) {

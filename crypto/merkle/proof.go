@@ -43,10 +43,11 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 	for i, op := range poz {
 		key := op.GetKey()
 		if len(key) != 0 {
-			if !bytes.Equal(keys[0], key) {
-				return cmn.NewError("Key mismatch on operation #%d: expected %+v but %+v", i, []byte(keys[0]), []byte(key))
+			lastKey := keys[len(keys)-1]
+			if !bytes.Equal(lastKey, key) {
+				return cmn.NewError("Key mismatch on operation #%d: expected %+v but got %+v", i, string(lastKey), string(key))
 			}
-			keys = keys[1:]
+			keys = keys[:len(keys)-1]
 		}
 		args, err = op.Run(args)
 		if err != nil {
@@ -54,7 +55,7 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 		}
 	}
 	if !bytes.Equal(root, args[0]) {
-		return cmn.NewError("Calculated root hash is invalid: expected %+v but %+v", root, args[0])
+		return cmn.NewError("Calculated root hash is invalid: expected %+v but got %+v", root, args[0])
 	}
 	if len(keys) != 0 {
 		return cmn.NewError("Keypath not consumed all")
