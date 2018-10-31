@@ -60,9 +60,9 @@ func (p *Proposal) ValidateBasic() error {
 	if err := p.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}
-	if err := ValidateTime(p.Timestamp); err != nil {
-		return err
-	}
+
+	// NOTE: Timestamp validation is subtle and handled elsewhere.
+
 	if len(p.Signature) == 0 {
 		return errors.New("Signature is missing")
 	}

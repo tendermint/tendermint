@@ -121,9 +121,9 @@ func (vote *Vote) ValidateBasic() error {
 	if vote.Round < 0 {
 		return errors.New("Negative Round")
 	}
-	if err := ValidateTime(vote.Timestamp); err != nil {
-		return err
-	}
+
+	// NOTE: Timestamp validation is subtle and handled elsewhere.
+
 	if err := vote.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}

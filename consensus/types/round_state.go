@@ -26,6 +26,8 @@ const (
 	RoundStepPrecommitWait = RoundStepType(0x07) // Did receive any +2/3 precommits, start timeout
 	RoundStepCommit        = RoundStepType(0x08) // Entered commit state machine
 	// NOTE: RoundStepNewHeight acts as RoundStepCommitWait.
+
+	// NOTE: Update IsValid method if you change this!
 )
 
 // IsValid returns true if the step is valid, false if unknown/undefined.
