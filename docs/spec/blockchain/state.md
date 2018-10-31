@@ -56,8 +56,8 @@ type Validator struct {
 }
 ```
 
-When hashing the Validator struct, the pubkey is not hashed,
-because the address is already the hash of the pubkey.
+When hashing the Validator struct, the address is not included,
+because it is redundant with the pubkey.
 
 The `state.Validators`, `state.LastValidators`, and `state.NextValidators`, must always by sorted by validator address,
 so that there is a canonical order for computing the SimpleMerkleRoot.
