@@ -130,8 +130,8 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	}
 
 	// Make proposal
-	polRound, polBlockID := cs1.Votes.POLInfo()
-	proposal = types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
+	polRound, propBlockID := cs1.ValidRound, types.BlockID{block.Hash(), blockParts.Header()}
+	proposal = types.NewProposal(height, round, polRound, propBlockID)
 	if err := vs.SignProposal(cs1.state.ChainID, proposal); err != nil {
 		panic(err)
 	}

@@ -976,8 +976,8 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 		return
 	}
 
-	ps.PRS.ProposalBlockPartsHeader = proposal.BlockPartsHeader
-	ps.PRS.ProposalBlockParts = cmn.NewBitArray(proposal.BlockPartsHeader.Total)
+	ps.PRS.ProposalBlockPartsHeader = proposal.BlockID.PartsHeader
+	ps.PRS.ProposalBlockParts = cmn.NewBitArray(proposal.BlockID.PartsHeader.Total)
 	ps.PRS.ProposalPOLRound = proposal.POLRound
 	ps.PRS.ProposalPOL = nil // Nil until ProposalPOLMessage received.
 }

@@ -575,7 +575,7 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 	case msgInfo:
 		switch msg := m.Msg.(type) {
 		case *ProposalMessage:
-			return &msg.Proposal.BlockPartsHeader
+			return &msg.Proposal.BlockID.PartsHeader
 		case *BlockPartMessage:
 			return msg.Part
 		case *VoteMessage:

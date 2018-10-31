@@ -901,9 +901,10 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	}
 
 	// Make proposal
-	polRound, polBlockID := cs.Votes.POLInfo()
-	proposal := types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
+	propBlockId := types.BlockID{block.Hash(), blockParts.Header()}
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
+
 		// send proposal and block parts on internal msg queue
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
 		for i := 0; i < blockParts.Total(); i++ {
@@ -1423,7 +1424,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
 	if cs.ProposalBlockParts == nil {
-		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartsHeader)
 	}
 	cs.Logger.Info("Received proposal", "proposal", proposal)
 	return nil
