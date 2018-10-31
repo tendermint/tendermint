@@ -444,9 +444,9 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 
 func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) {
 	nrsMsg = &NewRoundStepMessage{
-		Height:                rs.Height,
-		Round:                 rs.Round,
-		Step:                  rs.Step,
+		Height: rs.Height,
+		Round:  rs.Round,
+		Step:   rs.Step,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
@@ -1432,9 +1432,12 @@ type NewValidBlockMessage struct {
 }
 
 // ValidateBasic performs basic validation.
-func (m *CommitStepMessage) ValidateBasic() error {
+func (m *NewValidBlockMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("Negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("Negative Round")
 	}
 	if err := m.BlockPartsHeader.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)

@@ -45,23 +45,23 @@ func NewProposal(height int64, round int, polRound int, blockID BlockID) *Propos
 
 // ValidateBasic performs basic validation.
 func (p *Proposal) ValidateBasic() error {
+	if p.Type != ProposalType {
+		return errors.New("Invalid Type")
+	}
 	if p.Height < 0 {
 		return errors.New("Negative Height")
 	}
 	if p.Round < 0 {
 		return errors.New("Negative Round")
 	}
-	if err := ValidateTime(p.Timestamp); err != nil {
-		return err
-	}
-	if err := p.BlockPartsHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
-	}
 	if p.POLRound < -1 {
 		return errors.New("Negative POLRound (exception: -1)")
 	}
-	if err := p.POLBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong POLBlockID: %v", err)
+	if err := p.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong BlockID: %v", err)
+	}
+	if err := ValidateTime(p.Timestamp); err != nil {
+		return err
 	}
 	if len(p.Signature) == 0 {
 		return errors.New("Signature is missing")

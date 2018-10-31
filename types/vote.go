@@ -112,14 +112,8 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 
 // ValidateBasic performs basic validation.
 func (vote *Vote) ValidateBasic() error {
-	if len(vote.ValidatorAddress) != crypto.AddressSize {
-		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
-			crypto.AddressSize,
-			len(vote.ValidatorAddress),
-		)
-	}
-	if vote.ValidatorIndex < 0 {
-		return errors.New("Negative ValidatorIndex")
+	if !IsVoteTypeValid(vote.Type) {
+		return errors.New("Invalid Type")
 	}
 	if vote.Height < 0 {
 		return errors.New("Negative Height")
@@ -130,11 +124,17 @@ func (vote *Vote) ValidateBasic() error {
 	if err := ValidateTime(vote.Timestamp); err != nil {
 		return err
 	}
-	if !IsVoteTypeValid(vote.Type) {
-		return errors.New("Invalid Type")
-	}
 	if err := vote.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
+	}
+	if len(vote.ValidatorAddress) != crypto.AddressSize {
+		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
+			crypto.AddressSize,
+			len(vote.ValidatorAddress),
+		)
+	}
+	if vote.ValidatorIndex < 0 {
+		return errors.New("Negative ValidatorIndex")
 	}
 	if len(vote.Signature) == 0 {
 		return errors.New("Signature is missing")
