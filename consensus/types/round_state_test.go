@@ -63,11 +63,8 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	// Random Proposal
 	proposal := &types.Proposal{
 		Timestamp: tmtime.Now(),
-		BlockPartsHeader: types.PartSetHeader{
-			Hash: cmn.RandBytes(20),
-		},
-		POLBlockID: blockID,
-		Signature:  sig,
+		BlockID:   blockID,
+		Signature: sig,
 	}
 	// Random HeightVoteSet
 	// TODO: hvs :=

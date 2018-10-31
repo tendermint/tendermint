@@ -15,11 +15,11 @@ func init() {
 		panic(err)
 	}
 	testProposal = &Proposal{
-		Height:           12345,
-		Round:            23456,
-		BlockPartsHeader: PartSetHeader{111, []byte("blockparts")},
-		POLRound:         -1,
-		Timestamp:        stamp,
+		Height:    12345,
+		Round:     23456,
+		BlockID:   BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}},
+		POLRound:  -1,
+		Timestamp: stamp,
 	}
 }
 
@@ -34,7 +34,7 @@ func TestProposalSignable(t *testing.T) {
 
 func TestProposalString(t *testing.T) {
 	str := testProposal.String()
-	expected := `Proposal{12345/23456 111:626C6F636B70 (-1,:0:000000000000) 000000000000 @ 2018-02-11T07:09:22.765Z}`
+	expected := `Proposal{12345/23456 (010203:111:626C6F636B70, -1) 000000000000 @ 2018-02-11T07:09:22.765Z}`
 	if str != expected {
 		t.Errorf("Got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", expected, str)
 	}
@@ -44,7 +44,9 @@ func TestProposalVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
 	pubKey := privVal.GetPubKey()
 
-	prop := NewProposal(4, 2, PartSetHeader{777, []byte("proper")}, 2, BlockID{})
+	prop := NewProposal(
+		4, 2, 2,
+		BlockID{[]byte{1, 2, 3}, PartSetHeader{777, []byte("proper")}})
 	signBytes := prop.SignBytes("test_chain_id")
 
 	// sign it

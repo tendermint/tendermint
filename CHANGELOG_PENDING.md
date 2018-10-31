@@ -10,6 +10,16 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BREAKING CHANGES:
 
+* CLI/RPC/Config
+
+* Apps
+
+* Go API
+
+* Blockchain Protocol
+
+* P2P Protocol
+
 ### FEATURES:
 
 ### IMPROVEMENTS:

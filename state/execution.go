@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/tendermint/abci/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
@@ -186,7 +186,7 @@ func (blockExec *BlockExecutor) Commit(
 				state.Validators.Size(),
 			),
 		),
-		mempool.PostCheckMaxGas(state.ConsensusParams.MaxGas),
+		mempool.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
 	)
 
 	return res.Data, err

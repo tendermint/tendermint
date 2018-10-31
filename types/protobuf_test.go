@@ -64,7 +64,6 @@ func TestABCIValidators(t *testing.T) {
 
 func TestABCIConsensusParams(t *testing.T) {
 	cp := DefaultConsensusParams()
-	cp.EvidenceParams.MaxAge = 0 // TODO add this to ABCI
 	abciCP := TM2PB.ConsensusParams(cp)
 	cp2 := PB2TM.ConsensusParams(abciCP)
 

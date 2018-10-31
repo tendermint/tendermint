@@ -127,7 +127,7 @@ func (evpool *EvidencePool) MarkEvidenceAsCommitted(height int64, evidence []typ
 	}
 
 	// remove committed evidence from the clist
-	maxAge := evpool.State().ConsensusParams.EvidenceParams.MaxAge
+	maxAge := evpool.State().ConsensusParams.Evidence.MaxAge
 	evpool.removeEvidence(height, maxAge, blockEvidenceMap)
 
 }
