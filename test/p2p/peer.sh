@@ -21,7 +21,7 @@ if [[ "$ID" == "x" ]]; then # Set "x" to "1" to print to console.
 		--ip=$(test/p2p/ip.sh "$ID") \
 		--name "local_testnet_$ID" \
 		--entrypoint tendermint \
-		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$ID/core" \
+		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1))" \
 		-e GOMAXPROCS=1 \
 		--log-driver=syslog \
 		--log-opt syslog-address=udp://127.0.0.1:5514 \
@@ -34,7 +34,7 @@ else
 		--ip=$(test/p2p/ip.sh "$ID") \
 		--name "local_testnet_$ID" \
 		--entrypoint tendermint \
-		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$ID/core" \
+		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1))" \
 		-e GOMAXPROCS=1 \
 		--log-driver=syslog \
 		--log-opt syslog-address=udp://127.0.0.1:5514 \
