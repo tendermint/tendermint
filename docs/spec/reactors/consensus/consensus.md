@@ -47,24 +47,20 @@ type ProposalMessage struct {
 ### Proposal
 
 Proposal contains height and round for which this proposal is made, BlockID as a unique identifier
-of proposed block, timestamp, and two fields (POLRound and POLBlockID) that are needed for
-termination of the consensus. The message is signed by the validator private key.
+of proposed block, timestamp, and POLRound (a so-called Proof-of-Lock (POL) round) that is needed for
+termination of the consensus. If POLRound >= 0, then BlockID corresponds to the block that 
+is locked in POLRound. The message is signed by the validator private key.
 
 ```go
 type Proposal struct {
     Height           int64
     Round            int
-    Timestamp        Time
-    BlockID          BlockID
     POLRound         int
-    POLBlockID       BlockID
+    BlockID          BlockID
+    Timestamp        Time
     Signature        Signature
 }
 ```
-
-NOTE: In the current version of the Tendermint, the consensus value in proposal is represented with
-PartSetHeader, and with BlockID in vote message. It should be aligned as suggested in this spec as
-BlockID contains PartSetHeader.
 
 ## VoteMessage
 

@@ -95,6 +95,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES:
 - [autofile] [\#2428](https://github.com/tendermint/tendermint/issues/2428) Group.RotateFile need call Flush() before rename (@goolAdapter)
+- [blockchain] \#2457 fix fastsync may stuck by a wrong block (@goolAdapter)
 - [common] [\#2533](https://github.com/tendermint/tendermint/issues/2533) Fixed a bug in the `BitArray.Or` method
 - [common] [\#2506](https://github.com/tendermint/tendermint/issues/2506) Fixed a bug in the `BitArray.Sub` method (@james-ray)
 - [common] [\#2534](https://github.com/tendermint/tendermint/issues/2534) Fix `BitArray.PickRandom` to choose uniformly from true bits
@@ -102,11 +103,13 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   timeoutPrecommit before starting next round
 - [consensus] [\#1745](https://github.com/tendermint/tendermint/issues/1745) Wait for
   Proposal or timeoutProposal before entering prevote
+- [consensus] [\#2583](https://github.com/tendermint/tendermint/issues/2583) ensure valid 
+  block property with faulty proposer
 - [consensus] [\#2642](https://github.com/tendermint/tendermint/issues/2642) Only propose ValidBlock, not LockedBlock
 - [consensus] [\#2642](https://github.com/tendermint/tendermint/issues/2642) Initialized ValidRound and LockedRound to -1
 - [consensus] [\#1637](https://github.com/tendermint/tendermint/issues/1637) Limit the amount of evidence that can be included in a
   block
-- [blockchain] \#2457 fix fastsync may stuck by a wrong block (@goolAdapter)
+- [consensus] [\#2646](https://github.com/tendermint/tendermint/issues/2646) Simplify Proposal message (align with spec)
 - [evidence] [\#2515](https://github.com/tendermint/tendermint/issues/2515) Fix db iter leak (@goolAdapter)
 - [libs/event] [\#2518](https://github.com/tendermint/tendermint/issues/2518) Fix event concurrency flaw (@goolAdapter)
 - [node] [\#2434](https://github.com/tendermint/tendermint/issues/2434) Make node respond to signal interrupts while sleeping for genesis time
