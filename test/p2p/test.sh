@@ -17,7 +17,7 @@ set -e
 docker run --rm \
 	--entrypoint tendermint \
 	-v "$GOPATH/src/github.com/tendermint/tendermint/test/p2p/:/go/src/github.com/tendermint/tendermint/test/p2p" \
-	"$DOCKER_IMAGE" testnet --node-dir-prefix="mach" --v=4 --populate-persistent-peers=false --o="test/p2p/data"
+	"$DOCKER_IMAGE" testnet --node-dir-prefix="mach" --v=4 --populate-persistent-peers=false --o="/go/src/github.com/tendermint/tendermint/test/p2p/data"
 
 PERSISTENT_PEERS=$(bash test/p2p/persistent_peers.sh $N $DOCKER_IMAGE)
 
