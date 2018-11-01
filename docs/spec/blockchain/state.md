@@ -85,6 +85,7 @@ type ConsensusParams struct {
 	TxSize
 	BlockGossip
 	EvidenceParams
+    ValidatorParams
 }
 
 type BlockSize struct {
@@ -103,6 +104,10 @@ type BlockGossip struct {
 
 type EvidenceParams struct {
 	MaxAge int64
+}
+
+type ValidatorParams struct {
+	PubKeyTypes []string
 }
 ```
 
@@ -132,3 +137,9 @@ For evidence in a block to be valid, it must satisfy:
 ```
 block.Header.Height - evidence.Height < ConsensusParams.EvidenceParams.MaxAge
 ```
+
+#### ValidatorParams
+
+PubKeyTypes is the set of all allowable ABCI pubkey identifiers.
+If a validator creates a validator update that uses a pubkey not from this list,
+the update will fail.
