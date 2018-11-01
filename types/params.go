@@ -124,19 +124,7 @@ func (params *ConsensusParams) Hash() []byte {
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 	return params.BlockSize == params2.BlockSize &&
 		params.Evidence == params2.Evidence &&
-		stringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
-}
-
-func stringSliceEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := 0; i < len(a); i++ {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
+		cmn.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.
@@ -157,7 +145,7 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		res.Evidence.MaxAge = params2.Evidence.MaxAge
 	}
 	if params2.Validator != nil {
-		res.Validator.PubKeyTypes = params2.Validator.PubKeyTypes
+		res.Validator.PubKeyTypes = append(params2.Validator.PubKeyTypes[0:0], params2.Validator.PubKeyTypes...)
 	}
 	return res
 }
