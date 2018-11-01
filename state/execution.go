@@ -348,8 +348,8 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 		// type in the consensus params
 		thisKeyType := abciUpdates[i].PubKey.Type
 		validKeyType := false
-		for i := 0; i < len(consensusValidatorParams.ValidatorPubkeyTypes); i++ {
-			if consensusValidatorParams.ValidatorPubkeyTypes[i] == thisKeyType {
+		for i := 0; i < len(consensusValidatorParams.PubKeyTypes); i++ {
+			if consensusValidatorParams.PubKeyTypes[i] == thisKeyType {
 				validKeyType = true
 				break
 			}
