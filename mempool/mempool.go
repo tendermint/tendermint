@@ -25,12 +25,12 @@ import (
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
 // transaction if false is returned. An example would be to ensure that a
 // transaction doesn't exceeded the block size.
-type PreCheckFunc func(types.Tx) bool
+type PreCheckFunc func(types.Tx) error
 
 // PostCheckFunc is an optional filter executed after CheckTx and rejects
 // transaction if false is returned. An example would be to ensure a
 // transaction doesn't require more gas than available for the block.
-type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) bool
+type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
 
 /*
 
@@ -66,29 +66,50 @@ var (
 
 	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
 	ErrMempoolIsFull = errors.New("Mempool is full")
-
-	// ErrPreCheck means the tx bytes are invalid - ie. too big.
-	ErrPreCheck = errors.New("Tx failed precheck")
 )
+
+// ErrPreCheck is returned when tx is too big
+type ErrPreCheck struct {
+	Reason error
+}
+
+func (e ErrPreCheck) Error() string {
+	return e.Reason.Error()
+}
+
+// IsPreCheckError returns true if err is due to pre check failure.
+func IsPreCheckError(err error) bool {
+	_, ok := err.(ErrPreCheck)
+	return ok
+}
 
 // PreCheckAminoMaxBytes checks that the size of the transaction plus the amino
 // overhead is smaller or equal to the expected maxBytes.
 func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
-	return func(tx types.Tx) bool {
+	return func(tx types.Tx) error {
 		// We have to account for the amino overhead in the tx size as well
 		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
-		return int64(len(tx)+aminoOverhead) <= maxBytes
+		txSize := int64(len(tx) + aminoOverhead)
+		if txSize > maxBytes {
+			return fmt.Errorf("Tx size (including amino overhead) is too big: %d, max: %d",
+				txSize, maxBytes)
+		}
+		return nil
 	}
 }
 
 // PostCheckMaxGas checks that the wanted gas is smaller or equal to the passed
-// maxGas. Returns true if maxGas is -1.
+// maxGas. Returns nil if maxGas is -1.
 func PostCheckMaxGas(maxGas int64) PostCheckFunc {
-	return func(tx types.Tx, res *abci.ResponseCheckTx) bool {
+	return func(tx types.Tx, res *abci.ResponseCheckTx) error {
 		if maxGas == -1 {
-			return true
+			return nil
 		}
-		return res.GasWanted <= maxGas
+		if res.GasWanted > maxGas {
+			return fmt.Errorf("gas wanted %d is greater than max gas %d",
+				res.GasWanted, maxGas)
+		}
+		return nil
 	}
 }
 
@@ -288,8 +309,10 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 		return ErrMempoolIsFull
 	}
 
-	if mem.preCheck != nil && !mem.preCheck(tx) {
-		return ErrPreCheck
+	if mem.preCheck != nil {
+		if err := mem.preCheck(tx); err != nil {
+			return ErrPreCheck{err}
+		}
 	}
 
 	// CACHE
@@ -575,7 +598,13 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 }
 
 func (mem *Mempool) isPostCheckPass(tx types.Tx, r *abci.ResponseCheckTx) bool {
-	return mem.postCheck == nil || mem.postCheck(tx, r)
+	if mem.postCheck == nil {
+		return true
+	}
+	if err := mem.postCheck(tx, r); err != nil {
+		return false
+	}
+	return true
 }
 
 //--------------------------------------------------------------------------------
