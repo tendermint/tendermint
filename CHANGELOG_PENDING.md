@@ -70,6 +70,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     struct instead of the Merkle tree of the fields
   * [state] [\#2587](https://github.com/tendermint/tendermint/issues/2587) Require block.Time of the fist block to be genesis time
   * [state] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Require block.Version to match state.Version
+  * [state] \#2714 Validators can now only use pubkeys allowed within ConsensusParams.ValidatorParams
   * [types] [\#2670](https://github.com/tendermint/tendermint/issues/2670) Header.Hash() builds Merkle tree out of fields in the same
     order they appear in the header, instead of sorting by field name
   * [types] [\#2682](https://github.com/tendermint/tendermint/issues/2682) Use proto3 `varint` encoding for ints that are usually unsigned (instead of zigzag encoding).
