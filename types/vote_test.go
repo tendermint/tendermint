@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
@@ -37,7 +38,7 @@ func exampleVote(t byte) *Vote {
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},
-		ValidatorAddress: tmhash.Sum([]byte("validator_address")),
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
 	}
 }
@@ -211,7 +212,7 @@ func TestMaxVoteBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	vote := &Vote{
-		ValidatorAddress: tmhash.Sum([]byte("validator_address")),
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   math.MaxInt64,
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt64,
