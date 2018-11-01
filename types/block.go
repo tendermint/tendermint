@@ -143,9 +143,7 @@ func (b *Block) ValidateBasic() error {
 	if err := ValidateHash(b.ConsensusHash); err != nil {
 		return fmt.Errorf("Wrong Header.ConsensusHash: %v", err)
 	}
-	if err := ValidateHash(b.AppHash); err != nil {
-		return fmt.Errorf("Wrong Header.AppHash: %v", err)
-	}
+	// NOTE: AppHash is arbitrary length
 	if err := ValidateHash(b.LastResultsHash); err != nil {
 		return fmt.Errorf("Wrong Header.LastResultsHash: %v", err)
 	}
