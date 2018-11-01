@@ -321,14 +321,15 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate) error {
+func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate,
+	consensusValidatorParams types.ValidatorParams) error {
 	updates, err := types.PB2TM.ValidatorUpdates(abciUpdates)
 	if err != nil {
 		return err
 	}
 
 	// these are tendermint types now
-	for _, valUpdate := range updates {
+	for i, valUpdate := range updates {
 		if valUpdate.VotingPower < 0 {
 			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
 		}
@@ -341,7 +342,24 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			if !removed {
 				return fmt.Errorf("Failed to remove validator %X", address)
 			}
-		} else if val == nil {
+			continue
+		}
+		// add or update validator. First must check if its pubkey matches an ABCI
+		// type in the consensus params
+		thisKeyType := abciUpdates[i].PubKey.Type
+		validKeyType := false
+		for i := 0; i < len(consensusValidatorParams.ValidatorPubkeyTypes); i++ {
+			if consensusValidatorParams.ValidatorPubkeyTypes[i] == thisKeyType {
+				validKeyType = true
+				break
+			}
+		}
+		if !validKeyType {
+			return fmt.Errorf("Validator %v is using pubkey %s, which is unsupported for consensus",
+				valUpdate, thisKeyType)
+		}
+
+		if val == nil {
 			// add val
 			added := currentSet.Add(valUpdate)
 			if !added {
@@ -373,7 +391,7 @@ func updateState(
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates)
+		err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates, state.ConsensusParams.Validator)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
