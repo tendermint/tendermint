@@ -239,10 +239,15 @@ func TestUpdateValidators(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := updateValidators(tc.currentSet, tc.abciUpdates, tc.validatorParams)
+			err1 := validateValidatorUpdates(tc.abciUpdates, tc.validatorParams)
+			err2 := updateValidators(tc.currentSet, tc.abciUpdates)
 			if tc.shouldErr {
-				assert.Error(t, err)
+				if err1 == nil && err2 == nil {
+					t.Error("Expected one of validateValidatorUpdates or updateValidators to error")
+				}
 			} else {
+				assert.NoError(t, err1)
+				assert.NoError(t, err2)
 				require.Equal(t, tc.resultingSet.Size(), tc.currentSet.Size())
 
 				assert.Equal(t, tc.resultingSet.TotalVotingPower(), tc.currentSet.TotalVotingPower())

@@ -318,35 +318,17 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 
 }
 
-// If more or equal than 1/3 of total voting power changed in one block, then
-// a light client could never prove the transition externally. See
-// ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate,
+func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 	consensusValidatorParams types.ValidatorParams) error {
-	updates, err := types.PB2TM.ValidatorUpdates(abciUpdates)
-	if err != nil {
-		return err
-	}
-
-	// these are tendermint types now
-	for i, valUpdate := range updates {
-		if valUpdate.VotingPower < 0 {
+	for _, valUpdate := range abciUpdates {
+		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
-		}
-
-		address := valUpdate.Address
-		_, val := currentSet.GetByAddress(address)
-		if valUpdate.VotingPower == 0 {
-			// remove val
-			_, removed := currentSet.Remove(address)
-			if !removed {
-				return fmt.Errorf("Failed to remove validator %X", address)
-			}
+		} else if valUpdate.GetPower() == 0 {
 			continue
 		}
-		// add or update validator. First must check if its pubkey matches an ABCI
-		// type in the consensus params
-		thisKeyType := abciUpdates[i].PubKey.Type
+
+		// Check if validator's pubkey matches an ABCI type in the consensus params
+		thisKeyType := valUpdate.PubKey.Type
 		validKeyType := false
 		for i := 0; i < len(consensusValidatorParams.PubKeyTypes); i++ {
 			if consensusValidatorParams.PubKeyTypes[i] == thisKeyType {
@@ -358,7 +340,33 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			return fmt.Errorf("Validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, thisKeyType)
 		}
+	}
+	return nil
+}
 
+// If more or equal than 1/3 of total voting power changed in one block, then
+// a light client could never prove the transition externally. See
+// ./lite/doc.go for details on how a light client tracks validators.
+func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate) error {
+	updates, err := types.PB2TM.ValidatorUpdates(abciUpdates)
+	if err != nil {
+		return err
+	}
+
+	// these are tendermint types now
+	for _, valUpdate := range updates {
+		address := valUpdate.Address
+		_, val := currentSet.GetByAddress(address)
+		// valUpdate.VotingPower is ensured to be non-negative in validation method
+		if valUpdate.VotingPower == 0 {
+			// remove val
+			_, removed := currentSet.Remove(address)
+			if !removed {
+				return fmt.Errorf("Failed to remove validator %X", address)
+			}
+			continue
+		}
+		// add or update validator.
 		if val == nil {
 			// add val
 			added := currentSet.Add(valUpdate)
@@ -391,7 +399,11 @@ func updateState(
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates, state.ConsensusParams.Validator)
+		err := validateValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates, state.ConsensusParams.Validator)
+		if err != nil {
+			return state, fmt.Errorf("Error in validator updates: %v", err)
+		}
+		err = updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
