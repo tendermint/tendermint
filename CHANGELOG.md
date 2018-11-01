@@ -68,6 +68,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   * [types] [\#2735](https://github.com/tendermint/tendermint/issues/2735) Simplify Proposal message to align with spec
 
 * Blockchain Protocol
+  * [crypto/tmhash] [\#2732](https://github.com/tendermint/tendermint/issues/2732) TMHASH is now full 32-byte SHA256
+    * All hashes in the block header and Merkle trees are now 32-bytes
+    * PubKey Addresses are still only 20-bytes
   * [state] [\#2587](https://github.com/tendermint/tendermint/issues/2587) Require block.Time of the fist block to be genesis time
   * [state] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Require block.Version to match state.Version
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
@@ -77,7 +80,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
       `SignedMsgType` to enumerate.
   * [types] [\#2730](https://github.com/tendermint/tendermint/issues/2730) Use
     same order for fields in `Vote` as in the SignBytes
-  * [types] [\#2512](https://github.com/tendermint/tendermint/issues/2512) Remove the pubkey field from the validator hash
+  * [types] [\#2732](https://github.com/tendermint/tendermint/issues/2732) Remove the address field from the validator hash
   * [types] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Add Version struct to Header
   * [types] [\#2609](https://github.com/tendermint/tendermint/issues/2609) ConsensusParams.Hash() is the hash of the amino encoded
     struct instead of the Merkle tree of the fields
@@ -114,6 +117,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [tools] [\#2238](https://github.com/tendermint/tendermint/issues/2238) Binary dependencies are now locked to a specific git commit
 
 ### BUG FIXES:
+- [\#2711](https://github.com/tendermint/tendermint/issues/2711) Validate all incoming reactor messages
 - [autofile] [\#2428](https://github.com/tendermint/tendermint/issues/2428) Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [common] [\#2533](https://github.com/tendermint/tendermint/issues/2533) Fixed a bug in the `BitArray.Or` method
 - [common] [\#2506](https://github.com/tendermint/tendermint/issues/2506) Fixed a bug in the `BitArray.Sub` method (@james-ray)
