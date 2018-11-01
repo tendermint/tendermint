@@ -10,6 +10,12 @@ import (
 
 // ValidateTime does a basic time validation ensuring time does not drift too
 // much: +/- one year.
+// TODO: reduce this to eg 1 day
+// NOTE: DO NOT USE in ValidateBasic methods in this package. This function
+// can only be used for real time validation, like on proposals and votes
+// in the consensus. If consensus is stuck, and rounds increase for more than a day,
+// having only a 1-day band here could break things...
+// Can't use for validating blocks because we may be syncing years worth of history.
 func ValidateTime(t time.Time) error {
 	var (
 		now     = tmtime.Now()

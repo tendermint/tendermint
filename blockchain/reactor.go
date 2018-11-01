@@ -8,7 +8,6 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -424,18 +423,6 @@ type bcBlockResponseMessage struct {
 func (m *bcBlockResponseMessage) ValidateBasic() error {
 	if err := m.Block.ValidateBasic(); err != nil {
 		return err
-	}
-
-	// Note we are more strict about the fields below  in state#ValidateBlock.
-	if m.Block.TotalTxs < m.Block.NumTxs {
-		return errors.New("Header.TotalTxs is less than Header.NumTxs")
-	}
-	if err := m.Block.LastBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong Header.LastBlockID: %v", err)
-	}
-	if len(m.Block.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("Expected len(Header.ProposerAddress) to be %d",
-			crypto.AddressSize)
 	}
 
 	return nil

@@ -83,6 +83,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	for i, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
 			block := MakeBlock(h, txs, commit, evList)
+			block.ProposerAddress = valSet.GetProposer().Address
 			tc.malleateBlock(block)
 			err = block.ValidateBasic()
 			assert.Equal(t, tc.expErr, err != nil, "#%d: %v", i, err)

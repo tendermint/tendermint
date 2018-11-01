@@ -1402,9 +1402,9 @@ func (m *NewRoundStepMessage) ValidateBasic() error {
 	if !m.Step.IsValid() {
 		return errors.New("Invalid Step")
 	}
-	if m.SecondsSinceStartTime < 0 {
-		return errors.New("Negative SecondsSinceStartTime")
-	}
+
+	// NOTE: SecondsSinceStartTime may be negative
+
 	if (m.Height == 1 && m.LastCommitRound != -1) ||
 		(m.Height > 1 && m.LastCommitRound < -1) { // TODO: #2737 LastCommitRound should always be >= 0 for heights > 1
 		return errors.New("Invalid LastCommitRound (for 1st block: -1, for others: >= 0)")
