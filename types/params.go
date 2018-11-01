@@ -145,6 +145,8 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 		res.Evidence.MaxAge = params2.Evidence.MaxAge
 	}
 	if params2.Validator != nil {
+		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.
+		// This avoids having to initialize the slice to 0 values, and then write to it again.
 		res.Validator.PubKeyTypes = append(params2.Validator.PubKeyTypes[0:0], params2.Validator.PubKeyTypes...)
 	}
 	return res
