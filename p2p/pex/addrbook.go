@@ -648,6 +648,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookNonRoutable{addr}
 	}
 
+	if !addr.Valid() {
+		return ErrAddrBookInvalidAddr{addr}
+	}
+
 	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
 	if _, ok := a.ourAddrs[addr.String()]; ok {
 		return ErrAddrBookSelf{addr}

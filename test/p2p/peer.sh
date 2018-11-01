@@ -15,13 +15,15 @@ echo "starting tendermint peer ID=$ID"
 # NOTE: $NODE_FLAGS should be unescaped (no quotes). otherwise it will be
 # treated as one flag.
 
+# test/p2p/data/mach$((ID-1)) data is generated in test/docker/Dockerfile using
+# the tendermint testnet command.
 if [[ "$ID" == "x" ]]; then # Set "x" to "1" to print to console.
 	docker run \
 		--net="$NETWORK_NAME" \
 		--ip=$(test/p2p/ip.sh "$ID") \
 		--name "local_testnet_$ID" \
 		--entrypoint tendermint \
-		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$ID/core" \
+		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1))" \
 		-e GOMAXPROCS=1 \
 		--log-driver=syslog \
 		--log-opt syslog-address=udp://127.0.0.1:5514 \
@@ -34,7 +36,7 @@ else
 		--ip=$(test/p2p/ip.sh "$ID") \
 		--name "local_testnet_$ID" \
 		--entrypoint tendermint \
-		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$ID/core" \
+		-e TMHOME="/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$((ID-1))" \
 		-e GOMAXPROCS=1 \
 		--log-driver=syslog \
 		--log-opt syslog-address=udp://127.0.0.1:5514 \
