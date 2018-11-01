@@ -68,7 +68,7 @@ My opinion: not worth doing.
 
 ### Channels vs Callbacks
 
-Yet another question is whenever we should use channels for message transmission or
+Yet another question is whether we should use channels for message transmission or
 call subscriber-defined callback functions. Callback functions give subscribers
 more flexibility - you can use mutexes in there, channels, spawn goroutines,
 anything you really want. But they also carry local scope, which can result in
@@ -76,7 +76,7 @@ memory leaks and/or memory usage increase.
 
 Go channels are de-facto standard for carrying data between goroutines.
 
-**Question: Does it worth switching to callback functions?**
+**Question: Is it worth switching to callback functions?**
 
 ### Why `Subscribe()` accepts an `out` channel?
 
