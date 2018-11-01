@@ -520,7 +520,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
 				var block = new(types.Block)
-				_, err = cdc.UnmarshalBinaryReader(thisBlockParts.GetReader(), block, 0)
+				_, err = cdc.UnmarshalBinaryLengthPrefixedReader(thisBlockParts.GetReader(), block, 0)
 				if err != nil {
 					panic(err)
 				}
@@ -553,7 +553,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 	}
 	// grab the last block too
 	var block = new(types.Block)
-	_, err = cdc.UnmarshalBinaryReader(thisBlockParts.GetReader(), block, 0)
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(thisBlockParts.GetReader(), block, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -575,7 +575,7 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 	case msgInfo:
 		switch msg := m.Msg.(type) {
 		case *ProposalMessage:
-			return &msg.Proposal.BlockPartsHeader
+			return &msg.Proposal.BlockID.PartsHeader
 		case *BlockPartMessage:
 			return msg.Part
 		case *VoteMessage:

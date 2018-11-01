@@ -173,8 +173,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 						"Panic in RPC HTTP handler", "err", e, "stack",
 						string(debug.Stack()),
 					)
-					rww.WriteHeader(http.StatusInternalServerError)
-					WriteRPCResponseHTTP(rww, types.RPCInternalError("", e.(error)))
+					WriteRPCResponseHTTPError(rww, http.StatusInternalServerError, types.RPCInternalError("", e.(error)))
 				}
 			}
 

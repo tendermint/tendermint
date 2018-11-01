@@ -74,7 +74,6 @@ message RequestQuery {
   bool prove = 4;
 }
 
-// NOTE: validators here have empty pubkeys.
 message RequestBeginBlock {
   bytes hash = 1;
   Header header = 2 [(gogoproto.nullable)=false];
@@ -208,13 +207,13 @@ message ResponseCommit {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 message ConsensusParams {
-  BlockSize block_size = 1;
-  EvidenceParams evidence_params = 2;
-  ValidatorParams validator_params = 3;
+  BlockSizeParams block_size = 1;
+  EvidenceParams evidence = 2;
+  ValidatorParams validator = 3;
 }
 
 // BlockSize contains limits on the block size.
-message BlockSize {
+message BlockSizeParams {
   // Note: must be greater than 0
   int64 max_bytes = 1;
   // Note: must be greater or equal to -1
@@ -229,7 +228,7 @@ message EvidenceParams {
 
 // ValidatorParams contains limits on validators.
 message ValidatorParams {
-  repeated string validator_pubkey_types = 3;
+  repeated string pub_key_types = 1;
 }
 
 message LastCommitInfo {

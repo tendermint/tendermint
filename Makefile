@@ -36,7 +36,7 @@ install:
 ########################################
 ### Protobuf
 
-protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc
+protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
 
 %.pb.go: %.proto
 	## If you get the following error,
@@ -51,6 +51,8 @@ protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc
 
 # see protobuf section above
 protoc_abci: abci/types/types.pb.go
+
+protoc_proto3types: types/proto3/block.pb.go
 
 build_abci:
 	@go build -i ./abci/cmd/...

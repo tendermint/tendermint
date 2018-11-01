@@ -47,15 +47,15 @@ func TestConsensusParamsValidation(t *testing.T) {
 
 func makeParams(blockBytes, blockGas, evidenceAge int64, pubkeyTypes []string) ConsensusParams {
 	return ConsensusParams{
-		BlockSize: BlockSize{
+		BlockSize: BlockSizeParams{
 			MaxBytes: blockBytes,
 			MaxGas:   blockGas,
 		},
-		EvidenceParams: EvidenceParams{
+		Evidence: EvidenceParams{
 			MaxAge: evidenceAge,
 		},
 		Validator: ValidatorParams{
-			ValidatorPubkeyTypes: pubkeyTypes,
+			PubKeyTypes: pubkeyTypes,
 		},
 	}
 }
@@ -103,15 +103,15 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		{
 			makeParams(1, 2, 3, valEd25519),
 			&abci.ConsensusParams{
-				BlockSize: &abci.BlockSize{
+				BlockSize: &abci.BlockSizeParams{
 					MaxBytes: 100,
 					MaxGas:   200,
 				},
-				EvidenceParams: &abci.EvidenceParams{
+				Evidence: &abci.EvidenceParams{
 					MaxAge: 300,
 				},
-				ValidatorParams: &abci.ValidatorParams{
-					ValidatorPubkeyTypes: valSecp256k1,
+				Validator: &abci.ValidatorParams{
+					PubKeyTypes: valSecp256k1,
 				},
 			},
 			makeParams(100, 200, 300, valSecp256k1),

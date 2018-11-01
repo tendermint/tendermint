@@ -24,7 +24,7 @@ func TestErrorPanic(t *testing.T) {
 	var err = capturePanic()
 
 	assert.Equal(t, pnk{"something"}, err.Data())
-assert.Equal(t, "{something}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "{something}", fmt.Sprintf("%v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), "This is the message in ErrorWrap(r, message).")
 	assert.Contains(t, fmt.Sprintf("%#v", err), "Stack Trace:\n    0")
 }

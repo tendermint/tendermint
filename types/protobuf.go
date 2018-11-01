@@ -40,6 +40,10 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) abci.Header {
 	return abci.Header{
+		Version: abci.Version{
+			Block: header.Version.Block.Uint64(),
+			App:   header.Version.App.Uint64(),
+		},
 		ChainID:  header.ChainID,
 		Height:   header.Height,
 		Time:     header.Time,
@@ -51,10 +55,11 @@ func (tm2pb) Header(header *Header) abci.Header {
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
 
-		ValidatorsHash:  header.ValidatorsHash,
-		ConsensusHash:   header.ConsensusHash,
-		AppHash:         header.AppHash,
-		LastResultsHash: header.LastResultsHash,
+		ValidatorsHash:     header.ValidatorsHash,
+		NextValidatorsHash: header.NextValidatorsHash,
+		ConsensusHash:      header.ConsensusHash,
+		AppHash:            header.AppHash,
+		LastResultsHash:    header.LastResultsHash,
 
 		EvidenceHash:    header.EvidenceHash,
 		ProposerAddress: header.ProposerAddress,
@@ -120,12 +125,15 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
-		BlockSize: &abci.BlockSize{
+		BlockSize: &abci.BlockSizeParams{
 			MaxBytes: params.BlockSize.MaxBytes,
 			MaxGas:   params.BlockSize.MaxGas,
 		},
-		EvidenceParams: &abci.EvidenceParams{
-			MaxAge: params.EvidenceParams.MaxAge,
+		Evidence: &abci.EvidenceParams{
+			MaxAge: params.Evidence.MaxAge,
+		},
+		Validator: &abci.ValidatorParams{
+			PubKeyTypes: params.Validator.PubKeyTypes,
 		},
 		ValidatorParams: &abci.ValidatorParams{
 			ValidatorPubkeyTypes: params.Validator.ValidatorPubkeyTypes,
@@ -218,12 +226,15 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 
 func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
 	return ConsensusParams{
-		BlockSize: BlockSize{
+		BlockSize: BlockSizeParams{
 			MaxBytes: csp.BlockSize.MaxBytes,
 			MaxGas:   csp.BlockSize.MaxGas,
 		},
-		EvidenceParams: EvidenceParams{
-			MaxAge: csp.EvidenceParams.MaxAge,
+		Evidence: EvidenceParams{
+			MaxAge: csp.Evidence.MaxAge,
+		},
+		Validator: ValidatorParams{
+			PubKeyTypes: csp.Validator.PubKeyTypes,
 		},
 		Validator: ValidatorParams{
 			ValidatorPubkeyTypes: csp.ValidatorParams.ValidatorPubkeyTypes,

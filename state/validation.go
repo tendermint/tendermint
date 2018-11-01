@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
 )
@@ -158,7 +158,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	// NOTE: We can't actually verify it's the right proposer because we dont
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
-	if len(block.ProposerAddress) != tmhash.Size ||
+	if len(block.ProposerAddress) != crypto.AddressSize ||
 		!state.Validators.HasAddress(block.ProposerAddress) {
 		return fmt.Errorf(
 			"Block.Header.ProposerAddress, %X, is not a validator",
@@ -178,7 +178,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	height := state.LastBlockHeight
 
 	evidenceAge := height - evidence.Height()
-	maxAge := state.ConsensusParams.EvidenceParams.MaxAge
+	maxAge := state.ConsensusParams.Evidence.MaxAge
 	if evidenceAge > maxAge {
 		return fmt.Errorf("Evidence from height %d is too old. Min height is %d",
 			evidence.Height(), height-maxAge)

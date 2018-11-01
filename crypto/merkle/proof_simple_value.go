@@ -42,7 +42,7 @@ func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
 		return nil, cmn.NewError("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpSimpleValue)
 	}
 	var op SimpleValueOp // a bit strange as we'll discard this, but it works.
-	err := cdc.UnmarshalBinary(pop.Data, &op)
+	err := cdc.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
 	if err != nil {
 		return nil, cmn.ErrorWrap(err, "decoding ProofOp.Data into SimpleValueOp")
 	}
@@ -50,7 +50,7 @@ func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
 }
 
 func (op SimpleValueOp) ProofOp() ProofOp {
-	bz := cdc.MustMarshalBinary(op)
+	bz := cdc.MustMarshalBinaryLengthPrefixed(op)
 	return ProofOp{
 		Type: ProofOpSimpleValue,
 		Key:  op.key,
