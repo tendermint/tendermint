@@ -2,17 +2,22 @@
 
 ## v0.26.0
 
-*October 31, 2018*
+*November 2, 2018*
 
 Special thanks to external contributors on this release:
 @bradyjoestar, @connorwstein, @goolAdapter, @HaoyangLiu,
-@james-ray, @overbool, @phymbert, @Slamper, @Uzair1995, @yutianwu
+@james-ray, @overbool, @phymbert, @Slamper, @Uzair1995, @yutianwu.
+
+Special thanks to @Slamper for a series of bug reports in our [bug bounty
+program](https://hackerone.com/tendermint) which are fixed in this release.
 
 This release is primarily about adding Version fields to various data structures,
 optimizing consensus messages for signing and verification in
 restricted environments (like HSMs and the Ethereum Virtual Machine), and
 aligning the consensus code with the [specification](https://arxiv.org/abs/1807.04938).
-It also includes our first take at a generalized merkle proof system.
+It also includes our first take at a generalized merkle proof system, and
+changes the length of hashes used for hashing data structures from 20 to 32
+bytes.
 
 See the [UPGRADING.md](UPGRADING.md#v0.26.0) for details on upgrading to the new
 version.
@@ -20,14 +25,14 @@ version.
 Please note that we are still making breaking changes to the protocols.
 While the new Version fields should help us to keep the software backwards compatible
 even while upgrading the protocols, we cannot guarantee that new releases will
-be compatible with old chains just yet. Thanks for bearing with us!
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+be compatible with old chains just yet. We expect there will be another breaking
+release or two before the Cosmos Hub launch, but we will otherwise be paying
+increasing attention to backwards compatibility. Thanks for bearing with us!
 
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-  * [config] [\#2232](https://github.com/tendermint/tendermint/issues/2232) timeouts as time.Duration, not ints
+  * [config] [\#2232](https://github.com/tendermint/tendermint/issues/2232) Timeouts are now strings like "3s" and "100ms", not ints
   * [config] [\#2505](https://github.com/tendermint/tendermint/issues/2505) Remove Mempool.RecheckEmpty (it was effectively useless anyways)
   * [config] [\#2490](https://github.com/tendermint/tendermint/issues/2490) `mempool.wal` is disabled by default
   * [privval] [\#2459](https://github.com/tendermint/tendermint/issues/2459) Split `SocketPVMsg`s implementations into Request and Response, where the Response may contain a error message (returned by the remote signer)
@@ -52,7 +57,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     * Add new field and type, `Validator ValidatorParams`, to control what types of validator keys are allowed.
 
 * Go API
-  * [config] [\#2232](https://github.com/tendermint/tendermint/issues/2232) timeouts as time.Duration, not ints
+  * [config] [\#2232](https://github.com/tendermint/tendermint/issues/2232) Timeouts are time.Duration, not ints
   * [crypto/merkle & lite] [\#2298](https://github.com/tendermint/tendermint/issues/2298) Various changes to accomodate General Merkle trees
   * [crypto/merkle] [\#2595](https://github.com/tendermint/tendermint/issues/2595) Remove all Hasher objects in favor of byte slices
   * [crypto/merkle] [\#2635](https://github.com/tendermint/tendermint/issues/2635) merkle.SimpleHashFromTwoHashes is no longer exported
@@ -63,8 +68,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     `VoteTypeXxx` are now of type `SignedMsgType byte` and named `XxxType`, eg.
     `PrevoteType`, `PrecommitType`.
   * [types] [\#2636](https://github.com/tendermint/tendermint/issues/2636) Rename fields in ConsensusParams to remove `Params` suffixes
-  * [types] [\#2730](https://github.com/tendermint/tendermint/issues/2730) Align
-    order of fields in `Vote` and `Proposal` to align with their SignBytes
   * [types] [\#2735](https://github.com/tendermint/tendermint/issues/2735) Simplify Proposal message to align with spec
 
 * Blockchain Protocol
@@ -76,7 +79,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   * [types] Update SignBytes for `Vote`/`Proposal`/`Heartbeat`:
     * [\#2459](https://github.com/tendermint/tendermint/issues/2459) Use amino encoding instead of JSON in `SignBytes`.
     * [\#2598](https://github.com/tendermint/tendermint/issues/2598) Reorder fields and use fixed sized encoding.
-    * [\#2598](https://github.com/tendermint/tendermint/issues/2598) Change `Type` field fromt `string` to `byte` and use new
+    * [\#2598](https://github.com/tendermint/tendermint/issues/2598) Change `Type` field from `string` to `byte` and use new
       `SignedMsgType` to enumerate.
   * [types] [\#2730](https://github.com/tendermint/tendermint/issues/2730) Use
     same order for fields in `Vote` as in the SignBytes
@@ -96,7 +99,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   * [consensus] [\#2735](https://github.com/tendermint/tendermint/issues/2735) Simplify `Proposal` message to align with spec
   * [consensus] [\#2730](https://github.com/tendermint/tendermint/issues/2730)
     Add `Type` field to `Proposal` and use same order of fields as in the
-    SignBytes
+    SignBytes for both `Proposal` and `Vote`
   * [p2p] [\#2654](https://github.com/tendermint/tendermint/issues/2654) Add `ProtocolVersion` struct with protocol versions to top of
     DefaultNodeInfo and require `ProtocolVersion.Block` to match during peer handshake
 
@@ -117,7 +120,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [tools] [\#2238](https://github.com/tendermint/tendermint/issues/2238) Binary dependencies are now locked to a specific git commit
 
 ### BUG FIXES:
-- [\#2711](https://github.com/tendermint/tendermint/issues/2711) Validate all incoming reactor messages
+- [\#2711](https://github.com/tendermint/tendermint/issues/2711) Validate all incoming reactor messages. Fixes various bugs due to negative ints.
 - [autofile] [\#2428](https://github.com/tendermint/tendermint/issues/2428) Group.RotateFile need call Flush() before rename (@goolAdapter)
 - [common] [\#2533](https://github.com/tendermint/tendermint/issues/2533) Fixed a bug in the `BitArray.Or` method
 - [common] [\#2506](https://github.com/tendermint/tendermint/issues/2506) Fixed a bug in the `BitArray.Sub` method (@james-ray)

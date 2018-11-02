@@ -5,7 +5,7 @@ a newer version of Tendermint Core.
 
 ## v0.26.0
 
-New 0.26.0 release contains a lot of changes to core data types. It is not
+New 0.26.0 release contains a lot of changes to core data types and protocols. It is not
 compatible to the old versions and there is no straight forward way to update
 old data to be compatible with the new version.
 
@@ -33,7 +33,7 @@ to `prove`. To get proofs with your queries, ensure you set `prove=true`.
 Various version fields like `amino_version`, `p2p_version`, `consensus_version`,
 and `rpc_version` have been removed from the `node_info.other` and are
 consolidated under the tendermint semantic version (ie. `node_info.version`) and
-the new `block` and `p2p` protocol versions under `node_info.protocol_version`..
+the new `block` and `p2p` protocol versions under `node_info.protocol_version`.
 
 ### ABCI Changes
 
@@ -45,7 +45,7 @@ protobuf file for these changes.
 
 The `ResponseQuery.Proof` field is now structured as a `[]ProofOp` to support
 generalized Merkle tree constructions where the leaves of one Merkle tree are
-the root of another. If you don't need this functionaluty, and you used to
+the root of another. If you don't need this functionality, and you used to
 return `<proof bytes>` here, you should instead return a single `ProofOp` with
 just the `Data` field set:
 
@@ -78,6 +78,10 @@ serialized before they are passed in.
 The `node.RunForever` function was removed. Signal handling and running forever
 should instead be explicitly configured by the caller. See how we do it
 [here](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/cmd/tendermint/commands/run_node.go#L60).
+
+### Other
+
+All hashes, except for public key addresses, are now 32-bytes.
 
 ## v0.25.0
 
