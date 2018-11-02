@@ -207,9 +207,8 @@ func (cs *ConsensusState) GetState() sm.State {
 // GetLastHeight returns the last height committed.
 // If there were no blocks, returns 0.
 func (cs *ConsensusState) GetLastHeight() int64 {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	return cs.RoundState.Height - 1
 }
 
