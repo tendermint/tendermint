@@ -32,6 +32,6 @@ make protoc_abci
 ```
 
 See `protoc --help` and [the Protocol Buffers site](https://developers.google.com/protocol-buffers)
-for details on compiling for other languages. Note we also include a [GRPC](http://www.grpc.io/docs)
+for details on compiling for other languages. Note we also include a [GRPC](https://www.grpc.io/docs)
 service definition.
 
