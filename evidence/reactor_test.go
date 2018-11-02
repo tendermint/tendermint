@@ -164,6 +164,16 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 
 	// make reactors from statedb
 	reactors := makeAndConnectEvidenceReactors(config, []dbm.DB{stateDB1, stateDB2})
+
+	// set the peer height on each reactor
+	for _, r := range reactors {
+		for _, peer := range r.Switch.Peers().List() {
+			ps := peerState{height1}
+			peer.Set(types.PeerStateKey, ps)
+		}
+	}
+
+	// update the first reactor peer's height to be very small
 	peer := reactors[0].Switch.Peers().List()[0]
 	ps := peerState{height2}
 	peer.Set(types.PeerStateKey, ps)

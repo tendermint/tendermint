@@ -183,7 +183,11 @@ func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 		return
 	}
 	// TODO
-	//peer.Get(PeerStateKey).(*PeerState).Disconnect()
+	// ps, ok := peer.Get(PeerStateKey).(*PeerState)
+	// if !ok {
+	// 	panic(fmt.Sprintf("Peer %v has no state", peer))
+	// }
+	// ps.Disconnect()
 }
 
 // Receive implements Reactor
@@ -214,7 +218,10 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	// Get peer states
-	ps := src.Get(types.PeerStateKey).(*PeerState)
+	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
+	if !ok {
+		panic(fmt.Sprintf("Peer %v has no state", src))
+	}
 
 	switch chID {
 	case StateChannel:
@@ -428,7 +435,10 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 	/*
 		// TODO: Make this broadcast more selective.
 		for _, peer := range conR.Switch.Peers().List() {
-			ps := peer.Get(PeerStateKey).(*PeerState)
+			ps, ok := peer.Get(PeerStateKey).(*PeerState)
+			if !ok {
+				panic(fmt.Sprintf("Peer %v has no state", peer))
+			}
 			prs := ps.GetRoundState()
 			if prs.Height == vote.Height {
 				// TODO: Also filter on round?
@@ -826,7 +836,10 @@ func (conR *ConsensusReactor) peerStatsRoutine() {
 				continue
 			}
 			// Get peer state
-			ps := peer.Get(types.PeerStateKey).(*PeerState)
+			ps, ok := peer.Get(types.PeerStateKey).(*PeerState)
+			if !ok {
+				panic(fmt.Sprintf("Peer %v has no state", peer))
+			}
 			switch msg.Msg.(type) {
 			case *VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
@@ -859,7 +872,10 @@ func (conR *ConsensusReactor) StringIndented(indent string) string {
 	s := "ConsensusReactor{\n"
 	s += indent + "  " + conR.conS.StringIndented(indent+"  ") + "\n"
 	for _, peer := range conR.Switch.Peers().List() {
-		ps := peer.Get(types.PeerStateKey).(*PeerState)
+		ps, ok := peer.Get(types.PeerStateKey).(*PeerState)
+		if !ok {
+			panic(fmt.Sprintf("Peer %v has no state", peer))
+		}
 		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
 	}
 	s += indent + "}"
