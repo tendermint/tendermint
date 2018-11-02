@@ -215,9 +215,8 @@ func (cs *ConsensusState) GetLastHeight() int64 {
 // GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 	cs.mtx.RLock()
-	defer cs.mtx.RUnlock()
-
 	rs := cs.RoundState // copy
+	cs.mtx.RUnlock()
 	return &rs
 }
 
@@ -225,7 +224,6 @@ func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-
 	return cdc.MarshalJSON(cs.RoundState)
 }
 
@@ -233,7 +231,6 @@ func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
 func (cs *ConsensusState) GetRoundStateSimpleJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-
 	return cdc.MarshalJSON(cs.RoundState.RoundStateSimple())
 }
 
@@ -247,15 +244,15 @@ func (cs *ConsensusState) GetValidators() (int64, []*types.Validator) {
 // SetPrivValidator sets the private validator account for signing votes.
 func (cs *ConsensusState) SetPrivValidator(priv types.PrivValidator) {
 	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
 	cs.privValidator = priv
+	cs.mtx.Unlock()
 }
 
 // SetTimeoutTicker sets the local timer. It may be useful to overwrite for testing.
 func (cs *ConsensusState) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
 	cs.timeoutTicker = timeoutTicker
+	cs.mtx.Unlock()
 }
 
 // LoadCommit loads the commit for a given height.
