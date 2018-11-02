@@ -616,7 +616,7 @@ func (sw *Switch) addPeer(p Peer) error {
 		return err
 	}
 
-	p.SetLogger(sw.Logger.With("peer", p.NodeInfo().NetAddress().String))
+	p.SetLogger(sw.Logger.With("peer", p.NodeInfo().NetAddress().String()))
 
 	// All good. Start peer
 	if sw.IsRunning() {
