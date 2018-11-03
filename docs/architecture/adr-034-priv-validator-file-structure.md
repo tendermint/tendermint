@@ -19,8 +19,8 @@ References:
 
 We can split mutable and immutable parts with two structs:
 ```go
-// PVKey stores the immutable part of PrivValidator
-type PVKey struct {
+// FilePVKey stores the immutable part of PrivValidator
+type FilePVKey struct {
 	Address types.Address  `json:"address"`
 	PubKey  crypto.PubKey  `json:"pub_key"`
 	PrivKey crypto.PrivKey `json:"priv_key"`
@@ -29,8 +29,8 @@ type PVKey struct {
 	mtx      sync.Mutex
 }
 
-// PVState stores the mutable part of PrivValidator
-type PVState struct {
+// FilePVState stores the mutable part of PrivValidator
+type FilePVState struct {
 	LastHeight    int64        `json:"last_height"`
 	LastRound     int          `json:"last_round"`
 	LastStep      int8         `json:"last_step"`
@@ -42,7 +42,7 @@ type PVState struct {
 }
 ```
 
-Then we can combine `PVKey` with `PVState` and will get the original `FilePV`.
+Then we can combine `FilePVKey` with `FilePVState` and will get the original `FilePV`.
 
 ```go
 type FilePV struct {
