@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -97,16 +99,19 @@ func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
 	if err != nil {
 		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
+	if len(host) == 0 {
+		return nil, ErrNetAddressInvalid{
+			addrWithoutProtocol,
+			errors.New("host is empty")}
+	}
 
 	ip := net.ParseIP(host)
 	if ip == nil {
-		if len(host) > 0 {
-			ips, err := net.LookupIP(host)
-			if err != nil {
-				return nil, ErrNetAddressLookup{host, err}
-			}
-			ip = ips[0]
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return nil, ErrNetAddressLookup{host, err}
 		}
+		ip = ips[0]
 	}
 
 	port, err := strconv.ParseUint(portStr, 10, 16)

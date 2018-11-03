@@ -84,13 +84,13 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 	// Form a custom Tendermint line
 	//
 	// Example:
-	//     D[05-02|11:06:44.322] Stopping AddrBook (ignoring: already stopped)
+	//     D[2016-05-02|11:06:44.322]   Stopping AddrBook (ignoring: already stopped)
 	//
 	// Description:
 	//     D										- first character of the level, uppercase (ASCII only)
-	//     [05-02|11:06:44.322] - our time format (see https://golang.org/src/time/format.go)
+	//     [2016-05-02|11:06:44.322]    - our time format (see https://golang.org/src/time/format.go)
 	//     Stopping ...					- message
-	enc.buf.WriteString(fmt.Sprintf("%c[%s] %-44s ", lvl[0]-32, time.Now().Format("01-02|15:04:05.000"), msg))
+	enc.buf.WriteString(fmt.Sprintf("%c[%s] %-44s ", lvl[0]-32, time.Now().Format("2016-01-02|15:04:05.000"), msg))
 
 	if module != unknown {
 		enc.buf.WriteString("module=" + module + " ")

@@ -176,13 +176,12 @@ greater, for example:
 h0  h1          h3  h4             h0  h1  h2  h3  h4  h5
 ```
 
-Tendermint always uses the `TMHASH` hash function, which is the first 20-bytes
-of the SHA256:
+Tendermint always uses the `TMHASH` hash function, which is equivalent to
+SHA256:
 
 ```
 func TMHASH(bz []byte) []byte {
-    shasum := SHA256(bz)
-    return shasum[:20]
+    return SHA256(bz)
 }
 ```
 
@@ -216,7 +215,7 @@ prefix) before being concatenated together and hashed.
 
 Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
 For `struct` arguments, we compute a `[][]byte` containing the hash of each
-field in the struct sorted by the hash of the field name.
+field in the struct, in the same order the fields appear in the struct.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
 
 ### Simple Merkle Proof
@@ -298,14 +297,24 @@ Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
 
 ### Signed Messages
 
-Signed messages (eg. votes, proposals) in the consensus are encoded using Amino-JSON, rather than in the standard binary format
-(NOTE: this is subject to change: https://github.com/tendermint/tendermint/issues/1622)
+Signed messages (eg. votes, proposals) in the consensus are encoded using Amino.
 
-When signing, the elements of a message are sorted by key and prepended with
-a `@chain_id` and `@type` field.
-We call this encoding the CanonicalSignBytes. For instance, CanonicalSignBytes for a vote would look
-like:
+When signing, the elements of a message are re-ordered so the fixed-length fields
+are first, making it easy to quickly check the type, height, and round.
+The `ChainID` is also appended to the end.
+We call this encoding the SignBytes. For instance, SignBytes for a vote is the Amino encoding of the following struct:
 
-```json
-{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"8B01023386C371778ECB6368573E539AFC3CC860","parts":{"hash":"72DB3D959635DFF1BB567BEDAA70573392C51596","total":"1000000"}},"height":"12345","round":"2","timestamp":"2017-12-25T03:00:01.234Z","type":2}
+```go
+type CanonicalVote struct {
+	Type      byte
+	Height    int64            `binary:"fixed64"`
+	Round     int64            `binary:"fixed64"`
+	Timestamp time.Time
+	BlockID   CanonicalBlockID
+	ChainID   string
+}
 ```
+
+The field ordering and the fixed sized encoding for the first three fields is optimized to ease parsing of SignBytes
+in HSMs. It creates fixed offsets for relevant fields that need to be read in this context.
+See [#1622](https://github.com/tendermint/tendermint/issues/1622) for more details.

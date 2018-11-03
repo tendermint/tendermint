@@ -119,14 +119,13 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 	}
 	bA.mtx.Lock()
 	o.mtx.Lock()
-	defer func() {
-		bA.mtx.Unlock()
-		o.mtx.Unlock()
-	}()
 	c := bA.copyBits(MaxInt(bA.Bits, o.Bits))
-	for i := 0; i < len(c.Elems); i++ {
+	smaller := MinInt(len(bA.Elems), len(o.Elems))
+	for i := 0; i < smaller; i++ {
 		c.Elems[i] |= o.Elems[i]
 	}
+	bA.mtx.Unlock()
+	o.mtx.Unlock()
 	return c
 }
 
@@ -173,8 +172,9 @@ func (bA *BitArray) not() *BitArray {
 }
 
 // Sub subtracts the two bit-arrays bitwise, without carrying the bits.
-// This is essentially bA.And(o.Not()).
-// If bA is longer than o, o is right padded with zeroes.
+// Note that carryless subtraction of a - b is (a and not b).
+// The output is the same as bA, regardless of o's size.
+// If bA is longer than o, o is right padded with zeroes
 func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	if bA == nil || o == nil {
 		// TODO: Decide if we should do 1's complement here?
@@ -182,24 +182,20 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	}
 	bA.mtx.Lock()
 	o.mtx.Lock()
-	defer func() {
-		bA.mtx.Unlock()
-		o.mtx.Unlock()
-	}()
-	if bA.Bits > o.Bits {
-		c := bA.copy()
-		for i := 0; i < len(o.Elems)-1; i++ {
-			c.Elems[i] &= ^c.Elems[i]
-		}
-		i := len(o.Elems) - 1
-		if i >= 0 {
-			for idx := i * 64; idx < o.Bits; idx++ {
-				c.setIndex(idx, c.getIndex(idx) && !o.getIndex(idx))
-			}
-		}
-		return c
+	// output is the same size as bA
+	c := bA.copyBits(bA.Bits)
+	// Only iterate to the minimum size between the two.
+	// If o is longer, those bits are ignored.
+	// If bA is longer, then skipping those iterations is equivalent
+	// to right padding with 0's
+	smaller := MinInt(len(bA.Elems), len(o.Elems))
+	for i := 0; i < smaller; i++ {
+		// &^ is and not in golang
+		c.Elems[i] &^= o.Elems[i]
 	}
-	return bA.and(o.not()) // Note degenerate case where o == nil
+	bA.mtx.Unlock()
+	o.mtx.Unlock()
+	return c
 }
 
 // IsEmpty returns true iff all bits in the bit array are 0
@@ -238,49 +234,53 @@ func (bA *BitArray) IsFull() bool {
 	return (lastElem+1)&((uint64(1)<<uint(lastElemBits))-1) == 0
 }
 
-// PickRandom returns a random index in the bit array, and its value.
+// PickRandom returns a random index for a set bit in the bit array.
+// If there is no such value, it returns 0, false.
 // It uses the global randomness in `random.go` to get this index.
 func (bA *BitArray) PickRandom() (int, bool) {
 	if bA == nil {
 		return 0, false
 	}
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
 
-	length := len(bA.Elems)
-	if length == 0 {
+	bA.mtx.Lock()
+	trueIndices := bA.getTrueIndices()
+	bA.mtx.Unlock()
+
+	if len(trueIndices) == 0 { // no bits set to true
 		return 0, false
 	}
-	randElemStart := RandIntn(length)
-	for i := 0; i < length; i++ {
-		elemIdx := ((i + randElemStart) % length)
-		if elemIdx < length-1 {
-			if bA.Elems[elemIdx] > 0 {
-				randBitStart := RandIntn(64)
-				for j := 0; j < 64; j++ {
-					bitIdx := ((j + randBitStart) % 64)
-					if (bA.Elems[elemIdx] & (uint64(1) << uint(bitIdx))) > 0 {
-						return 64*elemIdx + bitIdx, true
-					}
-				}
-				PanicSanity("should not happen")
+
+	return trueIndices[RandIntn(len(trueIndices))], true
+}
+
+func (bA *BitArray) getTrueIndices() []int {
+	trueIndices := make([]int, 0, bA.Bits)
+	curBit := 0
+	numElems := len(bA.Elems)
+	// set all true indices
+	for i := 0; i < numElems-1; i++ {
+		elem := bA.Elems[i]
+		if elem == 0 {
+			curBit += 64
+			continue
+		}
+		for j := 0; j < 64; j++ {
+			if (elem & (uint64(1) << uint64(j))) > 0 {
+				trueIndices = append(trueIndices, curBit)
 			}
-		} else {
-			// Special case for last elem, to ignore straggler bits
-			elemBits := bA.Bits % 64
-			if elemBits == 0 {
-				elemBits = 64
-			}
-			randBitStart := RandIntn(elemBits)
-			for j := 0; j < elemBits; j++ {
-				bitIdx := ((j + randBitStart) % elemBits)
-				if (bA.Elems[elemIdx] & (uint64(1) << uint(bitIdx))) > 0 {
-					return 64*elemIdx + bitIdx, true
-				}
-			}
+			curBit++
 		}
 	}
-	return 0, false
+	// handle last element
+	lastElem := bA.Elems[numElems-1]
+	numFinalBits := bA.Bits - curBit
+	for i := 0; i < numFinalBits; i++ {
+		if (lastElem & (uint64(1) << uint64(i))) > 0 {
+			trueIndices = append(trueIndices, curBit)
+		}
+		curBit++
+	}
+	return trueIndices
 }
 
 // String returns a string representation of BitArray: BA{<bit-string>},

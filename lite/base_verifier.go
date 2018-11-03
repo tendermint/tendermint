@@ -12,7 +12,7 @@ var _ Verifier = (*BaseVerifier)(nil)
 
 // BaseVerifier lets us check the validity of SignedHeaders at height or
 // later, requiring sufficient votes (> 2/3) from the given valset.
-// To certify blocks produced by a blockchain with mutable validator sets,
+// To verify blocks produced by a blockchain with mutable validator sets,
 // use the DynamicVerifier.
 // TODO: Handle unbonding time.
 type BaseVerifier struct {
@@ -40,15 +40,15 @@ func (bc *BaseVerifier) ChainID() string {
 }
 
 // Implements Verifier.
-func (bc *BaseVerifier) Certify(signedHeader types.SignedHeader) error {
+func (bc *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
 
-	// We can't certify commits older than bc.height.
+	// We can't verify commits older than bc.height.
 	if signedHeader.Height < bc.height {
-		return cmn.NewError("BaseVerifier height is %v, cannot certify height %v",
+		return cmn.NewError("BaseVerifier height is %v, cannot verify height %v",
 			bc.height, signedHeader.Height)
 	}
 
-	// We can't certify with the wrong validator set.
+	// We can't verify with the wrong validator set.
 	if !bytes.Equal(signedHeader.ValidatorsHash,
 		bc.valset.Hash()) {
 		return lerr.ErrUnexpectedValidators(signedHeader.ValidatorsHash, bc.valset.Hash())
@@ -57,7 +57,7 @@ func (bc *BaseVerifier) Certify(signedHeader types.SignedHeader) error {
 	// Do basic sanity checks.
 	err := signedHeader.ValidateBasic(bc.chainID)
 	if err != nil {
-		return cmn.ErrorWrap(err, "in certify")
+		return cmn.ErrorWrap(err, "in verify")
 	}
 
 	// Check commit signatures.
@@ -65,7 +65,7 @@ func (bc *BaseVerifier) Certify(signedHeader types.SignedHeader) error {
 		bc.chainID, signedHeader.Commit.BlockID,
 		signedHeader.Height, signedHeader.Commit)
 	if err != nil {
-		return cmn.ErrorWrap(err, "in certify")
+		return cmn.ErrorWrap(err, "in verify")
 	}
 
 	return nil

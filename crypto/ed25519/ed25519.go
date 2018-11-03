@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/ed25519"
-	"github.com/tendermint/ed25519/extra25519"
 	amino "github.com/tendermint/go-amino"
+	"golang.org/x/crypto/ed25519" // forked to github.com/tendermint/crypto
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
@@ -46,9 +46,14 @@ func (privKey PrivKeyEd25519) Bytes() []byte {
 }
 
 // Sign produces a signature on the provided message.
+// This assumes the privkey is wellformed in the golang format.
+// The first 32 bytes should be random,
+// corresponding to the normal ed25519 private key.
+// The latter 32 bytes should be the compressed public key.
+// If these conditions aren't met, Sign will panic or produce an
+// incorrect signature.
 func (privKey PrivKeyEd25519) Sign(msg []byte) ([]byte, error) {
-	privKeyBytes := [64]byte(privKey)
-	signatureBytes := ed25519.Sign(&privKeyBytes, msg)
+	signatureBytes := ed25519.Sign(privKey[:], msg)
 	return signatureBytes[:], nil
 }
 
@@ -65,14 +70,14 @@ func (privKey PrivKeyEd25519) PubKey() crypto.PubKey {
 			break
 		}
 	}
-	if initialized {
-		var pubkeyBytes [PubKeyEd25519Size]byte
-		copy(pubkeyBytes[:], privKeyBytes[32:])
-		return PubKeyEd25519(pubkeyBytes)
+
+	if !initialized {
+		panic("Expected PrivKeyEd25519 to include concatenated pubkey bytes")
 	}
 
-	pubBytes := *ed25519.MakePublicKey(&privKeyBytes)
-	return PubKeyEd25519(pubBytes)
+	var pubkeyBytes [PubKeyEd25519Size]byte
+	copy(pubkeyBytes[:], privKeyBytes[32:])
+	return PubKeyEd25519(pubkeyBytes)
 }
 
 // Equals - you probably don't need to use this.
@@ -85,17 +90,6 @@ func (privKey PrivKeyEd25519) Equals(other crypto.PrivKey) bool {
 	}
 }
 
-// ToCurve25519 takes a private key and returns its representation on
-// Curve25519. Curve25519 is birationally equivalent to Edwards25519,
-// which Ed25519 uses internally. This method is intended for use in
-// an X25519 Diffie Hellman key exchange.
-func (privKey PrivKeyEd25519) ToCurve25519() *[PubKeyEd25519Size]byte {
-	keyCurve25519 := new([32]byte)
-	privKeyBytes := [64]byte(privKey)
-	extra25519.PrivateKeyToCurve25519(keyCurve25519, &privKeyBytes)
-	return keyCurve25519
-}
-
 // GenPrivKey generates a new ed25519 private key.
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
@@ -105,16 +99,16 @@ func GenPrivKey() PrivKeyEd25519 {
 
 // genPrivKey generates a new ed25519 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKeyEd25519 {
-	privKey := new([64]byte)
-	_, err := io.ReadFull(rand, privKey[:32])
+	seed := make([]byte, 32)
+	_, err := io.ReadFull(rand, seed[:])
 	if err != nil {
 		panic(err)
 	}
-	// ed25519.MakePublicKey(privKey) alters the last 32 bytes of privKey.
-	// It places the pubkey in the last 32 bytes of privKey, and returns the
-	// public key.
-	ed25519.MakePublicKey(privKey)
-	return PrivKeyEd25519(*privKey)
+
+	privKey := ed25519.NewKeyFromSeed(seed)
+	var privKeyEd PrivKeyEd25519
+	copy(privKeyEd[:], privKey)
+	return privKeyEd
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -122,14 +116,12 @@ func genPrivKey(rand io.Reader) PrivKeyEd25519 {
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
 func GenPrivKeyFromSecret(secret []byte) PrivKeyEd25519 {
-	privKey32 := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
-	privKey := new([64]byte)
-	copy(privKey[:32], privKey32)
-	// ed25519.MakePublicKey(privKey) alters the last 32 bytes of privKey.
-	// It places the pubkey in the last 32 bytes of privKey, and returns the
-	// public key.
-	ed25519.MakePublicKey(privKey)
-	return PrivKeyEd25519(*privKey)
+	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
+
+	privKey := ed25519.NewKeyFromSeed(seed)
+	var privKeyEd PrivKeyEd25519
+	copy(privKeyEd[:], privKey)
+	return privKeyEd
 }
 
 //-------------------------------------
@@ -144,7 +136,7 @@ type PubKeyEd25519 [PubKeyEd25519Size]byte
 
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKeyEd25519) Address() crypto.Address {
-	return crypto.Address(tmhash.Sum(pubKey[:]))
+	return crypto.Address(tmhash.SumTruncated(pubKey[:]))
 }
 
 // Bytes marshals the PubKey using amino encoding.
@@ -156,30 +148,12 @@ func (pubKey PubKeyEd25519) Bytes() []byte {
 	return bz
 }
 
-func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ []byte) bool {
+func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig []byte) bool {
 	// make sure we use the same algorithm to sign
-	if len(sig_) != SignatureSize {
+	if len(sig) != SignatureSize {
 		return false
 	}
-	sig := new([SignatureSize]byte)
-	copy(sig[:], sig_)
-	pubKeyBytes := [PubKeyEd25519Size]byte(pubKey)
-	return ed25519.Verify(&pubKeyBytes, msg, sig)
-}
-
-// ToCurve25519 takes a public key and returns its representation on
-// Curve25519. Curve25519 is birationally equivalent to Edwards25519,
-// which Ed25519 uses internally. This method is intended for use in
-// an X25519 Diffie Hellman key exchange.
-//
-// If there is an error, then this function returns nil.
-func (pubKey PubKeyEd25519) ToCurve25519() *[PubKeyEd25519Size]byte {
-	keyCurve25519, pubKeyBytes := new([PubKeyEd25519Size]byte), [PubKeyEd25519Size]byte(pubKey)
-	ok := extra25519.PublicKeyToCurve25519(keyCurve25519, &pubKeyBytes)
-	if !ok {
-		return nil
-	}
-	return keyCurve25519
+	return ed25519.Verify(pubKey[:], msg, sig)
 }
 
 func (pubKey PubKeyEd25519) String() string {

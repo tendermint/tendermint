@@ -36,7 +36,7 @@ We are also still making breaking changes to the protocol and the APIs.
 Thus, we tag the releases as *alpha software*.
 
 In any case, if you intend to run Tendermint in production,
-please [contact us](https://riot.im/app/#/room/#tendermint:matrix.org) :)
+please [contact us](mailto:partners@tendermint.com) and [join the chat](https://riot.im/app/#/room/#tendermint:matrix.org).
 
 ## Security
 
@@ -118,11 +118,12 @@ CHANGELOG even if they don't lead to MINOR version bumps:
 - rpc/client
 - config
 - node
-- libs/bech32
-- libs/common
-- libs/db
-- libs/errors
-- libs/log
+- libs
+  - bech32
+  - common
+  - db
+  - errors
+  - log
 
 Exported objects in these packages that are not covered by the versioning scheme
 are explicitly marked by `// UNSTABLE` in their go doc comment and may change at any

@@ -38,12 +38,12 @@ func TestABCIResults(t *testing.T) {
 
 	for i, res := range results {
 		proof := results.ProveResult(i)
-		valid := proof.Verify(i, len(results), res.Hash(), root)
-		assert.True(t, valid, "%d", i)
+		valid := proof.Verify(root, res.Hash())
+		assert.NoError(t, valid, "%d", i)
 	}
 }
 
-func TestABCIBytes(t *testing.T) {
+func TestABCIResultsBytes(t *testing.T) {
 	results := NewResults([]*abci.ResponseDeliverTx{
 		{Code: 0, Data: []byte{}},
 		{Code: 0, Data: []byte("one")},

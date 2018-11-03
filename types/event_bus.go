@@ -45,7 +45,7 @@ func (b *EventBus) SetLogger(l log.Logger) {
 }
 
 func (b *EventBus) OnStart() error {
-	return b.pubsub.OnStart()
+	return b.pubsub.Start()
 }
 
 func (b *EventBus) OnStop() {
@@ -81,6 +81,10 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 
 func (b *EventBus) PublishEventVote(data EventDataVote) error {
 	return b.Publish(EventVote, data)
+}
+
+func (b *EventBus) PublishEventValidBlock(data EventDataRoundState) error {
+	return b.Publish(EventValidBlock, data)
 }
 
 // PublishEventTx publishes tx event with tags from Result. Note it will add
@@ -164,4 +168,75 @@ func logIfTagExists(tag string, tags map[string]string, logger log.Logger) {
 	if value, ok := tags[tag]; ok {
 		logger.Error("Found predefined tag (value will be overwritten)", "tag", tag, "value", value)
 	}
+}
+
+//-----------------------------------------------------------------------------
+type NopEventBus struct{}
+
+func (NopEventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
+	return nil
+}
+
+func (NopEventBus) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
+	return nil
+}
+
+func (NopEventBus) UnsubscribeAll(ctx context.Context, subscriber string) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventNewBlock(data EventDataNewBlock) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventVote(data EventDataVote) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventTx(data EventDataTx) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventNewRoundStep(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventTimeoutPropose(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventTimeoutWait(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventNewRound(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventCompleteProposal(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventPolka(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventUnlock(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventRelock(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventLock(data EventDataRoundState) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpdates) error {
+	return nil
 }

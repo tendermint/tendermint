@@ -1,8 +1,8 @@
 # Deploy a Testnet
 
-Now that we've seen how ABCI works, and even played with a few
-applications on a single validator node, it's time to deploy a test
-network to four validator nodes.
+DEPRECATED DOCS!
+
+See [Networks](../networks).
 
 ## Manual Deployments
 
@@ -21,17 +21,16 @@ Here are the steps to setting up a testnet manually:
 3.  Generate a private key and a node key for each validator using
     `tendermint init`
 4.  Compile a list of public keys for each validator into a
-    `genesis.json` file and replace the existing file with it.
-5.  Run
-    `tendermint node --proxy_app=kvstore --p2p.persistent_peers=< peer addresses >` on each node, where `< peer addresses >` is a comma separated
-    list of the ID@IP:PORT combination for each node. The default port for
-    Tendermint is `26656`. The ID of a node can be obtained by running
-    `tendermint show_node_id` command. Thus, if the IP addresses of your nodes
-    were `192.168.0.1, 192.168.0.2, 192.168.0.3, 192.168.0.4`, the command
-    would look like:
+    new `genesis.json` file and replace the existing file with it.
+5.  Get the node IDs of any peers you want other peers to connect to by
+    running `tendermint show_node_id` on the relevant machine
+6.  Set the `p2p.persistent_peers` in the config for all nodes to the comma
+    separated list of `ID@IP:PORT` for all nodes. Default port is 26656.
+
+Then start the node
 
 ```
-tendermint node --proxy_app=kvstore --p2p.persistent_peers=96663a3dd0d7b9d17d4c8211b191af259621c693@192.168.0.1:26656, 429fcf25974313b95673f58d77eacdd434402665@192.168.0.2:26656, 0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@192.168.0.3:26656, f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@192.168.0.4:26656
+tendermint node --proxy_app=kvstore
 ```
 
 After a few seconds, all the nodes should connect to each other and
@@ -67,7 +66,17 @@ make localnet-start
 ```
 
 from the root of the tendermint repository. This will spin up a 4-node
-local testnet. Review the target in the Makefile to debug any problems.
+local testnet. Note that this command expects a linux binary in the build directory. 
+If you built the binary using a non-linux OS, you may see 
+the error `Binary needs to be OS linux, ARCH amd64`, in which case you can
+run:
+
+```
+make build-linux
+make localnet-start
+```
+
+Review the target in the Makefile to debug any problems.
 
 ### Cloud
 

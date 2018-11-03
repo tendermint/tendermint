@@ -2,10 +2,11 @@ package state
 
 import (
 	"fmt"
+	"time"
 
-	fail "github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/tendermint/abci/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
@@ -33,20 +34,37 @@ type BlockExecutor struct {
 	evpool  EvidencePool
 
 	logger log.Logger
+
+	metrics *Metrics
+}
+
+type BlockExecutorOption func(executor *BlockExecutor)
+
+func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
+	return func(blockExec *BlockExecutor) {
+		blockExec.metrics = metrics
+	}
 }
 
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus,
-	mempool Mempool, evpool EvidencePool) *BlockExecutor {
-	return &BlockExecutor{
+	mempool Mempool, evpool EvidencePool, options ...BlockExecutorOption) *BlockExecutor {
+	res := &BlockExecutor{
 		db:       db,
 		proxyApp: proxyApp,
 		eventBus: types.NopEventBus{},
 		mempool:  mempool,
 		evpool:   evpool,
 		logger:   logger,
+		metrics:  NopMetrics(),
 	}
+
+	for _, option := range options {
+		option(res)
+	}
+
+	return res
 }
 
 // SetEventBus - sets the event bus for publishing block related events.
@@ -74,7 +92,10 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 		return state, ErrInvalidBlock(err)
 	}
 
+	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, state.LastValidators, blockExec.db)
+	endTime := time.Now().UnixNano()
+	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
 		return state, ErrProxyAppConn(err)
 	}
@@ -165,7 +186,7 @@ func (blockExec *BlockExecutor) Commit(
 				state.Validators.Size(),
 			),
 		),
-		mempool.PostCheckMaxGas(state.ConsensusParams.MaxGas),
+		mempool.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
 	)
 
 	return res.Data, err
@@ -176,8 +197,13 @@ func (blockExec *BlockExecutor) Commit(
 
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
-func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
-	block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) (*ABCIResponses, error) {
+func execBlockOnProxyApp(
+	logger log.Logger,
+	proxyAppConn proxy.AppConnConsensus,
+	block *types.Block,
+	lastValSet *types.ValidatorSet,
+	stateDB dbm.DB,
+) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -333,8 +359,12 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 }
 
 // updateState returns a new State updated according to the header and responses.
-func updateState(state State, blockID types.BlockID, header *types.Header,
-	abciResponses *ABCIResponses) (State, error) {
+func updateState(
+	state State,
+	blockID types.BlockID,
+	header *types.Header,
+	abciResponses *ABCIResponses,
+) (State, error) {
 
 	// Copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators.
@@ -368,9 +398,13 @@ func updateState(state State, blockID types.BlockID, header *types.Header,
 		lastHeightParamsChanged = header.Height + 1
 	}
 
+	// TODO: allow app to upgrade version
+	nextVersion := state.Version
+
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
+		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
 		LastBlockHeight:                  header.Height,
 		LastBlockTotalTx:                 state.LastBlockTotalTx + header.NumTxs,
@@ -417,8 +451,13 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
-func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block,
-	logger log.Logger, lastValSet *types.ValidatorSet, stateDB dbm.DB) ([]byte, error) {
+func ExecCommitBlock(
+	appConnConsensus proxy.AppConnConsensus,
+	block *types.Block,
+	logger log.Logger,
+	lastValSet *types.ValidatorSet,
+	stateDB dbm.DB,
+) ([]byte, error) {
 	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, lastValSet, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)

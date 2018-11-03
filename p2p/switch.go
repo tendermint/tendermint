@@ -103,7 +103,7 @@ func NewSwitch(
 	sw.rng = cmn.NewRand()
 
 	mConfig := conn.DefaultMConnConfig()
-	mConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
+	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
 	mConfig.SendRate = cfg.SendRate
 	mConfig.RecvRate = cfg.RecvRate
 	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
@@ -463,6 +463,7 @@ func (sw *Switch) acceptRoutine() {
 			chDescs:      sw.chDescs,
 			onPeerError:  sw.StopPeerForError,
 			reactorsByCh: sw.reactorsByCh,
+			metrics:      sw.metrics,
 		})
 		if err != nil {
 			switch err.(type) {
@@ -549,6 +550,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		onPeerError:  sw.StopPeerForError,
 		persistent:   persistent,
 		reactorsByCh: sw.reactorsByCh,
+		metrics:      sw.metrics,
 	})
 	if err != nil {
 		switch e := err.(type) {
@@ -558,9 +560,13 @@ func (sw *Switch) addOutboundPeerWithConfig(
 				// to avoid dialing in the future.
 				sw.addrBook.RemoveAddress(addr)
 				sw.addrBook.AddOurAddress(addr)
+
+				return err
 			}
 		}
 
+		// retry persistent peers after
+		// any dial error besides IsSelf()
 		if persistent {
 			go sw.reconnectToPeer(addr)
 		}

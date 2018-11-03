@@ -34,19 +34,27 @@ func TestHeartbeatString(t *testing.T) {
 }
 
 func TestHeartbeatWriteSignBytes(t *testing.T) {
+	chainID := "test_chain_id"
 
-	hb := &Heartbeat{ValidatorIndex: 1, Height: 10, Round: 1}
-	bz := hb.SignBytes("0xdeadbeef")
-	// XXX HMMMMMMM
-	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":"10","round":"1","sequence":"0","validator_address":"","validator_index":"1"}`)
+	{
+		testHeartbeat := &Heartbeat{ValidatorIndex: 1, Height: 10, Round: 1}
+		signBytes := testHeartbeat.SignBytes(chainID)
+		expected, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeHeartbeat(chainID, testHeartbeat))
+		require.NoError(t, err)
+		require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Heartbeat")
+	}
 
-	plainHb := &Heartbeat{}
-	bz = plainHb.SignBytes("0xdeadbeef")
-	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":"0","round":"0","sequence":"0","validator_address":"","validator_index":"0"}`)
+	{
+		testHeartbeat := &Heartbeat{}
+		signBytes := testHeartbeat.SignBytes(chainID)
+		expected, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeHeartbeat(chainID, testHeartbeat))
+		require.NoError(t, err)
+		require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Heartbeat")
+	}
 
 	require.Panics(t, func() {
 		var nilHb *Heartbeat
-		bz := nilHb.SignBytes("0xdeadbeef")
-		require.Equal(t, string(bz), "null")
+		signBytes := nilHb.SignBytes(chainID)
+		require.Equal(t, string(signBytes), "null")
 	})
 }

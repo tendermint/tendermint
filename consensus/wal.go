@@ -73,13 +73,13 @@ type baseWAL struct {
 	enc *WALEncoder
 }
 
-func NewWAL(walFile string) (*baseWAL, error) {
+func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
 	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
 	}
 
-	group, err := auto.OpenGroup(walFile)
+	group, err := auto.OpenGroup(walFile, groupOptions...)
 	if err != nil {
 		return nil, err
 	}

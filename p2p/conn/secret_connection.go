@@ -10,6 +10,7 @@ import (
 	"net"
 	"time"
 
+	// forked to github.com/tendermint/crypto
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"
@@ -210,7 +211,7 @@ func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[3
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
 		func(_ int) (val interface{}, err error, abort bool) {
-			var _, err1 = cdc.MarshalBinaryWriter(conn, locEphPub)
+			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(conn, locEphPub)
 			if err1 != nil {
 				return nil, err1, true // abort
 			}
@@ -218,7 +219,7 @@ func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[3
 		},
 		func(_ int) (val interface{}, err error, abort bool) {
 			var _remEphPub [32]byte
-			var _, err2 = cdc.UnmarshalBinaryReader(conn, &_remEphPub, 1024*1024) // TODO
+			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(conn, &_remEphPub, 1024*1024) // TODO
 			if err2 != nil {
 				return nil, err2, true // abort
 			}
@@ -304,7 +305,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []
 	// Send our info and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
 		func(_ int) (val interface{}, err error, abort bool) {
-			var _, err1 = cdc.MarshalBinaryWriter(sc, authSigMessage{pubKey, signature})
+			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(sc, authSigMessage{pubKey, signature})
 			if err1 != nil {
 				return nil, err1, true // abort
 			}
@@ -312,7 +313,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []
 		},
 		func(_ int) (val interface{}, err error, abort bool) {
 			var _recvMsg authSigMessage
-			var _, err2 = cdc.UnmarshalBinaryReader(sc, &_recvMsg, 1024*1024) // TODO
+			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(sc, &_recvMsg, 1024*1024) // TODO
 			if err2 != nil {
 				return nil, err2, true // abort
 			}

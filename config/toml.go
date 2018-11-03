@@ -99,7 +99,7 @@ priv_validator_file = "{{ js .BaseConfig.PrivValidator }}"
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
-node_key_file = "{{ js .BaseConfig.NodeKey}}"
+node_key_file = "{{ js .BaseConfig.NodeKey }}"
 
 # Mechanism to connect to the ABCI application: socket | grpc
 abci = "{{ .BaseConfig.ABCI }}"
@@ -172,14 +172,14 @@ addr_book_file = "{{ js .P2P.AddrBook }}"
 # Set false for private or local networks
 addr_book_strict = {{ .P2P.AddrBookStrict }}
 
-# Time to wait before flushing messages out on the connection, in ms
-flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
-
 # Maximum number of inbound peers
 max_num_inbound_peers = {{ .P2P.MaxNumInboundPeers }}
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = {{ .P2P.MaxNumOutboundPeers }}
+
+# Time to wait before flushing messages out on the connection
+flush_throttle_timeout = "{{ .P2P.FlushThrottleTimeout }}"
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = {{ .P2P.MaxPacketMsgPayloadSize }}
@@ -202,11 +202,17 @@ seed_mode = {{ .P2P.SeedMode }}
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private_peer_ids = "{{ .P2P.PrivatePeerIDs }}"
 
+# Toggle to disable guard against peers connecting from the same ip.
+allow_duplicate_ip = {{ .P2P.AllowDuplicateIP }}
+
+# Peer connection configuration.
+handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
+dial_timeout = "{{ .P2P.DialTimeout }}"
+
 ##### mempool configuration options #####
 [mempool]
 
 recheck = {{ .Mempool.Recheck }}
-recheck_empty = {{ .Mempool.RecheckEmpty }}
 broadcast = {{ .Mempool.Broadcast }}
 wal_dir = "{{ js .Mempool.WalPath }}"
 
@@ -221,25 +227,24 @@ cache_size = {{ .Mempool.CacheSize }}
 
 wal_file = "{{ js .Consensus.WalPath }}"
 
-# All timeouts are in milliseconds
-timeout_propose = {{ .Consensus.TimeoutPropose }}
-timeout_propose_delta = {{ .Consensus.TimeoutProposeDelta }}
-timeout_prevote = {{ .Consensus.TimeoutPrevote }}
-timeout_prevote_delta = {{ .Consensus.TimeoutPrevoteDelta }}
-timeout_precommit = {{ .Consensus.TimeoutPrecommit }}
-timeout_precommit_delta = {{ .Consensus.TimeoutPrecommitDelta }}
-timeout_commit = {{ .Consensus.TimeoutCommit }}
+timeout_propose = "{{ .Consensus.TimeoutPropose }}"
+timeout_propose_delta = "{{ .Consensus.TimeoutProposeDelta }}"
+timeout_prevote = "{{ .Consensus.TimeoutPrevote }}"
+timeout_prevote_delta = "{{ .Consensus.TimeoutPrevoteDelta }}"
+timeout_precommit = "{{ .Consensus.TimeoutPrecommit }}"
+timeout_precommit_delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
+timeout_commit = "{{ .Consensus.TimeoutCommit }}"
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 
-# EmptyBlocks mode and possible interval between empty blocks in seconds
+# EmptyBlocks mode and possible interval between empty blocks
 create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
-create_empty_blocks_interval = {{ .Consensus.CreateEmptyBlocksInterval }}
+create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 
-# Reactor sleep duration parameters are in milliseconds
-peer_gossip_sleep_duration = {{ .Consensus.PeerGossipSleepDuration }}
-peer_query_maj23_sleep_duration = {{ .Consensus.PeerQueryMaj23SleepDuration }}
+# Reactor sleep duration parameters
+peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
+peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
 ##### transactions indexer configuration options #####
 [tx_index]
@@ -284,6 +289,9 @@ prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
+
+# Instrumentation namespace
+namespace = "{{ .Instrumentation.Namespace }}"
 `
 
 /****** these are for test settings ***********/
@@ -334,7 +342,7 @@ func ResetTestRoot(testName string) *Config {
 }
 
 var testGenesis = `{
-  "genesis_time": "0001-01-01T00:00:00.000Z",
+  "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "tendermint_test",
   "validators": [
     {

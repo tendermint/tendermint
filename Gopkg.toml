@@ -58,7 +58,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"
-  version = "v0.12.0-rc0"
+  version = "v0.14.0"
 
 [[constraint]]
   name = "google.golang.org/grpc"
@@ -72,13 +72,14 @@
 ## Some repos dont have releases.
 ## Pin to revision
 
+[[constraint]]
+  name = "golang.org/x/crypto"
+  source = "github.com/tendermint/crypto"
+  revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
+
 [[override]]
   name = "github.com/jmhodges/levigo"
   revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
-
-[[constraint]]
-  name = "github.com/ebuchman/fail-test"
-  revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
 
 # last revision used by go-crypto
 [[constraint]]

@@ -28,6 +28,8 @@
 -> code: OK
 -> log: exists
 -> height: 0
+-> key: abc
+-> key.hex: 616263
 -> value: abc
 -> value.hex: 616263
 
@@ -42,6 +44,8 @@
 -> code: OK
 -> log: exists
 -> height: 0
+-> key: def
+-> key.hex: 646566
 -> value: xyz
 -> value.hex: 78797A
 

@@ -1,8 +1,14 @@
 # Pending
 
+## v0.26.1
+
+*TBA*
+
 Special thanks to external contributors on this release:
 
-BREAKING CHANGES:
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
 
 * CLI/RPC/Config
 
@@ -10,8 +16,12 @@ BREAKING CHANGES:
 
 * Go API
 
-FEATURES:
+* Blockchain Protocol
 
-IMPROVEMENTS:
+* P2P Protocol
 
-BUG FIXES:
+### FEATURES:
+
+### IMPROVEMENTS:
+
+### BUG FIXES:

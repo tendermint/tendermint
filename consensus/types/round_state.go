@@ -26,7 +26,14 @@ const (
 	RoundStepPrecommitWait = RoundStepType(0x07) // Did receive any +2/3 precommits, start timeout
 	RoundStepCommit        = RoundStepType(0x08) // Entered commit state machine
 	// NOTE: RoundStepNewHeight acts as RoundStepCommitWait.
+
+	// NOTE: Update IsValid method if you change this!
 )
+
+// IsValid returns true if the step is valid, false if unknown/undefined.
+func (rs RoundStepType) IsValid() bool {
+	return uint8(rs) >= 0x01 && uint8(rs) <= 0x08
+}
 
 // String returns a string
 func (rs RoundStepType) String() string {
@@ -107,8 +114,8 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
-	// XXX: copy the RoundState
-	// if we want to avoid this, we may need synchronous events after all
+	// copy the RoundState.
+	// TODO: if we want to avoid this, we may need synchronous events after all
 	rsCopy := *rs
 	edrs := types.EventDataRoundState{
 		Height:     rs.Height,

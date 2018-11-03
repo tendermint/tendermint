@@ -337,7 +337,7 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.Chan():
 			c.Logger.Debug("Send Ping")
-			_n, err = cdc.MarshalBinaryWriter(c.bufConnWriter, PacketPing{})
+			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPing{})
 			if err != nil {
 				break SELECTION
 			}
@@ -359,7 +359,7 @@ FOR_LOOP:
 			}
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
-			_n, err = cdc.MarshalBinaryWriter(c.bufConnWriter, PacketPong{})
+			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPong{})
 			if err != nil {
 				break SELECTION
 			}
@@ -477,7 +477,7 @@ FOR_LOOP:
 		var packet Packet
 		var _n int64
 		var err error
-		_n, err = cdc.UnmarshalBinaryReader(c.bufConnReader, &packet, int64(c._maxPacketMsgSize))
+		_n, err = cdc.UnmarshalBinaryLengthPrefixedReader(c.bufConnReader, &packet, int64(c._maxPacketMsgSize))
 		c.recvMonitor.Update(int(_n))
 		if err != nil {
 			if c.IsRunning() {
@@ -553,7 +553,7 @@ func (c *MConnection) stopPongTimer() {
 // maxPacketMsgSize returns a maximum size of PacketMsg, including the overhead
 // of amino encoding.
 func (c *MConnection) maxPacketMsgSize() int {
-	return len(cdc.MustMarshalBinary(PacketMsg{
+	return len(cdc.MustMarshalBinaryLengthPrefixed(PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
 		Bytes:     make([]byte, c.config.MaxPacketMsgPayloadSize),
@@ -585,9 +585,9 @@ func (c *MConnection) Status() ConnectionStatus {
 		status.Channels[i] = ChannelStatus{
 			ID:                channel.desc.ID,
 			SendQueueCapacity: cap(channel.sendQueue),
-			SendQueueSize:     int(channel.sendQueueSize), // TODO use atomic
+			SendQueueSize:     int(atomic.LoadInt32(&channel.sendQueueSize)),
 			Priority:          channel.desc.Priority,
-			RecentlySent:      channel.recentlySent,
+			RecentlySent:      atomic.LoadInt64(&channel.recentlySent),
 		}
 	}
 	return status
@@ -723,8 +723,8 @@ func (ch *Channel) nextPacketMsg() PacketMsg {
 // Not goroutine-safe
 func (ch *Channel) writePacketMsgTo(w io.Writer) (n int64, err error) {
 	var packet = ch.nextPacketMsg()
-	n, err = cdc.MarshalBinaryWriter(w, packet)
-	ch.recentlySent += n
+	n, err = cdc.MarshalBinaryLengthPrefixedWriter(w, packet)
+	atomic.AddInt64(&ch.recentlySent, n)
 	return
 }
 
@@ -756,7 +756,7 @@ func (ch *Channel) recvPacketMsg(packet PacketMsg) ([]byte, error) {
 func (ch *Channel) updateStats() {
 	// Exponential decay of stats.
 	// TODO: optimize.
-	ch.recentlySent = int64(float64(ch.recentlySent) * 0.8)
+	atomic.StoreInt64(&ch.recentlySent, int64(float64(atomic.LoadInt64(&ch.recentlySent))*0.8))
 }
 
 //----------------------------------------

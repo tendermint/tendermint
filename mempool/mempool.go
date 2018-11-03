@@ -326,6 +326,7 @@ func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
 	if mem.recheckCursor == nil {
 		mem.resCbNormal(req, res)
 	} else {
+		mem.metrics.RecheckTimes.Add(1)
 		mem.resCbRecheck(req, res)
 	}
 	mem.metrics.Size.Set(float64(mem.Size()))
@@ -346,11 +347,12 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 			}
 			mem.txs.PushBack(memTx)
 			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r, "total", mem.Size())
+			mem.metrics.TxSizeBytes.Observe(float64(len(tx)))
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
 			mem.logger.Info("Rejected bad transaction", "tx", TxID(tx), "res", r)
-
+			mem.metrics.FailedTxs.Add(1)
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)
 		}
@@ -513,9 +515,7 @@ func (mem *Mempool) Update(
 	// Remove transactions that are already in txs.
 	goodTxs := mem.filterTxs(txsMap)
 	// Recheck mempool txs if any txs were committed in the block
-	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
-	//	so we really still do need to recheck, but this is for debugging
-	if mem.config.Recheck && (mem.config.RecheckEmpty || len(goodTxs) > 0) {
+	if mem.config.Recheck && len(goodTxs) > 0 {
 		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs), "height", height)
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.

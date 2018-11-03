@@ -2,77 +2,131 @@ package state
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 )
 
-func TestValidateBlock(t *testing.T) {
-	state, _ := state(1, 1)
+// TODO(#2589):
+// - generalize this past the first height
+// - add txs and build up full State properly
+// - test block.Time (see #2587 - there are no conditions on time for the first height)
+func TestValidateBlockHeader(t *testing.T) {
+	var height int64 = 1 // TODO(#2589): generalize
+	state, stateDB := state(1, int(height))
 
-	blockExec := NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), nil, nil, nil)
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
 
-	// proper block must pass
-	block := makeBlock(state, 1)
+	// A good block passes.
+	block := makeBlock(state, height)
 	err := blockExec.ValidateBlock(state, block)
 	require.NoError(t, err)
 
-	// wrong chain fails
-	block = makeBlock(state, 1)
-	block.ChainID = "not-the-real-one"
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+	// some bad values
+	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
+	wrongVersion1 := state.Version.Consensus
+	wrongVersion1.Block += 1
+	wrongVersion2 := state.Version.Consensus
+	wrongVersion2.App += 1
 
-	// wrong height fails
-	block = makeBlock(state, 1)
-	block.Height += 10
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+	// Manipulation of any header field causes failure.
+	testCases := []struct {
+		name          string
+		malleateBlock func(block *types.Block)
+	}{
+		{"Version wrong1", func(block *types.Block) { block.Version = wrongVersion1 }},
+		{"Version wrong2", func(block *types.Block) { block.Version = wrongVersion2 }},
+		{"ChainID wrong", func(block *types.Block) { block.ChainID = "not-the-real-one" }},
+		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
+		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 3600 * 24) }},
+		{"NumTxs wrong", func(block *types.Block) { block.NumTxs += 10 }},
+		{"TotalTxs wrong", func(block *types.Block) { block.TotalTxs += 10 }},
 
-	// wrong total tx fails
-	block = makeBlock(state, 1)
-	block.TotalTxs += 10
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartsHeader.Total += 10 }},
+		{"LastCommitHash wrong", func(block *types.Block) { block.LastCommitHash = wrongHash }},
+		{"DataHash wrong", func(block *types.Block) { block.DataHash = wrongHash }},
 
-	// wrong blockid fails
-	block = makeBlock(state, 1)
-	block.LastBlockID.PartsHeader.Total += 10
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+		{"ValidatorsHash wrong", func(block *types.Block) { block.ValidatorsHash = wrongHash }},
+		{"NextValidatorsHash wrong", func(block *types.Block) { block.NextValidatorsHash = wrongHash }},
+		{"ConsensusHash wrong", func(block *types.Block) { block.ConsensusHash = wrongHash }},
+		{"AppHash wrong", func(block *types.Block) { block.AppHash = wrongHash }},
+		{"LastResultsHash wrong", func(block *types.Block) { block.LastResultsHash = wrongHash }},
 
-	// wrong app hash fails
-	block = makeBlock(state, 1)
-	block.AppHash = []byte("wrong app hash")
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+		{"EvidenceHash wrong", func(block *types.Block) { block.EvidenceHash = wrongHash }},
+		{"Proposer wrong", func(block *types.Block) { block.ProposerAddress = ed25519.GenPrivKey().PubKey().Address() }},
+		{"Proposer invalid", func(block *types.Block) { block.ProposerAddress = []byte("wrong size") }},
+	}
 
-	// wrong consensus hash fails
-	block = makeBlock(state, 1)
-	block.ConsensusHash = []byte("wrong consensus hash")
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+	for _, tc := range testCases {
+		block := makeBlock(state, height)
+		tc.malleateBlock(block)
+		err := blockExec.ValidateBlock(state, block)
+		require.Error(t, err, tc.name)
+	}
+}
 
-	// wrong results hash fails
-	block = makeBlock(state, 1)
-	block.LastResultsHash = []byte("wrong results hash")
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+/*
+	TODO(#2589):
+	- test Block.Data.Hash() == Block.DataHash
+	- test len(Block.Data.Txs) == Block.NumTxs
+*/
+func TestValidateBlockData(t *testing.T) {
+}
 
-	// wrong validators hash fails
-	block = makeBlock(state, 1)
-	block.ValidatorsHash = []byte("wrong validators hash")
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+/*
+	TODO(#2589):
+	- test len(block.LastCommit.Precommits) == state.LastValidators.Size()
+	- test state.LastValidators.VerifyCommit
+*/
+func TestValidateBlockCommit(t *testing.T) {
+}
 
-	// wrong proposer address
-	block = makeBlock(state, 1)
-	block.ProposerAddress = ed25519.GenPrivKey().PubKey().Address()
+/*
+	TODO(#2589):
+	- test good/bad evidence in block
+*/
+func TestValidateBlockEvidence(t *testing.T) {
+	var height int64 = 1 // TODO(#2589): generalize
+	state, stateDB := state(1, int(height))
+
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
+
+	// make some evidence
+	addr, _ := state.Validators.GetByIndex(0)
+	goodEvidence := types.NewMockGoodEvidence(height, 0, addr)
+
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	block.Evidence.Evidence = []types.Evidence{goodEvidence, goodEvidence}
+	block.EvidenceHash = block.Evidence.Hash()
+	err := blockExec.ValidateBlock(state, block)
+	require.NoError(t, err)
+
+	// A block with too much evidence fails.
+	maxBlockSize := state.ConsensusParams.BlockSize.MaxBytes
+	maxEvidenceBytes := types.MaxEvidenceBytesPerBlock(maxBlockSize)
+	maxEvidence := maxEvidenceBytes / types.MaxEvidenceBytes
+	require.True(t, maxEvidence > 2)
+	for i := int64(0); i < maxEvidence; i++ {
+		block.Evidence.Evidence = append(block.Evidence.Evidence, goodEvidence)
+	}
+	block.EvidenceHash = block.Evidence.Hash()
 	err = blockExec.ValidateBlock(state, block)
 	require.Error(t, err)
-	block.ProposerAddress = []byte("wrong size")
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
+	_, ok := err.(*types.ErrEvidenceOverflow)
+	require.True(t, ok)
+}
+
+/*
+	TODO(#2589):
+	- test unmarshalling BlockParts that are too big into a Block that
+		(note this logic happens in the consensus, not in the validation here).
+	- test making blocks from the types.MaxXXX functions works/fails as expected
+*/
+func TestValidateBlockSize(t *testing.T) {
 }

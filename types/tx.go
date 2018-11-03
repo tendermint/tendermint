@@ -31,18 +31,13 @@ type Txs []Tx
 
 // Hash returns the simple Merkle root hash of the transactions.
 func (txs Txs) Hash() []byte {
-	// Recursive impl.
-	// Copied from tendermint/crypto/merkle to avoid allocations
-	switch len(txs) {
-	case 0:
-		return nil
-	case 1:
-		return txs[0].Hash()
-	default:
-		left := Txs(txs[:(len(txs)+1)/2]).Hash()
-		right := Txs(txs[(len(txs)+1)/2:]).Hash()
-		return merkle.SimpleHashFromTwoHashes(left, right)
+	// These allocations will be removed once Txs is switched to [][]byte,
+	// ref #2603. This is because golang does not allow type casting slices without unsafe
+	txBzs := make([][]byte, len(txs))
+	for i := 0; i < len(txs); i++ {
+		txBzs[i] = txs[i]
 	}
+	return merkle.SimpleHashFromByteSlices(txBzs)
 }
 
 // Index returns the index of this transaction in the list, or -1 if not found
@@ -70,15 +65,13 @@ func (txs Txs) IndexByHash(hash []byte) int {
 // TODO: optimize this!
 func (txs Txs) Proof(i int) TxProof {
 	l := len(txs)
-	hashers := make([]merkle.Hasher, l)
+	bzs := make([][]byte, l)
 	for i := 0; i < l; i++ {
-		hashers[i] = txs[i]
+		bzs[i] = txs[i]
 	}
-	root, proofs := merkle.SimpleProofsFromHashers(hashers)
+	root, proofs := merkle.SimpleProofsFromByteSlices(bzs)
 
 	return TxProof{
-		Index:    i,
-		Total:    l,
 		RootHash: root,
 		Data:     txs[i],
 		Proof:    *proofs[i],
@@ -87,10 +80,9 @@ func (txs Txs) Proof(i int) TxProof {
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
-	Index, Total int
-	RootHash     cmn.HexBytes
-	Data         Tx
-	Proof        merkle.SimpleProof
+	RootHash cmn.HexBytes
+	Data     Tx
+	Proof    merkle.SimpleProof
 }
 
 // LeadHash returns the hash of the this proof refers to.
@@ -104,14 +96,14 @@ func (tp TxProof) Validate(dataHash []byte) error {
 	if !bytes.Equal(dataHash, tp.RootHash) {
 		return errors.New("Proof matches different data hash")
 	}
-	if tp.Index < 0 {
+	if tp.Proof.Index < 0 {
 		return errors.New("Proof index cannot be negative")
 	}
-	if tp.Total <= 0 {
+	if tp.Proof.Total <= 0 {
 		return errors.New("Proof total must be positive")
 	}
-	valid := tp.Proof.Verify(tp.Index, tp.Total, tp.LeafHash(), tp.RootHash)
-	if !valid {
+	valid := tp.Proof.Verify(tp.RootHash, tp.LeafHash())
+	if valid != nil {
 		return errors.New("Proof is not internally consistent")
 	}
 	return nil

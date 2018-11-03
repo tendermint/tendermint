@@ -69,8 +69,8 @@ func TestValidTxProof(t *testing.T) {
 			leaf := txs[i]
 			leafHash := leaf.Hash()
 			proof := txs.Proof(i)
-			assert.Equal(t, i, proof.Index, "%d: %d", h, i)
-			assert.Equal(t, len(txs), proof.Total, "%d: %d", h, i)
+			assert.Equal(t, i, proof.Proof.Index, "%d: %d", h, i)
+			assert.Equal(t, len(txs), proof.Proof.Total, "%d: %d", h, i)
 			assert.EqualValues(t, root, proof.RootHash, "%d: %d", h, i)
 			assert.EqualValues(t, leaf, proof.Data, "%d: %d", h, i)
 			assert.EqualValues(t, leafHash, proof.LeafHash(), "%d: %d", h, i)
@@ -79,9 +79,9 @@ func TestValidTxProof(t *testing.T) {
 
 			// read-write must also work
 			var p2 TxProof
-			bin, err := cdc.MarshalBinary(proof)
+			bin, err := cdc.MarshalBinaryLengthPrefixed(proof)
 			assert.Nil(t, err)
-			err = cdc.UnmarshalBinary(bin, &p2)
+			err = cdc.UnmarshalBinaryLengthPrefixed(bin, &p2)
 			if assert.Nil(t, err, "%d: %d: %+v", h, i, err) {
 				assert.Nil(t, p2.Validate(root), "%d: %d", h, i)
 			}
@@ -105,7 +105,7 @@ func testTxProofUnchangable(t *testing.T) {
 
 	// make sure it is valid to start with
 	assert.Nil(t, proof.Validate(root))
-	bin, err := cdc.MarshalBinary(proof)
+	bin, err := cdc.MarshalBinaryLengthPrefixed(proof)
 	assert.Nil(t, err)
 
 	// try mutating the data and make sure nothing breaks
@@ -120,7 +120,7 @@ func testTxProofUnchangable(t *testing.T) {
 // This makes sure that the proof doesn't deserialize into something valid.
 func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 	var proof TxProof
-	err := cdc.UnmarshalBinary(bad, &proof)
+	err := cdc.UnmarshalBinaryLengthPrefixed(bad, &proof)
 	if err == nil {
 		err = proof.Validate(root)
 		if err == nil {
@@ -128,7 +128,7 @@ func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 			// This can happen if we have a slightly different total (where the
 			// path ends up the same). If it is something else, we have a real
 			// problem.
-			assert.NotEqual(t, proof.Total, good.Total, "bad: %#v\ngood: %#v", proof, good)
+			assert.NotEqual(t, proof.Proof.Total, good.Proof.Total, "bad: %#v\ngood: %#v", proof, good)
 		}
 	}
 }
