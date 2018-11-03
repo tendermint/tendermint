@@ -1,0 +1,70 @@
+# ADR 034: PrivValidator file structure
+
+## Changelog
+
+03-11-2018: Initial Draft
+
+## Context
+
+For now, the PrivValidator file `priv_validator.json` contains mutable and immutable parts. 
+Even in an insecure mode which does not encrypt private key on disk, it is reasonable to separate 
+the mutable part and immutable part.
+
+References:
+[#1181](https://github.com/tendermint/tendermint/issues/1181)
+[#2657](https://github.com/tendermint/tendermint/issues/2657)
+[#2313](https://github.com/tendermint/tendermint/issues/2313)
+
+## Proposed Solution
+
+We can split mutable and immutable parts with two structs:
+```go
+// PVKey stores the immutable part of PrivValidator
+type PVKey struct {
+	Address types.Address  `json:"address"`
+	PubKey  crypto.PubKey  `json:"pub_key"`
+	PrivKey crypto.PrivKey `json:"priv_key"`
+
+	filePath string
+	mtx      sync.Mutex
+}
+
+// PVState stores the mutable part of PrivValidator
+type PVState struct {
+	LastHeight    int64        `json:"last_height"`
+	LastRound     int          `json:"last_round"`
+	LastStep      int8         `json:"last_step"`
+	LastSignature []byte       `json:"last_signature,omitempty"`
+	LastSignBytes cmn.HexBytes `json:"last_signbytes,omitempty"`
+
+	filePath string
+	mtx      sync.Mutex
+}
+```
+
+Then we can combine `PVKey` with `PVState` and will get the original `FilePV`.
+
+```go
+type FilePV struct {
+	Key   PVKey
+	State PVState
+}
+```
+
+What we need to do next is changing the methods of `FilePV`.
+
+## Status
+
+Draft.
+
+## Consequences
+
+### Positive
+
+- separate the mutable and immutable of PrivValidator
+
+### Negative
+
+- need to add more config for file path
+
+### Neutral
