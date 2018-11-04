@@ -46,3 +46,11 @@ type ErrAddrBookNilAddr struct {
 func (err ErrAddrBookNilAddr) Error() string {
 	return fmt.Sprintf("Cannot add a nil address. Got (addr, src) = (%v, %v)", err.Addr, err.Src)
 }
+
+type ErrAddrBookInvalidAddr struct {
+	Addr *p2p.NetAddress
+}
+
+func (err ErrAddrBookInvalidAddr) Error() string {
+	return fmt.Sprintf("Cannot add invalid address %v", err.Addr)
+}

@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	// AddressSize is the size of a pubkey address.
 	AddressSize = tmhash.TruncatedSize
 )
 

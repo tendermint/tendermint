@@ -2,12 +2,14 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/version"
@@ -57,54 +59,117 @@ func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) 
 
 // ValidateBasic performs basic validation that doesn't involve state data.
 // It checks the internal consistency of the block.
+// Further validation is done using state#ValidateBlock.
 func (b *Block) ValidateBasic() error {
 	if b == nil {
-		return errors.New("Nil blocks are invalid")
+		return errors.New("nil block")
 	}
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
-	if b.Height < 0 {
-		return fmt.Errorf(
-			"Negative Block.Header.Height: %v",
-			b.Height,
-		)
+	if len(b.ChainID) > MaxChainIDLen {
+		return fmt.Errorf("ChainID is too long. Max is %d, got %d", MaxChainIDLen, len(b.ChainID))
 	}
+
+	if b.Height < 0 {
+		return errors.New("Negative Header.Height")
+	} else if b.Height == 0 {
+		return errors.New("Zero Header.Height")
+	}
+
+	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
-		return fmt.Errorf(
-			"Wrong Block.Header.NumTxs. Expected %v, got %v",
+		return fmt.Errorf("Wrong Header.NumTxs. Expected %v, got %v",
 			newTxs,
 			b.NumTxs,
 		)
 	}
+
+	// TODO: fix tests so we can do this
+	/*if b.TotalTxs < b.NumTxs {
+		return fmt.Errorf("Header.TotalTxs (%d) is less than Header.NumTxs (%d)", b.TotalTxs, b.NumTxs)
+	}*/
+	if b.TotalTxs < 0 {
+		return errors.New("Negative Header.TotalTxs")
+	}
+
+	if err := b.LastBlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong Header.LastBlockID: %v", err)
+	}
+
+	// Validate the last commit and its hash.
+	if b.Header.Height > 1 {
+		if b.LastCommit == nil {
+			return errors.New("nil LastCommit")
+		}
+		if err := b.LastCommit.ValidateBasic(); err != nil {
+			return fmt.Errorf("Wrong LastCommit")
+		}
+	}
+	if err := ValidateHash(b.LastCommitHash); err != nil {
+		return fmt.Errorf("Wrong Header.LastCommitHash: %v", err)
+	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
-		return fmt.Errorf(
-			"Wrong Block.Header.LastCommitHash.  Expected %v, got %v",
-			b.LastCommitHash,
+		return fmt.Errorf("Wrong Header.LastCommitHash. Expected %v, got %v",
 			b.LastCommit.Hash(),
+			b.LastCommitHash,
 		)
 	}
-	if b.Header.Height != 1 {
-		if err := b.LastCommit.ValidateBasic(); err != nil {
-			return err
-		}
+
+	// Validate the hash of the transactions.
+	// NOTE: b.Data.Txs may be nil, but b.Data.Hash()
+	// still works fine
+	if err := ValidateHash(b.DataHash); err != nil {
+		return fmt.Errorf("Wrong Header.DataHash: %v", err)
 	}
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
 		return fmt.Errorf(
-			"Wrong Block.Header.DataHash.  Expected %v, got %v",
-			b.DataHash,
+			"Wrong Header.DataHash. Expected %v, got %v",
 			b.Data.Hash(),
+			b.DataHash,
 		)
 	}
+
+	// Basic validation of hashes related to application data.
+	// Will validate fully against state in state#ValidateBlock.
+	if err := ValidateHash(b.ValidatorsHash); err != nil {
+		return fmt.Errorf("Wrong Header.ValidatorsHash: %v", err)
+	}
+	if err := ValidateHash(b.NextValidatorsHash); err != nil {
+		return fmt.Errorf("Wrong Header.NextValidatorsHash: %v", err)
+	}
+	if err := ValidateHash(b.ConsensusHash); err != nil {
+		return fmt.Errorf("Wrong Header.ConsensusHash: %v", err)
+	}
+	// NOTE: AppHash is arbitrary length
+	if err := ValidateHash(b.LastResultsHash); err != nil {
+		return fmt.Errorf("Wrong Header.LastResultsHash: %v", err)
+	}
+
+	// Validate evidence and its hash.
+	if err := ValidateHash(b.EvidenceHash); err != nil {
+		return fmt.Errorf("Wrong Header.EvidenceHash: %v", err)
+	}
+	// NOTE: b.Evidence.Evidence may be nil, but we're just looping.
+	for i, ev := range b.Evidence.Evidence {
+		if err := ev.ValidateBasic(); err != nil {
+			return fmt.Errorf("Invalid evidence (#%d): %v", i, err)
+		}
+	}
 	if !bytes.Equal(b.EvidenceHash, b.Evidence.Hash()) {
-		return fmt.Errorf(
-			"Wrong Block.Header.EvidenceHash.  Expected %v, got %v",
+		return fmt.Errorf("Wrong Header.EvidenceHash. Expected %v, got %v",
 			b.EvidenceHash,
 			b.Evidence.Hash(),
 		)
 	}
+
+	if len(b.ProposerAddress) != crypto.AddressSize {
+		return fmt.Errorf("Expected len(Header.ProposerAddress) to be %d, got %d",
+			crypto.AddressSize, len(b.ProposerAddress))
+	}
+
 	return nil
 }
 
@@ -717,6 +782,18 @@ func (blockID BlockID) Key() string {
 		panic(err)
 	}
 	return string(blockID.Hash) + string(bz)
+}
+
+// ValidateBasic performs basic validation.
+func (blockID BlockID) ValidateBasic() error {
+	// Hash can be empty in case of POLBlockID in Proposal.
+	if err := ValidateHash(blockID.Hash); err != nil {
+		return fmt.Errorf("Wrong Hash")
+	}
+	if err := blockID.PartsHeader.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong PartsHeader: %v", err)
+	}
+	return nil
 }
 
 // String returns a human readable string representation of the BlockID
