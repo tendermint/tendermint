@@ -50,7 +50,7 @@ func TestRFC6962Hasher(t *testing.T) {
 		{
 			desc: "RFC6962 Node",
 			want: "aa217fe888e47007fa15edab33c2b492a722cb106c64667fc2b044444de66bbb"[:tmhash.Size*2],
-			got:  simpleHashFromTwoHashes([]byte("N123"), []byte("N456")),
+			got:  innerHash([]byte("N123"), []byte("N456")),
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -64,6 +64,7 @@ func TestRFC6962Hasher(t *testing.T) {
 		})
 	}
 }
+
 func TestRFC6962HasherCollisions(t *testing.T) {
 	// Check that different leaves have different hashes.
 	leaf1, leaf2 := []byte("Hello"), []byte("World")

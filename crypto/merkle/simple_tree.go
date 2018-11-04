@@ -4,11 +4,6 @@ import (
 	"math/bits"
 )
 
-// simpleHashFromTwoHashes is the basic operation of the Merkle tree: Hash(left | right).
-func simpleHashFromTwoHashes(left, right []byte) []byte {
-	return innerHash(append(left, right...))
-}
-
 // SimpleHashFromByteSlices computes a Merkle tree where the leaves are the byte slice,
 // in the provided order.
 func SimpleHashFromByteSlices(items [][]byte) []byte {
@@ -21,7 +16,7 @@ func SimpleHashFromByteSlices(items [][]byte) []byte {
 		k := getSplitPoint(len(items))
 		left := SimpleHashFromByteSlices(items[:k])
 		right := SimpleHashFromByteSlices(items[k:])
-		return simpleHashFromTwoHashes(left, right)
+		return innerHash(left, right)
 	}
 }
 

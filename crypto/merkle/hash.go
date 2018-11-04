@@ -10,10 +10,12 @@ var (
 	innerPrefix = []byte{1}
 )
 
-func leafHash(bz []byte) []byte {
-	return tmhash.Sum(append(leafPrefix, bz...))
+// returns tmhash(0x00 || leaf)
+func leafHash(leaf []byte) []byte {
+	return tmhash.Sum(append(leafPrefix, leaf...))
 }
 
-func innerHash(bz []byte) []byte {
-	return tmhash.Sum(append(innerPrefix, bz...))
+// returns tmhash(0x01 || left || right)
+func innerHash(left []byte, right []byte) []byte {
+	return tmhash.Sum(append(innerPrefix, append(left, right...)...))
 }
