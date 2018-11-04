@@ -251,7 +251,7 @@ func LoadConsensusParams(db dbm.DB, height int64) (types.ConsensusParams, error)
 		return empty, ErrNoConsensusParamsForHeight{height}
 	}
 
-	if paramsInfo.ConsensusParams == empty {
+	if paramsInfo.ConsensusParams.Equals(&empty) {
 		paramsInfo2 := loadConsensusParamsInfo(db, paramsInfo.LastHeightChanged)
 		if paramsInfo2 == nil {
 			panic(

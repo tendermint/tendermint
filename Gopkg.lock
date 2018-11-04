@@ -36,13 +36,6 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:c7644c73a3d23741fdba8a99b1464e021a224b7e205be497271a8003a15ca41b"
-  name = "github.com/ebuchman/fail-test"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
-
-[[projects]]
   digest = "1:544229a3ca0fb2dd5ebc2896d3d2ff7ce096d9751635301e44e37e761349ee70"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
@@ -286,12 +279,12 @@
   version = "v1.1.2"
 
 [[projects]]
-  digest = "1:516e71bed754268937f57d4ecb190e01958452336fa73dbac880894164e91c1f"
+  digest = "1:08d65904057412fc0270fc4812a1c90c594186819243160dc779a402d4b6d0bc"
   name = "github.com/spf13/cast"
   packages = ["."]
   pruneopts = "UT"
-  revision = "8965335b8c7107321228e3e3702cab9832751bac"
-  version = "v1.2.0"
+  revision = "8c9545af88b134710ab1cd196795e7f2388358d7"
+  version = "v1.3.0"
 
 [[projects]]
   digest = "1:7ffc0983035bc7e297da3688d9fe19d60a420e9c38bef23f845c53788ed6a05e"
@@ -365,12 +358,12 @@
   revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
 
 [[projects]]
-  digest = "1:5f52e817b6c9d52ddba70dece0ea31134d82a52c05bce98fbc739ab2a832df28"
+  digest = "1:10b3a599325740c84a7c81f3f3cb2e1fdb70b3ea01b7fa28495567a2519df431"
   name = "github.com/tendermint/go-amino"
   packages = ["."]
   pruneopts = "UT"
-  revision = "cb07448b240918aa8d8df4505153549b86b77134"
-  version = "v0.13.0"
+  revision = "6dcc6ddc143e116455c94b25c1004c99e0d0ca12"
+  version = "v0.14.0"
 
 [[projects]]
   digest = "1:72b71e3a29775e5752ed7a8012052a3dee165e27ec18cedddae5288058f09acf"
@@ -415,14 +408,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d1da39c9bac61327dbef1d8ef9f210425e99fd2924b6fb5f0bc587a193353637"
+  digest = "1:6f86e2f2e2217cd4d74dec6786163cf80e4d2b99adb341ecc60a45113b844dca"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "8a28ead16f52c8aaeffbf79239b251dfdf6c4f96"
+  revision = "7e31e0c00fa05cb5fbf4347b585621d6709e19a4"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -453,7 +446,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "94acd270e44e65579b9ee3cdab25034d33fed608"
+  revision = "b69ba1387ce2108ac9bc8e8e5e5a46e7d5c72313"
 
 [[projects]]
   digest = "1:2dab32a43451e320e49608ff4542fdfc653c95dcc35d0065ec9c6c3dd540ed74"
@@ -503,7 +496,6 @@
   input-imports = [
     "github.com/btcsuite/btcutil/base58",
     "github.com/btcsuite/btcutil/bech32",
-    "github.com/ebuchman/fail-test",
     "github.com/fortytw2/leaktest",
     "github.com/go-kit/kit/log",
     "github.com/go-kit/kit/log/level",

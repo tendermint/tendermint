@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
@@ -26,12 +27,10 @@ func exampleVote(t byte) *Vote {
 	}
 
 	return &Vote{
-		ValidatorAddress: tmhash.Sum([]byte("validator_address")),
-		ValidatorIndex:   56789,
-		Height:           12345,
-		Round:            2,
-		Timestamp:        stamp,
-		Type:             SignedMsgType(t),
+		Type:      SignedMsgType(t),
+		Height:    12345,
+		Round:     2,
+		Timestamp: stamp,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
@@ -39,6 +38,8 @@ func exampleVote(t byte) *Vote {
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+		ValidatorIndex:   56789,
 	}
 }
 
@@ -211,7 +212,7 @@ func TestMaxVoteBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	vote := &Vote{
-		ValidatorAddress: tmhash.Sum([]byte("validator_address")),
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   math.MaxInt64,
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt64,
@@ -234,4 +235,18 @@ func TestMaxVoteBytes(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.EqualValues(t, MaxVoteBytes, len(bz))
+}
+
+func TestVoteString(t *testing.T) {
+	str := examplePrecommit().String()
+	expected := `Vote{56789:6AF1F4111082 12345/02/2(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	if str != expected {
+		t.Errorf("Got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
+	}
+
+	str2 := examplePrevote().String()
+	expected = `Vote{56789:6AF1F4111082 12345/02/1(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	if str2 != expected {
+		t.Errorf("Got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
+	}
 }

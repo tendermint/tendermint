@@ -2,10 +2,11 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -23,6 +24,17 @@ type Part struct {
 
 	// Cache
 	hash []byte
+}
+
+// ValidateBasic performs basic validation.
+func (part *Part) ValidateBasic() error {
+	if part.Index < 0 {
+		return errors.New("Negative Index")
+	}
+	if len(part.Bytes) > BlockPartSizeBytes {
+		return fmt.Errorf("Too big (max: %d)", BlockPartSizeBytes)
+	}
+	return nil
 }
 
 func (part *Part) String() string {
@@ -57,6 +69,18 @@ func (psh PartSetHeader) IsZero() bool {
 
 func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 	return psh.Total == other.Total && bytes.Equal(psh.Hash, other.Hash)
+}
+
+// ValidateBasic performs basic validation.
+func (psh PartSetHeader) ValidateBasic() error {
+	if psh.Total < 0 {
+		return errors.New("Negative Total")
+	}
+	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
+	if err := ValidateHash(psh.Hash); err != nil {
+		return errors.Wrap(err, "Wrong Hash")
+	}
+	return nil
 }
 
 //-------------------------------------
