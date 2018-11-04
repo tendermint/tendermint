@@ -17,6 +17,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 * Go API
 
 * Blockchain Protocol
+  * Merkle trees now match the RFC 6962 specification
 
 * P2P Protocol
 
