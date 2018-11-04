@@ -1,5 +1,9 @@
 package merkle
 
+import (
+	"math/bits"
+)
+
 // simpleHashFromTwoHashes is the basic operation of the Merkle tree: Hash(left | right).
 func simpleHashFromTwoHashes(left, right []byte) []byte {
 	return innerHash(append(left, right...))
@@ -14,8 +18,9 @@ func SimpleHashFromByteSlices(items [][]byte) []byte {
 	case 1:
 		return leafHash(items[0])
 	default:
-		left := SimpleHashFromByteSlices(items[:(len(items)+1)/2])
-		right := SimpleHashFromByteSlices(items[(len(items)+1)/2:])
+		k := getSplitPoint(len(items))
+		left := SimpleHashFromByteSlices(items[:k])
+		right := SimpleHashFromByteSlices(items[k:])
 		return simpleHashFromTwoHashes(left, right)
 	}
 }
@@ -30,4 +35,17 @@ func SimpleHashFromMap(m map[string][]byte) []byte {
 		sm.Set(k, v)
 	}
 	return sm.Hash()
+}
+
+func getSplitPoint(length int) int {
+	if length < 1 {
+		panic("Trying to split a tree with size < 1")
+	}
+	uLength := uint(length)
+	bitlen := bits.Len(uLength)
+	k := 1 << uint(bitlen-1)
+	if k == length {
+		k >>= 1
+	}
+	return k
 }

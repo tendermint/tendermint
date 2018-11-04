@@ -69,3 +69,26 @@ func TestSimpleProof(t *testing.T) {
 		require.Error(t, err, "Expected verification to fail for mutated root hash")
 	}
 }
+
+func Test_getSplitPoint(t *testing.T) {
+	tests := []struct {
+		length int
+		want   int
+	}{
+		{1, 0},
+		{2, 1},
+		{3, 2},
+		{4, 2},
+		{5, 4},
+		{10, 8},
+		{20, 16},
+		{100, 64},
+		{255, 128},
+		{256, 128},
+		{257, 256},
+	}
+	for _, tt := range tests {
+		got := getSplitPoint(tt.length)
+		require.Equal(t, tt.want, got, "getSplitPoint(%d) = %v, want %v", tt.length, got, tt.want)
+	}
+}
