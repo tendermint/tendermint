@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/lite"
 	certclient "github.com/tendermint/tendermint/lite/client"
 	nm "github.com/tendermint/tendermint/node"
@@ -143,12 +144,13 @@ func TestTxProofs(t *testing.T) {
 	require.NotNil(err)
 	require.Contains(err.Error(), "not found")
 
-	// Now let's check with the real tx hash.
+	// Now let's check with the real tx root hash.
 	key = types.Tx(tx).Hash()
 	res, err = cl.Tx(key, true)
 	require.NoError(err, "%#v", err)
 	require.NotNil(res)
-	err = res.Proof.Validate(key)
+	keyHash := merkle.SimpleHashFromByteSlices([][]byte{key})
+	err = res.Proof.Validate(keyHash)
 	assert.NoError(err, "%#v", err)
 
 	commit, err := GetCertifiedCommit(br.Height, cl, cert)
