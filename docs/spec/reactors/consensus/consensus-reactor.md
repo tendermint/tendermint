@@ -133,9 +133,12 @@ handleMessage(msg):
 
 ```
 handleMessage(msg):
-    if prs.Height == msg.Height && prs.Round == msg.Round then
-        prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
-        prs.ProposalBlockParts = msg.BlockParts
+    if prs.Height != msg.Height then return
+    
+    if prs.Round != msg.Round && !msg.IsCommit then return
+    
+    prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
+    prs.ProposalBlockParts = msg.BlockParts
 ```
 
 ### HasVoteMessage handler

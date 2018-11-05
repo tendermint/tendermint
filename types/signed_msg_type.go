@@ -15,11 +15,10 @@ const (
 	HeartbeatType SignedMsgType = 0x30
 )
 
-func IsVoteTypeValid(type_ SignedMsgType) bool {
-	switch type_ {
-	case PrevoteType:
-		return true
-	case PrecommitType:
+// IsVoteTypeValid returns true if t is a valid vote type.
+func IsVoteTypeValid(t SignedMsgType) bool {
+	switch t {
+	case PrevoteType, PrecommitType:
 		return true
 	default:
 		return false

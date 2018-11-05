@@ -43,6 +43,35 @@ func NewProposal(height int64, round int, polRound int, blockID BlockID) *Propos
 	}
 }
 
+// ValidateBasic performs basic validation.
+func (p *Proposal) ValidateBasic() error {
+	if p.Type != ProposalType {
+		return errors.New("Invalid Type")
+	}
+	if p.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if p.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if p.POLRound < -1 {
+		return errors.New("Negative POLRound (exception: -1)")
+	}
+	if err := p.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong BlockID: %v", err)
+	}
+
+	// NOTE: Timestamp validation is subtle and handled elsewhere.
+
+	if len(p.Signature) == 0 {
+		return errors.New("Signature is missing")
+	}
+	if len(p.Signature) > MaxSignatureSize {
+		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+	}
+	return nil
+}
+
 // String returns a string representation of the Proposal.
 func (p *Proposal) String() string {
 	return fmt.Sprintf("Proposal{%v/%v (%v, %v) %X @ %s}",

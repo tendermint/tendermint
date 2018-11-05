@@ -77,15 +77,15 @@ func (v *Validator) Hash() []byte {
 }
 
 // Bytes computes the unique encoding of a validator with a given voting power.
-// These are the bytes that gets hashed in consensus. It excludes pubkey
-// as its redundant with the address. This also excludes accum which changes
+// These are the bytes that gets hashed in consensus. It excludes address
+// as its redundant with the pubkey. This also excludes accum which changes
 // every round.
 func (v *Validator) Bytes() []byte {
 	return cdcEncode((struct {
-		Address     Address
+		PubKey      crypto.PubKey
 		VotingPower int64
 	}{
-		v.Address,
+		v.PubKey,
 		v.VotingPower,
 	}))
 }
