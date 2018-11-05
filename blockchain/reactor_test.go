@@ -86,7 +86,9 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
 	}
 
-	// Make the blockchainReactor itself
+	// Make the BlockchainReactor itself.
+	// NOTE we have to create and commit the blocks first because
+	// pool.height is determined from the store.
 	fastSync := true
 	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), proxyApp.Consensus(),
 		sm.MockMempool{}, sm.MockEvidencePool{})
@@ -115,7 +117,6 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
 	}
 
-	//BlockchainReactor must create after block created. as pool.height rely on state.
 	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 

@@ -261,6 +261,8 @@ FOR_LOOP:
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced)
+				} else {
+					// should only happen during testing
 				}
 
 				break FOR_LOOP

@@ -26,12 +26,11 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
-	blockStore := NewBlockStore(blockDB)
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
 	}
-	return state, blockStore
+	return state, NewBlockStore(blockDB)
 }
 
 func TestLoadBlockStoreStateJSON(t *testing.T) {
