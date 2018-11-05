@@ -189,39 +189,33 @@ func WithMetrics(metrics *Metrics) MempoolOption {
 	return func(mem *Mempool) { mem.metrics = metrics }
 }
 
+// InitWAL creates a directory for the WAL file and opens a file itself.
+//
+// *panics* if can't create directory or open file.
+// *not thread safe*
+func (mem *Mempool) InitWAL() {
+	walDir := mem.config.WalDir()
+	err := cmn.EnsureDir(walDir, 0700)
+	if err != nil {
+		panic(errors.Wrap(err, "Error ensuring Mempool WAL dir"))
+	}
+	af, err := auto.OpenAutoFile(walDir + "/wal")
+	if err != nil {
+		panic(errors.Wrap(err, "Error opening Mempool WAL file"))
+	}
+	mem.wal = af
+}
+
 // CloseWAL closes and discards the underlying WAL file.
 // Any further writes will not be relayed to disk.
-func (mem *Mempool) CloseWAL() bool {
-	if mem == nil {
-		return false
-	}
-
+func (mem *Mempool) CloseWAL() {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
-	if mem.wal == nil {
-		return false
-	}
-	if err := mem.wal.Close(); err != nil && mem.logger != nil {
-		mem.logger.Error("Mempool.CloseWAL", "err", err)
+	if err := mem.wal.Close(); err != nil {
+		mem.logger.Error("Error closing WAL", "err", err)
 	}
 	mem.wal = nil
-	return true
-}
-
-func (mem *Mempool) InitWAL() {
-	walDir := mem.config.WalDir()
-	if walDir != "" {
-		err := cmn.EnsureDir(walDir, 0700)
-		if err != nil {
-			cmn.PanicSanity(errors.Wrap(err, "Error ensuring Mempool wal dir"))
-		}
-		af, err := auto.OpenAutoFile(walDir + "/wal")
-		if err != nil {
-			cmn.PanicSanity(errors.Wrap(err, "Error opening Mempool wal file"))
-		}
-		mem.wal = af
-	}
 }
 
 // Lock locks the mempool. The consensus must be able to hold lock to safely update.
