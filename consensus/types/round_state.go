@@ -112,7 +112,7 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 	}
 }
 
-// CompleteProposalEvent returns the H/R/S of the RoundState as an event.
+// CompleteProposalEvent returns information about a proposed block as an event.
 func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 	// TODO: see comment regarding copying RoundState in RoundStateEvent()
 	rsCopy := *rs
@@ -120,12 +120,19 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 	addr := rsCopy.Validators.GetProposer().Address
 	idx, _ := rsCopy.Validators.GetByAddress(addr)
 
+	// We must construct BlockID from ProposalBlock and ProposalBlockParts
+	// cs.Proposal is not guaranteed to be set when this function is called
+	blockId := types.BlockID{
+		Hash:        rsCopy.ProposalBlock.Hash(),
+		PartsHeader: rsCopy.ProposalBlockParts.Header(),
+	}
+
 	edcp := types.EventDataCompleteProposal{
 		Height:          rsCopy.Height,
 		Round:           rsCopy.Round,
 		ProposerAddress: addr,
 		ProposerIndex:   idx,
-		BlockID:         rsCopy.Proposal.BlockID,
+		BlockID:         blockId,
 	}
 	return edcp
 }
