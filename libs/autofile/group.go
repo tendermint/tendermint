@@ -230,7 +230,8 @@ func (g *Group) checkHeadSizeLimit() {
 	}
 	size, err := g.Head.Size()
 	if err != nil {
-		panic(err)
+		g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path, "err", err)
+		return
 	}
 	if size >= limit {
 		g.RotateFile()
@@ -252,11 +253,11 @@ func (g *Group) checkTotalSizeLimit() {
 		}
 		if index == gInfo.MaxIndex {
 			// Special degenerate case, just do nothing.
-			g.Logger.Info("Group's head may grow without bound", "head", g.Head.Path)
+			g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path)
 			return
 		}
 		pathToRemove := filePathForIndex(g.Head.Path, index, gInfo.MaxIndex)
-		fileInfo, err := os.Stat(pathToRemove)
+		fInfo, err := os.Stat(pathToRemove)
 		if err != nil {
 			g.Logger.Error("Failed to fetch info for file", "file", pathToRemove)
 			continue
@@ -266,7 +267,7 @@ func (g *Group) checkTotalSizeLimit() {
 			g.Logger.Error("Failed to remove path", "path", pathToRemove)
 			return
 		}
-		totalSize -= fileInfo.Size()
+		totalSize -= fInfo.Size()
 	}
 }
 
