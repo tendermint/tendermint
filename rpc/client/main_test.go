@@ -15,7 +15,7 @@ var node *nm.Node
 
 func TestMain(m *testing.M) {
 	// start a tendermint node (and kvstore) in the background to test against
-	dir, err := ioutil.TempDir("/tmp", "abci-rpc-client-test")
+	dir, err := ioutil.TempDir("/tmp", "rpc-client-test")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

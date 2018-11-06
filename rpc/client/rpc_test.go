@@ -395,18 +395,15 @@ func deepcpVote(vote *types.Vote) (res *types.Vote) {
 	return
 }
 
-func newEvidence(t *testing.T, val *privval.FilePV, vote1 *types.Vote, vote2 *types.Vote, chainID string) types.DuplicateVoteEvidence {
+func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *types.Vote, chainID string) types.DuplicateVoteEvidence {
 	var err error
-	vote1_ := deepcpVote(vote1)
-	vote1_.Signature, err = val.PrivKey.Sign(vote1_.SignBytes(chainID))
-	require.NoError(t, err)
 	vote2_ := deepcpVote(vote2)
 	vote2_.Signature, err = val.PrivKey.Sign(vote2_.SignBytes(chainID))
 	require.NoError(t, err)
 
 	return types.DuplicateVoteEvidence{
 		PubKey: val.PubKey,
-		VoteA:  vote1_,
+		VoteA:  vote,
 		VoteB:  vote2_,
 	}
 }
@@ -423,6 +420,10 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 			PartsHeader: types.PartSetHeader{},
 		},
 	}
+
+	var err error
+	vote.Signature, err = val.PrivKey.Sign(vote.SignBytes(chainID))
+	require.NoError(t, err)
 
 	vote2 := deepcpVote(vote)
 	vote2.BlockID.Hash = []byte{0x01}
@@ -472,35 +473,37 @@ func TestBroadcastDuplicateVote(t *testing.T) {
 
 	ev, fakes := makeEvidences(t, pv, chainID)
 
+	t.Logf("evidence %v", ev)
+
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
 		result, err := c.BroadcastDuplicateVote(ev.PubKey, *ev.VoteA, *ev.VoteB)
-		require.Nil(t, err, "Error broadcasting evidence, evidence %v", ev.String())
+		require.Nil(t, err, "Error broadcasting evidence")
 
 		info, err := c.BlockchainInfo(0, 0)
 		require.NoError(t, err)
 		client.WaitForHeight(c, info.LastHeight+1, nil)
 
-		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, evidence %v, result %+v", ev.String(), result)
+		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
 
 		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
 		rawpub := ed25519pub[:]
 		result2, err := c.ABCIQuery("/val", rawpub)
-		require.Nil(t, err, "Error querying evidence, evidence %v", ev.String())
+		require.Nil(t, err, "Error querying evidence, err %v", err)
 		qres := result2.Response
-		require.True(t, qres.IsOK(), "Response not OK, evidence %v", ev.String())
+		require.True(t, qres.IsOK(), "Response not OK")
 
 		var v abci.ValidatorUpdate
 		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
 		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
-		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, evidence %v, value %v", ev.String(), string(qres.Value))
-		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, evidence %v, value %v", ev.String(), string(qres.Value))
+		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, value %v", string(qres.Value))
+		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
 			_, err := c.BroadcastDuplicateVote(fake.PubKey, *fake.VoteA, *fake.VoteB)
-			require.Error(t, err, "Broadcasting fake evidence succeed, evidence %v", fake.String())
+			require.Error(t, err, "Broadcasting fake evidence succeed", fake.String())
 		}
 
 	}
