@@ -140,7 +140,7 @@ func (b *EventBus) PublishEventNewRound(data EventDataRoundState) error {
 	return b.Publish(EventNewRound, data)
 }
 
-func (b *EventBus) PublishEventCompleteProposal(data EventDataRoundState) error {
+func (b *EventBus) PublishEventCompleteProposal(data EventDataCompleteProposal) error {
 	return b.Publish(EventCompleteProposal, data)
 }
 

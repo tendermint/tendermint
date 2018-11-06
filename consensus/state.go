@@ -1408,7 +1408,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 		return nil
 	}
 
-  // Verify POLRound, which must be -1 or in range [0, proposal.Round).
+	// Verify POLRound, which must be -1 or in range [0, proposal.Round).
 	if proposal.POLRound < -1 ||
 		(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
 		return ErrInvalidProposalPOLRound
@@ -1466,7 +1466,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
-		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
+		cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent())
 
 		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)
