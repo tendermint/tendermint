@@ -13,6 +13,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -93,6 +94,11 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 
 func (wal *baseWAL) Group() *auto.Group {
 	return wal.group
+}
+
+func (wal *baseWAL) SetLogger(l log.Logger) {
+	wal.BaseService.Logger = l
+	wal.group.SetLogger(l)
 }
 
 func (wal *baseWAL) OnStart() error {

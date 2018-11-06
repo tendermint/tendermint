@@ -83,6 +83,8 @@ func OpenAutoFile(path string) (*AutoFile, error) {
 	return af, nil
 }
 
+// Close shuts down the closing goroutine, SIGHUP handler and closes the
+// AutoFile.
 func (af *AutoFile) Close() error {
 	af.closeTicker.Stop()
 	close(af.closeTickerStopc)
@@ -116,6 +118,10 @@ func (af *AutoFile) closeFile() (err error) {
 	return file.Close()
 }
 
+// Write writes len(b) bytes to the AutoFile. It returns the number of bytes
+// written and an error, if any. Write returns a non-nil error when n !=
+// len(b).
+// Opens AutoFile if needed.
 func (af *AutoFile) Write(b []byte) (n int, err error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
@@ -130,6 +136,10 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 	return
 }
 
+// Sync commits the current contents of the file to stable storage. Typically,
+// this means flushing the file system's in-memory copy of recently written
+// data to disk.
+// Opens AutoFile if needed.
 func (af *AutoFile) Sync() error {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
@@ -158,6 +168,9 @@ func (af *AutoFile) openFile() error {
 	return nil
 }
 
+// Size returns the size of the AutoFile. It returns -1 and an error if fails
+// get stats or open file.
+// Opens AutoFile if needed.
 func (af *AutoFile) Size() (int64, error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
@@ -171,10 +184,10 @@ func (af *AutoFile) Size() (int64, error) {
 			return -1, err
 		}
 	}
+
 	stat, err := af.file.Stat()
 	if err != nil {
 		return -1, err
 	}
 	return stat.Size(), nil
-
 }
