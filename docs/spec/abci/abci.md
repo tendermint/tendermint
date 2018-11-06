@@ -441,11 +441,12 @@ Commit are included in the header of the next block.
 ###  ConsensusParams
 
 - **Fields**:
-  - `BlockSize (BlockSize)`: Parameters limiting the size of a block.
-  - `EvidenceParams (EvidenceParams)`: Parameters limiting the validity of
+  - `BlockSize (BlockSizeParams)`: Parameters limiting the size of a block.
+  - `Evidence (EvidenceParams)`: Parameters limiting the validity of
     evidence of byzantine behaviour.
+  - `Validator (ValidatorParams)`: Parameters limitng the types of pubkeys validators can use.
 
-### BlockSize
+### BlockSizeParams
 
 - **Fields**:
   - `MaxBytes (int64)`: Max size of a block, in bytes.
@@ -462,6 +463,12 @@ Commit are included in the header of the next block.
         - This should correspond with an app's "unbonding period" or other
           similar mechanism for handling Nothing-At-Stake attacks.
         - NOTE: this should change to time (instead of blocks)!
+
+### ValidatorParams
+
+- **Fields**:
+  - `PubKeyTypes ([]string)`: List of accepted pubkey types. Uses same
+    naming as `PubKey.Type`.
 
 ### Proof
 

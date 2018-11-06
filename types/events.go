@@ -23,6 +23,7 @@ const (
 	EventTimeoutWait         = "TimeoutWait"
 	EventTx                  = "Tx"
 	EventUnlock              = "Unlock"
+	EventValidBlock          = "ValidBlock"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
 	EventVote                = "Vote"
 )
@@ -119,6 +120,7 @@ var (
 	EventQueryTx                  = QueryForEvent(EventTx)
 	EventQueryUnlock              = QueryForEvent(EventUnlock)
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdates)
+	EventQueryValidBlock          = QueryForEvent(EventValidBlock)
 	EventQueryVote                = QueryForEvent(EventVote)
 )
 

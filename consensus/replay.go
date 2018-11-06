@@ -73,7 +73,7 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan
 		case *ProposalMessage:
 			p := msg.Proposal
 			cs.Logger.Info("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
-				p.BlockPartsHeader, "pol", p.POLRound, "peer", peerID)
+				p.BlockID.PartsHeader, "pol", p.POLRound, "peer", peerID)
 		case *BlockPartMessage:
 			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
 		case *VoteMessage:
@@ -264,8 +264,12 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 // Replay all blocks since appBlockHeight and ensure the result matches the current state.
 // Returns the final AppHash or an error.
-func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight int64, proxyApp proxy.AppConns) ([]byte, error) {
-
+func (h *Handshaker) ReplayBlocks(
+	state sm.State,
+	appHash []byte,
+	appBlockHeight int64,
+	proxyApp proxy.AppConns,
+) ([]byte, error) {
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
 	h.logger.Info("ABCI Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)

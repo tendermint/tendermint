@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
-
 	"github.com/tendermint/tendermint/types"
 )
 
