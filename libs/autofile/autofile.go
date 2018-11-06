@@ -176,11 +176,7 @@ func (af *AutoFile) Size() (int64, error) {
 	defer af.mtx.Unlock()
 
 	if af.file == nil {
-		err := af.openFile()
-		if err != nil {
-			if err == os.ErrNotExist {
-				return 0, nil
-			}
+		if err := af.openFile(); err != nil {
 			return -1, err
 		}
 	}
