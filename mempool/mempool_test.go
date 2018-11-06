@@ -369,15 +369,12 @@ func TestMempoolCloseWAL(t *testing.T) {
 
 	// 7. Invoke CloseWAL() and ensure it discards the
 	// WAL thus any other write won't go through.
-	require.True(t, mempool.CloseWAL(), "CloseWAL should CloseWAL")
+	mempool.CloseWAL()
 	mempool.CheckTx(types.Tx([]byte("bar")), nil)
 	sum2 := checksumFile(walFilepath, t)
 	require.Equal(t, sum1, sum2, "expected no change to the WAL after invoking CloseWAL() since it was discarded")
 
-	// 8. Second CloseWAL should do nothing
-	require.False(t, mempool.CloseWAL(), "CloseWAL should CloseWAL")
-
-	// 9. Sanity check to ensure that the WAL file still exists
+	// 8. Sanity check to ensure that the WAL file still exists
 	m3, err := filepath.Glob(filepath.Join(rootDir, "*"))
 	require.Nil(t, err, "successful globbing expected")
 	require.Equal(t, 1, len(m3), "expecting the wal match in")

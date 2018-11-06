@@ -25,3 +25,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
