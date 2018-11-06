@@ -19,12 +19,15 @@ func BroadcastDuplicateVote(pubkey crypto.PubKey, vote1 types.Vote, vote2 types.
 	chainID := p2pTransport.NodeInfo().Network
 	ev := &types.DuplicateVoteEvidence{pubkey, &vote1, &vote2}
 	if err := vote1.Verify(chainID, pubkey); err != nil {
-		return nil, fmt.Errorf("Error broadcasting evidence: %v", err)
+		return nil, fmt.Errorf("Error broadcasting evidence, invalid vote1: %v", err)
+	}
+	if err := vote2.Verify(chainID, pubkey); err != nil {
+		return nil, fmt.Errorf("Error broadcasting evidence, invalid vote2: %v", err)
 	}
 
 	err := evidencePool.AddEvidence(ev)
 	if err != nil {
-		return nil, fmt.Errorf("Error broadcasting evidence: %v", err)
+		return nil, fmt.Errorf("Error broadcasting evidence, adding evidence: %v", err)
 	}
 	return &ctypes.ResultBroadcastDuplicateVote{ev.Hash()}, nil
 }

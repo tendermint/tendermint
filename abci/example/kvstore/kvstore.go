@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -67,23 +66,6 @@ func NewKVStoreApplication() *KVStoreApplication {
 
 func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size)}
-}
-
-// handle evidence
-func (app *KVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
-	for _, evidence := range req.ByzantineValidators {
-		switch evidence.Type {
-		case tmtypes.ABCIEvidenceTypeDuplicateVote:
-			key := prefixKey(evidence.Validator.Address)
-			// Do nothing, just store it in the state to check from outside
-			app.state.db.Set(key, []byte{})
-			app.state.Size += 1
-		}
-	}
-
-	return types.ResponseBeginBlock{
-		Tags: []cmn.KVPair{{Key: []byte("height"), Value: []byte(fmt.Sprintf("%d", req.Header.Height))}},
-	}
 }
 
 // tx is either "key=value" or just arbitrary bytes

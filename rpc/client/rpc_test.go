@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -427,7 +429,7 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 
 	ev = newEvidence(t, val, vote, vote2, chainID)
 
-	fakes = make([]types.DuplicateVoteEvidence, 41)
+	fakes = make([]types.DuplicateVoteEvidence, 42)
 
 	// different address
 	vote2 = deepcpVote(vote)
@@ -457,6 +459,9 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 	vote2 = deepcpVote(vote)
 	vote2.Type = types.VoteTypePrecommit
 	fakes[40] = newEvidence(t, val, vote, vote2, chainID)
+	// exactly same vote
+	vote2 = deepcpVote(vote)
+	fakes[41] = newEvidence(t, val, vote, vote2, chainID)
 	return
 }
 
@@ -479,12 +484,19 @@ func TestBroadcastDuplicateVote(t *testing.T) {
 
 		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, evidence %v, result %+v", ev.String(), result)
 
-		result2, err := c.ABCIQuery("/key", ev.PubKey.Address())
+		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
+		rawpub := ed25519pub[:]
+		result2, err := c.ABCIQuery("/val", rawpub)
 		require.Nil(t, err, "Error querying evidence, evidence %v", ev.String())
 		qres := result2.Response
 		require.True(t, qres.IsOK(), "Response not OK, evidence %v", ev.String())
 
-		require.EqualValues(t, []byte{}, qres.Value, "Value not equal with expected, evidence %v, value %v", ev.String(), string(qres.Value))
+		var v abci.ValidatorUpdate
+		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
+		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
+
+		require.EqualValues(t, rawpub, v.PubKey.Data, "Stored PubKey not equal with expected, evidence %v, value %v", ev.String(), string(qres.Value))
+		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, evidence %v, value %v", ev.String(), string(qres.Value))
 
 		for _, fake := range fakes {
 			_, err := c.BroadcastDuplicateVote(fake.PubKey, *fake.VoteA, *fake.VoteB)

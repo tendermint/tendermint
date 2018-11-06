@@ -1,6 +1,8 @@
 package client_test
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -13,7 +15,12 @@ var node *nm.Node
 
 func TestMain(m *testing.M) {
 	// start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewKVStoreApplication()
+	dir, err := ioutil.TempDir("/tmp", "abci-rpc-client-test")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	app := kvstore.NewPersistentKVStoreApplication(dir)
 	node = rpctest.StartTendermint(app)
 	code := m.Run()
 
