@@ -117,11 +117,18 @@ func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 	// copy the RoundState.
 	// TODO: if we want to avoid this, we may need synchronous events after all
 	rsCopy := *rs
+
+	addr := rs.Validators.GetProposer().Address
+	idx, _ := rs.Validators.GetByAddress(addr)
+
 	edrs := types.EventDataRoundState{
-		Height:     rs.Height,
-		Round:      rs.Round,
-		Step:       rs.Step.String(),
-		RoundState: &rsCopy,
+		Height: 		rsCopy.Height,
+		Round: 			rsCopy.Round,
+		Step: 			rsCopy.Step.String(),
+		ProposerAddress: 	addr,
+		ProposerIndex: 		idx,
+		BlockID: 		rsCopy.Proposal.BlockID,
+		RoundState: 		&rsCopy,
 	}
 	return edrs
 }
