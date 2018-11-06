@@ -356,8 +356,11 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
-		if (r.CheckTx.Code == abci.CodeTypeOK) &&
-			mem.isPostCheckPass(tx, r.CheckTx) {
+		var postCheckErr error
+		if mem.postCheck != nil {
+			postCheckErr = mem.postCheck(tx, r.CheckTx)
+		}
+		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter:   mem.counter,
@@ -377,7 +380,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Info("Rejected bad transaction", "tx", TxID(tx), "res", r)
+			mem.logger.Info("Rejected bad transaction", "tx", TxID(tx), "res", r, "err", postCheckErr)
 			mem.metrics.FailedTxs.Add(1)
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)
@@ -390,6 +393,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
+		tx := req.GetCheckTx().Tx
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
 			cmn.PanicSanity(
@@ -400,15 +404,20 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 				),
 			)
 		}
-		if (r.CheckTx.Code == abci.CodeTypeOK) && mem.isPostCheckPass(memTx.tx, r.CheckTx) {
+		var postCheckErr error
+		if mem.postCheck != nil {
+			postCheckErr = mem.postCheck(tx, r.CheckTx)
+		}
+		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
+			mem.logger.Info("Tx is no longer valid", "tx", TxID(tx), "res", r, "err", postCheckErr)
 			mem.txs.Remove(mem.recheckCursor)
 			mem.recheckCursor.DetachPrev()
 
 			// remove from cache (it might be good later)
-			mem.cache.Remove(req.GetCheckTx().Tx)
+			mem.cache.Remove(tx)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -589,16 +598,6 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 		mem.proxyAppConn.CheckTxAsync(tx)
 	}
 	mem.proxyAppConn.FlushAsync()
-}
-
-func (mem *Mempool) isPostCheckPass(tx types.Tx, r *abci.ResponseCheckTx) bool {
-	if mem.postCheck == nil {
-		return true
-	}
-	if err := mem.postCheck(tx, r); err != nil {
-		return false
-	}
-	return true
 }
 
 //--------------------------------------------------------------------------------
