@@ -25,12 +25,12 @@ import (
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
 // transaction if false is returned. An example would be to ensure that a
 // transaction doesn't exceeded the block size.
-type PreCheckFunc func(types.Tx) bool
+type PreCheckFunc func(types.Tx) error
 
 // PostCheckFunc is an optional filter executed after CheckTx and rejects
 // transaction if false is returned. An example would be to ensure a
 // transaction doesn't require more gas than available for the block.
-type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) bool
+type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
 
 /*
 
@@ -68,24 +68,48 @@ var (
 	ErrMempoolIsFull = errors.New("Mempool is full")
 )
 
+// ErrPreCheck is returned when tx is too big
+type ErrPreCheck struct {
+	Reason error
+}
+
+func (e ErrPreCheck) Error() string {
+	return e.Reason.Error()
+}
+
+// IsPreCheckError returns true if err is due to pre check failure.
+func IsPreCheckError(err error) bool {
+	_, ok := err.(ErrPreCheck)
+	return ok
+}
+
 // PreCheckAminoMaxBytes checks that the size of the transaction plus the amino
 // overhead is smaller or equal to the expected maxBytes.
 func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
-	return func(tx types.Tx) bool {
+	return func(tx types.Tx) error {
 		// We have to account for the amino overhead in the tx size as well
 		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
-		return int64(len(tx)+aminoOverhead) <= maxBytes
+		txSize := int64(len(tx) + aminoOverhead)
+		if txSize > maxBytes {
+			return fmt.Errorf("Tx size (including amino overhead) is too big: %d, max: %d",
+				txSize, maxBytes)
+		}
+		return nil
 	}
 }
 
 // PostCheckMaxGas checks that the wanted gas is smaller or equal to the passed
-// maxGas. Returns true if maxGas is -1.
+// maxGas. Returns nil if maxGas is -1.
 func PostCheckMaxGas(maxGas int64) PostCheckFunc {
-	return func(tx types.Tx, res *abci.ResponseCheckTx) bool {
+	return func(tx types.Tx, res *abci.ResponseCheckTx) error {
 		if maxGas == -1 {
-			return true
+			return nil
 		}
-		return res.GasWanted <= maxGas
+		if res.GasWanted > maxGas {
+			return fmt.Errorf("gas wanted %d is greater than max gas %d",
+				res.GasWanted, maxGas)
+		}
+		return nil
 	}
 }
 
@@ -189,39 +213,33 @@ func WithMetrics(metrics *Metrics) MempoolOption {
 	return func(mem *Mempool) { mem.metrics = metrics }
 }
 
+// InitWAL creates a directory for the WAL file and opens a file itself.
+//
+// *panics* if can't create directory or open file.
+// *not thread safe*
+func (mem *Mempool) InitWAL() {
+	walDir := mem.config.WalDir()
+	err := cmn.EnsureDir(walDir, 0700)
+	if err != nil {
+		panic(errors.Wrap(err, "Error ensuring Mempool WAL dir"))
+	}
+	af, err := auto.OpenAutoFile(walDir + "/wal")
+	if err != nil {
+		panic(errors.Wrap(err, "Error opening Mempool WAL file"))
+	}
+	mem.wal = af
+}
+
 // CloseWAL closes and discards the underlying WAL file.
 // Any further writes will not be relayed to disk.
-func (mem *Mempool) CloseWAL() bool {
-	if mem == nil {
-		return false
-	}
-
+func (mem *Mempool) CloseWAL() {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
-	if mem.wal == nil {
-		return false
-	}
-	if err := mem.wal.Close(); err != nil && mem.logger != nil {
-		mem.logger.Error("Mempool.CloseWAL", "err", err)
+	if err := mem.wal.Close(); err != nil {
+		mem.logger.Error("Error closing WAL", "err", err)
 	}
 	mem.wal = nil
-	return true
-}
-
-func (mem *Mempool) InitWAL() {
-	walDir := mem.config.WalDir()
-	if walDir != "" {
-		err := cmn.EnsureDir(walDir, 0700)
-		if err != nil {
-			cmn.PanicSanity(errors.Wrap(err, "Error ensuring Mempool wal dir"))
-		}
-		af, err := auto.OpenAutoFile(walDir + "/wal")
-		if err != nil {
-			cmn.PanicSanity(errors.Wrap(err, "Error opening Mempool wal file"))
-		}
-		mem.wal = af
-	}
 }
 
 // Lock locks the mempool. The consensus must be able to hold lock to safely update.
@@ -285,8 +303,10 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 		return ErrMempoolIsFull
 	}
 
-	if mem.preCheck != nil && !mem.preCheck(tx) {
-		return
+	if mem.preCheck != nil {
+		if err := mem.preCheck(tx); err != nil {
+			return ErrPreCheck{err}
+		}
 	}
 
 	// CACHE
@@ -346,7 +366,13 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:        tx,
 			}
 			mem.txs.PushBack(memTx)
-			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r, "total", mem.Size())
+			mem.logger.Info("Added good transaction",
+				"tx", TxID(tx),
+				"res", r,
+				"height", memTx.height,
+				"total", mem.Size(),
+				"counter", memTx.counter,
+			)
 			mem.metrics.TxSizeBytes.Observe(float64(len(tx)))
 			mem.notifyTxsAvailable()
 		} else {
@@ -566,7 +592,13 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 }
 
 func (mem *Mempool) isPostCheckPass(tx types.Tx, r *abci.ResponseCheckTx) bool {
-	return mem.postCheck == nil || mem.postCheck(tx, r)
+	if mem.postCheck == nil {
+		return true
+	}
+	if err := mem.postCheck(tx, r); err != nil {
+		return false
+	}
+	return true
 }
 
 //--------------------------------------------------------------------------------
