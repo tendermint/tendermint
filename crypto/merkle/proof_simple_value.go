@@ -71,10 +71,10 @@ func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 	hasher.Write(value) // does not error
 	vhash := hasher.Sum(nil)
 
-	bz := bytes.Buffer{}
+	bz := new(bytes.Buffer)
 	// Wrap <op.Key, vhash> to hash the KVPair.
-	encodeByteSlice(&bz, []byte(op.key)) // does not error
-	encodeByteSlice(&bz, []byte(vhash))  // does not error
+	encodeByteSlice(bz, []byte(op.key)) // does not error
+	encodeByteSlice(bz, []byte(vhash))  // does not error
 	kvhash := leafHash(bz.Bytes())
 
 	if !bytes.Equal(kvhash, op.Proof.LeafHash) {

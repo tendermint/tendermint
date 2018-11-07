@@ -43,7 +43,7 @@ func TestSimpleProof(t *testing.T) {
 
 		// Verify success
 		err := proof.Verify(rootHash, item)
-		require.NoError(t, err, "Verificatiom failed: %v.", err)
+		require.NoError(t, err, "Verification failed: %v.", err)
 
 		// Trail too long should make it fail
 		origAunts := proof.Aunts

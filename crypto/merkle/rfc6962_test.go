@@ -13,7 +13,7 @@ package merkle
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// These tests were taken from https://github.com/google/trillian/blob/master/merkle/rfc6962/rfc6962.go,
+// These tests were taken from https://github.com/google/trillian/blob/master/merkle/rfc6962/rfc6962_test.go,
 // and consequently fall under the above license.
 import (
 	"bytes"
