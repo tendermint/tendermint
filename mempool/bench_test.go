@@ -17,11 +17,23 @@ func BenchmarkReap(b *testing.B) {
 	for i := 0; i < size; i++ {
 		tx := make([]byte, 8)
 		binary.BigEndian.PutUint64(tx, uint64(i))
-		mempool.CheckTx(tx, nil)
+		mempool.CheckTx(tx, nil, 0)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		mempool.ReapMaxBytesMaxGas(100000000, 10000000)
+	}
+}
+
+func BenchmarkCheckTx(b *testing.B) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(cc)
+
+	for i := 0; i < b.N; i++ {
+		tx := make([]byte, 8)
+		binary.BigEndian.PutUint64(tx, uint64(i))
+		mempool.CheckTx(tx, nil, 0)
 	}
 }
 
@@ -34,7 +46,7 @@ func BenchmarkCacheInsertTime(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cache.Push(txs[i])
+		cache.Push(txs[i], 0)
 	}
 }
 
@@ -46,7 +58,7 @@ func BenchmarkCacheRemoveTime(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		txs[i] = make([]byte, 8)
 		binary.BigEndian.PutUint64(txs[i], uint64(i))
-		cache.Push(txs[i])
+		cache.Push(txs[i], 0)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

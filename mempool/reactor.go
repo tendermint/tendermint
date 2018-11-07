@@ -23,10 +23,15 @@ const (
 )
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
+// It maintains a map from peer ID to counter, to prevent gossiping txs to the
+// peers you received it from.
 type MempoolReactor struct {
 	p2p.BaseReactor
 	config  *cfg.MempoolConfig
 	Mempool *Mempool
+
+	nextID  uint16 // assumes that a node will never have over 65536 peers
+	peerMap map[p2p.ID]uint16
 }
 
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
@@ -34,6 +39,8 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
+		peerMap: make(map[p2p.ID]uint16),
+		nextID:  1, // reserve 0 for mempoolReactor.BroadcastTx
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
@@ -67,11 +74,14 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
+	memR.peerMap[peer.ID()] = memR.nextID
+	memR.nextID++
 	go memR.broadcastTxRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	delete(memR.peerMap, peer.ID())
 	// broadcast routine checks if peer is gone and returns
 }
 
@@ -88,7 +98,8 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		err := memR.Mempool.CheckTx(msg.Tx, nil)
+		peerID := memR.peerMap[src.ID()]
+		err := memR.Mempool.CheckTx(msg.Tx, nil, peerID)
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", TxID(msg.Tx), "err", err)
 		}
@@ -100,7 +111,7 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 // BroadcastTx is an alias for Mempool.CheckTx. Broadcasting itself happens in peer routines.
 func (memR *MempoolReactor) BroadcastTx(tx types.Tx, cb func(*abci.Response)) error {
-	return memR.Mempool.CheckTx(tx, cb)
+	return memR.Mempool.CheckTx(tx, cb, 0)
 }
 
 // PeerState describes the state of a peer.
@@ -114,6 +125,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		return
 	}
 
+	peerID := memR.peerMap[peer.ID()]
 	var next *clist.CElement
 	for {
 		// This happens because the CElement we were looking at got garbage
@@ -142,6 +154,18 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 				continue
 			}
+		}
+		// ensure peer hasn't already sent us this tx
+		skip := false
+		for i := 0; i < len(memTx.senders); i++ {
+			if peerID == memTx.senders[i] {
+				next = next.Next()
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
 		}
 		// send memTx
 		msg := &TxMessage{Tx: memTx.tx}

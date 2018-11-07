@@ -55,7 +55,7 @@ func ensureFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	}
 }
 
-func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
+func checkTxs(t *testing.T, mempool *Mempool, count int, peerID uint16) types.Txs {
 	txs := make(types.Txs, count)
 	for i := 0; i < count; i++ {
 		txBytes := make([]byte, 20)
@@ -64,7 +64,7 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 		if err != nil {
 			t.Error(err)
 		}
-		if err := mempool.CheckTx(txBytes, nil); err != nil {
+		if err := mempool.CheckTx(txBytes, nil, peerID); err != nil {
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
 			// returned.
@@ -83,7 +83,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	mempool := newMempoolWithApp(cc)
 
 	// Ensure gas calculation behaves as expected
-	checkTxs(t, mempool, 1)
+	checkTxs(t, mempool, 1, 0)
 	tx0 := mempool.TxsFront().Value.(*mempoolTx)
 	// assert that kv store has gas wanted = 1.
 	require.Equal(t, app.CheckTx(tx0.tx).GasWanted, int64(1), "KVStore had a gas value neq to 1")
@@ -117,7 +117,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 20000, 30, 20},
 	}
 	for tcIndex, tt := range tests {
-		checkTxs(t, mempool, tt.numTxsToCreate)
+		checkTxs(t, mempool, tt.numTxsToCreate, 0)
 		got := mempool.ReapMaxBytesMaxGas(tt.maxBytes, tt.maxGas)
 		assert.Equal(t, tt.expectedNumTxs, len(got), "Got %d txs, expected %d, tc #%d",
 			len(got), tt.expectedNumTxs, tcIndex)
@@ -157,7 +157,7 @@ func TestMempoolFilters(t *testing.T) {
 	}
 	for tcIndex, tt := range tests {
 		mempool.Update(1, emptyTxArr, tt.preFilter, tt.postFilter)
-		checkTxs(t, mempool, tt.numTxsToCreate)
+		checkTxs(t, mempool, tt.numTxsToCreate, 0)
 		require.Equal(t, tt.expectedNumTxs, mempool.Size(), "mempool had the incorrect size, on test case %d", tcIndex)
 		mempool.Flush()
 	}
@@ -175,7 +175,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch of txs, it should only fire once
-	txs := checkTxs(t, mempool, 100)
+	txs := checkTxs(t, mempool, 100, 0)
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
@@ -190,7 +190,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs. we already fired for this height so it shouldnt fire again
-	moreTxs := checkTxs(t, mempool, 50)
+	moreTxs := checkTxs(t, mempool, 50, 0)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// now call update with all the txs. it should not fire as there are no txs left
@@ -201,7 +201,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs, it should only fire once
-	checkTxs(t, mempool, 100)
+	checkTxs(t, mempool, 100, 0)
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 }
@@ -225,7 +225,7 @@ func TestSerialReap(t *testing.T) {
 			// This will succeed
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			err := mempool.CheckTx(txBytes, nil)
+			err := mempool.CheckTx(txBytes, nil, 0)
 			_, cached := cacheMap[string(txBytes)]
 			if cached {
 				require.NotNil(t, err, "expected error for cached tx")
@@ -235,7 +235,7 @@ func TestSerialReap(t *testing.T) {
 			cacheMap[string(txBytes)] = struct{}{}
 
 			// Duplicates are cached and should return error
-			err = mempool.CheckTx(txBytes, nil)
+			err = mempool.CheckTx(txBytes, nil, 0)
 			require.NotNil(t, err, "Expected error after CheckTx on duplicated tx")
 		}
 	}
@@ -324,7 +324,7 @@ func TestCacheRemove(t *testing.T) {
 		txBytes := make([]byte, 32)
 		rand.Read(txBytes)
 		txs[i] = txBytes
-		cache.Push(txBytes)
+		cache.Push(txBytes, 0)
 		// make sure its added to both the linked list and the map
 		require.Equal(t, i+1, len(cache.map_))
 		require.Equal(t, i+1, cache.list.Len())
@@ -363,7 +363,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	require.Equal(t, 1, len(m2), "expecting the wal match in")
 
 	// 5. Write some contents to the WAL
-	mempool.CheckTx(types.Tx([]byte("foo")), nil)
+	mempool.CheckTx(types.Tx([]byte("foo")), nil, 0)
 	walFilepath := mempool.wal.Path
 	sum1 := checksumFile(walFilepath, t)
 
@@ -373,7 +373,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// 7. Invoke CloseWAL() and ensure it discards the
 	// WAL thus any other write won't go through.
 	mempool.CloseWAL()
-	mempool.CheckTx(types.Tx([]byte("bar")), nil)
+	mempool.CheckTx(types.Tx([]byte("bar")), nil, 0)
 	sum2 := checksumFile(walFilepath, t)
 	require.Equal(t, sum1, sum2, "expected no change to the WAL after invoking CloseWAL() since it was discarded")
 

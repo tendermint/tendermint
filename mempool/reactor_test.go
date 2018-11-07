@@ -93,6 +93,13 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 	wg.Done()
 }
 
+// ensure no txs on reactor after some timeout
+func ensureNoTxs(t *testing.T, reactor *MempoolReactor, timeout time.Duration) {
+	// wait for the txs in all mempools
+	time.Sleep(timeout)
+	assert.Equal(t, 0, reactor.Mempool.Size(), "mempool had non-zero size")
+}
+
 const (
 	NUM_TXS = 1000
 	TIMEOUT = 120 * time.Second // ridiculously high because CircleCI is slow
@@ -110,8 +117,24 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
-	txs := checkTxs(t, reactors[0].Mempool, NUM_TXS)
+	txs := checkTxs(t, reactors[0].Mempool, NUM_TXS, 0)
 	waitForTxs(t, txs, reactors)
+}
+
+func TestReactorNoBroadcastToSender(t *testing.T) {
+	config := cfg.TestConfig()
+	const N = 2
+	reactors := makeAndConnectMempoolReactors(config, N)
+	defer func() {
+		for _, r := range reactors {
+			r.Stop()
+		}
+	}()
+
+	// send a bunch of txs to the first reactor's mempool, claiming it came from peer
+	// ensure peer gets no txs
+	checkTxs(t, reactors[0].Mempool, NUM_TXS, 1)
+	ensureNoTxs(t, reactors[1], 100*time.Millisecond)
 }
 
 func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {

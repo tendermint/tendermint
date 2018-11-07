@@ -30,8 +30,8 @@ func NewLocalClient(mtx *sync.Mutex, app types.Application) *localClient {
 
 func (app *localClient) SetResponseCallback(cb Callback) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
 	app.Callback = cb
+	app.mtx.Unlock()
 }
 
 // TODO: change types.Application to include Error()?
