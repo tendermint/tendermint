@@ -3,6 +3,7 @@ package mempool
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	amino "github.com/tendermint/go-amino"
@@ -30,6 +31,7 @@ type MempoolReactor struct {
 	config  *cfg.MempoolConfig
 	Mempool *Mempool
 
+	IDmtx   sync.Mutex
 	nextID  uint16 // assumes that a node will never have over 65536 peers
 	peerMap map[p2p.ID]uint16
 }
@@ -74,14 +76,18 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
+	memR.IDmtx.Lock()
 	memR.peerMap[peer.ID()] = memR.nextID
 	memR.nextID++
+	memR.IDmtx.Unlock()
 	go memR.broadcastTxRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	memR.IDmtx.Lock()
 	delete(memR.peerMap, peer.ID())
+	memR.IDmtx.Unlock()
 	// broadcast routine checks if peer is gone and returns
 }
 
