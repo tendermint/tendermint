@@ -12,7 +12,6 @@ import (
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	p2pdummy "github.com/tendermint/tendermint/p2p/dummy"
 	"github.com/tendermint/tendermint/types"
@@ -231,33 +230,24 @@ func TestStateFullRound1(t *testing.T) {
 	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
-	// NOTE: buffer capacity of 0 ensures we can validate prevote and last commit
-	// before consensus can move to the next height (and cause a race condition)
-	cs.eventBus.Stop()
-	eventBus := types.NewEventBusWithBufferCapacity(0)
-	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-	cs.SetEventBus(eventBus)
-	eventBus.Start()
-
-	voteCh := subscribe(cs.eventBus, types.EventQueryVote)
-	propCh := subscribe(cs.eventBus, types.EventQueryCompleteProposal)
-	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
+	eventCh := subscribeMany(cs.eventBus,
+		[]tmpubsub.Query {types.EventQueryVote, types.EventQueryCompleteProposal, types.EventQueryNewRound})
 
 	// Maybe it would be better to call explicitly startRoutines(4)
 	startTestRound(cs, height, round)
 
-	ensureNewRound(newRoundCh, height, round)
+	ensureNewRound(eventCh, height, round)
 
-	ensureNewProposal(propCh, height, round)
+	ensureNewProposal(eventCh, height, round)
 	propBlockHash := cs.GetRoundState().ProposalBlock.Hash()
 
-	ensurePrevote(voteCh, height, round) // wait for prevote
+	ensurePrevote(eventCh, height, round) // wait for prevote
 	validatePrevote(t, cs, round, vss[0], propBlockHash)
 
-	ensurePrecommit(voteCh, height, round) // wait for precommit
+	ensurePrecommit(eventCh, height, round) // wait for precommit
 
 	// we're going to roll right into new height
-	ensureNewRound(newRoundCh, height+1, 0)
+	ensureNewRound(eventCh, height+1, 0)
 
 	validateLastPrecommit(t, cs, vss[0], propBlockHash)
 }
@@ -1626,4 +1616,20 @@ func subscribe(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.Messa
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
 	}
 	return sub.Out()
+}
+
+// subscribeMany subscribes test client to the given queries and returns a channel with cap = 1.
+// it is important to keep all events on the same channel for the backpressure to pause consensus
+//	 (Note that the default eventBus channel limit is 0)
+func subscribeMany(eventBus *types.EventBus, qs []tmpubsub.Query) <-chan interface{} {
+	out := make(chan interface{}, 1)
+
+	for _, q := range qs {
+		err := eventBus.Subscribe(context.Background(), testSubscriber, q, out)
+		if err != nil {
+			panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
+		}
+	}
+
+	return out
 }
