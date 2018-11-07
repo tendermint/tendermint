@@ -57,7 +57,7 @@ func StartHTTPServer(
 	}
 
 	s := &http.Server{
-		Handler:        handler,
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
@@ -103,7 +103,7 @@ func StartHTTPAndTLSServer(
 		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
 	}
 	s := &http.Server{
-		Handler:        handler,
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
