@@ -135,7 +135,9 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		return
 	}
 
+	memR.idMtx.RLock()
 	peerID := memR.peerMap[peer.ID()]
+	memR.idMtx.RUnlock()
 	var next *clist.CElement
 	for {
 		// This happens because the CElement we were looking at got garbage
