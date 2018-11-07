@@ -153,11 +153,9 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 }
 
-func TestUpdateValidators(t *testing.T) {
+func TestValidateValidatorUpdates(t *testing.T) {
 	pubkey1 := ed25519.GenPrivKey().PubKey()
-	val1 := types.NewValidator(pubkey1, 10)
 	pubkey2 := ed25519.GenPrivKey().PubKey()
-	val2 := types.NewValidator(pubkey2, 20)
 
 	secpKey := secp256k1.GenPrivKey().PubKey()
 
@@ -166,9 +164,76 @@ func TestUpdateValidators(t *testing.T) {
 	testCases := []struct {
 		name string
 
-		currentSet      *types.ValidatorSet
 		abciUpdates     []abci.ValidatorUpdate
 		validatorParams types.ValidatorParams
+
+		shouldErr bool
+	}{
+		{
+			"adding a validator is OK",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 20}},
+			defaultValidatorParams,
+
+			false,
+		},
+		{
+			"updating a validator is OK",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey1), Power: 20}},
+			defaultValidatorParams,
+
+			false,
+		},
+		{
+			"removing a validator is OK",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
+			defaultValidatorParams,
+
+			false,
+		},
+		{
+			"adding a validator with negative power results in error",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
+			defaultValidatorParams,
+
+			true,
+		},
+		{
+			"adding a validator with pubkey thats not in validator params results in error",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(secpKey), Power: -100}},
+			defaultValidatorParams,
+
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateValidatorUpdates(tc.abciUpdates, tc.validatorParams)
+			if tc.shouldErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestUpdateValidators(t *testing.T) {
+	pubkey1 := ed25519.GenPrivKey().PubKey()
+	val1 := types.NewValidator(pubkey1, 10)
+	pubkey2 := ed25519.GenPrivKey().PubKey()
+	val2 := types.NewValidator(pubkey2, 20)
+
+	testCases := []struct {
+		name string
+
+		currentSet  *types.ValidatorSet
+		abciUpdates []abci.ValidatorUpdate
 
 		resultingSet *types.ValidatorSet
 		shouldErr    bool
@@ -178,7 +243,6 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 20}},
-			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{val1, val2}),
 			false,
@@ -188,7 +252,6 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey1), Power: 20}},
-			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{types.NewValidator(pubkey1, 20)}),
 			false,
@@ -198,39 +261,15 @@ func TestUpdateValidators(t *testing.T) {
 
 			types.NewValidatorSet([]*types.Validator{val1, val2}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
-			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			false,
 		},
-
 		{
 			"removing a non-existing validator results in error",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
-			defaultValidatorParams,
-
-			types.NewValidatorSet([]*types.Validator{val1}),
-			true,
-		},
-
-		{
-			"adding a validator with negative power results in error",
-
-			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
-			defaultValidatorParams,
-
-			types.NewValidatorSet([]*types.Validator{val1}),
-			true,
-		},
-		{
-			"adding a validator with pubkey thats not in validator params results in error",
-
-			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(secpKey), Power: -100}},
-			defaultValidatorParams,
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
@@ -239,15 +278,11 @@ func TestUpdateValidators(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err1 := validateValidatorUpdates(tc.abciUpdates, tc.validatorParams)
-			err2 := updateValidators(tc.currentSet, tc.abciUpdates)
+			err := updateValidators(tc.currentSet, tc.abciUpdates)
 			if tc.shouldErr {
-				if err1 == nil && err2 == nil {
-					t.Error("Expected one of validateValidatorUpdates or updateValidators to error")
-				}
+				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err1)
-				assert.NoError(t, err2)
+				assert.NoError(t, err)
 				require.Equal(t, tc.resultingSet.Size(), tc.currentSet.Size())
 
 				assert.Equal(t, tc.resultingSet.TotalVotingPower(), tc.currentSet.TotalVotingPower())
