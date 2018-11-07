@@ -12,3 +12,5 @@ for details.
 
 Sending incorrectly encoded data or data exceeding `maxMsgSize` will result
 in stopping the peer.
+
+The mempool will not send a tx back to any peer which it received it from.

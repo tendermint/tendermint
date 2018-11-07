@@ -670,11 +670,16 @@ func (cache *mapTxCache) Push(tx types.Tx, peerID uint16) bool {
 	if moved, exists := cache.map_[txHash]; exists {
 		cache.list.MoveToFront(moved)
 		memTx, succ := moved.Value.(*mempoolTx)
-		// value may have already been reaped
+		// succ would be false if tx was reaped
 		if succ {
-			// TODO: Check if we already have this, otherwise
-			// malicious peers can fill mempool
-			// consider punishing dups, its non-trivial since invalid txs can become valid
+			for i := 0; i < len(memTx.senders); i++ {
+				if peerID == memTx.senders[i] {
+					// TODO: consider punishing peer for dups,
+					// its non-trivial since invalid txs can become valid,
+					// but they can spam the same tx with little cost to them atm.
+					return false
+				}
+			}
 			memTx.senders = append(memTx.senders, peerID)
 		}
 		return false
