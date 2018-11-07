@@ -48,6 +48,8 @@ func TestStringSliceEqual(t *testing.T) {
 		{[]string{"test"}, []string{"test"}, true},
 		{[]string{"test1"}, []string{"test2"}, false},
 		{[]string{"hello", "world."}, []string{"hello", "world!"}, false},
+		{[]string{"only 1 word"}, []string{"two", "words!"}, false},
+		{[]string{"two", "words!"}, []string{"only 1 word"}, false},
 	}
 	for i, tt := range tests {
 		require.Equal(t, tt.want, StringSliceEqual(tt.a, tt.b),

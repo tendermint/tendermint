@@ -69,6 +69,15 @@ func DefaultValidatorParams() ValidatorParams {
 	return ValidatorParams{[]string{ABCIPubKeyTypeEd25519}}
 }
 
+func (params *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
+	for i := 0; i < len(params.PubKeyTypes); i++ {
+		if params.PubKeyTypes[i] == pubkeyType {
+			return true
+		}
+	}
+	return false
+}
+
 // Validate validates the ConsensusParams to ensure all values are within their
 // allowed limits, and returns an error if they are not.
 func (params *ConsensusParams) Validate() error {
@@ -147,7 +156,7 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	if params2.Validator != nil {
 		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.
 		// This avoids having to initialize the slice to 0 values, and then write to it again.
-		res.Validator.PubKeyTypes = append(params2.Validator.PubKeyTypes[0:0], params2.Validator.PubKeyTypes...)
+		res.Validator.PubKeyTypes = append([]string{}, params2.Validator.PubKeyTypes...)
 	}
 	return res
 }

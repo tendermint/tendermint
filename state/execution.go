@@ -319,24 +319,19 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-	consensusValidatorParams types.ValidatorParams) error {
+	params types.ValidatorParams) error {
 	for _, valUpdate := range abciUpdates {
 		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
 		} else if valUpdate.GetPower() == 0 {
+			// continue, since this is deleting the validator, and thus there is no
+			// pubkey to check
 			continue
 		}
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
 		thisKeyType := valUpdate.PubKey.Type
-		validKeyType := false
-		for i := 0; i < len(consensusValidatorParams.PubKeyTypes); i++ {
-			if consensusValidatorParams.PubKeyTypes[i] == thisKeyType {
-				validKeyType = true
-				break
-			}
-		}
-		if !validKeyType {
+		if !params.IsValidPubkeyType(thisKeyType) {
 			return fmt.Errorf("Validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, thisKeyType)
 		}
@@ -364,10 +359,7 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			if !removed {
 				return fmt.Errorf("Failed to remove validator %X", address)
 			}
-			continue
-		}
-		// add or update validator.
-		if val == nil {
+		} else if val == nil {
 			// add val
 			added := currentSet.Add(valUpdate)
 			if !added {
