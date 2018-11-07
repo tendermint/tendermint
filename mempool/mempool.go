@@ -297,7 +297,11 @@ func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
-func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response), peerID uint16) (err error) {
+func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
+	return mem.checkTxFromPeer(tx, cb, 0)
+}
+
+func (mem *Mempool) checkTxFromPeer(tx types.Tx, cb func(*abci.Response), peerID uint16) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 

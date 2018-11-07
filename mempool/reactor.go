@@ -99,7 +99,7 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	switch msg := msg.(type) {
 	case *TxMessage:
 		peerID := memR.peerMap[src.ID()]
-		err := memR.Mempool.CheckTx(msg.Tx, nil, peerID)
+		err := memR.Mempool.checkTxFromPeer(msg.Tx, nil, peerID)
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", TxID(msg.Tx), "err", err)
 		}
@@ -111,7 +111,7 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 // BroadcastTx is an alias for Mempool.CheckTx. Broadcasting itself happens in peer routines.
 func (memR *MempoolReactor) BroadcastTx(tx types.Tx, cb func(*abci.Response)) error {
-	return memR.Mempool.CheckTx(tx, cb, 0)
+	return memR.Mempool.CheckTx(tx, cb)
 }
 
 // PeerState describes the state of a peer.

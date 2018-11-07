@@ -64,7 +64,7 @@ func checkTxs(t *testing.T, mempool *Mempool, count int, peerID uint16) types.Tx
 		if err != nil {
 			t.Error(err)
 		}
-		if err := mempool.CheckTx(txBytes, nil, peerID); err != nil {
+		if err := mempool.checkTxFromPeer(txBytes, nil, peerID); err != nil {
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
 			// returned.
@@ -225,7 +225,7 @@ func TestSerialReap(t *testing.T) {
 			// This will succeed
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			err := mempool.CheckTx(txBytes, nil, 0)
+			err := mempool.CheckTx(txBytes, nil)
 			_, cached := cacheMap[string(txBytes)]
 			if cached {
 				require.NotNil(t, err, "expected error for cached tx")
@@ -235,7 +235,7 @@ func TestSerialReap(t *testing.T) {
 			cacheMap[string(txBytes)] = struct{}{}
 
 			// Duplicates are cached and should return error
-			err = mempool.CheckTx(txBytes, nil, 0)
+			err = mempool.CheckTx(txBytes, nil)
 			require.NotNil(t, err, "Expected error after CheckTx on duplicated tx")
 		}
 	}
@@ -363,7 +363,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	require.Equal(t, 1, len(m2), "expecting the wal match in")
 
 	// 5. Write some contents to the WAL
-	mempool.CheckTx(types.Tx([]byte("foo")), nil, 0)
+	mempool.CheckTx(types.Tx([]byte("foo")), nil)
 	walFilepath := mempool.wal.Path
 	sum1 := checksumFile(walFilepath, t)
 
@@ -373,7 +373,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// 7. Invoke CloseWAL() and ensure it discards the
 	// WAL thus any other write won't go through.
 	mempool.CloseWAL()
-	mempool.CheckTx(types.Tx([]byte("bar")), nil, 0)
+	mempool.CheckTx(types.Tx([]byte("bar")), nil)
 	sum2 := checksumFile(walFilepath, t)
 	require.Equal(t, sum1, sum2, "expected no change to the WAL after invoking CloseWAL() since it was discarded")
 
