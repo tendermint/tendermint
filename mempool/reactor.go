@@ -31,7 +31,7 @@ type MempoolReactor struct {
 	config  *cfg.MempoolConfig
 	Mempool *Mempool
 
-	IDmtx   sync.Mutex
+	idMtx   *sync.RWMutex
 	nextID  uint16 // assumes that a node will never have over 65536 peers
 	peerMap map[p2p.ID]uint16
 }
@@ -41,6 +41,8 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
+
+		idMtx:   &sync.RWMutex{},
 		peerMap: make(map[p2p.ID]uint16),
 		nextID:  1, // reserve 0 for mempoolReactor.BroadcastTx
 	}
@@ -76,18 +78,18 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
-	memR.IDmtx.Lock()
+	memR.idMtx.Lock()
 	memR.peerMap[peer.ID()] = memR.nextID
 	memR.nextID++
-	memR.IDmtx.Unlock()
+	memR.idMtx.Unlock()
 	go memR.broadcastTxRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	memR.IDmtx.Lock()
+	memR.idMtx.Lock()
 	delete(memR.peerMap, peer.ID())
-	memR.IDmtx.Unlock()
+	memR.idMtx.Unlock()
 	// broadcast routine checks if peer is gone and returns
 }
 
@@ -104,7 +106,9 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
+		memR.idMtx.RLock()
 		peerID := memR.peerMap[src.ID()]
+		memR.idMtx.RUnlock()
 		err := memR.Mempool.checkTxFromPeer(msg.Tx, nil, peerID)
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", TxID(msg.Tx), "err", err)
