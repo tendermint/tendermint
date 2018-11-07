@@ -98,14 +98,13 @@ func NewReqRes(req *types.Request) *ReqRes {
 // NOTE: only one callback is supported.
 func (reqRes *ReqRes) SetCallback(cb func(res *types.Response)) {
 	reqRes.mtx.Lock()
+	defer reqRes.mtx.Unlock()
 
 	if reqRes.done {
-		reqRes.mtx.Unlock()
 		cb(reqRes.Response)
 		return
 	}
 
-	defer reqRes.mtx.Unlock()
 	reqRes.cb = cb
 }
 
