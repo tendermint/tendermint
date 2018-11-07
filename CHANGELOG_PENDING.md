@@ -28,3 +28,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto/merkle] [\#2756](https://github.com/tendermint/tendermint/issues/2756) Fix crypto/merkle ProofOperators.Verify to check bounds on keypath parts.
 - [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
+- [mempool] \#2778 No longer send txs back to peers who sent it to you
