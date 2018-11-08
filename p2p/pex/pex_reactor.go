@@ -394,7 +394,7 @@ func (r *PEXReactor) ensurePeers() {
 		if r.Switch.IsDialingOrExistingAddress(try) {
 			continue
 		}
-		if r.Switch.NodeInfo().ID() == try.ID {
+		if r.Switch.NodeInfo().ID == try.ID {
 			continue // we don't want to dial ourselves, usually.
 		}
 		// TODO: consider moving some checks from toDial into here
