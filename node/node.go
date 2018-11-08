@@ -13,8 +13,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/tendermint/go-amino"
 
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -195,8 +195,8 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
 
-	// Create the handshaker, which calls RequestInfo and replays any blocks
-	// as necessary to sync tendermint with the app.
+	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
+	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
@@ -204,9 +204,12 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("Error during handshake: %v", err)
 	}
 
-	// reload the state (it may have been updated by the handshake)
+	// Reload the state. It will have the Version.Consensus.App set by the
+	// Handshake, and may have other modifications as well (ie. depending on
+	// what happened during block replay).
 	state = sm.LoadState(stateDB)
 
+	// Ensure the state's block version matches that of the software.
 	if state.Version.Consensus.Block != version.BlockProtocol {
 		return nil, fmt.Errorf(
 			"Block version of the software does not match that of the state.\n"+
@@ -276,7 +279,9 @@ func NewNode(config *cfg.Config,
 	)
 	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)
-	mempool.InitWAL() // no need to have the mempool wal during tests
+	if config.Mempool.WalEnabled() {
+		mempool.InitWAL() // no need to have the mempool wal during tests
+	}
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
@@ -359,7 +364,17 @@ func NewNode(config *cfg.Config,
 
 	var (
 		p2pLogger = logger.With("module", "p2p")
-		nodeInfo  = makeNodeInfo(config, nodeKey.ID(), txIndexer, genDoc.ChainID)
+		nodeInfo  = makeNodeInfo(
+			config,
+			nodeKey.ID(),
+			txIndexer,
+			genDoc.ChainID,
+			p2p.NewProtocolVersion(
+				version.P2PProtocol, // global
+				state.Version.Consensus.Block,
+				state.Version.Consensus.App,
+			),
+		)
 	)
 
 	// Setup Transport.
@@ -573,6 +588,11 @@ func (n *Node) OnStop() {
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 
+	// stop mempool WAL
+	if n.config.Mempool.WalEnabled() {
+		n.mempoolReactor.Mempool.CloseWAL()
+	}
+
 	if err := n.transport.Close(); err != nil {
 		n.Logger.Error("Error closing transport", "err", err)
 	}
@@ -764,13 +784,14 @@ func makeNodeInfo(
 	nodeID p2p.ID,
 	txIndexer txindex.TxIndexer,
 	chainID string,
+	protocolVersion p2p.ProtocolVersion,
 ) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.DefaultNodeInfo{
-		ProtocolVersion: p2p.InitProtocolVersion,
+		ProtocolVersion: protocolVersion,
 		ID_:             nodeID,
 		Network:         chainID,
 		Version:         version.TMCoreSemVer,

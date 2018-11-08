@@ -78,3 +78,8 @@ func (p *peer) Get(key string) interface{} {
 	}
 	return nil
 }
+
+// OriginalAddr always returns nil.
+func (p *peer) OriginalAddr() *p2p.NetAddress {
+	return nil
+}

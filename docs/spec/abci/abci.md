@@ -134,10 +134,13 @@ Commit are included in the header of the next block.
 ### Info
 
 - **Request**:
-  - `Version (string)`: The Tendermint version
+  - `Version (string)`: The Tendermint software semantic version
+  - `BlockVersion (uint64)`: The Tendermint Block Protocol version
+  - `P2PVersion (uint64)`: The Tendermint P2P Protocol version
 - **Response**:
   - `Data (string)`: Some arbitrary information
-  - `Version (Version)`: Version information
+  - `Version (string)`: The application software semantic version
+  - `AppVersion (uint64)`: The application protocol version
   - `LastBlockHeight (int64)`: Latest block for which the app has
     called Commit
   - `LastBlockAppHash ([]byte)`: Latest result of Commit
@@ -145,6 +148,7 @@ Commit are included in the header of the next block.
   - Return information about the application state.
   - Used to sync Tendermint with the application during a handshake
     that happens on startup.
+  - The returned `AppVersion` will be included in the Header of every block.
   - Tendermint expects `LastBlockAppHash` and `LastBlockHeight` to
     be updated during `Commit`, ensuring that `Commit` is never
     called twice for the same block height.
@@ -437,11 +441,12 @@ Commit are included in the header of the next block.
 ###  ConsensusParams
 
 - **Fields**:
-  - `BlockSize (BlockSize)`: Parameters limiting the size of a block.
-  - `EvidenceParams (EvidenceParams)`: Parameters limiting the validity of
+  - `BlockSize (BlockSizeParams)`: Parameters limiting the size of a block.
+  - `Evidence (EvidenceParams)`: Parameters limiting the validity of
     evidence of byzantine behaviour.
+  - `Validator (ValidatorParams)`: Parameters limitng the types of pubkeys validators can use.
 
-### BlockSize
+### BlockSizeParams
 
 - **Fields**:
   - `MaxBytes (int64)`: Max size of a block, in bytes.
@@ -458,6 +463,12 @@ Commit are included in the header of the next block.
         - This should correspond with an app's "unbonding period" or other
           similar mechanism for handling Nothing-At-Stake attacks.
         - NOTE: this should change to time (instead of blocks)!
+
+### ValidatorParams
+
+- **Fields**:
+  - `PubKeyTypes ([]string)`: List of accepted pubkey types. Uses same
+    naming as `PubKey.Type`.
 
 ### Proof
 

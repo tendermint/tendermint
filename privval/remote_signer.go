@@ -248,7 +248,7 @@ func (e *RemoteSignerError) Error() string {
 
 func readMsg(r io.Reader) (msg RemoteSignerMsg, err error) {
 	const maxRemoteSignerMsgSize = 1024 * 10
-	_, err = cdc.UnmarshalBinaryReader(r, &msg, maxRemoteSignerMsgSize)
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(r, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
 	}
@@ -256,7 +256,7 @@ func readMsg(r io.Reader) (msg RemoteSignerMsg, err error) {
 }
 
 func writeMsg(w io.Writer, msg interface{}) (err error) {
-	_, err = cdc.MarshalBinaryWriter(w, msg)
+	_, err = cdc.MarshalBinaryLengthPrefixedWriter(w, msg)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
 	}

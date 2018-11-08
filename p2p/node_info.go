@@ -49,10 +49,21 @@ type ProtocolVersion struct {
 	App   version.Protocol `json:"app"`
 }
 
-var InitProtocolVersion = ProtocolVersion{
-	P2P:   version.P2PProtocol,
-	Block: version.BlockProtocol,
-	App:   0,
+// defaultProtocolVersion populates the Block and P2P versions using
+// the global values, but not the App.
+var defaultProtocolVersion = NewProtocolVersion(
+	version.P2PProtocol,
+	version.BlockProtocol,
+	0,
+)
+
+// NewProtocolVersion returns a fully populated ProtocolVersion.
+func NewProtocolVersion(p2p, block, app version.Protocol) ProtocolVersion {
+	return ProtocolVersion{
+		P2P:   p2p,
+		Block: block,
+		App:   app,
+	}
 }
 
 //-------------------------------------------------------------
@@ -148,7 +159,7 @@ func (info DefaultNodeInfo) ValidateBasic() error {
 	switch txIndex {
 	case "", "on", "off":
 	default:
-		return fmt.Errorf("info.Other.TxIndex should be either 'on' or 'off', got '%v'", txIndex)
+		return fmt.Errorf("info.Other.TxIndex should be either 'on', 'off', or empty string, got '%v'", txIndex)
 	}
 	// XXX: Should we be more strict about address formats?
 	rpcAddr := other.RPCAddress

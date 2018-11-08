@@ -49,6 +49,8 @@ message RequestFlush {
 
 message RequestInfo {
   string version = 1;
+  uint64 block_version = 2;
+  uint64 p2p_version = 3;
 }
 
 // nondeterministic
@@ -72,7 +74,6 @@ message RequestQuery {
   bool prove = 4;
 }
 
-// NOTE: validators here have empty pubkeys.
 message RequestBeginBlock {
   bytes hash = 1;
   Header header = 2 [(gogoproto.nullable)=false];
@@ -129,9 +130,12 @@ message ResponseFlush {
 
 message ResponseInfo {
   string data = 1;
+
   string version = 2;
-  int64 last_block_height = 3;
-  bytes last_block_app_hash = 4;
+  uint64 app_version = 3;
+
+  int64 last_block_height = 4;
+  bytes last_block_app_hash = 5;
 }
 
 // nondeterministic
@@ -203,12 +207,13 @@ message ResponseCommit {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 message ConsensusParams {
-  BlockSize block_size = 1;
-  EvidenceParams evidence_params = 2;
+  BlockSizeParams block_size = 1;
+  EvidenceParams evidence = 2;
+  ValidatorParams validator = 3;
 }
 
 // BlockSize contains limits on the block size.
-message BlockSize {
+message BlockSizeParams {
   // Note: must be greater than 0
   int64 max_bytes = 1;
   // Note: must be greater or equal to -1
@@ -219,6 +224,11 @@ message BlockSize {
 message EvidenceParams {
   // Note: must be greater than 0
   int64 max_age = 1;
+}
+
+// ValidatorParams contains limits on validators.
+message ValidatorParams {
+  repeated string pub_key_types = 1;
 }
 
 message LastCommitInfo {

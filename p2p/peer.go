@@ -26,6 +26,7 @@ type Peer interface {
 
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
+	OriginalAddr() *NetAddress
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -43,8 +44,26 @@ type peerConn struct {
 	config     *config.P2PConfig
 	conn       net.Conn // source connection
 
+	originalAddr *NetAddress // nil for inbound connections
+
 	// cached RemoteIP()
 	ip net.IP
+}
+
+func newPeerConn(
+	outbound, persistent bool,
+	config *config.P2PConfig,
+	conn net.Conn,
+	originalAddr *NetAddress,
+) peerConn {
+
+	return peerConn{
+		outbound:     outbound,
+		persistent:   persistent,
+		config:       config,
+		conn:         conn,
+		originalAddr: originalAddr,
+	}
 }
 
 // ID only exists for SecretConnection.
@@ -195,6 +214,15 @@ func (p *peer) NodeInfo() NodeInfo {
 	return p.nodeInfo
 }
 
+// OriginalAddr returns the original address, which was used to connect with
+// the peer. Returns nil for inbound peers.
+func (p *peer) OriginalAddr() *NetAddress {
+	if p.peerConn.outbound {
+		return p.peerConn.originalAddr
+	}
+	return nil
+}
+
 // Status returns the peer's ConnectionStatus.
 func (p *peer) Status() tmconn.ConnectionStatus {
 	return p.mconn.Status()
@@ -212,7 +240,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	}
 	res := p.mconn.Send(chID, msgBytes)
 	if res {
-		p.metrics.PeerSendBytesTotal.With("peer-id", string(p.ID())).Add(float64(len(msgBytes)))
+		p.metrics.PeerSendBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
 	}
 	return res
 }
@@ -227,7 +255,7 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	}
 	res := p.mconn.TrySend(chID, msgBytes)
 	if res {
-		p.metrics.PeerSendBytesTotal.With("peer-id", string(p.ID())).Add(float64(len(msgBytes)))
+		p.metrics.PeerSendBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
 	}
 	return res
 }
@@ -302,7 +330,7 @@ func (p *peer) metricsReporter() {
 				sendQueueSize += float64(chStatus.SendQueueSize)
 			}
 
-			p.metrics.PeerPendingSendBytes.With("peer-id", string(p.ID())).Set(sendQueueSize)
+			p.metrics.PeerPendingSendBytes.With("peer_id", string(p.ID())).Set(sendQueueSize)
 		case <-p.Quit():
 			return
 		}

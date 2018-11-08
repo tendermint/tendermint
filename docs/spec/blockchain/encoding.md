@@ -176,13 +176,12 @@ greater, for example:
 h0  h1          h3  h4             h0  h1  h2  h3  h4  h5
 ```
 
-Tendermint always uses the `TMHASH` hash function, which is the first 20-bytes
-of the SHA256:
+Tendermint always uses the `TMHASH` hash function, which is equivalent to
+SHA256:
 
 ```
 func TMHASH(bz []byte) []byte {
-    shasum := SHA256(bz)
-    return shasum[:20]
+    return SHA256(bz)
 }
 ```
 
@@ -216,7 +215,7 @@ prefix) before being concatenated together and hashed.
 
 Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
 For `struct` arguments, we compute a `[][]byte` containing the hash of each
-field in the struct sorted by the hash of the field name.
+field in the struct, in the same order the fields appear in the struct.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
 
 ### Simple Merkle Proof
@@ -301,16 +300,15 @@ Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
 Signed messages (eg. votes, proposals) in the consensus are encoded using Amino.
 
 When signing, the elements of a message are re-ordered so the fixed-length fields
-are first, making it easy to quickly check the version, height, round, and type.
+are first, making it easy to quickly check the type, height, and round.
 The `ChainID` is also appended to the end.
 We call this encoding the SignBytes. For instance, SignBytes for a vote is the Amino encoding of the following struct:
 
 ```go
 type CanonicalVote struct {
-	Version   uint64           `binary:"fixed64"`
+	Type      byte
 	Height    int64            `binary:"fixed64"`
 	Round     int64            `binary:"fixed64"`
-	VoteType  byte
 	Timestamp time.Time
 	BlockID   CanonicalBlockID
 	ChainID   string
