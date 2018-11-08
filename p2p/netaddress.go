@@ -34,11 +34,6 @@ type NetAddress struct {
 
 // IDAddressString returns id@hostPort.
 func IDAddressString(id ID, hostPort string) string {
-	// we respect the protocol definition in here.
-	if p := strings.Index(hostPort, "://"); p > -1 {
-		return fmt.Sprintf("%s://%s@%s", hostPort[:p], id, hostPort[p+3:])
-	}
-
 	return fmt.Sprintf("%s@%s", id, hostPort)
 }
 
