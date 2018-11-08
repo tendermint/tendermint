@@ -328,6 +328,11 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 			return
 		}
 
+		if sw.IsDialingOrExistingAddress(addr) {
+			sw.Logger.Info("Peer connection has been established or dialed while we waiting next try", "addr", addr)
+			return
+		}
+
 		err := sw.DialPeerWithAddress(addr, true)
 		if err == nil {
 			return // success
