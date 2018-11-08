@@ -326,12 +326,11 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 	if err != nil {
 		return err
 	}
-	// store the current total voting power before applying any updates
 	totalVotingPower := currentSet.TotalVotingPower()
 	// these are tendermint types now
 	for _, valUpdate := range updates {
 		if valUpdate.VotingPower < 0 {
-			return fmt.Errorf("voting power can't be negative %v", valUpdate)
+			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
 		}
 
 		address := valUpdate.Address
@@ -340,22 +339,22 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			// remove val
 			_, removed := currentSet.Remove(address)
 			if !removed {
-				return fmt.Errorf("failed to remove validator %X", address)
+				return fmt.Errorf("Failed to remove validator %X", address)
 			}
 		} else if val == nil {
 			// Set Accum to -totalVotingPower to make sure validators can't unbond/rebond to reset their (potentially
 			// previously negative) Accum to zero:
 			valUpdate.Accum = -totalVotingPower
-			// add validator
+			// add val
 			added := currentSet.Add(valUpdate)
 			if !added {
-				return fmt.Errorf("failed to add new validator %v", valUpdate)
+				return fmt.Errorf("Failed to add new validator %v", valUpdate)
 			}
 		} else {
 			// update val
 			updated := currentSet.Update(valUpdate)
 			if !updated {
-				return fmt.Errorf("failed to update validator %X to %v", address, valUpdate)
+				return fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
 			}
 		}
 	}
