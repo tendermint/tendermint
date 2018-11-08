@@ -176,7 +176,7 @@ func (na *NetAddress) String() string {
 	if na.str == "" {
 		addrStr := na.DialString()
 		if na.ID != "" {
-			addrStr = IDAddressString(na.ID, addrStr)
+			addrStr = removeProtocolIfDefined(IDAddressString(na.ID, addrStr))
 		}
 		na.str = addrStr
 	}

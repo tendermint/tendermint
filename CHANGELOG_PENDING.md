@@ -25,3 +25,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+* P2P Fix logging peer address
