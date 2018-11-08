@@ -90,13 +90,14 @@ func (app *localClient) DeliverTxAsync(tx []byte) *ReqRes {
 
 func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
 	app.mtx.Lock()
+	// use defer to unlock mutex because application might panic
+	defer app.mtx.Unlock()
+
 	res := app.Application.CheckTx(tx)
-	reqRes := app.callback(
+	return app.callback(
 		types.ToRequestCheckTx(tx),
 		types.ToResponseCheckTx(res),
 	)
-	app.mtx.Unlock()
-	return reqRes
 }
 
 func (app *localClient) QueryAsync(req types.RequestQuery) *ReqRes {
