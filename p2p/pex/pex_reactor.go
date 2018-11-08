@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
@@ -410,10 +411,6 @@ func (r *PEXReactor) ensurePeers() {
 		if r.Switch.IsDialingOrExistingAddress(try) {
 			continue
 		}
-		if r.Switch.NodeInfo().ID() == try.ID {
-			continue // we don't want to dial ourselves, usually.
-		}
-
 		// TODO: consider moving some checks from toDial into here
 		// so we don't even consider dialing peers that we want to wait
 		// before dialling again, or have dialed too many times already
