@@ -153,7 +153,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// subscribe to tx being committed in block
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
-	deliverTxResCh := make(chan interface{})
+	deliverTxResCh := make(chan interface{}, 1)
 	q := types.EventQueryTxFor(tx)
 	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
 	if err != nil {
@@ -161,7 +161,18 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
 	}
-	defer eventBus.Unsubscribe(context.Background(), "mempool", q)
+	defer func() {
+		// drain deliverTxResCh to make sure we don't block
+	LOOP:
+		for {
+			select {
+			case <-deliverTxResCh:
+			default:
+				break LOOP
+			}
+		}
+		eventBus.Unsubscribe(context.Background(), "mempool", q)
+	}()
 
 	// broadcast the tx and register checktx callback
 	checkTxResCh := make(chan *abci.Response, 1)

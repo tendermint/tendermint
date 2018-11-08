@@ -31,3 +31,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [p2p] \#2771 Fix `peer-id` label name in prometheus metrics
 - [abci] unlock mutex in localClient so even when app panics (e.g. during CheckTx), consensus continue working
 - [abci] fix DATA RACE in localClient
+- [rpc] drain channel before calling Unsubscribe(All) in /broadcast_tx_commit
