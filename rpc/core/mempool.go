@@ -51,7 +51,7 @@ import (
 func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := mempool.CheckTx(tx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
+		return nil, err
 	}
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
@@ -94,7 +94,7 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		resCh <- res
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
+		return nil, err
 	}
 	res := <-resCh
 	r := res.GetCheckTx()
@@ -106,8 +106,9 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	}, nil
 }
 
-// CONTRACT: only returns error if mempool.BroadcastTx errs (ie. problem with the app)
-// or if we timeout waiting for tx to commit.
+// CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
+// waiting for tx to commit.
+//
 // If CheckTx or DeliverTx fail, no error will be returned, but the returned result
 // will contain a non-OK ABCI code.
 //
@@ -150,7 +151,7 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-	// subscribe to tx being committed in block
+	// Subscribe to tx being committed in block.
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	deliverTxResCh := make(chan interface{}, 1)
@@ -158,8 +159,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
 	if err != nil {
 		err = errors.Wrap(err, "failed to subscribe to tx")
-		logger.Error("Error on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
+		logger.Error("Error on broadcast_tx_commit", "err", err)
+		return nil, err
 	}
 	defer func() {
 		// drain deliverTxResCh to make sure we don't block
@@ -174,7 +175,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		eventBus.Unsubscribe(context.Background(), "mempool", q)
 	}()
 
-	// broadcast the tx and register checktx callback
+	// Broadcast tx and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
 	err = mempool.CheckTx(tx, func(res *abci.Response) {
 		checkTxResCh <- res
