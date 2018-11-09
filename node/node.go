@@ -678,11 +678,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
-		listener, err := grpccore.StartGRPCServer(
-			grpcListenAddr,
-			grpccore.Config{
-				MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections,
-			},
+		listener, err := rpcserver.Listen(
+			grpcListenAddr, rpcserver.Config{MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections})
+		err = grpccore.StartGRPCServer(
+			listener,
 		)
 		if err != nil {
 			return nil, err
