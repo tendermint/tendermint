@@ -84,3 +84,40 @@ func TestOpenAutoFilePerms(t *testing.T) {
 		t.Errorf("unexpected error %v", e)
 	}
 }
+
+func TestAutoFileSize(t *testing.T) {
+	// First, create an AutoFile writing to a tempfile dir
+	f, err := ioutil.TempFile("", "sighup_test")
+	require.NoError(t, err)
+	err = f.Close()
+	require.NoError(t, err)
+
+	// Here is the actual AutoFile.
+	af, err := OpenAutoFile(f.Name())
+	require.NoError(t, err)
+
+	// 1. Empty file
+	size, err := af.Size()
+	require.Zero(t, size)
+	require.NoError(t, err)
+
+	// 2. Not empty file
+	data := []byte("Maniac\n")
+	_, err = af.Write(data)
+	require.NoError(t, err)
+	size, err = af.Size()
+	require.EqualValues(t, len(data), size)
+	require.NoError(t, err)
+
+	// 3. Not existing file
+	err = af.Close()
+	require.NoError(t, err)
+	err = os.Remove(f.Name())
+	require.NoError(t, err)
+	size, err = af.Size()
+	require.EqualValues(t, 0, size, "Expected a new file to be empty")
+	require.NoError(t, err)
+
+	// Cleanup
+	_ = os.Remove(f.Name())
+}

@@ -28,3 +28,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto/merkle] [\#2756](https://github.com/tendermint/tendermint/issues/2756) Fix crypto/merkle ProofOperators.Verify to check bounds on keypath parts.
 - [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
+- [p2p] \#2771 Fix `peer-id` label name in prometheus metrics
+- [autofile] [\#2703] do not panic when checking Head size
