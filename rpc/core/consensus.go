@@ -1,8 +1,6 @@
 package core
 
 import (
-	"fmt"
-
 	cm "github.com/tendermint/tendermint/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -196,8 +194,8 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	peerStates := make([]ctypes.PeerStateInfo, len(peers))
 	for i, peer := range peers {
 		peerState, ok := peer.Get(types.PeerStateKey).(*cm.PeerState)
-		if !ok {
-			panic(fmt.Sprintf("Peer %v has no state", peer))
+		if !ok { // peer does not have a state yet
+			continue
 		}
 		peerStateJSON, err := peerState.ToJSON()
 		if err != nil {
