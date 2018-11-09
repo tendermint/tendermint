@@ -218,8 +218,20 @@ func (na *NetAddress) Routable() bool {
 // For IPv4 these are either a 0 or all bits set address. For IPv6 a zero
 // address or one that matches the RFC3849 documentation address format.
 func (na *NetAddress) Valid() bool {
+	if string(na.ID) != "" {
+		data, err := hex.DecodeString(string(na.ID))
+		if err != nil || len(data) != IDByteLength {
+			return false
+		}
+	}
 	return na.IP != nil && !(na.IP.IsUnspecified() || na.RFC3849() ||
 		na.IP.Equal(net.IPv4bcast))
+}
+
+// HasID returns true if the address has an ID.
+// NOTE: It does not check whether the ID is valid or not.
+func (na *NetAddress) HasID() bool {
+	return string(na.ID) != ""
 }
 
 // Local returns true if it is a local address.
