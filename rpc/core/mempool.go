@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -184,40 +183,35 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
 	}
-	checkTxRes := <-checkTxResCh
-	checkTxR := checkTxRes.GetCheckTx()
-	if checkTxR.Code != abci.CodeTypeOK {
-		// CheckTx failed!
+	checkTxResMsg := <-checkTxResCh
+	checkTxRes := checkTxResMsg.GetCheckTx()
+	if checkTxRes.Code != abci.CodeTypeOK {
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxR,
+			CheckTx:   *checkTxRes,
 			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, nil
 	}
 
-	// Wait for the tx to be included in a block,
-	// timeout after something reasonable.
-	// TODO: configurable?
-	timer := time.NewTimer(60 * 2 * time.Second)
+	// Wait for the tx to be included in a block or timeout.
+	var deliverTxTimeout = 10 * time.Second // TODO: configurable?
 	select {
-	case deliverTxResMsg := <-deliverTxResCh:
+	case deliverTxResMsg := <-deliverTxResCh: // The tx was included in a block.
 		deliverTxRes := deliverTxResMsg.(types.EventDataTx)
-		// The tx was included in a block.
-		deliverTxR := deliverTxRes.Result
-		logger.Info("DeliverTx passed ", "tx", cmn.HexBytes(tx), "response", deliverTxR)
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxR,
-			DeliverTx: deliverTxR,
+			CheckTx:   *checkTxRes,
+			DeliverTx: deliverTxRes.Result,
 			Hash:      tx.Hash(),
 			Height:    deliverTxRes.Height,
 		}, nil
-	case <-timer.C:
-		logger.Error("failed to include tx")
+	case <-time.After(deliverTxTimeout):
+		err = errors.New("Timed out waiting for tx to be included in a block")
+		logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxR,
+			CheckTx:   *checkTxRes,
 			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
-		}, fmt.Errorf("Timed out waiting for transaction to be included in a block")
+		}, err
 	}
 }
 
