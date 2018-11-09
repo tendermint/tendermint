@@ -250,3 +250,31 @@ func TestVoteString(t *testing.T) {
 		t.Errorf("Got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}
 }
+
+func TestVoteValidateBasic(t *testing.T) {
+	privVal := NewMockPV()
+
+	testCases := []struct {
+		testName     string
+		malleateVote func(*Vote)
+		expectErr    bool
+	}{
+		{"Good Vote", func(v *Vote) {}, false},
+		{"Negative Height", func(v *Vote) { v.Height = -1 }, true},
+		{"Negative Round", func(v *Vote) { v.Round = -1 }, true},
+		{"Invalid BlockID", func(v *Vote) { v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}} }, true},
+		{"Invalid Address", func(v *Vote) { v.ValidatorAddress = make([]byte, 1) }, true},
+		{"Invalid ValidatorIndex", func(v *Vote) { v.ValidatorIndex = -1 }, true},
+		{"Invalid Signature", func(v *Vote) { v.Signature = nil }, true},
+		{"Too big Signature", func(v *Vote) { v.Signature = make([]byte, MaxSignatureSize+1) }, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			vote := examplePrecommit()
+			err := privVal.SignVote("test_chain_id", vote)
+			require.NoError(t, err)
+			tc.malleateVote(vote)
+			assert.Equal(t, tc.expectErr, vote.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
