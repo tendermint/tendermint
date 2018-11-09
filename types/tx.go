@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/go-amino"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -117,4 +119,10 @@ type TxResult struct {
 	Index  uint32                 `json:"index"`
 	Tx     Tx                     `json:"tx"`
 	Result abci.ResponseDeliverTx `json:"result"`
+}
+
+func ComputeAminoOverhead(tx Tx, fieldNum int) int64 {
+	fnum := uint64(fieldNum)
+	typ3AndFieldNum := (uint64(fnum) << 3) | uint64(amino.Typ3_ByteLength)
+	return int64(amino.UvarintSize(typ3AndFieldNum)) + int64(amino.UvarintSize(uint64(len(tx))))
 }
