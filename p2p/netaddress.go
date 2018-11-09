@@ -221,7 +221,7 @@ func (na *NetAddress) Routable() bool {
 func (na *NetAddress) Valid() bool {
 	if !na.Local() {
 		data, err := hex.DecodeString(string(na.ID))
-		if err != nil || len(data) != crypto.AddressSize {
+		if err != nil || len(data) != IDByteLength
 			return false
 		}
 	}
