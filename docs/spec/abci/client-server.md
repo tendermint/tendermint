@@ -32,9 +32,6 @@ server in that language. Tendermint supports three implementations of the ABCI, 
 The latter two can be tested using the `abci-cli` by setting the `--abci` flag
 appropriately (ie. to `socket` or `grpc`).
 
-Note that the GRPC version is maintained primarily to simplify onboarding and prototyping and is not receiving the same
-attention to security and performance as the others.
-
 See examples, in various stages of maintenance, in
 [Go](https://github.com/tendermint/tendermint/tree/develop/abci/server),
 [JavaScript](https://github.com/tendermint/js-abci),
