@@ -16,7 +16,11 @@ func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) {
 	wm := rpc.NewWebsocketManager(routes, nil)
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 	rpc.RegisterRPCFuncs(mux, routes, cdc, logger)
-	if _, err := rpc.StartHTTPServer(listenAddr, mux, logger, rpc.Config{}); err != nil {
+	listener, err := rpc.Listen(listenAddr, rpc.Config{})
+	if err != nil {
+		panic(err)
+	}
+	if err := rpc.StartHTTPServer(listener, mux, logger); err != nil {
 		panic(err)
 	}
 }

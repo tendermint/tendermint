@@ -121,9 +121,12 @@ func setup() {
 	wm := server.NewWebsocketManager(Routes, RoutesCdc, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
 	wm.SetLogger(tcpLogger)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
+	listener1, err := server.Listen(tcpAddr, server.Config{})
+	if err != nil {
+		panic(err)
+	}
 	go func() {
-		_, err := server.StartHTTPServer(tcpAddr, mux, tcpLogger, server.Config{})
-		if err != nil {
+		if err := server.StartHTTPServer(listener1, mux, tcpLogger); err != nil {
 			panic(err)
 		}
 	}()
@@ -134,9 +137,9 @@ func setup() {
 	wm = server.NewWebsocketManager(Routes, RoutesCdc)
 	wm.SetLogger(unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
+	listener2, err := server.Listen(unixAddr, server.Config{})
 	go func() {
-		_, err := server.StartHTTPServer(unixAddr, mux2, unixLogger, server.Config{})
-		if err != nil {
+		if err = server.StartHTTPServer(listener2, mux2, unixLogger); err != nil {
 			panic(err)
 		}
 	}()

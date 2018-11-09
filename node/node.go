@@ -660,15 +660,18 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-		listener, err := rpcserver.StartHTTPServer(
+		listener, err := rpcserver.Listen(
 			listenAddr,
-			mux,
-			rpcLogger,
 			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
 		)
 		if err != nil {
 			return nil, err
 		}
+		go rpcserver.StartHTTPServer(
+			listener,
+			mux,
+			rpcLogger,
+		)
 		listeners[i] = listener
 	}
 
