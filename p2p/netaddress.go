@@ -219,11 +219,13 @@ func (na *NetAddress) Routable() bool {
 // For IPv4 these are either a 0 or all bits set address. For IPv6 a zero
 // address or one that matches the RFC3849 documentation address format.
 func (na *NetAddress) Valid() bool {
-	data, err := hex.DecodeString(string(na.ID))
-	if err != nil {
-		return false
+	if na.Local() == false {
+		data, err := hex.DecodeString(string(na.ID))
+		if err != nil || len(data) != crypto.AddressSize {
+			return false
+		}
 	}
-	return len(data) != crypto.AddressSize && na.IP != nil && !(na.IP.IsUnspecified() || na.RFC3849() ||
+	return na.IP != nil && !(na.IP.IsUnspecified() || na.RFC3849() ||
 		na.IP.Equal(net.IPv4bcast))
 }
 

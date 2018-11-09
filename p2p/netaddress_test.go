@@ -116,7 +116,7 @@ func TestNetAddressProperties(t *testing.T) {
 		routable bool
 	}{
 		{"127.0.0.1:8080", true, true, false},
-		{"ya.ru:80", true, false, true},
+		{"123fdc2a9bce5f2ef01e907a1d6a16548ee5a245@ya.ru:80", true, false, true},
 	}
 
 	for _, tc := range testCases {
@@ -137,7 +137,7 @@ func TestNetAddressReachabilityTo(t *testing.T) {
 		reachability int
 	}{
 		{"127.0.0.1:8080", "127.0.0.1:8081", 0},
-		{"ya.ru:80", "127.0.0.1:8080", 1},
+		{"123fdc2a9bce5f2ef01e907a1d6a16548ee5a245@ya.ru:80", "127.0.0.1:8080", 1},
 	}
 
 	for _, tc := range testCases {
