@@ -32,7 +32,7 @@ type NetAddress struct {
 	str string
 }
 
-// IDAddressString returns id@hostPort.
+// IDAddressString returns {protocol://}ID@host:port.
 func IDAddressString(id ID, hostPort string) string {
 	// we respect the protocol definition in here.
 	if p := strings.Index(hostPort, "://"); p > -1 {
