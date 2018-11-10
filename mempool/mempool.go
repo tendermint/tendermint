@@ -375,7 +375,6 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response, peerID ui
 				counter:   mem.counter,
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
-				// senders:   []uint16{mem.cache.GetPeerID(tx)},
 				senders: []uint16{peerID},
 				tx:      tx,
 			}
