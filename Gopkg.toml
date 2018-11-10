@@ -90,11 +90,6 @@
   name = "github.com/tendermint/btcd"
   revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
 
-# Haven't made a release since 2016.
-[[constraint]]
-  name = "github.com/prometheus/client_golang"
-  revision = "ae27198cdd90bf12cd134ad79d1366a6cf49f632"
-
 [[constraint]]
   name = "github.com/rcrowley/go-metrics"
   revision = "e2704e165165ec55d062f5919b4b29494e9fa790"

@@ -218,14 +218,16 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:c1a04665f9613e082e1209cf288bf64f4068dcd6c87a64bf1c4ff006ad422ba0"
+  digest = "1:26663fafdea73a38075b07e8e9d82fc0056379d2be8bb4e13899e8fda7c7dd23"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
+    "prometheus/internal",
     "prometheus/promhttp",
   ]
   pruneopts = "UT"
-  revision = "ae27198cdd90bf12cd134ad79d1366a6cf49f632"
+  revision = "abad2d1bd44235a26707c172eab6bca5bf2dbad3"
+  version = "v0.9.1"
 
 [[projects]]
   branch = "master"
@@ -245,7 +247,7 @@
     "model",
   ]
   pruneopts = "UT"
-  revision = "7e9e6cabbd393fc208072eedef99188d0ce788b6"
+  revision = "0b1957f9d949dfa3084171a6ec5642b38055276a"
 
 [[projects]]
   branch = "master"
@@ -331,7 +333,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:59483b8e8183f10ab21a85ba1f4cbb4a2335d48891801f79ed7b9499f44d383c"
+  digest = "1:9ff9e1808adfc43f788f1c1e9fd2660c285b522243da985a4c043ec6f2a2d736"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -348,7 +350,7 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
+  revision = "f9080354173f192dfc8821931eacf9cfd6819253"
 
 [[projects]]
   digest = "1:605b6546f3f43745695298ec2d342d3e952b6d91cdf9f349bea9315f677d759f"
@@ -408,14 +410,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6f86e2f2e2217cd4d74dec6786163cf80e4d2b99adb341ecc60a45113b844dca"
+  digest = "1:e9609f7e36a3fecb7dc9e3a15f9881011f9d8c42f94c9d5da231eb0c07826dc8"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "7e31e0c00fa05cb5fbf4347b585621d6709e19a4"
+  revision = "66b7b1311ac80bbafcd2daeef9a5e6e2cd1e2399"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -446,7 +448,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "b69ba1387ce2108ac9bc8e8e5e5a46e7d5c72313"
+  revision = "b5d43981345bdb2c233eb4bf3277847b48c6fdc6"
 
 [[projects]]
   digest = "1:2dab32a43451e320e49608ff4542fdfc653c95dcc35d0065ec9c6c3dd540ed74"

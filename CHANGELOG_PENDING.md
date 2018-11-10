@@ -30,3 +30,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
 - [p2p] \#2771 Fix `peer-id` label name in prometheus metrics
 - [autofile] [\#2703] do not panic when checking Head size
+- [dep] [\#2798](https://github.com/tendermint/tendermint/issues/2798) Fix client_golang dependency
