@@ -121,6 +121,15 @@ type TxResult struct {
 	Result abci.ResponseDeliverTx `json:"result"`
 }
 
+// ComputeAminoOverhead calculates the overhead for amino encoding a transaction.
+// The overhead consists of varint encoding the field number and the wire type
+// (= length-delimited = 2), and another varint encoding the length of the
+// transaction.
+// The field number can be the field number of the particular transaction, or
+// the field number of the parenting struct that contains the transactions []Tx
+// as a field (this field number is repeated for each contained Tx).
+// If some []Tx are encoded directly (without a parenting struct), the default
+// fieldNum is also 1 (see BinFieldNum in amino.MarshalBinaryBare).
 func ComputeAminoOverhead(tx Tx, fieldNum int) int64 {
 	fnum := uint64(fieldNum)
 	typ3AndFieldNum := (uint64(fnum) << 3) | uint64(amino.Typ3_ByteLength)

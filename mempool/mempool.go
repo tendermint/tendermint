@@ -87,6 +87,10 @@ func IsPreCheckError(err error) bool {
 func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
 		// We have to account for the amino overhead in the tx size as well
+		// NOTE: fieldNum = 1 as types.Block.Data contains Txs []Tx as first field.
+		// If this field order ever changes this needs to updated here accordingly.
+		// NOTE: if some []Tx are encoded without a parenting struct, the
+		// fieldNum is also equal to 1.
 		aminoOverhead := types.ComputeAminoOverhead(tx, 1)
 		txSize := int64(len(tx)) + aminoOverhead
 		if txSize > maxBytes {
