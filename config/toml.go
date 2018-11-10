@@ -119,6 +119,17 @@ filter_peers = {{ .BaseConfig.FilterPeers }}
 # TCP or UNIX socket address for the RPC server to listen on
 laddr = "{{ .RPC.ListenAddress }}"
 
+# A list of origins a cross-domain request can be executed from
+# Default value '[]' disables cors support
+# Use '["*"]' to allow any origin
+allowed_origin = "{{ .RPC.AllowedOrigins }}"
+
+# A list of methods the client is allowed to use with cross-domain requests
+allowed_methods = "{{ .RPC.AllowedMethods }}"
+
+# A list of non simple headers the client is allowed to use with cross-domain requests
+allowed_headers = "{{ .RPC.AllowedHeaders }}"
+
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
 grpc_laddr = "{{ .RPC.GRPCListenAddress }}"

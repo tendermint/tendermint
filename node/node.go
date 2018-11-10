@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/cors"
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -651,9 +652,16 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
+
+		var rootHandler http.Handler = mux
+		if n.config.RPC.IsCorsEnabled() {
+			corsMiddleware := cors.New(n.config.RPC.CorsOptions())
+			rootHandler = corsMiddleware.Handler(mux)
+		}
+
 		listener, err := rpcserver.StartHTTPServer(
 			listenAddr,
-			mux,
+			rootHandler,
 			rpcLogger,
 			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
 		)
