@@ -26,30 +26,32 @@ type FilePVKey struct {
 	PrivKey crypto.PrivKey `json:"priv_key"`
 
 	filePath string
-	mtx      sync.Mutex
 }
 
 // FilePVState stores the mutable part of PrivValidator
-type FilePVState struct {
-	LastHeight    int64        `json:"last_height"`
-	LastRound     int          `json:"last_round"`
-	LastStep      int8         `json:"last_step"`
-	LastSignature []byte       `json:"last_signature,omitempty"`
-	LastSignBytes cmn.HexBytes `json:"last_signbytes,omitempty"`
+type FilePVLastSignState struct {
+	Height    int64        `json:"height"`
+	Round     int          `json:"round"`
+	Step      int8         `json:"step"`
+	Signature []byte       `json:"signature,omitempty"`
+	SignBytes cmn.HexBytes `json:"signbytes,omitempty"`
 
 	filePath string
 	mtx      sync.Mutex
 }
 ```
 
-Then we can combine `FilePVKey` with `FilePVState` and will get the original `FilePV`.
+Then we can combine `FilePVKey` with `FilePVLastSignState` and will get the original `FilePV`.
 
 ```go
 type FilePV struct {
-	Key   PVKey
-	State PVState
+	Key           FilePVKey
+	LastSignState FilePVLastSignState
 }
 ```
+
+As discussed, `FilePV` should be located in `config`, and `FilePVLastSignState` should be stored in `data`. The 
+store path of each file should be specified in `config.yml`.
 
 What we need to do next is changing the methods of `FilePV`.
 
