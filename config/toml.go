@@ -122,7 +122,7 @@ laddr = "{{ .RPC.ListenAddress }}"
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
 # Use '["*"]' to allow any origin
-cors_allowed_origin = "{{ .RPC.CORSAllowedOrigins }}"
+cors_allowed_origins = "{{ .RPC.CORSAllowedOrigins }}"
 
 # A list of methods the client is allowed to use with cross-domain requests
 cors_allowed_methods = "{{ .RPC.CORSAllowedMethods }}"

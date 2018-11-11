@@ -22,6 +22,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES:
 
+- [rpc] [\#2582](https://github.com/tendermint/tendermint/issues/2582) Enable CORS on RPC API
+
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
