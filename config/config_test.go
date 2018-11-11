@@ -36,8 +36,3 @@ func TestConfigValidateBasic(t *testing.T) {
 	cfg.Consensus.TimeoutPropose = -10 * time.Second
 	assert.Error(t, cfg.ValidateBasic())
 }
-
-func TestRpcConfigCorsDisabledByDefault(t *testing.T) {
-	cfg := DefaultConfig()
-	assert.False(t, cfg.RPC.IsCorsEnabled())
-}

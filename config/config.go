@@ -247,13 +247,13 @@ type RPCConfig struct {
 	// If the special '*' value is present in the list, all origins will be allowed.
 	// An origin may contain a wildcard (*) to replace 0 or more characters (i.e.: http://*.domain.com).
 	// Only one wildcard can be used per origin.
-	AllowedOrigins []string `mapstructure:"allowed_origin"`
+	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origin"`
 
 	// A list of methods the client is allowed to use with cross-domain requests.
-	AllowedMethods []string `mapstructure:"allowed_methods"`
+	CORSAllowedMethods []string `mapstructure:"cors_allowed_methods"`
 
 	// A list of non simple headers the client is allowed to use with cross-domain requests.
-	AllowedHeaders []string `mapstructure:"allowed_headers"`
+	CORSAllowedHeaders []string `mapstructure:"cors_allowed_headers"`
 
 	// TCP or UNIX socket address for the gRPC server to listen on
 	// NOTE: This server only supports /broadcast_tx_commit
@@ -283,9 +283,9 @@ type RPCConfig struct {
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
 		ListenAddress:          "tcp://0.0.0.0:26657",
-		AllowedOrigins:         []string{},
-		AllowedMethods:         []string{"HEAD", "GET", "POST"},
-		AllowedHeaders:         []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
+		CORSAllowedOrigins:     []string{},
+		CORSAllowedMethods:     []string{"HEAD", "GET", "POST"},
+		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 		GRPCListenAddress:      "",
 		GRPCMaxOpenConnections: 900,
 
@@ -317,15 +317,15 @@ func (cfg *RPCConfig) ValidateBasic() error {
 
 // returns true if cors is enabled.
 func (cfg *RPCConfig) IsCorsEnabled() bool {
-	return len(cfg.AllowedOrigins) != 0
+	return len(cfg.CORSAllowedOrigins) != 0
 }
 
 // returns cors options for RPC endpoint
 func (cfg *RPCConfig) CorsOptions() cors.Options {
 	return cors.Options{
-		AllowedOrigins: cfg.AllowedOrigins,
-		AllowedMethods: cfg.AllowedMethods,
-		AllowedHeaders: cfg.AllowedHeaders,
+		AllowedOrigins: cfg.CORSAllowedOrigins,
+		AllowedMethods: cfg.CORSAllowedMethods,
+		AllowedHeaders: cfg.CORSAllowedHeaders,
 	}
 }
 
