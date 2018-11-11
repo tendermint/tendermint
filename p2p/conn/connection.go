@@ -85,6 +85,7 @@ type MConnection struct {
 	config        MConnConfig
 
 	quit       chan struct{}
+	done       chan struct{}
 	flushTimer *cmn.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer  *cmn.RepeatTimer   // send pings periodically
 
@@ -191,6 +192,7 @@ func (c *MConnection) OnStart() error {
 		return err
 	}
 	c.quit = make(chan struct{})
+	c.done = make(chan struct{})
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", c.config.PingInterval)
 	c.pongTimeoutCh = make(chan bool, 1)
@@ -200,15 +202,56 @@ func (c *MConnection) OnStart() error {
 	return nil
 }
 
-// OnStop implements BaseService
-func (c *MConnection) OnStop() {
+// FlushStop replicates the logic of OnStop,
+// but flushes all pending msgs before closing the connection.
+func (c *MConnection) FlushStop() {
 	c.BaseService.OnStop()
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
 	c.chStatsTimer.Stop()
 	if c.quit != nil {
 		close(c.quit)
+		// wait until the sendRoutine exits
+		// so we dont race on calling sendSomePacketMsgs
+		<-c.done
 	}
+
+	// Send and flush all pending msgs.
+	// By now, IsRunning == false,
+	// so any concurrent attempts to send will fail.
+	// Since sendRoutine has exited, we can call this
+	// safely
+	eof := c.sendSomePacketMsgs()
+	for !eof {
+		eof = c.sendSomePacketMsgs()
+	}
+	c.flush()
+
+	// Now we can close the connection
+	c.conn.Close() // nolint: errcheck
+
+	// We can't close pong safely here because
+	// recvRoutine may write to it after we've stopped.
+	// Though it doesn't need to get closed at all,
+	// we close it @ recvRoutine.
+
+	// c.Stop()
+}
+
+// OnStop implements BaseService
+func (c *MConnection) OnStop() {
+	select {
+	case <-c.quit:
+		// already quit via FlushStop
+		return
+	default:
+	}
+
+	c.BaseService.OnStop()
+	c.flushTimer.Stop()
+	c.pingTimer.Stop()
+	c.chStatsTimer.Stop()
+	close(c.quit)
 	c.conn.Close() // nolint: errcheck
 
 	// We can't close pong safely here because
@@ -366,6 +409,7 @@ FOR_LOOP:
 			c.sendMonitor.Update(int(_n))
 			c.flush()
 		case <-c.quit:
+			close(c.done)
 			break FOR_LOOP
 		case <-c.send:
 			// Send some PacketMsgs

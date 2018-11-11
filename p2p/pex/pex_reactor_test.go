@@ -40,7 +40,7 @@ func TestPEXReactorBasic(t *testing.T) {
 	assert.NotEmpty(t, r.GetChannels())
 }
 
-func TestPEXReactorAddRemovePeer(t *testing.T) {
+func TestPEXReactorAddRemoveneer(t *testing.T) {
 	r, book := createReactor(&PEXReactorConfig{})
 	defer teardownReactor(book)
 
@@ -387,6 +387,7 @@ func newMockPeer() mockPeer {
 	return mp
 }
 
+func (mp mockPeer) FlushStop()         { mp.Stop() }
 func (mp mockPeer) ID() p2p.ID         { return mp.addr.ID }
 func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
 func (mp mockPeer) IsPersistent() bool { return mp.persistent }
