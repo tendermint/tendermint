@@ -1033,7 +1033,11 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		msg := &VoteMessage{vote}
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
-		return ps.peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(msg))
+		if ps.peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(msg)) {
+			ps.SetHasVote(vote)
+			return true
+		}
+		return false
 	}
 	return false
 }
@@ -1062,7 +1066,6 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false // Not something worth sending
 	}
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
-		ps.setHasVote(height, round, type_, index)
 		return votes.GetByIndex(index), true
 	}
 	return nil, false
