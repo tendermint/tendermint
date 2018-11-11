@@ -40,7 +40,7 @@ func TestPEXReactorBasic(t *testing.T) {
 	assert.NotEmpty(t, r.GetChannels())
 }
 
-func TestPEXReactorAddRemoveneer(t *testing.T) {
+func TestPEXReactorAddRemovePeer(t *testing.T) {
 	r, book := createReactor(&PEXReactorConfig{})
 	defer teardownReactor(book)
 

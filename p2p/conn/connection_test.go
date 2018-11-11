@@ -36,7 +36,7 @@ func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msg
 	return c
 }
 
-func TestMConnectionSendAndStop(t *testing.T) {
+func TestMConnectionSendFlushStop(t *testing.T) {
 	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
