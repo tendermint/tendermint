@@ -1,7 +1,6 @@
 package state
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -36,7 +35,6 @@ func TestTxFilter(t *testing.T) {
 	for i, tc := range testCases {
 		stateDB := dbm.NewDB("state", "memdb", os.TempDir())
 		state, err := LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
-		fmt.Println(state.ConsensusParams.BlockSize.MaxBytes)
 		require.NoError(t, err)
 
 		f := TxPreCheck(state)
