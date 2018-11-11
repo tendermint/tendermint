@@ -1,6 +1,6 @@
 # Pending
 
-## v0.26.1
+## v0.26.2
 
 *TBA*
 
@@ -24,9 +24,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS:
 
-### BUG FIXES:
-
-- [crypto/merkle] [\#2756](https://github.com/tendermint/tendermint/issues/2756) Fix crypto/merkle ProofOperators.Verify to check bounds on keypath parts.
-- [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
 - [mempool] \#2778 No longer send txs back to peers who sent it to you
-- [p2p] \#2771 Fix `peer-id` label name in prometheus metrics\
+
+### BUG FIXES:
