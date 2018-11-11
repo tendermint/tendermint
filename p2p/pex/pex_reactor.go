@@ -221,7 +221,11 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 		// 2) limit the output size
 		if r.config.SeedMode {
 			r.SendAddrs(src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
-			r.Switch.StopPeerGracefully(src)
+			go func() {
+				// TODO Fix properly #2092
+				time.Sleep(time.Second * 5)
+				r.Switch.StopPeerGracefully(src)
+			}()
 		} else {
 			r.SendAddrs(src, r.book.GetSelection())
 		}
