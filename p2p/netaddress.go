@@ -32,13 +32,10 @@ type NetAddress struct {
 	str string
 }
 
-// IDAddressString returns {protocol://}ID@host:port.
-func IDAddressString(id ID, hostPort string) string {
-	// we respect the protocol definition in here.
-	if p := strings.Index(hostPort, "://"); p > -1 {
-		return fmt.Sprintf("%s://%s@%s", hostPort[:p], id, hostPort[p+3:])
-	}
-
+// IDAddressString returns id@hostPort. It strips the leading
+// protocol from protocolHostPort if it exists.
+func IDAddressString(id ID, protocolHostPort string) string {
+	hostPort := removeProtocolIfDefined(protocolHostPort)
 	return fmt.Sprintf("%s@%s", id, hostPort)
 }
 
@@ -223,8 +220,20 @@ func (na *NetAddress) Routable() bool {
 // For IPv4 these are either a 0 or all bits set address. For IPv6 a zero
 // address or one that matches the RFC3849 documentation address format.
 func (na *NetAddress) Valid() bool {
+	if string(na.ID) != "" {
+		data, err := hex.DecodeString(string(na.ID))
+		if err != nil || len(data) != IDByteLength {
+			return false
+		}
+	}
 	return na.IP != nil && !(na.IP.IsUnspecified() || na.RFC3849() ||
 		na.IP.Equal(net.IPv4bcast))
+}
+
+// HasID returns true if the address has an ID.
+// NOTE: It does not check whether the ID is valid or not.
+func (na *NetAddress) HasID() bool {
+	return string(na.ID) != ""
 }
 
 // Local returns true if it is a local address.
