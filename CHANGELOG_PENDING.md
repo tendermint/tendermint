@@ -29,3 +29,5 @@ program](https://hackerone.com/tendermint).
 - [mempool] \#2855 add txs from Update to cache
 
 ### BUG FIXES:
+
+- [rpc] \#2808 RPC validators calls IncrementAccum if necessary
