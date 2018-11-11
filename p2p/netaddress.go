@@ -32,8 +32,10 @@ type NetAddress struct {
 	str string
 }
 
-// IDAddressString returns id@hostPort.
-func IDAddressString(id ID, hostPort string) string {
+// IDAddressString returns id@hostPort. It strips the leading
+// protocol from protocolHostPort if it exists.
+func IDAddressString(id ID, protocolHostPort string) string {
+	hostPort := removeProtocolIfDefined(protocolHostPort)
 	return fmt.Sprintf("%s@%s", id, hostPort)
 }
 
