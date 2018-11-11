@@ -8,12 +8,20 @@ Special thanks to external contributors on this release: @katakonst
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
+### IMPROVEMENTS:
+
+- [consensus] [\#2704](https://github.com/tendermint/tendermint/issues/2704) Simplify valid POL round logic
+- [docs] [\#2749](https://github.com/tendermint/tendermint/issues/2749) Deduplicate some ABCI docs
+- [mempool] More detailed log messages
+    - [\#2724](https://github.com/tendermint/tendermint/issues/2724)
+    - [\#2762](https://github.com/tendermint/tendermint/issues/2762)
+
 ### BUG FIXES:
 
-- [autofile] [\#2703] Do not panic when checking Head size
+- [autofile] [\#2703](https://github.com/tendermint/tendermint/issues/2703) Do not panic when checking Head size
 - [crypto/merkle] [\#2756](https://github.com/tendermint/tendermint/issues/2756) Fix crypto/merkle ProofOperators.Verify to check bounds on keypath parts.
 - [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
-- [p2p] \#2771 Fix `peer-id` label name in prometheus metrics
+- [p2p] [\#2771](https://github.com/tendermint/tendermint/issues/2771) Fix `peer-id` label name to `peer_id` in prometheus metrics
 - [p2p] [\#2797](https://github.com/tendermint/tendermint/pull/2797) Fix IDs in peer NodeInfo and require them for addresses
   in AddressBook
 - [p2p] [\#2797](https://github.com/tendermint/tendermint/pull/2797) Do not close conn immediately after sending pex addrs in seed mode. Partial fix for [\#2092](https://github.com/tendermint/tendermint/issues/2092).
@@ -323,8 +331,8 @@ BUG FIXES:
 *August 22nd, 2018*
 
 BUG FIXES:
-- [libs/autofile] \#2261 Fix log rotation so it actually happens.
-    - Fixes issues with consensus WAL growing unbounded ala \#2259
+- [libs/autofile] [\#2261](https://github.com/tendermint/tendermint/issues/2261) Fix log rotation so it actually happens.
+    - Fixes issues with consensus WAL growing unbounded ala [\#2259](https://github.com/tendermint/tendermint/issues/2259)
 
 ## 0.23.0
 
