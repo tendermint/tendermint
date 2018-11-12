@@ -22,6 +22,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES:
 
+- [eventbus] add proposer and proposal info to CompleteProposal event
+
 ### IMPROVEMENTS:
 
 ### BUG FIXES:

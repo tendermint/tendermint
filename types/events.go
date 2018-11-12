@@ -84,6 +84,7 @@ type EventDataRoundState struct {
 type EventDataCompleteProposal struct {
 	Height          int64   `json:"height"`
 	Round           int     `json:"round"`
+	Step            string  `json:"step"`
 	ProposerAddress Address `json:"proposer_address"`
 	ProposerIndex   int     `json:"proposer_index"`
 	BlockID         BlockID `json:"block_id"`

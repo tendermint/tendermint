@@ -127,6 +127,7 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 	edcp := types.EventDataCompleteProposal{
 		Height:          rs.Height,
 		Round:           rs.Round,
+		Step:            rs.Step.String(),
 		ProposerAddress: addr,
 		ProposerIndex:   idx,
 		BlockID:         blockId,
