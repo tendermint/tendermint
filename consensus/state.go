@@ -807,13 +807,13 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 
 func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 	logger := cs.Logger.With("height", height, "round", round)
-	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+	addr := cs.privValidator.GetAddress()
+
+	if !cs.Validators.HasAddress(addr) {
 		logger.Debug("Not sending proposalHearbeat. This node is not a validator", "addr", cs.privValidator.GetAddress(), "vals", cs.Validators)
 		return
 	}
-
 	counter := 0
-	addr := cs.privValidator.GetAddress()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	chainID := cs.state.ChainID
 	for {

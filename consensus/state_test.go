@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	tmevents "github.com/tendermint/tendermint/libs/events"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -1026,6 +1029,45 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), propBlockHash))
 	assert.True(t, rs.ValidBlockParts.Header().Equals(propBlockParts.Header()))
 	assert.True(t, rs.ValidRound == round)
+}
+
+// regression for #2518
+func TestNoHearbeatWhenNotValidator(t *testing.T) {
+	fmt.Fprintf(os.Stdout, "creating cs\n")
+
+	cs, _ := randConsensusState(4)
+	cs.Validators = types.NewValidatorSet(nil) // make sure we are not in the validator set
+
+	fmt.Fprintf(os.Stdout, "adding listener\n")
+	cs.evsw.AddListenerForEvent("testing", types.EventProposalHeartbeat,
+		func(data tmevents.EventData) {
+			t.Errorf("Should not have broadcasted heartbeat")
+		})
+	fmt.Fprintf(os.Stdout, "calling proposal\n")
+	go cs.proposalHeartbeat(10, 1)
+
+	fmt.Fprintf(os.Stdout, "waiting\n")
+	time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
+}
+
+// regression for #2518
+func TestHearbeatWhenWeAreValidator(t *testing.T) {
+	fmt.Fprintf(os.Stdout, "creating cs\n")
+
+	heartbeatTriggerCount := 0
+	cs, _ := randConsensusState(4)
+
+	fmt.Fprintf(os.Stdout, "adding listener\n")
+	cs.evsw.AddListenerForEvent("testing", types.EventProposalHeartbeat,
+		func(data tmevents.EventData) {
+			t.Log("EventProposalHeartbeat received")
+			heartbeatTriggerCount++
+		})
+	go cs.proposalHeartbeat(10, 1)
+
+	time.Sleep(proposalHeartbeatIntervalSeconds * time.Second * 2)
+
+	assert.True(t, heartbeatTriggerCount > 0)
 }
 
 // What we want:
