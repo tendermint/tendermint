@@ -32,10 +32,7 @@ func main() {
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
-	if err := rpcserver.StartHTTPServer(listener, mux, logger); err != nil {
-		cmn.Exit(err.Error())
-	}
-
+	go rpcserver.StartHTTPServer(listener, mux, logger)
 	// Wait forever
 	cmn.TrapSignal(func() {
 	})
