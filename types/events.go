@@ -88,9 +88,6 @@ type EventDataNewRound struct {
 	Step   string `json:"step"`
 	ProposerAddress Address `json:"proposer_address"`
 	ProposerIndex   int     `json:"proposer_index"`
-
-	// private, not exposed to websockets
-	RoundState interface{} `json:"-"`
 }
 
 type EventDataCompleteProposal struct {
