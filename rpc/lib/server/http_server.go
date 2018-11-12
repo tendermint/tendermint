@@ -28,7 +28,7 @@ const (
 	maxBodyBytes = int64(1000000) // 1MB
 )
 
-// StartHTTPServer starts an HTTP server on listenAddr with the given handler.
+// StartHTTPServer takes a listener and start an HTTP server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
 func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger) error {
 	err := http.Serve(
@@ -42,8 +42,7 @@ func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Log
 
 
 
-// StartHTTPAndTLSServer starts an HTTPS server on listenAddr with the given
-// handler.
+// StartHTTPAndTLSServer takes a listener and start an HTTP server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
 func StartHTTPAndTLSServer(
 	listener net.Listener,
