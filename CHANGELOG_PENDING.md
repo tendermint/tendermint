@@ -26,3 +26,6 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+=======
+
+* [rpc] \#2811 Allow integer IDs in JSON-RPC requests
