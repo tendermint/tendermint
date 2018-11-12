@@ -265,17 +265,8 @@ func NewNode(config *cfg.Config,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(
-			mempl.PreCheckAminoMaxBytes(
-				types.MaxDataBytesUnknownEvidence(
-					state.ConsensusParams.BlockSize.MaxBytes,
-					state.Validators.Size(),
-				),
-			),
-		),
-		mempl.WithPostCheck(
-			mempl.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
-		),
+		mempl.WithPreCheck(sm.TxPreCheck(state)),
+		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
 	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)

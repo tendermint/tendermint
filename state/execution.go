@@ -8,7 +8,6 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -180,13 +179,8 @@ func (blockExec *BlockExecutor) Commit(
 	err = blockExec.mempool.Update(
 		block.Height,
 		block.Txs,
-		mempool.PreCheckAminoMaxBytes(
-			types.MaxDataBytesUnknownEvidence(
-				state.ConsensusParams.BlockSize.MaxBytes,
-				state.Validators.Size(),
-			),
-		),
-		mempool.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
+		TxPreCheck(state),
+		TxPostCheck(state),
 	)
 
 	return res.Data, err
