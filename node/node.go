@@ -671,12 +671,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	if grpcListenAddr != "" {
 		listener, err := rpcserver.Listen(
 			grpcListenAddr, rpcserver.Config{MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections})
-		err = grpccore.StartGRPCServer(
-			listener,
-		)
 		if err != nil {
 			return nil, err
 		}
+		go grpccore.StartGRPCServer(listener)
 		listeners = append(listeners, listener)
 	}
 
