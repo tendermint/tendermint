@@ -119,8 +119,10 @@ func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 
 	ednr := types.EventDataNewRound{
 		HeightRoundStep: rs.heightRoundStep(),
-		ProposerAddress: addr,
-		ProposerIndex:   idx,
+		Proposer: types.ValidatorInfo{
+			Address: addr,
+			Index:   idx,
+		},
 	}
 	return ednr
 }

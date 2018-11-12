@@ -86,11 +86,15 @@ type EventDataRoundState struct {
 	RoundState interface{} `json:"-"`
 }
 
+type ValidatorInfo struct {
+	Address Address `json:"address"`
+	Index   int     `json:"index"`
+}
+
 type EventDataNewRound struct {
 	HeightRoundStep
 
-	ProposerAddress Address `json:"proposer_address"`
-	ProposerIndex   int     `json:"proposer_index"`
+	Proposer ValidatorInfo `json:"proposer"`
 }
 
 type EventDataCompleteProposal struct {

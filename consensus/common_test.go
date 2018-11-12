@@ -524,6 +524,31 @@ func ensureVote(voteCh <-chan interface{}, height int64, round int,
 	}
 }
 
+func ensureProposal(proposalCh <-chan interface{}, height int64, round int, propId types.BlockID) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewProposal event")
+	case ev := <-proposalCh:
+		rs, ok := ev.(types.EventDataCompleteProposal)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataCompleteProposal, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+		if !rs.BlockID.Equals(propId) {
+			panic("Proposed block does not match expected block")
+		}
+	}
+}
+
+
 func ensurePrecommit(voteCh <-chan interface{}, height int64, round int) {
 	ensureVote(voteCh, height, round, types.PrecommitType)
 }
