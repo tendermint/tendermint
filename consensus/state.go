@@ -806,6 +806,12 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 }
 
 func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
+	logger := cs.Logger.With("height", height, "round", round)
+	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+		logger.Debug("Not sending proposalHearbeat. This node is not a validator", "addr", cs.privValidator.GetAddress(), "vals", cs.Validators)
+		return
+	}
+
 	counter := 0
 	addr := cs.privValidator.GetAddress()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
@@ -1408,7 +1414,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 		return nil
 	}
 
-  // Verify POLRound, which must be -1 or in range [0, proposal.Round).
+  	// Verify POLRound, which must be -1 or in range [0, proposal.Round).
 	if proposal.POLRound < -1 ||
 		(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
 		return ErrInvalidProposalPOLRound
