@@ -134,7 +134,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	}
 
 	// check basic functionality works
-	req, err := types.MapToRequest(amino.NewCodec(), "TestWebsocketManager", "c", map[string]interface{}{"s": "a", "i": 10})
+	req, err := types.MapToRequest(amino.NewCodec(), types.JSONRPCStringID("TestWebsocketManager"), "c", map[string]interface{}{"s": "a", "i": 10})
 	require.NoError(t, err)
 	err = c.WriteJSON(req)
 	require.NoError(t, err)
