@@ -1047,20 +1047,12 @@ func TestNoHearbeatWhenNotValidator(t *testing.T) {
 
 // regression for #2518
 func TestHearbeatWhenWeAreValidator(t *testing.T) {
-	heartbeatTriggerCount := 0
 	cs, _ := randConsensusState(4)
+	heartbeatCh := subscribe(cs.eventBus, types.EventQueryProposalHeartbeat)
 
-	cs.evsw.AddListenerForEvent("testing", types.EventProposalHeartbeat,
-		func(data tmevents.EventData) {
-			t.Log("EventProposalHeartbeat received")
-			heartbeatTriggerCount++
-		})
 	go cs.proposalHeartbeat(10, 1)
+	ensureProposalHeartbeat(heartbeatCh)
 
-	time.Sleep(proposalHeartbeatIntervalSeconds * time.Second * 2)
-
-	cs.Stop()
-	assert.True(t, heartbeatTriggerCount > 0)
 }
 
 // What we want:
