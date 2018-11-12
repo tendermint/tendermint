@@ -810,7 +810,7 @@ func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 	addr := cs.privValidator.GetAddress()
 
 	if !cs.Validators.HasAddress(addr) {
-		logger.Debug("Not sending proposalHearbeat. This node is not a validator", "addr", cs.privValidator.GetAddress(), "vals", cs.Validators)
+		logger.Debug("Not sending proposalHearbeat. This node is not a validator", "addr", addr, "vals", cs.Validators)
 		return
 	}
 	counter := 0
