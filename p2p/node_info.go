@@ -216,7 +216,8 @@ OUTER_LOOP:
 // ListenAddr. Note that the ListenAddr is not authenticated and
 // may not match that address actually dialed if its an outbound peer.
 func (info DefaultNodeInfo) NetAddress() *NetAddress {
-	netAddr, err := NewNetAddressString(IDAddressString(info.ID(), info.ListenAddr))
+	idAddr := IDAddressString(info.ID(), info.ListenAddr)
+	netAddr, err := NewNetAddressString(idAddr)
 	if err != nil {
 		switch err.(type) {
 		case ErrNetAddressLookup:

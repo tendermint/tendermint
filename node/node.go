@@ -13,8 +13,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/tendermint/go-amino"
 
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -265,21 +265,14 @@ func NewNode(config *cfg.Config,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(
-			mempl.PreCheckAminoMaxBytes(
-				types.MaxDataBytesUnknownEvidence(
-					state.ConsensusParams.BlockSize.MaxBytes,
-					state.Validators.Size(),
-				),
-			),
-		),
-		mempl.WithPostCheck(
-			mempl.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
-		),
+		mempl.WithPreCheck(sm.TxPreCheck(state)),
+		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
 	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)
-	mempool.InitWAL() // no need to have the mempool wal during tests
+	if config.Mempool.WalEnabled() {
+		mempool.InitWAL() // no need to have the mempool wal during tests
+	}
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
@@ -585,6 +578,11 @@ func (n *Node) OnStop() {
 	// now stop the reactors
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
+
+	// stop mempool WAL
+	if n.config.Mempool.WalEnabled() {
+		n.mempoolReactor.Mempool.CloseWAL()
+	}
 
 	if err := n.transport.Close(); err != nil {
 		n.Logger.Error("Error closing transport", "err", err)

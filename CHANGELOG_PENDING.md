@@ -1,6 +1,6 @@
 # Pending
 
-## v0.26.1
+## v0.26.2
 
 *TBA*
 
@@ -25,3 +25,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+

@@ -3,8 +3,10 @@ package types
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
 func TestHeartbeatCopy(t *testing.T) {
@@ -57,4 +59,46 @@ func TestHeartbeatWriteSignBytes(t *testing.T) {
 		signBytes := nilHb.SignBytes(chainID)
 		require.Equal(t, string(signBytes), "null")
 	})
+}
+
+func TestHeartbeatValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName          string
+		malleateHeartBeat func(*Heartbeat)
+		expectErr         bool
+	}{
+		{"Good HeartBeat", func(hb *Heartbeat) {}, false},
+		{"Invalid address size", func(hb *Heartbeat) {
+			hb.ValidatorAddress = nil
+		}, true},
+		{"Negative validator index", func(hb *Heartbeat) {
+			hb.ValidatorIndex = -1
+		}, true},
+		{"Negative height", func(hb *Heartbeat) {
+			hb.Height = -1
+		}, true},
+		{"Negative round", func(hb *Heartbeat) {
+			hb.Round = -1
+		}, true},
+		{"Negative sequence", func(hb *Heartbeat) {
+			hb.Sequence = -1
+		}, true},
+		{"Missing signature", func(hb *Heartbeat) {
+			hb.Signature = nil
+		}, true},
+		{"Signature too big", func(hb *Heartbeat) {
+			hb.Signature = make([]byte, MaxSignatureSize+1)
+		}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			hb := &Heartbeat{
+				ValidatorAddress: secp256k1.GenPrivKey().PubKey().Address(),
+				Signature:        make([]byte, 4),
+				ValidatorIndex:   1, Height: 10, Round: 1}
+
+			tc.malleateHeartBeat(hb)
+			assert.Equal(t, tc.expectErr, hb.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }

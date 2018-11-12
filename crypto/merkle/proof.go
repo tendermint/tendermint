@@ -43,6 +43,9 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 	for i, op := range poz {
 		key := op.GetKey()
 		if len(key) != 0 {
+			if len(keys) == 0 {
+				return cmn.NewError("Key path has insufficient # of parts: expected no more keys but got %+v", string(key))
+			}
 			lastKey := keys[len(keys)-1]
 			if !bytes.Equal(lastKey, key) {
 				return cmn.NewError("Key mismatch on operation #%d: expected %+v but got %+v", i, string(lastKey), string(key))
