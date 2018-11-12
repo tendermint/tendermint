@@ -96,7 +96,7 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, err)
 	err = eventBus.PublishEventTimeoutWait(EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventNewRound(EventDataRoundState{})
+	err = eventBus.PublishEventNewRound(EventDataNewRound{})
 	require.NoError(t, err)
 	err = eventBus.PublishEventCompleteProposal(EventDataCompleteProposal{})
 	require.NoError(t, err)

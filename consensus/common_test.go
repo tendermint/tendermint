@@ -405,8 +405,24 @@ func ensureNewVote(voteCh <-chan interface{}, height int64, round int) {
 }
 
 func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
-	ensureNewEvent(roundCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewRound event")
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewRound event")
+	case ev := <-roundCh:
+		rs, ok := ev.(types.EventDataNewRound)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataNewRound, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+	}
 }
 
 func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, timeout int64) {

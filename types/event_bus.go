@@ -136,7 +136,7 @@ func (b *EventBus) PublishEventTimeoutWait(data EventDataRoundState) error {
 	return b.Publish(EventTimeoutWait, data)
 }
 
-func (b *EventBus) PublishEventNewRound(data EventDataRoundState) error {
+func (b *EventBus) PublishEventNewRound(data EventDataNewRound) error {
 	return b.Publish(EventNewRound, data)
 }
 

@@ -112,11 +112,23 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 	}
 }
 
-// CompleteProposalEvent returns information about a proposed block as an event.
-func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
+// NewRoundEvent returns the RoundState with proposer information as an event.
+func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 	addr := rs.Validators.GetProposer().Address
 	idx, _ := rs.Validators.GetByAddress(addr)
 
+	ednr := types.EventDataNewRound{
+		Height:          rs.Height,
+		Round:           rs.Round,
+		Step:            rs.Step.String(),
+		ProposerAddress: addr,
+		ProposerIndex:   idx,
+	}
+	return ednr
+}
+
+// CompleteProposalEvent returns information about a proposed block as an event.
+func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 	// We must construct BlockID from ProposalBlock and ProposalBlockParts
 	// cs.Proposal is not guaranteed to be set when this function is called
 	blockId := types.BlockID{
@@ -128,8 +140,6 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 		Height:          rs.Height,
 		Round:           rs.Round,
 		Step:            rs.Step.String(),
-		ProposerAddress: addr,
-		ProposerIndex:   idx,
 		BlockID:         blockId,
 	}
 	return edcp
