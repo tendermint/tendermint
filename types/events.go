@@ -72,28 +72,30 @@ type EventDataProposalHeartbeat struct {
 	Heartbeat *Heartbeat
 }
 
-// NOTE: This goes into the replay WAL
-type EventDataRoundState struct {
+type HeightRoundStep struct {
 	Height int64  `json:"height"`
 	Round  int    `json:"round"`
 	Step   string `json:"step"`
+}
+
+// NOTE: This goes into the replay WAL
+type EventDataRoundState struct {
+	HeightRoundStep
 
 	// private, not exposed to websockets
 	RoundState interface{} `json:"-"`
 }
 
 type EventDataNewRound struct {
-	Height int64  `json:"height"`
-	Round  int    `json:"round"`
-	Step   string `json:"step"`
+	HeightRoundStep
+
 	ProposerAddress Address `json:"proposer_address"`
 	ProposerIndex   int     `json:"proposer_index"`
 }
 
 type EventDataCompleteProposal struct {
-	Height          int64   `json:"height"`
-	Round           int     `json:"round"`
-	Step            string  `json:"step"`
+	HeightRoundStep
+
 	BlockID         BlockID `json:"block_id"`
 }
 

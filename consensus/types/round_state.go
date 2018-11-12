@@ -118,9 +118,7 @@ func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 	idx, _ := rs.Validators.GetByAddress(addr)
 
 	ednr := types.EventDataNewRound{
-		Height:          rs.Height,
-		Round:           rs.Round,
-		Step:            rs.Step.String(),
+		HeightRoundStep: rs.heightRoundStep(),
 		ProposerAddress: addr,
 		ProposerIndex:   idx,
 	}
@@ -137,9 +135,7 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 	}
 
 	edcp := types.EventDataCompleteProposal{
-		Height:          rs.Height,
-		Round:           rs.Round,
-		Step:            rs.Step.String(),
+		HeightRoundStep: rs.heightRoundStep(),
 		BlockID:         blockId,
 	}
 	return edcp
@@ -151,12 +147,19 @@ func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 	// TODO: if we want to avoid this, we may need synchronous events after all
 	rsCopy := *rs
 	edrs := types.EventDataRoundState{
-		Height:     rs.Height,
-		Round:      rs.Round,
-		Step:       rs.Step.String(),
+		HeightRoundStep: rs.heightRoundStep(),
 		RoundState: &rsCopy,
 	}
 	return edrs
+}
+
+func (rs *RoundState) heightRoundStep() types.HeightRoundStep {
+	hrs := types.HeightRoundStep{
+		Height:     rs.Height,
+		Round:      rs.Round,
+		Step:       rs.Step.String(),
+	}
+	return hrs
 }
 
 // String returns a string
