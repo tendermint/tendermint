@@ -25,4 +25,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+2518 - fixes a bug where non-validators will send proposalHearbeats when `create_empty_blocks=false` or `create_empty_blocks_interval > 0`
 
