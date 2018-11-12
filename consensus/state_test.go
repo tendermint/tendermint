@@ -1041,6 +1041,7 @@ func TestNoHearbeatWhenNotValidator(t *testing.T) {
 		})
 	go cs.proposalHeartbeat(10, 1)
 
+	cs.Stop()
 	time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
 }
 
@@ -1058,6 +1059,7 @@ func TestHearbeatWhenWeAreValidator(t *testing.T) {
 
 	time.Sleep(proposalHeartbeatIntervalSeconds * time.Second * 2)
 
+	cs.Stop()
 	assert.True(t, heartbeatTriggerCount > 0)
 }
 
