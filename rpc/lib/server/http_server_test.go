@@ -32,6 +32,7 @@ func TestMaxOpenConnections(t *testing.T) {
 	})
 	l, err := Listen("tcp://127.0.0.1:0", Config{MaxOpenConnections: max})
 	require.NoError(t, err)
+	defer l.Close()
 	go StartHTTPServer(l, mux, log.TestingLogger())
 
 	// Make N GET calls to the server.
