@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"github.com/rs/cors"
 	"os"
 	"path/filepath"
 	"time"
@@ -315,18 +314,9 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	return nil
 }
 
-// returns true if cors is enabled.
+// IsCorsEnabled returns true if cross-origin resource sharing is enabled.
 func (cfg *RPCConfig) IsCorsEnabled() bool {
 	return len(cfg.CORSAllowedOrigins) != 0
-}
-
-// returns cors options for RPC endpoint
-func (cfg *RPCConfig) CorsOptions() cors.Options {
-	return cors.Options{
-		AllowedOrigins: cfg.CORSAllowedOrigins,
-		AllowedMethods: cfg.CORSAllowedMethods,
-		AllowedHeaders: cfg.CORSAllowedHeaders,
-	}
 }
 
 //-----------------------------------------------------------------------------

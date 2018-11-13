@@ -12,7 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/tendermint/tendermint/rpc/client"
-	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -34,17 +34,18 @@ func GetClients() []client.Client {
 }
 
 func TestCorsEnabled(t *testing.T) {
+	origin := rpctest.GetConfig().RPC.CORSAllowedOrigins[0]
 	remote := strings.Replace(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http", -1)
 
 	req, err := http.NewRequest("GET", remote, nil)
 	require.Nil(t, err, "%+v", err)
-	req.Header.Set("Origin", "https://tendermint.com/")
+	req.Header.Set("Origin", origin)
 	c := &http.Client{}
 	resp, err := c.Do(req)
 	defer resp.Body.Close()
 
 	require.Nil(t, err, "%+v", err)
-	assert.Equal(t, resp.Header.Get("Access-Control-Allow-Origin"), "*")
+	assert.Equal(t, resp.Header.Get("Access-Control-Allow-Origin"), origin)
 }
 
 // Make sure status is correct (we connect properly)
