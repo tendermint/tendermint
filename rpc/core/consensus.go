@@ -193,7 +193,10 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	peers := p2pPeers.Peers().List()
 	peerStates := make([]ctypes.PeerStateInfo, len(peers))
 	for i, peer := range peers {
-		peerState := peer.Get(types.PeerStateKey).(*cm.PeerState)
+		peerState, ok := peer.Get(types.PeerStateKey).(*cm.PeerState)
+		if !ok { // peer does not have a state yet
+			continue
+		}
 		peerStateJSON, err := peerState.ToJSON()
 		if err != nil {
 			return nil, err
