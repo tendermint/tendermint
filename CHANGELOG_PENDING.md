@@ -16,6 +16,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 * Go API
 
+  * [\#2825](https://github.com/tendermint/tendermint/pull/2825) Add Composite() field to PubKey interface
+
 * Blockchain Protocol
 
 * P2P Protocol
