@@ -60,42 +60,34 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 ```
 {
-  "genesis_time": "2018-07-09T22:43:06.255718641Z",
-  "chain_id": "chain-IAkWsK",
+  "genesis_time": "2018-11-13T18:11:50.277637Z",
+  "chain_id": "test-chain-s4ui7D",
+  "consensus_params": {
+    "block_size": {
+      "max_bytes": "22020096",
+      "max_gas": "-1"
+    },
+    "evidence": {
+      "max_age": "100000"
+    },
+    "validator": {
+      "pub_key_types": [
+        "ed25519"
+      ]
+    }
+  },
   "validators": [
     {
+      "address": "39C04A480B54AB258A45355A5E48ADDED9956C65",
       "pub_key": {
         "type": "tendermint/PubKeyEd25519",
-        "value": "oX8HhKsErMluxI0QWNSR8djQMSupDvHdAYrHwP7n73k="
+        "value": "DMEMMj1+thrkUCGocbvvKzXeaAtRslvX9MWtB+smuIA="
       },
-      "power": "1",
-      "name": "node0"
-    },
-    {
-      "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value": "UZNSJA9zmeFQj36Rs296lY+WFQ4Rt6s7snPpuKypl5I="
-      },
-      "power": "1",
-      "name": "node1"
-    },
-    {
-      "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value": "i9GrM6/MHB4zjCelMZBUYHNXYIzl4n0RkDCVmmLhS/o="
-      },
-      "power": "1",
-      "name": "node2"
-    },
-    {
-      "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value": "0qq7954l87trEqbQV9c7d1gurnjTGMxreXc848ZZ5aw="
-      },
-      "power": "1",
-      "name": "node3"
+      "power": "10",
+      "name": ""
     }
-  ]
+  ],
+  "app_hash": ""
 }
 ```
 
