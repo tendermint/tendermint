@@ -1042,7 +1042,9 @@ func TestNoHearbeatWhenNotValidator(t *testing.T) {
 	go cs.proposalHeartbeat(10, 1)
 
 	cs.Stop()
-	time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
+
+	// if a faulty implementation sends an event, we should wait here a little bit to make sure we don't miss it by prematurely leaving the test method
+	time.Sleep((proposalHeartbeatIntervalSeconds  + 1) * time.Second)
 }
 
 // regression for #2518
