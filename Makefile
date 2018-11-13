@@ -17,8 +17,6 @@ all: check build test install
 
 check: check_tools get_vendor_deps
 
-slurp:
-	echo $(uname -s)
 ########################################
 ### Build Tendermint
 
