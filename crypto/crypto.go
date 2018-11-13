@@ -24,6 +24,8 @@ type PubKey interface {
 	Bytes() []byte
 	VerifyBytes(msg []byte, sig []byte) bool
 	Equals(PubKey) bool
+
+	// Composite defines whether it's a composite key.
 	Composite() bool
 }
 
