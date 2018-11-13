@@ -161,3 +161,5 @@ func (pubKey PubKeySecp256k1) Equals(other crypto.PubKey) bool {
 	}
 	return false
 }
+
+func (pubKey PubKeySecp256k1) Composite() bool { return false }

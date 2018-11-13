@@ -168,3 +168,5 @@ func (pubKey PubKeyEd25519) Equals(other crypto.PubKey) bool {
 		return false
 	}
 }
+
+func (pubKey PubKeyEd25519) Composite() bool { return false }

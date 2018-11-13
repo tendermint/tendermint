@@ -90,3 +90,5 @@ func (pk *PubKeyMultisigThreshold) Equals(other crypto.PubKey) bool {
 	}
 	return true
 }
+
+func (pk *PubKeyMultisigThreshold) Composite() bool { return true }
