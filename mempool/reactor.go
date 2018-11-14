@@ -170,7 +170,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
-    if peerState.GetHeight() < memTx.Height()-1 { // Allow for a lag of 1 block
+		if peerState.GetHeight() < memTx.Height()-1 { // Allow for a lag of 1 block
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
@@ -178,20 +178,19 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		skip := false
 		for i := 0; i < len(memTx.senders); i++ {
 			if peerID == memTx.senders[i] {
-				next = next.Next()
 				skip = true
 				break
 			}
 		}
-		if skip {
-			continue
-		}
-		// send memTx
-		msg := &TxMessage{Tx: memTx.tx}
-		success := peer.Send(MempoolChannel, cdc.MustMarshalBinaryBare(msg))
-		if !success {
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-			continue
+
+		if !skip {
+			// send memTx
+			msg := &TxMessage{Tx: memTx.tx}
+			success := peer.Send(MempoolChannel, cdc.MustMarshalBinaryBare(msg))
+			if !success {
+				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+				continue
+			}
 		}
 
 		select {
