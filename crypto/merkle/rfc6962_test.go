@@ -33,6 +33,9 @@ func TestRFC6962Hasher(t *testing.T) {
 		got  []byte
 		want string
 	}{
+		// Since creating a merkle tree of no leaves is unsupported here, we skip
+		// the corresponding trillian test vector.
+
 		// Check that the empty hash is not the same as the hash of an empty leaf.
 		// echo -n 00 | xxd -r -p | sha256sum
 		{
