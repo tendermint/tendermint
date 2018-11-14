@@ -145,6 +145,9 @@ type BaseConfig struct {
 	// Output level for logging
 	LogLevel string `mapstructure:"log_level"`
 
+	//Structured Logging as JSON or colored text
+	StructuredLog bool `mapstructure:"structured_log"`
+
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis_file"`
 
@@ -179,6 +182,7 @@ func DefaultBaseConfig() BaseConfig {
 		ProxyApp:          "tcp://127.0.0.1:26658",
 		ABCI:              "socket",
 		LogLevel:          DefaultPackageLogLevels(),
+		StructuredLog:     false,
 		ProfListenAddress: "",
 		FastSync:          true,
 		FilterPeers:       false,
