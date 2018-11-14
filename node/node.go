@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"strings"
 	"time"
 
@@ -223,18 +224,15 @@ func NewNode(config *cfg.Config,
 	// If an address is provided, listen on the socket for a
 	// connection from an external signing process.
 	if config.PrivValidatorListenAddr != "" {
-		var (
-			// TODO: persist this key so external signer
-			// can actually authenticate us
-			privKey = ed25519.GenPrivKey()
-			pvsc    = privval.NewTCPVal(
-				logger.With("module", "privval"),
-				config.PrivValidatorListenAddr,
-				privKey,
-			)
-		)
-
-		if err := pvsc.Start(); err != nil {
+		pvsc, err := createPrivVal(config.PrivValidatorListenAddr, logger)
+		if err != nil {
+			return nil, fmt.Errorf("Error initializing private validator client: %v", err)
+		}
+		pvServ, ok := pvsc.(cmn.Service)
+		if !ok {
+			return nil, fmt.Errorf("Error starting private validator client: %v does not implement common.Service", pvsc)
+		}
+		if err := pvServ.Start(); err != nil {
 			return nil, fmt.Errorf("Error starting private validator client: %v", err)
 		}
 
@@ -503,6 +501,30 @@ func NewNode(config *cfg.Config,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
 	return node, nil
+}
+
+func createPrivVal(laddr string, logger log.Logger) (types.PrivValidator, error) {
+	u, err := url.Parse(laddr)
+	if err != nil {
+		return nil, err
+	}
+	switch u.Scheme {
+	case "tcp":
+		return privval.NewTCPVal(
+			logger.With("module", "privval"),
+			strings.Replace(laddr, "tcp://", "", 1),
+			// TODO: persist this key so external signer
+			// can actually authenticate us
+			ed25519.GenPrivKey(),
+		), nil
+	case "unix":
+		return privval.NewIPCVal(
+			logger.With("module", "privval"),
+			strings.Replace(laddr, "unix://", "", 1),
+		), nil
+	default:
+		return nil, fmt.Errorf("unknown scheme %q, use either tcp or unix", u.Scheme)
+	}
 }
 
 // OnStart starts the Node. It implements cmn.Service.

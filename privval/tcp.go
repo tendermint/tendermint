@@ -59,11 +59,11 @@ type TCPVal struct {
 	cmn.BaseService
 	*RemoteSignerClient
 
-	addr           string
-	acceptDeadline time.Duration
-	connTimeout    time.Duration
-	connHeartbeat  time.Duration
-	privKey        ed25519.PrivKeyEd25519
+	addr             string
+	acceptDeadline   time.Duration
+	connTimeout      time.Duration
+	connHeartbeat    time.Duration
+	secretConPrivKey ed25519.PrivKeyEd25519
 
 	conn       net.Conn
 	listener   net.Listener
@@ -78,14 +78,14 @@ var _ types.PrivValidator = (*TCPVal)(nil)
 func NewTCPVal(
 	logger log.Logger,
 	socketAddr string,
-	privKey ed25519.PrivKeyEd25519,
+	scPrivKey ed25519.PrivKeyEd25519,
 ) *TCPVal {
 	sc := &TCPVal{
-		addr:           socketAddr,
-		acceptDeadline: acceptDeadline,
-		connTimeout:    connTimeout,
-		connHeartbeat:  connHeartbeat,
-		privKey:        privKey,
+		addr:             socketAddr,
+		acceptDeadline:   acceptDeadline,
+		connTimeout:      connTimeout,
+		connHeartbeat:    connHeartbeat,
+		secretConPrivKey: scPrivKey,
 	}
 
 	sc.BaseService = *cmn.NewBaseService(logger, "TCPVal", sc)
@@ -163,7 +163,7 @@ func (sc *TCPVal) acceptConnection() (net.Conn, error) {
 
 	}
 
-	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey)
+	conn, err = p2pconn.MakeSecretConnection(conn, sc.secretConPrivKey)
 	if err != nil {
 		return nil, err
 	}
