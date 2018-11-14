@@ -319,7 +319,7 @@ func (mem *Mempool) checkTxFromPeer(tx types.Tx, cb func(*abci.Response), peerID
 	}
 
 	// CACHE
-	if !mem.cache.Push(tx, peerID) {
+	if !mem.cache.PushTxFromPeer(tx, peerID) {
 		return ErrTxInCache
 	}
 	// END CACHE
@@ -378,8 +378,8 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response, peerID ui
 				counter:   mem.counter,
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
-				senders: []uint16{peerID},
-				tx:      tx,
+				senders:   []uint16{peerID},
+				tx:        tx,
 			}
 			mem.txs.PushBack(memTx)
 			mem.logger.Info("Added good transaction",
@@ -633,7 +633,7 @@ func (memTx *mempoolTx) Height() int64 {
 
 type txCache interface {
 	Reset()
-	Push(tx types.Tx, peerID uint16) bool
+	PushTxFromPeer(tx types.Tx, peerID uint16) bool
 	Remove(tx types.Tx)
 }
 
@@ -665,9 +665,9 @@ func (cache *mapTxCache) Reset() {
 	cache.mtx.Unlock()
 }
 
-// Push adds the given tx to the cache and returns true. It returns false if tx
+// PushTxFromPeer adds the given tx to the cache and returns true. It returns false if tx
 // is already in the cache.
-func (cache *mapTxCache) Push(tx types.Tx, peerID uint16) bool {
+func (cache *mapTxCache) PushTxFromPeer(tx types.Tx, peerID uint16) bool {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
 
@@ -721,6 +721,6 @@ type nopTxCache struct{}
 
 var _ txCache = (*nopTxCache)(nil)
 
-func (nopTxCache) Reset()                     {}
-func (nopTxCache) Push(types.Tx, uint16) bool { return true }
-func (nopTxCache) Remove(types.Tx)            {}
+func (nopTxCache) Reset()                               {}
+func (nopTxCache) PushTxFromPeer(types.Tx, uint16) bool { return true }
+func (nopTxCache) Remove(types.Tx)                      {}

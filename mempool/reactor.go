@@ -21,6 +21,7 @@ const (
 
 	maxMsgSize                 = 1048576 // 1MB TODO make it configurable
 	peerCatchupSleepIntervalMS = 100     // If peer is behind, sleep this amount
+	unknownPeerID              = 0
 )
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
