@@ -678,18 +678,18 @@ func (cache *mapTxCache) PushTxFromPeer(tx types.Tx, peerID uint16) bool {
 		cache.list.MoveToFront(moved)
 		memTx, succ := moved.Value.(*mempoolTx)
 		// succ would be false if tx was reaped
-		if succ {
-			for i := 0; i < len(memTx.senders); i++ {
-				if peerID == memTx.senders[i] {
-					// TODO: consider punishing peer for dups,
-					// its non-trivial since invalid txs can become valid,
-					// but they can spam the same tx with little cost to them atm.
-					return false
-				}
-			}
-			memTx.senders = append(memTx.senders, peerID)
+		if !succ {
+			return false
 		}
-		return false
+		for i := 0; i < len(memTx.senders); i++ {
+			if peerID == memTx.senders[i] {
+				// TODO: consider punishing peer for dups,
+				// its non-trivial since invalid txs can become valid,
+				// but they can spam the same tx with little cost to them atm.
+				return false
+			}
+		}
+		memTx.senders = append(memTx.senders, peerID)
 	}
 
 	if cache.list.Len() >= cache.size {

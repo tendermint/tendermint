@@ -32,7 +32,7 @@ type MempoolReactor struct {
 	config  *cfg.MempoolConfig
 	Mempool *Mempool
 
-	idMtx   *sync.RWMutex
+	idMtx   sync.RWMutex
 	nextID  uint16 // assumes that a node will never have over 65536 peers
 	peerMap map[p2p.ID]uint16
 }
@@ -43,7 +43,6 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 		config:  config,
 		Mempool: mempool,
 
-		idMtx:   &sync.RWMutex{},
 		peerMap: make(map[p2p.ID]uint16),
 		nextID:  1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
 	}
