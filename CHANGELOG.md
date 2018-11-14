@@ -134,6 +134,8 @@ increasing attention to backwards compatibility. Thanks for bearing with us!
 - [abci] [\#2557](https://github.com/tendermint/tendermint/issues/2557) Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
 - [abci] [\#2662](https://github.com/tendermint/tendermint/issues/2662) Add `BlockVersion` and `P2PVersion` to `RequestInfo`
 - [crypto/merkle] [\#2298](https://github.com/tendermint/tendermint/issues/2298) General Merkle Proof scheme for chaining various types of Merkle trees together
+- [docs/architecture] [\#1181](https://github.com/tendermint/tendermint/issues/1181) S
+plit immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
 - Additional Metrics

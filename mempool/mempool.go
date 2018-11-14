@@ -306,6 +306,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 func (mem *Mempool) checkTxFromPeer(tx types.Tx, cb func(*abci.Response), peerID uint16) (err error) {
 	mem.proxyMtx.Lock()
+	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
 
 	if mem.Size() >= mem.config.Size {
