@@ -182,7 +182,7 @@ func NewMempool(
 	} else {
 		mempool.cache = nopTxCache{}
 	}
-	proxyAppConn.SetResponseCallback(mempool.resCb(0))
+	proxyAppConn.SetResponseCallback(mempool.resCb(unknownPeerID))
 	for _, option := range options {
 		option(mempool)
 	}
@@ -301,7 +301,7 @@ func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
-	return mem.checkTxFromPeer(tx, cb, 0)
+	return mem.checkTxFromPeer(tx, cb, unknownPeerID)
 }
 
 func (mem *Mempool) checkTxFromPeer(tx types.Tx, cb func(*abci.Response), peerID uint16) (err error) {
