@@ -14,9 +14,8 @@ type Config struct {
 	MaxOpenConnections int
 }
 
-// StartGRPCServer starts a new gRPC BroadcastAPIServer, listening on
-// protoAddr, in a goroutine. Returns a listener and an error, if it fails to
-// parse an address.
+// StartGRPCServer starts a new gRPC BroadcastAPIServer using the given net.Listener.
+// NOTE: This function blocks - you may want to call it in a go-routine.
 func StartGRPCServer(ln net.Listener) error {
 	grpcServer := grpc.NewServer()
 	RegisterBroadcastAPIServer(grpcServer, &broadcastAPI{})

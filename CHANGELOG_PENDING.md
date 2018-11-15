@@ -16,6 +16,9 @@ program](https://hackerone.com/tendermint).
 * Apps
 
 * Go API
+  - [rpc] \#2791 Functions that start HTTP servers are now blocking:
+    - Impacts: StartHTTPServer, StartHTTPAndTLSServer, and StartGRPCServer,
+    - These functions now take a `net.Listener` instead of an address
 
 * Blockchain Protocol
 

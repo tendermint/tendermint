@@ -5,13 +5,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"golang.org/x/net/netutil"
 	"net"
 	"net/http"
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
+	"golang.org/x/net/netutil"
 
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -28,8 +29,9 @@ const (
 	maxBodyBytes = int64(1000000) // 1MB
 )
 
-// StartHTTPServer takes a listener and start an HTTP server with the given handler.
+// StartHTTPServer takes a listener and starts an HTTP server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
+// NOTE: This function blocks - you may want to call it in a go-routine.
 func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger) error {
 	err := http.Serve(
 		listener,
@@ -40,10 +42,9 @@ func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Log
 	return err
 }
 
-
-
-// StartHTTPAndTLSServer takes a listener and start an HTTP server with the given handler.
+// StartHTTPAndTLSServer takes a listener and starts an HTTPS server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
+// NOTE: This function blocks - you may want to call it in a go-routine.
 func StartHTTPAndTLSServer(
 	listener net.Listener,
 	handler http.Handler,
@@ -178,7 +179,6 @@ func MustListen(addr string, config Config) net.Listener {
 	}
 	return l
 }
-
 
 // Listen starts a new net.Listener on the given address.
 // It returns an error if the address is invalid or the call to Listen() fails.
