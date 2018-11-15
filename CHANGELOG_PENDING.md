@@ -21,6 +21,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 * P2P Protocol
 
 ### FEATURES:
+- [log] new `log_format` config option, which can be set to 'plain' for colored
+  text or 'json' for JSON output
 
 ### IMPROVEMENTS:
 
