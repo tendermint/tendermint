@@ -1,12 +1,13 @@
 # Pending
 
-## v0.26.2
+## v0.26.3
 
-*TBA*
+*TBD*
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -20,10 +21,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 * P2P Protocol
 
+
 ### FEATURES:
 
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
 2518 - fixes a bug where non-validators will send proposalHearbeats when `create_empty_blocks=false` or `create_empty_blocks_interval > 0`
-

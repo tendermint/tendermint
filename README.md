@@ -41,7 +41,7 @@ please [contact us](mailto:partners@tendermint.com) and [join the chat](https://
 ## Security
 
 To report a security vulnerability, see our [bug bounty
-program](https://tendermint.com/security).
+program](https://hackerone.com/tendermint)
 
 For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.md)
 
@@ -51,14 +51,18 @@ Requirement|Notes
 ---|---
 Go version | Go1.10 or higher
 
-## Install
+## Documentation
+
+Complete documentation can be found on the [website](https://tendermint.com/docs/).
+
+### Install
 
 See the [install instructions](/docs/introduction/install.md)
 
-## Quick Start
+### Quick Start
 
-- [Single node](/docs/tendermint-core/using-tendermint.md)
-- [Local cluster using docker-compose](/networks/local)
+- [Single node](/docs/introduction/quick-start.md)
+- [Local cluster using docker-compose](/docs/networks/docker-compose.md)
 - [Remote cluster using terraform and ansible](/docs/networks/terraform-and-ansible.md)
 - [Join the Cosmos testnet](https://cosmos.network/testnet)
 
@@ -91,6 +95,7 @@ Additional documentation is found [here](/docs/tools).
 
 ### Research
 
+* [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
 * [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
 * [Original Whitepaper](https://tendermint.com/static/docs/tendermint.pdf)
 * [Blog](https://blog.cosmos.network/tendermint/home)

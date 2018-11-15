@@ -41,6 +41,10 @@
   version = "=1.2.0"
 
 [[constraint]]
+  name = "github.com/rs/cors"
+  version = "1.6.0"
+
+[[constraint]]
   name = "github.com/pkg/errors"
   version = "=0.8.0"
 
