@@ -185,7 +185,9 @@ func (p *peer) OnStart() error {
 	return nil
 }
 
-// OnStop implements BaseService.
+// FlushStop mimics OnStop but additionally ensures that all successful
+// .Send() calls will get flushed before closing the connection.
+// NOTE: it is not safe to call this method more than once.
 func (p *peer) FlushStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
