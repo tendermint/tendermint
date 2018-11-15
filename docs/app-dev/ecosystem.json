@@ -175,35 +175,5 @@
       "language": "Javascript",
       "author": "Dennis McKinnon"
     }
-  ],
-  "deploymentTools": [
-    {
-      "name": "mintnet-kubernetes",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Docker and Kubernetes",
-      "author": "Tendermint",
-      "description": "Deploy a Tendermint test network using Google's kubernetes"
-    },
-    {
-      "name": "terraforce",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Terraform",
-      "author": "Tendermint",
-      "description": "Terraform + our custom terraforce tool; deploy a production Tendermint network with load balancing over multiple AWS availability zones"
-    },
-    {
-      "name": "ansible-tendermint",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Ansible",
-      "author": "Tendermint",
-      "description": "Ansible playbooks + Tendermint"
-    },
-    {
-      "name": "brooklyn-tendermint",
-      "url": "https://github.com/cloudsoft/brooklyn-tendermint",
-      "technology": "Clocker for Apache Brooklyn ",
-      "author": "Cloudsoft",
-      "description": "Deploy a tendermint test network in docker containers "
-    }
   ]
 }
