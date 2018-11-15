@@ -39,6 +39,9 @@ db_dir = "data"
 # Output level for logging
 log_level = "state:info,*:error"
 
+# Output format: 'plain' (colored text) or 'json'
+log_format = "plain"
+
 ##### additional base config options #####
 
 # The ID of the chain to join (should be signed with every transaction and vote)
