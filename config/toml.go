@@ -86,6 +86,9 @@ db_dir = "{{ js .BaseConfig.DBPath }}"
 # Output level for logging, including package level options
 log_level = "{{ .BaseConfig.LogLevel }}"
 
+# Output format: 'plain' (colored text) or 'json'
+log_format = "{{ .BaseConfig.LogFormat }}"
+
 ##### additional base config options #####
 
 # Path to the JSON file containing the initial validator set and other meta data
@@ -110,9 +113,6 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # If true, query the ABCI app on connecting to a new peer
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
-
-# Output format: 'plain' (colored text) or 'json'
-log_format = "{{ .BaseConfig.LogFormat }}"
 
 ##### advanced configuration options #####
 
