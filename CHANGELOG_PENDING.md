@@ -26,6 +26,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS:
 
+- [log] [\#2765](https://github.com/tendermint/tendermint/issues/2765) Make "Update to validators" msg value pretty
+
 ### BUG FIXES:
 
 - [abci] unlock mutex in localClient so even when app panics (e.g. during CheckTx), consensus continue working

@@ -256,8 +256,7 @@ func execBlockOnProxyApp(
 
 	valUpdates := abciResponses.EndBlock.ValidatorUpdates
 	if len(valUpdates) > 0 {
-		// TODO: cleanup the formatting
-		logger.Info("Updates to validators", "updates", valUpdates)
+		logger.Info("Updates to validators", "updates", cdc.MustMarshalJSON(valUpdates))
 	}
 
 	return abciResponses, nil
