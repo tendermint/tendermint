@@ -43,6 +43,8 @@ func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterConcrete(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader", nil)
 	cdc.RegisterConcrete(EventDataTx{}, "tendermint/event/Tx", nil)
 	cdc.RegisterConcrete(EventDataRoundState{}, "tendermint/event/RoundState", nil)
+	cdc.RegisterConcrete(EventDataNewRound{}, "tendermint/event/NewRound", nil)
+	cdc.RegisterConcrete(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal", nil)
 	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
 	cdc.RegisterConcrete(EventDataProposalHeartbeat{}, "tendermint/event/ProposalHeartbeat", nil)
 	cdc.RegisterConcrete(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates", nil)
@@ -78,6 +80,27 @@ type EventDataRoundState struct {
 
 	// private, not exposed to websockets
 	RoundState interface{} `json:"-"`
+}
+
+type ValidatorInfo struct {
+	Address Address `json:"address"`
+	Index   int     `json:"index"`
+}
+
+type EventDataNewRound struct {
+	Height int64  `json:"height"`
+	Round  int    `json:"round"`
+	Step   string `json:"step"`
+
+	Proposer ValidatorInfo `json:"proposer"`
+}
+
+type EventDataCompleteProposal struct {
+	Height int64  `json:"height"`
+	Round  int    `json:"round"`
+	Step   string `json:"step"`
+
+	BlockID         BlockID `json:"block_id"`
 }
 
 type EventDataVote struct {

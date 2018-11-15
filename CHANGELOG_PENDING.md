@@ -29,6 +29,8 @@ program](https://hackerone.com/tendermint).
 - [log] new `log_format` config option, which can be set to 'plain' for colored
   text or 'json' for JSON output
 
+- [types] \#2767 New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
+
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
