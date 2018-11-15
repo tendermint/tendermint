@@ -6,7 +6,7 @@ This code of conduct applies to all projects run by the Tendermint/COSMOS team a
 
 
 # Conduct
-## Contact: adrian@tendermint.com
+## Contact: conduct@tendermint.com
 
 * We are committed to providing a friendly, safe and welcoming environment for all, regardless of level of experience, gender, gender identity and expression, sexual orientation, disability, personal appearance, body size, race, ethnicity, age, religion, nationality, or other similar characteristic.
 
