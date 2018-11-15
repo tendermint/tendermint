@@ -29,7 +29,7 @@ program](https://hackerone.com/tendermint).
 - [log] new `log_format` config option, which can be set to 'plain' for colored
   text or 'json' for JSON output
 
-- [eventbus] create new event types for NewRound and CompleteProposal. add proposed block info to CompleteProposal event and proposer info to NewRound event
+- [types] \#2767 New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
 
 ### IMPROVEMENTS:
 

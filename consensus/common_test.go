@@ -548,7 +548,6 @@ func ensureProposal(proposalCh <-chan interface{}, height int64, round int, prop
 	}
 }
 
-
 func ensurePrecommit(voteCh <-chan interface{}, height int64, round int) {
 	ensureVote(voteCh, height, round, types.PrecommitType)
 }

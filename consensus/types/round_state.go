@@ -117,16 +117,15 @@ func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 	addr := rs.Validators.GetProposer().Address
 	idx, _ := rs.Validators.GetByAddress(addr)
 
-	ednr := types.EventDataNewRound{
-		Height:     rs.Height,
-		Round:      rs.Round,
-		Step:       rs.Step.String(),
+	return types.EventDataNewRound{
+		Height: rs.Height,
+		Round:  rs.Round,
+		Step:   rs.Step.String(),
 		Proposer: types.ValidatorInfo{
 			Address: addr,
 			Index:   idx,
 		},
 	}
-	return ednr
 }
 
 // CompleteProposalEvent returns information about a proposed block as an event.
@@ -138,13 +137,12 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 		PartsHeader: rs.ProposalBlockParts.Header(),
 	}
 
-	edcp := types.EventDataCompleteProposal{
-		Height:     rs.Height,
-		Round:      rs.Round,
-		Step:       rs.Step.String(),
-		BlockID:         blockId,
+	return types.EventDataCompleteProposal{
+		Height:  rs.Height,
+		Round:   rs.Round,
+		Step:    rs.Step.String(),
+		BlockID: blockId,
 	}
-	return edcp
 }
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
@@ -152,13 +150,12 @@ func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 	// copy the RoundState.
 	// TODO: if we want to avoid this, we may need synchronous events after all
 	rsCopy := *rs
-	edrs := types.EventDataRoundState{
+	return types.EventDataRoundState{
 		Height:     rs.Height,
 		Round:      rs.Round,
 		Step:       rs.Step.String(),
 		RoundState: &rsCopy,
 	}
-	return edrs
 }
 
 // String returns a string
