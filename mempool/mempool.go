@@ -300,6 +300,7 @@ func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 // CONTRACT: Either cb will get called, or err returned.
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	mem.proxyMtx.Lock()
+	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
 
 	if mem.Size() >= mem.config.Size {

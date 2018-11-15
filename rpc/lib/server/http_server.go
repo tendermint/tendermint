@@ -106,11 +106,6 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 		rww := &ResponseWriterWrapper{-1, w}
 		begin := time.Now()
 
-		// Common headers
-		origin := r.Header.Get("Origin")
-		rww.Header().Set("Access-Control-Allow-Origin", origin)
-		rww.Header().Set("Access-Control-Allow-Credentials", "true")
-		rww.Header().Set("Access-Control-Expose-Headers", "X-Server-Time")
 		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
 
 		defer func() {

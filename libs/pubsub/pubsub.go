@@ -30,9 +30,15 @@
 //
 //     s.Subscribe(ctx, sub, qry, out)
 //     defer func() {
-//         for range out {
-//             // drain out to make sure we don't block
-//         }
+//         // drain out to make sure we don't block
+//     LOOP:
+//		     for {
+// 		     	   select {
+// 		     	   case <-out:
+// 		     	   default:
+// 		     	   	   break LOOP
+// 		     	   }
+// 		     }
 //         s.UnsubscribeAll(ctx, sub)
 //     }()
 //     for msg := range out {
