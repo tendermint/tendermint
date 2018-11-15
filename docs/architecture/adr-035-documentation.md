@@ -25,13 +25,6 @@ This is done while maintaining synchrony between the docs and code, i.e., the we
 
 The two points above have been implemented; the `config.js` has a Google Analytics identifier and the documentation workflow has been up and running largely without problems for several months. Details about the documentation build & workflow can be found [here](../DOCS_README.md)
 
-### TODO
-
-- Organize & improve the Tendermint documentation using: https://www.divio.com/blog/documentation/
-- Implement full-text search
-- Improve anonymity of Google Analytics
-- Move RPC description to Swagger
-
 ## Consequences
 
 Because of the organizational seperation between Tendermint & Cosmos, there is a challenge of "what goes where" for certain aspects of documentation.
