@@ -45,7 +45,7 @@ func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Log
 		WriteTimeout:   readWriteTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
-	err = s.Serve(listener)
+	err := s.Serve(listener)
 	logger.Info("RPC HTTP server stopped", "err", err)
 
 	return err
@@ -74,7 +74,7 @@ func StartHTTPAndTLSServer(
 		WriteTimeout:   readWriteTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
-	err = s.ServeTLS(listener, certFile, keyFile)
+	err := s.ServeTLS(listener, certFile, keyFile)
 
 	logger.Error("RPC HTTPS server stopped", "err", err)
 	return err
