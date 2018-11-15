@@ -26,9 +26,12 @@ program](https://hackerone.com/tendermint).
 
 
 ### FEATURES:
-- [log] new `log_format` config option, which can be set to 'plain' for colored
+
+- [log] \#2843 New `log_format` config option, which can be set to 'plain' for colored
   text or 'json' for JSON output
 
 ### IMPROVEMENTS:
+
+- [p2p] \#2857 "Send failed" is logged at debug level instead of error.
 
 ### BUG FIXES:
