@@ -60,6 +60,9 @@ prof_laddr = ""
 # so the app can decide if we should keep the connection or not
 filter_peers = false
 
+# Output format: 'plain' (colored text) or 'json'
+log_format = "plain"
+
 ##### advanced configuration options #####
 
 ##### rpc server configuration options #####

@@ -111,6 +111,9 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
 
+# Output format: 'plain' (colored text) or 'json'
+log_format = "{{ .BaseConfig.LogFormat }}"
+
 ##### advanced configuration options #####
 
 ##### rpc server configuration options #####

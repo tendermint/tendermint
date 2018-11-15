@@ -2,13 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -21,8 +19,6 @@ var InitFilesCmd = &cobra.Command{
 	Short: "Initialize Tendermint",
 	RunE:  initFiles,
 }
-
-var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 func initFiles(cmd *cobra.Command, args []string) error {
 	return initFilesWithConfig(config)
