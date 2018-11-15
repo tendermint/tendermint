@@ -41,7 +41,7 @@ please [contact us](mailto:partners@tendermint.com) and [join the chat](https://
 ## Security
 
 To report a security vulnerability, see our [bug bounty
-program](https://https://hackerone.com/tendermint)
+program](https://hackerone.com/tendermint)
 
 For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.md)
 
