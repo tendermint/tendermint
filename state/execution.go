@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -107,7 +108,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	fail.Fail() // XXX
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, abciResponses)
+	state, err = updateState(blockExec.logger, state, blockID, &block.Header, abciResponses)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -254,11 +255,6 @@ func execBlockOnProxyApp(
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
-	valUpdates := abciResponses.EndBlock.ValidatorUpdates
-	if len(valUpdates) > 0 {
-		logger.Info("Updates to validators", "updates", cdc.MustMarshalJSON(valUpdates))
-	}
-
 	return abciResponses, nil
 }
 
@@ -353,6 +349,7 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 
 // updateState returns a new State updated according to the header and responses.
 func updateState(
+	logger log.Logger,
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
@@ -372,6 +369,8 @@ func updateState(
 		}
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
+
+		logger.Info("Updates to validators", "updates", makeValidatorUpdatesLogString(abciResponses.EndBlock.ValidatorUpdates))
 	}
 
 	// Update validator accums and set state variables.
@@ -464,4 +463,20 @@ func ExecCommitBlock(
 	}
 	// ResponseCommit has no error or log, just data
 	return res.Data, nil
+}
+
+// Make pretty string for validatorUpdates logging
+func makeValidatorUpdatesLogString(validatorUpdates []abci.ValidatorUpdate) string {
+	validators, err := types.PB2TM.ValidatorUpdates(validatorUpdates)
+
+	if err != nil {
+		return err.Error()
+	}
+
+	var updates []string
+	for _, validator := range validators {
+		updates = append(updates, fmt.Sprintf("%s:%d", validator.Address, validator.VotingPower))
+	}
+
+	return strings.Join(updates, ",")
 }
