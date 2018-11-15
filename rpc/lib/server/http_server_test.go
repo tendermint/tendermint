@@ -74,4 +74,6 @@ func TestStartHTTPAndTLSServer(t *testing.T) {
 	// test failure
 	err = StartHTTPAndTLSServer(listener, mux, "", "", log.TestingLogger())
 	require.IsType(t, (*os.PathError)(nil), err)
+
+	// TODO: test that starting the server can actually work
 }

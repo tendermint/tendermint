@@ -125,11 +125,7 @@ func setup() {
 	if err != nil {
 		panic(err)
 	}
-	go func() {
-		if err := server.StartHTTPServer(listener1, mux, tcpLogger); err != nil {
-			panic(err)
-		}
-	}()
+	go server.StartHTTPServer(listener1, mux, tcpLogger)
 
 	unixLogger := logger.With("socket", "unix")
 	mux2 := http.NewServeMux()
@@ -138,11 +134,7 @@ func setup() {
 	wm.SetLogger(unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	listener2, err := server.Listen(unixAddr, server.Config{})
-	go func() {
-		if err = server.StartHTTPServer(listener2, mux2, unixLogger); err != nil {
-			panic(err)
-		}
-	}()
+	go server.StartHTTPServer(listener2, mux2, unixLogger)
 
 	// wait for servers to start
 	time.Sleep(time.Second * 2)

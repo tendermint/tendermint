@@ -19,6 +19,7 @@ const (
 // StartProxy will start the websocket manager on the client,
 // set up the rpc routes to proxy via the given client,
 // and start up an http/rpc server on the location given by bind (eg. :1234)
+// NOTE: This function blocks - you may want to call it in a go-routine.
 func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpenConnections int) error {
 	err := c.Start()
 	if err != nil {

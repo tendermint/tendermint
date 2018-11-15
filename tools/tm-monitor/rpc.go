@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"net"
 	"net/http"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -9,7 +10,7 @@ import (
 	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
 )
 
-func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) {
+func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) net.Listener {
 	routes := routes(m)
 
 	mux := http.NewServeMux()
@@ -20,9 +21,8 @@ func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) {
 	if err != nil {
 		panic(err)
 	}
-	if err := rpc.StartHTTPServer(listener, mux, logger); err != nil {
-		panic(err)
-	}
+	go rpc.StartHTTPServer(listener, mux, logger)
+	return listener
 }
 
 func routes(m *monitor.Monitor) map[string]*rpc.RPCFunc {
