@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.26.2
+
+*November 15th, 2018*
+
+Special thanks to external contributors on this release: @hleb-albau, @zhuzeyu
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### FEATURES:
+
+- [rpc] [\#2582](https://github.com/tendermint/tendermint/issues/2582) Enable CORS on RPC API (@hleb-albau)
+
+### BUG FIXES:
+
+- [abci] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Unlock mutex in localClient so even when app panics (e.g. during CheckTx), consensus continue working
+- [abci] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Fix DATA RACE in localClient
+- [amino] [\#2822](https://github.com/tendermint/tendermint/issues/2822) Update to v0.14.1 to support compiling on 32-bit platforms
+- [rpc] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Drain channel before calling Unsubscribe(All) in `/broadcast_tx_commit`
+
 ## v0.26.1
 
 *November 11, 2018*
@@ -134,6 +153,8 @@ increasing attention to backwards compatibility. Thanks for bearing with us!
 - [abci] [\#2557](https://github.com/tendermint/tendermint/issues/2557) Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
 - [abci] [\#2662](https://github.com/tendermint/tendermint/issues/2662) Add `BlockVersion` and `P2PVersion` to `RequestInfo`
 - [crypto/merkle] [\#2298](https://github.com/tendermint/tendermint/issues/2298) General Merkle Proof scheme for chaining various types of Merkle trees together
+- [docs/architecture] [\#1181](https://github.com/tendermint/tendermint/issues/1181) S
+plit immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
 - Additional Metrics

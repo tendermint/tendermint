@@ -242,6 +242,18 @@ type RPCConfig struct {
 	// TCP or UNIX socket address for the RPC server to listen on
 	ListenAddress string `mapstructure:"laddr"`
 
+	// A list of origins a cross-domain request can be executed from.
+	// If the special '*' value is present in the list, all origins will be allowed.
+	// An origin may contain a wildcard (*) to replace 0 or more characters (i.e.: http://*.domain.com).
+	// Only one wildcard can be used per origin.
+	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins"`
+
+	// A list of methods the client is allowed to use with cross-domain requests.
+	CORSAllowedMethods []string `mapstructure:"cors_allowed_methods"`
+
+	// A list of non simple headers the client is allowed to use with cross-domain requests.
+	CORSAllowedHeaders []string `mapstructure:"cors_allowed_headers"`
+
 	// TCP or UNIX socket address for the gRPC server to listen on
 	// NOTE: This server only supports /broadcast_tx_commit
 	GRPCListenAddress string `mapstructure:"grpc_laddr"`
@@ -269,8 +281,10 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress: "tcp://0.0.0.0:26657",
-
+		ListenAddress:          "tcp://0.0.0.0:26657",
+		CORSAllowedOrigins:     []string{},
+		CORSAllowedMethods:     []string{"HEAD", "GET", "POST"},
+		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 		GRPCListenAddress:      "",
 		GRPCMaxOpenConnections: 900,
 
@@ -298,6 +312,11 @@ func (cfg *RPCConfig) ValidateBasic() error {
 		return errors.New("max_open_connections can't be negative")
 	}
 	return nil
+}
+
+// IsCorsEnabled returns true if cross-origin resource sharing is enabled.
+func (cfg *RPCConfig) IsCorsEnabled() bool {
+	return len(cfg.CORSAllowedOrigins) != 0
 }
 
 //-----------------------------------------------------------------------------
