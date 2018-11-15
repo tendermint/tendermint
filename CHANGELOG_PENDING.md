@@ -29,4 +29,6 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [rpc] \#2780 Add read and write timeouts (3s) to HTTP servers
+
 ### BUG FIXES:
