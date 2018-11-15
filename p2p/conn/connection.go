@@ -84,8 +84,11 @@ type MConnection struct {
 	errored       uint32
 	config        MConnConfig
 
-	quit       chan struct{}
-	done       chan struct{}
+	// Closing quitSendRoutine will cause
+	// doneSendRoutine to close.
+	quitSendRoutine chan struct{}
+	doneSendRoutine chan struct{}
+
 	flushTimer *cmn.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer  *cmn.RepeatTimer   // send pings periodically
 
@@ -191,8 +194,8 @@ func (c *MConnection) OnStart() error {
 	if err := c.BaseService.OnStart(); err != nil {
 		return err
 	}
-	c.quit = make(chan struct{})
-	c.done = make(chan struct{})
+	c.quitSendRoutine = make(chan struct{})
+	c.doneSendRoutine = make(chan struct{})
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", c.config.PingInterval)
 	c.pongTimeoutCh = make(chan bool, 1)
@@ -202,18 +205,21 @@ func (c *MConnection) OnStart() error {
 	return nil
 }
 
-// FlushStop replicates the logic of OnStop,
-// but flushes all pending msgs before closing the connection.
+// FlushStop replicates the logic of OnStop.
+// It additionally ensures that all successful
+// .Send() calls will get flushed before closing
+// the connection.
+// NOTE: it is not safe to call this method more than once.
 func (c *MConnection) FlushStop() {
 	c.BaseService.OnStop()
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
 	c.chStatsTimer.Stop()
-	if c.quit != nil {
-		close(c.quit)
+	if c.quitSendRoutine != nil {
+		close(c.quitSendRoutine)
 		// wait until the sendRoutine exits
 		// so we dont race on calling sendSomePacketMsgs
-		<-c.done
+		<-c.doneSendRoutine
 	}
 
 	// Send and flush all pending msgs.
@@ -241,7 +247,7 @@ func (c *MConnection) FlushStop() {
 // OnStop implements BaseService
 func (c *MConnection) OnStop() {
 	select {
-	case <-c.quit:
+	case <-c.quitSendRoutine:
 		// already quit via FlushStop
 		return
 	default:
@@ -251,7 +257,7 @@ func (c *MConnection) OnStop() {
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
 	c.chStatsTimer.Stop()
-	close(c.quit)
+	close(c.quitSendRoutine)
 	c.conn.Close() // nolint: errcheck
 
 	// We can't close pong safely here because
@@ -408,8 +414,8 @@ FOR_LOOP:
 			}
 			c.sendMonitor.Update(int(_n))
 			c.flush()
-		case <-c.quit:
-			close(c.done)
+		case <-c.quitSendRoutine:
+			close(c.doneSendRoutine)
 			break FOR_LOOP
 		case <-c.send:
 			// Send some PacketMsgs
