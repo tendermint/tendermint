@@ -48,13 +48,13 @@ Examples:
 		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	}
 
-	m := startMonitor(flag.Arg(0))
+	monitor := startMonitor(flag.Arg(0))
 
-	startRPC(listenAddr, m, logger)
+	listener := startRPC(listenAddr, monitor, logger)
 
 	var ton *Ton
 	if !noton {
-		ton = NewTon(m)
+		ton = NewTon(monitor)
 		ton.Start()
 	}
 
@@ -62,7 +62,8 @@ Examples:
 		if !noton {
 			ton.Stop()
 		}
-		m.Stop()
+		monitor.Stop()
+		listener.Close()
 	})
 }
 

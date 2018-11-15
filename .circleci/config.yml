@@ -92,6 +92,7 @@ jobs:
           command: |
             export PATH="$GOBIN:$PATH"
             make get_tools
+            make get_dev_tools
       - run:
           name: dependencies
           command: |
