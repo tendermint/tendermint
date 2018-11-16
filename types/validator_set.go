@@ -79,11 +79,7 @@ func (vals *ValidatorSet) incrementAccum() {
 	// Shift by avg accum.
 	avgAccum := vals.computeAvgAccum()
 	for _, val := range vals.Validators {
-		if avgAccum > 0 {
-			val.Accum = safeSubClip(val.Accum, avgAccum)
-		} else {
-			val.Accum = safeAddClip(val.Accum, avgAccum)
-		}
+		val.Accum = safeSubClip(val.Accum, avgAccum)
 		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 

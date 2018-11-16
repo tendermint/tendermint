@@ -317,6 +317,7 @@ func TestValidatorSetIncrementAccumOverflows(t *testing.T) {
 }
 
 func TestValidatorSetIncrementAccumUnderflows(t *testing.T) {
+	t.Skip("TODO find a combination of accums where we'd expect the individual accums to underflow")
 	// NewValidatorSet calls IncrementAccum(1)
 	vset := NewValidatorSet([]*Validator{
 		0: {Address: []byte("a"), VotingPower: math.MaxInt64, Accum: math.MinInt64},
