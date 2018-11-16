@@ -16,6 +16,9 @@ program](https://hackerone.com/tendermint).
 * Apps
 
 * Go API
+  - [rpc] \#2791 Functions that start HTTP servers are now blocking:
+    - Impacts: StartHTTPServer, StartHTTPAndTLSServer, and StartGRPCServer,
+    - These functions now take a `net.Listener` instead of an address
 
 * Blockchain Protocol
 
@@ -24,7 +27,14 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
+- [log] \#2843 New `log_format` config option, which can be set to 'plain' for colored
+  text or 'json' for JSON output
+
+- [types] \#2767 New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
+
 ### IMPROVEMENTS:
+
+- [p2p] \#2857 "Send failed" is logged at debug level instead of error.
 
 ### BUG FIXES:
 2518 - fixes a bug where non-validators will send proposalHearbeats when `create_empty_blocks=false` or `create_empty_blocks_interval > 0`
