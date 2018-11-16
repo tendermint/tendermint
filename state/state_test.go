@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/tendermint/libs/log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -228,7 +229,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
-		state, err = updateState(state, blockID, &header, responses)
+		state, err = updateState(log.TestingLogger(), state, blockID, &header, responses)
 		assert.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
 		saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
@@ -280,7 +281,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 
 	// Save state etc.
 	var err error
-	state, err = updateState(state, blockID, &header, responses)
+	state, err = updateState(log.TestingLogger(), state, blockID, &header, responses)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
@@ -359,7 +360,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			cp = params[changeIndex]
 		}
 		header, blockID, responses := makeHeaderPartsResponsesParams(state, i, cp)
-		state, err = updateState(state, blockID, &header, responses)
+		state, err = updateState(log.TestingLogger(), state, blockID, &header, responses)
 
 		require.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1

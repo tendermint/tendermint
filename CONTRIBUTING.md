@@ -27,8 +27,8 @@ Of course, replace `ebuchman` with your git handle.
 
 To pull in updates from the origin repo, run
 
-    * `git fetch upstream`
-    * `git rebase upstream/master` (or whatever branch you want)
+  * `git fetch upstream`
+  * `git rebase upstream/master` (or whatever branch you want)
 
 Please don't make Pull Requests to `master`.
 
@@ -49,6 +49,11 @@ as apps, tools, and the core, should use dep.
 
 Run `dep status` to get a list of vendor dependencies that may not be
 up-to-date.
+
+When updating dependencies, please only update the particular dependencies you
+need. Instead of running `dep ensure -update`, which will update anything,
+specify exactly the dependency you want to update, eg.
+`dep ensure -update github.com/tendermint/go-amino`.
 
 ## Vagrant
 
@@ -73,34 +78,41 @@ tested by circle using `go test -v -race ./...`. If not, they will need a
 `circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
 includes its continuous integration status using a badge in the `README.md`.
 
+## Changelog
+
 ## Branching Model and Release
 
-User-facing repos should adhere to the branching model: http://nvie.com/posts/a-successful-git-branching-model/.
-That is, these repos should be well versioned, and any merge to master requires a version bump and tagged release.
-
-Libraries need not follow the model strictly, but would be wise to,
-especially `go-p2p` and `go-rpc`, as their versions are referenced in tendermint core.
+All repos should adhere to the branching model: http://nvie.com/posts/a-successful-git-branching-model/.
+This means that all pull-requests should be made against develop. Any merge to
+master constitutes a tagged release.
 
 ### Development Procedure:
 - the latest state of development is on `develop`
 - `develop` must never fail `make test`
-- no --force onto `develop` (except when reverting a broken commit, which should seldom happen)
+- never --force onto `develop` (except when reverting a broken commit, which should seldom happen)
 - create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`)
-- before submitting a pull request, begin `git rebase` on top of `develop`
+- make changes and update the `CHANGELOG_PENDING.md` to record your change
+- before submitting a pull request, run `git rebase` on top of the latest `develop`
 
 ### Pull Merge Procedure:
-- ensure pull branch is rebased on develop
+- ensure pull branch is based on a recent develop
 - run `make test` to ensure that all tests pass
 - merge pull request
-- the `unstable` branch may be used to aggregate pull merges before testing once
-- push master may request that pull requests be rebased on top of `unstable`
+- the `unstable` branch may be used to aggregate pull merges before fixing tests
 
 ### Release Procedure:
 - start on `develop`
 - run integration tests (see `test_integrations` in Makefile)
-- prepare changelog/release issue
+- prepare changelog:
+    - copy `CHANGELOG_PENDING.md` to `CHANGELOG.md`
+    - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
+      all issues
+    - run `bash ./scripts/authors.sh` to get a list of authors since the latest
+      release, and add the github aliases of external contributors to the top of
+      the changelog. To lookup an alias from an email, try `bash
+      ./scripts/authors.sh <email>`
 - bump versions
-- push to release-vX.X.X to run the extended integration tests on the CI
+- push to release/vX.X.X to run the extended integration tests on the CI
 - merge to master
 - merge master back to develop
 

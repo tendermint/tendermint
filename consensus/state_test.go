@@ -197,9 +197,8 @@ func TestStateBadProposal(t *testing.T) {
 	stateHash[0] = byte((stateHash[0] + 1) % 255)
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
-	proposal := types.NewProposal(
-		vs2.Height, round, -1,
-		types.BlockID{propBlock.Hash(), propBlockParts.Header()})
+	blockID := types.BlockID{propBlock.Hash(), propBlockParts.Header()}
+	proposal := types.NewProposal(vs2.Height, round, -1, blockID)
 	if err := vs2.SignProposal(config.ChainID(), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
@@ -213,7 +212,7 @@ func TestStateBadProposal(t *testing.T) {
 	startTestRound(cs1, height, round)
 
 	// wait for proposal
-	ensureNewProposal(proposalCh, height, round)
+	ensureProposal(proposalCh, height, round, blockID)
 
 	// wait for prevote
 	ensurePrevote(voteCh, height, round)

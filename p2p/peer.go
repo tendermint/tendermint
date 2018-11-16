@@ -17,6 +17,7 @@ const metricsTickerDuration = 10 * time.Second
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
+	FlushStop()
 
 	ID() ID           // peer's cryptographic ID
 	RemoteIP() net.IP // remote IP of the connection
@@ -184,6 +185,15 @@ func (p *peer) OnStart() error {
 	return nil
 }
 
+// FlushStop mimics OnStop but additionally ensures that all successful
+// .Send() calls will get flushed before closing the connection.
+// NOTE: it is not safe to call this method more than once.
+func (p *peer) FlushStop() {
+	p.metricsTicker.Stop()
+	p.BaseService.OnStop()
+	p.mconn.FlushStop() // stop everything and close the conn
+}
+
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
@@ -240,7 +250,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	}
 	res := p.mconn.Send(chID, msgBytes)
 	if res {
-		p.metrics.PeerSendBytesTotal.With("peer-id", string(p.ID())).Add(float64(len(msgBytes)))
+		p.metrics.PeerSendBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
 	}
 	return res
 }
@@ -255,7 +265,7 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	}
 	res := p.mconn.TrySend(chID, msgBytes)
 	if res {
-		p.metrics.PeerSendBytesTotal.With("peer-id", string(p.ID())).Add(float64(len(msgBytes)))
+		p.metrics.PeerSendBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
 	}
 	return res
 }
@@ -330,7 +340,7 @@ func (p *peer) metricsReporter() {
 				sendQueueSize += float64(chStatus.SendQueueSize)
 			}
 
-			p.metrics.PeerPendingSendBytes.With("peer-id", string(p.ID())).Set(sendQueueSize)
+			p.metrics.PeerPendingSendBytes.With("peer_id", string(p.ID())).Set(sendQueueSize)
 		case <-p.Quit():
 			return
 		}

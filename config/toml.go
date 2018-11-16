@@ -86,6 +86,9 @@ db_dir = "{{ js .BaseConfig.DBPath }}"
 # Output level for logging, including package level options
 log_level = "{{ .BaseConfig.LogLevel }}"
 
+# Output format: 'plain' (colored text) or 'json'
+log_format = "{{ .BaseConfig.LogFormat }}"
+
 ##### additional base config options #####
 
 # Path to the JSON file containing the initial validator set and other meta data
@@ -118,6 +121,17 @@ filter_peers = {{ .BaseConfig.FilterPeers }}
 
 # TCP or UNIX socket address for the RPC server to listen on
 laddr = "{{ .RPC.ListenAddress }}"
+
+# A list of origins a cross-domain request can be executed from
+# Default value '[]' disables cors support
+# Use '["*"]' to allow any origin
+cors_allowed_origins = "{{ .RPC.CORSAllowedOrigins }}"
+
+# A list of methods the client is allowed to use with cross-domain requests
+cors_allowed_methods = "{{ .RPC.CORSAllowedMethods }}"
+
+# A list of non simple headers the client is allowed to use with cross-domain requests
+cors_allowed_headers = "{{ .RPC.CORSAllowedHeaders }}"
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit

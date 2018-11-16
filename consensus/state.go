@@ -207,18 +207,16 @@ func (cs *ConsensusState) GetState() sm.State {
 // GetLastHeight returns the last height committed.
 // If there were no blocks, returns 0.
 func (cs *ConsensusState) GetLastHeight() int64 {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	return cs.RoundState.Height - 1
 }
 
 // GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 	cs.mtx.RLock()
-	defer cs.mtx.RUnlock()
-
 	rs := cs.RoundState // copy
+	cs.mtx.RUnlock()
 	return &rs
 }
 
@@ -226,7 +224,6 @@ func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-
 	return cdc.MarshalJSON(cs.RoundState)
 }
 
@@ -234,7 +231,6 @@ func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
 func (cs *ConsensusState) GetRoundStateSimpleJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-
 	return cdc.MarshalJSON(cs.RoundState.RoundStateSimple())
 }
 
@@ -248,15 +244,15 @@ func (cs *ConsensusState) GetValidators() (int64, []*types.Validator) {
 // SetPrivValidator sets the private validator account for signing votes.
 func (cs *ConsensusState) SetPrivValidator(priv types.PrivValidator) {
 	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
 	cs.privValidator = priv
+	cs.mtx.Unlock()
 }
 
 // SetTimeoutTicker sets the local timer. It may be useful to overwrite for testing.
 func (cs *ConsensusState) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
 	cs.timeoutTicker = timeoutTicker
+	cs.mtx.Unlock()
 }
 
 // LoadCommit loads the commit for a given height.
@@ -776,7 +772,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
 	cs.triggeredTimeoutPrecommit = false
 
-	cs.eventBus.PublishEventNewRound(cs.RoundStateEvent())
+	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())
 	cs.metrics.Rounds.Set(float64(round))
 
 	// Wait for txs to be available in the mempool
@@ -1408,9 +1404,9 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 		return nil
 	}
 
-	// Verify POLRound, which must be -1 or between 0 and proposal.Round exclusive.
-	if proposal.POLRound != -1 &&
-		(proposal.POLRound < 0 || proposal.Round <= proposal.POLRound) {
+	// Verify POLRound, which must be -1 or in range [0, proposal.Round).
+	if proposal.POLRound < -1 ||
+		(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
 		return ErrInvalidProposalPOLRound
 	}
 
@@ -1466,7 +1462,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
-		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
+		cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent())
 
 		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)

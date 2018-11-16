@@ -29,90 +29,38 @@ const (
 	maxBodyBytes = int64(1000000) // 1MB
 )
 
-// StartHTTPServer starts an HTTP server on listenAddr with the given handler.
+// StartHTTPServer takes a listener and starts an HTTP server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
-func StartHTTPServer(
-	listenAddr string,
-	handler http.Handler,
-	logger log.Logger,
-	config Config,
-) (listener net.Listener, err error) {
-	var proto, addr string
-	parts := strings.SplitN(listenAddr, "://", 2)
-	if len(parts) != 2 {
-		return nil, errors.Errorf(
-			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
-			listenAddr,
-		)
-	}
-	proto, addr = parts[0], parts[1]
-
-	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listenAddr))
-	listener, err = net.Listen(proto, addr)
-	if err != nil {
-		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
-	}
-	if config.MaxOpenConnections > 0 {
-		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
-	}
-
-	go func() {
-		err := http.Serve(
-			listener,
-			RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
-		)
-		logger.Info("RPC HTTP server stopped", "err", err)
-	}()
-	return listener, nil
+// NOTE: This function blocks - you may want to call it in a go-routine.
+func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger) error {
+	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
+	err := http.Serve(
+		listener,
+		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
+	)
+	logger.Info("RPC HTTP server stopped", "err", err)
+	return err
 }
 
-// StartHTTPAndTLSServer starts an HTTPS server on listenAddr with the given
-// handler.
+// StartHTTPAndTLSServer takes a listener and starts an HTTPS server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
+// NOTE: This function blocks - you may want to call it in a go-routine.
 func StartHTTPAndTLSServer(
-	listenAddr string,
+	listener net.Listener,
 	handler http.Handler,
 	certFile, keyFile string,
 	logger log.Logger,
-	config Config,
-) (listener net.Listener, err error) {
-	var proto, addr string
-	parts := strings.SplitN(listenAddr, "://", 2)
-	if len(parts) != 2 {
-		return nil, errors.Errorf(
-			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
-			listenAddr,
-		)
-	}
-	proto, addr = parts[0], parts[1]
-
-	logger.Info(
-		fmt.Sprintf(
-			"Starting RPC HTTPS server on %s (cert: %q, key: %q)",
-			listenAddr,
-			certFile,
-			keyFile,
-		),
-	)
-	listener, err = net.Listen(proto, addr)
-	if err != nil {
-		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
-	}
-	if config.MaxOpenConnections > 0 {
-		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
-	}
-
-	err = http.ServeTLS(
+) error {
+	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
+		listener.Addr(), certFile, keyFile))
+	err := http.ServeTLS(
 		listener,
 		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		certFile,
 		keyFile,
 	)
-	if err != nil {
-		logger.Error("RPC HTTPS server stopped", "err", err)
-		return nil, err
-	}
-	return listener, nil
+	logger.Info("RPC HTTPS server stopped", "err", err)
+	return err
 }
 
 func WriteRPCResponseHTTPError(
@@ -151,11 +99,6 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 		rww := &ResponseWriterWrapper{-1, w}
 		begin := time.Now()
 
-		// Common headers
-		origin := r.Header.Get("Origin")
-		rww.Header().Set("Access-Control-Allow-Origin", origin)
-		rww.Header().Set("Access-Control-Allow-Credentials", "true")
-		rww.Header().Set("Access-Control-Expose-Headers", "X-Server-Time")
 		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
 
 		defer func() {
@@ -217,4 +160,26 @@ type maxBytesHandler struct {
 func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, h.n)
 	h.h.ServeHTTP(w, r)
+}
+
+// Listen starts a new net.Listener on the given address.
+// It returns an error if the address is invalid or the call to Listen() fails.
+func Listen(addr string, config Config) (listener net.Listener, err error) {
+	parts := strings.SplitN(addr, "://", 2)
+	if len(parts) != 2 {
+		return nil, errors.Errorf(
+			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
+			addr,
+		)
+	}
+	proto, addr := parts[0], parts[1]
+	listener, err = net.Listen(proto, addr)
+	if err != nil {
+		return nil, errors.Errorf("Failed to listen on %v: %v", addr, err)
+	}
+	if config.MaxOpenConnections > 0 {
+		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
+	}
+
+	return listener, nil
 }

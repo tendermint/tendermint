@@ -79,30 +79,24 @@ func TotalVotingPower(vals []Validators) int64{
 ConsensusParams define various limits for blockchain data structures.
 Like validator sets, they are set during genesis and can be updated by the application through ABCI.
 
-```
+```go
 type ConsensusParams struct {
 	BlockSize
-	TxSize
-	BlockGossip
-	EvidenceParams
+	Evidence
+	Validator
 }
 
 type BlockSize struct {
-	MaxBytes        int
+	MaxBytes        int64
 	MaxGas          int64
 }
 
-type TxSize struct {
-	MaxBytes int
-	MaxGas   int64
-}
-
-type BlockGossip struct {
-	BlockPartSizeBytes int
-}
-
-type EvidenceParams struct {
+type Evidence struct {
 	MaxAge int64
+}
+
+type Validator struct {
+	PubKeyTypes []string
 }
 ```
 
@@ -115,20 +109,15 @@ otherwise.
 Blocks should additionally be limited by the amount of "gas" consumed by the
 transactions in the block, though this is not yet implemented.
 
-#### TxSize
-
-These parameters are not yet enforced and may disappear. See [issue
-#2347](https://github.com/tendermint/tendermint/issues/2347).
-
-#### BlockGossip
-
-When gossipping blocks in the consensus, they are first split into parts. The
-size of each part is `ConsensusParams.BlockGossip.BlockPartSizeBytes`.
-
-#### EvidenceParams
+#### Evidence
 
 For evidence in a block to be valid, it must satisfy:
 
 ```
-block.Header.Height - evidence.Height < ConsensusParams.EvidenceParams.MaxAge
+block.Header.Height - evidence.Height < ConsensusParams.Evidence.MaxAge
 ```
+
+#### Validator
+
+Validators from genesis file and `ResponseEndBlock` must have pubkeys of type ∈
+`ConsensusParams.Validator.PubKeyTypes`.

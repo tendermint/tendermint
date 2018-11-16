@@ -1,10 +1,13 @@
 package types
 
 import (
+	"math"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 var testProposal *Proposal
@@ -95,5 +98,43 @@ func BenchmarkProposalVerifySignature(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		pubKey.VerifyBytes(testProposal.SignBytes("test_chain_id"), testProposal.Signature)
+	}
+}
+
+func TestProposalValidateBasic(t *testing.T) {
+
+	privVal := NewMockPV()
+	testCases := []struct {
+		testName         string
+		malleateProposal func(*Proposal)
+		expectErr        bool
+	}{
+		{"Good Proposal", func(p *Proposal) {}, false},
+		{"Invalid Type", func(p *Proposal) { p.Type = PrecommitType }, true},
+		{"Invalid Height", func(p *Proposal) { p.Height = -1 }, true},
+		{"Invalid Round", func(p *Proposal) { p.Round = -1 }, true},
+		{"Invalid POLRound", func(p *Proposal) { p.POLRound = -2 }, true},
+		{"Invalid BlockId", func(p *Proposal) {
+			p.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}}
+		}, true},
+		{"Invalid Signature", func(p *Proposal) {
+			p.Signature = make([]byte, 0)
+		}, true},
+		{"Too big Signature", func(p *Proposal) {
+			p.Signature = make([]byte, MaxSignatureSize+1)
+		}, true},
+	}
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			prop := NewProposal(
+				4, 2, 2,
+				blockID)
+			err := privVal.SignProposal("test_chain_id", prop)
+			require.NoError(t, err)
+			tc.malleateProposal(prop)
+			assert.Equal(t, tc.expectErr, prop.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
 	}
 }
