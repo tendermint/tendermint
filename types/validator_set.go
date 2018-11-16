@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"math/big"
 	"sort"
 	"strings"
 
@@ -70,10 +71,19 @@ func (vals *ValidatorSet) IncrementAccum(times int) {
 }
 
 func (vals *ValidatorSet) incrementAccum() {
-	validatorsHeap := cmn.NewHeap()
 	for _, val := range vals.Validators {
-		// Check for overflow both multiplication and sum.
+		// Check for overflow for sum.
 		val.Accum = safeAddClip(val.Accum, val.VotingPower)
+	}
+	validatorsHeap := cmn.NewHeap()
+	// Shift by avg accum.
+	avgAccum := vals.computeAvgAccum()
+	for _, val := range vals.Validators {
+		if avgAccum > 0 {
+			val.Accum = safeSubClip(val.Accum, avgAccum)
+		} else {
+			val.Accum = safeAddClip(val.Accum, avgAccum)
+		}
 		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 
@@ -83,6 +93,22 @@ func (vals *ValidatorSet) incrementAccum() {
 	mostest.Accum = safeSubClip(mostest.Accum, vals.TotalVotingPower())
 
 	vals.Proposer = mostest
+}
+
+func (vals *ValidatorSet) computeAvgAccum() int64 {
+	n := int64(len(vals.Validators))
+	sum := big.NewInt(0)
+	for _, val := range vals.Validators {
+		sum.Add(sum, big.NewInt(val.Accum))
+	}
+	avg := sum.Div(sum, big.NewInt(n))
+	if avg.IsInt64() {
+		return avg.Int64()
+	}
+
+	// TODO: add tests that this doesn't panic
+	// this should never happen: each val.Accum is in bounds of int64
+	panic(fmt.Sprintf("Cannot represent avg accum as an int64 %v", avg))
 }
 
 // Copy each validator into a new ValidatorSet
