@@ -33,12 +33,12 @@ const (
 // It wraps handler with RecoverAndLogHandler.
 // NOTE: This function blocks - you may want to call it in a go-routine.
 func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger) error {
+	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	err := http.Serve(
 		listener,
 		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 	)
 	logger.Info("RPC HTTP server stopped", "err", err)
-
 	return err
 }
 
@@ -51,24 +51,16 @@ func StartHTTPAndTLSServer(
 	certFile, keyFile string,
 	logger log.Logger,
 ) error {
-	logger.Info(
-		fmt.Sprintf(
-			"Starting RPC HTTPS server on %s (cert: %q, key: %q)",
-			listener.Addr(),
-			certFile,
-			keyFile,
-		),
-	)
-	if err := http.ServeTLS(
+	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
+		listener.Addr(), certFile, keyFile))
+	err := http.ServeTLS(
 		listener,
 		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		certFile,
 		keyFile,
-	); err != nil {
-		logger.Error("RPC HTTPS server stopped", "err", err)
-		return err
-	}
-	return nil
+	)
+	logger.Info("RPC HTTPS server stopped", "err", err)
+	return err
 }
 
 func WriteRPCResponseHTTPError(
@@ -168,16 +160,6 @@ type maxBytesHandler struct {
 func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, h.n)
 	h.h.ServeHTTP(w, r)
-}
-
-// MustListen starts a new net.Listener on the given address.
-// It panics in case of error.
-func MustListen(addr string, config Config) net.Listener {
-	l, err := Listen(addr, config)
-	if err != nil {
-		panic(fmt.Errorf("Listen() failed: %v", err))
-	}
-	return l
 }
 
 // Listen starts a new net.Listener on the given address.
