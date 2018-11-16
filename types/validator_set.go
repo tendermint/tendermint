@@ -63,27 +63,26 @@ func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
 // IncrementAccum increments accum of each validator and updates the
 // proposer. Panics if validator set is empty.
 func (vals *ValidatorSet) IncrementAccum(times int) {
+	// call IncrementAccum(1) times times:
+	for i := 0; i < times; i++ {
+		vals.incrementAccum()
+	}
+}
 
-	// Add VotingPower * times to each validator and order into heap.
+func (vals *ValidatorSet) incrementAccum() {
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range vals.Validators {
 		// Check for overflow both multiplication and sum.
-		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
+		val.Accum = safeAddClip(val.Accum, val.VotingPower)
 		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 
-	// Decrement the validator with most accum times times.
-	for i := 0; i < times; i++ {
-		mostest := validatorsHeap.Peek().(*Validator)
-		// mind underflow
-		mostest.Accum = safeSubClip(mostest.Accum, vals.TotalVotingPower())
+	// Decrement the validator with most accum:
+	mostest := validatorsHeap.Peek().(*Validator)
+	// mind underflow
+	mostest.Accum = safeSubClip(mostest.Accum, vals.TotalVotingPower())
 
-		if i == times-1 {
-			vals.Proposer = mostest
-		} else {
-			validatorsHeap.Update(mostest, accumComparable{mostest})
-		}
-	}
+	vals.Proposer = mostest
 }
 
 // Copy each validator into a new ValidatorSet
