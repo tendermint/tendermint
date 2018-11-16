@@ -8,7 +8,6 @@ import (
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/errors"
 )
 
 /* AutoFile usage
@@ -157,13 +156,13 @@ func (af *AutoFile) openFile() error {
 	if err != nil {
 		return err
 	}
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	if fileInfo.Mode() != autoFilePerms {
-		return errors.NewErrPermissionsChanged(file.Name(), fileInfo.Mode(), autoFilePerms)
-	}
+	// fileInfo, err := file.Stat()
+	// if err != nil {
+	// 	return err
+	// }
+	// if fileInfo.Mode() != autoFilePerms {
+	// 	return errors.NewErrPermissionsChanged(file.Name(), fileInfo.Mode(), autoFilePerms)
+	// }
 	af.file = file
 	return nil
 }
