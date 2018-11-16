@@ -1,12 +1,13 @@
 # Pending
 
-## v0.26.2
+## v0.26.3
 
-*TBA*
+*TBD*
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -15,21 +16,26 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 * Apps
 
 * Go API
+  - [rpc] \#2791 Functions that start HTTP servers are now blocking:
+    - Impacts: StartHTTPServer, StartHTTPAndTLSServer, and StartGRPCServer,
+    - These functions now take a `net.Listener` instead of an address
 
 * Blockchain Protocol
 
 * P2P Protocol
 
+
 ### FEATURES:
 
-- [rpc] [\#2582](https://github.com/tendermint/tendermint/issues/2582) Enable CORS on RPC API
+- [log] \#2843 New `log_format` config option, which can be set to 'plain' for colored
+  text or 'json' for JSON output
+
+- [types] \#2767 New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
 
 ### IMPROVEMENTS:
 
-- [log] \#2765 Make "Update to validators" msg value pretty
+- [log] \#2765 Make "Update to validators" msg value pretty (@danil-lashin)
 
 ### BUG FIXES:
 
-- [abci] unlock mutex in localClient so even when app panics (e.g. during CheckTx), consensus continue working
-- [abci] fix DATA RACE in localClient
-- [rpc] drain channel before calling Unsubscribe(All) in /broadcast_tx_commit
+- [p2p] \#2857 "Send failed" is logged at debug level instead of error.
