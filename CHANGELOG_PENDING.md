@@ -34,8 +34,7 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [log] \#2765 Make "Update to validators" msg value pretty (@danil-lashin)
+- [state] \#2765 Make "Update to validators" msg value pretty (@danil-lashin)
+- [p2p] \#2857 "Send failed" is logged at debug level instead of error.
 
 ### BUG FIXES:
-
-- [p2p] \#2857 "Send failed" is logged at debug level instead of error.
