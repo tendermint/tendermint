@@ -71,6 +71,13 @@ func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	return nil
 }
 
+func (b *EventBus) PublishWithTags(eventData TMEventData, tags tmpubsub.TagMap) error {
+	// no explicit deadline for publishing events
+	ctx := context.Background()
+	b.pubsub.PublishWithTags(ctx, eventData, tags)
+	return nil
+}
+
 func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	return b.Publish(EventNewBlock, data)
 }
