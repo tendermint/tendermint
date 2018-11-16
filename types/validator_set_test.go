@@ -328,16 +328,6 @@ func TestValidatorSetIncrementAccumUnderflows(t *testing.T) {
 	assert.EqualValues(t, math.MinInt64, vset.Validators[1].Accum, "1")
 }
 
-func TestSafeMul(t *testing.T) {
-	f := func(a, b int64) bool {
-		c, overflow := safeMul(a, b)
-		return overflow || (!overflow && c == a*b)
-	}
-	if err := quick.Check(f, nil); err != nil {
-		t.Error(err)
-	}
-}
-
 func TestSafeAdd(t *testing.T) {
 	f := func(a, b int64) bool {
 		c, overflow := safeAdd(a, b)
@@ -346,13 +336,6 @@ func TestSafeAdd(t *testing.T) {
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)
 	}
-}
-
-func TestSafeMulClip(t *testing.T) {
-	assert.EqualValues(t, math.MaxInt64, safeMulClip(math.MinInt64, math.MinInt64))
-	assert.EqualValues(t, math.MinInt64, safeMulClip(math.MaxInt64, math.MinInt64))
-	assert.EqualValues(t, math.MinInt64, safeMulClip(math.MinInt64, math.MaxInt64))
-	assert.EqualValues(t, math.MaxInt64, safeMulClip(math.MaxInt64, 2))
 }
 
 func TestSafeAddClip(t *testing.T) {

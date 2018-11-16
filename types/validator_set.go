@@ -497,24 +497,7 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []Pr
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Safe multiplication and addition/subtraction
-
-func safeMul(a, b int64) (int64, bool) {
-	if a == 0 || b == 0 {
-		return 0, false
-	}
-	if a == 1 {
-		return b, false
-	}
-	if b == 1 {
-		return a, false
-	}
-	if a == math.MinInt64 || b == math.MinInt64 {
-		return -1, true
-	}
-	c := a * b
-	return c, c/b != a
-}
+// Safe addition/subtraction
 
 func safeAdd(a, b int64) (int64, bool) {
 	if b > 0 && a > math.MaxInt64-b {
@@ -532,17 +515,6 @@ func safeSub(a, b int64) (int64, bool) {
 		return -1, true
 	}
 	return a - b, false
-}
-
-func safeMulClip(a, b int64) int64 {
-	c, overflow := safeMul(a, b)
-	if overflow {
-		if (a < 0 || b < 0) && !(a < 0 && b < 0) {
-			return math.MinInt64
-		}
-		return math.MaxInt64
-	}
-	return c
 }
 
 func safeAddClip(a, b int64) int64 {
