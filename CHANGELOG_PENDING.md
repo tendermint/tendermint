@@ -26,7 +26,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS:
 
-- [log] [\#2765](https://github.com/tendermint/tendermint/issues/2765) Make "Update to validators" msg value pretty
+- [log] \#2765 Make "Update to validators" msg value pretty
 
 ### BUG FIXES:
 
