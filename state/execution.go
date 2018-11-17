@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -107,7 +108,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	fail.Fail() // XXX
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, abciResponses)
+	state, err = updateState(blockExec.logger, state, blockID, &block.Header, abciResponses)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -254,12 +255,6 @@ func execBlockOnProxyApp(
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
-	valUpdates := abciResponses.EndBlock.ValidatorUpdates
-	if len(valUpdates) > 0 {
-		// TODO: cleanup the formatting
-		logger.Info("Updates to validators", "updates", valUpdates)
-	}
-
 	return abciResponses, nil
 }
 
@@ -315,16 +310,16 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate) error {
+func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate) ([]*types.Validator, error) {
 	updates, err := types.PB2TM.ValidatorUpdates(abciUpdates)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// these are tendermint types now
 	for _, valUpdate := range updates {
 		if valUpdate.VotingPower < 0 {
-			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
+			return nil, fmt.Errorf("Voting power can't be negative %v", valUpdate)
 		}
 
 		address := valUpdate.Address
@@ -333,27 +328,28 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			// remove val
 			_, removed := currentSet.Remove(address)
 			if !removed {
-				return fmt.Errorf("Failed to remove validator %X", address)
+				return nil, fmt.Errorf("Failed to remove validator %X", address)
 			}
 		} else if val == nil {
 			// add val
 			added := currentSet.Add(valUpdate)
 			if !added {
-				return fmt.Errorf("Failed to add new validator %v", valUpdate)
+				return nil, fmt.Errorf("Failed to add new validator %v", valUpdate)
 			}
 		} else {
 			// update val
 			updated := currentSet.Update(valUpdate)
 			if !updated {
-				return fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
+				return nil, fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
 			}
 		}
 	}
-	return nil
+	return updates, nil
 }
 
 // updateState returns a new State updated according to the header and responses.
 func updateState(
+	logger log.Logger,
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
@@ -367,12 +363,14 @@ func updateState(
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates)
+		validatorUpdates, err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
+
+		logger.Info("Updates to validators", "updates", makeValidatorUpdatesLogString(validatorUpdates))
 	}
 
 	// Update validator accums and set state variables.
@@ -465,4 +463,14 @@ func ExecCommitBlock(
 	}
 	// ResponseCommit has no error or log, just data
 	return res.Data, nil
+}
+
+// Make pretty string for validatorUpdates logging
+func makeValidatorUpdatesLogString(vals []*types.Validator) string {
+	chunks := make([]string, len(vals))
+	for i, val := range vals {
+		chunks[i] = fmt.Sprintf("%s:%d", val.Address, val.VotingPower)
+	}
+
+	return strings.Join(chunks, ",")
 }

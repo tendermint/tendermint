@@ -17,6 +17,7 @@ const metricsTickerDuration = 10 * time.Second
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
+	FlushStop()
 
 	ID() ID           // peer's cryptographic ID
 	RemoteIP() net.IP // remote IP of the connection
@@ -182,6 +183,15 @@ func (p *peer) OnStart() error {
 
 	go p.metricsReporter()
 	return nil
+}
+
+// FlushStop mimics OnStop but additionally ensures that all successful
+// .Send() calls will get flushed before closing the connection.
+// NOTE: it is not safe to call this method more than once.
+func (p *peer) FlushStop() {
+	p.metricsTicker.Stop()
+	p.BaseService.OnStop()
+	p.mconn.FlushStop() // stop everything and close the conn
 }
 
 // OnStop implements BaseService.

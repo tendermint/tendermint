@@ -27,8 +27,15 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
+- [log] \#2843 New `log_format` config option, which can be set to 'plain' for colored
+  text or 'json' for JSON output
+
+- [types] \#2767 New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
+
 ### IMPROVEMENTS:
 
-- [rpc] \#2780 Add read and write timeouts (3s) to HTTP servers
+- [rpc] \#2780 Add read and write timeouts to HTTP servers
+- [state] \#2765 Make "Update to validators" msg value pretty (@danil-lashin)
+- [p2p] \#2857 "Send failed" is logged at debug level instead of error.
 
 ### BUG FIXES:

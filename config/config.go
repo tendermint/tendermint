@@ -14,6 +14,11 @@ const (
 	FuzzModeDrop = iota
 	// FuzzModeDelay is a mode in which we randomly sleep
 	FuzzModeDelay
+
+	// LogFormatPlain is a format for colored text
+	LogFormatPlain = "plain"
+	// LogFormatJSON is a format for json output
+	LogFormatJSON = "json"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -94,6 +99,9 @@ func (cfg *Config) SetRoot(root string) *Config {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *Config) ValidateBasic() error {
+	if err := cfg.BaseConfig.ValidateBasic(); err != nil {
+		return err
+	}
 	if err := cfg.RPC.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [rpc] section")
 	}
@@ -145,6 +153,9 @@ type BaseConfig struct {
 	// Output level for logging
 	LogLevel string `mapstructure:"log_level"`
 
+	// Output format: 'plain' (colored text) or 'json'
+	LogFormat string `mapstructure:"log_format"`
+
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis_file"`
 
@@ -179,6 +190,7 @@ func DefaultBaseConfig() BaseConfig {
 		ProxyApp:          "tcp://127.0.0.1:26658",
 		ABCI:              "socket",
 		LogLevel:          DefaultPackageLogLevels(),
+		LogFormat:         LogFormatPlain,
 		ProfListenAddress: "",
 		FastSync:          true,
 		FilterPeers:       false,
@@ -219,6 +231,17 @@ func (cfg BaseConfig) NodeKeyFile() string {
 // DBDir returns the full path to the database directory
 func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
+}
+
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg BaseConfig) ValidateBasic() error {
+	switch cfg.LogFormat {
+	case LogFormatPlain, LogFormatJSON:
+	default:
+		return errors.New("unknown log_format (must be 'plain' or 'json')")
+	}
+	return nil
 }
 
 // DefaultLogLevel returns a default log level of "error"

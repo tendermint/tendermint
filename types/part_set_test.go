@@ -84,8 +84,7 @@ func TestWrongProof(t *testing.T) {
 	}
 }
 
-func TestPartSetHeaderSetValidateBasic(t *testing.T) {
-
+func TestPartSetHeaderValidateBasic(t *testing.T) {
 	testCases := []struct {
 		testName              string
 		malleatePartSetHeader func(*PartSetHeader)
@@ -107,7 +106,6 @@ func TestPartSetHeaderSetValidateBasic(t *testing.T) {
 }
 
 func TestPartValidateBasic(t *testing.T) {
-
 	testCases := []struct {
 		testName     string
 		malleatePart func(*Part)

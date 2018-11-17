@@ -208,25 +208,38 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *pexRequestMessage:
-		// Check we're not receiving too many requests
-		if err := r.receiveRequest(src); err != nil {
-			r.Switch.StopPeerForError(src, err)
-			return
-		}
 
-		// Seeds disconnect after sending a batch of addrs
-		// NOTE: this is a prime candidate for amplification attacks
+		// NOTE: this is a prime candidate for amplification attacks,
 		// so it's important we
 		// 1) restrict how frequently peers can request
 		// 2) limit the output size
-		if r.config.SeedMode {
+
+		// If we're a seed and this is an inbound peer,
+		// respond once and disconnect.
+		if r.config.SeedMode && !src.IsOutbound() {
+			id := string(src.ID())
+			v := r.lastReceivedRequests.Get(id)
+			if v != nil {
+				// FlushStop/StopPeer are already
+				// running in a go-routine.
+				return
+			}
+			r.lastReceivedRequests.Set(id, time.Now())
+
+			// Send addrs and disconnect
 			r.SendAddrs(src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
 			go func() {
-				// TODO Fix properly #2092
-				time.Sleep(time.Second * 5)
+				// In a go-routine so it doesn't block .Receive.
+				src.FlushStop()
 				r.Switch.StopPeerGracefully(src)
 			}()
+
 		} else {
+			// Check we're not receiving requests too frequently.
+			if err := r.receiveRequest(src); err != nil {
+				r.Switch.StopPeerForError(src, err)
+				return
+			}
 			r.SendAddrs(src, r.book.GetSelection())
 		}
 

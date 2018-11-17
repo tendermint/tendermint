@@ -197,6 +197,7 @@ func (tp *bcrTestPeer) TrySend(chID byte, msgBytes []byte) bool {
 	return true
 }
 
+func (tp *bcrTestPeer) FlushStop()                           {}
 func (tp *bcrTestPeer) Send(chID byte, msgBytes []byte) bool { return tp.TrySend(chID, msgBytes) }
 func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo               { return p2p.DefaultNodeInfo{} }
 func (tp *bcrTestPeer) Status() p2p.ConnectionStatus         { return p2p.ConnectionStatus{} }
