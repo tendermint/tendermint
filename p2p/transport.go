@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -129,21 +128,33 @@ type MultiplexTransport struct {
 	nodeKey          NodeKey
 	resolver         IPResolver
 
-	// TODO(xla): Those configs are still needed as we parameterise peerConn and
+	// TODO(xla): This config is still needed as we parameterise peerConn and
 	// peer currently. All relevant configuration should be refactored into options
 	// with sane defaults.
-	mConfig   conn.MConnConfig
-	p2pConfig config.P2PConfig
+	mConfig conn.MConnConfig
 }
 
 // Test multiplexTransport for interface completeness.
 var _ Transport = (*MultiplexTransport)(nil)
 var _ transportLifecycle = (*MultiplexTransport)(nil)
 
+// newMultiplexTransport returns a tcp connected multiplexed peer
+// using the default MConnConfig. It's a convenience function used
+// for testing.
+func newMultiplexTransport(
+	nodeInfo NodeInfo,
+	nodeKey NodeKey,
+) *MultiplexTransport {
+	return NewMultiplexTransport(
+		nodeInfo, nodeKey, conn.DefaultMConnConfig(),
+	)
+}
+
 // NewMultiplexTransport returns a tcp connected multiplexed peer.
 func NewMultiplexTransport(
 	nodeInfo NodeInfo,
 	nodeKey NodeKey,
+	mConfig conn.MConnConfig,
 ) *MultiplexTransport {
 	return &MultiplexTransport{
 		acceptc:          make(chan accept),
@@ -151,7 +162,7 @@ func NewMultiplexTransport(
 		dialTimeout:      defaultDialTimeout,
 		filterTimeout:    defaultFilterTimeout,
 		handshakeTimeout: defaultHandshakeTimeout,
-		mConfig:          conn.DefaultMConnConfig(),
+		mConfig:          mConfig,
 		nodeInfo:         nodeInfo,
 		nodeKey:          nodeKey,
 		conns:            NewConnSet(),
@@ -405,7 +416,6 @@ func (mt *MultiplexTransport) wrapPeer(
 	peerConn := newPeerConn(
 		cfg.outbound,
 		cfg.persistent,
-		&mt.p2pConfig,
 		c,
 		dialedAddr,
 	)

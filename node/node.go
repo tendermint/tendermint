@@ -371,7 +371,8 @@ func NewNode(config *cfg.Config,
 
 	// Setup Transport.
 	var (
-		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey)
+		mConnConfig = p2p.MConnConfig(config.P2P)
+		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
