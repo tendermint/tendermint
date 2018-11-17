@@ -39,15 +39,6 @@ type NodeKey struct {
 	PrivKey Data `json:"priv_key"`
 }
 
-type PrivVal struct {
-	Address    cmn.HexBytes `json:"address"`
-	LastHeight int64        `json:"last_height"`
-	LastRound  int          `json:"last_round"`
-	LastStep   int8         `json:"last_step"`
-	PubKey     Data         `json:"pub_key"`
-	PrivKey    Data         `json:"priv_key"`
-}
-
 type PrivValKey struct {
 	Address cmn.HexBytes `json:"address"`
 	PubKey  Data         `json:"pub_key"`
