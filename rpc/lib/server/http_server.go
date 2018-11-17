@@ -27,6 +27,17 @@ const (
 	// maxBodyBytes controls the maximum number of bytes the
 	// server will read parsing the request body.
 	maxBodyBytes = int64(1000000) // 1MB
+
+	// same as the net/http default
+	maxHeaderBytes = 1 << 20
+
+	// Timeouts for reading/writing to the http connection.
+	// Public so handlers can read them -
+	// /broadcast_tx_commit has it's own timeout, which should
+	// be less than the WriteTimeout here.
+	// TODO: use a config instead.
+	ReadTimeout  = 3 * time.Second
+	WriteTimeout = 20 * time.Second
 )
 
 // StartHTTPServer takes a listener and starts an HTTP server with the given handler.
@@ -34,10 +45,13 @@ const (
 // NOTE: This function blocks - you may want to call it in a go-routine.
 func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
-	err := http.Serve(
-		listener,
-		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
-	)
+	s := &http.Server{
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
+		ReadTimeout:    ReadTimeout,
+		WriteTimeout:   WriteTimeout,
+		MaxHeaderBytes: maxHeaderBytes,
+	}
+	err := s.Serve(listener)
 	logger.Info("RPC HTTP server stopped", "err", err)
 	return err
 }
@@ -53,13 +67,15 @@ func StartHTTPAndTLSServer(
 ) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
 		listener.Addr(), certFile, keyFile))
-	err := http.ServeTLS(
-		listener,
-		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
-		certFile,
-		keyFile,
-	)
-	logger.Info("RPC HTTPS server stopped", "err", err)
+	s := &http.Server{
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
+		ReadTimeout:    ReadTimeout,
+		WriteTimeout:   WriteTimeout,
+		MaxHeaderBytes: maxHeaderBytes,
+	}
+	err := s.ServeTLS(listener, certFile, keyFile)
+
+	logger.Error("RPC HTTPS server stopped", "err", err)
 	return err
 }
 

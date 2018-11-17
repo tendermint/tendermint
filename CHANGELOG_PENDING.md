@@ -34,6 +34,7 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [rpc] \#2780 Add read and write timeouts to HTTP servers
 - [state] \#2765 Make "Update to validators" msg value pretty (@danil-lashin)
 - [p2p] \#2857 "Send failed" is logged at debug level instead of error.
 
