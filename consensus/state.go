@@ -772,7 +772,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
 	cs.triggeredTimeoutPrecommit = false
 
-	cs.eventBus.PublishEventNewRound(cs.RoundStateEvent())
+	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())
 	cs.metrics.Rounds.Set(float64(round))
 
 	// Wait for txs to be available in the mempool
@@ -802,8 +802,14 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 }
 
 func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
-	counter := 0
+	logger := cs.Logger.With("height", height, "round", round)
 	addr := cs.privValidator.GetAddress()
+
+	if !cs.Validators.HasAddress(addr) {
+		logger.Debug("Not sending proposalHearbeat. This node is not a validator", "addr", addr, "vals", cs.Validators)
+		return
+	}
+	counter := 0
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	chainID := cs.state.ChainID
 	for {
@@ -1404,7 +1410,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 		return nil
 	}
 
-  // Verify POLRound, which must be -1 or in range [0, proposal.Round).
+	// Verify POLRound, which must be -1 or in range [0, proposal.Round).
 	if proposal.POLRound < -1 ||
 		(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
 		return ErrInvalidProposalPOLRound
@@ -1462,7 +1468,7 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
-		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
+		cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent())
 
 		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)

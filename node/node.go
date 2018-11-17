@@ -371,7 +371,8 @@ func NewNode(config *cfg.Config,
 
 	// Setup Transport.
 	var (
-		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey)
+		mConnConfig = p2p.MConnConfig(config.P2P)
+		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
@@ -653,6 +654,14 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
 
+		listener, err := rpcserver.Listen(
+			listenAddr,
+			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
+		)
+		if err != nil {
+			return nil, err
+		}
+
 		var rootHandler http.Handler = mux
 		if n.config.RPC.IsCorsEnabled() {
 			corsMiddleware := cors.New(cors.Options{
@@ -663,30 +672,23 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			rootHandler = corsMiddleware.Handler(mux)
 		}
 
-		listener, err := rpcserver.StartHTTPServer(
-			listenAddr,
+		go rpcserver.StartHTTPServer(
+			listener,
 			rootHandler,
 			rpcLogger,
-			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
 		)
-		if err != nil {
-			return nil, err
-		}
 		listeners[i] = listener
 	}
 
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
-		listener, err := grpccore.StartGRPCServer(
-			grpcListenAddr,
-			grpccore.Config{
-				MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections,
-			},
-		)
+		listener, err := rpcserver.Listen(
+			grpcListenAddr, rpcserver.Config{MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections})
 		if err != nil {
 			return nil, err
 		}
+		go grpccore.StartGRPCServer(listener)
 		listeners = append(listeners, listener)
 	}
 

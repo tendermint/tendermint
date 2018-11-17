@@ -1,6 +1,6 @@
 # Pending
 
-## v0.26.3
+## v0.26.4
 
 *TBD*
 
@@ -20,7 +20,6 @@ program](https://hackerone.com/tendermint).
 * Blockchain Protocol
 
 * P2P Protocol
-
 
 ### FEATURES:
 

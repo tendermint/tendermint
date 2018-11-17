@@ -402,7 +402,7 @@ func (conR *ConsensusReactor) unsubscribeFromBroadcastEvents() {
 
 func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(hb *types.Heartbeat) {
 	conR.Logger.Debug("Broadcasting proposal heartbeat message",
-		"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence)
+		"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence, "address", hb.ValidatorAddress)
 	msg := &ProposalHeartbeatMessage{hb}
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(msg))
 }
