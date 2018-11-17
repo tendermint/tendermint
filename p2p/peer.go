@@ -8,7 +8,6 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -42,7 +41,6 @@ type Peer interface {
 type peerConn struct {
 	outbound   bool
 	persistent bool
-	config     *config.P2PConfig
 	conn       net.Conn // source connection
 
 	originalAddr *NetAddress // nil for inbound connections
@@ -53,7 +51,6 @@ type peerConn struct {
 
 func newPeerConn(
 	outbound, persistent bool,
-	config *config.P2PConfig,
 	conn net.Conn,
 	originalAddr *NetAddress,
 ) peerConn {
@@ -61,7 +58,6 @@ func newPeerConn(
 	return peerConn{
 		outbound:     outbound,
 		persistent:   persistent,
-		config:       config,
 		conn:         conn,
 		originalAddr: originalAddr,
 	}

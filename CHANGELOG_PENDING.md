@@ -39,3 +39,5 @@ program](https://hackerone.com/tendermint).
 - [p2p] \#2857 "Send failed" is logged at debug level instead of error.
 
 ### BUG FIXES:
+
+- [p2p] \#2869 Set connection config properly instead of always using default
