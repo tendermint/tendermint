@@ -34,7 +34,10 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [rpc] \#2780 Add read and write timeouts to HTTP servers
+- [state] \#2765 Make "Update to validators" msg value pretty (@danil-lashin)
 - [p2p] \#2857 "Send failed" is logged at debug level instead of error.
 
 ### BUG FIXES:
-2518 - fixes a bug where non-validators will send proposalHearbeats when `create_empty_blocks=false` or `create_empty_blocks_interval > 0`
+- [consensus] \#2819 Don't send proposalHearbeat if not a validator
+- [p2p] \#2869 Set connection config properly instead of always using default

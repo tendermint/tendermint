@@ -1,8 +1,6 @@
 package core
 
 import (
-	"time"
-
 	"github.com/tendermint/tendermint/consensus"
 	crypto "github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -10,6 +8,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
@@ -21,7 +20,7 @@ const (
 	maxPerPage     = 100
 )
 
-var subscribeTimeout = 5 * time.Second
+var subscribeTimeout = rpcserver.WriteTimeout / 2
 
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
