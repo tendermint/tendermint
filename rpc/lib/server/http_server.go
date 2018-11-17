@@ -31,8 +31,13 @@ const (
 	// same as the net/http default
 	maxHeaderBytes = 1 << 20
 
-	// timeouts for reading/writing to the http connection
-	readWriteTimeout = 3 * time.Second
+	// Timeouts for reading/writing to the http connection.
+	// Public so handlers can read them -
+	// /broadcast_tx_commit has it's own timeout, which should
+	// be less than the WriteTimeout here.
+	// TODO: use a config instead.
+	ReadTimeout  = 3 * time.Second
+	WriteTimeout = 20 * time.Second
 )
 
 // StartHTTPServer takes a listener and starts an HTTP server with the given handler.
@@ -42,8 +47,8 @@ func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Log
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
-		ReadTimeout:    readWriteTimeout,
-		WriteTimeout:   readWriteTimeout,
+		ReadTimeout:    ReadTimeout,
+		WriteTimeout:   WriteTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
 	err := s.Serve(listener)
@@ -64,8 +69,8 @@ func StartHTTPAndTLSServer(
 		listener.Addr(), certFile, keyFile))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
-		ReadTimeout:    readWriteTimeout,
-		WriteTimeout:   readWriteTimeout,
+		ReadTimeout:    ReadTimeout,
+		WriteTimeout:   WriteTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
 	err := s.ServeTLS(listener, certFile, keyFile)
