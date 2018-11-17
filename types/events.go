@@ -2,8 +2,8 @@ package types
 
 import (
 	"fmt"
+	"github.com/tendermint/go-amino"
 
-	amino "github.com/tendermint/go-amino"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
@@ -17,7 +17,6 @@ const (
 	EventNewRound            = "NewRound"
 	EventNewRoundStep        = "NewRoundStep"
 	EventPolka               = "Polka"
-	EventProposalHeartbeat   = "ProposalHeartbeat"
 	EventRelock              = "Relock"
 	EventTimeoutPropose      = "TimeoutPropose"
 	EventTimeoutWait         = "TimeoutWait"
@@ -46,7 +45,6 @@ func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterConcrete(EventDataNewRound{}, "tendermint/event/NewRound", nil)
 	cdc.RegisterConcrete(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal", nil)
 	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
-	cdc.RegisterConcrete(EventDataProposalHeartbeat{}, "tendermint/event/ProposalHeartbeat", nil)
 	cdc.RegisterConcrete(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates", nil)
 	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
 }
@@ -66,10 +64,6 @@ type EventDataNewBlockHeader struct {
 // All txs fire EventDataTx
 type EventDataTx struct {
 	TxResult
-}
-
-type EventDataProposalHeartbeat struct {
-	Heartbeat *Heartbeat
 }
 
 // NOTE: This goes into the replay WAL
@@ -136,7 +130,6 @@ var (
 	EventQueryNewRound            = QueryForEvent(EventNewRound)
 	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)
 	EventQueryPolka               = QueryForEvent(EventPolka)
-	EventQueryProposalHeartbeat   = QueryForEvent(EventProposalHeartbeat)
 	EventQueryRelock              = QueryForEvent(EventRelock)
 	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutPropose)
 	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWait)
