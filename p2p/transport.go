@@ -138,18 +138,6 @@ type MultiplexTransport struct {
 var _ Transport = (*MultiplexTransport)(nil)
 var _ transportLifecycle = (*MultiplexTransport)(nil)
 
-// newMultiplexTransport returns a tcp connected multiplexed peer
-// using the default MConnConfig. It's a convenience function used
-// for testing.
-func newMultiplexTransport(
-	nodeInfo NodeInfo,
-	nodeKey NodeKey,
-) *MultiplexTransport {
-	return NewMultiplexTransport(
-		nodeInfo, nodeKey, conn.DefaultMConnConfig(),
-	)
-}
-
 // NewMultiplexTransport returns a tcp connected multiplexed peer.
 func NewMultiplexTransport(
 	nodeInfo NodeInfo,
