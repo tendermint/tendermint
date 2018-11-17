@@ -13,9 +13,10 @@ import (
 
 func main() {
 	var (
-		addr        = flag.String("addr", ":26659", "Address of client to connect to")
-		chainID     = flag.String("chain-id", "mychain", "chain id")
-		privValPath = flag.String("priv", "", "priv val file path")
+		addr             = flag.String("addr", ":26659", "Address of client to connect to")
+		chainID          = flag.String("chain-id", "mychain", "chain id")
+		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
+		privValStatePath = flag.String("priv-state", "", "priv val state file path")
 
 		logger = log.NewTMLogger(
 			log.NewSyncWriter(os.Stdout),
@@ -27,10 +28,11 @@ func main() {
 		"Starting private validator",
 		"addr", *addr,
 		"chainID", *chainID,
-		"privPath", *privValPath,
+		"privKeyPath", *privValKeyPath,
+		"privStatePath", *privValStatePath,
 	)
 
-	pv := privval.LoadFilePV(*privValPath)
+	pv := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
 
 	rs := privval.NewRemoteSigner(
 		logger,

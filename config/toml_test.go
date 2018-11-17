@@ -60,7 +60,7 @@ func TestEnsureTestRoot(t *testing.T) {
 
 	// TODO: make sure the cfg returned and testconfig are the same!
 	baseConfig := DefaultBaseConfig()
-	ensureFiles(t, rootDir, defaultDataDir, baseConfig.Genesis, baseConfig.PrivValidator)
+	ensureFiles(t, rootDir, defaultDataDir, baseConfig.Genesis, baseConfig.PrivValidatorKey, baseConfig.PrivValidatorState)
 }
 
 func checkConfig(configFile string) bool {

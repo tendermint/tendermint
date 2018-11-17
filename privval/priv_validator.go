@@ -37,21 +37,31 @@ func voteToStep(vote *types.Vote) int8 {
 
 // FilePV implements PrivValidator using data persisted to disk
 // to prevent double signing.
-// NOTE: the directory containing the pv.filePath must already exist.
+// NOTE: the directories containing pv.Key.filePath and pv.LastSignState.filePath must already exist.
 // It includes the LastSignature and LastSignBytes so we don't lose the signature
 // if the process crashes after signing but before the resulting consensus message is processed.
 type FilePV struct {
-	Address       types.Address  `json:"address"`
-	PubKey        crypto.PubKey  `json:"pub_key"`
-	LastHeight    int64          `json:"last_height"`
-	LastRound     int            `json:"last_round"`
-	LastStep      int8           `json:"last_step"`
-	LastSignature []byte         `json:"last_signature,omitempty"`
-	LastSignBytes cmn.HexBytes   `json:"last_signbytes,omitempty"`
-	PrivKey       crypto.PrivKey `json:"priv_key"`
+	Key           FilePVKey
+	LastSignState FilePVLastSignState
+}
 
-	// For persistence.
-	// Overloaded for testing.
+// FilePVKey stores the immutable part of PrivValidator
+type FilePVKey struct {
+	Address types.Address  `json:"address"`
+	PubKey  crypto.PubKey  `json:"pub_key"`
+	PrivKey crypto.PrivKey `json:"priv_key"`
+
+	filePath string
+}
+
+// FilePVState stores the mutable part of PrivValidator
+type FilePVLastSignState struct {
+	Height    int64        `json:"height"`
+	Round     int          `json:"round"`
+	Step      int8         `json:"step"`
+	Signature []byte       `json:"signature,omitempty"`
+	SignBytes cmn.HexBytes `json:"signbytes,omitempty"`
+
 	filePath string
 	mtx      sync.Mutex
 }
@@ -59,58 +69,82 @@ type FilePV struct {
 // GetAddress returns the address of the validator.
 // Implements PrivValidator.
 func (pv *FilePV) GetAddress() types.Address {
-	return pv.Address
+	return pv.Key.Address
 }
 
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
 func (pv *FilePV) GetPubKey() crypto.PubKey {
-	return pv.PubKey
+	return pv.Key.PubKey
 }
 
 // GenFilePV generates a new validator with randomly generated private key
-// and sets the filePath, but does not call Save().
-func GenFilePV(filePath string) *FilePV {
+// and sets the filePaths, but does not call Save().
+func GenFilePV(keyFilePath string, stateFilePath string) *FilePV {
 	privKey := ed25519.GenPrivKey()
+
 	return &FilePV{
-		Address:  privKey.PubKey().Address(),
-		PubKey:   privKey.PubKey(),
-		PrivKey:  privKey,
-		LastStep: stepNone,
-		filePath: filePath,
+		Key: FilePVKey{
+			Address:  privKey.PubKey().Address(),
+			PubKey:   privKey.PubKey(),
+			PrivKey:  privKey,
+			filePath: keyFilePath,
+		},
+		LastSignState: FilePVLastSignState{
+			Step:     stepNone,
+			filePath: stateFilePath,
+		},
 	}
 }
 
-// LoadFilePV loads a FilePV from the filePath.  The FilePV handles double
-// signing prevention by persisting data to the filePath.  If the filePath does
+// LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
+// signing prevention by persisting data to the stateFilePath.  If the filePaths does
 // not exist, the FilePV must be created manually and saved.
-func LoadFilePV(filePath string) *FilePV {
-	pvJSONBytes, err := ioutil.ReadFile(filePath)
+func LoadFilePV(keyFilePath string, stateFilePath string) *FilePV {
+	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
-	pv := &FilePV{}
-	err = cdc.UnmarshalJSON(pvJSONBytes, &pv)
+	pvKey := FilePVKey{}
+	err = cdc.UnmarshalJSON(keyJSONBytes, &pvKey)
 	if err != nil {
-		cmn.Exit(fmt.Sprintf("Error reading PrivValidator from %v: %v\n", filePath, err))
+		cmn.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
 	}
 
 	// overwrite pubkey and address for convenience
-	pv.PubKey = pv.PrivKey.PubKey()
-	pv.Address = pv.PubKey.Address()
+	pvKey.PubKey = pvKey.PrivKey.PubKey()
+	pvKey.Address = pvKey.PubKey.Address()
+	pvKey.filePath = keyFilePath
 
-	pv.filePath = filePath
+	stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
+	if err != nil {
+		cmn.Exit(err.Error())
+	}
+	pvState := FilePVLastSignState{}
+	err = cdc.UnmarshalJSON(stateJSONBytes, &pvState)
+	if err != nil {
+		cmn.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
+	}
+
+	pvState.filePath = stateFilePath
+
+	pv := &FilePV{}
+
+	pv.Key = pvKey
+	pv.LastSignState = pvState
+
 	return pv
 }
 
-// LoadOrGenFilePV loads a FilePV from the given filePath
-// or else generates a new one and saves it to the filePath.
-func LoadOrGenFilePV(filePath string) *FilePV {
+// LoadOrGenFilePV loads a FilePV from the given filePaths
+// or else generates a new one and saves it to the filePaths.
+func LoadOrGenFilePV(keyFilePath string, stateFilePath string) *FilePV {
 	var pv *FilePV
-	if cmn.FileExists(filePath) {
-		pv = LoadFilePV(filePath)
+	if cmn.FileExists(keyFilePath) {
+		println(keyFilePath)
+		pv = LoadFilePV(keyFilePath, stateFilePath)
 	} else {
-		pv = GenFilePV(filePath)
+		pv = GenFilePV(keyFilePath, stateFilePath)
 		pv.Save()
 	}
 	return pv
@@ -118,17 +152,36 @@ func LoadOrGenFilePV(filePath string) *FilePV {
 
 // Save persists the FilePV to disk.
 func (pv *FilePV) Save() {
-	pv.mtx.Lock()
-	defer pv.mtx.Unlock()
-	pv.save()
+	pv.saveKey()
+
+	pv.LastSignState.mtx.Lock()
+	defer pv.LastSignState.mtx.Unlock()
+	pv.saveState()
 }
 
-func (pv *FilePV) save() {
-	outFile := pv.filePath
+func (pv *FilePV) saveKey() {
+	outFile := pv.Key.filePath
 	if outFile == "" {
-		panic("Cannot save PrivValidator: filePath not set")
+		panic("Cannot save PrivValidator key: filePath not set")
 	}
-	jsonBytes, err := cdc.MarshalJSONIndent(pv, "", "  ")
+
+	jsonBytes, err := cdc.MarshalJSONIndent(pv.Key, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	err = cmn.WriteFileAtomic(outFile, jsonBytes, 0600)
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func (pv *FilePV) saveState() {
+	outFile := pv.LastSignState.filePath
+	if outFile == "" {
+		panic("Cannot save PrivValidator state: filePath not set")
+	}
+	jsonBytes, err := cdc.MarshalJSONIndent(pv.LastSignState, "", "  ")
 	if err != nil {
 		panic(err)
 	}
@@ -142,19 +195,19 @@ func (pv *FilePV) save() {
 // NOTE: Unsafe!
 func (pv *FilePV) Reset() {
 	var sig []byte
-	pv.LastHeight = 0
-	pv.LastRound = 0
-	pv.LastStep = 0
-	pv.LastSignature = sig
-	pv.LastSignBytes = nil
+	pv.LastSignState.Height = 0
+	pv.LastSignState.Round = 0
+	pv.LastSignState.Step = 0
+	pv.LastSignState.Signature = sig
+	pv.LastSignState.SignBytes = nil
 	pv.Save()
 }
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
 func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
-	pv.mtx.Lock()
-	defer pv.mtx.Unlock()
+	pv.LastSignState.mtx.Lock()
+	defer pv.LastSignState.mtx.Unlock()
 	if err := pv.signVote(chainID, vote); err != nil {
 		return fmt.Errorf("Error signing vote: %v", err)
 	}
@@ -164,8 +217,8 @@ func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
 func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
-	pv.mtx.Lock()
-	defer pv.mtx.Unlock()
+	pv.LastSignState.mtx.Lock()
+	defer pv.LastSignState.mtx.Unlock()
 	if err := pv.signProposal(chainID, proposal); err != nil {
 		return fmt.Errorf("Error signing proposal: %v", err)
 	}
@@ -174,21 +227,21 @@ func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
 
 // returns error if HRS regression or no LastSignBytes. returns true if HRS is unchanged
 func (pv *FilePV) checkHRS(height int64, round int, step int8) (bool, error) {
-	if pv.LastHeight > height {
+	if pv.LastSignState.Height > height {
 		return false, errors.New("Height regression")
 	}
 
-	if pv.LastHeight == height {
-		if pv.LastRound > round {
+	if pv.LastSignState.Height == height {
+		if pv.LastSignState.Round > round {
 			return false, errors.New("Round regression")
 		}
 
-		if pv.LastRound == round {
-			if pv.LastStep > step {
+		if pv.LastSignState.Round == round {
+			if pv.LastSignState.Step > step {
 				return false, errors.New("Step regression")
-			} else if pv.LastStep == step {
-				if pv.LastSignBytes != nil {
-					if pv.LastSignature == nil {
+			} else if pv.LastSignState.Step == step {
+				if pv.LastSignState.SignBytes != nil {
+					if pv.LastSignState.Signature == nil {
 						panic("pv: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
@@ -218,11 +271,11 @@ func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(signBytes, pv.LastSignBytes) {
-			vote.Signature = pv.LastSignature
-		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(pv.LastSignBytes, signBytes); ok {
+		if bytes.Equal(signBytes, pv.LastSignState.SignBytes) {
+			vote.Signature = pv.LastSignState.Signature
+		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(pv.LastSignState.SignBytes, signBytes); ok {
 			vote.Timestamp = timestamp
-			vote.Signature = pv.LastSignature
+			vote.Signature = pv.LastSignState.Signature
 		} else {
 			err = fmt.Errorf("Conflicting data")
 		}
@@ -230,7 +283,7 @@ func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
 	}
 
 	// It passed the checks. Sign the vote
-	sig, err := pv.PrivKey.Sign(signBytes)
+	sig, err := pv.Key.PrivKey.Sign(signBytes)
 	if err != nil {
 		return err
 	}
@@ -257,11 +310,11 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(signBytes, pv.LastSignBytes) {
-			proposal.Signature = pv.LastSignature
-		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(pv.LastSignBytes, signBytes); ok {
+		if bytes.Equal(signBytes, pv.LastSignState.SignBytes) {
+			proposal.Signature = pv.LastSignState.Signature
+		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(pv.LastSignState.SignBytes, signBytes); ok {
 			proposal.Timestamp = timestamp
-			proposal.Signature = pv.LastSignature
+			proposal.Signature = pv.LastSignState.Signature
 		} else {
 			err = fmt.Errorf("Conflicting data")
 		}
@@ -269,7 +322,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 	}
 
 	// It passed the checks. Sign the proposal
-	sig, err := pv.PrivKey.Sign(signBytes)
+	sig, err := pv.Key.PrivKey.Sign(signBytes)
 	if err != nil {
 		return err
 	}
@@ -282,17 +335,17 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 func (pv *FilePV) saveSigned(height int64, round int, step int8,
 	signBytes []byte, sig []byte) {
 
-	pv.LastHeight = height
-	pv.LastRound = round
-	pv.LastStep = step
-	pv.LastSignature = sig
-	pv.LastSignBytes = signBytes
-	pv.save()
+	pv.LastSignState.Height = height
+	pv.LastSignState.Round = round
+	pv.LastSignState.Step = step
+	pv.LastSignState.Signature = sig
+	pv.LastSignState.SignBytes = signBytes
+	pv.saveState()
 }
 
 // String returns a string representation of the FilePV.
 func (pv *FilePV) String() string {
-	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", pv.GetAddress(), pv.LastHeight, pv.LastRound, pv.LastStep)
+	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", pv.GetAddress(), pv.LastSignState.Height, pv.LastSignState.Round, pv.LastSignState.Step)
 }
 
 //-------------------------------------

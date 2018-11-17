@@ -34,6 +34,7 @@ program](https://hackerone.com/tendermint).
       reset to 0
 
 ### FEATURES:
+- [privval] \#1181 Split immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
 

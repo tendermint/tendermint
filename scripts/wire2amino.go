@@ -48,6 +48,18 @@ type PrivVal struct {
 	PrivKey    Data         `json:"priv_key"`
 }
 
+type PrivValKey struct {
+	Address cmn.HexBytes `json:"address"`
+	PubKey  Data         `json:"pub_key"`
+	PrivKey Data         `json:"priv_key"`
+}
+
+type PrivValState struct {
+	LastHeight int64 `json:"last_height"`
+	LastRound  int   `json:"last_round"`
+	LastStep   int8  `json:"last_step"`
+}
+
 type Data struct {
 	Type string       `json:"type"`
 	Data cmn.HexBytes `json:"data"`
@@ -72,8 +84,8 @@ func convertNodeKey(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 	return bz, nil
 }
 
-func convertPrivVal(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
-	var privVal PrivVal
+func convertPrivValKey(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
+	var privVal PrivValKey
 	err := json.Unmarshal(jsonBytes, &privVal)
 	if err != nil {
 		return nil, err
@@ -85,13 +97,30 @@ func convertPrivVal(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 	var pubKey ed25519.PubKeyEd25519
 	copy(pubKey[:], privVal.PubKey.Data)
 
-	privValNew := privval.FilePV{
-		Address:    pubKey.Address(),
-		PubKey:     pubKey,
-		LastHeight: privVal.LastHeight,
-		LastRound:  privVal.LastRound,
-		LastStep:   privVal.LastStep,
-		PrivKey:    privKey,
+	privValNew := privval.FilePVKey{
+		Address: pubKey.Address(),
+		PubKey:  pubKey,
+		PrivKey: privKey,
+	}
+
+	bz, err := cdc.MarshalJSON(privValNew)
+	if err != nil {
+		return nil, err
+	}
+	return bz, nil
+}
+
+func convertPrivValState(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
+	var privVal PrivValState
+	err := json.Unmarshal(jsonBytes, &privVal)
+	if err != nil {
+		return nil, err
+	}
+
+	privValNew := privval.FilePVLastSignState{
+		Height: privVal.LastHeight,
+		Round:  privVal.LastRound,
+		Step:   privVal.LastStep,
 	}
 
 	bz, err := cdc.MarshalJSON(privValNew)
@@ -165,8 +194,10 @@ func main() {
 	switch fileName {
 	case "node_key.json":
 		bz, err = convertNodeKey(cdc, fileBytes)
-	case "priv_validator.json":
-		bz, err = convertPrivVal(cdc, fileBytes)
+	case "priv_validator_key.json":
+		bz, err = convertPrivValKey(cdc, fileBytes)
+	case "priv_validator_state.json":
+		bz, err = convertPrivValState(cdc, fileBytes)
 	case "genesis.json":
 		bz, err = convertGenesis(cdc, fileBytes)
 	default:

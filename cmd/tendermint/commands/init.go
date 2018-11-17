@@ -26,15 +26,18 @@ func initFiles(cmd *cobra.Command, args []string) error {
 
 func initFilesWithConfig(config *cfg.Config) error {
 	// private validator
-	privValFile := config.PrivValidatorFile()
+	privValkeyFile := config.PrivValidatorKeyFile()
+	privValStateFile := config.PrivValidatorStateFile()
 	var pv *privval.FilePV
-	if cmn.FileExists(privValFile) {
-		pv = privval.LoadFilePV(privValFile)
-		logger.Info("Found private validator", "path", privValFile)
+	if cmn.FileExists(privValkeyFile) {
+		pv = privval.LoadFilePV(privValkeyFile, privValStateFile)
+		logger.Info("Found private validator", "keyFile", privValkeyFile,
+			"stateFile", privValStateFile)
 	} else {
-		pv = privval.GenFilePV(privValFile)
+		pv = privval.GenFilePV(privValkeyFile, privValStateFile)
 		pv.Save()
-		logger.Info("Generated private validator", "path", privValFile)
+		logger.Info("Generated private validator", "keyFile", privValkeyFile,
+			"stateFile", privValStateFile)
 	}
 
 	nodeKeyFile := config.NodeKeyFile()

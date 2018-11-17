@@ -319,7 +319,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := privval.LoadFilePV(config.PrivValidatorFile())
+	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
 	wal, err := NewWAL(walFile)
 	require.NoError(t, err)
@@ -633,7 +633,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("proxy_test_")
-	privVal := privval.LoadFilePV(config.PrivValidatorFile())
+	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)
 
 	oldValAddr := state.Validators.Validators[0].Address

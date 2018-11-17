@@ -281,9 +281,10 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 }
 
 func loadPrivValidator(config *cfg.Config) *privval.FilePV {
-	privValidatorFile := config.PrivValidatorFile()
-	ensureDir(path.Dir(privValidatorFile), 0700)
-	privValidator := privval.LoadOrGenFilePV(privValidatorFile)
+	privValidatorKeyFile := config.PrivValidatorKeyFile()
+	ensureDir(path.Dir(privValidatorKeyFile), 0700)
+	privValidatorStateFile := config.PrivValidatorStateFile()
+	privValidator := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	privValidator.Reset()
 	return privValidator
 }
@@ -617,11 +618,16 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempFile, err := ioutil.TempFile("", "priv_validator_")
+			tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
 			if err != nil {
 				panic(err)
 			}
-			privVal = privval.GenFilePV(tempFile.Name())
+			tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+			if err != nil {
+				panic(err)
+			}
+
+			privVal = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 		}
 
 		app := appFunc()
