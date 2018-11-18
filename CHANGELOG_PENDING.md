@@ -25,4 +25,6 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+Retry RemoteSigner connections on Error
+
 ### BUG FIXES:
