@@ -123,6 +123,9 @@ func (sc *TCPVal) OnStart() error {
 						"Ping",
 						"err", err,
 					)
+					sc.conn.Close()
+					sc.RemoteSignerClient = NewRemoteSignerClient(sc.conn)
+
 				}
 			case <-sc.cancelPing:
 				sc.pingTicker.Stop()
