@@ -26,5 +26,6 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 - [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
+- [mempool] \#2855 add txs from Update to cache
 
 ### BUG FIXES:

@@ -545,6 +545,11 @@ func (mem *Mempool) Update(
 		mem.postCheck = postCheck
 	}
 
+	// Add committed transactions to cache (if missing).
+	for _, tx := range txs {
+		_ = mem.cache.Push(tx)
+	}
+
 	// Remove committed transactions.
 	txsLeft := mem.removeTxs(txs)
 
