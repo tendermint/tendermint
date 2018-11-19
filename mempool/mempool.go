@@ -517,8 +517,9 @@ func (mem *Mempool) ReapMaxTxs(max int) types.Txs {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max))
-	for e := mem.txs.Front(); e != nil && len(txs) <= max; e = e.Next() {
+	numTxsToReap := cmn.MinInt(mem.txs.Len(), max)
+	txs := make([]types.Tx, 0, numTxsToReap)
+	for e := mem.txs.Front(); len(txs) < numTxsToReap; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		txs = append(txs, memTx.tx)
 	}
