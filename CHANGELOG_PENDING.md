@@ -25,6 +25,6 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [config] \#2877 add blocktime_iota to the config.toml
+- [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
 
 ### BUG FIXES:
