@@ -102,7 +102,6 @@ func (vals *ValidatorSet) computeAvgAccum() int64 {
 		return avg.Int64()
 	}
 
-	// TODO: add tests that this doesn't panic
 	// this should never happen: each val.Accum is in bounds of int64
 	panic(fmt.Sprintf("Cannot represent avg accum as an int64 %v", avg))
 }

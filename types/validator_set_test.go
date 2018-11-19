@@ -299,34 +299,23 @@ func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
 	assert.EqualValues(t, math.MaxInt64, vset.TotalVotingPower())
 }
 
-func TestValidatorSetIncrementAccumOverflows(t *testing.T) {
-	t.Skip("TODO find a combination of accums where we'd expect the accum to overflow")
-	// NewValidatorSet calls IncrementAccum(1)
-	vset := NewValidatorSet([]*Validator{
-		// too much voting power
-		0: {Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
-		// too big accum
-		1: {Address: []byte("b"), VotingPower: 10, Accum: math.MaxInt64},
-		// almost too big accum
-		2: {Address: []byte("c"), VotingPower: 10, Accum: math.MaxInt64 - 5},
-	})
+func TestAvgAccum(t *testing.T) {
+	// Create Validator set without calling IncrementAccum:
+	tcs := []struct {
+		vs   ValidatorSet
+		want int64
+	}{
+		0: {ValidatorSet{Validators: []*Validator{{Accum: 0}, {Accum: 0}, {Accum: 0}}}, 0},
+		1: {ValidatorSet{Validators: []*Validator{{Accum: math.MaxInt64}, {Accum: 0}, {Accum: 0}}}, math.MaxInt64 / 3},
+		2: {ValidatorSet{Validators: []*Validator{{Accum: math.MaxInt64}, {Accum: 0}}}, math.MaxInt64 / 2},
+		3: {ValidatorSet{Validators: []*Validator{{Accum: math.MaxInt64}, {Accum: math.MaxInt64}}}, math.MaxInt64},
+		4: {ValidatorSet{Validators: []*Validator{{Accum: math.MinInt64}, {Accum: math.MinInt64}}}, math.MinInt64},
+	}
+	for i, tc := range tcs {
+		got := tc.vs.computeAvgAccum()
+		assert.Equal(t, tc.want, got, "test case: %v", i)
+	}
 
-	assert.Equal(t, int64(0), vset.Validators[0].Accum, "0") // because we decrement val with most voting power
-	assert.EqualValues(t, math.MaxInt64, vset.Validators[1].Accum, "1")
-	assert.EqualValues(t, math.MaxInt64, vset.Validators[2].Accum, "2")
-}
-
-func TestValidatorSetIncrementAccumUnderflows(t *testing.T) {
-	t.Skip("TODO find a combination of accums where we'd expect the individual accums to underflow")
-	// NewValidatorSet calls IncrementAccum(1)
-	vset := NewValidatorSet([]*Validator{
-		0: {Address: []byte("a"), VotingPower: math.MaxInt64, Accum: math.MinInt64},
-		1: {Address: []byte("b"), VotingPower: 1, Accum: math.MinInt64},
-	})
-	vset.IncrementAccum(5)
-
-	assert.EqualValues(t, math.MinInt64, vset.Validators[0].Accum, "0")
-	assert.EqualValues(t, math.MinInt64, vset.Validators[1].Accum, "1")
 }
 
 func TestSafeAdd(t *testing.T) {
