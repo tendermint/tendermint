@@ -29,3 +29,5 @@ program](https://hackerone.com/tendermint).
 - [mempool] \#2855 add txs from Update to cache
 
 ### BUG FIXES:
+
+- [log] \#2868 fix module=main setting overriding all others
