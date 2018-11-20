@@ -21,7 +21,10 @@ const (
 
 	maxMsgSize                 = 1048576 // 1MB TODO make it configurable
 	peerCatchupSleepIntervalMS = 100     // If peer is behind, sleep this amount
-	unknownPeerID              = 0
+
+	// UnknownPeerID is the peer ID to use when running CheckTx when there is
+	// no peer (e.g. RPC)
+	UnknownPeerID uint16 = 0
 )
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
@@ -109,7 +112,7 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		memR.idMtx.RLock()
 		peerID := memR.peerMap[src.ID()]
 		memR.idMtx.RUnlock()
-		err := memR.Mempool.checkTxFromPeer(msg.Tx, nil, peerID)
+		err := memR.Mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{peerID})
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", TxID(msg.Tx), "err", err)
 		}

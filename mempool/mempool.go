@@ -33,6 +33,12 @@ type PreCheckFunc func(types.Tx) error
 // transaction doesn't require more gas than available for the block.
 type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
 
+// TxInfo are parameters that get passed when attempting to add
+// a tx to the mempool
+type TxInfo struct {
+	PeerID uint16
+}
+
 /*
 
 The mempool pushes new txs onto the proxyAppConn.
@@ -182,7 +188,7 @@ func NewMempool(
 	} else {
 		mempool.cache = nopTxCache{}
 	}
-	proxyAppConn.SetResponseCallback(mempool.resCb(unknownPeerID))
+	proxyAppConn.SetResponseCallback(mempool.resCb(UnknownPeerID))
 	for _, option := range options {
 		option(mempool)
 	}
@@ -301,10 +307,10 @@ func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
-	return mem.checkTxFromPeer(tx, cb, unknownPeerID)
+	return mem.CheckTxWithInfo(tx, cb, TxInfo{UnknownPeerID})
 }
 
-func (mem *Mempool) checkTxFromPeer(tx types.Tx, cb func(*abci.Response), peerID uint16) (err error) {
+func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) (err error) {
 	mem.proxyMtx.Lock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
@@ -320,7 +326,7 @@ func (mem *Mempool) checkTxFromPeer(tx types.Tx, cb func(*abci.Response), peerID
 	}
 
 	// CACHE
-	if !mem.cache.PushTxFromPeer(tx, peerID) {
+	if !mem.cache.PushTxWithInfo(tx, txInfo) {
 		return ErrTxInCache
 	}
 	// END CACHE
@@ -343,7 +349,7 @@ func (mem *Mempool) checkTxFromPeer(tx types.Tx, cb func(*abci.Response), peerID
 	if err = mem.proxyAppConn.Error(); err != nil {
 		return err
 	}
-	mem.proxyAppConn.SetResponseCallback(mem.resCb(peerID))
+	mem.proxyAppConn.SetResponseCallback(mem.resCb(txInfo.PeerID))
 	reqRes := mem.proxyAppConn.CheckTxAsync(tx)
 	if cb != nil {
 		reqRes.SetCallback(cb)
@@ -634,7 +640,7 @@ func (memTx *mempoolTx) Height() int64 {
 
 type txCache interface {
 	Reset()
-	PushTxFromPeer(tx types.Tx, peerID uint16) bool
+	PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool
 	Remove(tx types.Tx)
 }
 
@@ -666,9 +672,9 @@ func (cache *mapTxCache) Reset() {
 	cache.mtx.Unlock()
 }
 
-// PushTxFromPeer adds the given tx to the cache and returns true. It returns false if tx
+// PushTxWithInfo adds the given tx to the cache and returns true. It returns false if tx
 // is already in the cache.
-func (cache *mapTxCache) PushTxFromPeer(tx types.Tx, peerID uint16) bool {
+func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
 
@@ -682,14 +688,14 @@ func (cache *mapTxCache) PushTxFromPeer(tx types.Tx, peerID uint16) bool {
 			return false
 		}
 		for i := 0; i < len(memTx.senders); i++ {
-			if peerID == memTx.senders[i] {
+			if txInfo.PeerID == memTx.senders[i] {
 				// TODO: consider punishing peer for dups,
 				// its non-trivial since invalid txs can become valid,
 				// but they can spam the same tx with little cost to them atm.
 				return false
 			}
 		}
-		memTx.senders = append(memTx.senders, peerID)
+		memTx.senders = append(memTx.senders, txInfo.PeerID)
 	}
 
 	if cache.list.Len() >= cache.size {
@@ -723,5 +729,5 @@ type nopTxCache struct{}
 var _ txCache = (*nopTxCache)(nil)
 
 func (nopTxCache) Reset()                               {}
-func (nopTxCache) PushTxFromPeer(types.Tx, uint16) bool { return true }
+func (nopTxCache) PushTxWithInfo(types.Tx, TxInfo) bool { return true }
 func (nopTxCache) Remove(types.Tx)                      {}

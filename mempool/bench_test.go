@@ -40,13 +40,14 @@ func BenchmarkCheckTx(b *testing.B) {
 func BenchmarkCacheInsertTime(b *testing.B) {
 	cache := newMapTxCache(b.N)
 	txs := make([][]byte, b.N)
+	txInfo := TxInfo{UnknownPeerID}
 	for i := 0; i < b.N; i++ {
 		txs[i] = make([]byte, 8)
 		binary.BigEndian.PutUint64(txs[i], uint64(i))
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cache.PushTxFromPeer(txs[i], unknownPeerID)
+		cache.PushTxWithInfo(txs[i], txInfo)
 	}
 }
 
@@ -55,10 +56,11 @@ func BenchmarkCacheInsertTime(b *testing.B) {
 func BenchmarkCacheRemoveTime(b *testing.B) {
 	cache := newMapTxCache(b.N)
 	txs := make([][]byte, b.N)
+	txInfo := TxInfo{UnknownPeerID}
 	for i := 0; i < b.N; i++ {
 		txs[i] = make([]byte, 8)
 		binary.BigEndian.PutUint64(txs[i], uint64(i))
-		cache.PushTxFromPeer(txs[i], unknownPeerID)
+		cache.PushTxWithInfo(txs[i], txInfo)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
