@@ -148,6 +148,44 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
+func createExternalPrivValidator(listenAddr string, logger log.Logger) (types.PrivValidator, error) {
+	protocol, address := cmn.ProtocolAndAddress(listenAddr)
+
+	var pvsc types.PrivValidator
+
+	switch (protocol) {
+	case "unix":
+		pvsc = privval.NewIPCVal(
+			logger.With("module", "privval"),
+			address,
+		)
+
+	case "tcp":
+		// TODO: persist this key so external signer
+		// can actually authenticate us
+		pvsc = privval.NewTCPVal(
+			logger.With("module", "privval"),
+			listenAddr,
+			ed25519.GenPrivKey(),
+		)
+
+	default:
+		return nil, fmt.Errorf(
+			"Error creating private validator: expected either tcp or unix "+
+			"protocols, got %s",
+			protocol,
+		)
+	}
+
+	pvServ, _ := pvsc.(cmn.Service)
+	if err := pvServ.Start(); err != nil {
+		return nil, fmt.Errorf("Error starting private validator client: %v", err)
+	}
+
+	return pvsc, nil
+
+}
+
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -220,25 +258,13 @@ func NewNode(config *cfg.Config,
 		)
 	}
 
-	// If an address is provided, listen on the socket for a
-	// connection from an external signing process.
 	if config.PrivValidatorListenAddr != "" {
-		var (
-			// TODO: persist this key so external signer
-			// can actually authenticate us
-			privKey = ed25519.GenPrivKey()
-			pvsc    = privval.NewTCPVal(
-				logger.With("module", "privval"),
-				config.PrivValidatorListenAddr,
-				privKey,
-			)
-		)
-
-		if err := pvsc.Start(); err != nil {
-			return nil, fmt.Errorf("Error starting private validator client: %v", err)
+		// If an address is provided, listen on the socket for a
+		// connection from an external signing process.
+		privValidator, err = createExternalPrivValidator(config.PrivValidatorListenAddr, logger)
+		if err != nil {
+			return nil, err
 		}
-
-		privValidator = pvsc
 	}
 
 	// Decide whether to fast-sync or not
@@ -600,9 +626,10 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if pvsc, ok := n.privValidator.(*privval.TCPVal); ok {
+
+	if pvsc, ok := n.privValidator.(cmn.Service); ok {
 		if err := pvsc.Stop(); err != nil {
-			n.Logger.Error("Error stopping priv validator socket client", "err", err)
+			n.Logger.Error("Error stopping priv validator client", "err", err)
 		}
 	}
 
