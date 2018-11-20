@@ -36,6 +36,43 @@ func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msg
 	return c
 }
 
+func TestMConnectionSendFlushStop(t *testing.T) {
+	server, client := NetPipe()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
+
+	clientConn := createTestMConnection(client)
+	err := clientConn.Start()
+	require.Nil(t, err)
+	defer clientConn.Stop()
+
+	msg := []byte("abc")
+	assert.True(t, clientConn.Send(0x01, msg))
+
+	aminoMsgLength := 14
+
+	// start the reader in a new routine, so we can flush
+	errCh := make(chan error)
+	go func() {
+		msgB := make([]byte, aminoMsgLength)
+		_, err := server.Read(msgB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		errCh <- err
+	}()
+
+	// stop the conn - it should flush all conns
+	clientConn.FlushStop()
+
+	timer := time.NewTimer(3 * time.Second)
+	select {
+	case <-errCh:
+	case <-timer.C:
+		t.Error("timed out waiting for msgs to be read")
+	}
+}
+
 func TestMConnectionSend(t *testing.T) {
 	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck

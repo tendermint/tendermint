@@ -1,12 +1,13 @@
 # Pending
 
-## v0.26.1
+## v0.26.4
 
-*TBA*
+*TBD*
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -25,7 +26,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS:
 
-### BUG FIXES:
+- [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
 
-- [crypto/merkle] [\#2756](https://github.com/tendermint/tendermint/issues/2756) Fix crypto/merkle ProofOperators.Verify to check bounds on keypath parts.
-- [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
+### BUG FIXES:

@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
@@ -88,8 +87,12 @@ func IsPreCheckError(err error) bool {
 func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
 		// We have to account for the amino overhead in the tx size as well
-		aminoOverhead := amino.UvarintSize(uint64(len(tx)))
-		txSize := int64(len(tx) + aminoOverhead)
+		// NOTE: fieldNum = 1 as types.Block.Data contains Txs []Tx as first field.
+		// If this field order ever changes this needs to updated here accordingly.
+		// NOTE: if some []Tx are encoded without a parenting struct, the
+		// fieldNum is also equal to 1.
+		aminoOverhead := types.ComputeAminoOverhead(tx, 1)
+		txSize := int64(len(tx)) + aminoOverhead
 		if txSize > maxBytes {
 			return fmt.Errorf("Tx size (including amino overhead) is too big: %d, max: %d",
 				txSize, maxBytes)
@@ -297,6 +300,7 @@ func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 // CONTRACT: Either cb will get called, or err returned.
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	mem.proxyMtx.Lock()
+	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
 
 	if mem.Size() >= mem.config.Size {
@@ -482,7 +486,7 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		// Check total size requirement
-		aminoOverhead := int64(amino.UvarintSize(uint64(len(memTx.tx))))
+		aminoOverhead := types.ComputeAminoOverhead(memTx.tx, 1)
 		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
 			return txs
 		}

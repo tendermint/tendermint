@@ -67,7 +67,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			}
-			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
+			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr), "err", err)
 			time.Sleep(time.Second * dialRetryIntervalSeconds)
 			continue RETRY_LOOP
 		}
@@ -118,8 +118,8 @@ func (cli *socketClient) Error() error {
 // NOTE: callback may get internally generated flush responses.
 func (cli *socketClient) SetResponseCallback(resCb Callback) {
 	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
 	cli.resCb = resCb
+	cli.mtx.Unlock()
 }
 
 //----------------------------------------
