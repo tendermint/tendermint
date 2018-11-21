@@ -3,7 +3,6 @@ package node
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,11 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -148,44 +148,6 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
-func createExternalPrivValidator(listenAddr string, logger log.Logger) (types.PrivValidator, error) {
-	protocol, address := cmn.ProtocolAndAddress(listenAddr)
-
-	var pvsc types.PrivValidator
-
-	switch (protocol) {
-	case "unix":
-		pvsc = privval.NewIPCVal(
-			logger.With("module", "privval"),
-			address,
-		)
-
-	case "tcp":
-		// TODO: persist this key so external signer
-		// can actually authenticate us
-		pvsc = privval.NewTCPVal(
-			logger.With("module", "privval"),
-			listenAddr,
-			ed25519.GenPrivKey(),
-		)
-
-	default:
-		return nil, fmt.Errorf(
-			"Error creating private validator: expected either tcp or unix "+
-			"protocols, got %s",
-			protocol,
-		)
-	}
-
-	pvServ, _ := pvsc.(cmn.Service)
-	if err := pvServ.Start(); err != nil {
-		return nil, fmt.Errorf("Error starting private validator client: %v", err)
-	}
-
-	return pvsc, nil
-
-}
-
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -259,11 +221,12 @@ func NewNode(config *cfg.Config,
 	}
 
 	if config.PrivValidatorListenAddr != "" {
-		// If an address is provided, listen on the socket for a
-		// connection from an external signing process.
-		privValidator, err = createExternalPrivValidator(config.PrivValidatorListenAddr, logger)
+		// If an address is provided, listen on the socket for a connection from an
+		// external signing process.
+		// FIXME: we should start services inside OnStart
+		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "Error with private validator socket client")
 		}
 	}
 
@@ -626,11 +589,8 @@ func (n *Node) OnStop() {
 		}
 	}
 
-
 	if pvsc, ok := n.privValidator.(cmn.Service); ok {
-		if err := pvsc.Stop(); err != nil {
-			n.Logger.Error("Error stopping priv validator client", "err", err)
-		}
+		pvsc.Stop()
 	}
 
 	if n.prometheusSrv != nil {
@@ -882,6 +842,36 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
 	}
 	db.SetSync(genesisDocKey, bytes)
+}
+
+func createAndStartPrivValidatorSocketClient(
+	listenAddr string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+	var pvsc types.PrivValidator
+
+	protocol, address := cmn.ProtocolAndAddress(listenAddr)
+	switch protocol {
+	case "unix":
+		pvsc = privval.NewIPCVal(logger.With("module", "privval"), address)
+	case "tcp":
+		// TODO: persist this key so external signer
+		// can actually authenticate us
+		pvsc = privval.NewTCPVal(logger.With("module", "privval"), listenAddr, ed25519.GenPrivKey())
+	default:
+		return nil, fmt.Errorf(
+			"Wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
+			protocol,
+		)
+	}
+
+	if pvsc, ok := pvsc.(cmn.Service); ok {
+		if err := pvsc.Start(); err != nil {
+			return nil, errors.Wrap(err, "failed to start")
+		}
+	}
+
+	return pvsc, nil
 }
 
 // splitAndTrimEmpty slices s into all subslices separated by sep and returns a

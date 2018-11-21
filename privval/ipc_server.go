@@ -69,6 +69,7 @@ func (rs *IPCRemoteSigner) OnStart() error {
 		for {
 			conn, err := rs.listener.AcceptUnix()
 			if err != nil {
+				rs.Logger.Error("AcceptUnix", "err", err)
 				return
 			}
 			go rs.handleConnection(conn)
