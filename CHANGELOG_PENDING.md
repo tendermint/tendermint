@@ -30,3 +30,5 @@ program](https://hackerone.com/tendermint).
 - [mempool] \#2835 Remove local int64 counter from being stored in every tx
 
 ### BUG FIXES:
+
+- [rpc] \#2808 RPC validators calls IncrementAccum if necessary
