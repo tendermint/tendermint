@@ -66,7 +66,12 @@ func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
 
 // IncrementAccum increments accum of each validator and updates the
 // proposer. Panics if validator set is empty.
+// `times` must be positive.
 func (vals *ValidatorSet) IncrementAccum(times int) {
+	if times <= 0 {
+		panic("Cannot call IncrementAccum with non-positive times")
+	}
+
 	const shiftEveryNthIter = 10
 	var proposer *Validator
 	// call IncrementAccum(1) times times:

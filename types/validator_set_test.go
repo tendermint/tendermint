@@ -86,6 +86,19 @@ func TestCopy(t *testing.T) {
 	}
 }
 
+// Test that IncrementAccum requires positive times.
+func TestIncrementAccumPositiveTimes(t *testing.T) {
+	vset := NewValidatorSet([]*Validator{
+		newValidator([]byte("foo"), 1000),
+		newValidator([]byte("bar"), 300),
+		newValidator([]byte("baz"), 330),
+	})
+
+	assert.Panics(t, func() { vset.IncrementAccum(-1) })
+	assert.Panics(t, func() { vset.IncrementAccum(0) })
+	vset.IncrementAccum(1)
+}
+
 func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
 	vset := NewValidatorSet([]*Validator{})

@@ -405,8 +405,38 @@ func ensureNewVote(voteCh <-chan interface{}, height int64, round int) {
 }
 
 func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
-	ensureNewEvent(roundCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewRound event")
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewRound event")
+	case ev := <-roundCh:
+		rs, ok := ev.(types.EventDataNewRound)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataNewRound, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+	}
+}
+
+func ensureProposalHeartbeat(heartbeatCh <-chan interface{}) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for ProposalHeartbeat event")
+	case ev := <-heartbeatCh:
+		heartbeat, ok := ev.(types.EventDataProposalHeartbeat)
+		if !ok {
+			panic(fmt.Sprintf("expected a *types.EventDataProposalHeartbeat, "+
+				"got %v. wrong subscription channel?",
+				reflect.TypeOf(heartbeat)))
+		}
+	}
 }
 
 func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, timeout int64) {
@@ -416,8 +446,24 @@ func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, tim
 }
 
 func ensureNewProposal(proposalCh <-chan interface{}, height int64, round int) {
-	ensureNewEvent(proposalCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewProposal event")
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewProposal event")
+	case ev := <-proposalCh:
+		rs, ok := ev.(types.EventDataCompleteProposal)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataCompleteProposal, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+	}
 }
 
 func ensureNewValidBlock(validBlockCh <-chan interface{}, height int64, round int) {
@@ -488,6 +534,30 @@ func ensureVote(voteCh <-chan interface{}, height int64, round int,
 		}
 		if vote.Type != voteType {
 			panic(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
+		}
+	}
+}
+
+func ensureProposal(proposalCh <-chan interface{}, height int64, round int, propId types.BlockID) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewProposal event")
+	case ev := <-proposalCh:
+		rs, ok := ev.(types.EventDataCompleteProposal)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataCompleteProposal, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+		if !rs.BlockID.Equals(propId) {
+			panic("Proposed block does not match expected block")
 		}
 	}
 }

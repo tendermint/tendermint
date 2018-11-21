@@ -107,11 +107,11 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 0, -1, 0},
 		{20, 0, 10, 0},
 		{20, 10, 10, 0},
-		{20, 21, 10, 1},
-		{20, 210, -1, 10},
-		{20, 210, 5, 5},
-		{20, 210, 10, 10},
-		{20, 210, 15, 10},
+		{20, 22, 10, 1},
+		{20, 220, -1, 10},
+		{20, 220, 5, 5},
+		{20, 220, 10, 10},
+		{20, 220, 15, 10},
 		{20, 20000, -1, 20},
 		{20, 20000, 5, 5},
 		{20, 20000, 30, 20},
@@ -145,21 +145,32 @@ func TestMempoolFilters(t *testing.T) {
 		{10, nopPreFilter, nopPostFilter, 10},
 		{10, PreCheckAminoMaxBytes(10), nopPostFilter, 0},
 		{10, PreCheckAminoMaxBytes(20), nopPostFilter, 0},
-		{10, PreCheckAminoMaxBytes(21), nopPostFilter, 10},
+		{10, PreCheckAminoMaxBytes(22), nopPostFilter, 10},
 		{10, nopPreFilter, PostCheckMaxGas(-1), 10},
 		{10, nopPreFilter, PostCheckMaxGas(0), 0},
 		{10, nopPreFilter, PostCheckMaxGas(1), 10},
 		{10, nopPreFilter, PostCheckMaxGas(3000), 10},
 		{10, PreCheckAminoMaxBytes(10), PostCheckMaxGas(20), 0},
 		{10, PreCheckAminoMaxBytes(30), PostCheckMaxGas(20), 10},
-		{10, PreCheckAminoMaxBytes(21), PostCheckMaxGas(1), 10},
-		{10, PreCheckAminoMaxBytes(21), PostCheckMaxGas(0), 0},
+		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(1), 10},
+		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(0), 0},
 	}
 	for tcIndex, tt := range tests {
 		mempool.Update(1, emptyTxArr, tt.preFilter, tt.postFilter)
 		checkTxs(t, mempool, tt.numTxsToCreate)
 		require.Equal(t, tt.expectedNumTxs, mempool.Size(), "mempool had the incorrect size, on test case %d", tcIndex)
 		mempool.Flush()
+	}
+}
+
+func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(cc)
+	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
+	err := mempool.CheckTx([]byte{0x01}, nil)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrTxInCache, err)
 	}
 }
 

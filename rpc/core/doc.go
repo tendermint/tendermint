@@ -12,7 +12,10 @@ See it here: https://github.com/tendermint/tendermint/tree/master/rpc/lib
 
 ## Configuration
 
-Set the `laddr` config parameter under `[rpc]` table in the `$TMHOME/config/config.toml` file or the `--rpc.laddr` command-line flag to the desired protocol://host:port setting.  Default: `tcp://0.0.0.0:26657`.
+RPC can be configured by tuning parameters under `[rpc]` table in the `$TMHOME/config/config.toml` file or by using the `--rpc.X` command-line flags.
+
+Default rpc listen address is `tcp://0.0.0.0:26657`. To set another address,  set the `laddr` config parameter to desired value.
+CORS (Cross-Origin Resource Sharing) can be enabled by setting `cors_allowed_origins`, `cors_allowed_methods`, `cors_allowed_headers` config parameters.
 
 ## Arguments
 

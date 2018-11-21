@@ -1,12 +1,11 @@
 # Pending
 
-## v0.26.1
-
-*TBA*
+## v0.26.4
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -24,8 +23,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS:
 
+- [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
+- [mempool] \#2855 add txs from Update to cache
+- [mempool] \#2835 Remove local int64 counter from being stored in every tx
+- [node] \#2827 add ability to instantiate IPCVal (@joe-bowman)
+
 ### BUG FIXES:
 
-- [crypto/merkle] [\#2756](https://github.com/tendermint/tendermint/issues/2756) Fix crypto/merkle ProofOperators.Verify to check bounds on keypath parts.
-- [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
-- [p2p] \#2771 Fix `peer-id` label name in prometheus metrics
+- [rpc] \#2808 RPC validators calls IncrementAccum if necessary

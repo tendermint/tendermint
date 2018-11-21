@@ -218,7 +218,7 @@ func TestUpdateValidators(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := updateValidators(tc.currentSet, tc.abciUpdates)
+			_, err := updateValidators(tc.currentSet, tc.abciUpdates)
 			if tc.shouldErr {
 				assert.Error(t, err)
 			} else {
