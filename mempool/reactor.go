@@ -48,7 +48,7 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 		Mempool: mempool,
 
 		peerMap:   make(map[p2p.ID]uint16),
-		activeIDs: make(map[uint16]bool),
+		activeIDs: map[uint16]bool{0: true},
 		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
