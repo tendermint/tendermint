@@ -1,5 +1,97 @@
 # Changelog
 
+## v0.26.3
+
+*November 17th, 2018*
+
+Special thanks to external contributors on this release:
+@danil-lashin, @kevlubkcm, @krhubert, @srmo
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+* Go API
+  - [rpc] [\#2791](https://github.com/tendermint/tendermint/issues/2791) Functions that start HTTP servers are now blocking:
+    - Impacts `StartHTTPServer`, `StartHTTPAndTLSServer`, and `StartGRPCServer`
+    - These functions now take a `net.Listener` instead of an address
+  - [rpc] [\#2767](https://github.com/tendermint/tendermint/issues/2767) Subscribing to events
+  `NewRound` and `CompleteProposal` return new types `EventDataNewRound` and
+  `EventDataCompleteProposal`, respectively, instead of the generic `EventDataRoundState`. (@kevlubkcm)
+
+### FEATURES:
+
+- [log] [\#2843](https://github.com/tendermint/tendermint/issues/2843) New `log_format` config option, which can be set to 'plain' for colored
+  text or 'json' for JSON output
+- [types] [\#2767](https://github.com/tendermint/tendermint/issues/2767) New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
+
+### IMPROVEMENTS:
+
+- [dep] [\#2844](https://github.com/tendermint/tendermint/issues/2844) Dependencies are no longer pinned to an exact version in the
+  Gopkg.toml:
+  - Serialization libs are allowed to vary by patch release
+  - Other libs are allowed to vary by minor release
+- [p2p] [\#2857](https://github.com/tendermint/tendermint/issues/2857) "Send failed" is logged at debug level instead of error.
+- [rpc] [\#2780](https://github.com/tendermint/tendermint/issues/2780) Add read and write timeouts to HTTP servers
+- [state] [\#2848](https://github.com/tendermint/tendermint/issues/2848) Make "Update to validators" msg value pretty (@danil-lashin)
+
+### BUG FIXES:
+- [consensus] [\#2819](https://github.com/tendermint/tendermint/issues/2819) Don't send proposalHearbeat if not a validator
+- [docs] [\#2859](https://github.com/tendermint/tendermint/issues/2859) Fix ConsensusParams details in spec
+- [libs/autofile] [\#2760](https://github.com/tendermint/tendermint/issues/2760) Comment out autofile permissions check - should fix
+  running Tendermint on Windows
+- [p2p] [\#2869](https://github.com/tendermint/tendermint/issues/2869) Set connection config properly instead of always using default
+- [p2p/pex] [\#2802](https://github.com/tendermint/tendermint/issues/2802) Seed mode fixes:
+  - Only disconnect from inbound peers
+  - Use FlushStop instead of Sleep to ensure all messages are sent before
+    disconnecting
+
+## v0.26.2
+
+*November 15th, 2018*
+
+Special thanks to external contributors on this release: @hleb-albau, @zhuzeyu
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### FEATURES:
+
+- [rpc] [\#2582](https://github.com/tendermint/tendermint/issues/2582) Enable CORS on RPC API (@hleb-albau)
+
+### BUG FIXES:
+
+- [abci] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Unlock mutex in localClient so even when app panics (e.g. during CheckTx), consensus continue working
+- [abci] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Fix DATA RACE in localClient
+- [amino] [\#2822](https://github.com/tendermint/tendermint/issues/2822) Update to v0.14.1 to support compiling on 32-bit platforms
+- [rpc] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Drain channel before calling Unsubscribe(All) in `/broadcast_tx_commit`
+
+## v0.26.1
+
+*November 11, 2018*
+
+Special thanks to external contributors on this release: @katakonst
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS:
+
+- [consensus] [\#2704](https://github.com/tendermint/tendermint/issues/2704) Simplify valid POL round logic
+- [docs] [\#2749](https://github.com/tendermint/tendermint/issues/2749) Deduplicate some ABCI docs
+- [mempool] More detailed log messages
+    - [\#2724](https://github.com/tendermint/tendermint/issues/2724)
+    - [\#2762](https://github.com/tendermint/tendermint/issues/2762)
+
+### BUG FIXES:
+
+- [autofile] [\#2703](https://github.com/tendermint/tendermint/issues/2703) Do not panic when checking Head size
+- [crypto/merkle] [\#2756](https://github.com/tendermint/tendermint/issues/2756) Fix crypto/merkle ProofOperators.Verify to check bounds on keypath parts.
+- [mempool] fix a bug where we create a WAL despite `wal_dir` being empty
+- [p2p] [\#2771](https://github.com/tendermint/tendermint/issues/2771) Fix `peer-id` label name to `peer_id` in prometheus metrics
+- [p2p] [\#2797](https://github.com/tendermint/tendermint/pull/2797) Fix IDs in peer NodeInfo and require them for addresses
+  in AddressBook
+- [p2p] [\#2797](https://github.com/tendermint/tendermint/pull/2797) Do not close conn immediately after sending pex addrs in seed mode. Partial fix for [\#2092](https://github.com/tendermint/tendermint/issues/2092).
+
 ## v0.26.0
 
 *November 2, 2018*
@@ -108,6 +200,8 @@ increasing attention to backwards compatibility. Thanks for bearing with us!
 - [abci] [\#2557](https://github.com/tendermint/tendermint/issues/2557) Add `Codespace` field to `Response{CheckTx, DeliverTx, Query}`
 - [abci] [\#2662](https://github.com/tendermint/tendermint/issues/2662) Add `BlockVersion` and `P2PVersion` to `RequestInfo`
 - [crypto/merkle] [\#2298](https://github.com/tendermint/tendermint/issues/2298) General Merkle Proof scheme for chaining various types of Merkle trees together
+- [docs/architecture] [\#1181](https://github.com/tendermint/tendermint/issues/1181) S
+plit immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
 - Additional Metrics
@@ -139,9 +233,7 @@ increasing attention to backwards compatibility. Thanks for bearing with us!
 - [node] [\#2434](https://github.com/tendermint/tendermint/issues/2434) Make node respond to signal interrupts while sleeping for genesis time
 - [state] [\#2616](https://github.com/tendermint/tendermint/issues/2616) Pass nil to NewValidatorSet() when genesis file's Validators field is nil
 - [p2p] [\#2555](https://github.com/tendermint/tendermint/issues/2555) Fix p2p switch FlushThrottle value (@goolAdapter)
-- [p2p] [\#2668](https://github.com/tendermint/tendermint/issues/2668) Reconnect to originally dialed address (not self-reported
-  address) for persistent peers
-
+- [p2p] [\#2668](https://github.com/tendermint/tendermint/issues/2668) Reconnect to originally dialed address (not self-reported address) for persistent peers
 
 ## v0.25.0
 
@@ -307,8 +399,8 @@ BUG FIXES:
 *August 22nd, 2018*
 
 BUG FIXES:
-- [libs/autofile] \#2261 Fix log rotation so it actually happens.
-    - Fixes issues with consensus WAL growing unbounded ala \#2259
+- [libs/autofile] [\#2261](https://github.com/tendermint/tendermint/issues/2261) Fix log rotation so it actually happens.
+    - Fixes issues with consensus WAL growing unbounded ala [\#2259](https://github.com/tendermint/tendermint/issues/2259)
 
 ## 0.23.0
 

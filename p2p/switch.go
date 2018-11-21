@@ -27,6 +27,17 @@ const (
 	reconnectBackOffBaseSeconds = 3
 )
 
+// MConnConfig returns an MConnConfig with fields updated
+// from the P2PConfig.
+func MConnConfig(cfg *config.P2PConfig) conn.MConnConfig {
+	mConfig := conn.DefaultMConnConfig()
+	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
+	mConfig.SendRate = cfg.SendRate
+	mConfig.RecvRate = cfg.RecvRate
+	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
+	return mConfig
+}
+
 //-----------------------------------------------------------------------------
 
 // An AddrBook represents an address book from the pex package, which is used
@@ -70,8 +81,6 @@ type Switch struct {
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
 
-	mConfig conn.MConnConfig
-
 	rng *cmn.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
@@ -101,14 +110,6 @@ func NewSwitch(
 
 	// Ensure we have a completely undeterministic PRNG.
 	sw.rng = cmn.NewRand()
-
-	mConfig := conn.DefaultMConnConfig()
-	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
-	mConfig.SendRate = cfg.SendRate
-	mConfig.RecvRate = cfg.RecvRate
-	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
-
-	sw.mConfig = mConfig
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 
@@ -328,6 +329,11 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 			return
 		}
 
+		if sw.IsDialingOrExistingAddress(addr) {
+			sw.Logger.Debug("Peer connection has been established or dialed while we waiting next try", "addr", addr)
+			return
+		}
+
 		err := sw.DialPeerWithAddress(addr, true)
 		if err == nil {
 			return // success
@@ -415,12 +421,15 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			if addr.Same(ourAddr) {
 				sw.Logger.Debug("Ignore attempt to connect to ourselves", "addr", addr, "ourAddr", ourAddr)
 				return
-			} else if sw.IsDialingOrExistingAddress(addr) {
+			}
+
+			sw.randomSleep(0)
+
+			if sw.IsDialingOrExistingAddress(addr) {
 				sw.Logger.Debug("Ignore attempt to connect to an existing peer", "addr", addr)
 				return
 			}
 
-			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
 				switch err.(type) {
@@ -616,7 +625,7 @@ func (sw *Switch) addPeer(p Peer) error {
 		return err
 	}
 
-	p.SetLogger(sw.Logger.With("peer", p.NodeInfo().NetAddress().String))
+	p.SetLogger(sw.Logger.With("peer", p.NodeInfo().NetAddress()))
 
 	// All good. Start peer
 	if sw.IsRunning() {

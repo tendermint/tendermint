@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -231,7 +230,8 @@ func (g *Group) checkHeadSizeLimit() {
 	}
 	size, err := g.Head.Size()
 	if err != nil {
-		panic(err)
+		g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path, "err", err)
+		return
 	}
 	if size >= limit {
 		g.RotateFile()
@@ -253,21 +253,21 @@ func (g *Group) checkTotalSizeLimit() {
 		}
 		if index == gInfo.MaxIndex {
 			// Special degenerate case, just do nothing.
-			log.Println("WARNING: Group's head " + g.Head.Path + "may grow without bound")
+			g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path)
 			return
 		}
 		pathToRemove := filePathForIndex(g.Head.Path, index, gInfo.MaxIndex)
-		fileInfo, err := os.Stat(pathToRemove)
+		fInfo, err := os.Stat(pathToRemove)
 		if err != nil {
-			log.Println("WARNING: Failed to fetch info for file @" + pathToRemove)
+			g.Logger.Error("Failed to fetch info for file", "file", pathToRemove)
 			continue
 		}
 		err = os.Remove(pathToRemove)
 		if err != nil {
-			log.Println(err)
+			g.Logger.Error("Failed to remove path", "path", pathToRemove)
 			return
 		}
-		totalSize -= fileInfo.Size()
+		totalSize -= fInfo.Size()
 	}
 }
 

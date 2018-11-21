@@ -16,11 +16,10 @@ BRANCH=master
 GO_VERSION=1.11.2
 
 sudo apt-get update -y
-sudo apt-get install -y make
 
 # get and unpack golang
-curl -O https://storage.googleapis.com/golang/go$GO_VERSION.linux-amd64.tar.gz
-tar -xvf go$GO_VERSION.linux-amd64.tar.gz
+curl -O https://storage.googleapis.com/golang/go$GO_VERSION.linux-armv6l.tar.gz
+tar -xvf go$GO_VERSION.linux-armv6l.tar.gz
 
 # move go folder and add go binary to path
 sudo mv go /usr/local

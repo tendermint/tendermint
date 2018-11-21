@@ -107,6 +107,10 @@ func TestProofOperators(t *testing.T) {
 	err = popz.Verify(bz("OUTPUT4"), "//KEY4/KEY2/KEY1", [][]byte{bz("INPUT1")})
 	assert.NotNil(t, err)
 
+	// BAD KEY 5
+	err = popz.Verify(bz("OUTPUT4"), "/KEY2/KEY1", [][]byte{bz("INPUT1")})
+	assert.NotNil(t, err)
+
 	// BAD OUTPUT 1
 	err = popz.Verify(bz("OUTPUT4_WRONG"), "/KEY4/KEY2/KEY1", [][]byte{bz("INPUT1")})
 	assert.NotNil(t, err)
