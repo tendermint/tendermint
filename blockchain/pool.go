@@ -170,9 +170,9 @@ func (pool *BlockPool) IsCaughtUp() bool {
 
 	// Some conditions to determine if we're caught up.
 	// Ensures we've either received a block or waited some amount of time,
-	// and that we're synced to the height known height. Note we use maxPeerHeight - 1
+	// and that we're synced to the highest known height. Note we use maxPeerHeight - 1
 	// because to sync block H requires block H+1 to verify the LastCommit.
-	receivedBlockOrTimedOut := (pool.height > 0 || time.Since(pool.startTime) > 5*time.Second)
+	receivedBlockOrTimedOut := pool.height > 0 || time.Since(pool.startTime) > 5*time.Second
 	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
 	return isCaughtUp
@@ -335,7 +335,6 @@ func (pool *BlockPool) makeNextRequester() {
 	}
 
 	request := newBPRequester(pool, nextHeight)
-	// request.SetLogger(pool.Logger.With("height", nextHeight))
 
 	pool.requesters[nextHeight] = request
 	atomic.AddInt32(&pool.numPending, 1)
