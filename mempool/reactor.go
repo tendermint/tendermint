@@ -35,9 +35,10 @@ type MempoolReactor struct {
 	config  *cfg.MempoolConfig
 	Mempool *Mempool
 
-	idMtx   sync.RWMutex
-	nextID  uint16 // assumes that a node will never have over 65536 peers
-	peerMap map[p2p.ID]uint16
+	idMtx     sync.RWMutex
+	nextID    uint16 // assumes that a node will never have over 65536 active peers
+	peerMap   map[p2p.ID]uint16
+	activeIDs map[uint16]bool // used to check if a given peerID key is used, the value doesn't matter
 }
 
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
@@ -46,8 +47,9 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 		config:  config,
 		Mempool: mempool,
 
-		peerMap: make(map[p2p.ID]uint16),
-		nextID:  1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
+		peerMap:   make(map[p2p.ID]uint16),
+		activeIDs: make(map[uint16]bool),
+		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
@@ -78,11 +80,24 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 	}
 }
 
+// nextPeerID returns the next peer ID to use.
+// This assumes that memR's idMtx is already locked
+func (memR *MempoolReactor) nextPeerID() uint16 {
+	idExists := memR.activeIDs[memR.nextID]
+	for idExists {
+		memR.nextID++
+		_, idExists = memR.activeIDs[memR.nextID]
+	}
+	return memR.nextID
+}
+
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
 	memR.idMtx.Lock()
-	memR.peerMap[peer.ID()] = memR.nextID
+	curID := memR.nextPeerID()
+	memR.peerMap[peer.ID()] = curID
+	memR.activeIDs[curID] = true
 	memR.nextID++
 	memR.idMtx.Unlock()
 	go memR.broadcastTxRoutine(peer)
@@ -91,7 +106,9 @@ func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	memR.idMtx.Lock()
+	removedID := memR.peerMap[peer.ID()]
 	delete(memR.peerMap, peer.ID())
+	delete(memR.activeIDs, removedID)
 	memR.idMtx.Unlock()
 	// broadcast routine checks if peer is gone and returns
 }
