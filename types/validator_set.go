@@ -12,6 +12,9 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+// The maximum allowed total voting power.
+const MaxTotalVotingPower = 8198552921648689607
+
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
 // The index is in order of .Address, so the indices are fixed
@@ -64,23 +67,33 @@ func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
 // IncrementAccum increments accum of each validator and updates the
 // proposer. Panics if validator set is empty.
 func (vals *ValidatorSet) IncrementAccum(times int) {
+	const shiftEveryNthIter = 10
+	var proposer *Validator
 	// call IncrementAccum(1) times times:
 	for i := 0; i < times; i++ {
-		vals.incrementAccum()
+		shiftByAvgAccum := i%shiftEveryNthIter == 0
+		proposer = vals.incrementAccum(shiftByAvgAccum)
 	}
+	vals.Proposer = proposer
 }
 
-func (vals *ValidatorSet) incrementAccum() {
+func (vals *ValidatorSet) incrementAccum(subAvg bool) *Validator {
 	for _, val := range vals.Validators {
 		// Check for overflow for sum.
 		val.Accum = safeAddClip(val.Accum, val.VotingPower)
 	}
 	validatorsHeap := cmn.NewHeap()
-	// Shift by avg accum.
-	avgAccum := vals.computeAvgAccum()
-	for _, val := range vals.Validators {
-		val.Accum = safeSubClip(val.Accum, avgAccum)
-		validatorsHeap.PushComparable(val, accumComparable{val})
+
+	if subAvg { // shift by avg accum
+		avgAccum := vals.computeAvgAccum()
+		for _, val := range vals.Validators {
+			val.Accum = safeSubClip(val.Accum, avgAccum)
+			validatorsHeap.PushComparable(val, accumComparable{val})
+		}
+	} else { // just update the heap
+		for _, val := range vals.Validators {
+			validatorsHeap.PushComparable(val, accumComparable{val})
+		}
 	}
 
 	// Decrement the validator with most accum:
@@ -88,7 +101,7 @@ func (vals *ValidatorSet) incrementAccum() {
 	// mind underflow
 	mostest.Accum = safeSubClip(mostest.Accum, vals.TotalVotingPower())
 
-	vals.Proposer = mostest
+	return mostest
 }
 
 func (vals *ValidatorSet) computeAvgAccum() int64 {
@@ -160,10 +173,15 @@ func (vals *ValidatorSet) Size() int {
 // TotalVotingPower returns the sum of the voting powers of all validators.
 func (vals *ValidatorSet) TotalVotingPower() int64 {
 	if vals.totalVotingPower == 0 {
+		sum := int64(0)
 		for _, val := range vals.Validators {
 			// mind overflow
-			vals.totalVotingPower = safeAddClip(vals.totalVotingPower, val.VotingPower)
+			sum = safeAddClip(sum, val.VotingPower)
 		}
+		if sum > MaxTotalVotingPower {
+			sum = MaxTotalVotingPower
+		}
+		vals.totalVotingPower = sum
 	}
 	return vals.totalVotingPower
 }

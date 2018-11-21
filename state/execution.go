@@ -341,9 +341,12 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			}
 		} else if val == nil { // add val
 			// TODO: issue #1558 update spec according to the following:
-			// Set Accum to -totalVotingPower to make sure validators can't unbond/rebond to reset their (potentially
-			// previously negative) Accum to zero.
-			valUpdate.Accum = -totalVotingPower
+			// Set Accum to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
+			// unbond/rebond to reset their (potentially previously negative) Accum to zero.
+			//
+			// Contract: totalVotingPower < MaxTotalVotingPower to ensure Accum does
+			// not exceed the bounds of int64.
+			valUpdate.Accum = -(totalVotingPower + (totalVotingPower >> 3))
 			added := currentSet.Add(valUpdate)
 			if !added {
 				return fmt.Errorf("Failed to add new validator %v", valUpdate)

@@ -239,7 +239,7 @@ func TestProposerSelection3(t *testing.T) {
 		mod := (cmn.RandInt() % 5) + 1
 		if cmn.RandInt()%mod > 0 {
 			// sometimes its up to 5
-			times = cmn.RandInt() % 5
+			times = (cmn.RandInt() % 4) + 1
 		}
 		vset.IncrementAccum(times)
 
@@ -296,7 +296,7 @@ func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
 		{Address: []byte("c"), VotingPower: math.MaxInt64, Accum: 0},
 	})
 
-	assert.EqualValues(t, math.MaxInt64, vset.TotalVotingPower())
+	assert.EqualValues(t, MaxTotalVotingPower, vset.TotalVotingPower())
 }
 
 func TestAvgAccum(t *testing.T) {
