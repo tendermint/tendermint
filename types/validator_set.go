@@ -79,6 +79,11 @@ func (vals *ValidatorSet) IncrementAccum(times int) {
 		shiftByAvgAccum := i%shiftEveryNthIter == 0
 		proposer = vals.incrementAccum(shiftByAvgAccum)
 	}
+	isShiftedAvgOnLastIter := (times-1)%shiftEveryNthIter == 0
+	if !isShiftedAvgOnLastIter {
+		validatorsHeap := cmn.NewHeap()
+		vals.shiftByAvgAccum(validatorsHeap)
+	}
 	vals.Proposer = proposer
 }
 
@@ -87,14 +92,10 @@ func (vals *ValidatorSet) incrementAccum(subAvg bool) *Validator {
 		// Check for overflow for sum.
 		val.Accum = safeAddClip(val.Accum, val.VotingPower)
 	}
-	validatorsHeap := cmn.NewHeap()
 
+	validatorsHeap := cmn.NewHeap()
 	if subAvg { // shift by avg accum
-		avgAccum := vals.computeAvgAccum()
-		for _, val := range vals.Validators {
-			val.Accum = safeSubClip(val.Accum, avgAccum)
-			validatorsHeap.PushComparable(val, accumComparable{val})
-		}
+		vals.shiftByAvgAccum(validatorsHeap)
 	} else { // just update the heap
 		for _, val := range vals.Validators {
 			validatorsHeap.PushComparable(val, accumComparable{val})
@@ -122,6 +123,14 @@ func (vals *ValidatorSet) computeAvgAccum() int64 {
 
 	// this should never happen: each val.Accum is in bounds of int64
 	panic(fmt.Sprintf("Cannot represent avg accum as an int64 %v", avg))
+}
+
+func (vals *ValidatorSet) shiftByAvgAccum(validatorsHeap *cmn.Heap) {
+	avgAccum := vals.computeAvgAccum()
+	for _, val := range vals.Validators {
+		val.Accum = safeSubClip(val.Accum, avgAccum)
+		validatorsHeap.PushComparable(val, accumComparable{val})
+	}
 }
 
 // Copy each validator into a new ValidatorSet
