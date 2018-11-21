@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/version"
@@ -79,11 +80,13 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.EvidenceHash = []byte("something else")
 		}, true},
 	}
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
 			block := MakeBlock(h, txs, commit, evList)
+			block.ProposerAddress = valSet.GetProposer().Address
 			tc.malleateBlock(block)
-			assert.Equal(t, tc.expErr, block.ValidateBasic() != nil, "ValidateBasic had an unexpected result")
+			err = block.ValidateBasic()
+			assert.Equal(t, tc.expErr, err != nil, "#%d: %v", i, err)
 		})
 	}
 }
@@ -116,7 +119,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, 2, partSet.Total())
+	assert.Equal(t, 3, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -247,7 +250,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	h := Header{
-		Version:            version.Consensus{math.MaxInt64, math.MaxInt64},
+		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
 		Time:               timestamp,
@@ -262,7 +265,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 		AppHash:            tmhash.Sum([]byte("app_hash")),
 		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
 		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
-		ProposerAddress:    tmhash.Sum([]byte("proposer_address")),
+		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
 	}
 
 	bz, err := cdc.MarshalBinaryLengthPrefixed(h)
@@ -292,9 +295,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {750, 1, 0, true, 0},
-		3: {751, 1, 0, false, 0},
-		4: {752, 1, 0, false, 1},
+		2: {886, 1, 0, true, 0},
+		3: {887, 1, 0, false, 0},
+		4: {888, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -320,9 +323,9 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {833, 1, true, 0},
-		3: {834, 1, false, 0},
-		4: {835, 1, false, 1},
+		2: {984, 1, true, 0},
+		3: {985, 1, false, 0},
+		4: {986, 1, false, 1},
 	}
 
 	for i, tc := range testCases {

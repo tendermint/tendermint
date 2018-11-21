@@ -26,7 +26,14 @@ const (
 	RoundStepPrecommitWait = RoundStepType(0x07) // Did receive any +2/3 precommits, start timeout
 	RoundStepCommit        = RoundStepType(0x08) // Entered commit state machine
 	// NOTE: RoundStepNewHeight acts as RoundStepCommitWait.
+
+	// NOTE: Update IsValid method if you change this!
 )
+
+// IsValid returns true if the step is valid, false if unknown/undefined.
+func (rs RoundStepType) IsValid() bool {
+	return uint8(rs) >= 0x01 && uint8(rs) <= 0x08
+}
 
 // String returns a string
 func (rs RoundStepType) String() string {
@@ -105,18 +112,50 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 	}
 }
 
+// NewRoundEvent returns the RoundState with proposer information as an event.
+func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
+	addr := rs.Validators.GetProposer().Address
+	idx, _ := rs.Validators.GetByAddress(addr)
+
+	return types.EventDataNewRound{
+		Height: rs.Height,
+		Round:  rs.Round,
+		Step:   rs.Step.String(),
+		Proposer: types.ValidatorInfo{
+			Address: addr,
+			Index:   idx,
+		},
+	}
+}
+
+// CompleteProposalEvent returns information about a proposed block as an event.
+func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
+	// We must construct BlockID from ProposalBlock and ProposalBlockParts
+	// cs.Proposal is not guaranteed to be set when this function is called
+	blockId := types.BlockID{
+		Hash:        rs.ProposalBlock.Hash(),
+		PartsHeader: rs.ProposalBlockParts.Header(),
+	}
+
+	return types.EventDataCompleteProposal{
+		Height:  rs.Height,
+		Round:   rs.Round,
+		Step:    rs.Step.String(),
+		BlockID: blockId,
+	}
+}
+
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 	// copy the RoundState.
 	// TODO: if we want to avoid this, we may need synchronous events after all
 	rsCopy := *rs
-	edrs := types.EventDataRoundState{
+	return types.EventDataRoundState{
 		Height:     rs.Height,
 		Round:      rs.Round,
 		Step:       rs.Step.String(),
 		RoundState: &rsCopy,
 	}
-	return edrs
 }
 
 // String returns a string

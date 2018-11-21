@@ -13,20 +13,22 @@ REPO=github.com/tendermint/tendermint
 # change this to a specific release or branch
 BRANCH=master
 
+GO_VERSION=1.11.2
+
 sudo apt-get update -y
 sudo apt-get install -y make
 
 # get and unpack golang
-curl -O https://storage.googleapis.com/golang/go1.11.linux-amd64.tar.gz
-tar -xvf go1.11.linux-amd64.tar.gz
+curl -O https://storage.googleapis.com/golang/go$GO_VERSION.linux-amd64.tar.gz
+tar -xvf go$GO_VERSION.linux-amd64.tar.gz
 
 # move go folder and add go binary to path
 sudo mv go /usr/local
 echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.profile
 
-# create the goApps directory, set GOPATH, and put it on PATH
-mkdir goApps
-echo "export GOPATH=$HOME/goApps" >> ~/.profile
+# create the go directory, set GOPATH, and put it on PATH
+mkdir go
+echo "export GOPATH=$HOME/go" >> ~/.profile
 echo "export PATH=\$PATH:\$GOPATH/bin" >> ~/.profile
 source ~/.profile
 

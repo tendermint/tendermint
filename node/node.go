@@ -13,8 +13,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/tendermint/go-amino"
+	"github.com/rs/cors"
 
+	"github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -147,6 +148,44 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
+func createExternalPrivValidator(listenAddr string, logger log.Logger) (types.PrivValidator, error) {
+	protocol, address := cmn.ProtocolAndAddress(listenAddr)
+
+	var pvsc types.PrivValidator
+
+	switch (protocol) {
+	case "unix":
+		pvsc = privval.NewIPCVal(
+			logger.With("module", "privval"),
+			address,
+		)
+
+	case "tcp":
+		// TODO: persist this key so external signer
+		// can actually authenticate us
+		pvsc = privval.NewTCPVal(
+			logger.With("module", "privval"),
+			listenAddr,
+			ed25519.GenPrivKey(),
+		)
+
+	default:
+		return nil, fmt.Errorf(
+			"Error creating private validator: expected either tcp or unix "+
+			"protocols, got %s",
+			protocol,
+		)
+	}
+
+	pvServ, _ := pvsc.(cmn.Service)
+	if err := pvServ.Start(); err != nil {
+		return nil, fmt.Errorf("Error starting private validator client: %v", err)
+	}
+
+	return pvsc, nil
+
+}
+
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -219,25 +258,13 @@ func NewNode(config *cfg.Config,
 		)
 	}
 
-	// If an address is provided, listen on the socket for a
-	// connection from an external signing process.
 	if config.PrivValidatorListenAddr != "" {
-		var (
-			// TODO: persist this key so external signer
-			// can actually authenticate us
-			privKey = ed25519.GenPrivKey()
-			pvsc    = privval.NewTCPVal(
-				logger.With("module", "privval"),
-				config.PrivValidatorListenAddr,
-				privKey,
-			)
-		)
-
-		if err := pvsc.Start(); err != nil {
-			return nil, fmt.Errorf("Error starting private validator client: %v", err)
+		// If an address is provided, listen on the socket for a
+		// connection from an external signing process.
+		privValidator, err = createExternalPrivValidator(config.PrivValidatorListenAddr, logger)
+		if err != nil {
+			return nil, err
 		}
-
-		privValidator = pvsc
 	}
 
 	// Decide whether to fast-sync or not
@@ -265,21 +292,14 @@ func NewNode(config *cfg.Config,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(
-			mempl.PreCheckAminoMaxBytes(
-				types.MaxDataBytesUnknownEvidence(
-					state.ConsensusParams.BlockSize.MaxBytes,
-					state.Validators.Size(),
-				),
-			),
-		),
-		mempl.WithPostCheck(
-			mempl.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas),
-		),
+		mempl.WithPreCheck(sm.TxPreCheck(state)),
+		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
 	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)
-	mempool.InitWAL() // no need to have the mempool wal during tests
+	if config.Mempool.WalEnabled() {
+		mempool.InitWAL() // no need to have the mempool wal during tests
+	}
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
@@ -377,7 +397,8 @@ func NewNode(config *cfg.Config,
 
 	// Setup Transport.
 	var (
-		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey)
+		mConnConfig = p2p.MConnConfig(config.P2P)
+		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
@@ -586,6 +607,11 @@ func (n *Node) OnStop() {
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 
+	// stop mempool WAL
+	if n.config.Mempool.WalEnabled() {
+		n.mempoolReactor.Mempool.CloseWAL()
+	}
+
 	if err := n.transport.Close(); err != nil {
 		n.Logger.Error("Error closing transport", "err", err)
 	}
@@ -600,9 +626,10 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if pvsc, ok := n.privValidator.(*privval.TCPVal); ok {
+
+	if pvsc, ok := n.privValidator.(cmn.Service); ok {
 		if err := pvsc.Stop(); err != nil {
-			n.Logger.Error("Error stopping priv validator socket client", "err", err)
+			n.Logger.Error("Error stopping priv validator client", "err", err)
 		}
 	}
 
@@ -653,30 +680,42 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-		listener, err := rpcserver.StartHTTPServer(
+
+		listener, err := rpcserver.Listen(
 			listenAddr,
-			mux,
-			rpcLogger,
 			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		var rootHandler http.Handler = mux
+		if n.config.RPC.IsCorsEnabled() {
+			corsMiddleware := cors.New(cors.Options{
+				AllowedOrigins: n.config.RPC.CORSAllowedOrigins,
+				AllowedMethods: n.config.RPC.CORSAllowedMethods,
+				AllowedHeaders: n.config.RPC.CORSAllowedHeaders,
+			})
+			rootHandler = corsMiddleware.Handler(mux)
+		}
+
+		go rpcserver.StartHTTPServer(
+			listener,
+			rootHandler,
+			rpcLogger,
+		)
 		listeners[i] = listener
 	}
 
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
-		listener, err := grpccore.StartGRPCServer(
-			grpcListenAddr,
-			grpccore.Config{
-				MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections,
-			},
-		)
+		listener, err := rpcserver.Listen(
+			grpcListenAddr, rpcserver.Config{MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections})
 		if err != nil {
 			return nil, err
 		}
+		go grpccore.StartGRPCServer(listener)
 		listeners = append(listeners, listener)
 	}
 

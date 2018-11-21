@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	amino "github.com/tendermint/go-amino"
@@ -14,7 +15,7 @@ import (
 
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes int64 = 444
+	MaxEvidenceBytes int64 = 484
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -60,6 +61,7 @@ type Evidence interface {
 	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
 	Equal(Evidence) bool                               // check equality of evidence
 
+	ValidateBasic() error
 	String() string
 }
 
@@ -172,6 +174,23 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	return bytes.Equal(dveHash, evHash)
 }
 
+// ValidateBasic performs basic validation.
+func (dve *DuplicateVoteEvidence) ValidateBasic() error {
+	if len(dve.PubKey.Bytes()) == 0 {
+		return errors.New("Empty PubKey")
+	}
+	if dve.VoteA == nil || dve.VoteB == nil {
+		return fmt.Errorf("One or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
+	}
+	if err := dve.VoteA.ValidateBasic(); err != nil {
+		return fmt.Errorf("Invalid VoteA: %v", err)
+	}
+	if err := dve.VoteB.ValidateBasic(); err != nil {
+		return fmt.Errorf("Invalid VoteB: %v", err)
+	}
+	return nil
+}
+
 //-----------------------------------------------------------------
 
 // UNSTABLE
@@ -201,6 +220,7 @@ func (e MockGoodEvidence) Equal(ev Evidence) bool {
 	return e.Height_ == e2.Height_ &&
 		bytes.Equal(e.Address_, e2.Address_)
 }
+func (e MockGoodEvidence) ValidateBasic() error { return nil }
 func (e MockGoodEvidence) String() string {
 	return fmt.Sprintf("GoodEvidence: %d/%s", e.Height_, e.Address_)
 }
@@ -218,6 +238,7 @@ func (e MockBadEvidence) Equal(ev Evidence) bool {
 	return e.Height_ == e2.Height_ &&
 		bytes.Equal(e.Address_, e2.Address_)
 }
+func (e MockBadEvidence) ValidateBasic() error { return nil }
 func (e MockBadEvidence) String() string {
 	return fmt.Sprintf("BadEvidence: %d/%s", e.Height_, e.Address_)
 }

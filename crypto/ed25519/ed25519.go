@@ -136,7 +136,7 @@ type PubKeyEd25519 [PubKeyEd25519Size]byte
 
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKeyEd25519) Address() crypto.Address {
-	return crypto.Address(tmhash.Sum(pubKey[:]))
+	return crypto.Address(tmhash.SumTruncated(pubKey[:]))
 }
 
 // Bytes marshals the PubKey using amino encoding.

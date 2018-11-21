@@ -54,7 +54,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			}
-			cli.Logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
+			cli.Logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr), "err", err)
 			time.Sleep(time.Second * dialRetryIntervalSeconds)
 			continue RETRY_LOOP
 		}
@@ -111,8 +111,8 @@ func (cli *grpcClient) Error() error {
 // NOTE: callback may get internally generated flush responses.
 func (cli *grpcClient) SetResponseCallback(resCb Callback) {
 	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
 	cli.resCb = resCb
+	cli.mtx.Unlock()
 }
 
 //----------------------------------------

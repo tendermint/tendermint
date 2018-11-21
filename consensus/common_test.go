@@ -130,8 +130,8 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	}
 
 	// Make proposal
-	polRound, polBlockID := cs1.Votes.POLInfo()
-	proposal = types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
+	polRound, propBlockID := cs1.ValidRound, types.BlockID{block.Hash(), blockParts.Header()}
+	proposal = types.NewProposal(height, round, polRound, propBlockID)
 	if err := vs.SignProposal(cs1.state.ChainID, proposal); err != nil {
 		panic(err)
 	}
@@ -405,8 +405,38 @@ func ensureNewVote(voteCh <-chan interface{}, height int64, round int) {
 }
 
 func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
-	ensureNewEvent(roundCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewRound event")
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewRound event")
+	case ev := <-roundCh:
+		rs, ok := ev.(types.EventDataNewRound)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataNewRound, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+	}
+}
+
+func ensureProposalHeartbeat(heartbeatCh <-chan interface{}) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for ProposalHeartbeat event")
+	case ev := <-heartbeatCh:
+		heartbeat, ok := ev.(types.EventDataProposalHeartbeat)
+		if !ok {
+			panic(fmt.Sprintf("expected a *types.EventDataProposalHeartbeat, "+
+				"got %v. wrong subscription channel?",
+				reflect.TypeOf(heartbeat)))
+		}
+	}
 }
 
 func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, timeout int64) {
@@ -416,8 +446,29 @@ func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, tim
 }
 
 func ensureNewProposal(proposalCh <-chan interface{}, height int64, round int) {
-	ensureNewEvent(proposalCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewProposal event")
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewProposal event")
+	case ev := <-proposalCh:
+		rs, ok := ev.(types.EventDataCompleteProposal)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataCompleteProposal, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+	}
+}
+
+func ensureNewValidBlock(validBlockCh <-chan interface{}, height int64, round int) {
+	ensureNewEvent(validBlockCh, height, round, ensureTimeout,
+		"Timeout expired while waiting for NewValidBlock event")
 }
 
 func ensureNewBlock(blockCh <-chan interface{}, height int64) {
@@ -483,6 +534,30 @@ func ensureVote(voteCh <-chan interface{}, height int64, round int,
 		}
 		if vote.Type != voteType {
 			panic(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
+		}
+	}
+}
+
+func ensureProposal(proposalCh <-chan interface{}, height int64, round int, propId types.BlockID) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewProposal event")
+	case ev := <-proposalCh:
+		rs, ok := ev.(types.EventDataCompleteProposal)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataCompleteProposal, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+		if !rs.BlockID.Equals(propId) {
+			panic("Proposed block does not match expected block")
 		}
 	}
 }
@@ -610,8 +685,6 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
-	db := dbm.NewMemDB() // remove this ?
-	sm.SaveState(db, s0)
 	return s0, privValidators
 }
 

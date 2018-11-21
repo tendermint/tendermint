@@ -7,19 +7,24 @@ import (
 	"syscall"
 	"testing"
 	"time"
+	"net"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 
 	cfg "github.com/tendermint/tendermint/config"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
 
 	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/tendermint/tendermint/privval"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -112,4 +117,101 @@ func TestNodeSetAppVersion(t *testing.T) {
 
 	// check version is set in node info
 	assert.Equal(t, n.nodeInfo.(p2p.DefaultNodeInfo).ProtocolVersion.App, appVersion)
+}
+
+func TestNodeSetPrivValTCP(t *testing.T) {
+	addr := "tcp://" + testFreeAddr(t)
+
+	rs := privval.NewRemoteSigner(
+		log.TestingLogger(),
+		cmn.RandStr(12),
+		addr,
+		types.NewMockPV(),
+		ed25519.GenPrivKey(),
+	)
+	privval.RemoteSignerConnDeadline(5 * time.Millisecond)(rs)
+	privval.RemoteSignerConnRetries(1e6)(rs)
+
+	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	config.BaseConfig.PrivValidatorListenAddr = addr
+
+	// kick off remote signer routine, and then start TM.
+	go func(rs *privval.RemoteSigner) {
+		rs.Start()
+		defer rs.Stop()
+		time.Sleep(100 * time.Millisecond)
+	}(rs)
+
+	n, err := DefaultNewNode(config, log.TestingLogger())
+
+	assert.NoError(t, err, "expected no err on DefaultNewNode")
+
+	assert.IsType(t, &privval.TCPVal{}, n.PrivValidator())
+}
+
+func TestNodeSetPrivValTCPNoPrefix(t *testing.T) {
+	addr := "tcp://" + testFreeAddr(t)
+
+	rs := privval.NewRemoteSigner(
+		log.TestingLogger(),
+		cmn.RandStr(12),
+		addr,
+		types.NewMockPV(),
+		ed25519.GenPrivKey(),
+	)
+	privval.RemoteSignerConnDeadline(5 * time.Millisecond)(rs)
+	privval.RemoteSignerConnRetries(1e6)(rs)
+	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	config.BaseConfig.PrivValidatorListenAddr = addr
+
+	// kick off remote signer routine, and then start TM.
+	go func(rs *privval.RemoteSigner) {
+		rs.Start()
+		defer rs.Stop()
+		time.Sleep(100 * time.Millisecond)
+	}(rs)
+
+	n, err := DefaultNewNode(config, log.TestingLogger())
+
+	assert.NoError(t, err, "expected no err on DefaultNewNode")
+	assert.IsType(t, &privval.TCPVal{}, n.PrivValidator())
+}
+
+func TestNodeSetPrivValIPC(t *testing.T) {
+	tmpfile := "/tmp/kms." + cmn.RandStr(6) + ".sock"
+	defer os.Remove(tmpfile) // clean up
+	addr := "unix://" + tmpfile
+
+	rs := privval.NewIPCRemoteSigner(
+		log.TestingLogger(),
+		cmn.RandStr(12),
+		tmpfile,
+		types.NewMockPV(),
+	)
+
+	privval.IPCRemoteSignerConnDeadline(3 * time.Second)(rs)
+
+	// kick off remote signer routine, and then start TM.
+	go func(rs *privval.IPCRemoteSigner) {
+		rs.Start()
+		defer rs.Stop()
+		time.Sleep(500 * time.Millisecond)
+	}(rs)
+
+	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	config.BaseConfig.PrivValidatorListenAddr = addr
+	n, err := DefaultNewNode(config, log.TestingLogger())
+
+	assert.NoError(t, err, "expected no err on DefaultNewNode")
+	assert.IsType(t, &privval.IPCVal{}, n.PrivValidator())
+}
+
+
+// testFreeAddr claims a free port so we don't block on listener being ready.
+func testFreeAddr(t *testing.T) string {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	return fmt.Sprintf("127.0.0.1:%d", ln.Addr().(*net.TCPAddr).Port)
 }
