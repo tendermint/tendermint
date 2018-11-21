@@ -25,6 +25,7 @@ program](https://hackerone.com/tendermint).
 
 - [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
 - [mempool] \#2855 add txs from Update to cache
+- [mempool] \#2835 Remove local int64 counter from being stored in every tx
 - [node] \#2827 add ability to instantiate IPCVal (@joe-bowman)
 
 ### BUG FIXES:

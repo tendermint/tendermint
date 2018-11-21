@@ -131,7 +131,6 @@ type Mempool struct {
 	proxyMtx             sync.Mutex
 	proxyAppConn         proxy.AppConnMempool
 	txs                  *clist.CList    // concurrent linked-list of good txs
-	counter              int64           // simple incrementing counter
 	height               int64           // the last block Update()'d to
 	rechecking           int32           // for re-checking filtered txs on Update()
 	recheckCursor        *clist.CElement // next expected response
@@ -167,7 +166,6 @@ func NewMempool(
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
-		counter:       0,
 		height:        height,
 		rechecking:    0,
 		recheckCursor: nil,
@@ -365,9 +363,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)
 		}
 		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
-			mem.counter++
 			memTx := &mempoolTx{
-				counter:   mem.counter,
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
 				tx:        tx,
@@ -378,7 +374,6 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				"res", r,
 				"height", memTx.height,
 				"total", mem.Size(),
-				"counter", memTx.counter,
 			)
 			mem.metrics.TxSizeBytes.Observe(float64(len(tx)))
 			mem.notifyTxsAvailable()
@@ -613,7 +608,6 @@ func (mem *Mempool) recheckTxs(txs []types.Tx) {
 
 // mempoolTx is a transaction that successfully ran
 type mempoolTx struct {
-	counter   int64    // a simple incrementing counter
 	height    int64    // height that this tx had been validated in
 	gasWanted int64    // amount of gas this tx states it will require
 	tx        types.Tx //
