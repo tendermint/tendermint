@@ -370,17 +370,24 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height >= %d", txHeight), true, 1, 30)
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 1)
 
-		// we query for non existing tx
+		// query for non existing tx
 		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 
-		// we query using a tag (see kvstore application)
+		// query using a tag (see kvstore application)
 		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
+		require.Nil(t, err, "%+v", err)
+		if len(result.Txs) == 0 {
+			t.Fatal("expected a lot of transactions")
+		}
+
+		// query using a tag (see kvstore application) and height
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
