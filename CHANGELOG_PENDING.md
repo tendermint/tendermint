@@ -33,3 +33,4 @@ program](https://hackerone.com/tendermint).
 ### BUG FIXES:
 
 - [rpc] \#2808 RPC validators calls IncrementAccum if necessary
+- [kv indexer] \#2775 order results by index if height is the same
