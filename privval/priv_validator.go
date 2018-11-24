@@ -98,8 +98,8 @@ func GenFilePV(keyFilePath string, stateFilePath string) *FilePV {
 }
 
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
-// signing prevention by persisting data to the stateFilePath.  If the filePaths does
-// not exist, the FilePV must be created manually and saved.
+// signing prevention by persisting data to the stateFilePath.  If the filePaths
+// does not exist, the FilePV must be created manually and saved.
 func LoadFilePV(keyFilePath string, stateFilePath string) *FilePV {
 	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
