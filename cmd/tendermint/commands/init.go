@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
@@ -26,17 +25,17 @@ func initFiles(cmd *cobra.Command, args []string) error {
 
 func initFilesWithConfig(config *cfg.Config) error {
 	// private validator
-	privValkeyFile := config.PrivValidatorKeyFile()
+	privValKeyFile := config.PrivValidatorKeyFile()
 	privValStateFile := config.PrivValidatorStateFile()
 	var pv *privval.FilePV
-	if cmn.FileExists(privValkeyFile) {
-		pv = privval.LoadFilePV(privValkeyFile, privValStateFile)
-		logger.Info("Found private validator", "keyFile", privValkeyFile,
+	if cmn.FileExists(privValKeyFile) {
+		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
+		logger.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
-		pv = privval.GenFilePV(privValkeyFile, privValStateFile)
+		pv = privval.GenFilePV(privValKeyFile, privValStateFile)
 		pv.Save()
-		logger.Info("Generated private validator", "keyFile", privValkeyFile,
+		logger.Info("Generated private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	}
 

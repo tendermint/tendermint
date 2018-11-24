@@ -6,14 +6,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/go-kit/kit/log/term"
+
 	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/counter"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -27,11 +31,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-
-	"github.com/tendermint/tendermint/abci/example/counter"
-	"github.com/tendermint/tendermint/abci/example/kvstore"
-
-	"github.com/go-kit/kit/log/term"
 )
 
 const (
@@ -282,7 +281,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 
 func loadPrivValidator(config *cfg.Config) *privval.FilePV {
 	privValidatorKeyFile := config.PrivValidatorKeyFile()
-	ensureDir(path.Dir(privValidatorKeyFile), 0700)
+	ensureDir(filepath.Dir(privValidatorKeyFile), 0700)
 	privValidatorStateFile := config.PrivValidatorStateFile()
 	privValidator := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	privValidator.Reset()
@@ -592,7 +591,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		for _, opt := range configOpts {
 			opt(thisConfig)
 		}
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
@@ -613,7 +612,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		var privVal types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]

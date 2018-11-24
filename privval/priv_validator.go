@@ -141,7 +141,6 @@ func LoadFilePV(keyFilePath string, stateFilePath string) *FilePV {
 func LoadOrGenFilePV(keyFilePath string, stateFilePath string) *FilePV {
 	var pv *FilePV
 	if cmn.FileExists(keyFilePath) {
-		println(keyFilePath)
 		pv = LoadFilePV(keyFilePath, stateFilePath)
 	} else {
 		pv = GenFilePV(keyFilePath, stateFilePath)
