@@ -3,8 +3,9 @@ package state
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/libs/log"
 	"testing"
+
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -258,6 +259,27 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		assert.Equal(t, val.VotingPower, power, fmt.Sprintf(`unexpected powerat
                 height %d`, i))
 	}
+}
+
+func TestStoreLoadValidatorsIncrementsAccum(t *testing.T) {
+	const valSetSize = 2
+	tearDown, stateDB, state := setupTestCase(t)
+	state.Validators = genValSet(valSetSize)
+	state.NextValidators = state.Validators.CopyIncrementAccum(1)
+	SaveState(stateDB, state)
+	defer tearDown(t)
+
+	nextHeight := state.LastBlockHeight + 1
+
+	v0, err := LoadValidators(stateDB, nextHeight)
+	assert.Nil(t, err)
+	acc0 := v0.Validators[0].Accum
+
+	v1, err := LoadValidators(stateDB, nextHeight+1)
+	assert.Nil(t, err)
+	acc1 := v1.Validators[0].Accum
+
+	assert.NotEqual(t, acc1, acc0, "expected Accum value to change between heights")
 }
 
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with
