@@ -1,7 +1,6 @@
 package node
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -230,14 +229,13 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
-	// Decide whether to fast-sync or not
-	// We don't fast-sync when the only validator is us.
+	// Decide whether to fast-sync or not.
+	// We don't fast-sync when we have +2/3 of the validator set.
 	fastSync := config.FastSync
-	if state.Validators.Size() == 1 {
-		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.GetAddress(), addr) {
-			fastSync = false
-		}
+	ourAddr := privValidator.GetAddress()
+	_, val := state.Validators.GetByAddress(ourAddr)
+	if val != nil && val.VotingPower > state.Validators.TotalVotingPower()*2/3 {
+		fastSync = false
 	}
 
 	// Log whether this node is a validator or an observer
