@@ -32,6 +32,7 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
+- [blockchain] \#2731 Retry both blocks if either is bad to avoid getting stuck during fast sync (@goolAdapter)
 - [log] \#2868 fix module=main setting overriding all others
 - [rpc] \#2808 RPC validators calls IncrementAccum if necessary
 - [rpc] \#2811 Allow integer IDs in JSON-RPC requests
