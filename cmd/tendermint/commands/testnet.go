@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
@@ -86,7 +85,8 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		initFilesWithConfig(config)
+		//edited to use secp256k1
+		initFilesWithConfigSecp(config)
 
 		pvFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidator)
 		pv := privval.LoadFilePV(pvFile)

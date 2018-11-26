@@ -751,7 +751,7 @@ func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
 		Indexer:      "kv",
 		IndexTags:    "",
-		IndexAllTags: false,
+		IndexAllTags: true,
 	}
 }
 

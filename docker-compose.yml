@@ -57,6 +57,20 @@ services:
       localnet:
         ipv4_address: 192.167.10.5
 
+  node4:
+    container_name: node4
+    image: "tendermint/localnode"
+    environment:
+      - ID=4
+      - LOG=$${LOG:-tendermint.log}
+    ports:
+      - "26665-26666:26656-26657"
+    volumes:
+      - ./build:/tendermint:Z
+    networks:
+      localnet:
+        ipv4_address: 192.167.10.6
+
 networks:
   localnet:
     driver: bridge
