@@ -32,5 +32,6 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
+- [log] \#2868 fix module=main setting overriding all others
 - [rpc] \#2808 RPC validators calls IncrementAccum if necessary
 - [rpc] \#2811 Allow integer IDs in JSON-RPC requests
