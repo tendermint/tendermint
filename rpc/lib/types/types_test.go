@@ -21,8 +21,14 @@ type responseTest struct {
 }
 
 var responseTests = []responseTest{
-	{JSONRPCStringID("1"), "\"1\""}, {JSONRPCStringID("alphabet"), "\"alphabet\""}, {JSONRPCStringID(""), "\"\""}, {JSONRPCStringID("àáâ"), "\"àáâ\""},
-	{JSONRPCIntID(-1), "-1"}, {JSONRPCIntID(0), "0"}, {JSONRPCIntID(1), "1"}, {JSONRPCIntID(100), "100"},
+	{JSONRPCStringID("1"), `"1"`},
+	{JSONRPCStringID("alphabet"), `"alphabet"`},
+	{JSONRPCStringID(""), `""`},
+	{JSONRPCStringID("àáâ"), `"àáâ"`},
+	{JSONRPCIntID(-1), "-1"},
+	{JSONRPCIntID(0), "0"},
+	{JSONRPCIntID(1), "1"},
+	{JSONRPCIntID(100), "100"},
 }
 
 func TestResponses(t *testing.T) {

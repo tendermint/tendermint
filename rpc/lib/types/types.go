@@ -30,6 +30,22 @@ type JSONRPCIntID int
 
 func (JSONRPCIntID) isJSONRPCID() {}
 
+func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
+	switch id := idInterface.(type) {
+	case string:
+		return JSONRPCStringID(id), nil
+	case float64:
+		// json.Unmarshal uses float64 for all numbers
+		// (https://golang.org/pkg/encoding/json/#Unmarshal),
+		// but the JSONRPC2.0 spec says the id SHOULD NOT contain
+		// decimals - so we truncate the decimals here.
+		return JSONRPCIntID(int(id)), nil
+	default:
+		typ := reflect.TypeOf(id)
+		return nil, fmt.Errorf("JSON-RPC ID (%v) is of unknown type (%v)", id, typ)
+	}
+}
+
 //----------------------------------------
 // REQUEST
 
@@ -42,40 +58,28 @@ type RPCRequest struct {
 
 // UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
 func (request *RPCRequest) UnmarshalJSON(data []byte) error {
-	unsafeResp := &struct {
+	unsafeReq := &struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      interface{}     `json:"id"`
 		Method  string          `json:"method"`
 		Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 	}{}
-	err := json.Unmarshal(data, &unsafeResp)
-	if err == nil {
-		request.JSONRPC = unsafeResp.JSONRPC
-		request.Method = unsafeResp.Method
-		request.Params = unsafeResp.Params
-		if unsafeResp.ID == nil {
-			return nil
-		}
-		switch e := unsafeResp.ID.(type) {
-		case string:
-			request.ID = JSONRPCStringID(unsafeResp.ID.(string))
-			return nil
-		case int:
-			request.ID = JSONRPCIntID(unsafeResp.ID.(int))
-			return nil
-		case float32:
-			request.ID = JSONRPCIntID(int(unsafeResp.ID.(float32)))
-			return nil
-		case float64:
-			request.ID = JSONRPCIntID(int(unsafeResp.ID.(float64)))
-			return nil
-		default:
-			var r = reflect.TypeOf(e)
-			return fmt.Errorf("Unknown JSON-RPC ID type: %v", r)
-		}
-	} else {
+	err := json.Unmarshal(data, &unsafeReq)
+	if err != nil {
 		return err
 	}
+	request.JSONRPC = unsafeReq.JSONRPC
+	request.Method = unsafeReq.Method
+	request.Params = unsafeReq.Params
+	if unsafeReq.ID == nil {
+		return nil
+	}
+	id, err := idFromInterface(unsafeReq.ID)
+	if err != nil {
+		return err
+	}
+	request.ID = id
+	return nil
 }
 
 func NewRPCRequest(id jsonrpcid, method string, params json.RawMessage) RPCRequest {
@@ -150,7 +154,7 @@ type RPCResponse struct {
 }
 
 // UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
-func (request *RPCResponse) UnmarshalJSON(data []byte) error {
+func (response *RPCResponse) UnmarshalJSON(data []byte) error {
 	unsafeResp := &struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      interface{}     `json:"id"`
@@ -158,33 +162,21 @@ func (request *RPCResponse) UnmarshalJSON(data []byte) error {
 		Error   *RPCError       `json:"error,omitempty"`
 	}{}
 	err := json.Unmarshal(data, &unsafeResp)
-	if err == nil {
-		request.JSONRPC = unsafeResp.JSONRPC
-		request.Error = unsafeResp.Error
-		request.Result = unsafeResp.Result
-		if unsafeResp.ID == nil {
-			return nil
-		}
-		switch e := unsafeResp.ID.(type) {
-		case string:
-			request.ID = JSONRPCStringID(unsafeResp.ID.(string))
-			return nil
-		case int:
-			request.ID = JSONRPCIntID(unsafeResp.ID.(int))
-			return nil
-		case float32:
-			request.ID = JSONRPCIntID(int(unsafeResp.ID.(float32)))
-			return nil
-		case float64:
-			request.ID = JSONRPCIntID(int(unsafeResp.ID.(float64)))
-			return nil
-		default:
-			var r = reflect.TypeOf(e)
-			return fmt.Errorf("Unknown JSON-RPC ID type: %v", r)
-		}
-	} else {
+	if err != nil {
 		return err
 	}
+	response.JSONRPC = unsafeResp.JSONRPC
+	response.Error = unsafeResp.Error
+	response.Result = unsafeResp.Result
+	if unsafeResp.ID == nil {
+		return nil
+	}
+	id, err := idFromInterface(unsafeResp.ID)
+	if err != nil {
+		return err
+	}
+	response.ID = id
+	return nil
 }
 
 func NewRPCSuccessResponse(cdc *amino.Codec, id jsonrpcid, res interface{}) RPCResponse {
