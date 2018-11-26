@@ -86,10 +86,6 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		fmt.Println("Initial Config.ProxyApp: ", config.ProxyApp, config.BaseConfig.ProxyApp)
-		//change abci endpoints to ports 8010-8015...
-		config.BaseConfig.ProxyApp = "tcp://127.0.0.1:" + strconv.Itoa(8010+i)
-		fmt.Println("After Config.ProxyApp: ", config.ProxyApp, config.BaseConfig.ProxyApp)
 		//edited to use secp256k1
 		initFilesWithConfigSecp(config)
 
@@ -181,6 +177,10 @@ func populatePersistentPeersInConfigAndWriteIt(config *cfg.Config) error {
 		config.P2P.PersistentPeers = persistentPeersList
 		config.P2P.AddrBookStrict = false
 
+		fmt.Println("Initial Config.ProxyApp: ", config.ProxyApp, config.BaseConfig.ProxyApp)
+		//change abci endpoints to ports 8010-8015...
+		config.BaseConfig.ProxyApp = "tcp://host.docker.internal:" + strconv.Itoa(8010+i)
+		fmt.Println("After Config.ProxyApp: ", config.ProxyApp, config.BaseConfig.ProxyApp)
 		// overwrite default config
 		cfg.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), config)
 	}
