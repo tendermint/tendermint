@@ -1,0 +1,30 @@
+{
+  "genesis_time": "2018-11-26T03:08:23.389228Z",
+  "chain_id": "test-chain-DPHFhd",
+  "consensus_params": {
+    "block_size": {
+      "max_bytes": "22020096",
+      "max_gas": "-1"
+    },
+    "evidence": {
+      "max_age": "100000"
+    },
+    "validator": {
+      "pub_key_types": [
+        "secp256k1"
+      ]
+    }
+  },
+  "validators": [
+    {
+      "address": "828E4FE4C99B5D3A0EA4BC1BF556720076E9E9CA",
+      "pub_key": {
+        "type": "tendermint/PubKeySecp256k1",
+        "value": "AsEuaLOcQOXgqhK3dzCDpuVkqs8NJYIrXQ4Tx/XothjY"
+      },
+      "power": "10",
+      "name": ""
+    }
+  ],
+  "app_hash": ""
+}

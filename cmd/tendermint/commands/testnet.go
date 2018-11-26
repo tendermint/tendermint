@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -85,6 +86,10 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		fmt.Println("Initial Config.ProxyApp: ", config.ProxyApp, config.BaseConfig.ProxyApp)
+		//change abci endpoints to ports 8010-8015...
+		config.BaseConfig.ProxyApp = "tcp://127.0.0.1:" + strconv.Itoa(8010+i)
+		fmt.Println("After Config.ProxyApp: ", config.ProxyApp, config.BaseConfig.ProxyApp)
 		//edited to use secp256k1
 		initFilesWithConfigSecp(config)
 
