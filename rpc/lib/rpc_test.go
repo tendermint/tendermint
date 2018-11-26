@@ -134,6 +134,9 @@ func setup() {
 	wm.SetLogger(unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	listener2, err := server.Listen(unixAddr, server.Config{})
+	if err != nil {
+		panic(err)
+	}
 	go server.StartHTTPServer(listener2, mux2, unixLogger)
 
 	// wait for servers to start

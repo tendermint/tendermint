@@ -324,10 +324,11 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 	go cs.receiveRoutine(maxSteps)
 }
 
-// OnStop implements cmn.Service. It stops all routines and waits for the WAL to finish.
+// OnStop implements cmn.Service.
 func (cs *ConsensusState) OnStop() {
 	cs.evsw.Stop()
 	cs.timeoutTicker.Stop()
+	// WAL is stopped in receiveRoutine.
 }
 
 // Wait waits for the the main routine to return.
@@ -802,8 +803,14 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 }
 
 func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
-	counter := 0
+	logger := cs.Logger.With("height", height, "round", round)
 	addr := cs.privValidator.GetAddress()
+
+	if !cs.Validators.HasAddress(addr) {
+		logger.Debug("Not sending proposalHearbeat. This node is not a validator", "addr", addr, "vals", cs.Validators)
+		return
+	}
+	counter := 0
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	chainID := cs.state.ChainID
 	for {

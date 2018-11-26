@@ -27,6 +27,17 @@ const (
 	reconnectBackOffBaseSeconds = 3
 )
 
+// MConnConfig returns an MConnConfig with fields updated
+// from the P2PConfig.
+func MConnConfig(cfg *config.P2PConfig) conn.MConnConfig {
+	mConfig := conn.DefaultMConnConfig()
+	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
+	mConfig.SendRate = cfg.SendRate
+	mConfig.RecvRate = cfg.RecvRate
+	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
+	return mConfig
+}
+
 //-----------------------------------------------------------------------------
 
 // An AddrBook represents an address book from the pex package, which is used
@@ -70,8 +81,6 @@ type Switch struct {
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
 
-	mConfig conn.MConnConfig
-
 	rng *cmn.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
@@ -101,14 +110,6 @@ func NewSwitch(
 
 	// Ensure we have a completely undeterministic PRNG.
 	sw.rng = cmn.NewRand()
-
-	mConfig := conn.DefaultMConnConfig()
-	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
-	mConfig.SendRate = cfg.SendRate
-	mConfig.RecvRate = cfg.RecvRate
-	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
-
-	sw.mConfig = mConfig
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 

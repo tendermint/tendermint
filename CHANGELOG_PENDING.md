@@ -1,6 +1,6 @@
 # Pending
 
-## v0.26.3
+## v0.26.4
 
 *TBD*
 
@@ -12,31 +12,29 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-  * [state] [\#2747](https://github.com/tendermint/tendermint/pull/2747) Add `BeginBlock` response to `ABCIResponses` (BREAKING).
 
 * Apps
 
 * Go API
-  - [rpc] \#2791 Functions that start HTTP servers are now blocking:
-    - Impacts: StartHTTPServer, StartHTTPAndTLSServer, and StartGRPCServer,
-    - These functions now take a `net.Listener` instead of an address
 
 * Blockchain Protocol
 
 * P2P Protocol
 
-
 ### FEATURES:
-
-- [log] \#2843 New `log_format` config option, which can be set to 'plain' for colored
-  text or 'json' for JSON output
-
-- [types] \#2767 New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
 
 - [types] [\#1571](https://github.com/tendermint/tendermint/issues/1571) Enable subscription to tags emitted from `BeginBlock`/`EndBlock` (@kostko)
 
 ### IMPROVEMENTS:
 
-- [p2p] \#2857 "Send failed" is logged at debug level instead of error.
+- [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
+- [mempool] \#2855 add txs from Update to cache
+- [mempool] \#2835 Remove local int64 counter from being stored in every tx
+- [node] \#2827 add ability to instantiate IPCVal (@joe-bowman)
 
 ### BUG FIXES:
+
+- [blockchain] \#2731 Retry both blocks if either is bad to avoid getting stuck during fast sync (@goolAdapter)
+- [log] \#2868 fix module=main setting overriding all others
+- [rpc] \#2808 RPC validators calls IncrementAccum if necessary
+- [rpc] \#2811 Allow integer IDs in JSON-RPC requests

@@ -69,16 +69,39 @@ vagrant ssh
 make test
 ```
 
-## Testing
-
-All repos should be hooked up to [CircleCI](https://circleci.com/).
-
-If they have `.go` files in the root directory, they will be automatically
-tested by circle using `go test -v -race ./...`. If not, they will need a
-`circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
-includes its continuous integration status using a badge in the `README.md`.
-
 ## Changelog
+
+Every fix, improvement, feature, or breaking change should be made in a
+pull-request that includes an update to the `CHANGELOG_PENDING.md` file.
+
+Changelog entries should be formatted as follows:
+
+```
+- [module] \#xxx Some description about the change (@contributor)
+```
+
+Here, `module` is the part of the code that changed (typically a
+top-level Go package), `xxx` is the pull-request number, and `contributor`
+is the author/s of the change.
+
+It's also acceptable for `xxx` to refer to the relevent issue number, but pull-request
+numbers are preferred.
+Note this means pull-requests should be opened first so the changelog can then
+be updated with the pull-request's number.
+There is no need to include the full link, as this will be added
+automatically during release. But please include the backslash and pound, eg. `\#2313`.
+
+Changelog entries should be ordered alphabetically according to the
+`module`, and numerically according to the pull-request number.
+
+Changes with multiple classifications should be doubly included (eg. a bug fix
+that is also a breaking change should be recorded under both).
+
+Breaking changes are further subdivided according to the APIs/users they impact.
+Any change that effects multiple APIs/users should be recorded multiply - for
+instance, a change to the `Blockchain Protocol` that removes a field from the
+header should also be recorded under `CLI/RPC/Config` since the field will be
+removed from the header in rpc responses as well.
 
 ## Branching Model and Release
 
@@ -104,13 +127,14 @@ master constitutes a tagged release.
 - start on `develop`
 - run integration tests (see `test_integrations` in Makefile)
 - prepare changelog:
-    - copy `CHANGELOG_PENDING.md` to `CHANGELOG.md`
+    - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
     - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
       all issues
     - run `bash ./scripts/authors.sh` to get a list of authors since the latest
       release, and add the github aliases of external contributors to the top of
       the changelog. To lookup an alias from an email, try `bash
       ./scripts/authors.sh <email>`
+    - reset the `CHANGELOG_PENDING.md`
 - bump versions
 - push to release/vX.X.X to run the extended integration tests on the CI
 - merge to master
@@ -127,3 +151,13 @@ master constitutes a tagged release.
 - merge hotfix-vX.X.X to master
 - merge hotfix-vX.X.X to develop
 - delete the hotfix-vX.X.X branch
+
+
+## Testing
+
+All repos should be hooked up to [CircleCI](https://circleci.com/).
+
+If they have `.go` files in the root directory, they will be automatically
+tested by circle using `go test -v -race ./...`. If not, they will need a
+`circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
+includes its continuous integration status using a badge in the `README.md`.

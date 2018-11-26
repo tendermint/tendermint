@@ -27,18 +27,32 @@ const (
 	// maxBodyBytes controls the maximum number of bytes the
 	// server will read parsing the request body.
 	maxBodyBytes = int64(1000000) // 1MB
+
+	// same as the net/http default
+	maxHeaderBytes = 1 << 20
+
+	// Timeouts for reading/writing to the http connection.
+	// Public so handlers can read them -
+	// /broadcast_tx_commit has it's own timeout, which should
+	// be less than the WriteTimeout here.
+	// TODO: use a config instead.
+	ReadTimeout  = 3 * time.Second
+	WriteTimeout = 20 * time.Second
 )
 
 // StartHTTPServer takes a listener and starts an HTTP server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
 // NOTE: This function blocks - you may want to call it in a go-routine.
 func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger) error {
-	err := http.Serve(
-		listener,
-		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
-	)
+	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
+	s := &http.Server{
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
+		ReadTimeout:    ReadTimeout,
+		WriteTimeout:   WriteTimeout,
+		MaxHeaderBytes: maxHeaderBytes,
+	}
+	err := s.Serve(listener)
 	logger.Info("RPC HTTP server stopped", "err", err)
-
 	return err
 }
 
@@ -51,24 +65,18 @@ func StartHTTPAndTLSServer(
 	certFile, keyFile string,
 	logger log.Logger,
 ) error {
-	logger.Info(
-		fmt.Sprintf(
-			"Starting RPC HTTPS server on %s (cert: %q, key: %q)",
-			listener.Addr(),
-			certFile,
-			keyFile,
-		),
-	)
-	if err := http.ServeTLS(
-		listener,
-		RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
-		certFile,
-		keyFile,
-	); err != nil {
-		logger.Error("RPC HTTPS server stopped", "err", err)
-		return err
+	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
+		listener.Addr(), certFile, keyFile))
+	s := &http.Server{
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
+		ReadTimeout:    ReadTimeout,
+		WriteTimeout:   WriteTimeout,
+		MaxHeaderBytes: maxHeaderBytes,
 	}
-	return nil
+	err := s.ServeTLS(listener, certFile, keyFile)
+
+	logger.Error("RPC HTTPS server stopped", "err", err)
+	return err
 }
 
 func WriteRPCResponseHTTPError(
@@ -124,7 +132,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 						"Panic in RPC HTTP handler", "err", e, "stack",
 						string(debug.Stack()),
 					)
-					WriteRPCResponseHTTPError(rww, http.StatusInternalServerError, types.RPCInternalError("", e.(error)))
+					WriteRPCResponseHTTPError(rww, http.StatusInternalServerError, types.RPCInternalError(types.JSONRPCStringID(""), e.(error)))
 				}
 			}
 
@@ -168,16 +176,6 @@ type maxBytesHandler struct {
 func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, h.n)
 	h.h.ServeHTTP(w, r)
-}
-
-// MustListen starts a new net.Listener on the given address.
-// It panics in case of error.
-func MustListen(addr string, config Config) net.Listener {
-	l, err := Listen(addr, config)
-	if err != nil {
-		panic(fmt.Errorf("Listen() failed: %v", err))
-	}
-	return l
 }
 
 // Listen starts a new net.Listener on the given address.

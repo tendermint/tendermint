@@ -18,7 +18,7 @@ const (
 	// TMCoreSemVer is the current version of Tendermint Core.
 	// It's the Semantic Version of the software.
 	// Must be a string because scripts like dist.sh read this file.
-	TMCoreSemVer = "0.26.2"
+	TMCoreSemVer = "0.26.3"
 
 	// ABCISemVer is the semantic version of the ABCI library
 	ABCISemVer  = "0.15.0"
