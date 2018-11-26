@@ -57,22 +57,12 @@ func cpDecr(bz []byte) (ret []byte) {
 }
 
 // See DB interface documentation for more information.
-func IsKeyInDomain(key, start, end []byte, isReverse bool) bool {
-	if !isReverse {
-		if bytes.Compare(key, start) < 0 {
-			return false
-		}
-		if end != nil && bytes.Compare(end, key) <= 0 {
-			return false
-		}
-		return true
-	} else {
-		if start != nil && bytes.Compare(start, key) < 0 {
-			return false
-		}
-		if end != nil && bytes.Compare(key, end) <= 0 {
-			return false
-		}
-		return true
+func IsKeyInDomain(key, start, end []byte) bool {
+	if bytes.Compare(key, start) < 0 {
+		return false
 	}
+	if end != nil && bytes.Compare(end, key) <= 0 {
+		return false
+	}
+	return true
 }
