@@ -17,7 +17,7 @@ program](https://hackerone.com/tendermint).
 
 * Go API
 
-- [db] ReverseIterator API change -- start < end, and end is exclusive.
+- [db] [\#2913](https://github.com/tendermint/tendermint/pull/2913) ReverseIterator API change -- start < end, and end is exclusive.
 
 * Blockchain Protocol
 
