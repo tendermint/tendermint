@@ -35,7 +35,7 @@ type DB interface {
 
 	// Iterate over a domain of keys in descending order. End is exclusive.
 	// Start must be less than end, or the Iterator is invalid.
-	// If sart is nil, iterates up to the first/least item (inclusive).
+	// If start is nil, iterates up to the first/least item (inclusive).
 	// If end is nil, iterates from the last/greatest item (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	// CONTRACT: start, end readonly []byte
