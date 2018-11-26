@@ -62,11 +62,11 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// create some fixed values
-	serialized := fmt.Sprintf(`{
+	serialized := `{
 		"height": "1",
         "round": "1",
         "step": 1
-	}`)
+	}`
 
 	val := FilePVLastSignState{}
 	err := cdc.UnmarshalJSON([]byte(serialized), &val)
