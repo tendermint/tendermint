@@ -77,7 +77,8 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 	if resp.Value != nil {
 		// Value exists
 		// XXX How do we encode the key into a string...
-		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, string(resp.Key), resp.Value)
+		keyString := "/kvPairKey:" + string(resp.Key)
+		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, keyString, resp.Value)
 		if err != nil {
 			return nil, cmn.ErrorWrap(err, "Couldn't verify value proof")
 		}
