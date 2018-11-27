@@ -23,6 +23,8 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
+- [types] [\#1571](https://github.com/tendermint/tendermint/issues/1571) Enable subscription to tags emitted from `BeginBlock`/`EndBlock` (@kostko)
+
 ### IMPROVEMENTS:
 
 - [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
