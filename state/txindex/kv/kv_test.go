@@ -133,6 +133,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	})
 	txResult.Tx = types.Tx("Bob's account")
 	txResult.Height = 2
+	txResult.Index = 1
 	err := indexer.Index(txResult)
 	require.NoError(t, err)
 
@@ -142,14 +143,26 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	})
 	txResult2.Tx = types.Tx("Alice's account")
 	txResult2.Height = 1
+	txResult2.Index = 2
+
 	err = indexer.Index(txResult2)
+	require.NoError(t, err)
+
+	// indexed third (to test the order of transactions)
+	txResult3 := txResultWithTags([]cmn.KVPair{
+		{Key: []byte("account.number"), Value: []byte("3")},
+	})
+	txResult3.Tx = types.Tx("Jack's account")
+	txResult3.Height = 1
+	txResult3.Index = 1
+	err = indexer.Index(txResult3)
 	require.NoError(t, err)
 
 	results, err := indexer.Search(query.MustParse("account.number >= 1"))
 	assert.NoError(t, err)
 
-	require.Len(t, results, 2)
-	assert.Equal(t, []*types.TxResult{txResult2, txResult}, results)
+	require.Len(t, results, 3)
+	assert.Equal(t, []*types.TxResult{txResult3, txResult2, txResult}, results)
 }
 
 func TestIndexAllTags(t *testing.T) {
