@@ -15,24 +15,57 @@ type SampleResult struct {
 	Value string
 }
 
+type responseTest struct {
+	id       jsonrpcid
+	expected string
+}
+
+var responseTests = []responseTest{
+	{JSONRPCStringID("1"), `"1"`},
+	{JSONRPCStringID("alphabet"), `"alphabet"`},
+	{JSONRPCStringID(""), `""`},
+	{JSONRPCStringID("àáâ"), `"àáâ"`},
+	{JSONRPCIntID(-1), "-1"},
+	{JSONRPCIntID(0), "0"},
+	{JSONRPCIntID(1), "1"},
+	{JSONRPCIntID(100), "100"},
+}
+
 func TestResponses(t *testing.T) {
 	assert := assert.New(t)
 	cdc := amino.NewCodec()
+	for _, tt := range responseTests {
+		jsonid := tt.id
+		a := NewRPCSuccessResponse(cdc, jsonid, &SampleResult{"hello"})
+		b, _ := json.Marshal(a)
+		s := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)
+		assert.Equal(string(s), string(b))
 
-	a := NewRPCSuccessResponse(cdc, "1", &SampleResult{"hello"})
-	b, _ := json.Marshal(a)
-	s := `{"jsonrpc":"2.0","id":"1","result":{"Value":"hello"}}`
-	assert.Equal(string(s), string(b))
+		d := RPCParseError(jsonid, errors.New("Hello world"))
+		e, _ := json.Marshal(d)
+		f := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32700,"message":"Parse error. Invalid JSON","data":"Hello world"}}`, tt.expected)
+		assert.Equal(string(f), string(e))
 
-	d := RPCParseError("1", errors.New("Hello world"))
-	e, _ := json.Marshal(d)
-	f := `{"jsonrpc":"2.0","id":"1","error":{"code":-32700,"message":"Parse error. Invalid JSON","data":"Hello world"}}`
-	assert.Equal(string(f), string(e))
+		g := RPCMethodNotFoundError(jsonid)
+		h, _ := json.Marshal(g)
+		i := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32601,"message":"Method not found"}}`, tt.expected)
+		assert.Equal(string(h), string(i))
+	}
+}
 
-	g := RPCMethodNotFoundError("2")
-	h, _ := json.Marshal(g)
-	i := `{"jsonrpc":"2.0","id":"2","error":{"code":-32601,"message":"Method not found"}}`
-	assert.Equal(string(h), string(i))
+func TestUnmarshallResponses(t *testing.T) {
+	assert := assert.New(t)
+	cdc := amino.NewCodec()
+	for _, tt := range responseTests {
+		response := &RPCResponse{}
+		err := json.Unmarshal([]byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)), response)
+		assert.Nil(err)
+		a := NewRPCSuccessResponse(cdc, tt.id, &SampleResult{"hello"})
+		assert.Equal(*response, a)
+	}
+	response := &RPCResponse{}
+	err := json.Unmarshal([]byte(`{"jsonrpc":"2.0","id":true,"result":{"Value":"hello"}}`), response)
+	assert.NotNil(err)
 }
 
 func TestRPCError(t *testing.T) {

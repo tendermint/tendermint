@@ -228,9 +228,10 @@ func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool)
 	return
 }
 
+// lookForHeight returns a height if there is an "height=X" condition.
 func lookForHeight(conditions []query.Condition) (height int64) {
 	for _, c := range conditions {
-		if c.Tag == types.TxHeightKey {
+		if c.Tag == types.TxHeightKey && c.Op == query.OpEqual {
 			return c.Operand.(int64)
 		}
 	}
