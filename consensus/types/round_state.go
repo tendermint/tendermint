@@ -202,19 +202,21 @@ func (rs *RoundState) StringShort() string {
 		rs.Height, rs.Round, rs.Step, rs.StartTime)
 }
 
-// Protobuf Compatiablity
-// Size returns size of the RoundStateSimple in bytes.
+//-----------------------------------------------------------
+// These methods are for Protobuf Compatibility
+
+// Size returns the size of the amino encoding, in bytes.
 func (rs *RoundStateSimple) Size() int {
 	bs, _ := rs.Marshal()
 	return len(bs)
 }
 
-//Marshal interface  serialize the RoundStateSimple object and allocates the appropriate buffer.
+// Marshal returns the amino encoding.
 func (rs *RoundStateSimple) Marshal() ([]byte, error) {
 	return cdc.MarshalBinaryBare(rs)
 }
 
-//MarshalTo method allows RoundStateSimple object to use reusable buffer.
+// MarshalTo calls Marshal and copies to the given buffer.
 func (rs *RoundStateSimple) MarshalTo(data []byte) (int, error) {
 	bs, err := rs.Marshal()
 	if err != nil {
@@ -223,7 +225,7 @@ func (rs *RoundStateSimple) MarshalTo(data []byte) (int, error) {
 	return copy(data, bs), nil
 }
 
-//Unmarshal interface takes the serialized RoundStateSimple object and transforms into an executable form.
+// Unmarshal deserializes from amino encoded form.
 func (rs *RoundStateSimple) Unmarshal(bs []byte) error {
 	return cdc.UnmarshalBinaryBare(bs, rs)
 }

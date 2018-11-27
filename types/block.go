@@ -275,13 +275,15 @@ func (b *Block) StringShort() string {
 	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
-// Protobuf Compatiablity
-//Marshal interface  serialize the block object and allocates the appropriate buffer.
+//-----------------------------------------------------------
+// These methods are for Protobuf Compatibility
+
+// Marshal returns the amino encoding.
 func (b *Block) Marshal() ([]byte, error) {
 	return cdc.MarshalBinaryBare(b)
 }
 
-//MarshalTo method allows block object to use reusable buffer.
+// MarshalTo calls Marshal and copies to the given buffer.
 func (b *Block) MarshalTo(data []byte) (int, error) {
 	bs, err := b.Marshal()
 	if err != nil {
@@ -290,7 +292,7 @@ func (b *Block) MarshalTo(data []byte) (int, error) {
 	return copy(data, bs), nil
 }
 
-//Unmarshal interface takes the serialized block object and transforms into an executable form.
+// Unmarshal deserializes from amino encoded form.
 func (b *Block) Unmarshal(bs []byte) error {
 	return cdc.UnmarshalBinaryBare(bs, b)
 }

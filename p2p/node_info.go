@@ -231,18 +231,21 @@ func (info DefaultNodeInfo) NetAddress() *NetAddress {
 	return netAddr
 }
 
-// Protobuf Compatiablity
-//Unmarshal interface takes the serialized DefaultNodeInfo object and transforms into an executable form.
-func (info *DefaultNodeInfo) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, info)
+//-----------------------------------------------------------
+// These methods are for Protobuf Compatibility
+
+// Size returns the size of the amino encoding, in bytes.
+func (info *DefaultNodeInfo) Size() int {
+	bs, _ := info.Marshal()
+	return len(bs)
 }
 
-//Marshal interface  serialize the DefaultNodeInfo object and allocates the appropriate buffer.
+// Marshal returns the amino encoding.
 func (info *DefaultNodeInfo) Marshal() ([]byte, error) {
 	return cdc.MarshalBinaryBare(info)
 }
 
-//MarshalTo method allows DefaultNodeInfo object to use reusable buffer.
+// MarshalTo calls Marshal and copies to the given buffer.
 func (info *DefaultNodeInfo) MarshalTo(data []byte) (int, error) {
 	bs, err := info.Marshal()
 	if err != nil {
@@ -251,9 +254,7 @@ func (info *DefaultNodeInfo) MarshalTo(data []byte) (int, error) {
 	return copy(data, bs), nil
 }
 
-// Size returns size of the DefaultNodeInfo in bytes.
-func (info *DefaultNodeInfo) Size() int {
-	bs, _ := info.Marshal()
-	return len(bs)
+// Unmarshal deserializes from amino encoded form.
+func (info *DefaultNodeInfo) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, info)
 }
-
