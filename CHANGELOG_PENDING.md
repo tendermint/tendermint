@@ -38,3 +38,4 @@ program](https://hackerone.com/tendermint).
 - [log] \#2868 fix module=main setting overriding all others
 - [rpc] \#2808 RPC validators calls IncrementAccum if necessary
 - [rpc] \#2811 Allow integer IDs in JSON-RPC requests
+- [kv indexer] \#2908 don't return false positives when searching for a prefix of a tag value

@@ -408,9 +408,9 @@ LOOP:
 func startKey(c query.Condition, height int64) []byte {
 	var key string
 	if height > 0 {
-		key = fmt.Sprintf("%s/%v/%d", c.Tag, c.Operand, height)
+		key = fmt.Sprintf("%s/%v/%d/", c.Tag, c.Operand, height)
 	} else {
-		key = fmt.Sprintf("%s/%v", c.Tag, c.Operand)
+		key = fmt.Sprintf("%s/%v/", c.Tag, c.Operand)
 	}
 	return []byte(key)
 }

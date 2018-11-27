@@ -73,6 +73,8 @@ func TestTxSearch(t *testing.T) {
 		{"account.number = 1 AND account.owner = 'Ivan'", 1},
 		// search by exact match (two tags)
 		{"account.number = 1 AND account.owner = 'Vlad'", 0},
+		// search using a prefix of the stored value
+		{"account.owner = 'Iv'", 0},
 		// search by range
 		{"account.number >= 1 AND account.number <= 5", 1},
 		// search by range (lower bound)
