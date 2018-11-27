@@ -163,6 +163,17 @@ func TestMempoolFilters(t *testing.T) {
 	}
 }
 
+func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(cc)
+	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
+	err := mempool.CheckTx([]byte{0x01}, nil)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrTxInCache, err)
+	}
+}
+
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
