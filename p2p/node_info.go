@@ -230,3 +230,30 @@ func (info DefaultNodeInfo) NetAddress() *NetAddress {
 	}
 	return netAddr
 }
+
+// Protobuf Compatiablity
+//Unmarshal interface takes the serialized DefaultNodeInfo object and transforms into an executable form.
+func (info *DefaultNodeInfo) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, info)
+}
+
+//Marshal interface  serialize the DefaultNodeInfo object and allocates the appropriate buffer.
+func (info *DefaultNodeInfo) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(info)
+}
+
+//MarshalTo method allows DefaultNodeInfo object to use reusable buffer.
+func (info *DefaultNodeInfo) MarshalTo(data []byte) (int, error) {
+	bs, err := info.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+// Size returns size of the DefaultNodeInfo in bytes.
+func (info *DefaultNodeInfo) Size() int {
+	bs, _ := info.Marshal()
+	return len(bs)
+}
+

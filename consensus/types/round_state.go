@@ -201,3 +201,29 @@ func (rs *RoundState) StringShort() string {
 	return fmt.Sprintf(`RoundState{H:%v R:%v S:%v ST:%v}`,
 		rs.Height, rs.Round, rs.Step, rs.StartTime)
 }
+
+// Protobuf Compatiablity
+// Size returns size of the RoundStateSimple in bytes.
+func (rs *RoundStateSimple) Size() int {
+	bs, _ := rs.Marshal()
+	return len(bs)
+}
+
+//Marshal interface  serialize the RoundStateSimple object and allocates the appropriate buffer.
+func (rs *RoundStateSimple) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(rs)
+}
+
+//MarshalTo method allows RoundStateSimple object to use reusable buffer.
+func (rs *RoundStateSimple) MarshalTo(data []byte) (int, error) {
+	bs, err := rs.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+//Unmarshal interface takes the serialized RoundStateSimple object and transforms into an executable form.
+func (rs *RoundStateSimple) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, rs)
+}

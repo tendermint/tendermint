@@ -13,3 +13,29 @@ func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {
 		Header:  block.Header,
 	}
 }
+
+// Protobuf Compatiablity
+//Unmarshal interface takes the serialized block-meta object and transforms into an executable form.
+func (bm *BlockMeta) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, bm)
+}
+
+//Marshal interface  serialize the block-meta object and allocates the appropriate buffer.
+func (bm *BlockMeta) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(bm)
+}
+
+//MarshalTo method allows BlockMeta object to use reusable buffer.
+func (bm *BlockMeta) MarshalTo(data []byte) (int, error) {
+	bs, err := bm.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+// Size returns size of the block in bytes.
+func (bm *BlockMeta) Size() int {
+	bs, _ := bm.Marshal()
+	return len(bs)
+}

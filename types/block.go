@@ -275,6 +275,26 @@ func (b *Block) StringShort() string {
 	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
+// Protobuf Compatiablity
+//Marshal interface  serialize the block object and allocates the appropriate buffer.
+func (b *Block) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(b)
+}
+
+//MarshalTo method allows block object to use reusable buffer.
+func (b *Block) MarshalTo(data []byte) (int, error) {
+	bs, err := b.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+//Unmarshal interface takes the serialized block object and transforms into an executable form.
+func (b *Block) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, b)
+}
+
 //-----------------------------------------------------------------------------
 
 // MaxDataBytes returns the maximum size of block's data.

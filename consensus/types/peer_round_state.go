@@ -55,3 +55,29 @@ func (prs PeerRoundState) StringIndented(indent string) string {
 		indent, prs.CatchupCommit, prs.CatchupCommitRound,
 		indent)
 }
+
+// Protobuf Compatiablity
+// Size returns size of the PeerRoundState in bytes.
+func (ps *PeerRoundState) Size() int {
+	bs, _ := ps.Marshal()
+	return len(bs)
+}
+
+//Marshal interface  serialize the PeerRoundState object and allocates the appropriate buffer.
+func (ps *PeerRoundState) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(ps)
+}
+
+//MarshalTo method allows PeerRoundState object to use reusable buffer.
+func (ps *PeerRoundState) MarshalTo(data []byte) (int, error) {
+	bs, err := ps.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+//Unmarshal interface takes the serialized peerRoundState object and transforms into an executable form.
+func (ps *PeerRoundState) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, ps)
+}
