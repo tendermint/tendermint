@@ -315,7 +315,6 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 	if err != nil {
 		return nil, err
 	}
-	totalVotingPower := currentSet.TotalVotingPower()
 	for _, valUpdate := range updates {
 		if valUpdate.VotingPower < 0 {
 			return nil, fmt.Errorf("Voting power can't be negative %v", valUpdate)
@@ -329,6 +328,16 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 				return nil, fmt.Errorf("Failed to remove validator %X", address)
 			}
 		} else if val == nil { // add val
+			// make sure we do not exceed MaxTotalVotingPower by adding this validator:
+			totalVotingPower := currentSet.TotalVotingPower()
+			overflow := (valUpdate.VotingPower+totalVotingPower) > types.MaxTotalVotingPower ||
+				(valUpdate.VotingPower+totalVotingPower) < 0
+			if overflow {
+				return nil, fmt.Errorf(
+					"Failed to add new validator %v. Adding it would exceed max allowed total voting power %v",
+					valUpdate,
+					types.MaxTotalVotingPower)
+			}
 			// TODO: issue #1558 update spec according to the following:
 			// Set Accum to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
 			// unbond/rebond to reset their (potentially previously negative) Accum to zero.
@@ -341,6 +350,20 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 				return nil, fmt.Errorf("Failed to add new validator %v", valUpdate)
 			}
 		} else { // update val
+			// make sure we do not exceed MaxTotalVotingPower by updating this validator:
+			totalVotingPower := currentSet.TotalVotingPower()
+			_, curVal := currentSet.GetByAddress(valUpdate.Address)
+			if curVal != nil {
+				curVotingPower := curVal.VotingPower
+				updatedVotingPower := totalVotingPower - curVotingPower + valUpdate.VotingPower
+				overflow := updatedVotingPower > types.MaxTotalVotingPower || updatedVotingPower < 0
+				if overflow {
+					return nil, fmt.Errorf(
+						"Failed to updated new validator %v. Updating it would exceed max allowed total voting power %v",
+						valUpdate,
+						types.MaxTotalVotingPower)
+				}
+			}
 			updated := currentSet.Update(valUpdate)
 			if !updated {
 				return nil, fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
