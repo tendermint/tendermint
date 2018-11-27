@@ -330,8 +330,8 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 		} else if val == nil { // add val
 			// make sure we do not exceed MaxTotalVotingPower by adding this validator:
 			totalVotingPower := currentSet.TotalVotingPower()
-			overflow := (valUpdate.VotingPower+totalVotingPower) > types.MaxTotalVotingPower ||
-				(valUpdate.VotingPower+totalVotingPower) < 0
+			updatedVotingPower := valUpdate.VotingPower + totalVotingPower
+			overflow := updatedVotingPower > types.MaxTotalVotingPower || updatedVotingPower < 0
 			if overflow {
 				return nil, fmt.Errorf(
 					"Failed to add new validator %v. Adding it would exceed max allowed total voting power %v",
@@ -357,7 +357,7 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			overflow := updatedVotingPower > types.MaxTotalVotingPower || updatedVotingPower < 0
 			if overflow {
 				return nil, fmt.Errorf(
-					"Failed to updated existing validator %v. Updating it would exceed max allowed total voting power %v",
+					"Failed to update existing validator %v. Updating it would exceed max allowed total voting power %v",
 					valUpdate,
 					types.MaxTotalVotingPower)
 			}
