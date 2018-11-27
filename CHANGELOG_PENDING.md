@@ -1,6 +1,6 @@
 # Pending
 
-## v0.26.4
+## v0.27.0
 
 *TBD*
 
@@ -23,21 +23,6 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
-- [types] [\#1571](https://github.com/tendermint/tendermint/issues/1571) Enable subscription to tags emitted from `BeginBlock`/`EndBlock` (@kostko)
-
 ### IMPROVEMENTS:
 
-- [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
-- [mempool] \#2855 add txs from Update to cache
-- [mempool] \#2835 Remove local int64 counter from being stored in every tx
-- [node] \#2827 add ability to instantiate IPCVal (@joe-bowman)
-
 ### BUG FIXES:
-
-- [blockchain] \#2731 Retry both blocks if either is bad to avoid getting stuck during fast sync (@goolAdapter)
-- [log] \#2868 fix module=main setting overriding all others
-- [rpc] \#2808 RPC validators calls IncrementAccum if necessary
-- [kv indexer] \#2908 don't return false positives when searching for a prefix of a tag value
-- [kv indexer] \#2775 order results by index if height is the same
-- [rpc] \#2759 fix tx.height range queries
-- [rpc] \#2811 Allow integer IDs in JSON-RPC requests
