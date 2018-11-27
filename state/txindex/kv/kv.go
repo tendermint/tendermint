@@ -172,10 +172,10 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 		for _, r := range ranges {
 			if !hashesInitialized {
-				hashes = txi.matchRange(r, []byte(r.key))
+				hashes = txi.matchRange(r, []byte(fmt.Sprintf("%s/", r.key)))
 				hashesInitialized = true
 			} else {
-				hashes = intersect(hashes, txi.matchRange(r, []byte(r.key)))
+				hashes = intersect(hashes, txi.matchRange(r, []byte(fmt.Sprintf("%s/", r.key))))
 			}
 		}
 	}
