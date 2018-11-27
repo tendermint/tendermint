@@ -13,6 +13,8 @@ import (
 )
 
 // The maximum allowed total voting power.
+// This is the largest int64 `x` with the property that `x + (x >> 3)` is
+// still in the bounds of int64.
 const MaxTotalVotingPower = 8198552921648689607
 
 // ValidatorSet represent a set of *Validator at a given height.
