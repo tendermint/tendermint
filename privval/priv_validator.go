@@ -290,19 +290,6 @@ func (pv *FilePV) saveSigned(height int64, round int, step int8,
 	pv.save()
 }
 
-// SignHeartbeat signs a canonical representation of the heartbeat, along with the chainID.
-// Implements PrivValidator.
-func (pv *FilePV) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
-	pv.mtx.Lock()
-	defer pv.mtx.Unlock()
-	sig, err := pv.PrivKey.Sign(heartbeat.SignBytes(chainID))
-	if err != nil {
-		return err
-	}
-	heartbeat.Signature = sig
-	return nil
-}
-
 // String returns a string representation of the FilePV.
 func (pv *FilePV) String() string {
 	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", pv.GetAddress(), pv.LastHeight, pv.LastRound, pv.LastStep)

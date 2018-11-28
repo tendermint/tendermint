@@ -17,9 +17,12 @@ import (
 )
 
 func TestValidatorSetBasic(t *testing.T) {
-	assert.Panics(t, func() { NewValidatorSet([]*Validator{}) })
+	// empty or nil validator lists are allowed,
+	// but attempting to IncrementProposerPriority on them will panic.
+	vset := NewValidatorSet([]*Validator{})
+	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
-	vset := NewValidatorSet(nil)
+	vset = NewValidatorSet(nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
 	assert.EqualValues(t, vset, vset.Copy())
@@ -272,7 +275,7 @@ func randPubKey() crypto.PubKey {
 
 func randValidator_() *Validator {
 	val := NewValidator(randPubKey(), cmn.RandInt64())
-	val.ProposerPriority = cmn.RandInt64()
+	val.ProposerPriority = cmn.RandInt64() % MaxTotalVotingPower
 	return val
 }
 
@@ -302,53 +305,37 @@ func (valSet *ValidatorSet) fromBytes(b []byte) {
 
 //-------------------------------------------------------------------
 
-func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
-	vset := NewValidatorSet([]*Validator{
-		{Address: []byte("a"), VotingPower: math.MaxInt64, ProposerPriority: 0},
-		{Address: []byte("b"), VotingPower: math.MaxInt64, ProposerPriority: 0},
-		{Address: []byte("c"), VotingPower: math.MaxInt64, ProposerPriority: 0},
-	})
-
-	assert.EqualValues(t, math.MaxInt64, vset.TotalVotingPower())
-}
-
-func TestValidatorSetIncrementProposerPriorityOverflows(t *testing.T) {
-	// NewValidatorSet calls IncrementProposerPriority(1)
-	vset := NewValidatorSet([]*Validator{
-		// too much voting power
-		0: {Address: []byte("a"), VotingPower: math.MaxInt64, ProposerPriority: 0},
-		// too big ProposerPriority
-		1: {Address: []byte("b"), VotingPower: 10, ProposerPriority: math.MaxInt64},
-		// almost too big ProposerPriority
-		2: {Address: []byte("c"), VotingPower: 10, ProposerPriority: math.MaxInt64 - 5},
-	})
-
-	assert.Equal(t, int64(0), vset.Validators[0].ProposerPriority, "0") // because we decrement val with most voting power
-	assert.EqualValues(t, math.MaxInt64, vset.Validators[1].ProposerPriority, "1")
-	assert.EqualValues(t, math.MaxInt64, vset.Validators[2].ProposerPriority, "2")
-}
-
-func TestValidatorSetIncrementProposerPriorityUnderflows(t *testing.T) {
-	// NewValidatorSet calls IncrementProposerPriority(1)
-	vset := NewValidatorSet([]*Validator{
-		0: {Address: []byte("a"), VotingPower: math.MaxInt64, ProposerPriority: math.MinInt64},
-		1: {Address: []byte("b"), VotingPower: 1, ProposerPriority: math.MinInt64},
-	})
-
-	vset.IncrementProposerPriority(5)
-
-	assert.EqualValues(t, math.MinInt64, vset.Validators[0].ProposerPriority, "0")
-	assert.EqualValues(t, math.MinInt64, vset.Validators[1].ProposerPriority, "1")
-}
-
-func TestSafeMul(t *testing.T) {
-	f := func(a, b int64) bool {
-		c, overflow := safeMul(a, b)
-		return overflow || (!overflow && c == a*b)
+func TestValidatorSetTotalVotingPowerPanicsOnOverflow(t *testing.T) {
+	// NewValidatorSet calls IncrementProposerPriority which calls TotalVotingPower()
+	// which should panic on overflows:
+	shouldPanic := func() {
+		NewValidatorSet([]*Validator{
+			{Address: []byte("a"), VotingPower: math.MaxInt64, ProposerPriority: 0},
+			{Address: []byte("b"), VotingPower: math.MaxInt64, ProposerPriority: 0},
+			{Address: []byte("c"), VotingPower: math.MaxInt64, ProposerPriority: 0},
+		})
 	}
-	if err := quick.Check(f, nil); err != nil {
-		t.Error(err)
+
+	assert.Panics(t, shouldPanic)
+}
+
+func TestAvgProposerPriority(t *testing.T) {
+	// Create Validator set without calling IncrementProposerPriority:
+	tcs := []struct {
+		vs   ValidatorSet
+		want int64
+	}{
+		0: {ValidatorSet{Validators: []*Validator{{ProposerPriority: 0}, {ProposerPriority: 0}, {ProposerPriority: 0}}}, 0},
+		1: {ValidatorSet{Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: 0}, {ProposerPriority: 0}}}, math.MaxInt64 / 3},
+		2: {ValidatorSet{Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: 0}}}, math.MaxInt64 / 2},
+		3: {ValidatorSet{Validators: []*Validator{{ProposerPriority: math.MaxInt64}, {ProposerPriority: math.MaxInt64}}}, math.MaxInt64},
+		4: {ValidatorSet{Validators: []*Validator{{ProposerPriority: math.MinInt64}, {ProposerPriority: math.MinInt64}}}, math.MinInt64},
 	}
+	for i, tc := range tcs {
+		got := tc.vs.computeAvgProposerPriority()
+		assert.Equal(t, tc.want, got, "test case: %v", i)
+	}
+
 }
 
 func TestSafeAdd(t *testing.T) {
@@ -359,13 +346,6 @@ func TestSafeAdd(t *testing.T) {
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)
 	}
-}
-
-func TestSafeMulClip(t *testing.T) {
-	assert.EqualValues(t, math.MaxInt64, safeMulClip(math.MinInt64, math.MinInt64))
-	assert.EqualValues(t, math.MinInt64, safeMulClip(math.MaxInt64, math.MinInt64))
-	assert.EqualValues(t, math.MinInt64, safeMulClip(math.MinInt64, math.MaxInt64))
-	assert.EqualValues(t, math.MaxInt64, safeMulClip(math.MaxInt64, 2))
 }
 
 func TestSafeAddClip(t *testing.T) {
