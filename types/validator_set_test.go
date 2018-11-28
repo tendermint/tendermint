@@ -335,7 +335,155 @@ func TestAvgProposerPriority(t *testing.T) {
 		got := tc.vs.computeAvgProposerPriority()
 		assert.Equal(t, tc.want, got, "test case: %v", i)
 	}
+}
 
+func TestAveragingInIncrementAccum(t *testing.T) {
+	tcs := []struct {
+		vs    ValidatorSet
+		times int
+		avg   int64
+	}{
+		0: {ValidatorSet{
+			Validators: []*Validator{
+				{Address: []byte("a"), Accum: 1},
+				{Address: []byte("b"), Accum: 2},
+				{Address: []byte("c"), Accum: 3}}},
+			1, 2},
+		1: {ValidatorSet{
+			Validators: []*Validator{
+				{Address: []byte("a"), Accum: 10},
+				{Address: []byte("b"), Accum: -10},
+				{Address: []byte("c"), Accum: 1}}},
+			// this should average twice but the average should be 0 after the first iteration
+			// (voting power is 0 -> no changes)
+			11, 1 / 3},
+		2: {ValidatorSet{
+			Validators: []*Validator{
+				{Address: []byte("a"), Accum: 100},
+				{Address: []byte("b"), Accum: -10},
+				{Address: []byte("c"), Accum: 1}}},
+			1, 91 / 3},
+	}
+	for i, tc := range tcs {
+		// work on copy to have the old Accums:
+		newVset := tc.vs.CopyIncrementAccum(tc.times)
+		for _, val := range tc.vs.Validators {
+			_, updatedVal := newVset.GetByAddress(val.Address)
+			assert.Equal(t, updatedVal.Accum, val.Accum-tc.avg, "test case: %v", i)
+		}
+	}
+}
+
+func TestAveragingInIncrementAccumWithVotingPower(t *testing.T) {
+	tcs := []struct {
+		vals       []*Validator
+		wantAccums []int64
+		times      int
+	}{
+		0: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				// Acumm+VotingPower-Avg:
+				0 + 10 - 12 - 4, // mostest will be subtracted by total voting power (12)
+				0 + 1 - 4,
+				0 + 1 - 4},
+			1},
+		1: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				(0 + 10 - 12 - 4) + 10 - 12 + 4, // this will be mostest on 2nd iter, too
+				(0 + 1 - 4) + 1 + 4,
+				(0 + 1 - 4) + 1 + 4},
+			2}, // increment twice -> expect average to be subtracted twice
+		2: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				((0 + 10 - 12 - 4) + 10 - 12) + 10 - 12 + 4, // still mostest
+				((0 + 1 - 4) + 1) + 1 + 4,
+				((0 + 1 - 4) + 1) + 1 + 4},
+			3},
+		3: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				0 + 4*(10-12) + 4 - 4, // still mostest
+				0 + 4*1 + 4 - 4,
+				0 + 4*1 + 4 - 4},
+			4},
+		4: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				0 + 4*(10-12) + 10 + 4 - 4, // 4 iters was mostest
+				0 + 5*1 - 12 + 4 - 4,       // now this val is mostest for the 1st time (hence -12==totalVotingPower)
+				0 + 5*1 + 4 - 4},
+			5},
+		5: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				0 + 6*10 - 5*12 + 4 - 4, // mostest again
+				0 + 6*1 - 12 + 4 - 4,    // mostest once up to here
+				0 + 6*1 + 4 - 4},
+			6},
+		6: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				0 + 7*10 - 6*12 + 4 - 4, // in 7 iters this val is mostest 6 times
+				0 + 7*1 - 12 + 4 - 4,    // in 7 iters this val is mostest 1 time
+				0 + 7*1 + 4 - 4},
+			7},
+		7: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				0 + 10*10 - 8*12 + 4 - 4,
+				0 + 10*1 - 12 + 4 - 4,   // after 6 iters this val is "mostest" once and not in between
+				0 + 10*1 + -12 + 4 - 4}, // after 10 iters this val is "mostest" once
+			10},
+		8: {
+			[]*Validator{
+				{Address: []byte("a"), Accum: 0, VotingPower: 10},
+				{Address: []byte("b"), Accum: 0, VotingPower: 1},
+				{Address: []byte("c"), Accum: 0, VotingPower: 1}},
+			[]int64{
+				// shift twice inside incrementAccum (shift every 10th iter);
+				// don't shift at the end of IncremenctAccum
+				// last avg should be zero because
+				// Accum of validator 0: (0 + 11*10 - 8*12 - 4) == 10
+				// Accum of validator 1 and 2: (0 + 11*1 - 12 - 4) == -5
+				0 + 11*10 - 8*12 - 4 - 12 - 0,
+				0 + 11*1 - 12 - 4 - 0,  // after 6 iters this val is "mostest" once and not in between
+				0 + 11*1 - 12 - 4 - 0}, // after 10 iters this val is "mostest" once
+			11},
+	}
+	for i, tc := range tcs {
+		vals := ValidatorSet{Validators: tc.vals}
+		vals.IncrementAccum(tc.times)
+		for valIdx, val := range tc.vals {
+			assert.Equal(t, tc.wantAccums[valIdx], val.Accum, "test case: %v, validator: %v", i, valIdx)
+		}
+	}
 }
 
 func TestSafeAdd(t *testing.T) {
