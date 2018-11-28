@@ -200,6 +200,9 @@ func (ps *PartSet) Total() int {
 }
 
 func (ps *PartSet) AddPart(part *Part) (bool, error) {
+	if ps == nil {
+		return false, nil
+	}
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
