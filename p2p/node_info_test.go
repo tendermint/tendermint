@@ -55,6 +55,12 @@ func TestNodeInfoValidate(t *testing.T) {
 		{"Empty TxIndex", func(ni *DefaultNodeInfo) { ni.Other.TxIndex = "" }, false},
 		{"Off TxIndex", func(ni *DefaultNodeInfo) { ni.Other.TxIndex = "off" }, false},
 
+		{"Non-ASCII SeedMode", func(ni *DefaultNodeInfo) { ni.Other.SeedMode = nonAscii }, true},
+		{"Empty tab SeedMode", func(ni *DefaultNodeInfo) { ni.Other.SeedMode = emptyTab }, true},
+		{"Empty space SeedMode", func(ni *DefaultNodeInfo) { ni.Other.SeedMode = emptySpace }, true},
+		{"Empty SeedMode", func(ni *DefaultNodeInfo) { ni.Other.SeedMode = "" }, false},
+		{"Off SeedMode", func(ni *DefaultNodeInfo) { ni.Other.SeedMode = "off" }, false},
+
 		{"Non-ASCII RPCAddress", func(ni *DefaultNodeInfo) { ni.Other.RPCAddress = nonAscii }, true},
 		{"Empty tab RPCAddress", func(ni *DefaultNodeInfo) { ni.Other.RPCAddress = emptyTab }, true},
 		{"Empty space RPCAddress", func(ni *DefaultNodeInfo) { ni.Other.RPCAddress = emptySpace }, true},

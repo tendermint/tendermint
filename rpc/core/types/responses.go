@@ -87,6 +87,14 @@ func (s *ResultStatus) TxIndexEnabled() bool {
 	return s.NodeInfo.Other.TxIndex == "on"
 }
 
+// Is SeedMode enabled
+func (s *ResultStatus) TxSeedModeEnabled() bool {
+	if s == nil {
+		return false
+	}
+	return s.NodeInfo.Other.SeedMode == "on"
+}
+
 // Info about peer connections
 type ResultNetInfo struct {
 	Listening bool     `json:"listening"`
