@@ -530,5 +530,5 @@ library will deny making connections to peers with the same IP address.
 See the
 [UPGRADING.md](https://github.com/tendermint/tendermint/blob/master/UPGRADING.md)
 guide. You may need to reset your chain between major breaking releases.
-Although, we expect their number to decrease as we're approaching Tendermint
-1.0 release.
+Although, we expect Tendermint to have fewer breaking releases in the future
+(especially after 1.0 release).
