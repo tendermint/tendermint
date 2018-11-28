@@ -17,9 +17,12 @@ import (
 )
 
 func TestValidatorSetBasic(t *testing.T) {
-	assert.Panics(t, func() { NewValidatorSet([]*Validator{}) })
+	// empty or nil validator lists are allowed,
+	// but attempting to IncrementAccum on them will panic.
+	vset := NewValidatorSet([]*Validator{})
+	assert.Panics(t, func() { vset.IncrementAccum(1) })
 
-	vset := NewValidatorSet(nil)
+	vset = NewValidatorSet(nil)
 	assert.Panics(t, func() { vset.IncrementAccum(1) })
 
 	assert.EqualValues(t, vset, vset.Copy())
