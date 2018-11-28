@@ -15,9 +15,9 @@ import (
 // The validators can be fetched by address or index.
 // The index is in order of .Address, so the indices are fixed
 // for all rounds of a given blockchain height.
-// On the other hand, the .AccumPower of each validator and
+// On the other hand, the .ProposerPriority of each validator and
 // the designated .GetProposer() of a set changes every round,
-// upon calling .IncrementAccum().
+// upon calling .IncrementProposerPriority().
 // NOTE: Not goroutine-safe.
 // NOTE: All get/set to validators should copy the value for safety.
 type ValidatorSet struct {
@@ -42,7 +42,7 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 		Validators: validators,
 	}
 	if len(valz) > 0 {
-		vals.IncrementAccum(1)
+		vals.IncrementProposerPriority(1)
 	}
 
 	return vals
@@ -53,39 +53,39 @@ func (vals *ValidatorSet) IsNilOrEmpty() bool {
 	return vals == nil || len(vals.Validators) == 0
 }
 
-// Increment Accum and update the proposer on a copy, and return it.
-func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
+// Increment ProposerPriority and update the proposer on a copy, and return it.
+func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet {
 	copy := vals.Copy()
-	copy.IncrementAccum(times)
+	copy.IncrementProposerPriority(times)
 	return copy
 }
 
-// IncrementAccum increments accum of each validator and updates the
+// IncrementProposerPriority increments ProposerPriority of each validator and updates the
 // proposer. Panics if validator set is empty.
 // `times` must be positive.
-func (vals *ValidatorSet) IncrementAccum(times int) {
+func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	if times <= 0 {
-		panic("Cannot call IncrementAccum with non-positive times")
+		panic("Cannot call IncrementProposerPriority with non-positive times")
 	}
 
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range vals.Validators {
 		// Check for overflow both multiplication and sum.
-		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
-		validatorsHeap.PushComparable(val, accumComparable{val})
+		val.ProposerPriority = safeAddClip(val.ProposerPriority, safeMulClip(val.VotingPower, int64(times)))
+		validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
 	}
 
-	// Decrement the validator with most accum times times.
+	// Decrement the validator with most ProposerPriority times times.
 	for i := 0; i < times; i++ {
 		mostest := validatorsHeap.Peek().(*Validator)
 		// mind underflow
-		mostest.Accum = safeSubClip(mostest.Accum, vals.TotalVotingPower())
+		mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
 
 		if i == times-1 {
 			vals.Proposer = mostest
 		} else {
-			validatorsHeap.Update(mostest, accumComparable{mostest})
+			validatorsHeap.Update(mostest, proposerPriorityComparable{mostest})
 		}
 	}
 }
@@ -94,7 +94,7 @@ func (vals *ValidatorSet) IncrementAccum(times int) {
 func (vals *ValidatorSet) Copy() *ValidatorSet {
 	validators := make([]*Validator, len(vals.Validators))
 	for i, val := range vals.Validators {
-		// NOTE: must copy, since IncrementAccum updates in place.
+		// NOTE: must copy, since IncrementProposerPriority updates in place.
 		validators[i] = val.Copy()
 	}
 	return &ValidatorSet{
@@ -168,7 +168,7 @@ func (vals *ValidatorSet) findProposer() *Validator {
 	var proposer *Validator
 	for _, val := range vals.Validators {
 		if proposer == nil || !bytes.Equal(val.Address, proposer.Address) {
-			proposer = proposer.CompareAccum(val)
+			proposer = proposer.CompareProposerPriority(val)
 		}
 	}
 	return proposer
@@ -308,7 +308,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		return nil
 	}
 	return fmt.Errorf("Invalid commit -- insufficient voting power: got %v, needed %v",
-		talliedVotingPower, (vals.TotalVotingPower()*2/3 + 1))
+		talliedVotingPower, vals.TotalVotingPower()*2/3+1)
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -391,7 +391,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
 		return cmn.NewError("Invalid commit -- insufficient old voting power: got %v, needed %v",
-			oldVotingPower, (oldVals.TotalVotingPower()*2/3 + 1))
+			oldVotingPower, oldVals.TotalVotingPower()*2/3+1)
 	}
 	return nil
 }
@@ -405,7 +405,7 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 	if vals == nil {
 		return "nil-ValidatorSet"
 	}
-	valStrings := []string{}
+	var valStrings []string
 	vals.Iterate(func(index int, val *Validator) bool {
 		valStrings = append(valStrings, val.String())
 		return false
@@ -443,16 +443,16 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 }
 
 //-------------------------------------
-// Use with Heap for sorting validators by accum
+// Use with Heap for sorting validators by ProposerPriority
 
-type accumComparable struct {
+type proposerPriorityComparable struct {
 	*Validator
 }
 
-// We want to find the validator with the greatest accum.
-func (ac accumComparable) Less(o interface{}) bool {
-	other := o.(accumComparable).Validator
-	larger := ac.CompareAccum(other)
+// We want to find the validator with the greatest ProposerPriority.
+func (ac proposerPriorityComparable) Less(o interface{}) bool {
+	other := o.(proposerPriorityComparable).Validator
+	larger := ac.CompareProposerPriority(other)
 	return bytes.Equal(larger.Address, ac.Address)
 }
 

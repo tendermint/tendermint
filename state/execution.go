@@ -374,8 +374,8 @@ func updateState(
 		logger.Info("Updates to validators", "updates", makeValidatorUpdatesLogString(validatorUpdates))
 	}
 
-	// Update validator accums and set state variables.
-	nValSet.IncrementAccum(1)
+	// Update validator proposer priority and set state variables.
+	nValSet.IncrementProposerPriority(1)
 
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
