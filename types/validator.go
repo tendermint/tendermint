@@ -81,13 +81,13 @@ func (v *Validator) Hash() []byte {
 // as its redundant with the pubkey. This also excludes accum which changes
 // every round.
 func (v *Validator) Bytes() []byte {
-	return cdcEncode((struct {
+	return cdcEncode(struct {
 		PubKey      crypto.PubKey
 		VotingPower int64
 	}{
 		v.PubKey,
 		v.VotingPower,
-	}))
+	})
 }
 
 //----------------------------------------

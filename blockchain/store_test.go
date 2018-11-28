@@ -9,12 +9,29 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	cfg "github.com/tendermint/tendermint/config"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/db"
+	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	sm "github.com/tendermint/tendermint/state"
 
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
+
+func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
+	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
+	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
+	blockDB := dbm.NewMemDB()
+	stateDB := dbm.NewMemDB()
+	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
+	if err != nil {
+		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
+	}
+	return state, NewBlockStore(blockDB)
+}
 
 func TestLoadBlockStoreStateJSON(t *testing.T) {
 	db := db.NewMemDB()
@@ -65,7 +82,7 @@ func freshBlockStore() (*BlockStore, db.DB) {
 var (
 	state, _ = makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 
-	block       = makeBlock(1, state)
+	block       = makeBlock(1, state, new(types.Commit))
 	partSet     = block.MakePartSet(2)
 	part1       = partSet.GetPart(0)
 	part2       = partSet.GetPart(1)
@@ -88,7 +105,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// save a block
-	block := makeBlock(bs.Height()+1, state)
+	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 	validPartSet := block.MakePartSet(2)
 	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
 		Timestamp: tmtime.Now()}}}
@@ -331,7 +348,7 @@ func TestLoadBlockMeta(t *testing.T) {
 func TestBlockFetchAtHeight(t *testing.T) {
 	state, bs := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
-	block := makeBlock(bs.Height()+1, state)
+	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 
 	partSet := block.MakePartSet(2)
 	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,

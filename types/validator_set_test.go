@@ -17,9 +17,12 @@ import (
 )
 
 func TestValidatorSetBasic(t *testing.T) {
-	assert.Panics(t, func() { NewValidatorSet([]*Validator{}) })
+	// empty or nil validator lists are allowed,
+	// but attempting to IncrementAccum on them will panic.
+	vset := NewValidatorSet([]*Validator{})
+	assert.Panics(t, func() { vset.IncrementAccum(1) })
 
-	vset := NewValidatorSet(nil)
+	vset = NewValidatorSet(nil)
 	assert.Panics(t, func() { vset.IncrementAccum(1) })
 
 	assert.EqualValues(t, vset, vset.Copy())
@@ -86,6 +89,19 @@ func TestCopy(t *testing.T) {
 	}
 }
 
+// Test that IncrementAccum requires positive times.
+func TestIncrementAccumPositiveTimes(t *testing.T) {
+	vset := NewValidatorSet([]*Validator{
+		newValidator([]byte("foo"), 1000),
+		newValidator([]byte("bar"), 300),
+		newValidator([]byte("baz"), 330),
+	})
+
+	assert.Panics(t, func() { vset.IncrementAccum(-1) })
+	assert.Panics(t, func() { vset.IncrementAccum(0) })
+	vset.IncrementAccum(1)
+}
+
 func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
 	vset := NewValidatorSet([]*Validator{})
@@ -112,7 +128,7 @@ func TestProposerSelection1(t *testing.T) {
 		newValidator([]byte("bar"), 300),
 		newValidator([]byte("baz"), 330),
 	})
-	proposers := []string{}
+	var proposers []string
 	for i := 0; i < 99; i++ {
 		val := vset.GetProposer()
 		proposers = append(proposers, string(val.Address))
@@ -239,7 +255,7 @@ func TestProposerSelection3(t *testing.T) {
 		mod := (cmn.RandInt() % 5) + 1
 		if cmn.RandInt()%mod > 0 {
 			// sometimes its up to 5
-			times = cmn.RandInt() % 5
+			times = (cmn.RandInt() % 4) + 1
 		}
 		vset.IncrementAccum(times)
 
@@ -289,53 +305,37 @@ func (valSet *ValidatorSet) fromBytes(b []byte) {
 
 //-------------------------------------------------------------------
 
-func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
-	vset := NewValidatorSet([]*Validator{
-		{Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
-		{Address: []byte("b"), VotingPower: math.MaxInt64, Accum: 0},
-		{Address: []byte("c"), VotingPower: math.MaxInt64, Accum: 0},
-	})
-
-	assert.EqualValues(t, math.MaxInt64, vset.TotalVotingPower())
-}
-
-func TestValidatorSetIncrementAccumOverflows(t *testing.T) {
-	// NewValidatorSet calls IncrementAccum(1)
-	vset := NewValidatorSet([]*Validator{
-		// too much voting power
-		0: {Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
-		// too big accum
-		1: {Address: []byte("b"), VotingPower: 10, Accum: math.MaxInt64},
-		// almost too big accum
-		2: {Address: []byte("c"), VotingPower: 10, Accum: math.MaxInt64 - 5},
-	})
-
-	assert.Equal(t, int64(0), vset.Validators[0].Accum, "0") // because we decrement val with most voting power
-	assert.EqualValues(t, math.MaxInt64, vset.Validators[1].Accum, "1")
-	assert.EqualValues(t, math.MaxInt64, vset.Validators[2].Accum, "2")
-}
-
-func TestValidatorSetIncrementAccumUnderflows(t *testing.T) {
-	// NewValidatorSet calls IncrementAccum(1)
-	vset := NewValidatorSet([]*Validator{
-		0: {Address: []byte("a"), VotingPower: math.MaxInt64, Accum: math.MinInt64},
-		1: {Address: []byte("b"), VotingPower: 1, Accum: math.MinInt64},
-	})
-
-	vset.IncrementAccum(5)
-
-	assert.EqualValues(t, math.MinInt64, vset.Validators[0].Accum, "0")
-	assert.EqualValues(t, math.MinInt64, vset.Validators[1].Accum, "1")
-}
-
-func TestSafeMul(t *testing.T) {
-	f := func(a, b int64) bool {
-		c, overflow := safeMul(a, b)
-		return overflow || (!overflow && c == a*b)
+func TestValidatorSetTotalVotingPowerPanicsOnOverflow(t *testing.T) {
+	// NewValidatorSet calls IncrementAccum which calls TotalVotingPower()
+	// which should panic on overflows:
+	shouldPanic := func() {
+		NewValidatorSet([]*Validator{
+			{Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
+			{Address: []byte("b"), VotingPower: math.MaxInt64, Accum: 0},
+			{Address: []byte("c"), VotingPower: math.MaxInt64, Accum: 0},
+		})
 	}
-	if err := quick.Check(f, nil); err != nil {
-		t.Error(err)
+
+	assert.Panics(t, shouldPanic)
+}
+
+func TestAvgAccum(t *testing.T) {
+	// Create Validator set without calling IncrementAccum:
+	tcs := []struct {
+		vs   ValidatorSet
+		want int64
+	}{
+		0: {ValidatorSet{Validators: []*Validator{{Accum: 0}, {Accum: 0}, {Accum: 0}}}, 0},
+		1: {ValidatorSet{Validators: []*Validator{{Accum: math.MaxInt64}, {Accum: 0}, {Accum: 0}}}, math.MaxInt64 / 3},
+		2: {ValidatorSet{Validators: []*Validator{{Accum: math.MaxInt64}, {Accum: 0}}}, math.MaxInt64 / 2},
+		3: {ValidatorSet{Validators: []*Validator{{Accum: math.MaxInt64}, {Accum: math.MaxInt64}}}, math.MaxInt64},
+		4: {ValidatorSet{Validators: []*Validator{{Accum: math.MinInt64}, {Accum: math.MinInt64}}}, math.MinInt64},
 	}
+	for i, tc := range tcs {
+		got := tc.vs.computeAvgAccum()
+		assert.Equal(t, tc.want, got, "test case: %v", i)
+	}
+
 }
 
 func TestSafeAdd(t *testing.T) {
@@ -346,13 +346,6 @@ func TestSafeAdd(t *testing.T) {
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)
 	}
-}
-
-func TestSafeMulClip(t *testing.T) {
-	assert.EqualValues(t, math.MaxInt64, safeMulClip(math.MinInt64, math.MinInt64))
-	assert.EqualValues(t, math.MinInt64, safeMulClip(math.MaxInt64, math.MinInt64))
-	assert.EqualValues(t, math.MinInt64, safeMulClip(math.MinInt64, math.MaxInt64))
-	assert.EqualValues(t, math.MaxInt64, safeMulClip(math.MaxInt64, 2))
 }
 
 func TestSafeAddClip(t *testing.T) {

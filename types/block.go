@@ -21,6 +21,8 @@ const (
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
+	// This means it also excludes the overhead for individual transactions.
+	// To compute individual transactions' overhead use types.ComputeAminoOverhead(tx types.Tx, fieldNum int).
 	//
 	// Uvarint length of MaxBlockSizeBytes: 4 bytes
 	// 2 fields (2 embedded):               2 bytes
@@ -271,6 +273,28 @@ func (b *Block) StringShort() string {
 		return "nil-Block"
 	}
 	return fmt.Sprintf("Block#%v", b.Hash())
+}
+
+//-----------------------------------------------------------
+// These methods are for Protobuf Compatibility
+
+// Marshal returns the amino encoding.
+func (b *Block) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(b)
+}
+
+// MarshalTo calls Marshal and copies to the given buffer.
+func (b *Block) MarshalTo(data []byte) (int, error) {
+	bs, err := b.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+// Unmarshal deserializes from amino encoded form.
+func (b *Block) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, b)
 }
 
 //-----------------------------------------------------------------------------

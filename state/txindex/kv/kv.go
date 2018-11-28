@@ -207,8 +207,11 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		i++
 	}
 
-	// sort by height by default
+	// sort by height & index by default
 	sort.Slice(results, func(i, j int) bool {
+		if results[i].Height == results[j].Height {
+			return results[i].Index < results[j].Index
+		}
 		return results[i].Height < results[j].Height
 	})
 
@@ -225,9 +228,10 @@ func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool)
 	return
 }
 
+// lookForHeight returns a height if there is an "height=X" condition.
 func lookForHeight(conditions []query.Condition) (height int64) {
 	for _, c := range conditions {
-		if c.Tag == types.TxHeightKey {
+		if c.Tag == types.TxHeightKey && c.Op == query.OpEqual {
 			return c.Operand.(int64)
 		}
 	}
@@ -408,9 +412,9 @@ LOOP:
 func startKey(c query.Condition, height int64) []byte {
 	var key string
 	if height > 0 {
-		key = fmt.Sprintf("%s/%v/%d", c.Tag, c.Operand, height)
+		key = fmt.Sprintf("%s/%v/%d/", c.Tag, c.Operand, height)
 	} else {
-		key = fmt.Sprintf("%s/%v", c.Tag, c.Operand)
+		key = fmt.Sprintf("%s/%v/", c.Tag, c.Operand)
 	}
 	return []byte(key)
 }

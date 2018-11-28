@@ -4,12 +4,22 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"math/big"
 	"sort"
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
+
+// The maximum allowed total voting power.
+// We set the accum of freshly added validators to -1.125*totalVotingPower.
+// To compute 1.125*totalVotingPower efficiently, we do:
+// totalVotingPower + (totalVotingPower >> 3) because
+// x + (x >> 3) = x + x/8 = x * (1 + 0.125).
+// MaxTotalVotingPower is the largest int64 `x` with the property that `x + (x >> 3)` is
+// still in the bounds of int64.
+const MaxTotalVotingPower = 8198552921648689607
 
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
@@ -29,10 +39,10 @@ type ValidatorSet struct {
 	totalVotingPower int64
 }
 
+// NewValidatorSet initializes a ValidatorSet by copying over the
+// values from `valz`, a list of Validators. If valz is nil or empty,
+// the new ValidatorSet will have an empty list of Validators.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
-	if valz != nil && len(valz) == 0 {
-		panic("validator set initialization slice cannot be an empty slice (but it can be nil)")
-	}
 	validators := make([]*Validator, len(valz))
 	for i, val := range valz {
 		validators[i] = val.Copy()
@@ -62,27 +72,70 @@ func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
 
 // IncrementAccum increments accum of each validator and updates the
 // proposer. Panics if validator set is empty.
+// `times` must be positive.
 func (vals *ValidatorSet) IncrementAccum(times int) {
-
-	// Add VotingPower * times to each validator and order into heap.
-	validatorsHeap := cmn.NewHeap()
-	for _, val := range vals.Validators {
-		// Check for overflow both multiplication and sum.
-		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
-		validatorsHeap.PushComparable(val, accumComparable{val})
+	if times <= 0 {
+		panic("Cannot call IncrementAccum with non-positive times")
 	}
 
-	// Decrement the validator with most accum times times.
+	const shiftEveryNthIter = 10
+	var proposer *Validator
+	// call IncrementAccum(1) times times:
 	for i := 0; i < times; i++ {
-		mostest := validatorsHeap.Peek().(*Validator)
-		// mind underflow
-		mostest.Accum = safeSubClip(mostest.Accum, vals.TotalVotingPower())
+		shiftByAvgAccum := i%shiftEveryNthIter == 0
+		proposer = vals.incrementAccum(shiftByAvgAccum)
+	}
+	isShiftedAvgOnLastIter := (times-1)%shiftEveryNthIter == 0
+	if !isShiftedAvgOnLastIter {
+		validatorsHeap := cmn.NewHeap()
+		vals.shiftByAvgAccum(validatorsHeap)
+	}
+	vals.Proposer = proposer
+}
 
-		if i == times-1 {
-			vals.Proposer = mostest
-		} else {
-			validatorsHeap.Update(mostest, accumComparable{mostest})
+func (vals *ValidatorSet) incrementAccum(subAvg bool) *Validator {
+	for _, val := range vals.Validators {
+		// Check for overflow for sum.
+		val.Accum = safeAddClip(val.Accum, val.VotingPower)
+	}
+
+	validatorsHeap := cmn.NewHeap()
+	if subAvg { // shift by avg accum
+		vals.shiftByAvgAccum(validatorsHeap)
+	} else { // just update the heap
+		for _, val := range vals.Validators {
+			validatorsHeap.PushComparable(val, accumComparable{val})
 		}
+	}
+
+	// Decrement the validator with most accum:
+	mostest := validatorsHeap.Peek().(*Validator)
+	// mind underflow
+	mostest.Accum = safeSubClip(mostest.Accum, vals.TotalVotingPower())
+
+	return mostest
+}
+
+func (vals *ValidatorSet) computeAvgAccum() int64 {
+	n := int64(len(vals.Validators))
+	sum := big.NewInt(0)
+	for _, val := range vals.Validators {
+		sum.Add(sum, big.NewInt(val.Accum))
+	}
+	avg := sum.Div(sum, big.NewInt(n))
+	if avg.IsInt64() {
+		return avg.Int64()
+	}
+
+	// this should never happen: each val.Accum is in bounds of int64
+	panic(fmt.Sprintf("Cannot represent avg accum as an int64 %v", avg))
+}
+
+func (vals *ValidatorSet) shiftByAvgAccum(validatorsHeap *cmn.Heap) {
+	avgAccum := vals.computeAvgAccum()
+	for _, val := range vals.Validators {
+		val.Accum = safeSubClip(val.Accum, avgAccum)
+		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 }
 
@@ -140,10 +193,18 @@ func (vals *ValidatorSet) Size() int {
 // TotalVotingPower returns the sum of the voting powers of all validators.
 func (vals *ValidatorSet) TotalVotingPower() int64 {
 	if vals.totalVotingPower == 0 {
+		sum := int64(0)
 		for _, val := range vals.Validators {
 			// mind overflow
-			vals.totalVotingPower = safeAddClip(vals.totalVotingPower, val.VotingPower)
+			sum = safeAddClip(sum, val.VotingPower)
 		}
+		if sum > MaxTotalVotingPower {
+			panic(fmt.Sprintf(
+				"Total voting power should be guarded to not exceed %v; got: %v",
+				MaxTotalVotingPower,
+				sum))
+		}
+		vals.totalVotingPower = sum
 	}
 	return vals.totalVotingPower
 }
@@ -304,7 +365,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		return nil
 	}
 	return fmt.Errorf("Invalid commit -- insufficient voting power: got %v, needed %v",
-		talliedVotingPower, (vals.TotalVotingPower()*2/3 + 1))
+		talliedVotingPower, vals.TotalVotingPower()*2/3+1)
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -387,7 +448,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
 		return cmn.NewError("Invalid commit -- insufficient old voting power: got %v, needed %v",
-			oldVotingPower, (oldVals.TotalVotingPower()*2/3 + 1))
+			oldVotingPower, oldVals.TotalVotingPower()*2/3+1)
 	}
 	return nil
 }
@@ -401,7 +462,7 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 	if vals == nil {
 		return "nil-ValidatorSet"
 	}
-	valStrings := []string{}
+	var valStrings []string
 	vals.Iterate(func(index int, val *Validator) bool {
 		valStrings = append(valStrings, val.String())
 		return false
@@ -472,24 +533,7 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []Pr
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Safe multiplication and addition/subtraction
-
-func safeMul(a, b int64) (int64, bool) {
-	if a == 0 || b == 0 {
-		return 0, false
-	}
-	if a == 1 {
-		return b, false
-	}
-	if b == 1 {
-		return a, false
-	}
-	if a == math.MinInt64 || b == math.MinInt64 {
-		return -1, true
-	}
-	c := a * b
-	return c, c/b != a
-}
+// Safe addition/subtraction
 
 func safeAdd(a, b int64) (int64, bool) {
 	if b > 0 && a > math.MaxInt64-b {
@@ -507,17 +551,6 @@ func safeSub(a, b int64) (int64, bool) {
 		return -1, true
 	}
 	return a - b, false
-}
-
-func safeMulClip(a, b int64) int64 {
-	c, overflow := safeMul(a, b)
-	if overflow {
-		if (a < 0 || b < 0) && !(a < 0 && b < 0) {
-			return math.MinInt64
-		}
-		return math.MaxInt64
-	}
-	return c
 }
 
 func safeAddClip(a, b int64) int64 {

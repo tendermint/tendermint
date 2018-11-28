@@ -59,22 +59,14 @@ You can simply use below table and concatenate Prefix || Length (of raw bytes) |
 | PubKeySecp256k1    | tendermint/PubKeySecp256k1    | 0xEB5AE987 | 0x21     |       |
 | PrivKeyEd25519     | tendermint/PrivKeyEd25519     | 0xA3288910 | 0x40     |       |
 | PrivKeySecp256k1   | tendermint/PrivKeySecp256k1   | 0xE1B0F79B | 0x20     |       |
-| SignatureEd25519   | tendermint/SignatureEd25519   | 0x2031EA53 | 0x40     |       |
-| SignatureSecp256k1 | tendermint/SignatureSecp256k1 | 0x7FC4A495 | variable |
+| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
 
-|
+### Example
 
-### Examples
-
-1. For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
+For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
    `020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
    would be encoded as
-   `EB5AE98221020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
-
-2. For example, the variable size Secp256k1 signature (in this particular example 70 or 0x46 bytes)
-   `304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
-   would be encoded as
-   `16E1FEEA46304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
+   `EB5AE98721020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
 
 ### Addresses
 

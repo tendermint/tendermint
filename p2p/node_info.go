@@ -216,7 +216,8 @@ OUTER_LOOP:
 // ListenAddr. Note that the ListenAddr is not authenticated and
 // may not match that address actually dialed if its an outbound peer.
 func (info DefaultNodeInfo) NetAddress() *NetAddress {
-	netAddr, err := NewNetAddressString(IDAddressString(info.ID(), info.ListenAddr))
+	idAddr := IDAddressString(info.ID(), info.ListenAddr)
+	netAddr, err := NewNetAddressString(idAddr)
 	if err != nil {
 		switch err.(type) {
 		case ErrNetAddressLookup:
@@ -228,4 +229,32 @@ func (info DefaultNodeInfo) NetAddress() *NetAddress {
 		}
 	}
 	return netAddr
+}
+
+//-----------------------------------------------------------
+// These methods are for Protobuf Compatibility
+
+// Size returns the size of the amino encoding, in bytes.
+func (info *DefaultNodeInfo) Size() int {
+	bs, _ := info.Marshal()
+	return len(bs)
+}
+
+// Marshal returns the amino encoding.
+func (info *DefaultNodeInfo) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(info)
+}
+
+// MarshalTo calls Marshal and copies to the given buffer.
+func (info *DefaultNodeInfo) MarshalTo(data []byte) (int, error) {
+	bs, err := info.Marshal()
+	if err != nil {
+		return -1, err
+	}
+	return copy(data, bs), nil
+}
+
+// Unmarshal deserializes from amino encoded form.
+func (info *DefaultNodeInfo) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, info)
 }
