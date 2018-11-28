@@ -199,7 +199,10 @@ func (vals *ValidatorSet) TotalVotingPower() int64 {
 			sum = safeAddClip(sum, val.VotingPower)
 		}
 		if sum > MaxTotalVotingPower {
-			sum = MaxTotalVotingPower
+			panic(fmt.Sprintf(
+				"Total voting power should be guarded to not exceed %v; got: %v",
+				MaxTotalVotingPower,
+				sum))
 		}
 		vals.totalVotingPower = sum
 	}
