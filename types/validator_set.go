@@ -29,10 +29,10 @@ type ValidatorSet struct {
 	totalVotingPower int64
 }
 
+// NewValidatorSet initializes a ValidatorSet by copying over the
+// values from `valz`, a list of Validators. If valz is nil or empty,
+// the new ValidatorSet will have an empty list of Validators.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
-	if valz != nil && len(valz) == 0 {
-		panic("validator set initialization slice cannot be an empty slice (but it can be nil)")
-	}
 	validators := make([]*Validator, len(valz))
 	for i, val := range valz {
 		validators[i] = val.Copy()
