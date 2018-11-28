@@ -24,6 +24,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.BroadcastTxAsync("123")
 // ```
 //
@@ -64,6 +69,11 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.BroadcastTxSync("456")
 // ```
 //
@@ -118,6 +128,11 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.BroadcastTxCommit("789")
 // ```
 //
@@ -225,6 +240,11 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.UnconfirmedTxs()
 // ```
 //
@@ -263,6 +283,11 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.UnconfirmedTxs()
 // ```
 //
