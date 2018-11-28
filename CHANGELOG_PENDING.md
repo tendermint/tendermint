@@ -30,3 +30,5 @@ program](https://hackerone.com/tendermint).
 - [consensus] [\#2871](https://github.com/tendermint/tendermint/issues/2871) Remove *ProposalHeartbeat* infrastructure as it serves no real purpose
 
 ### BUG FIXES:
+- [types] \#2938 Fix regression in v0.26.4 where we panic on empty
+  genDoc.Validators
