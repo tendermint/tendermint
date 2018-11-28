@@ -146,10 +146,6 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	return nil
 }
 
-func (b *EventBus) PublishEventProposalHeartbeat(data EventDataProposalHeartbeat) error {
-	return b.Publish(EventProposalHeartbeat, data)
-}
-
 func (b *EventBus) PublishEventNewRoundStep(data EventDataRoundState) error {
 	return b.Publish(EventNewRoundStep, data)
 }

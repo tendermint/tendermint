@@ -125,35 +125,6 @@ func (sc *RemoteSignerClient) SignProposal(
 	return nil
 }
 
-// SignHeartbeat implements PrivValidator.
-func (sc *RemoteSignerClient) SignHeartbeat(
-	chainID string,
-	heartbeat *types.Heartbeat,
-) error {
-	sc.lock.Lock()
-	defer sc.lock.Unlock()
-
-	err := writeMsg(sc.conn, &SignHeartbeatRequest{Heartbeat: heartbeat})
-	if err != nil {
-		return err
-	}
-
-	res, err := readMsg(sc.conn)
-	if err != nil {
-		return err
-	}
-	resp, ok := res.(*SignedHeartbeatResponse)
-	if !ok {
-		return ErrUnexpectedResponse
-	}
-	if resp.Error != nil {
-		return resp.Error
-	}
-	*heartbeat = *resp.Heartbeat
-
-	return nil
-}
-
 // Ping is used to check connection health.
 func (sc *RemoteSignerClient) Ping() error {
 	sc.lock.Lock()
@@ -186,8 +157,6 @@ func RegisterRemoteSignerMsg(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&SignedVoteResponse{}, "tendermint/remotesigner/SignedVoteResponse", nil)
 	cdc.RegisterConcrete(&SignProposalRequest{}, "tendermint/remotesigner/SignProposalRequest", nil)
 	cdc.RegisterConcrete(&SignedProposalResponse{}, "tendermint/remotesigner/SignedProposalResponse", nil)
-	cdc.RegisterConcrete(&SignHeartbeatRequest{}, "tendermint/remotesigner/SignHeartbeatRequest", nil)
-	cdc.RegisterConcrete(&SignedHeartbeatResponse{}, "tendermint/remotesigner/SignedHeartbeatResponse", nil)
 	cdc.RegisterConcrete(&PingRequest{}, "tendermint/remotesigner/PingRequest", nil)
 	cdc.RegisterConcrete(&PingResponse{}, "tendermint/remotesigner/PingResponse", nil)
 }
@@ -216,16 +185,6 @@ type SignProposalRequest struct {
 type SignedProposalResponse struct {
 	Proposal *types.Proposal
 	Error    *RemoteSignerError
-}
-
-// SignHeartbeatRequest is a PrivValidatorSocket message containing a Heartbeat.
-type SignHeartbeatRequest struct {
-	Heartbeat *types.Heartbeat
-}
-
-type SignedHeartbeatResponse struct {
-	Heartbeat *types.Heartbeat
-	Error     *RemoteSignerError
 }
 
 // PingRequest is a PrivValidatorSocket message to keep the connection alive.
@@ -285,13 +244,6 @@ func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValida
 			res = &SignedProposalResponse{nil, &RemoteSignerError{0, err.Error()}}
 		} else {
 			res = &SignedProposalResponse{r.Proposal, nil}
-		}
-	case *SignHeartbeatRequest:
-		err = privVal.SignHeartbeat(chainID, r.Heartbeat)
-		if err != nil {
-			res = &SignedHeartbeatResponse{nil, &RemoteSignerError{0, err.Error()}}
-		} else {
-			res = &SignedHeartbeatResponse{r.Heartbeat, nil}
 		}
 	case *PingRequest:
 		res = &PingResponse{}
