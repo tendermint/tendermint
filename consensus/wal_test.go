@@ -7,13 +7,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
 	// "sync"
 	"testing"
 	"time"
 
 	"github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/autofile"
+	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
@@ -23,29 +23,27 @@ import (
 
 func TestWALTruncate(t *testing.T) {
 	walDir, err := ioutil.TempDir("", "wal")
-	if err != nil {
-		panic(fmt.Errorf("failed to create temp WAL file: %v", err))
-	}
+	require.NoError(t, err)
 	defer os.RemoveAll(walDir)
 
 	walFile := filepath.Join(walDir, "wal")
 
 	//this magic number 4K can truncate the content when RotateFile. defaultHeadSizeLimit(10M) is hard to simulate.
 	//this magic number 1 * time.Millisecond make RotateFile check frequently. defaultGroupCheckDuration(5s) is hard to simulate.
-	wal, err := NewWAL(walFile, autofile.GroupHeadSizeLimit(4096), autofile.GroupCheckDuration(1*time.Millisecond))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wal.Start()
+	wal, err := NewWAL(walFile,
+		autofile.GroupHeadSizeLimit(4096),
+		autofile.GroupCheckDuration(1*time.Millisecond),
+	)
+	require.NoError(t, err)
+	wal.SetLogger(log.TestingLogger())
+	err = wal.Start()
+	require.NoError(t, err)
 	defer wal.Stop()
 
 	//60 block's size nearly 70K, greater than group's headBuf size(4096 * 10), when headBuf is full, truncate content will Flush to the file.
 	//at this time, RotateFile is called, truncate content exist in each file.
 	err = WALGenerateNBlocks(wal.Group(), 60)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
 
@@ -99,9 +97,8 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	walFile := tempWALWithData(walBody)
 
 	wal, err := NewWAL(walFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	wal.SetLogger(log.TestingLogger())
 
 	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})

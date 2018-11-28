@@ -1,6 +1,6 @@
 # Pending
 
-## v0.26.4
+## v0.27.0
 
 *TBD*
 
@@ -17,6 +17,8 @@ program](https://hackerone.com/tendermint).
 
 * Go API
 
+- [db] [\#2913](https://github.com/tendermint/tendermint/pull/2913) ReverseIterator API change -- start < end, and end is exclusive.
+
 * Blockchain Protocol
   * [state] \#2714 Validators can now only use pubkeys allowed within ConsensusParams.ValidatorParams
 
@@ -25,7 +27,6 @@ program](https://hackerone.com/tendermint).
 ### FEATURES:
 
 ### IMPROVEMENTS:
-
-- [config] \#2877 add blocktime_iota to the config.toml (@ackratos)
+- [consensus] [\#2871](https://github.com/tendermint/tendermint/issues/2871) Remove *ProposalHeartbeat* infrastructure as it serves no real purpose
 
 ### BUG FIXES:

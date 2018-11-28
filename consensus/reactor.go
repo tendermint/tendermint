@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmevents "github.com/tendermint/tendermint/libs/events"
@@ -264,11 +264,6 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				BlockID: msg.BlockID,
 				Votes:   ourVotes,
 			}))
-		case *ProposalHeartbeatMessage:
-			hb := msg.Heartbeat
-			conR.Logger.Debug("Received proposal heartbeat message",
-				"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence,
-				"valIdx", hb.ValidatorIndex, "valAddr", hb.ValidatorAddress)
 		default:
 			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 		}
@@ -369,8 +364,8 @@ func (conR *ConsensusReactor) FastSync() bool {
 
 //--------------------------------------
 
-// subscribeToBroadcastEvents subscribes for new round steps, votes and
-// proposal heartbeats using internal pubsub defined on state to broadcast
+// subscribeToBroadcastEvents subscribes for new round steps and votes
+// using internal pubsub defined on state to broadcast
 // them to peers upon receiving.
 func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
 	const subscriber = "consensus-reactor"
@@ -389,22 +384,11 @@ func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
 			conR.broadcastHasVoteMessage(data.(*types.Vote))
 		})
 
-	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventProposalHeartbeat,
-		func(data tmevents.EventData) {
-			conR.broadcastProposalHeartbeatMessage(data.(*types.Heartbeat))
-		})
 }
 
 func (conR *ConsensusReactor) unsubscribeFromBroadcastEvents() {
 	const subscriber = "consensus-reactor"
 	conR.conS.evsw.RemoveListener(subscriber)
-}
-
-func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(hb *types.Heartbeat) {
-	conR.Logger.Debug("Broadcasting proposal heartbeat message",
-		"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence, "address", hb.ValidatorAddress)
-	msg := &ProposalHeartbeatMessage{hb}
-	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(msg))
 }
 
 func (conR *ConsensusReactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
@@ -1387,7 +1371,6 @@ func RegisterConsensusMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&HasVoteMessage{}, "tendermint/HasVote", nil)
 	cdc.RegisterConcrete(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23", nil)
 	cdc.RegisterConcrete(&VoteSetBitsMessage{}, "tendermint/VoteSetBits", nil)
-	cdc.RegisterConcrete(&ProposalHeartbeatMessage{}, "tendermint/ProposalHeartbeat", nil)
 }
 
 func decodeMsg(bz []byte) (msg ConsensusMessage, err error) {
@@ -1664,18 +1647,3 @@ func (m *VoteSetBitsMessage) String() string {
 }
 
 //-------------------------------------
-
-// ProposalHeartbeatMessage is sent to signal that a node is alive and waiting for transactions for a proposal.
-type ProposalHeartbeatMessage struct {
-	Heartbeat *types.Heartbeat
-}
-
-// ValidateBasic performs basic validation.
-func (m *ProposalHeartbeatMessage) ValidateBasic() error {
-	return m.Heartbeat.ValidateBasic()
-}
-
-// String returns a string representation.
-func (m *ProposalHeartbeatMessage) String() string {
-	return fmt.Sprintf("[HEARTBEAT %v]", m.Heartbeat)
-}

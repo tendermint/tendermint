@@ -65,24 +65,24 @@ type Requester {
   mtx          Mutex
   block        Block
   height       int64
-  peerID       p2p.ID
-  redoChannel  chan struct{}
+   peerID       p2p.ID
+  redoChannel  chan p2p.ID //redo may send multi-time; peerId is used to identify repeat
 }
 ```
 
-Pool is core data structure that stores last executed block (`height`), assignment of requests to peers (`requesters`), current height for each peer and number of pending requests for each peer (`peers`), maximum peer height, etc.
+Pool is a core data structure that stores last executed block (`height`), assignment of requests to peers (`requesters`), current height for each peer and number of pending requests for each peer (`peers`), maximum peer height, etc.
 
 ```go
 type Pool {
-  mtx Mutex
-  requesters       map[int64]*Requester
-  height           int64
-  peers            map[p2p.ID]*Peer
-  maxPeerHeight    int64
-  numPending       int32
-  store            BlockStore
-  requestsChannel  chan<- BlockRequest
-  errorsChannel    chan<- peerError
+  mtx                Mutex
+  requesters         map[int64]*Requester
+  height             int64
+  peers              map[p2p.ID]*Peer
+  maxPeerHeight      int64
+  numPending         int32
+  store              BlockStore
+  requestsChannel    chan<- BlockRequest
+  errorsChannel      chan<- peerError
 }
 ```
 
@@ -90,11 +90,11 @@ Peer data structure stores for each peer current `height` and number of pending 
 
 ```go
 type Peer struct {
-  id         p2p.ID
-  height     int64
-  numPending int32
-  timeout    *time.Timer
-  didTimeout bool
+  id           p2p.ID
+  height       int64
+  numPending   int32
+  timeout      *time.Timer
+  didTimeout   bool
 }
 ```
 
@@ -169,11 +169,11 @@ Requester task is responsible for fetching a single block at position `height`.
 
 ```go
 fetchBlock(height, pool):
-  while true do
+  while true do {
     peerID = nil
     block = nil
     peer = pickAvailablePeer(height)
-    peerId = peer.id
+    peerID = peer.id
 
     enqueue BlockRequest(height, peerID) to pool.requestsChannel
     redo = false
@@ -181,12 +181,15 @@ fetchBlock(height, pool):
       select {
         upon receiving Quit message do
           return
-        upon receiving message on redoChannel do
-          mtx.Lock()
-          pool.numPending++
-          redo = true
-          mtx.UnLock()
+        upon receiving redo message with id on redoChannel do
+          if peerID == id {
+            mtx.Lock()
+            pool.numPending++
+            redo = true
+            mtx.UnLock()	
+          }
       }
+    }
 
 pickAvailablePeer(height):
   selectedPeer = nil
@@ -244,7 +247,7 @@ createRequesters(pool):
 main(pool):
   create trySyncTicker with interval trySyncIntervalMS
   create statusUpdateTicker with interval statusUpdateIntervalSeconds
-  create switchToConsensusTicker with interbal switchToConsensusIntervalSeconds
+  create switchToConsensusTicker with interval switchToConsensusIntervalSeconds
 
   while true do
     select {

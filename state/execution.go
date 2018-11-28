@@ -107,8 +107,22 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	fail.Fail() // XXX
 
+	// validate the validator updates and convert to tendermint types
+	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
+	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
+	if err != nil {
+		return state, fmt.Errorf("Error in validator updates: %v", err)
+	}
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
+	if err != nil {
+		return state, err
+	}
+	if len(validatorUpdates) > 0 {
+		blockExec.logger.Info("Updates to validators", "updates", makeValidatorUpdatesLogString(validatorUpdates))
+	}
+
 	// Update the state with the block and responses.
-	state, err = updateState(blockExec.logger, state, blockID, &block.Header, abciResponses)
+	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -132,7 +146,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses)
+	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
 
 	return state, nil
 }
@@ -226,8 +240,9 @@ func execBlockOnProxyApp(
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
 
-	// Begin block.
-	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
+	// Begin block
+	var err error
+	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
 		Header:              types.TM2PB.Header(&block.Header),
 		LastCommitInfo:      commitInfo,
@@ -331,14 +346,13 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate) ([]*types.Validator, error) {
-	updates, err := types.PB2TM.ValidatorUpdates(abciUpdates)
-	if err != nil {
-		return nil, err
-	}
-
-	// these are tendermint types now
+func updateValidators(currentSet *types.ValidatorSet, updates []*types.Validator) error {
 	for _, valUpdate := range updates {
+		// should already have been checked
+		if valUpdate.VotingPower < 0 {
+			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
+		}
+
 		address := valUpdate.Address
 		_, val := currentSet.GetByAddress(address)
 		// valUpdate.VotingPower is ensured to be non-negative in validation method
@@ -346,32 +360,32 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			// remove val
 			_, removed := currentSet.Remove(address)
 			if !removed {
-				return nil, fmt.Errorf("Failed to remove validator %X", address)
+				return fmt.Errorf("Failed to remove validator %X", address)
 			}
 		} else if val == nil {
 			// add val
 			added := currentSet.Add(valUpdate)
 			if !added {
-				return nil, fmt.Errorf("Failed to add new validator %v", valUpdate)
+				return fmt.Errorf("Failed to add new validator %v", valUpdate)
 			}
 		} else {
 			// update val
 			updated := currentSet.Update(valUpdate)
 			if !updated {
-				return nil, fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
+				return fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
 			}
 		}
 	}
-	return updates, nil
+	return nil
 }
 
 // updateState returns a new State updated according to the header and responses.
 func updateState(
-	logger log.Logger,
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
 	abciResponses *ABCIResponses,
+	validatorUpdates []*types.Validator,
 ) (State, error) {
 
 	// Copy the valset so we can apply changes from EndBlock
@@ -380,19 +394,13 @@ func updateState(
 
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
-	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := validateValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates, state.ConsensusParams.Validator)
-		if err != nil {
-			return state, fmt.Errorf("Error in validator updates: %v", err)
-		}
-		validatorUpdates, err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates)
+	if len(validatorUpdates) > 0 {
+		err := updateValidators(nValSet, validatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
-
-		logger.Info("Updates to validators", "updates", makeValidatorUpdatesLogString(validatorUpdates))
 	}
 
 	// Update validator accums and set state variables.
@@ -438,9 +446,17 @@ func updateState(
 // Fire NewBlock, NewBlockHeader.
 // Fire TxEvent for every tx.
 // NOTE: if Tendermint crashes before commit, some or all of these events may be published again.
-func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *types.Block, abciResponses *ABCIResponses) {
-	eventBus.PublishEventNewBlock(types.EventDataNewBlock{block})
-	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{block.Header})
+func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *types.Block, abciResponses *ABCIResponses, validatorUpdates []*types.Validator) {
+	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+		Block:            block,
+		ResultBeginBlock: *abciResponses.BeginBlock,
+		ResultEndBlock:   *abciResponses.EndBlock,
+	})
+	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+		Header:           block.Header,
+		ResultBeginBlock: *abciResponses.BeginBlock,
+		ResultEndBlock:   *abciResponses.EndBlock,
+	})
 
 	for i, tx := range block.Data.Txs {
 		eventBus.PublishEventTx(types.EventDataTx{types.TxResult{
@@ -451,12 +467,9 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 		}})
 	}
 
-	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
-	if len(abciValUpdates) > 0 {
-		// if there were an error, we would've stopped in updateValidators
-		updates, _ := types.PB2TM.ValidatorUpdates(abciValUpdates)
+	if len(validatorUpdates) > 0 {
 		eventBus.PublishEventValidatorSetUpdates(
-			types.EventDataValidatorSetUpdates{ValidatorUpdates: updates})
+			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates})
 	}
 }
 

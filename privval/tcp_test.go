@@ -137,22 +137,6 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 	assert.Equal(t, want.Signature, have.Signature)
 }
 
-func TestSocketPVHeartbeat(t *testing.T) {
-	var (
-		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV())
-
-		want = &types.Heartbeat{}
-		have = &types.Heartbeat{}
-	)
-	defer sc.Stop()
-	defer rs.Stop()
-
-	require.NoError(t, rs.privVal.SignHeartbeat(chainID, want))
-	require.NoError(t, sc.SignHeartbeat(chainID, have))
-	assert.Equal(t, want.Signature, have.Signature)
-}
-
 func TestSocketPVDeadline(t *testing.T) {
 	var (
 		addr    = testFreeAddr(t)
@@ -301,32 +285,6 @@ func TestRemoteSignProposalErrors(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestRemoteSignHeartbeatErrors(t *testing.T) {
-	var (
-		chainID = cmn.RandStr(12)
-		sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV())
-		hb      = &types.Heartbeat{}
-	)
-	defer sc.Stop()
-	defer rs.Stop()
-
-	err := writeMsg(sc.conn, &SignHeartbeatRequest{Heartbeat: hb})
-	require.NoError(t, err)
-
-	res, err := readMsg(sc.conn)
-	require.NoError(t, err)
-
-	resp := *res.(*SignedHeartbeatResponse)
-	require.NotNil(t, resp.Error)
-	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
-
-	err = rs.privVal.SignHeartbeat(chainID, hb)
-	require.Error(t, err)
-
-	err = sc.SignHeartbeat(chainID, hb)
-	require.Error(t, err)
-}
-
 func TestErrUnexpectedResponse(t *testing.T) {
 	var (
 		addr    = testFreeAddr(t)
@@ -362,22 +320,12 @@ func TestErrUnexpectedResponse(t *testing.T) {
 	require.NotNil(t, rsConn)
 	<-readyc
 
-	// Heartbeat:
-	go func(errc chan error) {
-		errc <- sc.SignHeartbeat(chainID, &types.Heartbeat{})
-	}(errc)
-	// read request and write wrong response:
-	go testReadWriteResponse(t, &SignedVoteResponse{}, rsConn)
-	err = <-errc
-	require.Error(t, err)
-	require.Equal(t, err, ErrUnexpectedResponse)
-
 	// Proposal:
 	go func(errc chan error) {
 		errc <- sc.SignProposal(chainID, &types.Proposal{})
 	}(errc)
 	// read request and write wrong response:
-	go testReadWriteResponse(t, &SignedHeartbeatResponse{}, rsConn)
+	go testReadWriteResponse(t, &SignedVoteResponse{}, rsConn)
 	err = <-errc
 	require.Error(t, err)
 	require.Equal(t, err, ErrUnexpectedResponse)
@@ -387,7 +335,7 @@ func TestErrUnexpectedResponse(t *testing.T) {
 		errc <- sc.SignVote(chainID, &types.Vote{})
 	}(errc)
 	// read request and write wrong response:
-	go testReadWriteResponse(t, &SignedHeartbeatResponse{}, rsConn)
+	go testReadWriteResponse(t, &SignedProposalResponse{}, rsConn)
 	err = <-errc
 	require.Error(t, err)
 	require.Equal(t, err, ErrUnexpectedResponse)
