@@ -107,12 +107,16 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	fail.Fail() // XXX
 
-	// these are tendermint types now
-	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+	// validate the validator updates and convert to tendermint types
+	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
+	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
+	if err != nil {
+		return state, fmt.Errorf("Error in validator updates: %v", err)
+	}
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
 	if err != nil {
 		return state, err
 	}
-
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Info("Updates to validators", "updates", makeValidatorUpdatesLogString(validatorUpdates))
 	}
@@ -318,17 +322,40 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 
 }
 
+func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
+	params types.ValidatorParams) error {
+	for _, valUpdate := range abciUpdates {
+		if valUpdate.GetPower() < 0 {
+			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
+		} else if valUpdate.GetPower() == 0 {
+			// continue, since this is deleting the validator, and thus there is no
+			// pubkey to check
+			continue
+		}
+
+		// Check if validator's pubkey matches an ABCI type in the consensus params
+		thisKeyType := valUpdate.PubKey.Type
+		if !params.IsValidPubkeyType(thisKeyType) {
+			return fmt.Errorf("Validator %v is using pubkey %s, which is unsupported for consensus",
+				valUpdate, thisKeyType)
+		}
+	}
+	return nil
+}
+
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
 func updateValidators(currentSet *types.ValidatorSet, updates []*types.Validator) error {
 	for _, valUpdate := range updates {
+		// should already have been checked
 		if valUpdate.VotingPower < 0 {
 			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
 		}
 
 		address := valUpdate.Address
 		_, val := currentSet.GetByAddress(address)
+		// valUpdate.VotingPower is ensured to be non-negative in validation method
 		if valUpdate.VotingPower == 0 {
 			// remove val
 			_, removed := currentSet.Remove(address)
@@ -367,7 +394,7 @@ func updateState(
 
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
-	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
+	if len(validatorUpdates) > 0 {
 		err := updateValidators(nValSet, validatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
