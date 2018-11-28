@@ -782,6 +782,10 @@ func makeNodeInfo(
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
+	seedModeStatus := "off"
+	if config.P2P.SeedMode {
+		seedModeStatus = "on"
+	}
 	nodeInfo := p2p.DefaultNodeInfo{
 		ProtocolVersion: protocolVersion,
 		ID_:             nodeID,
@@ -797,6 +801,7 @@ func makeNodeInfo(
 		Other: p2p.DefaultNodeInfoOther{
 			TxIndex:    txIndexerStatus,
 			RPCAddress: config.RPC.ListenAddress,
+			SeedMode:   seedModeStatus,
 		},
 	}
 

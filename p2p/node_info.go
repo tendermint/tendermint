@@ -96,6 +96,7 @@ type DefaultNodeInfo struct {
 type DefaultNodeInfoOther struct {
 	TxIndex    string `json:"tx_index"`
 	RPCAddress string `json:"rpc_address"`
+	SeedMode   string `json:"seed_mode"`
 }
 
 // ID returns the node's peer ID.
@@ -165,6 +166,12 @@ func (info DefaultNodeInfo) ValidateBasic() error {
 	rpcAddr := other.RPCAddress
 	if len(rpcAddr) > 0 && (!cmn.IsASCIIText(rpcAddr) || cmn.ASCIITrim(rpcAddr) == "") {
 		return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", rpcAddr)
+	}
+	seedMode := other.SeedMode
+	switch seedMode {
+	case "", "on", "off":
+	default:
+		return fmt.Errorf("info.Other.SeedMode should be either 'on', 'off', or empty string, got '%v'", seedMode)
 	}
 
 	return nil

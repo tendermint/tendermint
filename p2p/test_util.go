@@ -258,6 +258,7 @@ func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 		Other: DefaultNodeInfoOther{
 			TxIndex:    "on",
 			RPCAddress: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+			SeedMode:   "on",
 		},
 	}
 }

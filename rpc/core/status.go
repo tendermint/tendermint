@@ -44,7 +44,8 @@ import (
 //   		"moniker": "ubuntu-xenial",
 //   		"other": {
 //   			"tx_index": "on",
-//   			"rpc_addr": "tcp://0.0.0.0:26657"
+//   			"rpc_addr": "tcp://0.0.0.0:26657",
+//   			"seed_mode": "on"
 //   		}
 //   	},
 //   	"sync_info": {

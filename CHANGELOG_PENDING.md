@@ -23,6 +23,8 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
+- [rpc] \#2817 Report seed mode status in `/status` endpoint
+
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
