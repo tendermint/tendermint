@@ -10,9 +10,6 @@ const (
 
 	// Proposals
 	ProposalType SignedMsgType = 0x20
-
-	// Heartbeat
-	HeartbeatType SignedMsgType = 0x30
 )
 
 // IsVoteTypeValid returns true if t is a valid vote type.

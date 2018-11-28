@@ -131,27 +131,13 @@ func (pdb *prefixDB) ReverseIterator(start, end []byte) Iterator {
 	defer pdb.mtx.Unlock()
 
 	var pstart, pend []byte
-	if start == nil {
-		// This may cause the underlying iterator to start with
-		// an item which doesn't start with prefix.  We will skip
-		// that item later in this function. See 'skipOne'.
-		pstart = cpIncr(pdb.prefix)
-	} else {
-		pstart = append(cp(pdb.prefix), start...)
-	}
+	pstart = append(cp(pdb.prefix), start...)
 	if end == nil {
-		// This may cause the underlying iterator to end with an
-		// item which doesn't start with prefix.  The
-		// prefixIterator will terminate iteration
-		// automatically upon detecting this.
-		pend = cpDecr(pdb.prefix)
+		pend = cpIncr(pdb.prefix)
 	} else {
 		pend = append(cp(pdb.prefix), end...)
 	}
 	ritr := pdb.db.ReverseIterator(pstart, pend)
-	if start == nil {
-		skipOne(ritr, cpIncr(pdb.prefix))
-	}
 	return newPrefixIterator(
 		pdb.prefix,
 		start,
@@ -310,7 +296,6 @@ func (itr *prefixIterator) Next() {
 	}
 	itr.source.Next()
 	if !itr.source.Valid() || !bytes.HasPrefix(itr.source.Key(), itr.prefix) {
-		itr.source.Close()
 		itr.valid = false
 		return
 	}
@@ -344,14 +329,4 @@ func stripPrefix(key []byte, prefix []byte) (stripped []byte) {
 		panic("should not happne")
 	}
 	return key[len(prefix):]
-}
-
-// If the first iterator item is skipKey, then
-// skip it.
-func skipOne(itr Iterator, skipKey []byte) {
-	if itr.Valid() {
-		if bytes.Equal(itr.Key(), skipKey) {
-			itr.Next()
-		}
-	}
 }

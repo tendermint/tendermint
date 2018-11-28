@@ -3,28 +3,26 @@ package node
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"syscall"
 	"testing"
 	"time"
-	"net"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/version"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-
-	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/types"
-
-	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/privval"
+	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -32,17 +30,16 @@ func TestNodeStartStop(t *testing.T) {
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
-	assert.NoError(t, err, "expected no err on DefaultNewNode")
-	err1 := n.Start()
-	if err1 != nil {
-		t.Error(err1)
-	}
+	require.NoError(t, err)
+	err = n.Start()
+	require.NoError(t, err)
+
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// wait for the node to produce a block
 	blockCh := make(chan interface{})
 	err = n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock, blockCh)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	select {
 	case <-blockCh:
 	case <-time.After(10 * time.Second):
@@ -94,7 +91,7 @@ func TestNodeDelayedStop(t *testing.T) {
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	n.GenesisDoc().GenesisTime = now.Add(5 * time.Second)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	n.Start()
 	startTime := tmtime.Now()
@@ -106,7 +103,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
-	assert.NoError(t, err, "expected no err on DefaultNewNode")
+	require.NoError(t, err)
 
 	// default config uses the kvstore app
 	var appVersion version.Protocol = kvstore.ProtocolVersion
@@ -122,90 +119,70 @@ func TestNodeSetAppVersion(t *testing.T) {
 func TestNodeSetPrivValTCP(t *testing.T) {
 	addr := "tcp://" + testFreeAddr(t)
 
+	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	config.BaseConfig.PrivValidatorListenAddr = addr
+
 	rs := privval.NewRemoteSigner(
 		log.TestingLogger(),
-		cmn.RandStr(12),
+		config.ChainID(),
 		addr,
 		types.NewMockPV(),
 		ed25519.GenPrivKey(),
 	)
 	privval.RemoteSignerConnDeadline(5 * time.Millisecond)(rs)
-	privval.RemoteSignerConnRetries(1e6)(rs)
-
-	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
-	config.BaseConfig.PrivValidatorListenAddr = addr
-
-	// kick off remote signer routine, and then start TM.
-	go func(rs *privval.RemoteSigner) {
-		rs.Start()
-		defer rs.Stop()
-		time.Sleep(100 * time.Millisecond)
-	}(rs)
+	go func() {
+		err := rs.Start()
+		if err != nil {
+			panic(err)
+		}
+	}()
+	defer rs.Stop()
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
-
-	assert.NoError(t, err, "expected no err on DefaultNewNode")
-
+	require.NoError(t, err)
 	assert.IsType(t, &privval.TCPVal{}, n.PrivValidator())
 }
 
-func TestNodeSetPrivValTCPNoPrefix(t *testing.T) {
-	addr := "tcp://" + testFreeAddr(t)
+// address without a protocol must result in error
+func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
+	addrNoPrefix := testFreeAddr(t)
 
-	rs := privval.NewRemoteSigner(
-		log.TestingLogger(),
-		cmn.RandStr(12),
-		addr,
-		types.NewMockPV(),
-		ed25519.GenPrivKey(),
-	)
-	privval.RemoteSignerConnDeadline(5 * time.Millisecond)(rs)
-	privval.RemoteSignerConnRetries(1e6)(rs)
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
-	config.BaseConfig.PrivValidatorListenAddr = addr
+	config.BaseConfig.PrivValidatorListenAddr = addrNoPrefix
 
-	// kick off remote signer routine, and then start TM.
-	go func(rs *privval.RemoteSigner) {
-		rs.Start()
-		defer rs.Stop()
-		time.Sleep(100 * time.Millisecond)
-	}(rs)
-
-	n, err := DefaultNewNode(config, log.TestingLogger())
-
-	assert.NoError(t, err, "expected no err on DefaultNewNode")
-	assert.IsType(t, &privval.TCPVal{}, n.PrivValidator())
+	_, err := DefaultNewNode(config, log.TestingLogger())
+	assert.Error(t, err)
 }
 
 func TestNodeSetPrivValIPC(t *testing.T) {
 	tmpfile := "/tmp/kms." + cmn.RandStr(6) + ".sock"
 	defer os.Remove(tmpfile) // clean up
-	addr := "unix://" + tmpfile
+
+	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
 	rs := privval.NewIPCRemoteSigner(
 		log.TestingLogger(),
-		cmn.RandStr(12),
+		config.ChainID(),
 		tmpfile,
 		types.NewMockPV(),
 	)
-
 	privval.IPCRemoteSignerConnDeadline(3 * time.Second)(rs)
 
-	// kick off remote signer routine, and then start TM.
-	go func(rs *privval.IPCRemoteSigner) {
-		rs.Start()
-		defer rs.Stop()
-		time.Sleep(500 * time.Millisecond)
-	}(rs)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		n, err := DefaultNewNode(config, log.TestingLogger())
+		require.NoError(t, err)
+		assert.IsType(t, &privval.IPCVal{}, n.PrivValidator())
+	}()
 
-	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
-	config.BaseConfig.PrivValidatorListenAddr = addr
-	n, err := DefaultNewNode(config, log.TestingLogger())
+	err := rs.Start()
+	require.NoError(t, err)
+	defer rs.Stop()
 
-	assert.NoError(t, err, "expected no err on DefaultNewNode")
-	assert.IsType(t, &privval.IPCVal{}, n.PrivValidator())
+	<-done
 }
-
 
 // testFreeAddr claims a free port so we don't block on listener being ready.
 func testFreeAddr(t *testing.T) string {

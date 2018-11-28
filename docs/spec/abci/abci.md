@@ -45,7 +45,9 @@ include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
 something about what happened during the methods execution.
 
 Tags can be used to index transactions and blocks according to what happened
-during their execution.
+during their execution. Note that the set of tags returned for a block from
+`BeginBlock` and `EndBlock` are merged. In case both methods return the same
+tag, only the value defined in `EndBlock` is used.
 
 Keys and values in tags must be UTF-8 encoded strings (e.g.
 "account.owner": "Bob", "balance": "100.0",
