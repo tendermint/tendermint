@@ -373,14 +373,14 @@ func updateValidators(currentSet *types.ValidatorSet, updates []*types.Validator
 					types.MaxTotalVotingPower)
 			}
 			// TODO: issue #1558 update spec according to the following:
-			// Set Accum to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
-			// unbond/rebond to reset their (potentially previously negative) Accum to zero.
+			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
+			// unbond/rebond to reset their (potentially previously negative) ProposerPriority to zero.
 			//
-			// Contract: totalVotingPower < MaxTotalVotingPower to ensure Accum does
+			// Contract: totalVotingPower < MaxTotalVotingPower to ensure ProposerPriority does
 			// not exceed the bounds of int64.
 			//
-			// Compute Accum = -1.125*totalVotingPower == -(totalVotingPower + (totalVotingPower >> 3)).
-			valUpdate.Accum = -(totalVotingPower + (totalVotingPower >> 3))
+			// Compute ProposerPriority = -1.125*totalVotingPower == -(totalVotingPower + (totalVotingPower >> 3)).
+			valUpdate.ProposerPriority = -(totalVotingPower + (totalVotingPower >> 3))
 			added := currentSet.Add(valUpdate)
 			if !added {
 				return fmt.Errorf("Failed to add new validator %v", valUpdate)
@@ -431,8 +431,8 @@ func updateState(
 		lastHeightValsChanged = header.Height + 1 + 1
 	}
 
-	// Update validator accums and set state variables.
-	nValSet.IncrementAccum(1)
+	// Update validator proposer priority and set state variables.
+	nValSet.IncrementProposerPriority(1)
 
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams

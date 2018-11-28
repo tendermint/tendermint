@@ -133,8 +133,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{Code: 383},
 				{Data: []byte("Gotcha!"),
 					Tags: []cmn.KVPair{
-						cmn.KVPair{Key: []byte("a"), Value: []byte("1")},
-						cmn.KVPair{Key: []byte("build"), Value: []byte("stuff")},
+						{Key: []byte("a"), Value: []byte("1")},
+						{Key: []byte("build"), Value: []byte("stuff")},
 					}},
 			},
 			types.ABCIResults{
@@ -263,11 +263,11 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func TestStoreLoadValidatorsIncrementsAccum(t *testing.T) {
+func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 	const valSetSize = 2
 	tearDown, stateDB, state := setupTestCase(t)
 	state.Validators = genValSet(valSetSize)
-	state.NextValidators = state.Validators.CopyIncrementAccum(1)
+	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	SaveState(stateDB, state)
 	defer tearDown(t)
 
@@ -275,13 +275,13 @@ func TestStoreLoadValidatorsIncrementsAccum(t *testing.T) {
 
 	v0, err := LoadValidators(stateDB, nextHeight)
 	assert.Nil(t, err)
-	acc0 := v0.Validators[0].Accum
+	acc0 := v0.Validators[0].ProposerPriority
 
 	v1, err := LoadValidators(stateDB, nextHeight+1)
 	assert.Nil(t, err)
-	acc1 := v1.Validators[0].Accum
+	acc1 := v1.Validators[0].ProposerPriority
 
-	assert.NotEqual(t, acc1, acc0, "expected Accum value to change between heights")
+	assert.NotEqual(t, acc1, acc0, "expected ProposerPriority value to change between heights")
 }
 
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with
@@ -291,7 +291,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	require.Equal(t, int64(0), state.LastBlockHeight)
 	state.Validators = genValSet(valSetSize)
-	state.NextValidators = state.Validators.CopyIncrementAccum(1)
+	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	SaveState(stateDB, state)
 	defer tearDown(t)
 
