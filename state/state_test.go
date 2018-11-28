@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -230,9 +231,9 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		state, err = updateState(state, blockID, &header, responses, validatorUpdates)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		nextHeight := state.LastBlockHeight + 1
 		saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	}
@@ -306,7 +307,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	var err error
 	var validatorUpdates []*types.Validator
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	state, err = updateState(state, blockID, &header, responses, validatorUpdates)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
@@ -388,7 +389,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		}
 		header, blockID, responses := makeHeaderPartsResponsesParams(state, i, cp)
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		state, err = updateState(state, blockID, &header, responses, validatorUpdates)
 
 		require.Nil(t, err)
