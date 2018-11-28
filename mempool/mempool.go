@@ -188,7 +188,7 @@ func NewMempool(
 	} else {
 		mempool.cache = nopTxCache{}
 	}
-	proxyAppConn.SetResponseCallback(mempool.resCb(UnknownPeerID))
+	proxyAppConn.SetResponseCallback(mempool.resCb())
 	for _, option := range options {
 		option(mempool)
 	}
@@ -349,21 +349,25 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	if err = mem.proxyAppConn.Error(); err != nil {
 		return err
 	}
-	mem.proxyAppConn.SetResponseCallback(mem.resCb(txInfo.PeerID))
 	reqRes := mem.proxyAppConn.CheckTxAsync(tx)
 	if cb != nil {
-		reqRes.SetCallback(cb)
+		composedCallback := func(res *abci.Response) {
+			cb(res)
+			mem.reqResCb(tx, txInfo.PeerID)(res)
+		}
+		reqRes.SetCallback(composedCallback)
+	} else {
+		reqRes.SetCallback(mem.reqResCb(tx, txInfo.PeerID))
 	}
 
 	return nil
 }
 
 // ABCI callback function
-func (mem *Mempool) resCb(peerID uint16) abcicli.Callback {
+func (mem *Mempool) resCb() abcicli.Callback {
 	return func(req *abci.Request, res *abci.Response) {
-		if mem.recheckCursor == nil {
-			mem.resCbNormal(req, res, peerID)
-		} else {
+		// the normal case is handled by the reqRes callback
+		if mem.recheckCursor != nil {
 			mem.metrics.RecheckTimes.Add(1)
 			mem.resCbRecheck(req, res)
 		}
@@ -371,10 +375,19 @@ func (mem *Mempool) resCb(peerID uint16) abcicli.Callback {
 	}
 }
 
-func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response, peerID uint16) {
+// ABCI request result callback function
+func (mem *Mempool) reqResCb(tx []byte, peerID uint16) func(res *abci.Response) {
+	return func(res *abci.Response) {
+		if mem.recheckCursor != nil {
+			return
+		}
+		mem.resCbNormal(tx, peerID, res)
+	}
+}
+
+func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
-		tx := req.GetCheckTx().Tx
 		var postCheckErr error
 		if mem.postCheck != nil {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)
