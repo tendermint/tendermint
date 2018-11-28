@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -223,6 +221,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	_, val := state.Validators.GetByIndex(0)
 	power := val.VotingPower
 	var err error
+	var validatorUpdates []*types.Validator
 	for i := int64(1); i < highestHeight; i++ {
 		// When we get to a change height, use the next pubkey.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
@@ -230,7 +229,9 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
-		state, err = updateState(log.TestingLogger(), state, blockID, &header, responses)
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
+		assert.Nil(t, err)
+		state, err = updateState(state, blockID, &header, responses, validatorUpdates)
 		assert.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
 		saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
@@ -303,7 +304,10 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 
 	// Save state etc.
 	var err error
-	state, err = updateState(log.TestingLogger(), state, blockID, &header, responses)
+	var validatorUpdates []*types.Validator
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
+	assert.Nil(t, err)
+	state, err = updateState(state, blockID, &header, responses, validatorUpdates)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
@@ -375,6 +379,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	changeIndex := 0
 	cp := params[changeIndex]
 	var err error
+	var validatorUpdates []*types.Validator
 	for i := int64(1); i < highestHeight; i++ {
 		// When we get to a change height, use the next params.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
@@ -382,7 +387,9 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			cp = params[changeIndex]
 		}
 		header, blockID, responses := makeHeaderPartsResponsesParams(state, i, cp)
-		state, err = updateState(log.TestingLogger(), state, blockID, &header, responses)
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
+		assert.Nil(t, err)
+		state, err = updateState(state, blockID, &header, responses, validatorUpdates)
 
 		require.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
