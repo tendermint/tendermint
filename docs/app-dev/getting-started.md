@@ -256,9 +256,8 @@ You'll also need to fetch the relevant repository, from
 
 ```
 git clone https://github.com/tendermint/js-abci.git
-cd js-abci/example
-npm install
-cd ..
+cd js-abci
+npm install abci
 ```
 
 Kill the previous `counter` and `tendermint` processes. Now run the app:
