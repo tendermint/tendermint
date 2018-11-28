@@ -344,6 +344,8 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			//
 			// Contract: totalVotingPower < MaxTotalVotingPower to ensure Accum does
 			// not exceed the bounds of int64.
+			//
+			// Compute Accum = -1.125*totalVotingPower == -(totalVotingPower + (totalVotingPower >> 3)).
 			valUpdate.Accum = -(totalVotingPower + (totalVotingPower >> 3))
 			added := currentSet.Add(valUpdate)
 			if !added {

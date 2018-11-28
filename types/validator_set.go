@@ -13,7 +13,11 @@ import (
 )
 
 // The maximum allowed total voting power.
-// This is the largest int64 `x` with the property that `x + (x >> 3)` is
+// We set the accum of freshly added validators to -1.125*totalVotingPower.
+// To compute 1.125*totalVotingPower efficiently, we do:
+// totalVotingPower + (totalVotingPower >> 3) because
+// x + (x >> 3) = x + x/8 = x * (1 + 0.125).
+// MaxTotalVotingPower is the largest int64 `x` with the property that `x + (x >> 3)` is
 // still in the bounds of int64.
 const MaxTotalVotingPower = 8198552921648689607
 
@@ -358,7 +362,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		return nil
 	}
 	return fmt.Errorf("Invalid commit -- insufficient voting power: got %v, needed %v",
-		talliedVotingPower, (vals.TotalVotingPower()*2/3 + 1))
+		talliedVotingPower, vals.TotalVotingPower()*2/3+1)
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -441,7 +445,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
 		return cmn.NewError("Invalid commit -- insufficient old voting power: got %v, needed %v",
-			oldVotingPower, (oldVals.TotalVotingPower()*2/3 + 1))
+			oldVotingPower, oldVals.TotalVotingPower()*2/3+1)
 	}
 	return nil
 }
@@ -455,7 +459,7 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 	if vals == nil {
 		return "nil-ValidatorSet"
 	}
-	valStrings := []string{}
+	var valStrings []string
 	vals.Iterate(func(index int, val *Validator) bool {
 		valStrings = append(valStrings, val.String())
 		return false
