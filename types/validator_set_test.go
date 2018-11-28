@@ -125,7 +125,7 @@ func TestProposerSelection1(t *testing.T) {
 		newValidator([]byte("bar"), 300),
 		newValidator([]byte("baz"), 330),
 	})
-	proposers := []string{}
+	var proposers []string
 	for i := 0; i < 99; i++ {
 		val := vset.GetProposer()
 		proposers = append(proposers, string(val.Address))
@@ -302,14 +302,18 @@ func (valSet *ValidatorSet) fromBytes(b []byte) {
 
 //-------------------------------------------------------------------
 
-func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
-	vset := NewValidatorSet([]*Validator{
-		{Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
-		{Address: []byte("b"), VotingPower: math.MaxInt64, Accum: 0},
-		{Address: []byte("c"), VotingPower: math.MaxInt64, Accum: 0},
-	})
+func TestValidatorSetTotalVotingPowerPanicsOnOverflow(t *testing.T) {
+	// NewValidatorSet calls IncrementAccum which calls TotalVotingPower()
+	// which should panic on overflows:
+	shouldPanic := func() {
+		NewValidatorSet([]*Validator{
+			{Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
+			{Address: []byte("b"), VotingPower: math.MaxInt64, Accum: 0},
+			{Address: []byte("c"), VotingPower: math.MaxInt64, Accum: 0},
+		})
+	}
 
-	assert.EqualValues(t, MaxTotalVotingPower, vset.TotalVotingPower())
+	assert.Panics(t, shouldPanic)
 }
 
 func TestAvgAccum(t *testing.T) {
