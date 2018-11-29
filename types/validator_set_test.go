@@ -65,6 +65,9 @@ func TestValidatorSetBasic(t *testing.T) {
 	_, val = vset.GetByAddress(val.Address)
 	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
+	// Mimic update from types.PB2TM.ValidatorUpdates which does not know about ProposerPriority
+	// and hence defaults to 0.
+	val.ProposerPriority = 0
 	assert.True(t, vset.Update(val))
 	_, val = vset.GetByAddress(val.Address)
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
