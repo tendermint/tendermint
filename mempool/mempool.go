@@ -139,7 +139,6 @@ type Mempool struct {
 	proxyMtx             sync.Mutex
 	proxyAppConn         proxy.AppConnMempool
 	txs                  *clist.CList    // concurrent linked-list of good txs
-	counter              int64           // simple incrementing counter
 	height               int64           // the last block Update()'d to
 	rechecking           int32           // for re-checking filtered txs on Update()
 	recheckCursor        *clist.CElement // next expected response
@@ -175,7 +174,6 @@ func NewMempool(
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
-		counter:       0,
 		height:        height,
 		rechecking:    0,
 		recheckCursor: nil,
@@ -393,9 +391,7 @@ func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)
 		}
 		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
-			mem.counter++
 			memTx := &mempoolTx{
-				counter:   mem.counter,
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
 				senders:   []uint16{peerID},
@@ -407,7 +403,6 @@ func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 				"res", r,
 				"height", memTx.height,
 				"total", mem.Size(),
-				"counter", memTx.counter,
 			)
 			mem.metrics.TxSizeBytes.Observe(float64(len(tx)))
 			mem.notifyTxsAvailable()
@@ -563,12 +558,6 @@ func (mem *Mempool) Update(
 	preCheck PreCheckFunc,
 	postCheck PostCheckFunc,
 ) error {
-	// First, create a lookup map of txns in new txs.
-	txsMap := make(map[string]struct{}, len(txs))
-	for _, tx := range txs {
-		txsMap[string(tx)] = struct{}{}
-	}
-
 	// Set height
 	mem.height = height
 	mem.notifiedTxsAvailable = false
@@ -580,12 +569,18 @@ func (mem *Mempool) Update(
 		mem.postCheck = postCheck
 	}
 
-	// Remove transactions that are already in txs.
-	goodTxs := mem.filterTxs(txsMap)
+	// Add committed transactions to cache (if missing).
+	for _, tx := range txs {
+		_ = mem.cache.Push(tx)
+	}
+
+	// Remove committed transactions.
+	txsLeft := mem.removeTxs(txs)
+
 	// Recheck mempool txs if any txs were committed in the block
-	if mem.config.Recheck && len(goodTxs) > 0 {
-		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs), "height", height)
-		mem.recheckTxs(goodTxs)
+	if mem.config.Recheck && len(txsLeft) > 0 {
+		mem.logger.Info("Recheck txs", "numtxs", len(txsLeft), "height", height)
+		mem.recheckTxs(txsLeft)
 		// At this point, mem.txs are being rechecked.
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 		// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
@@ -597,12 +592,18 @@ func (mem *Mempool) Update(
 	return nil
 }
 
-func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {
-	goodTxs := make([]types.Tx, 0, mem.txs.Len())
+func (mem *Mempool) removeTxs(txs types.Txs) []types.Tx {
+	// Build a map for faster lookups.
+	txsMap := make(map[string]struct{}, len(txs))
+	for _, tx := range txs {
+		txsMap[string(tx)] = struct{}{}
+	}
+
+	txsLeft := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		// Remove the tx if it's alredy in a block.
-		if _, ok := blockTxsMap[string(memTx.tx)]; ok {
+		// Remove the tx if it's already in a block.
+		if _, ok := txsMap[string(memTx.tx)]; ok {
 			// remove from clist
 			mem.txs.Remove(e)
 			e.DetachPrev()
@@ -610,15 +611,14 @@ func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {
 			// NOTE: we don't remove committed txs from the cache.
 			continue
 		}
-		// Good tx!
-		goodTxs = append(goodTxs, memTx.tx)
+		txsLeft = append(txsLeft, memTx.tx)
 	}
-	return goodTxs
+	return txsLeft
 }
 
-// NOTE: pass in goodTxs because mem.txs can mutate concurrently.
-func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
-	if len(goodTxs) == 0 {
+// NOTE: pass in txs because mem.txs can mutate concurrently.
+func (mem *Mempool) recheckTxs(txs []types.Tx) {
+	if len(txs) == 0 {
 		return
 	}
 	atomic.StoreInt32(&mem.rechecking, 1)
@@ -627,7 +627,7 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 
 	// Push txs to proxyAppConn
 	// NOTE: resCb() may be called concurrently.
-	for _, tx := range goodTxs {
+	for _, tx := range txs {
 		mem.proxyAppConn.CheckTxAsync(tx)
 	}
 	mem.proxyAppConn.FlushAsync()
@@ -637,7 +637,6 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 
 // mempoolTx is a transaction that successfully ran
 type mempoolTx struct {
-	counter   int64    // a simple incrementing counter
 	height    int64    // height that this tx had been validated in
 	gasWanted int64    // amount of gas this tx states it will require
 	senders   []uint16 // ids of peers who've sent us this tx

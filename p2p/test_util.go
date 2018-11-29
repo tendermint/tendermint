@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -135,7 +135,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 
 	p := newPeer(
 		pc,
-		sw.mConfig,
+		MConnConfig(sw.config),
 		ni,
 		sw.reactorsByCh,
 		sw.chDescs,
@@ -175,7 +175,7 @@ func MakeSwitch(
 	}
 	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
 
-	t := NewMultiplexTransport(nodeInfo, nodeKey)
+	t := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
 
 	addr := nodeInfo.NetAddress()
 	if err := t.Listen(*addr); err != nil {
@@ -232,7 +232,6 @@ func testPeerConn(
 
 	// Only the information we already have
 	return peerConn{
-		config:       cfg,
 		outbound:     outbound,
 		persistent:   persistent,
 		conn:         conn,

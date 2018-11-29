@@ -218,14 +218,16 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:c1a04665f9613e082e1209cf288bf64f4068dcd6c87a64bf1c4ff006ad422ba0"
+  digest = "1:26663fafdea73a38075b07e8e9d82fc0056379d2be8bb4e13899e8fda7c7dd23"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
+    "prometheus/internal",
     "prometheus/promhttp",
   ]
   pruneopts = "UT"
-  revision = "ae27198cdd90bf12cd134ad79d1366a6cf49f632"
+  revision = "abad2d1bd44235a26707c172eab6bca5bf2dbad3"
+  version = "v0.9.1"
 
 [[projects]]
   branch = "master"
@@ -266,6 +268,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
+
+[[projects]]
+  digest = "1:b0c25f00bad20d783d259af2af8666969e2fc343fa0dc9efe52936bbd67fb758"
+  name = "github.com/rs/cors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9a47f48565a795472d43519dd49aac781f3034fb"
+  version = "v1.6.0"
 
 [[projects]]
   digest = "1:6a4a11ba764a56d2758899ec6f3848d24698d48442ebce85ee7a3f63284526cd"
@@ -516,6 +526,7 @@
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/rcrowley/go-metrics",
+    "github.com/rs/cors",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/assert",

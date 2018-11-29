@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	// MaxSignatureSize is a maximum allowed signature size for the Heartbeat,
-	// Proposal and Vote.
+	// MaxSignatureSize is a maximum allowed signature size for the Proposal
+	// and Vote.
 	// XXX: secp256k1 does not have Size nor MaxSize defined.
 	MaxSignatureSize = cmn.MaxInt(ed25519.SignatureSize, 64)
 )

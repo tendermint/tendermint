@@ -17,7 +17,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/version"
@@ -315,28 +315,21 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	config := ResetConfig("proxy_test_")
 
 	walBody, err := WALWithNBlocks(NUM_BLOCKS)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
 	privVal := privval.LoadFilePV(config.PrivValidatorFile())
 
 	wal, err := NewWAL(walFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	wal.SetLogger(log.TestingLogger())
-	if err := wal.Start(); err != nil {
-		t.Fatal(err)
-	}
+	err = wal.Start()
+	require.NoError(t, err)
 	defer wal.Stop()
 
 	chain, commits, err := makeBlockchainFromWAL(wal)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), kvstore.ProtocolVersion)
 	store.chain = chain

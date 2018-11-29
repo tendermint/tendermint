@@ -1,12 +1,13 @@
 # Pending
 
-## v0.26.2
+## v0.27.0
 
-*TBA*
+*TBD*
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -16,17 +17,20 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 * Go API
 
+- [db] [\#2913](https://github.com/tendermint/tendermint/pull/2913) ReverseIterator API change -- start < end, and end is exclusive.
+
 * Blockchain Protocol
+  * [state] \#2714 Validators can now only use pubkeys allowed within ConsensusParams.ValidatorParams
 
 * P2P Protocol
 
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [consensus] [\#2871](https://github.com/tendermint/tendermint/issues/2871) Remove *ProposalHeartbeat* infrastructure as it serves no real purpose
 
 - [mempool] \#2778 No longer send txs back to peers who sent it to you
 
 ### BUG FIXES:
-- [abci] unlock mutex in localClient so even when app panics (e.g. during CheckTx), consensus continue working
-- [abci] fix DATA RACE in localClient
-- [rpc] drain channel before calling Unsubscribe(All) in /broadcast_tx_commit
+- [types] \#2938 Fix regression in v0.26.4 where we panic on empty
+  genDoc.Validators

@@ -3,7 +3,6 @@ package node
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,8 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/cors"
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -219,25 +220,14 @@ func NewNode(config *cfg.Config,
 		)
 	}
 
-	// If an address is provided, listen on the socket for a
-	// connection from an external signing process.
 	if config.PrivValidatorListenAddr != "" {
-		var (
-			// TODO: persist this key so external signer
-			// can actually authenticate us
-			privKey = ed25519.GenPrivKey()
-			pvsc    = privval.NewTCPVal(
-				logger.With("module", "privval"),
-				config.PrivValidatorListenAddr,
-				privKey,
-			)
-		)
-
-		if err := pvsc.Start(); err != nil {
-			return nil, fmt.Errorf("Error starting private validator client: %v", err)
+		// If an address is provided, listen on the socket for a connection from an
+		// external signing process.
+		// FIXME: we should start services inside OnStart
+		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error with private validator socket client")
 		}
-
-		privValidator = pvsc
 	}
 
 	// Decide whether to fast-sync or not
@@ -370,7 +360,8 @@ func NewNode(config *cfg.Config,
 
 	// Setup Transport.
 	var (
-		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey)
+		mConnConfig = p2p.MConnConfig(config.P2P)
+		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
@@ -598,10 +589,8 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if pvsc, ok := n.privValidator.(*privval.TCPVal); ok {
-		if err := pvsc.Stop(); err != nil {
-			n.Logger.Error("Error stopping priv validator socket client", "err", err)
-		}
+	if pvsc, ok := n.privValidator.(cmn.Service); ok {
+		pvsc.Stop()
 	}
 
 	if n.prometheusSrv != nil {
@@ -651,30 +640,42 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-		listener, err := rpcserver.StartHTTPServer(
+
+		listener, err := rpcserver.Listen(
 			listenAddr,
-			mux,
-			rpcLogger,
 			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		var rootHandler http.Handler = mux
+		if n.config.RPC.IsCorsEnabled() {
+			corsMiddleware := cors.New(cors.Options{
+				AllowedOrigins: n.config.RPC.CORSAllowedOrigins,
+				AllowedMethods: n.config.RPC.CORSAllowedMethods,
+				AllowedHeaders: n.config.RPC.CORSAllowedHeaders,
+			})
+			rootHandler = corsMiddleware.Handler(mux)
+		}
+
+		go rpcserver.StartHTTPServer(
+			listener,
+			rootHandler,
+			rpcLogger,
+		)
 		listeners[i] = listener
 	}
 
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
-		listener, err := grpccore.StartGRPCServer(
-			grpcListenAddr,
-			grpccore.Config{
-				MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections,
-			},
-		)
+		listener, err := rpcserver.Listen(
+			grpcListenAddr, rpcserver.Config{MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections})
 		if err != nil {
 			return nil, err
 		}
+		go grpccore.StartGRPCServer(listener)
 		listeners = append(listeners, listener)
 	}
 
@@ -841,6 +842,36 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
 	}
 	db.SetSync(genesisDocKey, bytes)
+}
+
+func createAndStartPrivValidatorSocketClient(
+	listenAddr string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+	var pvsc types.PrivValidator
+
+	protocol, address := cmn.ProtocolAndAddress(listenAddr)
+	switch protocol {
+	case "unix":
+		pvsc = privval.NewIPCVal(logger.With("module", "privval"), address)
+	case "tcp":
+		// TODO: persist this key so external signer
+		// can actually authenticate us
+		pvsc = privval.NewTCPVal(logger.With("module", "privval"), listenAddr, ed25519.GenPrivKey())
+	default:
+		return nil, fmt.Errorf(
+			"Wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
+			protocol,
+		)
+	}
+
+	if pvsc, ok := pvsc.(cmn.Service); ok {
+		if err := pvsc.Start(); err != nil {
+			return nil, errors.Wrap(err, "failed to start")
+		}
+	}
+
+	return pvsc, nil
 }
 
 // splitAndTrimEmpty slices s into all subslices separated by sep and returns a

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 var defaultNodeName = "host_peer"
@@ -17,8 +18,20 @@ func emptyNodeInfo() NodeInfo {
 	return DefaultNodeInfo{}
 }
 
+// newMultiplexTransport returns a tcp connected multiplexed peer
+// using the default MConnConfig. It's a convenience function used
+// for testing.
+func newMultiplexTransport(
+	nodeInfo NodeInfo,
+	nodeKey NodeKey,
+) *MultiplexTransport {
+	return NewMultiplexTransport(
+		nodeInfo, nodeKey, conn.DefaultMConnConfig(),
+	)
+}
+
 func TestTransportMultiplexConnFilter(t *testing.T) {
-	mt := NewMultiplexTransport(
+	mt := newMultiplexTransport(
 		emptyNodeInfo(),
 		NodeKey{
 			PrivKey: ed25519.GenPrivKey(),
@@ -75,7 +88,7 @@ func TestTransportMultiplexConnFilter(t *testing.T) {
 }
 
 func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
-	mt := NewMultiplexTransport(
+	mt := newMultiplexTransport(
 		emptyNodeInfo(),
 		NodeKey{
 			PrivKey: ed25519.GenPrivKey(),
@@ -140,7 +153,7 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 		go func() {
 			var (
 				pv     = ed25519.GenPrivKey()
-				dialer = NewMultiplexTransport(
+				dialer = newMultiplexTransport(
 					testNodeInfo(PubKeyToID(pv.PubKey()), defaultNodeName),
 					NodeKey{
 						PrivKey: pv,
@@ -261,7 +274,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		<-slowc
 
 		var (
-			dialer = NewMultiplexTransport(
+			dialer = newMultiplexTransport(
 				fastNodeInfo,
 				NodeKey{
 					PrivKey: fastNodePV,
@@ -307,7 +320,7 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 	go func() {
 		var (
 			pv     = ed25519.GenPrivKey()
-			dialer = NewMultiplexTransport(
+			dialer = newMultiplexTransport(
 				testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
 				NodeKey{
 					PrivKey: pv,
@@ -350,7 +363,7 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	errc := make(chan error)
 
 	go func() {
-		dialer := NewMultiplexTransport(
+		dialer := newMultiplexTransport(
 			testNodeInfo(
 				PubKeyToID(ed25519.GenPrivKey().PubKey()), "dialer",
 			),
@@ -396,7 +409,7 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 	go func() {
 		var (
 			pv     = ed25519.GenPrivKey()
-			dialer = NewMultiplexTransport(
+			dialer = newMultiplexTransport(
 				testNodeInfoWithNetwork(PubKeyToID(pv.PubKey()), "dialer", "incompatible-network"),
 				NodeKey{
 					PrivKey: pv,
@@ -553,7 +566,7 @@ func TestTransportHandshake(t *testing.T) {
 func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 	var (
 		pv = ed25519.GenPrivKey()
-		mt = NewMultiplexTransport(
+		mt = newMultiplexTransport(
 			testNodeInfo(
 				PubKeyToID(pv.PubKey()), "transport",
 			),

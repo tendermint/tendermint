@@ -1,5 +1,114 @@
 # Changelog
 
+## v0.26.4
+
+*November 27th, 2018*
+
+Special thanks to external contributors on this release:
+ackratos, goolAdapter, james-ray, joe-bowman, kostko,
+nagarajmanjunath, tomtau
+
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### FEATURES:
+
+- [rpc] [\#2747](https://github.com/tendermint/tendermint/issues/2747) Enable subscription to tags emitted from `BeginBlock`/`EndBlock` (@kostko)
+- [types] [\#2747](https://github.com/tendermint/tendermint/issues/2747) Add `ResultBeginBlock` and `ResultEndBlock` fields to `EventDataNewBlock`
+    and `EventDataNewBlockHeader` to support subscriptions (@kostko)
+- [types] [\#2918](https://github.com/tendermint/tendermint/issues/2918) Add Marshal, MarshalTo, Unmarshal methods to various structs
+  to support Protobuf compatibility (@nagarajmanjunath)
+
+### IMPROVEMENTS:
+
+- [config] [\#2877](https://github.com/tendermint/tendermint/issues/2877) Add `blocktime_iota` to the config.toml (@ackratos)
+    - NOTE: this should be a ConsensusParam, not part of the config, and will be
+      removed from the config at a later date
+      ([\#2920](https://github.com/tendermint/tendermint/issues/2920).
+- [mempool] [\#2882](https://github.com/tendermint/tendermint/issues/2882) Add txs from Update to cache
+- [mempool] [\#2891](https://github.com/tendermint/tendermint/issues/2891) Remove local int64 counter from being stored in every tx
+- [node] [\#2866](https://github.com/tendermint/tendermint/issues/2866) Add ability to instantiate IPCVal (@joe-bowman)
+
+### BUG FIXES:
+
+- [blockchain] [\#2731](https://github.com/tendermint/tendermint/issues/2731) Retry both blocks if either is bad to avoid getting stuck during fast sync (@goolAdapter)
+- [consensus] [\#2893](https://github.com/tendermint/tendermint/issues/2893) Use genDoc.Validators instead of state.NextValidators on replay when appHeight==0 (@james-ray)
+- [log] [\#2868](https://github.com/tendermint/tendermint/issues/2868) Fix `module=main` setting overriding all others
+    - NOTE: this changes the default logging behaviour to be much less verbose.
+      Set `log_level="info"` to restore the previous behaviour.
+- [rpc] [\#2808](https://github.com/tendermint/tendermint/issues/2808) Fix `accum` field in `/validators` by calling `IncrementAccum` if necessary
+- [rpc] [\#2811](https://github.com/tendermint/tendermint/issues/2811) Allow integer IDs in JSON-RPC requests (@tomtau)
+- [txindex/kv] [\#2759](https://github.com/tendermint/tendermint/issues/2759) Fix tx.height range queries
+- [txindex/kv] [\#2775](https://github.com/tendermint/tendermint/issues/2775) Order tx results by index if height is the same
+- [txindex/kv] [\#2908](https://github.com/tendermint/tendermint/issues/2908) Don't return false positives when searching for a prefix of a tag value
+
+## v0.26.3
+
+*November 17th, 2018*
+
+Special thanks to external contributors on this release:
+@danil-lashin, @kevlubkcm, @krhubert, @srmo
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+* Go API
+  - [rpc] [\#2791](https://github.com/tendermint/tendermint/issues/2791) Functions that start HTTP servers are now blocking:
+    - Impacts `StartHTTPServer`, `StartHTTPAndTLSServer`, and `StartGRPCServer`
+    - These functions now take a `net.Listener` instead of an address
+  - [rpc] [\#2767](https://github.com/tendermint/tendermint/issues/2767) Subscribing to events
+  `NewRound` and `CompleteProposal` return new types `EventDataNewRound` and
+  `EventDataCompleteProposal`, respectively, instead of the generic `EventDataRoundState`. (@kevlubkcm)
+
+### FEATURES:
+
+- [log] [\#2843](https://github.com/tendermint/tendermint/issues/2843) New `log_format` config option, which can be set to 'plain' for colored
+  text or 'json' for JSON output
+- [types] [\#2767](https://github.com/tendermint/tendermint/issues/2767) New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
+
+### IMPROVEMENTS:
+
+- [dep] [\#2844](https://github.com/tendermint/tendermint/issues/2844) Dependencies are no longer pinned to an exact version in the
+  Gopkg.toml:
+  - Serialization libs are allowed to vary by patch release
+  - Other libs are allowed to vary by minor release
+- [p2p] [\#2857](https://github.com/tendermint/tendermint/issues/2857) "Send failed" is logged at debug level instead of error.
+- [rpc] [\#2780](https://github.com/tendermint/tendermint/issues/2780) Add read and write timeouts to HTTP servers
+- [state] [\#2848](https://github.com/tendermint/tendermint/issues/2848) Make "Update to validators" msg value pretty (@danil-lashin)
+
+### BUG FIXES:
+- [consensus] [\#2819](https://github.com/tendermint/tendermint/issues/2819) Don't send proposalHearbeat if not a validator
+- [docs] [\#2859](https://github.com/tendermint/tendermint/issues/2859) Fix ConsensusParams details in spec
+- [libs/autofile] [\#2760](https://github.com/tendermint/tendermint/issues/2760) Comment out autofile permissions check - should fix
+  running Tendermint on Windows
+- [p2p] [\#2869](https://github.com/tendermint/tendermint/issues/2869) Set connection config properly instead of always using default
+- [p2p/pex] [\#2802](https://github.com/tendermint/tendermint/issues/2802) Seed mode fixes:
+  - Only disconnect from inbound peers
+  - Use FlushStop instead of Sleep to ensure all messages are sent before
+    disconnecting
+
+## v0.26.2
+
+*November 15th, 2018*
+
+Special thanks to external contributors on this release: @hleb-albau, @zhuzeyu
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### FEATURES:
+
+- [rpc] [\#2582](https://github.com/tendermint/tendermint/issues/2582) Enable CORS on RPC API (@hleb-albau)
+
+### BUG FIXES:
+
+- [abci] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Unlock mutex in localClient so even when app panics (e.g. during CheckTx), consensus continue working
+- [abci] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Fix DATA RACE in localClient
+- [amino] [\#2822](https://github.com/tendermint/tendermint/issues/2822) Update to v0.14.1 to support compiling on 32-bit platforms
+- [rpc] [\#2748](https://github.com/tendermint/tendermint/issues/2748) Drain channel before calling Unsubscribe(All) in `/broadcast_tx_commit`
+
 ## v0.26.1
 
 *November 11, 2018*

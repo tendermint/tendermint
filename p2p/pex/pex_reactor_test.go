@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -387,6 +387,7 @@ func newMockPeer() mockPeer {
 	return mp
 }
 
+func (mp mockPeer) FlushStop()         { mp.Stop() }
 func (mp mockPeer) ID() p2p.ID         { return mp.addr.ID }
 func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
 func (mp mockPeer) IsPersistent() bool { return mp.persistent }
