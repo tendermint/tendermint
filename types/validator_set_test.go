@@ -62,10 +62,12 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.NotPanics(t, func() { vset.IncrementProposerPriority(1) })
 
 	// update
-	assert.False(t, vset.Update(randValidator_(vset.TotalVotingPower())))
+	assert.False(t, vset.Update(randValidator_()))
 	_, val = vset.GetByAddress(val.Address)
 	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
+	// Mimic update from types.PB2TM.ValidatorUpdates which does not know about ProposerPriority
+	// and hence defaults to 0.
 	val.ProposerPriority = 0
 	assert.True(t, vset.Update(val))
 	_, val = vset.GetByAddress(val.Address)
