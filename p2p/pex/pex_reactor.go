@@ -544,7 +544,7 @@ func (r *PEXReactor) dialSeeds() {
 		}
 		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
 	}
-	r.Switch.Logger.Error("Couldn't connect to any seeds")
+	r.Switch.Logger.Info("Couldn't connect to any seeds")
 }
 
 // AttemptsToDial returns the number of attempts to dial specific address. It
