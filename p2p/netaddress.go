@@ -6,14 +6,13 @@ package p2p
 
 import (
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"time"
-
-	"errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -223,9 +222,11 @@ func (na *NetAddress) Valid() bool {
 	if string(na.ID) != "" {
 		data, err := hex.DecodeString(string(na.ID))
 		if err != nil || len(data) != IDByteLength {
+			fmt.Println("IPADDRESS IS INVALID HERE", na, IDByteLength, len(data))
 			return false
 		}
 	}
+	fmt.Println("IPADDRESS VALIDATION SHOULD NOT REACH HERE")
 	return na.IP != nil && !(na.IP.IsUnspecified() || na.RFC3849() ||
 		na.IP.Equal(net.IPv4bcast))
 }

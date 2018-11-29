@@ -82,6 +82,17 @@ func GenFilePV(filePath string) *FilePV {
 	}
 }
 
+//Generate pv file from crypto.PrivKey. Made to include filepath
+func GenFilePVFromPrivKey(privKey crypto.PrivKey, filePath string) *FilePV {
+	return &FilePV{
+		Address:  privKey.PubKey().Address(),
+		PubKey:   privKey.PubKey(),
+		PrivKey:  privKey,
+		LastStep: stepNone,
+		filePath: filePath,
+	}
+}
+
 //EDITED FROM GenFilePv to generate secp256k1 key for validator
 // GenFilePV generates a new validator with randomly generated private key
 // and sets the filePath, but does not call Save().
