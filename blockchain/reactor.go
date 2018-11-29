@@ -264,8 +264,12 @@ FOR_LOOP:
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
-				conR := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
-				conR.SwitchToConsensus(state, blocksSynced)
+				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
+				if ok {
+					conR.SwitchToConsensus(state, blocksSynced)
+				} else {
+					// should only happen during testing
+				}
 
 				break FOR_LOOP
 			}
@@ -313,6 +317,13 @@ FOR_LOOP:
 					// NOTE: we've already removed the peer's request, but we
 					// still need to clean up the rest.
 					bcR.Switch.StopPeerForError(peer, fmt.Errorf("BlockchainReactor validation error: %v", err))
+				}
+				peerID2 := bcR.pool.RedoRequest(second.Height)
+				peer2 := bcR.Switch.Peers().Get(peerID2)
+				if peer2 != nil && peer2 != peer {
+					// NOTE: we've already removed the peer's request, but we
+					// still need to clean up the rest.
+					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("BlockchainReactor validation error: %v", err))
 				}
 				continue FOR_LOOP
 			} else {

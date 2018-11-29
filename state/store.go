@@ -107,8 +107,9 @@ func saveState(db dbm.DB, state State, key []byte) {
 // of the various ABCI calls during block processing.
 // It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
-	DeliverTx []*abci.ResponseDeliverTx
-	EndBlock  *abci.ResponseEndBlock
+	DeliverTx  []*abci.ResponseDeliverTx
+	EndBlock   *abci.ResponseEndBlock
+	BeginBlock *abci.ResponseBeginBlock
 }
 
 // NewABCIResponses returns a new ABCIResponses
@@ -193,7 +194,7 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 				),
 			)
 		}
-		valInfo2.ValidatorSet.IncrementAccum(int(height - valInfo.LastHeightChanged)) // mutate
+		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - valInfo.LastHeightChanged)) // mutate
 		valInfo = valInfo2
 	}
 

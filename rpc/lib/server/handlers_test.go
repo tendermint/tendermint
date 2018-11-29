@@ -47,21 +47,22 @@ func statusOK(code int) bool { return code >= 200 && code <= 299 }
 func TestRPCParams(t *testing.T) {
 	mux := testMux()
 	tests := []struct {
-		payload string
-		wantErr string
+		payload    string
+		wantErr    string
+		expectedId interface{}
 	}{
 		// bad
-		{`{"jsonrpc": "2.0", "id": "0"}`, "Method not found"},
-		{`{"jsonrpc": "2.0", "method": "y", "id": "0"}`, "Method not found"},
-		{`{"method": "c", "id": "0", "params": a}`, "invalid character"},
-		{`{"method": "c", "id": "0", "params": ["a"]}`, "got 1"},
-		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "invalid character"},
-		{`{"method": "c", "id": "0", "params": [1, 1]}`, "of type string"},
+		{`{"jsonrpc": "2.0", "id": "0"}`, "Method not found", types.JSONRPCStringID("0")},
+		{`{"jsonrpc": "2.0", "method": "y", "id": "0"}`, "Method not found", types.JSONRPCStringID("0")},
+		{`{"method": "c", "id": "0", "params": a}`, "invalid character", types.JSONRPCStringID("")}, // id not captured in JSON parsing failures
+		{`{"method": "c", "id": "0", "params": ["a"]}`, "got 1", types.JSONRPCStringID("0")},
+		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "invalid character", types.JSONRPCStringID("0")},
+		{`{"method": "c", "id": "0", "params": [1, 1]}`, "of type string", types.JSONRPCStringID("0")},
 
 		// good
-		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": null}`, ""},
-		{`{"method": "c", "id": "0", "params": {}}`, ""},
-		{`{"method": "c", "id": "0", "params": ["a", "10"]}`, ""},
+		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": null}`, "", types.JSONRPCStringID("0")},
+		{`{"method": "c", "id": "0", "params": {}}`, "", types.JSONRPCStringID("0")},
+		{`{"method": "c", "id": "0", "params": ["a", "10"]}`, "", types.JSONRPCStringID("0")},
 	}
 
 	for i, tt := range tests {
@@ -80,7 +81,7 @@ func TestRPCParams(t *testing.T) {
 		recv := new(types.RPCResponse)
 		assert.Nil(t, json.Unmarshal(blob, recv), "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
 		assert.NotEqual(t, recv, new(types.RPCResponse), "#%d: not expecting a blank RPCResponse", i)
-
+		assert.Equal(t, tt.expectedId, recv.ID, "#%d: expected ID not matched in RPCResponse", i)
 		if tt.wantErr == "" {
 			assert.Nil(t, recv.Error, "#%d: not expecting an error", i)
 		} else {
@@ -91,9 +92,56 @@ func TestRPCParams(t *testing.T) {
 	}
 }
 
+func TestJSONRPCID(t *testing.T) {
+	mux := testMux()
+	tests := []struct {
+		payload    string
+		wantErr    bool
+		expectedId interface{}
+	}{
+		// good id
+		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": ["a", "10"]}`, false, types.JSONRPCStringID("0")},
+		{`{"jsonrpc": "2.0", "method": "c", "id": "abc", "params": ["a", "10"]}`, false, types.JSONRPCStringID("abc")},
+		{`{"jsonrpc": "2.0", "method": "c", "id": 0, "params": ["a", "10"]}`, false, types.JSONRPCIntID(0)},
+		{`{"jsonrpc": "2.0", "method": "c", "id": 1, "params": ["a", "10"]}`, false, types.JSONRPCIntID(1)},
+		{`{"jsonrpc": "2.0", "method": "c", "id": 1.3, "params": ["a", "10"]}`, false, types.JSONRPCIntID(1)},
+		{`{"jsonrpc": "2.0", "method": "c", "id": -1, "params": ["a", "10"]}`, false, types.JSONRPCIntID(-1)},
+		{`{"jsonrpc": "2.0", "method": "c", "id": null, "params": ["a", "10"]}`, false, nil},
+
+		// bad id
+		{`{"jsonrpc": "2.0", "method": "c", "id": {}, "params": ["a", "10"]}`, true, nil},
+		{`{"jsonrpc": "2.0", "method": "c", "id": [], "params": ["a", "10"]}`, true, nil},
+	}
+
+	for i, tt := range tests {
+		req, _ := http.NewRequest("POST", "http://localhost/", strings.NewReader(tt.payload))
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		res := rec.Result()
+		// Always expecting back a JSONRPCResponse
+		assert.True(t, statusOK(res.StatusCode), "#%d: should always return 2XX", i)
+		blob, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			t.Errorf("#%d: err reading body: %v", i, err)
+			continue
+		}
+
+		recv := new(types.RPCResponse)
+		err = json.Unmarshal(blob, recv)
+		assert.Nil(t, err, "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
+		if !tt.wantErr {
+			assert.NotEqual(t, recv, new(types.RPCResponse), "#%d: not expecting a blank RPCResponse", i)
+			assert.Equal(t, tt.expectedId, recv.ID, "#%d: expected ID not matched in RPCResponse", i)
+			assert.Nil(t, recv.Error, "#%d: not expecting an error", i)
+		} else {
+			assert.True(t, recv.Error.Code < 0, "#%d: not expecting a positive JSONRPC code", i)
+		}
+	}
+}
+
 func TestRPCNotification(t *testing.T) {
 	mux := testMux()
-	body := strings.NewReader(`{"jsonrpc": "2.0"}`)
+	body := strings.NewReader(`{"jsonrpc": "2.0", "id": ""}`)
 	req, _ := http.NewRequest("POST", "http://localhost/", body)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -134,7 +182,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	}
 
 	// check basic functionality works
-	req, err := types.MapToRequest(amino.NewCodec(), "TestWebsocketManager", "c", map[string]interface{}{"s": "a", "i": 10})
+	req, err := types.MapToRequest(amino.NewCodec(), types.JSONRPCStringID("TestWebsocketManager"), "c", map[string]interface{}{"s": "a", "i": 10})
 	require.NoError(t, err)
 	err = c.WriteJSON(req)
 	require.NoError(t, err)

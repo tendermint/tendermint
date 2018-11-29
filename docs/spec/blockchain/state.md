@@ -98,6 +98,10 @@ type Evidence struct {
 type Validator struct {
 	PubKeyTypes []string
 }
+
+type ValidatorParams struct {
+	PubKeyTypes []string
+}
 ```
 
 #### BlockSize
