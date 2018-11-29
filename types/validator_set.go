@@ -279,6 +279,7 @@ func (vals *ValidatorSet) Update(val *Validator) (updated bool) {
 	if sameVal == nil {
 		return false
 	}
+	val.ProposerPriority = sameVal.ProposerPriority
 	vals.Validators[index] = val.Copy()
 	// Invalidate cache
 	vals.Proposer = nil
