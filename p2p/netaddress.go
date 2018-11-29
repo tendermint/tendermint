@@ -226,7 +226,6 @@ func (na *NetAddress) Valid() bool {
 			return false
 		}
 	}
-	fmt.Println("IPADDRESS VALIDATION SHOULD NOT REACH HERE")
 	return na.IP != nil && !(na.IP.IsUnspecified() || na.RFC3849() ||
 		na.IP.Equal(net.IPv4bcast))
 }
