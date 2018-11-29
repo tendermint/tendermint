@@ -33,23 +33,23 @@ func NewRemoteSignerClient(
 }
 
 // GetAddress implements PrivValidator.
-func (sc *RemoteSignerClient) GetAddress() types.Address {
+func (sc *RemoteSignerClient) GetAddress() (types.Address, error) {
 	pubKey, err := sc.getPubKey()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return pubKey.Address()
+	return pubKey.Address(), nil
 }
 
 // GetPubKey implements PrivValidator.
-func (sc *RemoteSignerClient) GetPubKey() crypto.PubKey {
+func (sc *RemoteSignerClient) GetPubKey() (crypto.PubKey, error) {
 	pubKey, err := sc.getPubKey()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return pubKey
+	return pubKey, nil
 }
 
 func (sc *RemoteSignerClient) getPubKey() (crypto.PubKey, error) {
@@ -229,7 +229,10 @@ func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValida
 	switch r := req.(type) {
 	case *PubKeyMsg:
 		var p crypto.PubKey
-		p = privVal.GetPubKey()
+		p, err = privVal.GetPubKey()
+		if err != nil {
+
+		}
 		res = &PubKeyMsg{p}
 	case *SignVoteRequest:
 		err = privVal.SignVote(chainID, r.Vote)

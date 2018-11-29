@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -17,6 +18,11 @@ var ShowValidatorCmd = &cobra.Command{
 
 func showValidator(cmd *cobra.Command, args []string) {
 	privValidator := privval.LoadOrGenFilePV(config.PrivValidatorFile())
-	pubKeyJSONBytes, _ := cdc.MarshalJSON(privValidator.GetPubKey())
+	key, err := privValidator.GetPubKey()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not read public key from FilePV %v", privValidator)
+		os.Exit(1)
+	}
+	pubKeyJSONBytes, _ := cdc.MarshalJSON(key)
 	fmt.Println(string(pubKeyJSONBytes))
 }

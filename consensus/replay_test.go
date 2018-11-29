@@ -331,7 +331,9 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	chain, commits, err := makeBlockchainFromWAL(wal)
 	require.NoError(t, err)
 
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), kvstore.ProtocolVersion)
+	pubKey, err := privVal.GetPubKey()
+	assert.NoError(t, err)
+	stateDB, state, store := stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 	store.chain = chain
 	store.commits = commits
 
@@ -346,7 +348,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2)
-		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey(), kvstore.ProtocolVersion)
+		stateDB, state, _ := stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 		buildAppStateFromChain(proxyApp, stateDB, state, chain, nBlocks, mode)
 	}
 
@@ -634,7 +636,9 @@ func TestInitChainUpdateValidators(t *testing.T) {
 
 	config := ResetConfig("proxy_test_")
 	privVal := privval.LoadFilePV(config.PrivValidatorFile())
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)
+	pubKey, err := privVal.GetPubKey()
+	assert.NoError(t, err)
+	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
 
 	oldValAddr := state.Validators.Validators[0].Address
 
@@ -657,12 +661,6 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	expectValAddr := val.Address
 	assert.NotEqual(t, oldValAddr, newValAddr)
 	assert.Equal(t, newValAddr, expectValAddr)
-}
-
-func newInitChainApp(vals []abci.ValidatorUpdate) *initChainApp {
-	return &initChainApp{
-		vals: vals,
-	}
 }
 
 // returns the vals on InitChain

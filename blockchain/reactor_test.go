@@ -42,7 +42,10 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 }
 
 func makeVote(header *types.Header, blockID types.BlockID, valset *types.ValidatorSet, privVal types.PrivValidator) *types.Vote {
-	addr := privVal.GetAddress()
+	addr, err := privVal.GetAddress()
+	if err != nil {
+		panic(err)
+	}
 	idx, _ := valset.GetByAddress(addr)
 	vote := &types.Vote{
 		ValidatorAddress: addr,
