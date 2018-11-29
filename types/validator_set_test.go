@@ -65,6 +65,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	_, val = vset.GetByAddress(val.Address)
 	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
+	val.ProposerPriority = 0
 	assert.True(t, vset.Update(val))
 	_, val = vset.GetByAddress(val.Address)
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
@@ -279,6 +280,10 @@ func randPubKey() crypto.PubKey {
 
 func randValidator_() *Validator {
 	val := NewValidator(randPubKey(), cmn.RandInt64())
+	// TODO: this modulo should limit the ProposerPriority to stay in the
+	// bounds of MaxTotalVotingPower. If used in ValidatorSets this
+	// would not be enough as the already existing voting power is not
+	// considered making tests fail (panic) non-deterministically.
 	val.ProposerPriority = cmn.RandInt64() % MaxTotalVotingPower
 	return val
 }
