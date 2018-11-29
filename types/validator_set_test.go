@@ -62,7 +62,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.NotPanics(t, func() { vset.IncrementProposerPriority(1) })
 
 	// update
-	assert.False(t, vset.Update(randValidator_()))
+	assert.False(t, vset.Update(randValidator_(vset.TotalVotingPower())))
 	_, val = vset.GetByAddress(val.Address)
 	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
