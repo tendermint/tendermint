@@ -390,97 +390,100 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 func TestAveragingInIncrementProposerPriorityWithVotingPower(t *testing.T) {
 	// Other than TestAveragingInIncrementProposerPriority this is a more complete test showing
 	// how each ProposerPriority changes in relation to the validator's voting power respectively.
+	vals := ValidatorSet{Validators: []*Validator{
+		{Address: []byte{0}, ProposerPriority: 0, VotingPower: 10},
+		{Address: []byte{1}, ProposerPriority: 0, VotingPower: 1},
+		{Address: []byte{2}, ProposerPriority: 0, VotingPower: 1}}}
 	tcs := []struct {
-		vals                  []*Validator
+		vals                  *ValidatorSet
 		wantProposerPrioritys []int64
 		times                 int
+		wantProposer          *Validator
 	}{
+
 		0: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
 			[]int64{
 				// Acumm+VotingPower-Avg:
 				0 + 10 - 12 - 4, // mostest will be subtracted by total voting power (12)
 				0 + 1 - 4,
 				0 + 1 - 4},
-			1},
+			1,
+			vals.Validators[0]},
 		1: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
 			[]int64{
 				(0 + 10 - 12 - 4) + 10 - 12 + 4, // this will be mostest on 2nd iter, too
 				(0 + 1 - 4) + 1 + 4,
 				(0 + 1 - 4) + 1 + 4},
-			2}, // increment twice -> expect average to be subtracted twice
+			2,
+			vals.Validators[0]}, // increment twice -> expect average to be subtracted twice
 		2: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
 			[]int64{
 				((0 + 10 - 12 - 4) + 10 - 12) + 10 - 12 + 4, // still mostest
 				((0 + 1 - 4) + 1) + 1 + 4,
 				((0 + 1 - 4) + 1) + 1 + 4},
-			3},
+			3,
+			vals.Validators[0]},
 		3: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
 			[]int64{
 				0 + 4*(10-12) + 4 - 4, // still mostest
 				0 + 4*1 + 4 - 4,
 				0 + 4*1 + 4 - 4},
-			4},
+			4,
+			vals.Validators[0]},
 		4: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
 			[]int64{
 				0 + 4*(10-12) + 10 + 4 - 4, // 4 iters was mostest
 				0 + 5*1 - 12 + 4 - 4,       // now this val is mostest for the 1st time (hence -12==totalVotingPower)
 				0 + 5*1 + 4 - 4},
-			5},
+			5,
+			vals.Validators[1]},
 		5: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
 			[]int64{
 				0 + 6*10 - 5*12 + 4 - 4, // mostest again
 				0 + 6*1 - 12 + 4 - 4,    // mostest once up to here
 				0 + 6*1 + 4 - 4},
-			6},
+			6,
+			vals.Validators[0]},
 		6: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
 			[]int64{
 				0 + 7*10 - 6*12 + 4 - 4, // in 7 iters this val is mostest 6 times
 				0 + 7*1 - 12 + 4 - 4,    // in 7 iters this val is mostest 1 time
 				0 + 7*1 + 4 - 4},
-			7},
+			7,
+			vals.Validators[0]},
 		7: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
 			[]int64{
-				0 + 10*10 - 8*12 + 4 - 4,
-				0 + 10*1 - 12 + 4 - 4,   // after 6 iters this val is "mostest" once and not in between
-				0 + 10*1 + -12 + 4 - 4}, // after 10 iters this val is "mostest" once
-			10},
+				0 + 8*10 - 7*12 + 4 - 4, // mostest
+				0 + 8*1 - 12 + 4 - 4,
+				0 + 8*1 + 4 - 4},
+			8,
+			vals.Validators[0]},
 		8: {
-			[]*Validator{
-				{Address: []byte("a"), ProposerPriority: 0, VotingPower: 10},
-				{Address: []byte("b"), ProposerPriority: 0, VotingPower: 1},
-				{Address: []byte("c"), ProposerPriority: 0, VotingPower: 1}},
+			vals.Copy(),
+			[]int64{
+				0 + 9*10 - 7*12 + 4 - 4,
+				0 + 9*1 - 12 + 4 - 4,
+				0 + 9*1 - 12 + 4 - 4}, // mostest
+			9,
+			vals.Validators[2]},
+		9: {
+			vals.Copy(),
+			[]int64{
+				0 + 10*10 - 8*12 + 4 - 4, // after 10 iters this is mostest again
+				0 + 10*1 - 12 + 4 - 4,    // after 6 iters this val is "mostest" once and not in between
+				0 + 10*1 - 12 + 4 - 4},   // in between 10 iters this val is "mostest" once
+			10,
+			vals.Validators[0]},
+		10: {
+			vals.Copy(),
 			[]int64{
 				// shift twice inside incrementProposerPriority (shift every 10th iter);
 				// don't shift at the end of IncremenctProposerPriority
@@ -491,12 +494,17 @@ func TestAveragingInIncrementProposerPriorityWithVotingPower(t *testing.T) {
 				0 + 11*10 - 8*12 - 4 - 12 - 0,
 				0 + 11*1 - 12 - 4 - 0,  // after 6 iters this val is "mostest" once and not in between
 				0 + 11*1 - 12 - 4 - 0}, // after 10 iters this val is "mostest" once
-			11},
+			11,
+			vals.Validators[0]},
 	}
 	for i, tc := range tcs {
-		vals := ValidatorSet{Validators: tc.vals}
-		vals.IncrementProposerPriority(tc.times)
-		for valIdx, val := range tc.vals {
+		tc.vals.IncrementProposerPriority(tc.times)
+
+		assert.Equal(t, tc.wantProposer.Address, tc.vals.GetProposer().Address,
+			"test case: %v",
+			i)
+
+		for valIdx, val := range tc.vals.Validators {
 			assert.Equal(t,
 				tc.wantProposerPrioritys[valIdx],
 				val.ProposerPriority,
