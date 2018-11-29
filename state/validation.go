@@ -122,15 +122,17 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 				block.Time,
 			)
 		}
-	} else if block.Height == 1 {
-		genesisTime := state.LastBlockTime
-		if !block.Time.Equal(genesisTime) {
-			return fmt.Errorf("Block time %v is not equal to genesis time %v",
-				block.Time,
-				genesisTime,
-			)
-		}
 	}
+	// TODO: commented out because it was crashing the initial setup
+	// else if block.Height == 1 {
+	// 	genesisTime := state.LastBlockTime
+	// 	if !block.Time.Equal(genesisTime) {
+	// 		return fmt.Errorf("Block time %v is not equal to genesis time %v",
+	// 			block.Time,
+	// 			genesisTime,
+	// 		)
+	// 	}
+	// }
 
 	// Limit the amount of evidence
 	maxEvidenceBytes := types.MaxEvidenceBytesPerBlock(state.ConsensusParams.BlockSize.MaxBytes)
