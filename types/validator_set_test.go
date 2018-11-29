@@ -45,7 +45,8 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Nil(t, vset.Hash())
 
 	// add
-	val = randValidator_()
+
+	val = randValidator_(vset.TotalVotingPower())
 	assert.True(t, vset.Add(val))
 	assert.True(t, vset.HasAddress(val.Address))
 	idx, val2 := vset.GetByAddress(val.Address)
@@ -61,7 +62,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.NotPanics(t, func() { vset.IncrementProposerPriority(1) })
 
 	// update
-	assert.False(t, vset.Update(randValidator_()))
+	assert.False(t, vset.Update(randValidator_(vset.TotalVotingPower())))
 	_, val = vset.GetByAddress(val.Address)
 	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
@@ -71,7 +72,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
 
 	// remove
-	val2, removed := vset.Remove(randValidator_().Address)
+	val2, removed := vset.Remove(randValidator_(vset.TotalVotingPower()).Address)
 	assert.Nil(t, val2)
 	assert.False(t, removed)
 	val2, removed = vset.Remove(val.Address)
@@ -278,20 +279,20 @@ func randPubKey() crypto.PubKey {
 	return ed25519.PubKeyEd25519(pubKey)
 }
 
-func randValidator_() *Validator {
+func randValidator_(totalVotingPower int64) *Validator {
 	val := NewValidator(randPubKey(), cmn.RandInt64())
-	// TODO: this modulo should limit the ProposerPriority to stay in the
-	// bounds of MaxTotalVotingPower. If used in ValidatorSets this
-	// would not be enough as the already existing voting power is not
-	// considered making tests fail (panic) non-deterministically.
-	val.ProposerPriority = cmn.RandInt64() % MaxTotalVotingPower
+	// this modulo limits the ProposerPriority to stay in the
+	// bounds of MaxTotalVotingPower minus the already existing voting power:
+	val.ProposerPriority = cmn.RandInt64() % (MaxTotalVotingPower - totalVotingPower)
 	return val
 }
 
 func randValidatorSet(numValidators int) *ValidatorSet {
 	validators := make([]*Validator, numValidators)
+	totalVotingPower := int64(0)
 	for i := 0; i < numValidators; i++ {
-		validators[i] = randValidator_()
+		validators[i] = randValidator_(totalVotingPower)
+		totalVotingPower += validators[i].VotingPower
 	}
 	return NewValidatorSet(validators)
 }
