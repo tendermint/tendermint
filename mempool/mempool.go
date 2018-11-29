@@ -571,7 +571,7 @@ func (mem *Mempool) Update(
 
 	// Add committed transactions to cache (if missing).
 	for _, tx := range txs {
-		_ = mem.cache.Push(tx)
+		_ = mem.cache.PushTxWithInfo(tx, TxInfo{})
 	}
 
 	// Remove committed transactions.
