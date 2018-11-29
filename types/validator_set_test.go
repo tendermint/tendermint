@@ -62,8 +62,12 @@ func TestValidatorSetBasic(t *testing.T) {
 
 	// update
 	assert.False(t, vset.Update(randValidator_()))
-	val.VotingPower = 100
+	_, val = vset.GetByAddress(val.Address)
+	val.VotingPower += 100
+	proposerPriority := val.ProposerPriority
 	assert.True(t, vset.Update(val))
+	_, val = vset.GetByAddress(val.Address)
+	assert.Equal(t, proposerPriority, val.ProposerPriority)
 
 	// remove
 	val2, removed := vset.Remove(randValidator_().Address)
