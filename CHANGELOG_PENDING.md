@@ -46,3 +46,4 @@ program](https://hackerone.com/tendermint).
     - keep accums averaged near 0
 - [types] \#2941 Preserve val.Accum during ValidatorSet.Update to avoid it being
   reset to 0 every time a validator is updated
+- [rpc] \#2408 `/broadcast_tx_commit`: Fix interface conversion: interface {} in nil, not EventDataTx error
