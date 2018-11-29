@@ -3,6 +3,33 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.27.0
+
+### Go API Changes
+
+#### libs/db
+
+The ReverseIterator API has changed the meaning of `start` and `end`.
+Before, iteration was from `start` to `end`, where
+`start > end`. Now, iteration is from `end` to `start`, where `start < end`.
+The iterator also excludes `end`. This change allows a simplified and more
+intuitive logic, aligning the semantic meaning of `start` and `end` in the
+`Iterator` and `ReverseIterator`.
+
+### Applications
+
+This release enforces a new consensus parameter, the
+ValidatorParams.PubKeyTypes. Applications must ensure that they only return
+validator updates with the allowed PubKeyTypes. If a validator update includes a
+pubkey type that is not included in the ConsensusParams.Validator.PubKeyTypes,
+block execution will fail and the consensus will halt.
+
+By default, only Ed25519 pubkeys may be used for validators. Enabling
+Secp256k1 requires explicit modification of the ConsensusParams.
+Please update your application accordingly (ie. restrict validators to only be
+able to use Ed25519 keys, or explicitly add additional key types to the genesis
+file).
+
 ## v0.26.0
 
 New 0.26.0 release contains a lot of changes to core data types and protocols. It is not
@@ -67,7 +94,7 @@ For more information, see:
 
 ### Go API Changes
 
-#### crypto.merkle
+#### crypto/merkle
 
 The `merkle.Hasher` interface was removed. Functions which used to take `Hasher`
 now simply take `[]byte`. This means that any objects being Merklized should be
