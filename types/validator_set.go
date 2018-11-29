@@ -282,9 +282,11 @@ func (vals *ValidatorSet) Update(val *Validator) (updated bool) {
 		return false
 	}
 	// Overwrite the ProposerPriority so it doesn't change.
-	// During block execution, val.ProposerPriority
-	// here would be 0, causing issues for proposer
-	// selection every time a validator's voting power changes.
+	// During block execution, the val passed in here comes
+	// from ABCI via PB2TM.ValidatorUpdates. Since ABCI
+	// doesn't know about ProposerPriority, PB2TM.ValidatorUpdates
+	// uses the default value of 0, which would cause issues for
+	// proposer selection every time a validator's voting power changes.
 	val.ProposerPriority = sameVal.ProposerPriority
 	vals.Validators[index] = val.Copy()
 	// Invalidate cache
