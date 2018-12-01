@@ -271,7 +271,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
 		addr, err := css[i].privValidator.GetAddress()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		activeVals[string(addr)] = struct{}{}
 	}
 
