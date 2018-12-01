@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -59,7 +60,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 		}
 		key, err := pv.GetPubKey()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to get pubkey from private validator")
 		}
 		genDoc.Validators = []types.GenesisValidator{{
 			Address: key.Address(),

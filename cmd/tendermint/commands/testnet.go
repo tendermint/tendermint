@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -92,7 +93,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		pv := privval.LoadFilePV(pvFile)
 		pubKey, err := pv.GetPubKey()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to get pubkey from private validator")
 		}
 		genVals[i] = types.GenesisValidator{
 			Address: pubKey.Address(),
