@@ -700,7 +700,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	addr, err := cs1.privValidator.GetAddress()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round and wait for propose and prevote
