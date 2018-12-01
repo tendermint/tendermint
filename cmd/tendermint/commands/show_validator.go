@@ -20,7 +20,7 @@ func showValidator(cmd *cobra.Command, args []string) {
 	privValidator := privval.LoadOrGenFilePV(config.PrivValidatorFile())
 	key, err := privValidator.GetPubKey()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not read public key from FilePV %v", privValidator)
+		fmt.Fprintf(os.Stderr, "Failed to read pubkey from private validator file (%s): %v", config.PrivValidatorFile(), err)
 		os.Exit(1)
 	}
 	pubKeyJSONBytes, _ := cdc.MarshalJSON(key)
