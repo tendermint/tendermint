@@ -115,7 +115,7 @@ func TestStateProposerSelection2(t *testing.T) {
 	for i := 0; i < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
 		addr, err := vss[(i+round)%len(vss)].GetAddress()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		correctProposer := addr
 		if !bytes.Equal(prop.Address, correctProposer) {
 			panic(fmt.Sprintf("expected RoundState.Validators.GetProposer() to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
