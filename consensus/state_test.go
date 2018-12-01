@@ -90,7 +90,7 @@ func TestStateProposerSelection0(t *testing.T) {
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
 	addr, err := vss[1].GetAddress()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if !bytes.Equal(prop.Address, addr) {
 		panic(fmt.Sprintf("expected proposer to be validator %d. Got %X", 1, prop.Address))
 	}
