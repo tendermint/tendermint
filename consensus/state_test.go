@@ -605,7 +605,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
 	addr, err := cs1.privValidator.GetAddress()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// everything done from perspective of cs1
