@@ -144,7 +144,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
 		addr, err := privVals[vIdx].GetAddress()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		evpool := newMockEvidencePool(addr)
 
 		// Make ConsensusState
