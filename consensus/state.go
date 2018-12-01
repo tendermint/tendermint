@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	errs "github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -831,7 +833,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	// if not a validator, we're done
 	address, err := cs.privValidator.GetAddress()
 	if err != nil {
-		logger.Error("Could not retrieve potenial validator address", cs.privValidator)
+		logger.Error("Failed to get private validator address", "err", err)
 		return
 	}
 	if !cs.Validators.HasAddress(address) {
@@ -936,7 +938,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	), maxGas)
 	proposerAddr, err := cs.privValidator.GetAddress()
 	if err != nil {
-		cs.Logger.Error("could not retrieve proposer's address from privValidator", cs.privValidator)
+		cs.Logger.Error("Failed to get private validator address", "err", err)
 		return
 	}
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
@@ -1484,7 +1486,10 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, err
 			return added, err
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			addr, err := cs.privValidator.GetAddress()
-			cs.Logger.Error("Can not retrieve privValidator's address", "err", err)
+			if err != nil {
+				cs.Logger.Error("Failed to get private validator address", "err", err)
+				return added, err
+			}
 			if bytes.Equal(vote.ValidatorAddress, addr) {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return added, err
@@ -1652,8 +1657,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	addr, err := cs.privValidator.GetAddress()
 	if err != nil {
-		cs.Logger.Error("Could not retrieve privValidator's address. The remote signer's connection might have dropped?", "err", err)
-		return nil, err
+		cs.Logger.Error("Failed to get private validator address", "err", err)
+		return nil, errs.Wrap(err, "Failed to get private validator address")
 	}
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 
@@ -1692,7 +1697,7 @@ func (cs *ConsensusState) signAddVote(type_ types.SignedMsgType, hash []byte, he
 	// if we don't have a key or we're not in the validator set, do nothing
 	privValAddr, err := cs.privValidator.GetAddress()
 	if err != nil {
-		cs.Logger.Error("Error signing vote. Could not retrieve privValidator's address.", "privValidator", cs.privValidator, "height", cs.Height, "round", cs.Round)
+		cs.Logger.Error("Failed to get private validator address", "err", err, "height", cs.Height, "round", cs.Round)
 		return nil
 	}
 	if cs.privValidator == nil || !cs.Validators.HasAddress(privValAddr) {

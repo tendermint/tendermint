@@ -332,7 +332,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	require.NoError(t, err)
 
 	pubKey, err := privVal.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 	store.chain = chain
 	store.commits = commits
@@ -637,7 +637,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	config := ResetConfig("proxy_test_")
 	privVal := privval.LoadFilePV(config.PrivValidatorFile())
 	pubKey, err := privVal.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
 
 	oldValAddr := state.Validators.Validators[0].Address

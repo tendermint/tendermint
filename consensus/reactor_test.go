@@ -284,7 +284,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	logger.Debug("---------------------------- Testing changing the voting power of one validator a few times")
 
 	pubKey, err := css[0].privValidator.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	val1PubKey := pubKey
 	val1PubKeyABCI := types.TM2PB.PubKey(val1PubKey)
 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
@@ -338,7 +338,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
 		addr, err := css[i].privValidator.GetAddress()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		activeVals[string(addr)] = struct{}{}
 	}
 
@@ -351,7 +351,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing adding one validator")
 
 	pubKey, err := css[nVals].privValidator.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	newValidatorPubKey1 := pubKey
 	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
@@ -380,7 +380,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing changing the voting power of one validator")
 
 	pubKey, err = css[nVals].privValidator.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	updateValidatorPubKey1 := pubKey
 	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
@@ -399,13 +399,13 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing adding two validators at once")
 
 	pubKey, err = css[nVals+1].privValidator.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	newValidatorPubKey2 := pubKey
 	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 
 	pubKey, err = css[nVals+2].privValidator.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	newValidatorPubKey3 := pubKey
 	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
