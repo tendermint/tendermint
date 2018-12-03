@@ -46,7 +46,7 @@ func TestProposalString(t *testing.T) {
 func TestProposalVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
 	pubKey, err := privVal.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	prop := NewProposal(
 		4, 2, 2,

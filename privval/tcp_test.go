@@ -26,10 +26,10 @@ func TestSocketPVAddress(t *testing.T) {
 	defer rs.Stop()
 
 	serverAddr, err := rs.privVal.GetAddress()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	clientAddr, err := sc.GetAddress()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, serverAddr, clientAddr)
 }
@@ -46,7 +46,7 @@ func TestSocketPVPubKey(t *testing.T) {
 	require.NoError(t, err)
 
 	privKey, err := rs.privVal.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, privKey, clientKey)
 }

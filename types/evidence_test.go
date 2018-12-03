@@ -69,7 +69,7 @@ func TestEvidence(t *testing.T) {
 	}
 
 	pubKey, err := val.GetPubKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for _, c := range cases {
 		ev := &DuplicateVoteEvidence{
 			VoteA: c.vote1,
