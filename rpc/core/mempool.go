@@ -198,7 +198,10 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// TODO: configurable?
 	var deliverTxTimeout = rpcserver.WriteTimeout / 2
 	select {
-	case deliverTxResMsg := <-deliverTxResCh: // The tx was included in a block.
+	case deliverTxResMsg, ok := <-deliverTxResCh: // The tx was included in a block.
+		if !ok {
+			return nil, errors.New("Error on broadcastTxCommit: expected DeliverTxResult, got nil. Did the Tendermint stop?")
+		}
 		deliverTxRes := deliverTxResMsg.(types.EventDataTx)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
