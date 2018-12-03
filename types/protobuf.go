@@ -200,7 +200,7 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:
 		if len(pubKey.Data) != sizeSecp {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeSecp)
+			return nil, fmt.Errorf("Invalid size for PubKeySecp256k1. Got %d, expected %d", len(pubKey.Data), sizeSecp)
 		}
 		var pk secp256k1.PubKeySecp256k1
 		copy(pk[:], pubKey.Data)

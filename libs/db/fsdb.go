@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -24,6 +23,7 @@ func init() {
 		dbPath := filepath.Join(dir, name+".db")
 		return NewFSDB(dbPath), nil
 	}, false)
+
 }
 
 var _ DB = (*FSDB)(nil)

@@ -9,7 +9,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -17,6 +16,7 @@ func init() {
 	dbCreator := func(name string, dir string) (DB, error) {
 		return NewGoLevelDB(name, dir)
 	}
+	fmt.Println("But this one runs?")
 	registerDBCreator(LevelDBBackend, dbCreator, false)
 	registerDBCreator(GoLevelDBBackend, dbCreator, false)
 }

@@ -10,6 +10,7 @@ func init() {
 	registerDBCreator(MemDBBackend, func(name string, dir string) (DB, error) {
 		return NewMemDB(), nil
 	}, false)
+
 }
 
 var _ DB = (*MemDB)(nil)
