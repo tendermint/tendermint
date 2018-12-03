@@ -6,6 +6,8 @@ import (
 	"net"
 	"sync"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -231,7 +233,9 @@ func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValida
 		var p crypto.PubKey
 		p, err = privVal.GetPubKey()
 		if err != nil {
-
+			// TODO: split up PubKeyMsg into PubKeyRequest / PubKeyResponse and wrap the error
+			// into the response as done below. For now we just return the error:
+			return nil, errors.Wrap(err, "Error while retrieving private validator's public key")
 		}
 		res = &PubKeyMsg{p}
 	case *SignVoteRequest:
