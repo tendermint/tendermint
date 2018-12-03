@@ -24,11 +24,9 @@ var backends = map[DBBackendType]dbCreator{}
 
 func registerDBCreator(backend DBBackendType, creator dbCreator, force bool) {
 	_, ok := backends[backend]
-	fmt.Println("try register", backend)
 	if !force && ok {
 		return
 	}
-	fmt.Println("register", backend)
 	backends[backend] = creator
 }
 

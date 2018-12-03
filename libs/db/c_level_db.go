@@ -12,7 +12,6 @@ func init() {
 	dbCreator := func(name string, dir string) (DB, error) {
 		return NewCLevelDB(name, dir)
 	}
-	fmt.Println("does this init run? ")
 	registerDBCreator(LevelDBBackend, dbCreator, false)
 	registerDBCreator(CLevelDBBackend, dbCreator, false)
 }
