@@ -15,6 +15,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.ABCIQuery("", "abcd", true)
 // ```
 //
@@ -69,6 +74,11 @@ func ABCIQuery(path string, data cmn.HexBytes, height int64, prove bool) (*ctype
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // info, err := client.ABCIInfo()
 // ```
 //

@@ -16,6 +16,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // state, err := client.Validators()
 // ```
 //
@@ -67,6 +72,11 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // state, err := client.DumpConsensusState()
 // ```
 //
@@ -225,6 +235,11 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // state, err := client.ConsensusState()
 // ```
 //
@@ -273,6 +288,11 @@ func ConsensusState() (*ctypes.ResultConsensusState, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // state, err := client.ConsensusParams()
 // ```
 //
