@@ -92,7 +92,7 @@ func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 }
 
 func (app *KVStoreApplication) CheckBridge(req types.RequestCheckBridge) types.ResponseCheckBridge {
-	return types.ResponseCheckBridge{1}
+	return types.ResponseCheckBridge{Status: 1}
 }
 
 func (app *KVStoreApplication) Commit() types.ResponseCommit {

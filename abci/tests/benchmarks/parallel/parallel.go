@@ -11,7 +11,7 @@ import (
 
 func main() {
 
-	conn, err := cmn.Connect("unix://test.sock")
+	conn, err := cmn.Connect("unix://test1.sock")
 	if err != nil {
 		log.Fatal(err.Error())
 	}

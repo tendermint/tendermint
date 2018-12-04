@@ -29,7 +29,7 @@ import (
 const (
 	tcpAddr = "tcp://0.0.0.0:47768"
 
-	unixSocket = "/tmp/rpc_test.sock"
+	unixSocket = "/tmp/rpc_test1.sock"
 	unixAddr   = "unix://" + unixSocket
 
 	websocketEndpoint = "/websocket/endpoint"

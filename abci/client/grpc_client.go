@@ -228,7 +228,7 @@ func (cli *grpcClient) CheckBridgeAsync(params types.RequestCheckBridge) *ReqRes
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_CheckBridge{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckBridge{res}})
 }
 
 func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
