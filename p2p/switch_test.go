@@ -335,6 +335,27 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert.False(p.IsRunning())
 }
 
+func TestSwitchStopPeerForError(t *testing.T) {
+
+	// make two connected switches
+	sw1, sw2 := MakeSwitchPair(t, initSwitchFunc)
+
+	// send messages to the peer from sw1
+	p := sw1.Peers().List()[0]
+	p.Send(0x1, []byte("here's a message to send"))
+
+	// stop sw2. this should cause the p to fail,
+	// which results in calling StopPeerForError internally
+	sw2.Stop()
+
+	// now call StopPeerForError explicitly, eg. from a reactor
+	sw1.StopPeerForError(p, fmt.Errorf("some err"))
+
+	// at this point, the peers gauge (p2p_peers) will be -1,
+	// while the n_peers is 0.
+	assert.Equal(t, len(sw1.Peers().List()), 0)
+}
+
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
