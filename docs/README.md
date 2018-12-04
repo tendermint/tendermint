@@ -1,41 +1,29 @@
 # Tendermint
 
-Welcome to the Tendermint Core documentation! Below you'll find an
-overview of the documentation.
+Welcome to the Tendermint Core documentation!
 
-Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state
-transition machine - written in any programming language - and securely
-replicates it on many machines. In other words, a blockchain.
+Tendermint Core is a blockchain application platform; it provides the equivalent
+of a web-server, database, and supporting libraries for blockchain applications
+written in any programming language. Like a web-server serving web applications,
+Tendermint serves blockchain applications.
 
-Tendermint requires an application running over the Application Blockchain
-Interface (ABCI) - and comes packaged with an example application to do so.
+More formally, Tendermint Core performs Byzantine Fault Tolerant (BFT)
+State Machine Replication (SMR) for arbitrary deterministic, finite state machines.
+For more background, see [What is
+Tendermint?](introduction/what-is-tendermint.md).
 
-## Getting Started
+To get started quickly with an example application, see the [quick start guide](introduction/quick-start.md).
 
-Here you'll find quick start guides and links to more advanced "get up and running"
-documentation.
+To learn about application development on Tendermint, see the [Application Blockchain Interface](spec/abci/).
 
-## Core
+For more details on using Tendermint, see the respective documentation for
+[Tendermint Core](tendermint-core/), [benchmarking and monitoring](tools/), and [network deployments](networks/).
 
-Details about the core functionality and configuration of Tendermint.
+## Contribute
 
-## Tools
-
-Benchmarking and monitoring tools.
-
-## Networks
-
-Setting up testnets manually or automated, local or in the cloud.
-
-## Apps
-
-Building appplications with the ABCI.
-
-## Specification
-
-Dive deep into the spec. There's one for each Tendermint and the ABCI
-
-## Edit the Documentation
-
-See [this file](./DOCS_README.md) for details of the build process and
+To contribute to the documentation, see [this file](https://github.com/tendermint/tendermint/blob/master/docs/DOCS_README.md) for details of the build process and
 considerations when making changes.
+
+## Version
+
+This documentation is built from the following commit:

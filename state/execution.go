@@ -2,12 +2,13 @@ package state
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
-	fail "github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/tendermint/abci/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -33,20 +34,37 @@ type BlockExecutor struct {
 	evpool  EvidencePool
 
 	logger log.Logger
+
+	metrics *Metrics
+}
+
+type BlockExecutorOption func(executor *BlockExecutor)
+
+func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
+	return func(blockExec *BlockExecutor) {
+		blockExec.metrics = metrics
+	}
 }
 
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus,
-	mempool Mempool, evpool EvidencePool) *BlockExecutor {
-	return &BlockExecutor{
+	mempool Mempool, evpool EvidencePool, options ...BlockExecutorOption) *BlockExecutor {
+	res := &BlockExecutor{
 		db:       db,
 		proxyApp: proxyApp,
 		eventBus: types.NopEventBus{},
 		mempool:  mempool,
 		evpool:   evpool,
 		logger:   logger,
+		metrics:  NopMetrics(),
 	}
+
+	for _, option := range options {
+		option(res)
+	}
+
+	return res
 }
 
 // SetEventBus - sets the event bus for publishing block related events.
@@ -74,7 +92,10 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 		return state, ErrInvalidBlock(err)
 	}
 
+	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, state.LastValidators, blockExec.db)
+	endTime := time.Now().UnixNano()
+	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
 		return state, ErrProxyAppConn(err)
 	}
@@ -87,7 +108,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	fail.Fail() // XXX
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, abciResponses)
+	state, err = updateState(blockExec.logger, state, blockID, &block.Header, abciResponses)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -159,13 +180,8 @@ func (blockExec *BlockExecutor) Commit(
 	err = blockExec.mempool.Update(
 		block.Height,
 		block.Txs,
-		mempool.PreCheckAminoMaxBytes(
-			types.MaxDataBytesUnknownEvidence(
-				state.ConsensusParams.BlockSize.MaxBytes,
-				state.Validators.Size(),
-			),
-		),
-		mempool.PostCheckMaxGas(state.ConsensusParams.MaxGas),
+		TxPreCheck(state),
+		TxPostCheck(state),
 	)
 
 	return res.Data, err
@@ -176,8 +192,13 @@ func (blockExec *BlockExecutor) Commit(
 
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
-func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
-	block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) (*ABCIResponses, error) {
+func execBlockOnProxyApp(
+	logger log.Logger,
+	proxyAppConn proxy.AppConnConsensus,
+	block *types.Block,
+	lastValSet *types.ValidatorSet,
+	stateDB dbm.DB,
+) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -205,8 +226,9 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
 
-	// Begin block.
-	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
+	// Begin block
+	var err error
+	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
 		Header:              types.TM2PB.Header(&block.Header),
 		LastCommitInfo:      commitInfo,
@@ -233,12 +255,6 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
-
-	valUpdates := abciResponses.EndBlock.ValidatorUpdates
-	if len(valUpdates) > 0 {
-		// TODO: cleanup the formatting
-		logger.Info("Updates to validators", "updates", valUpdates)
-	}
 
 	return abciResponses, nil
 }
@@ -295,16 +311,16 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate) error {
+func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.ValidatorUpdate) ([]*types.Validator, error) {
 	updates, err := types.PB2TM.ValidatorUpdates(abciUpdates)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// these are tendermint types now
 	for _, valUpdate := range updates {
 		if valUpdate.VotingPower < 0 {
-			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
+			return nil, fmt.Errorf("Voting power can't be negative %v", valUpdate)
 		}
 
 		address := valUpdate.Address
@@ -313,28 +329,33 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 			// remove val
 			_, removed := currentSet.Remove(address)
 			if !removed {
-				return fmt.Errorf("Failed to remove validator %X", address)
+				return nil, fmt.Errorf("Failed to remove validator %X", address)
 			}
 		} else if val == nil {
 			// add val
 			added := currentSet.Add(valUpdate)
 			if !added {
-				return fmt.Errorf("Failed to add new validator %v", valUpdate)
+				return nil, fmt.Errorf("Failed to add new validator %v", valUpdate)
 			}
 		} else {
 			// update val
 			updated := currentSet.Update(valUpdate)
 			if !updated {
-				return fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
+				return nil, fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
 			}
 		}
 	}
-	return nil
+	return updates, nil
 }
 
 // updateState returns a new State updated according to the header and responses.
-func updateState(state State, blockID types.BlockID, header *types.Header,
-	abciResponses *ABCIResponses) (State, error) {
+func updateState(
+	logger log.Logger,
+	state State,
+	blockID types.BlockID,
+	header *types.Header,
+	abciResponses *ABCIResponses,
+) (State, error) {
 
 	// Copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators.
@@ -343,12 +364,14 @@ func updateState(state State, blockID types.BlockID, header *types.Header,
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates)
+		validatorUpdates, err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
+
+		logger.Info("Updates to validators", "updates", makeValidatorUpdatesLogString(validatorUpdates))
 	}
 
 	// Update validator accums and set state variables.
@@ -368,9 +391,13 @@ func updateState(state State, blockID types.BlockID, header *types.Header,
 		lastHeightParamsChanged = header.Height + 1
 	}
 
+	// TODO: allow app to upgrade version
+	nextVersion := state.Version
+
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
+		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
 		LastBlockHeight:                  header.Height,
 		LastBlockTotalTx:                 state.LastBlockTotalTx + header.NumTxs,
@@ -391,8 +418,16 @@ func updateState(state State, blockID types.BlockID, header *types.Header,
 // Fire TxEvent for every tx.
 // NOTE: if Tendermint crashes before commit, some or all of these events may be published again.
 func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *types.Block, abciResponses *ABCIResponses) {
-	eventBus.PublishEventNewBlock(types.EventDataNewBlock{block})
-	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{block.Header})
+	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+		Block:            block,
+		ResultBeginBlock: *abciResponses.BeginBlock,
+		ResultEndBlock:   *abciResponses.EndBlock,
+	})
+	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+		Header:           block.Header,
+		ResultBeginBlock: *abciResponses.BeginBlock,
+		ResultEndBlock:   *abciResponses.EndBlock,
+	})
 
 	for i, tx := range block.Data.Txs {
 		eventBus.PublishEventTx(types.EventDataTx{types.TxResult{
@@ -436,4 +471,14 @@ func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block
 	}
 	// ResponseCommit has no error or log, just data
 	return res.Data, nil
+}
+
+// Make pretty string for validatorUpdates logging
+func makeValidatorUpdatesLogString(vals []*types.Validator) string {
+	chunks := make([]string, len(vals))
+	for i, val := range vals {
+		chunks[i] = fmt.Sprintf("%s:%d", val.Address, val.VotingPower)
+	}
+
+	return strings.Join(chunks, ",")
 }

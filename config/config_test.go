@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -25,4 +26,13 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal("/opt/data", cfg.DBDir())
 	assert.Equal("/foo/wal/mem", cfg.Mempool.WalDir())
 
+}
+
+func TestConfigValidateBasic(t *testing.T) {
+	cfg := DefaultConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	// tamper with timeout_propose
+	cfg.Consensus.TimeoutPropose = -10 * time.Second
+	assert.Error(t, cfg.ValidateBasic())
 }

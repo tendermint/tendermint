@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	amino "github.com/tendermint/go-amino"
+	abci "github.com/tendermint/tendermint/abci/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
@@ -23,6 +24,7 @@ const (
 	EventTimeoutWait         = "TimeoutWait"
 	EventTx                  = "Tx"
 	EventUnlock              = "Unlock"
+	EventValidBlock          = "ValidBlock"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
 	EventVote                = "Vote"
 )
@@ -42,6 +44,8 @@ func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterConcrete(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader", nil)
 	cdc.RegisterConcrete(EventDataTx{}, "tendermint/event/Tx", nil)
 	cdc.RegisterConcrete(EventDataRoundState{}, "tendermint/event/RoundState", nil)
+	cdc.RegisterConcrete(EventDataNewRound{}, "tendermint/event/NewRound", nil)
+	cdc.RegisterConcrete(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal", nil)
 	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
 	cdc.RegisterConcrete(EventDataProposalHeartbeat{}, "tendermint/event/ProposalHeartbeat", nil)
 	cdc.RegisterConcrete(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates", nil)
@@ -53,11 +57,17 @@ func RegisterEventDatas(cdc *amino.Codec) {
 
 type EventDataNewBlock struct {
 	Block *Block `json:"block"`
+
+	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
+	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
 // light weight event for benchmarking
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
+
+	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
+	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
 // All txs fire EventDataTx
@@ -77,6 +87,27 @@ type EventDataRoundState struct {
 
 	// private, not exposed to websockets
 	RoundState interface{} `json:"-"`
+}
+
+type ValidatorInfo struct {
+	Address Address `json:"address"`
+	Index   int     `json:"index"`
+}
+
+type EventDataNewRound struct {
+	Height int64  `json:"height"`
+	Round  int    `json:"round"`
+	Step   string `json:"step"`
+
+	Proposer ValidatorInfo `json:"proposer"`
+}
+
+type EventDataCompleteProposal struct {
+	Height int64  `json:"height"`
+	Round  int    `json:"round"`
+	Step   string `json:"step"`
+
+	BlockID BlockID `json:"block_id"`
 }
 
 type EventDataVote struct {
@@ -119,6 +150,7 @@ var (
 	EventQueryTx                  = QueryForEvent(EventTx)
 	EventQueryUnlock              = QueryForEvent(EventUnlock)
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdates)
+	EventQueryValidBlock          = QueryForEvent(EventValidBlock)
 	EventQueryVote                = QueryForEvent(EventVote)
 )
 

@@ -7,9 +7,9 @@ file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.pro
 
 ABCI methods are split across 3 separate ABCI *connections*:
 
-- `Consensus Connection: InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
-- `Mempool Connection: CheckTx`
-- `Info Connection: Info, SetOption, Query`
+- `Consensus Connection`: `InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
+- `Mempool Connection`: `CheckTx`
+- `Info Connection`: `Info, SetOption, Query`
 
 The `Consensus Connection` is driven by a consensus protocol and is responsible
 for block execution.
@@ -29,9 +29,14 @@ Some methods (`Echo, Info, InitChain, BeginBlock, EndBlock, Commit`),
 don't return errors because an error would indicate a critical failure
 in the application and there's nothing Tendermint can do. The problem
 should be addressed and both Tendermint and the application restarted.
+
 All other methods (`SetOption, Query, CheckTx, DeliverTx`) return an
 application-specific response `Code uint32`, where only `0` is reserved
 for `OK`.
+
+Finally, `Query`, `CheckTx`, and `DeliverTx` include a `Codespace string`, whose
+intended use is to disambiguate `Code` values returned by different domains of the
+application. The `Codespace` is a namespace for the `Code`.
 
 ## Tags
 
@@ -40,7 +45,9 @@ include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
 something about what happened during the methods execution.
 
 Tags can be used to index transactions and blocks according to what happened
-during their execution.
+during their execution. Note that the set of tags returned for a block from
+`BeginBlock` and `EndBlock` are merged. In case both methods return the same
+tag, only the value defined in `EndBlock` is used.
 
 Keys and values in tags must be UTF-8 encoded strings (e.g.
 "account.owner": "Bob", "balance": "100.0",
@@ -129,10 +136,13 @@ Commit are included in the header of the next block.
 ### Info
 
 - **Request**:
-  - `Version (string)`: The Tendermint version
+  - `Version (string)`: The Tendermint software semantic version
+  - `BlockVersion (uint64)`: The Tendermint Block Protocol version
+  - `P2PVersion (uint64)`: The Tendermint P2P Protocol version
 - **Response**:
   - `Data (string)`: Some arbitrary information
-  - `Version (Version)`: Version information
+  - `Version (string)`: The application software semantic version
+  - `AppVersion (uint64)`: The application protocol version
   - `LastBlockHeight (int64)`: Latest block for which the app has
     called Commit
   - `LastBlockAppHash ([]byte)`: Latest result of Commit
@@ -140,6 +150,7 @@ Commit are included in the header of the next block.
   - Return information about the application state.
   - Used to sync Tendermint with the application during a handshake
     that happens on startup.
+  - The returned `AppVersion` will be included in the Header of every block.
   - Tendermint expects `LastBlockAppHash` and `LastBlockHeight` to
     be updated during `Commit`, ensuring that `Commit` is never
     called twice for the same block height.
@@ -190,9 +201,9 @@ Commit are included in the header of the next block.
     of Path.
   - `Path (string)`: Path of request, like an HTTP GET path. Can be
     used with or in liue of Data.
-  - Apps MUST interpret '/store' as a query by key on the
+    - Apps MUST interpret '/store' as a query by key on the
     underlying store. The key SHOULD be specified in the Data field.
-  - Apps SHOULD allow queries over specific types like
+    - Apps SHOULD allow queries over specific types like
     '/accounts/...' or '/votes/...'
   - `Height (int64)`: The block height for which you want the query
     (default=0 returns data for the latest committed block). Note
@@ -209,15 +220,18 @@ Commit are included in the header of the next block.
   - `Index (int64)`: The index of the key in the tree.
   - `Key ([]byte)`: The key of the matching data.
   - `Value ([]byte)`: The value of the matching data.
-  - `Proof ([]byte)`: Serialized proof for the data, if requested, to be
+  - `Proof (Proof)`: Serialized proof for the value data, if requested, to be
     verified against the `AppHash` for the given Height.
   - `Height (int64)`: The block height from which data was derived.
     Note that this is the height of the block containing the
     application's Merkle root hash, which represents the state as it
     was after committing the block at Height-1
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - Query for data from the application at current or past height.
   - Optionally return Merkle proof.
+  - Merkle proof includes self-describing `type` field to support many types
+  of Merkle trees and encoding formats.
 
 ### BeginBlock
 
@@ -255,6 +269,7 @@ Commit are included in the header of the next block.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - Technically optional - not involved in processing blocks.
   - Guardian of the mempool: every node runs CheckTx before letting a
@@ -282,6 +297,7 @@ Commit are included in the header of the next block.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
+  - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
   - The workhorse of the application - non-optional.
   - Execute the transaction in full.
@@ -328,6 +344,7 @@ Commit are included in the header of the next block.
 ### Header
 
 - **Fields**:
+  - `Version (Version)`: Version of the blockchain and the application
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
   - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
@@ -352,6 +369,15 @@ Commit are included in the header of the next block.
     especially height and time.
   - Provides the proposer of the current block, for use in proposer-based
     reward mechanisms.
+
+### Version
+
+- **Fields**:
+  - `Block (uint64)`: Protocol version of the blockchain data structures.
+  - `App (uint64)`: Protocol version of the application.
+- **Usage**:
+  - Block version should be static in the life of a blockchain.
+  - App version may be updated over time by the application.
 
 ### Validator
 
@@ -413,3 +439,51 @@ Commit are included in the header of the next block.
   - `Round (int32)`: Commit round.
   - `Votes ([]VoteInfo)`: List of validators addresses in the last validator set
     with their voting power and whether or not they signed a vote.
+
+###  ConsensusParams
+
+- **Fields**:
+  - `BlockSize (BlockSizeParams)`: Parameters limiting the size of a block.
+  - `Evidence (EvidenceParams)`: Parameters limiting the validity of
+    evidence of byzantine behaviour.
+  - `Validator (ValidatorParams)`: Parameters limitng the types of pubkeys validators can use.
+
+### BlockSizeParams
+
+- **Fields**:
+  - `MaxBytes (int64)`: Max size of a block, in bytes.
+  - `MaxGas (int64)`: Max sum of `GasWanted` in a proposed block.
+    - NOTE: blocks that violate this may be committed if there are Byzantine proposers.
+        It's the application's responsibility to handle this when processing a
+        block!
+
+### EvidenceParams
+
+- **Fields**:
+  - `MaxAge (int64)`: Max age of evidence, in blocks. Evidence older than this
+    is considered stale and ignored.
+        - This should correspond with an app's "unbonding period" or other
+          similar mechanism for handling Nothing-At-Stake attacks.
+        - NOTE: this should change to time (instead of blocks)!
+
+### ValidatorParams
+
+- **Fields**:
+  - `PubKeyTypes ([]string)`: List of accepted pubkey types. Uses same
+    naming as `PubKey.Type`.
+
+### Proof
+
+- **Fields**:
+  - `Ops ([]ProofOp)`: List of chained Merkle proofs, of possibly different types
+    - The Merkle root of one op is the value being proven in the next op.
+    - The Merkle root of the final op should equal the ultimate root hash being
+      verified against.
+
+### ProofOp
+
+- **Fields**:
+  - `Type (string)`: Type of Merkle proof and how it's encoded.
+  - `Key ([]byte)`: Key in the Merkle tree that this proof is for.
+  - `Data ([]byte)`: Encoded Merkle proof for the key.
+

@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/go-kit/kit/log/term"
-
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -166,6 +165,16 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 
 	// make reactors from statedb
 	reactors := makeAndConnectEvidenceReactors(config, []dbm.DB{stateDB1, stateDB2})
+
+	// set the peer height on each reactor
+	for _, r := range reactors {
+		for _, peer := range r.Switch.Peers().List() {
+			ps := peerState{height1}
+			peer.Set(types.PeerStateKey, ps)
+		}
+	}
+
+	// update the first reactor peer's height to be very small
 	peer := reactors[0].Switch.Peers().List()[0]
 	ps := peerState{height2}
 	peer.Set(types.PeerStateKey, ps)
@@ -179,4 +188,31 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	// peers should still be connected
 	peers := reactors[1].Switch.Peers().List()
 	assert.Equal(t, 1, len(peers))
+}
+func TestEvidenceListMessageValidationBasic(t *testing.T) {
+
+	testCases := []struct {
+		testName          string
+		malleateEvListMsg func(*EvidenceListMessage)
+		expectErr         bool
+	}{
+		{"Good EvidenceListMessage", func(evList *EvidenceListMessage) {}, false},
+		{"Invalid EvidenceListMessage", func(evList *EvidenceListMessage) {
+			evList.Evidence = append(evList.Evidence,
+				&types.DuplicateVoteEvidence{PubKey: secp256k1.GenPrivKey().PubKey()})
+		}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			evListMsg := &EvidenceListMessage{}
+			n := 3
+			valAddr := []byte("myval")
+			evListMsg.Evidence = make([]types.Evidence, n)
+			for i := 0; i < n; i++ {
+				evListMsg.Evidence[i] = types.NewMockGoodEvidence(int64(i+1), 0, valAddr)
+			}
+			tc.malleateEvListMsg(evListMsg)
+			assert.Equal(t, tc.expectErr, evListMsg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }

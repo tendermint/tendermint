@@ -4,7 +4,7 @@ package proto3;
 
 
 message PartSetHeader {
-  sint32 Total = 1;
+  int32 Total = 1;
   bytes Hash = 2;
 }
 
@@ -15,36 +15,43 @@ message BlockID {
 
 message Header {
   // basic block info
-  string ChainID = 1;
-  sint64 Height = 2;
-  Timestamp Time = 3;
-  sint64 NumTxs = 4;
-  sint64 TotalTxs = 5;
+  Version Version = 1;
+  string ChainID = 2;
+  int64 Height = 3;
+  Timestamp Time = 4;
+  int64 NumTxs = 5;
+  int64 TotalTxs = 6;
 
   // prev block info
-  BlockID LastBlockID = 6;
+  BlockID LastBlockID = 7;
 
   // hashes of block data
-  bytes LastCommitHash = 7; // commit from validators from the last block
-  bytes DataHash = 8; // transactions
+  bytes LastCommitHash = 8; // commit from validators from the last block
+  bytes DataHash = 9; // transactions
 
   // hashes from the app output from the prev block
-  bytes ValidatorsHash = 9; // validators for the current block
-  bytes NextValidatorsHash = 10; // validators for the next block
-  bytes ConsensusHash = 11; // consensus params for current block
-  bytes AppHash = 12; // state after txs from the previous block
-  bytes LastResultsHash = 13; // root hash of all results from the txs from the previous block
+  bytes ValidatorsHash = 10; // validators for the current block
+  bytes NextValidatorsHash = 11; // validators for the next block
+  bytes ConsensusHash = 12; // consensus params for current block
+  bytes AppHash = 13; // state after txs from the previous block
+  bytes LastResultsHash = 14; // root hash of all results from the txs from the previous block
 
   // consensus info
-  bytes EvidenceHash = 14; // evidence included in the block
-  bytes ProposerAddress = 15; // original proposer of the block
+  bytes EvidenceHash = 15; // evidence included in the block
+  bytes ProposerAddress = 16; // original proposer of the block
 }
 
-// Timestamp wraps how amino encodes time. Note that this is different from the protobuf well-known type
-// protobuf/timestamp.proto in the sense that there seconds and nanos are varint encoded. See:
+message Version {
+  uint64 Block = 1;
+  uint64 App = 2;
+}
+
+// Timestamp wraps how amino encodes time.
+// This is the protobuf well-known type protobuf/timestamp.proto
+// See:
 // https://github.com/google/protobuf/blob/d2980062c859649523d5fd51d6b55ab310e47482/src/google/protobuf/timestamp.proto#L123-L135
-// Also nanos do not get skipped if they are zero in amino.
+// NOTE/XXX: nanos do not get skipped if they are zero in amino.
 message Timestamp {
-  sfixed64 seconds = 1;
-  sfixed32 nanos = 2;
+  int64 seconds = 1;
+  int32 nanos = 2;
 }

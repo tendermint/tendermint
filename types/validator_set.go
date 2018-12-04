@@ -62,7 +62,11 @@ func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
 
 // IncrementAccum increments accum of each validator and updates the
 // proposer. Panics if validator set is empty.
+// `times` must be positive.
 func (vals *ValidatorSet) IncrementAccum(times int) {
+	if times <= 0 {
+		panic("Cannot call IncrementAccum with non-positive times")
+	}
 
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
@@ -176,11 +180,11 @@ func (vals *ValidatorSet) Hash() []byte {
 	if len(vals.Validators) == 0 {
 		return nil
 	}
-	hashers := make([]merkle.Hasher, len(vals.Validators))
+	bzs := make([][]byte, len(vals.Validators))
 	for i, val := range vals.Validators {
-		hashers[i] = val
+		bzs[i] = val.Bytes()
 	}
-	return merkle.SimpleHashFromHashers(hashers)
+	return merkle.SimpleHashFromByteSlices(bzs)
 }
 
 // Add adds val to the validator set and returns true. It returns false if val
@@ -282,7 +286,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		if precommit.Round != round {
 			return fmt.Errorf("Invalid commit -- wrong round: want %v got %v", round, precommit.Round)
 		}
-		if precommit.Type != VoteTypePrecommit {
+		if precommit.Type != PrecommitType {
 			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
 		_, val := vals.GetByIndex(idx)
@@ -361,7 +365,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		if precommit.Round != round {
 			return cmn.NewError("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
-		if precommit.Type != VoteTypePrecommit {
+		if precommit.Type != PrecommitType {
 			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
 		}
 		// See if this validator is in oldVals.

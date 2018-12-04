@@ -7,17 +7,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func examplePrevote() *Vote {
-	return exampleVote(VoteTypePrevote)
+	return exampleVote(byte(PrevoteType))
 }
 
 func examplePrecommit() *Vote {
-	return exampleVote(VoteTypePrecommit)
+	return exampleVote(byte(PrecommitType))
 }
 
 func exampleVote(t byte) *Vote {
@@ -27,12 +27,10 @@ func exampleVote(t byte) *Vote {
 	}
 
 	return &Vote{
-		ValidatorAddress: tmhash.Sum([]byte("validator_address")),
-		ValidatorIndex:   56789,
-		Height:           12345,
-		Round:            2,
-		Timestamp:        stamp,
-		Type:             t,
+		Type:      SignedMsgType(t),
+		Height:    12345,
+		Round:     2,
+		Timestamp: stamp,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
@@ -40,19 +38,104 @@ func exampleVote(t byte) *Vote {
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+		ValidatorIndex:   56789,
 	}
 }
 
 func TestVoteSignable(t *testing.T) {
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")
-	signStr := string(signBytes)
 
-	expected := `{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"8B01023386C371778ECB6368573E539AFC3CC860","parts":{"hash":"72DB3D959635DFF1BB567BEDAA70573392C51596","total":"1000000"}},"height":"12345","round":"2","timestamp":"2017-12-25T03:00:01.234Z","type":2}`
-	if signStr != expected {
-		// NOTE: when this fails, you probably want to fix up consensus/replay_test too
-		t.Errorf("Got unexpected sign string for Vote. Expected:\n%v\nGot:\n%v", expected, signStr)
+	expected, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote("test_chain_id", vote))
+	require.NoError(t, err)
+
+	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Vote.")
+}
+
+func TestVoteSignableTestVectors(t *testing.T) {
+	vote := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
+
+	tests := []struct {
+		canonicalVote CanonicalVote
+		want          []byte
+	}{
+		{
+			CanonicalizeVote("", &Vote{}),
+			// NOTE: Height and Round are skipped here. This case needs to be considered while parsing.
+			// []byte{0x22, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
+			[]byte{0x22, 0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
+		},
+		// with proper (fixed size) height and round (PreCommit):
+		{
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrecommitType}),
+			[]byte{
+				0x8,                                    // (field_number << 3) | wire_type
+				0x2,                                    // PrecommitType
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				0x22, // (field_number << 3) | wire_type
+				// remaining fields (timestamp):
+				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
+		},
+		// with proper (fixed size) height and round (PreVote):
+		{
+			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrevoteType}),
+			[]byte{
+				0x8,                                    // (field_number << 3) | wire_type
+				0x1,                                    // PrevoteType
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				0x22, // (field_number << 3) | wire_type
+				// remaining fields (timestamp):
+				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
+		},
+		{
+			vote,
+			[]byte{
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				// remaining fields (timestamp):
+				0x22,
+				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
+		},
+		// containing non-empty chain_id:
+		{
+			CanonicalizeVote("test_chain_id", &Vote{Height: 1, Round: 1}),
+			[]byte{
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				// remaining fields:
+				0x22,                                                                // (field_number << 3) | wire_type
+				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1, // timestamp
+				0x32,                                                                               // (field_number << 3) | wire_type
+				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64}, // chainID
+		},
 	}
+	for i, tc := range tests {
+		got, err := cdc.MarshalBinaryBare(tc.canonicalVote)
+		require.NoError(t, err)
+
+		require.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
+	}
+}
+
+func TestVoteProposalNotEq(t *testing.T) {
+	cv := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
+	p := CanonicalizeProposal("", &Proposal{Height: 1, Round: 1})
+	vb, err := cdc.MarshalBinaryLengthPrefixed(cv)
+	require.NoError(t, err)
+	pb, err := cdc.MarshalBinaryLengthPrefixed(p)
+	require.NoError(t, err)
+	require.NotEqual(t, vb, pb)
 }
 
 func TestVoteVerifySignature(t *testing.T) {
@@ -72,9 +155,9 @@ func TestVoteVerifySignature(t *testing.T) {
 
 	// serialize, deserialize and verify again....
 	precommit := new(Vote)
-	bs, err := cdc.MarshalBinary(vote)
+	bs, err := cdc.MarshalBinaryLengthPrefixed(vote)
 	require.NoError(t, err)
-	err = cdc.UnmarshalBinary(bs, &precommit)
+	err = cdc.UnmarshalBinaryLengthPrefixed(bs, &precommit)
 	require.NoError(t, err)
 
 	// verify the transmitted vote
@@ -87,12 +170,12 @@ func TestVoteVerifySignature(t *testing.T) {
 func TestIsVoteTypeValid(t *testing.T) {
 	tc := []struct {
 		name string
-		in   byte
+		in   SignedMsgType
 		out  bool
 	}{
-		{"Prevote", VoteTypePrevote, true},
-		{"Precommit", VoteTypePrecommit, true},
-		{"InvalidType", byte(3), false},
+		{"Prevote", PrevoteType, true},
+		{"Precommit", PrecommitType, true},
+		{"InvalidType", SignedMsgType(0x3), false},
 	}
 
 	for _, tt := range tc {
@@ -124,13 +207,17 @@ func TestVoteVerify(t *testing.T) {
 }
 
 func TestMaxVoteBytes(t *testing.T) {
+	// time is varint encoded so need to pick the max.
+	// year int, month Month, day, hour, min, sec, nsec int, loc *Location
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+
 	vote := &Vote{
-		ValidatorAddress: tmhash.Sum([]byte("validator_address")),
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   math.MaxInt64,
 		Height:           math.MaxInt64,
 		Round:            math.MaxInt64,
-		Timestamp:        tmtime.Now(),
-		Type:             VoteTypePrevote,
+		Timestamp:        timestamp,
+		Type:             PrevoteType,
 		BlockID: BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
@@ -144,8 +231,50 @@ func TestMaxVoteBytes(t *testing.T) {
 	err := privVal.SignVote("test_chain_id", vote)
 	require.NoError(t, err)
 
-	bz, err := cdc.MarshalBinary(vote)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(vote)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, MaxVoteBytes, len(bz))
+}
+
+func TestVoteString(t *testing.T) {
+	str := examplePrecommit().String()
+	expected := `Vote{56789:6AF1F4111082 12345/02/2(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	if str != expected {
+		t.Errorf("Got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
+	}
+
+	str2 := examplePrevote().String()
+	expected = `Vote{56789:6AF1F4111082 12345/02/1(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	if str2 != expected {
+		t.Errorf("Got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
+	}
+}
+
+func TestVoteValidateBasic(t *testing.T) {
+	privVal := NewMockPV()
+
+	testCases := []struct {
+		testName     string
+		malleateVote func(*Vote)
+		expectErr    bool
+	}{
+		{"Good Vote", func(v *Vote) {}, false},
+		{"Negative Height", func(v *Vote) { v.Height = -1 }, true},
+		{"Negative Round", func(v *Vote) { v.Round = -1 }, true},
+		{"Invalid BlockID", func(v *Vote) { v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}} }, true},
+		{"Invalid Address", func(v *Vote) { v.ValidatorAddress = make([]byte, 1) }, true},
+		{"Invalid ValidatorIndex", func(v *Vote) { v.ValidatorIndex = -1 }, true},
+		{"Invalid Signature", func(v *Vote) { v.Signature = nil }, true},
+		{"Too big Signature", func(v *Vote) { v.Signature = make([]byte, MaxSignatureSize+1) }, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			vote := examplePrecommit()
+			err := privVal.SignVote("test_chain_id", vote)
+			require.NoError(t, err)
+			tc.malleateVote(vote)
+			assert.Equal(t, tc.expectErr, vote.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }

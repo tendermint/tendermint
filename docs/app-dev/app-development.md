@@ -47,90 +47,6 @@ The mempool and consensus logic act as clients, and each maintains an
 open ABCI connection with the application, which hosts an ABCI server.
 Shown are the request and response types sent on each connection.
 
-## Message Protocol
-
-The message protocol consists of pairs of requests and responses. Some
-messages have no fields, while others may include byte-arrays, strings,
-or integers. See the `message Request` and `message Response`
-definitions in [the protobuf definition
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto),
-and the [protobuf
-documentation](https://developers.google.com/protocol-buffers/docs/overview)
-for more details.
-
-For each request, a server should respond with the corresponding
-response, where order of requests is preserved in the order of
-responses.
-
-## Server
-
-To use ABCI in your programming language of choice, there must be a ABCI
-server in that language. Tendermint supports two kinds of implementation
-of the server:
-
-- Asynchronous, raw socket server (Tendermint Socket Protocol, also
-  known as TSP or Teaspoon)
-- GRPC
-
-Both can be tested using the `abci-cli` by setting the `--abci` flag
-appropriately (ie. to `socket` or `grpc`).
-
-See examples, in various stages of maintenance, in
-[Go](https://github.com/tendermint/tendermint/tree/develop/abci/server),
-[JavaScript](https://github.com/tendermint/js-abci),
-[Python](https://github.com/tendermint/tendermint/tree/develop/abci/example/python3/abci),
-[C++](https://github.com/mdyring/cpp-tmsp), and
-[Java](https://github.com/jTendermint/jabci).
-
-### GRPC
-
-If GRPC is available in your language, this is the easiest approach,
-though it will have significant performance overhead.
-
-To get started with GRPC, copy in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto)
-and compile it using the GRPC plugin for your language. For instance,
-for golang, the command is `protoc --go_out=plugins=grpc:. types.proto`.
-See the [grpc documentation for more details](http://www.grpc.io/docs/).
-`protoc` will autogenerate all the necessary code for ABCI client and
-server in your language, including whatever interface your application
-must satisfy to be used by the ABCI server for handling requests.
-
-### TSP
-
-If GRPC is not available in your language, or you require higher
-performance, or otherwise enjoy programming, you may implement your own
-ABCI server using the Tendermint Socket Protocol, known affectionately
-as Teaspoon. The first step is still to auto-generate the relevant data
-types and codec in your language using `protoc`. Messages coming over
-the socket are proto3 encoded, but additionally length-prefixed to
-facilitate use as a streaming protocol. proto3 doesn't have an
-official length-prefix standard, so we use our own. The first byte in
-the prefix represents the length of the Big Endian encoded length. The
-remaining bytes in the prefix are the Big Endian encoded length.
-
-For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4
-bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
-encoded ABCI message is 65535 bytes long, the length-prefixed message
-would be like 0x02FFFF....
-
-Note this prefixing does not apply for grpc.
-
-An ABCI server must also be able to support multiple connections, as
-Tendermint uses three connections.
-
-## Client
-
-There are currently two use-cases for an ABCI client. One is a testing
-tool, as in the `abci-cli`, which allows ABCI requests to be sent via
-command line. The other is a consensus engine, such as Tendermint Core,
-which makes requests to the application every time a new transaction is
-received or a block is committed.
-
-It is unlikely that you will need to implement a client. For details of
-our client, see
-[here](https://github.com/tendermint/tendermint/tree/develop/abci/client).
-
 Most of the examples below are from [kvstore
 application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/kvstore.go),
 which is a part of the abci repo. [persistent_kvstore
@@ -431,17 +347,30 @@ Note: these query formats are subject to change!
 In go:
 
 ```
-func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-  if reqQuery.Prove {
-    value, proof, exists := app.state.Proof(reqQuery.Data)
-    resQuery.Index = -1 // TODO make Proof return index
-    resQuery.Key = reqQuery.Data
-    resQuery.Value = value
-    resQuery.Proof = proof
-    if exists {
-      resQuery.Log = "exists"
-    } else {
-      resQuery.Log = "does not exist"
+    func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+      if reqQuery.Prove {
+        value, proof, exists := app.state.GetWithProof(reqQuery.Data)
+        resQuery.Index = -1 // TODO make Proof return index
+        resQuery.Key = reqQuery.Data
+        resQuery.Value = value
+        resQuery.Proof = proof
+        if exists {
+          resQuery.Log = "exists"
+        } else {
+          resQuery.Log = "does not exist"
+        }
+        return
+      } else {
+        index, value, exists := app.state.Get(reqQuery.Data)
+        resQuery.Index = int64(index)
+        resQuery.Value = value
+        if exists {
+          resQuery.Log = "exists"
+        } else {
+          resQuery.Log = "does not exist"
+        }
+        return
+      }
     }
     return
   } else {
@@ -461,22 +390,25 @@ func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery type
 In Java:
 
 ```
-ResponseQuery requestQuery(RequestQuery req) {
-    final boolean isProveQuery = req.getProve();
-    final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
+    ResponseQuery requestQuery(RequestQuery req) {
+        final boolean isProveQuery = req.getProve();
+        final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
+		byte[] queryData = req.getData().toByteArray();
 
-    if (isProveQuery) {
-        com.app.example.ProofResult proofResult = generateProof(req.getData().toByteArray());
-        final byte[] proofAsByteArray = proofResult.getAsByteArray();
-
-        responseBuilder.setProof(ByteString.copyFrom(proofAsByteArray));
-        responseBuilder.setKey(req.getData());
-        responseBuilder.setValue(ByteString.copyFrom(proofResult.getData()));
-        responseBuilder.setLog(result.getLogValue());
-    } else {
-        byte[] queryData = req.getData().toByteArray();
-
-        final com.app.example.QueryResult result = generateQueryResult(queryData);
+        if (isProveQuery) {
+            com.app.example.QueryResultWithProof result = generateQueryResultWithProof(queryData);
+            responseBuilder.setIndex(result.getLeftIndex());
+            responseBuilder.setKey(req.getData());
+            responseBuilder.setValue(result.getValueOrNull(0));
+            responseBuilder.setHeight(result.getHeight());
+            responseBuilder.setProof(result.getProof());
+            responseBuilder.setLog(result.getLogValue());
+        } else {
+            com.app.example.QueryResult result = generateQueryResult(queryData);
+            responseBuilder.setIndex(result.getIndex());
+            responseBuilder.setValue(result.getValue());
+            responseBuilder.setLog(result.getLogValue());
+        }
 
         responseBuilder.setIndex(result.getIndex());
         responseBuilder.setValue(ByteString.copyFrom(result.getValue()));

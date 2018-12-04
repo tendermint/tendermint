@@ -13,6 +13,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -73,13 +74,13 @@ type baseWAL struct {
 	enc *WALEncoder
 }
 
-func NewWAL(walFile string) (*baseWAL, error) {
+func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
 	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
 	}
 
-	group, err := auto.OpenGroup(walFile)
+	group, err := auto.OpenGroup(walFile, groupOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +94,11 @@ func NewWAL(walFile string) (*baseWAL, error) {
 
 func (wal *baseWAL) Group() *auto.Group {
 	return wal.group
+}
+
+func (wal *baseWAL) SetLogger(l log.Logger) {
+	wal.BaseService.Logger = l
+	wal.group.SetLogger(l)
 }
 
 func (wal *baseWAL) OnStart() error {

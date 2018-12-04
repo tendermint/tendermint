@@ -43,7 +43,7 @@ func TestBaseCert(t *testing.T) {
 	for _, tc := range cases {
 		sh := tc.keys.GenSignedHeader(chainID, tc.height, nil, tc.vals, tc.vals,
 			[]byte("foo"), []byte("params"), []byte("results"), tc.first, tc.last)
-		err := cert.Certify(sh)
+		err := cert.Verify(sh)
 		if tc.proper {
 			assert.Nil(err, "%+v", err)
 		} else {

@@ -36,17 +36,17 @@ import (
 // 			},
 // 			"Data": "YWJjZA==",
 // 			"RootHash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF",
-// 			"Total": 1,
-// 			"Index": 0
+// 			"Total": "1",
+// 			"Index": "0"
 // 		},
 // 		"tx": "YWJjZA==",
 // 		"tx_result": {
 // 			"log": "",
 // 			"data": "",
-// 			"code": 0
+// 			"code": "0"
 // 		},
-// 		"index": 0,
-// 		"height": 52,
+// 		"index": "0",
+// 		"height": "52",
 //		"hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
 // 	},
 // 	"id": "",
@@ -140,17 +140,17 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 //           },
 //           "Data": "mvZHHa7HhZ4aRT0xMDA=",
 //           "RootHash": "F6541223AA46E428CB1070E9840D2C3DF3B6D776",
-//           "Total": 32,
-//           "Index": 31
+//           "Total": "32",
+//           "Index": "31"
 //         },
 //         "tx": "mvZHHa7HhZ4aRT0xMDA=",
 //         "tx_result": {},
-//         "index": 31,
-//         "height": 12,
+//         "index": "31",
+//         "height": "12",
 //         "hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
 //       }
 //     ],
-//     "total_count": 1
+//     "total_count": "1"
 //   }
 // }
 // ```

@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -23,7 +25,7 @@ type Heartbeat struct {
 // SignBytes returns the Heartbeat bytes for signing.
 // It panics if the Heartbeat is nil.
 func (heartbeat *Heartbeat) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalJSON(CanonicalHeartbeat(chainID, heartbeat))
+	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeHeartbeat(chainID, heartbeat))
 	if err != nil {
 		panic(err)
 	}
@@ -49,4 +51,33 @@ func (heartbeat *Heartbeat) String() string {
 		heartbeat.ValidatorIndex, cmn.Fingerprint(heartbeat.ValidatorAddress),
 		heartbeat.Height, heartbeat.Round, heartbeat.Sequence,
 		fmt.Sprintf("/%X.../", cmn.Fingerprint(heartbeat.Signature[:])))
+}
+
+// ValidateBasic performs basic validation.
+func (heartbeat *Heartbeat) ValidateBasic() error {
+	if len(heartbeat.ValidatorAddress) != crypto.AddressSize {
+		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
+			crypto.AddressSize,
+			len(heartbeat.ValidatorAddress),
+		)
+	}
+	if heartbeat.ValidatorIndex < 0 {
+		return errors.New("Negative ValidatorIndex")
+	}
+	if heartbeat.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if heartbeat.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	if heartbeat.Sequence < 0 {
+		return errors.New("Negative Sequence")
+	}
+	if len(heartbeat.Signature) == 0 {
+		return errors.New("Signature is missing")
+	}
+	if len(heartbeat.Signature) > MaxSignatureSize {
+		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+	}
+	return nil
 }

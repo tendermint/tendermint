@@ -3,26 +3,27 @@ package p2p
 import (
 	"fmt"
 	"net"
-	"sync/atomic"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-var testIPSuffix uint32
+const metricsTickerDuration = 10 * time.Second
 
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
+	FlushStop()
 
-	ID() ID             // peer's cryptographic ID
-	RemoteIP() net.IP   // remote IP of the connection
+	ID() ID           // peer's cryptographic ID
+	RemoteIP() net.IP // remote IP of the connection
+
 	IsOutbound() bool   // did we dial the peer
 	IsPersistent() bool // do we redial this peer when we disconnect
+
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
 	OriginalAddr() *NetAddress
@@ -38,12 +39,28 @@ type Peer interface {
 
 // peerConn contains the raw connection and its config.
 type peerConn struct {
-	outbound     bool
-	persistent   bool
-	config       *config.P2PConfig
-	conn         net.Conn // source connection
-	ip           net.IP
+	outbound   bool
+	persistent bool
+	conn       net.Conn // source connection
+
 	originalAddr *NetAddress // nil for inbound connections
+
+	// cached RemoteIP()
+	ip net.IP
+}
+
+func newPeerConn(
+	outbound, persistent bool,
+	conn net.Conn,
+	originalAddr *NetAddress,
+) peerConn {
+
+	return peerConn{
+		outbound:     outbound,
+		persistent:   persistent,
+		conn:         conn,
+		originalAddr: originalAddr,
+	}
 }
 
 // ID only exists for SecretConnection.
@@ -55,14 +72,6 @@ func (pc peerConn) ID() ID {
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
 	if pc.ip != nil {
-		return pc.ip
-	}
-
-	// In test cases a conn could not be present at all or be an in-memory
-	// implementation where we want to return a fake ip.
-	if pc.conn == nil || pc.conn.RemoteAddr().String() == "pipe" {
-		pc.ip = net.IP{172, 16, 0, byte(atomic.AddUint32(&testIPSuffix, 1))}
-
 		return pc.ip
 	}
 
@@ -99,7 +108,12 @@ type peer struct {
 
 	// User data
 	Data *cmn.CMap
+
+	metrics       *Metrics
+	metricsTicker *time.Ticker
 }
+
+type PeerOption func(*peer)
 
 func newPeer(
 	pc peerConn,
@@ -108,12 +122,15 @@ func newPeer(
 	reactorsByCh map[byte]Reactor,
 	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
+	options ...PeerOption,
 ) *peer {
 	p := &peer{
-		peerConn: pc,
-		nodeInfo: nodeInfo,
-		channels: nodeInfo.Channels,
-		Data:     cmn.NewCMap(),
+		peerConn:      pc,
+		nodeInfo:      nodeInfo,
+		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
+		Data:          cmn.NewCMap(),
+		metricsTicker: time.NewTicker(metricsTickerDuration),
+		metrics:       NopMetrics(),
 	}
 
 	p.mconn = createMConnection(
@@ -125,8 +142,20 @@ func newPeer(
 		mConfig,
 	)
 	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
+	for _, option := range options {
+		option(p)
+	}
 
 	return p
+}
+
+// String representation.
+func (p *peer) String() string {
+	if p.outbound {
+		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
+	}
+
+	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
 }
 
 //---------------------------------------------------
@@ -143,12 +172,27 @@ func (p *peer) OnStart() error {
 	if err := p.BaseService.OnStart(); err != nil {
 		return err
 	}
-	err := p.mconn.Start()
-	return err
+
+	if err := p.mconn.Start(); err != nil {
+		return err
+	}
+
+	go p.metricsReporter()
+	return nil
+}
+
+// FlushStop mimics OnStop but additionally ensures that all successful
+// .Send() calls will get flushed before closing the connection.
+// NOTE: it is not safe to call this method more than once.
+func (p *peer) FlushStop() {
+	p.metricsTicker.Stop()
+	p.BaseService.OnStop()
+	p.mconn.FlushStop() // stop everything and close the conn
 }
 
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
+	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
 	p.mconn.Stop() // stop everything and close the conn
 }
@@ -158,7 +202,7 @@ func (p *peer) OnStop() {
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return p.nodeInfo.ID
+	return p.nodeInfo.ID()
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.
@@ -200,7 +244,11 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	return p.mconn.Send(chID, msgBytes)
+	res := p.mconn.Send(chID, msgBytes)
+	if res {
+		p.metrics.PeerSendBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
+	}
+	return res
 }
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
@@ -211,7 +259,11 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	return p.mconn.TrySend(chID, msgBytes)
+	res := p.mconn.TrySend(chID, msgBytes)
+	if res {
+		p.metrics.PeerSendBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
+	}
+	return res
 }
 
 // Get the data for a given key.
@@ -245,51 +297,12 @@ func (p *peer) hasChannel(chID byte) bool {
 }
 
 //---------------------------------------------------
-// methods used by the Switch
+// methods only used for testing
+// TODO: can we remove these?
 
-// CloseConn should be called by the Switch if the peer was created but never
-// started.
+// CloseConn closes the underlying connection
 func (pc *peerConn) CloseConn() {
 	pc.conn.Close() // nolint: errcheck
-}
-
-// HandshakeTimeout performs the Tendermint P2P handshake between a given node
-// and the peer by exchanging their NodeInfo. It sets the received nodeInfo on
-// the peer.
-// NOTE: blocking
-func (pc *peerConn) HandshakeTimeout(
-	ourNodeInfo NodeInfo,
-	timeout time.Duration,
-) (peerNodeInfo NodeInfo, err error) {
-	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error setting deadline")
-	}
-
-	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.MarshalBinaryWriter(pc.conn, ourNodeInfo)
-			return
-		},
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.UnmarshalBinaryReader(
-				pc.conn,
-				&peerNodeInfo,
-				int64(MaxNodeInfoSize()),
-			)
-			return
-		},
-	)
-	if err := trs.FirstError(); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error during handshake")
-	}
-
-	// Remove deadline
-	if err := pc.conn.SetDeadline(time.Time{}); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error removing deadline")
-	}
-
-	return peerNodeInfo, nil
 }
 
 // Addr returns peer's remote network address.
@@ -305,13 +318,29 @@ func (p *peer) CanSend(chID byte) bool {
 	return p.mconn.CanSend(chID)
 }
 
-// String representation.
-func (p *peer) String() string {
-	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
-	}
+//---------------------------------------------------
 
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
+func PeerMetrics(metrics *Metrics) PeerOption {
+	return func(p *peer) {
+		p.metrics = metrics
+	}
+}
+
+func (p *peer) metricsReporter() {
+	for {
+		select {
+		case <-p.metricsTicker.C:
+			status := p.mconn.Status()
+			var sendQueueSize float64
+			for _, chStatus := range status.Channels {
+				sendQueueSize += float64(chStatus.SendQueueSize)
+			}
+
+			p.metrics.PeerPendingSendBytes.With("peer_id", string(p.ID())).Set(sendQueueSize)
+		case <-p.Quit():
+			return
+		}
+	}
 }
 
 //------------------------------------------------------------------
@@ -333,6 +362,7 @@ func createMConnection(
 			// which does onPeerError.
 			panic(fmt.Sprintf("Unknown channel %X", chID))
 		}
+		p.metrics.PeerReceiveBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
 		reactor.Receive(chID, p, msgBytes)
 	}
 

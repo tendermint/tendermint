@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/tendermint/tendermint/rpc/client"
-	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -30,6 +31,21 @@ func GetClients() []client.Client {
 		getHTTPClient(),
 		getLocalClient(),
 	}
+}
+
+func TestCorsEnabled(t *testing.T) {
+	origin := rpctest.GetConfig().RPC.CORSAllowedOrigins[0]
+	remote := strings.Replace(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http", -1)
+
+	req, err := http.NewRequest("GET", remote, nil)
+	require.Nil(t, err, "%+v", err)
+	req.Header.Set("Origin", origin)
+	c := &http.Client{}
+	resp, err := c.Do(req)
+	defer resp.Body.Close()
+
+	require.Nil(t, err, "%+v", err)
+	assert.Equal(t, resp.Header.Get("Access-Control-Allow-Origin"), origin)
 }
 
 // Make sure status is correct (we connect properly)
@@ -166,10 +182,10 @@ func TestAppCalls(t *testing.T) {
 		if err := client.WaitForHeight(c, apph, nil); err != nil {
 			t.Error(err)
 		}
-		_qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: true})
+		_qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Prove: false})
 		qres := _qres.Response
 		if assert.Nil(err) && assert.True(qres.IsOK()) {
-			// assert.Equal(k, data.GetKey())  // only returned for proofs
+			assert.Equal(k, qres.Key)
 			assert.EqualValues(v, qres.Value)
 		}
 
@@ -221,10 +237,12 @@ func TestAppCalls(t *testing.T) {
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 
 		// and we got a proof that works!
-		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
+		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Prove: true})
 		pres := _pres.Response
 		assert.Nil(err)
 		assert.True(pres.IsOK())
+
+		// XXX Test proof
 	}
 }
 
@@ -310,7 +328,7 @@ func TestTx(t *testing.T) {
 				// time to verify the proof
 				proof := ptx.Proof
 				if tc.prove && assert.EqualValues(t, tx, proof.Data) {
-					assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+					assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
 				}
 			}
 		}
@@ -348,21 +366,28 @@ func TestTxSearch(t *testing.T) {
 		// time to verify the proof
 		proof := ptx.Proof
 		if assert.EqualValues(t, tx, proof.Data) {
-			assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+			assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
 		}
 
 		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height >= %d", txHeight), true, 1, 30)
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 1)
 
-		// we query for non existing tx
+		// query for non existing tx
 		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 
-		// we query using a tag (see kvstore application)
-		result, err = c.TxSearch("app.creator='jae'", false, 1, 30)
+		// query using a tag (see kvstore application)
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
+		require.Nil(t, err, "%+v", err)
+		if len(result.Txs) == 0 {
+			t.Fatal("expected a lot of transactions")
+		}
+
+		// query using a tag (see kvstore application) and height
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")

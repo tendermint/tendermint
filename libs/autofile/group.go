@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -19,10 +18,10 @@ import (
 )
 
 const (
-	groupCheckDuration    = 5000 * time.Millisecond
-	defaultHeadSizeLimit  = 10 * 1024 * 1024       // 10MB
-	defaultTotalSizeLimit = 1 * 1024 * 1024 * 1024 // 1GB
-	maxFilesToRemove      = 4                      // needs to be greater than 1
+	defaultGroupCheckDuration = 5000 * time.Millisecond
+	defaultHeadSizeLimit      = 10 * 1024 * 1024       // 10MB
+	defaultTotalSizeLimit     = 1 * 1024 * 1024 * 1024 // 1GB
+	maxFilesToRemove          = 4                      // needs to be greater than 1
 )
 
 /*
@@ -56,16 +55,17 @@ assuming that marker lines are written occasionally.
 type Group struct {
 	cmn.BaseService
 
-	ID             string
-	Head           *AutoFile // The head AutoFile to write to
-	headBuf        *bufio.Writer
-	Dir            string // Directory that contains .Head
-	ticker         *time.Ticker
-	mtx            sync.Mutex
-	headSizeLimit  int64
-	totalSizeLimit int64
-	minIndex       int // Includes head
-	maxIndex       int // Includes head, where Head will move to
+	ID                 string
+	Head               *AutoFile // The head AutoFile to write to
+	headBuf            *bufio.Writer
+	Dir                string // Directory that contains .Head
+	ticker             *time.Ticker
+	mtx                sync.Mutex
+	headSizeLimit      int64
+	totalSizeLimit     int64
+	groupCheckDuration time.Duration
+	minIndex           int // Includes head
+	maxIndex           int // Includes head, where Head will move to
 
 	// TODO: When we start deleting files, we need to start tracking GroupReaders
 	// and their dependencies.
@@ -73,7 +73,7 @@ type Group struct {
 
 // OpenGroup creates a new Group with head at headPath. It returns an error if
 // it fails to open head file.
-func OpenGroup(headPath string) (g *Group, err error) {
+func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err error) {
 	dir := path.Dir(headPath)
 	head, err := OpenAutoFile(headPath)
 	if err != nil {
@@ -81,15 +81,21 @@ func OpenGroup(headPath string) (g *Group, err error) {
 	}
 
 	g = &Group{
-		ID:             "group:" + head.ID,
-		Head:           head,
-		headBuf:        bufio.NewWriterSize(head, 4096*10),
-		Dir:            dir,
-		headSizeLimit:  defaultHeadSizeLimit,
-		totalSizeLimit: defaultTotalSizeLimit,
-		minIndex:       0,
-		maxIndex:       0,
+		ID:                 "group:" + head.ID,
+		Head:               head,
+		headBuf:            bufio.NewWriterSize(head, 4096*10),
+		Dir:                dir,
+		headSizeLimit:      defaultHeadSizeLimit,
+		totalSizeLimit:     defaultTotalSizeLimit,
+		groupCheckDuration: defaultGroupCheckDuration,
+		minIndex:           0,
+		maxIndex:           0,
 	}
+
+	for _, option := range groupOptions {
+		option(g)
+	}
+
 	g.BaseService = *cmn.NewBaseService(nil, "Group", g)
 
 	gInfo := g.readGroupInfo()
@@ -98,10 +104,31 @@ func OpenGroup(headPath string) (g *Group, err error) {
 	return
 }
 
+// GroupCheckDuration allows you to overwrite default groupCheckDuration.
+func GroupCheckDuration(duration time.Duration) func(*Group) {
+	return func(g *Group) {
+		g.groupCheckDuration = duration
+	}
+}
+
+// GroupHeadSizeLimit allows you to overwrite default head size limit - 10MB.
+func GroupHeadSizeLimit(limit int64) func(*Group) {
+	return func(g *Group) {
+		g.headSizeLimit = limit
+	}
+}
+
+// GroupTotalSizeLimit allows you to overwrite default total size limit of the group - 1GB.
+func GroupTotalSizeLimit(limit int64) func(*Group) {
+	return func(g *Group) {
+		g.totalSizeLimit = limit
+	}
+}
+
 // OnStart implements Service by starting the goroutine that checks file and
 // group limits.
 func (g *Group) OnStart() error {
-	g.ticker = time.NewTicker(groupCheckDuration)
+	g.ticker = time.NewTicker(g.groupCheckDuration)
 	go g.processTicks()
 	return nil
 }
@@ -122,26 +149,11 @@ func (g *Group) Close() {
 	g.mtx.Unlock()
 }
 
-// SetHeadSizeLimit allows you to overwrite default head size limit - 10MB.
-func (g *Group) SetHeadSizeLimit(limit int64) {
-	g.mtx.Lock()
-	g.headSizeLimit = limit
-	g.mtx.Unlock()
-}
-
 // HeadSizeLimit returns the current head size limit.
 func (g *Group) HeadSizeLimit() int64 {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 	return g.headSizeLimit
-}
-
-// SetTotalSizeLimit allows you to overwrite default total size limit of the
-// group - 1GB.
-func (g *Group) SetTotalSizeLimit(limit int64) {
-	g.mtx.Lock()
-	g.totalSizeLimit = limit
-	g.mtx.Unlock()
 }
 
 // TotalSizeLimit returns total size limit of the group.
@@ -218,7 +230,8 @@ func (g *Group) checkHeadSizeLimit() {
 	}
 	size, err := g.Head.Size()
 	if err != nil {
-		panic(err)
+		g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path, "err", err)
+		return
 	}
 	if size >= limit {
 		g.RotateFile()
@@ -240,21 +253,21 @@ func (g *Group) checkTotalSizeLimit() {
 		}
 		if index == gInfo.MaxIndex {
 			// Special degenerate case, just do nothing.
-			log.Println("WARNING: Group's head " + g.Head.Path + "may grow without bound")
+			g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path)
 			return
 		}
 		pathToRemove := filePathForIndex(g.Head.Path, index, gInfo.MaxIndex)
-		fileInfo, err := os.Stat(pathToRemove)
+		fInfo, err := os.Stat(pathToRemove)
 		if err != nil {
-			log.Println("WARNING: Failed to fetch info for file @" + pathToRemove)
+			g.Logger.Error("Failed to fetch info for file", "file", pathToRemove)
 			continue
 		}
 		err = os.Remove(pathToRemove)
 		if err != nil {
-			log.Println(err)
+			g.Logger.Error("Failed to remove path", "path", pathToRemove)
 			return
 		}
-		totalSize -= fileInfo.Size()
+		totalSize -= fInfo.Size()
 	}
 }
 
@@ -265,6 +278,14 @@ func (g *Group) RotateFile() {
 	defer g.mtx.Unlock()
 
 	headPath := g.Head.Path
+
+	if err := g.headBuf.Flush(); err != nil {
+		panic(err)
+	}
+
+	if err := g.Head.Sync(); err != nil {
+		panic(err)
+	}
 
 	if err := g.Head.closeFile(); err != nil {
 		panic(err)
@@ -657,7 +678,6 @@ func (gr *GroupReader) ReadLine() (string, error) {
 // IF index > gr.Group.maxIndex, returns io.EOF
 // CONTRACT: caller should hold gr.mtx
 func (gr *GroupReader) openFile(index int) error {
-
 	// Lock on Group to ensure that head doesn't move in the meanwhile.
 	gr.Group.mtx.Lock()
 	defer gr.Group.mtx.Unlock()
@@ -667,7 +687,7 @@ func (gr *GroupReader) openFile(index int) error {
 	}
 
 	curFilePath := filePathForIndex(gr.Head.Path, index, gr.Group.maxIndex)
-	curFile, err := os.Open(curFilePath)
+	curFile, err := os.OpenFile(curFilePath, os.O_RDONLY|os.O_CREATE, autoFilePerms)
 	if err != nil {
 		return err
 	}

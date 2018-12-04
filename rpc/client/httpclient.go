@@ -75,7 +75,7 @@ func (c *HTTP) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuer
 func (c *HTTP) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	result := new(ctypes.ResultABCIQuery)
 	_, err := c.rpc.Call("abci_query",
-		map[string]interface{}{"path": path, "data": data, "height": opts.Height, "trusted": opts.Trusted},
+		map[string]interface{}{"path": path, "data": data, "height": opts.Height, "prove": opts.Prove},
 		result)
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIQuery")

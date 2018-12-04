@@ -107,8 +107,8 @@ func (reqRes *ReqRes) SetCallback(cb func(res *types.Response)) {
 		return
 	}
 
-	defer reqRes.mtx.Unlock()
 	reqRes.cb = cb
+	reqRes.mtx.Unlock()
 }
 
 func (reqRes *ReqRes) GetCallback() func(*types.Response) {

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
+
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -71,15 +73,21 @@ func (v *Validator) String() string {
 // Hash computes the unique ID of a validator with a given voting power.
 // It excludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
-	return aminoHash(struct {
-		Address     Address
+	return tmhash.Sum(v.Bytes())
+}
+
+// Bytes computes the unique encoding of a validator with a given voting power.
+// These are the bytes that gets hashed in consensus. It excludes address
+// as its redundant with the pubkey. This also excludes accum which changes
+// every round.
+func (v *Validator) Bytes() []byte {
+	return cdcEncode((struct {
 		PubKey      crypto.PubKey
 		VotingPower int64
 	}{
-		v.Address,
 		v.PubKey,
 		v.VotingPower,
-	})
+	}))
 }
 
 //----------------------------------------

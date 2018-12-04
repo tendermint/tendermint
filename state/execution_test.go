@@ -64,7 +64,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
 	now := tmtime.Now()
-	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
+	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}
 	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
 
 	testCases := []struct {
@@ -135,7 +135,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 			types.TM2PB.Evidence(ev2, valSet, now)}},
 	}
 
-	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
+	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}
 	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
 	votes := []*types.Vote{vote0, vote1}
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
@@ -218,7 +218,7 @@ func TestUpdateValidators(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := updateValidators(tc.currentSet, tc.abciUpdates)
+			_, err := updateValidators(tc.currentSet, tc.abciUpdates)
 			if tc.shouldErr {
 				assert.Error(t, err)
 			} else {
