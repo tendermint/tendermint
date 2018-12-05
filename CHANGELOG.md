@@ -56,6 +56,8 @@ key types that can be used by validators.
     - keep accums averaged near 0
 - [types] [\#2941](https://github.com/tendermint/tendermint/issues/2941) Preserve val.Accum during ValidatorSet.Update to avoid it being
   reset to 0 every time a validator is updated
+- [p2p] \#2969 Fix mismatch in peer count between `/net_info` and the prometheus
+  metrics
 
 ## v0.26.4
 
