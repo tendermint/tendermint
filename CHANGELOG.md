@@ -56,6 +56,8 @@ key types that can be used by validators.
     - keep accums averaged near 0
 - [types] [\#2941](https://github.com/tendermint/tendermint/issues/2941) Preserve val.Accum during ValidatorSet.Update to avoid it being
   reset to 0 every time a validator is updated
+- [p2p] \#2968 Panic on transport error rather than continuing to run but not
+  accept new connections
 
 ## v0.26.4
 
