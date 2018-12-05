@@ -211,7 +211,9 @@ func (sw *Switch) OnStop() {
 	// Stop peers
 	for _, p := range sw.peers.List() {
 		p.Stop()
-		sw.peers.Remove(p)
+		if sw.peers.Remove(p) {
+			sw.metrics.Peers.Add(float64(-1))
+		}
 	}
 
 	// Stop reactors
@@ -299,8 +301,9 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	sw.peers.Remove(peer)
-	sw.metrics.Peers.Add(float64(-1))
+	if sw.peers.Remove(peer) {
+		sw.metrics.Peers.Add(float64(-1))
+	}
 	peer.Stop()
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)

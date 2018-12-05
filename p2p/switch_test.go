@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/prometheus/client_golang/prometheus"
+	_ "github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -337,8 +340,20 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 
 func TestSwitchStopPeerForError(t *testing.T) {
 
+	p2pMetrics := PrometheusMetrics("tm")
+
 	// make two connected switches
-	sw1, sw2 := MakeSwitchPair(t, initSwitchFunc)
+	sw1, sw2 := MakeSwitchPair(t, func(i int, sw *Switch) *Switch {
+		// set metrics on sw1
+		if i == 0 {
+			opt := WithMetrics(p2pMetrics)
+			opt(sw)
+		}
+		return initSwitchFunc(i, sw)
+	})
+
+	assert.Equal(t, len(sw1.Peers().List()), 1)
+	// TODO: assert p2pMetrics.Peers == 1
 
 	// send messages to the peer from sw1
 	p := sw1.Peers().List()[0]
@@ -351,9 +366,21 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	// now call StopPeerForError explicitly, eg. from a reactor
 	sw1.StopPeerForError(p, fmt.Errorf("some err"))
 
-	// at this point, the peers gauge (p2p_peers) will be -1,
-	// while the n_peers is 0.
 	assert.Equal(t, len(sw1.Peers().List()), 0)
+	// TODO: assert p2pMetrics.Peers == 0
+	// Can use this in the meantime to verify manually
+	/*
+		srv := &http.Server{
+			Addr: "localhost:26660",
+			Handler: promhttp.InstrumentMetricHandler(
+				prometheus.DefaultRegisterer, promhttp.HandlerFor(
+					prometheus.DefaultGatherer,
+					promhttp.HandlerOpts{MaxRequestsInFlight: 10},
+				),
+			),
+		}
+		srv.ListenAndServe()
+	*/
 }
 
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
