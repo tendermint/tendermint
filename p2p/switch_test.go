@@ -3,12 +3,16 @@ package p2p
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
-	_ "github.com/prometheus/client_golang/prometheus"
-	_ "github.com/prometheus/client_golang/prometheus/promhttp"
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -339,8 +343,24 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 }
 
 func TestSwitchStopPeerForError(t *testing.T) {
+	s := httptest.NewServer(stdprometheus.UninstrumentedHandler())
+	defer s.Close()
 
-	p2pMetrics := PrometheusMetrics("tm")
+	scrapeMetrics := func() string {
+		resp, _ := http.Get(s.URL)
+		buf, _ := ioutil.ReadAll(resp.Body)
+		return string(buf)
+	}
+
+	namespace, subsystem, name := config.TestInstrumentationConfig().Namespace, MetricsSubsystem, "peers"
+	re := regexp.MustCompile(namespace + `_` + subsystem + `_` + name + ` ([0-9\.]+)`)
+	peersMetricValue := func() float64 {
+		matches := re.FindStringSubmatch(scrapeMetrics())
+		f, _ := strconv.ParseFloat(matches[1], 64)
+		return f
+	}
+
+	p2pMetrics := PrometheusMetrics(namespace)
 
 	// make two connected switches
 	sw1, sw2 := MakeSwitchPair(t, func(i int, sw *Switch) *Switch {
@@ -353,7 +373,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	})
 
 	assert.Equal(t, len(sw1.Peers().List()), 1)
-	// TODO: assert p2pMetrics.Peers == 1
+	assert.EqualValues(t, 1, peersMetricValue())
 
 	// send messages to the peer from sw1
 	p := sw1.Peers().List()[0]
@@ -367,20 +387,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	sw1.StopPeerForError(p, fmt.Errorf("some err"))
 
 	assert.Equal(t, len(sw1.Peers().List()), 0)
-	// TODO: assert p2pMetrics.Peers == 0
-	// Can use this in the meantime to verify manually
-	/*
-		srv := &http.Server{
-			Addr: "localhost:26660",
-			Handler: promhttp.InstrumentMetricHandler(
-				prometheus.DefaultRegisterer, promhttp.HandlerFor(
-					prometheus.DefaultGatherer,
-					promhttp.HandlerOpts{MaxRequestsInFlight: 10},
-				),
-			),
-		}
-		srv.ListenAndServe()
-	*/
+	assert.EqualValues(t, 0, peersMetricValue())
 }
 
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
