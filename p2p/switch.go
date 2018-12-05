@@ -508,6 +508,12 @@ func (sw *Switch) acceptRoutine() {
 					"err", err,
 					"numPeers", sw.peers.Size(),
 				)
+				// We could instead have a retry loop around the acceptRoutine,
+				// but that would need to stop and let the node shutdown eventually.
+				// So might as well panic and let process managers restart the node.
+				// There's no point in letting the node run without the acceptRoutine,
+				// since it won't be able to accept new connections.
+				panic(fmt.Errorf("accept routine exited: %v", err))
 			}
 
 			break
