@@ -425,20 +425,6 @@ func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
 	}
 }
 
-func ensureProposalHeartbeat(heartbeatCh <-chan interface{}) {
-	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for ProposalHeartbeat event")
-	case ev := <-heartbeatCh:
-		heartbeat, ok := ev.(types.EventDataProposalHeartbeat)
-		if !ok {
-			panic(fmt.Sprintf("expected a *types.EventDataProposalHeartbeat, "+
-				"got %v. wrong subscription channel?",
-				reflect.TypeOf(heartbeat)))
-		}
-	}
-}
-
 func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, timeout int64) {
 	timeoutDuration := time.Duration(timeout*3) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,

@@ -194,7 +194,7 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 				),
 			)
 		}
-		valInfo2.ValidatorSet.IncrementAccum(int(height - valInfo.LastHeightChanged)) // mutate
+		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - valInfo.LastHeightChanged)) // mutate
 		valInfo = valInfo2
 	}
 

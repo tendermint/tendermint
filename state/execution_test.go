@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -152,6 +153,76 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 }
 
+func TestValidateValidatorUpdates(t *testing.T) {
+	pubkey1 := ed25519.GenPrivKey().PubKey()
+	pubkey2 := ed25519.GenPrivKey().PubKey()
+
+	secpKey := secp256k1.GenPrivKey().PubKey()
+
+	defaultValidatorParams := types.ValidatorParams{[]string{types.ABCIPubKeyTypeEd25519}}
+
+	testCases := []struct {
+		name string
+
+		abciUpdates     []abci.ValidatorUpdate
+		validatorParams types.ValidatorParams
+
+		shouldErr bool
+	}{
+		{
+			"adding a validator is OK",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 20}},
+			defaultValidatorParams,
+
+			false,
+		},
+		{
+			"updating a validator is OK",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey1), Power: 20}},
+			defaultValidatorParams,
+
+			false,
+		},
+		{
+			"removing a validator is OK",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
+			defaultValidatorParams,
+
+			false,
+		},
+		{
+			"adding a validator with negative power results in error",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
+			defaultValidatorParams,
+
+			true,
+		},
+		{
+			"adding a validator with pubkey thats not in validator params results in error",
+
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(secpKey), Power: -100}},
+			defaultValidatorParams,
+
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateValidatorUpdates(tc.abciUpdates, tc.validatorParams)
+			if tc.shouldErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestUpdateValidators(t *testing.T) {
 	pubkey1 := ed25519.GenPrivKey().PubKey()
 	val1 := types.NewValidator(pubkey1, 10)
@@ -194,7 +265,6 @@ func TestUpdateValidators(t *testing.T) {
 			types.NewValidatorSet([]*types.Validator{val1}),
 			false,
 		},
-
 		{
 			"removing a non-existing validator results in error",
 
@@ -204,24 +274,17 @@ func TestUpdateValidators(t *testing.T) {
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
 		},
-
-		{
-			"adding a validator with negative power results in error",
-
-			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
-
-			types.NewValidatorSet([]*types.Validator{val1}),
-			true,
-		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := updateValidators(tc.currentSet, tc.abciUpdates)
+			updates, err := types.PB2TM.ValidatorUpdates(tc.abciUpdates)
+			assert.NoError(t, err)
+			err = updateValidators(tc.currentSet, updates)
 			if tc.shouldErr {
 				assert.Error(t, err)
 			} else {
+				assert.NoError(t, err)
 				require.Equal(t, tc.resultingSet.Size(), tc.currentSet.Size())
 
 				assert.Equal(t, tc.resultingSet.TotalVotingPower(), tc.currentSet.TotalVotingPower())
