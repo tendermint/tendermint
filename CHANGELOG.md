@@ -58,6 +58,9 @@ key types that can be used by validators.
   reset to 0 every time a validator is updated
 - [p2p] \#2968 Panic on transport error rather than continuing to run but not
   accept new connections
+- [p2p] \#2969 Fix mismatch in peer count between `/net_info` and the prometheus
+  metrics
+
 
 ## v0.26.4
 
