@@ -276,11 +276,17 @@ func (h *Handshaker) ReplayBlocks(
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
-		validators := make([]*types.Validator, len(h.genDoc.Validators))
-		for i, val := range h.genDoc.Validators {
-			validators[i] = types.NewValidator(val.PubKey, val.Power)
+		// Empty validator set is allowed in the genesis, because it can be set by the app in InitChain
+		var validatorSet *types.ValidatorSet
+		if len(h.genDoc.Validators) > 0 {
+			validators := make([]*types.Validator, len(h.genDoc.Validators))
+			for i, val := range h.genDoc.Validators {
+				validators[i] = types.NewValidator(val.PubKey, val.Power)
+			}
+			validatorSet = types.NewValidatorSet(validators)
+		} else {
+			validatorSet = types.NewValidatorSet(nil)
 		}
-		validatorSet := types.NewValidatorSet(validators)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
@@ -303,11 +309,10 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			state.Validators = types.NewValidatorSet(vals)
 			state.NextValidators = types.NewValidatorSet(vals)
-		}
-		else {
+		} else {
 			// If validator set is not set in genesis and still empty after InitChain, exit.
 			if len(h.genDoc.Validators) == 0 {
-				return nil, fmt.Errorf("Validator set is still empty after InitChain")
+				return nil, fmt.Errorf("Validator set is nil in genesis and still empty after InitChain")
 			}
 		}
 		
