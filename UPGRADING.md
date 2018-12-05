@@ -5,6 +5,20 @@ a newer version of Tendermint Core.
 
 ## v0.27.0
 
+This release contains some breaking changes to the block and p2p protocols,
+but does not change any core data structures, so it should be compatible with
+existing blockchains from the v0.26 series that only used Ed25519 validator keys.
+Blockchains using Secp256k1 for validators will not be compatible. This is due
+to the fact that we now enforce which key types validators can use as a
+consensus param. The default is Ed25519, and Secp256k1 must be activated
+explicitly.
+
+It is recommended to upgrade all nodes at once to avoid incompatibilities at the
+peer layer - namely, the heartbeat consensus message has been removed (only
+relevant if `create_empty_blocks=false` or `create_empty_blocks_interval > 0`),
+and the proposer selection algorithm has changed. Since proposer information is
+never included in the blockchain, this change only affects the peer layer.
+
 ### Go API Changes
 
 #### libs/db
@@ -32,7 +46,7 @@ file).
 
 ## v0.26.0
 
-New 0.26.0 release contains a lot of changes to core data types and protocols. It is not
+This release contains a lot of changes to core data types and protocols. It is not
 compatible to the old versions and there is no straight forward way to update
 old data to be compatible with the new version.
 

@@ -2,7 +2,7 @@
 
 ## v0.27.0
 
-*November 29th, 2018*
+*December 5th, 2018*
 
 Special thanks to external contributors on this release:
 @danil-lashin, @srmo
@@ -18,7 +18,8 @@ This release is primarily about fixes to the proposer selection algorithm
 in preparation for the [Cosmos Game of
 Stakes](https://blog.cosmos.network/the-game-of-stakes-is-open-for-registration-83a404746ee6).
 It also makes use of the `ConsensusParams.Validator.PubKeyTypes` to restrict the
-key types that can be used by validators.
+key types that can be used by validators, and removes the `Heartbeat` consensus
+message.
 
 ### BREAKING CHANGES:
 
@@ -45,22 +46,26 @@ key types that can be used by validators.
 ### IMPROVEMENTS:
 
 - [state] [\#2929](https://github.com/tendermint/tendermint/issues/2929) Minor refactor of updateState logic (@danil-lashin)
+- [node] \#2959 Allow node to start even if software's BlockProtocol is
+  different from state's BlockProtocol
+- [pex] \#2959 Pex reactor logger uses `module=pex`
 
 ### BUG FIXES:
 
-- [types] [\#2938](https://github.com/tendermint/tendermint/issues/2938) Fix regression in v0.26.4 where we panic on empty
-  genDoc.Validators
-- [state] [\#2785](https://github.com/tendermint/tendermint/issues/2785) Fix accum for new validators to be `-1.125*totalVotingPower`
-  instead of 0, forcing them to wait before becoming the proposer. Also:
-    - do not batch clip
-    - keep accums averaged near 0
-- [types] [\#2941](https://github.com/tendermint/tendermint/issues/2941) Preserve val.Accum during ValidatorSet.Update to avoid it being
-  reset to 0 every time a validator is updated
 - [p2p] \#2968 Panic on transport error rather than continuing to run but not
   accept new connections
 - [p2p] \#2969 Fix mismatch in peer count between `/net_info` and the prometheus
   metrics
-
+- [rpc] \#2408 `/broadcast_tx_commit`: Fix "interface conversion: interface {} in nil, not EventDataTx" panic (could happen if somebody sent a tx using `/broadcast_tx_commit` while Tendermint was being stopped)
+- [state] [\#2785](https://github.com/tendermint/tendermint/issues/2785) Fix accum for new validators to be `-1.125*totalVotingPower`
+  instead of 0, forcing them to wait before becoming the proposer. Also:
+    - do not batch clip
+    - keep accums averaged near 0
+- [txindex/kv] [\#2925](https://github.com/tendermint/tendermint/issues/2925) Don't return false positives when range searching for a prefix of a tag value
+- [types] [\#2938](https://github.com/tendermint/tendermint/issues/2938) Fix regression in v0.26.4 where we panic on empty
+  genDoc.Validators
+- [types] [\#2941](https://github.com/tendermint/tendermint/issues/2941) Preserve val.Accum during ValidatorSet.Update to avoid it being
+  reset to 0 every time a validator is updated
 
 ## v0.26.4
 
