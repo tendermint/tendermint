@@ -354,6 +354,48 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 }
 
+// TestProposerDistr is some boiler plate code to just check if its broken
+func TestProposerDistr(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+	val1PubKey := ed25519.GenPrivKey().PubKey()
+	val1 := &types.Validator{Address: val1PubKey.Address(), PubKey: val1PubKey, VotingPower: 2}
+
+	val2PubKey := ed25519.GenPrivKey().PubKey()
+	val2 := &types.Validator{Address: val2PubKey.Address(), PubKey: val2PubKey, VotingPower: 100}
+
+	val3PubKey := ed25519.GenPrivKey().PubKey()
+	val3 := &types.Validator{Address: val3PubKey.Address(), PubKey: val3PubKey, VotingPower: 100}
+
+	addrToIndex := map[string]int{string(val1.Address): 0, string(val2.Address): 1, string(val3.Address): 2}
+	// reset state validators to above validator
+	state.Validators = types.NewValidatorSet([]*types.Validator{val1, val2, val3})
+	state.NextValidators = state.Validators
+	block := makeBlock(state, state.LastBlockHeight+1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	// no updates:
+	abciResponses := &ABCIResponses{
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+	}
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+	require.NoError(t, err)
+
+	updatedState, err := updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+
+	oldState := updatedState
+	frequencies := make([]int, 3)
+	for i := 0; i < 100000; i++ {
+		updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
+		assert.NoError(t, err)
+		frequencies[addrToIndex[string(oldState.Validators.Proposer.Address)]]++
+
+		// update for next iteration:
+		oldState = updatedState
+	}
+	fmt.Println(frequencies)
+	require.True(t, false)
+}
+
 //----------------------------------------------------------------------------
 
 // make some bogus txs
