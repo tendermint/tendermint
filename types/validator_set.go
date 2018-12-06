@@ -86,7 +86,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 		proposer = vals.incrementProposerPriority(shiftByAvgProposerPriority)
 	}
 	isShiftedAvgOnLastIter := (times-1)%shiftEveryNthIter == 0
-	if !isShiftedAvgOnLastIter {
+	if !isShiftedAvgOnLastIter && false {
 		validatorsHeap := cmn.NewHeap()
 		vals.shiftByAvgProposerPriority(validatorsHeap)
 	}
@@ -96,12 +96,16 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 func (vals *ValidatorSet) incrementProposerPriority(subAvg bool) *Validator {
 	for _, val := range vals.Validators {
 		// Check for overflow for sum.
+		// TODO: check if we don't do this omn next propose if we get right ratio
 		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
 	}
 
 	validatorsHeap := cmn.NewHeap()
 	if subAvg { // shift by avg ProposerPriority
-		vals.shiftByAvgProposerPriority(validatorsHeap)
+		//vals.shiftByAvgProposerPriority(validatorsHeap)
+		for _, val := range vals.Validators {
+			validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
+		}
 	} else { // just update the heap
 		for _, val := range vals.Validators {
 			validatorsHeap.PushComparable(val, proposerPriorityComparable{val})

@@ -470,7 +470,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	defer tearDown(t)
 	// TODO: increase genesis voting power to sth. more  close to MaxTotalVotingPower with changes that
 	// fix with tendermint/issues/2960; currently, the last iteration would take forever though
-	genesisVotingPower := int64(types.MaxTotalVotingPower / 100000000000000)
+	genesisVotingPower := int64(100)
 	genesisPubKey := ed25519.GenPrivKey().PubKey()
 	// fmt.Println("genesis addr: ", genesisPubKey.Address())
 	genesisVal := &types.Validator{Address: genesisPubKey.Address(), PubKey: genesisPubKey, VotingPower: genesisVotingPower}
@@ -521,7 +521,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
 
 	lastState := updatedState
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 12; i++ {
 		// no updates:
 		abciResponses := &ABCIResponses{
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
@@ -533,10 +533,13 @@ func TestLargeGenesisValidator(t *testing.T) {
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 		updatedStateInner, err := updateState(lastState, blockID, &block.Header, abciResponses, validatorUpdates)
+		fmt.Println(updatedStateInner.NextValidators)
 		lastState = updatedStateInner
 	}
 	// set state to last state of above iteration
 	state = lastState
+
+	//fmt.Println(state.NextValidators)
 
 	// set oldState to state before above iteration
 	oldState = updatedState
@@ -575,6 +578,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 	require.NoError(t, err)
 	updatedState, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+	//fmt.Println(updatedState)
 	require.NoError(t, err)
 	// only the first added val (not the genesis val) should be left
 	assert.Equal(t, 11, len(updatedState.NextValidators.Validators))
