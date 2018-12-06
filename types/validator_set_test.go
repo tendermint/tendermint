@@ -392,10 +392,16 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 func TestAveragingInIncrementProposerPriorityWithVotingPower(t *testing.T) {
 	// Other than TestAveragingInIncrementProposerPriority this is a more complete test showing
 	// how each ProposerPriority changes in relation to the validator's voting power respectively.
+	// average is zero in each round:
+	vp0 := int64(10)
+	vp1 := int64(1)
+	vp2 := int64(1)
+	total := vp0 + vp1 + vp2
+	avg := (vp0 + vp1 + vp2 - total) / 3
 	vals := ValidatorSet{Validators: []*Validator{
-		{Address: []byte{0}, ProposerPriority: 0, VotingPower: 10},
-		{Address: []byte{1}, ProposerPriority: 0, VotingPower: 1},
-		{Address: []byte{2}, ProposerPriority: 0, VotingPower: 1}}}
+		{Address: []byte{0}, ProposerPriority: 0, VotingPower: vp0},
+		{Address: []byte{1}, ProposerPriority: 0, VotingPower: vp1},
+		{Address: []byte{2}, ProposerPriority: 0, VotingPower: vp2}}}
 	tcs := []struct {
 		vals                  *ValidatorSet
 		wantProposerPrioritys []int64
@@ -407,95 +413,89 @@ func TestAveragingInIncrementProposerPriorityWithVotingPower(t *testing.T) {
 			vals.Copy(),
 			[]int64{
 				// Acumm+VotingPower-Avg:
-				0 + 10 - 12 - 4, // mostest will be subtracted by total voting power (12)
-				0 + 1 - 4,
-				0 + 1 - 4},
+				0 + vp0 - total - avg, // mostest will be subtracted by total voting power (12)
+				0 + vp1,
+				0 + vp2},
 			1,
 			vals.Validators[0]},
 		1: {
 			vals.Copy(),
 			[]int64{
-				(0 + 10 - 12 - 4) + 10 - 12 + 4, // this will be mostest on 2nd iter, too
-				(0 + 1 - 4) + 1 + 4,
-				(0 + 1 - 4) + 1 + 4},
+				(0 + vp0 - total) + vp0 - total - avg, // this will be mostest on 2nd iter, too
+				(0 + vp1) + vp1,
+				(0 + vp2) + vp2},
 			2,
 			vals.Validators[0]}, // increment twice -> expect average to be subtracted twice
 		2: {
 			vals.Copy(),
 			[]int64{
-				((0 + 10 - 12 - 4) + 10 - 12) + 10 - 12 + 4, // still mostest
-				((0 + 1 - 4) + 1) + 1 + 4,
-				((0 + 1 - 4) + 1) + 1 + 4},
+				0 + 3*(vp0-total) - avg, // still mostest
+				0 + 3*vp1,
+				0 + 3*vp2},
 			3,
 			vals.Validators[0]},
 		3: {
 			vals.Copy(),
 			[]int64{
-				0 + 4*(10-12) + 4 - 4, // still mostest
-				0 + 4*1 + 4 - 4,
-				0 + 4*1 + 4 - 4},
+				0 + 4*(vp0-total), // still mostest
+				0 + 4*vp1,
+				0 + 4*vp2},
 			4,
 			vals.Validators[0]},
 		4: {
 			vals.Copy(),
 			[]int64{
-				0 + 4*(10-12) + 10 + 4 - 4, // 4 iters was mostest
-				0 + 5*1 - 12 + 4 - 4,       // now this val is mostest for the 1st time (hence -12==totalVotingPower)
-				0 + 5*1 + 4 - 4},
+				0 + 4*(vp0-total) + vp0, // 4 iters was mostest
+				0 + 5*vp1 - total,       // now this val is mostest for the 1st time (hence -12==totalVotingPower)
+				0 + 5*vp2},
 			5,
 			vals.Validators[1]},
 		5: {
 			vals.Copy(),
 			[]int64{
-				0 + 6*10 - 5*12 + 4 - 4, // mostest again
-				0 + 6*1 - 12 + 4 - 4,    // mostest once up to here
-				0 + 6*1 + 4 - 4},
+				0 + 6*vp0 - 5*total, // mostest again
+				0 + 6*vp1 - total,   // mostest once up to here
+				0 + 6*vp2},
 			6,
 			vals.Validators[0]},
 		6: {
 			vals.Copy(),
 			[]int64{
-				0 + 7*10 - 6*12 + 4 - 4, // in 7 iters this val is mostest 6 times
-				0 + 7*1 - 12 + 4 - 4,    // in 7 iters this val is mostest 1 time
-				0 + 7*1 + 4 - 4},
+				0 + 7*vp0 - 6*total, // in 7 iters this val is mostest 6 times
+				0 + 7*vp1 - total,   // in 7 iters this val is mostest 1 time
+				0 + 7*vp2},
 			7,
 			vals.Validators[0]},
 		7: {
 			vals.Copy(),
 			[]int64{
-				0 + 8*10 - 7*12 + 4 - 4, // mostest
-				0 + 8*1 - 12 + 4 - 4,
-				0 + 8*1 + 4 - 4},
+				0 + 8*vp0 - 7*total, // mostest again
+				0 + 8*vp1 - total,
+				0 + 8*vp2},
 			8,
 			vals.Validators[0]},
 		8: {
 			vals.Copy(),
 			[]int64{
-				0 + 9*10 - 7*12 + 4 - 4,
-				0 + 9*1 - 12 + 4 - 4,
-				0 + 9*1 - 12 + 4 - 4}, // mostest
+				0 + 9*vp0 - 7*total,
+				0 + 9*vp1 - total,
+				0 + 9*vp2 - total}, // mostest
 			9,
 			vals.Validators[2]},
 		9: {
 			vals.Copy(),
 			[]int64{
-				0 + 10*10 - 8*12 + 4 - 4, // after 10 iters this is mostest again
-				0 + 10*1 - 12 + 4 - 4,    // after 6 iters this val is "mostest" once and not in between
-				0 + 10*1 - 12 + 4 - 4},   // in between 10 iters this val is "mostest" once
+				0 + 10*vp0 - 8*total, // after 10 iters this is mostest again
+				0 + 10*vp1 - total,   // after 6 iters this val is "mostest" once and not in between
+				0 + 10*vp2 - total},  // in between 10 iters this val is "mostest" once
 			10,
 			vals.Validators[0]},
 		10: {
 			vals.Copy(),
 			[]int64{
-				// shift twice inside incrementProposerPriority (shift every 10th iter);
-				// don't shift at the end of IncremenctProposerPriority
-				// last avg should be zero because
-				// ProposerPriority of validator 0: (0 + 11*10 - 8*12 - 4) == 10
-				// ProposerPriority of validator 1 and 2: (0 + 11*1 - 12 - 4) == -5
-				// and (10 + 5 - 5) / 3 == 0
-				0 + 11*10 - 8*12 - 4 - 12 - 0,
-				0 + 11*1 - 12 - 4 - 0,  // after 6 iters this val is "mostest" once and not in between
-				0 + 11*1 - 12 - 4 - 0}, // after 10 iters this val is "mostest" once
+				0 + 11*vp0 - 9*total,
+				0 + 11*vp1 - total,  // after 6 iters this val is "mostest" once and not in between
+				0 + 11*vp2 - total}, // after 10 iters this val is "mostest" once
 			11,
 			vals.Validators[0]},
 	}

@@ -78,48 +78,45 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 		panic("Cannot call IncrementProposerPriority with non-positive times")
 	}
 
-	const shiftEveryNthIter = 10
+	// cap the difference between priorities to be proportional to 2*totalPower by
+	// re-normalizing priorities, i.e., rescale all priorities by multiplying with:
+	//  2*totalVotingPower/(maxPriority - minPriority)
+	diff := computeMaxMinPriorityDiff(vals)
+	threshold := 2 * vals.TotalVotingPower()
+	if diff > threshold && threshold > 0 {
+		vals.dividePrioritiesBy(diff / threshold)
+	}
+
 	var proposer *Validator
 	// call IncrementProposerPriority(1) times times:
 	for i := 0; i < times; i++ {
-		shiftByAvgProposerPriority := i%shiftEveryNthIter == 0
-		proposer = vals.incrementProposerPriority(shiftByAvgProposerPriority)
+		proposer = vals.incrementProposerPriority()
 	}
-	isShiftedAvgOnLastIter := (times-1)%shiftEveryNthIter == 0
-	if !isShiftedAvgOnLastIter && false {
-		validatorsHeap := cmn.NewHeap()
-		vals.shiftByAvgProposerPriority(validatorsHeap)
-	}
+	vals.shiftByAvgProposerPriority()
+
 	vals.Proposer = proposer
 }
 
-func (vals *ValidatorSet) incrementProposerPriority(subAvg bool) *Validator {
+func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 	for _, val := range vals.Validators {
 		// Check for overflow for sum.
-		// TODO: check if we don't do this omn next propose if we get right ratio
 		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
 	}
-
-	validatorsHeap := cmn.NewHeap()
-	if subAvg { // shift by avg ProposerPriority
-		//vals.shiftByAvgProposerPriority(validatorsHeap)
-		for _, val := range vals.Validators {
-			validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
-		}
-	} else { // just update the heap
-		for _, val := range vals.Validators {
-			validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
-		}
-	}
-
 	// Decrement the validator with most ProposerPriority:
-	mostest := validatorsHeap.Peek().(*Validator)
+	mostest := vals.getValWitMostPriority()
 	// mind underflow
 	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
 
 	return mostest
 }
 
+func (vals *ValidatorSet) dividePrioritiesBy(divisor int64) {
+	for _, val := range vals.Validators {
+		val.ProposerPriority = val.ProposerPriority / divisor
+	}
+}
+
+// should not be called on an empty validator set
 func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
 	n := int64(len(vals.Validators))
 	sum := big.NewInt(0)
@@ -135,11 +132,34 @@ func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
 	panic(fmt.Sprintf("Cannot represent avg ProposerPriority as an int64 %v", avg))
 }
 
-func (vals *ValidatorSet) shiftByAvgProposerPriority(validatorsHeap *cmn.Heap) {
+// compute the difference between the max and min ProposerPriority of that set
+func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
+	max := int64(math.MinInt64)
+	min := int64(math.MaxInt64)
+	for _, v := range vals.Validators {
+		if v.ProposerPriority < min {
+			min = v.ProposerPriority
+		}
+		if v.ProposerPriority > max {
+			max = v.ProposerPriority
+		}
+	}
+	diff := max - min
+	return diff
+}
+
+func (vals *ValidatorSet) getValWitMostPriority() *Validator {
+	var res *Validator
+	for _, val := range vals.Validators {
+		res = res.CompareProposerPriority(val)
+	}
+	return res
+}
+
+func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 	avgProposerPriority := vals.computeAvgProposerPriority()
 	for _, val := range vals.Validators {
 		val.ProposerPriority = safeSubClip(val.ProposerPriority, avgProposerPriority)
-		validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
 	}
 }
 
@@ -510,20 +530,6 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 	it := valz[i]
 	valz[i] = valz[j]
 	valz[j] = it
-}
-
-//-------------------------------------
-// Use with Heap for sorting validators by ProposerPriority
-
-type proposerPriorityComparable struct {
-	*Validator
-}
-
-// We want to find the validator with the greatest ProposerPriority.
-func (ac proposerPriorityComparable) Less(o interface{}) bool {
-	other := o.(proposerPriorityComparable).Validator
-	larger := ac.CompareProposerPriority(other)
-	return bytes.Equal(larger.Address, ac.Address)
 }
 
 //----------------------------------------
