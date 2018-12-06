@@ -276,17 +276,11 @@ func (h *Handshaker) ReplayBlocks(
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
-		// Empty validator set is allowed in the genesis, because it can be set by the app in InitChain
-		var validatorSet *types.ValidatorSet
-		if len(h.genDoc.Validators) > 0 {
-			validators := make([]*types.Validator, len(h.genDoc.Validators))
-			for i, val := range h.genDoc.Validators {
-				validators[i] = types.NewValidator(val.PubKey, val.Power)
-			}
-			validatorSet = types.NewValidatorSet(validators)
-		} else {
-			validatorSet = types.NewValidatorSet(nil)
+		validators := make([]*types.Validator, len(h.genDoc.Validators))
+		for i, val := range h.genDoc.Validators {
+			validators[i] = types.NewValidator(val.PubKey, val.Power)
 		}
+		validatorSet := types.NewValidatorSet(validators)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
