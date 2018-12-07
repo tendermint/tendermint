@@ -13,9 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -76,7 +74,7 @@ func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 func (vs *validatorStub) signVote(voteType types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	addr, err := vs.PrivValidator.GetAddress()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get private validator's address")
+		return nil, err
 	}
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,

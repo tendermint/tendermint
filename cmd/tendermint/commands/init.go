@@ -60,7 +60,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 		}
 		key, err := pv.GetPubKey()
 		if err != nil {
-			return errors.Wrap(err, "failed to get pubkey from private validator")
+			return err
 		}
 		genDoc.Validators = []types.GenesisValidator{{
 			Address: key.Address(),

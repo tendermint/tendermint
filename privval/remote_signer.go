@@ -38,7 +38,7 @@ func NewRemoteSignerClient(
 func (sc *RemoteSignerClient) GetAddress() (types.Address, error) {
 	pubKey, err := sc.getPubKey()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get private validator's public key")
 	}
 
 	return pubKey.Address(), nil
@@ -48,7 +48,7 @@ func (sc *RemoteSignerClient) GetAddress() (types.Address, error) {
 func (sc *RemoteSignerClient) GetPubKey() (crypto.PubKey, error) {
 	pubKey, err := sc.getPubKey()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get private validator's address")
 	}
 
 	return pubKey, nil
@@ -235,7 +235,7 @@ func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValida
 		if err != nil {
 			// TODO: split up PubKeyMsg into PubKeyRequest / PubKeyResponse and wrap the error
 			// into the response as done below. For now we just return the error:
-			return nil, errors.Wrap(err, "failed to get private validator's public key")
+			return nil, err
 		}
 		res = &PubKeyMsg{p}
 	case *SignVoteRequest:
