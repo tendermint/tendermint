@@ -21,3 +21,4 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [kv indexer] \#2912 don't ignore key when executing CONTAINS
