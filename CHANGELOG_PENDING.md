@@ -19,7 +19,7 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [rpc] Add `/unconfirmed_txs` and `/num_unconfirmed_txs` endpoints to HTTPClient and LocalClient
+- [rpc] Add `UnconfirmedTxs(limit)` and `NumUnconfirmedTxs()` methods to HTTP/Local clients (@danil-lashin)
 
 ### BUG FIXES:
-- [rpc] \#2408 `/broadcast_tx_commit`: Fix "interface conversion: interface {} in nil, not EventDataTx" panic (could happen if somebody sent a tx using /broadcast_tx_commit while Tendermint was being stopped)
+- [kv indexer] \#2912 don't ignore key when executing CONTAINS
