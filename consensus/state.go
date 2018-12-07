@@ -833,7 +833,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	// if not a validator, we're done
 	address, err := cs.privValidator.GetAddress()
 	if err != nil {
-		logger.Error("Failed to get private validator address", "err", err)
+		logger.Error("Failed to get private validator's address", "err", err)
 		return
 	}
 	if !cs.Validators.HasAddress(address) {
@@ -938,7 +938,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	), maxGas)
 	proposerAddr, err := cs.privValidator.GetAddress()
 	if err != nil {
-		cs.Logger.Error("Failed to get private validator address", "err", err)
+		cs.Logger.Error("Failed to get private validator's address", "err", err)
 		return
 	}
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
@@ -1487,7 +1487,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, err
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			addr, err := cs.privValidator.GetAddress()
 			if err != nil {
-				cs.Logger.Error("Failed to get private validator address", "err", err)
+				cs.Logger.Error("Failed to get private validator's address", "err", err)
 				return added, err
 			}
 			if bytes.Equal(vote.ValidatorAddress, addr) {
@@ -1657,8 +1657,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	addr, err := cs.privValidator.GetAddress()
 	if err != nil {
-		cs.Logger.Error("Failed to get private validator address", "err", err)
-		return nil, errs.Wrap(err, "Failed to get private validator address")
+		cs.Logger.Error("Failed to get private validator's address", "err", err)
+		return nil, errs.Wrap(err, "Failed to get private validator's address")
 	}
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 
@@ -1697,7 +1697,7 @@ func (cs *ConsensusState) signAddVote(type_ types.SignedMsgType, hash []byte, he
 	// if we don't have a key or we're not in the validator set, do nothing
 	privValAddr, err := cs.privValidator.GetAddress()
 	if err != nil {
-		cs.Logger.Error("Failed to get private validator address", "err", err, "height", cs.Height, "round", cs.Round)
+		cs.Logger.Error("Failed to get private validator's address", "err", err, "height", cs.Height, "round", cs.Round)
 		return nil
 	}
 	if cs.privValidator == nil || !cs.Validators.HasAddress(privValAddr) {

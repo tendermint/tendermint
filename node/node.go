@@ -237,7 +237,7 @@ func NewNode(config *cfg.Config,
 		addr, _ := state.Validators.GetByIndex(0)
 		privValAddr, err := privValidator.GetAddress()
 		if err != nil {
-			return nil, errors.Wrap(err, "Error while retrieving private validator's address")
+			return nil, errors.Wrap(err, "failed to get private validator's address")
 		}
 		if bytes.Equal(privValAddr, addr) {
 			fastSync = false
@@ -246,7 +246,7 @@ func NewNode(config *cfg.Config,
 
 	pubKey, err := privValidator.GetPubKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while retrieving private validator's public key")
+		return nil, errors.Wrap(err, "failed to get private validator's public key")
 	}
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
@@ -622,7 +622,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetP2PTransport(n)
 	pubKey, err := n.privValidator.GetPubKey()
 	if err != nil {
-		n.Logger.Error("Error configuring RPC. Can not retrieve privValidator's public key", "err", err)
+		n.Logger.Error("Error configuring RPC. Failed to get private validator's public key", "err", err)
 	}
 	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)

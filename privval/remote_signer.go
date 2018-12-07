@@ -235,7 +235,7 @@ func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValida
 		if err != nil {
 			// TODO: split up PubKeyMsg into PubKeyRequest / PubKeyResponse and wrap the error
 			// into the response as done below. For now we just return the error:
-			return nil, errors.Wrap(err, "Error while retrieving private validator's public key")
+			return nil, errors.Wrap(err, "failed to get private validator's public key")
 		}
 		res = &PubKeyMsg{p}
 	case *SignVoteRequest:

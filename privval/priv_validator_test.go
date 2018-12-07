@@ -31,7 +31,7 @@ func TestGenLoadValidator(t *testing.T) {
 	privVal = LoadFilePV(tempFile.Name())
 	loadedAddr, err := privVal.GetAddress()
 	require.NoError(t, err)
-	assert.Equal(addr, loadedAddr, "expected privval addr to be the same")
+	assert.Equal(addr, loadedAddr)
 	assert.Equal(height, privVal.LastHeight, "expected privval.LastHeight to have been saved")
 }
 
@@ -49,7 +49,7 @@ func TestLoadOrGenValidator(t *testing.T) {
 	require.NoError(t, err)
 	privVal = LoadOrGenFilePV(tempFilePath)
 	loadedAddr, err := privVal.GetAddress()
-	assert.Equal(addr, loadedAddr, "expected privval addr to be the same")
+	assert.Equal(addr, loadedAddr)
 }
 
 func TestUnmarshalValidator(t *testing.T) {
