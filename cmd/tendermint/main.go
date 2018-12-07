@@ -1,7 +1,7 @@
 package main
 
 import (
-	"os"
+	"os/user"
 	"path/filepath"
 
 	"github.com/tendermint/tendermint/libs/cli"
@@ -41,7 +41,13 @@ func main() {
 	// Create & start node
 	rootCmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc))
 
-	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", cfg.DefaultTendermintDir)))
+	// Retrieve user's home directory
+	usr, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+
+	cmd := cli.PrepareBaseCmd(rootCmd, "TM", filepath.Join(usr.HomeDir, cfg.DefaultTendermintDir))
 	if err := cmd.Execute(); err != nil {
 		panic(err)
 	}
