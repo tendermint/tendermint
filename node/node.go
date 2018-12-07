@@ -210,13 +210,18 @@ func NewNode(config *cfg.Config,
 	// what happened during block replay).
 	state = sm.LoadState(stateDB)
 
-	// Ensure the state's block version matches that of the software.
+	// Log the version info.
+	logger.Info("Version info",
+		"software", version.TMCoreSemVer,
+		"block", version.BlockProtocol,
+		"p2p", version.P2PProtocol,
+	)
+
+	// If the state and software differ in block version, at least log it.
 	if state.Version.Consensus.Block != version.BlockProtocol {
-		return nil, fmt.Errorf(
-			"Block version of the software does not match that of the state.\n"+
-				"Got version.BlockProtocol=%v, state.Version.Consensus.Block=%v",
-			version.BlockProtocol,
-			state.Version.Consensus.Block,
+		logger.Info("Software and state have different block protocols",
+			"software", version.BlockProtocol,
+			"state", state.Version.Consensus.Block,
 		)
 	}
 
@@ -463,7 +468,7 @@ func NewNode(config *cfg.Config,
 				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
 			})
-		pexReactor.SetLogger(p2pLogger)
+		pexReactor.SetLogger(logger.With("module", "pex"))
 		sw.AddReactor("PEX", pexReactor)
 	}
 
