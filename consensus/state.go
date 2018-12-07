@@ -2,14 +2,13 @@ package consensus
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
 	"runtime/debug"
 	"sync"
 	"time"
 
-	errs "github.com/pkg/errors"
+	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/fail"
@@ -1658,7 +1657,7 @@ func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, heade
 	addr, err := cs.privValidator.GetAddress()
 	if err != nil {
 		cs.Logger.Error("Failed to get private validator's address", "err", err)
-		return nil, errs.Wrap(err, "Failed to get private validator's address")
+		return nil, errors.Wrap(err, "Failed to get private validator's address")
 	}
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 
