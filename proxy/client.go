@@ -67,6 +67,8 @@ func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
 	case "counter":
 		return NewLocalClientCreator(counter.NewCounterApplication(false))
+	case "counter_serial":
+		return NewLocalClientCreator(counter.NewCounterApplication(true))
 	case "dummy":
 		fallthrough
 	case "kvstore":
