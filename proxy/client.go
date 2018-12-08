@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
 )
@@ -64,13 +65,15 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 
 func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
-	case "kvstore":
-		fallthrough
+	case "counter":
+		return NewLocalClientCreator(counter.NewCounterApplication(false))
 	case "dummy":
-		return NewLocalClientCreator(kvstore.NewKVStoreApplication())
-	case "persistent_kvstore":
 		fallthrough
+	case "kvstore":
+		return NewLocalClientCreator(kvstore.NewKVStoreApplication())
 	case "persistent_dummy":
+		fallthrough
+	case "persistent_kvstore":
 		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
 	case "nilapp":
 		return NewLocalClientCreator(types.NewBaseApplication())
