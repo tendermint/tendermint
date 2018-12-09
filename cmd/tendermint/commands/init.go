@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
