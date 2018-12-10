@@ -69,15 +69,11 @@ func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 		return NewLocalClientCreator(counter.NewCounterApplication(false))
 	case "counter_serial":
 		return NewLocalClientCreator(counter.NewCounterApplication(true))
-	case "dummy":
-		fallthrough
 	case "kvstore":
 		return NewLocalClientCreator(kvstore.NewKVStoreApplication())
-	case "persistent_dummy":
-		fallthrough
 	case "persistent_kvstore":
 		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
-	case "nilapp":
+	case "noop":
 		return NewLocalClientCreator(types.NewBaseApplication())
 	default:
 		mustConnect := false // loop retrying

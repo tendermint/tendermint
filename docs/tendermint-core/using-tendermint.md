@@ -113,7 +113,7 @@ blocks are produced regularly, even if there are no transactions. See
 _No Empty Blocks_, below, to modify this setting.
 
 Tendermint supports in-process versions of the `counter`, `kvstore` and
-`nilapp` apps that ship as examples with `abci-cli`. It's easy to compile
+`noop` apps that ship as examples with `abci-cli`. It's easy to compile
 your own app in-process with Tendermint if it's written in Go. If your
 app is not written in Go, simply run it in another process, and use the
 `--proxy_app` flag to specify the address of the socket it is listening
