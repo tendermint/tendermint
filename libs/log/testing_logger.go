@@ -20,17 +20,7 @@ var (
 // inside a test (not in the init func) because
 // verbose flag only set at the time of testing.
 func TestingLogger() Logger {
-	if _testingLogger != nil {
-		return _testingLogger
-	}
-
-	if testing.Verbose() {
-		_testingLogger = NewTMLogger(NewSyncWriter(os.Stdout))
-	} else {
-		_testingLogger = NewNopLogger()
-	}
-
-	return _testingLogger
+	return TestingLoggerWithOutput(os.Stdout)
 }
 
 // TestingLoggerWOutput returns a TMLogger which writes to (w io.Writer) if testing being run
