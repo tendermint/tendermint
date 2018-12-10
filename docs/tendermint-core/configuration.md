@@ -170,7 +170,7 @@ seed_mode = false
 private_peer_ids = ""
 
 # Toggle to disable guard against peers connecting from the same ip.
-allow_duplicate_ip = true
+allow_duplicate_ip = false
 
 # Peer connection configuration.
 handshake_timeout = "20s"
