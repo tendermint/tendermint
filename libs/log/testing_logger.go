@@ -36,10 +36,10 @@ func TestingLogger() Logger {
 // TestingLoggerWOutput returns a TMLogger which writes to (w io.Writer) if testing being run
 // with the verbose (-v) flag, NopLogger otherwise.
 //
-// Note that the call to TestingLoggerWOutput(w io.Writer) must be made
+// Note that the call to TestingLoggerWithOutput(w io.Writer) must be made
 // inside a test (not in the init func) because
 // verbose flag only set at the time of testing.
-func TestingLoggerWOutput(w io.Writer) Logger {
+func TestingLoggerWithOutput(w io.Writer) Logger {
 	if _testingLogger != nil {
 		return _testingLogger
 	}
