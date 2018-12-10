@@ -490,11 +490,12 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 			return txs
 		}
 		totalBytes += int64(len(memTx.tx)) + aminoOverhead
-		// Check total gas requirement. We are guaranteed from the
-		// postcheck filter that memTx.gasWanted is non-negative,
-		// it suffices to ensure that the sum is non-negative.
+		// Check total gas requirement.
+		// If maxGas is negative, skip this check.
+		// Since newTotalGas < masGas, which
+		// must be non-negative, it follows that this won't overflow.
 		newTotalGas := totalGas + memTx.gasWanted
-		if maxGas > -1 && newTotalGas > maxGas && newTotalGas > -1 {
+		if maxGas > -1 && newTotalGas > maxGas {
 			return txs
 		}
 		totalGas = newTotalGas

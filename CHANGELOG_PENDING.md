@@ -22,5 +22,4 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 - [kv indexer] \#2912 don't ignore key when executing CONTAINS
-- [mempool] \#2994 Don't allow txs with negative gas wanteds
-- [mempool] \#2995 Don't allow gas wanted to overflow when reaping
+- [mempool] \#2994 Don't allow txs with negative gas wanted
