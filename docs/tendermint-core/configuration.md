@@ -92,7 +92,7 @@ grpc_laddr = ""
 
 # Maximum number of simultaneous connections.
 # Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -104,7 +104,7 @@ unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).
 # Does not include gRPC connections. See grpc_max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -255,7 +255,7 @@ prometheus = false
 prometheus_listen_addr = ":26660"
 
 # Maximum number of simultaneous connections.
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = 3

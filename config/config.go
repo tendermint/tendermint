@@ -283,7 +283,7 @@ type RPCConfig struct {
 
 	// Maximum number of simultaneous connections.
 	// Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	GRPCMaxOpenConnections int `mapstructure:"grpc_max_open_connections"`
@@ -293,7 +293,7 @@ type RPCConfig struct {
 
 	// Maximum number of simultaneous connections (including WebSocket).
 	// Does not include gRPC connections. See grpc_max_open_connections
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	// Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -774,7 +774,7 @@ type InstrumentationConfig struct {
 	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
 
 	// Maximum number of simultaneous connections.
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
