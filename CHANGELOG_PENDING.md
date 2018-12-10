@@ -22,3 +22,4 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 - [kv indexer] \#2912 don't ignore key when executing CONTAINS
+- [mempool] \#2961 notifyTxsAvailable if there're txs left after committing a block, but recheck=false
