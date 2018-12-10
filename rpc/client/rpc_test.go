@@ -294,6 +294,8 @@ func TestUnconfirmedTxs(t *testing.T) {
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.Exactly(t, types.Txs{tx}, types.Txs(txs.Txs))
 	}
+
+	mempool.Flush()
 }
 
 func TestNumUnconfirmedTxs(t *testing.T) {
@@ -311,6 +313,8 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 
 		assert.Equal(t, mempoolSize, res.N)
 	}
+
+	mempool.Flush()
 }
 
 func TestTx(t *testing.T) {
