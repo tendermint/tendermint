@@ -937,7 +937,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	), maxGas)
 	proposerAddr, err := cs.privValidator.GetAddress()
 	if err != nil {
-		cs.Logger.Error("enterPropose: Cannot create block without private validator's address:", "err", err)
+		cs.Logger.Error("enterPropose: Cannot create block without private validator's address", "err", err)
 		return
 	}
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)

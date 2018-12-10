@@ -627,7 +627,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetP2PTransport(n)
 	pubKey, err := n.privValidator.GetPubKey()
 	if err != nil {
-		n.Logger.Error("Error configuring RPC.", "err", err)
+		n.Logger.Error("Error configuring RPC", "err", err)
 	}
 	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
