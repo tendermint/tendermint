@@ -269,8 +269,8 @@ blocktime_iota = "{{ .Consensus.BlockTimeIota }}"
 # What indexer to use for transactions
 #
 # Options:
-#   1) "null" (default)
-#   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+#   1) "null"
+#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "{{ .TxIndex.Indexer }}"
 
 # Comma-separated list of tags to index (by default the only tag is "tx.hash")
