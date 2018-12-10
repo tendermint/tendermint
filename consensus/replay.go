@@ -309,7 +309,7 @@ func (h *Handshaker) ReplayBlocks(
 				return nil, fmt.Errorf("Validator set is nil in genesis and still empty after InitChain")
 			}
 		}
-		
+
 		if res.ConsensusParams != nil {
 			state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)
 		}
