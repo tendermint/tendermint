@@ -779,7 +779,7 @@ type InstrumentationConfig struct {
 	// 0 - unlimited.
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
 
-	// Tendermint instrumentation namespace.
+	// Instrumentation namespace.
 	Namespace string `mapstructure:"namespace"`
 }
 

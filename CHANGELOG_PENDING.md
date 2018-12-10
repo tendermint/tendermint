@@ -22,3 +22,4 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 - [kv indexer] \#2912 don't ignore key when executing CONTAINS
+- [config] \#2980 fix cors options formatting
