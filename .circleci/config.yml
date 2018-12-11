@@ -365,7 +365,6 @@ workflows:
               only:
                 - master
                 - develop
-                - mircea/devops110
       - setup_dependencies
       - lint:
           requires:
