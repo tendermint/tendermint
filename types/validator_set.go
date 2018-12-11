@@ -36,7 +36,9 @@ type ValidatorSet struct {
 	Proposer   *Validator   `json:"proposer"`
 
 	// cached (unexported)
-	totalVotingPower int64
+	totalVotingPower       int64
+	initProposerPriorities []int64
+	round                  int
 }
 
 // NewValidatorSet initializes a ValidatorSet by copying over the
@@ -44,13 +46,22 @@ type ValidatorSet struct {
 // the new ValidatorSet will have an empty list of Validators.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	validators := make([]*Validator, len(valz))
+	propPriorities := make([]int64, len(valz))
 	for i, val := range valz {
 		validators[i] = val.Copy()
 	}
 	sort.Sort(ValidatorsByAddress(validators))
-	vals := &ValidatorSet{
-		Validators: validators,
+
+	for i, val := range validators {
+		propPriorities[i] = val.ProposerPriority
 	}
+
+	vals := &ValidatorSet{
+		Validators:             validators,
+		initProposerPriorities: propPriorities,
+		round:                  0,
+	}
+
 	if len(valz) > 0 {
 		vals.IncrementProposerPriority(1)
 	}
@@ -68,6 +79,29 @@ func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet
 	copy := vals.Copy()
 	copy.IncrementProposerPriority(times)
 	return copy
+}
+
+// FindProposer computes the proposer of the given round for the validator set.
+// The function for a given validator set and round number always return the same validator
+// as a proposer, i.e., it is purely functional.
+func (vals *ValidatorSet) FindProposer(round int) *Validator {
+	var proposer *Validator
+	if round < vals.round {
+		initialValSet := vals.Copy()
+		initialValSet.round = 0
+		for i, val := range initialValSet.Validators {
+			val.ProposerPriority = initialValSet.initProposerPriorities[i]
+		}
+		for i := initialValSet.round; i <= round; i++ {
+			proposer = vals.updateProposerPriority()
+		}
+	} else {
+		for i := vals.round; i <= round; i++ {
+			proposer = vals.updateProposerPriority()
+		}
+		vals.round = round
+	}
+	return proposer
 }
 
 // IncrementProposerPriority increments ProposerPriority of each validator and updates the
@@ -91,6 +125,26 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 		vals.shiftByAvgProposerPriority(validatorsHeap)
 	}
 	vals.Proposer = proposer
+}
+
+func (vals *ValidatorSet) UpdateProposerPriority() *Validator {
+	for _, val := range vals.Validators {
+		// Check for overflow for sum.
+		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
+	}
+
+	validatorsHeap := cmn.NewHeap()
+	// just update the heap
+	for _, val := range vals.Validators {
+		validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
+	}
+
+	// Decrement the validator with most ProposerPriority:
+	mostest := validatorsHeap.Peek().(*Validator)
+	// mind underflow
+	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
+
+	return mostest
 }
 
 func (vals *ValidatorSet) incrementProposerPriority(subAvg bool) *Validator {
@@ -255,7 +309,8 @@ func (vals *ValidatorSet) Add(val *Validator) (added bool) {
 		vals.Validators = append(vals.Validators, val)
 		// Invalidate cache
 		vals.Proposer = nil
-		vals.totalVotingPower = 0
+		//vals.totalVotingPower = 0
+		vals.totalVotingPower = vals.totalVotingPower + val.VotingPower
 		return true
 	} else if bytes.Equal(vals.Validators[idx].Address, val.Address) {
 		return false
@@ -267,7 +322,8 @@ func (vals *ValidatorSet) Add(val *Validator) (added bool) {
 		vals.Validators = newValidators
 		// Invalidate cache
 		vals.Proposer = nil
-		vals.totalVotingPower = 0
+		//vals.totalVotingPower = 0
+		vals.totalVotingPower = vals.totalVotingPower + val.VotingPower
 		return true
 	}
 }
@@ -291,7 +347,7 @@ func (vals *ValidatorSet) Update(val *Validator) (updated bool) {
 	vals.Validators[index] = val.Copy()
 	// Invalidate cache
 	vals.Proposer = nil
-	vals.totalVotingPower = 0
+	vals.totalVotingPower = vals.totalVotingPower - sameVal.VotingPower + val.VotingPower
 	return true
 }
 
