@@ -21,7 +21,9 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [rpc] Add `UnconfirmedTxs(limit)` and `NumUnconfirmedTxs()` methods to HTTP/Local clients (@danil-lashin)
 
 ### BUG FIXES:
 - [kv indexer] \#2912 don't ignore key when executing CONTAINS
 - [config] \#2980 fix cors options formatting
+- [p2p] \#2715 fix a bug where seeds don't disconnect from a peer after 3h
