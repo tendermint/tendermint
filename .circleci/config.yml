@@ -7,6 +7,13 @@ defaults: &defaults
   environment:
     GOBIN: /tmp/workspace/bin
 
+docs_update: &docs_deploy
+  working_directory: ~/repo
+  docker:
+    - image: tendermint/docs_deployment
+  environment:
+    AWS_REGION: us-east-1
+
 jobs:
   setup_dependencies:
     <<: *defaults
@@ -193,7 +200,7 @@ jobs:
           name: dependencies
           command: |
             export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
+            make get_vendGor_deps
       - run: mkdir -p $GOPATH/src/github.com/tendermint
       - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
 
@@ -339,10 +346,26 @@ jobs:
           name: upload
           command: bash .circleci/codecov.sh -f coverage.txt
 
+  deploy_docs:
+    <<: *docs_deploy
+    steps:
+      - checkout
+      - run:
+          name: Trigger website build
+          command: |
+            chamber exec tendermint -- start_website_build
+
 workflows:
   version: 2
   test-suite:
     jobs:
+      - deploy_docs:
+          filters:
+            branches:
+              only:
+                - master
+                - develop
+                - mircea/devops110
       - setup_dependencies
       - lint:
           requires:
