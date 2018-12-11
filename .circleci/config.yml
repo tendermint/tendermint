@@ -7,7 +7,7 @@ defaults: &defaults
   environment:
     GOBIN: /tmp/workspace/bin
 
-docs_update: &docs_deploy
+docs_update_config: &docs_update_config
   working_directory: ~/repo
   docker:
     - image: tendermint/docs_deployment
@@ -200,7 +200,7 @@ jobs:
           name: dependencies
           command: |
             export PATH="$GOBIN:$PATH"
-            make get_vendGor_deps
+            make get_vendor_deps
       - run: mkdir -p $GOPATH/src/github.com/tendermint
       - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
 
@@ -347,7 +347,7 @@ jobs:
           command: bash .circleci/codecov.sh -f coverage.txt
 
   deploy_docs:
-    <<: *docs_deploy
+    <<: *docs_update_config
     steps:
       - checkout
       - run:
