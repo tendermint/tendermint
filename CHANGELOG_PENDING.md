@@ -23,3 +23,4 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 - [kv indexer] \#2912 don't ignore key when executing CONTAINS
+- [p2p] \#2715 fix a bug where seeds don't disconnect from a peer after 3h
