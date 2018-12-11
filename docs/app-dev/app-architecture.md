@@ -5,7 +5,7 @@ Tendermint blockchain application.
 
 The following diagram provides a superb example:
 
-![](../imgs/cosmos-tendermint-stack-4k.png)
+![](../imgs/cosmos-tendermint-stack-4k.jpg)
 
 The end-user application here is the Cosmos Voyager, at the bottom left.
 Voyager communicates with a REST API exposed by a local Light-Client
