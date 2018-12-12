@@ -72,10 +72,7 @@ func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 }
 
 func (vs *validatorStub) signVote(voteType types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
-	addr, err := vs.PrivValidator.GetAddress()
-	if err != nil {
-		return nil, err
-	}
+	addr := vs.PrivValidator.GetPubKey().Address()
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,
 		ValidatorAddress: addr,
@@ -85,7 +82,7 @@ func (vs *validatorStub) signVote(voteType types.SignedMsgType, hash []byte, hea
 		Type:             voteType,
 		BlockID:          types.BlockID{hash, header},
 	}
-	err = vs.PrivValidator.SignVote(config.ChainID(), vote)
+	err := vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
 }
 
@@ -155,10 +152,7 @@ func signAddVotes(to *ConsensusState, voteType types.SignedMsgType, hash []byte,
 
 func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
-	address, err := privVal.GetAddress()
-	if err != nil {
-		panic(err)
-	}
+	address := privVal.GetPubKey().Address()
 	var vote *types.Vote
 	if vote = prevotes.GetByAddress(address); vote == nil {
 		panic("Failed to find prevote from validator")
@@ -176,10 +170,7 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 
 func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
-	address, err := privVal.GetAddress()
-	if err != nil {
-		panic(err)
-	}
+	address := privVal.GetPubKey().Address()
 	var vote *types.Vote
 	if vote = votes.GetByAddress(address); vote == nil {
 		panic("Failed to find precommit from validator")
@@ -191,10 +182,7 @@ func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorS
 
 func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
 	precommits := cs.Votes.Precommits(thisRound)
-	address, err := privVal.GetAddress()
-	if err != nil {
-		panic(err)
-	}
+	address := privVal.GetPubKey().Address()
 	var vote *types.Vote
 	if vote = precommits.GetByAddress(address); vote == nil {
 		panic("Failed to find precommit from validator")

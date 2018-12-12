@@ -17,10 +17,7 @@ type voteData struct {
 }
 
 func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
-	addr, err := val.GetAddress()
-	if err != nil {
-		panic(err)
-	}
+	addr := val.GetPubKey().Address()
 	v := &Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   valIndex,
@@ -29,7 +26,7 @@ func makeVote(val PrivValidator, chainID string, valIndex int, height int64, rou
 		Type:             SignedMsgType(step),
 		BlockID:          blockID,
 	}
-	err = val.SignVote(chainID, v)
+	err := val.SignVote(chainID, v)
 	if err != nil {
 		panic(err)
 	}
@@ -68,8 +65,7 @@ func TestEvidence(t *testing.T) {
 		{vote1, badVote, false},                                          // signed by wrong key
 	}
 
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
+	pubKey := val.GetPubKey()
 	for _, c := range cases {
 		ev := &DuplicateVoteEvidence{
 			VoteA: c.vote1,

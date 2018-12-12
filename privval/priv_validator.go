@@ -56,16 +56,10 @@ type FilePV struct {
 	mtx      sync.Mutex
 }
 
-// GetAddress returns the address of the validator.
-// Implements PrivValidator.
-func (pv *FilePV) GetAddress() (types.Address, error) {
-	return pv.Address, nil
-}
-
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
-func (pv *FilePV) GetPubKey() (crypto.PubKey, error) {
-	return pv.PubKey, nil
+func (pv *FilePV) GetPubKey() crypto.PubKey {
+	return pv.PubKey
 }
 
 // GenFilePV generates a new validator with randomly generated private key
@@ -293,7 +287,7 @@ func (pv *FilePV) saveSigned(height int64, round int, step int8,
 // String returns a string representation of the FilePV.
 func (pv *FilePV) String() string {
 	// does not error in FilePV:
-	addr, _ := pv.GetAddress()
+	addr := pv.GetPubKey().Address()
 	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", addr, pv.LastHeight, pv.LastRound, pv.LastStep)
 }
 

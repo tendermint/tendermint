@@ -50,10 +50,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivValidator, valIndex int) *types.Vote {
 	privVal := privVals[valIndex]
-	addr, err := privVal.GetAddress()
-	if err != nil {
-		panic(err)
-	}
+	addr := privVal.GetPubKey().Address()
 	vote := &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   valIndex,
@@ -64,7 +61,7 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivVali
 		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()
-	err = privVal.SignVote(chainID, vote)
+	err := privVal.SignVote(chainID, vote)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
 		return nil

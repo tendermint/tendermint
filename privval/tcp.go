@@ -107,8 +107,10 @@ func (sc *TCPVal) OnStart() error {
 	}
 
 	sc.conn = conn
-
-	sc.RemoteSignerClient = NewRemoteSignerClient(sc.conn)
+	sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
+	if err != nil {
+		return err
+	}
 
 	// Start a routine to keep the connection alive
 	sc.cancelPing = make(chan struct{}, 1)

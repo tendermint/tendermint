@@ -12,10 +12,7 @@ import (
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {
-	// TODO: shouldn't we remove GetAddress? In case of a remote signer this will trigger
-	// another request even if the pubkey was already retrieved.
-	GetAddress() (Address, error) // redundant since .PubKey().Address()
-	GetPubKey() (crypto.PubKey, error)
+	GetPubKey() crypto.PubKey
 
 	SignVote(chainID string, vote *Vote) error
 	SignProposal(chainID string, proposal *Proposal) error
@@ -31,16 +28,7 @@ func (pvs PrivValidatorsByAddress) Len() int {
 }
 
 func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	// this is used in tests only; it's OK to panic here
-	addr_i, err := pvs[i].GetAddress()
-	if err != nil {
-		panic(err)
-	}
-	addr_j, err := pvs[j].GetAddress()
-	if err != nil {
-		panic(err)
-	}
-	return bytes.Compare(addr_i, addr_j) == -1
+	return bytes.Compare(pvs[i].GetPubKey().Address(), pvs[j].GetPubKey().Address()) == -1
 }
 
 func (pvs PrivValidatorsByAddress) Swap(i, j int) {
@@ -63,13 +51,8 @@ func NewMockPV() *MockPV {
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) GetAddress() (Address, error) {
-	return pv.privKey.PubKey().Address(), nil
-}
-
-// Implements PrivValidator.
-func (pv *MockPV) GetPubKey() (crypto.PubKey, error) {
-	return pv.privKey.PubKey(), nil
+func (pv *MockPV) GetPubKey() crypto.PubKey {
+	return pv.privKey.PubKey()
 }
 
 // Implements PrivValidator.
@@ -96,7 +79,7 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	addr, _ := pv.GetAddress()
+	addr := pv.GetPubKey().Address()
 	return fmt.Sprintf("MockPV{%v}", addr)
 }
 

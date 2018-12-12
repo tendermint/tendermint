@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
@@ -144,8 +142,7 @@ func TestABCIEvidence(t *testing.T) {
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
+	pubKey := val.GetPubKey()
 	ev := &DuplicateVoteEvidence{
 		PubKey: pubKey,
 		VoteA:  makeVote(val, chainID, 0, 10, 2, 1, blockID),

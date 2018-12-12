@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -17,12 +16,10 @@ var ShowValidatorCmd = &cobra.Command{
 }
 
 func showValidator(cmd *cobra.Command, args []string) {
+	// TODO(ismail): add a flag and check if we actually want to see the pub key
+	//  of the remote signer instead of the FilePV
 	privValidator := privval.LoadOrGenFilePV(config.PrivValidatorFile())
-	key, err := privValidator.GetPubKey()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to read pubkey from private validator file (%s): %v", config.PrivValidatorFile(), err)
-		os.Exit(1)
-	}
+	key := privValidator.GetPubKey()
 	pubKeyJSONBytes, _ := cdc.MarshalJSON(key)
 	fmt.Println(string(pubKeyJSONBytes))
 }

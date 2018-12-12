@@ -57,10 +57,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
-		key, err := pv.GetPubKey()
-		if err != nil {
-			return err
-		}
+		key := pv.GetPubKey()
 		genDoc.Validators = []types.GenesisValidator{{
 			Address: key.Address(),
 			PubKey:  key,

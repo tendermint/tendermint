@@ -240,19 +240,13 @@ func NewNode(config *cfg.Config,
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		privValAddr, err := privValidator.GetAddress()
-		if err != nil {
-			return nil, err
-		}
+		privValAddr := privValidator.GetPubKey().Address()
 		if bytes.Equal(privValAddr, addr) {
 			fastSync = false
 		}
 	}
 
-	pubKey, err := privValidator.GetPubKey()
-	if err != nil {
-		return nil, err
-	}
+	pubKey := privValidator.GetPubKey()
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
 	if state.Validators.HasAddress(addr) {
@@ -625,10 +619,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetP2PPeers(n.sw)
 	rpccore.SetP2PTransport(n)
-	pubKey, err := n.privValidator.GetPubKey()
-	if err != nil {
-		n.Logger.Error("Error configuring RPC", "err", err)
-	}
+	pubKey := n.privValidator.GetPubKey()
 	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
