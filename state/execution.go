@@ -345,9 +345,12 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 
 func NextValidators(currentSet *types.ValidatorSet, updates []*types.Validator) (*types.ValidatorSet, error) {
 	nValSet := currentSet.Copy()
-	// update proposer priority
+	// update proposer priority. Increase proposer priority for every process for ammount
+	// equal to their voting power and decrease proposer priority of the initial proposer
+	// equal to total voting power
 	nValSet.UpdateProposerPriority()
 
+	// apply updates
 	for _, valUpdate := range updates {
 		// should already have been checked
 		if valUpdate.VotingPower < 0 {

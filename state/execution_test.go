@@ -354,6 +354,45 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 }
 
+func TestNextValidatorsWithEmptyUpdates(t *testing.T) {
+	pubkey1 := ed25519.GenPrivKey().PubKey()
+	val1 := types.NewValidator(pubkey1, 10)
+	pubkey2 := ed25519.GenPrivKey().PubKey()
+	val2 := types.NewValidator(pubkey2, 20)
+
+	currentSet := types.NewValidatorSet([]*types.Validator{val1, val2})
+	t.Log(currentSet)
+
+	newSet, error := NextValidators(currentSet, nil)
+	assert.Nil(t, error)
+	t.Log(newSet)
+
+	newSet2, error := NextValidators(currentSet, []*types.Validator{})
+	assert.Nil(t, error)
+	t.Log(newSet2)
+}
+
+func TestNextValidatorsWithUpdates(t *testing.T) {
+	pubkey1 := ed25519.GenPrivKey().PubKey()
+	val1 := types.NewValidator(pubkey1, 10)
+	pubkey2 := ed25519.GenPrivKey().PubKey()
+	val2 := types.NewValidator(pubkey2, 20)
+	pubkey3 := ed25519.GenPrivKey().PubKey()
+	val3 := types.NewValidator(pubkey3, 30)
+
+	currentSet := types.NewValidatorSet([]*types.Validator{val1, val2, val3})
+	t.Log(currentSet)
+
+	val1.VotingPower = 0
+	newSet, error := NextValidators(currentSet, []*types.Validator{val1})
+	assert.Nil(t, error)
+	t.Log("Remove v1", newSet)
+
+	newSet2, error := NextValidators(newSet, []*types.Validator{val2})
+	assert.Nil(t, error)
+	t.Log("add v2", newSet2)
+}
+
 //----------------------------------------------------------------------------
 
 // make some bogus txs

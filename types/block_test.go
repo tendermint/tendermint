@@ -341,3 +341,10 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 		}
 	}
 }
+
+func TestNilBlock(t *testing.T) {
+	nilBlock := BlockID{nil, PartSetHeader{}}
+	t.Log(nilBlock)
+	t.Log(len(nilBlock.Hash))
+	t.Log(nilBlock.IsZero())
+}

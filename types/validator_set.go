@@ -62,9 +62,9 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 		round:                  0,
 	}
 
-	if len(valz) > 0 {
-		vals.IncrementProposerPriority(1)
-	}
+	//if len(valz) > 0 {
+	//	vals.IncrementProposerPriority(1)
+	//}
 
 	return vals
 }
@@ -93,11 +93,11 @@ func (vals *ValidatorSet) FindProposer(round int) *Validator {
 			val.ProposerPriority = initialValSet.initProposerPriorities[i]
 		}
 		for i := initialValSet.round; i <= round; i++ {
-			proposer = vals.updateProposerPriority()
+			proposer = vals.UpdateProposerPriority()
 		}
 	} else {
 		for i := vals.round; i <= round; i++ {
-			proposer = vals.updateProposerPriority()
+			proposer = vals.UpdateProposerPriority()
 		}
 		vals.round = round
 	}
@@ -127,24 +127,22 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	vals.Proposer = proposer
 }
 
-func (vals *ValidatorSet) UpdateProposerPriority() *Validator {
-	for _, val := range vals.Validators {
+func (vals *ValidatorSet) UpdateProposerPriority() *ValidatorSet {
+	nValSet := vals.Copy()
+
+	// just pick the proposer with the highest proposer priority
+	// without any modification to it
+	proposer := vals.FindProposer(0) // maybe use getProposer here
+
+	// update proposer priority
+	for _, val := range nValSet.Validators {
 		// Check for overflow for sum.
 		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
+		if bytes.Equal(proposer.Address, val.Address) {
+			val.ProposerPriority = safeSubClip(val.ProposerPriority, nValSet.TotalVotingPower())
+		}
 	}
-
-	validatorsHeap := cmn.NewHeap()
-	// just update the heap
-	for _, val := range vals.Validators {
-		validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
-	}
-
-	// Decrement the validator with most ProposerPriority:
-	mostest := validatorsHeap.Peek().(*Validator)
-	// mind underflow
-	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
-
-	return mostest
+	return nValSet
 }
 
 func (vals *ValidatorSet) incrementProposerPriority(subAvg bool) *Validator {
