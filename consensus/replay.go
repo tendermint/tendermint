@@ -290,9 +290,31 @@ func (h *Handshaker) ReplayBlocks(
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
-		_, err := proxyApp.Consensus().InitChainSync(req)
+		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {
 			return nil, err
+		}
+
+		if stateBlockHeight == 0{ //we only update state when we are in initial state
+			// If the app returned validators or consensus params, update the state.
+			if len(res.Validators) > 0 {
+				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
+				if err != nil {
+					return nil, err
+				}
+				state.Validators = types.NewValidatorSet(vals)
+				state.NextValidators = types.NewValidatorSet(vals)
+			} else {
+				// If validator set is not set in genesis and still empty after InitChain, exit.
+				if len(h.genDoc.Validators) == 0 {
+					return nil, fmt.Errorf("Validator set is nil in genesis and still empty after InitChain")
+				}
+			}
+
+			if res.ConsensusParams != nil {
+				state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)
+			}
+			sm.SaveState(h.stateDB, state)
 		}
 	}
 
