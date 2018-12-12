@@ -108,6 +108,10 @@ func PostCheckMaxGas(maxGas int64) PostCheckFunc {
 		if maxGas == -1 {
 			return nil
 		}
+		if res.GasWanted < 0 {
+			return fmt.Errorf("gas wanted %d is negative",
+				res.GasWanted)
+		}
 		if res.GasWanted > maxGas {
 			return fmt.Errorf("gas wanted %d is greater than max gas %d",
 				res.GasWanted, maxGas)
@@ -486,11 +490,15 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 			return txs
 		}
 		totalBytes += int64(len(memTx.tx)) + aminoOverhead
-		// Check total gas requirement
-		if maxGas > -1 && totalGas+memTx.gasWanted > maxGas {
+		// Check total gas requirement.
+		// If maxGas is negative, skip this check.
+		// Since newTotalGas < masGas, which
+		// must be non-negative, it follows that this won't overflow.
+		newTotalGas := totalGas + memTx.gasWanted
+		if maxGas > -1 && newTotalGas > maxGas {
 			return txs
 		}
-		totalGas += memTx.gasWanted
+		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
 	}
 	return txs

@@ -147,6 +147,7 @@ func TestVoteVerifySignature(t *testing.T) {
 
 	// sign it
 	err := privVal.SignVote("test_chain_id", vote)
+	require.NoError(t, err)
 
 	// verify the same vote
 	valid := pubkey.VerifyBytes(vote.SignBytes("test_chain_id"), vote.Signature)
