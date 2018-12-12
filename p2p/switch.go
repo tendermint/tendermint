@@ -211,7 +211,9 @@ func (sw *Switch) OnStop() {
 	// Stop peers
 	for _, p := range sw.peers.List() {
 		p.Stop()
-		sw.peers.Remove(p)
+		if sw.peers.Remove(p) {
+			sw.metrics.Peers.Add(float64(-1))
+		}
 	}
 
 	// Stop reactors
@@ -299,8 +301,9 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	sw.peers.Remove(peer)
-	sw.metrics.Peers.Add(float64(-1))
+	if sw.peers.Remove(peer) {
+		sw.metrics.Peers.Add(float64(-1))
+	}
 	peer.Stop()
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
@@ -505,6 +508,12 @@ func (sw *Switch) acceptRoutine() {
 					"err", err,
 					"numPeers", sw.peers.Size(),
 				)
+				// We could instead have a retry loop around the acceptRoutine,
+				// but that would need to stop and let the node shutdown eventually.
+				// So might as well panic and let process managers restart the node.
+				// There's no point in letting the node run without the acceptRoutine,
+				// since it won't be able to accept new connections.
+				panic(fmt.Errorf("accept routine exited: %v", err))
 			}
 
 			break

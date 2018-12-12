@@ -60,13 +60,15 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 	n := len(peerList)
 	// 1. Test removing from the front
 	for i, peerAtFront := range peerList {
-		peerSet.Remove(peerAtFront)
+		removed := peerSet.Remove(peerAtFront)
+		assert.True(t, removed)
 		wantSize := n - i - 1
 		for j := 0; j < 2; j++ {
 			assert.Equal(t, false, peerSet.Has(peerAtFront.ID()), "#%d Run #%d: failed to remove peer", i, j)
 			assert.Equal(t, wantSize, peerSet.Size(), "#%d Run #%d: failed to remove peer and decrement size", i, j)
 			// Test the route of removing the now non-existent element
-			peerSet.Remove(peerAtFront)
+			removed := peerSet.Remove(peerAtFront)
+			assert.False(t, removed)
 		}
 	}
 
@@ -81,7 +83,8 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 	// b) In reverse, remove each element
 	for i := n - 1; i >= 0; i-- {
 		peerAtEnd := peerList[i]
-		peerSet.Remove(peerAtEnd)
+		removed := peerSet.Remove(peerAtEnd)
+		assert.True(t, removed)
 		assert.Equal(t, false, peerSet.Has(peerAtEnd.ID()), "#%d: failed to remove item at end", i)
 		assert.Equal(t, i, peerSet.Size(), "#%d: differing sizes after peerSet.Remove(atEndPeer)", i)
 	}
@@ -105,7 +108,8 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 	}
 
 	for i, peer := range peers {
-		peerSet.Remove(peer)
+		removed := peerSet.Remove(peer)
+		assert.True(t, removed)
 		if peerSet.Has(peer.ID()) {
 			t.Errorf("Failed to remove peer")
 		}

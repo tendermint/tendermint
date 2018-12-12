@@ -1,13 +1,8 @@
-# Pending
-
-## v0.27.0
+## v0.27.1
 
 *TBD*
 
 Special thanks to external contributors on this release:
-
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -17,18 +12,15 @@ program](https://hackerone.com/tendermint).
 
 * Go API
 
-- [db] [\#2913](https://github.com/tendermint/tendermint/pull/2913) ReverseIterator API change -- start < end, and end is exclusive.
-
 * Blockchain Protocol
-  * [state] \#2714 Validators can now only use pubkeys allowed within ConsensusParams.ValidatorParams
 
 * P2P Protocol
 
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [consensus] [\#2871](https://github.com/tendermint/tendermint/issues/2871) Remove *ProposalHeartbeat* infrastructure as it serves no real purpose
+- [rpc] Add `UnconfirmedTxs(limit)` and `NumUnconfirmedTxs()` methods to HTTP/Local clients (@danil-lashin)
 
 ### BUG FIXES:
-- [types] \#2938 Fix regression in v0.26.4 where we panic on empty
-  genDoc.Validators
+- [kv indexer] \#2912 don't ignore key when executing CONTAINS
+- [p2p] \#2715 fix a bug where seeds don't disconnect from a peer after 3h
