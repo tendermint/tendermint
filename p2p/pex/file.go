@@ -16,16 +16,18 @@ type addrBookJSON struct {
 }
 
 func (a *addrBook) saveToFile(filePath string) {
-	a.Logger.Info("Saving AddrBook to file", "size", a.Size())
-
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	// Compile Addrs
-	addrs := []*knownAddress{}
-	for _, ka := range a.addrLookup {
-		addrs = append(addrs, ka)
-	}
 
+	bookSize := a.size()
+	a.Logger.Info("Saving AddrBook to file", "size", bookSize)
+
+	addrs := make([]*knownAddress, bookSize)
+	i := 0
+	for _, ka := range a.addrLookup {
+		addrs[i] = ka
+		i++
+	}
 	aJSON := &addrBookJSON{
 		Key:   a.key,
 		Addrs: addrs,

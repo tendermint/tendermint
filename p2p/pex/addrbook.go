@@ -527,7 +527,7 @@ func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 	case bucketTypeOld:
 		return a.bucketsOld[bucketIdx]
 	default:
-		cmn.PanicSanity("Should not happen")
+		panic("Should not happen")
 		return nil
 	}
 }
