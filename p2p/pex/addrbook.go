@@ -473,7 +473,7 @@ func (a *addrBook) ListOfKnownAddresses() []*knownAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	addrs := []*knownAddress{}
+	addrs := make([]*knownAddress, 0, len(a.addrLookup))
 	for _, addr := range a.addrLookup {
 		addrs = append(addrs, addr.copy())
 	}

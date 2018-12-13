@@ -596,39 +596,22 @@ type crawlPeerInfo struct {
 
 	// The last time we attempt to reach this address
 	LastAttempt time.Time
-
-	// The last time we successfully reached this address
-	LastSuccess time.Time
 }
 
-// oldestFirst implements sort.Interface for []crawlPeerInfo
-// based on the LastAttempt field.
-type oldestFirst []crawlPeerInfo
-
-func (of oldestFirst) Len() int           { return len(of) }
-func (of oldestFirst) Swap(i, j int)      { of[i], of[j] = of[j], of[i] }
-func (of oldestFirst) Less(i, j int) bool { return of[i].LastAttempt.Before(of[j].LastAttempt) }
-
-// getPeersToCrawl returns addresses of potential peers that we wish to validate.
-// NOTE: The status information is ordered as described above.
+// getPeersToCrawl returns addresses of potential peers that we wish to
+// validate.
 func (r *PEXReactor) getPeersToCrawl() []crawlPeerInfo {
-	var of oldestFirst
-
 	// TODO: be more selective
 	addrs := r.book.ListOfKnownAddresses()
-	for _, addr := range addrs {
-		if len(addr.ID()) == 0 {
-			continue // dont use peers without id
-		}
-
-		of = append(of, crawlPeerInfo{
+	infos := make([]crawlPeerInfo, len(addrs))
+	for i, addr := range addrs {
+		infos[i] = crawlPeerInfo{
 			Addr:        addr.Addr,
 			LastAttempt: addr.LastAttempt,
-			LastSuccess: addr.LastSuccess,
-		})
+		}
 	}
-	sort.Sort(of)
-	return of
+	sort.Slice(infos, func(i, j int) bool { return infos[i].LastAttempt.Before(infos[j].LastAttempt) })
+	return infos
 }
 
 // crawlPeers will crawl the network looking for new peer addresses. (once)
