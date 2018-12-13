@@ -74,13 +74,13 @@ laddr = "tcp://0.0.0.0:26657"
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
 # Use '["*"]' to allow any origin
-cors_allowed_origins = "[]"
+cors_allowed_origins = []
 
 # A list of methods the client is allowed to use with cross-domain requests
-cors_allowed_methods = "[HEAD GET POST]"
+cors_allowed_methods = ['HEAD', 'GET', 'POST']
 
 # A list of non simple headers the client is allowed to use with cross-domain requests
-cors_allowed_headers = "[Origin Accept Content-Type X-Requested-With X-Server-Time]"
+cors_allowed_headers = ['Origin', 'Accept', 'Content-Type', 'X-Requested-With', 'X-Server-Time']
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
