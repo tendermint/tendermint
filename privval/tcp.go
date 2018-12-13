@@ -115,10 +115,13 @@ func (sc *TCPVal) OnStart() error {
 	// Start a routine to keep the connection alive
 	sc.cancelPing = make(chan struct{}, 1)
 	sc.pingTicker = time.NewTicker(sc.connHeartbeat)
-	go func() {
+	/*go func() {
 		for {
 			select {
 			case <-sc.pingTicker.C:
+				sc.Logger.Error(
+					"Pinging",
+				)
 				err := sc.Ping()
 				if err != nil {
 					sc.Logger.Error(
@@ -127,11 +130,14 @@ func (sc *TCPVal) OnStart() error {
 					)
 				}
 			case <-sc.cancelPing:
+				sc.Logger.Error(
+					"Pinging Stopped",
+				)
 				sc.pingTicker.Stop()
 				return
 			}
 		}
-	}()
+	}()*/
 
 	return nil
 }

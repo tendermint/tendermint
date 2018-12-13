@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -63,13 +64,7 @@ func NewRemoteSigner(
 
 // OnStart implements cmn.Service.
 func (rs *RemoteSigner) OnStart() error {
-	conn, err := rs.connect()
-	if err != nil {
-		rs.Logger.Error("OnStart", "err", err)
-		return err
-	}
-
-	go rs.handleConnection(conn)
+	go rs.handleConnection()
 
 	return nil
 }
@@ -86,75 +81,86 @@ func (rs *RemoteSigner) OnStop() {
 }
 
 func (rs *RemoteSigner) connect() (net.Conn, error) {
-	for retries := rs.connRetries; retries > 0; retries-- {
-		// Don't sleep if it is the first retry.
-		if retries != rs.connRetries {
-			time.Sleep(rs.connDeadline)
-		}
+	//for retries := rs.connRetries; retries > 0; retries-- {
+	// Don't sleep if it is the first retry.
+	//if retries != rs.connRetries {
+	//	time.Sleep(rs.connDeadline)
+	//}
 
-		conn, err := cmn.Connect(rs.addr)
-		if err != nil {
-			rs.Logger.Error(
-				"connect",
-				"addr", rs.addr,
-				"err", err,
-			)
+	conn, err := cmn.Connect(rs.addr)
+	if err != nil {
+		rs.Logger.Error(
+			"connect",
+			"addr", rs.addr,
+			"err", err,
+		)
 
-			continue
-		}
-
-		if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
-			rs.Logger.Error(
-				"connect",
-				"err", err,
-			)
-			continue
-		}
-
-		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey)
-		if err != nil {
-			rs.Logger.Error(
-				"connect",
-				"err", err,
-			)
-
-			continue
-		}
-
-		return conn, nil
+		return nil, err
 	}
+
+	//if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
+	//	rs.Logger.Error(
+	//		"connect",
+	//		"err", err,
+	//	)
+	//	//continue
+	//	return nil, err
+	//}
+
+	conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey)
+	if err != nil {
+		rs.Logger.Error(
+			"connect",
+			"err", err,
+		)
+
+		return nil, err
+	}
+	fmt.Println("connected", conn.RemoteAddr())
+	return conn, nil
+	//}
 
 	return nil, ErrDialRetryMax
 }
 
-func (rs *RemoteSigner) handleConnection(conn net.Conn) {
-	for {
+func (rs *RemoteSigner) handleConnection() {
+	for { // establish connection loop:
 		if !rs.IsRunning() {
 			return // Ignore error from listener closing.
 		}
-
+		fmt.Println("Connecting again ...")
+		conn, err := rs.connect()
+		if err != nil {
+			rs.Logger.Error("OnStart", "err", err)
+			fmt.Println("failed to connect", err)
+			time.Sleep(rs.connDeadline)
+			continue
+		}
 		// Reset the connection deadline
-		conn.SetDeadline(time.Now().Add(rs.connDeadline))
+		//conn.SetDeadline(time.Now().Add(rs.connDeadline*10))
 
-		req, err := readMsg(conn)
-		if err != nil {
-			if err != io.EOF {
-				rs.Logger.Error("handleConnection", "err", err)
+		for { // handle request loop
+			req, err := readMsg(conn)
+			if err != nil {
+				if err != io.EOF {
+					rs.Logger.Error("handleConnection readMsg", "err", err)
+				}
+				conn.Close()
+				break
 			}
-			return
-		}
 
-		res, err := handleRequest(req, rs.chainID, rs.privVal)
+			res, err := handleRequest(req, rs.chainID, rs.privVal)
 
-		if err != nil {
-			// only log the error; we'll reply with an error in res
-			rs.Logger.Error("handleConnection", "err", err)
-		}
+			if err != nil {
+				// only log the error; we'll reply with an error in res
+				rs.Logger.Error("handleConnection handleRequest", "err", err)
+			}
 
-		err = writeMsg(conn, res)
-		if err != nil {
-			rs.Logger.Error("handleConnection", "err", err)
-			return
+			err = writeMsg(conn, res)
+			if err != nil {
+				rs.Logger.Error("handleConnection writeMsg", "err", err)
+				break
+			}
 		}
 	}
 }

@@ -230,6 +230,7 @@ func writeMsg(w io.Writer, msg interface{}) (err error) {
 }
 
 func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValidator) (RemoteSignerMsg, error) {
+	fmt.Println("handle req", req)
 	var res RemoteSignerMsg
 	var err error
 
