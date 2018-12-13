@@ -65,8 +65,7 @@ type AddrBook interface {
 	// Send a selection of addresses with bias
 	GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddress
 
-	// TODO: remove
-	ListOfKnownAddresses() []*knownAddress
+	Size() int
 
 	// Persist to disk
 	Save()
@@ -466,18 +465,6 @@ ADDRS_LOOP:
 	}
 
 	return selection
-}
-
-// ListOfKnownAddresses returns the new and old addresses.
-func (a *addrBook) ListOfKnownAddresses() []*knownAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
-	addrs := make([]*knownAddress, 0, len(a.addrLookup))
-	for _, addr := range a.addrLookup {
-		addrs = append(addrs, addr.copy())
-	}
-	return addrs
 }
 
 //------------------------------------------------

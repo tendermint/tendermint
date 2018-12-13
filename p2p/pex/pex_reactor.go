@@ -3,7 +3,6 @@ package pex
 import (
 	"fmt"
 	"reflect"
-	"sort"
 	"sync"
 	"time"
 
@@ -77,6 +76,9 @@ type PEXReactor struct {
 	seedAddrs []*p2p.NetAddress
 
 	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
+
+	// seed/crawled mode fields
+	crawlPeerInfos map[p2p.ID]*crawlPeerInfo
 }
 
 func (r *PEXReactor) minReceiveRequestInterval() time.Duration {
@@ -108,6 +110,7 @@ func NewPEXReactor(b AddrBook, config *PEXReactorConfig) *PEXReactor {
 		ensurePeersPeriod:    defaultEnsurePeersPeriod,
 		requestsSent:         cmn.NewCMap(),
 		lastReceivedRequests: cmn.NewCMap(),
+		crawlPeerInfos:       make(map[p2p.ID]*crawlPeerInfo),
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("PEXReactor", r)
 	return r
@@ -564,7 +567,7 @@ func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
 // from peers, except other seed nodes.
 func (r *PEXReactor) crawlPeersRoutine() {
 	// Do an initial crawl
-	r.crawlPeers()
+	r.CrawlPeers(r.book.GetSelection())
 
 	// Fire periodically
 	ticker := time.NewTicker(defaultCrawlPeersPeriod)
@@ -573,7 +576,7 @@ func (r *PEXReactor) crawlPeersRoutine() {
 		select {
 		case <-ticker.C:
 			r.attemptDisconnects()
-			r.crawlPeers()
+			r.CrawlPeers(r.book.GetSelection())
 		case <-r.Quit():
 			return
 		}
@@ -585,54 +588,58 @@ func (r *PEXReactor) crawlPeersRoutine() {
 func (r *PEXReactor) hasPotentialPeers() bool {
 	out, in, dial := r.Switch.NumPeers()
 
-	return out+in+dial > 0 && len(r.book.ListOfKnownAddresses()) > 0
+	return out+in+dial > 0 && r.book.Size() > 0
 }
 
-// crawlPeerInfo handles temporary data needed for the
-// network crawling performed during seed/crawler mode.
+// crawlPeerInfo handles temporary data needed for the network crawling
+// performed during seed/crawler mode.
 type crawlPeerInfo struct {
-	// The listening address of a potential peer we learned about
 	Addr *p2p.NetAddress
-
-	// The last time we attempt to reach this address
-	LastAttempt time.Time
+	// The last time we crawled the peer or attempted to do so.
+	LastCrawled time.Time
 }
 
-// getPeersToCrawl returns addresses of potential peers that we wish to
-// validate.
-func (r *PEXReactor) getPeersToCrawl() []crawlPeerInfo {
-	// TODO: be more selective
-	addrs := r.book.ListOfKnownAddresses()
-	infos := make([]crawlPeerInfo, len(addrs))
-	for i, addr := range addrs {
-		infos[i] = crawlPeerInfo{
-			Addr:        addr.Addr,
-			LastAttempt: addr.LastAttempt,
-		}
-	}
-	sort.Slice(infos, func(i, j int) bool { return infos[i].LastAttempt.Before(infos[j].LastAttempt) })
-	return infos
-}
-
-// crawlPeers will crawl the network looking for new peer addresses. (once)
-func (r *PEXReactor) crawlPeers() {
-	peerInfos := r.getPeersToCrawl()
-
+// CrawlPeers will crawl the network looking for new peer addresses.
+// Exposed for testing.
+func (r *PEXReactor) CrawlPeers(addrs []*p2p.NetAddress) {
 	now := time.Now()
-	// Use addresses we know of to reach additional peers
-	for _, pi := range peerInfos {
-		// Do not attempt to connect with peers we recently dialed
-		if now.Sub(pi.LastAttempt) < defaultCrawlPeerInterval {
+
+	for _, addr := range addrs {
+		peerInfo, ok := r.crawlPeerInfos[addr.ID]
+		if !ok {
+			peerInfo = &crawlPeerInfo{
+				Addr:        addr,
+				LastCrawled: now.Add(-defaultCrawlPeerInterval).Add(-1 * time.Second),
+			}
+			r.crawlPeerInfos[addr.ID] = peerInfo
+		}
+
+		// Do not attempt to connect with peers we recently crawled.
+		if now.Sub(peerInfo.LastCrawled) < defaultCrawlPeerInterval {
 			continue
 		}
-		// Otherwise, attempt to connect with the known address
-		err := r.Switch.DialPeerWithAddress(pi.Addr, false)
+
+		if r.Switch.IsDialingOrExistingAddress(addr) {
+			continue
+		}
+
+		// Record crawling attempt.
+		peerInfo.LastCrawled = now
+		r.crawlPeerInfos[addr.ID] = peerInfo
+
+		err := r.Switch.DialPeerWithAddress(addr, false)
 		if err != nil {
-			r.book.MarkAttempt(pi.Addr)
+			r.Logger.Error("Dialing failed", "addr", addr, "err", err)
+			// TODO: detect more "bad peer" scenarios
+			if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
+				r.book.MarkBad(addr)
+			} else {
+				r.book.MarkAttempt(addr)
+			}
 			continue
 		}
-		// Ask for more addresses
-		peer := r.Switch.Peers().Get(pi.Addr.ID)
+
+		peer := r.Switch.Peers().Get(addr.ID)
 		if peer != nil {
 			r.RequestAddrs(peer)
 		}

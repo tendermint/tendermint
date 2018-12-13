@@ -289,31 +289,34 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	assertPeersWithTimeout(t, []*p2p.Switch{secondPeer}, 10*time.Millisecond, 1*time.Second, 2)
 }
 
-func TestPEXReactorCrawlStatus(t *testing.T) {
+func TestPEXReactorSeedModeCrawlPeers(t *testing.T) {
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
 	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true})
 	defer teardownReactor(book)
 
-	// Seed/Crawler mode uses data from the Switch
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
 
-	// Create a peer, add it to the peer set and the addrbook.
-	peer := p2p.CreateRandomPeer(false)
-	p2p.AddPeerToSwitch(pexR.Switch, peer)
-	addr1 := peer.NodeInfo().NetAddress()
-	pexR.book.AddAddress(addr1, addr1)
+	peer := testCreateDefaultPeer(dir, 1)
+	require.Nil(t, peer.Start())
+	defer peer.Stop()
 
-	// Add a non-connected address to the book.
-	_, addr2 := p2p.CreateRoutableAddr()
-	pexR.book.AddAddress(addr2, addr1)
+	assert.Equal(t, 0, sw.Peers().Size())
 
-	// Get some peerInfos to crawl
-	peerInfos := pexR.getPeersToCrawl()
+	// 1. Test CrawlPeers dials the peer
+	pexR.CrawlPeers([]*p2p.NetAddress{peer.NodeInfo().NetAddress()})
+	assert.Equal(t, 1, sw.Peers().Size())
+	assert.True(t, sw.Peers().Has(peer.NodeInfo().ID()))
 
-	// Make sure it has the proper number of elements
-	assert.Equal(t, 2, len(peerInfos))
+	// TODO to be continued
+}
 
-	// TODO: test
+func TestPEXReactorSeedModeAttemptDisconnects(t *testing.T) {
+	// TODO
 }
 
 func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
