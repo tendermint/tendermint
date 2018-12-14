@@ -432,11 +432,7 @@ type bcBlockResponseMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *bcBlockResponseMessage) ValidateBasic() error {
-	if err := m.Block.ValidateBasic(); err != nil {
-		return err
-	}
-
-	return nil
+	return m.Block.ValidateBasic()
 }
 
 func (m *bcBlockResponseMessage) String() string {
