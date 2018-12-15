@@ -7,7 +7,6 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [config] `allow_duplicate_ip` is now set to false
 
 * Apps
 
@@ -16,7 +15,6 @@ Special thanks to external contributors on this release:
 * Blockchain Protocol
 
 * P2P Protocol
-- multiple connections from the same IP are now disabled by default (see `allow_duplicate_ip` config option)
 
 ### FEATURES:
 
