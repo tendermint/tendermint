@@ -89,8 +89,10 @@ func TestTxSearch(t *testing.T) {
 		{"account.date >= TIME 2013-05-03T14:45:00Z", 0},
 		// search using CONTAINS
 		{"account.owner CONTAINS 'an'", 1},
-		// search using CONTAINS
+		// search for non existing value using CONTAINS
 		{"account.owner CONTAINS 'Vlad'", 0},
+		// search using the wrong tag (of numeric type) using CONTAINS
+		{"account.number CONTAINS 'Iv'", 0},
 	}
 
 	for _, tc := range testCases {

@@ -181,5 +181,13 @@
       "language": "Javascript",
       "author": "Dennis McKinnon"
     }
+  ],
+  "aminoLibraries": [
+    {
+      "name": "JS-Amino",
+      "url": "https://github.com/TanNgocDo/Js-Amino",
+      "language": "Javascript",
+      "author": "TanNgocDo"
+    }
   ]
 }
