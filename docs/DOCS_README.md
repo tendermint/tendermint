@@ -15,7 +15,7 @@ respectively.
 There is a CircleCI job listening for changes in the `/docs` directory, on both
 the  `master` and `develop` branches. Any updates to files in this directory
 on those branches will automatically trigger a website deployment. Under the hood,
-the private website repository has a `make build-docs` target consuming by a CircleCI job in that repo.
+the private website repository has a `make build-docs` target consumed by a CircleCI job in that repo.
 
 ## README
 
