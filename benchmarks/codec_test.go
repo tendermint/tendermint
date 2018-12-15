@@ -12,23 +12,28 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
+func testNodeInfo(id p2p.ID) p2p.DefaultNodeInfo {
+	return p2p.DefaultNodeInfo{
+		ProtocolVersion: p2p.ProtocolVersion{1, 2, 3},
+		ID_:             id,
+		Moniker:         "SOMENAME",
+		Network:         "SOMENAME",
+		ListenAddr:      "SOMEADDR",
+		Version:         "SOMEVER",
+		Other: p2p.DefaultNodeInfoOther{
+			TxIndex:    "on",
+			RPCAddress: "0.0.0.0:26657",
+		},
+	}
+}
+
 func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
 	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 	status := &ctypes.ResultStatus{
-		NodeInfo: p2p.NodeInfo{
-			ID:         nodeKey.ID(),
-			Moniker:    "SOMENAME",
-			Network:    "SOMENAME",
-			ListenAddr: "SOMEADDR",
-			Version:    "SOMEVER",
-			Other: p2p.NodeInfoOther{
-				AminoVersion: "SOMESTRING",
-				P2PVersion:   "OTHERSTRING",
-			},
-		},
+		NodeInfo: testNodeInfo(nodeKey.ID()),
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   []byte("SOMEBYTES"),
 			LatestBlockHeight: 123,
@@ -56,17 +61,7 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
 	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
-	nodeInfo := p2p.NodeInfo{
-		ID:         nodeKey.ID(),
-		Moniker:    "SOMENAME",
-		Network:    "SOMENAME",
-		ListenAddr: "SOMEADDR",
-		Version:    "SOMEVER",
-		Other: p2p.NodeInfoOther{
-			AminoVersion: "SOMESTRING",
-			P2PVersion:   "OTHERSTRING",
-		},
-	}
+	nodeInfo := testNodeInfo(nodeKey.ID())
 	b.StartTimer()
 
 	counter := 0
@@ -84,17 +79,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
 	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
-	nodeInfo := p2p.NodeInfo{
-		ID:         nodeKey.ID(),
-		Moniker:    "SOMENAME",
-		Network:    "SOMENAME",
-		ListenAddr: "SOMEADDR",
-		Version:    "SOMEVER",
-		Other: p2p.NodeInfoOther{
-			AminoVersion: "SOMESTRING",
-			P2PVersion:   "OTHERSTRING",
-		},
-	}
+	nodeInfo := testNodeInfo(nodeKey.ID())
 	b.StartTimer()
 
 	counter := 0

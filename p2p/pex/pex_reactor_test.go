@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -320,7 +320,7 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	peer := p2p.CreateRandomPeer(false)
 
 	pexR, book := createReactor(&PEXReactorConfig{})
-	book.AddPrivateIDs([]string{string(peer.NodeInfo().ID)})
+	book.AddPrivateIDs([]string{string(peer.NodeInfo().ID())})
 	defer teardownReactor(book)
 
 	// we have to send a request to receive responses
@@ -387,12 +387,13 @@ func newMockPeer() mockPeer {
 	return mp
 }
 
+func (mp mockPeer) FlushStop()         { mp.Stop() }
 func (mp mockPeer) ID() p2p.ID         { return mp.addr.ID }
 func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
 func (mp mockPeer) IsPersistent() bool { return mp.persistent }
 func (mp mockPeer) NodeInfo() p2p.NodeInfo {
-	return p2p.NodeInfo{
-		ID:         mp.addr.ID,
+	return p2p.DefaultNodeInfo{
+		ID_:        mp.addr.ID,
 		ListenAddr: mp.addr.DialString(),
 	}
 }

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -53,11 +54,16 @@ import (
 // import "github.com/tendermint/tendermint/types"
 //
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // ctx, cancel := context.WithTimeout(context.Background(), timeout)
 // defer cancel()
 // query := query.MustParse("tm.event = 'Tx' AND tx.height = 3")
 // txs := make(chan interface{})
-// err := client.Subscribe(ctx, "test-client", query, txs)
+// err = client.Subscribe(ctx, "test-client", query, txs)
 //
 // go func() {
 //   for e := range txs {
@@ -104,7 +110,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 	go func() {
 		for event := range ch {
 			tmResult := &ctypes.ResultEvent{query, event.(tmtypes.TMEventData)}
-			wsCtx.TryWriteRPCResponse(rpctypes.NewRPCSuccessResponse(wsCtx.Codec(), wsCtx.Request.ID+"#event", tmResult))
+			wsCtx.TryWriteRPCResponse(rpctypes.NewRPCSuccessResponse(wsCtx.Codec(), rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", wsCtx.Request.ID)), tmResult))
 		}
 	}()
 
@@ -115,7 +121,12 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Unsubscribe("test-client", query)
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
+// err = client.Unsubscribe("test-client", query)
 // ```
 //
 // > The above command returns JSON structured like this:
@@ -154,7 +165,12 @@ func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsub
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.UnsubscribeAll("test-client")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
+// err = client.UnsubscribeAll("test-client")
 // ```
 //
 // > The above command returns JSON structured like this:

@@ -129,13 +129,16 @@ handleMessage(msg):
         Reset prs.CatchupCommitRound and prs.CatchupCommit
 ```
 
-### CommitStepMessage handler
+### NewValidBlockMessage handler
 
 ```
 handleMessage(msg):
-    if prs.Height == msg.Height then
-        prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
-        prs.ProposalBlockParts = msg.BlockParts
+    if prs.Height != msg.Height then return
+    
+    if prs.Round != msg.Round && !msg.IsCommit then return
+    
+    prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
+    prs.ProposalBlockParts = msg.BlockParts
 ```
 
 ### HasVoteMessage handler
@@ -161,8 +164,8 @@ handleMessage(msg):
 handleMessage(msg):
     if prs.Height != msg.Height || prs.Round != msg.Round || prs.Proposal then return
     prs.Proposal = true
-    prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
-    prs.ProposalBlockParts = empty set
+    if prs.ProposalBlockParts == empty set then // otherwise it is set in NewValidBlockMessage handler
+      prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
     prs.ProposalPOLRound = msg.POLRound
     prs.ProposalPOL = nil
     Send msg through internal peerMsgQueue to ConsensusState service
@@ -335,12 +338,11 @@ BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`
 
 ## Broadcast routine
 
-The Broadcast routine subscribes to an internal event bus to receive new round steps, votes messages and proposal
-heartbeat messages, and broadcasts messages to peers upon receiving those events.
+The Broadcast routine subscribes to an internal event bus to receive new round steps and votes messages, and broadcasts messages to peers upon receiving those 
+events.
 It broadcasts `NewRoundStepMessage` or `CommitStepMessage` upon new round state event. Note that
 broadcasting these messages does not depend on the PeerRoundState; it is sent on the StateChannel.
 Upon receiving VoteMessage it broadcasts `HasVoteMessage` message to its peers on the StateChannel.
-`ProposalHeartbeatMessage` is sent the same way on the StateChannel.
 
 ## Channels
 

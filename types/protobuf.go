@@ -24,6 +24,12 @@ const (
 	ABCIPubKeyTypeSecp256k1 = "secp256k1"
 )
 
+// TODO: Make non-global by allowing for registration of more pubkey types
+var ABCIPubKeyTypesToAminoRoutes = map[string]string{
+	ABCIPubKeyTypeEd25519:   ed25519.PubKeyAminoRoute,
+	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyAminoRoute,
+}
+
 //-------------------------------------------------------
 
 // TM2PB is used for converting Tendermint ABCI to protobuf ABCI.
@@ -34,6 +40,10 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) abci.Header {
 	return abci.Header{
+		Version: abci.Version{
+			Block: header.Version.Block.Uint64(),
+			App:   header.Version.App.Uint64(),
+		},
 		ChainID:  header.ChainID,
 		Height:   header.Height,
 		Time:     header.Time,
@@ -45,10 +55,11 @@ func (tm2pb) Header(header *Header) abci.Header {
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
 
-		ValidatorsHash:  header.ValidatorsHash,
-		ConsensusHash:   header.ConsensusHash,
-		AppHash:         header.AppHash,
-		LastResultsHash: header.LastResultsHash,
+		ValidatorsHash:     header.ValidatorsHash,
+		NextValidatorsHash: header.NextValidatorsHash,
+		ConsensusHash:      header.ConsensusHash,
+		AppHash:            header.AppHash,
+		LastResultsHash:    header.LastResultsHash,
 
 		EvidenceHash:    header.EvidenceHash,
 		ProposerAddress: header.ProposerAddress,
@@ -114,12 +125,15 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
-		BlockSize: &abci.BlockSize{
+		BlockSize: &abci.BlockSizeParams{
 			MaxBytes: params.BlockSize.MaxBytes,
 			MaxGas:   params.BlockSize.MaxGas,
 		},
-		EvidenceParams: &abci.EvidenceParams{
-			MaxAge: params.EvidenceParams.MaxAge,
+		Evidence: &abci.EvidenceParams{
+			MaxAge: params.Evidence.MaxAge,
+		},
+		Validator: &abci.ValidatorParams{
+			PubKeyTypes: params.Validator.PubKeyTypes,
 		},
 	}
 }
@@ -173,20 +187,19 @@ var PB2TM = pb2tm{}
 type pb2tm struct{}
 
 func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
-	// TODO: define these in crypto and use them
-	sizeEd := 32
-	sizeSecp := 33
 	switch pubKey.Type {
 	case ABCIPubKeyTypeEd25519:
-		if len(pubKey.Data) != sizeEd {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeEd)
+		if len(pubKey.Data) != ed25519.PubKeyEd25519Size {
+			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d",
+				len(pubKey.Data), ed25519.PubKeyEd25519Size)
 		}
 		var pk ed25519.PubKeyEd25519
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:
-		if len(pubKey.Data) != sizeSecp {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeSecp)
+		if len(pubKey.Data) != secp256k1.PubKeySecp256k1Size {
+			return nil, fmt.Errorf("Invalid size for PubKeySecp256k1. Got %d, expected %d",
+				len(pubKey.Data), secp256k1.PubKeySecp256k1Size)
 		}
 		var pk secp256k1.PubKeySecp256k1
 		copy(pk[:], pubKey.Data)
@@ -210,12 +223,15 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 
 func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
 	return ConsensusParams{
-		BlockSize: BlockSize{
+		BlockSize: BlockSizeParams{
 			MaxBytes: csp.BlockSize.MaxBytes,
 			MaxGas:   csp.BlockSize.MaxGas,
 		},
-		EvidenceParams: EvidenceParams{
-			MaxAge: csp.EvidenceParams.MaxAge,
+		Evidence: EvidenceParams{
+			MaxAge: csp.Evidence.MaxAge,
+		},
+		Validator: ValidatorParams{
+			PubKeyTypes: csp.Validator.PubKeyTypes,
 		},
 	}
 }

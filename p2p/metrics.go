@@ -56,7 +56,6 @@ func PrometheusMetrics(namespace string) *Metrics {
 			Name:      "num_txs",
 			Help:      "Number of transactions submitted by each peer.",
 		}, []string{"peer_id"}),
-
 	}
 }
 

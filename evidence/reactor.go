@@ -74,6 +74,13 @@ func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		evR.Switch.StopPeerForError(src, err)
 		return
 	}
+
+	if err = msg.ValidateBasic(); err != nil {
+		evR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+		evR.Switch.StopPeerForError(src, err)
+		return
+	}
+
 	evR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	switch msg := msg.(type) {
@@ -153,18 +160,21 @@ func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 // Returns the message to send the peer, or nil if the evidence is invalid for the peer.
 // If message is nil, return true if we should sleep and try again.
 func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evidence) (msg EvidenceMessage, retry bool) {
-
 	// make sure the peer is up to date
 	evHeight := ev.Height()
 	peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
 	if !ok {
-		evR.Logger.Info("Found peer without PeerState", "peer", peer)
+		// Peer does not have a state yet. We set it in the consensus reactor, but
+		// when we add peer in Switch, the order we call reactors#AddPeer is
+		// different every time due to us using a map. Sometimes other reactors
+		// will be initialized before the consensus reactor. We should wait a few
+		// milliseconds and retry.
 		return nil, true
 	}
 
 	// NOTE: We only send evidence to peers where
 	// peerHeight - maxAge < evidenceHeight < peerHeight
-	maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
+	maxAge := evR.evpool.State().ConsensusParams.Evidence.MaxAge
 	peerHeight := peerState.GetHeight()
 	if peerHeight < evHeight {
 		// peer is behind. sleep while he catches up
@@ -191,7 +201,9 @@ type PeerState interface {
 // Messages
 
 // EvidenceMessage is a message sent or received by the EvidenceReactor.
-type EvidenceMessage interface{}
+type EvidenceMessage interface {
+	ValidateBasic() error
+}
 
 func RegisterEvidenceMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*EvidenceMessage)(nil), nil)
@@ -209,9 +221,19 @@ func decodeMsg(bz []byte) (msg EvidenceMessage, err error) {
 
 //-------------------------------------
 
-// EvidenceMessage contains a list of evidence.
+// EvidenceListMessage contains a list of evidence.
 type EvidenceListMessage struct {
 	Evidence []types.Evidence
+}
+
+// ValidateBasic performs basic validation.
+func (m *EvidenceListMessage) ValidateBasic() error {
+	for i, ev := range m.Evidence {
+		if err := ev.ValidateBasic(); err != nil {
+			return fmt.Errorf("Invalid evidence (#%d): %v", i, err)
+		}
+	}
+	return nil
 }
 
 // String returns a string representation of the EvidenceListMessage.

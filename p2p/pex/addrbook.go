@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
 )
@@ -162,10 +162,10 @@ func (a *addrBook) FilePath() string {
 
 // AddOurAddress one of our addresses.
 func (a *addrBook) AddOurAddress(addr *p2p.NetAddress) {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
 	a.Logger.Info("Add our address to book", "addr", addr)
+	a.mtx.Lock()
 	a.ourAddrs[addr.String()] = struct{}{}
+	a.mtx.Unlock()
 }
 
 // OurAddress returns true if it is our address.
@@ -178,10 +178,10 @@ func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
 
 func (a *addrBook) AddPrivateIDs(IDs []string) {
 	a.mtx.Lock()
-	defer a.mtx.Unlock()
 	for _, id := range IDs {
 		a.privateIDs[p2p.ID(id)] = struct{}{}
 	}
+	a.mtx.Unlock()
 }
 
 // AddAddress implements AddrBook
@@ -202,7 +202,7 @@ func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 	if ka == nil {
 		return
 	}
-	a.Logger.Info("Remove address from book", "addr", ka.Addr, "ID", ka.ID())
+	a.Logger.Info("Remove address from book", "addr", addr)
 	a.removeFromAllBuckets(ka)
 }
 
@@ -217,8 +217,8 @@ func (a *addrBook) IsGood(addr *p2p.NetAddress) bool {
 // HasAddress returns true if the address is in the book.
 func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 	a.mtx.Lock()
-	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.ID]
+	a.mtx.Unlock()
 	return ka != nil
 }
 
@@ -461,13 +461,12 @@ ADDRS_LOOP:
 
 // ListOfKnownAddresses returns the new and old addresses.
 func (a *addrBook) ListOfKnownAddresses() []*knownAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
 	addrs := []*knownAddress{}
+	a.mtx.Lock()
 	for _, addr := range a.addrLookup {
 		addrs = append(addrs, addr.copy())
 	}
+	a.mtx.Unlock()
 	return addrs
 }
 
@@ -646,6 +645,14 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if a.routabilityStrict && !addr.Routable() {
 		return ErrAddrBookNonRoutable{addr}
+	}
+
+	if !addr.Valid() {
+		return ErrAddrBookInvalidAddr{addr}
+	}
+
+	if !addr.HasID() {
+		return ErrAddrBookInvalidAddrNoID{addr}
 	}
 
 	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.

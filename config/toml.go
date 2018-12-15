@@ -86,6 +86,9 @@ db_dir = "{{ js .BaseConfig.DBPath }}"
 # Output level for logging, including package level options
 log_level = "{{ .BaseConfig.LogLevel }}"
 
+# Output format: 'plain' (colored text) or 'json'
+log_format = "{{ .BaseConfig.LogFormat }}"
+
 ##### additional base config options #####
 
 # Path to the JSON file containing the initial validator set and other meta data
@@ -119,13 +122,24 @@ filter_peers = {{ .BaseConfig.FilterPeers }}
 # TCP or UNIX socket address for the RPC server to listen on
 laddr = "{{ .RPC.ListenAddress }}"
 
+# A list of origins a cross-domain request can be executed from
+# Default value '[]' disables cors support
+# Use '["*"]' to allow any origin
+cors_allowed_origins = [{{ range .RPC.CORSAllowedOrigins }}{{ printf "%q, " . }}{{end}}]
+
+# A list of methods the client is allowed to use with cross-domain requests
+cors_allowed_methods = [{{ range .RPC.CORSAllowedMethods }}{{ printf "%q, " . }}{{end}}]
+
+# A list of non simple headers the client is allowed to use with cross-domain requests
+cors_allowed_headers = [{{ range .RPC.CORSAllowedHeaders }}{{ printf "%q, " . }}{{end}}]
+
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
 grpc_laddr = "{{ .RPC.GRPCListenAddress }}"
 
 # Maximum number of simultaneous connections.
 # Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -137,7 +151,7 @@ unsafe = {{ .RPC.Unsafe }}
 
 # Maximum number of simultaneous connections (including WebSocket).
 # Does not include gRPC connections. See grpc_max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -246,14 +260,17 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
+# Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
+blocktime_iota = "{{ .Consensus.BlockTimeIota }}"
+
 ##### transactions indexer configuration options #####
 [tx_index]
 
 # What indexer to use for transactions
 #
 # Options:
-#   1) "null" (default)
-#   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+#   1) "null"
+#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "{{ .TxIndex.Indexer }}"
 
 # Comma-separated list of tags to index (by default the only tag is "tx.hash")
@@ -285,7 +302,7 @@ prometheus = {{ .Instrumentation.Prometheus }}
 prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
 
 # Maximum number of simultaneous connections.
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
@@ -342,7 +359,7 @@ func ResetTestRoot(testName string) *Config {
 }
 
 var testGenesis = `{
-  "genesis_time": "0001-01-01T00:00:00.000Z",
+  "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "tendermint_test",
   "validators": [
     {

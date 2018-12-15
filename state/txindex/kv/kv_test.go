@@ -73,6 +73,8 @@ func TestTxSearch(t *testing.T) {
 		{"account.number = 1 AND account.owner = 'Ivan'", 1},
 		// search by exact match (two tags)
 		{"account.number = 1 AND account.owner = 'Vlad'", 0},
+		// search using a prefix of the stored value
+		{"account.owner = 'Iv'", 0},
 		// search by range
 		{"account.number >= 1 AND account.number <= 5", 1},
 		// search by range (lower bound)
@@ -87,8 +89,10 @@ func TestTxSearch(t *testing.T) {
 		{"account.date >= TIME 2013-05-03T14:45:00Z", 0},
 		// search using CONTAINS
 		{"account.owner CONTAINS 'an'", 1},
-		// search using CONTAINS
+		// search for non existing value using CONTAINS
 		{"account.owner CONTAINS 'Vlad'", 0},
+		// search using the wrong tag (of numeric type) using CONTAINS
+		{"account.number CONTAINS 'Iv'", 0},
 	}
 
 	for _, tc := range testCases {
@@ -124,7 +128,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {
-	allowedTags := []string{"account.number"}
+	allowedTags := []string{"account.number", "account.number.id"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
 	// indexed first, but bigger height (to test the order of transactions)
@@ -133,6 +137,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	})
 	txResult.Tx = types.Tx("Bob's account")
 	txResult.Height = 2
+	txResult.Index = 1
 	err := indexer.Index(txResult)
 	require.NoError(t, err)
 
@@ -142,14 +147,37 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	})
 	txResult2.Tx = types.Tx("Alice's account")
 	txResult2.Height = 1
+	txResult2.Index = 2
+
 	err = indexer.Index(txResult2)
+	require.NoError(t, err)
+
+	// indexed third (to test the order of transactions)
+	txResult3 := txResultWithTags([]cmn.KVPair{
+		{Key: []byte("account.number"), Value: []byte("3")},
+	})
+	txResult3.Tx = types.Tx("Jack's account")
+	txResult3.Height = 1
+	txResult3.Index = 1
+	err = indexer.Index(txResult3)
+	require.NoError(t, err)
+
+	// indexed fourth (to test we don't include txs with similar tags)
+	// https://github.com/tendermint/tendermint/issues/2908
+	txResult4 := txResultWithTags([]cmn.KVPair{
+		{Key: []byte("account.number.id"), Value: []byte("1")},
+	})
+	txResult4.Tx = types.Tx("Mike's account")
+	txResult4.Height = 2
+	txResult4.Index = 2
+	err = indexer.Index(txResult4)
 	require.NoError(t, err)
 
 	results, err := indexer.Search(query.MustParse("account.number >= 1"))
 	assert.NoError(t, err)
 
-	require.Len(t, results, 2)
-	assert.Equal(t, []*types.TxResult{txResult2, txResult}, results)
+	require.Len(t, results, 3)
+	assert.Equal(t, []*types.TxResult{txResult3, txResult2, txResult}, results)
 }
 
 func TestIndexAllTags(t *testing.T) {

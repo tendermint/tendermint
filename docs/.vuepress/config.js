@@ -1,13 +1,24 @@
 module.exports = {
-  title: "Tendermint Core",
-  description: "Documentation for Tendermint Core",
+  title: "Tendermint Documentation",
+  description: "Documentation for Tendermint Core.",
+  ga: "UA-51029217-1",
   dest: "./dist/docs",
   base: "/docs/",
   markdown: {
     lineNumbers: true
   },
   themeConfig: {
-    lastUpdated: "Last Updated",
+    repo: "tendermint/tendermint",
+    editLinks: true,
+    docsDir: "docs",
+    docsBranch: "develop",
+    editLinkText: 'Edit this page on Github',
+    lastUpdated: true,
+    algolia: {
+      apiKey: '59f0e2deb984aa9cdf2b3a5fd24ac501',
+      indexName: 'tendermint',
+      debug: false
+    },
     nav: [{ text: "Back to Tendermint", link: "https://tendermint.com" }],
     sidebar: [
       {

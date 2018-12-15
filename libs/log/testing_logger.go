@@ -1,6 +1,7 @@
 package log
 
 import (
+	"io"
 	"os"
 	"testing"
 
@@ -19,12 +20,22 @@ var (
 // inside a test (not in the init func) because
 // verbose flag only set at the time of testing.
 func TestingLogger() Logger {
+	return TestingLoggerWithOutput(os.Stdout)
+}
+
+// TestingLoggerWOutput returns a TMLogger which writes to (w io.Writer) if testing being run
+// with the verbose (-v) flag, NopLogger otherwise.
+//
+// Note that the call to TestingLoggerWithOutput(w io.Writer) must be made
+// inside a test (not in the init func) because
+// verbose flag only set at the time of testing.
+func TestingLoggerWithOutput(w io.Writer) Logger {
 	if _testingLogger != nil {
 		return _testingLogger
 	}
 
 	if testing.Verbose() {
-		_testingLogger = NewTMLogger(NewSyncWriter(os.Stdout))
+		_testingLogger = NewTMLogger(NewSyncWriter(w))
 	} else {
 		_testingLogger = NewNopLogger()
 	}

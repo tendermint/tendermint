@@ -46,6 +46,12 @@ func (privKey PrivKeyEd25519) Bytes() []byte {
 }
 
 // Sign produces a signature on the provided message.
+// This assumes the privkey is wellformed in the golang format.
+// The first 32 bytes should be random,
+// corresponding to the normal ed25519 private key.
+// The latter 32 bytes should be the compressed public key.
+// If these conditions aren't met, Sign will panic or produce an
+// incorrect signature.
 func (privKey PrivKeyEd25519) Sign(msg []byte) ([]byte, error) {
 	signatureBytes := ed25519.Sign(privKey[:], msg)
 	return signatureBytes[:], nil
@@ -130,7 +136,7 @@ type PubKeyEd25519 [PubKeyEd25519Size]byte
 
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKeyEd25519) Address() crypto.Address {
-	return crypto.Address(tmhash.Sum(pubKey[:]))
+	return crypto.Address(tmhash.SumTruncated(pubKey[:]))
 }
 
 // Bytes marshals the PubKey using amino encoding.

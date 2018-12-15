@@ -44,13 +44,14 @@ func TestTCPTimeoutListenerConnDeadline(t *testing.T) {
 
 		time.Sleep(2 * time.Millisecond)
 
-		_, err = c.Write([]byte("foo"))
+		msg := make([]byte, 200)
+		_, err = c.Read(msg)
 		opErr, ok := err.(*net.OpError)
 		if !ok {
 			t.Fatalf("have %v, want *net.OpError", err)
 		}
 
-		if have, want := opErr.Op, "write"; have != want {
+		if have, want := opErr.Op, "read"; have != want {
 			t.Errorf("have %v, want %v", have, want)
 		}
 	}(ln)

@@ -25,9 +25,9 @@ const (
 
 func voteToStep(vote *types.Vote) int8 {
 	switch vote.Type {
-	case types.VoteTypePrevote:
+	case types.PrevoteType:
 		return stepPrevote
-	case types.VoteTypePrecommit:
+	case types.PrecommitType:
 		return stepPrecommit
 	default:
 		cmn.PanicSanity("Unknown vote type")
@@ -290,19 +290,6 @@ func (pv *FilePV) saveSigned(height int64, round int, step int8,
 	pv.save()
 }
 
-// SignHeartbeat signs a canonical representation of the heartbeat, along with the chainID.
-// Implements PrivValidator.
-func (pv *FilePV) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
-	pv.mtx.Lock()
-	defer pv.mtx.Unlock()
-	sig, err := pv.PrivKey.Sign(heartbeat.SignBytes(chainID))
-	if err != nil {
-		return err
-	}
-	heartbeat.Signature = sig
-	return nil
-}
-
 // String returns a string representation of the FilePV.
 func (pv *FilePV) String() string {
 	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", pv.GetAddress(), pv.LastHeight, pv.LastRound, pv.LastStep)
@@ -314,10 +301,10 @@ func (pv *FilePV) String() string {
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastVote, newVote types.CanonicalVote
-	if err := cdc.UnmarshalBinary(lastSignBytes, &lastVote); err != nil {
+	if err := cdc.UnmarshalBinaryLengthPrefixed(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
-	if err := cdc.UnmarshalBinary(newSignBytes, &newVote); err != nil {
+	if err := cdc.UnmarshalBinaryLengthPrefixed(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
@@ -337,10 +324,10 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastProposal, newProposal types.CanonicalProposal
-	if err := cdc.UnmarshalBinary(lastSignBytes, &lastProposal); err != nil {
+	if err := cdc.UnmarshalBinaryLengthPrefixed(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	if err := cdc.UnmarshalBinary(newSignBytes, &newProposal); err != nil {
+	if err := cdc.UnmarshalBinaryLengthPrefixed(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
 
@@ -349,8 +336,8 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (ti
 	now := tmtime.Now()
 	lastProposal.Timestamp = now
 	newProposal.Timestamp = now
-	lastProposalBytes, _ := cdc.MarshalBinary(lastProposal)
-	newProposalBytes, _ := cdc.MarshalBinary(newProposal)
+	lastProposalBytes, _ := cdc.MarshalBinaryLengthPrefixed(lastProposal)
+	newProposalBytes, _ := cdc.MarshalBinaryLengthPrefixed(newProposal)
 
 	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }

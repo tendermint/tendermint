@@ -25,6 +25,11 @@ func NewPeer() *peer {
 	return p
 }
 
+// FlushStop just calls Stop.
+func (p *peer) FlushStop() {
+	p.Stop()
+}
+
 // ID always returns dummy.
 func (p *peer) ID() p2p.ID {
 	return p2p.ID("dummy")
@@ -42,7 +47,7 @@ func (p *peer) IsPersistent() bool {
 
 // NodeInfo always returns empty node info.
 func (p *peer) NodeInfo() p2p.NodeInfo {
-	return p2p.NodeInfo{}
+	return p2p.DefaultNodeInfo{}
 }
 
 // RemoteIP always returns localhost.

@@ -7,8 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -46,6 +47,19 @@ func TestStateCopy(t *testing.T) {
 	stateCopy.LastBlockHeight++
 	assert.False(state.Equals(stateCopy), fmt.Sprintf(`expected states to be different. got same
         %v`, state))
+}
+
+//TestMakeGenesisStateNilValidators tests state's consistency when genesis file's validators field is nil.
+func TestMakeGenesisStateNilValidators(t *testing.T) {
+	doc := types.GenesisDoc{
+		ChainID:    "dummy",
+		Validators: nil,
+	}
+	require.Nil(t, doc.ValidateAndComplete())
+	state, err := MakeGenesisState(&doc)
+	require.Nil(t, err)
+	require.Equal(t, 0, len(state.Validators.Validators))
+	require.Equal(t, 0, len(state.NextValidators.Validators))
 }
 
 // TestStateSaveLoad tests saving and loading State from a db.
@@ -119,8 +133,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{Code: 383},
 				{Data: []byte("Gotcha!"),
 					Tags: []cmn.KVPair{
-						cmn.KVPair{Key: []byte("a"), Value: []byte("1")},
-						cmn.KVPair{Key: []byte("build"), Value: []byte("stuff")},
+						{Key: []byte("a"), Value: []byte("1")},
+						{Key: []byte("build"), Value: []byte("stuff")},
 					}},
 			},
 			types.ABCIResults{
@@ -208,6 +222,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	_, val := state.Validators.GetByIndex(0)
 	power := val.VotingPower
 	var err error
+	var validatorUpdates []*types.Validator
 	for i := int64(1); i < highestHeight; i++ {
 		// When we get to a change height, use the next pubkey.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
@@ -215,8 +230,10 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
-		state, err = updateState(state, blockID, &header, responses)
-		assert.Nil(t, err)
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
+		require.NoError(t, err)
+		state, err = updateState(state, blockID, &header, responses, validatorUpdates)
+		require.NoError(t, err)
 		nextHeight := state.LastBlockHeight + 1
 		saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	}
@@ -246,6 +263,27 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	}
 }
 
+func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
+	const valSetSize = 2
+	tearDown, stateDB, state := setupTestCase(t)
+	state.Validators = genValSet(valSetSize)
+	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
+	SaveState(stateDB, state)
+	defer tearDown(t)
+
+	nextHeight := state.LastBlockHeight + 1
+
+	v0, err := LoadValidators(stateDB, nextHeight)
+	assert.Nil(t, err)
+	acc0 := v0.Validators[0].ProposerPriority
+
+	v1, err := LoadValidators(stateDB, nextHeight+1)
+	assert.Nil(t, err)
+	acc1 := v1.Validators[0].ProposerPriority
+
+	assert.NotEqual(t, acc1, acc0, "expected ProposerPriority value to change between heights")
+}
+
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with
 // changes.
 func TestManyValidatorChangesSaveLoad(t *testing.T) {
@@ -253,7 +291,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	require.Equal(t, int64(0), state.LastBlockHeight)
 	state.Validators = genValSet(valSetSize)
-	state.NextValidators = state.Validators.CopyIncrementAccum(1)
+	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	SaveState(stateDB, state)
 	defer tearDown(t)
 
@@ -267,7 +305,10 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 
 	// Save state etc.
 	var err error
-	state, err = updateState(state, blockID, &header, responses)
+	var validatorUpdates []*types.Validator
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
+	require.NoError(t, err)
+	state, err = updateState(state, blockID, &header, responses, validatorUpdates)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
@@ -306,9 +347,11 @@ func TestStateMakeBlock(t *testing.T) {
 	defer tearDown(t)
 
 	proposerAddress := state.Validators.GetProposer().Address
+	stateVersion := state.Version.Consensus
 	block := makeBlock(state, 2)
 
-	// test we set proposer address
+	// test we set some fields
+	assert.Equal(t, stateVersion, block.Version)
 	assert.Equal(t, proposerAddress, block.ProposerAddress)
 }
 
@@ -337,6 +380,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	changeIndex := 0
 	cp := params[changeIndex]
 	var err error
+	var validatorUpdates []*types.Validator
 	for i := int64(1); i < highestHeight; i++ {
 		// When we get to a change height, use the next params.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
@@ -344,7 +388,9 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			cp = params[changeIndex]
 		}
 		header, blockID, responses := makeHeaderPartsResponsesParams(state, i, cp)
-		state, err = updateState(state, blockID, &header, responses)
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
+		require.NoError(t, err)
+		state, err = updateState(state, blockID, &header, responses, validatorUpdates)
 
 		require.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
@@ -375,11 +421,11 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
 	return types.ConsensusParams{
-		BlockSize: types.BlockSize{
+		BlockSize: types.BlockSizeParams{
 			MaxBytes: blockBytes,
 			MaxGas:   blockGas,
 		},
-		EvidenceParams: types.EvidenceParams{
+		Evidence: types.EvidenceParams{
 			MaxAge: evidenceAge,
 		},
 	}
@@ -401,7 +447,7 @@ func TestApplyUpdates(t *testing.T) {
 		1: {initParams, abci.ConsensusParams{}, initParams},
 		2: {initParams,
 			abci.ConsensusParams{
-				BlockSize: &abci.BlockSize{
+				BlockSize: &abci.BlockSizeParams{
 					MaxBytes: 44,
 					MaxGas:   55,
 				},
@@ -409,7 +455,7 @@ func TestApplyUpdates(t *testing.T) {
 			makeParams(44, 55, 3)},
 		3: {initParams,
 			abci.ConsensusParams{
-				EvidenceParams: &abci.EvidenceParams{
+				Evidence: &abci.EvidenceParams{
 					MaxAge: 66,
 				},
 			},

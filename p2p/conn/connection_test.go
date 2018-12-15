@@ -36,6 +36,43 @@ func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msg
 	return c
 }
 
+func TestMConnectionSendFlushStop(t *testing.T) {
+	server, client := NetPipe()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
+
+	clientConn := createTestMConnection(client)
+	err := clientConn.Start()
+	require.Nil(t, err)
+	defer clientConn.Stop()
+
+	msg := []byte("abc")
+	assert.True(t, clientConn.Send(0x01, msg))
+
+	aminoMsgLength := 14
+
+	// start the reader in a new routine, so we can flush
+	errCh := make(chan error)
+	go func() {
+		msgB := make([]byte, aminoMsgLength)
+		_, err := server.Read(msgB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		errCh <- err
+	}()
+
+	// stop the conn - it should flush all conns
+	clientConn.FlushStop()
+
+	timer := time.NewTimer(3 * time.Second)
+	select {
+	case <-errCh:
+	case <-timer.C:
+		t.Error("timed out waiting for msgs to be read")
+	}
+}
+
 func TestMConnectionSend(t *testing.T) {
 	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
@@ -140,7 +177,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	go func() {
 		// read ping
 		var pkt PacketPing
-		_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
+		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
 		assert.Nil(t, err)
 		serverGotPing <- struct{}{}
 	}()
@@ -176,22 +213,22 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	defer mconn.Stop()
 
 	// sending 3 pongs in a row (abuse)
-	_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
+	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
 	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
+	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
 	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
+	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
 	require.Nil(t, err)
 
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping (one byte)
 		var packet, err = Packet(nil), error(nil)
-		_, err = cdc.UnmarshalBinaryReader(server, &packet, maxPingPongPacketSize)
+		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &packet, maxPingPongPacketSize)
 		require.Nil(t, err)
 		serverGotPing <- struct{}{}
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
+		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
 		require.Nil(t, err)
 	}()
 	<-serverGotPing
@@ -227,18 +264,18 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 	// sending 3 pings in a row (abuse)
 	// see https://github.com/tendermint/tendermint/issues/1190
-	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
+	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
 	require.Nil(t, err)
 	var pkt PacketPong
-	_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
 	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
+	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
 	require.Nil(t, err)
-	_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
 	require.Nil(t, err)
-	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
+	_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPing{}))
 	require.Nil(t, err)
-	_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
 	require.Nil(t, err)
 
 	assert.True(t, mconn.IsRunning())
@@ -270,20 +307,20 @@ func TestMConnectionPingPongs(t *testing.T) {
 	go func() {
 		// read ping
 		var pkt PacketPing
-		_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
+		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
 		require.Nil(t, err)
 		serverGotPing <- struct{}{}
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
+		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
 		require.Nil(t, err)
 
 		time.Sleep(mconn.config.PingInterval)
 
 		// read ping
-		_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
+		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &pkt, maxPingPongPacketSize)
 		require.Nil(t, err)
 		// respond with pong
-		_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
+		_, err = server.Write(cdc.MustMarshalBinaryLengthPrefixed(PacketPong{}))
 		require.Nil(t, err)
 	}()
 	<-serverGotPing
@@ -380,7 +417,7 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	client := mconnClient.conn
 
 	// send badly encoded msgPacket
-	bz := cdc.MustMarshalBinary(PacketMsg{})
+	bz := cdc.MustMarshalBinaryLengthPrefixed(PacketMsg{})
 	bz[4] += 0x01 // Invalid prefix bytes.
 
 	// Write it.
@@ -428,7 +465,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 		EOF:       1,
 		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
 	}
-	_, err = cdc.MarshalBinaryWriter(buf, packet)
+	_, err = cdc.MarshalBinaryLengthPrefixedWriter(buf, packet)
 	assert.Nil(t, err)
 	_, err = client.Write(buf.Bytes())
 	assert.Nil(t, err)
@@ -441,7 +478,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 		EOF:       1,
 		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+100),
 	}
-	_, err = cdc.MarshalBinaryWriter(buf, packet)
+	_, err = cdc.MarshalBinaryLengthPrefixedWriter(buf, packet)
 	assert.Nil(t, err)
 	_, err = client.Write(buf.Bytes())
 	assert.NotNil(t, err)

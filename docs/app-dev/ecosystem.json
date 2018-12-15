@@ -122,7 +122,7 @@
   ],
   "abciServers": [
     {
-      "name": "abci",
+      "name": "go-abci",
       "url": "https://github.com/tendermint/tendermint/tree/master/abci",
       "language": "Go",
       "author": "Tendermint"
@@ -131,6 +131,12 @@
       "name": "js-abci",
       "url": "https://github.com/tendermint/js-abci",
       "language": "Javascript",
+      "author": "Tendermint"
+    },
+    {
+      "name": "rust-tsp",
+      "url": "https://github.com/tendermint/rust-tsp",
+      "language": "Rust",
       "author": "Tendermint"
     },
     {
@@ -164,40 +170,24 @@
       "author": "Dave Bryson"
     },
     {
+      "name": "tm-abci (fork of py-abci with async IO)",
+      "url": "https://github.com/SoftblocksCo/tm-abci",
+      "language": "Python",
+      "author": "Softblocks"
+    },
+    {
       "name": "Spearmint",
       "url": "https://github.com/dennismckinnon/spearmint",
       "language": "Javascript",
       "author": "Dennis McKinnon"
     }
   ],
-  "deploymentTools": [
+  "aminoLibraries": [
     {
-      "name": "mintnet-kubernetes",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Docker and Kubernetes",
-      "author": "Tendermint",
-      "description": "Deploy a Tendermint test network using Google's kubernetes"
-    },
-    {
-      "name": "terraforce",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Terraform",
-      "author": "Tendermint",
-      "description": "Terraform + our custom terraforce tool; deploy a production Tendermint network with load balancing over multiple AWS availability zones"
-    },
-    {
-      "name": "ansible-tendermint",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Ansible",
-      "author": "Tendermint",
-      "description": "Ansible playbooks + Tendermint"
-    },
-    {
-      "name": "brooklyn-tendermint",
-      "url": "https://github.com/cloudsoft/brooklyn-tendermint",
-      "technology": "Clocker for Apache Brooklyn ",
-      "author": "Cloudsoft",
-      "description": "Deploy a tendermint test network in docker containers "
+      "name": "JS-Amino",
+      "url": "https://github.com/TanNgocDo/Js-Amino",
+      "language": "Javascript",
+      "author": "TanNgocDo"
     }
   ]
 }

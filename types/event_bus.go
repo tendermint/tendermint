@@ -71,16 +71,56 @@ func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	return nil
 }
 
+func (b *EventBus) validateAndStringifyTags(tags []cmn.KVPair, logger log.Logger) map[string]string {
+	result := make(map[string]string)
+	for _, tag := range tags {
+		// basic validation
+		if len(tag.Key) == 0 {
+			logger.Debug("Got tag with an empty key (skipping)", "tag", tag)
+			continue
+		}
+		result[string(tag.Key)] = string(tag.Value)
+	}
+	return result
+}
+
 func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
-	return b.Publish(EventNewBlock, data)
+	// no explicit deadline for publishing events
+	ctx := context.Background()
+
+	resultTags := append(data.ResultBeginBlock.Tags, data.ResultEndBlock.Tags...)
+	tags := b.validateAndStringifyTags(resultTags, b.Logger.With("block", data.Block.StringShort()))
+
+	// add predefined tags
+	logIfTagExists(EventTypeKey, tags, b.Logger)
+	tags[EventTypeKey] = EventNewBlock
+
+	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	return nil
 }
 
 func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
-	return b.Publish(EventNewBlockHeader, data)
+	// no explicit deadline for publishing events
+	ctx := context.Background()
+
+	resultTags := append(data.ResultBeginBlock.Tags, data.ResultEndBlock.Tags...)
+	// TODO: Create StringShort method for Header and use it in logger.
+	tags := b.validateAndStringifyTags(resultTags, b.Logger.With("header", data.Header))
+
+	// add predefined tags
+	logIfTagExists(EventTypeKey, tags, b.Logger)
+	tags[EventTypeKey] = EventNewBlockHeader
+
+	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	return nil
 }
 
 func (b *EventBus) PublishEventVote(data EventDataVote) error {
 	return b.Publish(EventVote, data)
+}
+
+func (b *EventBus) PublishEventValidBlock(data EventDataRoundState) error {
+	return b.Publish(EventValidBlock, data)
 }
 
 // PublishEventTx publishes tx event with tags from Result. Note it will add
@@ -90,17 +130,7 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	tags := make(map[string]string)
-
-	// validate and fill tags from tx result
-	for _, tag := range data.Result.Tags {
-		// basic validation
-		if len(tag.Key) == 0 {
-			b.Logger.Info("Got tag with an empty key (skipping)", "tag", tag, "tx", data.Tx)
-			continue
-		}
-		tags[string(tag.Key)] = string(tag.Value)
-	}
+	tags := b.validateAndStringifyTags(data.Result.Tags, b.Logger.With("tx", data.Tx))
 
 	// add predefined tags
 	logIfTagExists(EventTypeKey, tags, b.Logger)
@@ -116,10 +146,6 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	return nil
 }
 
-func (b *EventBus) PublishEventProposalHeartbeat(data EventDataProposalHeartbeat) error {
-	return b.Publish(EventProposalHeartbeat, data)
-}
-
 func (b *EventBus) PublishEventNewRoundStep(data EventDataRoundState) error {
 	return b.Publish(EventNewRoundStep, data)
 }
@@ -132,11 +158,11 @@ func (b *EventBus) PublishEventTimeoutWait(data EventDataRoundState) error {
 	return b.Publish(EventTimeoutWait, data)
 }
 
-func (b *EventBus) PublishEventNewRound(data EventDataRoundState) error {
+func (b *EventBus) PublishEventNewRound(data EventDataNewRound) error {
 	return b.Publish(EventNewRound, data)
 }
 
-func (b *EventBus) PublishEventCompleteProposal(data EventDataRoundState) error {
+func (b *EventBus) PublishEventCompleteProposal(data EventDataCompleteProposal) error {
 	return b.Publish(EventCompleteProposal, data)
 }
 

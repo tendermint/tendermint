@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -18,8 +18,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
-
-const testCh = 0x01
 
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -81,18 +79,14 @@ func createOutboundPeerAndPerformHandshake(
 	if err != nil {
 		return nil, err
 	}
-	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		ID:       addr.ID,
-		Moniker:  "host_peer",
-		Network:  "testing",
-		Version:  "123.123.123",
-		Channels: []byte{testCh},
-	}, 1*time.Second)
+	timeout := 1 * time.Second
+	ourNodeInfo := testNodeInfo(addr.ID, "host_peer")
+	peerNodeInfo, err := handshake(pc.conn, timeout, ourNodeInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newPeer(pc, mConfig, nodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
+	p := newPeer(pc, mConfig, peerNodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }
@@ -191,14 +185,7 @@ func (rp *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 
-		_, err = handshake(pc.conn, time.Second, NodeInfo{
-			ID:         rp.Addr().ID,
-			Moniker:    "remote_peer",
-			Network:    "testing",
-			Version:    "123.123.123",
-			ListenAddr: l.Addr().String(),
-			Channels:   rp.channels,
-		})
+		_, err = handshake(pc.conn, time.Second, rp.nodeInfo(l))
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}
@@ -215,5 +202,17 @@ func (rp *remotePeer) accept(l net.Listener) {
 			return
 		default:
 		}
+	}
+}
+
+func (rp *remotePeer) nodeInfo(l net.Listener) NodeInfo {
+	return DefaultNodeInfo{
+		ProtocolVersion: defaultProtocolVersion,
+		ID_:             rp.Addr().ID,
+		ListenAddr:      l.Addr().String(),
+		Network:         "testing",
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        rp.channels,
+		Moniker:         "remote_peer",
 	}
 }
