@@ -23,6 +23,7 @@ Special thanks to external contributors on this release:
 - [ci/cd] Updated CircleCI job to trigger website build when docs are updated
 
 ### BUG FIXES:
+- [config] \#2980 fix cors options formatting
 - [kv indexer] \#2912 don't ignore key when executing CONTAINS
 - [mempool] \#2961 notifyTxsAvailable if there're txs left after committing a block, but recheck=false
 - [mempool] \#2994 Don't allow txs with negative gas wanted
