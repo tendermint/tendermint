@@ -11,7 +11,6 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/version"
 	//auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -20,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -247,6 +247,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// Set AppVersion on the state.
 	h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
+	sm.SaveState(h.stateDB, h.initialState)
 
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
@@ -295,19 +296,27 @@ func (h *Handshaker) ReplayBlocks(
 			return nil, err
 		}
 
-		// If the app returned validators or consensus params, update the state.
-		if len(res.Validators) > 0 {
-			vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
-			if err != nil {
-				return nil, err
+		if stateBlockHeight == 0 { //we only update state when we are in initial state
+			// If the app returned validators or consensus params, update the state.
+			if len(res.Validators) > 0 {
+				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
+				if err != nil {
+					return nil, err
+				}
+				state.Validators = types.NewValidatorSet(vals)
+				state.NextValidators = types.NewValidatorSet(vals)
+			} else {
+				// If validator set is not set in genesis and still empty after InitChain, exit.
+				if len(h.genDoc.Validators) == 0 {
+					return nil, fmt.Errorf("Validator set is nil in genesis and still empty after InitChain")
+				}
 			}
-			state.Validators = types.NewValidatorSet(vals)
-			state.NextValidators = types.NewValidatorSet(vals)
+
+			if res.ConsensusParams != nil {
+				state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)
+			}
+			sm.SaveState(h.stateDB, state)
 		}
-		if res.ConsensusParams != nil {
-			state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)
-		}
-		sm.SaveState(h.stateDB, state)
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight.

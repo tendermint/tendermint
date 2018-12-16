@@ -294,6 +294,7 @@ build-linux:
 build-docker-localnode:
 	cd networks/local
 	make
+	cd -
 
 # Run a 4-node testnet locally
 localnet-start: localnet-stop
