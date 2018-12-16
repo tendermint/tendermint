@@ -317,6 +317,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	// CACHE
 	if !mem.cache.Push(tx) {
+		mem.metrics.ErrTxInCache.Add(1)
 		return ErrTxInCache
 	}
 	// END CACHE

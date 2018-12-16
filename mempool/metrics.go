@@ -20,6 +20,8 @@ type Metrics struct {
 	FailedTxs metrics.Counter
 	// Number of times transactions are rechecked in the mempool.
 	RecheckTimes metrics.Counter
+	// Number of times transactions errored from are already in the cache.
+	ErrTxInCache metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -50,6 +52,12 @@ func PrometheusMetrics(namespace string) *Metrics {
 			Name:      "recheck_times",
 			Help:      "Number of times transactions are rechecked in the mempool.",
 		}, []string{}),
+		ErrTxInCache: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsytem,
+			Name:      "error_tx_in_cache",
+			Help:      "Number of times a tx was already in the cache for the mempool.",
+		}, []string{}),
 	}
 }
 
@@ -60,5 +68,6 @@ func NopMetrics() *Metrics {
 		TxSizeBytes:  discard.NewHistogram(),
 		FailedTxs:    discard.NewCounter(),
 		RecheckTimes: discard.NewCounter(),
+		ErrTxInCache: discard.NewCounter(),
 	}
 }
