@@ -1,4 +1,4 @@
-## v0.27.2
+## v0.27.3
 
 *TBD*
 
@@ -20,8 +20,5 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 
-- [node] \#3025 Validate NodeInfo addresses on startup.
-
 ### BUG FIXES:
 
-- [p2p] [\#3025](https://github.com/tendermint/tendermint/pull/3025) Revert to using defers in addrbook.  Fixes deadlocks in pex and consensus upon invalid ExternalAddr/ListenAddr configuration.
