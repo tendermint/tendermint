@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/crypto/nacl/secretbox" // forked to github.com/tendermint/crypto
+	"golang.org/x/crypto/nacl/secretbox"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
