@@ -24,7 +24,7 @@ type mockNodeInfo struct {
 
 func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
 func (ni mockNodeInfo) NetAddress() *NetAddress             { return ni.addr }
-func (ni mockNodeInfo) ValidateBasic() error                { return nil }
+func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
 func AddPeerToSwitch(sw *Switch, peer Peer) {
