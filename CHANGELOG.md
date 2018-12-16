@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.27.3
+
+*December 16th, 2018*
+
+### BREAKING CHANGES:
+
+* Go API
+
+- [dep] [\#3027](https://github.com/tendermint/tendermint/issues/3027) Revert to mainline Go crypto library, eliminating the modified
+  `bcrypt.GenerateFromPassword`
+
 ## v0.27.2
 
 *December 16th, 2018*
@@ -84,17 +95,17 @@ message.
 ### IMPROVEMENTS:
 
 - [state] [\#2929](https://github.com/tendermint/tendermint/issues/2929) Minor refactor of updateState logic (@danil-lashin)
-- [node] \#2959 Allow node to start even if software's BlockProtocol is
+- [node] [\#2959](https://github.com/tendermint/tendermint/issues/2959) Allow node to start even if software's BlockProtocol is
   different from state's BlockProtocol
-- [pex] \#2959 Pex reactor logger uses `module=pex`
+- [pex] [\#2959](https://github.com/tendermint/tendermint/issues/2959) Pex reactor logger uses `module=pex`
 
 ### BUG FIXES:
 
-- [p2p] \#2968 Panic on transport error rather than continuing to run but not
+- [p2p] [\#2968](https://github.com/tendermint/tendermint/issues/2968) Panic on transport error rather than continuing to run but not
   accept new connections
-- [p2p] \#2969 Fix mismatch in peer count between `/net_info` and the prometheus
+- [p2p] [\#2969](https://github.com/tendermint/tendermint/issues/2969) Fix mismatch in peer count between `/net_info` and the prometheus
   metrics
-- [rpc] \#2408 `/broadcast_tx_commit`: Fix "interface conversion: interface {} in nil, not EventDataTx" panic (could happen if somebody sent a tx using `/broadcast_tx_commit` while Tendermint was being stopped)
+- [rpc] [\#2408](https://github.com/tendermint/tendermint/issues/2408) `/broadcast_tx_commit`: Fix "interface conversion: interface {} in nil, not EventDataTx" panic (could happen if somebody sent a tx using `/broadcast_tx_commit` while Tendermint was being stopped)
 - [state] [\#2785](https://github.com/tendermint/tendermint/issues/2785) Fix accum for new validators to be `-1.125*totalVotingPower`
   instead of 0, forcing them to wait before becoming the proposer. Also:
     - do not batch clip

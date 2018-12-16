@@ -1,4 +1,4 @@
-## v0.27.3
+## v0.27.4
 
 *TBD*
 
@@ -11,9 +11,6 @@ Special thanks to external contributors on this release:
 * Apps
 
 * Go API
-
-- [dep] \#3027 Revert to mainline Go crypto library, eliminating the modified
-  `bcrypt.GenerateFromPassword`
 
 * Blockchain Protocol
 
