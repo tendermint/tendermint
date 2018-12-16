@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/crypto/chacha20poly1305" // forked to github.com/tendermint/crypto
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 // Implements crypto.AEAD
