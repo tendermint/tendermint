@@ -20,4 +20,6 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 
+Added a Metric to track errors when a Tx is already in the Mempool cache.
+
 ### BUG FIXES:
