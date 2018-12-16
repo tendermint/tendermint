@@ -308,6 +308,9 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	return mem.CheckTxWithInfo(tx, cb, TxInfo{UnknownPeerID})
 }
 
+// CheckTxWithInfo performs the same operation as CheckTx, but with extra meta data about the tx.
+// Currently this metadata is the peer who sent it,
+// used to prevent the tx from being gossiped back to them.
 func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) (err error) {
 	mem.proxyMtx.Lock()
 	// use defer to unlock mutex because application (*local client*) might panic
@@ -571,7 +574,7 @@ func (mem *Mempool) Update(
 
 	// Add committed transactions to cache (if missing).
 	for _, tx := range txs {
-		_ = mem.cache.PushTxWithInfo(tx, TxInfo{})
+		_ = mem.cache.PushTxWithInfo(tx, TxInfo{UnknownPeerID})
 	}
 
 	// Remove committed transactions.
@@ -708,6 +711,7 @@ func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 			}
 		}
 		memTx.senders = append(memTx.senders, txInfo.PeerID)
+		return false
 	}
 
 	if cache.list.Len() >= cache.size {
