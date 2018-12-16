@@ -695,10 +695,13 @@ func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 
 	// Use the tx hash in the cache
 	txHash := sha256.Sum256(tx)
-	if moved, exists := cache.map_[txHash]; exists {
-		cache.list.MoveToFront(moved)
-		memTx, succ := moved.Value.(*mempoolTx)
-		// succ would be false if tx was reaped
+	if listEntry, exists := cache.map_[txHash]; exists {
+		cache.list.MoveToFront(listEntry)
+		if listEntry.Prev() == nil && listEntry.Next() == nil && cache.list.Len() > 1 {
+			// listEntry has been removed from the list (it was reaped / updated)
+			return false
+		}
+		memTx, succ := listEntry.Value.(*mempoolTx)
 		if !succ {
 			return false
 		}
@@ -722,8 +725,9 @@ func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 			cache.list.Remove(popped)
 		}
 	}
-	cache.list.PushBack(txHash)
-	cache.map_[txHash] = cache.list.Back()
+	fmt.Println(tx)
+	e := cache.list.PushFront(txHash)
+	cache.map_[txHash] = e
 	return true
 }
 

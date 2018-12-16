@@ -164,17 +164,6 @@ func TestMempoolFilters(t *testing.T) {
 	}
 }
 
-func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
-	app := kvstore.NewKVStoreApplication()
-	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
-	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
-	err := mempool.CheckTx([]byte{0x01}, nil)
-	if assert.Error(t, err) {
-		assert.Equal(t, ErrTxInCache, err)
-	}
-}
-
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
@@ -325,28 +314,6 @@ func TestSerialReap(t *testing.T) {
 
 	// We should have 600 now.
 	reapCheck(600)
-}
-
-func TestCacheRemove(t *testing.T) {
-	cache := newMapTxCache(100)
-	numTxs := 10
-	txs := make([][]byte, numTxs)
-	for i := 0; i < numTxs; i++ {
-		// probability of collision is 2**-256
-		txBytes := make([]byte, 32)
-		rand.Read(txBytes)
-		txs[i] = txBytes
-		cache.PushTxWithInfo(txBytes, TxInfo{UnknownPeerID})
-		// make sure its added to both the linked list and the map
-		require.Equal(t, i+1, len(cache.map_))
-		require.Equal(t, i+1, cache.list.Len())
-	}
-	for i := 0; i < numTxs; i++ {
-		cache.Remove(txs[i])
-		// make sure its removed from both the map and the linked list
-		require.Equal(t, numTxs-(i+1), len(cache.map_))
-		require.Equal(t, numTxs-(i+1), cache.list.Len())
-	}
 }
 
 func TestMempoolCloseWAL(t *testing.T) {
