@@ -697,23 +697,18 @@ func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 	txHash := sha256.Sum256(tx)
 	if listEntry, exists := cache.map_[txHash]; exists {
 		cache.list.MoveToFront(listEntry)
-		if listEntry.Prev() == nil && listEntry.Next() == nil && cache.list.Len() > 1 {
-			// listEntry has been removed from the list (it was reaped / updated)
-			return false
-		}
-		memTx, succ := listEntry.Value.(*mempoolTx)
-		if !succ {
-			return false
-		}
-		for i := 0; i < len(memTx.senders); i++ {
-			if txInfo.PeerID == memTx.senders[i] {
-				// TODO: consider punishing peer for dups,
-				// its non-trivial since invalid txs can become valid,
-				// but they can spam the same tx with little cost to them atm.
-				return false
-			}
-		}
-		memTx.senders = append(memTx.senders, txInfo.PeerID)
+		// TODO: Make it possible to get main mempool list entry, then perform
+		// logic similar to the following:
+		// memTx, _ := listEntry.Value.(*mempoolTx)
+		// for i := 0; i < len(memTx.senders); i++ {
+		// 	if txInfo.PeerID == memTx.senders[i] {
+		// 		// TODO: consider punishing peer for dups,
+		// 		// its non-trivial since invalid txs can become valid,
+		// 		// but they can spam the same tx with little cost to them atm.
+		// 		return false
+		// 	}
+		// }
+		// memTx.senders = append(memTx.senders, txInfo.PeerID)
 		return false
 	}
 
@@ -725,7 +720,6 @@ func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 			cache.list.Remove(popped)
 		}
 	}
-	fmt.Println(tx)
 	e := cache.list.PushFront(txHash)
 	cache.map_[txHash] = e
 	return true
