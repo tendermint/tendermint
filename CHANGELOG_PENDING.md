@@ -21,3 +21,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+- [\#3025](https://github.com/tendermint/tendermint/pull/3025) - Revert to using defers in addrbook.  Fixes deadlocks in pex and consensus upon invalid ExternalAddr/ListenAddr configuration.
