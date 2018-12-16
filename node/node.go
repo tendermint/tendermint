@@ -817,6 +817,11 @@ func makeNodeInfo(
 
 	nodeInfo.ListenAddr = lAddr
 
+	err := nodeInfo.Validate()
+	if err != nil {
+		panic(err)
+	}
+
 	return nodeInfo
 }
 
