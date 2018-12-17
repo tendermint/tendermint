@@ -98,6 +98,32 @@ func TestSecretConnectionHandshake(t *testing.T) {
 	}
 }
 
+func TestShareLowOrderPubkey(t *testing.T) {
+	var fooConn, barConn = makeKVStoreConnPair()
+	locEphPub, _ := genEphKeys()
+
+	// all blacklisted low order points:
+	for _, remLowOrderPubKey := range blacklist {
+		_, _ = cmn.Parallel(
+			func(_ int) (val interface{}, err error, abort bool) {
+				_, err = shareEphPubKey(fooConn, locEphPub)
+
+				require.Error(t, err)
+				require.Equal(t, err, ErrSmallOrderRemotePubKey)
+
+				return nil, nil, false
+			},
+			func(_ int) (val interface{}, err error, abort bool) {
+				readRemKey, err := shareEphPubKey(barConn, &remLowOrderPubKey)
+
+				require.NoError(t, err)
+				require.Equal(t, locEphPub, readRemKey)
+
+				return nil, nil, false
+			})
+	}
+}
+
 func TestSecretConnectionReadWrite(t *testing.T) {
 	fooConn, barConn := makeKVStoreConnPair()
 	fooWrites, barWrites := []string{}, []string{}
