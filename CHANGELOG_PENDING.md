@@ -1,4 +1,4 @@
-## v0.27.1
+## v0.27.4
 
 *TBD*
 
@@ -7,7 +7,9 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [config] `allow_duplicate_ip` is now set to false
+- [cli] Removed `node` `--proxy_app=dummy` option. Use `kvstore` (`persistent_kvstore`) instead.
+- [cli] Renamed `node` `--proxy_app=nilapp` to `--proxy_app=noop`.
+- [config] \#2992 `allow_duplicate_ip` is now set to false
 
 * Apps
 
@@ -21,13 +23,6 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [rpc] Add `UnconfirmedTxs(limit)` and `NumUnconfirmedTxs()` methods to HTTP/Local clients (@danil-lashin)
-- [ci/cd] Updated CircleCI job to trigger website build when docs are updated
 
 ### BUG FIXES:
-- [config] \#2980 fix cors options formatting
-- [kv indexer] \#2912 don't ignore key when executing CONTAINS
-- [mempool] \#2961 notifyTxsAvailable if there're txs left after committing a block, but recheck=false
-- [mempool] \#2994 Don't allow txs with negative gas wanted
-- [p2p] \#2715 fix a bug where seeds don't disconnect from a peer after 3h
-- [replay] \#3006 saveState only when stateHeight is also 0
+

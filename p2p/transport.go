@@ -350,7 +350,7 @@ func (mt *MultiplexTransport) upgrade(
 		}
 	}
 
-	if err := nodeInfo.ValidateBasic(); err != nil {
+	if err := nodeInfo.Validate(); err != nil {
 		return nil, nil, ErrRejected{
 			conn:              c,
 			err:               err,

@@ -348,20 +348,21 @@ func NewNode(config *cfg.Config,
 	indexerService := txindex.NewIndexerService(txIndexer, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
-	var (
-		p2pLogger = logger.With("module", "p2p")
-		nodeInfo  = makeNodeInfo(
-			config,
-			nodeKey.ID(),
-			txIndexer,
-			genDoc.ChainID,
-			p2p.NewProtocolVersion(
-				version.P2PProtocol, // global
-				state.Version.Consensus.Block,
-				state.Version.Consensus.App,
-			),
-		)
+	p2pLogger := logger.With("module", "p2p")
+	nodeInfo, err := makeNodeInfo(
+		config,
+		nodeKey.ID(),
+		txIndexer,
+		genDoc.ChainID,
+		p2p.NewProtocolVersion(
+			version.P2PProtocol, // global
+			state.Version.Consensus.Block,
+			state.Version.Consensus.App,
+		),
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	// Setup Transport.
 	var (
@@ -782,7 +783,7 @@ func makeNodeInfo(
 	txIndexer txindex.TxIndexer,
 	chainID string,
 	protocolVersion p2p.ProtocolVersion,
-) p2p.NodeInfo {
+) (p2p.NodeInfo, error) {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
@@ -817,7 +818,8 @@ func makeNodeInfo(
 
 	nodeInfo.ListenAddr = lAddr
 
-	return nodeInfo
+	err := nodeInfo.Validate()
+	return nodeInfo, err
 }
 
 //------------------------------------------------------------------------------
