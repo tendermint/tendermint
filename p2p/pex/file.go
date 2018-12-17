@@ -19,14 +19,11 @@ func (a *addrBook) saveToFile(filePath string) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	bookSize := a.size()
-	a.Logger.Info("Saving AddrBook to file", "size", bookSize)
+	a.Logger.Info("Saving AddrBook to file", "size", a.size())
 
-	addrs := make([]*knownAddress, bookSize)
-	i := 0
+	addrs := make([]*knownAddress, 0, len(a.addrLookup))
 	for _, ka := range a.addrLookup {
-		addrs[i] = ka
-		i++
+		addrs = append(addrs, ka)
 	}
 	aJSON := &addrBookJSON{
 		Key:   a.key,
