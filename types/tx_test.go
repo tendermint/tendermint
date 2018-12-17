@@ -103,9 +103,9 @@ func TestComputeTxsOverhead(t *testing.T) {
 	}{
 		{Txs{[]byte{6, 6, 6, 6, 6, 6}}, 2},
 		// one 21 Mb transaction:
-		{Txs{make([]byte, 22020096, 22020096)}, 5},
+		{Txs{make([]byte, 22020096)}, 5},
 		// two 21Mb/2 sized transactions:
-		{Txs{make([]byte, 11010048, 11010048), make([]byte, 11010048, 11010048)}, 10},
+		{Txs{make([]byte, 11010048), make([]byte, 11010048)}, 10},
 		{Txs{[]byte{1, 2, 3}, []byte{1, 2, 3}, []byte{4, 5, 6}}, 6},
 		{Txs{[]byte{100, 5, 64}, []byte{42, 116, 118}, []byte{6, 6, 6}, []byte{6, 6, 6}}, 8},
 	}
