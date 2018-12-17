@@ -332,7 +332,6 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	require.NoError(t, err)
 
 	pubKey := privVal.GetPubKey()
-	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 	store.chain = chain
 	store.commits = commits
