@@ -8,6 +8,11 @@ module.exports = {
     lineNumbers: true
   },
   themeConfig: {
+    repo: "tendermint/tendermint",
+    editLinks: true,
+    docsDir: "docs",
+    docsBranch: "develop",
+    editLinkText: 'Edit this page on Github',
     lastUpdated: true,
     algolia: {
       apiKey: '59f0e2deb984aa9cdf2b3a5fd24ac501',

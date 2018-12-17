@@ -556,13 +556,18 @@ func (mem *Mempool) Update(
 	// Remove committed transactions.
 	txsLeft := mem.removeTxs(txs)
 
-	// Recheck mempool txs if any txs were committed in the block
-	if mem.config.Recheck && len(txsLeft) > 0 {
-		mem.logger.Info("Recheck txs", "numtxs", len(txsLeft), "height", height)
-		mem.recheckTxs(txsLeft)
-		// At this point, mem.txs are being rechecked.
-		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
-		// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
+	// Either recheck non-committed txs to see if they became invalid
+	// or just notify there're some txs left.
+	if len(txsLeft) > 0 {
+		if mem.config.Recheck {
+			mem.logger.Info("Recheck txs", "numtxs", len(txsLeft), "height", height)
+			mem.recheckTxs(txsLeft)
+			// At this point, mem.txs are being rechecked.
+			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
+			// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
+		} else {
+			mem.notifyTxsAvailable()
+		}
 	}
 
 	// Update metrics
