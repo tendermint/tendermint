@@ -58,7 +58,7 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		switch cmd.Use {
-		case "counter", "kvstore", "dummy": // for the examples apps, don't pre-run
+		case "counter", "kvstore": // for the examples apps, don't pre-run
 			return nil
 		case "version": // skip running for version command
 			return nil
@@ -127,10 +127,6 @@ func addCounterFlags() {
 	counterCmd.PersistentFlags().BoolVarP(&flagSerial, "serial", "", false, "enforce incrementing (serial) transactions")
 }
 
-func addDummyFlags() {
-	dummyCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
-}
-
 func addKVStoreFlags() {
 	kvstoreCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
 }
@@ -152,10 +148,6 @@ func addCommands() {
 	// examples
 	addCounterFlags()
 	RootCmd.AddCommand(counterCmd)
-	// deprecated, left for backwards compatibility
-	addDummyFlags()
-	RootCmd.AddCommand(dummyCmd)
-	// replaces dummy, see issue #196
 	addKVStoreFlags()
 	RootCmd.AddCommand(kvstoreCmd)
 }
@@ -288,18 +280,6 @@ var counterCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCounter(cmd, args)
-	},
-}
-
-// deprecated, left for backwards compatibility
-var dummyCmd = &cobra.Command{
-	Use:        "dummy",
-	Deprecated: "use: [abci-cli kvstore] instead",
-	Short:      "ABCI demo example",
-	Long:       "ABCI demo example",
-	Args:       cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdKVStore(cmd, args)
 	},
 }
 
