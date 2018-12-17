@@ -110,6 +110,15 @@ the functionality of Rand with custom methods.  For these reasons, and for the
 reasons which is outlined in this design philosophy document, we should
 continue to use the cmn.Rand object, with mutex protection.
 
+Another key aspect of good encapsulation is the choice of exposed vs unexposed
+methods.  It should be clear to the reader of the code, which methods are
+intended to be used in what context, and what safe usage is.  Part of this is
+solved by hiding methods via unexported methods.  Another part of this is
+naming conventions on the methods (e.g. underscores) with good documentation,
+and code organization.  If there are too many exposed methods and it isn't
+clear what methods have what side effects, then there is something wrong about
+the design of abstractions that should be revisited.
+
 
 ### On concurrency
 
@@ -138,3 +147,12 @@ is designed to have a limited number of peers (e.g. 10 or 20), so the creation
 of O(C) goroutines per O(P) peers is still O(C\*P=constant).
   * Use defer statements to unlock as much as possible.  If you want to unlock sooner,
     try to create more modular functions that do make use of defer statements.
+
+## Matras
+
+* Premature optimization kills
+* Readability is paramount
+* Beautiful is better than fast.
+* In the face of ambiguity, refuse the temptation to guess.
+* In the face of bugs, refuse the temptation to cover the bug.
+* There should be one-- and preferably only one --obvious way to do it.
