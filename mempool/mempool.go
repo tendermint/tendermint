@@ -9,8 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tendermint/tendermint/abci/client"
-
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -186,7 +184,7 @@ func NewMempool(
 	} else {
 		mempool.cache = nopTxCache{}
 	}
-	proxyAppConn.SetResponseCallback(mempool.resCb())
+	proxyAppConn.SetResponseCallback(mempool.resCb)
 	for _, option := range options {
 		option(mempool)
 	}
@@ -353,8 +351,8 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	reqRes := mem.proxyAppConn.CheckTxAsync(tx)
 	if cb != nil {
 		composedCallback := func(res *abci.Response) {
-			cb(res)
 			mem.reqResCb(tx, txInfo.PeerID)(res)
+			cb(res)
 		}
 		reqRes.SetCallback(composedCallback)
 	} else {
@@ -364,19 +362,19 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	return nil
 }
 
-// ABCI callback function
-func (mem *Mempool) resCb() abcicli.Callback {
-	return func(req *abci.Request, res *abci.Response) {
-		// the normal case is handled by the reqRes callback
-		if mem.recheckCursor != nil {
-			mem.metrics.RecheckTimes.Add(1)
-			mem.resCbRecheck(req, res)
-		}
-		mem.metrics.Size.Set(float64(mem.Size()))
+// ABCI callback function. This is used for handling rechecks,
+// as the normal case is handled by the reqRes callback so it can
+// incorporate local information.
+func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
+	if mem.recheckCursor != nil {
+		mem.metrics.RecheckTimes.Add(1)
+		mem.resCbRecheck(req, res)
 	}
+	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
-// ABCI request result callback function
+// ABCI request result callback function incorporates local information, like
+// the peer that sent us this tx, so we can avoid sending it back to the same peer.
 func (mem *Mempool) reqResCb(tx []byte, peerID uint16) func(res *abci.Response) {
 	return func(res *abci.Response) {
 		if mem.recheckCursor != nil {
