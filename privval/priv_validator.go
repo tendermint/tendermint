@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -63,7 +62,6 @@ type FilePVLastSignState struct {
 	SignBytes cmn.HexBytes `json:"signbytes,omitempty"`
 
 	filePath string
-	mtx      sync.Mutex
 }
 
 // GetAddress returns the address of the validator.
@@ -150,9 +148,6 @@ func LoadOrGenFilePV(keyFilePath string, stateFilePath string) *FilePV {
 // Save persists the FilePV to disk.
 func (pv *FilePV) Save() {
 	pv.saveKey()
-
-	pv.LastSignState.mtx.Lock()
-	defer pv.LastSignState.mtx.Unlock()
 	pv.saveState()
 }
 
@@ -203,8 +198,6 @@ func (pv *FilePV) Reset() {
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
 func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
-	pv.LastSignState.mtx.Lock()
-	defer pv.LastSignState.mtx.Unlock()
 	if err := pv.signVote(chainID, vote); err != nil {
 		return fmt.Errorf("Error signing vote: %v", err)
 	}
@@ -214,8 +207,6 @@ func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
 func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
-	pv.LastSignState.mtx.Lock()
-	defer pv.LastSignState.mtx.Unlock()
 	if err := pv.signProposal(chainID, proposal); err != nil {
 		return fmt.Errorf("Error signing proposal: %v", err)
 	}
