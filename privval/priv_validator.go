@@ -45,7 +45,7 @@ type FilePV struct {
 	LastSignState FilePVLastSignState
 }
 
-// FilePVKey stores the immutable part of PrivValidator
+// FilePVKey stores the immutable part of PrivValidator.
 type FilePVKey struct {
 	Address types.Address  `json:"address"`
 	PubKey  crypto.PubKey  `json:"pub_key"`
@@ -54,7 +54,7 @@ type FilePVKey struct {
 	filePath string
 }
 
-// FilePVState stores the mutable part of PrivValidator
+// FilePVLastSignState stores the mutable part of PrivValidator.
 type FilePVLastSignState struct {
 	Height    int64        `json:"height"`
 	Round     int          `json:"round"`
@@ -99,7 +99,7 @@ func GenFilePV(keyFilePath string, stateFilePath string) *FilePV {
 
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
 // signing prevention by persisting data to the stateFilePath.  If the filePaths
-// does not exist, the FilePV must be created manually and saved.
+// do not exist, the FilePV must be created manually and saved.
 func LoadFilePV(keyFilePath string, stateFilePath string) *FilePV {
 	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
@@ -128,12 +128,10 @@ func LoadFilePV(keyFilePath string, stateFilePath string) *FilePV {
 
 	pvState.filePath = stateFilePath
 
-	pv := &FilePV{}
-
-	pv.Key = pvKey
-	pv.LastSignState = pvState
-
-	return pv
+	return &FilePV{
+		Key:           pvKey,
+		LastSignState: pvState,
+	}
 }
 
 // LoadOrGenFilePV loads a FilePV from the given filePaths
@@ -226,21 +224,23 @@ func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
 
 // returns error if HRS regression or no LastSignBytes. returns true if HRS is unchanged
 func (pv *FilePV) checkHRS(height int64, round int, step int8) (bool, error) {
-	if pv.LastSignState.Height > height {
+	lss := pv.LastSignState
+
+	if lss.Height > height {
 		return false, errors.New("Height regression")
 	}
 
-	if pv.LastSignState.Height == height {
-		if pv.LastSignState.Round > round {
+	if lss.Height == height {
+		if lss.Round > round {
 			return false, errors.New("Round regression")
 		}
 
-		if pv.LastSignState.Round == round {
-			if pv.LastSignState.Step > step {
+		if lss.Round == round {
+			if lss.Step > step {
 				return false, errors.New("Step regression")
-			} else if pv.LastSignState.Step == step {
-				if pv.LastSignState.SignBytes != nil {
-					if pv.LastSignState.Signature == nil {
+			} else if lss.Step == step {
+				if lss.SignBytes != nil {
+					if lss.Signature == nil {
 						panic("pv: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
