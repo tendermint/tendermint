@@ -494,14 +494,15 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 	}
 
 	err := r.Switch.DialPeerWithAddress(addr, false)
+	if _, ok := err.(p2p.ErrDialingOrExistingAddress); ok {
+		return
+	}
 	if err != nil {
 		r.Logger.Error("Dialing failed", "addr", addr, "err", err, "attempts", attempts)
-		// TODO: detect more "bad peer" scenarios
+		markAddrInBookBasedOnErr(addr, r.book, err)
 		if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
-			r.book.MarkBad(addr)
 			r.attemptsToDial.Delete(addr.DialString())
 		} else {
-			r.book.MarkAttempt(addr)
 			// FIXME: if the addr is going to be removed from the addrbook (hard to
 			// tell at this point), we need to Delete it from attemptsToDial, not
 			// record another attempt.
@@ -622,24 +623,19 @@ func (r *PEXReactor) CrawlPeers(addrs []*p2p.NetAddress) {
 			continue
 		}
 
-		if r.Switch.IsDialingOrExistingAddress(addr) {
-			continue
-		}
-
 		// Record crawling attempt.
 		peerInfo.LastCrawled = now
-		// XXX: grows linearly with a number of peers crawled
+		// XXX: - grows linearly with a number of peers crawled
+		//      - does not get persisted
 		r.crawlPeerInfos[addr.ID] = peerInfo
 
 		err := r.Switch.DialPeerWithAddress(addr, false)
+		if _, ok := err.(p2p.ErrDialingOrExistingAddress); ok {
+			continue
+		}
 		if err != nil {
 			r.Logger.Error("Dialing failed", "addr", addr, "err", err)
-			// TODO: detect more "bad peer" scenarios
-			if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
-				r.book.MarkBad(addr)
-			} else {
-				r.book.MarkAttempt(addr)
-			}
+			markAddrInBookBasedOnErr(addr, r.book, err)
 			continue
 		}
 
@@ -661,6 +657,15 @@ func (r *PEXReactor) AttemptDisconnects() {
 			continue
 		}
 		r.Switch.StopPeerGracefully(peer)
+	}
+}
+
+func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
+	// TODO: detect more "bad peer" scenarios
+	if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
+		book.MarkBad(addr)
+	} else {
+		book.MarkAttempt(addr)
 	}
 }
 

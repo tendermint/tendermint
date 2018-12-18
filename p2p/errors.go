@@ -172,3 +172,13 @@ type ErrNetAddressLookup struct {
 func (e ErrNetAddressLookup) Error() string {
 	return fmt.Sprintf("Error looking up host (%s): %v", e.Addr, e.Err)
 }
+
+// ErrDialingOrExistingAddress indicates that we're currently
+// dialing this address or it belongs to an existing peer.
+type ErrDialingOrExistingAddress struct {
+	Addr string
+}
+
+func (e ErrDialingOrExistingAddress) Error() string {
+	return fmt.Sprintf("Connection with %s has been established or dialed", e.Addr)
+}
