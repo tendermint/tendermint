@@ -27,9 +27,12 @@ func TestTxFilter(t *testing.T) {
 		{types.Tx(cmn.RandBytes(250)), false},
 		{types.Tx(cmn.RandBytes(1809)), false},
 		{types.Tx(cmn.RandBytes(1810)), false},
-		{types.Tx(cmn.RandBytes(1811)), true},
-		{types.Tx(cmn.RandBytes(1812)), true},
-		{types.Tx(cmn.RandBytes(3000)), true},
+		{types.Tx(cmn.RandBytes(1811)), false},
+		{types.Tx(cmn.RandBytes(1812)), false},
+		{types.Tx(cmn.RandBytes(3000)), false},
+		{types.Tx(cmn.RandBytes(3001)), true},
+		{types.Tx(cmn.RandBytes(3002)), true},
+		{types.Tx(cmn.RandBytes(3100)), true},
 	}
 
 	for i, tc := range testCases {

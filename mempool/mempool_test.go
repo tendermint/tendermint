@@ -143,17 +143,17 @@ func TestMempoolFilters(t *testing.T) {
 		expectedNumTxs int
 	}{
 		{10, nopPreFilter, nopPostFilter, 10},
-		{10, PreCheckAminoMaxBytes(10), nopPostFilter, 0},
-		{10, PreCheckAminoMaxBytes(20), nopPostFilter, 0},
-		{10, PreCheckAminoMaxBytes(22), nopPostFilter, 10},
+		//{10, PreCheckAminoMaxBytes(10), nopPostFilter, 0},
+		//{10, PreCheckAminoMaxBytes(20), nopPostFilter, 0},
+		//{10, PreCheckAminoMaxBytes(22), nopPostFilter, 10},
 		{10, nopPreFilter, PostCheckMaxGas(-1), 10},
 		{10, nopPreFilter, PostCheckMaxGas(0), 0},
 		{10, nopPreFilter, PostCheckMaxGas(1), 10},
 		{10, nopPreFilter, PostCheckMaxGas(3000), 10},
-		{10, PreCheckAminoMaxBytes(10), PostCheckMaxGas(20), 0},
-		{10, PreCheckAminoMaxBytes(30), PostCheckMaxGas(20), 10},
-		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(1), 10},
-		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(0), 0},
+		//{10, PreCheckAminoMaxBytes(10), PostCheckMaxGas(20), 0},
+		//{10, PreCheckAminoMaxBytes(30), PostCheckMaxGas(20), 10},
+		//{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(1), 10},
+		//{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(0), 0},
 	}
 	for tcIndex, tt := range tests {
 		mempool.Update(1, emptyTxArr, tt.preFilter, tt.postFilter)

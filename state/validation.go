@@ -55,6 +55,18 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		)
 	}
 
+	// Limit the amount of txs by bytes.
+	totalTxBytes := int64(0)
+	for _, tx := range block.Data.Txs {
+		totalTxBytes += int64(len(tx))
+	}
+	if totalTxBytes > state.ConsensusParams.BlockSize.MaxBytes {
+		return fmt.Errorf("Exceeded BlockSize.MaxBlocks. Have %v bytes, max %v",
+			totalTxBytes,
+			state.ConsensusParams.BlockSize.MaxBytes,
+		)
+	}
+
 	// Validate app info
 	if !bytes.Equal(block.AppHash, state.AppHash) {
 		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v",
