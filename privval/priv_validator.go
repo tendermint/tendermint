@@ -141,7 +141,7 @@ type FilePV struct {
 
 // GenFilePV generates a new validator with randomly generated private key
 // and sets the filePaths, but does not call Save().
-func GenFilePV(keyFilePath string, stateFilePath string) *FilePV {
+func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
 	privKey := ed25519.GenPrivKey()
 
 	return &FilePV{
@@ -161,7 +161,7 @@ func GenFilePV(keyFilePath string, stateFilePath string) *FilePV {
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
 // signing prevention by persisting data to the stateFilePath.  If the filePaths
 // do not exist, the FilePV must be created manually and saved.
-func LoadFilePV(keyFilePath string, stateFilePath string) *FilePV {
+func LoadFilePV(keyFilePath, stateFilePath string) *FilePV {
 	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
 		cmn.Exit(err.Error())
@@ -197,7 +197,7 @@ func LoadFilePV(keyFilePath string, stateFilePath string) *FilePV {
 
 // LoadOrGenFilePV loads a FilePV from the given filePaths
 // or else generates a new one and saves it to the filePaths.
-func LoadOrGenFilePV(keyFilePath string, stateFilePath string) *FilePV {
+func LoadOrGenFilePV(keyFilePath, stateFilePath string) *FilePV {
 	var pv *FilePV
 	if cmn.FileExists(keyFilePath) {
 		pv = LoadFilePV(keyFilePath, stateFilePath)

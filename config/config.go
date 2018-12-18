@@ -50,6 +50,11 @@ var (
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
 )
 
+var (
+	oldPrivVal     = "priv_validator.json"
+	oldPrivValPath = filepath.Join(defaultConfigDir, oldPrivVal)
+)
+
 // Config defines the top level configuration for a Tendermint node
 type Config struct {
 	// Top level options use an anonymous struct
@@ -234,6 +239,12 @@ func (cfg BaseConfig) PrivValidatorKeyFile() string {
 // PrivValidatorFile returns the full path to the priv_validator_state.json file
 func (cfg BaseConfig) PrivValidatorStateFile() string {
 	return rootify(cfg.PrivValidatorState, cfg.RootDir)
+}
+
+// OldPrivValidatorFile returns the full path of the priv_validator.json from pre v0.28.0.
+// TODO: eventually remove.
+func (cfg BaseConfig) OldPrivValidatorFile() string {
+	return rootify(oldPrivValPath, cfg.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
