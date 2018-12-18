@@ -27,19 +27,20 @@ var ResetPrivValidatorCmd = &cobra.Command{
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) {
-	ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorFile(), logger)
+	ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorKeyFile(),
+		config.PrivValidatorStateFile(), logger)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) {
-	resetFilePV(config.PrivValidatorFile(), logger)
+	resetFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile(), logger)
 }
 
 // ResetAll removes the privValidator and address book files plus all data.
 // Exported so other CLI tools can use it.
-func ResetAll(dbDir, addrBookFile, privValFile string, logger log.Logger) {
-	resetFilePV(privValFile, logger)
+func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) {
+	resetFilePV(privValKeyFile, privValStateFile, logger)
 	removeAddrBook(addrBookFile, logger)
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
@@ -48,15 +49,17 @@ func ResetAll(dbDir, addrBookFile, privValFile string, logger log.Logger) {
 	}
 }
 
-func resetFilePV(privValFile string, logger log.Logger) {
-	if _, err := os.Stat(privValFile); err == nil {
-		pv := privval.LoadFilePV(privValFile)
+func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
+	if _, err := os.Stat(privValKeyFile); err == nil {
+		pv := privval.LoadFilePV(privValKeyFile, privValStateFile)
 		pv.Reset()
-		logger.Info("Reset private validator file to genesis state", "file", privValFile)
+		logger.Info("Reset private validator file to genesis state", "keyFile", privValKeyFile,
+			"stateFile", privValStateFile)
 	} else {
-		pv := privval.GenFilePV(privValFile)
+		pv := privval.GenFilePV(privValKeyFile, privValStateFile)
 		pv.Save()
-		logger.Info("Generated private validator file", "file", privValFile)
+		logger.Info("Generated private validator file", "file", "keyFile", privValKeyFile,
+			"stateFile", privValStateFile)
 	}
 }
 

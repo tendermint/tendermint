@@ -85,15 +85,21 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			_ = os.RemoveAll(outputDir)
 			return err
 		}
+		err = os.MkdirAll(filepath.Join(nodeDir, "data"), nodeDirPerm)
+		if err != nil {
+			_ = os.RemoveAll(outputDir)
+			return err
+		}
 
 		initFilesWithConfig(config)
 
-		pvFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidator)
-		pv := privval.LoadFilePV(pvFile)
-		pubKey := pv.GetPubKey()
+		pvKeyFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorKey)
+		pvStateFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorState)
+
+		pv := privval.LoadFilePV(pvKeyFile, pvStateFile)
 		genVals[i] = types.GenesisValidator{
-			Address: pubKey.Address(),
-			PubKey:  pubKey,
+			Address: pv.GetPubKey().Address(),
+			PubKey:  pv.GetPubKey(),
 			Power:   1,
 			Name:    nodeDirName,
 		}
@@ -128,30 +134,12 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Gather persistent peer addresses.
-	var (
-		persistentPeers string
-		err             error
-	)
 	if populatePersistentPeers {
-		persistentPeers, err = persistentPeersString(config)
+		err := populatePersistentPeersInConfigAndWriteIt(config)
 		if err != nil {
 			_ = os.RemoveAll(outputDir)
 			return err
 		}
-	}
-
-	// Overwrite default config.
-	for i := 0; i < nValidators+nNonValidators; i++ {
-		nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
-		config.SetRoot(nodeDir)
-		config.P2P.AddrBookStrict = false
-		config.P2P.AllowDuplicateIP = true
-		if populatePersistentPeers {
-			config.P2P.PersistentPeers = persistentPeers
-		}
-
-		cfg.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), config)
 	}
 
 	fmt.Printf("Successfully initialized %v node directories\n", nValidators+nNonValidators)
@@ -176,16 +164,28 @@ func hostnameOrIP(i int) string {
 	return fmt.Sprintf("%s%d", hostnamePrefix, i)
 }
 
-func persistentPeersString(config *cfg.Config) (string, error) {
+func populatePersistentPeersInConfigAndWriteIt(config *cfg.Config) error {
 	persistentPeers := make([]string, nValidators+nNonValidators)
 	for i := 0; i < nValidators+nNonValidators; i++ {
 		nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
 		config.SetRoot(nodeDir)
 		nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 		if err != nil {
-			return "", err
+			return err
 		}
 		persistentPeers[i] = p2p.IDAddressString(nodeKey.ID(), fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
 	}
-	return strings.Join(persistentPeers, ","), nil
+	persistentPeersList := strings.Join(persistentPeers, ",")
+
+	for i := 0; i < nValidators+nNonValidators; i++ {
+		nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
+		config.SetRoot(nodeDir)
+		config.P2P.PersistentPeers = persistentPeersList
+		config.P2P.AddrBookStrict = false
+
+		// overwrite default config
+		cfg.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), config)
+	}
+
+	return nil
 }
