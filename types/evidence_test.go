@@ -17,9 +17,8 @@ type voteData struct {
 }
 
 func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
-	addr := val.GetPubKey().Address()
 	v := &Vote{
-		ValidatorAddress: addr,
+		ValidatorAddress: val.GetAddress(),
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,

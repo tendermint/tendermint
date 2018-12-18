@@ -12,6 +12,7 @@ import (
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {
+	GetAddress() Address // redundant since .PubKey().Address()
 	GetPubKey() crypto.PubKey
 
 	SignVote(chainID string, vote *Vote) error
@@ -28,7 +29,7 @@ func (pvs PrivValidatorsByAddress) Len() int {
 }
 
 func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	return bytes.Compare(pvs[i].GetPubKey().Address(), pvs[j].GetPubKey().Address()) == -1
+	return bytes.Compare(pvs[i].GetAddress(), pvs[j].GetAddress()) == -1
 }
 
 func (pvs PrivValidatorsByAddress) Swap(i, j int) {
@@ -48,6 +49,11 @@ type MockPV struct {
 
 func NewMockPV() *MockPV {
 	return &MockPV{ed25519.GenPrivKey()}
+}
+
+// Implements PrivValidator.
+func (pv *MockPV) GetAddress() Address {
+	return pv.privKey.PubKey().Address()
 }
 
 // Implements PrivValidator.
@@ -79,8 +85,7 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	addr := pv.GetPubKey().Address()
-	return fmt.Sprintf("MockPV{%v}", addr)
+	return fmt.Sprintf("MockPV{%v}", pv.GetAddress())
 }
 
 // XXX: Implement.

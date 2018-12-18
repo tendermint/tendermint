@@ -17,7 +17,6 @@ Special thanks to external contributors on this release:
 * Go API  
 - [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on 
 `PrivValidator.GetPubKey()` instead of requesting it again 
-- [types] \#2981 Remove `PrivValidator.GetAddress()`
 
 * Blockchain Protocol
 

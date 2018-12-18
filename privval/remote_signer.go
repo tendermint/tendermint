@@ -44,6 +44,11 @@ func (sc *RemoteSignerClient) GetPubKey() crypto.PubKey {
 	return sc.consensusPubKey
 }
 
+// GetAddress implements PrivValidator.
+func (sc *RemoteSignerClient) GetAddress() types.Address {
+	return sc.consensusPubKey.Address()
+}
+
 func (sc *RemoteSignerClient) getPubKey() (crypto.PubKey, error) {
 	err := writeMsg(sc.conn, &PubKeyRequest{})
 	if err != nil {

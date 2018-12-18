@@ -90,10 +90,9 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 		pvFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidator)
 		pv := privval.LoadFilePV(pvFile)
-		pubKey := pv.GetPubKey()
 		genVals[i] = types.GenesisValidator{
-			Address: pubKey.Address(),
-			PubKey:  pubKey,
+			Address: pv.GetPubKey().Address(),
+			PubKey:  pv.GetPubKey(),
 			Power:   1,
 			Name:    nodeDirName,
 		}
