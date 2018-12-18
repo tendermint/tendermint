@@ -43,7 +43,6 @@ func TestSocketPVPubKey(t *testing.T) {
 	require.NoError(t, err)
 
 	privvalPubKey := rs.privVal.GetPubKey()
-	require.NoError(t, err)
 
 	assert.Equal(t, privvalPubKey, clientKey)
 }
