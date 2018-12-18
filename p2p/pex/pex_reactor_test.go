@@ -289,34 +289,38 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	assertPeersWithTimeout(t, []*p2p.Switch{secondPeer}, 10*time.Millisecond, 1*time.Second, 2)
 }
 
-func TestPEXReactorSeedModeCrawlPeers(t *testing.T) {
+func TestPEXReactorSeedMode(t *testing.T) {
 	// directory to store address books
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true})
+	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 10 * time.Millisecond})
 	defer teardownReactor(book)
 
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
 
+	assert.Equal(t, 0, sw.Peers().Size())
+
 	peer := testCreateDefaultPeer(dir, 1)
 	require.Nil(t, peer.Start())
 	defer peer.Stop()
-
-	assert.Equal(t, 0, sw.Peers().Size())
 
 	// 1. Test CrawlPeers dials the peer
 	pexR.CrawlPeers([]*p2p.NetAddress{peer.NodeInfo().NetAddress()})
 	assert.Equal(t, 1, sw.Peers().Size())
 	assert.True(t, sw.Peers().Has(peer.NodeInfo().ID()))
 
-	// TODO to be continued
-}
+	// 2. AttemptDisconnects should not disconnect because of wait period
+	pexR.AttemptDisconnects()
+	assert.Equal(t, 1, sw.Peers().Size())
 
-func TestPEXReactorSeedModeAttemptDisconnects(t *testing.T) {
-	// TODO
+	time.Sleep(100 * time.Millisecond)
+
+	// 3. AttemptDisconnects should disconnect after wait period
+	pexR.AttemptDisconnects()
+	assert.Equal(t, 0, sw.Peers().Size())
 }
 
 func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {

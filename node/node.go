@@ -459,6 +459,7 @@ func NewNode(config *cfg.Config,
 			&pex.PEXReactorConfig{
 				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
+				SeedDisconnectWaitPeriod: pex.DefaultSeedDisconnectWaitPeriod,
 			})
 		pexReactor.SetLogger(logger.With("module", "pex"))
 		sw.AddReactor("PEX", pexReactor)

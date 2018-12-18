@@ -34,12 +34,10 @@ const (
 
 	// Seed/Crawler constants
 
-	// We want seeds to only advertise good peers. Therefore they should wait at
-	// least as long as we expect it to take for a peer to become good before
-	// disconnecting.
+	// DefaultSeedDisconnectWaitPeriod is a default for SeedDisconnectWaitPeriod
 	// see consensus/reactor.go: blocksToContributeToBecomeGoodPeer
 	// 10000 blocks assuming 1s blocks ~ 2.7 hours.
-	defaultSeedDisconnectWaitPeriod = 3 * time.Hour
+	DefaultSeedDisconnectWaitPeriod = 3 * time.Hour
 
 	defaultCrawlPeerInterval = 2 * time.Minute // don't redial for this. TODO: back-off. what for?
 
@@ -91,6 +89,11 @@ func (r *PEXReactor) minReceiveRequestInterval() time.Duration {
 type PEXReactorConfig struct {
 	// Seed/Crawler mode
 	SeedMode bool
+
+	// We want seeds to only advertise good peers. Therefore they should wait at
+	// least as long as we expect it to take for a peer to become good before
+	// disconnecting.
+	SeedDisconnectWaitPeriod time.Duration
 
 	// Seeds is a list of addresses reactor may use
 	// if it can't connect to peers in the addrbook.
@@ -575,7 +578,7 @@ func (r *PEXReactor) crawlPeersRoutine() {
 	for {
 		select {
 		case <-ticker.C:
-			r.attemptDisconnects()
+			r.AttemptDisconnects()
 			r.CrawlPeers(r.book.GetSelection())
 		case <-r.Quit():
 			return
@@ -625,6 +628,7 @@ func (r *PEXReactor) CrawlPeers(addrs []*p2p.NetAddress) {
 
 		// Record crawling attempt.
 		peerInfo.LastCrawled = now
+		// XXX: grows linearly with a number of peers crawled
 		r.crawlPeerInfos[addr.ID] = peerInfo
 
 		err := r.Switch.DialPeerWithAddress(addr, false)
@@ -646,10 +650,11 @@ func (r *PEXReactor) CrawlPeers(addrs []*p2p.NetAddress) {
 	}
 }
 
-// attemptDisconnects checks if we've been with each peer long enough to disconnect
-func (r *PEXReactor) attemptDisconnects() {
+// AttemptDisconnects checks if we've been with each peer long enough to disconnect
+// Exposed for testing.
+func (r *PEXReactor) AttemptDisconnects() {
 	for _, peer := range r.Switch.Peers().List() {
-		if peer.Status().Duration < defaultSeedDisconnectWaitPeriod {
+		if peer.Status().Duration < r.config.SeedDisconnectWaitPeriod {
 			continue
 		}
 		if peer.IsPersistent() {
