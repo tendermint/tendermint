@@ -311,15 +311,15 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	wantVal2ProposerPrio := -(totalPowerBefore2 + (totalPowerBefore2 >> 3))
 	wantVal2ProposerPrio = wantVal2ProposerPrio + val2VotingPower
 	// then increment:
-	totalPowerAfter := val1VotingPower + val2VotingPower // 110
+	totalPowerAfter := val1VotingPower + val2VotingPower
 	// mostest:
 	wantVal2ProposerPrio = wantVal2ProposerPrio - totalPowerAfter
 	avg := big.NewInt(0).Add(big.NewInt(val1VotingPower), big.NewInt(wantVal2ProposerPrio))
 	avg.Div(avg, big.NewInt(2))
 	wantVal2ProposerPrio = wantVal2ProposerPrio - avg.Int64()
 	wantVal1Prio := 0 + val1VotingPower - avg.Int64()
-	assert.Equal(t, wantVal1Prio, updatedVal1.ProposerPriority)       // 16
-	assert.Equal(t, wantVal2ProposerPrio, addedVal2.ProposerPriority) // not zero == -15
+	assert.Equal(t, wantVal1Prio, updatedVal1.ProposerPriority)
+	assert.Equal(t, wantVal2ProposerPrio, addedVal2.ProposerPriority)
 
 	// Updating a validator does not reset the ProposerPriority to zero:
 	updatedVotingPowVal2 := int64(1)
@@ -333,17 +333,17 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	_, prevVal1 := updatedState3.Validators.GetByAddress(val1PubKey.Address())
 	_, updatedVal2 := updatedState3.NextValidators.GetByAddress(val2PubKey.Address())
 
-	expectedVal1PrioBeforeAvg := prevVal1.ProposerPriority + prevVal1.VotingPower // 16 + 10 == 26
-	wantVal2ProposerPrio = wantVal2ProposerPrio + updatedVotingPowVal2            // -15 + 1 == -14
+	expectedVal1PrioBeforeAvg := prevVal1.ProposerPriority + prevVal1.VotingPower
+	wantVal2ProposerPrio = wantVal2ProposerPrio + updatedVotingPowVal2
 	// val1 will be proposer:
 	total := val1VotingPower + updatedVotingPowVal2
-	expectedVal1PrioBeforeAvg = expectedVal1PrioBeforeAvg - total    // 26 -11 == 15
-	avgI64 := (wantVal2ProposerPrio + expectedVal1PrioBeforeAvg) / 2 // (15-14)/2 == 0
-	wantVal2ProposerPrio = wantVal2ProposerPrio - avgI64             // -14 - 0
+	expectedVal1PrioBeforeAvg = expectedVal1PrioBeforeAvg - total
+	avgI64 := (wantVal2ProposerPrio + expectedVal1PrioBeforeAvg) / 2
+	wantVal2ProposerPrio = wantVal2ProposerPrio - avgI64
 	wantVal1Prio = expectedVal1PrioBeforeAvg - avgI64
-	assert.Equal(t, wantVal2ProposerPrio, updatedVal2.ProposerPriority) // -14
+	assert.Equal(t, wantVal2ProposerPrio, updatedVal2.ProposerPriority)
 	_, updatedVal1 = updatedState3.NextValidators.GetByAddress(val1PubKey.Address())
-	assert.Equal(t, wantVal1Prio, updatedVal1.ProposerPriority) // 15
+	assert.Equal(t, wantVal1Prio, updatedVal1.ProposerPriority)
 }
 
 func TestProposerPriorityProposerAlternates(t *testing.T) {
@@ -376,8 +376,8 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 0 + 10 (initial prio) - 10 (avg) - 10 (mostest - total) = -10
-	total := val1VotinPower
-	wantVal1Prio := 0 + val1VotinPower - total
+	totalPower := val1VotinPower
+	wantVal1Prio := 0 + val1VotinPower - totalPower
 	assert.Equal(t, wantVal1Prio, updatedState.NextValidators.Validators[0].ProposerPriority)
 	assert.Equal(t, val1PubKey.Address(), updatedState.NextValidators.Proposer.Address)
 
@@ -403,10 +403,12 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	_, oldVal1 := updatedState2.Validators.GetByAddress(val1PubKey.Address())
 	_, updatedVal2 := updatedState2.NextValidators.GetByAddress(val2PubKey.Address())
 
-	totalPower := val1VotinPower
+	totalPower = val1VotinPower // no update
 	v2PrioWhenAddedVal2 := -(totalPower + (totalPower >> 3))
 	v2PrioWhenAddedVal2 = v2PrioWhenAddedVal2 + val1VotinPower       // -11 + 10 == -1
 	v1PrioWhenAddedVal2 := oldVal1.ProposerPriority + val1VotinPower // -10 + 10 == 0
+	totalPower = 2 * val1VotinPower                                  // now we have to validators with that power
+	v1PrioWhenAddedVal2 = v1PrioWhenAddedVal2 - totalPower           // mostest
 	// have to express the AVG in big.Ints as -1/2 == -1 in big.Int while -1/2 == 0 in int64
 	avgSum := big.NewInt(0).Add(big.NewInt(v2PrioWhenAddedVal2), big.NewInt(v1PrioWhenAddedVal2))
 	avg := avgSum.Div(avgSum, big.NewInt(2))
@@ -438,10 +440,12 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	assert.Equal(t, val2PubKey.Address(), updatedState3.NextValidators.Proposer.Address)
 	// check if expected proposer prio is matched:
 
-	avgSum = big.NewInt(oldVal1.ProposerPriority + val1VotinPower + oldVal2.ProposerPriority + val1VotinPower)
+	expectedVal1Prio2 := oldVal1.ProposerPriority + val1VotinPower
+	expectedVal2Prio2 := oldVal2.ProposerPriority + val1VotinPower - totalPower
+	avgSum = big.NewInt(expectedVal1Prio + expectedVal2Prio)
 	avg = avgSum.Div(avgSum, big.NewInt(2))
-	expectedVal1Prio2 := oldVal1.ProposerPriority + val1VotinPower - avg.Int64()
-	expectedVal2Prio2 := oldVal2.ProposerPriority + val1VotinPower - avg.Int64() - totalPower
+	expectedVal1Prio -= avg.Int64()
+	expectedVal2Prio -= avg.Int64()
 
 	// -19 + 10 - 0 (avg) == -9
 	assert.EqualValues(t, expectedVal1Prio2, updatedVal1.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
