@@ -23,6 +23,7 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [rpc] \#3047 Include peer's remote IP in `/net_info`
 
 ### BUG FIXES:
 
