@@ -65,7 +65,7 @@ func TestGenesisGood(t *testing.T) {
 	assert.NoError(t, err, "expected no error for valid genDoc json")
 
 	// test with invalid consensus params
-	genDoc.ConsensusParams.BlockSize.MaxBytes = 0
+	genDoc.ConsensusParams.Block.MaxBytes = 0
 	genDocBytes, err = cdc.MarshalJSON(genDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)

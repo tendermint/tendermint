@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 var (
@@ -19,22 +21,23 @@ func TestConsensusParamsValidation(t *testing.T) {
 		params ConsensusParams
 		valid  bool
 	}{
-		// test block size
-		0: {makeParams(1, 0, 1, valEd25519), true},
-		1: {makeParams(0, 0, 1, valEd25519), false},
-		2: {makeParams(47*1024*1024, 0, 1, valEd25519), true},
-		3: {makeParams(10, 0, 1, valEd25519), true},
-		4: {makeParams(100*1024*1024, 0, 1, valEd25519), true},
-		5: {makeParams(101*1024*1024, 0, 1, valEd25519), false},
-		6: {makeParams(1024*1024*1024, 0, 1, valEd25519), false},
-		7: {makeParams(1024*1024*1024, 0, -1, valEd25519), false},
-		// test evidence age
-		8: {makeParams(1, 0, 0, valEd25519), false},
-		9: {makeParams(1, 0, -1, valEd25519), false},
+		// test block params
+		0: {makeParams(1, 0, 10*time.Millisecond, 1, valEd25519), true},
+		1: {makeParams(0, 0, 10*time.Millisecond, 1, valEd25519), false},
+		2: {makeParams(47*1024*1024, 0, 10*time.Millisecond, 1, valEd25519), true},
+		3: {makeParams(10, 0, 10*time.Millisecond, 1, valEd25519), true},
+		4: {makeParams(100*1024*1024, 0, 10*time.Millisecond, 1, valEd25519), true},
+		5: {makeParams(101*1024*1024, 0, 10*time.Millisecond, 1, valEd25519), false},
+		6: {makeParams(1024*1024*1024, 0, 10*time.Millisecond, 1, valEd25519), false},
+		7: {makeParams(1024*1024*1024, 0, 10*time.Millisecond, -1, valEd25519), false},
+		8: {makeParams(1, 0, -10*time.Millisecond, 1, valEd25519), false},
+		// test evidence params
+		9:  {makeParams(1, 0, 10*time.Millisecond, 0, valEd25519), false},
+		10: {makeParams(1, 0, 10*time.Millisecond, -1, valEd25519), false},
 		// test no pubkey type provided
-		10: {makeParams(1, 0, 1, []string{}), false},
+		11: {makeParams(1, 0, 10*time.Millisecond, 1, []string{}), false},
 		// test invalid pubkey type provided
-		11: {makeParams(1, 0, 1, []string{"potatoes make good pubkeys"}), false},
+		12: {makeParams(1, 0, 10*time.Millisecond, 1, []string{"potatoes make good pubkeys"}), false},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
@@ -45,11 +48,17 @@ func TestConsensusParamsValidation(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockGas, evidenceAge int64, pubkeyTypes []string) ConsensusParams {
+func makeParams(
+	blockBytes, blockGas int64,
+	blockTimeIota time.Duration,
+	evidenceAge int64,
+	pubkeyTypes []string,
+) ConsensusParams {
 	return ConsensusParams{
-		BlockSize: BlockSizeParams{
+		Block: BlockParams{
 			MaxBytes: blockBytes,
 			MaxGas:   blockGas,
+			TimeIota: tmtime.DurationPretty{blockTimeIota},
 		},
 		Evidence: EvidenceParams{
 			MaxAge: evidenceAge,
@@ -62,14 +71,14 @@ func makeParams(blockBytes, blockGas, evidenceAge int64, pubkeyTypes []string) C
 
 func TestConsensusParamsHash(t *testing.T) {
 	params := []ConsensusParams{
-		makeParams(4, 2, 3, valEd25519),
-		makeParams(1, 4, 3, valEd25519),
-		makeParams(1, 2, 4, valEd25519),
-		makeParams(2, 5, 7, valEd25519),
-		makeParams(1, 7, 6, valEd25519),
-		makeParams(9, 5, 4, valEd25519),
-		makeParams(7, 8, 9, valEd25519),
-		makeParams(4, 6, 5, valEd25519),
+		makeParams(4, 2, 10*time.Millisecond, 3, valEd25519),
+		makeParams(1, 4, 10*time.Millisecond, 3, valEd25519),
+		makeParams(1, 2, 10*time.Millisecond, 4, valEd25519),
+		makeParams(2, 5, 10*time.Millisecond, 7, valEd25519),
+		makeParams(1, 7, 10*time.Millisecond, 6, valEd25519),
+		makeParams(9, 5, 10*time.Millisecond, 4, valEd25519),
+		makeParams(7, 8, 10*time.Millisecond, 9, valEd25519),
+		makeParams(4, 6, 10*time.Millisecond, 5, valEd25519),
 	}
 
 	hashes := make([][]byte, len(params))
@@ -95,26 +104,27 @@ func TestConsensusParamsUpdate(t *testing.T) {
 	}{
 		// empty updates
 		{
-			makeParams(1, 2, 3, valEd25519),
+			makeParams(1, 2, 10*time.Millisecond, 3, valEd25519),
 			&abci.ConsensusParams{},
-			makeParams(1, 2, 3, valEd25519),
+			makeParams(1, 2, 10*time.Millisecond, 3, valEd25519),
 		},
 		// fine updates
 		{
-			makeParams(1, 2, 3, valEd25519),
+			makeParams(1, 2, 10*time.Millisecond, 3, valEd25519),
 			&abci.ConsensusParams{
-				BlockSize: &abci.BlockSizeParams{
+				Block: &abci.BlockParams{
 					MaxBytes: 100,
 					MaxGas:   200,
+					TimeIota: 300 * time.Millisecond,
 				},
 				Evidence: &abci.EvidenceParams{
-					MaxAge: 300,
+					MaxAge: 400,
 				},
 				Validator: &abci.ValidatorParams{
 					PubKeyTypes: valSecp256k1,
 				},
 			},
-			makeParams(100, 200, 300, valSecp256k1),
+			makeParams(100, 200, 300*time.Millisecond, 400, valSecp256k1),
 		},
 	}
 	for _, tc := range testCases {

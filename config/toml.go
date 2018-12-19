@@ -272,9 +272,6 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
-# Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
-blocktime_iota = "{{ .Consensus.BlockTimeIota }}"
-
 ##### transactions indexer configuration options #####
 [tx_index]
 

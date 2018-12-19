@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
@@ -908,7 +910,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	params[0] = state.ConsensusParams
 	for i := 1; i < N+1; i++ {
 		params[i] = *types.DefaultConsensusParams()
-		params[i].BlockSize.MaxBytes += int64(i)
+		params[i].Block.MaxBytes += int64(i)
 	}
 
 	// Build the params history by running updateState
@@ -956,11 +958,16 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
+func makeParams(
+	blockBytes, blockGas int64,
+	blockTimeIota time.Duration,
+	evidenceAge int64,
+) types.ConsensusParams {
 	return types.ConsensusParams{
-		BlockSize: types.BlockSizeParams{
+		Block: types.BlockParams{
 			MaxBytes: blockBytes,
 			MaxGas:   blockGas,
+			TimeIota: tmtime.DurationPretty{blockTimeIota},
 		},
 		Evidence: types.EvidenceParams{
 			MaxAge: evidenceAge,
@@ -969,7 +976,7 @@ func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeParams(1, 2, 3)
+	initParams := makeParams(1, 2, 3*time.Millisecond, 4)
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -980,19 +987,20 @@ func TestApplyUpdates(t *testing.T) {
 		1: {initParams, abci.ConsensusParams{}, initParams},
 		2: {initParams,
 			abci.ConsensusParams{
-				BlockSize: &abci.BlockSizeParams{
+				Block: &abci.BlockParams{
 					MaxBytes: 44,
 					MaxGas:   55,
+					TimeIota: 66 * time.Millisecond,
 				},
 			},
-			makeParams(44, 55, 3)},
+			makeParams(44, 55, 66*time.Millisecond, 4)},
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
 					MaxAge: 66,
 				},
 			},
-			makeParams(1, 2, 66)},
+			makeParams(1, 2, 3*time.Millisecond, 66)},
 	}
 
 	for i, tc := range cases {

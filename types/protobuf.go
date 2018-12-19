@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 //-------------------------------------------------------
@@ -125,9 +126,10 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
-		BlockSize: &abci.BlockSizeParams{
-			MaxBytes: params.BlockSize.MaxBytes,
-			MaxGas:   params.BlockSize.MaxGas,
+		Block: &abci.BlockParams{
+			MaxBytes: params.Block.MaxBytes,
+			MaxGas:   params.Block.MaxGas,
+			TimeIota: params.Block.TimeIota.Duration,
 		},
 		Evidence: &abci.EvidenceParams{
 			MaxAge: params.Evidence.MaxAge,
@@ -222,16 +224,28 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 }
 
 func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
-	return ConsensusParams{
-		BlockSize: BlockSizeParams{
-			MaxBytes: csp.BlockSize.MaxBytes,
-			MaxGas:   csp.BlockSize.MaxGas,
-		},
-		Evidence: EvidenceParams{
-			MaxAge: csp.Evidence.MaxAge,
-		},
-		Validator: ValidatorParams{
-			PubKeyTypes: csp.Validator.PubKeyTypes,
-		},
+	params := ConsensusParams{}
+
+	// we must defensively consider any structs may be nil
+	if csp.Block != nil {
+		params.Block = BlockParams{
+			MaxBytes: csp.Block.MaxBytes,
+			MaxGas:   csp.Block.MaxGas,
+			TimeIota: tmtime.DurationPretty{csp.Block.TimeIota},
+		}
 	}
+
+	if csp.Evidence != nil {
+		params.Evidence = EvidenceParams{
+			MaxAge: csp.Evidence.MaxAge,
+		}
+	}
+
+	if csp.Validator != nil {
+		params.Validator = ValidatorParams{
+			PubKeyTypes: csp.Validator.PubKeyTypes,
+		}
+	}
+
+	return params
 }

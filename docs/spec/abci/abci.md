@@ -443,12 +443,12 @@ Commit are included in the header of the next block.
 ###  ConsensusParams
 
 - **Fields**:
-  - `BlockSize (BlockSizeParams)`: Parameters limiting the size of a block.
+  - `Block (BlockParams)`: Parameters limiting the size of a block and time between consecutive blocks.
   - `Evidence (EvidenceParams)`: Parameters limiting the validity of
     evidence of byzantine behaviour.
   - `Validator (ValidatorParams)`: Parameters limitng the types of pubkeys validators can use.
 
-### BlockSizeParams
+### BlockParams
 
 - **Fields**:
   - `MaxBytes (int64)`: Max size of a block, in bytes.
@@ -456,6 +456,8 @@ Commit are included in the header of the next block.
     - NOTE: blocks that violate this may be committed if there are Byzantine proposers.
         It's the application's responsibility to handle this when processing a
         block!
+  - `TimeIota (google.protobuf.Duration)`: Minimum time increment between consecutive blocks.
+
 
 ### EvidenceParams
 
