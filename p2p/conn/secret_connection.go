@@ -10,7 +10,6 @@ import (
 	"net"
 	"time"
 
-	// forked to github.com/tendermint/crypto
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"

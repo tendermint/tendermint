@@ -81,8 +81,7 @@
 
 [[constraint]]
   name = "golang.org/x/crypto"
-  source = "github.com/tendermint/crypto"
-  revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
+  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
 
 [[override]]
   name = "github.com/jmhodges/levigo"

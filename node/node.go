@@ -210,13 +210,18 @@ func NewNode(config *cfg.Config,
 	// what happened during block replay).
 	state = sm.LoadState(stateDB)
 
-	// Ensure the state's block version matches that of the software.
+	// Log the version info.
+	logger.Info("Version info",
+		"software", version.TMCoreSemVer,
+		"block", version.BlockProtocol,
+		"p2p", version.P2PProtocol,
+	)
+
+	// If the state and software differ in block version, at least log it.
 	if state.Version.Consensus.Block != version.BlockProtocol {
-		return nil, fmt.Errorf(
-			"Block version of the software does not match that of the state.\n"+
-				"Got version.BlockProtocol=%v, state.Version.Consensus.Block=%v",
-			version.BlockProtocol,
-			state.Version.Consensus.Block,
+		logger.Info("Software and state have different block protocols",
+			"software", version.BlockProtocol,
+			"state", state.Version.Consensus.Block,
 		)
 	}
 
@@ -343,20 +348,21 @@ func NewNode(config *cfg.Config,
 	indexerService := txindex.NewIndexerService(txIndexer, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
-	var (
-		p2pLogger = logger.With("module", "p2p")
-		nodeInfo  = makeNodeInfo(
-			config,
-			nodeKey.ID(),
-			txIndexer,
-			genDoc.ChainID,
-			p2p.NewProtocolVersion(
-				version.P2PProtocol, // global
-				state.Version.Consensus.Block,
-				state.Version.Consensus.App,
-			),
-		)
+	p2pLogger := logger.With("module", "p2p")
+	nodeInfo, err := makeNodeInfo(
+		config,
+		nodeKey.ID(),
+		txIndexer,
+		genDoc.ChainID,
+		p2p.NewProtocolVersion(
+			version.P2PProtocol, // global
+			state.Version.Consensus.Block,
+			state.Version.Consensus.App,
+		),
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	// Setup Transport.
 	var (
@@ -454,7 +460,7 @@ func NewNode(config *cfg.Config,
 				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
 			})
-		pexReactor.SetLogger(p2pLogger)
+		pexReactor.SetLogger(logger.With("module", "pex"))
 		sw.AddReactor("PEX", pexReactor)
 	}
 
@@ -777,7 +783,7 @@ func makeNodeInfo(
 	txIndexer txindex.TxIndexer,
 	chainID string,
 	protocolVersion p2p.ProtocolVersion,
-) p2p.NodeInfo {
+) (p2p.NodeInfo, error) {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
@@ -812,7 +818,8 @@ func makeNodeInfo(
 
 	nodeInfo.ListenAddr = lAddr
 
-	return nodeInfo
+	err := nodeInfo.Validate()
+	return nodeInfo, err
 }
 
 //------------------------------------------------------------------------------

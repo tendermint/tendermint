@@ -23,13 +23,6 @@ import (
 )
 
 //-----------------------------------------------------------------------------
-// Config
-
-const (
-	proposalHeartbeatIntervalSeconds = 2
-)
-
-//-----------------------------------------------------------------------------
 // Errors
 
 var (
@@ -118,7 +111,7 @@ type ConsensusState struct {
 	done chan struct{}
 
 	// synchronous pubsub between consensus state and reactor.
-	// state only emits EventNewRoundStep, EventVote and EventProposalHeartbeat
+	// state only emits EventNewRoundStep and EventVote
 	evsw tmevents.EventSwitch
 
 	// for reporting metrics
@@ -752,7 +745,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	validators := cs.Validators
 	if cs.Round < round {
 		validators = validators.Copy()
-		validators.IncrementAccum(round - cs.Round)
+		validators.IncrementProposerPriority(round - cs.Round)
 	}
 
 	// Setup new round
@@ -785,7 +778,6 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round,
 				cstypes.RoundStepNewRound)
 		}
-		go cs.proposalHeartbeat(height, round)
 	} else {
 		cs.enterPropose(height, round)
 	}
@@ -800,38 +792,6 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 
 	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
 	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
-}
-
-func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
-	logger := cs.Logger.With("height", height, "round", round)
-	addr := cs.privValidator.GetAddress()
-
-	if !cs.Validators.HasAddress(addr) {
-		logger.Debug("Not sending proposalHearbeat. This node is not a validator", "addr", addr, "vals", cs.Validators)
-		return
-	}
-	counter := 0
-	valIndex, _ := cs.Validators.GetByAddress(addr)
-	chainID := cs.state.ChainID
-	for {
-		rs := cs.GetRoundState()
-		// if we've already moved on, no need to send more heartbeats
-		if rs.Step > cstypes.RoundStepNewRound || rs.Round > round || rs.Height > height {
-			return
-		}
-		heartbeat := &types.Heartbeat{
-			Height:           rs.Height,
-			Round:            rs.Round,
-			Sequence:         counter,
-			ValidatorAddress: addr,
-			ValidatorIndex:   valIndex,
-		}
-		cs.privValidator.SignHeartbeat(chainID, heartbeat)
-		cs.eventBus.PublishEventProposalHeartbeat(types.EventDataProposalHeartbeat{heartbeat})
-		cs.evsw.FireEvent(types.EventProposalHeartbeat, heartbeat)
-		counter++
-		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
-	}
 }
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)

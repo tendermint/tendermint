@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"

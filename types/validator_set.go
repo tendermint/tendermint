@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"math/big"
 	"sort"
 	"strings"
 
@@ -11,13 +12,22 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+// The maximum allowed total voting power.
+// We set the ProposerPriority of freshly added validators to -1.125*totalVotingPower.
+// To compute 1.125*totalVotingPower efficiently, we do:
+// totalVotingPower + (totalVotingPower >> 3) because
+// x + (x >> 3) = x + x/8 = x * (1 + 0.125).
+// MaxTotalVotingPower is the largest int64 `x` with the property that `x + (x >> 3)` is
+// still in the bounds of int64.
+const MaxTotalVotingPower = int64(8198552921648689607)
+
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
 // The index is in order of .Address, so the indices are fixed
 // for all rounds of a given blockchain height.
-// On the other hand, the .AccumPower of each validator and
+// On the other hand, the .ProposerPriority of each validator and
 // the designated .GetProposer() of a set changes every round,
-// upon calling .IncrementAccum().
+// upon calling .IncrementProposerPriority().
 // NOTE: Not goroutine-safe.
 // NOTE: All get/set to validators should copy the value for safety.
 type ValidatorSet struct {
@@ -29,10 +39,10 @@ type ValidatorSet struct {
 	totalVotingPower int64
 }
 
+// NewValidatorSet initializes a ValidatorSet by copying over the
+// values from `valz`, a list of Validators. If valz is nil or empty,
+// the new ValidatorSet will have an empty list of Validators.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
-	if valz != nil && len(valz) == 0 {
-		panic("validator set initialization slice cannot be an empty slice (but it can be nil)")
-	}
 	validators := make([]*Validator, len(valz))
 	for i, val := range valz {
 		validators[i] = val.Copy()
@@ -42,7 +52,7 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 		Validators: validators,
 	}
 	if len(valz) > 0 {
-		vals.IncrementAccum(1)
+		vals.IncrementProposerPriority(1)
 	}
 
 	return vals
@@ -53,40 +63,79 @@ func (vals *ValidatorSet) IsNilOrEmpty() bool {
 	return vals == nil || len(vals.Validators) == 0
 }
 
-// Increment Accum and update the proposer on a copy, and return it.
-func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
+// Increment ProposerPriority and update the proposer on a copy, and return it.
+func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet {
 	copy := vals.Copy()
-	copy.IncrementAccum(times)
+	copy.IncrementProposerPriority(times)
 	return copy
 }
 
-// IncrementAccum increments accum of each validator and updates the
+// IncrementProposerPriority increments ProposerPriority of each validator and updates the
 // proposer. Panics if validator set is empty.
 // `times` must be positive.
-func (vals *ValidatorSet) IncrementAccum(times int) {
+func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	if times <= 0 {
-		panic("Cannot call IncrementAccum with non-positive times")
+		panic("Cannot call IncrementProposerPriority with non-positive times")
 	}
 
-	// Add VotingPower * times to each validator and order into heap.
-	validatorsHeap := cmn.NewHeap()
-	for _, val := range vals.Validators {
-		// Check for overflow both multiplication and sum.
-		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
-		validatorsHeap.PushComparable(val, accumComparable{val})
-	}
-
-	// Decrement the validator with most accum times times.
+	const shiftEveryNthIter = 10
+	var proposer *Validator
+	// call IncrementProposerPriority(1) times times:
 	for i := 0; i < times; i++ {
-		mostest := validatorsHeap.Peek().(*Validator)
-		// mind underflow
-		mostest.Accum = safeSubClip(mostest.Accum, vals.TotalVotingPower())
+		shiftByAvgProposerPriority := i%shiftEveryNthIter == 0
+		proposer = vals.incrementProposerPriority(shiftByAvgProposerPriority)
+	}
+	isShiftedAvgOnLastIter := (times-1)%shiftEveryNthIter == 0
+	if !isShiftedAvgOnLastIter {
+		validatorsHeap := cmn.NewHeap()
+		vals.shiftByAvgProposerPriority(validatorsHeap)
+	}
+	vals.Proposer = proposer
+}
 
-		if i == times-1 {
-			vals.Proposer = mostest
-		} else {
-			validatorsHeap.Update(mostest, accumComparable{mostest})
+func (vals *ValidatorSet) incrementProposerPriority(subAvg bool) *Validator {
+	for _, val := range vals.Validators {
+		// Check for overflow for sum.
+		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
+	}
+
+	validatorsHeap := cmn.NewHeap()
+	if subAvg { // shift by avg ProposerPriority
+		vals.shiftByAvgProposerPriority(validatorsHeap)
+	} else { // just update the heap
+		for _, val := range vals.Validators {
+			validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
 		}
+	}
+
+	// Decrement the validator with most ProposerPriority:
+	mostest := validatorsHeap.Peek().(*Validator)
+	// mind underflow
+	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
+
+	return mostest
+}
+
+func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
+	n := int64(len(vals.Validators))
+	sum := big.NewInt(0)
+	for _, val := range vals.Validators {
+		sum.Add(sum, big.NewInt(val.ProposerPriority))
+	}
+	avg := sum.Div(sum, big.NewInt(n))
+	if avg.IsInt64() {
+		return avg.Int64()
+	}
+
+	// this should never happen: each val.ProposerPriority is in bounds of int64
+	panic(fmt.Sprintf("Cannot represent avg ProposerPriority as an int64 %v", avg))
+}
+
+func (vals *ValidatorSet) shiftByAvgProposerPriority(validatorsHeap *cmn.Heap) {
+	avgProposerPriority := vals.computeAvgProposerPriority()
+	for _, val := range vals.Validators {
+		val.ProposerPriority = safeSubClip(val.ProposerPriority, avgProposerPriority)
+		validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
 	}
 }
 
@@ -94,7 +143,7 @@ func (vals *ValidatorSet) IncrementAccum(times int) {
 func (vals *ValidatorSet) Copy() *ValidatorSet {
 	validators := make([]*Validator, len(vals.Validators))
 	for i, val := range vals.Validators {
-		// NOTE: must copy, since IncrementAccum updates in place.
+		// NOTE: must copy, since IncrementProposerPriority updates in place.
 		validators[i] = val.Copy()
 	}
 	return &ValidatorSet{
@@ -144,10 +193,18 @@ func (vals *ValidatorSet) Size() int {
 // TotalVotingPower returns the sum of the voting powers of all validators.
 func (vals *ValidatorSet) TotalVotingPower() int64 {
 	if vals.totalVotingPower == 0 {
+		sum := int64(0)
 		for _, val := range vals.Validators {
 			// mind overflow
-			vals.totalVotingPower = safeAddClip(vals.totalVotingPower, val.VotingPower)
+			sum = safeAddClip(sum, val.VotingPower)
 		}
+		if sum > MaxTotalVotingPower {
+			panic(fmt.Sprintf(
+				"Total voting power should be guarded to not exceed %v; got: %v",
+				MaxTotalVotingPower,
+				sum))
+		}
+		vals.totalVotingPower = sum
 	}
 	return vals.totalVotingPower
 }
@@ -168,7 +225,7 @@ func (vals *ValidatorSet) findProposer() *Validator {
 	var proposer *Validator
 	for _, val := range vals.Validators {
 		if proposer == nil || !bytes.Equal(val.Address, proposer.Address) {
-			proposer = proposer.CompareAccum(val)
+			proposer = proposer.CompareProposerPriority(val)
 		}
 	}
 	return proposer
@@ -215,13 +272,22 @@ func (vals *ValidatorSet) Add(val *Validator) (added bool) {
 	}
 }
 
-// Update updates val and returns true. It returns false if val is not present
-// in the set.
+// Update updates the ValidatorSet by copying in the val.
+// If the val is not found, it returns false; otherwise,
+// it returns true. The val.ProposerPriority field is ignored
+// and unchanged by this method.
 func (vals *ValidatorSet) Update(val *Validator) (updated bool) {
 	index, sameVal := vals.GetByAddress(val.Address)
 	if sameVal == nil {
 		return false
 	}
+	// Overwrite the ProposerPriority so it doesn't change.
+	// During block execution, the val passed in here comes
+	// from ABCI via PB2TM.ValidatorUpdates. Since ABCI
+	// doesn't know about ProposerPriority, PB2TM.ValidatorUpdates
+	// uses the default value of 0, which would cause issues for
+	// proposer selection every time a validator's voting power changes.
+	val.ProposerPriority = sameVal.ProposerPriority
 	vals.Validators[index] = val.Copy()
 	// Invalidate cache
 	vals.Proposer = nil
@@ -308,7 +374,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		return nil
 	}
 	return fmt.Errorf("Invalid commit -- insufficient voting power: got %v, needed %v",
-		talliedVotingPower, (vals.TotalVotingPower()*2/3 + 1))
+		talliedVotingPower, vals.TotalVotingPower()*2/3+1)
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -391,7 +457,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
 		return cmn.NewError("Invalid commit -- insufficient old voting power: got %v, needed %v",
-			oldVotingPower, (oldVals.TotalVotingPower()*2/3 + 1))
+			oldVotingPower, oldVals.TotalVotingPower()*2/3+1)
 	}
 	return nil
 }
@@ -405,7 +471,7 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 	if vals == nil {
 		return "nil-ValidatorSet"
 	}
-	valStrings := []string{}
+	var valStrings []string
 	vals.Iterate(func(index int, val *Validator) bool {
 		valStrings = append(valStrings, val.String())
 		return false
@@ -443,16 +509,16 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 }
 
 //-------------------------------------
-// Use with Heap for sorting validators by accum
+// Use with Heap for sorting validators by ProposerPriority
 
-type accumComparable struct {
+type proposerPriorityComparable struct {
 	*Validator
 }
 
-// We want to find the validator with the greatest accum.
-func (ac accumComparable) Less(o interface{}) bool {
-	other := o.(accumComparable).Validator
-	larger := ac.CompareAccum(other)
+// We want to find the validator with the greatest ProposerPriority.
+func (ac proposerPriorityComparable) Less(o interface{}) bool {
+	other := o.(proposerPriorityComparable).Validator
+	larger := ac.CompareProposerPriority(other)
 	return bytes.Equal(larger.Address, ac.Address)
 }
 
@@ -476,24 +542,7 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []Pr
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Safe multiplication and addition/subtraction
-
-func safeMul(a, b int64) (int64, bool) {
-	if a == 0 || b == 0 {
-		return 0, false
-	}
-	if a == 1 {
-		return b, false
-	}
-	if b == 1 {
-		return a, false
-	}
-	if a == math.MinInt64 || b == math.MinInt64 {
-		return -1, true
-	}
-	c := a * b
-	return c, c/b != a
-}
+// Safe addition/subtraction
 
 func safeAdd(a, b int64) (int64, bool) {
 	if b > 0 && a > math.MaxInt64-b {
@@ -511,17 +560,6 @@ func safeSub(a, b int64) (int64, bool) {
 		return -1, true
 	}
 	return a - b, false
-}
-
-func safeMulClip(a, b int64) int64 {
-	c, overflow := safeMul(a, b)
-	if overflow {
-		if (a < 0 || b < 0) && !(a < 0 && b < 0) {
-			return math.MinInt64
-		}
-		return math.MaxInt64
-	}
-	return c
 }
 
 func safeAddClip(a, b int64) int64 {
