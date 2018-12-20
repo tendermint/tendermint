@@ -10,14 +10,6 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
-  branch = "master"
-  digest = "1:c0decf632843204d2b8781de7b26e7038584e2dcccc7e2f401e88ae85b1df2b7"
-  name = "github.com/btcsuite/btcd"
-  packages = ["btcec"]
-  pruneopts = "UT"
-  revision = "67e573d211ace594f1366b4ce9d39726c4b19bd0"
-
-[[projects]]
   digest = "1:1d8e1cb71c33a9470bbbae09bfec09db43c6bf358dfcae13cd8807c4e2a9a2bf"
   name = "github.com/btcsuite/btcutil"
   packages = [
@@ -361,21 +353,6 @@
   revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
 
 [[projects]]
-  digest = "1:605b6546f3f43745695298ec2d342d3e952b6d91cdf9f349bea9315f677d759f"
-  name = "github.com/tendermint/btcd"
-  packages = ["btcec"]
-  pruneopts = "UT"
-  revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
-
-[[projects]]
-  digest = "1:ad9c4c1a4e7875330b1f62906f2830f043a23edb5db997e3a5ac5d3e6eadf80a"
-  name = "github.com/tendermint/go-amino"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "dc14acf9ef15f85828bfbc561ed9dd9d2a284885"
-  version = "v0.14.1"
-
-[[projects]]
   digest = "1:72b71e3a29775e5752ed7a8012052a3dee165e27ec18cedddae5288058f09acf"
   name = "golang.org/x/crypto"
   packages = [
@@ -535,8 +512,6 @@
     "github.com/syndtr/goleveldb/leveldb/errors",
     "github.com/syndtr/goleveldb/leveldb/iterator",
     "github.com/syndtr/goleveldb/leveldb/opt",
-    "github.com/tendermint/btcd/btcec",
-    "github.com/tendermint/go-amino",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/chacha20poly1305",
     "golang.org/x/crypto/curve25519",

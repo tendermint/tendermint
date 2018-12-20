@@ -26,3 +26,6 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+- [rpc] []() Validate if there are txs inside the query results before looping throught it
+

@@ -195,7 +195,7 @@ func TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSear
 
 	apiResults := make([]*ctypes.ResultTx, cmn.MinInt(perPage, totalCount-skipCount))
 	var proof types.TxProof
-	for i := 0; i < len(apiResults); i++ {
+	for i := 0; i < len(apiResults) && len(results) > 0; i++ {
 		r := results[skipCount+i]
 		height := r.Height
 		index := r.Index
