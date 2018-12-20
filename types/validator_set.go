@@ -70,6 +70,36 @@ func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet
 	return copy
 }
 
+// UpdatePriorityToProposer increase ProposerPriority of each validator and updates the
+// proposer and decrease missed proposer's ProposerPriority to current proposer.
+// Panics if validator set is empty.
+// `address` is the current proposer address.
+func (vals *ValidatorSet) UpdatePriorityToProposer(address []byte) {
+	const shiftEveryNthIter = 10
+	var proposer *Validator
+	i := 0
+	for proposer != nil || !bytes.Equal(proposer.Address, address) {
+		if proposer != nill {
+			//decrease ProposerPriority of the missed proposer
+			// two purposese:
+			// 1.slash the missed proposer(slashFactor = 2/3*TotalVotingPower)
+			// 2.differ the position of the missed proposer every round.(random for longterm?)
+			slashFactor := vals.TotalVotingPower() / 3 //never overflow
+			slashFactor = slashFactor * 2
+			proposer.ProposerPriority = safeSubClip(proposer.ProposerPriority, slashFactor)
+		}
+		shiftByAvgProposerPriority := i%shiftEveryNthIter == 0
+		proposer = vals.incrementProposerPriority(shiftByAvgProposerPriority)
+		i = i + 1
+	}
+	isShiftedAvgOnLastIter := (i-1)%shiftEveryNthIter == 0
+	if !isShiftedAvgOnLastIter {
+		validatorsHeap := cmn.NewHeap()
+		vals.shiftByAvgProposerPriority(validatorsHeap)
+	}
+	vals.Proposer = proposer
+}
+
 // IncrementProposerPriority increments ProposerPriority of each validator and updates the
 // proposer. Panics if validator set is empty.
 // `times` must be positive.
