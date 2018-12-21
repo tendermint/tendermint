@@ -4,6 +4,27 @@ Here we specify the rules for validating a proposal and vote before signing.
 First we include some general notes on validating data structures common to both types.
 We then provide specific validation rules for each. Finally, we include validation rules to prevent double-sigining.
 
+## SignedMsgType
+
+The `SignedMsgType` is a single byte that refers to the type of the message
+being signed. It is defined in Go as follows:
+
+```
+// SignedMsgType is a type of signed message in the consensus.
+type SignedMsgType byte
+
+const (
+	// Votes
+	PrevoteType   SignedMsgType = 0x01
+	PrecommitType SignedMsgType = 0x02
+
+	// Proposals
+	ProposalType SignedMsgType = 0x20
+)
+```
+
+All signed messages must correspond to one of these types.
+
 ## Timestamp
 
 Timestamp validation is subtle and there are currently no bounds placed on the
@@ -32,8 +53,8 @@ type BlockID struct {
 }
 
 type PartSetHeader struct {
-	Total int
 	Hash  []byte
+	Total int
 }
 ```
 
@@ -68,7 +89,7 @@ type CanonicalProposal struct {
 	Height    int64         `binary:"fixed64"`
 	Round     int64         `binary:"fixed64"`
 	POLRound  int64         `binary:"fixed64"`
-	BlockID   CanonicalBlockID
+	BlockID   BlockID
 	Timestamp time.Time
 	ChainID   string
 }
@@ -81,7 +102,7 @@ p.Type == 0x20
 p.Height > 0
 p.Round >= 0
 p.POLRound >= -1
-v.BlockID.IsComplete()
+p.BlockID.IsComplete()
 ```
 
 In other words, a proposal is valid for signing if it contains the type of a Proposal
@@ -98,7 +119,7 @@ type CanonicalVote struct {
 	Height    int64         `binary:"fixed64"`
 	Round     int64         `binary:"fixed64"`
 	Timestamp time.Time
-	BlockID   CanonicalBlockID
+	BlockID   BlockID
 	ChainID   string
 }
 ```
@@ -114,13 +135,13 @@ v.BlockID.IsNil() || v.BlockID.IsValid()
 
 In other words, a vote is valid for signing if it contains the type of a Prevote
 or Precommit (0x1 or 0x2, respectively), has a positive, non-zero height, a
-non-negative round, an empty or valid BlockID.
+non-negative round, and an empty or valid BlockID.
 
 ## Invalid Votes and Proposals
 
 Votes and proposals which do not satisfy the above rules are considered invalid.
 Peers gossipping invalid votes and proposals may be disconnected from other peers on the network.
-There is not currently any explicit mechanism to punish validators signing votes or proposals that fail
+Note, however, that there is not currently any explicit mechanism to punish validators signing votes or proposals that fail
 these basic validation rules.
 
 ## Double Signing
@@ -136,13 +157,13 @@ Assume the signer keeps the following state, `s`:
 
 ```
 type LastSigned struct {
-	Height		int64
-	Round		int64
-	Type		SignedMsgType
+	Height	int64
+	Round	int64
+	Type	SignedMsgType // byte
 }
 ```
 
-After signing vote or proposal `m`, the signer sets:
+After signing a vote or proposal `m`, the signer sets:
 
 ```
 s.Height = m.Height
@@ -160,7 +181,7 @@ p.Height == s.Height && p.Round > s.Round
 ```
 
 In other words, a proposal should only be signed if it's at a higher height, or a higher round for the same height.
-Once a message has been signed for a given height and round, a proposal should never be signed for the same height and round.
+Once a proposal or vote has been signed for a given height and round, a proposal should never be signed for the same height and round.
 
 ### Votes
 
@@ -180,5 +201,5 @@ In other words, a vote should only be signed if it's:
 - a prevote for the same height and round where we haven't signed a prevote or precommit (but have signed a proposal)
 - a precommit for the same height and round where we haven't signed a precommit (but have signed a proposal and/or a prevote)
 
-This means that once validator signs a prevote for a given height and round, the only other message it can sign for that height and round is a precommit.
+This means that once a validator signs a prevote for a given height and round, the only other message it can sign for that height and round is a precommit.
 And once a validator signs a precommit for a given height and round, it must not sign any other message for that same height and round.
