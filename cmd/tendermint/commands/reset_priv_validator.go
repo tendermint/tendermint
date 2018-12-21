@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 )
@@ -37,21 +38,23 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 	resetFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile(), logger)
 }
 
-// ResetAll removes the privValidator and address book files plus all data.
+// ResetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
 func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) {
-	resetFilePV(privValKeyFile, privValStateFile, logger)
 	removeAddrBook(addrBookFile, logger)
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {
 		logger.Error("Error removing all blockchain history", "dir", dbDir, "err", err)
 	}
+	// recreate the dbDir since the privVal state needs to live there
+	cmn.EnsureDir(dbDir, 0700)
+	resetFilePV(privValKeyFile, privValStateFile, logger)
 }
 
 func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
 	if _, err := os.Stat(privValKeyFile); err == nil {
-		pv := privval.LoadFilePV(privValKeyFile, privValStateFile)
+		pv := privval.LoadFilePVEmptyState(privValKeyFile, privValStateFile)
 		pv.Reset()
 		logger.Info("Reset private validator file to genesis state", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)

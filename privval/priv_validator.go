@@ -159,9 +159,20 @@ func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
 }
 
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
-// signing prevention by persisting data to the stateFilePath.  If the filePaths
-// do not exist, the FilePV must be created manually and saved.
+// signing prevention by persisting data to the stateFilePath.  If either file path
+// does not exist, the program will exit.
 func LoadFilePV(keyFilePath, stateFilePath string) *FilePV {
+	return loadFilePV(keyFilePath, stateFilePath, true)
+}
+
+// LoadFilePVEmptyState loads a FilePV from the given keyFilePath, with an empty LastSignState.
+// If the keyFilePath does not exist, the program will exit.
+func LoadFilePVEmptyState(keyFilePath, stateFilePath string) *FilePV {
+	return loadFilePV(keyFilePath, stateFilePath, false)
+}
+
+// If loadState is true, we load from the stateFilePath. Otherwise, we use an empty LastSignState.
+func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
 		cmn.Exit(err.Error())
@@ -177,14 +188,16 @@ func LoadFilePV(keyFilePath, stateFilePath string) *FilePV {
 	pvKey.Address = pvKey.PubKey.Address()
 	pvKey.filePath = keyFilePath
 
-	stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
-	if err != nil {
-		cmn.Exit(err.Error())
-	}
 	pvState := FilePVLastSignState{}
-	err = cdc.UnmarshalJSON(stateJSONBytes, &pvState)
-	if err != nil {
-		cmn.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
+	if loadState {
+		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
+		if err != nil {
+			cmn.Exit(err.Error())
+		}
+		err = cdc.UnmarshalJSON(stateJSONBytes, &pvState)
+		if err != nil {
+			cmn.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
+		}
 	}
 
 	pvState.filePath = stateFilePath

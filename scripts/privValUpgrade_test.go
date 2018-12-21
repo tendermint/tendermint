@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -47,54 +48,63 @@ func TestLoadAndUpgrade(t *testing.T) {
 		newPVStatePath string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name      string
+		args      args
+		wantErr   bool
+		wantPanic bool
 	}{
 		{"successful upgrade",
 			args{oldPVPath: oldFilePath, newPVKeyPath: newKeyFile.Name(), newPVStatePath: newStateFile.Name()},
-			false,
+			false, false,
 		},
 		{"unsuccessful upgrade: empty old privval file",
 			args{oldPVPath: emptyOldFile.Name(), newPVKeyPath: newKeyFile.Name(), newPVStatePath: newStateFile.Name()},
-			true,
+			true, false,
 		},
 		{"unsuccessful upgrade: invalid new paths (1/3)",
-			args{oldPVPath: emptyOldFile.Name(), newPVKeyPath: "", newPVStatePath: newStateFile.Name()},
-			true,
+			args{oldPVPath: oldFilePath, newPVKeyPath: "", newPVStatePath: newStateFile.Name()},
+			false, true,
 		},
 		{"unsuccessful upgrade: invalid new paths (2/3)",
-			args{oldPVPath: emptyOldFile.Name(), newPVKeyPath: newKeyFile.Name(), newPVStatePath: ""},
-			true,
+			args{oldPVPath: oldFilePath, newPVKeyPath: newKeyFile.Name(), newPVStatePath: ""},
+			false, true,
 		},
 		{"unsuccessful upgrade: invalid new paths (3/3)",
-			args{oldPVPath: emptyOldFile.Name(), newPVKeyPath: "", newPVStatePath: ""},
-			true,
+			args{oldPVPath: oldFilePath, newPVKeyPath: "", newPVStatePath: ""},
+			false, true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := loadAndUpgrade(tt.args.oldPVPath, tt.args.newPVKeyPath, tt.args.newPVStatePath)
-			if tt.wantErr {
-				assert.Error(t, err)
+			// need to re-write the file everytime because upgrading renames it
+			err := ioutil.WriteFile(oldFilePath, []byte(oldPrivvalContent), 0600)
+			require.NoError(t, err)
+			if tt.wantPanic {
+				require.Panics(t, func() { loadAndUpgrade(tt.args.oldPVPath, tt.args.newPVKeyPath, tt.args.newPVStatePath) })
 			} else {
-				assert.NoError(t, err)
-				upgradedPV := privval.LoadFilePV(tt.args.newPVKeyPath, tt.args.newPVStatePath)
-				oldPV, err := privval.LoadOldFilePV(tt.args.oldPVPath + ".bak")
-				require.NoError(t, err)
+				err = loadAndUpgrade(tt.args.oldPVPath, tt.args.newPVKeyPath, tt.args.newPVStatePath)
+				if tt.wantErr {
+					assert.Error(t, err)
+					fmt.Println("ERR", err)
+				} else {
+					assert.NoError(t, err)
+					upgradedPV := privval.LoadFilePV(tt.args.newPVKeyPath, tt.args.newPVStatePath)
+					oldPV, err := privval.LoadOldFilePV(tt.args.oldPVPath + ".bak")
+					require.NoError(t, err)
 
-				assert.Equal(t, oldPV.Address, upgradedPV.Key.Address)
-				assert.Equal(t, oldPV.Address, upgradedPV.GetAddress())
-				assert.Equal(t, oldPV.PubKey, upgradedPV.Key.PubKey)
-				assert.Equal(t, oldPV.PubKey, upgradedPV.GetPubKey())
-				assert.Equal(t, oldPV.PrivKey, upgradedPV.Key.PrivKey)
+					assert.Equal(t, oldPV.Address, upgradedPV.Key.Address)
+					assert.Equal(t, oldPV.Address, upgradedPV.GetAddress())
+					assert.Equal(t, oldPV.PubKey, upgradedPV.Key.PubKey)
+					assert.Equal(t, oldPV.PubKey, upgradedPV.GetPubKey())
+					assert.Equal(t, oldPV.PrivKey, upgradedPV.Key.PrivKey)
 
-				assert.Equal(t, oldPV.LastHeight, upgradedPV.LastSignState.Height)
-				assert.Equal(t, oldPV.LastRound, upgradedPV.LastSignState.Round)
-				assert.Equal(t, oldPV.LastSignature, upgradedPV.LastSignState.Signature)
-				assert.Equal(t, oldPV.LastSignBytes, upgradedPV.LastSignState.SignBytes)
-				assert.Equal(t, oldPV.LastStep, upgradedPV.LastSignState.Step)
+					assert.Equal(t, oldPV.LastHeight, upgradedPV.LastSignState.Height)
+					assert.Equal(t, oldPV.LastRound, upgradedPV.LastSignState.Round)
+					assert.Equal(t, oldPV.LastSignature, upgradedPV.LastSignState.Signature)
+					assert.Equal(t, oldPV.LastSignBytes, upgradedPV.LastSignState.SignBytes)
+					assert.Equal(t, oldPV.LastStep, upgradedPV.LastSignState.Step)
 
+				}
 			}
 		})
 	}
