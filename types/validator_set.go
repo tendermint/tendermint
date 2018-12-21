@@ -78,9 +78,9 @@ func (vals *ValidatorSet) UpdatePriorityToProposer(address []byte) {
 	const shiftEveryNthIter = 10
 	var proposer *Validator
 	i := 0
-	for proposer != nil || !bytes.Equal(proposer.Address, address) {
-		if proposer != nill {
-			//decrease ProposerPriority of the missed proposer
+	for proposer == nil || !bytes.Equal(proposer.Address, address) {
+		if proposer != nil {
+			// decrease ProposerPriority of the missed proposer
 			// two purposese:
 			// 1.slash the missed proposer(slashFactor = 2/3*TotalVotingPower)
 			// 2.differ the position of the missed proposer every round.(random for longterm?)

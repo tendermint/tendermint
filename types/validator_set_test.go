@@ -21,9 +21,11 @@ func TestValidatorSetBasic(t *testing.T) {
 	// but attempting to IncrementProposerPriority on them will panic.
 	vset := NewValidatorSet([]*Validator{})
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
+	assert.Panics(t, func() { vset.UpdatePriorityToProposer([]byte("address")) })
 
 	vset = NewValidatorSet(nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
+	assert.Panics(t, func() { vset.UpdatePriorityToProposer([]byte("address")) })
 
 	assert.EqualValues(t, vset, vset.Copy())
 	assert.False(t, vset.HasAddress([]byte("some val")))
@@ -60,6 +62,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Equal(t, val, vset.GetProposer())
 	assert.NotNil(t, vset.Hash())
 	assert.NotPanics(t, func() { vset.IncrementProposerPriority(1) })
+	assert.NotPanics(t, func() { vset.UpdatePriorityToProposer(addr) })
 
 	// update
 	assert.False(t, vset.Update(randValidator_(vset.TotalVotingPower())))
@@ -108,6 +111,28 @@ func TestIncrementProposerPriorityPositiveTimes(t *testing.T) {
 	assert.Panics(t, func() { vset.IncrementProposerPriority(-1) })
 	assert.Panics(t, func() { vset.IncrementProposerPriority(0) })
 	vset.IncrementProposerPriority(1)
+}
+
+// Test UpdatePriorityToProposer
+func TestUpdatePriorityToProposer(t *testing.T) {
+	vset := NewValidatorSet([]*Validator{
+		newValidator([]byte("foo"), 100),
+		newValidator([]byte("bar"), 100),
+		newValidator([]byte("baz"), 100),
+	})
+
+	assert.Equal(t, []byte(vset.Proposer.Address), []byte("bar"))
+	assert.NotPanics(t, func() { vset.UpdatePriorityToProposer([]byte("baz")) })
+	_, val := vset.GetByAddress([]byte("foo"))
+	assert.Equal(t, val.ProposerPriority, int64(100))
+
+	// skip "foo"
+	assert.NotPanics(t, func() { vset.UpdatePriorityToProposer([]byte("bar")) })
+	assert.Equal(t, []byte(vset.Proposer.Address), []byte("bar"))
+	_, val = vset.GetByAddress([]byte("foo"))
+	assert.Equal(t, val.ProposerPriority, int64(-33))
+	//assert.Panics(t, func() { vset.IncrementProposerPriority(0) })
+	//vset.IncrementProposerPriority(1)
 }
 
 func BenchmarkValidatorSetCopy(b *testing.B) {
