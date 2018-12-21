@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.27.4
+
+*December 21st, 2018*
+
+### BUG FIXES:
+
+- [mempool] [\#3036](https://github.com/tendermint/tendermint/issues/3036) Fix
+  LRU cache by popping the least recently used item when the cache is full,
+  not the most recently used one!
+
 ## v0.27.3
 
 *December 16th, 2018*
