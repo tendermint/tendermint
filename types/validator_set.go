@@ -19,7 +19,7 @@ import (
 // x + (x >> 3) = x + x/8 = x * (1 + 0.125).
 // MaxTotalVotingPower is the largest int64 `x` with the property that `x + (x >> 3)` is
 // still in the bounds of int64.
-const MaxTotalVotingPower = 8198552921648689607
+const MaxTotalVotingPower = int64(8198552921648689607)
 
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
@@ -80,7 +80,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 
 	const shiftEveryNthIter = 10
 	var proposer *Validator
-	// call IncrementAccum(1) times times:
+	// call IncrementProposerPriority(1) times times:
 	for i := 0; i < times; i++ {
 		shiftByAvgProposerPriority := i%shiftEveryNthIter == 0
 		proposer = vals.incrementProposerPriority(shiftByAvgProposerPriority)
@@ -272,13 +272,22 @@ func (vals *ValidatorSet) Add(val *Validator) (added bool) {
 	}
 }
 
-// Update updates val and returns true. It returns false if val is not present
-// in the set.
+// Update updates the ValidatorSet by copying in the val.
+// If the val is not found, it returns false; otherwise,
+// it returns true. The val.ProposerPriority field is ignored
+// and unchanged by this method.
 func (vals *ValidatorSet) Update(val *Validator) (updated bool) {
 	index, sameVal := vals.GetByAddress(val.Address)
 	if sameVal == nil {
 		return false
 	}
+	// Overwrite the ProposerPriority so it doesn't change.
+	// During block execution, the val passed in here comes
+	// from ABCI via PB2TM.ValidatorUpdates. Since ABCI
+	// doesn't know about ProposerPriority, PB2TM.ValidatorUpdates
+	// uses the default value of 0, which would cause issues for
+	// proposer selection every time a validator's voting power changes.
+	val.ProposerPriority = sameVal.ProposerPriority
 	vals.Validators[index] = val.Copy()
 	// Invalidate cache
 	vals.Proposer = nil

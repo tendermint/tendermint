@@ -114,6 +114,10 @@ func PostCheckMaxGas(maxGas int64) PostCheckFunc {
 		if maxGas == -1 {
 			return nil
 		}
+		if res.GasWanted < 0 {
+			return fmt.Errorf("gas wanted %d is negative",
+				res.GasWanted)
+		}
 		if res.GasWanted > maxGas {
 			return fmt.Errorf("gas wanted %d is greater than max gas %d",
 				res.GasWanted, maxGas)
@@ -516,11 +520,15 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 			return txs
 		}
 		totalBytes += int64(len(memTx.tx)) + aminoOverhead
-		// Check total gas requirement
-		if maxGas > -1 && totalGas+memTx.gasWanted > maxGas {
+		// Check total gas requirement.
+		// If maxGas is negative, skip this check.
+		// Since newTotalGas < masGas, which
+		// must be non-negative, it follows that this won't overflow.
+		newTotalGas := totalGas + memTx.gasWanted
+		if maxGas > -1 && newTotalGas > maxGas {
 			return txs
 		}
-		totalGas += memTx.gasWanted
+		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
 	}
 	return txs
@@ -578,13 +586,18 @@ func (mem *Mempool) Update(
 	// Remove committed transactions.
 	txsLeft := mem.removeTxs(txs)
 
-	// Recheck mempool txs if any txs were committed in the block
-	if mem.config.Recheck && len(txsLeft) > 0 {
-		mem.logger.Info("Recheck txs", "numtxs", len(txsLeft), "height", height)
-		mem.recheckTxs(txsLeft)
-		// At this point, mem.txs are being rechecked.
-		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
-		// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
+	// Either recheck non-committed txs to see if they became invalid
+	// or just notify there're some txs left.
+	if len(txsLeft) > 0 {
+		if mem.config.Recheck {
+			mem.logger.Info("Recheck txs", "numtxs", len(txsLeft), "height", height)
+			mem.recheckTxs(txsLeft)
+			// At this point, mem.txs are being rechecked.
+			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
+			// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
+		} else {
+			mem.notifyTxsAvailable()
+		}
 	}
 
 	// Update metrics
@@ -694,7 +707,7 @@ func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 	// Use the tx hash in the cache
 	txHash := sha256.Sum256(tx)
 	if listEntry, exists := cache.map_[txHash]; exists {
-		cache.list.MoveToFront(listEntry)
+		cache.list.MoveToBack(listEntry)
 		// TODO: Make it possible to get main mempool list entry, then perform
 		// logic similar to the following:
 		// memTx, _ := listEntry.Value.(*mempoolTx)
@@ -718,7 +731,7 @@ func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 			cache.list.Remove(popped)
 		}
 	}
-	e := cache.list.PushFront(txHash)
+	e := cache.list.PushBack(txHash)
 	cache.map_[txHash] = e
 	return true
 }

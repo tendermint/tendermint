@@ -160,6 +160,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 		onReceive:     onReceive,
 		onError:       onError,
 		config:        config,
+		created:       time.Now(),
 	}
 
 	// Create channels

@@ -376,7 +376,7 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:72b71e3a29775e5752ed7a8012052a3dee165e27ec18cedddae5288058f09acf"
+  digest = "1:00d2b3e64cdc3fa69aa250dfbe4cc38c4837d4f37e62279be2ae52107ffbbb44"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -397,8 +397,7 @@
     "salsa20/salsa",
   ]
   pruneopts = "UT"
-  revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
-  source = "github.com/tendermint/crypto"
+  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
 
 [[projects]]
   digest = "1:d36f55a999540d29b6ea3c2ea29d71c76b1d9853fdcd3e5c5cb4836f2ba118f1"

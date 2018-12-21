@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"golang.org/x/crypto/openpgp/armor" // forked to github.com/tendermint/crypto
+	"golang.org/x/crypto/openpgp/armor"
 )
 
 func EncodeArmor(blockType string, headers map[string]string, data []byte) string {

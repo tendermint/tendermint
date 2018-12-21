@@ -1,13 +1,138 @@
 # Changelog
 
+## v0.27.4
+
+*December 21st, 2018*
+
+### BUG FIXES:
+
+- [mempool] [\#3036](https://github.com/tendermint/tendermint/issues/3036) Fix
+  LRU cache by popping the least recently used item when the cache is full,
+  not the most recently used one!
+
+## v0.27.3
+
+*December 16th, 2018*
+
+### BREAKING CHANGES:
+
+* Go API
+
+- [dep] [\#3027](https://github.com/tendermint/tendermint/issues/3027) Revert to mainline Go crypto library, eliminating the modified
+  `bcrypt.GenerateFromPassword`
+
+## v0.27.2
+
+*December 16th, 2018*
+
+### IMPROVEMENTS:
+
+- [node] [\#3025](https://github.com/tendermint/tendermint/issues/3025) Validate NodeInfo addresses on startup.
+
+### BUG FIXES:
+
+- [p2p] [\#3025](https://github.com/tendermint/tendermint/pull/3025) Revert to using defers in addrbook.  Fixes deadlocks in pex and consensus upon invalid ExternalAddr/ListenAddr configuration.
+
+## v0.27.1
+
+*December 15th, 2018*
+
+Special thanks to external contributors on this release:
+@danil-lashin, @hleb-albau, @james-ray, @leo-xinwang
+
+### FEATURES:
+- [rpc] [\#2964](https://github.com/tendermint/tendermint/issues/2964) Add `UnconfirmedTxs(limit)` and `NumUnconfirmedTxs()` methods to HTTP/Local clients (@danil-lashin)
+- [docs] [\#3004](https://github.com/tendermint/tendermint/issues/3004) Enable full-text search on docs pages
+
+### IMPROVEMENTS:
+- [consensus] [\#2971](https://github.com/tendermint/tendermint/issues/2971) Return error if ValidatorSet is empty after InitChain
+  (@leo-xinwang)
+- [ci/cd] [\#3005](https://github.com/tendermint/tendermint/issues/3005) Updated CircleCI job to trigger website build when docs are updated
+- [docs] Various updates
+
+### BUG FIXES:
+- [cmd] [\#2983](https://github.com/tendermint/tendermint/issues/2983) `testnet` command always sets `addr_book_strict = false`
+- [config] [\#2980](https://github.com/tendermint/tendermint/issues/2980) Fix CORS options formatting
+- [kv indexer] [\#2912](https://github.com/tendermint/tendermint/issues/2912) Don't ignore key when executing CONTAINS
+- [mempool] [\#2961](https://github.com/tendermint/tendermint/issues/2961) Call `notifyTxsAvailable` if there're txs left after committing a block, but recheck=false
+- [mempool] [\#2994](https://github.com/tendermint/tendermint/issues/2994) Reject txs with negative GasWanted
+- [p2p] [\#2990](https://github.com/tendermint/tendermint/issues/2990) Fix a bug where seeds don't disconnect from a peer after 3h
+- [consensus] [\#3006](https://github.com/tendermint/tendermint/issues/3006) Save state after InitChain only when stateHeight is also 0 (@james-ray)
+
+## v0.27.0
+
+*December 5th, 2018*
+
+Special thanks to external contributors on this release:
+@danil-lashin, @srmo
+
+Special thanks to @dlguddus for discovering a [major
+issue](https://github.com/tendermint/tendermint/issues/2718#issuecomment-440888677)
+in the proposer selection algorithm.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+This release is primarily about fixes to the proposer selection algorithm
+in preparation for the [Cosmos Game of
+Stakes](https://blog.cosmos.network/the-game-of-stakes-is-open-for-registration-83a404746ee6).
+It also makes use of the `ConsensusParams.Validator.PubKeyTypes` to restrict the
+key types that can be used by validators, and removes the `Heartbeat` consensus
+message.
+
+### BREAKING CHANGES:
+
+* CLI/RPC/Config
+  - [rpc] [\#2932](https://github.com/tendermint/tendermint/issues/2932) Rename `accum` to `proposer_priority`
+
+* Go API
+  - [db] [\#2913](https://github.com/tendermint/tendermint/pull/2913)
+    ReverseIterator API change: start < end, and end is exclusive.
+  - [types] [\#2932](https://github.com/tendermint/tendermint/issues/2932) Rename `Validator.Accum` to `Validator.ProposerPriority`
+
+* Blockchain Protocol
+  - [state] [\#2714](https://github.com/tendermint/tendermint/issues/2714) Validators can now only use pubkeys allowed within
+    ConsensusParams.Validator.PubKeyTypes
+
+* P2P Protocol
+  - [consensus] [\#2871](https://github.com/tendermint/tendermint/issues/2871)
+    Remove *ProposalHeartbeat* message as it serves no real purpose (@srmo)
+  - [state] Fixes for proposer selection:
+    - [\#2785](https://github.com/tendermint/tendermint/issues/2785) Accum for new validators is `-1.125*totalVotingPower` instead of 0
+    - [\#2941](https://github.com/tendermint/tendermint/issues/2941) val.Accum is preserved during ValidatorSet.Update to avoid being
+      reset to 0
+
+### IMPROVEMENTS:
+
+- [state] [\#2929](https://github.com/tendermint/tendermint/issues/2929) Minor refactor of updateState logic (@danil-lashin)
+- [node] [\#2959](https://github.com/tendermint/tendermint/issues/2959) Allow node to start even if software's BlockProtocol is
+  different from state's BlockProtocol
+- [pex] [\#2959](https://github.com/tendermint/tendermint/issues/2959) Pex reactor logger uses `module=pex`
+
+### BUG FIXES:
+
+- [p2p] [\#2968](https://github.com/tendermint/tendermint/issues/2968) Panic on transport error rather than continuing to run but not
+  accept new connections
+- [p2p] [\#2969](https://github.com/tendermint/tendermint/issues/2969) Fix mismatch in peer count between `/net_info` and the prometheus
+  metrics
+- [rpc] [\#2408](https://github.com/tendermint/tendermint/issues/2408) `/broadcast_tx_commit`: Fix "interface conversion: interface {} in nil, not EventDataTx" panic (could happen if somebody sent a tx using `/broadcast_tx_commit` while Tendermint was being stopped)
+- [state] [\#2785](https://github.com/tendermint/tendermint/issues/2785) Fix accum for new validators to be `-1.125*totalVotingPower`
+  instead of 0, forcing them to wait before becoming the proposer. Also:
+    - do not batch clip
+    - keep accums averaged near 0
+- [txindex/kv] [\#2925](https://github.com/tendermint/tendermint/issues/2925) Don't return false positives when range searching for a prefix of a tag value
+- [types] [\#2938](https://github.com/tendermint/tendermint/issues/2938) Fix regression in v0.26.4 where we panic on empty
+  genDoc.Validators
+- [types] [\#2941](https://github.com/tendermint/tendermint/issues/2941) Preserve val.Accum during ValidatorSet.Update to avoid it being
+  reset to 0 every time a validator is updated
+
 ## v0.26.4
 
 *November 27th, 2018*
 
 Special thanks to external contributors on this release:
-ackratos, goolAdapter, james-ray, joe-bowman, kostko,
-nagarajmanjunath, tomtau
-
+@ackratos, @goolAdapter, @james-ray, @joe-bowman, @kostko,
+@nagarajmanjunath, @tomtau
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).

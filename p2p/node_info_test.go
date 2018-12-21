@@ -12,7 +12,7 @@ func TestNodeInfoValidate(t *testing.T) {
 
 	// empty fails
 	ni := DefaultNodeInfo{}
-	assert.Error(t, ni.ValidateBasic())
+	assert.Error(t, ni.Validate())
 
 	channels := make([]byte, maxNumChannels)
 	for i := 0; i < maxNumChannels; i++ {
@@ -68,13 +68,13 @@ func TestNodeInfoValidate(t *testing.T) {
 	// test case passes
 	ni = testNodeInfo(nodeKey.ID(), name).(DefaultNodeInfo)
 	ni.Channels = channels
-	assert.NoError(t, ni.ValidateBasic())
+	assert.NoError(t, ni.Validate())
 
 	for _, tc := range testCases {
 		ni := testNodeInfo(nodeKey.ID(), name).(DefaultNodeInfo)
 		ni.Channels = channels
 		tc.malleateNodeInfo(&ni)
-		err := ni.ValidateBasic()
+		err := ni.Validate()
 		if tc.expectErr {
 			assert.Error(t, err, tc.testName)
 		} else {

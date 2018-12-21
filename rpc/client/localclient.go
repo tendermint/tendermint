@@ -76,6 +76,14 @@ func (Local) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return core.BroadcastTxSync(tx)
 }
 
+func (Local) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+	return core.UnconfirmedTxs(limit)
+}
+
+func (Local) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
+	return core.NumUnconfirmedTxs()
+}
+
 func (Local) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo()
 }

@@ -1,36 +1,31 @@
-# Pending
-
-## v0.27.0
+## v0.27.4
 
 *TBD*
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
+- [cli] Removed `node` `--proxy_app=dummy` option. Use `kvstore` (`persistent_kvstore`) instead.
+- [cli] Renamed `node` `--proxy_app=nilapp` to `--proxy_app=noop`.
+- [config] \#2992 `allow_duplicate_ip` is now set to false
 
 * Apps
 
 * Go API
 
-- [db] [\#2913](https://github.com/tendermint/tendermint/pull/2913) ReverseIterator API change -- start < end, and end is exclusive.
-
 * Blockchain Protocol
-  * [state] \#2714 Validators can now only use pubkeys allowed within ConsensusParams.ValidatorParams
 
 * P2P Protocol
+- multiple connections from the same IP are now disabled by default (see `allow_duplicate_ip` config option)
 
 ### FEATURES:
+- [privval] \#1181 Split immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
-- [consensus] [\#2871](https://github.com/tendermint/tendermint/issues/2871) Remove *ProposalHeartbeat* infrastructure as it serves no real purpose
 
 - [mempool] \#2778 No longer send txs back to peers who sent it to you
 
 ### BUG FIXES:
-- [types] \#2938 Fix regression in v0.26.4 where we panic on empty
-  genDoc.Validators
+
