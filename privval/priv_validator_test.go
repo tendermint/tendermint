@@ -35,6 +35,34 @@ func TestGenLoadValidator(t *testing.T) {
 	assert.Equal(height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
 }
 
+func TestResetValidator(t *testing.T) {
+	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	require.Nil(t, err)
+	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	require.Nil(t, err)
+
+	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
+	emptyState := FilePVLastSignState{filePath: tempStateFile.Name()}
+
+	// new priv val has empty state
+	assert.Equal(t, privVal.LastSignState, emptyState)
+
+	// test vote
+	height, round := int64(10), 1
+	voteType := byte(types.PrevoteType)
+	blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
+	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
+	err = privVal.SignVote("mychainid", vote)
+	assert.NoError(t, err, "expected no error signing vote")
+
+	// priv val after signing is not same as empty
+	assert.NotEqual(t, privVal.LastSignState, emptyState)
+
+	// priv val after reset is same as empty
+	privVal.Reset()
+	assert.Equal(t, privVal.LastSignState, emptyState)
+}
+
 func TestLoadOrGenValidator(t *testing.T) {
 	assert := assert.New(t)
 
