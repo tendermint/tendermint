@@ -1,0 +1,84 @@
+# ADR 038: Non-zero Start Height
+
+## Context
+
+Tendermint currently assumes that a new blockchain begins at height 0, and that the first block is at height 1.
+
+While intuitive, this causes problems for upgrade procedures that dump the latest state and start a new blockchain from scratch,
+as there is some desire to remember what the last height was, and have Tendermint act as if it were continuing from that height,
+even though blocks further back in the chain are not accessible. More complicated applications have subtle state machine logic that
+is height dependent, so it is non-trivial to dump the state in a way that updates this state to be compatible with starting a blockchain
+from height 0 again.
+
+Hence, we need some manner to start a Tendermint blockchain at a non-zero height, so that the first block is some height greater than 1.
+
+To achieve this, we have to find all places in the code where Tendermint assumes that the state starts at height 0 and that the first block is 1.
+
+## Decision
+
+Include a `start_height` parameter in the genesis file whose default value is 0. When started, Tendermint will initialize the state to start from this value,
+so that the first block it creates is `start_height + 1`.
+
+The various reactors and structures will need access to the start height so they can use it in place of 0 when checking various conditions.
+
+Note the genesis doc is stored in the `stateDB`. Consensus and Blockchain reactors only access stateDB through the BlockExecutor.
+
+Here we list the various places in the code where we assume the blockchain to start from 0, and how we will deal with non-zero start heights.
+We can find them by searching all reactor modules and the state module for `0` and `1` to see when they're being used as a height.
+
+### Blockchain
+
+BlockPool.IsCaughtUp depends on height 0
+
+LoadBlockStoreStateJSON defaults to 0 if nothing is found
+
+### Consensus
+
+Reactor:
+gossipDataRoutine check if peer is on previous height
+gossipVotesRoutine catchup logic
+queryMaj23
+NewRoundStepMessage.ValidateBasic()
+
+State:
+reconstructLastCommit doesn't reconstruct for height 0
+updateToState
+needProofBlock
+createProposalBlock
+recordMetrics
+
+### State
+
+State:
+MakeBlock
+MakeGenesisState
+
+Execution:
+getBeginBlockValidatorInfo
+
+Store:
+saveState
+
+Validation:
+validateBlock for the LastCommit and the Time
+
+### Mempool
+
+None
+
+### Evidence
+
+None
+
+
+## Status
+
+## Consequences
+
+### Positive
+
+-
+
+### Negative
+
+-
