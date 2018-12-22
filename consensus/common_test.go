@@ -71,9 +71,10 @@ func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 }
 
 func (vs *validatorStub) signVote(voteType types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+	addr := vs.PrivValidator.GetPubKey().Address()
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,
-		ValidatorAddress: vs.PrivValidator.GetAddress(),
+		ValidatorAddress: addr,
 		Height:           vs.Height,
 		Round:            vs.Round,
 		Timestamp:        tmtime.Now(),
@@ -150,8 +151,9 @@ func signAddVotes(to *ConsensusState, voteType types.SignedMsgType, hash []byte,
 
 func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
+	address := privVal.GetPubKey().Address()
 	var vote *types.Vote
-	if vote = prevotes.GetByAddress(privVal.GetAddress()); vote == nil {
+	if vote = prevotes.GetByAddress(address); vote == nil {
 		panic("Failed to find prevote from validator")
 	}
 	if blockHash == nil {
@@ -167,8 +169,9 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 
 func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
+	address := privVal.GetPubKey().Address()
 	var vote *types.Vote
-	if vote = votes.GetByAddress(privVal.GetAddress()); vote == nil {
+	if vote = votes.GetByAddress(address); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
 	if !bytes.Equal(vote.BlockID.Hash, blockHash) {
@@ -178,8 +181,9 @@ func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorS
 
 func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
 	precommits := cs.Votes.Precommits(thisRound)
+	address := privVal.GetPubKey().Address()
 	var vote *types.Vote
-	if vote = precommits.GetByAddress(privVal.GetAddress()); vote == nil {
+	if vote = precommits.GetByAddress(address); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
 

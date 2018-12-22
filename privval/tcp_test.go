@@ -25,15 +25,10 @@ func TestSocketPVAddress(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	serverAddr := rs.privVal.GetAddress()
-
-	clientAddr := sc.GetAddress()
+	serverAddr := rs.privVal.GetPubKey().Address()
+	clientAddr := sc.GetPubKey().Address()
 
 	assert.Equal(t, serverAddr, clientAddr)
-
-	// TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
-	assert.Equal(t, serverAddr, sc.GetAddress())
-
 }
 
 func TestSocketPVPubKey(t *testing.T) {
@@ -47,12 +42,9 @@ func TestSocketPVPubKey(t *testing.T) {
 	clientKey, err := sc.getPubKey()
 	require.NoError(t, err)
 
-	privKey := rs.privVal.GetPubKey()
+	privvalPubKey := rs.privVal.GetPubKey()
 
-	assert.Equal(t, privKey, clientKey)
-
-	// TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
-	assert.Equal(t, privKey, sc.GetPubKey())
+	assert.Equal(t, privvalPubKey, clientKey)
 }
 
 func TestSocketPVProposal(t *testing.T) {
@@ -153,9 +145,9 @@ func TestSocketPVDeadline(t *testing.T) {
 	go func(sc *TCPVal) {
 		defer close(listenc)
 
-		require.NoError(t, sc.Start())
+		assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnTimeout)
 
-		assert.True(t, sc.IsRunning())
+		assert.False(t, sc.IsRunning())
 	}(sc)
 
 	for {
@@ -174,9 +166,6 @@ func TestSocketPVDeadline(t *testing.T) {
 	}
 
 	<-listenc
-
-	_, err := sc.getPubKey()
-	assert.Equal(t, err.(cmn.Error).Data(), ErrConnTimeout)
 }
 
 func TestRemoteSignerRetry(t *testing.T) {
@@ -310,14 +299,15 @@ func TestErrUnexpectedResponse(t *testing.T) {
 	testStartSocketPV(t, readyc, sc)
 	defer sc.Stop()
 	RemoteSignerConnDeadline(time.Millisecond)(rs)
-	RemoteSignerConnRetries(1e6)(rs)
-
+	RemoteSignerConnRetries(100)(rs)
 	// we do not want to Start() the remote signer here and instead use the connection to
 	// reply with intentionally wrong replies below:
 	rsConn, err := rs.connect()
 	defer rsConn.Close()
 	require.NoError(t, err)
 	require.NotNil(t, rsConn)
+	// send over public key to get the remote signer running:
+	go testReadWriteResponse(t, &PubKeyResponse{}, rsConn)
 	<-readyc
 
 	// Proposal:

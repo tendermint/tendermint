@@ -659,12 +659,6 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	assert.Equal(t, newValAddr, expectValAddr)
 }
 
-func newInitChainApp(vals []abci.ValidatorUpdate) *initChainApp {
-	return &initChainApp{
-		vals: vals,
-	}
-}
-
 // returns the vals on InitChain
 type initChainApp struct {
 	abci.BaseApplication
