@@ -11,9 +11,14 @@ Special thanks to external contributors on this release:
 - [cli] Renamed `node` `--proxy_app=nilapp` to `--proxy_app=noop`.
 - [config] \#2992 `allow_duplicate_ip` is now set to false
 
+- [privval] \#2926 split up `PubKeyMsg` into `PubKeyRequest` and `PubKeyResponse` to be consistent with other message types
+
 * Apps
 
-* Go API
+* Go API  
+- [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on 
+`PrivValidator.GetPubKey()` instead of requesting it again 
+- [types] \#2981 Remove `PrivValidator.GetAddress()`
 
 * Blockchain Protocol
 
@@ -21,10 +26,11 @@ Special thanks to external contributors on this release:
 - multiple connections from the same IP are now disabled by default (see `allow_duplicate_ip` config option)
 
 ### FEATURES:
+- [privval] \#1181 Split immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
 
-- [rpc] []() Validate if there are txs inside the query results before looping throught it
-
+- [types] \#2926 do not panic if retrieving the private validator's public key fails
+- [rpc] []() Validate if there are txs inside the query results before looping through it

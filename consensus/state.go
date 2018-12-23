@@ -2,12 +2,13 @@ package consensus
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
 	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/fail"
@@ -829,13 +830,14 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	}
 
 	// if not a validator, we're done
-	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
-		logger.Debug("This node is not a validator", "addr", cs.privValidator.GetAddress(), "vals", cs.Validators)
+	address := cs.privValidator.GetPubKey().Address()
+	if !cs.Validators.HasAddress(address) {
+		logger.Debug("This node is not a validator", "addr", address, "vals", cs.Validators)
 		return
 	}
 	logger.Debug("This node is a validator")
 
-	if cs.isProposer() {
+	if cs.isProposer(address) {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 		cs.decideProposal(height, round)
 	} else {
@@ -843,8 +845,8 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	}
 }
 
-func (cs *ConsensusState) isProposer() bool {
-	return bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress())
+func (cs *ConsensusState) isProposer(address []byte) bool {
+	return bytes.Equal(cs.Validators.GetProposer().Address, address)
 }
 
 func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
@@ -929,7 +931,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		cs.state.Validators.Size(),
 		len(evidence),
 	), maxGas)
-	proposerAddr := cs.privValidator.GetAddress()
+	proposerAddr := cs.privValidator.GetPubKey().Address()
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
 
 	return block, parts
@@ -1474,7 +1476,8 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, err
 		if err == ErrVoteHeightMismatch {
 			return added, err
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
-			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.GetAddress()) {
+			addr := cs.privValidator.GetPubKey().Address()
+			if bytes.Equal(vote.ValidatorAddress, addr) {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return added, err
 			}
@@ -1639,7 +1642,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 }
 
 func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
-	addr := cs.privValidator.GetAddress()
+	addr := cs.privValidator.GetPubKey().Address()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 
 	vote := &types.Vote{
@@ -1675,7 +1678,7 @@ func (cs *ConsensusState) voteTime() time.Time {
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
 	// if we don't have a key or we're not in the validator set, do nothing
-	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetPubKey().Address()) {
 		return nil
 	}
 	vote, err := cs.signVote(type_, hash, header)
