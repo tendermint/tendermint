@@ -129,11 +129,12 @@ LOOP:
 
 		// create consensus state from a clean slate
 		logger := log.NewNopLogger()
-		stateDB := dbm.NewMemDB()
+		blockDB := dbm.NewMemDB()
+		stateDB := blockDB
 		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		privValidator := loadPrivValidator(consensusReplayConfig)
-		blockDB := dbm.NewMemDB()
 		cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewKVStoreApplication(), blockDB)
+		sm.SaveState(stateDB,state)
 		cs.SetLogger(logger)
 
 		// start sending transactions
@@ -587,7 +588,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey, appVersion version.
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion
 	store := NewMockBlockStore(config, state.ConsensusParams)
-	sm.SaveState(stateDB,state)
+	sm.SaveState(stateDB, state)
 	return stateDB, state, store
 }
 
