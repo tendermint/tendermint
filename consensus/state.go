@@ -297,9 +297,6 @@ func (cs *ConsensusState) OnStart() error {
 		}
 	}
 
-	if cs.state.LastBlockHeight == 0 {
-		sm.SaveState(cs.blockExec.Db(),cs.state)
-	}
 	// now start the receiveRoutine
 	go cs.receiveRoutine(0)
 

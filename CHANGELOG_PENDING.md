@@ -15,9 +15,9 @@ Special thanks to external contributors on this release:
 
 * Apps
 
-* Go API  
-- [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on 
-`PrivValidator.GetPubKey()` instead of requesting it again 
+* Go API
+- [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on
+`PrivValidator.GetPubKey()` instead of requesting it again
 - [types] \#2981 Remove `PrivValidator.GetAddress()`
 
 * Blockchain Protocol
@@ -32,3 +32,4 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 - [types] \#2926 do not panic if retrieving the private validator's public key fails
+- [consensus] \#3067 getBeginBlockValidatorInfo load validators from stateDB instead of state
