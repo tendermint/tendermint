@@ -51,6 +51,9 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 		eventChans[i] = make(chan interface{}, 1)
 		err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
 		require.NoError(t, err)
+		if reactors[i].conS.state.LastBlockHeight == 0 {	//for reactor_test
+			sm.SaveState(reactors[i].conS.blockExec.Db(),reactors[i].conS.state)
+		}
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
