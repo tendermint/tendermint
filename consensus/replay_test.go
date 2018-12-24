@@ -587,6 +587,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey, appVersion version.
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion
 	store := NewMockBlockStore(config, state.ConsensusParams)
+	sm.SaveState(stateDB,state)
 	return stateDB, state, store
 }
 
