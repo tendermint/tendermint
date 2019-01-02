@@ -27,8 +27,8 @@ type CanonicalProposal struct {
 	Height    int64         `binary:"fixed64"`
 	Round     int64         `binary:"fixed64"`
 	POLRound  int64         `binary:"fixed64"`
-	BlockID   CanonicalBlockID
 	Timestamp time.Time
+	BlockID   CanonicalBlockID
 	ChainID   string
 }
 
@@ -64,8 +64,8 @@ func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal 
 		Height:    proposal.Height,
 		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
 		POLRound:  int64(proposal.POLRound),
-		BlockID:   CanonicalizeBlockID(proposal.BlockID),
 		Timestamp: proposal.Timestamp,
+		BlockID:   CanonicalizeBlockID(proposal.BlockID),
 		ChainID:   chainID,
 	}
 }
