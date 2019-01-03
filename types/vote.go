@@ -127,6 +127,11 @@ func (vote *Vote) ValidateBasic() error {
 	if err := vote.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}
+	// BlockID.ValidateBasic would not err if we for instance we have an empty hash but a
+	// non-empty PartsSetHeader:
+	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
+		return fmt.Errorf("BlockID must be either empty or complete, got: %v", vote.BlockID)
+	}
 	if len(vote.ValidatorAddress) != crypto.AddressSize {
 		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
 			crypto.AddressSize,
