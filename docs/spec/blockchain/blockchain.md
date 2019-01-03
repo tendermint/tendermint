@@ -230,7 +230,7 @@ The block version must match the state version.
 len(block.ChainID) < 50
 ```
 
-ChainID must be maximum 50 UTF-8 symbols.
+ChainID must be less than 50 bytes.
 
 ### Height
 
