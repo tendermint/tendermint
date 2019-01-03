@@ -89,8 +89,8 @@ type CanonicalProposal struct {
 	Height    int64         `binary:"fixed64"`
 	Round     int64         `binary:"fixed64"`
 	POLRound  int64         `binary:"fixed64"`
-	BlockID   BlockID
 	Timestamp time.Time
+	BlockID   BlockID
 	ChainID   string
 }
 ```
