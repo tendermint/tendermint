@@ -48,8 +48,8 @@ BlockID is the structure used to represent the block:
 
 ```
 type BlockID struct {
-	Hash	[]byte
-	Header	PartSetHeader
+	Hash        []byte
+	PartsHeader PartSetHeader
 }
 
 type PartSetHeader struct {
@@ -66,8 +66,8 @@ are true:
 
 ```
 b.Hash == nil
-b.Header.Total == 0
-b.Header.Hash == nil
+b.PartsHeader.Total == 0
+b.PartsHeader.Hash == nil
 ```
 
 `BlockID.IsComplete()` returns true for BlockID `b` if each of the following
@@ -75,8 +75,8 @@ are true:
 
 ```
 len(b.Hash) == 32
-b.Header.Total > 0
-len(b.Header.Hash) == 32
+b.PartsHeader.Total > 0
+len(b.PartsHeader.Hash) == 32
 ```
 
 ## Proposals
