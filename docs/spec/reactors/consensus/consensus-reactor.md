@@ -338,12 +338,11 @@ BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`
 
 ## Broadcast routine
 
-The Broadcast routine subscribes to an internal event bus to receive new round steps, votes messages and proposal
-heartbeat messages, and broadcasts messages to peers upon receiving those events.
+The Broadcast routine subscribes to an internal event bus to receive new round steps and votes messages, and broadcasts messages to peers upon receiving those 
+events.
 It broadcasts `NewRoundStepMessage` or `CommitStepMessage` upon new round state event. Note that
 broadcasting these messages does not depend on the PeerRoundState; it is sent on the StateChannel.
 Upon receiving VoteMessage it broadcasts `HasVoteMessage` message to its peers on the StateChannel.
-`ProposalHeartbeatMessage` is sent the same way on the StateChannel.
 
 ## Channels
 

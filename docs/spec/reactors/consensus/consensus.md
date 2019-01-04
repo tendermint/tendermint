@@ -89,33 +89,6 @@ type BlockPartMessage struct {
 }
 ```
 
-## ProposalHeartbeatMessage
-
-ProposalHeartbeatMessage is sent to signal that a node is alive and waiting for transactions
-to be able to create a next block proposal.
-
-```go
-type ProposalHeartbeatMessage struct {
-    Heartbeat Heartbeat
-}
-```
-
-### Heartbeat
-
-Heartbeat contains validator information (address and index),
-height, round and sequence number. It is signed by the private key of the validator.
-
-```go
-type Heartbeat struct {
-    ValidatorAddress []byte
-    ValidatorIndex   int
-    Height           int64
-    Round            int
-    Sequence         int
-    Signature        Signature
-}
-```
-
 ## NewRoundStepMessage
 
 NewRoundStepMessage is sent for every step transition during the core consensus algorithm execution.

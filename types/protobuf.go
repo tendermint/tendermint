@@ -187,20 +187,19 @@ var PB2TM = pb2tm{}
 type pb2tm struct{}
 
 func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
-	// TODO: define these in crypto and use them
-	sizeEd := 32
-	sizeSecp := 33
 	switch pubKey.Type {
 	case ABCIPubKeyTypeEd25519:
-		if len(pubKey.Data) != sizeEd {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeEd)
+		if len(pubKey.Data) != ed25519.PubKeyEd25519Size {
+			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d",
+				len(pubKey.Data), ed25519.PubKeyEd25519Size)
 		}
 		var pk ed25519.PubKeyEd25519
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:
-		if len(pubKey.Data) != sizeSecp {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeSecp)
+		if len(pubKey.Data) != secp256k1.PubKeySecp256k1Size {
+			return nil, fmt.Errorf("Invalid size for PubKeySecp256k1. Got %d, expected %d",
+				len(pubKey.Data), secp256k1.PubKeySecp256k1Size)
 		}
 		var pk secp256k1.PubKeySecp256k1
 		copy(pk[:], pubKey.Data)

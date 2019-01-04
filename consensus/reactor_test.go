@@ -143,7 +143,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		evpool := newMockEvidencePool(privVals[vIdx].GetAddress())
+		addr := privVals[vIdx].GetPubKey().Address()
+		evpool := newMockEvidencePool(addr)
 
 		// Make ConsensusState
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -213,8 +214,8 @@ func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
 
 //------------------------------------
 
-// Ensure a testnet sends proposal heartbeats and makes blocks when there are txs
-func TestReactorProposalHeartbeats(t *testing.T) {
+// Ensure a testnet makes blocks when there are txs
+func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	N := 4
 	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
 		func(c *cfg.Config) {
@@ -222,17 +223,6 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 		})
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-	heartbeatChans := make([]chan interface{}, N)
-	var err error
-	for i := 0; i < N; i++ {
-		heartbeatChans[i] = make(chan interface{}, 1)
-		err = eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryProposalHeartbeat, heartbeatChans[i])
-		require.NoError(t, err)
-	}
-	// wait till everyone sends a proposal heartbeat
-	timeoutWaitGroup(t, N, func(j int) {
-		<-heartbeatChans[j]
-	}, css)
 
 	// send a tx
 	if err := css[3].mempool.CheckTx([]byte{1, 2, 3}, nil); err != nil {
@@ -279,7 +269,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		activeVals[string(css[i].privValidator.GetAddress())] = struct{}{}
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
@@ -342,7 +333,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		activeVals[string(css[i].privValidator.GetAddress())] = struct{}{}
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
 	}
 
 	// wait till everyone makes block 1

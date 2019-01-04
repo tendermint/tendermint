@@ -33,46 +33,13 @@ func cpIncr(bz []byte) (ret []byte) {
 	return nil
 }
 
-// Returns a slice of the same length (big endian)
-// except decremented by one.
-// Returns nil on underflow (e.g. if bz bytes are all 0x00)
-// CONTRACT: len(bz) > 0
-func cpDecr(bz []byte) (ret []byte) {
-	if len(bz) == 0 {
-		panic("cpDecr expects non-zero bz length")
-	}
-	ret = cp(bz)
-	for i := len(bz) - 1; i >= 0; i-- {
-		if ret[i] > byte(0x00) {
-			ret[i]--
-			return
-		}
-		ret[i] = byte(0xFF)
-		if i == 0 {
-			// Underflow
-			return nil
-		}
-	}
-	return nil
-}
-
 // See DB interface documentation for more information.
-func IsKeyInDomain(key, start, end []byte, isReverse bool) bool {
-	if !isReverse {
-		if bytes.Compare(key, start) < 0 {
-			return false
-		}
-		if end != nil && bytes.Compare(end, key) <= 0 {
-			return false
-		}
-		return true
-	} else {
-		if start != nil && bytes.Compare(start, key) < 0 {
-			return false
-		}
-		if end != nil && bytes.Compare(key, end) <= 0 {
-			return false
-		}
-		return true
+func IsKeyInDomain(key, start, end []byte) bool {
+	if bytes.Compare(key, start) < 0 {
+		return false
 	}
+	if end != nil && bytes.Compare(end, key) <= 0 {
+		return false
+	}
+	return true
 }

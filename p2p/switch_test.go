@@ -3,9 +3,16 @@ package p2p
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -333,6 +340,54 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 
 	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
 	assert.False(p.IsRunning())
+}
+
+func TestSwitchStopPeerForError(t *testing.T) {
+	s := httptest.NewServer(stdprometheus.UninstrumentedHandler())
+	defer s.Close()
+
+	scrapeMetrics := func() string {
+		resp, _ := http.Get(s.URL)
+		buf, _ := ioutil.ReadAll(resp.Body)
+		return string(buf)
+	}
+
+	namespace, subsystem, name := config.TestInstrumentationConfig().Namespace, MetricsSubsystem, "peers"
+	re := regexp.MustCompile(namespace + `_` + subsystem + `_` + name + ` ([0-9\.]+)`)
+	peersMetricValue := func() float64 {
+		matches := re.FindStringSubmatch(scrapeMetrics())
+		f, _ := strconv.ParseFloat(matches[1], 64)
+		return f
+	}
+
+	p2pMetrics := PrometheusMetrics(namespace)
+
+	// make two connected switches
+	sw1, sw2 := MakeSwitchPair(t, func(i int, sw *Switch) *Switch {
+		// set metrics on sw1
+		if i == 0 {
+			opt := WithMetrics(p2pMetrics)
+			opt(sw)
+		}
+		return initSwitchFunc(i, sw)
+	})
+
+	assert.Equal(t, len(sw1.Peers().List()), 1)
+	assert.EqualValues(t, 1, peersMetricValue())
+
+	// send messages to the peer from sw1
+	p := sw1.Peers().List()[0]
+	p.Send(0x1, []byte("here's a message to send"))
+
+	// stop sw2. this should cause the p to fail,
+	// which results in calling StopPeerForError internally
+	sw2.Stop()
+
+	// now call StopPeerForError explicitly, eg. from a reactor
+	sw1.StopPeerForError(p, fmt.Errorf("some err"))
+
+	assert.Equal(t, len(sw1.Peers().List()), 0)
+	assert.EqualValues(t, 0, peersMetricValue())
 }
 
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {

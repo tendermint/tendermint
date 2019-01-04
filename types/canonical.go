@@ -41,16 +41,6 @@ type CanonicalVote struct {
 	ChainID   string
 }
 
-type CanonicalHeartbeat struct {
-	Type             byte
-	Height           int64 `binary:"fixed64"`
-	Round            int   `binary:"fixed64"`
-	Sequence         int   `binary:"fixed64"`
-	ValidatorAddress Address
-	ValidatorIndex   int
-	ChainID          string
-}
-
 //-----------------------------------
 // Canonicalize the structs
 
@@ -88,18 +78,6 @@ func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 		Timestamp: vote.Timestamp,
 		BlockID:   CanonicalizeBlockID(vote.BlockID),
 		ChainID:   chainID,
-	}
-}
-
-func CanonicalizeHeartbeat(chainID string, heartbeat *Heartbeat) CanonicalHeartbeat {
-	return CanonicalHeartbeat{
-		Type:             byte(HeartbeatType),
-		Height:           heartbeat.Height,
-		Round:            heartbeat.Round,
-		Sequence:         heartbeat.Sequence,
-		ValidatorAddress: heartbeat.ValidatorAddress,
-		ValidatorIndex:   heartbeat.ValidatorIndex,
-		ChainID:          chainID,
 	}
 }
 

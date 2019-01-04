@@ -93,3 +93,9 @@ type NetworkClient interface {
 type EventsClient interface {
 	types.EventBusSubscriber
 }
+
+// MempoolClient shows us data about current mempool state.
+type MempoolClient interface {
+	UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error)
+	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
+}

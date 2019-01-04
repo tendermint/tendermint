@@ -121,7 +121,7 @@ If we cannot update directly from H -> H' because there was too much change to
 the validator set, then we can look for some Hm (H < Hm < H') with a validator
 set Vm.  Then we try to update H -> Hm and then Hm -> H' in two steps.  If one
 of these steps doesn't work, then we continue bisecting, until we eventually
-have to externally validate the valdiator set changes at every block.
+have to externally validate the validator set changes at every block.
 
 Since we never trust any server in this protocol, only the signatures
 themselves, it doesn't matter if the seed comes from a (possibly malicious)

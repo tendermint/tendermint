@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -24,7 +24,7 @@ type mockNodeInfo struct {
 
 func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
 func (ni mockNodeInfo) NetAddress() *NetAddress             { return ni.addr }
-func (ni mockNodeInfo) ValidateBasic() error                { return nil }
+func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
 func AddPeerToSwitch(sw *Switch, peer Peer) {
@@ -184,7 +184,7 @@ func MakeSwitch(
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
-	sw.SetLogger(log.TestingLogger())
+	sw.SetLogger(log.TestingLogger().With("switch", i))
 	sw.SetNodeKey(&nodeKey)
 
 	ni := nodeInfo.(DefaultNodeInfo)

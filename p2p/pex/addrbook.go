@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
 )
@@ -162,26 +162,29 @@ func (a *addrBook) FilePath() string {
 
 // AddOurAddress one of our addresses.
 func (a *addrBook) AddOurAddress(addr *p2p.NetAddress) {
-	a.Logger.Info("Add our address to book", "addr", addr)
 	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	a.Logger.Info("Add our address to book", "addr", addr)
 	a.ourAddrs[addr.String()] = struct{}{}
-	a.mtx.Unlock()
 }
 
 // OurAddress returns true if it is our address.
 func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
 	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
 	_, ok := a.ourAddrs[addr.String()]
-	a.mtx.Unlock()
 	return ok
 }
 
 func (a *addrBook) AddPrivateIDs(IDs []string) {
 	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
 	for _, id := range IDs {
 		a.privateIDs[p2p.ID(id)] = struct{}{}
 	}
-	a.mtx.Unlock()
 }
 
 // AddAddress implements AddrBook
@@ -191,6 +194,7 @@ func (a *addrBook) AddPrivateIDs(IDs []string) {
 func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+
 	return a.addAddress(addr, src)
 }
 
@@ -198,6 +202,7 @@ func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+
 	ka := a.addrLookup[addr.ID]
 	if ka == nil {
 		return
@@ -211,14 +216,16 @@ func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 func (a *addrBook) IsGood(addr *p2p.NetAddress) bool {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+
 	return a.addrLookup[addr.ID].isOld()
 }
 
 // HasAddress returns true if the address is in the book.
 func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
 	ka := a.addrLookup[addr.ID]
-	a.mtx.Unlock()
 	return ka != nil
 }
 
@@ -292,6 +299,7 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 func (a *addrBook) MarkGood(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+
 	ka := a.addrLookup[addr.ID]
 	if ka == nil {
 		return
@@ -306,6 +314,7 @@ func (a *addrBook) MarkGood(addr *p2p.NetAddress) {
 func (a *addrBook) MarkAttempt(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+
 	ka := a.addrLookup[addr.ID]
 	if ka == nil {
 		return
@@ -461,12 +470,13 @@ ADDRS_LOOP:
 
 // ListOfKnownAddresses returns the new and old addresses.
 func (a *addrBook) ListOfKnownAddresses() []*knownAddress {
-	addrs := []*knownAddress{}
 	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	addrs := []*knownAddress{}
 	for _, addr := range a.addrLookup {
 		addrs = append(addrs, addr.copy())
 	}
-	a.mtx.Unlock()
 	return addrs
 }
 
@@ -476,6 +486,7 @@ func (a *addrBook) ListOfKnownAddresses() []*knownAddress {
 func (a *addrBook) Size() int {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
+
 	return a.size()
 }
 
