@@ -27,5 +27,5 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
-- [rpc] []() Validate if there are txs inside the query results before looping throught it
+- [rpc] \#3080 check if the variable "skipCount" is bigger than zero. If it is not, we set it to 0. If it, we do not do anything.
 

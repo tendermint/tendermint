@@ -395,8 +395,7 @@ func TestTxSearch(t *testing.T) {
 
 		// query a non existing tx with page 1 and txsPerPage 1
 		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1)
-		fmt.Printf("%+v\n", result)
 		require.Nil(t, err, "%+v", err)
-		require.Len(t, result.Txs, 1)
+		require.Len(t, result.Txs, 0)
 	}
 }
