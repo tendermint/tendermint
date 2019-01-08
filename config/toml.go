@@ -95,7 +95,10 @@ log_format = "{{ .BaseConfig.LogFormat }}"
 genesis_file = "{{ js .BaseConfig.Genesis }}"
 
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv_validator_file = "{{ js .BaseConfig.PrivValidator }}"
+priv_validator_key_file = "{{ js .BaseConfig.PrivValidatorKey }}"
+
+# Path to the JSON file containing the last sign state of a validator
+priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 
 # TCP or UNIX socket address for Tendermint to listen on for
 # connections from an external PrivValidator process
@@ -125,13 +128,13 @@ laddr = "{{ .RPC.ListenAddress }}"
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
 # Use '["*"]' to allow any origin
-cors_allowed_origins = "{{ .RPC.CORSAllowedOrigins }}"
+cors_allowed_origins = [{{ range .RPC.CORSAllowedOrigins }}{{ printf "%q, " . }}{{end}}]
 
 # A list of methods the client is allowed to use with cross-domain requests
-cors_allowed_methods = "{{ .RPC.CORSAllowedMethods }}"
+cors_allowed_methods = [{{ range .RPC.CORSAllowedMethods }}{{ printf "%q, " . }}{{end}}]
 
 # A list of non simple headers the client is allowed to use with cross-domain requests
-cors_allowed_headers = "{{ .RPC.CORSAllowedHeaders }}"
+cors_allowed_headers = [{{ range .RPC.CORSAllowedHeaders }}{{ printf "%q, " . }}{{end}}]
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
@@ -139,7 +142,7 @@ grpc_laddr = "{{ .RPC.GRPCListenAddress }}"
 
 # Maximum number of simultaneous connections.
 # Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -151,7 +154,7 @@ unsafe = {{ .RPC.Unsafe }}
 
 # Maximum number of simultaneous connections (including WebSocket).
 # Does not include gRPC connections. See grpc_max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -269,8 +272,8 @@ blocktime_iota = "{{ .Consensus.BlockTimeIota }}"
 # What indexer to use for transactions
 #
 # Options:
-#   1) "null" (default)
-#   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+#   1) "null"
+#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "{{ .TxIndex.Indexer }}"
 
 # Comma-separated list of tags to index (by default the only tag is "tx.hash")
@@ -302,7 +305,7 @@ prometheus = {{ .Instrumentation.Prometheus }}
 prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
 
 # Maximum number of simultaneous connections.
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
@@ -342,7 +345,8 @@ func ResetTestRoot(testName string) *Config {
 	baseConfig := DefaultBaseConfig()
 	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
 	genesisFilePath := filepath.Join(rootDir, baseConfig.Genesis)
-	privFilePath := filepath.Join(rootDir, baseConfig.PrivValidator)
+	privKeyFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorKey)
+	privStateFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorState)
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
@@ -352,7 +356,8 @@ func ResetTestRoot(testName string) *Config {
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
 	}
 	// we always overwrite the priv val
-	cmn.MustWriteFile(privFilePath, []byte(testPrivValidator), 0644)
+	cmn.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
+	cmn.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
 
 	config := TestConfig().SetRoot(rootDir)
 	return config
@@ -374,7 +379,7 @@ var testGenesis = `{
   "app_hash": ""
 }`
 
-var testPrivValidator = `{
+var testPrivValidatorKey = `{
   "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
   "pub_key": {
     "type": "tendermint/PubKeyEd25519",
@@ -383,8 +388,11 @@ var testPrivValidator = `{
   "priv_key": {
     "type": "tendermint/PrivKeyEd25519",
     "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
-  },
-  "last_height": "0",
-  "last_round": "0",
-  "last_step": 0
+  }
+}`
+
+var testPrivValidatorState = `{
+  "height": "0",
+  "round": "0",
+  "step": 0
 }`

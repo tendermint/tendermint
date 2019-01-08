@@ -407,21 +407,22 @@ If `storeBlockHeight == stateBlockHeight && appBlockHeight < storeBlockHeight`,
 replay all blocks in full from `appBlockHeight` to `storeBlockHeight`.
 This happens if we completed processing the block, but the app forgot its height.
 
-If `storeBlockHeight == stateBlockHeight && appBlockHeight == storeBlockHeight`, we're done
+If `storeBlockHeight == stateBlockHeight && appBlockHeight == storeBlockHeight`, we're done.
 This happens if we crashed at an opportune spot.
 
 If `storeBlockHeight == stateBlockHeight+1`
 This happens if we started processing the block but didn't finish.
 
-    If `appBlockHeight < stateBlockHeight`
-    	replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,
-    	and replay the block at `storeBlockHeight` using the WAL.
-    This happens if the app forgot the last block it committed.
+If `appBlockHeight < stateBlockHeight`
+    replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,
+    and replay the block at `storeBlockHeight` using the WAL.
+This happens if the app forgot the last block it committed.
 
-    If `appBlockHeight == stateBlockHeight`,
-    	replay the last block (storeBlockHeight) in full.
-    This happens if we crashed before the app finished Commit
+If `appBlockHeight == stateBlockHeight`,
+    replay the last block (storeBlockHeight) in full.
+This happens if we crashed before the app finished Commit
 
-    If appBlockHeight == storeBlockHeight {
-    	update the state using the saved ABCI responses but dont run the block against the real app.
-    This happens if we crashed after the app finished Commit but before Tendermint saved the state.
+If `appBlockHeight == storeBlockHeight`
+    update the state using the saved ABCI responses but dont run the block against the real app.
+This happens if we crashed after the app finished Commit but before Tendermint saved the state.
+
