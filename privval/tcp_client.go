@@ -63,7 +63,7 @@ type TCPVal struct {
 	acceptDeadline time.Duration
 	connTimeout    time.Duration
 	connHeartbeat  time.Duration
-	privKey        ed25519.PrivKeyEd25519
+	secretConnKey  ed25519.PrivKeyEd25519
 
 	conn       net.Conn
 	listener   net.Listener
@@ -85,7 +85,7 @@ func NewTCPVal(
 		acceptDeadline: acceptDeadline,
 		connTimeout:    connTimeout,
 		connHeartbeat:  connHeartbeat,
-		privKey:        privKey,
+		secretConnKey:  privKey,
 	}
 
 	sc.BaseService = *cmn.NewBaseService(logger, "TCPVal", sc)
@@ -107,8 +107,10 @@ func (sc *TCPVal) OnStart() error {
 	}
 
 	sc.conn = conn
-
-	sc.RemoteSignerClient = NewRemoteSignerClient(sc.conn)
+	sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
+	if err != nil {
+		return err
+	}
 
 	// Start a routine to keep the connection alive
 	sc.cancelPing = make(chan struct{}, 1)
@@ -119,24 +121,41 @@ func (sc *TCPVal) OnStart() error {
 			case <-sc.pingTicker.C:
 				err := sc.Ping()
 				if err != nil {
-					if err == ErrUnexpectedResponse {
-						sc.OnStop()
-						return
-					}
 					sc.Logger.Error(
 						"Ping",
 						"err", err,
 					)
-					sc.OnStop()
-					err := sc.OnStart()
-
+					if err == ErrUnexpectedResponse {
+						return
+					}
+					conn, err := sc.waitConnection()
 					if err != nil {
 						sc.Logger.Error(
-							"Restarting TCPVal failed",
-							"err", err,
+							"Reconnecting to remote signer failed",
+							"err",
+							err,
 						)
+						continue
 					}
 
+					sc.conn = conn
+					sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
+					if err != nil {
+						sc.Logger.Error(
+							"Re-initializing remote signer client failed",
+							"err",
+							err,
+						)
+						if err := sc.conn.Close(); err != nil {
+							sc.Logger.Error(
+								"error closing connection",
+								"err",
+								err,
+							)
+						}
+						continue
+					}
+					sc.Logger.Info("Successfully re-initialized connection to remote signer")
 				}
 			case <-sc.cancelPing:
 				sc.pingTicker.Stop()
@@ -177,7 +196,7 @@ func (sc *TCPVal) acceptConnection() (net.Conn, error) {
 
 	}
 
-	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey)
+	conn, err = p2pconn.MakeSecretConnection(conn, sc.secretConnKey)
 	if err != nil {
 		return nil, err
 	}
