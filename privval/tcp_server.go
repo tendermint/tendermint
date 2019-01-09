@@ -36,7 +36,7 @@ type RemoteSigner struct {
 	connRetries  int
 	privKey      ed25519.PrivKeyEd25519
 	privVal      types.PrivValidator
-
+	// TODO: conn is never set?
 	conn net.Conn
 }
 

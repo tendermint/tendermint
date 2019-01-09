@@ -137,6 +137,12 @@ func (sc *TCPVal) OnStart() error {
 						)
 						continue
 					}
+					// XXX waitConnection might return nil conn if
+					// validator is shutting down: !sc.IsRunning() == true
+					if conn == nil {
+						sc.Logger.Info("listener is closing")
+						return
+					}
 
 					sc.conn = conn
 					sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
