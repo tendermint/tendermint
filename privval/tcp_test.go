@@ -331,6 +331,64 @@ func TestErrUnexpectedResponse(t *testing.T) {
 	require.Equal(t, err, ErrUnexpectedResponse)
 }
 
+func TestRetryTCPConnToRemoteSigner(t *testing.T) {
+	var (
+		addr    = testFreeAddr(t)
+		logger  = log.TestingLogger()
+		chainID = cmn.RandStr(12)
+		readyc  = make(chan struct{})
+
+		rs = NewRemoteSigner(
+			logger,
+			chainID,
+			addr,
+			types.NewMockPV(),
+			ed25519.GenPrivKey(),
+		)
+		sc = NewTCPVal(
+			logger,
+			addr,
+			ed25519.GenPrivKey(),
+		)
+	)
+	fmt.Println("addr", addr)
+	// Ping every:
+	TCPValHeartbeat(10 * time.Millisecond)(sc)
+
+	TCPValConnTimeout(50 * time.Millisecond)(sc)
+	RemoteSignerConnDeadline(50 * time.Millisecond)(rs)
+	RemoteSignerConnRetries(10)(rs)
+
+	testStartSocketPV(t, readyc, sc)
+	defer sc.Stop()
+	require.NoError(t, rs.Start())
+	assert.True(t, rs.IsRunning())
+
+	<-readyc
+	time.Sleep(20 * time.Millisecond)
+
+	rs.Stop()
+	rs2 := NewRemoteSigner(
+		logger,
+		chainID,
+		addr,
+		types.NewMockPV(),
+		ed25519.GenPrivKey(),
+	)
+	// let some pings pass
+	time.Sleep(15 * time.Millisecond)
+	require.NoError(t, rs2.Start())
+	assert.True(t, rs2.IsRunning())
+	defer rs2.Stop()
+
+	// give the client some time to re-establish the conn to the remote signer
+	// should see sth like this in the logs:
+	//
+	// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
+	// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=TCPVal
+	time.Sleep(100 * time.Millisecond)
+}
+
 func testSetupSocketPair(
 	t *testing.T,
 	chainID string,

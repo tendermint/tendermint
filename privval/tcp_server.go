@@ -36,7 +36,7 @@ type RemoteSigner struct {
 	connRetries  int
 	privKey      ed25519.PrivKeyEd25519
 	privVal      types.PrivValidator
-	// TODO: conn is never set?
+
 	conn net.Conn
 }
 
@@ -68,6 +68,7 @@ func (rs *RemoteSigner) OnStart() error {
 		rs.Logger.Error("OnStart", "err", err)
 		return err
 	}
+	rs.conn = conn
 
 	go rs.handleConnection(conn)
 

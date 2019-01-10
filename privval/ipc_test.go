@@ -79,6 +79,64 @@ func TestIPCPVVoteKeepalive(t *testing.T) {
 	assert.Equal(t, want.Signature, have.Signature)
 }
 
+func TestRetryIPCConnToRemoteSigner(t *testing.T) {
+	addr, err := testUnixAddr()
+	require.NoError(t, err)
+
+	var (
+		logger  = log.TestingLogger()
+		chainID = cmn.RandStr(12)
+		readyc  = make(chan struct{})
+
+		rs = NewIPCRemoteSigner(
+			logger,
+			chainID,
+			addr,
+			types.NewMockPV(),
+		)
+		sc = NewIPCVal(
+			logger,
+			addr,
+		)
+	)
+
+	// Ping every:
+	IPCValHeartbeat(10 * time.Millisecond)(sc)
+
+	IPCValConnTimeout(50 * time.Millisecond)(sc)
+	IPCRemoteSignerConnDeadline(50 * time.Millisecond)(rs)
+	IPCRemoteSignerConnRetries(10)(rs)
+
+	testStartIPCRemoteSigner(t, readyc, rs)
+	<-readyc
+
+	require.NoError(t, sc.Start())
+	assert.True(t, sc.IsRunning())
+	defer sc.Stop()
+
+	time.Sleep(20 * time.Millisecond)
+
+	rs.Stop()
+	rs2 := NewIPCRemoteSigner(
+		logger,
+		chainID,
+		addr,
+		types.NewMockPV(),
+	)
+	// let some pings pass
+	time.Sleep(15 * time.Millisecond)
+	require.NoError(t, rs2.Start())
+	assert.True(t, rs2.IsRunning())
+	defer rs2.Stop()
+
+	// give the client some time to re-establish the conn to the remote signer
+	// should see sth like this in the logs:
+	//
+	// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
+	// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=IPCVal
+	time.Sleep(100 * time.Millisecond)
+}
+
 func testSetupIPCSocketPair(
 	t *testing.T,
 	chainID string,

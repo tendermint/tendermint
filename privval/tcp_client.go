@@ -161,7 +161,7 @@ func (sc *TCPVal) OnStart() error {
 						}
 						continue
 					}
-					sc.Logger.Info("Successfully re-initialized connection to remote signer")
+					sc.Logger.Info("Re-created connection to remote signer", "impl", sc)
 				}
 			case <-sc.cancelPing:
 				sc.pingTicker.Stop()
