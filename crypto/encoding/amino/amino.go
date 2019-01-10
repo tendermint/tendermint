@@ -13,7 +13,7 @@ import (
 var cdc = amino.NewCodec()
 
 // nameTable is used to map public key concrete types back
-// to their amino routes. This should eventually be handled
+// to their registered amino names. This should eventually be handled
 // by amino. Example usage:
 // nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoName
 var nameTable = make(map[reflect.Type]string, 3)
