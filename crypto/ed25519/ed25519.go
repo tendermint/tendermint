@@ -18,7 +18,7 @@ import (
 var _ crypto.PrivKey = PrivKeyEd25519{}
 
 const (
-	PrivKeyAminoRoute = "tendermint/PrivKeyEd25519"
+	PrivKeyAminoName = "tendermint/PrivKeyEd25519"
 	PubKeyAminoName  = "tendermint/PubKeyEd25519"
 	// Size of an Edwards25519 signature. Namely the size of a compressed
 	// Edwards25519 point, and a field element. Both of which are 32 bytes.
@@ -34,7 +34,7 @@ func init() {
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKeyEd25519{},
-		PrivKeyAminoRoute, nil)
+		PrivKeyAminoName, nil)
 }
 
 // PrivKeyEd25519 implements crypto.PrivKey.

@@ -16,7 +16,7 @@ import (
 
 //-------------------------------------
 const (
-	PrivKeyAminoRoute = "tendermint/PrivKeySecp256k1"
+	PrivKeyAminoName = "tendermint/PrivKeySecp256k1"
 	PubKeyAminoName  = "tendermint/PubKeySecp256k1"
 )
 
@@ -29,7 +29,7 @@ func init() {
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKeySecp256k1{},
-		PrivKeyAminoRoute, nil)
+		PrivKeyAminoName, nil)
 }
 
 //-------------------------------------
