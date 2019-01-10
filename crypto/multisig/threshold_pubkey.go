@@ -2,7 +2,6 @@ package multisig
 
 import (
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // PubKeyMultisigThreshold implements a K of N threshold multisig.
@@ -70,7 +69,7 @@ func (pk *PubKeyMultisigThreshold) Bytes() []byte {
 
 // Address returns tmhash(PubKeyMultisigThreshold.Bytes())
 func (pk *PubKeyMultisigThreshold) Address() crypto.Address {
-	return crypto.Address(tmhash.Sum(pk.Bytes()))
+	return crypto.AddressHash(pk.Bytes())
 }
 
 // Equals returns true iff pk and other both have the same number of keys, and

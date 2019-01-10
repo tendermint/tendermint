@@ -95,6 +95,13 @@ func TestMultiSigPubKeyEquality(t *testing.T) {
 	require.False(t, multisigKey.Equals(multisigKey2))
 }
 
+func TestAddress(t *testing.T) {
+	msg := []byte{1, 2, 3, 4}
+	pubkeys, _ := generatePubKeysAndSignatures(5, msg)
+	multisigKey := NewPubKeyMultisigThreshold(2, pubkeys)
+	require.Len(t, multisigKey.Address().Bytes(), 20)
+}
+
 func generatePubKeysAndSignatures(n int, msg []byte) (pubkeys []crypto.PubKey, signatures [][]byte) {
 	pubkeys = make([]crypto.PubKey, n)
 	signatures = make([][]byte, n)
