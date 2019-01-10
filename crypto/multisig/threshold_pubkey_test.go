@@ -82,7 +82,7 @@ func TestMultiSigPubKeyEquality(t *testing.T) {
 	msg := []byte{1, 2, 3, 4}
 	pubkeys, _ := generatePubKeysAndSignatures(5, msg)
 	multisigKey := NewPubKeyMultisigThreshold(2, pubkeys)
-	var unmarshalledMultisig *PubKeyMultisigThreshold
+	var unmarshalledMultisig PubKeyMultisigThreshold
 	cdc.MustUnmarshalBinaryBare(multisigKey.Bytes(), &unmarshalledMultisig)
 	require.True(t, multisigKey.Equals(unmarshalledMultisig))
 
@@ -93,6 +93,13 @@ func TestMultiSigPubKeyEquality(t *testing.T) {
 	pubkeysCpy[3] = pubkeys[4]
 	multisigKey2 := NewPubKeyMultisigThreshold(2, pubkeysCpy)
 	require.False(t, multisigKey.Equals(multisigKey2))
+}
+
+func TestAddress(t *testing.T) {
+	msg := []byte{1, 2, 3, 4}
+	pubkeys, _ := generatePubKeysAndSignatures(5, msg)
+	multisigKey := NewPubKeyMultisigThreshold(2, pubkeys)
+	require.Len(t, multisigKey.Address().Bytes(), 20)
 }
 
 func TestPubKeyMultisigThresholdAminoToIface(t *testing.T) {

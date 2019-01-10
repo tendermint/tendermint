@@ -2,7 +2,6 @@ package multisig
 
 import (
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // PubKeyMultisigThreshold implements a K of N threshold multisig.
@@ -32,7 +31,7 @@ func NewPubKeyMultisigThreshold(k int, pubkeys []crypto.PubKey) crypto.PubKey {
 // The multisig uses a bitarray, so multiple signatures for the same key is not
 // a concern.
 func (pk PubKeyMultisigThreshold) VerifyBytes(msg []byte, marshalledSig []byte) bool {
-	var sig *Multisignature
+	var sig Multisignature
 	err := cdc.UnmarshalBinaryBare(marshalledSig, &sig)
 	if err != nil {
 		return false
@@ -70,13 +69,13 @@ func (pk PubKeyMultisigThreshold) Bytes() []byte {
 
 // Address returns tmhash(PubKeyMultisigThreshold.Bytes())
 func (pk PubKeyMultisigThreshold) Address() crypto.Address {
-	return crypto.Address(tmhash.Sum(pk.Bytes()))
+	return crypto.AddressHash(pk.Bytes())
 }
 
 // Equals returns true iff pk and other both have the same number of keys, and
 // all constituent keys are the same, and in the same order.
 func (pk PubKeyMultisigThreshold) Equals(other crypto.PubKey) bool {
-	otherKey, sameType := other.(*PubKeyMultisigThreshold)
+	otherKey, sameType := other.(PubKeyMultisigThreshold)
 	if !sameType {
 		return false
 	}
