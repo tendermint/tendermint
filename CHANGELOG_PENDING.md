@@ -32,3 +32,4 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 - [types] \#2926 do not panic if retrieving the private validator's public key fails
+- [crypto/encoding] \#3101 Fix `PubKeyMultisigThreshold` unmarshalling into `crypto.PubKey` interface
