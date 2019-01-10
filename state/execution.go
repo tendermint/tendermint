@@ -344,11 +344,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 }
 
 func NextValidators(currentSet *types.ValidatorSet, updates []*types.Validator) (*types.ValidatorSet, error) {
-	nValSet := currentSet.Copy()
-	// update proposer priority. Increase proposer priority for every process for ammount
-	// equal to their voting power and decrease proposer priority of the initial proposer
-	// equal to total voting power
-	nValSet.UpdateProposerPriority()
+	nValSet := currentSet.UpdateProposerPriority()
 
 	// apply updates
 	for _, valUpdate := range updates {
@@ -488,12 +484,13 @@ func updateState(
 
 	// Copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators.
-	nValSet := state.NextValidators.Copy()
+	nValSet, err := state.NextValidators, error(nil)
 
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
-		err := updateValidators(nValSet, validatorUpdates)
+		//err := updateValidators(nValSet, validatorUpdates)
+		nValSet, err = NextValidators(nValSet, validatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
@@ -501,8 +498,11 @@ func updateState(
 		lastHeightValsChanged = header.Height + 1 + 1
 	}
 
+	//TODO: Given validator set at height h, when we move to height h+1, should we increment
+	//proposer priority with the voting power they have at height h, or at height h+1?
+
 	// Update validator proposer priority and set state variables.
-	nValSet.IncrementProposerPriority(1)
+	//nValSet.IncrementProposerPriority(1)
 
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams

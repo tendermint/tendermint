@@ -37,8 +37,6 @@ type ValidatorSet struct {
 
 	// cached (unexported)
 	totalVotingPower       int64
-	initProposerPriorities []int64
-	round                  int
 }
 
 // NewValidatorSet initializes a ValidatorSet by copying over the
@@ -58,8 +56,6 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 
 	vals := &ValidatorSet{
 		Validators:             validators,
-		initProposerPriorities: propPriorities,
-		round:                  0,
 	}
 
 	//if len(valz) > 0 {
@@ -79,29 +75,6 @@ func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet
 	copy := vals.Copy()
 	copy.IncrementProposerPriority(times)
 	return copy
-}
-
-// FindProposer computes the proposer of the given round for the validator set.
-// The function for a given validator set and round number always return the same validator
-// as a proposer, i.e., it is purely functional.
-func (vals *ValidatorSet) FindProposer(round int) *Validator {
-	var proposer *Validator
-	if round < vals.round {
-		initialValSet := vals.Copy()
-		initialValSet.round = 0
-		for i, val := range initialValSet.Validators {
-			val.ProposerPriority = initialValSet.initProposerPriorities[i]
-		}
-		for i := initialValSet.round; i <= round; i++ {
-			proposer = vals.UpdateProposerPriority()
-		}
-	} else {
-		for i := vals.round; i <= round; i++ {
-			proposer = vals.UpdateProposerPriority()
-		}
-		vals.round = round
-	}
-	return proposer
 }
 
 // IncrementProposerPriority increments ProposerPriority of each validator and updates the
@@ -127,13 +100,15 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	vals.Proposer = proposer
 }
 
+// UpdateProposerPriority update proposer priority between rounds. Proposer priority of
+// every proposer is augmented with its voting power; proposer priority of the coordinator is
+// decreased by the total voting power.
 func (vals *ValidatorSet) UpdateProposerPriority() *ValidatorSet {
 	nValSet := vals.Copy()
 
 	// just pick the proposer with the highest proposer priority
 	// without any modification to it
-	proposer := vals.FindProposer(0) // maybe use getProposer here
-
+	proposer := vals.GetProposer()
 	// update proposer priority
 	for _, val := range nValSet.Validators {
 		// Check for overflow for sum.
