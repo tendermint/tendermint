@@ -12,11 +12,11 @@ import (
 
 var cdc = amino.NewCodec()
 
-// routeTable is used to map public key concrete types back
+// nameTable is used to map public key concrete types back
 // to their amino routes. This should eventually be handled
 // by amino. Example usage:
-// routeTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoRoute
-var routeTable = make(map[reflect.Type]string, 3)
+// nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoRoute
+var nameTable = make(map[reflect.Type]string, 3)
 
 func init() {
 	// NOTE: It's important that there be no conflicts here,
@@ -29,16 +29,16 @@ func init() {
 
 	// TODO: Have amino provide a way to go from concrete struct to route directly.
 	// Its currently a private API
-	routeTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoRoute
-	routeTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoRoute
-	routeTable[reflect.TypeOf(&multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
+	nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoRoute
+	nameTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoRoute
+	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
 }
 
-// PubkeyAminoRoute returns the amino route of a pubkey
+// PubkeyAminoName returns the amino route of a pubkey
 // cdc is currently passed in, as eventually this will not be using
 // a package level codec.
-func PubkeyAminoRoute(cdc *amino.Codec, key crypto.PubKey) (string, bool) {
-	route, found := routeTable[reflect.TypeOf(key)]
+func PubkeyAminoName(cdc *amino.Codec, key crypto.PubKey) (string, bool) {
+	route, found := nameTable[reflect.TypeOf(key)]
 	return route, found
 }
 
