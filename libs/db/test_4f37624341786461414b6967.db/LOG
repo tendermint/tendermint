@@ -1,0 +1,8 @@
+=============== Sep 14, 2018 (CEST) ===============
+14:21:29.692786 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+14:21:29.693349 db@open opening
+14:21:29.693582 version@stat F·[] S·0B[] Sc·[]
+14:21:29.693784 db@janitor F·2 G·0
+14:21:29.693809 db@open done T·448.919µs
+14:21:29.693863 db@close closing
+14:21:29.693911 db@close done T·46.842µs
