@@ -2,6 +2,7 @@ package privval
 
 import (
 	"net"
+	"sync"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -35,7 +36,10 @@ type IPCVal struct {
 	connTimeout   time.Duration
 	connHeartbeat time.Duration
 
-	conn       net.Conn
+	conn net.Conn
+	// connMtx guards writing and reading the field (methods on net.Conn itself are gorountine safe though)
+	connMtx sync.RWMutex
+
 	cancelPing chan struct{}
 	pingTicker *time.Ticker
 }
@@ -67,6 +71,8 @@ func (sc *IPCVal) OnStart() error {
 		return err
 	}
 
+	sc.connMtx.RLock()
+	defer sc.connMtx.RUnlock()
 	sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
 	if err != nil {
 		return err
@@ -99,14 +105,16 @@ func (sc *IPCVal) OnStart() error {
 						)
 						continue
 					}
-
+					sc.connMtx.RLock()
 					sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
+					sc.connMtx.RUnlock()
 					if err != nil {
 						sc.Logger.Error(
 							"Re-initializing remote signer client failed",
 							"err",
 							err,
 						)
+						sc.connMtx.RLock()
 						if err := sc.conn.Close(); err != nil {
 							sc.Logger.Error(
 								"error closing connection",
@@ -114,6 +122,7 @@ func (sc *IPCVal) OnStart() error {
 								err,
 							)
 						}
+						sc.connMtx.RUnlock()
 						continue
 					}
 					sc.Logger.Info("Re-created connection to remote signer", "impl", sc)
@@ -133,7 +142,8 @@ func (sc *IPCVal) OnStop() {
 	if sc.cancelPing != nil {
 		close(sc.cancelPing)
 	}
-
+	sc.connMtx.RLock()
+	defer sc.connMtx.RUnlock()
 	if sc.conn != nil {
 		if err := sc.conn.Close(); err != nil {
 			sc.Logger.Error("OnStop", "err", err)
@@ -152,6 +162,8 @@ func (sc *IPCVal) connect() error {
 		return err
 	}
 
+	sc.connMtx.Lock()
+	defer sc.connMtx.Unlock()
 	sc.conn = newTimeoutConn(conn, sc.connTimeout)
 
 	return nil
