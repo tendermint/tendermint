@@ -337,7 +337,6 @@ func TestRetryTCPConnToRemoteSigner(t *testing.T) {
 			ed25519.GenPrivKey(),
 		)
 	)
-	fmt.Println("addr", addr)
 	// Ping every:
 	TCPValHeartbeat(10 * time.Millisecond)(sc)
 
