@@ -14,12 +14,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// RemoteSignerClient implements PrivValidator, it uses a socket to request signatures
+// RemoteSignerClient implements PrivValidator.
+// It uses a net.Conn to request signatures
 // from an external process.
 type RemoteSignerClient struct {
-	conn            net.Conn
 	consensusPubKey crypto.PubKey
-	mtx             sync.Mutex
+
+	mtx  sync.Mutex
+	conn net.Conn
 }
 
 // Check that RemoteSignerClient implements PrivValidator.
@@ -47,6 +49,8 @@ func (sc *RemoteSignerClient) GetPubKey() crypto.PubKey {
 }
 
 func (sc *RemoteSignerClient) getPubKey() (crypto.PubKey, error) {
+	// NOTE: getPubKey is only called in the constructor.
+	// It shouldn't need the mtx (#3064).
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 

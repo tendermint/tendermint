@@ -53,8 +53,9 @@ func TCPValHeartbeat(period time.Duration) TCPValOption {
 	return func(sc *TCPVal) { sc.connHeartbeat = period }
 }
 
-// TCPVal implements PrivValidator, it uses a socket to request signatures
-// from an external process.
+// TCPVal implements PrivValidator.
+// It listens for an external process to dial in and uses
+// the (encrypted) socket to request signatures.
 type TCPVal struct {
 	cmn.BaseService
 	*RemoteSignerClient

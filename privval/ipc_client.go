@@ -25,8 +25,9 @@ func IPCValHeartbeat(period time.Duration) IPCValOption {
 	return func(sc *IPCVal) { sc.connHeartbeat = period }
 }
 
-// IPCVal implements PrivValidator, it uses a unix socket to request signatures
-// from an external process.
+// IPCVal implements PrivValidator.
+// It dials an external process and uses the unencrypted socket
+// to request signatures.
 type IPCVal struct {
 	cmn.BaseService
 	*RemoteSignerClient
