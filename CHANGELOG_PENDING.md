@@ -29,6 +29,7 @@ Special thanks to external contributors on this release:
 - [privval] \#1181 Split immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
+- [rpc] \#3047 Include peer's remote IP in `/net_info`
 
 ### BUG FIXES:
 - [types] \#2926 do not panic if retrieving the private validator's public key fails
