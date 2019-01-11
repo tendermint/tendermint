@@ -88,40 +88,24 @@ func (sc *IPCVal) OnStart() error {
 			case <-sc.pingTicker.C:
 				err := sc.Ping()
 				if err != nil {
-					sc.Logger.Error(
-						"Ping",
-						"err",
-						err,
-					)
+					sc.Logger.Error("Ping", "err", err)
 					if err == ErrUnexpectedResponse {
 						return
 					}
 
 					err := sc.connect()
 					if err != nil {
-						sc.Logger.Error(
-							"Reconnecting to remote signer failed",
-							"err",
-							err,
-						)
+						sc.Logger.Error("Reconnecting to remote signer failed", "err", err)
 						continue
 					}
 					sc.connMtx.RLock()
 					sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
 					sc.connMtx.RUnlock()
 					if err != nil {
-						sc.Logger.Error(
-							"Re-initializing remote signer client failed",
-							"err",
-							err,
-						)
+						sc.Logger.Error("Re-initializing remote signer client failed", "err", err)
 						sc.connMtx.RLock()
 						if err := sc.conn.Close(); err != nil {
-							sc.Logger.Error(
-								"error closing connection",
-								"err",
-								err,
-							)
+							sc.Logger.Error("error closing connection", "err", err)
 						}
 						sc.connMtx.RUnlock()
 						continue

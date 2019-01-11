@@ -95,30 +95,18 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 
 		conn, err := cmn.Connect(rs.addr)
 		if err != nil {
-			rs.Logger.Error(
-				"connect",
-				"addr", rs.addr,
-				"err", err,
-			)
-
+			rs.Logger.Error("connect Connect", "addr", rs.addr, "err", err)
 			continue
 		}
 
 		if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
-			rs.Logger.Error(
-				"connect",
-				"err", err,
-			)
+			rs.Logger.Error("connect SetDeadline", "err", err)
 			continue
 		}
 
 		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey)
 		if err != nil {
-			rs.Logger.Error(
-				"connect",
-				"err", err,
-			)
-
+			rs.Logger.Error("connect MakeSecretConnection", "err", err)
 			continue
 		}
 
@@ -140,7 +128,7 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 		req, err := readMsg(conn)
 		if err != nil {
 			if err != io.EOF {
-				rs.Logger.Error("handleConnection", "err", err)
+				rs.Logger.Error("handleConnection readMsg", "err", err)
 			}
 			return
 		}
@@ -149,12 +137,12 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 
 		if err != nil {
 			// only log the error; we'll reply with an error in res
-			rs.Logger.Error("handleConnection", "err", err)
+			rs.Logger.Error("handleConnection handleRequest", "err", err)
 		}
 
 		err = writeMsg(conn, res)
 		if err != nil {
-			rs.Logger.Error("handleConnection", "err", err)
+			rs.Logger.Error("handleConnection writeMsg", "err", err)
 			return
 		}
 	}
