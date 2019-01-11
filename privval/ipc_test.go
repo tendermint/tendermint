@@ -14,7 +14,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestIPCPVVote(t *testing.T) {
+var (
+	testConnDeadline   = 100 * time.Millisecond
+	testConnDeadline23 = 66 * time.Millisecond // 2/3 of the other one
+)
+
+func TestIPCPVVoteSimple(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
 		sc, rs  = testSetupIPCSocketPair(t, chainID, types.NewMockPV())
@@ -45,14 +50,15 @@ func TestIPCPVVoteResetDeadline(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	time.Sleep(3 * time.Millisecond)
+	// Wait less than the full testConnDeadline
+	time.Sleep(testConnDeadline23)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
 	assert.Equal(t, want.Signature, have.Signature)
 
-	// This would exceed the deadline if it was not extended by the previous message
-	time.Sleep(3 * time.Millisecond)
+	// This would exceed the deadline if it was not extended by the previous message.
+	time.Sleep(testConnDeadline23)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
@@ -72,7 +78,9 @@ func TestIPCPVVoteKeepalive(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	time.Sleep(10 * time.Millisecond)
+	// Wait longer than the testConnDeadline.
+	// Connection only stays alive because of Ping.
+	time.Sleep(testConnDeadline * 2)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
@@ -161,10 +169,10 @@ func testSetupIPCSocketPair(
 		)
 	)
 
-	IPCValConnTimeout(5 * time.Millisecond)(sc)
+	IPCValConnTimeout(testConnDeadline)(sc)
 	IPCValHeartbeat(time.Millisecond)(sc)
 
-	IPCRemoteSignerConnDeadline(time.Millisecond * 5)(rs)
+	IPCRemoteSignerConnDeadline(testConnDeadline)(rs)
 
 	testStartIPCRemoteSigner(t, readyc, rs)
 
