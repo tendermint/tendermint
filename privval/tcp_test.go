@@ -230,15 +230,8 @@ func TestRemoteSignVoteErrors(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
-	require.NoError(t, err)
-
-	res, err := readMsg(sc.conn)
-	require.NoError(t, err)
-
-	resp := *res.(*SignedVoteResponse)
-	require.NotNil(t, resp.Error)
-	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
+	err := sc.SignVote("", vote)
+	require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
 	err = rs.privVal.SignVote(chainID, vote)
 	require.Error(t, err)
@@ -257,15 +250,8 @@ func TestRemoteSignProposalErrors(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
-	require.NoError(t, err)
-
-	res, err := readMsg(sc.conn)
-	require.NoError(t, err)
-
-	resp := *res.(*SignedProposalResponse)
-	require.NotNil(t, resp.Error)
-	require.Equal(t, resp.Error.Description, types.ErroringMockPVErr.Error())
+	err := sc.SignProposal("", proposal)
+	require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
 	err = rs.privVal.SignProposal(chainID, proposal)
 	require.Error(t, err)
