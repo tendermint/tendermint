@@ -83,7 +83,7 @@ Learn more by reading the code and comparing it to the
 
 ## Versioning
 
-### SemVer
+### Semantic Versioning
 
 Tendermint uses [Semantic Versioning](http://semver.org/) to determine when and how the version changes.
 According to SemVer, anything in the public API can change at any time before version 1.0.0
