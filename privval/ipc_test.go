@@ -15,8 +15,11 @@ import (
 )
 
 var (
-	testConnDeadline   = 100 * time.Millisecond
-	testConnDeadline23 = 66 * time.Millisecond // 2/3 of the other one
+	testConnDeadline    = 100 * time.Millisecond
+	testConnDeadline2o3 = 66 * time.Millisecond // 2/3 of the other one
+
+	testHeartbeatTimeout    = 10 * time.Millisecond
+	testHeartbeatTimeout3o2 = 6 * time.Millisecond // 3/2 of the other one
 )
 
 func TestIPCPVVoteSimple(t *testing.T) {
@@ -51,14 +54,14 @@ func TestIPCPVVoteResetDeadline(t *testing.T) {
 	defer rs.Stop()
 
 	// Wait less than the full testConnDeadline
-	time.Sleep(testConnDeadline23)
+	time.Sleep(testConnDeadline2o3)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
 	assert.Equal(t, want.Signature, have.Signature)
 
 	// This would exceed the deadline if it was not extended by the previous message.
-	time.Sleep(testConnDeadline23)
+	time.Sleep(testConnDeadline2o3)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
@@ -109,10 +112,10 @@ func TestRetryIPCConnToRemoteSigner(t *testing.T) {
 	)
 
 	// Ping every:
-	IPCValHeartbeat(10 * time.Millisecond)(sc)
+	IPCValHeartbeat(testHeartbeatTimeout)(sc)
 
-	IPCValConnTimeout(50 * time.Millisecond)(sc)
-	IPCRemoteSignerConnDeadline(50 * time.Millisecond)(rs)
+	IPCValConnTimeout(testConnDeadline)(sc)
+	IPCRemoteSignerConnDeadline(testConnDeadline)(rs)
 	IPCRemoteSignerConnRetries(10)(rs)
 
 	testStartIPCRemoteSigner(t, readyc, rs)
@@ -122,7 +125,7 @@ func TestRetryIPCConnToRemoteSigner(t *testing.T) {
 	assert.True(t, sc.IsRunning())
 	defer sc.Stop()
 
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(testConnDeadline / 2)
 
 	rs.Stop()
 	rs2 := NewIPCRemoteSigner(
@@ -132,7 +135,7 @@ func TestRetryIPCConnToRemoteSigner(t *testing.T) {
 		types.NewMockPV(),
 	)
 	// let some pings pass
-	time.Sleep(15 * time.Millisecond)
+	time.Sleep(testHeartbeatTimeout3o2)
 	require.NoError(t, rs2.Start())
 	assert.True(t, rs2.IsRunning())
 	defer rs2.Stop()
@@ -142,7 +145,7 @@ func TestRetryIPCConnToRemoteSigner(t *testing.T) {
 	//
 	// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
 	// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=IPCVal
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(testConnDeadline * 2)
 }
 
 func testSetupIPCSocketPair(
@@ -170,7 +173,7 @@ func testSetupIPCSocketPair(
 	)
 
 	IPCValConnTimeout(testConnDeadline)(sc)
-	IPCValHeartbeat(time.Millisecond)(sc)
+	IPCValHeartbeat(testHeartbeatTimeout)(sc)
 
 	IPCRemoteSignerConnDeadline(testConnDeadline)(rs)
 

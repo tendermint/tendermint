@@ -95,14 +95,14 @@ func TestSocketPVVoteResetDeadline(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(testConnDeadline2o3)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
 	assert.Equal(t, want.Signature, have.Signature)
 
 	// This would exceed the deadline if it was not extended by the previous message
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(testConnDeadline2o3)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
@@ -122,7 +122,7 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(testConnDeadline * 2)
 
 	require.NoError(t, rs.privVal.SignVote(chainID, want))
 	require.NoError(t, sc.SignVote(chainID, have))
@@ -365,7 +365,7 @@ func TestRetryTCPConnToRemoteSigner(t *testing.T) {
 	assert.True(t, rs.IsRunning())
 
 	<-readyc
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(testHeartbeatTimeout * 2)
 
 	rs.Stop()
 	rs2 := NewRemoteSigner(
@@ -376,7 +376,7 @@ func TestRetryTCPConnToRemoteSigner(t *testing.T) {
 		ed25519.GenPrivKey(),
 	)
 	// let some pings pass
-	time.Sleep(15 * time.Millisecond)
+	time.Sleep(testHeartbeatTimeout3o2)
 	require.NoError(t, rs2.Start())
 	assert.True(t, rs2.IsRunning())
 	defer rs2.Stop()
@@ -386,7 +386,7 @@ func TestRetryTCPConnToRemoteSigner(t *testing.T) {
 	//
 	// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
 	// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=TCPVal
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(testConnDeadline * 2)
 }
 
 func testSetupSocketPair(
@@ -413,9 +413,9 @@ func testSetupSocketPair(
 		)
 	)
 
-	TCPValConnTimeout(5 * time.Millisecond)(sc)
-	TCPValHeartbeat(2 * time.Millisecond)(sc)
-	RemoteSignerConnDeadline(5 * time.Millisecond)(rs)
+	TCPValConnTimeout(testConnDeadline)(sc)
+	TCPValHeartbeat(testHeartbeatTimeout)(sc)
+	RemoteSignerConnDeadline(testConnDeadline)(rs)
 	RemoteSignerConnRetries(1e6)(rs)
 
 	testStartSocketPV(t, readyc, sc)
