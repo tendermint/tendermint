@@ -33,8 +33,7 @@ const aeadNonceSize = chacha20poly1305.NonceSize
 // is known ahead of time, and thus we are technically
 // still vulnerable to MITM.
 // (TODO(ismail): see also https://github.com/tendermint/tendermint/issues/3010)
-// See docs/sts-final.pdf for more info
-// (TODO: this does not exist anymore; probably refers to docs/tendermint-core/secure-p2p.md now?)
+// See https://github.com/tendermint/tendermint/blob/0.1/docs/sts-final.pdf for more info
 type SecretConnection struct {
 	conn       io.ReadWriteCloser
 	recvBuffer []byte
@@ -114,9 +113,6 @@ func (sc *SecretConnection) RemotePubKey() crypto.PubKey {
 // Writes encrypted frames of `sealedFrameSize`
 // CONTRACT: data smaller than dataMaxSize is read atomically.
 func (sc *SecretConnection) Write(data []byte) (n int, err error) {
-	// TODO(ismail): is this safe to be called in go-routines?
-	// there probably should be a lock to not mix up of data between writes?
-	// maybe related to https://github.com/tendermint/tendermint/issues/2784 ?
 	for 0 < len(data) {
 		var frame = make([]byte, totalFrameSize)
 		var chunk []byte
