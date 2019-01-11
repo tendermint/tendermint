@@ -39,8 +39,7 @@ func TestSocketPVPubKey(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	clientKey, err := sc.getPubKey()
-	require.NoError(t, err)
+	clientKey := sc.GetPubKey()
 
 	privvalPubKey := rs.privVal.GetPubKey()
 

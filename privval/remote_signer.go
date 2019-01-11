@@ -49,11 +49,6 @@ func (sc *RemoteSignerClient) GetPubKey() crypto.PubKey {
 }
 
 func (sc *RemoteSignerClient) getPubKey() (crypto.PubKey, error) {
-	// NOTE: getPubKey is only called in the constructor.
-	// It shouldn't need the mtx (#3064).
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
 	err := writeMsg(sc.conn, &PubKeyRequest{})
 	if err != nil {
 		return nil, err

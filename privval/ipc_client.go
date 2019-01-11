@@ -37,9 +37,11 @@ type IPCVal struct {
 	connTimeout   time.Duration
 	connHeartbeat time.Duration
 
-	conn net.Conn
-	// connMtx guards writing and reading the field (methods on net.Conn itself are gorountine safe though)
+	// connMtx guards writing and reading the field
+	// to support restarting the connection.
+	// Methods on net.Conn itself are already gorountine safe.
 	connMtx sync.RWMutex
+	conn    net.Conn
 
 	cancelPing chan struct{}
 	pingTicker *time.Ticker
