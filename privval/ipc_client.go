@@ -138,6 +138,7 @@ func (sc *IPCVal) OnStop() {
 	}
 }
 
+// reset the underlying connection
 func (sc *IPCVal) connect() error {
 	la, err := net.ResolveUnixAddr("unix", sc.addr)
 	if err != nil {

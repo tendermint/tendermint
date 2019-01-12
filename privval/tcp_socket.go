@@ -11,6 +11,9 @@ type timeoutError interface {
 	Timeout() bool
 }
 
+//------------------------------------------------------------------
+// Listener
+
 // tcpTimeoutListener implements net.Listener.
 var _ net.Listener = (*tcpTimeoutListener)(nil)
 
@@ -24,13 +27,6 @@ type tcpTimeoutListener struct {
 	period         time.Duration
 }
 
-// timeoutConn wraps a net.Conn to standardise protocol timeouts / deadline resets.
-type timeoutConn struct {
-	net.Conn
-
-	connDeadline time.Duration
-}
-
 // newTCPTimeoutListener returns an instance of tcpTimeoutListener.
 func newTCPTimeoutListener(
 	ln net.Listener,
@@ -42,16 +38,6 @@ func newTCPTimeoutListener(
 		acceptDeadline: acceptDeadline,
 		connDeadline:   connDeadline,
 		period:         period,
-	}
-}
-
-// newTimeoutConn returns an instance of newTCPTimeoutConn.
-func newTimeoutConn(
-	conn net.Conn,
-	connDeadline time.Duration) *timeoutConn {
-	return &timeoutConn{
-		conn,
-		connDeadline,
 	}
 }
 
@@ -73,7 +59,30 @@ func (ln tcpTimeoutListener) Accept() (net.Conn, error) {
 	return conn, nil
 }
 
-// Read implements net.Listener.
+//------------------------------------------------------------------
+// Connection
+
+// timeoutConn implements net.Conn.
+var _ net.Conn = (*timeoutConn)(nil)
+
+// timeoutConn wraps a net.Conn to standardise protocol timeouts / deadline resets.
+type timeoutConn struct {
+	net.Conn
+
+	connDeadline time.Duration
+}
+
+// newTimeoutConn returns an instance of newTCPTimeoutConn.
+func newTimeoutConn(
+	conn net.Conn,
+	connDeadline time.Duration) *timeoutConn {
+	return &timeoutConn{
+		conn,
+		connDeadline,
+	}
+}
+
+// Read implements net.Conn.
 func (c timeoutConn) Read(b []byte) (n int, err error) {
 	// Reset deadline
 	c.Conn.SetReadDeadline(time.Now().Add(c.connDeadline))
@@ -81,7 +90,7 @@ func (c timeoutConn) Read(b []byte) (n int, err error) {
 	return c.Conn.Read(b)
 }
 
-// Write implements net.Listener.
+// Write implements net.Conn.
 func (c timeoutConn) Write(b []byte) (n int, err error) {
 	// Reset deadline
 	c.Conn.SetWriteDeadline(time.Now().Add(c.connDeadline))

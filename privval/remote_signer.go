@@ -31,16 +31,16 @@ var _ types.PrivValidator = (*RemoteSignerClient)(nil)
 func NewRemoteSignerClient(
 	conn net.Conn,
 ) (*RemoteSignerClient, error) {
-	sc := &RemoteSignerClient{
-		conn: conn,
-	}
-	pubKey, err := sc.getPubKey()
+
+	// retrieve and memoize the consensus public key once.
+	pubKey, err := sc.getPubKey(conn)
 	if err != nil {
 		return nil, cmn.ErrorWrap(err, "error while retrieving public key for remote signer")
 	}
-	// retrieve and memoize the consensus public key once:
-	sc.consensusPubKey = pubKey
-	return sc, nil
+	return &RemoteSignerClient{
+		consensusPubKey: pubKey,
+		conn:            conn,
+	}, nil
 }
 
 // GetPubKey implements PrivValidator.
@@ -48,13 +48,14 @@ func (sc *RemoteSignerClient) GetPubKey() crypto.PubKey {
 	return sc.consensusPubKey
 }
 
-func (sc *RemoteSignerClient) getPubKey() (crypto.PubKey, error) {
-	err := writeMsg(sc.conn, &PubKeyRequest{})
+// not thread-safe (only called on startup).
+func getPubKey(conn net.Conn) (crypto.PubKey, error) {
+	err := writeMsg(conn, &PubKeyRequest{})
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := readMsg(sc.conn)
+	res, err := readMsg(conn)
 	if err != nil {
 		return nil, err
 	}
