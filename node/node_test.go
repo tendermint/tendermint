@@ -122,7 +122,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
 	config.BaseConfig.PrivValidatorListenAddr = addr
 
-	dialer := privval.DialTCPFn(addr, 5*time.Millisecond, ed25519.GenPrivKey())
+	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
 	pvsc := privval.NewRemoteSigner(
 		log.TestingLogger(),
 		config.ChainID(),
@@ -161,7 +161,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
 	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
-	dialer := privval.DialUnixFn(tmpfile, 3*time.Second)
+	dialer := privval.DialUnixFn(tmpfile)
 	pvsc := privval.NewRemoteSigner(
 		log.TestingLogger(),
 		config.ChainID(),

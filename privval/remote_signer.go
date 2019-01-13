@@ -13,6 +13,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// Socket errors.
+var (
+	ErrConnTimeout = errors.New("remote signer timed out")
+)
+
 // RemoteSignerClient implements PrivValidator.
 // It uses a net.Conn to request signatures
 // from an external process.

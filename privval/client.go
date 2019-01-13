@@ -19,10 +19,7 @@ const (
 )
 
 // Socket errors.
-// XXX these arent all used in this file
 var (
-	ErrDialRetryMax       = errors.New("dialed maximum retries")
-	ErrConnTimeout        = errors.New("remote signer timed out")
 	ErrUnexpectedResponse = errors.New("received unexpected response")
 )
 
@@ -30,7 +27,7 @@ var (
 	connHeartbeat = time.Second * defaultConnHeartBeatSeconds
 )
 
-// SocketValOption sets an optional parameter on the SocketPV.
+// SocketValOption sets an optional parameter on the SocketVal.
 type SocketValOption func(*SocketVal)
 
 // SocketValHeartbeat sets the period on which to check the liveness of the
@@ -41,7 +38,7 @@ func SocketValHeartbeat(period time.Duration) SocketValOption {
 
 // SocketVal implements PrivValidator.
 // It listens for an external process to dial in and uses
-// the (encrypted) socket to request signatures.
+// the socket to request signatures.
 type SocketVal struct {
 	cmn.BaseService
 
@@ -193,7 +190,7 @@ func (sc *SocketVal) OnStop() {
 // waits to accept and sets a new connection.
 // connection is closed in OnStop.
 // returns true if the listener is closed
-// (ie. it returns a nil conn)
+// (ie. it returns a nil conn).
 func (sc *SocketVal) reset() (bool, error) {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()

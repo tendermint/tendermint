@@ -12,6 +12,7 @@ Special thanks to external contributors on this release:
 - [config] \#2992 `allow_duplicate_ip` is now set to false
 
 - [privval] \#2926 split up `PubKeyMsg` into `PubKeyRequest` and `PubKeyResponse` to be consistent with other message types
+- [privval] \#2923 listen for unix socket connections instead of dialing them
 
 * Apps
 
@@ -23,15 +24,14 @@ Special thanks to external contributors on this release:
 * Blockchain Protocol
 
 * P2P Protocol
-- multiple connections from the same IP are now disabled by default (see `allow_duplicate_ip` config option)
 
 ### FEATURES:
-- [privval] \#1181 Split immutable and mutable parts of priv_validator.json
+- [privval] \#1181 Split immutable and mutable parts of `priv_validator.json`
 
 ### IMPROVEMENTS:
 - [p2p/conn] \#3111 make SecretConnection thread safe
 
-- [privval] retry RemoteSigner connections on Error
+- [privval] \#2923 retry RemoteSigner connections on Error
 
 ### BUG FIXES:
 - [types] \#2926 do not panic if retrieving the private validator's public key fails

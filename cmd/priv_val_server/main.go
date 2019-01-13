@@ -36,12 +36,12 @@ func main() {
 	pv := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
 
 	var dialer privval.Dialer
-	connTimeout := 3 * time.Second // TODO
 	protocol, address := cmn.ProtocolAndAddress(*addr)
 	switch protocol {
 	case "unix":
-		dialer = privval.DialUnixFn(address, connTimeout)
+		dialer = privval.DialUnixFn(address)
 	case "tcp":
+		connTimeout := 3 * time.Second // TODO
 		dialer = privval.DialTCPFn(address, connTimeout, ed25519.GenPrivKey())
 	default:
 		logger.Error("Unknown protocol", "protocol", protocol)

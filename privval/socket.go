@@ -22,6 +22,7 @@ type timeoutError interface {
 //------------------------------------------------------------------
 // TCP Listener
 
+// TCPListenerOption sets an optional parameter on the tcpListener.
 type TCPListenerOption func(*tcpListener)
 
 // TCPListenerAcceptDeadline sets the deadline for the listener.
@@ -50,7 +51,8 @@ type tcpListener struct {
 	connDeadline   time.Duration
 }
 
-// NewTCPListener returns an instance of tcpListener using the default deadline values.
+// NewTCPListener returns a listener that accepts authenticated encrypted connections
+// using the given secretConnKey and the default timeout values.
 func NewTCPListener(ln net.Listener, secretConnKey ed25519.PrivKeyEd25519) *tcpListener {
 	return &tcpListener{
 		TCPListener:    ln.(*net.TCPListener),
@@ -111,7 +113,8 @@ type unixListener struct {
 	connDeadline   time.Duration
 }
 
-// NewUnixListener returns an instance of unixListener using the default deadline values.
+// NewUnixListener returns a listener that accepts unencrypted connections
+// using the default timeout values.
 func NewUnixListener(ln net.Listener) *unixListener {
 	return &unixListener{
 		UnixListener:   ln.(*net.UnixListener),

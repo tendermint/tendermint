@@ -5,11 +5,17 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
+)
+
+// Socket errors.
+var (
+	ErrDialRetryMax = errors.New("dialed maximum retries")
 )
 
 // RemoteSignerOption sets an optional parameter on the RemoteSigner.
@@ -26,7 +32,8 @@ func RemoteSignerConnRetries(retries int) RemoteSignerOption {
 	return func(ss *RemoteSigner) { ss.connRetries = retries }
 }
 
-// RemoteSigner implements PrivValidator by dialing to a socket.
+// RemoteSigner dials using its dialer and responds to any
+// signature requests using its privVal.
 type RemoteSigner struct {
 	cmn.BaseService
 
@@ -39,8 +46,11 @@ type RemoteSigner struct {
 	conn   net.Conn
 }
 
+// Dialer dials a remote address and returns a net.Conn or an error.
 type Dialer func() (net.Conn, error)
 
+// DialTCPFn dials the given tcp addr, using the given connTimeout and privKey for the
+// authenticated encryption handshake.
 func DialTCPFn(addr string, connTimeout time.Duration, privKey ed25519.PrivKeyEd25519) Dialer {
 	return func() (net.Conn, error) {
 		conn, err := cmn.Connect(addr)
@@ -54,14 +64,17 @@ func DialTCPFn(addr string, connTimeout time.Duration, privKey ed25519.PrivKeyEd
 	}
 }
 
-func DialUnixFn(addr string, connTimeout time.Duration) Dialer {
+// DialUnixFn dials the given unix socket.
+func DialUnixFn(addr string) Dialer {
 	return func() (net.Conn, error) {
 		unixAddr := &net.UnixAddr{addr, "unix"}
 		return net.DialUnix("unix", nil, unixAddr)
 	}
 }
 
-// NewRemoteSigner returns an instance of RemoteSigner.
+// NewRemoteSigner return a RemoteSigner that will dial using the given
+// dialer and respond to any signature requests over the connection
+// using the given privVal.
 func NewRemoteSigner(
 	logger log.Logger,
 	chainID string,
@@ -77,7 +90,6 @@ func NewRemoteSigner(
 	}
 
 	rs.BaseService = *cmn.NewBaseService(logger, "RemoteSigner", rs)
-
 	return rs
 }
 
