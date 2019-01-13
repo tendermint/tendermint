@@ -17,6 +17,16 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	testAcceptDeadline = defaultAcceptDeadlineSeconds * time.Second
+
+	testConnDeadline    = 100 * time.Millisecond
+	testConnDeadline2o3 = 66 * time.Millisecond // 2/3 of the other one
+
+	testHeartbeatTimeout    = 10 * time.Millisecond
+	testHeartbeatTimeout3o2 = 6 * time.Millisecond // 3/2 of the other one
+)
+
 func TestSocketPVAddress(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)
@@ -130,18 +140,13 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 
 func TestSocketPVDeadline(t *testing.T) {
 	var (
-		addr    = testFreeAddr(t)
-		listenc = make(chan struct{})
-		sc      = NewTCPVal(
-			log.TestingLogger(),
-			addr,
-			ed25519.GenPrivKey(),
-		)
+		addr            = testFreeAddr(t)
+		listenc         = make(chan struct{})
+		thisConnTimeout = 100 * time.Millisecond
+		sc              = newSocketVal(log.TestingLogger(), addr, thisConnTimeout)
 	)
 
-	TCPValConnTimeout(100 * time.Millisecond)(sc)
-
-	go func(sc *TCPVal) {
+	go func(sc *SocketVal) {
 		defer close(listenc)
 
 		assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnTimeout)
@@ -274,11 +279,7 @@ func TestErrUnexpectedResponse(t *testing.T) {
 			types.NewMockPV(),
 			ed25519.GenPrivKey(),
 		)
-		sc = NewTCPVal(
-			logger,
-			addr,
-			ed25519.GenPrivKey(),
-		)
+		sc = newSocketVal(logger, addr, testConnDeadline)
 	)
 
 	testStartSocketPV(t, readyc, sc)
@@ -330,16 +331,12 @@ func TestRetryTCPConnToRemoteSigner(t *testing.T) {
 			types.NewMockPV(),
 			ed25519.GenPrivKey(),
 		)
-		sc = NewTCPVal(
-			logger,
-			addr,
-			ed25519.GenPrivKey(),
-		)
+		thisConnTimeout = 50 * time.Millisecond
+		sc              = newSocketVal(logger, addr, thisConnTimeout)
 	)
 	// Ping every:
-	TCPValHeartbeat(10 * time.Millisecond)(sc)
+	SocketValHeartbeat(10 * time.Millisecond)(sc)
 
-	TCPValConnTimeout(50 * time.Millisecond)(sc)
 	RemoteSignerConnDeadline(50 * time.Millisecond)(rs)
 	RemoteSignerConnRetries(10)(rs)
 
@@ -369,15 +366,30 @@ func TestRetryTCPConnToRemoteSigner(t *testing.T) {
 	// should see sth like this in the logs:
 	//
 	// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
-	// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=TCPVal
+	// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=SocketVal
 	time.Sleep(testConnDeadline * 2)
+}
+
+func newSocketVal(logger log.Logger, addr string, connDeadline time.Duration) *SocketVal {
+	ln, err := net.Listen(cmn.ProtocolAndAddress(addr))
+	if err != nil {
+		panic(err)
+	}
+	return NewSocketVal(
+		logger,
+		NewTCPListener(
+			ln,
+			testAcceptDeadline, connDeadline,
+			ed25519.GenPrivKey(),
+		),
+	)
 }
 
 func testSetupSocketPair(
 	t *testing.T,
 	chainID string,
 	privValidator types.PrivValidator,
-) (*TCPVal, *RemoteSigner) {
+) (*SocketVal, *RemoteSigner) {
 	var (
 		addr    = testFreeAddr(t)
 		logger  = log.TestingLogger()
@@ -390,15 +402,12 @@ func testSetupSocketPair(
 			privVal,
 			ed25519.GenPrivKey(),
 		)
-		sc = NewTCPVal(
-			logger,
-			addr,
-			ed25519.GenPrivKey(),
-		)
+
+		thisConnTimeout = testConnDeadline
+		sc              = newSocketVal(logger, addr, thisConnTimeout)
 	)
 
-	TCPValConnTimeout(testConnDeadline)(sc)
-	TCPValHeartbeat(testHeartbeatTimeout)(sc)
+	SocketValHeartbeat(testHeartbeatTimeout)(sc)
 	RemoteSignerConnDeadline(testConnDeadline)(rs)
 	RemoteSignerConnRetries(1e6)(rs)
 
@@ -420,8 +429,8 @@ func testReadWriteResponse(t *testing.T, resp RemoteSignerMsg, rsConn net.Conn) 
 	require.NoError(t, err)
 }
 
-func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *TCPVal) {
-	go func(sc *TCPVal) {
+func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *SocketVal) {
+	go func(sc *SocketVal) {
 		require.NoError(t, sc.Start())
 		assert.True(t, sc.IsRunning())
 

@@ -4,15 +4,19 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-func TestTCPTimeoutListenerAcceptDeadline(t *testing.T) {
+func TestTCPListenerAcceptDeadline(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ln = newTCPTimeoutListener(ln, time.Millisecond, time.Second, time.Second)
+	ln = NewTCPListener(ln, time.Millisecond, time.Second, newPrivKey())
 
 	_, err = ln.Accept()
 	opErr, ok := err.(*net.OpError)
@@ -25,13 +29,17 @@ func TestTCPTimeoutListenerAcceptDeadline(t *testing.T) {
 	}
 }
 
-func TestTCPTimeoutListenerConnDeadline(t *testing.T) {
+func newPrivKey() ed25519.PrivKeyEd25519 {
+	return ed25519.GenPrivKey()
+}
+
+func TestTCPListenerConnDeadline(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ln = newTCPTimeoutListener(ln, time.Second, time.Millisecond, time.Second)
+	ln = NewTCPListener(ln, time.Second, time.Millisecond, newPrivKey())
 
 	donec := make(chan struct{})
 	go func(ln net.Listener) {
@@ -56,7 +64,14 @@ func TestTCPTimeoutListenerConnDeadline(t *testing.T) {
 		}
 	}(ln)
 
-	_, err = net.Dial("tcp", ln.Addr().String())
+	// connect and start secret conn
+	conn, err := cmn.Connect(ln.Addr().String())
+	if err == nil {
+		err = conn.SetDeadline(time.Now().Add(connTimeout))
+	}
+	if err == nil {
+		_, err = p2pconn.MakeSecretConnection(conn, newPrivKey())
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

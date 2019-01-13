@@ -14,14 +14,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	testConnDeadline    = 100 * time.Millisecond
-	testConnDeadline2o3 = 66 * time.Millisecond // 2/3 of the other one
-
-	testHeartbeatTimeout    = 10 * time.Millisecond
-	testHeartbeatTimeout3o2 = 6 * time.Millisecond // 3/2 of the other one
-)
-
 func TestIPCPVVoteSimple(t *testing.T) {
 	var (
 		chainID = cmn.RandStr(12)

@@ -8,10 +8,8 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -23,6 +21,7 @@ const (
 )
 
 // Socket errors.
+// XXX these arent all used in this file
 var (
 	ErrDialRetryMax       = errors.New("dialed maximum retries")
 	ErrConnTimeout        = errors.New("remote signer timed out")
@@ -30,46 +29,30 @@ var (
 )
 
 var (
-	acceptDeadline = time.Second * defaultAcceptDeadlineSeconds
-	connTimeout    = time.Second * defaultConnDeadlineSeconds
-	connHeartbeat  = time.Second * defaultConnHeartBeatSeconds
+	connHeartbeat = time.Second * defaultConnHeartBeatSeconds
 )
 
-// TCPValOption sets an optional parameter on the SocketPV.
-type TCPValOption func(*TCPVal)
+// SocketValOption sets an optional parameter on the SocketPV.
+type SocketValOption func(*SocketVal)
 
-// TCPValAcceptDeadline sets the deadline for the TCPVal listener.
-// A zero time value disables the deadline.
-func TCPValAcceptDeadline(deadline time.Duration) TCPValOption {
-	return func(sc *TCPVal) { sc.acceptDeadline = deadline }
-}
-
-// TCPValConnTimeout sets the read and write timeout for connections
-// from external signing processes.
-func TCPValConnTimeout(timeout time.Duration) TCPValOption {
-	return func(sc *TCPVal) { sc.connTimeout = timeout }
-}
-
-// TCPValHeartbeat sets the period on which to check the liveness of the
+// SocketValHeartbeat sets the period on which to check the liveness of the
 // connected Signer connections.
-func TCPValHeartbeat(period time.Duration) TCPValOption {
-	return func(sc *TCPVal) { sc.connHeartbeat = period }
+func SocketValHeartbeat(period time.Duration) SocketValOption {
+	return func(sc *SocketVal) { sc.connHeartbeat = period }
 }
 
-// TCPVal implements PrivValidator.
+// SocketVal implements PrivValidator.
 // It listens for an external process to dial in and uses
 // the (encrypted) socket to request signatures.
-type TCPVal struct {
+type SocketVal struct {
 	cmn.BaseService
 
-	addr string
+	listener net.Listener
 
-	acceptDeadline time.Duration
-	connTimeout    time.Duration
-	connHeartbeat  time.Duration
-
-	secretConnKey ed25519.PrivKeyEd25519
-	listener      net.Listener
+	// ping
+	cancelPing    chan struct{}
+	pingTicker    *time.Ticker
+	connHeartbeat time.Duration
 
 	// signer is mutable since it can be
 	// reset if the connection fails.
@@ -79,63 +62,62 @@ type TCPVal struct {
 	// are already gorountine safe.
 	mtx    sync.RWMutex
 	signer *RemoteSignerClient
-
-	cancelPing chan struct{}
-	pingTicker *time.Ticker
 }
 
-// Check that TCPVal implements PrivValidator.
-var _ types.PrivValidator = (*TCPVal)(nil)
+// Check that SocketVal implements PrivValidator.
+var _ types.PrivValidator = (*SocketVal)(nil)
 
-// NewTCPVal returns an instance of TCPVal.
-func NewTCPVal(
+// NewSocketVal returns an instance of SocketVal.
+func NewSocketVal(
 	logger log.Logger,
-	socketAddr string,
-	privKey ed25519.PrivKeyEd25519,
-) *TCPVal {
-	sc := &TCPVal{
-		addr:           socketAddr,
-		acceptDeadline: acceptDeadline,
-		connTimeout:    connTimeout,
-		connHeartbeat:  connHeartbeat,
-		secretConnKey:  privKey,
+	listener net.Listener,
+) *SocketVal {
+	sc := &SocketVal{
+		listener:      listener,
+		connHeartbeat: connHeartbeat,
 	}
 
-	sc.BaseService = *cmn.NewBaseService(logger, "TCPVal", sc)
+	sc.BaseService = *cmn.NewBaseService(logger, "SocketVal", sc)
 
 	return sc
 }
 
+//--------------------------------------------------------
+// Implement PrivValidator
+
 // GetPubKey implements PrivValidator.
-func (sc *TCPVal) GetPubKey() crypto.PubKey {
+func (sc *SocketVal) GetPubKey() crypto.PubKey {
 	sc.mtx.RLock()
 	defer sc.mtx.RUnlock()
 	return sc.signer.GetPubKey()
 }
 
 // SignVote implements PrivValidator.
-func (sc *TCPVal) SignVote(chainID string, vote *types.Vote) error {
+func (sc *SocketVal) SignVote(chainID string, vote *types.Vote) error {
 	sc.mtx.RLock()
 	defer sc.mtx.RUnlock()
 	return sc.signer.SignVote(chainID, vote)
 }
 
 // SignProposal implements PrivValidator.
-func (sc *TCPVal) SignProposal(chainID string, proposal *types.Proposal) error {
+func (sc *SocketVal) SignProposal(chainID string, proposal *types.Proposal) error {
 	sc.mtx.RLock()
 	defer sc.mtx.RUnlock()
 	return sc.signer.SignProposal(chainID, proposal)
 }
 
+//--------------------------------------------------------
+// More thread safe methods proxied to the signer
+
 // Ping is used to check connection health.
-func (sc *TCPVal) Ping() error {
+func (sc *SocketVal) Ping() error {
 	sc.mtx.RLock()
 	defer sc.mtx.RUnlock()
 	return sc.signer.Ping()
 }
 
 // Close closes the underlying net.Conn.
-func (sc *TCPVal) Close() {
+func (sc *SocketVal) Close() {
 	sc.mtx.RLock()
 	defer sc.mtx.RUnlock()
 	if sc.signer != nil {
@@ -151,50 +133,11 @@ func (sc *TCPVal) Close() {
 	}
 }
 
-// waits to accept and sets a new connection.
-// connection is closed in OnStop.
-// returns true if the listener is closed
-// (ie. it returns a nil conn)
-func (sc *TCPVal) reset() (bool, error) {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
-	// first check if the conn already exists and close it.
-	if sc.signer != nil {
-		if err := sc.signer.Close(); err != nil {
-			sc.Logger.Error("error closing connection", "err", err)
-		}
-	}
-
-	// dial the addr
-	conn, err := sc.waitConnection()
-	if err != nil {
-		return false, err
-	}
-
-	// listener is closed
-	if conn == nil {
-		return true, nil
-	}
-
-	sc.signer, err = NewRemoteSignerClient(conn)
-	if err != nil {
-		// failed to fetch the pubkey. close out the connection.
-		if err := conn.Close(); err != nil {
-			sc.Logger.Error("error closing connection", "err", err)
-		}
-		return false, err
-	}
-	return false, nil
-}
+//--------------------------------------------------------
+// Service start and stop
 
 // OnStart implements cmn.Service.
-func (sc *TCPVal) OnStart() error {
-	if err := sc.listen(); err != nil {
-		sc.Logger.Error("OnStart", "err", err)
-		return err
-	}
-
+func (sc *SocketVal) OnStart() error {
 	if closed, err := sc.reset(); err != nil {
 		sc.Logger.Error("OnStart", "err", err)
 		return err
@@ -239,14 +182,54 @@ func (sc *TCPVal) OnStart() error {
 }
 
 // OnStop implements cmn.Service.
-func (sc *TCPVal) OnStop() {
+func (sc *SocketVal) OnStop() {
 	if sc.cancelPing != nil {
 		close(sc.cancelPing)
 	}
 	sc.Close()
 }
 
-func (sc *TCPVal) acceptConnection() (net.Conn, error) {
+//--------------------------------------------------------
+// Connection and signer management
+
+// waits to accept and sets a new connection.
+// connection is closed in OnStop.
+// returns true if the listener is closed
+// (ie. it returns a nil conn)
+func (sc *SocketVal) reset() (bool, error) {
+	sc.mtx.Lock()
+	defer sc.mtx.Unlock()
+
+	// first check if the conn already exists and close it.
+	if sc.signer != nil {
+		if err := sc.signer.Close(); err != nil {
+			sc.Logger.Error("error closing connection", "err", err)
+		}
+	}
+
+	// wait for a new conn
+	conn, err := sc.waitConnection()
+	if err != nil {
+		return false, err
+	}
+
+	// listener is closed
+	if conn == nil {
+		return true, nil
+	}
+
+	sc.signer, err = NewRemoteSignerClient(conn)
+	if err != nil {
+		// failed to fetch the pubkey. close out the connection.
+		if err := conn.Close(); err != nil {
+			sc.Logger.Error("error closing connection", "err", err)
+		}
+		return false, err
+	}
+	return false, nil
+}
+
+func (sc *SocketVal) acceptConnection() (net.Conn, error) {
 	conn, err := sc.listener.Accept()
 	if err != nil {
 		if !sc.IsRunning() {
@@ -255,34 +238,12 @@ func (sc *TCPVal) acceptConnection() (net.Conn, error) {
 		return nil, err
 
 	}
-
-	conn, err = p2pconn.MakeSecretConnection(conn, sc.secretConnKey)
-	if err != nil {
-		return nil, err
-	}
-
 	return conn, nil
-}
-
-func (sc *TCPVal) listen() error {
-	ln, err := net.Listen(cmn.ProtocolAndAddress(sc.addr))
-	if err != nil {
-		return err
-	}
-
-	sc.listener = newTCPTimeoutListener(
-		ln,
-		sc.acceptDeadline,
-		sc.connTimeout,
-		sc.connHeartbeat,
-	)
-
-	return nil
 }
 
 // waitConnection uses the configured wait timeout to error if no external
 // process connects in the time period.
-func (sc *TCPVal) waitConnection() (net.Conn, error) {
+func (sc *SocketVal) waitConnection() (net.Conn, error) {
 	var (
 		connc = make(chan net.Conn, 1)
 		errc  = make(chan error, 1)
