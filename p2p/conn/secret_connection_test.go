@@ -157,7 +157,8 @@ func writeLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, txt string, n in
 func readLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, n int) {
 	readBuffer := make([]byte, dataMaxSize)
 	for i := 0; i < n; i++ {
-		conn.Read(readBuffer)
+		_, err := conn.Read(readBuffer)
+		assert.NoError(t, err)
 	}
 	wg.Done()
 }
