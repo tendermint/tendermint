@@ -8,6 +8,16 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
+//-------------------------------------------
+// helper funcs
+
+func newPrivKey() ed25519.PrivKeyEd25519 {
+	return ed25519.GenPrivKey()
+}
+
+//-------------------------------------------
+// tests
+
 func TestTCPListenerAcceptDeadline(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -27,10 +37,6 @@ func TestTCPListenerAcceptDeadline(t *testing.T) {
 	if have, want := opErr.Op, "accept"; have != want {
 		t.Errorf("have %v, want %v", have, want)
 	}
-}
-
-func newPrivKey() ed25519.PrivKeyEd25519 {
-	return ed25519.GenPrivKey()
 }
 
 func TestTCPListenerConnDeadline(t *testing.T) {
@@ -68,7 +74,7 @@ func TestTCPListenerConnDeadline(t *testing.T) {
 		}
 	}(tcpLn)
 
-	dialer := dialTCPFn(ln.Addr().String(), testConnDeadline, newPrivKey())
+	dialer := DialTCPFn(ln.Addr().String(), testConnDeadline, newPrivKey())
 	_, err = dialer()
 	if err != nil {
 		t.Fatal(err)

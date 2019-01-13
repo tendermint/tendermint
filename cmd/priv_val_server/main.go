@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"os"
+	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -34,13 +35,20 @@ func main() {
 
 	pv := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
 
-	rs := privval.NewRemoteSigner(
-		logger,
-		*chainID,
-		*addr,
-		pv,
-		ed25519.GenPrivKey(),
-	)
+	var dialer privval.Dialer
+	connTimeout := 3 * time.Second // TODO
+	protocol, address := cmn.ProtocolAndAddress(*addr)
+	switch protocol {
+	case "unix":
+		dialer = privval.DialUnixFn(address, connTimeout)
+	case "tcp":
+		dialer = privval.DialTCPFn(address, connTimeout, ed25519.GenPrivKey())
+	default:
+		logger.Error("Unknown protocol", "protocol", protocol)
+		return
+	}
+
+	rs := privval.NewRemoteSigner(logger, *chainID, pv, dialer)
 	err := rs.Start()
 	if err != nil {
 		panic(err)

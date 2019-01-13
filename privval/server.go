@@ -41,6 +41,25 @@ type RemoteSigner struct {
 
 type Dialer func() (net.Conn, error)
 
+func DialTCPFn(addr string, connTimeout time.Duration, privKey ed25519.PrivKeyEd25519) Dialer {
+	return func() (net.Conn, error) {
+		conn, err := cmn.Connect(addr)
+		if err == nil {
+			err = conn.SetDeadline(time.Now().Add(connTimeout))
+		}
+		if err == nil {
+			conn, err = p2pconn.MakeSecretConnection(conn, privKey)
+		}
+		return conn, err
+	}
+}
+
+func DialUnixFn(addr string, connTimeout time.Duration) Dialer {
+	return func() (net.Conn, error) {
+		return cmn.Connect(addr)
+	}
+}
+
 // NewRemoteSigner returns an instance of RemoteSigner.
 func NewRemoteSigner(
 	logger log.Logger,
@@ -101,25 +120,6 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 	}
 
 	return nil, ErrDialRetryMax
-}
-
-func dialTCPFn(addr string, connTimeout time.Duration, privKey ed25519.PrivKeyEd25519) Dialer {
-	return func() (net.Conn, error) {
-		conn, err := cmn.Connect(addr)
-		if err == nil {
-			err = conn.SetDeadline(time.Now().Add(connTimeout))
-		}
-		if err == nil {
-			conn, err = p2pconn.MakeSecretConnection(conn, privKey)
-		}
-		return conn, err
-	}
-}
-
-func dialUnixFn(addr string, connTimeout time.Duration) Dialer {
-	return func() (net.Conn, error) {
-		return cmn.Connect(addr)
-	}
 }
 
 func (rs *RemoteSigner) handleConnection(conn net.Conn) {
