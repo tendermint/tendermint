@@ -1,8 +1,15 @@
 ## v0.28.0
 
-*TBD*
+*January 14th, 2019*
 
 Special thanks to external contributors on this release:
+@fmauricios, @gianfelipe93, @husio, @needkane, @srmo, @yutianwu
+
+This release is primarily about upgrades to the `privval` system -
+separating the `priv_validator.json` into distinct config and data files, and
+refactoring the socket validator to support reconnections.
+
+See [UPGRADING.md](UPGRADING.md) for more details.
 
 ### BREAKING CHANGES:
 
@@ -10,14 +17,14 @@ Special thanks to external contributors on this release:
 - [cli] Removed `node` `--proxy_app=dummy` option. Use `kvstore` (`persistent_kvstore`) instead.
 - [cli] Renamed `node` `--proxy_app=nilapp` to `--proxy_app=noop`.
 - [config] \#2992 `allow_duplicate_ip` is now set to false
-- [privval] \#2926 split up `PubKeyMsg` into `PubKeyRequest` and `PubKeyResponse` to be consistent with other message types
-- [privval] \#2923 listen for unix socket connections instead of dialing them
+- [privval] \#1181 Split immutable and mutable parts of `priv_validator.json`
+  (@yutianwu)
+- [privval] \#2926 Split up `PubKeyMsg` into `PubKeyRequest` and `PubKeyResponse` to be consistent with other message types
+- [privval] \#2923 Listen for unix socket connections instead of dialing them
 
 * Apps
 
 * Go API
-- [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on
-`PrivValidator.GetPubKey()` instead of requesting it again
 - [types] \#2981 Remove `PrivValidator.GetAddress()`
 
 * Blockchain Protocol
@@ -25,16 +32,21 @@ Special thanks to external contributors on this release:
 * P2P Protocol
 
 ### FEATURES:
-- [privval] \#1181 Split immutable and mutable parts of `priv_validator.json`
+- [rpc] \#3052 Include peer's remote IP in `/net_info`
 
 ### IMPROVEMENTS:
-- [p2p/conn] \#3111 make SecretConnection thread safe
-- [privval] \#2923 retry RemoteSigner connections on error
-- [rpc] \#3047 Include peer's remote IP in `/net_info`
+- [consensus] \#3086 Log peerID on ignored votes (@srmo)
+- [docs] \#3061 Added spec on signing consensus msgs at
+  ./docs/spec/consensus/signing.md
+- [privval] \#2948 Memoize pubkey so it's only requested once on startup
+- [privval] \#2923 Retry RemoteSigner connections on error
 
 ### BUG FIXES:
 
-- [types] \#2926 do not panic if retrieving the private validator's public key fails
-- [rpc] \#3080 check if the variable "skipCount" is bigger than zero. If it is not, we set it to 0. If it, we do not do anything.
-- [crypto/multisig] \#3102 fix multisig keys address length
+- [types] \#2926 Do not panic if retrieving the private validator's public key fails
+- [rpc] \#3053 Fix internal error in `/tx_search` when results are empty
+  (@gianfelipe93)
+- [crypto/multisig] \#3102 Fix multisig keys address length
 - [crypto/encoding] \#3101 Fix `PubKeyMultisigThreshold` unmarshalling into `crypto.PubKey` interface
+- [build] \#3085 Fix `Version` field in build scripts (@husio)
+- [p2p/conn] \#3111 Make SecretConnection thread safe
