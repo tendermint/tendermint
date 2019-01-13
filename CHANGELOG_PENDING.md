@@ -30,8 +30,8 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 - [p2p/conn] \#3111 make SecretConnection thread safe
-
 - [privval] retry RemoteSigner connections on Error
+- [rpc] \#3047 Include peer's remote IP in `/net_info`
 
 ### BUG FIXES:
 - [types] \#2926 do not panic if retrieving the private validator's public key fails
