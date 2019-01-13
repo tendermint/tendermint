@@ -33,6 +33,8 @@ Special thanks to external contributors on this release:
 - [rpc] \#3047 Include peer's remote IP in `/net_info`
 
 ### BUG FIXES:
+
 - [types] \#2926 do not panic if retrieving the private validator's public key fails
+- [rpc] \#3080 check if the variable "skipCount" is bigger than zero. If it is not, we set it to 0. If it, we do not do anything.
 - [crypto/multisig] \#3102 fix multisig keys address length
 - [crypto/encoding] \#3101 Fix `PubKeyMultisigThreshold` unmarshalling into `crypto.PubKey` interface
