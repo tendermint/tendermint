@@ -144,12 +144,17 @@ func MakeParts(obj interface{}, partSize int) []Part
 For an overview of Merkle trees, see
 [wikipedia](https://en.wikipedia.org/wiki/Merkle_tree)
 
-A Simple Tree is a simple compact binary tree for a static list of items. Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure. In a Simple Tree, the transactions and validation signatures of a block are hashed using this simple merkle tree logic.
+We use the RFC 6962 specification of a merkle tree, instantiated with sha256 as the hash function.
+Merkle trees are used throughout Tendermint to compute a cryptographic digest of a data structure.
+The differences between RFC 6962 and the simplest form a merkle tree are that:
 
-If the number of items is not a power of two, the tree will not be full
-and some leaf nodes will be at different levels. Simple Tree tries to
-keep both sides of the tree the same size, but the left side may be one
-greater, for example:
+1) leaf nodes and inner nodes have different hashes. 
+   This is to prevent a proof to an inner node, claiming that it is the hash of the leaf. 
+   The leaf nodes are `SHA256(0x00 || leaf_data)`, and inner nodes are `SHA256(0x01 || left_hash || right_hash)`.
+
+2) When the number of items isn't a power of two, the left half of the tree is as big as it could be.
+   (The smallest power of two less than the number of items) This allows new leaves to be added with less
+   recomputation. For example:
 
 ```
    Simple Tree with 6 items           Simple Tree with 7 items
@@ -163,47 +168,30 @@ greater, for example:
      / \             / \                / \             / \
     /   \           /   \              /   \           /   \
    /     \         /     \            /     \         /     \
-  *       h2      *       h5         *       *       *       h6
- / \             / \                / \     / \     / \
-h0  h1          h3  h4             h0  h1  h2  h3  h4  h5
-```
-
-Tendermint always uses the `TMHASH` hash function, which is equivalent to
-SHA256:
-
-```
-func TMHASH(bz []byte) []byte {
-    return SHA256(bz)
-}
+  *       *       h4     h5          *       *       *       h6
+ / \     / \                        / \     / \     / \
+h0  h1  h2 h3                      h0  h1  h2  h3  h4  h5
 ```
 
 ### Simple Merkle Root
 
-The function `SimpleMerkleRoot` is a simple recursive function defined as follows:
+The function `MerkleRoot` is a simple recursive function defined as follows:
 
 ```go
-func SimpleMerkleRoot(hashes [][]byte) []byte{
-    switch len(hashes) {
-    case 0:
-        return nil
-    case 1:
-        return hashes[0]
-    default:
-        left := SimpleMerkleRoot(hashes[:(len(hashes)+1)/2])
-        right := SimpleMerkleRoot(hashes[(len(hashes)+1)/2:])
-        return SimpleConcatHash(left, right)
-    }
-}
-
-func SimpleConcatHash(left, right []byte) []byte{
-    left = encodeByteSlice(left)
-    right = encodeByteSlice(right)
-    return TMHASH(append(left, right))
+func MerkleRootFromLeafs(leafs [][]byte) []byte{
+	switch len(items) {
+	case 0:
+		return nil
+	case 1:
+		return leafHash(leafs[0])      // SHA256(0x00 || leafs[0])
+	default:
+		k := getSplitPoint(len(items)) // largest power of two smaller than items
+		left := MerkleRootFromLeafs(items[:k])
+		right := MerkleRootFromLeafs(items[k:])
+		return innerHash(left, right)  // SHA256(0x01 || left || right)
+	}
 }
 ```
-
-Note that the leaves are Amino encoded as byte-arrays (ie. simple Uvarint length
-prefix) before being concatenated together and hashed.
 
 Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
 For `struct` arguments, we compute a `[][]byte` containing the hash of each
@@ -214,7 +202,7 @@ For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `str
 
 Proof that a leaf is in a Merkle tree consists of a simple structure:
 
-```
+```golang
 type SimpleProof struct {
         Aunts [][]byte
 }
@@ -222,7 +210,7 @@ type SimpleProof struct {
 
 Which is verified using the following:
 
-```
+```golang
 func (proof SimpleProof) Verify(index, total int, leafHash, rootHash []byte) bool {
 	computedHash := computeHashFromAunts(index, total, leafHash, proof.Aunts)
     return computedHash == rootHash
@@ -238,7 +226,7 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 
 	assert(len(innerHashes) > 0)
 
-	numLeft := (total + 1) / 2
+	numLeft := getSplitPoint(total) // largest power of 2 less than total
 	if index < numLeft {
 		leftHash := computeHashFromAunts(index, numLeft, leafHash, innerHashes[:len(innerHashes)-1])
 		assert(leftHash != nil)
