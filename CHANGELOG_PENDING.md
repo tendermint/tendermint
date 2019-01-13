@@ -1,4 +1,4 @@
-## v0.27.4
+## v0.28.0
 
 *TBD*
 
@@ -15,9 +15,9 @@ Special thanks to external contributors on this release:
 
 * Apps
 
-* Go API  
-- [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on 
-`PrivValidator.GetPubKey()` instead of requesting it again 
+* Go API
+- [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on
+`PrivValidator.GetPubKey()` instead of requesting it again
 - [types] \#2981 Remove `PrivValidator.GetAddress()`
 
 * Blockchain Protocol
@@ -29,6 +29,7 @@ Special thanks to external contributors on this release:
 - [privval] \#1181 Split immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
+- [p2p/conn] \#3111 make SecretConnection thread safe
 - [rpc] \#3047 Include peer's remote IP in `/net_info`
 
 ### BUG FIXES:
