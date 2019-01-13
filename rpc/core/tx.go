@@ -21,6 +21,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // tx, err := client.Tx([]byte("2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"), true)
 // ```
 //
@@ -115,6 +120,11 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // q, err := tmquery.New("account.owner='Ivan'")
 // tx, err := client.TxSearch(q, true)
 // ```
@@ -191,10 +201,11 @@ func TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSear
 	totalCount := len(results)
 	perPage = validatePerPage(perPage)
 	page = validatePage(page, perPage, totalCount)
-	skipCount := (page - 1) * perPage
+	skipCount := validateSkipCount(page, perPage)
 
 	apiResults := make([]*ctypes.ResultTx, cmn.MinInt(perPage, totalCount-skipCount))
 	var proof types.TxProof
+	// if there's no tx in the results array, we don't need to loop through the apiResults array
 	for i := 0; i < len(apiResults); i++ {
 		r := results[skipCount+i]
 		height := r.Height

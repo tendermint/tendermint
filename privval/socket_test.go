@@ -4,17 +4,31 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
-func TestTCPTimeoutListenerAcceptDeadline(t *testing.T) {
+//-------------------------------------------
+// helper funcs
+
+func newPrivKey() ed25519.PrivKeyEd25519 {
+	return ed25519.GenPrivKey()
+}
+
+//-------------------------------------------
+// tests
+
+func TestTCPListenerAcceptDeadline(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ln = newTCPTimeoutListener(ln, time.Millisecond, time.Second, time.Second)
+	tcpLn := NewTCPListener(ln, newPrivKey())
+	TCPListenerAcceptDeadline(time.Millisecond)(tcpLn)
+	TCPListenerConnDeadline(time.Second)(tcpLn)
 
-	_, err = ln.Accept()
+	_, err = tcpLn.Accept()
 	opErr, ok := err.(*net.OpError)
 	if !ok {
 		t.Fatalf("have %v, want *net.OpError", err)
@@ -25,14 +39,17 @@ func TestTCPTimeoutListenerAcceptDeadline(t *testing.T) {
 	}
 }
 
-func TestTCPTimeoutListenerConnDeadline(t *testing.T) {
+func TestTCPListenerConnDeadline(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ln = newTCPTimeoutListener(ln, time.Second, time.Millisecond, time.Second)
+	tcpLn := NewTCPListener(ln, newPrivKey())
+	TCPListenerAcceptDeadline(time.Second)(tcpLn)
+	TCPListenerConnDeadline(time.Millisecond)(tcpLn)
 
+	readyc := make(chan struct{})
 	donec := make(chan struct{})
 	go func(ln net.Listener) {
 		defer close(donec)
@@ -41,6 +58,7 @@ func TestTCPTimeoutListenerConnDeadline(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		<-readyc
 
 		time.Sleep(2 * time.Millisecond)
 
@@ -54,12 +72,13 @@ func TestTCPTimeoutListenerConnDeadline(t *testing.T) {
 		if have, want := opErr.Op, "read"; have != want {
 			t.Errorf("have %v, want %v", have, want)
 		}
-	}(ln)
+	}(tcpLn)
 
-	_, err = net.Dial("tcp", ln.Addr().String())
+	dialer := DialTCPFn(ln.Addr().String(), testConnDeadline, newPrivKey())
+	_, err = dialer()
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	close(readyc)
 	<-donec
 }

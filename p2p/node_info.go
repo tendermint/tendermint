@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	maxNodeInfoSize = 10240 // 10Kb
+	maxNodeInfoSize = 10240 // 10KB
 	maxNumChannels  = 16    // plenty of room for upgrades, for now
 )
 
@@ -36,7 +36,7 @@ type nodeInfoAddress interface {
 // nodeInfoTransport validates a nodeInfo and checks
 // our compatibility with it. It's for use in the handshake.
 type nodeInfoTransport interface {
-	ValidateBasic() error
+	Validate() error
 	CompatibleWith(other NodeInfo) error
 }
 
@@ -103,7 +103,7 @@ func (info DefaultNodeInfo) ID() ID {
 	return info.ID_
 }
 
-// ValidateBasic checks the self-reported DefaultNodeInfo is safe.
+// Validate checks the self-reported DefaultNodeInfo is safe.
 // It returns an error if there
 // are too many Channels, if there are any duplicate Channels,
 // if the ListenAddr is malformed, or if the ListenAddr is a host name
@@ -116,7 +116,7 @@ func (info DefaultNodeInfo) ID() ID {
 // International clients could then use punycode (or we could use
 // url-encoding), and we just need to be careful with how we handle that in our
 // clients. (e.g. off by default).
-func (info DefaultNodeInfo) ValidateBasic() error {
+func (info DefaultNodeInfo) Validate() error {
 
 	// ID is already validated.
 

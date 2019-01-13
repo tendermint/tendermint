@@ -36,22 +36,26 @@ db_backend = "leveldb"
 # Database directory
 db_dir = "data"
 
-# Output level for logging
-log_level = "state:info,*:error"
+# Output level for logging, including package level options
+log_level = "main:info,state:info,*:error"
 
 # Output format: 'plain' (colored text) or 'json'
 log_format = "plain"
 
 ##### additional base config options #####
 
-# The ID of the chain to join (should be signed with every transaction and vote)
-chain_id = ""
-
 # Path to the JSON file containing the initial validator set and other meta data
-genesis_file = "genesis.json"
+genesis_file = "config/genesis.json"
 
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv_validator_file = "priv_validator.json"
+priv_validator_file = "config/priv_validator.json"
+
+# TCP or UNIX socket address for Tendermint to listen on for
+# connections from an external PrivValidator process
+priv_validator_laddr = ""
+
+# Path to the JSON file containing the private key to use for node authentication in the p2p protocol
+node_key_file = "config/node_key.json"
 
 # Mechanism to connect to the ABCI application: socket | grpc
 abci = "socket"
@@ -74,13 +78,13 @@ laddr = "tcp://0.0.0.0:26657"
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
 # Use '["*"]' to allow any origin
-cors_allowed_origins = "[]"
+cors_allowed_origins = []
 
 # A list of methods the client is allowed to use with cross-domain requests
-cors_allowed_methods = "[HEAD GET POST]"
+cors_allowed_methods = ["HEAD", "GET", "POST"]
 
 # A list of non simple headers the client is allowed to use with cross-domain requests
-cors_allowed_headers = "[Origin Accept Content-Type X-Requested-With X-Server-Time]"
+cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"]
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
@@ -88,7 +92,7 @@ grpc_laddr = ""
 
 # Maximum number of simultaneous connections.
 # Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -100,7 +104,7 @@ unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).
 # Does not include gRPC connections. See grpc_max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -113,6 +117,12 @@ max_open_connections = 900
 # Address to listen for incoming connections
 laddr = "tcp://0.0.0.0:26656"
 
+# Address to advertise to peers for them to dial
+# If empty, will use the same port as the laddr,
+# and will introspect on the listener or use UPnP
+# to figure out the address.
+external_address = ""
+
 # Comma separated list of seed nodes to connect to
 seeds = ""
 
@@ -123,7 +133,7 @@ persistent_peers = ""
 upnp = false
 
 # Path to address book
-addr_book_file = "addrbook.json"
+addr_book_file = "config/addrbook.json"
 
 # Set true for strict address routability rules
 # Set false for private or local networks
@@ -160,7 +170,7 @@ seed_mode = false
 private_peer_ids = ""
 
 # Toggle to disable guard against peers connecting from the same ip.
-allow_duplicate_ip = true
+allow_duplicate_ip = false
 
 # Peer connection configuration.
 handshake_timeout = "20s"
@@ -171,26 +181,26 @@ dial_timeout = "3s"
 
 recheck = true
 broadcast = true
-wal_dir = "data/mempool.wal"
+wal_dir = ""
 
 # size of the mempool
-size = 100000
+size = 5000
 
 # size of the cache (used to filter transactions we saw earlier)
-cache_size = 100000
+cache_size = 10000
 
 ##### consensus configuration options #####
 [consensus]
 
 wal_file = "data/cs.wal/wal"
 
-timeout_propose = "3000ms"
+timeout_propose = "3s"
 timeout_propose_delta = "500ms"
-timeout_prevote = "1000ms"
+timeout_prevote = "1s"
 timeout_prevote_delta = "500ms"
-timeout_precommit = "1000ms"
+timeout_precommit = "1s"
 timeout_precommit_delta = "500ms"
-timeout_commit = "1000ms"
+timeout_commit = "1s"
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = false
@@ -201,10 +211,10 @@ create_empty_blocks_interval = "0s"
 
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "100ms"
-peer_query_maj23_sleep_duration = "2000ms"
+peer_query_maj23_sleep_duration = "2s"
 
 # Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
-blocktime_iota = "1000ms"
+blocktime_iota = "1s"
 
 ##### transactions indexer configuration options #####
 [tx_index]
@@ -245,7 +255,7 @@ prometheus = false
 prometheus_listen_addr = ":26660"
 
 # Maximum number of simultaneous connections.
-# If you want to accept a more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = 3

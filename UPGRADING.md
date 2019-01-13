@@ -3,9 +3,100 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.28.0
+
+This release breaks the format for the `priv_validator.json` file
+and the protocol used for the external validator process.
+It is compatible with v0.27.0 blockchains (neither the BlockProtocol or the
+P2PProtocol have changed).
+
+Please read carefully for details about upgrading.
+
+XXX: Backup your `config/priv_validator.json`
+before proceeding.
+
+### `priv_validator.json`
+
+The `config/priv_validator.json` is now two files:
+`config/priv_validator_key.json` and `data/priv_validator_state.json`.
+The former contains the key material, the later contains the details on the last
+thing signed.
+
+When running v0.28.0 for the first time, it will back up any pre-existing
+`priv_validator.json` file and proceed to split it into the two new files.
+Upgrading should happen automatically without problem.
+
+To upgrade manually, use the provided `privValUpgrade.go` script, with exact paths for the old
+`priv_validator.json` and the locations for the two new files. It's recomended
+to use the default paths, of `config/priv_validator_key.json` and
+`data/priv_validator_state.json`, respectively:
+
+```
+go run scripts/privValUpgrade.go <old-path> <new-key-path> <new-state-path>
+```
+
+### External validator signers
+
+The Unix and TCP implementations of the remote signing validator
+have been consolidated into a single implementation.
+Thus in both cases, the external process is expected to dial
+Tendermint. This is different from how Unix sockets used to work, where
+Tendermint dialed the external process.
+
+The `PubKeyMsg` was also split into two for consistency with other message
+types.
+
+Note that the TCP sockets don't yet use a persistent key,
+so while they're encrypted, they can't yet be properly authenticated.
+See [#3105](https://github.com/tendermint/tendermint/issues/3105).
+Note the Unix socket has neither encryption nor authentication, but will
+add a shared-secret in [#3099](https://github.com/tendermint/tendermint/issues/3099).
+
+
+## v0.27.0
+
+This release contains some breaking changes to the block and p2p protocols,
+but does not change any core data structures, so it should be compatible with
+existing blockchains from the v0.26 series that only used Ed25519 validator keys.
+Blockchains using Secp256k1 for validators will not be compatible. This is due
+to the fact that we now enforce which key types validators can use as a
+consensus param. The default is Ed25519, and Secp256k1 must be activated
+explicitly.
+
+It is recommended to upgrade all nodes at once to avoid incompatibilities at the
+peer layer - namely, the heartbeat consensus message has been removed (only
+relevant if `create_empty_blocks=false` or `create_empty_blocks_interval > 0`),
+and the proposer selection algorithm has changed. Since proposer information is
+never included in the blockchain, this change only affects the peer layer.
+
+### Go API Changes
+
+#### libs/db
+
+The ReverseIterator API has changed the meaning of `start` and `end`.
+Before, iteration was from `start` to `end`, where
+`start > end`. Now, iteration is from `end` to `start`, where `start < end`.
+The iterator also excludes `end`. This change allows a simplified and more
+intuitive logic, aligning the semantic meaning of `start` and `end` in the
+`Iterator` and `ReverseIterator`.
+
+### Applications
+
+This release enforces a new consensus parameter, the
+ValidatorParams.PubKeyTypes. Applications must ensure that they only return
+validator updates with the allowed PubKeyTypes. If a validator update includes a
+pubkey type that is not included in the ConsensusParams.Validator.PubKeyTypes,
+block execution will fail and the consensus will halt.
+
+By default, only Ed25519 pubkeys may be used for validators. Enabling
+Secp256k1 requires explicit modification of the ConsensusParams.
+Please update your application accordingly (ie. restrict validators to only be
+able to use Ed25519 keys, or explicitly add additional key types to the genesis
+file).
+
 ## v0.26.0
 
-New 0.26.0 release contains a lot of changes to core data types and protocols. It is not
+This release contains a lot of changes to core data types and protocols. It is not
 compatible to the old versions and there is no straight forward way to update
 old data to be compatible with the new version.
 
@@ -67,7 +158,7 @@ For more information, see:
 
 ### Go API Changes
 
-#### crypto.merkle
+#### crypto/merkle
 
 The `merkle.Hasher` interface was removed. Functions which used to take `Hasher`
 now simply take `[]byte`. This means that any objects being Merklized should be

@@ -9,15 +9,15 @@ import (
 
 	secp256k1 "github.com/tendermint/btcd/btcec"
 	amino "github.com/tendermint/go-amino"
-	"golang.org/x/crypto/ripemd160" // forked to github.com/tendermint/crypto
+	"golang.org/x/crypto/ripemd160"
 
 	"github.com/tendermint/tendermint/crypto"
 )
 
 //-------------------------------------
 const (
-	PrivKeyAminoRoute = "tendermint/PrivKeySecp256k1"
-	PubKeyAminoRoute  = "tendermint/PubKeySecp256k1"
+	PrivKeyAminoName = "tendermint/PrivKeySecp256k1"
+	PubKeyAminoName  = "tendermint/PubKeySecp256k1"
 )
 
 var cdc = amino.NewCodec()
@@ -25,11 +25,11 @@ var cdc = amino.NewCodec()
 func init() {
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
 	cdc.RegisterConcrete(PubKeySecp256k1{},
-		PubKeyAminoRoute, nil)
+		PubKeyAminoName, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKeySecp256k1{},
-		PrivKeyAminoRoute, nil)
+		PrivKeyAminoName, nil)
 }
 
 //-------------------------------------

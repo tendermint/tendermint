@@ -281,6 +281,42 @@ func TestBroadcastTxCommit(t *testing.T) {
 	}
 }
 
+func TestUnconfirmedTxs(t *testing.T) {
+	_, _, tx := MakeTxKV()
+
+	mempool := node.MempoolReactor().Mempool
+	_ = mempool.CheckTx(tx, nil)
+
+	for i, c := range GetClients() {
+		mc, ok := c.(client.MempoolClient)
+		require.True(t, ok, "%d", i)
+		txs, err := mc.UnconfirmedTxs(1)
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.Exactly(t, types.Txs{tx}, types.Txs(txs.Txs))
+	}
+
+	mempool.Flush()
+}
+
+func TestNumUnconfirmedTxs(t *testing.T) {
+	_, _, tx := MakeTxKV()
+
+	mempool := node.MempoolReactor().Mempool
+	_ = mempool.CheckTx(tx, nil)
+	mempoolSize := mempool.Size()
+
+	for i, c := range GetClients() {
+		mc, ok := c.(client.MempoolClient)
+		require.True(t, ok, "%d", i)
+		res, err := mc.NumUnconfirmedTxs()
+		require.Nil(t, err, "%d: %+v", i, err)
+
+		assert.Equal(t, mempoolSize, res.N)
+	}
+
+	mempool.Flush()
+}
+
 func TestTx(t *testing.T) {
 	// first we broadcast a tx
 	c := getHTTPClient()
@@ -392,5 +428,10 @@ func TestTxSearch(t *testing.T) {
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
+
+		// query a non existing tx with page 1 and txsPerPage 1
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, result.Txs, 0)
 	}
 }

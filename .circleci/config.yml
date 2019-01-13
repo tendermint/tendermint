@@ -3,9 +3,16 @@ version: 2
 defaults: &defaults
   working_directory: /go/src/github.com/tendermint/tendermint
   docker:
-    - image: circleci/golang:1.10.3
+    - image: circleci/golang:1.11.4
   environment:
     GOBIN: /tmp/workspace/bin
+
+docs_update_config: &docs_update_config
+  working_directory: ~/repo
+  docker:
+    - image: tendermint/docs_deployment
+  environment:
+    AWS_REGION: us-east-1
 
 jobs:
   setup_dependencies:
@@ -339,10 +346,25 @@ jobs:
           name: upload
           command: bash .circleci/codecov.sh -f coverage.txt
 
+  deploy_docs:
+    <<: *docs_update_config
+    steps:
+      - checkout
+      - run:
+          name: Trigger website build
+          command: |
+            chamber exec tendermint -- start_website_build
+
 workflows:
   version: 2
   test-suite:
     jobs:
+      - deploy_docs:
+          filters:
+            branches:
+              only:
+                - master
+                - develop
       - setup_dependencies
       - lint:
           requires:

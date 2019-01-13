@@ -17,6 +17,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // info, err := client.NetInfo()
 // ```
 //
@@ -48,6 +53,7 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 			NodeInfo:         nodeInfo,
 			IsOutbound:       peer.IsOutbound(),
 			ConnectionStatus: peer.Status(),
+			RemoteIP:         peer.RemoteIP(),
 		})
 	}
 	// TODO: Should we include PersistentPeers and Seeds in here?
@@ -95,6 +101,11 @@ func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, 
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // genesis, err := client.Genesis()
 // ```
 //

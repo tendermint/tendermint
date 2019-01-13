@@ -98,13 +98,15 @@ func (ps *PeerSet) Get(peerKey ID) Peer {
 }
 
 // Remove discards peer by its Key, if the peer was previously memoized.
-func (ps *PeerSet) Remove(peer Peer) {
+// Returns true if the peer was removed, and false if it was not found.
+// in the set.
+func (ps *PeerSet) Remove(peer Peer) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
 	item := ps.lookup[peer.ID()]
 	if item == nil {
-		return
+		return false
 	}
 
 	index := item.index
@@ -116,7 +118,7 @@ func (ps *PeerSet) Remove(peer Peer) {
 	if index == len(ps.list)-1 {
 		ps.list = newList
 		delete(ps.lookup, peer.ID())
-		return
+		return true
 	}
 
 	// Replace the popped item with the last item in the old list.
@@ -127,6 +129,7 @@ func (ps *PeerSet) Remove(peer Peer) {
 	lastPeerItem.index = index
 	ps.list = newList
 	delete(ps.lookup, peer.ID())
+	return true
 }
 
 // Size returns the number of unique items in the peerSet.
