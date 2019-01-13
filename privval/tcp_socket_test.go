@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
 func TestTCPListenerAcceptDeadline(t *testing.T) {
@@ -41,6 +39,7 @@ func TestTCPListenerConnDeadline(t *testing.T) {
 
 	ln = NewTCPListener(ln, time.Second, time.Millisecond, newPrivKey())
 
+	readyc := make(chan struct{})
 	donec := make(chan struct{})
 	go func(ln net.Listener) {
 		defer close(donec)
@@ -49,6 +48,7 @@ func TestTCPListenerConnDeadline(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		<-readyc
 
 		time.Sleep(2 * time.Millisecond)
 
@@ -64,17 +64,11 @@ func TestTCPListenerConnDeadline(t *testing.T) {
 		}
 	}(ln)
 
-	// connect and start secret conn
-	conn, err := cmn.Connect(ln.Addr().String())
-	if err == nil {
-		err = conn.SetDeadline(time.Now().Add(connTimeout))
-	}
-	if err == nil {
-		_, err = p2pconn.MakeSecretConnection(conn, newPrivKey())
-	}
+	dialer := dialTCPFn(ln.Addr().String(), connTimeout, newPrivKey())
+	_, err = dialer()
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	close(readyc)
 	<-donec
 }

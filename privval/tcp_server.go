@@ -30,30 +30,30 @@ func RemoteSignerConnRetries(retries int) RemoteSignerOption {
 type RemoteSigner struct {
 	cmn.BaseService
 
-	addr         string
 	chainID      string
 	connDeadline time.Duration
 	connRetries  int
-	privKey      ed25519.PrivKeyEd25519
 	privVal      types.PrivValidator
 
-	conn net.Conn
+	dialer Dialer
+	conn   net.Conn
 }
+
+type Dialer func() (net.Conn, error)
 
 // NewRemoteSigner returns an instance of RemoteSigner.
 func NewRemoteSigner(
 	logger log.Logger,
-	chainID, socketAddr string,
+	chainID string,
 	privVal types.PrivValidator,
-	privKey ed25519.PrivKeyEd25519,
+	dialer Dialer,
 ) *RemoteSigner {
 	rs := &RemoteSigner{
-		addr:         socketAddr,
 		chainID:      chainID,
 		connDeadline: time.Second * defaultConnDeadlineSeconds,
 		connRetries:  defaultDialRetries,
-		privKey:      privKey,
 		privVal:      privVal,
+		dialer:       dialer,
 	}
 
 	rs.BaseService = *cmn.NewBaseService(logger, "RemoteSigner", rs)
@@ -92,28 +92,34 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 		if retries != rs.connRetries {
 			time.Sleep(rs.connDeadline)
 		}
-
-		conn, err := cmn.Connect(rs.addr)
+		conn, err := rs.dialer()
 		if err != nil {
-			rs.Logger.Error("connect Connect", "addr", rs.addr, "err", err)
+			rs.Logger.Error("dialing", "err", err)
 			continue
 		}
-
-		if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
-			rs.Logger.Error("connect SetDeadline", "err", err)
-			continue
-		}
-
-		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey)
-		if err != nil {
-			rs.Logger.Error("connect MakeSecretConnection", "err", err)
-			continue
-		}
-
 		return conn, nil
 	}
 
 	return nil, ErrDialRetryMax
+}
+
+func dialTCPFn(addr string, connTimeout time.Duration, privKey ed25519.PrivKeyEd25519) Dialer {
+	return func() (net.Conn, error) {
+		conn, err := cmn.Connect(addr)
+		if err == nil {
+			err = conn.SetDeadline(time.Now().Add(connTimeout))
+		}
+		if err == nil {
+			conn, err = p2pconn.MakeSecretConnection(conn, privKey)
+		}
+		return conn, err
+	}
+}
+
+func dialUnixFn(addr string, connTimeout time.Duration) Dialer {
+	return func() (net.Conn, error) {
+		return cmn.Connect(addr)
+	}
 }
 
 func (rs *RemoteSigner) handleConnection(conn net.Conn) {
