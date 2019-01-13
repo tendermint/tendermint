@@ -428,5 +428,10 @@ func TestTxSearch(t *testing.T) {
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
+
+		// query a non existing tx with page 1 and txsPerPage 1
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, result.Txs, 0)
 	}
 }

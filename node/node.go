@@ -878,16 +878,20 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	var pvsc types.PrivValidator
+	var listener net.Listener
 
 	protocol, address := cmn.ProtocolAndAddress(listenAddr)
+	ln, err := net.Listen(protocol, address)
+	if err != nil {
+		return nil, err
+	}
 	switch protocol {
 	case "unix":
-		pvsc = privval.NewIPCVal(logger.With("module", "privval"), address)
+		listener = privval.NewUnixListener(ln)
 	case "tcp":
 		// TODO: persist this key so external signer
 		// can actually authenticate us
-		pvsc = privval.NewTCPVal(logger.With("module", "privval"), listenAddr, ed25519.GenPrivKey())
+		listener = privval.NewTCPListener(ln, ed25519.GenPrivKey())
 	default:
 		return nil, fmt.Errorf(
 			"Wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
@@ -895,10 +899,9 @@ func createAndStartPrivValidatorSocketClient(
 		)
 	}
 
-	if pvsc, ok := pvsc.(cmn.Service); ok {
-		if err := pvsc.Start(); err != nil {
-			return nil, errors.Wrap(err, "failed to start")
-		}
+	pvsc := privval.NewSocketVal(logger.With("module", "privval"), listener)
+	if err := pvsc.Start(); err != nil {
+		return nil, errors.Wrap(err, "failed to start")
 	}
 
 	return pvsc, nil

@@ -154,3 +154,12 @@ func validatePerPage(perPage int) int {
 	}
 	return perPage
 }
+
+func validateSkipCount(page, perPage int) int {
+	skipCount := (page - 1) * perPage
+	if skipCount < 0 {
+		return 0
+	}
+
+	return skipCount
+}
