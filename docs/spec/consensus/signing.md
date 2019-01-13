@@ -89,8 +89,8 @@ type CanonicalProposal struct {
 	Height    int64         `binary:"fixed64"`
 	Round     int64         `binary:"fixed64"`
 	POLRound  int64         `binary:"fixed64"`
-	Timestamp time.Time
 	BlockID   BlockID
+	Timestamp time.Time
 	ChainID   string
 }
 ```
@@ -118,8 +118,8 @@ type CanonicalVote struct {
 	Type      SignedMsgType // type alias for byte
 	Height    int64         `binary:"fixed64"`
 	Round     int64         `binary:"fixed64"`
-	Timestamp time.Time
 	BlockID   BlockID
+	Timestamp time.Time
 	ChainID   string
 }
 ```

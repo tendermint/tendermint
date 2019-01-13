@@ -60,7 +60,7 @@ func (p *Proposal) ValidateBasic() error {
 	if err := p.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}
-	// ValidateBasic above would pass even if the blockId was empty:
+	// ValidateBasic above would pass even if the BlockID was empty:
 	if !p.BlockID.IsComplete() {
 		return fmt.Errorf("Expected a complete, non-empty BlockID, got: %v", p.BlockID)
 	}

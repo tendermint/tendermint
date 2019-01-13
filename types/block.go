@@ -818,9 +818,8 @@ func (blockID BlockID) ValidateBasic() error {
 
 // IsZero returns true if this is the BlockID of a nil block.
 func (blockID BlockID) IsZero() bool {
-	return blockID.Hash == nil &&
-		blockID.PartsHeader.Total == 0 &&
-		blockID.PartsHeader.Hash == nil
+	return len(blockID.Hash) == 0 &&
+		blockID.PartsHeader.IsZero()
 }
 
 // IsComplete returns true if this is a valid BlockID of a non-nil block.

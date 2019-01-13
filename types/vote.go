@@ -52,8 +52,8 @@ type Vote struct {
 	Type             SignedMsgType `json:"type"`
 	Height           int64         `json:"height"`
 	Round            int           `json:"round"`
-	Timestamp        time.Time     `json:"timestamp"`
 	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time     `json:"timestamp"`
 	ValidatorAddress Address       `json:"validator_address"`
 	ValidatorIndex   int           `json:"validator_index"`
 	Signature        []byte        `json:"signature"`
@@ -127,7 +127,7 @@ func (vote *Vote) ValidateBasic() error {
 	if err := vote.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}
-	// BlockID.ValidateBasic would not err if we for instance we have an empty hash but a
+	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
 	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
 		return fmt.Errorf("BlockID must be either empty or complete, got: %v", vote.BlockID)
