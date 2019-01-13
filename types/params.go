@@ -34,7 +34,7 @@ type EvidenceParams struct {
 }
 
 // ValidatorParams restrict the public key types validators can use.
-// NOTE: uses ABCI pubkey naming, not Amino routes.
+// NOTE: uses ABCI pubkey naming, not Amino names.
 type ValidatorParams struct {
 	PubKeyTypes []string `json:"pub_key_types"`
 }
@@ -107,7 +107,7 @@ func (params *ConsensusParams) Validate() error {
 	// Check if keyType is a known ABCIPubKeyType
 	for i := 0; i < len(params.Validator.PubKeyTypes); i++ {
 		keyType := params.Validator.PubKeyTypes[i]
-		if _, ok := ABCIPubKeyTypesToAminoRoutes[keyType]; !ok {
+		if _, ok := ABCIPubKeyTypesToAminoNames[keyType]; !ok {
 			return cmn.NewError("params.Validator.PubKeyTypes[%d], %s, is an unknown pubkey type",
 				i, keyType)
 		}
