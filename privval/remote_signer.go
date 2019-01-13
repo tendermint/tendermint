@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 
 	"github.com/pkg/errors"
 
@@ -18,12 +17,10 @@ import (
 // It uses a net.Conn to request signatures
 // from an external process.
 type RemoteSignerClient struct {
-	consensusPubKey crypto.PubKey
-
-	// XXX: remove mtx.
-	// let the consumer handle the locking
-	mtx  sync.Mutex
 	conn net.Conn
+
+	// memoized
+	consensusPubKey crypto.PubKey
 }
 
 // Check that RemoteSignerClient implements PrivValidator.
@@ -38,8 +35,8 @@ func NewRemoteSignerClient(conn net.Conn) (*RemoteSignerClient, error) {
 		return nil, cmn.ErrorWrap(err, "error while retrieving public key for remote signer")
 	}
 	return &RemoteSignerClient{
-		consensusPubKey: pubKey,
 		conn:            conn,
+		consensusPubKey: pubKey,
 	}, nil
 }
 
@@ -78,9 +75,6 @@ func getPubKey(conn net.Conn) (crypto.PubKey, error) {
 
 // SignVote implements PrivValidator.
 func (sc *RemoteSignerClient) SignVote(chainID string, vote *types.Vote) error {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
 	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
 	if err != nil {
 		return err
@@ -108,9 +102,6 @@ func (sc *RemoteSignerClient) SignProposal(
 	chainID string,
 	proposal *types.Proposal,
 ) error {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
 	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
 	if err != nil {
 		return err
@@ -134,9 +125,6 @@ func (sc *RemoteSignerClient) SignProposal(
 
 // Ping is used to check connection health.
 func (sc *RemoteSignerClient) Ping() error {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
 	err := writeMsg(sc.conn, &PingRequest{})
 	if err != nil {
 		return err
