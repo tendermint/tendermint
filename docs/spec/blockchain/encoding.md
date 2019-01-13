@@ -301,8 +301,8 @@ type CanonicalVote struct {
 	Type      byte
 	Height    int64            `binary:"fixed64"`
 	Round     int64            `binary:"fixed64"`
-	Timestamp time.Time
 	BlockID   CanonicalBlockID
+	Timestamp time.Time
 	ChainID   string
 }
 ```
