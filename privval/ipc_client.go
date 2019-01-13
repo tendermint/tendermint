@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
@@ -30,18 +31,20 @@ func IPCValHeartbeat(period time.Duration) IPCValOption {
 // to request signatures.
 type IPCVal struct {
 	cmn.BaseService
-	*RemoteSignerClient
 
 	addr string
 
 	connTimeout   time.Duration
 	connHeartbeat time.Duration
 
-	// connMtx guards writing and reading the field
-	// to support restarting the connection.
-	// Methods on net.Conn itself are already gorountine safe.
-	connMtx sync.RWMutex
-	conn    net.Conn
+	// signer is mutable since it can be
+	// reset if the connection fails.
+	// failures are detected by a background
+	// ping routine.
+	// Methods on the underlying net.Conn itself
+	// are already gorountine safe.
+	mtx    sync.RWMutex
+	signer *RemoteSignerClient
 
 	cancelPing chan struct{}
 	pingTicker *time.Ticker
@@ -51,6 +54,9 @@ type IPCVal struct {
 var _ types.PrivValidator = (*IPCVal)(nil)
 
 // NewIPCVal returns an instance of IPCVal.
+// It provides thread-safe access to an underlying
+// RemoteSignerClient, resetting it as necessary when
+// connections fail.
 func NewIPCVal(
 	logger log.Logger,
 	socketAddr string,
@@ -66,18 +72,74 @@ func NewIPCVal(
 	return sc
 }
 
-// OnStart implements cmn.Service.
-func (sc *IPCVal) OnStart() error {
-	err := sc.connect()
+// GetPubKey implements PrivValidator.
+func (sc *IPCVal) GetPubKey() crypto.PubKey {
+	return sc.signer.GetPubKey()
+}
+
+// SignVote implements PrivValidator.
+func (sc *IPCVal) SignVote(chainID string, vote *types.Vote) error {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.SignVote(chainID, vote)
+}
+
+// SignProposal implements PrivValidator.
+func (sc *IPCVal) SignProposal(chainID string, proposal *types.Proposal) error {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.SignProposal(chainID, proposal)
+}
+
+// Ping is used to check connection health.
+func (sc *IPCVal) Ping() error {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.Ping()
+}
+
+// Close closes the underlying net.Conn.
+func (sc *IPCVal) Close() error {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.Close()
+}
+
+// dials and sets a new connection.
+// connection is closed in OnStop.
+func (sc *IPCVal) reset() error {
+	sc.mtx.Lock()
+	defer sc.mtx.Unlock()
+
+	// first check if the conn already exists and close it.
+	if sc.signer != nil {
+		if err := sc.signer.Close(); err != nil {
+			sc.Logger.Error("error closing connection", "err", err)
+		}
+	}
+
+	// dial the addr
+	conn, err := sc.connect()
 	if err != nil {
-		sc.Logger.Error("OnStart", "err", err)
 		return err
 	}
 
-	sc.connMtx.RLock()
-	defer sc.connMtx.RUnlock()
-	sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
+	sc.signer, err = NewRemoteSignerClient(conn)
 	if err != nil {
+		// failed to fetch the pubkey. close out the connection.
+		if err := conn.Close(); err != nil {
+			sc.Logger.Error("error closing connection", "err", err)
+		}
+		return err
+	}
+	return nil
+}
+
+// OnStart implements cmn.Service.
+func (sc *IPCVal) OnStart() error {
+
+	if err := sc.reset(); err != nil {
+		sc.Logger.Error("OnStart", "err", err)
 		return err
 	}
 
@@ -95,23 +157,12 @@ func (sc *IPCVal) OnStart() error {
 						return
 					}
 
-					err := sc.connect()
+					err := sc.reset()
 					if err != nil {
 						sc.Logger.Error("Reconnecting to remote signer failed", "err", err)
 						continue
 					}
-					sc.connMtx.RLock()
-					sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
-					sc.connMtx.RUnlock()
-					if err != nil {
-						sc.Logger.Error("Re-initializing remote signer client failed", "err", err)
-						sc.connMtx.RLock()
-						if err := sc.conn.Close(); err != nil {
-							sc.Logger.Error("error closing connection", "err", err)
-						}
-						sc.connMtx.RUnlock()
-						continue
-					}
+
 					sc.Logger.Info("Re-created connection to remote signer", "impl", sc)
 				}
 			case <-sc.cancelPing:
@@ -125,34 +176,27 @@ func (sc *IPCVal) OnStart() error {
 }
 
 // OnStop implements cmn.Service.
+// It stops the ping routine and
+// closes the underlying net.Conn.
 func (sc *IPCVal) OnStop() {
 	if sc.cancelPing != nil {
 		close(sc.cancelPing)
 	}
-	sc.connMtx.RLock()
-	defer sc.connMtx.RUnlock()
-	if sc.conn != nil {
-		if err := sc.conn.Close(); err != nil {
-			sc.Logger.Error("OnStop", "err", err)
-		}
-	}
+
+	sc.Close()
 }
 
-// reset the underlying connection
-func (sc *IPCVal) connect() error {
+// return a new connection using the address and timeout.
+func (sc *IPCVal) connect() (net.Conn, error) {
 	la, err := net.ResolveUnixAddr("unix", sc.addr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	conn, err := net.DialUnix("unix", nil, la)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	sc.connMtx.Lock()
-	defer sc.connMtx.Unlock()
-	sc.conn = newTimeoutConn(conn, sc.connTimeout)
-
-	return nil
+	return newTimeoutConn(conn, sc.connTimeout), nil
 }

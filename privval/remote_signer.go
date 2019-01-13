@@ -20,6 +20,8 @@ import (
 type RemoteSignerClient struct {
 	consensusPubKey crypto.PubKey
 
+	// XXX: remove mtx.
+	// let the consumer handle the locking
 	mtx  sync.Mutex
 	conn net.Conn
 }
@@ -28,12 +30,10 @@ type RemoteSignerClient struct {
 var _ types.PrivValidator = (*RemoteSignerClient)(nil)
 
 // NewRemoteSignerClient returns an instance of RemoteSignerClient.
-func NewRemoteSignerClient(
-	conn net.Conn,
-) (*RemoteSignerClient, error) {
+func NewRemoteSignerClient(conn net.Conn) (*RemoteSignerClient, error) {
 
 	// retrieve and memoize the consensus public key once.
-	pubKey, err := sc.getPubKey(conn)
+	pubKey, err := getPubKey(conn)
 	if err != nil {
 		return nil, cmn.ErrorWrap(err, "error while retrieving public key for remote signer")
 	}
@@ -41,6 +41,11 @@ func NewRemoteSignerClient(
 		consensusPubKey: pubKey,
 		conn:            conn,
 	}, nil
+}
+
+// Close calls Close on the underlying net.Conn.
+func (sc *RemoteSignerClient) Close() error {
+	return sc.conn.Close()
 }
 
 // GetPubKey implements PrivValidator.
