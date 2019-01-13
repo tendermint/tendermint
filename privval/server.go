@@ -5,11 +5,17 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
+)
+
+// Socket errors.
+var (
+	ErrDialRetryMax = errors.New("dialed maximum retries")
 )
 
 // RemoteSignerOption sets an optional parameter on the RemoteSigner.
@@ -26,38 +32,64 @@ func RemoteSignerConnRetries(retries int) RemoteSignerOption {
 	return func(ss *RemoteSigner) { ss.connRetries = retries }
 }
 
-// RemoteSigner implements PrivValidator by dialing to a socket.
+// RemoteSigner dials using its dialer and responds to any
+// signature requests using its privVal.
 type RemoteSigner struct {
 	cmn.BaseService
 
-	addr         string
 	chainID      string
 	connDeadline time.Duration
 	connRetries  int
-	privKey      ed25519.PrivKeyEd25519
 	privVal      types.PrivValidator
 
-	conn net.Conn
+	dialer Dialer
+	conn   net.Conn
 }
 
-// NewRemoteSigner returns an instance of RemoteSigner.
+// Dialer dials a remote address and returns a net.Conn or an error.
+type Dialer func() (net.Conn, error)
+
+// DialTCPFn dials the given tcp addr, using the given connTimeout and privKey for the
+// authenticated encryption handshake.
+func DialTCPFn(addr string, connTimeout time.Duration, privKey ed25519.PrivKeyEd25519) Dialer {
+	return func() (net.Conn, error) {
+		conn, err := cmn.Connect(addr)
+		if err == nil {
+			err = conn.SetDeadline(time.Now().Add(connTimeout))
+		}
+		if err == nil {
+			conn, err = p2pconn.MakeSecretConnection(conn, privKey)
+		}
+		return conn, err
+	}
+}
+
+// DialUnixFn dials the given unix socket.
+func DialUnixFn(addr string) Dialer {
+	return func() (net.Conn, error) {
+		unixAddr := &net.UnixAddr{addr, "unix"}
+		return net.DialUnix("unix", nil, unixAddr)
+	}
+}
+
+// NewRemoteSigner return a RemoteSigner that will dial using the given
+// dialer and respond to any signature requests over the connection
+// using the given privVal.
 func NewRemoteSigner(
 	logger log.Logger,
-	chainID, socketAddr string,
+	chainID string,
 	privVal types.PrivValidator,
-	privKey ed25519.PrivKeyEd25519,
+	dialer Dialer,
 ) *RemoteSigner {
 	rs := &RemoteSigner{
-		addr:         socketAddr,
 		chainID:      chainID,
 		connDeadline: time.Second * defaultConnDeadlineSeconds,
 		connRetries:  defaultDialRetries,
-		privKey:      privKey,
 		privVal:      privVal,
+		dialer:       dialer,
 	}
 
 	rs.BaseService = *cmn.NewBaseService(logger, "RemoteSigner", rs)
-
 	return rs
 }
 
@@ -68,6 +100,7 @@ func (rs *RemoteSigner) OnStart() error {
 		rs.Logger.Error("OnStart", "err", err)
 		return err
 	}
+	rs.conn = conn
 
 	go rs.handleConnection(conn)
 
@@ -91,36 +124,11 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 		if retries != rs.connRetries {
 			time.Sleep(rs.connDeadline)
 		}
-
-		conn, err := cmn.Connect(rs.addr)
+		conn, err := rs.dialer()
 		if err != nil {
-			rs.Logger.Error(
-				"connect",
-				"addr", rs.addr,
-				"err", err,
-			)
-
+			rs.Logger.Error("dialing", "err", err)
 			continue
 		}
-
-		if err := conn.SetDeadline(time.Now().Add(connTimeout)); err != nil {
-			rs.Logger.Error(
-				"connect",
-				"err", err,
-			)
-			continue
-		}
-
-		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey)
-		if err != nil {
-			rs.Logger.Error(
-				"connect",
-				"err", err,
-			)
-
-			continue
-		}
-
 		return conn, nil
 	}
 
@@ -139,7 +147,7 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 		req, err := readMsg(conn)
 		if err != nil {
 			if err != io.EOF {
-				rs.Logger.Error("handleConnection", "err", err)
+				rs.Logger.Error("handleConnection readMsg", "err", err)
 			}
 			return
 		}
@@ -148,12 +156,12 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 
 		if err != nil {
 			// only log the error; we'll reply with an error in res
-			rs.Logger.Error("handleConnection", "err", err)
+			rs.Logger.Error("handleConnection handleRequest", "err", err)
 		}
 
 		err = writeMsg(conn, res)
 		if err != nil {
-			rs.Logger.Error("handleConnection", "err", err)
+			rs.Logger.Error("handleConnection writeMsg", "err", err)
 			return
 		}
 	}
