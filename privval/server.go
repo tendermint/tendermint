@@ -56,7 +56,8 @@ func DialTCPFn(addr string, connTimeout time.Duration, privKey ed25519.PrivKeyEd
 
 func DialUnixFn(addr string, connTimeout time.Duration) Dialer {
 	return func() (net.Conn, error) {
-		return cmn.Connect(addr)
+		unixAddr := &net.UnixAddr{addr, "unix"}
+		return net.DialUnix("unix", nil, unixAddr)
 	}
 }
 
