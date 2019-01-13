@@ -2,9 +2,12 @@ package privval
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"sync"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -58,16 +61,25 @@ func TCPValHeartbeat(period time.Duration) TCPValOption {
 // the (encrypted) socket to request signatures.
 type TCPVal struct {
 	cmn.BaseService
-	*RemoteSignerClient
 
-	addr           string
+	addr string
+
 	acceptDeadline time.Duration
 	connTimeout    time.Duration
 	connHeartbeat  time.Duration
-	secretConnKey  ed25519.PrivKeyEd25519
 
-	conn       net.Conn
-	listener   net.Listener
+	secretConnKey ed25519.PrivKeyEd25519
+	listener      net.Listener
+
+	// signer is mutable since it can be
+	// reset if the connection fails.
+	// failures are detected by a background
+	// ping routine.
+	// Methods on the underlying net.Conn itself
+	// are already gorountine safe.
+	mtx    sync.RWMutex
+	signer *RemoteSignerClient
+
 	cancelPing chan struct{}
 	pingTicker *time.Ticker
 }
@@ -94,6 +106,88 @@ func NewTCPVal(
 	return sc
 }
 
+// GetPubKey implements PrivValidator.
+func (sc *TCPVal) GetPubKey() crypto.PubKey {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.GetPubKey()
+}
+
+// SignVote implements PrivValidator.
+func (sc *TCPVal) SignVote(chainID string, vote *types.Vote) error {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.SignVote(chainID, vote)
+}
+
+// SignProposal implements PrivValidator.
+func (sc *TCPVal) SignProposal(chainID string, proposal *types.Proposal) error {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.SignProposal(chainID, proposal)
+}
+
+// Ping is used to check connection health.
+func (sc *TCPVal) Ping() error {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.Ping()
+}
+
+// Close closes the underlying net.Conn.
+func (sc *TCPVal) Close() {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	if sc.signer != nil {
+		if err := sc.signer.Close(); err != nil {
+			sc.Logger.Error("OnStop", "err", err)
+		}
+	}
+
+	if sc.listener != nil {
+		if err := sc.listener.Close(); err != nil {
+			sc.Logger.Error("OnStop", "err", err)
+		}
+	}
+}
+
+// waits to accept and sets a new connection.
+// connection is closed in OnStop.
+// returns true if the listener is closed
+// (ie. it returns a nil conn)
+func (sc *TCPVal) reset() (bool, error) {
+	sc.mtx.Lock()
+	defer sc.mtx.Unlock()
+
+	// first check if the conn already exists and close it.
+	if sc.signer != nil {
+		if err := sc.signer.Close(); err != nil {
+			sc.Logger.Error("error closing connection", "err", err)
+		}
+	}
+
+	// dial the addr
+	conn, err := sc.waitConnection()
+	if err != nil {
+		return false, err
+	}
+
+	// listener is closed
+	if conn == nil {
+		return true, nil
+	}
+
+	sc.signer, err = NewRemoteSignerClient(conn)
+	if err != nil {
+		// failed to fetch the pubkey. close out the connection.
+		if err := conn.Close(); err != nil {
+			sc.Logger.Error("error closing connection", "err", err)
+		}
+		return false, err
+	}
+	return false, nil
+}
+
 // OnStart implements cmn.Service.
 func (sc *TCPVal) OnStart() error {
 	if err := sc.listen(); err != nil {
@@ -101,16 +195,11 @@ func (sc *TCPVal) OnStart() error {
 		return err
 	}
 
-	conn, err := sc.waitConnection()
-	if err != nil {
+	if closed, err := sc.reset(); err != nil {
 		sc.Logger.Error("OnStart", "err", err)
 		return err
-	}
-
-	sc.conn = conn
-	sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
-	if err != nil {
-		return err
+	} else if closed {
+		return fmt.Errorf("listener is closed")
 	}
 
 	// Start a routine to keep the connection alive
@@ -122,46 +211,21 @@ func (sc *TCPVal) OnStart() error {
 			case <-sc.pingTicker.C:
 				err := sc.Ping()
 				if err != nil {
-					sc.Logger.Error(
-						"Ping",
-						"err", err,
-					)
+					sc.Logger.Error("Ping", "err", err)
 					if err == ErrUnexpectedResponse {
 						return
 					}
-					conn, err := sc.waitConnection()
+
+					closed, err := sc.reset()
 					if err != nil {
-						sc.Logger.Error(
-							"Reconnecting to remote signer failed",
-							"err",
-							err,
-						)
+						sc.Logger.Error("Reconnecting to remote signer failed", "err", err)
 						continue
 					}
-					// XXX waitConnection might return nil conn if
-					// validator is shutting down: !sc.IsRunning() == true
-					if conn == nil {
+					if closed {
 						sc.Logger.Info("listener is closing")
 						return
 					}
 
-					sc.conn = conn
-					sc.RemoteSignerClient, err = NewRemoteSignerClient(sc.conn)
-					if err != nil {
-						sc.Logger.Error(
-							"Re-initializing remote signer client failed",
-							"err",
-							err,
-						)
-						if err := sc.conn.Close(); err != nil {
-							sc.Logger.Error(
-								"error closing connection",
-								"err",
-								err,
-							)
-						}
-						continue
-					}
 					sc.Logger.Info("Re-created connection to remote signer", "impl", sc)
 				}
 			case <-sc.cancelPing:
@@ -179,18 +243,7 @@ func (sc *TCPVal) OnStop() {
 	if sc.cancelPing != nil {
 		close(sc.cancelPing)
 	}
-
-	if sc.conn != nil {
-		if err := sc.conn.Close(); err != nil {
-			sc.Logger.Error("OnStop", "err", err)
-		}
-	}
-
-	if sc.listener != nil {
-		if err := sc.listener.Close(); err != nil {
-			sc.Logger.Error("OnStop", "err", err)
-		}
-	}
+	sc.Close()
 }
 
 func (sc *TCPVal) acceptConnection() (net.Conn, error) {

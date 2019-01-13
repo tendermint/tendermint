@@ -74,6 +74,8 @@ func NewIPCVal(
 
 // GetPubKey implements PrivValidator.
 func (sc *IPCVal) GetPubKey() crypto.PubKey {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
 	return sc.signer.GetPubKey()
 }
 
