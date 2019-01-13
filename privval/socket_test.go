@@ -14,9 +14,11 @@ func TestTCPListenerAcceptDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ln = NewTCPListener(ln, time.Millisecond, time.Second, newPrivKey())
+	tcpLn := NewTCPListener(ln, newPrivKey())
+	TCPListenerAcceptDeadline(time.Millisecond)(tcpLn)
+	TCPListenerConnDeadline(time.Second)(tcpLn)
 
-	_, err = ln.Accept()
+	_, err = tcpLn.Accept()
 	opErr, ok := err.(*net.OpError)
 	if !ok {
 		t.Fatalf("have %v, want *net.OpError", err)
@@ -37,7 +39,9 @@ func TestTCPListenerConnDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ln = NewTCPListener(ln, time.Second, time.Millisecond, newPrivKey())
+	tcpLn := NewTCPListener(ln, newPrivKey())
+	TCPListenerAcceptDeadline(time.Second)(tcpLn)
+	TCPListenerConnDeadline(time.Millisecond)(tcpLn)
 
 	readyc := make(chan struct{})
 	donec := make(chan struct{})
@@ -62,9 +66,9 @@ func TestTCPListenerConnDeadline(t *testing.T) {
 		if have, want := opErr.Op, "read"; have != want {
 			t.Errorf("have %v, want %v", have, want)
 		}
-	}(ln)
+	}(tcpLn)
 
-	dialer := dialTCPFn(ln.Addr().String(), connTimeout, newPrivKey())
+	dialer := dialTCPFn(ln.Addr().String(), testConnDeadline, newPrivKey())
 	_, err = dialer()
 	if err != nil {
 		t.Fatal(err)

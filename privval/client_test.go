@@ -204,7 +204,7 @@ func TestRemoteSignerRetry(t *testing.T) {
 		log.TestingLogger(),
 		cmn.RandStr(12),
 		types.NewMockPV(),
-		dialTCPFn(ln.Addr().String(), connTimeout, ed25519.GenPrivKey()),
+		dialTCPFn(ln.Addr().String(), testConnDeadline, ed25519.GenPrivKey()),
 	)
 	defer rs.Stop()
 
@@ -275,7 +275,7 @@ func TestErrUnexpectedResponse(t *testing.T) {
 			logger,
 			chainID,
 			types.NewMockPV(),
-			dialTCPFn(addr, connTimeout, ed25519.GenPrivKey()),
+			dialTCPFn(addr, testConnDeadline, ed25519.GenPrivKey()),
 		)
 		sc = newSocketVal(logger, addr, testConnDeadline)
 	)
@@ -326,7 +326,7 @@ func TestRetryTCPConnToRemoteSigner(t *testing.T) {
 			logger,
 			chainID,
 			types.NewMockPV(),
-			dialTCPFn(addr, connTimeout, ed25519.GenPrivKey()),
+			dialTCPFn(addr, testConnDeadline, ed25519.GenPrivKey()),
 		)
 		thisConnTimeout = testConnDeadline
 		sc              = newSocketVal(logger, addr, thisConnTimeout)
@@ -350,7 +350,7 @@ func TestRetryTCPConnToRemoteSigner(t *testing.T) {
 		logger,
 		chainID,
 		types.NewMockPV(),
-		dialTCPFn(addr, connTimeout, ed25519.GenPrivKey()),
+		dialTCPFn(addr, testConnDeadline, ed25519.GenPrivKey()),
 	)
 	// let some pings pass
 	time.Sleep(testHeartbeatTimeout3o2)
@@ -371,14 +371,10 @@ func newSocketVal(logger log.Logger, addr string, connDeadline time.Duration) *S
 	if err != nil {
 		panic(err)
 	}
-	return NewSocketVal(
-		logger,
-		NewTCPListener(
-			ln,
-			testAcceptDeadline, connDeadline,
-			ed25519.GenPrivKey(),
-		),
-	)
+	tcpLn := NewTCPListener(ln, ed25519.GenPrivKey())
+	TCPListenerAcceptDeadline(testAcceptDeadline)(tcpLn)
+	TCPListenerConnDeadline(testConnDeadline)(tcpLn)
+	return NewSocketVal(logger, tcpLn)
 }
 
 func testSetupSocketPair(
@@ -395,7 +391,7 @@ func testSetupSocketPair(
 			logger,
 			chainID,
 			privVal,
-			dialTCPFn(addr, connTimeout, ed25519.GenPrivKey()),
+			dialTCPFn(addr, testConnDeadline, ed25519.GenPrivKey()),
 		)
 
 		thisConnTimeout = testConnDeadline

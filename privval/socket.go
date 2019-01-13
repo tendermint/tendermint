@@ -8,9 +8,9 @@ import (
 	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-var (
-	acceptDeadline = time.Second * defaultAcceptDeadlineSeconds
-	connTimeout    = time.Second * defaultConnDeadlineSeconds
+const (
+	defaultAcceptDeadlineSeconds = 3
+	defaultConnDeadlineSeconds   = 3
 )
 
 // timeoutError can be used to check if an error returned from the netp package
@@ -21,6 +21,20 @@ type timeoutError interface {
 
 //------------------------------------------------------------------
 // TCP Listener
+
+type TCPListenerOption func(*tcpListener)
+
+// TCPListenerAcceptDeadline sets the deadline for the listener.
+// A zero time value disables the deadline.
+func TCPListenerAcceptDeadline(deadline time.Duration) TCPListenerOption {
+	return func(tl *tcpListener) { tl.acceptDeadline = deadline }
+}
+
+// TCPListenerConnDeadline sets the read and write deadline for connections
+// from external signing processes.
+func TCPListenerConnDeadline(deadline time.Duration) TCPListenerOption {
+	return func(tl *tcpListener) { tl.connDeadline = deadline }
+}
 
 // tcpListener implements net.Listener.
 var _ net.Listener = (*tcpListener)(nil)
@@ -36,22 +50,18 @@ type tcpListener struct {
 	connDeadline   time.Duration
 }
 
-// newTCPListener returns an instance of tcpListener.
-func NewTCPListener(
-	ln net.Listener,
-	acceptDeadline, connDeadline time.Duration,
-	secretConnKey ed25519.PrivKeyEd25519,
-) tcpListener {
-	return tcpListener{
+// NewTCPListener returns an instance of tcpListener using the default deadline values.
+func NewTCPListener(ln net.Listener, secretConnKey ed25519.PrivKeyEd25519) *tcpListener {
+	return &tcpListener{
 		TCPListener:    ln.(*net.TCPListener),
-		acceptDeadline: acceptDeadline,
-		connDeadline:   connDeadline,
 		secretConnKey:  secretConnKey,
+		acceptDeadline: time.Second * defaultAcceptDeadlineSeconds,
+		connDeadline:   time.Second * defaultConnDeadlineSeconds,
 	}
 }
 
 // Accept implements net.Listener.
-func (ln tcpListener) Accept() (net.Conn, error) {
+func (ln *tcpListener) Accept() (net.Conn, error) {
 	err := ln.SetDeadline(time.Now().Add(ln.acceptDeadline))
 	if err != nil {
 		return nil, err
@@ -78,6 +88,20 @@ func (ln tcpListener) Accept() (net.Conn, error) {
 // unixListener implements net.Listener.
 var _ net.Listener = (*unixListener)(nil)
 
+type UnixListenerOption func(*unixListener)
+
+// UnixListenerAcceptDeadline sets the deadline for the listener.
+// A zero time value disables the deadline.
+func UnixListenerAcceptDeadline(deadline time.Duration) UnixListenerOption {
+	return func(ul *unixListener) { ul.acceptDeadline = deadline }
+}
+
+// UnixListenerConnDeadline sets the read and write deadline for connections
+// from external signing processes.
+func UnixListenerConnDeadline(deadline time.Duration) UnixListenerOption {
+	return func(ul *unixListener) { ul.connDeadline = deadline }
+}
+
 // unixListener wraps a *net.UnixListener to standardise protocol timeouts
 // and potentially other tuning parameters. It returns unencrypted connections.
 type unixListener struct {
@@ -87,20 +111,17 @@ type unixListener struct {
 	connDeadline   time.Duration
 }
 
-// NewUnixListener returns an instance of unixListener.
-func NewUnixListener(
-	ln net.Listener,
-	acceptDeadline, connDeadline time.Duration,
-) unixListener {
-	return unixListener{
+// NewUnixListener returns an instance of unixListener using the default deadline values.
+func NewUnixListener(ln net.Listener) *unixListener {
+	return &unixListener{
 		UnixListener:   ln.(*net.UnixListener),
-		acceptDeadline: acceptDeadline,
-		connDeadline:   connDeadline,
+		acceptDeadline: time.Second * defaultAcceptDeadlineSeconds,
+		connDeadline:   time.Second * defaultConnDeadlineSeconds,
 	}
 }
 
 // Accept implements net.Listener.
-func (ln unixListener) Accept() (net.Conn, error) {
+func (ln *unixListener) Accept() (net.Conn, error) {
 	err := ln.SetDeadline(time.Now().Add(ln.acceptDeadline))
 	if err != nil {
 		return nil, err

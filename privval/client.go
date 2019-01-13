@@ -14,10 +14,8 @@ import (
 )
 
 const (
-	defaultAcceptDeadlineSeconds = 3
-	defaultConnDeadlineSeconds   = 3
-	defaultConnHeartBeatSeconds  = 2
-	defaultDialRetries           = 10
+	defaultConnHeartBeatSeconds = 2
+	defaultDialRetries          = 10
 )
 
 // Socket errors.
