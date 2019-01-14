@@ -292,9 +292,7 @@ build-linux:
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 
 build-docker-localnode:
-	cd networks/local
-	make
-	cd -
+	@cd networks/local && make
 
 # Run a 4-node testnet locally
 localnet-start: localnet-stop
