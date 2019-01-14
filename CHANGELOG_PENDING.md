@@ -12,6 +12,7 @@ Special thanks to external contributors on this release:
 * Apps
 
 * Go API
+- [node] \#3082 MetricsProvider now requires you to pass a chain ID
 
 * Blockchain Protocol
   * [merkle] \#2713 Merkle trees now match the RFC 6962 specification
@@ -22,6 +23,7 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 - [rpc] \#3065 return maxPerPage (100), not defaultPerPage (30) if `per_page` is greater than the max 100.
+- [instrumentation] \#3082 add 'chain_id' label for all metrics
 
 ### BUG FIXES:
 - [log] \#3060 fix year format
