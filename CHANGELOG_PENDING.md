@@ -7,7 +7,7 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [types] consistent field order of `CanonicalVote` and `CanonicalProposal` 
+- [types] consistent field order of `CanonicalVote` and `CanonicalProposal`
 
 * Apps
 
@@ -21,5 +21,6 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [rpc] \#3065 return maxPerPage (100), not defaultPerPage (30) if `per_page` is greater than the max 100.
 
 ### BUG FIXES:
