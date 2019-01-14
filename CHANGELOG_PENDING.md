@@ -7,7 +7,7 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [types] consistent field order of `CanonicalVote` and `CanonicalProposal` 
+- [types] consistent field order of `CanonicalVote` and `CanonicalProposal`
 
 * Apps
 
@@ -23,3 +23,4 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [log] \#3060 fix year format
