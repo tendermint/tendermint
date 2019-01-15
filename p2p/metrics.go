@@ -30,10 +30,10 @@ type Metrics struct {
 // PrometheusMetrics returns Metrics build using Prometheus client library.
 // Optionally, labels can be provided along with their values ("foo",
 // "fooValue").
-func PrometheusMetrics(namespace string, labelValues ...string) *Metrics {
+func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 	labels := []string{}
-	for i := 0; i < len(labelValues)/2; i += 2 {
-		labels = append(labels, labelValues[i])
+	for i := 0; i < len(labelsAndValues); i += 2 {
+		labels = append(labels, labelsAndValues[i])
 	}
 	return &Metrics{
 		Peers: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
@@ -41,31 +41,31 @@ func PrometheusMetrics(namespace string, labelValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "peers",
 			Help:      "Number of peers.",
-		}, labels).With(labelValues...),
+		}, labels).With(labelsAndValues...),
 		PeerReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_receive_bytes_total",
 			Help:      "Number of bytes received from a given peer.",
-		}, append(labels, "peer_id")).With(labelValues...),
+		}, append(labels, "peer_id")).With(labelsAndValues...),
 		PeerSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_send_bytes_total",
 			Help:      "Number of bytes sent to a given peer.",
-		}, append(labels, "peer_id")).With(labelValues...),
+		}, append(labels, "peer_id")).With(labelsAndValues...),
 		PeerPendingSendBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_pending_send_bytes",
 			Help:      "Number of pending bytes to be sent to a given peer.",
-		}, append(labels, "peer_id")).With(labelValues...),
+		}, append(labels, "peer_id")).With(labelsAndValues...),
 		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "num_txs",
 			Help:      "Number of transactions submitted by each peer.",
-		}, append(labels, "peer_id")).With(labelValues...),
+		}, append(labels, "peer_id")).With(labelsAndValues...),
 	}
 }
 
