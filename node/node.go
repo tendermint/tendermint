@@ -117,15 +117,17 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 }
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
+type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(config.Namespace), p2p.PrometheusMetrics(config.Namespace),
-				mempl.PrometheusMetrics(config.Namespace), sm.PrometheusMetrics(config.Namespace)
+			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
 	}
@@ -274,7 +276,7 @@ func NewNode(config *cfg.Config,
 		consensusLogger.Info("This node is not a validator", "addr", addr, "pubKey", pubKey)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider()
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
 	// Make MempoolReactor
 	mempool := mempl.NewMempool(
