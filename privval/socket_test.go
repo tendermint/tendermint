@@ -20,74 +20,15 @@ func newPrivKey() ed25519.PrivKeyEd25519 {
 //-------------------------------------------
 // tests
 
-func TestTCPListenerAcceptDeadline(t *testing.T) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tcpLn := NewTCPListener(ln, newPrivKey())
-	TCPListenerAcceptDeadline(time.Millisecond)(tcpLn)
-	TCPListenerConnDeadline(time.Second)(tcpLn)
-
-	_, err = tcpLn.Accept()
-	opErr, ok := err.(*net.OpError)
-	if !ok {
-		t.Fatalf("have %v, want *net.OpError", err)
-	}
-
-	if have, want := opErr.Op, "accept"; have != want {
-		t.Errorf("have %v, want %v", have, want)
-	}
+type listenerTestCase struct {
+	description string // For test reporting purposes.
+	listener    net.Listener
+	dialer      Dialer
 }
 
-func TestTCPListenerConnDeadline(t *testing.T) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tcpLn := NewTCPListener(ln, newPrivKey())
-	TCPListenerAcceptDeadline(time.Second)(tcpLn)
-	TCPListenerConnDeadline(time.Millisecond)(tcpLn)
-
-	readyc := make(chan struct{})
-	donec := make(chan struct{})
-	go func(ln net.Listener) {
-		defer close(donec)
-
-		c, err := ln.Accept()
-		if err != nil {
-			t.Fatal(err)
-		}
-		<-readyc
-
-		time.Sleep(2 * time.Millisecond)
-
-		msg := make([]byte, 200)
-		_, err = c.Read(msg)
-		opErr, ok := err.(*net.OpError)
-		if !ok {
-			t.Fatalf("have %v, want *net.OpError", err)
-		}
-
-		if have, want := opErr.Op, "read"; have != want {
-			t.Errorf("have %v, want %v", have, want)
-		}
-	}(tcpLn)
-
-	dialer := DialTCPFn(ln.Addr().String(), testConnDeadline, newPrivKey())
-	_, err = dialer()
-	if err != nil {
-		t.Fatal(err)
-	}
-	close(readyc)
-	<-donec
-}
-
-// testUnixAddr will attempt to obtain a platform-independent temporary file
+// getTestUnixAddr will attempt to obtain a platform-independent temporary file
 // name for a Unix socket
-func testUnixAddr() (string, error) {
+func getTestUnixAddr() (string, error) {
 	f, err := ioutil.TempFile("", "tendermint-privval-test")
 	if err != nil {
 		return "", err
@@ -98,33 +39,24 @@ func testUnixAddr() (string, error) {
 	return addr, nil
 }
 
-func TestUnixListenerAcceptDeadline(t *testing.T) {
-	addr, err := testUnixAddr()
-	if err != nil {
-		t.Fatal(err)
-	}
-	ln, err := net.Listen("unix", addr)
+func constructTCPListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Duration) listenerTestCase {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	unixLn := NewUnixListener(ln)
-	UnixListenerAcceptDeadline(time.Millisecond)(unixLn)
-	UnixListenerConnDeadline(time.Second)(unixLn)
-
-	_, err = unixLn.Accept()
-	opErr, ok := err.(*net.OpError)
-	if !ok {
-		t.Fatalf("have %v, want *net.OpError", err)
-	}
-
-	if have, want := opErr.Op, "accept"; have != want {
-		t.Errorf("have %v, want %v", have, want)
+	tcpLn := NewTCPListener(ln, newPrivKey())
+	TCPListenerAcceptDeadline(acceptDeadline)(tcpLn)
+	TCPListenerConnDeadline(connectDeadline)(tcpLn)
+	return listenerTestCase{
+		description: "TCP",
+		listener:    tcpLn,
+		dialer:      DialTCPFn(ln.Addr().String(), testConnDeadline, newPrivKey()),
 	}
 }
 
-func TestUnixListenerConnDeadline(t *testing.T) {
-	addr, err := testUnixAddr()
+func constructUnixListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Duration) listenerTestCase {
+	addr, err := getTestUnixAddr()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,39 +66,68 @@ func TestUnixListenerConnDeadline(t *testing.T) {
 	}
 
 	unixLn := NewUnixListener(ln)
-	UnixListenerAcceptDeadline(time.Second)(unixLn)
-	UnixListenerConnDeadline(time.Millisecond)(unixLn)
+	UnixListenerAcceptDeadline(acceptDeadline)(unixLn)
+	UnixListenerConnDeadline(connectDeadline)(unixLn)
+	return listenerTestCase{
+		description: "Unix",
+		listener:    unixLn,
+		dialer:      DialUnixFn(addr),
+	}
+}
 
-	readyc := make(chan struct{})
-	donec := make(chan struct{})
-	go func(ln net.Listener) {
-		defer close(donec)
+func constructListenerTestCases(t *testing.T, acceptDeadline, connectDeadline time.Duration) []listenerTestCase {
+	return []listenerTestCase{
+		constructTCPListenerTestCase(t, acceptDeadline, connectDeadline),
+		constructUnixListenerTestCase(t, acceptDeadline, connectDeadline),
+	}
+}
 
-		c, err := ln.Accept()
+func TestListenerAcceptDeadlines(t *testing.T) {
+	for _, tc := range constructListenerTestCases(t, time.Millisecond, time.Second) {
+		_, err := tc.listener.Accept()
+		opErr, ok := err.(*net.OpError)
+		if !ok {
+			t.Fatalf("for %s listener, have %v, want *net.OpError", tc.description, err)
+		}
+
+		if have, want := opErr.Op, "accept"; have != want {
+			t.Errorf("for %s listener,  have %v, want %v", tc.description, have, want)
+		}
+	}
+}
+
+func TestListenerConnectDeadlines(t *testing.T) {
+	for _, tc := range constructListenerTestCases(t, time.Second, time.Millisecond) {
+		readyc := make(chan struct{})
+		donec := make(chan struct{})
+		go func(ln net.Listener) {
+			defer close(donec)
+
+			c, err := ln.Accept()
+			if err != nil {
+				t.Fatal(err)
+			}
+			<-readyc
+
+			time.Sleep(2 * time.Millisecond)
+
+			msg := make([]byte, 200)
+			_, err = c.Read(msg)
+			opErr, ok := err.(*net.OpError)
+			if !ok {
+				t.Fatalf("for %s listener, have %v, want *net.OpError", tc.description, err)
+			}
+
+			if have, want := opErr.Op, "read"; have != want {
+				t.Errorf("for %s listener, have %v, want %v", tc.description, have, want)
+			}
+		}(tc.listener)
+
+		_, err := tc.dialer()
 		if err != nil {
 			t.Fatal(err)
 		}
-		<-readyc
-
-		time.Sleep(2 * time.Millisecond)
-
-		msg := make([]byte, 200)
-		_, err = c.Read(msg)
-		opErr, ok := err.(*net.OpError)
-		if !ok {
-			t.Fatalf("have %v, want *net.OpError", err)
-		}
-
-		if have, want := opErr.Op, "read"; have != want {
-			t.Errorf("have %v, want %v", have, want)
-		}
-	}(unixLn)
-
-	dialer := DialUnixFn(addr)
-	_, err = dialer()
-	if err != nil {
-		t.Fatal(err)
+		close(readyc)
+		<-donec
 	}
-	close(readyc)
-	<-donec
 }
