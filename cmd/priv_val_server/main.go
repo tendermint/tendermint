@@ -45,7 +45,7 @@ func main() {
 		dialer = privval.DialTCPFn(address, connTimeout, ed25519.GenPrivKey())
 	default:
 		logger.Error("Unknown protocol", "protocol", protocol)
-		return
+		os.Exit(1)
 	}
 
 	rs := privval.NewRemoteSigner(logger, *chainID, pv, dialer)
