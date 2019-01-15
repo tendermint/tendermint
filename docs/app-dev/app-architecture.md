@@ -45,6 +45,6 @@ Tendermint.
 See the following for more extensive documentation:
 
 - [Interchain Standard for the Light-Client REST API](https://github.com/cosmos/cosmos-sdk/pull/1028)
-- [Tendermint RPC Docs](https://tendermint.github.io/slate/)
+- [Tendermint RPC Docs](https://tendermint.com/rpc/)
 - [Tendermint in Production](../tendermint-core/running-in-production.md)
 - [ABCI spec](./abci-spec.md)
