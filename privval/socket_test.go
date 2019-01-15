@@ -26,9 +26,9 @@ type listenerTestCase struct {
 	dialer      Dialer
 }
 
-// getTestUnixAddr will attempt to obtain a platform-independent temporary file
+// testUnixAddr will attempt to obtain a platform-independent temporary file
 // name for a Unix socket
-func getTestUnixAddr() (string, error) {
+func testUnixAddr() (string, error) {
 	f, err := ioutil.TempFile("", "tendermint-privval-test")
 	if err != nil {
 		return "", err
@@ -39,7 +39,7 @@ func getTestUnixAddr() (string, error) {
 	return addr, nil
 }
 
-func constructTCPListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Duration) listenerTestCase {
+func tcpListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Duration) listenerTestCase {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -55,8 +55,8 @@ func constructTCPListenerTestCase(t *testing.T, acceptDeadline, connectDeadline 
 	}
 }
 
-func constructUnixListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Duration) listenerTestCase {
-	addr, err := getTestUnixAddr()
+func unixListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Duration) listenerTestCase {
+	addr, err := testUnixAddr()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,15 +75,15 @@ func constructUnixListenerTestCase(t *testing.T, acceptDeadline, connectDeadline
 	}
 }
 
-func constructListenerTestCases(t *testing.T, acceptDeadline, connectDeadline time.Duration) []listenerTestCase {
+func listenerTestCases(t *testing.T, acceptDeadline, connectDeadline time.Duration) []listenerTestCase {
 	return []listenerTestCase{
-		constructTCPListenerTestCase(t, acceptDeadline, connectDeadline),
-		constructUnixListenerTestCase(t, acceptDeadline, connectDeadline),
+		tcpListenerTestCase(t, acceptDeadline, connectDeadline),
+		unixListenerTestCase(t, acceptDeadline, connectDeadline),
 	}
 }
 
 func TestListenerAcceptDeadlines(t *testing.T) {
-	for _, tc := range constructListenerTestCases(t, time.Millisecond, time.Second) {
+	for _, tc := range listenerTestCases(t, time.Millisecond, time.Second) {
 		_, err := tc.listener.Accept()
 		opErr, ok := err.(*net.OpError)
 		if !ok {
@@ -97,7 +97,7 @@ func TestListenerAcceptDeadlines(t *testing.T) {
 }
 
 func TestListenerConnectDeadlines(t *testing.T) {
-	for _, tc := range constructListenerTestCases(t, time.Second, time.Millisecond) {
+	for _, tc := range listenerTestCases(t, time.Second, time.Millisecond) {
 		readyc := make(chan struct{})
 		donec := make(chan struct{})
 		go func(ln net.Listener) {
