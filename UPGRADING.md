@@ -7,12 +7,12 @@ a newer version of Tendermint Core.
 
 This release breaks the format for the `priv_validator.json` file
 and the protocol used for the external validator process.
-It is compatible with v0.27.0 blockchains (neither the BlockProtocol or the
+It is compatible with v0.27.0 blockchains (neither the BlockProtocol nor the
 P2PProtocol have changed).
 
 Please read carefully for details about upgrading.
 
-XXX: Backup your `config/priv_validator.json`
+**Note:** Backup your `config/priv_validator.json`
 before proceeding.
 
 ### `priv_validator.json`
@@ -20,7 +20,7 @@ before proceeding.
 The `config/priv_validator.json` is now two files:
 `config/priv_validator_key.json` and `data/priv_validator_state.json`.
 The former contains the key material, the later contains the details on the last
-thing signed.
+message signed.
 
 When running v0.28.0 for the first time, it will back up any pre-existing
 `priv_validator.json` file and proceed to split it into the two new files.
@@ -43,15 +43,14 @@ Thus in both cases, the external process is expected to dial
 Tendermint. This is different from how Unix sockets used to work, where
 Tendermint dialed the external process.
 
-The `PubKeyMsg` was also split into two for consistency with other message
-types.
+The `PubKeyMsg` was also split into separate `Request` and `Response` types
+for consistency with other messages.
 
 Note that the TCP sockets don't yet use a persistent key,
 so while they're encrypted, they can't yet be properly authenticated.
 See [#3105](https://github.com/tendermint/tendermint/issues/3105).
 Note the Unix socket has neither encryption nor authentication, but will
 add a shared-secret in [#3099](https://github.com/tendermint/tendermint/issues/3099).
-
 
 ## v0.27.0
 

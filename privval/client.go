@@ -191,19 +191,19 @@ func (sc *SocketVal) OnStop() {
 // connection is closed in OnStop.
 // returns true if the listener is closed
 // (ie. it returns a nil conn).
-func (sc *SocketVal) reset() (bool, error) {
+func (sc *SocketVal) reset() (closed bool, err error) {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 
 	// first check if the conn already exists and close it.
 	if sc.signer != nil {
 		if err := sc.signer.Close(); err != nil {
-			sc.Logger.Error("error closing connection", "err", err)
+			sc.Logger.Error("error closing socket val connection during reset", "err", err)
 		}
 	}
 
 	// wait for a new conn
-	conn, err := sc.waitConnection()
+	conn, err := sc.acceptConnection()
 	if err != nil {
 		return false, err
 	}
@@ -224,6 +224,8 @@ func (sc *SocketVal) reset() (bool, error) {
 	return false, nil
 }
 
+// Attempt to accept a connection.
+// Times out after the listener's acceptDeadline
 func (sc *SocketVal) acceptConnection() (net.Conn, error) {
 	conn, err := sc.listener.Accept()
 	if err != nil {
@@ -231,33 +233,6 @@ func (sc *SocketVal) acceptConnection() (net.Conn, error) {
 			return nil, nil // Ignore error from listener closing.
 		}
 		return nil, err
-
 	}
 	return conn, nil
-}
-
-// waitConnection uses the configured wait timeout to error if no external
-// process connects in the time period.
-func (sc *SocketVal) waitConnection() (net.Conn, error) {
-	var (
-		connc = make(chan net.Conn, 1)
-		errc  = make(chan error, 1)
-	)
-
-	go func(connc chan<- net.Conn, errc chan<- error) {
-		conn, err := sc.acceptConnection()
-		if err != nil {
-			errc <- err
-			return
-		}
-
-		connc <- conn
-	}(connc, errc)
-
-	select {
-	case conn := <-connc:
-		return conn, nil
-	case err := <-errc:
-		return nil, err
-	}
 }
