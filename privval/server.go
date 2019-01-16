@@ -109,7 +109,6 @@ func (rs *RemoteSigner) OnStart() error {
 
 // OnStop implements cmn.Service.
 func (rs *RemoteSigner) OnStop() {
-	rs.Logger.Info("RemoteSigner stopping")
 	if rs.conn == nil {
 		return
 	}
