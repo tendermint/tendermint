@@ -32,6 +32,7 @@ func SimpleHashFromMap(m map[string][]byte) []byte {
 	return sm.Hash()
 }
 
+// getSplitPoint returns the largest power of 2 less than length
 func getSplitPoint(length int) int {
 	if length < 1 {
 		panic("Trying to split a tree with size < 1")
