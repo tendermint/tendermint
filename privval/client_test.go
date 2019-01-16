@@ -278,47 +278,51 @@ func TestRemoteSignerRetryTCPOnly(t *testing.T) {
 
 func TestRemoteSignVoteErrors(t *testing.T) {
 	for _, tc := range socketTestCases(t) {
-		var (
-			chainID = cmn.RandStr(12)
-			sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV(), tc.addr, tc.dialer)
+		func() {
+			var (
+				chainID = cmn.RandStr(12)
+				sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV(), tc.addr, tc.dialer)
 
-			ts    = time.Now()
-			vType = types.PrecommitType
-			vote  = &types.Vote{Timestamp: ts, Type: vType}
-		)
-		defer sc.Stop()
-		defer rs.Stop()
+				ts    = time.Now()
+				vType = types.PrecommitType
+				vote  = &types.Vote{Timestamp: ts, Type: vType}
+			)
+			defer sc.Stop()
+			defer rs.Stop()
 
-		err := sc.SignVote("", vote)
-		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
+			err := sc.SignVote("", vote)
+			require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-		err = rs.privVal.SignVote(chainID, vote)
-		require.Error(t, err)
-		err = sc.SignVote(chainID, vote)
-		require.Error(t, err)
+			err = rs.privVal.SignVote(chainID, vote)
+			require.Error(t, err)
+			err = sc.SignVote(chainID, vote)
+			require.Error(t, err)
+		}()
 	}
 }
 
 func TestRemoteSignProposalErrors(t *testing.T) {
 	for _, tc := range socketTestCases(t) {
-		var (
-			chainID = cmn.RandStr(12)
-			sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV(), tc.addr, tc.dialer)
+		func() {
+			var (
+				chainID = cmn.RandStr(12)
+				sc, rs  = testSetupSocketPair(t, chainID, types.NewErroringMockPV(), tc.addr, tc.dialer)
 
-			ts       = time.Now()
-			proposal = &types.Proposal{Timestamp: ts}
-		)
-		defer sc.Stop()
-		defer rs.Stop()
+				ts       = time.Now()
+				proposal = &types.Proposal{Timestamp: ts}
+			)
+			defer sc.Stop()
+			defer rs.Stop()
 
-		err := sc.SignProposal("", proposal)
-		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
+			err := sc.SignProposal("", proposal)
+			require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-		err = rs.privVal.SignProposal(chainID, proposal)
-		require.Error(t, err)
+			err = rs.privVal.SignProposal(chainID, proposal)
+			require.Error(t, err)
 
-		err = sc.SignProposal(chainID, proposal)
-		require.Error(t, err)
+			err = sc.SignProposal(chainID, proposal)
+			require.Error(t, err)
+		}()
 	}
 }
 
