@@ -10,9 +10,9 @@ func MakeCommit(blockID BlockID, height int64, round int,
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
-
+		addr := validators[i].GetPubKey().Address()
 		vote := &Vote{
-			ValidatorAddress: validators[i].GetAddress(),
+			ValidatorAddress: addr,
 			ValidatorIndex:   i,
 			Height:           height,
 			Round:            round,

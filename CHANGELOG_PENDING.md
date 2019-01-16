@@ -1,4 +1,4 @@
-## v0.27.4
+## v0.29.0
 
 *TBD*
 
@@ -21,4 +21,3 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
-

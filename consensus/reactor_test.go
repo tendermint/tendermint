@@ -143,7 +143,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		evpool := newMockEvidencePool(privVals[vIdx].GetAddress())
+		addr := privVals[vIdx].GetPubKey().Address()
+		evpool := newMockEvidencePool(addr)
 
 		// Make ConsensusState
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -268,7 +269,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		activeVals[string(css[i].privValidator.GetAddress())] = struct{}{}
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
@@ -331,7 +333,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		activeVals[string(css[i].privValidator.GetAddress())] = struct{}{}
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
 	}
 
 	// wait till everyone makes block 1

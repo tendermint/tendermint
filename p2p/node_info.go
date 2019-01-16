@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	maxNodeInfoSize = 10240 // 10Kb
+	maxNodeInfoSize = 10240 // 10KB
 	maxNumChannels  = 16    // plenty of room for upgrades, for now
 )
 

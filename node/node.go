@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"strings"
 	"time"
 
@@ -86,8 +87,26 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert old PrivValidator if it exists.
+	oldPrivVal := config.OldPrivValidatorFile()
+	newPrivValKey := config.PrivValidatorKeyFile()
+	newPrivValState := config.PrivValidatorStateFile()
+	if _, err := os.Stat(oldPrivVal); !os.IsNotExist(err) {
+		oldPV, err := privval.LoadOldFilePV(oldPrivVal)
+		if err != nil {
+			return nil, fmt.Errorf("Error reading OldPrivValidator from %v: %v\n", oldPrivVal, err)
+		}
+		logger.Info("Upgrading PrivValidator file",
+			"old", oldPrivVal,
+			"newKey", newPrivValKey,
+			"newState", newPrivValState,
+		)
+		oldPV.Upgrade(newPrivValKey, newPrivValState)
+	}
+
 	return NewNode(config,
-		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
+		privval.LoadOrGenFilePV(newPrivValKey, newPrivValState),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
@@ -240,16 +259,19 @@ func NewNode(config *cfg.Config,
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.GetAddress(), addr) {
+		privValAddr := privValidator.GetPubKey().Address()
+		if bytes.Equal(privValAddr, addr) {
 			fastSync = false
 		}
 	}
 
+	pubKey := privValidator.GetPubKey()
+	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.GetAddress()) {
-		consensusLogger.Info("This node is a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
+	if state.Validators.HasAddress(addr) {
+		consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey)
 	} else {
-		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
+		consensusLogger.Info("This node is not a validator", "addr", addr, "pubKey", pubKey)
 	}
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider()
@@ -617,7 +639,8 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetP2PPeers(n.sw)
 	rpccore.SetP2PTransport(n)
-	rpccore.SetPubKey(n.privValidator.GetPubKey())
+	pubKey := n.privValidator.GetPubKey()
+	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
@@ -855,16 +878,20 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	var pvsc types.PrivValidator
+	var listener net.Listener
 
 	protocol, address := cmn.ProtocolAndAddress(listenAddr)
+	ln, err := net.Listen(protocol, address)
+	if err != nil {
+		return nil, err
+	}
 	switch protocol {
 	case "unix":
-		pvsc = privval.NewIPCVal(logger.With("module", "privval"), address)
+		listener = privval.NewUnixListener(ln)
 	case "tcp":
 		// TODO: persist this key so external signer
 		// can actually authenticate us
-		pvsc = privval.NewTCPVal(logger.With("module", "privval"), listenAddr, ed25519.GenPrivKey())
+		listener = privval.NewTCPListener(ln, ed25519.GenPrivKey())
 	default:
 		return nil, fmt.Errorf(
 			"Wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
@@ -872,10 +899,9 @@ func createAndStartPrivValidatorSocketClient(
 		)
 	}
 
-	if pvsc, ok := pvsc.(cmn.Service); ok {
-		if err := pvsc.Start(); err != nil {
-			return nil, errors.Wrap(err, "failed to start")
-		}
+	pvsc := privval.NewSocketVal(logger.With("module", "privval"), listener)
+	if err := pvsc.Start(); err != nil {
+		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 
 	return pvsc, nil
