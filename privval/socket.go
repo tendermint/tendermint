@@ -157,7 +157,7 @@ type timeoutConn struct {
 	connDeadline time.Duration
 }
 
-// newTimeoutConn returns an instance of newTCPTimeoutConn.
+// newTimeoutConn returns an instance of timeoutConn.
 func newTimeoutConn(
 	conn net.Conn,
 	connDeadline time.Duration) *timeoutConn {
