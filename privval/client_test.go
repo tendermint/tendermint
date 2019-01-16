@@ -186,104 +186,93 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 	}
 }
 
+// This test is not relevant to Unix domain sockets, since the OS knows
+// instantaneously the state of both sides of the connection.
 func TestSocketPVDeadline(t *testing.T) {
-	for _, tc := range socketTestCases(t) {
-		// This test is not relevant to Unix domain sockets, since the OS knows
-		// instantaneously the state of both sides of the connection.
-		proto, _ := cmn.ProtocolAndAddress(tc.addr)
-		if proto != "unix" {
-			func() {
-				var (
-					listenc         = make(chan struct{})
-					thisConnTimeout = 100 * time.Millisecond
-					sc              = newSocketVal(log.TestingLogger(), tc.addr, thisConnTimeout)
-				)
+	var (
+		addr            = testFreeTCPAddr(t)
+		listenc         = make(chan struct{})
+		thisConnTimeout = 100 * time.Millisecond
+		sc              = newSocketVal(log.TestingLogger(), addr, thisConnTimeout)
+	)
 
-				go func(sc *SocketVal) {
-					defer close(listenc)
+	go func(sc *SocketVal) {
+		defer close(listenc)
 
-					assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnTimeout)
+		assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnTimeout)
 
-					assert.False(t, sc.IsRunning())
-				}(sc)
+		assert.False(t, sc.IsRunning())
+	}(sc)
 
-				for {
-					conn, err := cmn.Connect(tc.addr)
-					if err != nil {
-						continue
-					}
+	for {
+		conn, err := cmn.Connect(addr)
+		if err != nil {
+			continue
+		}
 
-					_, err = p2pconn.MakeSecretConnection(
-						conn,
-						ed25519.GenPrivKey(),
-					)
-					if err == nil {
-						break
-					}
-				}
-
-				<-listenc
-			}()
+		_, err = p2pconn.MakeSecretConnection(
+			conn,
+			ed25519.GenPrivKey(),
+		)
+		if err == nil {
+			break
 		}
 	}
+
+	<-listenc
 }
 
-func TestRemoteSignerRetry(t *testing.T) {
-	logger := log.TestingLogger()
-	for _, tc := range socketTestCases(t) {
-		func() {
-			var (
-				attemptc = make(chan int)
-				retries  = 2
-			)
+// TestRemoteSignerRetryTCPOnly will test connection retry attempts over TCP. We
+// don't need this for Unix sockets because the OS instantly knows the state of
+// both ends of the socket connection. This basically causes the
+// RemoteSigner.dialer() call inside RemoteSigner.connect() to return
+// successfully immediately, putting an instant stop to any retry attempts.
+func TestRemoteSignerRetryTCPOnly(t *testing.T) {
+	var (
+		attemptc = make(chan int)
+		retries  = 2
+	)
 
-			proto, addr := cmn.ProtocolAndAddress(tc.addr)
-			ln, err := net.Listen(proto, addr)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	go func(ln net.Listener, attemptc chan<- int) {
+		attempts := 0
+
+		for {
+			conn, err := ln.Accept()
 			require.NoError(t, err)
-			logger.Info("Listener started", "proto", proto, "addr", addr)
 
-			go func(ln net.Listener, attemptc chan<- int) {
-				attempts := 0
+			err = conn.Close()
+			require.NoError(t, err)
 
-				for {
-					logger.Info("Waiting to accept connection...", "attempts", attempts)
-					conn, err := ln.Accept()
-					require.NoError(t, err)
-					logger.Info("Accepted incoming connection")
+			attempts++
 
-					err = conn.Close()
-					require.NoError(t, err)
-					logger.Info("Successfully closed incoming connection")
-
-					attempts++
-
-					if attempts == retries {
-						attemptc <- attempts
-						break
-					}
-				}
-			}(ln, attemptc)
-
-			rs := NewRemoteSigner(
-				log.TestingLogger(),
-				cmn.RandStr(12),
-				types.NewMockPV(),
-				tc.dialer,
-			)
-			defer rs.Stop()
-
-			RemoteSignerConnDeadline(time.Millisecond)(rs)
-			RemoteSignerConnRetries(retries)(rs)
-
-			assert.Equal(t, ErrDialRetryMax, rs.Start())
-
-			select {
-			case attempts := <-attemptc:
-				assert.Equal(t, retries, attempts)
-			case <-time.After(100 * time.Millisecond):
-				t.Error("expected remote to observe connection attempts")
+			if attempts == retries {
+				attemptc <- attempts
+				break
 			}
-		}()
+		}
+	}(ln, attemptc)
+
+	rs := NewRemoteSigner(
+		log.TestingLogger(),
+		cmn.RandStr(12),
+		types.NewMockPV(),
+		DialTCPFn(ln.Addr().String(), testConnDeadline, ed25519.GenPrivKey()),
+	)
+	defer rs.Stop()
+
+	RemoteSignerConnDeadline(time.Millisecond)(rs)
+	RemoteSignerConnRetries(retries)(rs)
+
+	assert.Equal(t, rs.Start(), ErrDialRetryMax)
+
+	select {
+	case attempts := <-attemptc:
+		assert.Equal(t, retries, attempts)
+	case <-time.After(100 * time.Millisecond):
+		t.Error("expected remote to observe connection attempts")
 	}
 }
 
