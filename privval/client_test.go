@@ -186,9 +186,9 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 	}
 }
 
-// This test is not relevant to Unix domain sockets, since the OS knows
-// instantaneously the state of both sides of the connection.
-func TestSocketPVDeadline(t *testing.T) {
+// TestSocketPVDeadlineTCPOnly is not relevant to Unix domain sockets, since the
+// OS knows instantaneously the state of both sides of the connection.
+func TestSocketPVDeadlineTCPOnly(t *testing.T) {
 	var (
 		addr            = testFreeTCPAddr(t)
 		listenc         = make(chan struct{})
