@@ -231,11 +231,10 @@ Some fields from the config file can be overwritten with flags.
 While the default behaviour of `tendermint` is still to create blocks
 approximately once per second, it is possible to disable empty blocks or
 set a block creation interval. In the former case, blocks will be
-created when there are new transactions or when the AppHash changes.
+created when there are new transactions.
 
 To configure Tendermint to not produce empty blocks unless there are
-transactions or the app hash changes, run Tendermint with this
-additional flag:
+transactions, run Tendermint with this additional flag:
 
 ```
 tendermint node --consensus.create_empty_blocks=false

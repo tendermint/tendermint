@@ -15,6 +15,7 @@ Special thanks to external contributors on this release:
 * Blockchain Protocol
 
 * P2P Protocol
+- [consensus] Do not force block creation when app hash changes.
 
 ### FEATURES:
 
