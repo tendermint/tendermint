@@ -11,7 +11,7 @@ This release is primarily about upgrades to the `privval` system -
 separating the `priv_validator.json` into distinct config and data files, and
 refactoring the socket validator to support reconnections.
 
-XXX: Please backup your existing `priv_validator.json` before using this
+**Note:** Please backup your existing `priv_validator.json` before using this
 version.
 
 See [UPGRADING.md](UPGRADING.md) for more details.
@@ -53,7 +53,7 @@ See [UPGRADING.md](UPGRADING.md) for more details.
 - [p2p/conn] [\#3111](https://github.com/tendermint/tendermint/issues/3111) Make SecretConnection thread safe
 - [rpc] [\#3053](https://github.com/tendermint/tendermint/issues/3053) Fix internal error in `/tx_search` when results are empty
   (@gianfelipe93)
-- [types] [\#2926](https://github.com/tendermint/tendermint/issues/2926) Do not panic if retrieving the private validator's public key fails
+- [types] [\#2926](https://github.com/tendermint/tendermint/issues/2926) Do not panic if retrieving the privval's public key fails
 
 ## v0.27.4
 
