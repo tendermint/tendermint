@@ -12,7 +12,7 @@ P2PProtocol have changed).
 
 Please read carefully for details about upgrading.
 
-XXX: Backup your `config/priv_validator.json`
+**Note:** Backup your `config/priv_validator.json`
 before proceeding.
 
 ### `priv_validator.json`
