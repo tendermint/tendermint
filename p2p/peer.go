@@ -20,9 +20,12 @@ type Peer interface {
 
 	ID() ID           // peer's cryptographic ID
 	RemoteIP() net.IP // remote IP of the connection
+	Addr() net.Addr   // remote addr
 
 	IsOutbound() bool   // did we dial the peer
 	IsPersistent() bool // do we redial this peer when we disconnect
+
+	CloseConn() error // close original connection
 
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
@@ -294,6 +297,11 @@ func (p *peer) hasChannel(chID byte) bool {
 		p.channels,
 	)
 	return false
+}
+
+// CloseConn closes original connection. Used for cleaning up in cases where the peer had not been started at all.
+func (p *peer) CloseConn() error {
+	return p.peerConn.conn.Close()
 }
 
 //---------------------------------------------------

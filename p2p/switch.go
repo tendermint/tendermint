@@ -305,6 +305,7 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 		sw.metrics.Peers.Add(float64(-1))
 	}
 	peer.Stop()
+	sw.transport.Cleanup(peer.Addr())
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
 	}
@@ -529,13 +530,18 @@ func (sw *Switch) acceptRoutine() {
 				"max", sw.config.MaxNumInboundPeers,
 			)
 
-			_ = p.Stop()
+			_ = p.CloseConn()
+			sw.transport.Cleanup(p.Addr())
 
 			continue
 		}
 
 		if err := sw.addPeer(p); err != nil {
-			_ = p.Stop()
+			_ = p.CloseConn()
+			sw.transport.Cleanup(p.Addr())
+			if p.IsRunning() {
+				_ = p.Stop()
+			}
 			sw.Logger.Info(
 				"Ignoring inbound connection: error while adding peer",
 				"err", err,
@@ -593,7 +599,9 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	if err := sw.addPeer(p); err != nil {
-		_ = p.Stop()
+		if p.IsRunning() {
+			_ = p.Stop()
+		}
 		return err
 	}
 
@@ -628,7 +636,8 @@ func (sw *Switch) filterPeer(p Peer) error {
 	return nil
 }
 
-// addPeer starts up the Peer and adds it to the Switch.
+// addPeer starts up the Peer and adds it to the Switch. Error is returned if
+// the peer is filtered out or failed to start or can't be added.
 func (sw *Switch) addPeer(p Peer) error {
 	if err := sw.filterPeer(p); err != nil {
 		return err
@@ -637,10 +646,8 @@ func (sw *Switch) addPeer(p Peer) error {
 	p.SetLogger(sw.Logger.With("peer", p.NodeInfo().NetAddress()))
 
 	// All good. Start peer
-	if sw.IsRunning() {
-		if err := sw.startInitPeer(p); err != nil {
-			return err
-		}
+	if err := sw.startInitPeer(p); err != nil {
+		return err
 	}
 
 	// Add the peer to .peers.

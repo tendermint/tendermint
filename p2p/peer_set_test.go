@@ -30,6 +30,8 @@ func (mp *mockPeer) Get(s string) interface{}                { return s }
 func (mp *mockPeer) Set(string, interface{})                 {}
 func (mp *mockPeer) RemoteIP() net.IP                        { return mp.ip }
 func (mp *mockPeer) OriginalAddr() *NetAddress               { return nil }
+func (mp *mockPeer) Addr() net.Addr                          { return nil }
+func (mp *mockPeer) CloseConn() error                        { return nil }
 
 // Returns a mock peer
 func newMockPeer(ip net.IP) *mockPeer {
