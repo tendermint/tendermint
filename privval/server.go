@@ -129,7 +129,6 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 			rs.Logger.Error("dialing", "err", err)
 			continue
 		}
-		rs.Logger.Info("dialed connection successfully")
 		return conn, nil
 	}
 
