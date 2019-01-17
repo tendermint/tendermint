@@ -103,7 +103,7 @@ func (params ConsensusParams) Hash() []byte {
 type BlockParams struct {
 	MaxBytes        int64
 	MaxGas          int64
-  TimeIota        time.Duration
+  TimeIotaMs      int64
 }
 
 type EvidenceParams struct {
@@ -125,7 +125,7 @@ Blocks should additionally be limited by the amount of "gas" consumed by the
 transactions in the block, though this is not yet implemented.
 
 The minimal time between consecutive blocks is controlled by the
-`ConsensusParams.Block.TimeIota`.
+`ConsensusParams.Block.TimeIotaMs`.
 
 #### Evidence
 

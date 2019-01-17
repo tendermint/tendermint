@@ -1701,11 +1701,12 @@ func (cs *ConsensusState) voteTime() time.Time {
 	minVoteTime := now
 	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
 	// even if cs.LockedBlock != nil. See https://github.com/tendermint/spec.
+	timeIotaMs := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
 	if cs.LockedBlock != nil {
 		// See the BFT time spec https://tendermint.com/docs/spec/consensus/bft-time.html
-		minVoteTime = cs.LockedBlock.Time.Add(cs.state.ConsensusParams.Block.TimeIota.Duration)
+		minVoteTime = cs.LockedBlock.Time.Add(timeIotaMs)
 	} else if cs.ProposalBlock != nil {
-		minVoteTime = cs.ProposalBlock.Time.Add(cs.state.ConsensusParams.Block.TimeIota.Duration)
+		minVoteTime = cs.ProposalBlock.Time.Add(timeIotaMs)
 	}
 
 	if now.After(minVoteTime) {

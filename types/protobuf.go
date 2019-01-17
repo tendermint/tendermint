@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 //-------------------------------------------------------
@@ -127,9 +126,9 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
 		Block: &abci.BlockParams{
-			MaxBytes: params.Block.MaxBytes,
-			MaxGas:   params.Block.MaxGas,
-			TimeIota: params.Block.TimeIota.Duration,
+			MaxBytes:   params.Block.MaxBytes,
+			MaxGas:     params.Block.MaxGas,
+			TimeIotaMs: params.Block.TimeIotaMs,
 		},
 		Evidence: &abci.EvidenceParams{
 			MaxAge: params.Evidence.MaxAge,
@@ -229,9 +228,9 @@ func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
 	// we must defensively consider any structs may be nil
 	if csp.Block != nil {
 		params.Block = BlockParams{
-			MaxBytes: csp.Block.MaxBytes,
-			MaxGas:   csp.Block.MaxGas,
-			TimeIota: tmtime.DurationPretty{csp.Block.TimeIota},
+			MaxBytes:   csp.Block.MaxBytes,
+			MaxGas:     csp.Block.MaxGas,
+			TimeIotaMs: csp.Block.TimeIotaMs,
 		}
 	}
 

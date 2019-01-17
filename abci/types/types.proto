@@ -6,7 +6,6 @@ package types;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/tendermint/tendermint/crypto/merkle/merkle.proto";
 import "github.com/tendermint/tendermint/libs/common/types.proto";
-import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
 // This file is copied from http://github.com/tendermint/abci
@@ -220,7 +219,7 @@ message BlockParams {
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
   // Note: must be greater or equal to 0
-  google.protobuf.Duration time_iota = 3 [(gogoproto.nullable)=false, (gogoproto.stdduration)=true];
+  int64 time_iota_ms = 3;
 }
 
 // EvidenceParams contains limits on the evidence.

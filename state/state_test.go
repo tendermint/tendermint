@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
-	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
@@ -960,14 +958,14 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 func makeParams(
 	blockBytes, blockGas int64,
-	blockTimeIota time.Duration,
+	blockTimeIotaMs int64,
 	evidenceAge int64,
 ) types.ConsensusParams {
 	return types.ConsensusParams{
 		Block: types.BlockParams{
-			MaxBytes: blockBytes,
-			MaxGas:   blockGas,
-			TimeIota: tmtime.DurationPretty{blockTimeIota},
+			MaxBytes:   blockBytes,
+			MaxGas:     blockGas,
+			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: types.EvidenceParams{
 			MaxAge: evidenceAge,
@@ -976,7 +974,7 @@ func makeParams(
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeParams(1, 2, 3*time.Millisecond, 4)
+	initParams := makeParams(1, 2, 3, 4)
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -988,19 +986,19 @@ func TestApplyUpdates(t *testing.T) {
 		2: {initParams,
 			abci.ConsensusParams{
 				Block: &abci.BlockParams{
-					MaxBytes: 44,
-					MaxGas:   55,
-					TimeIota: 66 * time.Millisecond,
+					MaxBytes:   44,
+					MaxGas:     55,
+					TimeIotaMs: 66,
 				},
 			},
-			makeParams(44, 55, 66*time.Millisecond, 4)},
+			makeParams(44, 55, 66, 4)},
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
 					MaxAge: 66,
 				},
 			},
-			makeParams(1, 2, 3*time.Millisecond, 66)},
+			makeParams(1, 2, 3, 66)},
 	}
 
 	for i, tc := range cases {

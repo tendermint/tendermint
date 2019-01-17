@@ -246,12 +246,12 @@ txs included in a proposed block.
 Must have `MaxGas >= -1`.
 If `MaxGas == -1`, no limit is enforced.
 
-### Block.TimeIota
+### Block.TimeIotaMs
 
-The minimum time between consecutive blocks.
+The minimum time between consecutive blocks (in milliseconds).
 This is enforced by Tendermint consensus.
 
-Must have `TimeIota >= 0`.
+Must have `TimeIotaMs >= 0`.
 
 ### EvidenceParams.MaxAge
 

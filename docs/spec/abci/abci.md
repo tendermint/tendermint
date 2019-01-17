@@ -456,7 +456,7 @@ Commit are included in the header of the next block.
     - NOTE: blocks that violate this may be committed if there are Byzantine proposers.
         It's the application's responsibility to handle this when processing a
         block!
-  - `TimeIota (google.protobuf.Duration)`: Minimum time increment between consecutive blocks.
+  - `TimeIotaMs (int64)`: Minimum time increment between consecutive blocks (in milliseconds).
 
 
 ### EvidenceParams

@@ -1,12 +1,9 @@
 package types
 
 import (
-	"time"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (
@@ -38,8 +35,8 @@ type HashedParams struct {
 type BlockParams struct {
 	MaxBytes int64 `json:"max_bytes"`
 	MaxGas   int64 `json:"max_gas"`
-	// Minimum time increment between consecutive blocks
-	TimeIota tmtime.DurationPretty `json:"time_iota"`
+	// Minimum time increment between consecutive blocks (in milliseconds)
+	TimeIotaMs int64 `json:"time_iota_ms"`
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
@@ -65,9 +62,9 @@ func DefaultConsensusParams() *ConsensusParams {
 // DefaultBlockParams returns a default BlockParams.
 func DefaultBlockParams() BlockParams {
 	return BlockParams{
-		MaxBytes: 22020096, // 21MB
-		MaxGas:   -1,
-		TimeIota: tmtime.DurationPretty{1 * time.Second},
+		MaxBytes:   22020096, // 21MB
+		MaxGas:     -1,
+		TimeIotaMs: 1000, // 1s
 	}
 }
 
@@ -110,9 +107,9 @@ func (params *ConsensusParams) Validate() error {
 			params.Block.MaxGas)
 	}
 
-	if params.Block.TimeIota.Duration < 0 {
-		return cmn.NewError("Block.TimeIota can't be negative. Got %v",
-			params.Block.TimeIota.Duration)
+	if params.Block.TimeIotaMs < 0 {
+		return cmn.NewError("Block.TimeIotaMs can't be negative. Got %v",
+			params.Block.TimeIotaMs)
 	}
 
 	if params.Evidence.MaxAge <= 0 {
@@ -172,7 +169,7 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	if params2.Block != nil {
 		res.Block.MaxBytes = params2.Block.MaxBytes
 		res.Block.MaxGas = params2.Block.MaxGas
-		res.Block.TimeIota = tmtime.DurationPretty{params2.Block.TimeIota}
+		res.Block.TimeIotaMs = params2.Block.TimeIotaMs
 	}
 	if params2.Evidence != nil {
 		res.Evidence.MaxAge = params2.Evidence.MaxAge
