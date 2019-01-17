@@ -68,17 +68,23 @@ func TestRemoteSignerRetryTCPOnly(t *testing.T) {
 	}
 }
 
-func TestIsConnTimeoutHelper(t *testing.T) {
+func TestIsConnTimeoutForFundamentalTimeouts(t *testing.T) {
 	// Generate a networking timeout
 	dialer := DialTCPFn(testFreeTCPAddr(t), time.Millisecond, ed25519.GenPrivKey())
 	_, err := dialer()
 	assert.Error(t, err)
 	assert.True(t, IsConnTimeout(err))
+}
 
+func TestIsConnTimeoutForWrappedConnTimeouts(t *testing.T) {
+	dialer := DialTCPFn(testFreeTCPAddr(t), time.Millisecond, ed25519.GenPrivKey())
+	_, err := dialer()
+	assert.Error(t, err)
 	err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
 	assert.True(t, IsConnTimeout(err))
+}
 
-	// Test negative examples
+func TestIsConnTimeoutForNonTimeoutErrors(t *testing.T) {
 	assert.False(t, IsConnTimeout(cmn.ErrorWrap(ErrDialRetryMax, "max retries exceeded")))
 	assert.False(t, IsConnTimeout(errors.New("completely irrelevant error")))
 }
