@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -65,4 +66,19 @@ func TestRemoteSignerRetryTCPOnly(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Error("expected remote to observe connection attempts")
 	}
+}
+
+func TestIsConnTimeoutHelper(t *testing.T) {
+	// Generate a networking timeout
+	dialer := DialTCPFn(testFreeTCPAddr(t), time.Millisecond, ed25519.GenPrivKey())
+	_, err := dialer()
+	assert.Error(t, err)
+	assert.True(t, IsConnTimeout(err))
+
+	err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
+	assert.True(t, IsConnTimeout(err))
+
+	// Test negative examples
+	assert.False(t, IsConnTimeout(cmn.ErrorWrap(ErrDialRetryMax, "max retries exceeded")))
+	assert.False(t, IsConnTimeout(errors.New("completely irrelevant error")))
 }
