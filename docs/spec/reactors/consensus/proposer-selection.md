@@ -33,17 +33,19 @@ __[R1]__ The proposer algorithm is deterministic giving consistent results acros
 __[R2]__ Given a set of processes with the total voting power P, during a sequence of rounds of length P, every process is selected as proposer in a number of rounds equal to its voting power. The sequence of the P proposers then repeats.
 If we consider the validator set:
 
-Validator | p1 | p2 
-----------|--- | ---
-VP        | 1  | 3
+Validator | p1| p2 
+----------|---|---
+VP        | 1 | 3
 
-The proposer selection generates the sequence:
+The current implementation of proposer selection generates the sequence:
 `p2, p1, p2, p2, p2, p1, p2, p2,...` or [`p2, p1, p2, p2`]*
+A a sequence that starts with any circular permutation of the [`p2, p1, p2, p2`] sub-sequence would also provide the same degree of fairness. In fact these circular permutations show in the sliding window (over the generated sequence) of size equal to the length of the sub-sequence.
 
 Assigning priorities to each validator based on the voting power and updating them at each round ensures the fairness of the proposer selection. In addition, every time a validator is elected as proposer its priority is decreased with the total voting power.
 
 __[O3]__ There is currently no definite guarantee that a low power stable validator will be elected within a large enough round window (??)
-Note: Just a claim here. If new high power validators bound and unbound continuously, the low validator moves back and forward in the queue via shifting. Since there is no "aging" that would cause a steady increase in its voting power, or similar mechanism, it is possible that this validator election is postponed indefinitely.
+Note: Just a claim here. If new high power validators bound and unbound continuously, and since there is no "aging" that would cause a steady increase in its voting power even when shifting is performed (or similar mechanism), it is possible that this validator election is postponed indefinitely. More analysis required either way.
+[Maybe should remove this]
 
 ### Basic Algorithm
 
@@ -77,17 +79,17 @@ If the set of the validators has not changed, at the beginning of each new round
 Following table shows, for the example above, how the proposer priority is calculated during each round. Only 4 rounds are shown, starting with the 5th the same values are computed.
 Each row shows the imaginary queue and the process place in it. The proposer is the closest to the head of the queue, the rightmost validator. As priorities are updated, the validators move right in the queue. At the end of the round the proposer moves left as its priority is reduced after election. At the end of each round the sum of the priorities is 0.
 
-Priority Round  | -2 | -1 | 0    | 1   | 2   | 3 | 4 | 5 | Alg step
---------------- | ---|--- |------|---  |---  |---|---|---|--------
- |              |    |    |p1,p2 |     |     |   |   |   |Initialized to 0
- |1             |    |    |      |  p1 |     | p2|   |   |A(i)+=VP(i)
- |              |    | p2 |      |  p1 |     |   |   |   |A(p2)-= P
- |2             |    |    |      |     |p1,p2|   |   |   |A(i)+=VP(i)
- |              | p1 |    |      |     |  p2 |   |   |   |A(p1)-= P
- |3             |    | p1 |      |     |     |   |   | p2|A(i)+=VP(i)
- |              |    | p1 |      | p2  |     |   |   |   |A(p2)-= P
- |4             |    |    |   p1 |     |     |   | p2|   |A(i)+=VP(i)
- |              |    |    |p1,p2 |     |     |   |   |   |A(p2)-= P
+|Round Priority  | -2| -1| 0   |  1| 2   | 3 | 4 | 5 | Alg step
+|--------------- |---|---|---- |---|---- |---|---|---|--------
+|                |   |   |p1,p2|   |     |   |   |   |Initialized to 0
+|1               |   |   |     | p1|     | p2|   |   |A(i)+=VP(i)
+|                |   | p2|     | p1|     |   |   |   |A(p2)-= P
+|2               |   |   |     |   |p1,p2|   |   |   |A(i)+=VP(i)
+|                | p1|   |     |   |   p2|   |   |   |A(p1)-= P
+|3               |   | p1|     |   |     |   |   | p2|A(i)+=VP(i)
+|                |   | p1|     | p2|     |   |   |   |A(p2)-= P
+|4               |   |   |   p1|   |     |   | p2|   |A(i)+=VP(i)
+|                |   |   |p1,p2|   |     |   |   |   |A(p2)-= P
 
 The actual implementation does not create this queue, it only has to store the current accumulated proposer priority. 
 
@@ -109,18 +111,19 @@ So we modify slightly the algorithm to handle this case. Note that times indicat
 At each block height the validator set may change. Some of the changes have implications on the proposer selection.
 
 #### Voting Power Change
-Consider again the earlier example and assume that the voting power of p1 is changed to 6:
+Consider again the earlier example and assume that the voting power of p1 is changed to 4:
 
-Validator | p1 | p2 
-----------|--- | ---
-VP        | 4  | 3
 
-Let's also assume that the last round R before this change the proposer priorites were as shown in first row (R-1 end). As it can be seen, the procedure can continue with round 1 at next height without changes as before. 
+Validator | p1| p2 
+----------|---| ---
+VP        | 4 | 3
 
-|Priority Round| -2 | -1 | 0    | 1   | 2   | 3 | 4 | 5 | Comment
+Let's also assume that at the last round R at height H before this change the proposer priorites were as shown in first row (H/R end). As it can be seen, the procedure can continue with round 1 at next height without changes as before. 
+
+|Round Priority| -2 | -1 | 0    | 1   | 2   | 3 | 4 | 5 | Comment
 |--------------| ---|--- |------|---  |---  |---|---|---|--------
-| R end        |    | p2 |      |  p1 |     |   |   |   |update VP(p1)
-| 1            |    |    |      |     | p2  |   |   | p1|A(i)+=VP(i)
+| H/R end      |    | p2 |      |  p1 |     |   |   |   |update VP(p1)
+| H+1/0        |    |    |      |     | p2  |   |   | p1|A(i)+=VP(i)
 |              | p1 |    |      |     | p2  |   |   |   |A(p1)-= P
 
 #### Validator Removal
@@ -130,13 +133,13 @@ Validator | p1 | p2 | p3 |
 --------- |--- |--- |--- |
 VP        | 1  | 2  | 3  |
 
-Let's assume that the last round was R and the proposer priorities were as shown in first row (R end) with their sum being 0. At this point p2 is removed and round 1 of next height runs. At the end of the round (penultimate row) the sum of priorities is -2 (minus the priority of the removed process). 
+Let's assume that the last round at height H was R and the proposer priorities were as shown in first row (H/R end) with their sum being 0. At this point p2 is removed and round 1 of next height H+1 runs. At the end of the round (penultimate row) the sum of priorities is -2 (minus the priority of the removed process). 
  
 
-|Priority Round |-3 | -2 | -1 | 0  | 1   | 2   | 3 | 4 | 5 | Comment
+|Round Priority |-3 | -2 | -1 | 0  | 1   | 2   | 3 | 4 | 5 | Comment
 |---------------|-- | ---|--- |--- |---  |---  |---|---|---|--------
-| R end         |p3 |    |    |    | p1  | p2  |   |   |   |remove p2
-| 1             |   |    |    | p3 |     | p1  |   |   |   |A(i)+=VP(i)
+| H/R end       |p3 |    |    |    | p1  | p2  |   |   |   |remove p2
+| H+1/0         |   |    |    | p3 |     | p1  |   |   |   |A(i)+=VP(i)
 |               |   | p1 |    | p3 |     |     |   |   |   |A(p1)-= P
 | *new step*    |   |    | p1 |    | p3  |     |   |   |   |A(i) -= avg
 
@@ -167,7 +170,7 @@ When a new validator is added same problem as the one described for removal appe
 
 One other issue that needs to be addressed is the following. A validator V with low voting power that has just been elected is moved to the end of the queue. If the validator set is large and/ or with other validators with significantly higher power, validator V will have to wait a lot of rounds to be elected. If V could remove and re-add itself to the validator set, it would make a significant (albeit unfair) "jump" ahead in the queue, decreasing the numbers of rounds it has to wait. 
 
-In order to prevent this, when a new validator is added, its initial priority is not set to 0 but to a lower value. This value is determined from the simulation of the above scenario: it is assumed that V had just proposed a block and was at the back of the queue when it was removed and re-added. In addition, a penalty factor is applied.
+In order to prevent this, when a new validator is added, its initial priority is not set to 0 but to a lower value. This value is determined from the simulation of the above scenario: it is assumed that V had just proposed a block and was at the back of the queue when it was removed and re-added. In addition, to discourage intentional unbound/ bound operations, a penalty factor is applied.
 
 If `vset = {v1,..,vn, V}` and `V` would be selected as proposer then it would have gone through the following changes:
 
@@ -182,7 +185,7 @@ Therefore when `V` is added to the `{v1,..,vn}` set its initial priority will be
 
     A(V) = -sum(VP(i) for i in {v1,..,vn})
 
-With a penalty factor of 1.125, the initial priority for a newly added verifier is:
+Curent implementation uses a penalty factor of 1.125, so the initial priority for a newly added verifier is:
     
     A(V) = -1.125 * P
 
@@ -192,26 +195,26 @@ Validator | p1 | p2 | p3
 ----------|--- |--- |---
 VP        | 1  | 3  | 8
 
-Let's assume that the last round was R and the proposer priorities were as shown in first row (R end) with their sum being 0. p3 is added with A(p3) = -4
+Let's assume that the last round was R and the proposer priorities were as shown in first row (R end) with their sum being 0. p3 is added with A(p3) = -4 (penalty loss due to integer division?)
 In the next round, p3 will still be ahead in the queue, elected as proposer and move back in the queue (same position it was just added)
 
-|Priority Round  | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | Alg step
+|Round Priority  | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | Alg step
 |--------------- | ---|--- |----|--- |--- |---|---|---|---|--------
-|R end          |    |    | p2 |    |    |   | p1|   |   |add p3
+|H/R end         |    |    | p2 |    |    |   | p1|   |   |add p3
 |                | p3 |    | p2 |    |    |   | p1|   |   |A(p3) = -4
-|1              |    |    |    |    |    | p2|   | p1| p3|A(i)+=VP(i)
-|               | p3 |    |    |    |    | p2|   | p1|   |A(p3)-=P
+|H+1/0           |    |    |    |    |    | p2|   | p1| p3|A(i)+=VP(i)
+|                | p3 |    |    |    |    | p2|   | p1|   |A(p3)-=P
 
 
 ### Wrinkles
 
 #### Validator Power Overflow Conditions
-The validator voting power is a positive number stored as an int64. When a validator is added the `1.125 * P` computation must not overflow. As a consequence the code handling validator updates (add and update) checks for overflow conditions making sure the total voting power is never larger than the largest int64 `MAX` with the property that `1.125 * MAX` is still in the bounds of int64. Fatal error is return when overflow condition is detected.
+The validator voting power is a positive number stored as an int64. When a validator is added the `1.125 * P` computation must not overflow. As a consequence the code handling validator updates (add and update) checks for overflow conditions making sure the total voting power is never larger than the largest int64 `MAX`, with the property that `1.125 * MAX` is still in the bounds of int64. Fatal error is return when overflow condition is detected.
 
 #### Proposer Priority Overflow/ Underflow Handling
 The proposer priority is stored as an int64. The selection algorithm performs additions and subtractions to these values and in the case of overflows and underflows it limits the values to:
 
-    MaxInt64  = 1<<63 - 1
+    MaxInt64  =  1 << 63 - 1
     MinInt64  = -1 << 63
 
 -----------
