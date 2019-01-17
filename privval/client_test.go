@@ -200,7 +200,7 @@ func TestSocketPVDeadline(t *testing.T) {
 				// Note: the TCP connection times out at the accept() phase,
 				// whereas the Unix domain sockets connection times out while
 				// attempting to fetch the remote signer's public key.
-				assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnTimeout)
+				assert.True(t, IsConnTimeout(sc.Start()))
 
 				assert.False(t, sc.IsRunning())
 			}(sc)
