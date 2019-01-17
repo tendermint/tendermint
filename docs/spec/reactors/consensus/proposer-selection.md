@@ -25,7 +25,7 @@ single round has an honest proposer (??)
 #### R3: Fairness
 In a stable network (no validator set changes) and for any sequence of K rounds with K > P, a validator v is elected as proposer with a frequency f proportional to its voting power VP(v) divided by the total voting power P:
 
-    f ~ VP(v) / P
+    f(v) ~ VP(v) / P
 
 #### O4: Starvation Prevention ;)
 In a churning network with many validator set changes, minimal guarantees for a chance in future election should be offered, e.g. for stable lower power validators.
@@ -71,10 +71,11 @@ Notation:
 Simple view at the Selection Algorithm:
 
 ```
-for each validator i in set:
-  A(i) += VP(i)
-prop = max(A)
-A(prop) -= P
+    def simpleProposalSelection (vset):
+        for each validator i in vset:
+            A(i) += VP(i)
+        prop = max(A)
+        A(prop) -= P
 ```
 
 If the set of the validators has not changed, at the beginning of each new round the sum of the proposal priorities is 0.
@@ -95,6 +96,20 @@ Priority Round  | -2 | -1 | 0    | 1   | 2   | 3 | 4 | 5 | Alg step
  |              |    |    |p1,p2 |     |     |   |   |   |A(p2)-= P
 
 The actual implementation does not create this queue, it only has to store the current accumulated proposer priority. 
+
+There are cases where the proposer selection is executed multiple times.
+(find a good example here)
+So we modify slightly the algorithm to handle this case. Note that times indicates the number of executions of the simpleProposalSelection() 
+
+    def singleProposalSelection (vset):
+        for each validator i in vset:
+            A(i) += VP(i)
+        prop = max(A)
+        A(prop) -= P
+    
+    def proposalSelection (vset, times):
+        for in in range(times):
+            singleProposalSelection(vset)
 
 ### Validator Set Changes
 At each block height the validator set may change. Some of the changes have implications on the proposer selection.
@@ -136,15 +151,22 @@ For this reason, the selection procedure adds another step (see last row) that s
 
 The modified selection algorithm is:
 
-    for each validator i in vset:
-      A(i) += VP(i)
-    prop = max(A)
-    A(prop) -= P
+    def singleProposalSelection (vset):
+        for each validator i in vset:
+            A(i) += VP(i)
+        prop = max(A)
+        A(prop) -= P
+    
+    def proposalSelection (vset, times):
+        for in in range(times):
+        singleProposalSelection(vset)
 
-    // normalize - shift with average priority
-    avg = sum(A(i) for i in vset)/len(vset)
-    for each validator i in vset:
-      A(i) -= avg
+        // normalize - shift with average priority
+        avg = sum(A(i) for i in vset)/len(vset)
+        for each validator i in vset:
+            A(i) -= avg
+
+Note that the shifting operation happens after singleProposalSelection() has run times times.
 
 #### New Validator
 When a new validator is added same problem as the one described for removal appears, the sum of priorities in the new set is not zero. This is now fixed with the shift step introduced above.
@@ -170,6 +192,23 @@ With a penalty factor of 1.125, the initial priority for a newly added verifier 
     
     A(V) = -1.125 * P
 
+If we consider the validator set where p3 has just been added:
+
+Validator | p1 | p2 | p3
+----------|--- |--- |---
+VP        | 1  | 3  | 8
+
+Let's assume that the last round was R and the proposer priorities were as shown in first row (R end) with their sum being 0. p3 is added with A(p3) = -4
+In the next round, p1 will still be ahead in the queue, elected as proposer and move back in the queue (same position it was just added)
+
+|Priority Round  | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | Alg step
+|--------------- | ---|--- |----|--- |--- |---|---|---|---|--------
+|R end          |    |    | p2 |    |    |   | p1|   |   |add p3
+|                | p3 |    | p2 |    |    |   | p1|   |   |A(p3) = -4
+|1              |    |    |    |    |    | p2|   | p1| p3|A(i)+=VP(i)
+|               | p3 |    |    |    |    | p2|   | p1|   |A(p3)-=P
+
+
 ### Wrinkles
 
 #### Validator Power Overflow Conditions
@@ -181,6 +220,9 @@ The proposer priority is stored as an int64. The selection algorithm performs ad
     MaxInt64  = 1<<63 - 1
     MinInt64  = -1 << 63
 
+-----------
+
+## Formal Proofs
 -----------
 
 We now look at a few particular cases to understand better how fairness should be implemented.
