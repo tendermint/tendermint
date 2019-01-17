@@ -595,7 +595,6 @@ func TestLargeGenesisValidator(t *testing.T) {
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 	require.NoError(t, err)
 	updatedState, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
-	//fmt.Println(updatedState)
 	require.NoError(t, err)
 	// only the first added val (not the genesis val) should be left
 	assert.Equal(t, 11, len(updatedState.NextValidators.Validators))
