@@ -87,7 +87,10 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	// removed if all tests would init. voting power appropriately;
 	// i.e. threshold should always be > 0
 	if diff > threshold && threshold > 0 {
-		vals.dividePrioritiesBy(diff / threshold)
+		// div = Floor((maxPriority - minPriority) / 2*totalVotingPower)
+		// threshold > 0 and diff > threshold guarantees (diff / threshold > 0):
+		div := diff / threshold
+		vals.dividePrioritiesBy(div)
 	}
 
 	var proposer *Validator
@@ -113,6 +116,7 @@ func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 	return mostest
 }
 
+// the caller should make sure divisor != 0
 func (vals *ValidatorSet) dividePrioritiesBy(divisor int64) {
 	for _, val := range vals.Validators {
 		val.ProposerPriority = val.ProposerPriority / divisor

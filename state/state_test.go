@@ -353,9 +353,9 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// have the same voting power (and the 2nd was added later).
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
-	val1VotinPower := int64(10)
+	val1VotingPower := int64(10)
 	val1PubKey := ed25519.GenPrivKey().PubKey()
-	val1 := &types.Validator{Address: val1PubKey.Address(), PubKey: val1PubKey, VotingPower: val1VotinPower}
+	val1 := &types.Validator{Address: val1PubKey.Address(), PubKey: val1PubKey, VotingPower: val1VotingPower}
 
 	// reset state validators to above validator
 	state.Validators = types.NewValidatorSet([]*types.Validator{val1})
@@ -376,14 +376,14 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 0 + 10 (initial prio) - 10 (avg) - 10 (mostest - total) = -10
-	totalPower := val1VotinPower
-	wantVal1Prio := 0 + val1VotinPower - totalPower
+	totalPower := val1VotingPower
+	wantVal1Prio := 0 + val1VotingPower - totalPower
 	assert.Equal(t, wantVal1Prio, updatedState.NextValidators.Validators[0].ProposerPriority)
 	assert.Equal(t, val1PubKey.Address(), updatedState.NextValidators.Proposer.Address)
 
 	// add a validator with the same voting power as the first
 	val2PubKey := ed25519.GenPrivKey().PubKey()
-	updateAddVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(val2PubKey), Power: val1VotinPower}
+	updateAddVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(val2PubKey), Power: val1VotingPower}
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{updateAddVal})
 	assert.NoError(t, err)
 
@@ -403,18 +403,18 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	_, oldVal1 := updatedState2.Validators.GetByAddress(val1PubKey.Address())
 	_, updatedVal2 := updatedState2.NextValidators.GetByAddress(val2PubKey.Address())
 
-	totalPower = val1VotinPower // no update
+	totalPower = val1VotingPower // no update
 	v2PrioWhenAddedVal2 := -(totalPower + (totalPower >> 3))
-	v2PrioWhenAddedVal2 = v2PrioWhenAddedVal2 + val1VotinPower       // -11 + 10 == -1
-	v1PrioWhenAddedVal2 := oldVal1.ProposerPriority + val1VotinPower // -10 + 10 == 0
-	totalPower = 2 * val1VotinPower                                  // now we have to validators with that power
-	v1PrioWhenAddedVal2 = v1PrioWhenAddedVal2 - totalPower           // mostest
+	v2PrioWhenAddedVal2 = v2PrioWhenAddedVal2 + val1VotingPower       // -11 + 10 == -1
+	v1PrioWhenAddedVal2 := oldVal1.ProposerPriority + val1VotingPower // -10 + 10 == 0
+	totalPower = 2 * val1VotingPower                                  // now we have to validators with that power
+	v1PrioWhenAddedVal2 = v1PrioWhenAddedVal2 - totalPower            // mostest
 	// have to express the AVG in big.Ints as -1/2 == -1 in big.Int while -1/2 == 0 in int64
 	avgSum := big.NewInt(0).Add(big.NewInt(v2PrioWhenAddedVal2), big.NewInt(v1PrioWhenAddedVal2))
 	avg := avgSum.Div(avgSum, big.NewInt(2))
 	expectedVal2Prio := v2PrioWhenAddedVal2 - avg.Int64()
-	totalPower = 2 * val1VotinPower // 10 + 10
-	expectedVal1Prio := oldVal1.ProposerPriority + val1VotinPower - avg.Int64() - totalPower
+	totalPower = 2 * val1VotingPower // 10 + 10
+	expectedVal1Prio := oldVal1.ProposerPriority + val1VotingPower - avg.Int64() - totalPower
 	// val1's ProposerPriority story: -10 (see above) + 10 (voting pow) - (-1) (avg) - 20 (total) == -19
 	assert.EqualValues(t, expectedVal1Prio, updatedVal1.ProposerPriority)
 	// val2 prio when added: -(totalVotingPower + (totalVotingPower >> 3)) == -11
@@ -440,8 +440,8 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	assert.Equal(t, val2PubKey.Address(), updatedState3.NextValidators.Proposer.Address)
 	// check if expected proposer prio is matched:
 
-	expectedVal1Prio2 := oldVal1.ProposerPriority + val1VotinPower
-	expectedVal2Prio2 := oldVal2.ProposerPriority + val1VotinPower - totalPower
+	expectedVal1Prio2 := oldVal1.ProposerPriority + val1VotingPower
+	expectedVal2Prio2 := oldVal2.ProposerPriority + val1VotingPower - totalPower
 	avgSum = big.NewInt(expectedVal1Prio + expectedVal2Prio)
 	avg = avgSum.Div(avgSum, big.NewInt(2))
 	expectedVal1Prio -= avg.Int64()
