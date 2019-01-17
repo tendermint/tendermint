@@ -489,9 +489,8 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 func TestLargeGenesisValidator(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
-	// TODO: increase genesis voting power to sth. more  close to MaxTotalVotingPower with changes that
-	// fix with tendermint/issues/2960; currently, the last iteration would take forever though
-	genesisVotingPower := int64(types.MaxTotalVotingPower / 100000000000000)
+
+	genesisVotingPower := int64(types.MaxTotalVotingPower / 1000)
 	genesisPubKey := ed25519.GenPrivKey().PubKey()
 	// fmt.Println("genesis addr: ", genesisPubKey.Address())
 	genesisVal := &types.Validator{Address: genesisPubKey.Address(), PubKey: genesisPubKey, VotingPower: genesisVotingPower}
