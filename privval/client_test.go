@@ -13,7 +13,6 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
-	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -186,40 +185,36 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 	}
 }
 
-// TestSocketPVDeadlineTCPOnly is not relevant to Unix domain sockets, since the
-// OS knows instantaneously the state of both sides of the connection.
-func TestSocketPVDeadlineTCPOnly(t *testing.T) {
-	var (
-		addr            = testFreeTCPAddr(t)
-		listenc         = make(chan struct{})
-		thisConnTimeout = 100 * time.Millisecond
-		sc              = newSocketVal(log.TestingLogger(), addr, thisConnTimeout)
-	)
+func TestSocketPVDeadline(t *testing.T) {
+	for _, tc := range socketTestCases(t) {
+		func() {
+			var (
+				listenc         = make(chan struct{})
+				thisConnTimeout = 100 * time.Millisecond
+				sc              = newSocketVal(log.TestingLogger(), tc.addr, thisConnTimeout)
+			)
 
-	go func(sc *SocketVal) {
-		defer close(listenc)
+			go func(sc *SocketVal) {
+				defer close(listenc)
 
-		assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnTimeout)
+				// Note: the TCP connection times out at the accept() phase,
+				// whereas the Unix domain sockets connection times out while
+				// attempting to fetch the remote signer's public key.
+				assert.True(t, IsConnTimeout(sc.Start()))
 
-		assert.False(t, sc.IsRunning())
-	}(sc)
+				assert.False(t, sc.IsRunning())
+			}(sc)
 
-	for {
-		conn, err := cmn.Connect(addr)
-		if err != nil {
-			continue
-		}
+			for {
+				_, err := cmn.Connect(tc.addr)
+				if err == nil {
+					break
+				}
+			}
 
-		_, err = p2pconn.MakeSecretConnection(
-			conn,
-			ed25519.GenPrivKey(),
-		)
-		if err == nil {
-			break
-		}
+			<-listenc
+		}()
 	}
-
-	<-listenc
 }
 
 func TestRemoteSignVoteErrors(t *testing.T) {
