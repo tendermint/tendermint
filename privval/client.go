@@ -232,6 +232,9 @@ func (sc *SocketVal) acceptConnection() (net.Conn, error) {
 		if !sc.IsRunning() {
 			return nil, nil // Ignore error from listener closing.
 		}
+		if _, ok := err.(timeoutError); ok {
+			return nil, cmn.ErrorWrap(ErrConnTimeout, err.Error())
+		}
 		return nil, err
 	}
 	return conn, nil
