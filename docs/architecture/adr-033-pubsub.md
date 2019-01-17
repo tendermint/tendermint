@@ -6,6 +6,7 @@ Author: Anton Kaliaev (@melekes)
 
 02-10-2018: Initial draft
 16-01-2019: Second version based on our conversation with Jae
+17-01-2019: Third version explaining how new design solves current issues
 
 ## Context
 
@@ -150,6 +151,28 @@ type MsgAndTags struct {
 ```
 
 to inform clients of which Tags were used with Msg.
+
+### How this new design solves the current issues?
+
+https://github.com/tendermint/tendermint/issues/951 (https://github.com/tendermint/tendermint/issues/1880)
+
+Because of non-blocking send, situation where we'll deadlock is not possible
+anymore. If the client stops reading messages, it will be removed.
+
+https://github.com/tendermint/tendermint/issues/1879
+
+MsgAndTags is used now instead of a plain message.
+
+### Future problems and their possible solutions
+
+https://github.com/tendermint/tendermint/issues/2826
+
+One question I am still pondering about: how to prevent pubsub from slowing
+down consensus. We can increase the pubsub queue size (which is 0 now). Also,
+it's probably a good idea to limit the total number of subscribers.
+
+This can be made automatically. Say we set queue size to 1000 and, when it's >=
+80% full, refuse new subscriptions.
 
 ## Status
 
