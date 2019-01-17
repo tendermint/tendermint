@@ -7,7 +7,7 @@ import (
 	"io"
 
 	amino "github.com/tendermint/go-amino"
-	"golang.org/x/crypto/ed25519" // forked to github.com/tendermint/crypto
+	"golang.org/x/crypto/ed25519"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -18,8 +18,8 @@ import (
 var _ crypto.PrivKey = PrivKeyEd25519{}
 
 const (
-	PrivKeyAminoRoute = "tendermint/PrivKeyEd25519"
-	PubKeyAminoRoute  = "tendermint/PubKeyEd25519"
+	PrivKeyAminoName = "tendermint/PrivKeyEd25519"
+	PubKeyAminoName  = "tendermint/PubKeyEd25519"
 	// Size of an Edwards25519 signature. Namely the size of a compressed
 	// Edwards25519 point, and a field element. Both of which are 32 bytes.
 	SignatureSize = 64
@@ -30,11 +30,11 @@ var cdc = amino.NewCodec()
 func init() {
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
 	cdc.RegisterConcrete(PubKeyEd25519{},
-		PubKeyAminoRoute, nil)
+		PubKeyAminoName, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKeyEd25519{},
-		PrivKeyAminoRoute, nil)
+		PrivKeyAminoName, nil)
 }
 
 // PrivKeyEd25519 implements crypto.PrivKey.

@@ -8,9 +8,9 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
-	// forked to github.com/tendermint/crypto
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"
@@ -28,20 +28,36 @@ const aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
 const aeadKeySize = chacha20poly1305.KeySize
 const aeadNonceSize = chacha20poly1305.NonceSize
 
-// SecretConnection implements net.conn.
+// SecretConnection implements net.Conn.
 // It is an implementation of the STS protocol.
-// Note we do not (yet) assume that a remote peer's pubkey
-// is known ahead of time, and thus we are technically
-// still vulnerable to MITM. (TODO!)
-// See docs/sts-final.pdf for more info
+// See https://github.com/tendermint/tendermint/blob/0.1/docs/sts-final.pdf for
+// details on the protocol.
+//
+// Consumers of the SecretConnection are responsible for authenticating
+// the remote peer's pubkey against known information, like a nodeID.
+// Otherwise they are vulnerable to MITM.
+// (TODO(ismail): see also https://github.com/tendermint/tendermint/issues/3010)
 type SecretConnection struct {
-	conn       io.ReadWriteCloser
-	recvBuffer []byte
-	recvNonce  *[aeadNonceSize]byte
-	sendNonce  *[aeadNonceSize]byte
+
+	// immutable
 	recvSecret *[aeadKeySize]byte
 	sendSecret *[aeadKeySize]byte
 	remPubKey  crypto.PubKey
+	conn       io.ReadWriteCloser
+
+	// net.Conn must be thread safe:
+	// https://golang.org/pkg/net/#Conn.
+	// Since we have internal mutable state,
+	// we need mtxs. But recv and send states
+	// are independent, so we can use two mtxs.
+	// All .Read are covered by recvMtx,
+	// all .Write are covered by sendMtx.
+	recvMtx    sync.Mutex
+	recvBuffer []byte
+	recvNonce  *[aeadNonceSize]byte
+
+	sendMtx   sync.Mutex
+	sendNonce *[aeadNonceSize]byte
 }
 
 // MakeSecretConnection performs handshake and returns a new authenticated
@@ -110,9 +126,12 @@ func (sc *SecretConnection) RemotePubKey() crypto.PubKey {
 	return sc.remPubKey
 }
 
-// Writes encrypted frames of `sealedFrameSize`
-// CONTRACT: data smaller than dataMaxSize is read atomically.
+// Writes encrypted frames of `totalFrameSize + aeadSizeOverhead`.
+// CONTRACT: data smaller than dataMaxSize is written atomically.
 func (sc *SecretConnection) Write(data []byte) (n int, err error) {
+	sc.sendMtx.Lock()
+	defer sc.sendMtx.Unlock()
+
 	for 0 < len(data) {
 		var frame = make([]byte, totalFrameSize)
 		var chunk []byte
@@ -131,6 +150,7 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		if err != nil {
 			return n, errors.New("Invalid SecretConnection Key")
 		}
+
 		// encrypt the frame
 		var sealedFrame = make([]byte, aeadSizeOverhead+totalFrameSize)
 		aead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
@@ -148,9 +168,20 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 
 // CONTRACT: data smaller than dataMaxSize is read atomically.
 func (sc *SecretConnection) Read(data []byte) (n int, err error) {
+	sc.recvMtx.Lock()
+	defer sc.recvMtx.Unlock()
+
+	// read off and update the recvBuffer, if non-empty
 	if 0 < len(sc.recvBuffer) {
 		n = copy(data, sc.recvBuffer)
 		sc.recvBuffer = sc.recvBuffer[n:]
+		return
+	}
+
+	// read off the conn
+	sealedFrame := make([]byte, totalFrameSize+aeadSizeOverhead)
+	_, err = io.ReadFull(sc.conn, sealedFrame)
+	if err != nil {
 		return
 	}
 
@@ -158,13 +189,9 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	if err != nil {
 		return n, errors.New("Invalid SecretConnection Key")
 	}
-	sealedFrame := make([]byte, totalFrameSize+aeadSizeOverhead)
-	_, err = io.ReadFull(sc.conn, sealedFrame)
-	if err != nil {
-		return
-	}
 
-	// decrypt the frame
+	// decrypt the frame.
+	// reads and updates the sc.recvNonce
 	var frame = make([]byte, totalFrameSize)
 	_, err = aead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
 	if err != nil {
@@ -173,12 +200,13 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	incrNonce(sc.recvNonce)
 	// end decryption
 
+	// copy checkLength worth into data,
+	// set recvBuffer to the rest.
 	var chunkLength = binary.LittleEndian.Uint32(frame) // read the first four bytes
 	if chunkLength > dataMaxSize {
 		return 0, errors.New("chunkLength is greater than dataMaxSize")
 	}
 	var chunk = frame[dataLenSize : dataLenSize+chunkLength]
-
 	n = copy(data, chunk)
 	sc.recvBuffer = chunk[n:]
 	return

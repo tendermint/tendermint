@@ -5,7 +5,7 @@ Tendermint blockchain application.
 
 The following diagram provides a superb example:
 
-<https://drive.google.com/open?id=1yR2XpRi9YCY9H9uMfcw8-RMJpvDyvjz9>
+![](../imgs/cosmos-tendermint-stack-4k.jpg)
 
 The end-user application here is the Cosmos Voyager, at the bottom left.
 Voyager communicates with a REST API exposed by a local Light-Client
@@ -45,6 +45,6 @@ Tendermint.
 See the following for more extensive documentation:
 
 - [Interchain Standard for the Light-Client REST API](https://github.com/cosmos/cosmos-sdk/pull/1028)
-- [Tendermint RPC Docs](https://tendermint.github.io/slate/)
+- [Tendermint RPC Docs](https://tendermint.com/rpc/)
 - [Tendermint in Production](../tendermint-core/running-in-production.md)
 - [ABCI spec](./abci-spec.md)

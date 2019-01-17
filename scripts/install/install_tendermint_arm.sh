@@ -1,19 +1,11 @@
 #!/usr/bin/env bash
 
-# XXX: this script is intended to be run from
-# a fresh Digital Ocean droplet with Ubuntu
-
-# upon its completion, you must either reset
-# your terminal or run `source ~/.profile`
-
-# as written, this script will install
-# tendermint core from master branch
 REPO=github.com/tendermint/tendermint
 
 # change this to a specific release or branch
 BRANCH=master
 
-GO_VERSION=1.11.2
+GO_VERSION=1.11.4
 
 sudo apt-get update -y
 

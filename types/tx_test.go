@@ -66,14 +66,13 @@ func TestValidTxProof(t *testing.T) {
 		root := txs.Hash()
 		// make sure valid proof for every tx
 		for i := range txs {
-			leaf := txs[i]
-			leafHash := leaf.Hash()
+			tx := []byte(txs[i])
 			proof := txs.Proof(i)
 			assert.Equal(t, i, proof.Proof.Index, "%d: %d", h, i)
 			assert.Equal(t, len(txs), proof.Proof.Total, "%d: %d", h, i)
 			assert.EqualValues(t, root, proof.RootHash, "%d: %d", h, i)
-			assert.EqualValues(t, leaf, proof.Data, "%d: %d", h, i)
-			assert.EqualValues(t, leafHash, proof.LeafHash(), "%d: %d", h, i)
+			assert.EqualValues(t, tx, proof.Data, "%d: %d", h, i)
+			assert.EqualValues(t, txs[i].Hash(), proof.Leaf(), "%d: %d", h, i)
 			assert.Nil(t, proof.Validate(root), "%d: %d", h, i)
 			assert.NotNil(t, proof.Validate([]byte("foobar")), "%d: %d", h, i)
 
@@ -103,9 +102,9 @@ func TestComputeTxsOverhead(t *testing.T) {
 	}{
 		{Txs{[]byte{6, 6, 6, 6, 6, 6}}, 2},
 		// one 21 Mb transaction:
-		{Txs{make([]byte, 22020096, 22020096)}, 5},
+		{Txs{make([]byte, 22020096)}, 5},
 		// two 21Mb/2 sized transactions:
-		{Txs{make([]byte, 11010048, 11010048), make([]byte, 11010048, 11010048)}, 10},
+		{Txs{make([]byte, 11010048), make([]byte, 11010048)}, 10},
 		{Txs{[]byte{1, 2, 3}, []byte{1, 2, 3}, []byte{4, 5, 6}}, 6},
 		{Txs{[]byte{100, 5, 64}, []byte{42, 116, 118}, []byte{6, 6, 6}, []byte{6, 6, 6}}, 8},
 	}

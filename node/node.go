@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"strings"
 	"time"
 
@@ -86,8 +87,26 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert old PrivValidator if it exists.
+	oldPrivVal := config.OldPrivValidatorFile()
+	newPrivValKey := config.PrivValidatorKeyFile()
+	newPrivValState := config.PrivValidatorStateFile()
+	if _, err := os.Stat(oldPrivVal); !os.IsNotExist(err) {
+		oldPV, err := privval.LoadOldFilePV(oldPrivVal)
+		if err != nil {
+			return nil, fmt.Errorf("Error reading OldPrivValidator from %v: %v\n", oldPrivVal, err)
+		}
+		logger.Info("Upgrading PrivValidator file",
+			"old", oldPrivVal,
+			"newKey", newPrivValKey,
+			"newState", newPrivValState,
+		)
+		oldPV.Upgrade(newPrivValKey, newPrivValState)
+	}
+
 	return NewNode(config,
-		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
+		privval.LoadOrGenFilePV(newPrivValKey, newPrivValState),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
@@ -98,15 +117,17 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 }
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
+type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(config.Namespace), p2p.PrometheusMetrics(config.Namespace),
-				mempl.PrometheusMetrics(config.Namespace), sm.PrometheusMetrics(config.Namespace)
+			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
 	}
@@ -210,13 +231,18 @@ func NewNode(config *cfg.Config,
 	// what happened during block replay).
 	state = sm.LoadState(stateDB)
 
-	// Ensure the state's block version matches that of the software.
+	// Log the version info.
+	logger.Info("Version info",
+		"software", version.TMCoreSemVer,
+		"block", version.BlockProtocol,
+		"p2p", version.P2PProtocol,
+	)
+
+	// If the state and software differ in block version, at least log it.
 	if state.Version.Consensus.Block != version.BlockProtocol {
-		return nil, fmt.Errorf(
-			"Block version of the software does not match that of the state.\n"+
-				"Got version.BlockProtocol=%v, state.Version.Consensus.Block=%v",
-			version.BlockProtocol,
-			state.Version.Consensus.Block,
+		logger.Info("Software and state have different block protocols",
+			"software", version.BlockProtocol,
+			"state", state.Version.Consensus.Block,
 		)
 	}
 
@@ -235,19 +261,22 @@ func NewNode(config *cfg.Config,
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.GetAddress(), addr) {
+		privValAddr := privValidator.GetPubKey().Address()
+		if bytes.Equal(privValAddr, addr) {
 			fastSync = false
 		}
 	}
 
+	pubKey := privValidator.GetPubKey()
+	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.GetAddress()) {
-		consensusLogger.Info("This node is a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
+	if state.Validators.HasAddress(addr) {
+		consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey)
 	} else {
-		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
+		consensusLogger.Info("This node is not a validator", "addr", addr, "pubKey", pubKey)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider()
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
 	// Make MempoolReactor
 	mempool := mempl.NewMempool(
@@ -343,20 +372,21 @@ func NewNode(config *cfg.Config,
 	indexerService := txindex.NewIndexerService(txIndexer, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
-	var (
-		p2pLogger = logger.With("module", "p2p")
-		nodeInfo  = makeNodeInfo(
-			config,
-			nodeKey.ID(),
-			txIndexer,
-			genDoc.ChainID,
-			p2p.NewProtocolVersion(
-				version.P2PProtocol, // global
-				state.Version.Consensus.Block,
-				state.Version.Consensus.App,
-			),
-		)
+	p2pLogger := logger.With("module", "p2p")
+	nodeInfo, err := makeNodeInfo(
+		config,
+		nodeKey.ID(),
+		txIndexer,
+		genDoc.ChainID,
+		p2p.NewProtocolVersion(
+			version.P2PProtocol, // global
+			state.Version.Consensus.Block,
+			state.Version.Consensus.App,
+		),
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	// Setup Transport.
 	var (
@@ -454,7 +484,7 @@ func NewNode(config *cfg.Config,
 				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
 			})
-		pexReactor.SetLogger(p2pLogger)
+		pexReactor.SetLogger(logger.With("module", "pex"))
 		sw.AddReactor("PEX", pexReactor)
 	}
 
@@ -611,7 +641,8 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetP2PPeers(n.sw)
 	rpccore.SetP2PTransport(n)
-	rpccore.SetPubKey(n.privValidator.GetPubKey())
+	pubKey := n.privValidator.GetPubKey()
+	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
@@ -777,7 +808,7 @@ func makeNodeInfo(
 	txIndexer txindex.TxIndexer,
 	chainID string,
 	protocolVersion p2p.ProtocolVersion,
-) p2p.NodeInfo {
+) (p2p.NodeInfo, error) {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
@@ -812,7 +843,8 @@ func makeNodeInfo(
 
 	nodeInfo.ListenAddr = lAddr
 
-	return nodeInfo
+	err := nodeInfo.Validate()
+	return nodeInfo, err
 }
 
 //------------------------------------------------------------------------------
@@ -848,16 +880,20 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	var pvsc types.PrivValidator
+	var listener net.Listener
 
 	protocol, address := cmn.ProtocolAndAddress(listenAddr)
+	ln, err := net.Listen(protocol, address)
+	if err != nil {
+		return nil, err
+	}
 	switch protocol {
 	case "unix":
-		pvsc = privval.NewIPCVal(logger.With("module", "privval"), address)
+		listener = privval.NewUnixListener(ln)
 	case "tcp":
 		// TODO: persist this key so external signer
 		// can actually authenticate us
-		pvsc = privval.NewTCPVal(logger.With("module", "privval"), listenAddr, ed25519.GenPrivKey())
+		listener = privval.NewTCPListener(ln, ed25519.GenPrivKey())
 	default:
 		return nil, fmt.Errorf(
 			"Wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
@@ -865,10 +901,9 @@ func createAndStartPrivValidatorSocketClient(
 		)
 	}
 
-	if pvsc, ok := pvsc.(cmn.Service); ok {
-		if err := pvsc.Start(); err != nil {
-			return nil, errors.Wrap(err, "failed to start")
-		}
+	pvsc := privval.NewSocketVal(logger.With("module", "privval"), listener)
+	if err := pvsc.Start(); err != nil {
+		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 
 	return pvsc, nil
