@@ -83,6 +83,9 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	//  2*totalVotingPower/(maxPriority - minPriority)
 	diff := computeMaxMinPriorityDiff(vals)
 	threshold := 2 * vals.TotalVotingPower()
+	// the 2nd check (threshold > 0) is merely a sanity check which could be
+	// removed if all tests would init. voting power appropriately;
+	// i.e. threshold should always be > 0
 	if diff > threshold && threshold > 0 {
 		vals.dividePrioritiesBy(diff / threshold)
 	}
