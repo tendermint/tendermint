@@ -38,6 +38,7 @@ __[R2]__ ??
 
 __[R3]__ Given a set of processes with the total voting power P, during a sequence of rounds of length P, every process is selected as proposer in a number of rounds equal to its voting power. The sequence of the P proposers then repeats.
 If we consider the validator set:
+
 Validator | p1 | p2 
 ----------|--- | ---
 VP        | 1  | 3
@@ -100,6 +101,7 @@ At each block height the validator set may change. Some of the changes have impl
 
 #### Voting Power Change
 Consider again the earlier example and assume that the voting power of p1 is changed to 6:
+
 Validator | p1 | p2 
 ----------|--- | ---
 VP        | 4  | 3
@@ -114,6 +116,7 @@ Let's also assume that the last round R before this change the proposer priorite
 
 #### Validator Removal
 Consider a new example with set.
+
 Validator | p1 | p2 | p3 |
 --------- |--- |--- |--- |
 VP        | 1  | 2  | 3  |
