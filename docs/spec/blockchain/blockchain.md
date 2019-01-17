@@ -109,10 +109,6 @@ Tendermint uses the
 [Google.Protobuf.WellKnownTypes.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/timestamp)
 format, which uses two integers, one for Seconds and for Nanoseconds.
 
-NOTE: there is currently a small divergence between Tendermint and the
-Google.Protobuf.WellKnownTypes.Timestamp that should be resolved. See [this
-issue](https://github.com/tendermint/go-amino/issues/223) for details.
-
 ## Data
 
 Data is just a wrapper for a list of transactions, where transactions are
@@ -230,7 +226,7 @@ The block version must match the state version.
 len(block.ChainID) < 50
 ```
 
-ChainID must be maximum 50 UTF-8 symbols.
+ChainID must be less than 50 bytes.
 
 ### Height
 

@@ -62,7 +62,7 @@ func TestEvidence(t *testing.T) {
 		{vote1, makeVote(val, chainID, 0, 10, 3, 1, blockID2), false},    // wrong round
 		{vote1, makeVote(val, chainID, 0, 10, 2, 2, blockID2), false},    // wrong step
 		{vote1, makeVote(val2, chainID, 0, 10, 2, 1, blockID), false},    // wrong validator
-		{vote1, badVote, false},                                          // signed by wrong key
+		{vote1, badVote, false}, // signed by wrong key
 	}
 
 	pubKey := val.GetPubKey()

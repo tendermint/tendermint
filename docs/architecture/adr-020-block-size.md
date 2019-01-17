@@ -7,6 +7,7 @@
 28-08-2018: Third version after Ethan's comments
 30-08-2018: AminoOverheadForBlock => MaxAminoOverheadForBlock
 31-08-2018: Bounding evidence and chain ID
+13-01-2019: Add section on MaxBytes vs MaxDataBytes
 
 ## Context
 
@@ -20,6 +21,32 @@ We should just remove MaxTxs all together and stick with MaxBytes, and have a
 But we can't just reap BlockSize.MaxBytes, since MaxBytes is for the entire block,
 not for the txs inside the block. There's extra amino overhead + the actual
 headers on top of the actual transactions + evidence + last commit.
+We could also consider using a MaxDataBytes instead of or in addition to MaxBytes.
+
+## MaxBytes vs MaxDataBytes
+
+The [PR #3045](https://github.com/tendermint/tendermint/pull/3045) suggested
+additional clarity/justification was necessary here, wither respect to the use
+of MaxDataBytes in addition to, or instead of, MaxBytes.
+
+MaxBytes provides a clear limit on the total size of a block that requires no
+additional calculation if you want to use it to bound resource usage, and there
+has been considerable discussions about optimizing tendermint around 1MB blocks.
+Regardless, we need some maximum on the size of a block so we can avoid
+unmarshalling blocks that are too big during the consensus, and it seems more
+straightforward to provide a single fixed number for this rather than a
+computation of "MaxDataBytes + everything else you need to make room for
+(signatures, evidence, header)". MaxBytes provides a simple bound so we can
+always say "blocks are less than X MB".
+
+Having both MaxBytes and MaxDataBytes feels like unnecessary complexity. It's
+not particularly surprising for MaxBytes to imply the maximum size of the
+entire block (not just txs), one just has to know that a block includes header,
+txs, evidence, votes. For more fine grained control over the txs included in the
+block, there is the MaxGas. In practice, the MaxGas may be expected to do most of
+the tx throttling, and the MaxBytes to just serve as an upper bound on the total
+size. Applications can use MaxGas as a MaxDataBytes by just taking the gas for
+every tx to be its size in bytes.
 
 ## Proposed solution
 
@@ -61,7 +88,7 @@ MaxXXX stayed the same.
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Consequences
 

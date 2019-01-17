@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -261,6 +262,346 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		assert.Equal(t, val.VotingPower, power, fmt.Sprintf(`unexpected powerat
                 height %d`, i))
 	}
+}
+
+func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
+	// assert that we preserve accum when calling updateState:
+	// https://github.com/tendermint/tendermint/issues/2718
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+	origVotingPower := int64(10)
+	val1PubKey := ed25519.GenPrivKey().PubKey()
+	val1 := &types.Validator{Address: val1PubKey.Address(), PubKey: val1PubKey, VotingPower: origVotingPower}
+
+	state.Validators = types.NewValidatorSet([]*types.Validator{val1})
+	state.NextValidators = state.Validators
+
+	// NewValidatorSet calls IncrementProposerPriority but uses on a copy of val1
+	assert.EqualValues(t, 0, val1.ProposerPriority)
+
+	block := makeBlock(state, state.LastBlockHeight+1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	abciResponses := &ABCIResponses{
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+	}
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+	require.NoError(t, err)
+	updatedState, err := updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+	assert.NoError(t, err)
+
+	assert.Equal(t, -origVotingPower, updatedState.NextValidators.Validators[0].ProposerPriority)
+
+	// add a validator
+	val2PubKey := ed25519.GenPrivKey().PubKey()
+	val2VotingPower := int64(100)
+	updateAddVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(val2PubKey), Power: val2VotingPower}
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{updateAddVal})
+	assert.NoError(t, err)
+	updatedState2, err := updateState(updatedState, blockID, &block.Header, abciResponses, validatorUpdates)
+	assert.NoError(t, err)
+
+	require.Equal(t, len(updatedState2.NextValidators.Validators), 2)
+	_, addedVal2 := updatedState2.NextValidators.GetByAddress(val2PubKey.Address())
+	// adding a validator should not lead to a ProposerPriority equal to zero (unless the combination of averaging and
+	// incrementing would cause so; which is not the case here)
+	totalPowerBefore2 := origVotingPower                                                      // 10
+	wantVal2ProposerPrio := -(totalPowerBefore2 + (totalPowerBefore2 >> 3)) + val2VotingPower // 89
+	avg := (0 + wantVal2ProposerPrio) / 2                                                     // 44
+	wantVal2ProposerPrio -= avg                                                               // 45
+	totalPowerAfter := origVotingPower + val2VotingPower                                      // 110
+	wantVal2ProposerPrio -= totalPowerAfter                                                   // -65
+	assert.Equal(t, wantVal2ProposerPrio, addedVal2.ProposerPriority)                         // not zero == -65
+
+	// Updating a validator does not reset the ProposerPriority to zero:
+	updatedVotingPowVal2 := int64(1)
+	updateVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(val2PubKey), Power: updatedVotingPowVal2}
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{updateVal})
+	assert.NoError(t, err)
+	updatedState3, err := updateState(updatedState2, blockID, &block.Header, abciResponses, validatorUpdates)
+	assert.NoError(t, err)
+
+	require.Equal(t, len(updatedState3.NextValidators.Validators), 2)
+	_, prevVal1 := updatedState3.Validators.GetByAddress(val1PubKey.Address())
+	_, updatedVal2 := updatedState3.NextValidators.GetByAddress(val2PubKey.Address())
+
+	expectedVal1PrioBeforeAvg := prevVal1.ProposerPriority + prevVal1.VotingPower // -44 + 10 == -34
+	wantVal2ProposerPrio = wantVal2ProposerPrio + updatedVotingPowVal2            // -64
+	avg = (wantVal2ProposerPrio + expectedVal1PrioBeforeAvg) / 2                  // (-64-34)/2 == -49
+	wantVal2ProposerPrio = wantVal2ProposerPrio - avg                             // -15
+	assert.Equal(t, wantVal2ProposerPrio, updatedVal2.ProposerPriority)           // -15
+}
+
+func TestProposerPriorityProposerAlternates(t *testing.T) {
+	// Regression test that would fail if the inner workings of
+	// IncrementProposerPriority change.
+	// Additionally, make sure that same power validators alternate if both
+	// have the same voting power (and the 2nd was added later).
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+	origVotinPower := int64(10)
+	val1PubKey := ed25519.GenPrivKey().PubKey()
+	val1 := &types.Validator{Address: val1PubKey.Address(), PubKey: val1PubKey, VotingPower: origVotinPower}
+
+	// reset state validators to above validator
+	state.Validators = types.NewValidatorSet([]*types.Validator{val1})
+	state.NextValidators = state.Validators
+	// we only have one validator:
+	assert.Equal(t, val1PubKey.Address(), state.Validators.Proposer.Address)
+
+	block := makeBlock(state, state.LastBlockHeight+1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	// no updates:
+	abciResponses := &ABCIResponses{
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+	}
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+	require.NoError(t, err)
+
+	updatedState, err := updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+	assert.NoError(t, err)
+
+	// 0 + 10 (initial prio) - 10 (avg) - 10 (mostest - total) = -10
+	assert.Equal(t, -origVotinPower, updatedState.NextValidators.Validators[0].ProposerPriority)
+	assert.Equal(t, val1PubKey.Address(), updatedState.NextValidators.Proposer.Address)
+
+	// add a validator with the same voting power as the first
+	val2PubKey := ed25519.GenPrivKey().PubKey()
+	updateAddVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(val2PubKey), Power: origVotinPower}
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{updateAddVal})
+	assert.NoError(t, err)
+
+	updatedState2, err := updateState(updatedState, blockID, &block.Header, abciResponses, validatorUpdates)
+	assert.NoError(t, err)
+
+	require.Equal(t, len(updatedState2.NextValidators.Validators), 2)
+	assert.Equal(t, updatedState2.Validators, updatedState.NextValidators)
+
+	// val1 will still be proposer as val2 just got added:
+	assert.Equal(t, val1PubKey.Address(), updatedState.NextValidators.Proposer.Address)
+	assert.Equal(t, updatedState2.Validators.Proposer.Address, updatedState2.NextValidators.Proposer.Address)
+	assert.Equal(t, updatedState2.Validators.Proposer.Address, val1PubKey.Address())
+	assert.Equal(t, updatedState2.NextValidators.Proposer.Address, val1PubKey.Address())
+
+	_, updatedVal1 := updatedState2.NextValidators.GetByAddress(val1PubKey.Address())
+	_, oldVal1 := updatedState2.Validators.GetByAddress(val1PubKey.Address())
+	_, updatedVal2 := updatedState2.NextValidators.GetByAddress(val2PubKey.Address())
+
+	totalPower := origVotinPower
+	v2PrioWhenAddedVal2 := -(totalPower + (totalPower >> 3))
+	v2PrioWhenAddedVal2 = v2PrioWhenAddedVal2 + origVotinPower       // -11 + 10 == -1
+	v1PrioWhenAddedVal2 := oldVal1.ProposerPriority + origVotinPower // -10 + 10 == 0
+	// have to express the AVG in big.Ints as -1/2 == -1 in big.Int while -1/2 == 0 in int64
+	avgSum := big.NewInt(0).Add(big.NewInt(v2PrioWhenAddedVal2), big.NewInt(v1PrioWhenAddedVal2))
+	avg := avgSum.Div(avgSum, big.NewInt(2))
+	expectedVal2Prio := v2PrioWhenAddedVal2 - avg.Int64()
+	totalPower = 2 * origVotinPower // 10 + 10
+	expectedVal1Prio := oldVal1.ProposerPriority + origVotinPower - avg.Int64() - totalPower
+	// val1's ProposerPriority story: -10 (see above) + 10 (voting pow) - (-1) (avg) - 20 (total) == -19
+	assert.EqualValues(t, expectedVal1Prio, updatedVal1.ProposerPriority)
+	// val2 prio when added: -(totalVotingPower + (totalVotingPower >> 3)) == -11
+	// -> -11 + 10  (voting power) - (-1) (avg) == 0
+	assert.EqualValues(t, expectedVal2Prio, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
+
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+	require.NoError(t, err)
+
+	updatedState3, err := updateState(updatedState2, blockID, &block.Header, abciResponses, validatorUpdates)
+	assert.NoError(t, err)
+
+	// proposer changes from now on (every iteration) as long as there are no changes in the validator set:
+	assert.NotEqual(t, updatedState3.Validators.Proposer.Address, updatedState3.NextValidators.Proposer.Address)
+
+	assert.Equal(t, updatedState3.Validators, updatedState2.NextValidators)
+	_, updatedVal1 = updatedState3.NextValidators.GetByAddress(val1PubKey.Address())
+	_, oldVal1 = updatedState3.Validators.GetByAddress(val1PubKey.Address())
+	_, updatedVal2 = updatedState3.NextValidators.GetByAddress(val2PubKey.Address())
+	_, oldVal2 := updatedState3.Validators.GetByAddress(val2PubKey.Address())
+
+	// val2 will be proposer:
+	assert.Equal(t, val2PubKey.Address(), updatedState3.NextValidators.Proposer.Address)
+	// check if expected proposer prio is matched:
+
+	avgSum = big.NewInt(oldVal1.ProposerPriority + origVotinPower + oldVal2.ProposerPriority + origVotinPower)
+	avg = avgSum.Div(avgSum, big.NewInt(2))
+	expectedVal1Prio2 := oldVal1.ProposerPriority + origVotinPower - avg.Int64()
+	expectedVal2Prio2 := oldVal2.ProposerPriority + origVotinPower - avg.Int64() - totalPower
+
+	// -19 + 10 - 0 (avg) == -9
+	assert.EqualValues(t, expectedVal1Prio2, updatedVal1.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
+	// 0 + 10 - 0 (avg) - 20 (total) == -10
+	assert.EqualValues(t, expectedVal2Prio2, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
+
+	// no changes in voting power and both validators have same voting power
+	// -> proposers should alternate:
+	oldState := updatedState3
+	for i := 0; i < 1000; i++ {
+		// no validator updates:
+		abciResponses := &ABCIResponses{
+			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+		}
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+		require.NoError(t, err)
+
+		updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
+		assert.NoError(t, err)
+		// alternate (and cyclic priorities):
+		assert.NotEqual(t, updatedState.Validators.Proposer.Address, updatedState.NextValidators.Proposer.Address, "iter: %v", i)
+		assert.Equal(t, oldState.Validators.Proposer.Address, updatedState.NextValidators.Proposer.Address, "iter: %v", i)
+
+		_, updatedVal1 = updatedState.NextValidators.GetByAddress(val1PubKey.Address())
+		_, updatedVal2 = updatedState.NextValidators.GetByAddress(val2PubKey.Address())
+
+		if i%2 == 0 {
+			assert.Equal(t, updatedState.Validators.Proposer.Address, val2PubKey.Address())
+			assert.Equal(t, expectedVal1Prio, updatedVal1.ProposerPriority) // -19
+			assert.Equal(t, expectedVal2Prio, updatedVal2.ProposerPriority) // 0
+		} else {
+			assert.Equal(t, updatedState.Validators.Proposer.Address, val1PubKey.Address())
+			assert.Equal(t, expectedVal1Prio2, updatedVal1.ProposerPriority) // -9
+			assert.Equal(t, expectedVal2Prio2, updatedVal2.ProposerPriority) // -10
+		}
+		// update for next iteration:
+		oldState = updatedState
+	}
+}
+
+func TestLargeGenesisValidator(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+	// TODO: increase genesis voting power to sth. more  close to MaxTotalVotingPower with changes that
+	// fix with tendermint/issues/2960; currently, the last iteration would take forever though
+	genesisVotingPower := int64(types.MaxTotalVotingPower / 100000000000000)
+	genesisPubKey := ed25519.GenPrivKey().PubKey()
+	// fmt.Println("genesis addr: ", genesisPubKey.Address())
+	genesisVal := &types.Validator{Address: genesisPubKey.Address(), PubKey: genesisPubKey, VotingPower: genesisVotingPower}
+	// reset state validators to above validator
+	state.Validators = types.NewValidatorSet([]*types.Validator{genesisVal})
+	state.NextValidators = state.Validators
+	require.True(t, len(state.Validators.Validators) == 1)
+
+	// update state a few times with no validator updates
+	// asserts that the single validator's ProposerPrio stays the same
+	oldState := state
+	for i := 0; i < 10; i++ {
+		// no updates:
+		abciResponses := &ABCIResponses{
+			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+		}
+		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+		require.NoError(t, err)
+
+		block := makeBlock(oldState, oldState.LastBlockHeight+1)
+		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+
+		updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
+		// no changes in voting power (ProposerPrio += VotingPower == 0 in 1st round; than shiftByAvg == no-op,
+		// than -Total == -Voting)
+		// -> no change in ProposerPrio (stays -Total == -VotingPower):
+		assert.EqualValues(t, oldState.NextValidators, updatedState.NextValidators)
+		assert.EqualValues(t, -genesisVotingPower, updatedState.NextValidators.Proposer.ProposerPriority)
+
+		oldState = updatedState
+	}
+	// add another validator, do a few iterations (create blocks),
+	// add more validators with same voting power as the 2nd
+	// let the genesis validator "unbond",
+	// see how long it takes until the effect wears off and both begin to alternate
+	// see: https://github.com/tendermint/tendermint/issues/2960
+	firstAddedValPubKey := ed25519.GenPrivKey().PubKey()
+	// fmt.Println("first added addr: ", firstAddedValPubKey.Address())
+	firstAddedValVotingPower := int64(10)
+	firstAddedVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(firstAddedValPubKey), Power: firstAddedValVotingPower}
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{firstAddedVal})
+	assert.NoError(t, err)
+	abciResponses := &ABCIResponses{
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{firstAddedVal}},
+	}
+	block := makeBlock(oldState, oldState.LastBlockHeight+1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
+
+	lastState := updatedState
+	for i := 0; i < 200; i++ {
+		// no updates:
+		abciResponses := &ABCIResponses{
+			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+		}
+		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+		require.NoError(t, err)
+
+		block := makeBlock(lastState, lastState.LastBlockHeight+1)
+		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+
+		updatedStateInner, err := updateState(lastState, blockID, &block.Header, abciResponses, validatorUpdates)
+		lastState = updatedStateInner
+	}
+	// set state to last state of above iteration
+	state = lastState
+
+	// set oldState to state before above iteration
+	oldState = updatedState
+	_, oldGenesisVal := oldState.NextValidators.GetByAddress(genesisVal.Address)
+	_, newGenesisVal := state.NextValidators.GetByAddress(genesisVal.Address)
+	_, addedOldVal := oldState.NextValidators.GetByAddress(firstAddedValPubKey.Address())
+	_, addedNewVal := state.NextValidators.GetByAddress(firstAddedValPubKey.Address())
+	// expect large negative proposer priority for both (genesis validator decreased, 2nd validator increased):
+	assert.True(t, oldGenesisVal.ProposerPriority > newGenesisVal.ProposerPriority)
+	assert.True(t, addedOldVal.ProposerPriority < addedNewVal.ProposerPriority)
+
+	// add 10 validators with the same voting power as the one added directly after genesis:
+	for i := 0; i < 10; i++ {
+		addedPubKey := ed25519.GenPrivKey().PubKey()
+
+		addedVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(addedPubKey), Power: firstAddedValVotingPower}
+		validatorUpdates, err := types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{addedVal})
+		assert.NoError(t, err)
+
+		abciResponses := &ABCIResponses{
+			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{addedVal}},
+		}
+		block := makeBlock(oldState, oldState.LastBlockHeight+1)
+		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+		state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+	}
+	require.Equal(t, 10+2, len(state.NextValidators.Validators))
+
+	// remove genesis validator:
+	removeGenesisVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(genesisPubKey), Power: 0}
+	abciResponses = &ABCIResponses{
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{removeGenesisVal}},
+	}
+	block = makeBlock(oldState, oldState.LastBlockHeight+1)
+	blockID = types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+	require.NoError(t, err)
+	updatedState, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+	require.NoError(t, err)
+	// only the first added val (not the genesis val) should be left
+	assert.Equal(t, 11, len(updatedState.NextValidators.Validators))
+
+	// call update state until the effect for the 3rd added validator
+	// being proposer for a long time after the genesis validator left wears off:
+	curState := updatedState
+	count := 0
+	isProposerUnchanged := true
+	for isProposerUnchanged {
+		abciResponses := &ABCIResponses{
+			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+		}
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
+		require.NoError(t, err)
+		block = makeBlock(curState, curState.LastBlockHeight+1)
+		blockID = types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+		curState, err = updateState(curState, blockID, &block.Header, abciResponses, validatorUpdates)
+		if !bytes.Equal(curState.Validators.Proposer.Address, curState.NextValidators.Proposer.Address) {
+			isProposerUnchanged = false
+		}
+		count++
+	}
+	// first proposer change happens after this many iters; we probably want to lower this number:
+	// TODO: change with https://github.com/tendermint/tendermint/issues/2960
+	firstProposerChangeExpectedAfter := 438
+	assert.Equal(t, firstProposerChangeExpectedAfter, count)
 }
 
 func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {

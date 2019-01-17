@@ -53,6 +53,7 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 			NodeInfo:         nodeInfo,
 			IsOutbound:       peer.IsOutbound(),
 			ConnectionStatus: peer.Status(),
+			RemoteIP:         peer.RemoteIP(),
 		})
 	}
 	// TODO: Should we include PersistentPeers and Seeds in here?

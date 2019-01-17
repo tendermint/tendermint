@@ -3,6 +3,55 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.28.0
+
+This release breaks the format for the `priv_validator.json` file
+and the protocol used for the external validator process.
+It is compatible with v0.27.0 blockchains (neither the BlockProtocol nor the
+P2PProtocol have changed).
+
+Please read carefully for details about upgrading.
+
+**Note:** Backup your `config/priv_validator.json`
+before proceeding.
+
+### `priv_validator.json`
+
+The `config/priv_validator.json` is now two files:
+`config/priv_validator_key.json` and `data/priv_validator_state.json`.
+The former contains the key material, the later contains the details on the last
+message signed.
+
+When running v0.28.0 for the first time, it will back up any pre-existing
+`priv_validator.json` file and proceed to split it into the two new files.
+Upgrading should happen automatically without problem.
+
+To upgrade manually, use the provided `privValUpgrade.go` script, with exact paths for the old
+`priv_validator.json` and the locations for the two new files. It's recomended
+to use the default paths, of `config/priv_validator_key.json` and
+`data/priv_validator_state.json`, respectively:
+
+```
+go run scripts/privValUpgrade.go <old-path> <new-key-path> <new-state-path>
+```
+
+### External validator signers
+
+The Unix and TCP implementations of the remote signing validator
+have been consolidated into a single implementation.
+Thus in both cases, the external process is expected to dial
+Tendermint. This is different from how Unix sockets used to work, where
+Tendermint dialed the external process.
+
+The `PubKeyMsg` was also split into separate `Request` and `Response` types
+for consistency with other messages.
+
+Note that the TCP sockets don't yet use a persistent key,
+so while they're encrypted, they can't yet be properly authenticated.
+See [#3105](https://github.com/tendermint/tendermint/issues/3105).
+Note the Unix socket has neither encryption nor authentication, but will
+add a shared-secret in [#3099](https://github.com/tendermint/tendermint/issues/3099).
+
 ## v0.27.0
 
 This release contains some breaking changes to the block and p2p protocols,

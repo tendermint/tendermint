@@ -22,6 +22,7 @@ const (
 	stepPrecommit int8 = 3
 )
 
+// A vote is either stepPrevote or stepPrecommit.
 func voteToStep(vote *types.Vote) int8 {
 	switch vote.Type {
 	case types.PrevoteType:
@@ -29,7 +30,7 @@ func voteToStep(vote *types.Vote) int8 {
 	case types.PrecommitType:
 		return stepPrecommit
 	default:
-		cmn.PanicSanity("Unknown vote type")
+		panic("Unknown vote type")
 		return 0
 	}
 }
