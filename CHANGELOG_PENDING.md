@@ -24,6 +24,7 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 - [rpc] \#3065 return maxPerPage (100), not defaultPerPage (30) if `per_page` is greater than the max 100.
 - [instrumentation] \#3082 add 'chain_id' label for all metrics
+- [pex] \#3037 only log "Reached max attempts to dial" once
 
 ### BUG FIXES:
 - [log] \#3060 fix year format
