@@ -18,25 +18,19 @@ Given a validator set `V`, and two honest validators `p` and `q`, for each heigh
 
 where `proposer_p(h,r)` is the proposer returned by the Proposer Selection Procedure at process `p`, at height `h` and round `r`.
 
-#### R2: Liveliness
-In every consecutive sequence of rounds of size K (K is system parameter), at least a
-single round has an honest proposer (??)
-
-#### R3: Fairness
-In a stable network (no validator set changes) and for any sequence of K rounds with K > P, a validator v is elected as proposer with a frequency f proportional to its voting power VP(v) divided by the total voting power P:
+#### R2: Fairness
+In a stable network (no validator set changes) with total voting power P and for any sequence of K rounds with K > P, a validator v is elected as proposer with a frequency f proportional to its voting power VP(v) divided by P:
 
     f(v) ~ VP(v) / P
 
-#### O4: Starvation Prevention ;)
+#### O3: Starvation Prevention
 In a churning network with many validator set changes, minimal guarantees for a chance in future election should be offered, e.g. for stable lower power validators.
 
 ## Proposer Selection Specification
 ### Requirement Fulfillment Claims
-__[R1]__ The proposer algorithm is deterministic giving consistent results across executions with same transactions and validator set modifications. A pseudocode of the alorithm is given below. 
+__[R1]__ The proposer algorithm is deterministic giving consistent results across executions with same transactions and validator set modifications. A pseudocode of the algorithm is given below.  
 
-__[R2]__ ??
-
-__[R3]__ Given a set of processes with the total voting power P, during a sequence of rounds of length P, every process is selected as proposer in a number of rounds equal to its voting power. The sequence of the P proposers then repeats.
+__[R2]__ Given a set of processes with the total voting power P, during a sequence of rounds of length P, every process is selected as proposer in a number of rounds equal to its voting power. The sequence of the P proposers then repeats.
 If we consider the validator set:
 
 Validator | p1 | p2 
@@ -48,7 +42,7 @@ The proposer selection generates the sequence:
 
 Assigning priorities to each validator based on the voting power and updating them at each round ensures the fairness of the proposer selection. In addition, every time a validator is elected as proposer its priority is decreased with the total voting power.
 
-__[O4]__ There is currently no definite guarantee that a low power stable validator will be elected within a large enough round window (??)
+__[O3]__ There is currently no definite guarantee that a low power stable validator will be elected within a large enough round window (??)
 Note: Just a claim here. If new high power validators bound and unbound continuously, the low validator moves back and forward in the queue via shifting. Since there is no "aging" that would cause a steady increase in its voting power, or similar mechanism, it is possible that this validator election is postponed indefinitely.
 
 ### Basic Algorithm
@@ -146,7 +140,7 @@ Let's assume that the last round was R and the proposer priorities were as shown
 |               |   | p1 |    | p3 |     |     |   |   |   |A(p1)-= P
 | *new step*    |   |    | p1 |    | p3  |     |   |   |   |A(i) -= avg
 
-The procedure could continue without modifications. However, it is possible that after a sufficiently large number of modifications in validator set, the priority values would group towards maximum or minimum allowed values.
+The procedure could continue without modifications. However, it is possible that after a sufficiently large number of modifications in validator set, the priority values would migrate towards maximum or minimum allowed values causing truncations due to overflow detection.
 For this reason, the selection procedure adds another step (see last row) that shifts the current priority values left or right such that the average remains 0.
 
 The modified selection algorithm is:
@@ -171,7 +165,7 @@ Note that the shifting operation happens after singleProposalSelection() has run
 #### New Validator
 When a new validator is added same problem as the one described for removal appears, the sum of priorities in the new set is not zero. This is now fixed with the shift step introduced above.
 
-One other issue that needs to be addressed is the following. A validator V with low voting power that has just been elected is moved to the end of the queue. If the validator set is large and/ or with other validators with significantly higher power, validator V will have to wait a lot of rounds to be elected. If V could remove and read itself to the validator set, it would make a significant (albeit unfair) "jump" ahead in the queue, decreasing the numbers of rounds it has to wait. 
+One other issue that needs to be addressed is the following. A validator V with low voting power that has just been elected is moved to the end of the queue. If the validator set is large and/ or with other validators with significantly higher power, validator V will have to wait a lot of rounds to be elected. If V could remove and re-add itself to the validator set, it would make a significant (albeit unfair) "jump" ahead in the queue, decreasing the numbers of rounds it has to wait. 
 
 In order to prevent this, when a new validator is added, its initial priority is not set to 0 but to a lower value. This value is determined from the simulation of the above scenario: it is assumed that V had just proposed a block and was at the back of the queue when it was removed and re-added. In addition, a penalty factor is applied.
 
@@ -199,7 +193,7 @@ Validator | p1 | p2 | p3
 VP        | 1  | 3  | 8
 
 Let's assume that the last round was R and the proposer priorities were as shown in first row (R end) with their sum being 0. p3 is added with A(p3) = -4
-In the next round, p1 will still be ahead in the queue, elected as proposer and move back in the queue (same position it was just added)
+In the next round, p3 will still be ahead in the queue, elected as proposer and move back in the queue (same position it was just added)
 
 |Priority Round  | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | Alg step
 |--------------- | ---|--- |----|--- |--- |---|---|---|---|--------
@@ -223,32 +217,3 @@ The proposer priority is stored as an int64. The selection algorithm performs ad
 -----------
 
 ## Formal Proofs
------------
-
-We now look at a few particular cases to understand better how fairness should be implemented.
-If we have 4 processes with the following voting power distribution (p0,4), (p1, 2), (p2, 2), (p3, 2) at some round r,  
-we have the following sequence of proposer selections in the following rounds:
-
-`p0, p1, p2, p3, p0, p0, p1, p2, p3, p0, p0, p1, p2, p3, p0, p0, p1, p2, p3, p0, etc`
-
-Let consider now the following scenario where a total voting power of faulty processes is aggregated in a single process
-p0: (p0,3), (p1, 1), (p2, 1), (p3, 1), (p4, 1), (p5, 1), (p6, 1), (p7, 1).
-In this case the sequence of proposer selections looks like this:
-
-`p0, p1, p2, p3, p0, p4, p5, p6, p7, p0, p0, p1, p2, p3, p0, p4, p5, p6, p7, p0, etc`
-
-In this case, we see that a number of rounds coordinated by a faulty process is proportional to its voting power.
-We consider also the case where we have voting power uniformly distributed among processes, i.e., we have 10 processes
-each with voting power of 1. And let consider that there are 3 faulty processes with consecutive addresses,
-for example the first 3 processes are faulty. Then the sequence looks like this:
-
-`p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, etc`
-
-In this case, we have 3 consecutive rounds with a faulty proposer.
-One special case we consider is the case where a single honest process p0 has most of the voting power, for example:
-(p0,100), (p1, 2), (p2, 3), (p3, 4). Then the sequence of proposer selection looks like this:
-
-p0, p0, p0, p0, p0, p0, p0, p0, p0, p0, p0, p0, p0, p1, p0, p0, p0, p0, p0, etc
-
-This basically means that almost all rounds have the same proposer. But in this case, the process p0 has anyway enough
-voting power to decide whatever he wants, so the fact that he coordinates almost all rounds seems correct.
