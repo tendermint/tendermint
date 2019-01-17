@@ -473,7 +473,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 	if attempts > maxAttemptsToDial {
 		// Do not log the message if the addr gets readded.
 		if attempts+1 == maxAttemptsToDial {
-			r.Logger.Error("Reached max attempts to dial", "addr", addr, "attempts", attempts)
+			r.Logger.Info("Reached max attempts to dial", "addr", addr, "attempts", attempts)
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
 		r.book.MarkBad(addr)
