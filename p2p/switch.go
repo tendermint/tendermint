@@ -644,9 +644,15 @@ func (sw *Switch) addPeer(p Peer) error {
 
 	p.SetLogger(sw.Logger.With("peer", p.NodeInfo().NetAddress()))
 
-	// All good. Start peer
-	if err := sw.startInitPeer(p); err != nil {
-		return err
+	// Handle the shut down case where the switch has stopped but we're
+	// concurrently trying to add a peer.
+	if sw.IsRunning() {
+		// All good. Start peer
+		if err := sw.startInitPeer(p); err != nil {
+			return err
+		}
+	} else {
+		sw.Logger.Error("Won't start a peer - switch is not running", "peer", p)
 	}
 
 	// Add the peer to .peers.
