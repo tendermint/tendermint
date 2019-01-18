@@ -39,7 +39,7 @@ func TestPeerBasic(t *testing.T) {
 	assert.False(p.IsPersistent())
 	p.persistent = true
 	assert.True(p.IsPersistent())
-	assert.Equal(rp.Addr().DialString(), p.Addr().String())
+	assert.Equal(rp.Addr().DialString(), p.RemoteAddr().String())
 	assert.Equal(rp.ID(), p.ID())
 }
 
