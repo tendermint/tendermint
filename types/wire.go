@@ -20,3 +20,8 @@ func RegisterBlockAmino(cdc *amino.Codec) {
 func GetCodec() *amino.Codec {
 	return cdc
 }
+
+// For testing purposes only
+func RegisterMockEvidencesGlobal() {
+	RegisterMockEvidences(cdc)
+}
