@@ -86,11 +86,13 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	// the 2nd check (threshold > 0) is merely a sanity check which could be
 	// removed if all tests would init. voting power appropriately;
 	// i.e. threshold should always be > 0
-	if diff > threshold && threshold > 0 {
+
+	for diff > threshold && threshold > 0 {
 		// div = Ceil((maxPriority - minPriority) / 2*totalVotingPower)
 		// threshold > 0 and diff > threshold guarantees (diff / threshold > 0):
 		div := int64(math.Ceil(float64(diff) / float64(threshold)))
 		vals.dividePrioritiesBy(div)
+		diff = computeMaxMinPriorityDiff(vals)
 	}
 
 	var proposer *Validator
@@ -106,7 +108,8 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 	for _, val := range vals.Validators {
 		// Check for overflow for sum.
-		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
+		newPrio := safeAddClip(val.ProposerPriority, val.VotingPower)
+		val.ProposerPriority = newPrio
 	}
 	// Decrement the validator with most ProposerPriority:
 	mostest := vals.getValWithMostPriority()
@@ -119,7 +122,8 @@ func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 // the caller should make sure divisor != 0
 func (vals *ValidatorSet) dividePrioritiesBy(divisor int64) {
 	for _, val := range vals.Validators {
-		val.ProposerPriority = int64(math.Ceil(float64(val.ProposerPriority) / float64(divisor)))
+		newPrio := int64(math.Ceil(float64(val.ProposerPriority) / float64(divisor)))
+		val.ProposerPriority = newPrio
 	}
 }
 
@@ -152,7 +156,7 @@ func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
 		}
 	}
 	diff := max - min
-	return diff
+	return int64(math.Abs(float64(diff)))
 }
 
 func (vals *ValidatorSet) getValWithMostPriority() *Validator {

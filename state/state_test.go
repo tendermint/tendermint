@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/big"
 	"testing"
 
@@ -261,6 +262,118 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 
 		assert.Equal(t, val.VotingPower, power, fmt.Sprintf(`unexpected powerat
                 height %d`, i))
+	}
+}
+
+func TestProposerFrequency(t *testing.T) {
+
+	// some explicit test cases
+	testCases := []struct {
+		powers []int64
+	}{
+		// 2 vals
+		{[]int64{1, 1}},
+		{[]int64{1, 2}},
+		{[]int64{1, 100}},
+		{[]int64{5, 5}},
+		{[]int64{5, 100}},
+		{[]int64{50, 50}},
+		{[]int64{50, 100}},
+		{[]int64{1, 1000}},
+
+		// 3 vals
+		{[]int64{1, 1, 1}},
+		{[]int64{1, 2, 3}},
+		{[]int64{1, 2, 3}},
+		{[]int64{1, 1, 10}},
+		{[]int64{1, 1, 100}},
+		{[]int64{1, 10, 100}},
+		{[]int64{1, 1, 1000}},
+		{[]int64{1, 10, 1000}},
+		{[]int64{1, 100, 1000}},
+
+		// 4 vals
+		{[]int64{1, 1, 1, 1}},
+		{[]int64{1, 2, 3, 4}},
+		{[]int64{1, 1, 1, 10}},
+		{[]int64{1, 1, 1, 100}},
+		{[]int64{1, 1, 1, 1000}},
+		{[]int64{1, 1, 10, 100}},
+		{[]int64{1, 1, 10, 1000}},
+		{[]int64{1, 1, 100, 1000}},
+		{[]int64{1, 10, 100, 1000}},
+	}
+
+	for caseNum, testCase := range testCases {
+		// run each case 5 times to sample different
+		// initial priorities
+		for i := 0; i < 5; i++ {
+			valSet := genValSetWithPowers(testCase.powers)
+			testProposerFreq(t, caseNum, valSet)
+		}
+	}
+
+	// some random test cases with up to 300 validators
+	maxVals := 100
+	maxPower := 1000
+	nTestCases := 5
+	for i := 0; i < nTestCases; i++ {
+		N := cmn.RandInt() % maxVals
+		vals := make([]*types.Validator, N)
+		for j := 0; j < N; j++ {
+			votePower := int64(cmn.RandInt() % maxPower)
+			privVal := types.NewMockPV()
+			pubKey := privVal.GetPubKey()
+			val := types.NewValidator(pubKey, votePower)
+			val.ProposerPriority = cmn.RandInt64()
+			vals[j] = val
+		}
+		valSet := types.NewValidatorSet(vals)
+		testProposerFreq(t, i, valSet)
+	}
+}
+
+// new val set with given powers and random initial priorities
+func genValSetWithPowers(powers []int64) *types.ValidatorSet {
+	size := len(powers)
+	vals := make([]*types.Validator, size)
+	for i := 0; i < size; i++ {
+		val := types.NewValidator(ed25519.GenPrivKey().PubKey(), powers[i])
+		val.ProposerPriority = cmn.RandInt64()
+		vals[i] = val
+	}
+	return types.NewValidatorSet(vals)
+}
+
+// test a proposer appears as frequently as expected
+func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
+	N := valSet.Size()
+	totalPower := valSet.TotalVotingPower()
+
+	// run the proposer selection and track frequencies
+	runMult := 1
+	runs := int(totalPower) * runMult
+	freqs := make([]int, N)
+	for i := 0; i < runs; i++ {
+		prop := valSet.GetProposer()
+		idx, _ := valSet.GetByAddress(prop.Address)
+		freqs[idx] += 1
+		valSet.IncrementProposerPriority(1)
+	}
+
+	// assert frequencies match expected (max off by 1)
+	for i, freq := range freqs {
+		_, val := valSet.GetByIndex(i)
+		expectFreq := int(val.VotingPower) * runMult
+		gotFreq := freq
+		abs := int(math.Abs(float64(expectFreq - gotFreq)))
+
+		// max bound on expected vs seen freq was proven
+		// to be 1 for the 2 validator case in
+		// https://github.com/cwgoes/tm-proposer-idris
+		// and inferred to generalize to N-1
+		bound := N - 1
+		require.True(t, abs <= bound, fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq))
 	}
 }
 
