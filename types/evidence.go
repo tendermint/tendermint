@@ -36,8 +36,8 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // ErrEvidenceOverflow is for when there is too much evidence in a block.
 type ErrEvidenceOverflow struct {
-	MaxBytes int64
-	GotBytes int64
+	MaxNum int64
+	GotNum int64
 }
 
 // NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
@@ -47,7 +47,7 @@ func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
 
 // Error returns a string representation of the error.
 func (err *ErrEvidenceOverflow) Error() string {
-	return fmt.Sprintf("Too much evidence: Max %d bytes, got %d bytes", err.MaxBytes, err.GotBytes)
+	return fmt.Sprintf("Too much evidence: Max %d, got %d", err.MaxNum, err.GotNum)
 }
 
 //-------------------------------------------
@@ -72,13 +72,23 @@ func RegisterEvidences(cdc *amino.Codec) {
 
 func RegisterMockEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(MockGoodEvidence{}, "tendermint/MockGoodEvidence", nil)
+	cdc.RegisterConcrete(MockRandomGoodEvidence{}, "tendermint/MockRandomGoodEvidence", nil)
 	cdc.RegisterConcrete(MockBadEvidence{}, "tendermint/MockBadEvidence", nil)
 }
 
-// MaxEvidenceBytesPerBlock returns the maximum evidence size per block -
-// 1/10th of the maximum block size.
-func MaxEvidenceBytesPerBlock(blockMaxBytes int64) int64 {
-	return blockMaxBytes / 10
+const (
+	MaxEvidenceBytesDenominator = 10
+)
+
+// MaxEvidencePerBlock returns the maximum number of evidences
+// allowed in the block and their maximum total size (limitted to 1/10th
+// of the maximum block size).
+// TODO: change to a constant, or to a fraction of the validator set size.
+// See https://github.com/tendermint/tendermint/issues/2590
+func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
+	maxBytes := blockMaxBytes / MaxEvidenceBytesDenominator
+	maxNum := maxBytes / MaxEvidenceBytes
+	return maxNum, maxBytes
 }
 
 //-------------------------------------------
@@ -192,6 +202,25 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 }
 
 //-----------------------------------------------------------------
+
+// UNSTABLE
+type MockRandomGoodEvidence struct {
+	MockGoodEvidence
+	randBytes []byte
+}
+
+var _ Evidence = &MockRandomGoodEvidence{}
+
+// UNSTABLE
+func NewMockRandomGoodEvidence(height int64, address []byte, randBytes []byte) MockRandomGoodEvidence {
+	return MockRandomGoodEvidence{
+		MockGoodEvidence{height, address}, randBytes,
+	}
+}
+
+func (e MockRandomGoodEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.randBytes))
+}
 
 // UNSTABLE
 type MockGoodEvidence struct {

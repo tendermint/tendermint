@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.28.1
+
+*January 18th, 2019*
+
+Special thanks to external contributors on this release:
+@HaoyangLiu
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BUG FIXES:
+- [consensus] Fix consensus halt from proposing blocks with too much evidence
+
 ## v0.28.0
 
 *January 16th, 2019*
