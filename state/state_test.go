@@ -371,7 +371,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 		// max bound on expected vs seen freq was proven
 		// to be 1 for the 2 validator case in
 		// https://github.com/cwgoes/tm-proposer-idris
-		// and infered to generalize to N-1
+		// and inferred to generalize to N-1
 		bound := N - 1
 		require.True(t, abs <= bound, fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq))
 	}
