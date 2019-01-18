@@ -52,6 +52,7 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 		Validators: validators,
 	}
 	if len(valz) > 0 {
+		fmt.Println("NEW VAL SET")
 		vals.IncrementProposerPriority(1)
 	}
 
@@ -89,13 +90,15 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	// i.e. threshold should always be > 0
 	fmt.Println("... DIFF", diff, threshold)
 
-	if diff > threshold && threshold > 0 {
+	for diff > threshold && threshold > 0 {
 		// div = Ceil((maxPriority - minPriority) / 2*totalVotingPower)
 		// threshold > 0 and diff > threshold guarantees (diff / threshold > 0):
 		div := int64(math.Ceil(float64(diff) / float64(threshold)))
 		//_ = div
 		fmt.Println("... DIV", div)
 		vals.dividePrioritiesBy(div)
+		diff = computeMaxMinPriorityDiff(vals)
+		fmt.Println("... NEW DIFF", diff)
 	}
 
 	var proposer *Validator
@@ -105,26 +108,34 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	}
 	vals.shiftByAvgProposerPriority()
 
+	newDiff := computeMaxMinPriorityDiff(vals)
+	fmt.Println("... END DIFF", newDiff)
 	vals.Proposer = proposer
 }
 
 func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 	for _, val := range vals.Validators {
 		// Check for overflow for sum.
-		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
+		newPrio := safeAddClip(val.ProposerPriority, val.VotingPower)
+		fmt.Println("...... PRIO", val.ProposerPriority, newPrio)
+		val.ProposerPriority = newPrio
 	}
 	// Decrement the validator with most ProposerPriority:
 	mostest := vals.getValWitMostPriority()
 	// mind underflow
 	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
+	fmt.Println("...... PROPOSRE PRIO", mostest.ProposerPriority)
 
 	return mostest
 }
 
 // the caller should make sure divisor != 0
 func (vals *ValidatorSet) dividePrioritiesBy(divisor int64) {
+	fmt.Println(" ... DIV!")
 	for _, val := range vals.Validators {
-		val.ProposerPriority = int64(math.Ceil(float64(val.ProposerPriority) / float64(divisor)))
+		newPrio := int64(math.Ceil(float64(val.ProposerPriority) / float64(divisor)))
+		fmt.Println(" ...... PRIO", val.ProposerPriority, newPrio)
+		val.ProposerPriority = newPrio
 	}
 }
 

@@ -271,13 +271,13 @@ func TestProposerFrequency(t *testing.T) {
 	testCases := []struct {
 		powers []int64
 	}{
-		//{[]int64{1, 1}},
-		//{[]int64{1, 2}},
-		//{[]int64{1, 100}},
-		//{[]int64{5, 5}},
-		//{[]int64{5, 100}},
-		//{[]int64{50, 50}},
-		//{[]int64{50, 100}},
+		{[]int64{1, 1}},
+		{[]int64{1, 2}},
+		{[]int64{1, 100}},
+		{[]int64{5, 5}},
+		{[]int64{5, 100}},
+		{[]int64{50, 50}},
+		{[]int64{50, 100}},
 		{[]int64{1, 1000}},
 		/*{[]int64{1, 1, 1}},
 		{[]int64{1, 2, 3}},
@@ -287,11 +287,11 @@ func TestProposerFrequency(t *testing.T) {
 		{[]int64{1, 10, 100}},
 		{[]int64{1, 1, 1000}},
 		{[]int64{1, 10, 1000}},
-		{[]int64{1, 100, 1000}},*/
+			{[]int64{1, 100, 1000}},*/
 	}
 
 	for caseNum, testCase := range testCases {
-		for i := 0; i < 20; i++ {
+		for i := 0; i < 100; i++ {
 			valSet := genValSetWithPowers(testCase.powers)
 			testProposerFreq(t, caseNum, valSet)
 		}
@@ -338,7 +338,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 	fmt.Println("TOTAL POWER", totalPower)
 
 	// run the proposer selection and track frequencies
-	runMult := 1
+	runMult := 2
 	runs := int(totalPower) * runMult
 	freqs := make([]int, N)
 	fmt.Println("VALSET", valSet)
@@ -355,7 +355,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 		expectFreq := int(val.VotingPower) * runMult
 		gotFreq := freq
 		abs := int(math.Abs(float64(expectFreq - gotFreq)))
-		assert.True(t, abs <= 1, fmt.Sprintf("Case %d val %d: got %d, expected %d", caseNum, i, gotFreq, expectFreq))
+		require.True(t, abs <= 1, fmt.Sprintf("Case %d val %d: got %d, expected %d", caseNum, i, gotFreq, expectFreq))
 	}
 }
 
