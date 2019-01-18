@@ -326,6 +326,9 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	updateVal := abci.ValidatorUpdate{PubKey: types.TM2PB.PubKey(val2PubKey), Power: updatedVotingPowVal2}
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{updateVal})
 	assert.NoError(t, err)
+
+	// this will cause the diff of priorities (31)
+	// to be larger than threshold == 2*totalVotingPower (22):
 	updatedState3, err := updateState(updatedState2, blockID, &block.Header, abciResponses, validatorUpdates)
 	assert.NoError(t, err)
 
@@ -333,8 +336,9 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	_, prevVal1 := updatedState3.Validators.GetByAddress(val1PubKey.Address())
 	_, updatedVal2 := updatedState3.NextValidators.GetByAddress(val2PubKey.Address())
 
-	expectedVal1PrioBeforeAvg := prevVal1.ProposerPriority + prevVal1.VotingPower
-	wantVal2ProposerPrio = wantVal2ProposerPrio + updatedVotingPowVal2
+	// divide previous priorities by 2 == CEIL(31/22) as diff > threshold:
+	expectedVal1PrioBeforeAvg := prevVal1.ProposerPriority/2 + prevVal1.VotingPower
+	wantVal2ProposerPrio = wantVal2ProposerPrio/2 + updatedVotingPowVal2
 	// val1 will be proposer:
 	total := val1VotingPower + updatedVotingPowVal2
 	expectedVal1PrioBeforeAvg = expectedVal1PrioBeforeAvg - total
