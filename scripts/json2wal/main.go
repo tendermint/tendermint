@@ -45,7 +45,7 @@ func main() {
 	}
 	defer walFile.Close()
 
-	br := bufio.NewReader(f)
+	br := bufio.NewReaderSize(f,70000)
 	dec := cs.NewWALEncoder(walFile)
 
 	for {
