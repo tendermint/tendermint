@@ -32,7 +32,10 @@ const (
 	ErrOther
 	ErrTestPublicKeyFailed
 	ErrTestSignProposalFailed
+	ErrTestSignVoteFailed
 )
+
+var voteTypes = []types.SignedMsgType{types.PrevoteType, types.PrecommitType}
 
 // TestHarnessError allows us to keep track of which exit code should be used
 // when exiting the main program.
@@ -124,6 +127,9 @@ func (th *TestHarness) Run() {
 		if err := th.TestSignProposal(); err != nil {
 			th.Shutdown(err)
 		}
+		if err := th.TestSignVote(); err != nil {
+			th.Shutdown(err)
+		}
 		th.logger.Info("SUCCESS! All tests passed.")
 	}()
 
@@ -173,6 +179,7 @@ func (th *TestHarness) TestSignProposal() error {
 	propBytes, err := cdc.MarshalBinaryLengthPrefixed(types.CanonicalizeProposal(th.chainID, prop))
 	if err != nil {
 		th.logger.Error("FAILED: Could not marshal proposal to bytes", "err", err)
+		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
 	if err := th.sc.SignProposal(th.chainID, prop); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
@@ -190,6 +197,56 @@ func (th *TestHarness) TestSignProposal() error {
 	} else {
 		th.logger.Error("FAILED: Proposal signature validation failed")
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "signature validation failed")
+	}
+	return nil
+}
+
+func (th *TestHarness) TestSignVote() error {
+	th.logger.Info("TEST: Signing of votes")
+	for _, voteType := range voteTypes {
+		th.logger.Info("Testing vote type", "type", voteType)
+		// sha256 hash of "hash"
+		hash, _ := hex.DecodeString("D04B98F48E8F8BCC15C6AE5AC050801CD6DCFD428FB5F9E65C4E16E7807340FA")
+		vote := &types.Vote{
+			Type:   voteType,
+			Height: 12345,
+			Round:  23456,
+			BlockID: types.BlockID{
+				Hash: hash,
+				PartsHeader: types.PartSetHeader{
+					Hash:  hash,
+					Total: 1000000,
+				},
+			},
+			ValidatorIndex:   0,
+			ValidatorAddress: hash[:20],
+			Timestamp:        time.Now(),
+		}
+		// work out the canonicalized serialized byte form of the message
+		// without its signature
+		voteBytes, err := cdc.MarshalBinaryLengthPrefixed(vote)
+		if err != nil {
+			th.logger.Error("FAILED: Could not marshal vote to bytes", "err", err)
+			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
+		}
+		// sign the vote
+		if err := th.sc.SignVote(th.chainID, vote); err != nil {
+			th.logger.Error("FAILED: Signing of vote", "err", err)
+			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
+		}
+		th.logger.Debug("Signed vote", "vote", vote)
+		// validate the contents of the vote
+		if err := vote.ValidateBasic(); err != nil {
+			th.logger.Error("FAILED: Signed vote is invalid", "err", err)
+			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
+		}
+		// now validate the signature on the proposal
+		if th.sc.GetPubKey().VerifyBytes(voteBytes, vote.Signature) {
+			th.logger.Info("Successfully validated vote signature", "type", voteType)
+		} else {
+			th.logger.Error("FAILED: Vote signature validation failed", "type", voteType)
+			return newTestHarnessError(ErrTestSignVoteFailed, err, "signature validation failed")
+		}
 	}
 	return nil
 }
