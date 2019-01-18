@@ -109,7 +109,7 @@ func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
 	}
 	// Decrement the validator with most ProposerPriority:
-	mostest := vals.getValWitMostPriority()
+	mostest := vals.getValWithMostPriority()
 	// mind underflow
 	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
 
@@ -155,7 +155,7 @@ func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
 	return diff
 }
 
-func (vals *ValidatorSet) getValWitMostPriority() *Validator {
+func (vals *ValidatorSet) getValWithMostPriority() *Validator {
 	var res *Validator
 	for _, val := range vals.Validators {
 		res = res.CompareProposerPriority(val)
