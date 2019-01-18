@@ -271,6 +271,7 @@ func TestProposerFrequency(t *testing.T) {
 	testCases := []struct {
 		powers []int64
 	}{
+		// 2 vals
 		{[]int64{1, 1}},
 		{[]int64{1, 2}},
 		{[]int64{1, 100}},
@@ -279,7 +280,9 @@ func TestProposerFrequency(t *testing.T) {
 		{[]int64{50, 50}},
 		{[]int64{50, 100}},
 		{[]int64{1, 1000}},
-		/*{[]int64{1, 1, 1}},
+
+		// 3 vals
+		{[]int64{1, 1, 1}},
 		{[]int64{1, 2, 3}},
 		{[]int64{1, 2, 3}},
 		{[]int64{1, 1, 10}},
@@ -287,40 +290,50 @@ func TestProposerFrequency(t *testing.T) {
 		{[]int64{1, 10, 100}},
 		{[]int64{1, 1, 1000}},
 		{[]int64{1, 10, 1000}},
-			{[]int64{1, 100, 1000}},*/
+		{[]int64{1, 100, 1000}},
+
+		// 4 vals
+		{[]int64{1, 1, 1, 1}},
+		{[]int64{1, 2, 3, 4}},
+		{[]int64{1, 1, 1, 10}},
+		{[]int64{1, 1, 1, 100}},
+		{[]int64{1, 1, 1, 1000}},
+		{[]int64{1, 1, 10, 100}},
+		{[]int64{1, 1, 10, 1000}},
+		{[]int64{1, 1, 100, 1000}},
+		{[]int64{1, 10, 100, 1000}},
 	}
 
 	for caseNum, testCase := range testCases {
-		for i := 0; i < 100; i++ {
+		// run each case 5 times to sample different
+		// initial priorities
+		for i := 0; i < 5; i++ {
 			valSet := genValSetWithPowers(testCase.powers)
 			testProposerFreq(t, caseNum, valSet)
 		}
 	}
 
-	// some random test cases with up to 1000 validators
-	/*
-		fmt.Println("RAND")
-		maxVals := 300
-		maxPower := 1000
-		nTestCases := 1 // 2000
-		for i := 0; i < nTestCases; i++ {
-			N := cmn.RandInt() % maxVals
-			fmt.Println("N", N)
-			vals := make([]*types.Validator, N)
-			for j := 0; j < N; j++ {
-				votePower := int64(cmn.RandInt() % maxPower)
-				privVal := types.NewMockPV()
-				pubKey := privVal.GetPubKey()
-				val := types.NewValidator(pubKey, votePower)
-				val.ProposerPriority = cmn.RandInt64()
-				vals[j] = val
-			}
-			valSet := types.NewValidatorSet(vals)
-			testProposerFreq(t, i, valSet)
+	// some random test cases with up to 300 validators
+	maxVals := 100
+	maxPower := 1000
+	nTestCases := 5
+	for i := 0; i < nTestCases; i++ {
+		N := cmn.RandInt() % maxVals
+		vals := make([]*types.Validator, N)
+		for j := 0; j < N; j++ {
+			votePower := int64(cmn.RandInt() % maxPower)
+			privVal := types.NewMockPV()
+			pubKey := privVal.GetPubKey()
+			val := types.NewValidator(pubKey, votePower)
+			val.ProposerPriority = cmn.RandInt64()
+			vals[j] = val
 		}
-	*/
+		valSet := types.NewValidatorSet(vals)
+		testProposerFreq(t, i, valSet)
+	}
 }
 
+// new val set with given powers and random initial priorities
 func genValSetWithPowers(powers []int64) *types.ValidatorSet {
 	size := len(powers)
 	vals := make([]*types.Validator, size)
@@ -332,16 +345,15 @@ func genValSetWithPowers(powers []int64) *types.ValidatorSet {
 	return types.NewValidatorSet(vals)
 }
 
+// test a proposer appears as frequently as expected
 func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 	N := valSet.Size()
 	totalPower := valSet.TotalVotingPower()
-	fmt.Println("TOTAL POWER", totalPower)
 
 	// run the proposer selection and track frequencies
-	runMult := 2
+	runMult := 1
 	runs := int(totalPower) * runMult
 	freqs := make([]int, N)
-	fmt.Println("VALSET", valSet)
 	for i := 0; i < runs; i++ {
 		prop := valSet.GetProposer()
 		idx, _ := valSet.GetByAddress(prop.Address)
@@ -355,7 +367,13 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 		expectFreq := int(val.VotingPower) * runMult
 		gotFreq := freq
 		abs := int(math.Abs(float64(expectFreq - gotFreq)))
-		require.True(t, abs <= 1, fmt.Sprintf("Case %d val %d: got %d, expected %d", caseNum, i, gotFreq, expectFreq))
+
+		// max bound on expected vs seen freq was proven
+		// to be 1 for the 2 validator case in
+		// https://github.com/cwgoes/tm-proposer-idris
+		// and infered to generalize to N-1
+		bound := N - 1
+		require.True(t, abs <= bound, fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq))
 	}
 }
 
