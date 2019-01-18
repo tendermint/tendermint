@@ -53,7 +53,8 @@ type Transport interface {
 	// Dial connects to the Peer for the address.
 	Dial(NetAddress, peerConfig) (Peer, error)
 
-	Cleanup(addr net.Addr)
+	// Cleanup any resources associated with Peer.
+	Cleanup(Peer)
 }
 
 // transportLifecycle bundles the methods for callers to control start and stop
@@ -276,9 +277,11 @@ func (mt *MultiplexTransport) acceptPeers() {
 	}
 }
 
-// Cleanup removes the given address from the connections set.
-func (mt *MultiplexTransport) Cleanup(addr net.Addr) {
-	mt.conns.RemoveAddr(addr)
+// Cleanup removes the given address from the connections set and
+// closes the connection.
+func (mt *MultiplexTransport) Cleanup(peer Peer) {
+	mt.conns.RemoveAddr(peer.RemoteAddr())
+	_ = peer.CloseConn()
 }
 
 func (mt *MultiplexTransport) cleanup(c net.Conn) error {

@@ -304,7 +304,7 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	if sw.peers.Remove(peer) {
 		sw.metrics.Peers.Add(float64(-1))
 	}
-	sw.transport.Cleanup(peer.RemoteAddr())
+	sw.transport.Cleanup(peer)
 	peer.Stop()
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
@@ -530,15 +530,13 @@ func (sw *Switch) acceptRoutine() {
 				"max", sw.config.MaxNumInboundPeers,
 			)
 
-			_ = p.CloseConn()
-			sw.transport.Cleanup(p.RemoteAddr())
+			sw.transport.Cleanup(p)
 
 			continue
 		}
 
 		if err := sw.addPeer(p); err != nil {
-			_ = p.CloseConn()
-			sw.transport.Cleanup(p.RemoteAddr())
+			sw.transport.Cleanup(p)
 			if p.IsRunning() {
 				_ = p.Stop()
 			}
@@ -599,6 +597,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	if err := sw.addPeer(p); err != nil {
+		sw.transport.Cleanup(p)
 		if p.IsRunning() {
 			_ = p.Stop()
 		}
