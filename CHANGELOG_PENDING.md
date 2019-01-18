@@ -1,4 +1,4 @@
-## v0.27.4
+## v0.29.0
 
 *TBD*
 
@@ -7,28 +7,23 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [cli] Removed `node` `--proxy_app=dummy` option. Use `kvstore` (`persistent_kvstore`) instead.
-- [cli] Renamed `node` `--proxy_app=nilapp` to `--proxy_app=noop`.
-- [config] \#2992 `allow_duplicate_ip` is now set to false
-
-- [privval] \#2926 split up `PubKeyMsg` into `PubKeyRequest` and `PubKeyResponse` to be consistent with other message types
+- [types] consistent field order of `CanonicalVote` and `CanonicalProposal`
 
 * Apps
 
-* Go API  
-- [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on 
-`PrivValidator.GetPubKey()` instead of requesting it again 
-- [types] \#2981 Remove `PrivValidator.GetAddress()`
+* Go API
+- [node] \#3082 MetricsProvider now requires you to pass a chain ID
 
 * Blockchain Protocol
+  * [merkle] \#2713 Merkle trees now match the RFC 6962 specification
 
 * P2P Protocol
-- multiple connections from the same IP are now disabled by default (see `allow_duplicate_ip` config option)
 
 ### FEATURES:
-- [privval] \#1181 Split immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
+- [rpc] \#3065 return maxPerPage (100), not defaultPerPage (30) if `per_page` is greater than the max 100.
+- [instrumentation] \#3082 add 'chain_id' label for all metrics
 
 ### BUG FIXES:
-- [types] \#2926 do not panic if retrieving the private validator's public key fails
+- [log] \#3060 fix year format
