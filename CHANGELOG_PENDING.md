@@ -16,10 +16,10 @@ Special thanks to external contributors on this release:
 
 * Blockchain Protocol
   * [merkle] \#2713 Merkle trees now match the RFC 6962 specification
-  * [consensus] \#2960 normalize priorities to not exceed 2*TotalVotingPower to mitigate unfair proposer selection 
-  heavily preferring earlier joined validators in the case of an early bonded large validator unbonding
 
 * P2P Protocol
+  - [consensus] \#2960 normalize priorities to not exceed `2*TotalVotingPower` to mitigate unfair proposer selection 
+    heavily preferring earlier joined validators in the case of an early bonded large validator unbonding
 
 ### FEATURES:
 
