@@ -212,13 +212,13 @@ message ConsensusParams {
   ValidatorParams validator = 3;
 }
 
-// BlockParams contains limits on the block size.
+// BlockParams contains limits on the block size and timestamp.
 message BlockParams {
   // Note: must be greater than 0
   int64 max_bytes = 1;
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-  // Note: must be greater or equal to 0
+  // Note: must be greater than 0
   int64 time_iota_ms = 3;
 }
 

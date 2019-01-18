@@ -251,7 +251,7 @@ If `MaxGas == -1`, no limit is enforced.
 The minimum time between consecutive blocks (in milliseconds).
 This is enforced by Tendermint consensus.
 
-Must have `TimeIotaMs >= 0`.
+Must have `TimeIotaMs > 0` to ensure time monotonicity.
 
 ### EvidenceParams.MaxAge
 

@@ -107,8 +107,8 @@ func (params *ConsensusParams) Validate() error {
 			params.Block.MaxGas)
 	}
 
-	if params.Block.TimeIotaMs < 0 {
-		return cmn.NewError("Block.TimeIotaMs can't be negative. Got %v",
+	if params.Block.TimeIotaMs <= 0 {
+		return cmn.NewError("Block.TimeIotaMs must be greater than 0. Got %v",
 			params.Block.TimeIotaMs)
 	}
 
