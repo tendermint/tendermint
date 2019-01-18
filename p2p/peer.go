@@ -18,9 +18,9 @@ type Peer interface {
 	cmn.Service
 	FlushStop()
 
-	ID() ID           // peer's cryptographic ID
-	RemoteIP() net.IP // remote IP of the connection
-	Addr() net.Addr   // remote addr
+	ID() ID               // peer's cryptographic ID
+	RemoteIP() net.IP     // remote IP of the connection
+	RemoteAddr() net.Addr // remote address of the connection
 
 	IsOutbound() bool   // did we dial the peer
 	IsPersistent() bool // do we redial this peer when we disconnect
@@ -29,7 +29,7 @@ type Peer interface {
 
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
-	OriginalAddr() *NetAddress
+	OriginalAddr() *NetAddress // original address for outbound peers
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -313,8 +313,8 @@ func (pc *peerConn) CloseConn() {
 	pc.conn.Close() // nolint: errcheck
 }
 
-// Addr returns peer's remote network address.
-func (p *peer) Addr() net.Addr {
+// RemoteAddr returns peer's remote network address.
+func (p *peer) RemoteAddr() net.Addr {
 	return p.peerConn.conn.RemoteAddr()
 }
 

@@ -404,7 +404,7 @@ func (mockPeer) TrySend(byte, []byte) bool     { return false }
 func (mockPeer) Set(string, interface{})       {}
 func (mockPeer) Get(string) interface{}        { return nil }
 func (mockPeer) OriginalAddr() *p2p.NetAddress { return nil }
-func (mockPeer) Addr() net.Addr                { return nil }
+func (mockPeer) RemoteAddr() net.Addr          { return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8800} }
 func (mockPeer) CloseConn() error              { return nil }
 
 func assertPeersWithTimeout(
