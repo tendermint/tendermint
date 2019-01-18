@@ -90,6 +90,8 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 		// div = Ceil((maxPriority - minPriority) / 2*totalVotingPower)
 		// threshold > 0 and diff > threshold guarantees (diff / threshold > 0):
 		div := int64(math.Ceil(float64(diff) / float64(threshold)))
+		//_ = div
+		fmt.Println("DIV", div)
 		vals.dividePrioritiesBy(div)
 	}
 
@@ -165,6 +167,7 @@ func (vals *ValidatorSet) getValWitMostPriority() *Validator {
 
 func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 	avgProposerPriority := vals.computeAvgProposerPriority()
+	fmt.Println("AVG", avgProposerPriority)
 	for _, val := range vals.Validators {
 		val.ProposerPriority = safeSubClip(val.ProposerPriority, avgProposerPriority)
 	}
