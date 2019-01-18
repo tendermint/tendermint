@@ -86,26 +86,26 @@ func (store *EvidenceStore) PriorityEvidence() (evidence []types.Evidence) {
 	return l
 }
 
-// PendingEvidence returns known uncommitted evidence up to maxBytes.
-// If maxBytes is -1, all evidence is returned.
-func (store *EvidenceStore) PendingEvidence(maxBytes int64) (evidence []types.Evidence) {
-	return store.listEvidence(baseKeyPending, maxBytes)
+// PendingEvidence returns up to maxNum known, uncommitted evidence.
+// If maxNum is -1, all evidence is returned.
+func (store *EvidenceStore) PendingEvidence(maxNum int64) (evidence []types.Evidence) {
+	return store.listEvidence(baseKeyPending, maxNum)
 }
 
-// listEvidence lists the evidence for the given prefix key up to maxBytes.
+// listEvidence lists up to maxNum pieces of evidence for the given prefix key.
 // It is wrapped by PriorityEvidence and PendingEvidence for convenience.
-// If maxBytes is -1, there's no cap on the size of returned evidence.
-func (store *EvidenceStore) listEvidence(prefixKey string, maxBytes int64) (evidence []types.Evidence) {
-	var bytes int64
+// If maxNum is -1, there's no cap on the size of returned evidence.
+func (store *EvidenceStore) listEvidence(prefixKey string, maxNum int64) (evidence []types.Evidence) {
+	var count int64
 	iter := dbm.IteratePrefix(store.db, []byte(prefixKey))
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		val := iter.Value()
 
-		if maxBytes > 0 && bytes+int64(len(val)) > maxBytes {
+		if count == maxNum {
 			return evidence
 		}
-		bytes += int64(len(val))
+		count++
 
 		var ei EvidenceInfo
 		err := cdc.UnmarshalBinaryBare(val, &ei)

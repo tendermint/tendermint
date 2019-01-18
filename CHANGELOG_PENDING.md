@@ -1,4 +1,4 @@
-## v0.29.0
+## v0.28.1
 
 *TBD*
 
@@ -21,3 +21,4 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [consensus] \#? Fix consensus halt from proposing blocks with too much evidence
