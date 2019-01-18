@@ -1,6 +1,7 @@
-package privval
+package internal
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -10,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/state"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -44,8 +47,8 @@ var _ error = (*TestHarnessError)(nil)
 // TestHarness allows for testing of a remote signer to ensure compatibility
 // with this version of Tendermint.
 type TestHarness struct {
-	sc      *SocketVal
-	fpv     *FilePV
+	sc      *privval.SocketVal
+	fpv     *privval.FilePV
 	chainID string
 	logger  log.Logger
 }
@@ -63,6 +66,8 @@ type TestHarnessConfig struct {
 	SecretConnKey ed25519.PrivKeyEd25519
 }
 
+var cdc = amino.NewCodec()
+
 // NewTestHarness will load Tendermint data from the given files (including
 // validator public/private keypairs and chain details) and create a new
 // harness.
@@ -79,7 +84,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	logger.Info("Loading private validator configuration", "keyFile", keyFile, "stateFile", stateFile)
 	// NOTE: LoadFilePV ultimately calls os.Exit on failure. No error will be
 	// returned if this call fails.
-	fpv := LoadFilePV(keyFile, stateFile)
+	fpv := privval.LoadFilePV(keyFile, stateFile)
 
 	if genesisFile, err = expandPath(cfg.GenesisFile); err != nil {
 		return nil, newTestHarnessError(ErrFailedToExpandPath, err, cfg.GenesisFile)
@@ -113,8 +118,13 @@ func (th *TestHarness) Run() {
 			th.logger.Error("Failed to start listener", "err", err)
 			th.Shutdown(newTestHarnessError(ErrFailedToStartListener, err, ""))
 		}
-		th.TestPublicKey()
-		th.TestSignProposal()
+		if err := th.TestPublicKey(); err != nil {
+			th.Shutdown(err)
+		}
+		if err := th.TestSignProposal(); err != nil {
+			th.Shutdown(err)
+		}
+		th.logger.Info("SUCCESS! All tests passed.")
 	}()
 
 	c := make(chan os.Signal, 1)
@@ -131,24 +141,57 @@ func (th *TestHarness) Run() {
 	th.Shutdown(nil)
 }
 
-func (th *TestHarness) TestPublicKey() {
+func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
 	th.logger.Info("Local", "pubKey", th.fpv.GetPubKey())
 	th.logger.Info("Remote", "pubKey", th.sc.GetPubKey())
 	if th.fpv.GetPubKey() != th.sc.GetPubKey() {
 		th.logger.Error("FAILED: Local and remote public keys do not match")
-		th.Shutdown(newTestHarnessError(ErrTestPublicKeyFailed, nil, ""))
+		return newTestHarnessError(ErrTestPublicKeyFailed, nil, "")
 	}
+	return nil
 }
 
-func (th *TestHarness) TestSignProposal() {
+func (th *TestHarness) TestSignProposal() error {
 	th.logger.Info("TEST: Signing of proposals")
-	prop := &types.Proposal{Timestamp: time.Now()}
+	// sha256 hash of "hash"
+	hash, _ := hex.DecodeString("D04B98F48E8F8BCC15C6AE5AC050801CD6DCFD428FB5F9E65C4E16E7807340FA")
+	prop := &types.Proposal{
+		Type:     types.ProposalType,
+		Height:   12345,
+		Round:    23456,
+		POLRound: -1,
+		BlockID: types.BlockID{
+			Hash: hash,
+			PartsHeader: types.PartSetHeader{
+				Hash:  hash,
+				Total: 1000000,
+			},
+		},
+		Timestamp: time.Now(),
+	}
+	propBytes, err := cdc.MarshalBinaryLengthPrefixed(types.CanonicalizeProposal(th.chainID, prop))
+	if err != nil {
+		th.logger.Error("FAILED: Could not marshal proposal to bytes", "err", err)
+	}
 	if err := th.sc.SignProposal(th.chainID, prop); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
-		th.Shutdown(newTestHarnessError(ErrTestSignProposalFailed, err, ""))
+		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
-	th.logger.Info("Signed proposal", "prop", prop)
+	th.logger.Debug("Signed proposal", "prop", prop)
+	// first check that it's a basically valid proposal
+	if err := prop.ValidateBasic(); err != nil {
+		th.logger.Error("FAILED: Signed proposal is invalid", "err", err)
+		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
+	}
+	// now validate the signature on the proposal
+	if th.sc.GetPubKey().VerifyBytes(propBytes, prop.Signature) {
+		th.logger.Info("Successfully validated proposal signature")
+	} else {
+		th.logger.Error("FAILED: Proposal signature validation failed")
+		return newTestHarnessError(ErrTestSignProposalFailed, err, "signature validation failed")
+	}
+	return nil
 }
 
 func (th *TestHarness) Shutdown(err error) {
@@ -195,7 +238,7 @@ func expandPath(path string) (string, error) {
 	return path, nil
 }
 
-func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*SocketVal, error) {
+func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval.SocketVal, error) {
 	proto, addr := cmn.ProtocolAndAddress(cfg.BindAddr)
 	if proto == "unix" {
 		// make sure the socket doesn't exist - if so, try to delete it
@@ -213,18 +256,18 @@ func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*SocketV
 	}
 	var svln net.Listener
 	if proto == "unix" {
-		unixLn := NewUnixListener(ln)
-		UnixListenerAcceptDeadline(cfg.AcceptDeadline)(unixLn)
-		UnixListenerConnDeadline(cfg.ConnDeadline)(unixLn)
+		unixLn := privval.NewUnixListener(ln)
+		privval.UnixListenerAcceptDeadline(cfg.AcceptDeadline)(unixLn)
+		privval.UnixListenerConnDeadline(cfg.ConnDeadline)(unixLn)
 		svln = unixLn
 	} else {
-		tcpLn := NewTCPListener(ln, cfg.SecretConnKey)
-		TCPListenerAcceptDeadline(cfg.AcceptDeadline)(tcpLn)
-		TCPListenerConnDeadline(cfg.ConnDeadline)(tcpLn)
+		tcpLn := privval.NewTCPListener(ln, cfg.SecretConnKey)
+		privval.TCPListenerAcceptDeadline(cfg.AcceptDeadline)(tcpLn)
+		privval.TCPListenerConnDeadline(cfg.ConnDeadline)(tcpLn)
 		logger.Info("Resolved TCP address for listener", "addr", tcpLn.Addr())
 		svln = tcpLn
 	}
-	return NewSocketVal(logger, svln), nil
+	return privval.NewSocketVal(logger, svln), nil
 }
 
 func newTestHarnessError(code int, err error, info string) *TestHarnessError {

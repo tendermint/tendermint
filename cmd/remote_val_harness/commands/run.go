@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tendermint/tendermint/cmd/remote_val_harness/internal"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/privval"
 )
 
 const (
@@ -37,7 +37,7 @@ harness' tests will be executed.
 
 Note that using a TCP port of "0" will automatically choose a random open port.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			cfg := privval.TestHarnessConfig{
+			cfg := internal.TestHarnessConfig{
 				BindAddr:       flagAddr,
 				KeyFile:        flagKeyFile,
 				StateFile:      flagStateFile,
@@ -46,13 +46,13 @@ Note that using a TCP port of "0" will automatically choose a random open port.`
 				ConnDeadline:   time.Duration(flagConnDeadline) * time.Second,
 				SecretConnKey:  ed25519.GenPrivKey(),
 			}
-			harness, err := privval.NewTestHarness(logger, cfg)
+			harness, err := internal.NewTestHarness(logger, cfg)
 			if err != nil {
 				logger.Error(err.Error())
-				if therr, ok := err.(*privval.TestHarnessError); ok {
+				if therr, ok := err.(*internal.TestHarnessError); ok {
 					os.Exit(therr.Code)
 				}
-				os.Exit(privval.ErrOther)
+				os.Exit(internal.ErrOther)
 			}
 			harness.Run()
 		},
