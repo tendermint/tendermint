@@ -636,7 +636,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err = updateState(updatedState, blockID, &block.Header, abciResponses, validatorUpdates)
-		if i > 0 { // expect proposers to cycle through after the first iteration (2 blocks):
+		if i > numVals { // expect proposers to cycle through after the first iteration (of numVals blocks):
 			if proposers[i%numVals] == nil {
 				proposers[i%numVals] = updatedState.NextValidators.Proposer
 			} else {
