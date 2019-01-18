@@ -271,14 +271,14 @@ func TestProposerFrequency(t *testing.T) {
 	testCases := []struct {
 		powers []int64
 	}{
-		{[]int64{1, 1}},
-		{[]int64{1, 2}},
+		//{[]int64{1, 1}},
+		//{[]int64{1, 2}},
 		//{[]int64{1, 100}},
-		{[]int64{5, 5}},
+		//{[]int64{5, 5}},
 		//{[]int64{5, 100}},
 		//{[]int64{50, 50}},
 		//{[]int64{50, 100}},
-		//{[]int64{1, 1000}},
+		{[]int64{1, 1000}},
 		/*{[]int64{1, 1, 1}},
 		{[]int64{1, 2, 3}},
 		{[]int64{1, 2, 3}},
@@ -291,8 +291,10 @@ func TestProposerFrequency(t *testing.T) {
 	}
 
 	for caseNum, testCase := range testCases {
-		valSet := genValSetWithPowers(testCase.powers)
-		testProposerFreq(t, caseNum, valSet)
+		for i := 0; i < 20; i++ {
+			valSet := genValSetWithPowers(testCase.powers)
+			testProposerFreq(t, caseNum, valSet)
+		}
 	}
 
 	// some random test cases with up to 1000 validators
@@ -336,9 +338,10 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 	fmt.Println("TOTAL POWER", totalPower)
 
 	// run the proposer selection and track frequencies
-	runMult := 2
+	runMult := 1
 	runs := int(totalPower) * runMult
 	freqs := make([]int, N)
+	fmt.Println("VALSET", valSet)
 	for i := 0; i < runs; i++ {
 		prop := valSet.GetProposer()
 		idx, _ := valSet.GetByAddress(prop.Address)
