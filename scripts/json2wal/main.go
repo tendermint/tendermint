@@ -45,7 +45,9 @@ func main() {
 	}
 	defer walFile.Close()
 
-	br := bufio.NewReaderSize(f, 70000)
+	// the length of tendermint/wal/MsgInfo in the wal.json may exceed the defaultBufSize(4096) of bufio
+	// because of the byte array in BlockPart.
+	br := bufio.NewReaderSize(f, 2*types.BlockPartSizeBytes)
 	dec := cs.NewWALEncoder(walFile)
 
 	for {
