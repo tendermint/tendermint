@@ -19,33 +19,10 @@ Given a validator set `V`, and two honest validators `p` and `q`, for each heigh
 where `proposer_p(h,r)` is the proposer returned by the Proposer Selection Procedure at process `p`, at height `h` and round `r`.
 
 #### R2: Fairness
-In a stable network (no validator set changes) with total voting power P and for any sequence of K rounds with K > P, a validator v is elected as proposer with a frequency f proportional to its voting power VP(v) divided by P:
+Given a stable network (no validator set changes) with total voting power P and  a sequence S of K >= P rounds. In any sub-sequence of S with length P a validator v is elected as proposer with a frequency f proportional to its voting power VP(v) divided by P:
 
     f(v) ~ VP(v) / P
 
-#### O3: Starvation Prevention
-In a churning network with many validator set changes, minimal guarantees for a chance in future election should be offered, e.g. for stable lower power validators.
-
-## Proposer Selection Specification
-### Requirement Fulfillment Claims
-__[R1]__ The proposer algorithm is deterministic giving consistent results across executions with same transactions and validator set modifications. A pseudocode of the algorithm is given below.  
-
-__[R2]__ Given a set of processes with the total voting power P, during a sequence of rounds of length P, every process is selected as proposer in a number of rounds equal to its voting power. The sequence of the P proposers then repeats.
-If we consider the validator set:
-
-Validator | p1| p2 
-----------|---|---
-VP        | 1 | 3
-
-The current implementation of proposer selection generates the sequence:
-`p2, p1, p2, p2, p2, p1, p2, p2,...` or [`p2, p1, p2, p2`]*
-A a sequence that starts with any circular permutation of the [`p2, p1, p2, p2`] sub-sequence would also provide the same degree of fairness. In fact these circular permutations show in the sliding window (over the generated sequence) of size equal to the length of the sub-sequence.
-
-Assigning priorities to each validator based on the voting power and updating them at each round ensures the fairness of the proposer selection. In addition, every time a validator is elected as proposer its priority is decreased with the total voting power.
-
-__[O3]__ There is currently no definite guarantee that a low power stable validator will be elected within a large enough round window (??)
-Note: Just a claim here. If new high power validators bound and unbound continuously, and since there is no "aging" that would cause a steady increase in its voting power even when shifting is performed (or similar mechanism), it is possible that this validator election is postponed indefinitely. More analysis required either way.
-[Maybe should remove this]
 
 ### Basic Algorithm
 
@@ -118,11 +95,11 @@ Validator | p1| p2
 ----------|---| ---
 VP        | 4 | 3
 
-Let's also assume that at the last round R at height H before this change the proposer priorites were as shown in first row (H/R end). As it can be seen, the procedure could continue with round 1 at next height without changes as before. 
+Let's also assume that at the last round R at height H before this change the proposer priorites were as shown in first row (H/R end). As it can be seen, the procedure could continue with round 0 at next height without changes as before. 
 
 |Round Priority| -2 | -1 | 0    | 1   | 2   | 3 | 4 | 5 | Comment
 |--------------| ---|--- |------|---  |---  |---|---|---|--------
-| H/R end      |    | p2 |      |  p1 |     |   |   |   |update VP(p1)
+| H/R end      |    | p2 |      |  p1 |     |   |   |   |__update VP(p1)__
 | H+1/0        |    |    |      |     | p2  |   |   | p1|A(i)+=VP(i)
 |              | p1 |    |      |     | p2  |   |   |   |A(p1)-= P
 
@@ -135,18 +112,18 @@ Validator | p1 | p2 | p3 |
 --------- |--- |--- |--- |
 VP        | 1  | 2  | 3  |
 
-Let's assume that the last round at height H was R and the proposer priorities were as shown in first row (H/R end) with their sum being 0. At this point p2 is removed and round 1 of next height H+1 runs. At the end of the round (penultimate row) the sum of priorities is -2 (minus the priority of the removed process). 
+Let's assume that the last round at height H was R and the proposer priorities were as shown in first row (H/R end) with their sum being 0. At this point p2 is removed and round 0 of next height H+1 runs. At the end of the round (penultimate row) the sum of priorities is -2 (minus the priority of the removed process). 
  
 
 |Round Priority |-3 | -2 | -1 | 0  | 1   | 2   | 3 | 4 | 5 | Comment
 |---------------|-- | ---|--- |--- |---  |---  |---|---|---|--------
-| H/R end       |p3 |    |    |    | p1  | p2  |   |   |   |remove p2
+| H/R end       |p3 |    |    |    | p1  | p2  |   |   |   |__remove p2__
 | H+1/0         |   |    |    | p3 |     | p1  |   |   |   |A(i)+=VP(i)
 |               |   | p1 |    | p3 |     |     |   |   |   |A(p1)-= P
-| *new step*    |   |    | p1 |    | p3  |     |   |   |   |A(i) -= avg
+| __new step__  |   |    | p1 |    | p3  |     |   |   |   |A(i) -= avg
 
 The procedure could continue without modifications. However, it is possible that after a sufficiently large number of modifications in validator set, the priority values would migrate towards maximum or minimum allowed values causing truncations due to overflow detection.
-For this reason, the selection procedure adds another step (see last row) that shifts the current priority values left or right such that the average remains close to 0. Due to integer division the priority sum is in {-1, 0, 1}
+For this reason, the selection procedure adds another step (see last row) that shifts the current priority values left or right such that the average remains close to 0. Due to integer division the priority sum is in {-1, 0, 1}.
 
 The modified selection algorithm is:
 
@@ -187,7 +164,7 @@ Therefore when `V` is added to the `{v1,..,vn}` set its initial priority will be
 
     A(V) = -sum(VP(i) for i in {v1,..,vn})
 
-Curent implementation uses a penalty factor of 1.125, so the initial priority for a newly added verifier is:
+Curent implementation uses a penalty factor of 0.125, so the initial priority for a newly added validator is:
     
     A(V) = -1.125 * P
 
@@ -202,7 +179,7 @@ In the next round, p3 will still be ahead in the queue, elected as proposer and 
 
 |Round Priority  | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | Alg step
 |--------------- | ---|--- |----|--- |--- |---|---|---|---|--------
-|H/R end         |    |    | p2 |    |    |   | p1|   |   |add p3
+|H/R end         |    |    | p2 |    |    |   | p1|   |   |__add p3__
 |                | p3 |    | p2 |    |    |   | p1|   |   |A(p3) = -4
 |H+1/0           |    |    |    |    |    | p2|   | p1| p3|A(i)+=VP(i)
 |                | p3 |    |    |    |    | p2|   | p1|   |A(p3)-=P
@@ -216,15 +193,15 @@ Validator | p1| p2
 ----------|---| ---
 VP        | 10| 100
 
-The proposer selection runs as described in the New Validator section. Notice the priority of p1 bumping from 10 to 15 because of the shifting. Then in the last row shown the power of p2 is changed to 1 at the end of H+1. 
+The proposer selection runs as described in the New Validator section. Notice the priority of p1 increasing from 10 to 15 due to shifting. Then in the last row shown the power of p2 is changed to 1 at the end of H+1. 
 
 |Round Priority| -21 | -16 | -15 |-11 | 0  | 10 | 15 | 25 | 89 |  Comment
 |--------------| --- |---- |---- |--- |--- |--- |--- |--- |--- |---------
-| H/R end      |     |     |     | p2 | p1 |    |    |    |    | added p2
+| H/R end      |     |     |     | p2 | p1 |    |    |    |    | __added p2__
 | H+1/0        |     |     |     |    |    | p1 |    |    | p2 | A(i)+=VP(i)
 |              | p2  |     |     |    |    | p1 |    |    |    | A(p2)-= P, P=110
 |              |     | p2  |     |    |    |    | p1 |    |    | A(i) -= avg, avg=-5
-| VP(p2)<-1    |     |     | p2  |    |    |    |    | p1 |    | A(i)+=VP(i)
+|__VP(p2)<-1__ |     |     | p2  |    |    |    |    | p1 |    | A(i)+=VP(i)
 ...
 
 In this example p2 happened to be at the end of the queue when its power changed to 1 and it will now crawl for ~40 rounds to catch up with p1 even though their power ratio is 1:10.
@@ -241,9 +218,12 @@ The modified selection algorithm is:
     
     def ProposerSelection (vset, times):
         // normalize the priority values
-	    if max(A)-min(A) > 2 * P:
+        diff = max(A)-min(A)
+        threshold = 2 * P
+	    if  diff > threshold:
+            scale = diff/threshold
             for each validator i in vset:
-		        A(i) = A(i)/2
+		        A(i) = A(i)/scale
 
         for in in range(times):
             singleProposerSelection(vset)
@@ -263,6 +243,24 @@ The proposer priority is stored as an int64. The selection algorithm performs ad
 
     MaxInt64  =  1 << 63 - 1
     MinInt64  = -1 << 63
+
+## Proposer Selection Specification
+### Requirement Fulfillment Claims
+__[R1]__ The proposer algorithm is deterministic giving consistent results across executions with same transactions and validator set modifications. A pseudocode of the algorithm is given below.  
+
+__[R2]__ Given a set of processes with the total voting power P, during a sequence of rounds of length P, every process is selected as proposer in a number of rounds equal to its voting power. The sequence of the P proposers then repeats.
+If we consider the validator set:
+
+Validator | p1| p2 
+----------|---|---
+VP        | 1 | 3
+
+The current implementation of proposer selection generates the sequence:
+`p2, p1, p2, p2, p2, p1, p2, p2,...` or [`p2, p1, p2, p2`]*
+A sequence that starts with any circular permutation of the [`p2, p1, p2, p2`] sub-sequence would also provide the same degree of fairness. In fact these circular permutations show in the sliding window (over the generated sequence) of size equal to the length of the sub-sequence.
+
+Assigning priorities to each validator based on the voting power and updating them at each round ensures the fairness of the proposer selection. In addition, every time a validator is elected as proposer its priority is decreased with the total voting power.
+
 
 -----------
 
