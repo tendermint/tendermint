@@ -24,7 +24,7 @@ func NewRootCmd() *cobra.Command {
 This application provides test harness capability for integration testing with
 a Tendermint remote validator (e.g. KMS: https://github.com/tendermint/kms),
 where it runs a suite of tests against the remote validator to ensure
-compatiblity.`,
+compatibility.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Name() == versionCmd.Name() {
 				return nil
