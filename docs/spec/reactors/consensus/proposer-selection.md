@@ -18,13 +18,14 @@ Given a validator set `V`, and two honest validators `p` and `q`, for each heigh
 
 where `proposer_p(h,r)` is the proposer returned by the Proposer Selection Procedure at process `p`, at height `h` and round `r`.
 
-#### R2: Fairness
-In a network with total voting power P and a sequence S of K >= P elections. In any sub-sequence S of length P a validator v is elected as proposer with a frequency f proportional to its voting power VP(v) divided by P:
+#### R2: Fairness 
+Given a validator set with total voting power P and a sequence S of elections. In any sub-sequence of S with length C*P, a validator v must be elected as proposer P/VP(v) times, i.e. with frequency:
 
-    f(v) = C * VP(v) / P
-where C is a tolerance factor for network instability with following values:
-- C == 1 in a stable network with no validator set changes
-- C >= 1/2 in a network that experiences a validator change
+ f(v) ~ VP(v) / P
+
+where C is a tolerance factor for validator set changes with following values:
+- C == 1 when there are no validator set changes
+- C <= 2 with validator change
 
 ### Basic Algorithm
 
@@ -263,7 +264,7 @@ The proposer priority is stored as an int64. The selection algorithm performs ad
     MaxInt64  =  1 << 63 - 1
     MinInt64  = -1 << 63
 
-## Proposer Selection Specification
+
 ### Requirement Fulfillment Claims
 __[R1]__ 
 
