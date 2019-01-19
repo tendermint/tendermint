@@ -320,8 +320,10 @@ func TestProposerFrequency(t *testing.T) {
 	for i := 0; i < nTestCases; i++ {
 		N := cmn.RandInt() % maxVals
 		vals := make([]*types.Validator, N)
+		totalVotePower := int64(0)
 		for j := 0; j < N; j++ {
 			votePower := int64(cmn.RandInt() % maxPower)
+			totalVotePower += votePower
 			privVal := types.NewMockPV()
 			pubKey := privVal.GetPubKey()
 			val := types.NewValidator(pubKey, votePower)
@@ -329,6 +331,7 @@ func TestProposerFrequency(t *testing.T) {
 			vals[j] = val
 		}
 		valSet := types.NewValidatorSet(vals)
+		valSet.RescalePriorities(totalVotePower)
 		testProposerFreq(t, i, valSet)
 	}
 }
@@ -337,12 +340,16 @@ func TestProposerFrequency(t *testing.T) {
 func genValSetWithPowers(powers []int64) *types.ValidatorSet {
 	size := len(powers)
 	vals := make([]*types.Validator, size)
+	totalVotePower := int64(0)
 	for i := 0; i < size; i++ {
+		totalVotePower += powers[i]
 		val := types.NewValidator(ed25519.GenPrivKey().PubKey(), powers[i])
 		val.ProposerPriority = cmn.RandInt64()
 		vals[i] = val
 	}
-	return types.NewValidatorSet(vals)
+	valSet := types.NewValidatorSet(vals)
+	valSet.RescalePriorities(totalVotePower)
+	return valSet
 }
 
 // test a proposer appears as frequently as expected

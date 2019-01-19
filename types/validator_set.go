@@ -13,13 +13,13 @@ import (
 )
 
 // The maximum allowed total voting power.
-// We set the ProposerPriority of freshly added validators to -1.125*totalVotingPower.
-// To compute 1.125*totalVotingPower efficiently, we do:
-// totalVotingPower + (totalVotingPower >> 3) because
-// x + (x >> 3) = x + x/8 = x * (1 + 0.125).
-// MaxTotalVotingPower is the largest int64 `x` with the property that `x + (x >> 3)` is
-// still in the bounds of int64.
-const MaxTotalVotingPower = int64(8198552921648689607)
+// It needs to be sufficiently small to, in all cases::
+// 1. prevent clipping in incrementProposerPriority()
+// 2. let (diff+diffMax-1) not overflow in IncrementPropposerPriotity()
+// (Proof of 1 is tricky, left to the reader).
+// It could be higher, but this is sufficiently large for our purposes,
+// and leaves room for defensive purposes.
+const MaxTotalVotingPower = int64(math.MaxInt64) / 8
 
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
@@ -78,22 +78,11 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 		panic("Cannot call IncrementProposerPriority with non-positive times")
 	}
 
-	// cap the difference between priorities to be proportional to 2*totalPower by
+	// Cap the difference between priorities to be proportional to 2*totalPower by
 	// re-normalizing priorities, i.e., rescale all priorities by multiplying with:
 	//  2*totalVotingPower/(maxPriority - minPriority)
-	diff := computeMaxMinPriorityDiff(vals)
-	threshold := 2 * vals.TotalVotingPower()
-	// the 2nd check (threshold > 0) is merely a sanity check which could be
-	// removed if all tests would init. voting power appropriately;
-	// i.e. threshold should always be > 0
-
-	for diff > threshold && threshold > 0 {
-		// div = Ceil((maxPriority - minPriority) / 2*totalVotingPower)
-		// threshold > 0 and diff > threshold guarantees (diff / threshold > 0):
-		div := int64(math.Ceil(float64(diff) / float64(threshold)))
-		vals.dividePrioritiesBy(div)
-		diff = computeMaxMinPriorityDiff(vals)
-	}
+	diffMax := 2 * vals.TotalVotingPower()
+	vals.RescalePriorities(diffMax)
 
 	var proposer *Validator
 	// call IncrementProposerPriority(1) times times:
@@ -103,6 +92,26 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	vals.shiftByAvgProposerPriority()
 
 	vals.Proposer = proposer
+}
+
+func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
+	// NOTE: This check is merely a sanity check which could be
+	// removed if all tests would init. voting power appropriately;
+	// i.e. diffMax should always be > 0
+	if diffMax == 0 {
+		return
+	}
+
+	// Caculating ceil(diff/diffMax):
+	// Re-normalization is performed by dividing by an integer for simplicity.
+	// NOTE: This may make debugging priority issues easier as well.
+	diff := computeMaxMinPriorityDiff(vals)
+	ratio := (diff + diffMax - 1) / diffMax
+	if ratio > 1 {
+		for _, val := range vals.Validators {
+			val.ProposerPriority /= ratio
+		}
+	}
 }
 
 func (vals *ValidatorSet) incrementProposerPriority() *Validator {
@@ -117,14 +126,6 @@ func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
 
 	return mostest
-}
-
-// the caller should make sure divisor != 0
-func (vals *ValidatorSet) dividePrioritiesBy(divisor int64) {
-	for _, val := range vals.Validators {
-		newPrio := int64(math.Ceil(float64(val.ProposerPriority) / float64(divisor)))
-		val.ProposerPriority = newPrio
-	}
 }
 
 // should not be called on an empty validator set
@@ -156,7 +157,11 @@ func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
 		}
 	}
 	diff := max - min
-	return int64(math.Abs(float64(diff)))
+	if diff < 0 {
+		return -1 * diff
+	} else {
+		return diff
+	}
 }
 
 func (vals *ValidatorSet) getValWithMostPriority() *Validator {
