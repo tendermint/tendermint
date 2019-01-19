@@ -57,6 +57,8 @@ type TestHarness struct {
 	logger  log.Logger
 }
 
+// TestHarnessConfig provides configuration to set up a remote signer test
+// harness.
 type TestHarnessConfig struct {
 	BindAddr string
 
@@ -113,6 +115,10 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	}, nil
 }
 
+// Run will execute the tests associated with this test harness. The intention
+// here is to call this from one's `main` function, as the way it succeeds or
+// fails at present is to call os.Exit() with an exit code related to the error
+// that caused the tests to fail, or exit code 0 on success.
 func (th *TestHarness) Run() {
 	th.logger.Info("Starting test harness")
 	donec := make(chan struct{})
@@ -148,6 +154,9 @@ func (th *TestHarness) Run() {
 	th.Shutdown(nil)
 }
 
+// TestPublicKey just validates that we can (1) fetch the public key from the
+// remote signer, and (2) it matches the public key we've configured for our
+// local Tendermint version.
 func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
 	th.logger.Info("Local", "pubKey", th.fpv.GetPubKey())
@@ -159,6 +168,8 @@ func (th *TestHarness) TestPublicKey() error {
 	return nil
 }
 
+// TestSignProposal makes sure the remote signer can successfully sign
+// proposals.
 func (th *TestHarness) TestSignProposal() error {
 	th.logger.Info("TEST: Signing of proposals")
 	// sha256 hash of "hash"
@@ -202,6 +213,8 @@ func (th *TestHarness) TestSignProposal() error {
 	return nil
 }
 
+// TestSignVote makes sure the remote signer can successfully sign all kinds of
+// votes.
 func (th *TestHarness) TestSignVote() error {
 	th.logger.Info("TEST: Signing of votes")
 	for _, voteType := range voteTypes {
@@ -251,6 +264,10 @@ func (th *TestHarness) TestSignVote() error {
 	return nil
 }
 
+// Shutdown will kill the test harness and attempt to close all open sockets
+// gracefully. If the supplied error is nil, it is assumed that the exit code
+// should be 0. If err is not nil, it will exit with an exit code related to the
+// error.
 func (th *TestHarness) Shutdown(err error) {
 	var exitCode int
 
@@ -295,6 +312,8 @@ func expandPath(path string) (string, error) {
 	return path, nil
 }
 
+// newTestHarnessSocketVal creates our client instance which we will use for
+// testing.
 func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval.SocketVal, error) {
 	proto, addr := cmn.ProtocolAndAddress(cfg.BindAddr)
 	if proto == "unix" {
