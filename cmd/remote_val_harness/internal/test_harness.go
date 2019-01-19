@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -10,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -161,7 +162,7 @@ func (th *TestHarness) TestPublicKey() error {
 func (th *TestHarness) TestSignProposal() error {
 	th.logger.Info("TEST: Signing of proposals")
 	// sha256 hash of "hash"
-	hash, _ := hex.DecodeString("D04B98F48E8F8BCC15C6AE5AC050801CD6DCFD428FB5F9E65C4E16E7807340FA")
+	hash := tmhash.Sum([]byte("hash"))
 	prop := &types.Proposal{
 		Type:     types.ProposalType,
 		Height:   12345,
@@ -205,8 +206,7 @@ func (th *TestHarness) TestSignVote() error {
 	th.logger.Info("TEST: Signing of votes")
 	for _, voteType := range voteTypes {
 		th.logger.Info("Testing vote type", "type", voteType)
-		// sha256 hash of "hash"
-		hash, _ := hex.DecodeString("D04B98F48E8F8BCC15C6AE5AC050801CD6DCFD428FB5F9E65C4E16E7807340FA")
+		hash := tmhash.Sum([]byte("hash"))
 		vote := &types.Vote{
 			Type:   voteType,
 			Height: 12345,
@@ -219,12 +219,12 @@ func (th *TestHarness) TestSignVote() error {
 				},
 			},
 			ValidatorIndex:   0,
-			ValidatorAddress: hash[:20],
+			ValidatorAddress: tmhash.SumTruncated([]byte("addr")),
 			Timestamp:        time.Now(),
 		}
 		// work out the canonicalized serialized byte form of the message
 		// without its signature
-		voteBytes, err := cdc.MarshalBinaryLengthPrefixed(vote)
+		voteBytes, err := cdc.MarshalBinaryLengthPrefixed(types.CanonicalizeVote(th.chainID, vote))
 		if err != nil {
 			th.logger.Error("FAILED: Could not marshal vote to bytes", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
