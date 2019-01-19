@@ -90,7 +90,13 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	for diff > threshold && threshold > 0 {
 		// div = Ceil((maxPriority - minPriority) / 2*totalVotingPower)
 		// threshold > 0 and diff > threshold guarantees (diff / threshold > 0):
-		div := int64(math.Ceil(float64(diff) / float64(threshold)))
+		// manually CEIL to avoid using floats:
+		var div int64
+		if diff%threshold > 0 {
+			div = 1 + (diff / threshold)
+		} else {
+			div = diff / threshold
+		}
 		vals.dividePrioritiesBy(div)
 		diff = computeMaxMinPriorityDiff(vals)
 	}
@@ -122,7 +128,7 @@ func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 // the caller should make sure divisor != 0
 func (vals *ValidatorSet) dividePrioritiesBy(divisor int64) {
 	for _, val := range vals.Validators {
-		newPrio := int64(math.Ceil(float64(val.ProposerPriority) / float64(divisor)))
+		newPrio := val.ProposerPriority / divisor
 		val.ProposerPriority = newPrio
 	}
 }
