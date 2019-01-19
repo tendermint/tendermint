@@ -26,4 +26,5 @@ Special thanks to external contributors on this release:
 - [instrumentation] \#3082 add 'chain_id' label for all metrics
 
 ### BUG FIXES:
-- [log] \#3060 fix year format
+- [log] \#3060 Fix year format
+- [crypto] \#3164 Update `btcd` fork for rare signRFC6979 bug
