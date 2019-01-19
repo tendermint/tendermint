@@ -22,6 +22,14 @@ type ConsensusParams struct {
 	Validator ValidatorParams `json:"validator"`
 }
 
+// HashedParams is a subset of ConsensusParams.
+// It is amino encoded and hashed into
+// the Header.ConsensusHash.
+type HashedParams struct {
+	BlockMaxBytes int64
+	BlockMaxGas   int64
+}
+
 // BlockSizeParams define limits on the block size.
 type BlockSizeParams struct {
 	MaxBytes int64 `json:"max_bytes"`
@@ -116,13 +124,16 @@ func (params *ConsensusParams) Validate() error {
 	return nil
 }
 
-// Hash returns a hash of the parameters to store in the block header
-// No Merkle tree here, only three values are hashed here
-// thus benefit from saving space < drawbacks from proofs' overhead
-// Revisit this function if new fields are added to ConsensusParams
+// Hash returns a hash of a subset of the parameters to store in the block header.
+// Only the Block.MaxBytes and Block.MaxGas are included in the hash.
+// This allows the ConsensusParams to evolve more without breaking the block
+// protocol. No need for a Merkle tree here, just a small struct to hash.
 func (params *ConsensusParams) Hash() []byte {
 	hasher := tmhash.New()
-	bz := cdcEncode(params)
+	bz := cdcEncode(HashedParams{
+		params.BlockSize.MaxBytes,
+		params.BlockSize.MaxGas,
+	})
 	if bz == nil {
 		panic("cannot fail to encode ConsensusParams")
 	}
