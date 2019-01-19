@@ -323,16 +323,17 @@ func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 }
 
 // MaxDataBytesUnknownEvidence returns the maximum size of block's data when
-// evidence count is unknown. MaxEvidenceBytesPerBlock will be used as the size
+// evidence count is unknown. MaxEvidencePerBlock will be used for the size
 // of evidence.
 //
 // XXX: Panics on negative result.
 func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
+	_, maxEvidenceBytes := MaxEvidencePerBlock(maxBytes)
 	maxDataBytes := maxBytes -
 		MaxAminoOverheadForBlock -
 		MaxHeaderBytes -
 		int64(valsCount)*MaxVoteBytes -
-		MaxEvidenceBytesPerBlock(maxBytes)
+		maxEvidenceBytes
 
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
