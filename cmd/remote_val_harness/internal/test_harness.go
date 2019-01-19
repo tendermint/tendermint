@@ -279,6 +279,12 @@ func (th *TestHarness) Shutdown(err error) {
 		exitCode = ErrOther
 	}
 
+	// best effort request to shut the remote signer down
+	th.logger.Info("Attempting to stop remote signer")
+	if err := th.sc.SendPoisonPill(); err != nil {
+		th.logger.Error("Failed to send poison pill message to remote signer", "err", err)
+	}
+
 	// in case sc.Stop() takes too long
 	go func() {
 		time.Sleep(time.Duration(5) * time.Second)
