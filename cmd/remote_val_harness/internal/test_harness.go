@@ -232,11 +232,7 @@ func (th *TestHarness) TestSignProposal() error {
 		},
 		Timestamp: time.Now(),
 	}
-	propBytes, err := cdc.MarshalBinaryLengthPrefixed(types.CanonicalizeProposal(th.chainID, prop))
-	if err != nil {
-		th.logger.Error("FAILED: Could not marshal proposal to bytes", "err", err)
-		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
-	}
+	propBytes := prop.SignBytes(th.chainID)
 	if err := th.sc.SignProposal(th.chainID, prop); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
@@ -252,7 +248,7 @@ func (th *TestHarness) TestSignProposal() error {
 		th.logger.Info("Successfully validated proposal signature")
 	} else {
 		th.logger.Error("FAILED: Proposal signature validation failed")
-		return newTestHarnessError(ErrTestSignProposalFailed, err, "signature validation failed")
+		return newTestHarnessError(ErrTestSignProposalFailed, nil, "signature validation failed")
 	}
 	return nil
 }
@@ -279,13 +275,7 @@ func (th *TestHarness) TestSignVote() error {
 			ValidatorAddress: tmhash.SumTruncated([]byte("addr")),
 			Timestamp:        time.Now(),
 		}
-		// work out the canonicalized serialized byte form of the message
-		// without its signature
-		voteBytes, err := cdc.MarshalBinaryLengthPrefixed(types.CanonicalizeVote(th.chainID, vote))
-		if err != nil {
-			th.logger.Error("FAILED: Could not marshal vote to bytes", "err", err)
-			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
-		}
+		voteBytes := vote.SignBytes(th.chainID)
 		// sign the vote
 		if err := th.sc.SignVote(th.chainID, vote); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
@@ -302,7 +292,7 @@ func (th *TestHarness) TestSignVote() error {
 			th.logger.Info("Successfully validated vote signature", "type", voteType)
 		} else {
 			th.logger.Error("FAILED: Vote signature validation failed", "type", voteType)
-			return newTestHarnessError(ErrTestSignVoteFailed, err, "signature validation failed")
+			return newTestHarnessError(ErrTestSignVoteFailed, nil, "signature validation failed")
 		}
 	}
 	return nil
