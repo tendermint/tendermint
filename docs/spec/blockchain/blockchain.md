@@ -288,7 +288,7 @@ The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 LastBlockID is the previous block's BlockID:
 
 ```go
-prevBlockParts := MakeParts(prevBlock, state.LastConsensusParams.BlockGossip.BlockPartSize)
+prevBlockParts := MakeParts(prevBlock)
 block.Header.LastBlockID == BlockID {
     Hash: MerkleRoot(prevBlock.Header),
     PartsHeader{
@@ -297,9 +297,6 @@ block.Header.LastBlockID == BlockID {
     },
 }
 ```
-
-Note: it depends on the ConsensusParams,
-which are held in the `state` and may be updated by the application.
 
 The first block has `block.Header.LastBlockID == BlockID{}`.
 
@@ -341,13 +338,13 @@ MerkleRoot of the next validator set that will be the validator set that commits
 This is included so that the current validator set gets a chance to sign the
 next validator sets Merkle root.
 
-### ConsensusParamsHash
+### ConsensusHash
 
 ```go
-block.ConsensusParamsHash == TMHASH(amino(state.ConsensusParams))
+block.ConsensusHash == state.ConsensusParams.Hash()
 ```
 
-Hash of the amino-encoded consensus parameters.
+Hash of the amino-encoding of a subset of the consensus parameters.
 
 ### AppHash
 

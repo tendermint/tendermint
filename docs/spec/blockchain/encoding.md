@@ -30,6 +30,12 @@ For example, the byte-array `[0xA, 0xB]` would be encoded as `0x020A0B`,
 while a byte-array containing 300 entires beginning with `[0xA, 0xB, ...]` would
 be encoded as `0xAC020A0B...` where `0xAC02` is the UVarint encoding of 300.
 
+## Hashing
+
+Tendermint uses `SHA256` as its hash function.
+Objects are always Amino encoded before being hashed.
+So `SHA256(obj)` is short for `SHA256(AminoEncode(obj))`.
+
 ## Public Key Cryptography
 
 Tendermint uses Amino to distinguish between different types of private keys,
