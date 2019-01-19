@@ -25,6 +25,7 @@ import (
 // Test harness error codes (which act as exit codes when the test harness fails).
 const (
 	NoError int = iota
+	ErrMaxAcceptRetriesReached
 	ErrFailedToExpandPath
 	ErrFailedToLoadGenesisFile
 	ErrFailedToCreateListener
@@ -51,10 +52,14 @@ var _ error = (*TestHarnessError)(nil)
 // TestHarness allows for testing of a remote signer to ensure compatibility
 // with this version of Tendermint.
 type TestHarness struct {
-	sc      *privval.SocketVal
-	fpv     *privval.FilePV
-	chainID string
-	logger  log.Logger
+	addr             string
+	sc               *privval.SocketVal
+	fpv              *privval.FilePV
+	chainID          string
+	acceptRetries    int
+	logger           log.Logger
+	exitWhenComplete bool
+	exitCode         int
 }
 
 // TestHarnessConfig provides configuration to set up a remote signer test
@@ -68,8 +73,17 @@ type TestHarnessConfig struct {
 
 	AcceptDeadline time.Duration
 	ConnDeadline   time.Duration
+	AcceptRetries  int
 
 	SecretConnKey ed25519.PrivKeyEd25519
+
+	ExitWhenComplete bool // Whether or not to call os.Exit when the harness has completed.
+}
+
+// timeoutError can be used to check if an error returned from the netp package
+// was due to a timeout.
+type timeoutError interface {
+	Timeout() bool
 }
 
 var cdc = amino.NewCodec()
@@ -108,10 +122,14 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	}
 
 	return &TestHarness{
-		sc:      sc,
-		fpv:     fpv,
-		chainID: st.ChainID,
-		logger:  logger,
+		addr:             cfg.BindAddr,
+		sc:               sc,
+		fpv:              fpv,
+		chainID:          st.ChainID,
+		acceptRetries:    cfg.AcceptRetries,
+		logger:           logger,
+		exitWhenComplete: cfg.ExitWhenComplete,
+		exitCode:         0,
 	}, nil
 }
 
@@ -124,20 +142,47 @@ func (th *TestHarness) Run() {
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		if err := th.sc.Start(); err != nil {
-			th.logger.Error("Failed to start listener", "err", err)
-			th.Shutdown(newTestHarnessError(ErrFailedToStartListener, err, ""))
+		accepted := false
+		var startErr error
+		for acceptRetries := th.acceptRetries; acceptRetries > 0; acceptRetries-- {
+			th.logger.Info("Attempting to accept incoming connection", "acceptRetries", acceptRetries)
+			if err := th.sc.Start(); err != nil {
+				// if it wasn't a timeout error
+				if _, ok := err.(timeoutError); !ok {
+					th.logger.Error("Failed to start listener", "err", err)
+					th.Shutdown(newTestHarnessError(ErrFailedToStartListener, err, ""))
+					// we need the return statements in case this is being run
+					// from a unit test - otherwise this function will just die
+					// when os.Exit is called
+					return
+				}
+				startErr = err
+			} else {
+				accepted = true
+				break
+			}
 		}
+		if !accepted {
+			th.logger.Error("Maximum accept retries reached", "acceptRetries", th.acceptRetries)
+			th.Shutdown(newTestHarnessError(ErrMaxAcceptRetriesReached, startErr, ""))
+			return
+		}
+
+		// Run the tests
 		if err := th.TestPublicKey(); err != nil {
 			th.Shutdown(err)
+			return
 		}
 		if err := th.TestSignProposal(); err != nil {
 			th.Shutdown(err)
+			return
 		}
 		if err := th.TestSignVote(); err != nil {
 			th.Shutdown(err)
+			return
 		}
 		th.logger.Info("SUCCESS! All tests passed.")
+		th.Shutdown(nil)
 	}()
 
 	c := make(chan os.Signal, 1)
@@ -151,7 +196,6 @@ func (th *TestHarness) Run() {
 
 	// Run until complete
 	<-donec
-	th.Shutdown(nil)
 }
 
 // TestPublicKey just validates that we can (1) fetch the public key from the
@@ -278,19 +322,24 @@ func (th *TestHarness) Shutdown(err error) {
 	} else {
 		exitCode = ErrOther
 	}
+	th.exitCode = exitCode
 
-	// best effort request to shut the remote signer down
-	th.logger.Info("Attempting to stop remote signer")
-	if err := th.sc.SendPoisonPill(); err != nil {
-		th.logger.Error("Failed to send poison pill message to remote signer", "err", err)
+	if th.sc.IsRunning() {
+		// best effort request to shut the remote signer down
+		th.logger.Info("Attempting to stop remote signer")
+		if err := th.sc.SendPoisonPill(); err != nil {
+			th.logger.Error("Failed to send poison pill message to remote signer", "err", err)
+		}
 	}
 
 	// in case sc.Stop() takes too long
-	go func() {
-		time.Sleep(time.Duration(5) * time.Second)
-		th.logger.Error("Forcibly exiting program after timeout")
-		os.Exit(exitCode)
-	}()
+	if th.exitWhenComplete {
+		go func() {
+			time.Sleep(time.Duration(5) * time.Second)
+			th.logger.Error("Forcibly exiting program after timeout")
+			os.Exit(exitCode)
+		}()
+	}
 
 	if th.sc.IsRunning() {
 		if err := th.sc.Stop(); err != nil {
@@ -298,7 +347,9 @@ func (th *TestHarness) Shutdown(err error) {
 		}
 	}
 
-	os.Exit(exitCode)
+	if th.exitWhenComplete {
+		os.Exit(exitCode)
+	}
 }
 
 // expandPath will check if the given path begins with a "~" symbol, and if so,
@@ -363,6 +414,8 @@ func newTestHarnessError(code int, err error, info string) *TestHarnessError {
 func (e *TestHarnessError) Error() string {
 	var msg string
 	switch e.Code {
+	case ErrMaxAcceptRetriesReached:
+		msg = "Maximum accept retries reached"
 	case ErrFailedToExpandPath:
 		msg = "Failed to expand path"
 	case ErrFailedToCreateListener:

@@ -50,6 +50,10 @@ func NewMockPV() *MockPV {
 	return &MockPV{ed25519.GenPrivKey()}
 }
 
+func NewMockPVWithPrivKey(privKey crypto.PrivKey) *MockPV {
+	return &MockPV{privKey}
+}
+
 // Implements PrivValidator.
 func (pv *MockPV) GetPubKey() crypto.PubKey {
 	return pv.privKey.PubKey()

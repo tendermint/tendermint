@@ -11,7 +11,8 @@ import (
 
 const (
 	defaultConnDeadline   = 3
-	defaultAcceptDeadline = 1e6
+	defaultAcceptDeadline = 1
+	defaultAcceptRetries  = 100
 )
 
 var (
@@ -21,6 +22,7 @@ var (
 	flagGenesisFile    string
 	flagConnDeadline   int
 	flagAcceptDeadline int
+	flagAcceptRetries  int
 )
 
 func NewRunCmd() *cobra.Command {
@@ -38,13 +40,15 @@ harness' tests will be executed.
 Note that using a TCP port of "0" will automatically choose a random open port.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg := internal.TestHarnessConfig{
-				BindAddr:       flagAddr,
-				KeyFile:        flagKeyFile,
-				StateFile:      flagStateFile,
-				GenesisFile:    flagGenesisFile,
-				AcceptDeadline: time.Duration(flagAcceptDeadline) * time.Second,
-				ConnDeadline:   time.Duration(flagConnDeadline) * time.Second,
-				SecretConnKey:  ed25519.GenPrivKey(),
+				BindAddr:         flagAddr,
+				KeyFile:          flagKeyFile,
+				StateFile:        flagStateFile,
+				GenesisFile:      flagGenesisFile,
+				AcceptDeadline:   time.Duration(flagAcceptDeadline) * time.Second,
+				AcceptRetries:    flagAcceptRetries,
+				ConnDeadline:     time.Duration(flagConnDeadline) * time.Second,
+				SecretConnKey:    ed25519.GenPrivKey(),
+				ExitWhenComplete: true,
 			}
 			harness, err := internal.NewTestHarness(logger, cfg)
 			if err != nil {
@@ -64,6 +68,7 @@ Note that using a TCP port of "0" will automatically choose a random open port.`
 	runCmd.PersistentFlags().StringVar(&flagGenesisFile, "genesis-file", "~/.tendermint/config/genesis.json", "path to Tendermint genesis file")
 	runCmd.PersistentFlags().IntVar(&flagAcceptDeadline, "accept-deadline", defaultAcceptDeadline, "accept deadline for connection in seconds")
 	runCmd.PersistentFlags().IntVar(&flagConnDeadline, "conn-deadline", defaultConnDeadline, "connect deadline for connection in seconds")
+	runCmd.PersistentFlags().IntVar(&flagAcceptRetries, "accept-retries", defaultAcceptRetries, "maximum number of retries when attempting to accept an incoming connection")
 
 	return runCmd
 }

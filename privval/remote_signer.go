@@ -266,6 +266,9 @@ func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValida
 		}
 	case *PingRequest:
 		res = &PingResponse{}
+	case *PoisonPillMsg:
+		// just echo this back, doing nothing
+		res = &PoisonPillMsg{}
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)
 	}
