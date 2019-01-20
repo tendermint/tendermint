@@ -18,6 +18,8 @@ var _ Verifier = (*DynamicVerifier)(nil)
 // "source" provider to obtain the needed FullCommits to securely sync with
 // validator set changes.  It stores properly validated data on the
 // "trusted" local system.
+// TODO: make this single threaded and create a new
+// ConcurrentDynamicVerifier that wraps it with concurrency.
 type DynamicVerifier struct {
 	chainID string
 	logger  log.Logger
@@ -85,9 +87,12 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 		}()
 		ic.mtx.Unlock()
 	}
+
 	//Get the exact trusted commit for h, and if it is
-	// equal to shdr, then don't even verify it,
-	// and just return nil.
+	// equal to shdr, then it's already trusted, so
+	// just return nil.
+	// NOTE: in base verifier we return an error if the signed header isnt ahead of us
+	//  ... not sure why it should be different here
 	trustedFCSameHeight, err := ic.trusted.LatestFullCommit(ic.chainID, shdr.Height, shdr.Height)
 	if err == nil {
 		// If loading trust commit successfully, and trust commit equal to shdr, then don't verify it,
@@ -104,13 +109,15 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 
 	// Get the latest known full commit <= h-1 from our trusted providers.
 	// The full commit at h-1 contains the valset to sign for h.
-	h := shdr.Height - 1
-	trustedFC, err := ic.trusted.LatestFullCommit(ic.chainID, 1, h)
+	prevHeight := shdr.Height - 1
+	trustedFC, err := ic.trusted.LatestFullCommit(ic.chainID, 1, prevHeight)
 	if err != nil {
 		return err
 	}
 
-	if trustedFC.Height() == h {
+	// sync up to the prevHeight and assert our latest NextValidatorSet
+	// is the ValidatorSet for the SignedHeader
+	if trustedFC.Height() == prevHeight {
 		// Return error if valset doesn't match.
 		if !bytes.Equal(
 			trustedFC.NextValidators.Hash(),
@@ -120,11 +127,12 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 				shdr.Header.ValidatorsHash)
 		}
 	} else {
-		// If valset doesn't match...
-		if !bytes.Equal(trustedFC.NextValidators.Hash(),
+		// If valset doesn't match, try to update
+		if !bytes.Equal(
+			trustedFC.NextValidators.Hash(),
 			shdr.Header.ValidatorsHash) {
 			// ... update.
-			trustedFC, err = ic.updateToHeight(h)
+			trustedFC, err = ic.updateToHeight(prevHeight)
 			if err != nil {
 				return err
 			}
@@ -146,6 +154,7 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 	}
 
 	// Get the next validator set.
+	// XXX: this is unsafe/unverified?!
 	nextValset, err := ic.source.ValidatorSet(ic.chainID, shdr.Height+1)
 	if lerr.IsErrUnknownValidators(err) {
 		// Ignore this error.
@@ -202,17 +211,18 @@ func (ic *DynamicVerifier) updateToHeight(h int64) (FullCommit, error) {
 		return FullCommit{}, err
 	}
 
+	// If sourceFC.Height() != h, we can't do it.
+	if sourceFC.Height() != h {
+		return FullCommit{}, lerr.ErrCommitNotFound()
+	}
+
 	// Validate the full commit.  This checks the cryptographic
 	// signatures of Commit against Validators.
 	if err := sourceFC.ValidateFull(ic.chainID); err != nil {
 		return FullCommit{}, err
 	}
 
-	// If sourceFC.Height() != h, we can't do it.
-	if sourceFC.Height() != h {
-		return FullCommit{}, lerr.ErrCommitNotFound()
-	}
-
+	// Verify latest FullCommit against trusted FullCommits
 FOR_LOOP:
 	for {
 		// Fetch latest full commit from trusted.
