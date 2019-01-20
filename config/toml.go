@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -317,6 +318,10 @@ namespace = "{{ .Instrumentation.Namespace }}"
 /****** these are for test settings ***********/
 
 func ResetTestRoot(testName string) *Config {
+	return ResetTestRootWithChainID(testName, "")
+}
+
+func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	rootDir := os.ExpandEnv("$HOME/.tendermint_test")
 	rootDir = filepath.Join(rootDir, testName)
 	// Remove ~/.tendermint_test_bak
@@ -353,6 +358,10 @@ func ResetTestRoot(testName string) *Config {
 		writeDefaultConfigFile(configFilePath)
 	}
 	if !cmn.FileExists(genesisFilePath) {
+		if chainID != "" {
+			chainID = "_" + chainID
+		}
+		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
 	}
 	// we always overwrite the priv val
@@ -363,9 +372,9 @@ func ResetTestRoot(testName string) *Config {
 	return config
 }
 
-var testGenesis = `{
+var testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
-  "chain_id": "tendermint_test",
+  "chain_id": "tendermint_test%s",
   "validators": [
     {
       "pub_key": {
