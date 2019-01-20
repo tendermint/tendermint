@@ -296,7 +296,7 @@ Intuitively, a process p jumps ahead in the queue ~P/VP(i) times until it reache
 Current implementation normalizes the priorities after every change such that the distance between min and max is at most 2 * P. If no other change occurs, a process p needs to move ahead in the queue ~ 2 * P/VP(i) times to reach the head and be elected. 
 
 -----------
-
+Don't review yet
 ## Formal Proofs
 Notations:
 - n - the number of validators in vset
