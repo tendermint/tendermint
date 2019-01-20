@@ -78,12 +78,26 @@ func TotalVotingPower(vals []Validators) int64{
 
 ConsensusParams define various limits for blockchain data structures.
 Like validator sets, they are set during genesis and can be updated by the application through ABCI.
+When hashed, only a subset of the params are included, to allow the params to
+evolve without breaking the header.
 
 ```go
 type ConsensusParams struct {
 	BlockSize
 	Evidence
 	Validator
+}
+
+type hashedParams struct {
+    BlockMaxBytes int64
+    BlockMaxGas   int64
+}
+
+func (params ConsensusParams) Hash() []byte {
+    SHA256(hashedParams{
+        BlockMaxBytes: params.BlockSize.MaxBytes,
+        BlockMaxGas: params.BlockSize.MaxGas,
+    })
 }
 
 type BlockSize struct {
