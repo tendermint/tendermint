@@ -152,8 +152,14 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 		return err
 	}
 
+	// By now, the SignedHeader is fully validated and we're synced up to
+	// SignedHeader.Height - 1. To sync to SignedHeader.Height, we need
+	// the validator set at SignedHeader.Height + 1 so we can verify the
+	// SignedHeader.NextValidatorSet.
+	// TODO: is the ValidateFull below mostly redundant with the BaseVerifier.Verify above?
+	// See https://github.com/tendermint/tendermint/issues/3174.
+
 	// Get the next validator set.
-	// XXX: this is unsafe/unverified?!
 	nextValset, err := dv.source.ValidatorSet(dv.chainID, shdr.Height+1)
 	if lerr.IsErrUnknownValidators(err) {
 		// Ignore this error.

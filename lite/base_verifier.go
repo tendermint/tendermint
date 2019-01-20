@@ -49,8 +49,6 @@ func (bv *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
 	}
 
 	// We can't verify commits older than bv.height.
-	// TODO: make behaviour consistent with the DynamicVerifier
-	// which returns nil if the heights match
 	if signedHeader.Height < bv.height {
 		return cmn.NewError("BaseVerifier height is %v, cannot verify height %v",
 			bv.height, signedHeader.Height)
