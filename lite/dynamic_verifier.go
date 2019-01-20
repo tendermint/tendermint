@@ -52,64 +52,64 @@ func NewDynamicVerifier(chainID string, trusted PersistentProvider, source Provi
 	}
 }
 
-func (ic *DynamicVerifier) SetLogger(logger log.Logger) {
+func (dv *DynamicVerifier) SetLogger(logger log.Logger) {
 	logger = logger.With("module", "lite")
-	ic.logger = logger
-	ic.trusted.SetLogger(logger)
-	ic.source.SetLogger(logger)
+	dv.logger = logger
+	dv.trusted.SetLogger(logger)
+	dv.source.SetLogger(logger)
 }
 
 // Implements Verifier.
-func (ic *DynamicVerifier) ChainID() string {
-	return ic.chainID
+func (dv *DynamicVerifier) ChainID() string {
+	return dv.chainID
 }
 
 // Implements Verifier.
 //
 // If the validators have changed since the last known time, it looks to
-// ic.trusted and ic.source to prove the new validators.  On success, it will
-// try to store the SignedHeader in ic.trusted if the next
+// dv.trusted and dv.source to prove the new validators.  On success, it will
+// try to store the SignedHeader in dv.trusted if the next
 // validator can be sourced.
-func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
+func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 
 	// Performs synchronization for multi-threads verification at the same height.
-	ic.mtx.Lock()
-	if pending := ic.pendingVerifications[shdr.Height]; pending != nil {
-		ic.mtx.Unlock()
+	dv.mtx.Lock()
+	if pending := dv.pendingVerifications[shdr.Height]; pending != nil {
+		dv.mtx.Unlock()
 		<-pending // pending is chan struct{}
 	} else {
 		pending := make(chan struct{})
-		ic.pendingVerifications[shdr.Height] = pending
+		dv.pendingVerifications[shdr.Height] = pending
 		defer func() {
 			close(pending)
-			ic.mtx.Lock()
-			delete(ic.pendingVerifications, shdr.Height)
-			ic.mtx.Unlock()
+			dv.mtx.Lock()
+			delete(dv.pendingVerifications, shdr.Height)
+			dv.mtx.Unlock()
 		}()
-		ic.mtx.Unlock()
+		dv.mtx.Unlock()
 	}
 
 	//Get the exact trusted commit for h, and if it is
 	// equal to shdr, then it's already trusted, so
 	// just return nil.
-	trustedFCSameHeight, err := ic.trusted.LatestFullCommit(ic.chainID, shdr.Height, shdr.Height)
+	trustedFCSameHeight, err := dv.trusted.LatestFullCommit(dv.chainID, shdr.Height, shdr.Height)
 	if err == nil {
 		// If loading trust commit successfully, and trust commit equal to shdr, then don't verify it,
 		// just return nil.
 		if bytes.Equal(trustedFCSameHeight.SignedHeader.Hash(), shdr.Hash()) {
-			ic.logger.Info(fmt.Sprintf("Load full commit at height %d from cache, there is not need to verify.", shdr.Height))
+			dv.logger.Info(fmt.Sprintf("Load full commit at height %d from cache, there is not need to verify.", shdr.Height))
 			return nil
 		}
 	} else if !lerr.IsErrCommitNotFound(err) {
 		// Return error if it is not CommitNotFound error
-		ic.logger.Info(fmt.Sprintf("Encountered unknown error in loading full commit at height %d.", shdr.Height))
+		dv.logger.Info(fmt.Sprintf("Encountered unknown error in loading full commit at height %d.", shdr.Height))
 		return err
 	}
 
 	// Get the latest known full commit <= h-1 from our trusted providers.
 	// The full commit at h-1 contains the valset to sign for h.
 	prevHeight := shdr.Height - 1
-	trustedFC, err := ic.trusted.LatestFullCommit(ic.chainID, 1, prevHeight)
+	trustedFC, err := dv.trusted.LatestFullCommit(dv.chainID, 1, prevHeight)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 			trustedFC.NextValidators.Hash(),
 			shdr.Header.ValidatorsHash) {
 			// ... update.
-			trustedFC, err = ic.updateToHeight(prevHeight)
+			trustedFC, err = dv.updateToHeight(prevHeight)
 			if err != nil {
 				return err
 			}
@@ -146,7 +146,7 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 	}
 
 	// Verify the signed header using the matching valset.
-	cert := NewBaseVerifier(ic.chainID, trustedFC.Height()+1, trustedFC.NextValidators)
+	cert := NewBaseVerifier(dv.chainID, trustedFC.Height()+1, trustedFC.NextValidators)
 	err = cert.Verify(shdr)
 	if err != nil {
 		return err
@@ -154,7 +154,7 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 
 	// Get the next validator set.
 	// XXX: this is unsafe/unverified?!
-	nextValset, err := ic.source.ValidatorSet(ic.chainID, shdr.Height+1)
+	nextValset, err := dv.source.ValidatorSet(dv.chainID, shdr.Height+1)
 	if lerr.IsErrUnknownValidators(err) {
 		// Ignore this error.
 		return nil
@@ -170,31 +170,31 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 	}
 	// Validate the full commit.  This checks the cryptographic
 	// signatures of Commit against Validators.
-	if err := nfc.ValidateFull(ic.chainID); err != nil {
+	if err := nfc.ValidateFull(dv.chainID); err != nil {
 		return err
 	}
 	// Trust it.
-	return ic.trusted.SaveFullCommit(nfc)
+	return dv.trusted.SaveFullCommit(nfc)
 }
 
 // verifyAndSave will verify if this is a valid source full commit given the
-// best match trusted full commit, and if good, persist to ic.trusted.
+// best match trusted full commit, and if good, persist to dv.trusted.
 // Returns ErrTooMuchChange when >2/3 of trustedFC did not sign sourceFC.
 // Panics if trustedFC.Height() >= sourceFC.Height().
-func (ic *DynamicVerifier) verifyAndSave(trustedFC, sourceFC FullCommit) error {
+func (dv *DynamicVerifier) verifyAndSave(trustedFC, sourceFC FullCommit) error {
 	if trustedFC.Height() >= sourceFC.Height() {
 		panic("should not happen")
 	}
 	err := trustedFC.NextValidators.VerifyFutureCommit(
 		sourceFC.Validators,
-		ic.chainID, sourceFC.SignedHeader.Commit.BlockID,
+		dv.chainID, sourceFC.SignedHeader.Commit.BlockID,
 		sourceFC.SignedHeader.Height, sourceFC.SignedHeader.Commit,
 	)
 	if err != nil {
 		return err
 	}
 
-	return ic.trusted.SaveFullCommit(sourceFC)
+	return dv.trusted.SaveFullCommit(sourceFC)
 }
 
 // updateToHeight will use divide-and-conquer to find a path to h.
@@ -202,10 +202,10 @@ func (ic *DynamicVerifier) verifyAndSave(trustedFC, sourceFC FullCommit) error {
 // for height h, using repeated applications of bisection if necessary.
 //
 // Returns ErrCommitNotFound if source provider doesn't have the commit for h.
-func (ic *DynamicVerifier) updateToHeight(h int64) (FullCommit, error) {
+func (dv *DynamicVerifier) updateToHeight(h int64) (FullCommit, error) {
 
 	// Fetch latest full commit from source.
-	sourceFC, err := ic.source.LatestFullCommit(ic.chainID, h, h)
+	sourceFC, err := dv.source.LatestFullCommit(dv.chainID, h, h)
 	if err != nil {
 		return FullCommit{}, err
 	}
@@ -217,7 +217,7 @@ func (ic *DynamicVerifier) updateToHeight(h int64) (FullCommit, error) {
 
 	// Validate the full commit.  This checks the cryptographic
 	// signatures of Commit against Validators.
-	if err := sourceFC.ValidateFull(ic.chainID); err != nil {
+	if err := sourceFC.ValidateFull(dv.chainID); err != nil {
 		return FullCommit{}, err
 	}
 
@@ -225,7 +225,7 @@ func (ic *DynamicVerifier) updateToHeight(h int64) (FullCommit, error) {
 FOR_LOOP:
 	for {
 		// Fetch latest full commit from trusted.
-		trustedFC, err := ic.trusted.LatestFullCommit(ic.chainID, 1, h)
+		trustedFC, err := dv.trusted.LatestFullCommit(dv.chainID, 1, h)
 		if err != nil {
 			return FullCommit{}, err
 		}
@@ -235,7 +235,7 @@ FOR_LOOP:
 		}
 
 		// Try to update to full commit with checks.
-		err = ic.verifyAndSave(trustedFC, sourceFC)
+		err = dv.verifyAndSave(trustedFC, sourceFC)
 		if err == nil {
 			// All good!
 			return sourceFC, nil
@@ -249,7 +249,7 @@ FOR_LOOP:
 				panic("should not happen")
 			}
 			mid := (start + end) / 2
-			_, err = ic.updateToHeight(mid)
+			_, err = dv.updateToHeight(mid)
 			if err != nil {
 				return FullCommit{}, err
 			}
@@ -260,8 +260,8 @@ FOR_LOOP:
 	}
 }
 
-func (ic *DynamicVerifier) LastTrustedHeight() int64 {
-	fc, err := ic.trusted.LatestFullCommit(ic.chainID, 1, 1<<63-1)
+func (dv *DynamicVerifier) LastTrustedHeight() int64 {
+	fc, err := dv.trusted.LatestFullCommit(dv.chainID, 1, 1<<63-1)
 	if err != nil {
 		panic("should not happen")
 	}
