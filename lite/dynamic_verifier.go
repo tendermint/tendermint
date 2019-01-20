@@ -19,11 +19,13 @@ var _ Verifier = (*DynamicVerifier)(nil)
 // validator set changes.  It stores properly validated data on the
 // "trusted" local system.
 type DynamicVerifier struct {
-	logger  log.Logger
 	chainID string
-	// These are only properly validated data, from local system.
+	logger  log.Logger
+
+	// Already validated, stored locally
 	trusted PersistentProvider
-	// This is a source of new info, like a node rpc, or other import method.
+
+	// New info, like a node rpc, or other import method.
 	source Provider
 
 	// pending map to synchronize concurrent verification requests
@@ -35,8 +37,8 @@ type DynamicVerifier struct {
 // trusted provider to store validated data and the source provider to
 // obtain missing data (e.g. FullCommits).
 //
-// The trusted provider should a CacheProvider, MemProvider or
-// files.Provider.  The source provider should be a client.HTTPProvider.
+// The trusted provider should be a DBProvider.
+// The source provider should be a client.HTTPProvider.
 func NewDynamicVerifier(chainID string, trusted PersistentProvider, source Provider) *DynamicVerifier {
 	return &DynamicVerifier{
 		logger:               log.NewNopLogger(),
