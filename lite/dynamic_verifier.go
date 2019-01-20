@@ -20,6 +20,7 @@ var _ Verifier = (*DynamicVerifier)(nil)
 // "trusted" local system.
 // TODO: make this single threaded and create a new
 // ConcurrentDynamicVerifier that wraps it with concurrency.
+// see https://github.com/tendermint/tendermint/issues/3170
 type DynamicVerifier struct {
 	chainID string
 	logger  log.Logger
@@ -91,8 +92,6 @@ func (ic *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 	//Get the exact trusted commit for h, and if it is
 	// equal to shdr, then it's already trusted, so
 	// just return nil.
-	// NOTE: in base verifier we return an error if the signed header isnt ahead of us
-	//  ... not sure why it should be different here
 	trustedFCSameHeight, err := ic.trusted.LatestFullCommit(ic.chainID, shdr.Height, shdr.Height)
 	if err == nil {
 		// If loading trust commit successfully, and trust commit equal to shdr, then don't verify it,
