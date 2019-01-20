@@ -24,8 +24,10 @@ Given a validator set with total voting power P and a sequence S of elections. I
  f(v) ~ VP(v) / P
 
 where C is a tolerance factor for validator set changes with following values:
-- C == 1 when there are no validator set changes
-- C <= 2 with validator change
+- C == 1 if there are no validator set changes
+- C ~ k when there are k validator changes 
+
+*[this needs more work]*
 
 ### Basic Algorithm
 
@@ -54,7 +56,7 @@ Simple view at the Selection Algorithm:
         A(prop) -= P
 ```
 
-If the set of the validators has not changed, at the beginning of each new round the sum of their priorities is 0.
+### Stable Set
 
 Consider the validator set:
 
@@ -62,7 +64,7 @@ Validator | p1| p2
 ----------|---|---
 VP        | 1 | 3
 
-Following table shows how the proposer priority is computed. Four runs of the selection procedure are shown, starting with the 5th the same values are computed.
+Assuming no validator changes, the following table shows the proposer priority computation over a few runs. Four runs of the selection procedure are shown, starting with the 5th the same values are computed.
 Each row shows the priority queue and the process place in it. The proposer is the closest to the head, the rightmost validator. As priorities are updated, the validators move right in the queue. The proposer moves left as its priority is reduced after election. 
 
 |Priority   Run  | -2| -1| 0   |  1| 2   | 3 | 4 | 5 | Alg step
@@ -77,12 +79,12 @@ Each row shows the priority queue and the process place in it. The proposer is t
 |run 4           |   |   |   p1|   |     |   | p2|   |A(i)+=VP(i)
 |                |   |   |p1,p2|   |     |   |   |   |A(p2)-= P
 
-Observations:
-- At the end of each run the sum of the priorities is 0.
+It can pe shown that:
+- At the end of each run k+1 the sum of the priorities is the same as at end of run k. If a new set's priorities are initialized to 0 then the sum of priorities will be 0 at each run while there are no changes.
 - The max distance between priorites is P.
 
 ### Validator Set Changes
-Between selection procedures the validator set may change. Some changes have implications on the proposer election.
+Between proposer selection runs the validator set may change. Some changes have implications on the proposer election.
 
 #### Voting Power Change
 Consider again the earlier example and assume that the voting power of p1 is changed to 4:
@@ -101,6 +103,10 @@ Let's also assume that before this change the proposer priorites were as shown i
 
 However, when a validator changes power from a high to a low value, some other validator remain far back in the queue for a long time. This scenario is considered again in the Proposer Priority Range section.
 
+As before:
+- At the end of each run k+1 the sum of the priorities is the same as at run k.
+- The max distance between priorites is P.
+
 #### Validator Removal
 Consider a new example with set:
 
@@ -116,7 +122,7 @@ Let's assume that after the last run the proposer priorities were as shown in fi
 | last run      |p3 |    |    |    | p1  | p2  |__remove p2__
 | next run      |   |    |    | p3 |     | p1  |A(i)+=VP(i)
 |               |   | p1 |    | p3 |     |     |A(p1)-= P
-| __new step__  |   |    | p1 |    | p3  |     |A(i) -= avg
+| __new step__  |   |    | p1 |    | p3  |     |A(i) -= avg, avg = -1
 
 The procedure could continue without modifications. However, after a sufficiently large number of modifications in validator set, the priority values would migrate towards maximum or minimum allowed values causing truncations due to overflow detection.
 For this reason, the selection procedure adds another __new step__ that shifts the current priority values left or right such that the average remains close to 0. 
@@ -137,8 +143,8 @@ The modified selection algorithm is:
 Note that the shifting operation currently happens after ProposerSelection() has run.
 
 Observations:
-- Due to integer division the priority sum is an integer in (-n, n), where n is the number of validators.
-- No bound on the max distance between priorites (more in the Proposer Priority Range section).
+- The sum of priorities is now close to 0. Due to integer division the sum is an integer in (-n, n), where n is the number of validators.
+- The max distance between priorites is now dependant on the history of the validator set changes (more in the Proposer Priority Range section).
 
 #### New Validator
 When a new validator is added same problem as the one described for removal appears, the sum of priorities in the new set is not zero. This is fixed with the shift step introduced above.
@@ -178,25 +184,26 @@ A(p3) = -1.125 * (1 + 3) ~ 4
 
 Note that since current computation uses integer division there is penalty loss when sum of the voting power is less than 8.
 
-In the next run, p3 will still be ahead in the queue, elected as proposer and moved back in the queue (same position it was just added)
+In the next run, p3 will still be ahead in the queue, elected as proposer and moved back in the queue.
 
-|Priority   Run  | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | Alg step
-|--------------- | ---|--- |----|--- |--- |---|---|---|---|--------
-|last run        |    |    | p2 |    |    |   | p1|   |   |__add p3__
-|                | p3 |    | p2 |    |    |   | p1|   |   |A(p3) = -4
-|next run        |    |    |    |    |    | p2|   | p1| p3|A(i)+=VP(i)
-|                | p3 |    |    |    |    | p2|   | p1|   |A(p3)-=P
+|Priority   Run | -8 | -7 | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | Alg step
+|---------------|--- |--- |--- |--- |----|--- |--- |---|---|---|---|--------
+|last run       |    |    |    |    | p2 |    |    |   | p1|   |   |__add p3__
+|               |    |    | p3 |    | p2 |    |    |   | p1|   |   |A(p3) = -4
+|next run       |    |    |    |    |    |    |    | p2|   | p1| p3|A(i)+=VP(i)
+|               | p3 |    |    |    |    |    |    | p2|   | p1|   |A(p3)-=P
+|               |    | p3 |    |    |    |    |    |   | p2|   | p1|A(i) -= avg, avg = -1
 
 ### Proposer Priority Range
 With the introduction of shifting, some interesting cases occur. Low power validators that bind early in a set that includes high power validator(s) benefit from subsequent additions to the set. This is because these early validators run through more "right" shift operations that increase their priority.
 
-As an example, consider the set where p2 is added after p1, with priority -1.125 * 80k = -90k. Once the selection runs once:
+As an example, consider the set where p2 is added after p1, with priority -1.125 * 80k = -90k. After the selection procedure runs once:
 
 Validator | p1  | p2  | Comment
 ----------|-----|---- |---
 VP        | 80k |  10 |
 A         |  0  |-90k | __added p2__
-A         |-45k | 45k |  __run selection__
+A         |-45k | 45k | __run selection__
 
 Then execute the following steps:
 
@@ -226,7 +233,7 @@ A         |-22.5k|22.5k| __run selection__
 
 At this point, while the total voting power is 20, the distance between priorities is 45k. It will take 4500 runs for p3 to catch up with p2.
 
-In order to prevent these types of scenarios, the selection algorithm perform normalization of priorities such that the difference of min and max values is smaller than two times the total voting power. 
+In order to prevent these types of scenarios, the selection algorithm performs normalization of priorities such that the difference between min and max values is smaller than two times the total voting power. 
 
 The modified selection algorithm is:
 
@@ -250,8 +257,7 @@ The modified selection algorithm is:
             A(i) -= avg
 
 Observations:
-- Due to integer division the priority sum is an integer in (-n, n), where n is the number of validators.
-- The max distance between priorites is 2 * P.
+- With this modification, the max distance between priorites becomes 2 * P.
 
 ### Wrinkles
 
@@ -263,7 +269,6 @@ The proposer priority is stored as an int64. The selection algorithm performs ad
 
     MaxInt64  =  1 << 63 - 1
     MinInt64  = -1 << 63
-
 
 ### Requirement Fulfillment Claims
 __[R1]__ 
@@ -288,9 +293,56 @@ Assigning priorities to each validator based on the voting power and updating th
 Intuitively, a process p jumps ahead in the queue ~P/VP(i) times until it reaches the head and is elected. 
 
 #### Changed Validator Set
-Current implementation normalizes the priorities after every change such that the distance between min and max is at most 2 * P. If no other change occurs, a process p will need to move ahead in the queue ~ 2 * P/VP(i) times to reach the head and be elected. 
-
+Current implementation normalizes the priorities after every change such that the distance between min and max is at most 2 * P. If no other change occurs, a process p needs to move ahead in the queue ~ 2 * P/VP(i) times to reach the head and be elected. 
 
 -----------
 
 ## Formal Proofs
+Notations:
+- n - the number of validators in vset
+- vset - the validator set {p<sub>i</sub>, i=1..n}
+- v<sub>i</sub> - the voting power of p<sub>i</sub>
+- a<sub>i,k</sub>  - the priority of p<sub>i</sub> in round k
+- A<sub>k</sub> = {a<sub>i,k</sub>, i=1..n} - the priority values in round k
+- dist(A<sub>k</sub>) - difference between min and max over values in A<sub>k</sub>
+
+### Stable Validator Set
+Assuming that there are no validator set changes between rounds k and k+1.
+
+__T1__:  sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k</sub>) 
+
+__P1__: In round k+1:
+- priorities are increased with v<sub>i</sub> for all p<sub>i</sub>:
+    - a<sub>i,k+1</sub> = a<sub>i,k</sub> + v<sub>i</sub>
+    - => sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k</sub>) + sum(v<sub>i</sub>)
+- priority of proposer p is decreased with total voting power:
+    - a<sub>p,k+1</sub> = a<sub>p,k+1</sub> - sum(v<sub>i</sub>)
+    - => sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k+1</sub>) - sum(v<sub>i</sub>) = sum(a<sub>i,k</sub>)
+
+In a new set a<sub>i,0</sub> = 0. Therefore sum(a<sub>i,k</sub>) = 0 while there are no changes.
+
+__T2__: dist(A<sub>k+1</sub>) = max(dist(A<sub>k</sub>), sum(v<sub>i</sub>))
+
+__P2__: [WIP]
+
+
+### Update Voting Power
+
+Let v<sub>i, k</sub> be the voting power of p<sub>i</sub> in round k.
+
+__T3__:  When a validator p<sub>q</sub> changes its voting power just before k+1 to v<sub>q,k+1</sub> = v<sub>q,k</sub> + X then __T1__ still holds:
+
+-  sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k</sub>) 
+
+__P3__: 
+
+In round k+1 when priorities are increased:
+- a<sub>i,k+1</sub> = a<sub>i,k</sub> + v<sub>i,k</sub>, for i <> q
+- a<sub>q,k+1</sub> = a<sub>q,k</sub> + v<sub>i,k</sub> + X
+
+=> sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k</sub>) + sum(v<sub>i,k</sub>) + X
+
+Then the priority of proposer p is decreased with new total voting power:
+- a<sub>p,k+1</sub> = a<sub>p,k+1</sub> - (sum(v<sub>i, k</sub>) + X)
+
+ => sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k+1</sub>) - sum(v<sub>i, k</sub>) - X = sum(a<sub>i,k</sub>)
