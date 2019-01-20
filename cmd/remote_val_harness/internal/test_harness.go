@@ -12,7 +12,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
-	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/state"
@@ -85,8 +84,6 @@ type TestHarnessConfig struct {
 type timeoutError interface {
 	Timeout() bool
 }
-
-var cdc = amino.NewCodec()
 
 // NewTestHarness will load Tendermint data from the given files (including
 // validator public/private keypairs and chain details) and create a new
