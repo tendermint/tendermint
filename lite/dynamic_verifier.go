@@ -243,7 +243,7 @@ FOR_LOOP:
 		}
 
 		// Handle special case when err is ErrTooMuchChange.
-		if lerr.IsErrTooMuchChange(err) {
+		if types.IsErrTooMuchChange(err) {
 			// Divide and conquer.
 			start, end := trustedFC.Height(), sourceFC.Height()
 			if !(start < end) {
