@@ -331,7 +331,7 @@ func TestProposerFrequency(t *testing.T) {
 			vals[j] = val
 		}
 		valSet := types.NewValidatorSet(vals)
-		valSet.RescalePriorities(totalVotePower)
+		//valSet.rescalePriorities(totalVotePower)
 		testProposerFreq(t, i, valSet)
 	}
 }
@@ -348,7 +348,7 @@ func genValSetWithPowers(powers []int64) *types.ValidatorSet {
 		vals[i] = val
 	}
 	valSet := types.NewValidatorSet(vals)
-	valSet.RescalePriorities(totalVotePower)
+	//valSet.rescalePriorities(totalVotePower)
 	return valSet
 }
 
@@ -380,7 +380,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 		// https://github.com/cwgoes/tm-proposer-idris
 		// and inferred to generalize to N-1
 		bound := N - 1
-		require.True(t, abs <= bound, fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq))
+		assert.True(t, abs <= bound, fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq))
 	}
 }
 

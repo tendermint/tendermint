@@ -14,9 +14,8 @@ import (
 
 // The maximum allowed total voting power.
 // It needs to be sufficiently small to, in all cases::
-// 1. prevent clipping in incrementProposerPriority()
-// 2. let (diff+diffMax-1) not overflow in IncrementPropposerPriotity()
-// (Proof of 1 is tricky, left to the reader).
+// prevent clipping in incrementProposerPriority()
+// (Proof of this is tricky, left to the reader).
 // It could be higher, but this is sufficiently large for our purposes,
 // and leaves room for defensive purposes.
 const MaxTotalVotingPower = int64(math.MaxInt64) / 8
@@ -78,38 +77,41 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 		panic("Cannot call IncrementProposerPriority with non-positive times")
 	}
 
-	// Cap the difference between priorities to be proportional to 2*totalPower by
+	// Cap the difference between priorities to be proportional to totalPower by
 	// re-normalizing priorities, i.e., rescale all priorities by multiplying with:
-	//  2*totalVotingPower/(maxPriority - minPriority)
-	diffMax := 2 * vals.TotalVotingPower()
-	vals.RescalePriorities(diffMax)
+	// totalVotingPower/(maxPriority - minPriority)
+	threshold := vals.TotalVotingPower()
+	vals.rescalePriorities(threshold)
+	vals.shiftByAvgProposerPriority()
 
 	var proposer *Validator
 	// call IncrementProposerPriority(1) times times:
 	for i := 0; i < times; i++ {
 		proposer = vals.incrementProposerPriority()
 	}
-	vals.shiftByAvgProposerPriority()
 
 	vals.Proposer = proposer
 }
 
-func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
+func (vals *ValidatorSet) rescalePriorities(threshold int64) {
 	// NOTE: This check is merely a sanity check which could be
 	// removed if all tests would init. voting power appropriately;
-	// i.e. diffMax should always be > 0
-	if diffMax == 0 {
+	// i.e. threshold should always be > 0
+	if threshold <= 0 {
 		return
 	}
 
-	// Caculating ceil(diff/diffMax):
+	// Calculating diff/threshold:
 	// Re-normalization is performed by dividing by an integer for simplicity.
 	// NOTE: This may make debugging priority issues easier as well.
 	diff := computeMaxMinPriorityDiff(vals)
-	ratio := (diff + diffMax - 1) / diffMax
+	ratio := diff / threshold
+	// problem: ceiling is not quite correct, e.g. 1.1 leads to division by 2
+	// possible alternative: val.ProposerPriority = (val.ProposerPriority * threshold) / diff (more precise)
+	// concern: fairness on floor division, e.g. prio 21 / 2, prio 20 / 2 - probably minor
 	if ratio > 1 {
 		for _, val := range vals.Validators {
-			val.ProposerPriority /= ratio
+			val.ProposerPriority = (val.ProposerPriority * threshold) / diff
 		}
 	}
 }
