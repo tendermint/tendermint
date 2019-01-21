@@ -60,7 +60,7 @@ When hashing the Validator struct, the address is not included,
 because it is redundant with the pubkey.
 
 The `state.Validators`, `state.LastValidators`, and `state.NextValidators`, must always by sorted by validator address,
-so that there is a canonical order for computing the SimpleMerkleRoot.
+so that there is a canonical order for computing the MerkleRoot.
 
 We also define a `TotalVotingPower` function, to return the total voting power:
 
