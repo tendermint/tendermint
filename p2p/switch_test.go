@@ -507,10 +507,9 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
 	_, err = conn.Read(one)
 	if assert.Error(t, err) {
-		// CircleCI returns TimeoutError
+		// FIXME: CircleCI returns TimeoutError
 		// assert.Equal(t, io.EOF, err)
 	}
-	assertNPeersWithTimeout(t, sw, cfg.MaxNumInboundPeers, 250*time.Millisecond)
 	rp.Stop()
 
 	// stop remote peers
