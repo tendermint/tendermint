@@ -3,6 +3,7 @@ package p2p
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -495,7 +496,8 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 		_, err = rp.Dial(sw.NodeInfo().NetAddress())
 		require.NoError(t, err)
 	}
-	assertNPeersWithTimeout(t, sw, cfg.MaxNumInboundPeers, 250*time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
 
 	// 2. check we close new connections if we already have MaxNumInboundPeers peers
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -506,35 +508,14 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	one := make([]byte, 1)
 	conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
 	_, err = conn.Read(one)
-	if assert.Error(t, err) {
-		// FIXME: CircleCI returns TimeoutError
-		// assert.Equal(t, io.EOF, err)
-	}
+	assert.Equal(t, io.EOF, err)
+	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
 	rp.Stop()
 
 	// stop remote peers
 	for _, rp := range remotePeers {
 		rp.Stop()
 	}
-}
-
-func assertNPeersWithTimeout(t *testing.T, sw *Switch, nPeers int, timeout time.Duration) {
-	timeSlept := 0 * time.Millisecond
-	step := 10 * time.Millisecond
-	for {
-		if nPeers == sw.Peers().Size() {
-			return
-		}
-
-		time.Sleep(step)
-		timeSlept += step
-
-		if timeSlept > timeout {
-			break
-		}
-	}
-
-	t.Errorf("Expected switch to have %d peers, got %d", nPeers, sw.Peers().Size())
 }
 
 func BenchmarkSwitchBroadcast(b *testing.B) {
