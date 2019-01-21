@@ -5,9 +5,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"os/user"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -92,10 +89,10 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	var err error
 	var keyFile, stateFile, genesisFile string
 
-	if keyFile, err = expandPath(cfg.KeyFile); err != nil {
+	if keyFile, err = ExpandPath(cfg.KeyFile); err != nil {
 		return nil, newTestHarnessError(ErrFailedToExpandPath, err, cfg.KeyFile)
 	}
-	if stateFile, err = expandPath(cfg.StateFile); err != nil {
+	if stateFile, err = ExpandPath(cfg.StateFile); err != nil {
 		return nil, newTestHarnessError(ErrFailedToExpandPath, err, cfg.StateFile)
 	}
 	logger.Info("Loading private validator configuration", "keyFile", keyFile, "stateFile", stateFile)
@@ -103,7 +100,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	// returned if this call fails.
 	fpv := privval.LoadFilePV(keyFile, stateFile)
 
-	if genesisFile, err = expandPath(cfg.GenesisFile); err != nil {
+	if genesisFile, err = ExpandPath(cfg.GenesisFile); err != nil {
 		return nil, newTestHarnessError(ErrFailedToExpandPath, err, cfg.GenesisFile)
 	}
 	logger.Info("Loading chain ID from genesis file", "genesisFile", genesisFile)
@@ -337,23 +334,6 @@ func (th *TestHarness) Shutdown(err error) {
 	if th.exitWhenComplete {
 		os.Exit(exitCode)
 	}
-}
-
-// expandPath will check if the given path begins with a "~" symbol, and if so,
-// will expand it to become the user's home directory.
-func expandPath(path string) (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-
-	if path == "~" {
-		return usr.HomeDir, nil
-	} else if strings.HasPrefix(path, "~/") {
-		return filepath.Join(usr.HomeDir, path[2:]), nil
-	}
-
-	return path, nil
 }
 
 // newTestHarnessSocketVal creates our client instance which we will use for

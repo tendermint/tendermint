@@ -14,6 +14,7 @@ var (
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 func NewRootCmd() *cobra.Command {
+	extractKeyCmd := NewExtractKeyCmd()
 	runCmd := NewRunCmd()
 	versionCmd := NewVersionCmd()
 
@@ -40,6 +41,7 @@ compatibility.`,
 
 	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "increase output logging verbosity")
 	rootCmd.AddCommand(
+		extractKeyCmd,
 		runCmd,
 		versionCmd,
 	)
