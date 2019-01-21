@@ -20,16 +20,16 @@ import (
 
 // Test harness error codes (which act as exit codes when the test harness fails).
 const (
-	NoError int = iota
-	ErrMaxAcceptRetriesReached
-	ErrFailedToLoadGenesisFile
-	ErrFailedToCreateListener
-	ErrFailedToStartListener
-	ErrInterrupted
-	ErrOther
-	ErrTestPublicKeyFailed
-	ErrTestSignProposalFailed
-	ErrTestSignVoteFailed
+	NoError                    int = iota // 0
+	ErrMaxAcceptRetriesReached            // 1
+	ErrFailedToLoadGenesisFile            // 2
+	ErrFailedToCreateListener             // 3
+	ErrFailedToStartListener              // 4
+	ErrInterrupted                        // 5
+	ErrOther                              // 6
+	ErrTestPublicKeyFailed                // 7
+	ErrTestSignProposalFailed             // 8
+	ErrTestSignVoteFailed                 // 9
 )
 
 var voteTypes = []types.SignedMsgType{types.PrevoteType, types.PrecommitType}
