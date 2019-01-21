@@ -27,26 +27,26 @@ integration testing with a remote signer. This requires valid local
 priv_validator_key.json and priv_validator_state.json files.
 `,
 		Run: func(cmd *cobra.Command, args []string) {
-			flagTendermintHome, err := internal.ExpandPath(flagTendermintHome)
+			tmhome, err := internal.ExpandPath(flagTendermintHome)
 			if err != nil {
-				logger.Error("Failed to expand path", "tmhome", flagTendermintHome, "err", err)
-				os.Exit(1)
+				logger.Info("Failed to expand path, using supplied path as-is", "tmhome", flagTendermintHome, "err", err)
+				tmhome = flagTendermintHome
 			}
-			flagOutputPath, err := internal.ExpandPath(flagOutputPath)
+			outputPath, err := internal.ExpandPath(flagOutputPath)
 			if err != nil {
-				logger.Error("Failed to expand path", "output", flagOutputPath, "err", err)
-				os.Exit(2)
+				logger.Info("Failed to expand path, using supplied path as-is", "output", flagOutputPath, "err", err)
+				outputPath = flagOutputPath
 			}
-			keyFile := filepath.Join(flagTendermintHome, "config", "priv_validator_key.json")
-			stateFile := filepath.Join(flagTendermintHome, "data", "priv_validator_state.json")
+			keyFile := filepath.Join(tmhome, "config", "priv_validator_key.json")
+			stateFile := filepath.Join(tmhome, "data", "priv_validator_state.json")
 			fpv := privval.LoadFilePV(keyFile, stateFile)
 			pkb := [64]byte(fpv.Key.PrivKey.(ed25519.PrivKeyEd25519))
-			err = ioutil.WriteFile(flagOutputPath, pkb[:32], 0644)
+			err = ioutil.WriteFile(outputPath, pkb[:32], 0644)
 			if err != nil {
-				logger.Error("Failed to write private key", "output", flagOutputPath, "err", err)
-				os.Exit(3)
+				logger.Info("Failed to write private key", "output", outputPath, "err", err)
+				os.Exit(1)
 			}
-			logger.Info("Successfully wrote private key", "output", flagOutputPath)
+			logger.Info("Successfully wrote private key", "output", outputPath)
 		},
 	}
 

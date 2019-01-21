@@ -22,7 +22,6 @@ import (
 const (
 	NoError int = iota
 	ErrMaxAcceptRetriesReached
-	ErrFailedToExpandPath
 	ErrFailedToLoadGenesisFile
 	ErrFailedToCreateListener
 	ErrFailedToStartListener
@@ -90,10 +89,12 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	var keyFile, stateFile, genesisFile string
 
 	if keyFile, err = ExpandPath(cfg.KeyFile); err != nil {
-		return nil, newTestHarnessError(ErrFailedToExpandPath, err, cfg.KeyFile)
+		logger.Info("Failed to expand path - using original", "keyFile", cfg.KeyFile, "err", err)
+		keyFile = cfg.KeyFile
 	}
 	if stateFile, err = ExpandPath(cfg.StateFile); err != nil {
-		return nil, newTestHarnessError(ErrFailedToExpandPath, err, cfg.StateFile)
+		logger.Info("Failed to expand path - using original", "stateFile", cfg.StateFile, "err", err)
+		stateFile = cfg.StateFile
 	}
 	logger.Info("Loading private validator configuration", "keyFile", keyFile, "stateFile", stateFile)
 	// NOTE: LoadFilePV ultimately calls os.Exit on failure. No error will be
@@ -101,7 +102,8 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	fpv := privval.LoadFilePV(keyFile, stateFile)
 
 	if genesisFile, err = ExpandPath(cfg.GenesisFile); err != nil {
-		return nil, newTestHarnessError(ErrFailedToExpandPath, err, cfg.GenesisFile)
+		logger.Info("Failed to expand path - using original", "genesisFile", cfg.GenesisFile, "err", err)
+		genesisFile = cfg.GenesisFile
 	}
 	logger.Info("Loading chain ID from genesis file", "genesisFile", genesisFile)
 	st, err := state.MakeGenesisDocFromFile(genesisFile)
@@ -383,8 +385,6 @@ func (e *TestHarnessError) Error() string {
 	switch e.Code {
 	case ErrMaxAcceptRetriesReached:
 		msg = "Maximum accept retries reached"
-	case ErrFailedToExpandPath:
-		msg = "Failed to expand path"
 	case ErrFailedToCreateListener:
 		msg = "Failed to create listener"
 	case ErrFailedToStartListener:
