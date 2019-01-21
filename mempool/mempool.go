@@ -65,6 +65,9 @@ var (
 
 	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
 	ErrMempoolIsFull = errors.New("Mempool is full")
+
+	// ErrTxTooLarge means the tx is too big to be sent in a message to other peers
+	ErrTxTooLarge = fmt.Errorf("Tx too large. Max size is %d", maxTxSize)
 )
 
 // ErrPreCheck is returned when tx is too big
@@ -307,6 +310,13 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	if mem.Size() >= mem.config.Size {
 		return ErrMempoolIsFull
+	}
+
+	// The size of the corresponding amino-encoded TxMessage
+	// can't be larger than the maxMsgSize, otherwise we can't
+	// relay it to peers.
+	if len(tx) > maxTxSize {
+		return ErrTxTooLarge
 	}
 
 	if mem.preCheck != nil {
