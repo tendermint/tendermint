@@ -313,15 +313,6 @@ func (th *TestHarness) Shutdown(err error) {
 	}
 	th.exitCode = exitCode
 
-	if th.sc.IsRunning() && th.successfullyConnected {
-		// best effort request to shut the remote signer down
-		th.logger.Info("Attempting to stop remote signer")
-		if err := th.sc.SendPoisonPill(); err != nil {
-			th.logger.Error("Failed to send poison pill message to remote signer", "err", err)
-		}
-	}
-	th.successfullyConnected = false
-
 	// in case sc.Stop() takes too long
 	if th.exitWhenComplete {
 		go func() {
@@ -332,6 +323,14 @@ func (th *TestHarness) Shutdown(err error) {
 	}
 
 	if th.sc.IsRunning() {
+		if th.successfullyConnected {
+			// best effort request to shut the remote signer down
+			th.logger.Info("Attempting to stop remote signer")
+			if err := th.sc.SendPoisonPill(); err != nil {
+				th.logger.Error("Failed to send poison pill message to remote signer", "err", err)
+			}
+			th.successfullyConnected = false
+		}
 		if err := th.sc.Stop(); err != nil {
 			th.logger.Error("Failed to cleanly stop listener: %s", err.Error())
 		}
