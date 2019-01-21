@@ -22,7 +22,7 @@ Special thanks to external contributors on this release:
     BlockSize.MaxGas
 
 * P2P Protocol
-  - [consensus] \#2960 normalize priorities to not exceed `2*TotalVotingPower` to mitigate unfair proposer selection 
+  - [consensus] \#2960 normalize priorities to not exceed `2*TotalVotingPower` to mitigate unfair proposer selection
     heavily preferring earlier joined validators in the case of an early bonded large validator unbonding
 
 ### FEATURES:
@@ -34,3 +34,4 @@ Special thanks to external contributors on this release:
 ### BUG FIXES:
 - [log] \#3060 Fix year format
 - [crypto] \#3164 Update `btcd` fork for rare signRFC6979 bug
+- [p2p] \#2967 Fix file descriptor leaks
