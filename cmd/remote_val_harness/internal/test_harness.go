@@ -415,6 +415,8 @@ func (e *TestHarnessError) Error() string {
 		msg = "Public key validation test failed"
 	case ErrTestSignProposalFailed:
 		msg = "Proposal signing validation test failed"
+	case ErrTestSignVoteFailed:
+		msg = "Vote signing validation test failed"
 	default:
 		msg = "Unknown error"
 	}
