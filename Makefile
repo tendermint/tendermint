@@ -226,7 +226,6 @@ test_race:
 	@echo "--> Running go test --race"
 	@GOCACHE=off go test -p 1 -v -race $(PACKAGES)
 
-
 ########################################
 ### Formatting, linting, and vetting
 
@@ -277,12 +276,17 @@ check_dep:
 	!(grep -n branch Gopkg.toml)
 
 ###########################################################
-### Docker image
+### Docker images
 
 build-docker:
 	cp build/tendermint DOCKER/tendermint
 	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
 	rm -rf DOCKER/tendermint
+
+build_remote_val_harness_docker_image:
+	GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o DOCKER/remote_val_harness ./cmd/remote_val_harness/
+	cd DOCKER && $(MAKE) build_remote_val_harness
+	rm -rf DOCKER/remote_val_harness
 
 ###########################################################
 ### Local testnet using docker
