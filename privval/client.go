@@ -111,14 +111,6 @@ func (sc *SocketVal) Ping() error {
 	return sc.signer.Ping()
 }
 
-// SendPoisonPill allows us to ask the remote signer to shut down. This is
-// useful for testing.
-func (sc *SocketVal) SendPoisonPill() error {
-	sc.mtx.RLock()
-	defer sc.mtx.RUnlock()
-	return sc.signer.SendPoisonPill()
-}
-
 // Close closes the underlying net.Conn.
 func (sc *SocketVal) Close() {
 	sc.mtx.RLock()

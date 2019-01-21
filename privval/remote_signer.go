@@ -147,12 +147,6 @@ func (sc *RemoteSignerClient) Ping() error {
 	return nil
 }
 
-// SendPoisonPill allows us to ask the remote signer to shut down.
-func (sc *RemoteSignerClient) SendPoisonPill() error {
-	// we need no response when sending a poison pill message
-	return writeMsg(sc.conn, &PoisonPillMsg{})
-}
-
 // RemoteSignerMsg is sent between RemoteSigner and the RemoteSigner client.
 type RemoteSignerMsg interface{}
 
@@ -166,10 +160,6 @@ func RegisterRemoteSignerMsg(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&SignedProposalResponse{}, "tendermint/remotesigner/SignedProposalResponse", nil)
 	cdc.RegisterConcrete(&PingRequest{}, "tendermint/remotesigner/PingRequest", nil)
 	cdc.RegisterConcrete(&PingResponse{}, "tendermint/remotesigner/PingResponse", nil)
-	// TODO: Evaluate whether we need to make this an official remotesigner
-	// message. Right now it's only relevant to KMS, and is only used in
-	// testing.
-	cdc.RegisterConcrete(&PoisonPillMsg{}, "tendermint/kms/PoisonPillMsg", nil)
 }
 
 // PubKeyRequest requests the consensus public key from the remote signer.
@@ -207,10 +197,6 @@ type PingRequest struct {
 }
 
 type PingResponse struct {
-}
-
-// PoisonPillMsg allows us to ask the remote signer to shut down.
-type PoisonPillMsg struct {
 }
 
 // RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.
@@ -266,9 +252,6 @@ func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValida
 		}
 	case *PingRequest:
 		res = &PingResponse{}
-	case *PoisonPillMsg:
-		// just echo this back, doing nothing
-		res = &PoisonPillMsg{}
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)
 	}
