@@ -487,6 +487,7 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	defer sw.Stop()
 
 	remotePeers := make([]*remotePeer, 0)
+	assert.Equal(t, 0, sw.Peers().Size())
 
 	// 1. check we connect up to MaxNumInboundPeers
 	for i := 0; i < cfg.MaxNumInboundPeers; i++ {
