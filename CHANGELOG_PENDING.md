@@ -22,7 +22,7 @@ Special thanks to external contributors on this release:
     BlockSize.MaxGas
 
 * P2P Protocol
-  - [consensus] \#2960 normalize priorities to not exceed `2*TotalVotingPower` to mitigate unfair proposer selection 
+  - [consensus] \#2960 normalize priorities to not exceed `2*TotalVotingPower` to mitigate unfair proposer selection
     heavily preferring earlier joined validators in the case of an early bonded large validator unbonding
 
 ### FEATURES:
@@ -32,5 +32,7 @@ Special thanks to external contributors on this release:
 - [instrumentation] \#3082 Add `chain_id` label for all metrics
 
 ### BUG FIXES:
-- [log] \#3060 Fix year format
 - [crypto] \#3164 Update `btcd` fork for rare signRFC6979 bug
+- [lite] \#3171 Fix verifying large validator set changes
+- [log] \#3060 Fix year format
+- [mempool] \#3168 Limit tx size to fit in the max reactor msg size

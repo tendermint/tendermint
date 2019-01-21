@@ -13,6 +13,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var _ PersistentProvider = (*DBProvider)(nil)
+
+// DBProvider stores commits and validator sets in a DB.
 type DBProvider struct {
 	logger log.Logger
 	label  string
