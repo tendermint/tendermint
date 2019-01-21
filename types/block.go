@@ -638,6 +638,7 @@ func (commit *Commit) StringIndented(indent string) string {
 //-----------------------------------------------------------------------------
 
 // SignedHeader is a header along with the commits that prove it.
+// It is the basis of the lite client.
 type SignedHeader struct {
 	*Header `json:"header"`
 	Commit  *Commit `json:"commit"`
