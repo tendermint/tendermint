@@ -47,14 +47,15 @@ var _ error = (*TestHarnessError)(nil)
 // TestHarness allows for testing of a remote signer to ensure compatibility
 // with this version of Tendermint.
 type TestHarness struct {
-	addr             string
-	sc               *privval.SocketVal
-	fpv              *privval.FilePV
-	chainID          string
-	acceptRetries    int
-	logger           log.Logger
-	exitWhenComplete bool
-	exitCode         int
+	addr                  string
+	sc                    *privval.SocketVal
+	fpv                   *privval.FilePV
+	chainID               string
+	acceptRetries         int
+	logger                log.Logger
+	exitWhenComplete      bool
+	exitCode              int
+	successfullyConnected bool
 }
 
 // TestHarnessConfig provides configuration to set up a remote signer test
@@ -118,14 +119,15 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	}
 
 	return &TestHarness{
-		addr:             cfg.BindAddr,
-		sc:               sc,
-		fpv:              fpv,
-		chainID:          st.ChainID,
-		acceptRetries:    cfg.AcceptRetries,
-		logger:           logger,
-		exitWhenComplete: cfg.ExitWhenComplete,
-		exitCode:         0,
+		addr:                  cfg.BindAddr,
+		sc:                    sc,
+		fpv:                   fpv,
+		chainID:               st.ChainID,
+		acceptRetries:         cfg.AcceptRetries,
+		logger:                logger,
+		exitWhenComplete:      cfg.ExitWhenComplete,
+		exitCode:              0,
+		successfullyConnected: false,
 	}, nil
 }
 
@@ -163,6 +165,7 @@ func (th *TestHarness) Run() {
 			th.Shutdown(newTestHarnessError(ErrMaxAcceptRetriesReached, startErr, ""))
 			return
 		}
+		th.successfullyConnected = true
 
 		// Run the tests
 		if err := th.TestPublicKey(); err != nil {
@@ -310,13 +313,14 @@ func (th *TestHarness) Shutdown(err error) {
 	}
 	th.exitCode = exitCode
 
-	if th.sc.IsRunning() {
+	if th.sc.IsRunning() && th.successfullyConnected {
 		// best effort request to shut the remote signer down
 		th.logger.Info("Attempting to stop remote signer")
 		if err := th.sc.SendPoisonPill(); err != nil {
 			th.logger.Error("Failed to send poison pill message to remote signer", "err", err)
 		}
 	}
+	th.successfullyConnected = false
 
 	// in case sc.Stop() takes too long
 	if th.exitWhenComplete {
