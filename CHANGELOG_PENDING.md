@@ -12,9 +12,12 @@ Special thanks to external contributors on this release:
 
 * Go API
 - [node] \#3082 MetricsProvider now requires you to pass a chain ID
+- [types] \#2713 Rename `TxProof.LeafHash` to `TxProof.Leaf`
+- [crypto/merkle] \#2713 `SimpleProof.Verify` takes a `leaf` instead of a
+  `leafHash` and performs the hashing itself
 
 * Blockchain Protocol
-  * [merkle] \#2713 Merkle trees now match the RFC 6962 specification
+  * [crypto/merkle] \#2713 Merkle trees now match the RFC 6962 specification
   * [types] \#3078 Re-order Timestamp and BlockID in CanonicalVote so it's
     consistent with CanonicalProposal (BlockID comes
     first)

@@ -51,7 +51,7 @@ type Header struct {
 
 	// hashes of block data
 	LastCommitHash []byte // commit from validators from the last block
-	DataHash       []byte // MerkleRoot of transactions
+	DataHash       []byte // MerkleRoot of transaction hashes
 
 	// hashes from the app output from the prev block
 	ValidatorsHash     []byte // validators for the current block
@@ -303,7 +303,7 @@ The first block has `block.Header.LastBlockID == BlockID{}`.
 ### LastCommitHash
 
 ```go
-block.Header.LastCommitHash == MerkleRoot(block.LastCommit)
+block.Header.LastCommitHash == MerkleRoot(block.LastCommit.Precommits)
 ```
 
 MerkleRoot of the votes included in the block.
@@ -314,10 +314,15 @@ The first block has `block.Header.LastCommitHash == []byte{}`
 ### DataHash
 
 ```go
-block.Header.DataHash == MerkleRoot(block.Txs.Txs)
+block.Header.DataHash == MerkleRoot(Hashes(block.Txs.Txs))
 ```
 
-MerkleRoot of the transactions included in the block.
+MerkleRoot of the hashes of transactions included in the block.
+
+Note the transactions are hashed before being included in the Merkle tree,
+so the leaves of the Merkle tree are the hashes, not the transactions
+themselves. This is because transaction hashes are regularly used as identifiers for
+transactions.
 
 ### ValidatorsHash
 
