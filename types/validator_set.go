@@ -98,7 +98,7 @@ func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	// NOTE: This check is merely a sanity check which could be
 	// removed if all tests would init. voting power appropriately;
 	// i.e. diffMax should always be > 0
-	if diffMax == 0 {
+	if diffMax <= 0 {
 		return
 	}
 
