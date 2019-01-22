@@ -21,3 +21,4 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [p2p] \#2967 Fix file descriptor leaks
