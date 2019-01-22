@@ -37,7 +37,7 @@ func TestApplyBlock(t *testing.T) {
 
 	state, stateDB := state(1, 1)
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), types.NopEventBus{},
 		MockMempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
@@ -309,13 +309,12 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB := state(1, 1)
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		MockMempool{}, MockEvidencePool{})
 	eventBus := types.NewEventBus()
 	err = eventBus.Start()
 	require.NoError(t, err)
 	defer eventBus.Stop()
-	blockExec.SetEventBus(eventBus)
+
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), eventBus, MockMempool{}, MockEvidencePool{})
 
 	updatesCh := make(chan interface{}, 1)
 	err = eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates, updatesCh)

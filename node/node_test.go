@@ -258,6 +258,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		stateDB,
 		logger,
 		proxyApp.Consensus(),
+		types.NopEventBus{},
 		mempool,
 		evidencePool,
 	)

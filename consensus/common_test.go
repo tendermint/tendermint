@@ -270,15 +270,14 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	evpool := sm.MockEvidencePool{}
 
 	// Make ConsensusState
-	stateDB := dbm.NewMemDB()
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
-	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
-	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
-	cs.SetPrivValidator(pv)
-
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 	eventBus.Start()
+	stateDB := dbm.NewMemDB()
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, eventBus, mempool, evpool)
+	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+	cs.SetPrivValidator(pv)
 	cs.SetEventBus(eventBus)
 	return cs
 }
