@@ -40,8 +40,9 @@ A model that gives a good intuition on how/ why the selection algorithm works an
 
 Notation:
 - vset - the validator set
-- A(i) - accumulated priority for validator i
+- n - the number of validators
 - VP(i) - voting power of validator i
+- A(i) - accumulated priority for validator i
 - P - total voting power of set
 - avg - average of all validator priorities
 - prop - proposer
@@ -50,6 +51,8 @@ Simple view at the Selection Algorithm:
 
 ```
     def ProposerSelection (vset):
+
+        // compute priorities and elect proposer
         for each validator i in vset:
             A(i) += VP(i)
         prop = max(A)
@@ -79,9 +82,9 @@ Each row shows the priority queue and the process place in it. The proposer is t
 |run 4           |   |   |   p1|   |     |   | p2|   |A(i)+=VP(i)
 |                |   |   |p1,p2|   |     |   |   |   |A(p2)-= P
 
-It can pe shown that:
+It can be shown that:
 - At the end of each run k+1 the sum of the priorities is the same as at end of run k. If a new set's priorities are initialized to 0 then the sum of priorities will be 0 at each run while there are no changes.
-- The max distance between priorites is P.
+- The max distance between priorites is (n-1) * P. *[formal proof not finished]*
 
 ### Validator Set Changes
 Between proposer selection runs the validator set may change. Some changes have implications on the proposer election.
@@ -105,7 +108,7 @@ However, when a validator changes power from a high to a low value, some other v
 
 As before:
 - At the end of each run k+1 the sum of the priorities is the same as at run k.
-- The max distance between priorites is P.
+- The max distance between priorites is (n-1) * P.
 
 #### Validator Removal
 Consider a new example with set:
@@ -115,39 +118,38 @@ Validator | p1 | p2 | p3 |
 VP        | 1  | 2  | 3  |
 
 Let's assume that after the last run the proposer priorities were as shown in first row with their sum being 0. After p2 is removed, at the end of next proposer selection run (penultimate row) the sum of priorities is -2 (minus the priority of the removed process). 
- 
-
-|Priority   Run |-3 | -2 | -1 | 0  | 1   | 2   |Comment
-|---------------|-- | ---|--- |--- |---  |---  |--------
-| last run      |p3 |    |    |    | p1  | p2  |__remove p2__
-| next run      |   |    |    | p3 |     | p1  |A(i)+=VP(i)
-|               |   | p1 |    | p3 |     |     |A(p1)-= P
-| __new step__  |   |    | p1 |    | p3  |     |A(i) -= avg, avg = -1
 
 The procedure could continue without modifications. However, after a sufficiently large number of modifications in validator set, the priority values would migrate towards maximum or minimum allowed values causing truncations due to overflow detection.
-For this reason, the selection procedure adds another __new step__ that shifts the current priority values left or right such that the priority sum remains close to 0. 
+For this reason, the selection procedure adds another __new step__ that centers the current priority values such that the priority sum remains close to 0. 
+
+|Priority   Run |-3 | -2 | -1 | 0  | 1   | 2   | 4 |Comment
+|---------------|-- | ---|--- |--- |---  |---  |---|--------
+| last run      |p3 |    |    |    | p1  | p2  |   |__remove p2__
+| nextrun       |   |    |    |    |     |     |   |
+| __new step__  |   | p3 |    |    |     | p1  |   |A(i) -= avg, avg = -1
+|               |   |    |    |    | p3  | p1  |   |A(i)+=VP(i)
+|               |   |    | p1 |    | p3  |     |   |A(p1)-= P
 
 The modified selection algorithm is:
 
     def ProposerSelection (vset):
-        for each validator i in vset:
-            A(i) += VP(i)
-        prop = max(A)
-        A(prop) -= P
-    
-        // shift priorities with the average
+
+        // center priorities around zero
         avg = sum(A(i) for i in vset)/len(vset)
         for each validator i in vset:
             A(i) -= avg
 
-Note that the shifting operation currently happens after ProposerSelection() has run.
+        // compute priorities and elect proposer
+        for each validator i in vset:
+            A(i) += VP(i)
+        prop = max(A)
+        A(prop) -= P
 
 Observations:
 - The sum of priorities is now close to 0. Due to integer division the sum is an integer in (-n, n), where n is the number of validators.
-- The max distance between priorites depends on the history of the validator set changes (more in the Proposer Priority Range section).
 
 #### New Validator
-When a new validator is added same problem as the one described for removal appears, the sum of priorities in the new set is not zero. This is fixed with the shift step introduced above.
+When a new validator is added, same problem as the one described for removal appears, the sum of priorities in the new set is not zero. This is fixed with the centering step introduced above.
 
 One other issue that needs to be addressed is the following. A validator V that has just been elected is moved to the end of the queue. If the validator set is large and/ or other validators have significantly higher power, V will have to wait a more runs to be elected. If V removes and re-adds itself to the set, it would make a significant (albeit unfair) "jump" ahead in the queue. 
 
@@ -186,16 +188,16 @@ Note that since current computation uses integer division there is penalty loss 
 
 In the next run, p3 will still be ahead in the queue, elected as proposer and moved back in the queue.
 
-|Priority   Run | -8 | -7 | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | Alg step
-|---------------|--- |--- |--- |--- |----|--- |--- |---|---|---|---|--------
-|last run       |    |    |    |    | p2 |    |    |   | p1|   |   |__add p3__
-|               |    |    | p3 |    | p2 |    |    |   | p1|   |   |A(p3) = -4
-|next run       |    |    |    |    |    |    |    | p2|   | p1| p3|A(i)+=VP(i)
-|               | p3 |    |    |    |    |    |    | p2|   | p1|   |A(p3)-=P
-|               |    | p3 |    |    |    |    |    |   | p2|   | p1|A(i) -= avg, avg = -1
+|Priority   Run | -8 | -7 | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | 5 |Alg step
+|---------------|--- |--- |--- |--- |----|--- |--- |---|---|---|---|---|--------
+|last run       |    |    |    |    | p2 |    |    |   | p1|   |   |   |__add p3__
+|               |    |    | p3 |    | p2 |    |    |   | p1|   |   |   |A(p3) = -4
+|next run       |    |    |    | p3 |    | p2 |    |   |   | p1|   |   |A(i) -= avg, avg = -1
+|               |    |    |    |    |    |    |    |   | p2|   | p1| p3|A(i)+=VP(i)
+|               |    | p3 |    |    |    |    |    |   | p2|   | p1|   |A(p3)-=P
 
 ### Proposer Priority Range
-With the introduction of shifting, some interesting cases occur. Low power validators that bind early in a set that includes high power validator(s) benefit from subsequent additions to the set. This is because these early validators run through more "right" shift operations that increase their priority.
+With the introduction of centering, some interesting cases occur. Low power validators that bind early in a set that includes high power validator(s) benefit from subsequent additions to the set. This is because these early validators run through more "right" shift operations during centering, operations that increase their priority.
 
 As an example, consider the set where p2 is added after p1, with priority -1.125 * 80k = -90k. After the selection procedure runs once:
 
@@ -213,14 +215,15 @@ Validator | p1  | p2 | p3
 ----------|-----|--- |----
 VP        | 80k | 10 | 10 
 
-2. Run selection once. The notation '..p'/'p..' means very small increase/ decrease in priority.
+2. Run selection once. The notation '..p'/'p..' means very deviation compared to column priority.
 
-|Priority  Run | -90k..| -60k | -45k   | -15k| 0 | 45k | 75k  | 125k   | Comment
+|Priority  Run | -90k..| -60k | -45k   | -15k| 0 | 45k | 75k  | 155k   | Comment
 |--------------|------ |----- |------- |---- |---|---- |----- |------- |---------
 | last run     |   p3  |      | p2     |     |   |  p1 |      |        | __added p3__
-| nex run      |  ..p3 |      | ..p2   |     |   |     |      |   p1   | A(i)+=VP(i)
-|              |  ..p3 |      | ..p2   |     |   |p1.. |      |        | A(p1)-=P, P=80k+20
-|*right_shift* |       |   p3 |        | p2  |   |     |  p1  |        | A(i) -= avg,avg=-30k
+| next run     
+| *right_shift*|       |  p3  |        |  p2 |   |     |  p1  |        | A(i) -= avg,avg=-30k
+|              |       |  ..p3|        | ..p2|   |     |      |  p1    | A(i)+=VP(i)
+|              |       |  ..p3|        | ..p2|   |     | p1.. |        | A(p1)-=P, P=80k+20
 
 
 3. Remove p1 and run selection once:
@@ -233,12 +236,13 @@ A         |-22.5k|22.5k| __run selection__
 
 At this point, while the total voting power is 20, the distance between priorities is 45k. It will take 4500 runs for p3 to catch up with p2.
 
-In order to prevent these types of scenarios, the selection algorithm performs normalization of priorities such that the difference between min and max values is smaller than two times the total voting power. 
+In order to prevent these types of scenarios, the selection algorithm performs scaling of priorities such that the difference between min and max values is smaller than two times the total voting power. 
 
 The modified selection algorithm is:
 
     def ProposerSelection (vset):
-        // normalize the priority values
+
+        // scale the priority values
         diff = max(A)-min(A)
         threshold = 2 * P
 	    if  diff > threshold:
@@ -246,18 +250,22 @@ The modified selection algorithm is:
             for each validator i in vset:
 		        A(i) = A(i)/scale
 
+        // center priorities around zero
+        avg = sum(A(i) for i in vset)/len(vset)
+        for each validator i in vset:
+            A(i) -= avg
+        
+        // compute priorities and elect proposer
         for each validator i in vset:
             A(i) += VP(i)
         prop = max(A)
         A(prop) -= P
 
-        // shift priorities with the average
-        avg = sum(A(i) for i in vset)/len(vset)
-        for each validator i in vset:
-            A(i) -= avg
-
 Observations:
 - With this modification, the max distance between priorites becomes 2 * P.
+
+Note also that even during steady state the priority range may increase beyond 2 * P. The scaling introduced here also helps to keep the range bounded. 
+*[2 might be updated soon to 1]*
 
 ### Wrinkles
 
@@ -294,97 +302,5 @@ Intuitively, a process v jumps ahead in the queue at most (max(A) - min(A))/VP(v
 
     f(v) ~ VP(v)/(max(A)-min(A)) = 1/k * VP(v)/P
 
-For current implementation, this means v should be proposer VP(v) times out of k * P runs, with k=1 during periods of stability, k = 2 after validator set changes.
-
-
------------
-Don't review yet
-## Formal Proofs
-Notations:
-- n - the number of validators in vset
-- vset - the validator set {p<sub>i</sub>, i=1..n}
-- v<sub>i</sub> - the voting power of p<sub>i</sub>
-- a<sub>i,k</sub>  - the priority of p<sub>i</sub> in round k
-- A<sub>k</sub> = {a<sub>i,k</sub>, i=1..n} - the priority values in round k
-- dist(A<sub>k</sub>) - difference between min and max over values in A<sub>k</sub>
-
-### Stable Validator Set
-Assuming that there are no validator set changes between rounds k and k+1.
-
-__T1__:  The sum or priorities is the same in run k+1 as in k:
-
-sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k</sub>) 
-
-__P1__: In round k+1:
-
-Priorities are increased with v<sub>i</sub> for all p<sub>i</sub>:
-
-- a<sub>i,k+1</sub> = a<sub>i,k</sub> + v<sub>i</sub>
-- => sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k</sub>) + sum(v<sub>i</sub>)
-
-Priority of proposer p is decreased with total voting power:
-
-- a<sub>p,k+1</sub> = a<sub>p,k+1</sub> - sum(v<sub>i</sub>)
-- => sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k+1</sub>) - sum(v<sub>i</sub>) = sum(a<sub>i,k</sub>)
-
-In a new set a<sub>i,0</sub> = 0. Therefore sum(a<sub>i,k</sub>) = 0 while there are no changes.
-
-__T2__: The range between priority values is smaller than the total voting power:
-
-dist(A<sub>k</sub>) <= sum(v<sub>i</sub>)
-
-__P2__: 
-
-W.o.l.g assume that the ordered list of priorities L in round k after all priorities are increased with the voting power is:
-
-- [a<sub>1,k</sub>,.., a<sub>n-1,k</sub>, a<sub>n,k</sub>]
-
-Ater the next step, a<sub>n,k</sub> -= P, L will be:
-    
-- [a<sub>n,k</sub> - P, a<sub>1,k</sub>,.., a<sub>n-1,k</sub>]
-- dist(A<sub>k</sub>) = a<sub>n-1,k</sub> - a<sub>n,k</sub> + sum(v<sub>i</sub>)
-
-Since L is ordered a<sub>n-1,k</sub> <= a<sub>n,k</sub> => dist(A<sub>k</sub>) <= sum(v<sub>i</sub>)
-
-__T3__: The number of times a validator p is elected as proposer over P=sum(v<sub>i</sub>) runs is inverse proportional to its voting power:
-
-e(p) = sum(v<sub>i</sub>)/v<sub>p</sub>
-
-__P3__: 
-Assume in round k, v<sub>p</sub> has lowest priority:
-[a<sub>p,k</sub>, a<sub>1,k</sub>, .., a<sub>n-1,k</sub>]
-
-And maximum distance for priority values dist(A<sub>k</sub>) = sum(v<sub>i</sub>)
-
-It will take at most sum(v<sub>i</sub>)/v<sub>p</sub> priority increases/ runs in which v<sub>p</sub> is not elected before it reaches highest priority and becomes the proposer.
-
-### Update Voting Power
-
-Let v<sub>i, k</sub> be the voting power of p<sub>i</sub> in round k.
-
-__T4__:  When a validator p<sub>q</sub> changes its voting power just before k+1 to v<sub>q,k+1</sub> = v<sub>q,k</sub> + X then __T1__ still holds:
-
--  sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k</sub>) 
-
-__P4__: 
-
-In round k+1 when priorities are increased:
-- a<sub>i,k+1</sub> = a<sub>i,k</sub> + v<sub>i,k</sub>, for i <> q
-- a<sub>q,k+1</sub> = a<sub>q,k</sub> + v<sub>i,k</sub> + X
-
-=> sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k</sub>) + sum(v<sub>i,k</sub>) + X
-
-Then the priority of proposer p is decreased with the new total voting power:
-- a<sub>p,k+1</sub> = a<sub>p,k+1</sub> - (sum(v<sub>i, k</sub>) + X)
-
- => sum(a<sub>i,k+1</sub>) = sum(a<sub>i,k+1</sub>) - sum(v<sub>i, k</sub>) - X = sum(a<sub>i,k</sub>)
-
-__T5__: After validator updates __T2__ holds:
-
-dist(A<sub>k</sub>) <= sum(v<sub>i</sub>)
-
-__P5__: Same as __P2__
-
-### Validator Removal
-
-__T6__: After validator removal: !T1, T2 (for 2* P), T3 (for 2*P)
+For current implementation, this means v should be proposer at least VP(v) times out of k * P runs, with scaling factor k=2.
+*[formal proof required for smaller k]*
