@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -494,8 +495,18 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 		rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
 		remotePeers = append(remotePeers, rp)
 		rp.Start()
-		_, err = rp.Dial(sw.NodeInfo().NetAddress())
+		c, err := rp.Dial(sw.NodeInfo().NetAddress())
 		require.NoError(t, err)
+		// spawn a reading routine to prevent connection from closing
+		go func(c net.Conn) {
+			for {
+				one := make([]byte, 1)
+				_, err := c.Read(one)
+				if err != nil {
+					return
+				}
+			}
+		}(c)
 	}
 	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
