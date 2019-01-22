@@ -166,6 +166,11 @@ the tags will be hashed into the next block header.
 The application may set the validator set during InitChain, and update it during
 EndBlock.
 
+Note that the maximum total power of the validator set is bounded by
+`MaxTotalVotingPower = MaxInt64 / 8`. Applications are responsible for ensuring
+they do not make changes to the validator set that cause it to exceed this
+limit.
+
 ### InitChain
 
 ResponseInitChain can return a list of validators.
@@ -206,6 +211,7 @@ following rules:
   - if the validator does not already exist, it will be added to the validator
     set with the given power
   - if the validator does already exist, its power will be adjusted to the given power
+- the total power of the new validator set must not exceed MaxTotalVotingPower
 
 Note the updates returned in block `H` will only take effect at block `H+2`.
 
