@@ -283,6 +283,7 @@ func TestProposerFrequency(t *testing.T) {
 
 		// 3 vals
 		{[]int64{1, 1, 1}},
+		{[]int64{1, 1, 2}},
 		{[]int64{1, 2, 3}},
 		{[]int64{1, 2, 3}},
 		{[]int64{1, 1, 10}},
@@ -291,6 +292,7 @@ func TestProposerFrequency(t *testing.T) {
 		{[]int64{1, 1, 1000}},
 		{[]int64{1, 10, 1000}},
 		{[]int64{1, 100, 1000}},
+		{[]int64{114, 438, 79}},
 
 		// 4 vals
 		{[]int64{1, 1, 1, 1}},
@@ -302,6 +304,7 @@ func TestProposerFrequency(t *testing.T) {
 		{[]int64{1, 1, 10, 1000}},
 		{[]int64{1, 1, 100, 1000}},
 		{[]int64{1, 10, 100, 1000}},
+		{[]int64{47, 270, 701, 462}},
 	}
 
 	for caseNum, testCase := range testCases {

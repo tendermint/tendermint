@@ -105,11 +105,10 @@ func (vals *ValidatorSet) rescalePriorities(threshold int64) {
 	// Re-normalization is performed by dividing by an integer for simplicity.
 	// NOTE: This may make debugging priority issues easier as well.
 	diff := computeMaxMinPriorityDiff(vals)
-	ratio := diff / threshold
 	// problem: ceiling is not quite correct, e.g. 1.1 leads to division by 2
 	// possible alternative: val.ProposerPriority = (val.ProposerPriority * threshold) / diff (more precise)
 	// concern: fairness on floor division, e.g. prio 21 / 2, prio 20 / 2 - probably minor
-	if ratio > 1 {
+	if diff > threshold {
 		for _, val := range vals.Validators {
 			val.ProposerPriority = (val.ProposerPriority * threshold) / diff
 		}
