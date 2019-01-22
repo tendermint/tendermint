@@ -1,7 +1,7 @@
 package lite
 
 import (
-	log "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
 

@@ -59,9 +59,9 @@ type PartSetHeader struct {
 ```
 
 To be included in a valid vote or proposal, BlockID must either represent a `nil` block, or a complete one.
-We introduce two methods, `BlockID.IsNil()` and `BlockID.IsComplete()` for these cases, respectively.
+We introduce two methods, `BlockID.IsZero()` and `BlockID.IsComplete()` for these cases, respectively.
 
-`BlockID.IsNil()` returns true for BlockID `b` if each of the following
+`BlockID.IsZero()` returns true for BlockID `b` if each of the following
 are true:
 
 ```
@@ -81,7 +81,7 @@ len(b.PartsHeader.Hash) == 32
 
 ## Proposals
 
-The structure of a propsal for signing looks like:
+The structure of a proposal for signing looks like:
 
 ```
 type CanonicalProposal struct {
@@ -118,8 +118,8 @@ type CanonicalVote struct {
 	Type      SignedMsgType // type alias for byte
 	Height    int64         `binary:"fixed64"`
 	Round     int64         `binary:"fixed64"`
-	Timestamp time.Time
 	BlockID   BlockID
+	Timestamp time.Time
 	ChainID   string
 }
 ```
@@ -130,7 +130,7 @@ A vote is valid if each of the following lines evaluates to true for vote `v`:
 v.Type == 0x1 || v.Type == 0x2
 v.Height > 0
 v.Round >= 0
-v.BlockID.IsNil() || v.BlockID.IsValid()
+v.BlockID.IsZero() || v.BlockID.IsComplete()
 ```
 
 In other words, a vote is valid for signing if it contains the type of a Prevote

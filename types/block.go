@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/version"
 )
@@ -637,6 +638,7 @@ func (commit *Commit) StringIndented(indent string) string {
 //-----------------------------------------------------------------------------
 
 // SignedHeader is a header along with the commits that prove it.
+// It is the basis of the lite client.
 type SignedHeader struct {
 	*Header `json:"header"`
 	Commit  *Commit `json:"commit"`
@@ -789,11 +791,6 @@ type BlockID struct {
 	PartsHeader PartSetHeader `json:"parts"`
 }
 
-// IsZero returns true if this is the BlockID for a nil-block
-func (blockID BlockID) IsZero() bool {
-	return len(blockID.Hash) == 0 && blockID.PartsHeader.IsZero()
-}
-
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
@@ -819,6 +816,19 @@ func (blockID BlockID) ValidateBasic() error {
 		return fmt.Errorf("Wrong PartsHeader: %v", err)
 	}
 	return nil
+}
+
+// IsZero returns true if this is the BlockID of a nil block.
+func (blockID BlockID) IsZero() bool {
+	return len(blockID.Hash) == 0 &&
+		blockID.PartsHeader.IsZero()
+}
+
+// IsComplete returns true if this is a valid BlockID of a non-nil block.
+func (blockID BlockID) IsComplete() bool {
+	return len(blockID.Hash) == tmhash.Size &&
+		blockID.PartsHeader.Total > 0 &&
+		len(blockID.PartsHeader.Hash) == tmhash.Size
 }
 
 // String returns a human readable string representation of the BlockID
