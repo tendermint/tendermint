@@ -80,13 +80,13 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	// Cap the difference between priorities to be proportional to totalPower by
 	// re-normalizing priorities, i.e., rescale all priorities by multiplying with:
 	// totalVotingPower/(maxPriority - minPriority)
-	threshold := vals.TotalVotingPower()
+	threshold := 2 * vals.TotalVotingPower()
 	vals.rescalePriorities(threshold)
-	vals.shiftByAvgProposerPriority()
 
 	var proposer *Validator
 	// call IncrementProposerPriority(1) times times:
 	for i := 0; i < times; i++ {
+		vals.shiftByAvgProposerPriority()
 		proposer = vals.incrementProposerPriority()
 	}
 
@@ -109,7 +109,9 @@ func (vals *ValidatorSet) rescalePriorities(threshold int64) {
 	// possible alternative: val.ProposerPriority = (val.ProposerPriority * threshold) / diff (more precise)
 	// concern: fairness on floor division, e.g. prio 21 / 2, prio 20 / 2 - probably minor
 	if diff > threshold {
+		fmt.Println("diff", diff, "threshold", threshold)
 		for _, val := range vals.Validators {
+			fmt.Println("old", val.ProposerPriority, "new", (val.ProposerPriority*threshold)/diff)
 			val.ProposerPriority = (val.ProposerPriority * threshold) / diff
 		}
 	}
