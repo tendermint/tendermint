@@ -94,7 +94,6 @@ type ConsensusState struct {
 	// internal state
 	mtx sync.RWMutex
 	cstypes.RoundState
-	triggeredTimeoutPrecommit bool
 	state                     sm.State // State until height-1.
 
 	// state changes may be triggered by: msgs from peers,
@@ -783,7 +782,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		cs.ProposalBlockParts = nil
 	}
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
-	cs.triggeredTimeoutPrecommit = false
+	cs.TriggeredTimeoutPrecommit = false
 
 	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())
 	cs.metrics.Rounds.Set(float64(round))
@@ -1129,12 +1128,12 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 func (cs *ConsensusState) enterPrecommitWait(height int64, round int) {
 	logger := cs.Logger.With("height", height, "round", round)
 
-	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.triggeredTimeoutPrecommit) {
+	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
 		logger.Debug(
 			fmt.Sprintf(
 				"enterPrecommitWait(%v/%v): Invalid args. "+
-					"Current state is Height/Round: %v/%v/, triggeredTimeoutPrecommit:%v",
-				height, round, cs.Height, cs.Round, cs.triggeredTimeoutPrecommit))
+					"Current state is Height/Round: %v/%v/, TriggeredTimeoutPrecommit:%v",
+				height, round, cs.Height, cs.Round, cs.TriggeredTimeoutPrecommit))
 		return
 	}
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
@@ -1144,7 +1143,7 @@ func (cs *ConsensusState) enterPrecommitWait(height int64, round int) {
 
 	defer func() {
 		// Done enterPrecommitWait:
-		cs.triggeredTimeoutPrecommit = true
+		cs.TriggeredTimeoutPrecommit = true
 		cs.newStep()
 	}()
 
