@@ -15,9 +15,9 @@ for you, so you can just build nice applications.
 We design for clients who have no strong trust relationship with any Tendermint
 node, just the blockchain and validator set as a whole.
 
-# Data structures
+Data structures
 
-## SignedHeader
+SignedHeader
 
 SignedHeader is a block header along with a commit -- enough validator
 precommit-vote signatures to prove its validity (> 2/3 of the voting power)
@@ -42,7 +42,7 @@ The FullCommit is also declared in this package as a convenience structure,
 which includes the SignedHeader along with the full current and next
 ValidatorSets.
 
-## Verifier
+Verifier
 
 A Verifier validates a new SignedHeader given the currently known state. There
 are two different types of Verifiers provided.
@@ -56,7 +56,7 @@ greater).
 DynamicVerifier - this Verifier implements an auto-update and persistence
 strategy to verify any SignedHeader of the blockchain.
 
-## Provider and PersistentProvider
+Provider and PersistentProvider
 
 A Provider allows us to store and retrieve the FullCommits.
 
@@ -93,7 +93,7 @@ dbm.NewMemDB()), NewDBProvider("label", db.NewFileDB(...))) to store confirmed
 full commits (Trusted)
 
 
-# How We Track Validators
+How We Track Validators
 
 Unless you want to blindly trust the node you talk with, you need to trace
 every response back to a hash in a block header and validate the commit
