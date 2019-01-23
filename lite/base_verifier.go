@@ -35,34 +35,40 @@ func NewBaseVerifier(chainID string, height int64, valset *types.ValidatorSet) *
 }
 
 // Implements Verifier.
-func (bc *BaseVerifier) ChainID() string {
-	return bc.chainID
+func (bv *BaseVerifier) ChainID() string {
+	return bv.chainID
 }
 
 // Implements Verifier.
-func (bc *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
+func (bv *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
 
-	// We can't verify commits older than bc.height.
-	if signedHeader.Height < bc.height {
+	// We can't verify commits for a different chain.
+	if signedHeader.ChainID != bv.chainID {
+		return cmn.NewError("BaseVerifier chainID is %v, cannot verify chainID %v",
+			bv.chainID, signedHeader.ChainID)
+	}
+
+	// We can't verify commits older than bv.height.
+	if signedHeader.Height < bv.height {
 		return cmn.NewError("BaseVerifier height is %v, cannot verify height %v",
-			bc.height, signedHeader.Height)
+			bv.height, signedHeader.Height)
 	}
 
 	// We can't verify with the wrong validator set.
 	if !bytes.Equal(signedHeader.ValidatorsHash,
-		bc.valset.Hash()) {
-		return lerr.ErrUnexpectedValidators(signedHeader.ValidatorsHash, bc.valset.Hash())
+		bv.valset.Hash()) {
+		return lerr.ErrUnexpectedValidators(signedHeader.ValidatorsHash, bv.valset.Hash())
 	}
 
 	// Do basic sanity checks.
-	err := signedHeader.ValidateBasic(bc.chainID)
+	err := signedHeader.ValidateBasic(bv.chainID)
 	if err != nil {
 		return cmn.ErrorWrap(err, "in verify")
 	}
 
 	// Check commit signatures.
-	err = bc.valset.VerifyCommit(
-		bc.chainID, signedHeader.Commit.BlockID,
+	err = bv.valset.VerifyCommit(
+		bv.chainID, signedHeader.Commit.BlockID,
 		signedHeader.Height, signedHeader.Commit)
 	if err != nil {
 		return cmn.ErrorWrap(err, "in verify")

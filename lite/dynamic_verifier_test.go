@@ -10,6 +10,7 @@ import (
 
 	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestInquirerValidPath(t *testing.T) {
@@ -68,6 +69,70 @@ func TestInquirerValidPath(t *testing.T) {
 	}
 	err = cert.Verify(sh)
 	assert.Nil(err, "%+v", err)
+}
+
+func TestDynamicVerify(t *testing.T) {
+	trust := NewDBProvider("trust", dbm.NewMemDB())
+	source := NewDBProvider("source", dbm.NewMemDB())
+
+	// 10 commits with one valset, 1 to change,
+	// 10 commits with the next one
+	n1, n2 := 10, 10
+	nCommits := n1 + n2 + 1
+	maxHeight := int64(nCommits)
+	fcz := make([]FullCommit, nCommits)
+
+	// gen the 2 val sets
+	chainID := "dynamic-verifier"
+	power := int64(10)
+	keys1 := genPrivKeys(5)
+	vals1 := keys1.ToValidators(power, 0)
+	keys2 := genPrivKeys(5)
+	vals2 := keys2.ToValidators(power, 0)
+
+	// make some commits with the first
+	for i := 0; i < n1; i++ {
+		fcz[i] = makeFullCommit(int64(i), keys1, vals1, vals1, chainID)
+	}
+
+	// update the val set
+	fcz[n1] = makeFullCommit(int64(n1), keys1, vals1, vals2, chainID)
+
+	// make some commits with the new one
+	for i := n1 + 1; i < nCommits; i++ {
+		fcz[i] = makeFullCommit(int64(i), keys2, vals2, vals2, chainID)
+	}
+
+	// Save everything in the source
+	for _, fc := range fcz {
+		source.SaveFullCommit(fc)
+	}
+
+	// Initialize a Verifier with the initial state.
+	err := trust.SaveFullCommit(fcz[0])
+	require.Nil(t, err)
+	ver := NewDynamicVerifier(chainID, trust, source)
+	ver.SetLogger(log.TestingLogger())
+
+	// fetch the latest from the source
+	latestFC, err := source.LatestFullCommit(chainID, 1, maxHeight)
+	require.NoError(t, err)
+
+	// try to update to the latest
+	err = ver.Verify(latestFC.SignedHeader)
+	require.NoError(t, err)
+
+}
+
+func makeFullCommit(height int64, keys privKeys, vals, nextVals *types.ValidatorSet, chainID string) FullCommit {
+	height += 1
+	consHash := []byte("special-params")
+	appHash := []byte(fmt.Sprintf("h=%d", height))
+	resHash := []byte(fmt.Sprintf("res=%d", height))
+	return keys.GenFullCommit(
+		chainID, height, nil,
+		vals, nextVals,
+		appHash, consHash, resHash, 0, len(keys))
 }
 
 func TestInquirerVerifyHistorical(t *testing.T) {

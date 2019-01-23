@@ -213,7 +213,7 @@ func innerHash(left []byte, right []byte) []byte {
 // largest power of 2 less than k
 func getSplitPoint(k int) { ... }
 
-func MerkleRoot(leafs [][]byte) []byte{
+func MerkleRoot(items [][]byte) []byte{
 	switch len(items) {
 	case 0:
 		return nil
@@ -228,10 +228,20 @@ func MerkleRoot(leafs [][]byte) []byte{
 }
 ```
 
+Note: `MerkleRoot` operates on items which are arbitrary byte arrays, not
+necessarily hashes. For items which need to be hashed first, we introduce the
+`Hashes` function:
+
+```
+func Hashes(items [][]byte) [][]byte {
+    return SHA256 of each item
+}
+```
+
 Note: we will abuse notion and invoke `MerkleRoot` with arguments of type `struct` or type `[]struct`.
-For `struct` arguments, we compute a `[][]byte` containing the hash of each
+For `struct` arguments, we compute a `[][]byte` containing the amino encoding of each
 field in the struct, in the same order the fields appear in the struct.
-For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
+For `[]struct` arguments, we compute a `[][]byte` by amino encoding the individual `struct` elements.
 
 ### Simple Merkle Proof
 
