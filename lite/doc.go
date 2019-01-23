@@ -15,8 +15,6 @@ for you, so you can just build nice applications.
 We design for clients who have no strong trust relationship with any Tendermint
 node, just the blockchain and validator set as a whole.
 
-Data structures
-
 SignedHeader
 
 SignedHeader is a block header along with a commit -- enough validator
