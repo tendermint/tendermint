@@ -58,29 +58,25 @@ Provider and PersistentProvider
 
 A Provider allows us to store and retrieve the FullCommits.
 
-```go
-type Provider interface {
+ type Provider interface {
 	// LatestFullCommit returns the latest commit with
 	// minHeight <= height <= maxHeight.
 	// If maxHeight is zero, returns the latest where
 	// minHeight <= height.
 	LatestFullCommit(chainID string, minHeight, maxHeight int64) (FullCommit, error)
-}
-```
+ }
 
 * client.NewHTTPProvider - query Tendermint rpc.
 
 A PersistentProvider is a Provider that also allows for saving state.  This is
 used by the DynamicVerifier for persistence.
 
-```go
-type PersistentProvider interface {
+ type PersistentProvider interface {
 	Provider
 
 	// SaveFullCommit saves a FullCommit (without verification).
 	SaveFullCommit(fc FullCommit) error
-}
-```
+ }
 
 * DBProvider - persistence provider for use with any libs/DB.
 * MultiProvider - combine multiple providers.
