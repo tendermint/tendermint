@@ -1282,7 +1282,6 @@ func TestCommitFromPreviousRound(t *testing.T) {
 func TestStartNextHeightCorrectly(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	cs1.config.SkipTimeoutCommit = false 
-
 	
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1318,15 +1317,18 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 	// add precommits
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
-	cs1.enterPrecommitWait(height, round)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
 	
 	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
 	
+	rs = cs1.GetRoundState()
+	assert.True(t, rs.TriggeredTimeoutPrecommit)
+	
 	cs1.handleTxsAvailable()
 	
 	ensureNewTimeout(timeoutProposeCh, height + 1, round, cs1.config.TimeoutPropose.Nanoseconds())
-	assert.False(t, cs1.TriggeredTimeoutPrecommit, "triggeredTimeoutPrecommit should be false at the beginning of each round")
+	rs = cs1.GetRoundState()
+	assert.False(t, rs.TriggeredTimeoutPrecommit, "triggeredTimeoutPrecommit should be false at the beginning of each round")
 }
 
 //------------------------------------------------------------------------------------------
