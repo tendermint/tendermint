@@ -79,6 +79,7 @@ used by the DynamicVerifier for persistence.
  }
 
 * DBProvider - persistence provider for use with any libs/DB.
+
 * MultiProvider - combine multiple providers.
 
 The suggested use for local light clients is client.NewHTTPProvider(...) for
