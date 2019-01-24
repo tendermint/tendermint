@@ -14,22 +14,10 @@ no empty blocks (`create_empty_blocks = false`) could halt.
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
 
-### BREAKING CHANGES:
-
-* CLI/RPC/Config
-
-* Apps
-
-* Go API
-
-* Blockchain Protocol
-
-* P2P Protocol
-
-### FEATURES:
-
 ### IMPROVEMENTS:
 - [pex] [\#3037](https://github.com/tendermint/tendermint/issues/3037) Only log "Reached max attempts to dial" once
+- [rpc] [\#3159](https://github.com/tendermint/tendermint/issues/3159) Expose
+  `triggered_timeout_commit` in the `/dump_consensus_state`
 
 ### BUG FIXES:
 - [consensus] [\#3199](https://github.com/tendermint/tendermint/issues/3199) Fix consensus halt with no empty blocks from not resetting triggeredTimeoutCommit
