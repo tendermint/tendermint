@@ -87,7 +87,7 @@ func sendTxs(cs *ConsensusState, ctx context.Context) {
 			return
 		default:
 			tx := []byte{byte(i)}
-			cs.mempool.CheckTx(tx, nil)
+			assertMempool(cs.txNotifier).CheckTx(tx, nil)
 			i++
 		}
 	}
@@ -657,12 +657,6 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	expectValAddr := val.Address
 	assert.NotEqual(t, oldValAddr, newValAddr)
 	assert.Equal(t, newValAddr, expectValAddr)
-}
-
-func newInitChainApp(vals []abci.ValidatorUpdate) *initChainApp {
-	return &initChainApp{
-		vals: vals,
-	}
 }
 
 // returns the vals on InitChain

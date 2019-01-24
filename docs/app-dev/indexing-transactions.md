@@ -78,7 +78,7 @@ endpoint:
 curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 ```
 
-Check out [API docs](https://tendermint.github.io/slate/?shell#txsearch)
+Check out [API docs](https://tendermint.com/rpc/#txsearch)
 for more information on query syntax and other options.
 
 ## Subscribing to transactions
@@ -97,5 +97,5 @@ by providing a query to `/subscribe` RPC endpoint.
 }
 ```
 
-Check out [API docs](https://tendermint.github.io/slate/#subscribe) for
+Check out [API docs](https://tendermint.com/rpc/#subscribe) for
 more information on query syntax and other options.

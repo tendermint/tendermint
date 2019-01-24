@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
-
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -70,12 +68,6 @@ func (v *Validator) String() string {
 		v.ProposerPriority)
 }
 
-// Hash computes the unique ID of a validator with a given voting power.
-// It excludes the ProposerPriority value, which changes with every round.
-func (v *Validator) Hash() []byte {
-	return tmhash.Sum(v.Bytes())
-}
-
 // Bytes computes the unique encoding of a validator with a given voting power.
 // These are the bytes that gets hashed in consensus. It excludes address
 // as its redundant with the pubkey. This also excludes ProposerPriority
@@ -101,6 +93,7 @@ func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
 	if randPower {
 		votePower += int64(cmn.RandUint32())
 	}
-	val := NewValidator(privVal.GetPubKey(), votePower)
+	pubKey := privVal.GetPubKey()
+	val := NewValidator(pubKey, votePower)
 	return val, privVal
 }

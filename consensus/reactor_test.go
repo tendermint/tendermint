@@ -143,7 +143,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		evpool := newMockEvidencePool(privVals[vIdx].GetAddress())
+		addr := privVals[vIdx].GetPubKey().Address()
+		evpool := newMockEvidencePool(addr)
 
 		// Make ConsensusState
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -224,7 +225,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// send a tx
-	if err := css[3].mempool.CheckTx([]byte{1, 2, 3}, nil); err != nil {
+	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil); err != nil {
 		//t.Fatal(err)
 	}
 
@@ -268,7 +269,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		activeVals[string(css[i].privValidator.GetAddress())] = struct{}{}
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
@@ -331,7 +333,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		activeVals[string(css[i].privValidator.GetAddress())] = struct{}{}
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
@@ -445,7 +448,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
 		for _, tx := range txs {
-			err := css[j].mempool.CheckTx(tx, nil)
+			err := assertMempool(css[j].txNotifier).CheckTx(tx, nil)
 			assert.Nil(t, err)
 		}
 	}, css)
