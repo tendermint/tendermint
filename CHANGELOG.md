@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.29.1
+
+*January 24, 2019*
+
+Special thanks to external contributors on this release:
+@infinytum, @gauthamzz
+
+This release contains two important fixes: one for p2p layer where we sometimes
+were not closing connections and one for consensus layer where consensus with
+no empty blocks (`create_empty_blocks = false`) could halt.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+* CLI/RPC/Config
+
+* Apps
+
+* Go API
+
+* Blockchain Protocol
+
+* P2P Protocol
+
+### FEATURES:
+
+### IMPROVEMENTS:
+- [pex] [\#3037](https://github.com/tendermint/tendermint/issues/3037) Only log "Reached max attempts to dial" once
+
+### BUG FIXES:
+- [consensus] [\#3199](https://github.com/tendermint/tendermint/issues/3199) Fix consensus halt with no empty blocks from not resetting triggeredTimeoutCommit
+- [p2p] [\#2967](https://github.com/tendermint/tendermint/issues/2967) Fix file descriptor leak
+
 ## v0.29.0
 
 *January 21, 2019*
