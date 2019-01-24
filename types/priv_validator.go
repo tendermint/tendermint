@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
@@ -12,6 +11,7 @@ import (
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {
+	GetAddress() Address
 	GetPubKey() crypto.PubKey
 
 	SignVote(chainID string, vote *Vote) error
@@ -28,7 +28,7 @@ func (pvs PrivValidatorsByAddress) Len() int {
 }
 
 func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	return bytes.Compare(pvs[i].GetPubKey().Address(), pvs[j].GetPubKey().Address()) == -1
+	return bytes.Compare(pvs[i].GetAddress(), pvs[j].GetAddress()) == -1
 }
 
 func (pvs PrivValidatorsByAddress) Swap(i, j int) {
@@ -43,16 +43,28 @@ func (pvs PrivValidatorsByAddress) Swap(i, j int) {
 // MockPV implements PrivValidator without any safety or persistence.
 // Only use it for testing.
 type MockPV struct {
+	address Address
+	pubKey  crypto.PubKey
 	privKey crypto.PrivKey
 }
 
 func NewMockPV() *MockPV {
-	return &MockPV{ed25519.GenPrivKey()}
+	privKey := ed25519.GenPrivKey()
+	pubKey := privKey.PubKey()
+	return &MockPV{
+		address: pubKey.Address(),
+		pubKey:  pubKey,
+		privKey: privKey,
+	}
+}
+
+func (pv *MockPV) GetAddress() Address {
+	return pv.address
 }
 
 // Implements PrivValidator.
 func (pv *MockPV) GetPubKey() crypto.PubKey {
-	return pv.privKey.PubKey()
+	return pv.pubKey
 }
 
 // Implements PrivValidator.
@@ -79,8 +91,7 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	addr := pv.GetPubKey().Address()
-	return fmt.Sprintf("MockPV{%v}", addr)
+	return fmt.Sprintf("MockPV{%v}", pv.address)
 }
 
 // XXX: Implement.
@@ -107,5 +118,5 @@ func (pv *erroringMockPV) SignProposal(chainID string, proposal *Proposal) error
 
 // NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.
 func NewErroringMockPV() *erroringMockPV {
-	return &erroringMockPV{&MockPV{ed25519.GenPrivKey()}}
+	return &erroringMockPV{NewMockPV()}
 }

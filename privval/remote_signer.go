@@ -25,6 +25,7 @@ type RemoteSignerClient struct {
 	conn net.Conn
 
 	// memoized
+	address         types.Address
 	consensusPubKey crypto.PubKey
 }
 
@@ -39,15 +40,25 @@ func NewRemoteSignerClient(conn net.Conn) (*RemoteSignerClient, error) {
 	if err != nil {
 		return nil, cmn.ErrorWrap(err, "error while retrieving public key for remote signer")
 	}
+	if pubKey == nil {
+		return &RemoteSignerClient{
+			conn: conn,
+		}, nil
+	}
 	return &RemoteSignerClient{
 		conn:            conn,
 		consensusPubKey: pubKey,
+		address:         pubKey.Address(),
 	}, nil
 }
 
 // Close calls Close on the underlying net.Conn.
 func (sc *RemoteSignerClient) Close() error {
 	return sc.conn.Close()
+}
+
+func (sc *RemoteSignerClient) GetAddress() types.Address {
+	return sc.address
 }
 
 // GetPubKey implements PrivValidator.

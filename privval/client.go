@@ -80,6 +80,13 @@ func NewSocketVal(
 //--------------------------------------------------------
 // Implement PrivValidator
 
+// GetAddress implements PrivValidator.
+func (sc *SocketVal) GetAddress() types.Address {
+	sc.mtx.RLock()
+	defer sc.mtx.RUnlock()
+	return sc.signer.GetAddress()
+}
+
 // GetPubKey implements PrivValidator.
 func (sc *SocketVal) GetPubKey() crypto.PubKey {
 	sc.mtx.RLock()
