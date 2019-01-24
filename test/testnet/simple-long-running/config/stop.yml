@@ -1,0 +1,9 @@
+---
+- hosts: "{{ lookup('env', 'TESTNET') }}"
+  become: yes
+  tasks:
+    - name: Stop and disable Tendermint service
+      service:
+        name: tendermint
+        state: stopped
+        enabled: no

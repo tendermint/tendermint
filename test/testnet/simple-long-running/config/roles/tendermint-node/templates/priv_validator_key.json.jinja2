@@ -1,0 +1,11 @@
+{
+  "address": "{{ secrets.nodes[inventory_hostname].address }}",
+  "pub_key": {
+    "type": "tendermint/PubKeyEd25519",
+    "value": "{{ secrets.nodes[inventory_hostname].public_key }}"
+  },
+  "priv_key": {
+    "type": "tendermint/PrivKeyEd25519",
+    "value": "{{ secrets.nodes[inventory_hostname].private_key }}"
+  }
+}

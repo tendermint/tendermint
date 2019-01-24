@@ -1,0 +1,32 @@
+{
+  "genesis_time": "2019-01-24T08:58:42.728987Z",
+  "chain_id": "test-chain-pS4qfB",
+  "consensus_params": {
+    "block_size": {
+      "max_bytes": "22020096",
+      "max_gas": "-1"
+    },
+    "evidence": {
+      "max_age": "100000"
+    },
+    "validator": {
+      "pub_key_types": [
+        "ed25519"
+      ]
+    }
+  },
+  "validators": [
+    {% for node_id, node in secrets.nodes.items() %}
+        {
+            "address": "{{ node.address }}",
+            "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "{{ node.public_key }}"
+            },
+            "power": "{{ node.power }}",
+            "name": "{{ node_id }}"
+        }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "app_hash": ""
+}

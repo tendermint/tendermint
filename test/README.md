@@ -19,3 +19,6 @@ and run the following tests in docker containers:
 	- send a tx on each node and ensure the state root is updated on all of them
 	- crash and restart nodes one at a time and ensure they can sync back up (via fastsync)
 	- crash and restart all nodes at once and ensure they can sync back up
+
+For longer-running and remote testing scenarios, see the `testnet` folder.
+

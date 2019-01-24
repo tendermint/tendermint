@@ -1,0 +1,60 @@
+---
+# Stop Tendermint and clear any existing Tendermint data on the target hosts
+- name: Stop Tendermint on target hosts (if running)
+  service:
+    name: tendermint
+    state: stopped
+  when: stop_tendermint_first
+- name: Remove any Tendermint configuration/history, if any
+  file:
+    path: "{{ tmhome }}"
+    state: absent
+  when: remove_tmhome
+
+# Get the Tendermint binary across
+- name: Sync Tendermint binary to target hosts
+  synchronize:
+    src: "{{ local_tmbin }}"
+    dest: "/usr/bin/tendermint"
+  when: sync_tmbin
+- name: Set Tendermint binary permissions
+  file:
+    path: "/usr/bin/tendermint"
+    owner: root
+    group: root
+    mode: 0755
+  when: sync_tmbin
+
+# Copy the relevant node configuration/data across
+- name: Copy nodes' initial configuration to target hosts
+  synchronize:
+    src: "../../../../nodes/{{ inventory_hostname }}/"
+    dest: "{{ tmhome }}"
+  when: sync_tmconfig
+
+# Optionally generate any sensitive configuration data for the nodes
+- name: "Generate keys and genesis files for each node"
+  template:
+    src: "{{ item }}.jinja2"
+    dest: "{{ tmhome }}/config/{{ item }}"
+  loop:
+    - genesis.json
+    - node_key.json
+    - priv_validator_key.json
+  when: secret_config
+
+- name: Set Tendermint home permissions
+  file:
+    path: "{{ tmhome }}"
+    owner: tendermint
+    group: tendermint
+    recurse: yes
+  when: sync_tmconfig or secret_config
+
+# Fire up the Tendermint service
+- name: Start Tendermint
+  service:
+    name: tendermint
+    state: started
+    enabled: yes
+  when: start_tendermint

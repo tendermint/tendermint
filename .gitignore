@@ -42,3 +42,7 @@ terraform.tfstate.backup
 terraform.tfstate.d
 
 .vscode
+
+/test/testnet/**/*.retry
+/test/testnet/**/venv/
+/test/testnet/**/secrets.yml

@@ -1,0 +1,5 @@
+[tik]
+node0 ansible_host=tik0.sredev.co ansible_user=centos
+node1 ansible_host=tik1.sredev.co ansible_user=centos
+node2 ansible_host=tik2.sredev.co ansible_user=centos
+node3 ansible_host=tik3.sredev.co ansible_user=centos

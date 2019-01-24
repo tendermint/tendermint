@@ -1,0 +1,38 @@
+---
+- hosts: "{{ lookup('env', 'TESTNET') }}"
+  become: yes
+  vars:
+    # Where, on the remote hosts, should we put the Tendermint home folder?
+    tmhome: "/home/tendermint/.tendermint"
+
+    # Where do we find the local Tendermint binary that we want to deploy to the
+    # remote hosts?
+    local_tmbin: "{{ lookup('env', 'GOPATH') }}/src/github.com/tendermint/tendermint/build/tendermint"
+
+    # Should we stop the Tendermint service first before continuing?
+    stop_tendermint_first: yes
+
+    # Should we remove the {{ tmhome }} folder completely before deploying?
+    # NB: Make a backup first!
+    remove_tmhome: yes
+
+    # Should we sync the local Tendermint binary to the remote server?
+    sync_tmbin: yes
+
+    # Should we sync the local per-node configuration/data folders to the
+    # respective remote servers?
+    sync_tmconfig: yes
+
+    # Do we want to make use of secrets (node pub/private keys, addresses, node
+    # keys) from the secrets.yml file?
+    secret_config: yes
+
+    # Should we start the Tendermint service once we're finished deploying the
+    # binary and configuration?
+    start_tendermint: yes
+
+  vars_files:
+    - secrets.yml
+
+  roles:
+    - tendermint-node
