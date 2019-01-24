@@ -13,3 +13,8 @@ func init() {
 	cryptoAmino.RegisterAmino(cdc)
 	types.RegisterEvidences(cdc)
 }
+
+// For testing purposes only
+func RegisterMockEvidences() {
+	types.RegisterMockEvidences(cdc)
+}

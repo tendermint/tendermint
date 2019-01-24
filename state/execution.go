@@ -29,7 +29,8 @@ type BlockExecutor struct {
 	// events
 	eventBus types.BlockEventPublisher
 
-	// update these with block results after commit
+	// manage the mempool lock during commit
+	// and update both with block results after commit.
 	mempool Mempool
 	evpool  EvidencePool
 
@@ -71,6 +72,31 @@ func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsen
 // If not called, it defaults to types.NopEventBus.
 func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) {
 	blockExec.eventBus = eventBus
+}
+
+// CreateProposalBlock calls state.MakeBlock with evidence from the evpool
+// and txs from the mempool. The max bytes must be big enough to fit the commit.
+// Up to 1/10th of the block space is allcoated for maximum sized evidence.
+// The rest is given to txs, up to the max gas.
+func (blockExec *BlockExecutor) CreateProposalBlock(
+	height int64,
+	state State, commit *types.Commit,
+	proposerAddr []byte,
+) (*types.Block, *types.PartSet) {
+
+	maxBytes := state.ConsensusParams.BlockSize.MaxBytes
+	maxGas := state.ConsensusParams.BlockSize.MaxGas
+
+	// Fetch a limited amount of valid evidence
+	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBytes)
+	evidence := blockExec.evpool.PendingEvidence(maxNumEvidence)
+
+	// Fetch a limited amount of valid txs
+	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
+	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
+
+	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+
 }
 
 // ValidateBlock validates the given block against the given state.

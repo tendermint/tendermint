@@ -72,7 +72,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 // NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Peers: discard.NewGauge(),
+		Peers:                 discard.NewGauge(),
 		PeerReceiveBytesTotal: discard.NewCounter(),
 		PeerSendBytesTotal:    discard.NewCounter(),
 		PeerPendingSendBytes:  discard.NewGauge(),

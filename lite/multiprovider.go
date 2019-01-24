@@ -6,6 +6,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var _ PersistentProvider = (*multiProvider)(nil)
+
 // multiProvider allows you to place one or more caches in front of a source
 // Provider.  It runs through them in order until a match is found.
 type multiProvider struct {
