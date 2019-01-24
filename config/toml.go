@@ -358,8 +358,8 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 		writeDefaultConfigFile(configFilePath)
 	}
 	if !cmn.FileExists(genesisFilePath) {
-		if chainID != "" {
-			chainID = "_" + chainID
+		if chainID == "" {
+			chainID = "tendermint_test"
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
@@ -374,7 +374,7 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 
 var testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
-  "chain_id": "tendermint_test%s",
+  "chain_id": "%s",
   "validators": [
     {
       "pub_key": {
