@@ -78,6 +78,78 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 rm -rf ./build/node*
 ```
 
+## Configuring abci containers 
+
+To use your own abci applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/develop/docker-compose.yml) file and add image to your abci application.
+
+```
+ abci0:
+    container_name: abci0
+    image: "abci-image"
+    build:
+      context: .
+      dockerfile: abci.Dockerfile
+    command: <insert command to run your abci application>
+    networks:
+      localnet:
+        ipv4_address: 192.167.10.6
+
+  abci1:
+    container_name: abci1
+    image: "abci-image"
+    build:
+      context: .
+      dockerfile: abci.Dockerfile
+    command: <insert command to run your abci application>
+    networks:
+      localnet:
+        ipv4_address: 192.167.10.7
+
+  abci2:
+    container_name: abci2
+    image: "abci-image"
+    build:
+      context: .
+      dockerfile: abci.Dockerfile
+    command: <insert command to run your abci application>
+    networks:
+      localnet:
+        ipv4_address: 192.167.10.8
+
+  abci3:
+    container_name: abci3
+    image: "abci-image"
+    build:
+      context: .
+      dockerfile: abci.Dockerfile
+    command: <insert command to run your abci application>
+    networks:
+      localnet:
+        ipv4_address: 192.167.10.9
+
+```
+
+Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's abci. 
+
+```
+  node0:
+    container_name: node0
+    image: "tendermint/localnode"
+    ports:
+      - "26656-26657:26656-26657"
+    environment:
+      - ID=0
+      - LOG=$${LOG:-tendermint.log}
+    volumes:
+      - ./build:/tendermint:Z
+    command: node --proxy_app=tcp://abci0:26658
+    networks:
+      localnet:
+        ipv4_address: 192.167.10.2
+```
+
+Similarly do for node1, node2 and node3 then [run testnet](https://github.com/tendermint/tendermint/blob/master/docs/networks/docker-compose.md#run-a-testnet)
+
 ## Logging
 
 Log is saved under the attached volume, in the `tendermint.log` file. If the
