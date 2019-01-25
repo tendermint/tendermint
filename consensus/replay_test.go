@@ -352,7 +352,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	handshaker := NewHandshaker(stateDB, state, store, types.NopEventBus{}, genDoc)
+	handshaker := NewHandshaker(stateDB, state, store, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -387,7 +387,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 
 func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), types.NopEventBus{}, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	blkID := types.BlockID{blk.Hash(), blk.MakePartSet(testPartSize).Header()}
 	newState, err := blockExec.ApplyBlock(st, blkID, blk)
@@ -640,7 +640,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	handshaker := NewHandshaker(stateDB, state, store, types.NopEventBus{}, genDoc)
+	handshaker := NewHandshaker(stateDB, state, store, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)

@@ -193,6 +193,7 @@ func (cs *ConsensusState) SetLogger(l log.Logger) {
 // SetEventBus sets event bus.
 func (cs *ConsensusState) SetEventBus(b *types.EventBus) {
 	cs.eventBus = b
+	cs.blockExec.SetEventBus(b)
 }
 
 // StateMetrics sets the metrics.

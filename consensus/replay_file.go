@@ -331,14 +331,15 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		cmn.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
 	}
 
-	handshaker := NewHandshaker(stateDB, state, blockStore, eventBus, gdoc)
+	handshaker := NewHandshaker(stateDB, state, blockStore, gdoc)
+	handshaker.SetEventBus(eventBus)
 	err = handshaker.Handshake(proxyApp)
 	if err != nil {
 		cmn.Exit(fmt.Sprintf("Error on handshake: %v", err))
 	}
 
 	mempool, evpool := sm.MockMempool{}, sm.MockEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), eventBus, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)

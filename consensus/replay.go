@@ -204,13 +204,13 @@ type Handshaker struct {
 }
 
 func NewHandshaker(stateDB dbm.DB, state sm.State,
-	store sm.BlockStore, eventBus types.BlockEventPublisher, genDoc *types.GenesisDoc) *Handshaker {
+	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
 
 	return &Handshaker{
 		stateDB:      stateDB,
 		initialState: state,
 		store:        store,
-		eventBus:     eventBus,
+		eventBus:     types.NopEventBus{},
 		genDoc:       genDoc,
 		logger:       log.NewNopLogger(),
 		nBlocks:      0,
@@ -219,6 +219,12 @@ func NewHandshaker(stateDB dbm.DB, state sm.State,
 
 func (h *Handshaker) SetLogger(l log.Logger) {
 	h.logger = l
+}
+
+// SetEventBus - sets the event bus for publishing block related events.
+// If not called, it defaults to types.NopEventBus.
+func (h *Handshaker) SetEventBus(eventBus types.BlockEventPublisher) {
+	h.eventBus = eventBus
 }
 
 func (h *Handshaker) NBlocks() int {
@@ -433,7 +439,8 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, h.eventBus, sm.MockMempool{}, sm.MockEvidencePool{})
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, sm.MockMempool{}, sm.MockEvidencePool{})
+	blockExec.SetEventBus(h.eventBus)
 
 	var err error
 	state, err = blockExec.ApplyBlock(state, meta.BlockID, block)

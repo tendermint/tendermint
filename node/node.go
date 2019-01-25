@@ -217,6 +217,10 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
 
+	// EventBus and IndexerService must be started before the handshake because
+	// we might need to index the txs of the replayed block as this might not have happened
+	// when the node stopped last time (i.e. the node stopped after it saved the block
+	// but before it indexed the txs, or, endblocker panicked)
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
 
@@ -255,8 +259,9 @@ func NewNode(config *cfg.Config,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
-	handshaker := cs.NewHandshaker(stateDB, state, blockStore, eventBus, genDoc)
+	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
+	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		return nil, fmt.Errorf("Error during handshake: %v", err)
 	}
@@ -352,7 +357,6 @@ func NewNode(config *cfg.Config,
 		stateDB,
 		blockExecLogger,
 		proxyApp.Consensus(),
-		eventBus,
 		mempool,
 		evidencePool,
 		sm.BlockExecutorWithMetrics(smMetrics),
