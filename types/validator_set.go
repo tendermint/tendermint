@@ -13,13 +13,13 @@ import (
 )
 
 // The maximum allowed total voting power.
-// We set the ProposerPriority of freshly added validators to -1.125*totalVotingPower.
-// To compute 1.125*totalVotingPower efficiently, we do:
-// totalVotingPower + (totalVotingPower >> 3) because
-// x + (x >> 3) = x + x/8 = x * (1 + 0.125).
-// MaxTotalVotingPower is the largest int64 `x` with the property that `x + (x >> 3)` is
-// still in the bounds of int64.
-const MaxTotalVotingPower = int64(8198552921648689607)
+// It needs to be sufficiently small to, in all cases::
+// 1. prevent clipping in incrementProposerPriority()
+// 2. let (diff+diffMax-1) not overflow in IncrementPropposerPriotity()
+// (Proof of 1 is tricky, left to the reader).
+// It could be higher, but this is sufficiently large for our purposes,
+// and leaves room for defensive purposes.
+const MaxTotalVotingPower = int64(math.MaxInt64) / 8
 
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
@@ -78,44 +78,57 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 		panic("Cannot call IncrementProposerPriority with non-positive times")
 	}
 
-	const shiftEveryNthIter = 10
+	// Cap the difference between priorities to be proportional to 2*totalPower by
+	// re-normalizing priorities, i.e., rescale all priorities by multiplying with:
+	//  2*totalVotingPower/(maxPriority - minPriority)
+	diffMax := 2 * vals.TotalVotingPower()
+	vals.RescalePriorities(diffMax)
+
 	var proposer *Validator
 	// call IncrementProposerPriority(1) times times:
 	for i := 0; i < times; i++ {
-		shiftByAvgProposerPriority := i%shiftEveryNthIter == 0
-		proposer = vals.incrementProposerPriority(shiftByAvgProposerPriority)
+		proposer = vals.incrementProposerPriority()
 	}
-	isShiftedAvgOnLastIter := (times-1)%shiftEveryNthIter == 0
-	if !isShiftedAvgOnLastIter {
-		validatorsHeap := cmn.NewHeap()
-		vals.shiftByAvgProposerPriority(validatorsHeap)
-	}
+	vals.shiftByAvgProposerPriority()
+
 	vals.Proposer = proposer
 }
 
-func (vals *ValidatorSet) incrementProposerPriority(subAvg bool) *Validator {
-	for _, val := range vals.Validators {
-		// Check for overflow for sum.
-		val.ProposerPriority = safeAddClip(val.ProposerPriority, val.VotingPower)
+func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
+	// NOTE: This check is merely a sanity check which could be
+	// removed if all tests would init. voting power appropriately;
+	// i.e. diffMax should always be > 0
+	if diffMax == 0 {
+		return
 	}
 
-	validatorsHeap := cmn.NewHeap()
-	if subAvg { // shift by avg ProposerPriority
-		vals.shiftByAvgProposerPriority(validatorsHeap)
-	} else { // just update the heap
+	// Caculating ceil(diff/diffMax):
+	// Re-normalization is performed by dividing by an integer for simplicity.
+	// NOTE: This may make debugging priority issues easier as well.
+	diff := computeMaxMinPriorityDiff(vals)
+	ratio := (diff + diffMax - 1) / diffMax
+	if ratio > 1 {
 		for _, val := range vals.Validators {
-			validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
+			val.ProposerPriority /= ratio
 		}
 	}
+}
 
+func (vals *ValidatorSet) incrementProposerPriority() *Validator {
+	for _, val := range vals.Validators {
+		// Check for overflow for sum.
+		newPrio := safeAddClip(val.ProposerPriority, val.VotingPower)
+		val.ProposerPriority = newPrio
+	}
 	// Decrement the validator with most ProposerPriority:
-	mostest := validatorsHeap.Peek().(*Validator)
+	mostest := vals.getValWithMostPriority()
 	// mind underflow
 	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
 
 	return mostest
 }
 
+// should not be called on an empty validator set
 func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
 	n := int64(len(vals.Validators))
 	sum := big.NewInt(0)
@@ -131,11 +144,38 @@ func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
 	panic(fmt.Sprintf("Cannot represent avg ProposerPriority as an int64 %v", avg))
 }
 
-func (vals *ValidatorSet) shiftByAvgProposerPriority(validatorsHeap *cmn.Heap) {
+// compute the difference between the max and min ProposerPriority of that set
+func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
+	max := int64(math.MinInt64)
+	min := int64(math.MaxInt64)
+	for _, v := range vals.Validators {
+		if v.ProposerPriority < min {
+			min = v.ProposerPriority
+		}
+		if v.ProposerPriority > max {
+			max = v.ProposerPriority
+		}
+	}
+	diff := max - min
+	if diff < 0 {
+		return -1 * diff
+	} else {
+		return diff
+	}
+}
+
+func (vals *ValidatorSet) getValWithMostPriority() *Validator {
+	var res *Validator
+	for _, val := range vals.Validators {
+		res = res.CompareProposerPriority(val)
+	}
+	return res
+}
+
+func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 	avgProposerPriority := vals.computeAvgProposerPriority()
 	for _, val := range vals.Validators {
 		val.ProposerPriority = safeSubClip(val.ProposerPriority, avgProposerPriority)
-		validatorsHeap.PushComparable(val, proposerPriorityComparable{val})
 	}
 }
 
@@ -373,8 +413,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 	if talliedVotingPower > vals.TotalVotingPower()*2/3 {
 		return nil
 	}
-	return fmt.Errorf("Invalid commit -- insufficient voting power: got %v, needed %v",
-		talliedVotingPower, vals.TotalVotingPower()*2/3+1)
+	return errTooMuchChange{talliedVotingPower, vals.TotalVotingPower()*2/3 + 1}
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -456,11 +495,36 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	}
 
 	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
-		return cmn.NewError("Invalid commit -- insufficient old voting power: got %v, needed %v",
-			oldVotingPower, oldVals.TotalVotingPower()*2/3+1)
+		return errTooMuchChange{oldVotingPower, oldVals.TotalVotingPower()*2/3 + 1}
 	}
 	return nil
 }
+
+//-----------------
+// ErrTooMuchChange
+
+func IsErrTooMuchChange(err error) bool {
+	switch err_ := err.(type) {
+	case cmn.Error:
+		_, ok := err_.Data().(errTooMuchChange)
+		return ok
+	case errTooMuchChange:
+		return true
+	default:
+		return false
+	}
+}
+
+type errTooMuchChange struct {
+	got    int64
+	needed int64
+}
+
+func (e errTooMuchChange) Error() string {
+	return fmt.Sprintf("Invalid commit -- insufficient old voting power: got %v, needed %v", e.got, e.needed)
+}
+
+//----------------
 
 func (vals *ValidatorSet) String() string {
 	return vals.StringIndented("")
@@ -506,20 +570,6 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 	it := valz[i]
 	valz[i] = valz[j]
 	valz[j] = it
-}
-
-//-------------------------------------
-// Use with Heap for sorting validators by ProposerPriority
-
-type proposerPriorityComparable struct {
-	*Validator
-}
-
-// We want to find the validator with the greatest ProposerPriority.
-func (ac proposerPriorityComparable) Less(o interface{}) bool {
-	other := o.(proposerPriorityComparable).Validator
-	larger := ac.CompareProposerPriority(other)
-	return bytes.Equal(larger.Address, ac.Address)
 }
 
 //----------------------------------------

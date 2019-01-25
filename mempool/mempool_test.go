@@ -14,10 +14,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -392,6 +394,60 @@ func TestMempoolCloseWAL(t *testing.T) {
 	m3, err := filepath.Glob(filepath.Join(rootDir, "*"))
 	require.Nil(t, err, "successful globbing expected")
 	require.Equal(t, 1, len(m3), "expecting the wal match in")
+}
+
+// Size of the amino encoded TxMessage is the length of the
+// encoded byte array, plus 1 for the struct field, plus 4
+// for the amino prefix.
+func txMessageSize(tx types.Tx) int {
+	return amino.ByteSliceSize(tx) + 1 + 4
+}
+
+func TestMempoolMaxMsgSize(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempl := newMempoolWithApp(cc)
+
+	testCases := []struct {
+		len int
+		err bool
+	}{
+		// check small txs. no error
+		{10, false},
+		{1000, false},
+		{1000000, false},
+
+		// check around maxTxSize
+		// changes from no error to error
+		{maxTxSize - 2, false},
+		{maxTxSize - 1, false},
+		{maxTxSize, false},
+		{maxTxSize + 1, true},
+		{maxTxSize + 2, true},
+
+		// check around maxMsgSize. all error
+		{maxMsgSize - 1, true},
+		{maxMsgSize, true},
+		{maxMsgSize + 1, true},
+	}
+
+	for i, testCase := range testCases {
+		caseString := fmt.Sprintf("case %d, len %d", i, testCase.len)
+
+		tx := cmn.RandBytes(testCase.len)
+		err := mempl.CheckTx(tx, nil)
+		msg := &TxMessage{tx}
+		encoded := cdc.MustMarshalBinaryBare(msg)
+		require.Equal(t, len(encoded), txMessageSize(tx), caseString)
+		if !testCase.err {
+			require.True(t, len(encoded) <= maxMsgSize, caseString)
+			require.NoError(t, err, caseString)
+		} else {
+			require.True(t, len(encoded) > maxMsgSize, caseString)
+			require.Equal(t, err, ErrTxTooLarge, caseString)
+		}
+	}
+
 }
 
 func checksumIt(data []byte) string {
