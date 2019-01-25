@@ -333,10 +333,10 @@ func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval
 		}
 	}
 	ln, err := net.Listen(proto, addr)
-	logger.Info("Listening at", "proto", proto, "addr", addr)
 	if err != nil {
 		return nil, err
 	}
+	logger.Info("Listening at", "proto", proto, "addr", addr)
 	var svln net.Listener
 	if proto == "unix" {
 		unixLn := privval.NewUnixListener(ln)
