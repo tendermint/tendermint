@@ -18,7 +18,7 @@ const (
 	// TMCoreSemVer is the current version of Tendermint Core.
 	// It's the Semantic Version of the software.
 	// Must be a string because scripts like dist.sh read this file.
-	TMCoreSemVer = "0.28.0"
+	TMCoreSemVer = "0.29.1"
 
 	// ABCISemVer is the semantic version of the ABCI library
 	ABCISemVer  = "0.15.0"
@@ -36,10 +36,10 @@ func (p Protocol) Uint64() uint64 {
 
 var (
 	// P2PProtocol versions all p2p behaviour and msgs.
-	P2PProtocol Protocol = 5
+	P2PProtocol Protocol = 6
 
 	// BlockProtocol versions all block data structures and processing.
-	BlockProtocol Protocol = 8
+	BlockProtocol Protocol = 9
 )
 
 //------------------------------------------------------------------------

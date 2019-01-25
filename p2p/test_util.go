@@ -247,17 +247,35 @@ func testNodeInfo(id ID, name string) NodeInfo {
 }
 
 func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
+	port, err := getFreePort()
+	if err != nil {
+		panic(err)
+	}
 	return DefaultNodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		ID_:             id,
-		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", port),
 		Network:         network,
 		Version:         "1.2.3-rc0-deadbeef",
 		Channels:        []byte{testCh},
 		Moniker:         name,
 		Other: DefaultNodeInfoOther{
 			TxIndex:    "on",
-			RPCAddress: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+			RPCAddress: fmt.Sprintf("127.0.0.1:%d", port),
 		},
 	}
+}
+
+func getFreePort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
