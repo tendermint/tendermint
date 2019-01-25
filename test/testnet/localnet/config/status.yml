@@ -1,0 +1,11 @@
+---
+- hosts: "{{ lookup('env', 'TESTNET') }}"
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Get Tendermint service details
+      systemd: name=tendermint
+      register: service_details
+    
+    - name: Show status
+      debug: var=service_details.status.ActiveState

@@ -1,4 +1,4 @@
-.PHONY: deploy stop update-prereq build-tendermint
+.PHONY: deploy stop update-prereq build-tendermint status
 
 ACTIVATE_VENV := source venv/bin/activate
 TESTNET ?= tik
@@ -27,15 +27,21 @@ venv/bin/ansible:
 	@$(ACTIVATE_VENV); \
 	pip install -U -r requirements.txt;
 
-update-prereq:
+update-prereq: venv
 	@echo "Updating local prerequisites..."
 	@$(ACTIVATE_VENV); \
 	pip install -U -r requirements.txt;
 	@echo "Done."
 
-stop:
+stop: venv venv/bin/ansible
 	@$(ACTIVATE_VENV); \
 	cd config; \
 	echo "Stopping test network..."; \
 	TESTNET=${TESTNET} ansible-playbook -i hosts stop.yml; \
 	echo "\nDone.";
+
+status: venv venv/bin/ansible
+	@$(ACTIVATE_VENV); \
+	cd config; \
+	echo "Fetching Tendermint service status for all nodes..."; \
+	TESTNET=${TESTNET} ansible-playbook -i hosts status.yml

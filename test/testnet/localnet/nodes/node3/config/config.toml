@@ -16,14 +16,13 @@ moniker = "node3"
 fast_sync = true
 
 # Database backend: leveldb | memdb | cleveldb
-db_backend = "goleveldb"
+db_backend = "leveldb"
 
 # Database directory
 db_dir = "data"
 
 # Output level for logging, including package level options
-#log_level = "main:info,state:info,*:error"
-log_level = "*:error"
+log_level = "main:info,state:info,*:error"
 
 # Output format: 'plain' (colored text) or 'json'
 log_format = "json"
@@ -34,7 +33,10 @@ log_format = "json"
 genesis_file = "config/genesis.json"
 
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv_validator_file = "config/priv_validator.json"
+priv_validator_key_file = "config/priv_validator_key.json"
+
+# Path to the JSON file containing the last sign state of a validator
+priv_validator_state_file = "data/priv_validator_state.json"
 
 # TCP or UNIX socket address for Tendermint to listen on for
 # connections from an external PrivValidator process
@@ -64,13 +66,13 @@ laddr = "tcp://0.0.0.0:26657"
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
 # Use '["*"]' to allow any origin
-cors_allowed_origins = "[]"
+cors_allowed_origins = []
 
 # A list of methods the client is allowed to use with cross-domain requests
-cors_allowed_methods = "[HEAD GET POST]"
+cors_allowed_methods = ["HEAD", "GET", "POST", ]
 
 # A list of non simple headers the client is allowed to use with cross-domain requests
-cors_allowed_headers = "[Origin Accept Content-Type X-Requested-With X-Server-Time]"
+cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time", ]
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
@@ -78,7 +80,7 @@ grpc_laddr = ""
 
 # Maximum number of simultaneous connections.
 # Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -90,7 +92,7 @@ unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).
 # Does not include gRPC connections. See grpc_max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -107,13 +109,13 @@ laddr = "tcp://0.0.0.0:26656"
 # If empty, will use the same port as the laddr,
 # and will introspect on the listener or use UPnP
 # to figure out the address.
-external_address = "tik3.sredev.co:26656"
+external_address = ""
 
 # Comma separated list of seed nodes to connect to
 seeds = ""
 
 # Comma separated list of nodes to keep persistent connections to
-persistent_peers = "9556560a1bcf759d1a4243d0928fae92bcb3a822@tik0.sredev.co:26656,bbb7ff07a7613847c66b2fd77a358cb80a5da04a@tik1.sredev.co:26656,d1f4500a416792a4a1f920feeb343b565a9ed47f@tik2.sredev.co:26656"
+persistent_peers = "9556560a1bcf759d1a4243d0928fae92bcb3a822@35.175.254.49:26656,bbb7ff07a7613847c66b2fd77a358cb80a5da04a@54.173.73.70:26656,d1f4500a416792a4a1f920feeb343b565a9ed47f@3.88.149.80:26656,c78cde50278c4ecf8b5d164ce966fa6e65786e8d@3.91.86.20:26656"
 
 # UPNP port forwarding
 upnp = false
@@ -123,7 +125,7 @@ addr_book_file = "config/addrbook.json"
 
 # Set true for strict address routability rules
 # Set false for private or local networks
-addr_book_strict = true
+addr_book_strict = false
 
 # Maximum number of inbound peers
 max_num_inbound_peers = 40
@@ -132,16 +134,16 @@ max_num_inbound_peers = 40
 max_num_outbound_peers = 10
 
 # Time to wait before flushing messages out on the connection
-flush_throttle_timeout = "10ms"
+flush_throttle_timeout = "100ms"
 
 # Maximum size of a message packet payload, in bytes
-max_packet_msg_payload_size = 10240
+max_packet_msg_payload_size = 1024
 
 # Rate at which packets can be sent, in bytes/second
-send_rate = 20971520
+send_rate = 5120000
 
 # Rate at which packets can be received, in bytes/second
-recv_rate = 20971520
+recv_rate = 5120000
 
 # Set true to enable the peer-exchange reactor
 pex = true
@@ -165,15 +167,15 @@ dial_timeout = "3s"
 ##### mempool configuration options #####
 [mempool]
 
-recheck = false
+recheck = true
 broadcast = true
 wal_dir = ""
 
 # size of the mempool
-size = 50000
+size = 5000
 
 # size of the cache (used to filter transactions we saw earlier)
-cache_size = 100000
+cache_size = 10000
 
 ##### consensus configuration options #####
 [consensus]
@@ -208,8 +210,8 @@ blocktime_iota = "1s"
 # What indexer to use for transactions
 #
 # Options:
-#   1) "null" (default)
-#   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+#   1) "null"
+#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
 
 # Comma-separated list of tags to index (by default the only tag is "tx.hash")
@@ -235,14 +237,13 @@ index_all_tags = false
 # When true, Prometheus metrics are served under /metrics on
 # PrometheusListenAddr.
 # Check out the documentation for the list of available metrics.
-#prometheus = false
-prometheus = true
+prometheus = false
 
 # Address to listen for Prometheus collector(s) connections
 prometheus_listen_addr = ":26660"
 
 # Maximum number of simultaneous connections.
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = 3
