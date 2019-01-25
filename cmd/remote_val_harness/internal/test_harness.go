@@ -21,15 +21,16 @@ import (
 // Test harness error codes (which act as exit codes when the test harness fails).
 const (
 	NoError                    int = iota // 0
-	ErrMaxAcceptRetriesReached            // 1
-	ErrFailedToLoadGenesisFile            // 2
-	ErrFailedToCreateListener             // 3
-	ErrFailedToStartListener              // 4
-	ErrInterrupted                        // 5
-	ErrOther                              // 6
-	ErrTestPublicKeyFailed                // 7
-	ErrTestSignProposalFailed             // 8
-	ErrTestSignVoteFailed                 // 9
+	ErrInvalidParameters                  // 1
+	ErrMaxAcceptRetriesReached            // 2
+	ErrFailedToLoadGenesisFile            // 3
+	ErrFailedToCreateListener             // 4
+	ErrFailedToStartListener              // 5
+	ErrInterrupted                        // 6
+	ErrOther                              // 7
+	ErrTestPublicKeyFailed                // 8
+	ErrTestSignProposalFailed             // 9
+	ErrTestSignVoteFailed                 // 10
 )
 
 var voteTypes = []types.SignedMsgType{types.PrevoteType, types.PrecommitType}
@@ -85,26 +86,14 @@ type timeoutError interface {
 // validator public/private keypairs and chain details) and create a new
 // harness.
 func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, error) {
-	var err error
-	var keyFile, stateFile, genesisFile string
-
-	if keyFile, err = ExpandPath(cfg.KeyFile); err != nil {
-		logger.Info("Failed to expand path - using original", "keyFile", cfg.KeyFile, "err", err)
-		keyFile = cfg.KeyFile
-	}
-	if stateFile, err = ExpandPath(cfg.StateFile); err != nil {
-		logger.Info("Failed to expand path - using original", "stateFile", cfg.StateFile, "err", err)
-		stateFile = cfg.StateFile
-	}
+	keyFile := ExpandPath(cfg.KeyFile)
+	stateFile := ExpandPath(cfg.StateFile)
 	logger.Info("Loading private validator configuration", "keyFile", keyFile, "stateFile", stateFile)
 	// NOTE: LoadFilePV ultimately calls os.Exit on failure. No error will be
 	// returned if this call fails.
 	fpv := privval.LoadFilePV(keyFile, stateFile)
 
-	if genesisFile, err = ExpandPath(cfg.GenesisFile); err != nil {
-		logger.Info("Failed to expand path - using original", "genesisFile", cfg.GenesisFile, "err", err)
-		genesisFile = cfg.GenesisFile
-	}
+	genesisFile := ExpandPath(cfg.GenesisFile)
 	logger.Info("Loading chain ID from genesis file", "genesisFile", genesisFile)
 	st, err := state.MakeGenesisDocFromFile(genesisFile)
 	if err != nil {
