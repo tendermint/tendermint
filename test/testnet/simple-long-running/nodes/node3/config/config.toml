@@ -110,10 +110,10 @@ laddr = "tcp://0.0.0.0:26656"
 external_address = "tik3.sredev.co:26656"
 
 # Comma separated list of seed nodes to connect to
-seeds = "8010C9952EB8E82F52877C90426C6903D8EE89EC@tik0.sredev.co:26656"
+seeds = ""
 
 # Comma separated list of nodes to keep persistent connections to
-persistent_peers = ""
+persistent_peers = "9556560a1bcf759d1a4243d0928fae92bcb3a822@tik0.sredev.co:26656,bbb7ff07a7613847c66b2fd77a358cb80a5da04a@tik1.sredev.co:26656,d1f4500a416792a4a1f920feeb343b565a9ed47f@tik2.sredev.co:26656"
 
 # UPNP port forwarding
 upnp = false

@@ -113,7 +113,7 @@ external_address = "tik0.sredev.co:26656"
 seeds = ""
 
 # Comma separated list of nodes to keep persistent connections to
-persistent_peers = ""
+persistent_peers = "bbb7ff07a7613847c66b2fd77a358cb80a5da04a@tik1.sredev.co:26656,d1f4500a416792a4a1f920feeb343b565a9ed47f@tik2.sredev.co:26656,c78cde50278c4ecf8b5d164ce966fa6e65786e8d@tik3.sredev.co:26656"
 
 # UPNP port forwarding
 upnp = false
@@ -150,7 +150,7 @@ pex = true
 # peers. If another node asks it for addresses, it responds and disconnects.
 #
 # Does not work if the peer-exchange reactor is disabled.
-seed_mode = true
+seed_mode = false
 
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private_peer_ids = ""
