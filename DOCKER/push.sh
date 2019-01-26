@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-# By default, we build Tendermint's Docker image
-IMAGE=${IMAGE:-"tendermint"}
-
 # Get the tag from the version, or try to figure it out.
 if [ -z "$TAG" ]; then
 	TAG=$(awk -F\" '/TMCoreSemVer =/ { print $2; exit }' < ../version/version.go)
@@ -19,7 +16,7 @@ read -p "==> Push 3 docker images with the following tags (latest, $TAG, $TAG_NO
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
-	docker push "tendermint/${IMAGE}:latest"
-	docker push "tendermint/${IMAGE}:$TAG"
-	docker push "tendermint/${IMAGE}:$TAG_NO_PATCH"
+	docker push "tendermint/tendermint:latest"
+	docker push "tendermint/tendermint:$TAG"
+	docker push "tendermint/tendermint:$TAG_NO_PATCH"
 fi

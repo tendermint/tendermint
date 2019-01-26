@@ -1,4 +1,4 @@
 ARG TENDERMINT_VERSION=latest
 FROM tendermint/tendermint:${TENDERMINT_VERSION}
 
-COPY remote_val_harness /usr/bin/remote_val_harness
+COPY tm-signer-harness /usr/bin/tm-signer-harness

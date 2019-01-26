@@ -1,3 +1,4 @@
 # tools
 
-Tools for working with tendermint and associated technologies. Documentation can be found in the `README.md` of each the `tm-bench/` and `tm-monitor/` directories.
+Tools for working with Tendermint and associated technologies. Documentation can
+be found in the `README.md` of each of the subdirectories.

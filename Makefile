@@ -276,17 +276,12 @@ check_dep:
 	!(grep -n branch Gopkg.toml)
 
 ###########################################################
-### Docker images
+### Docker image
 
 build-docker:
 	cp build/tendermint DOCKER/tendermint
 	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
 	rm -rf DOCKER/tendermint
-
-build_remote_val_harness_docker_image:
-	GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o DOCKER/remote_val_harness ./cmd/remote_val_harness/
-	cd DOCKER && $(MAKE) build_remote_val_harness
-	rm -rf DOCKER/remote_val_harness
 
 ###########################################################
 ### Local testnet using docker
@@ -334,4 +329,4 @@ build-slate:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race build_abci dist install install_abci check_dep check_tools get_tools get_dev_tools update_tools get_vendor_deps draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all build_c install_c build_remote_val_harness_docker_image
+.PHONY: check build build_race build_abci dist install install_abci check_dep check_tools get_tools get_dev_tools update_tools get_vendor_deps draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all build_c install_c

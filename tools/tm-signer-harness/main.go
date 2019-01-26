@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/cmd/remote_val_harness/internal"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/tools/tm-signer-harness/internal"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -29,15 +29,15 @@ var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 func usage() string {
 	var b strings.Builder
-	b.WriteString("Remote validator test harness for Tendermint.\n\n")
+	b.WriteString("Remote signer test harness for Tendermint.\n\n")
 	b.WriteString("Usage:\n")
-	b.WriteString("  remote_val_harness <command> [args]\n\n")
+	b.WriteString("  tm-signer-harness <command> [args]\n\n")
 	b.WriteString("Available Commands:\n")
 	b.WriteString("  extract_key        Extracts a signing key from a local Tendermint instance\n")
 	b.WriteString("  help               Help on the available commands\n")
 	b.WriteString("  run                Runs the test harness\n")
 	b.WriteString("  version            Display version information and exit\n\n")
-	b.WriteString("Use \"remote_val_harness help <command>\" for more information on that command.\n")
+	b.WriteString("Use \"tm-signer-harness help <command>\" for more information on that command.\n")
 	return b.String()
 }
 
@@ -45,9 +45,9 @@ func cmdUsage(cmd string) string {
 	var b strings.Builder
 	switch cmd {
 	case "run":
-		b.WriteString("Runs the remote validator test harness for Tendermint.\n\n")
+		b.WriteString("Runs the remote signer test harness for Tendermint.\n\n")
 		b.WriteString("Usage:\n")
-		b.WriteString("  remote_val_harness run [args]\n\n")
+		b.WriteString("  tm-signer-harness run [args]\n\n")
 		b.WriteString("Flags:\n")
 		b.WriteString(
 			fmt.Sprintf(
@@ -70,7 +70,7 @@ func cmdUsage(cmd string) string {
 	case "extract_key":
 		b.WriteString("Extracts a signing key from a local Tendermint instance for use in the remote signer under test.\n\n")
 		b.WriteString("Usage:\n")
-		b.WriteString("  remote_val_harness extract_key [args]\n\n")
+		b.WriteString("  tm-signer-harness extract_key [args]\n\n")
 		b.WriteString("Flags:\n")
 		b.WriteString(
 			fmt.Sprintf(
