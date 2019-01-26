@@ -226,6 +226,11 @@ test_race:
 	@echo "--> Running go test --race"
 	@GOCACHE=off go test -p 1 -v -race $(PACKAGES)
 
+test_with_deadlock:
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.RWMutex/deadlock.RWMutex/'
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.Mutex/deadlock.Mutex/'
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 goimports -w
+	make test
 
 ########################################
 ### Formatting, linting, and vetting
