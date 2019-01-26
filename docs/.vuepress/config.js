@@ -81,7 +81,8 @@ module.exports = {
         children:  [
 	  "/tools/",
 	  "/tools/benchmarking",
-	  "/tools/monitoring"
+    "/tools/monitoring",
+    "/tools/remote-signer-validation"
 	]
       },
       {
