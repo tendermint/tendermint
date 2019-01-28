@@ -462,23 +462,29 @@ func findIndexForAddress(address []byte, vlist []*Validator) (int, bool) {
 	return idx, false
 }
 
-// Adds val to vlist if not already there
+// Adds val to tolist if not present in 'tolist' or 'other'
 // Returns:
-// - err, non nil, if val already in vlist
-// - the updated vlist including val if no error, old vlist otherwise
-func addUniqueToSortedList (val *Validator, vlist []*Validator) (error, []*Validator) {
+// - err, non nil, if val already in 'tolist' or 'other'
+// - the updated 'tolist' including val if no error, old 'tolist' otherwise
+func addUniqueToSortedList (val *Validator, tolist []*Validator, other []*Validator ) (error, []*Validator) {
 
-	index, exists := findIndexForAddress(val.Address, vlist)
+	index, exists := findIndexForAddress(val.Address, other)
 	if exists {
-		err := fmt.Errorf("duplicate entry %v in vlist %v", val, vlist)
-		return err, vlist
+		err := fmt.Errorf("duplicate entry %v in vlist %v", val, other)
+		return err, tolist
 	}
 
-	expList := make([]*Validator, len(vlist)+1)
-	copy(expList[:index], vlist[:index])
+	index, exists = findIndexForAddress(val.Address, tolist)
+	if exists {
+		err := fmt.Errorf("duplicate entry %v in vlist %v", val, tolist)
+		return err, tolist
+	}
+
+	expList := make([]*Validator, len(tolist)+1)
+	copy(expList[:index], tolist[:index])
 	expList[index] = val.Copy()
-	if index <= len(vlist) {
-		copy(expList[index+1:], vlist[index:])
+	if index <= len(tolist) {
+		copy(expList[index+1:], tolist[index:])
 	}
 	return nil, expList
 }
@@ -496,14 +502,16 @@ func processChanges(changes []*Validator) (error, []*Validator, []*Validator) {
 			return err, nil, nil
 		}
 		if valUpdate.VotingPower == 0 {
-			err, removals = addUniqueToSortedList(valUpdate, removals)
+			// Add valUpdate to removals if not already present in either removals or updates
+			err, removals = addUniqueToSortedList(valUpdate, removals, updates)
 			if err != nil {
-				return err, nil, removals
+				return err, nil, nil
 			}
 			continue
 		}
 
-		err, updates = addUniqueToSortedList(valUpdate, updates)
+		// Add valUpdate to updates if not already present in either updates or removals
+		err, updates = addUniqueToSortedList(valUpdate, updates, removals)
 		if err != nil {
 			return err, updates, nil
 		}
@@ -672,6 +680,7 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 	vals.applyRemovals(deletes)
 	vals.RescalePriorities(K * vals.TotalVotingPower())
 	vals.shiftByAvgProposerPriority()
+
 
 	return nil
 }

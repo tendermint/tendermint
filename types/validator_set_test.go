@@ -609,44 +609,119 @@ func TestValidatorUpdates(t *testing.T) {
 	vals := NewValidatorSet(valList)
 	assert.Nil(t, verifyValidatorSet(vals))
 
+	// noop
+	valList = []*Validator{}
+	valsc := vals.Copy()
+	assert.Nil(t, vals.UpdateWithChangeSet(valList))
+	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
+
+	// Verify duplicate updates are caught and vals is not modified
+	v1 = newValidator([]byte("v3"), 10)
+	v2 = newValidator([]byte("v2"), 200)
+	valList = []*Validator{v1, v2, v1}
+	valsc = vals.Copy()
+	assert.NotNil(t, vals.UpdateWithChangeSet(valList))
+	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
+
+	// Verify duplicate removes are caught and vals is not modified
+	v2 = newValidator([]byte("v2"), 0)
+	valList = []*Validator{v2, v2}
+	valsc = vals.Copy()
+	assert.NotNil(t, vals.UpdateWithChangeSet(valList))
+	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
+
+
+	// Verify a duplicat accross removes and adds is caught and vals is not modified
+	v2d := newValidator([]byte("v2"), 0)
+	v2m := newValidator([]byte("v2"), 10)
+	valList = []*Validator{v2d, v2m}
+	valsc = vals.Copy()
+	assert.NotNil(t, vals.UpdateWithChangeSet(valList))
+	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
+
+	// Verify negative voting power is caught and vals is not modified
+	v1 = newValidator([]byte("v3"), -10)
+	valList = []*Validator{v1}
+	valsc = vals.Copy()
+	assert.NotNil(t, vals.UpdateWithChangeSet(valList))
+	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
+
+	// Verify deleting unexisting validator is caught and vals is not modified
+	v1 = newValidator([]byte("v7"), 0)
+	valList = []*Validator{v1}
+	valsc = vals.Copy()
+	assert.NotNil(t, vals.UpdateWithChangeSet(valList))
+	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
+
 	// Change priorities
 	v1 = newValidator([]byte("v1"), 10)
 	v2 = newValidator([]byte("v2"), 10)
 	valList = []*Validator{v1, v2}
-
-	vals.UpdateWithChangeSet(valList)
+	assert.Nil(t, vals.UpdateWithChangeSet(valList))
 	assert.Nil(t, verifyValidatorSet(vals))
 
 	// Add new validators
 	v3 := newValidator([]byte("v3"), 200)
 	v4 := newValidator([]byte("v4"), 200)
 	newVals := []*Validator{v3, v4}
-
-	vals.UpdateWithChangeSet(newVals)
+	assert.Nil(t, vals.UpdateWithChangeSet(newVals))
 	assert.Nil(t, verifyValidatorSet(vals))
 
-	// delete vals
+	// Delete validators
 	v3 = newValidator([]byte("v3"), 0)
 	v4 = newValidator([]byte("v4"), 0)
 	delVals := []*Validator{v3, v4}
-
-	vals.UpdateWithChangeSet(delVals)
+	assert.Nil(t, vals.UpdateWithChangeSet(delVals))
 	assert.Nil(t, verifyValidatorSet(vals))
 
-	// verify order does not matter when we add
-	// Add new validators
+	// Verify order does not matter when adding new validators
 	vals1 := vals.Copy()
 	vals2 := vals.Copy()
 	v3 = newValidator([]byte("v3"), 333)
 	v4 = newValidator([]byte("v4"), 444)
-	newVals = []*Validator{v3, v4}
-	vals1.UpdateWithChangeSet(newVals)
 
+	newVals = []*Validator{v3, v4}
+	assert.Nil(t, vals1.UpdateWithChangeSet(newVals))
 	assert.Nil(t, verifyValidatorSet(vals1))
+
 	newVals = []*Validator{v4, v3}
-	vals2.UpdateWithChangeSet(newVals)
+	assert.Nil(t, vals2.UpdateWithChangeSet(newVals))
 	assert.Nil(t, verifyValidatorSet(vals2))
+
 	assert.Nil(t, verifyValidatorSetEquiv(vals1, vals2))
+
+	// Verify order does not matter when modifying validators
+	vals1 = vals.Copy()
+	vals2 = vals.Copy()
+	v3 = newValidator([]byte("v3"), 33)
+	v4 = newValidator([]byte("v4"), 44)
+
+	chVals := []*Validator{v3, v4}
+	assert.Nil(t, vals1.UpdateWithChangeSet(chVals))
+	assert.Nil(t, verifyValidatorSet(vals1))
+
+	chVals = []*Validator{v4, v3}
+	assert.Nil(t, vals2.UpdateWithChangeSet(chVals))
+	assert.Nil(t, verifyValidatorSet(vals2))
+
+	assert.Nil(t, verifyValidatorSetEquiv(vals1, vals2))
+
+	// Verify order does not matter when updates contain new and changed validators
+	vals1 = vals.Copy()
+	vals2 = vals.Copy()
+	v3 = newValidator([]byte("v3"), 3)
+	v5 := newValidator([]byte("v4"), 55)
+
+	chVals = []*Validator{v3, v5}
+	assert.Nil(t, vals1.UpdateWithChangeSet(chVals))
+	assert.Nil(t, verifyValidatorSet(vals1))
+
+	chVals = []*Validator{v5, v3}
+	assert.Nil(t, vals2.UpdateWithChangeSet(chVals))
+	assert.Nil(t, verifyValidatorSet(vals2))
+
+	assert.Nil(t, verifyValidatorSetEquiv(vals1, vals2))
+
 }
 
 func verifyValidatorEquiv(val1, val2 *Validator) error {
@@ -669,7 +744,7 @@ func verifyValidatorSetEquiv(vals1, vals2 *ValidatorSet) error {
 	for i, val1 := range vals1.Validators {
 		val2 :=  vals2.Validators[i]
 		if err := verifyValidatorEquiv(val1, val2); err != nil {
-			return fmt.Errorf("validator at index %d are different: %s", i, err)
+			return fmt.Errorf("validators at index %d are different: %s", i, err)
 		}
 	}
 	return nil
@@ -703,7 +778,7 @@ func verifyValidatorSet (vals *ValidatorSet) error {
 	if  tpp > l || tpp < -l {
 		return fmt.Errorf("expected total prio in (-%d, %d). Got %d", l, l, tpp)
 	}
-	// verify priorities are scaled
+	// verify that priorities are scaled
 	dist := computeMaxMinPriorityDiff(vals)
 	if dist > K * tvp {
 		return fmt.Errorf("expected prio dist < %d. Got %d", K * tvp, dist)
