@@ -21,3 +21,4 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [node] \#3186 EventBus and indexerService should be started before first block (for replay last block on handshake) execution
