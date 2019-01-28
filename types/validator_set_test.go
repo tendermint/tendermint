@@ -640,13 +640,13 @@ func TestValidatorUpdates(t *testing.T) {
 	v3 = newValidator([]byte("v3"), 333)
 	v4 = newValidator([]byte("v4"), 444)
 	newVals = []*Validator{v3, v4}
-	vals1.UpdateWithChangeSet(delVals)
+	vals1.UpdateWithChangeSet(newVals)
+
 	assert.Nil(t, verifyValidatorSet(vals1))
 	newVals = []*Validator{v4, v3}
-	vals2.UpdateWithChangeSet(delVals)
+	vals2.UpdateWithChangeSet(newVals)
 	assert.Nil(t, verifyValidatorSet(vals2))
 	assert.Nil(t, verifyValidatorSetEquiv(vals1, vals2))
-
 }
 
 func verifyValidatorEquiv(val1, val2 *Validator) error {

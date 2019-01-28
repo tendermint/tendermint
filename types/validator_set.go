@@ -467,30 +467,25 @@ func findIndexForAddress(address []byte, vlist []*Validator) (int, bool) {
 // - err, non nil, if val already in vlist
 // - the updated vlist including val if no error, old vlist otherwise
 func addUniqueToSortedList (val *Validator, vlist []*Validator) (error, []*Validator) {
-	buildList := make([]*Validator, 0)
-	index, exists := findIndexForAddress(val.Address, vlist)
 
+	index, exists := findIndexForAddress(val.Address, vlist)
 	if exists {
 		err := fmt.Errorf("duplicate entry %v in vlist %v", val, vlist)
-		return err, nil
+		return err, vlist
 	}
 
-	if index >= len(vlist) {
-		buildList = append(vlist, val.Copy())
-	} else {
-		expBuildList := make([]*Validator, len(buildList)+1)
-		copy(expBuildList[:index], buildList[:index])
-		expBuildList[index] = val.Copy()
-		copy(expBuildList[index+1:], buildList[index:])
-		buildList = expBuildList
+	expList := make([]*Validator, len(vlist)+1)
+	copy(expList[:index], vlist[:index])
+	expList[index] = val.Copy()
+	if index <= len(vlist) {
+		copy(expList[index+1:], vlist[index:])
 	}
-	return nil, buildList
+	return nil, expList
 }
 
 // Checks changes against duplicates, splits the changes in updates and removals, sorts them by address
 func processChanges(changes []*Validator) (error, []*Validator, []*Validator) {
 
-	// Scan the changes, check for duplicates, create updated and removals lists sorted by validator address.
 	removals := make([]*Validator, 0)
 	updates := make([]*Validator, 0)
 	var err error
@@ -513,16 +508,15 @@ func processChanges(changes []*Validator) (error, []*Validator, []*Validator) {
 			return err, updates, nil
 		}
 	}
-
 	return err, updates, removals
 }
 
-// Verifies a list of updates against a validator set, making sure the total voting power
-// would not exceed if these updates would be applied to the set.
+// Verifies a list of updates against a validator set, making sure the allowed
+// total voting power would not exceed if these updates would be applied to the set.
 // Computes the proposer priority for the validators not present in the set.
 // Returns error if first step fails.
 // updates parameter must be a list of unique validators to be added or updated.
-func verifyUpdates(updates []*Validator, vals *ValidatorSet) error {
+func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorSet) error {
 
 	// Scan the updates, compute new total voting power, check for overflow
 	updatedVotingPower := vals.TotalVotingPower()
@@ -568,9 +562,11 @@ func verifyUpdates(updates []*Validator, vals *ValidatorSet) error {
 	return nil
 }
 
-// Expects updates to be a list of updates sorted by address with no duplicates.
-// Expects the list to have been validated with validateUpdates()
 // Merges the vals' validator list with the updates list.
+// When two elements with same address are seen, the one from updates is selected.
+// Expects updates to be a list of updates sorted by address with no duplicates,
+// and to have been validated with validateUpdates().
+// The validator's priorites in 'updates' should be already computed.
 func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 
 	existing := make([]*Validator, len(vals.Validators))
@@ -586,6 +582,7 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 		} else {
 			merged[i] = updates[0]
 			if bytes.Equal(existing[0].Address, updates[0].Address) {
+				// validator present in both, so advance existing also
 				existing = existing[1:]
 			}
 			updates = updates[1:]
@@ -596,7 +593,6 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 		merged[i] = existing[j]
 		i++
 	}
-
 	for j := 0; j < len(updates); j++ {
 		merged[i] = updates[j]
 		i++
@@ -619,7 +615,7 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
 	return nil
 }
 
-// Removes the validators specified in 'deletes' from validator set vals.
+// Removes the validators specified in 'deletes' from validator set 'vals'.
 // Should not fail as verification has been done before.
 func (vals *ValidatorSet)applyRemovals(deletes []*Validator) {
 
@@ -638,10 +634,11 @@ func (vals *ValidatorSet)applyRemovals(deletes []*Validator) {
 // - validates the changes making sure there are no duplicates and
 // separates them in updates and deletes
 // - verifies that applying the updates will not result in errors (e.g. overflows)
+// - computes the priorities of validators that are added and/or changed against the final set
 // - verifies that applying the removals will not result in errors
 //   Note: currently an error is issued if a validator to be removed is not present in the set
-// - applies the updates against the validaor set and performs scaling of priority values
-// - applies the removals agains the validator set and performs scaling and centering of priority values
+// - applies the updates against the validator set and performs scaling of priority values
+// - applies the removals against the validator set and performs scaling and centering of priority values
 // If error is detected during verification steps an error is returned and the validator set
 // is not changed.
 func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
@@ -650,27 +647,28 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 		return nil
 	}
 
-	// check for duplicates within changes, split in sorted and deleted lists (sorted)
-	err, sorted, deletes := processChanges(changes)
+	// check for duplicates within changes, split in 'updates' and 'deletes' lists (sorted)
+	err, updates, deletes := processChanges(changes)
 	if err != nil {
 		return err
 	}
 
-	// verify that applying the updates will not result in error
-	if err = verifyUpdates(sorted, vals); err != nil {
+	// Verify that applying the 'updates' against 'vals' will not result in error.
+	// If no errors, priorities of validators in 'updates' are computed.
+	if err = verifyUpdatesAndComputeNewPriorities(updates, vals); err != nil {
 		return err
 	}
 
-	// verify that applying the removals will not result in error
+	// Verify that applying the 'deletes' against 'vals' will not result in error.
 	if err = verifyRemovals(deletes, vals); err != nil {
 		return err
 	}
 
-	// apply updates and rescale
-	vals.applyUpdates(sorted)
+	// Apply updates and rescale
+	vals.applyUpdates(updates)
 	vals.RescalePriorities(K * vals.TotalVotingPower())
 
-	// apply removals, rescale and recenter
+	// Apply removals, rescale and recenter
 	vals.applyRemovals(deletes)
 	vals.RescalePriorities(K * vals.TotalVotingPower())
 	vals.shiftByAvgProposerPriority()
