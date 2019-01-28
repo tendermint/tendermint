@@ -39,6 +39,7 @@ var (
 	rootCmd       *flag.FlagSet
 	runCmd        *flag.FlagSet
 	extractKeyCmd *flag.FlagSet
+	versionCmd    *flag.FlagSet
 )
 
 func init() {
@@ -86,6 +87,16 @@ Usage:
 
 Flags:`)
 		extractKeyCmd.PrintDefaults()
+		fmt.Println("")
+	}
+
+	versionCmd = flag.NewFlagSet("version", flag.ExitOnError)
+	versionCmd.Usage = func() {
+		fmt.Println(`
+Prints the Tendermint version for which this remote signer harness was built.
+
+Usage:
+  tm-signer-harness version`)
 		fmt.Println("")
 	}
 }
@@ -142,6 +153,8 @@ func main() {
 			runCmd.Usage()
 		case "extract_key":
 			extractKeyCmd.Usage()
+		case "version":
+			versionCmd.Usage()
 		default:
 			fmt.Printf("Unrecognized command: %s\n", flag.Arg(1))
 			os.Exit(1)
