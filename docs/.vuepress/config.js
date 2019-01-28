@@ -21,7 +21,7 @@ module.exports = {
     },
     nav: [
       { text: "Back to Tendermint", link: "https://tendermint.com" },
-      { text: "RPC", link: "../rpc/" }
+      { text: "RPC", link: "https://tendermint.com/rpc/" }
     ],
     sidebar: [
       {
