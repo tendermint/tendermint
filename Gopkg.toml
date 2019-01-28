@@ -75,13 +75,14 @@
   name = "github.com/prometheus/client_golang"
   version = "^0.9.1"
 
-[[constraint]]
-  name = "github.com/tendermint/btcd"
-  version = "v0.1.1"
 
 ###################################
 ## Some repos dont have releases.
 ## Pin to revision
+
+[[constraint]]
+  name = "github.com/btcsuite/btcd"
+  revision = "ed77733ec07dfc8a513741138419b8d9d3de9d2d"
 
 [[constraint]]
   name = "golang.org/x/crypto"

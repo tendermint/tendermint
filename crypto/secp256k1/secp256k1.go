@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	secp256k1 "github.com/tendermint/btcd/btcec"
+	secp256k1 "github.com/btcsuite/btcd/btcec"
 	amino "github.com/tendermint/go-amino"
 	"golang.org/x/crypto/ripemd160"
 
