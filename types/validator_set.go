@@ -19,7 +19,10 @@ import (
 // (Proof of 1 is tricky, left to the reader).
 // It could be higher, but this is sufficiently large for our purposes,
 // and leaves room for defensive purposes.
-const MaxTotalVotingPower = int64(math.MaxInt64) / 8
+const (
+	MaxTotalVotingPower = int64(math.MaxInt64) / 8
+	K = 2
+)
 
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
@@ -81,7 +84,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	// Cap the difference between priorities to be proportional to 2*totalPower by
 	// re-normalizing priorities, i.e., rescale all priorities by multiplying with:
 	//  2*totalVotingPower/(maxPriority - minPriority)
-	diffMax := 2 * vals.TotalVotingPower()
+	diffMax := K * vals.TotalVotingPower()
 	vals.RescalePriorities(diffMax)
 
 	var proposer *Validator
@@ -94,6 +97,20 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	vals.Proposer = proposer
 }
 
+/*
+
+func (vals *ValidatorSet) RescalePriorities() {
+	tvp := vals.TotalVotingPower()
+	diff := computeMaxMinPriorityDiff(vals)
+	if diff > K * tvp {
+		ratio := float64(K * tvp) / float64(diff)
+		for _, val := range vals.Validators {
+			val.ProposerPriority = int64(float64(val.ProposerPriority) * ratio)
+		}
+	}
+}
+*/
+
 func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	// NOTE: This check is merely a sanity check which could be
 	// removed if all tests would init. voting power appropriately;
@@ -102,7 +119,7 @@ func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 		return
 	}
 
-	// Caculating ceil(diff/diffMax):
+	// Calculating ceil(diff/diffMax):
 	// Re-normalization is performed by dividing by an integer for simplicity.
 	// NOTE: This may make debugging priority issues easier as well.
 	diff := computeMaxMinPriorityDiff(vals)
@@ -364,6 +381,301 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 			break
 		}
 	}
+}
+
+// If more or equal than 1/3 of total voting power changed in one block, then
+// a light client could never prove the transition externally. See
+// ./lite/doc.go for details on how a light client tracks validators.
+func (currentSet *ValidatorSet) UpdateWithChangeList(updates []*Validator) error {
+	for _, valUpdate := range updates {
+		// should already have been checked
+		if valUpdate.VotingPower < 0 {
+			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
+		}
+
+		address := valUpdate.Address
+		_, val := currentSet.GetByAddress(address)
+		// valUpdate.VotingPower is ensured to be non-negative in validation method
+		if valUpdate.VotingPower == 0 { // remove val
+			_, removed := currentSet.Remove(address)
+			if !removed {
+				return fmt.Errorf("Failed to remove validator %X", address)
+			}
+		} else if val == nil { // add val
+			// make sure we do not exceed MaxTotalVotingPower by adding this validator:
+			totalVotingPower := currentSet.TotalVotingPower()
+			updatedVotingPower := valUpdate.VotingPower + totalVotingPower
+			overflow := updatedVotingPower > MaxTotalVotingPower || updatedVotingPower < 0
+			if overflow {
+				return fmt.Errorf(
+					"Failed to add new validator %v. Adding it would exceed max allowed total voting power %v",
+					valUpdate,
+					MaxTotalVotingPower)
+			}
+			// TODO: issue #1558 update spec according to the following:
+			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
+			// unbond/rebond to reset their (potentially previously negative) ProposerPriority to zero.
+			//
+			// Contract: totalVotingPower < MaxTotalVotingPower to ensure ProposerPriority does
+			// not exceed the bounds of int64.
+			//
+			// Compute ProposerPriority = -1.125*totalVotingPower == -(totalVotingPower + (totalVotingPower >> 3)).
+			valUpdate.ProposerPriority = -(totalVotingPower + (totalVotingPower >> 3))
+			added := currentSet.Add(valUpdate)
+			if !added {
+				return fmt.Errorf("Failed to add new validator %v", valUpdate)
+			}
+		} else { // update val
+			// make sure we do not exceed MaxTotalVotingPower by updating this validator:
+			totalVotingPower := currentSet.TotalVotingPower()
+			curVotingPower := val.VotingPower
+			updatedVotingPower := totalVotingPower - curVotingPower + valUpdate.VotingPower
+			overflow := updatedVotingPower > MaxTotalVotingPower || updatedVotingPower < 0
+			if overflow {
+				return fmt.Errorf(
+					"Failed to update existing validator %v. Updating it would exceed max allowed total voting power %v",
+					valUpdate,
+					MaxTotalVotingPower)
+			}
+
+			updated := currentSet.Update(valUpdate)
+			if !updated {
+				return fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
+			}
+		}
+	}
+	return nil
+}
+
+// Used for checking duplicates
+// Returns:
+// - the index in vlist where address is or where it should exist if it would be added
+// - true if address is present in vlist, false otherwise
+func findIndexForAddress(address []byte, vlist []*Validator) (int, bool) {
+	idx := sort.Search(len(vlist), func(i int) bool {
+		return bytes.Compare(address, vlist[i].Address) <= 0
+	})
+
+	if idx < len(vlist) && bytes.Equal(vlist[idx].Address, address) {
+		return idx, true
+	}
+	return idx, false
+}
+
+// Adds val to vlist if not already there
+// Returns:
+// - err, non nil, if val already in vlist
+// - the updated vlist including val if no error, old vlist otherwise
+func addUniqueToSortedList (val *Validator, vlist []*Validator) (error, []*Validator) {
+	buildList := make([]*Validator, 0)
+	index, exists := findIndexForAddress(val.Address, vlist)
+
+	if exists {
+		err := fmt.Errorf("duplicate entry %v in vlist %v", val, vlist)
+		return err, nil
+	}
+
+	if index >= len(vlist) {
+		buildList = append(vlist, val.Copy())
+	} else {
+		expBuildList := make([]*Validator, len(buildList)+1)
+		copy(expBuildList[:index], buildList[:index])
+		expBuildList[index] = val.Copy()
+		copy(expBuildList[index+1:], buildList[index:])
+		buildList = expBuildList
+	}
+	return nil, buildList
+}
+
+// Checks changes against duplicates, splits the changes in updates and removals, sorts them by address
+func processChanges(changes []*Validator) (error, []*Validator, []*Validator) {
+
+	// Scan the changes, check for duplicates, create updated and removals lists sorted by validator address.
+	removals := make([]*Validator, 0)
+	updates := make([]*Validator, 0)
+	var err error
+
+	for _, valUpdate := range changes {
+		if valUpdate.VotingPower < 0 {
+			err := fmt.Errorf("voting power can't be negative %v", valUpdate)
+			return err, nil, nil
+		}
+		if valUpdate.VotingPower == 0 {
+			err, removals = addUniqueToSortedList(valUpdate, removals)
+			if err != nil {
+				return err, nil, removals
+			}
+			continue
+		}
+
+		err, updates = addUniqueToSortedList(valUpdate, updates)
+		if err != nil {
+			return err, updates, nil
+		}
+	}
+
+	return err, updates, removals
+}
+
+// Verifies a list of updates against a validator set, making sure the total voting power
+// would not exceed if these updates would be applied to the set.
+// Computes the proposer priority for the validators not present in the set.
+// Returns error if first step fails.
+// updates parameter must be a list of unique validators to be added or updated.
+func verifyUpdates(updates []*Validator, vals *ValidatorSet) error {
+
+	// Scan the updates, compute new total voting power, check for overflow
+	updatedVotingPower := vals.TotalVotingPower()
+
+	for _, valUpdate := range updates {
+		address := valUpdate.Address
+		_, val := vals.GetByAddress(address)
+		if val == nil { // add
+			updatedVotingPower +=  valUpdate.VotingPower
+		} else { // update
+			updatedVotingPower += valUpdate.VotingPower - val.VotingPower
+		}
+
+		overflow := updatedVotingPower > MaxTotalVotingPower || updatedVotingPower < 0
+		if overflow {
+			err := fmt.Errorf(
+				"failed to add/update validator %v. total voting power would exceed the max allowed %v",
+				valUpdate,
+				MaxTotalVotingPower)
+			return err
+		}
+	}
+
+	// Loop again and update the proposerPriority for newly added validators
+	for _, valUpdate := range updates {
+		address := valUpdate.Address
+		_, val := vals.GetByAddress(address)
+		if val == nil {
+			// add val
+			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
+			// unbond/rebond to reset their (potentially previously negative) ProposerPriority to zero.
+			//
+			// Contract: totalVotingPower < MaxTotalVotingPower to ensure ProposerPriority does
+			// not exceed the bounds of int64.
+			//
+			// Compute ProposerPriority = -1.125*totalVotingPower == -(totalVotingPower + (totalVotingPower >> 3)).
+			valUpdate.ProposerPriority = -(updatedVotingPower + (updatedVotingPower >> 3))
+		} else {
+			valUpdate.ProposerPriority = val.ProposerPriority
+		}
+	}
+
+	return nil
+}
+
+// Expects updates to be a list of updates sorted by address with no duplicates.
+// Expects the list to have been validated with validateUpdates()
+// Merges the vals' validator list with the updates list.
+func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
+
+	existing := make([]*Validator, len(vals.Validators))
+	copy(existing, vals.Validators)
+
+	merged := make([]*Validator, len(existing) + len(updates))
+	i := 0
+
+	for len(existing) > 0 && len(updates) > 0 {
+		if bytes.Compare(existing[0].Address, updates[0].Address) < 0 {
+			merged[i] = existing[0]
+			existing = existing[1:]
+		} else {
+			merged[i] = updates[0]
+			if bytes.Equal(existing[0].Address, updates[0].Address) {
+				existing = existing[1:]
+			}
+			updates = updates[1:]
+		}
+		i++
+	}
+	for j := 0; j < len(existing); j++ {
+		merged[i] = existing[j]
+		i++
+	}
+
+	for j := 0; j < len(updates); j++ {
+		merged[i] = updates[j]
+		i++
+	}
+
+	vals.Validators = merged[:i]
+	vals.totalVotingPower = 0
+}
+
+// Checks that the validators to be removed are part of the validator set.
+func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
+
+	for _, valUpdate := range deletes {
+		address := valUpdate.Address
+		_, val := vals.GetByAddress(address)
+		if val == nil {
+			return fmt.Errorf("failed to find validator %X to remove", address)
+		}
+	}
+	return nil
+}
+
+// Removes the validators specified in 'deletes' from validator set vals.
+// Should not fail as verification has been done before.
+func (vals *ValidatorSet)applyRemovals(deletes []*Validator) {
+
+	for _, valUpdate := range deletes {
+		address := valUpdate.Address
+		_, removed := vals.Remove(address)
+		if !removed {
+			// Should never happen
+			panic(fmt.Sprintf("failed to remove validator %X", address))
+		}
+	}
+}
+
+// UpdateWithChangeSet attempts to update the validator set with 'changes'
+// It performs the following steps:
+// - validates the changes making sure there are no duplicates and
+// separates them in updates and deletes
+// - verifies that applying the updates will not result in errors (e.g. overflows)
+// - verifies that applying the removals will not result in errors
+//   Note: currently an error is issued if a validator to be removed is not present in the set
+// - applies the updates against the validaor set and performs scaling of priority values
+// - applies the removals agains the validator set and performs scaling and centering of priority values
+// If error is detected during verification steps an error is returned and the validator set
+// is not changed.
+func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
+
+	if len(changes) <= 0 {
+		return nil
+	}
+
+	// check for duplicates within changes, split in sorted and deleted lists (sorted)
+	err, sorted, deletes := processChanges(changes)
+	if err != nil {
+		return err
+	}
+
+	// verify that applying the updates will not result in error
+	if err = verifyUpdates(sorted, vals); err != nil {
+		return err
+	}
+
+	// verify that applying the removals will not result in error
+	if err = verifyRemovals(deletes, vals); err != nil {
+		return err
+	}
+
+	// apply updates and rescale
+	vals.applyUpdates(sorted)
+	vals.RescalePriorities(K * vals.TotalVotingPower())
+
+	// apply removals, rescale and recenter
+	vals.applyRemovals(deletes)
+	vals.RescalePriorities(K * vals.TotalVotingPower())
+	vals.shiftByAvgProposerPriority()
+
+	return nil
 }
 
 // Verify that +2/3 of the set had signed the given signBytes.

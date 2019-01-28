@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -62,11 +63,23 @@ func (v *Validator) String() string {
 		return "nil-Validator"
 	}
 	return fmt.Sprintf("Validator{%v %v VP:%v A:%v}",
-		v.Address,
+		string(v.Address),
 		v.PubKey,
 		v.VotingPower,
 		v.ProposerPriority)
 }
+
+
+// Make pretty string for logging
+func ValidatorListString(vals []*Validator) string {
+	chunks := make([]string, len(vals))
+	for i, val := range vals {
+		chunks[i] = fmt.Sprintf("%s:%d", val.Address, val.VotingPower)
+	}
+
+	return strings.Join(chunks, ",")
+}
+
 
 // Bytes computes the unique encoding of a validator with a given voting power.
 // These are the bytes that gets hashed in consensus. It excludes address

@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -143,7 +142,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 		return state, err
 	}
 	if len(validatorUpdates) > 0 {
-		blockExec.logger.Info("Updates to validators", "updates", makeValidatorUpdatesLogString(validatorUpdates))
+		blockExec.logger.Info("Updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
 
 	// Update the state with the block and responses.
@@ -368,70 +367,6 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 	return nil
 }
 
-// If more or equal than 1/3 of total voting power changed in one block, then
-// a light client could never prove the transition externally. See
-// ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, updates []*types.Validator) error {
-	for _, valUpdate := range updates {
-		// should already have been checked
-		if valUpdate.VotingPower < 0 {
-			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
-		}
-
-		address := valUpdate.Address
-		_, val := currentSet.GetByAddress(address)
-		// valUpdate.VotingPower is ensured to be non-negative in validation method
-		if valUpdate.VotingPower == 0 { // remove val
-			_, removed := currentSet.Remove(address)
-			if !removed {
-				return fmt.Errorf("Failed to remove validator %X", address)
-			}
-		} else if val == nil { // add val
-			// make sure we do not exceed MaxTotalVotingPower by adding this validator:
-			totalVotingPower := currentSet.TotalVotingPower()
-			updatedVotingPower := valUpdate.VotingPower + totalVotingPower
-			overflow := updatedVotingPower > types.MaxTotalVotingPower || updatedVotingPower < 0
-			if overflow {
-				return fmt.Errorf(
-					"Failed to add new validator %v. Adding it would exceed max allowed total voting power %v",
-					valUpdate,
-					types.MaxTotalVotingPower)
-			}
-			// TODO: issue #1558 update spec according to the following:
-			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
-			// unbond/rebond to reset their (potentially previously negative) ProposerPriority to zero.
-			//
-			// Contract: totalVotingPower < MaxTotalVotingPower to ensure ProposerPriority does
-			// not exceed the bounds of int64.
-			//
-			// Compute ProposerPriority = -1.125*totalVotingPower == -(totalVotingPower + (totalVotingPower >> 3)).
-			valUpdate.ProposerPriority = -(totalVotingPower + (totalVotingPower >> 3))
-			added := currentSet.Add(valUpdate)
-			if !added {
-				return fmt.Errorf("Failed to add new validator %v", valUpdate)
-			}
-		} else { // update val
-			// make sure we do not exceed MaxTotalVotingPower by updating this validator:
-			totalVotingPower := currentSet.TotalVotingPower()
-			curVotingPower := val.VotingPower
-			updatedVotingPower := totalVotingPower - curVotingPower + valUpdate.VotingPower
-			overflow := updatedVotingPower > types.MaxTotalVotingPower || updatedVotingPower < 0
-			if overflow {
-				return fmt.Errorf(
-					"Failed to update existing validator %v. Updating it would exceed max allowed total voting power %v",
-					valUpdate,
-					types.MaxTotalVotingPower)
-			}
-
-			updated := currentSet.Update(valUpdate)
-			if !updated {
-				return fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
-			}
-		}
-	}
-	return nil
-}
-
 // updateState returns a new State updated according to the header and responses.
 func updateState(
 	state State,
@@ -448,7 +383,8 @@ func updateState(
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
-		err := updateValidators(nValSet, validatorUpdates)
+		//err := nValSet.UpdateWithChangeSet(validatorUpdates)
+		err := nValSet.UpdateWithChangeList(validatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
@@ -551,14 +487,4 @@ func ExecCommitBlock(
 	}
 	// ResponseCommit has no error or log, just data
 	return res.Data, nil
-}
-
-// Make pretty string for validatorUpdates logging
-func makeValidatorUpdatesLogString(vals []*types.Validator) string {
-	chunks := make([]string, len(vals))
-	for i, val := range vals {
-		chunks[i] = fmt.Sprintf("%s:%d", val.Address, val.VotingPower)
-	}
-
-	return strings.Join(chunks, ",")
 }

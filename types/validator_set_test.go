@@ -599,3 +599,61 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	err = vset.VerifyCommit(chainID, blockID, height, commit)
 	assert.Nil(t, err)
 }
+
+
+func TestValidatorUpdates(t *testing.T) {
+
+	valList := make([]*Validator, 2)
+	for i, _ := range valList {
+		valList[i] = newValidator(
+			[]byte(fmt.Sprintf("a%v", i)),
+			 200)
+	}
+	vals := NewValidatorSet(valList)
+
+	// Change priorities
+	for _, val := range valList {
+		val.VotingPower = 10
+	}
+	vals.UpdateWithChangeSet(valList)
+	assert.Nil(t, verifyValidatorSet(vals, 20))
+
+	// Add new validators
+	newVals := make([]*Validator, 2)
+	for i, _ := range newVals {
+		newVals[i] = newValidator(
+			[]byte(fmt.Sprintf("a%v", i+10)),
+			200)
+	}
+	vals.UpdateWithChangeSet(newVals)
+	assert.Nil(t, verifyValidatorSet(vals, 420))
+
+	// delete vals
+	for _, val := range newVals {
+		val.VotingPower = 0
+	}
+	vals.UpdateWithChangeSet(newVals)
+	assert.Nil(t, verifyValidatorSet(vals, 20))
+
+}
+
+func getTotalProposerPriority (vals *ValidatorSet) int64 {
+	sum := int64(0)
+	for _, val := range vals.Validators {
+		sum += val.ProposerPriority
+	}
+	return sum
+}
+
+func verifyValidatorSet (vals *ValidatorSet, tvp int64) error {
+
+	if vals.totalVotingPower != tvp {
+		return fmt.Errorf("expected %d. Got %d, vset=%s", tvp, vals.TotalVotingPower(), vals)
+	}
+	l := int64(len(vals.Validators))
+	tpp := getTotalProposerPriority(vals)
+	if  tpp > l || tpp < -l {
+		return fmt.Errorf("expected total prio in (-%d, %d). Got %d", l, l, tpp)
+	}
+	return nil
+}
