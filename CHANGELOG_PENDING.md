@@ -20,4 +20,7 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 
+- [tools] Adds tm-signer-harness test harness for remote signers
+
+
 ### BUG FIXES:
