@@ -19,8 +19,8 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [tools] add go-deadlock tool to help detect deadlocks
 
+- [tools] add go-deadlock tool to help detect deadlocks
 - [tools] Adds tm-signer-harness test harness for remote signers
 
 
