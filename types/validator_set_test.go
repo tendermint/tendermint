@@ -623,6 +623,14 @@ func TestValidatorUpdates(t *testing.T) {
 	assert.NotNil(t, vals.UpdateWithChangeSet(valList))
 	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
 
+	// Verify overflows are caught and vals is not modified
+	v1 = newValidator([]byte("v3"), 10)
+	v2 = newValidator([]byte("v2"), math.MaxInt64)
+	valList = []*Validator{v1, v2}
+	valsc = vals.Copy()
+	assert.NotNil(t, vals.UpdateWithChangeSet(valList))
+	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
+
 	// Verify duplicate removes are caught and vals is not modified
 	v2 = newValidator([]byte("v2"), 0)
 	valList = []*Validator{v2, v2}

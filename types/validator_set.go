@@ -456,11 +456,8 @@ func processChanges(changes []*Validator) (error, []*Validator, []*Validator) {
 	var err error
 	prevAddr := []byte(nil)
 
-	for i, valUpdate := range changes {
-		if i == 0 {
-			prevAddr = valUpdate.Address
-		}
-		if bytes.Equal(valUpdate.Address, prevAddr) && i != 0 {
+	for _, valUpdate := range changes {
+		if bytes.Equal(valUpdate.Address, prevAddr) {
 			err := fmt.Errorf("duplicate entry %v in changes list %v", valUpdate, changes)
 			return err, nil, nil
 		}
@@ -516,7 +513,7 @@ func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorS
 		if val == nil {
 			// add val
 			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
-			// unbond/rebond to reset their (potentially previously negative) ProposerPriority to zero.
+			// un-bond and then re-bond to reset their (potentially previously negative) ProposerPriority to zero.
 			//
 			// Contract: totalVotingPower < MaxTotalVotingPower to ensure ProposerPriority does
 			// not exceed the bounds of int64.
@@ -535,7 +532,7 @@ func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorS
 // When two elements with same address are seen, the one from updates is selected.
 // Expects updates to be a list of updates sorted by address with no duplicates,
 // and to have been validated with validateUpdates().
-// The validator's priorites in 'updates' should be already computed.
+// The validator's priorities in 'updates' should be already computed.
 func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 
 	existing := make([]*Validator, len(vals.Validators))
