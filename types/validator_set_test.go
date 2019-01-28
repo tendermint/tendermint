@@ -630,8 +630,7 @@ func TestValidatorUpdates(t *testing.T) {
 	assert.NotNil(t, vals.UpdateWithChangeSet(valList))
 	assert.Nil(t, verifyValidatorSetEquiv(vals, valsc))
 
-
-	// Verify a duplicat accross removes and adds is caught and vals is not modified
+	// Verify a duplicate address across removes and adds is caught and vals is not modified
 	v2d := newValidator([]byte("v2"), 0)
 	v2m := newValidator([]byte("v2"), 10)
 	valList = []*Validator{v2d, v2m}
@@ -784,4 +783,25 @@ func verifyValidatorSet (vals *ValidatorSet) error {
 		return fmt.Errorf("expected prio dist < %d. Got %d", K * tvp, dist)
 	}
 	return nil
+}
+
+func BenchmarkUpdates(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		// Init with n validators
+		n := 100
+		vs := make([]*Validator, n)
+		for j := 0; j < n; j++ {
+			vs[j] = newValidator([]byte(fmt.Sprintf("v%d", j)), 100)
+		}
+		vals := NewValidatorSet(vs)
+		assert.Nil(b, verifyValidatorSet(vals))
+		len := len(vals.Validators)
+		// Add m validators
+		m := 2000
+		nvs := make([]*Validator, m)
+		for j := 0; j < m; j++ {
+			nvs[j] = newValidator([]byte(fmt.Sprintf("v%d", j+len)), 1000)
+		}
+		assert.Nil(b, vals.UpdateWithChangeSet(nvs))
+	}
 }

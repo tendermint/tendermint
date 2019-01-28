@@ -447,74 +447,35 @@ func (currentSet *ValidatorSet) UpdateWithChangeList(updates []*Validator) error
 	return nil
 }
 
-// Used for checking duplicates
-// Returns:
-// - the index in vlist where address is or where it should exist if it would be added
-// - true if address is present in vlist, false otherwise
-func findIndexForAddress(address []byte, vlist []*Validator) (int, bool) {
-	idx := sort.Search(len(vlist), func(i int) bool {
-		return bytes.Compare(address, vlist[i].Address) <= 0
-	})
-
-	if idx < len(vlist) && bytes.Equal(vlist[idx].Address, address) {
-		return idx, true
-	}
-	return idx, false
-}
-
-// Adds val to tolist if not present in 'tolist' or 'other'
-// Returns:
-// - err, non nil, if val already in 'tolist' or 'other'
-// - the updated 'tolist' including val if no error, old 'tolist' otherwise
-func addUniqueToSortedList (val *Validator, tolist []*Validator, other []*Validator ) (error, []*Validator) {
-
-	index, exists := findIndexForAddress(val.Address, other)
-	if exists {
-		err := fmt.Errorf("duplicate entry %v in vlist %v", val, other)
-		return err, tolist
-	}
-
-	index, exists = findIndexForAddress(val.Address, tolist)
-	if exists {
-		err := fmt.Errorf("duplicate entry %v in vlist %v", val, tolist)
-		return err, tolist
-	}
-
-	expList := make([]*Validator, len(tolist)+1)
-	copy(expList[:index], tolist[:index])
-	expList[index] = val.Copy()
-	if index <= len(tolist) {
-		copy(expList[index+1:], tolist[index:])
-	}
-	return nil, expList
-}
-
 // Checks changes against duplicates, splits the changes in updates and removals, sorts them by address
 func processChanges(changes []*Validator) (error, []*Validator, []*Validator) {
 
+	sort.Sort(ValidatorsByAddress(changes))
 	removals := make([]*Validator, 0)
 	updates := make([]*Validator, 0)
 	var err error
+	prevAddr := []byte(nil)
 
-	for _, valUpdate := range changes {
+	for i, valUpdate := range changes {
+		if i == 0 {
+			prevAddr = valUpdate.Address
+		}
+		if bytes.Equal(valUpdate.Address, prevAddr) && i != 0 {
+			err := fmt.Errorf("duplicate entry %v in changes list %v", valUpdate, changes)
+			return err, nil, nil
+		}
 		if valUpdate.VotingPower < 0 {
 			err := fmt.Errorf("voting power can't be negative %v", valUpdate)
 			return err, nil, nil
 		}
 		if valUpdate.VotingPower == 0 {
-			// Add valUpdate to removals if not already present in either removals or updates
-			err, removals = addUniqueToSortedList(valUpdate, removals, updates)
-			if err != nil {
-				return err, nil, nil
-			}
-			continue
+			// Add valUpdate to removals
+			removals = append(removals, valUpdate)
+		} else {
+			// Add valUpdate to updates
+			updates = append(updates, valUpdate)
 		}
-
-		// Add valUpdate to updates if not already present in either updates or removals
-		err, updates = addUniqueToSortedList(valUpdate, updates, removals)
-		if err != nil {
-			return err, updates, nil
-		}
+		prevAddr = valUpdate.Address
 	}
 	return err, updates, removals
 }
