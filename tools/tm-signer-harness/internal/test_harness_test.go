@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 
@@ -87,6 +88,60 @@ func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
 }
 
 func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
+	harnessTest(
+		t,
+		func(th *TestHarness) *privval.RemoteSigner {
+			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, false, false)
+		},
+		NoError,
+	)
+}
+
+func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
+	harnessTest(
+		t,
+		func(th *TestHarness) *privval.RemoteSigner {
+			return newMockRemoteSigner(t, th, ed25519.GenPrivKey(), false, false)
+		},
+		ErrTestPublicKeyFailed,
+	)
+}
+
+func TestRemoteSignerProposalSigningFailed(t *testing.T) {
+	harnessTest(
+		t,
+		func(th *TestHarness) *privval.RemoteSigner {
+			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, true, false)
+		},
+		ErrTestSignProposalFailed,
+	)
+}
+
+func TestRemoteSignerVoteSigningFailed(t *testing.T) {
+	harnessTest(
+		t,
+		func(th *TestHarness) *privval.RemoteSigner {
+			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, false, true)
+		},
+		ErrTestSignVoteFailed,
+	)
+}
+
+func newMockRemoteSigner(t *testing.T, th *TestHarness, privKey crypto.PrivKey, breakProposalSigning bool, breakVoteSigning bool) *privval.RemoteSigner {
+	return privval.NewRemoteSigner(
+		th.logger,
+		th.chainID,
+		types.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning),
+		privval.DialTCPFn(
+			th.addr,
+			time.Duration(defaultConnDeadline)*time.Millisecond,
+			ed25519.GenPrivKey(),
+		),
+	)
+}
+
+// For running relatively standard tests.
+func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.RemoteSigner, expectedExitCode int) {
 	cfg := makeConfig(t, 100, 3)
 	defer cleanup(cfg)
 
@@ -98,26 +153,13 @@ func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 		th.Run()
 	}()
 
-	rs := newMockRemoteSigner(t, th)
+	rs := rsMaker(th)
 	assert.NoError(t, rs.Start())
 	assert.True(t, rs.IsRunning())
 	defer rs.Stop()
 
 	<-donec
-	assert.Equal(t, NoError, th.exitCode)
-}
-
-func newMockRemoteSigner(t *testing.T, th *TestHarness) *privval.RemoteSigner {
-	return privval.NewRemoteSigner(
-		th.logger,
-		th.chainID,
-		types.NewMockPVWithPrivKey(th.fpv.Key.PrivKey),
-		privval.DialTCPFn(
-			th.addr,
-			time.Duration(defaultConnDeadline)*time.Millisecond,
-			ed25519.GenPrivKey(),
-		),
-	)
+	assert.Equal(t, expectedExitCode, th.exitCode)
 }
 
 func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConfig {
