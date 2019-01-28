@@ -51,3 +51,8 @@ installFromGithub golang/dep 22125cfaa6ddc71e145b1535d4b7ee9744fefff2 cmd/dep
 installFromGithub alecthomas/gometalinter 17a7ffa42374937bfecabfb8d2efbd4db0c26741
 installFromGithub gogo/protobuf 61dbc136cf5d2f08d68a011382652244990a53a9 protoc-gen-gogo
 installFromGithub square/certstrap e27060a3643e814151e65b9807b6b06d169580a7
+
+## make test_with_deadlock
+installFromGithub petermattis/goid b0b1615b78e5ee59739545bb38426383b2cda4c9
+installFromGithub sasha-s/go-deadlock d68e2bc52ae3291765881b9056f2c1527f245f1e
+go get golang.org/x/tools/cmd/goimports
