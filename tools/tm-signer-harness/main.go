@@ -138,17 +138,17 @@ func extractKey(tmhome, outputPath string) {
 }
 
 func main() {
-	flag.Parse()
-	if flag.NArg() == 0 || (flag.NArg() == 1 && flag.Arg(0) == "help") {
+	rootCmd.Parse(os.Args[1:])
+	if rootCmd.NArg() == 0 || (rootCmd.NArg() == 1 && rootCmd.Arg(0) == "help") {
 		rootCmd.Usage()
 		os.Exit(0)
 	}
 
 	logger = log.NewFilter(logger, log.AllowInfo())
 
-	switch flag.Arg(0) {
+	switch rootCmd.Arg(0) {
 	case "help":
-		switch flag.Arg(1) {
+		switch rootCmd.Arg(1) {
 		case "run":
 			runCmd.Usage()
 		case "extract_key":
@@ -156,7 +156,7 @@ func main() {
 		case "version":
 			versionCmd.Usage()
 		default:
-			fmt.Printf("Unrecognized command: %s\n", flag.Arg(1))
+			fmt.Printf("Unrecognized command: %s\n", rootCmd.Arg(1))
 			os.Exit(1)
 		}
 	case "run":
