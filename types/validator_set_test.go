@@ -603,38 +603,84 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 
 func TestValidatorUpdates(t *testing.T) {
 
-	valList := make([]*Validator, 2)
-	for i, _ := range valList {
-		valList[i] = newValidator(
-			[]byte(fmt.Sprintf("a%v", i)),
-			 200)
-	}
+	v1 := newValidator([]byte("v1"), 100)
+	v2 := newValidator([]byte("v2"), 100)
+	valList := []*Validator{v1, v2}
 	vals := NewValidatorSet(valList)
+	assert.Nil(t, verifyValidatorSet(vals))
 
 	// Change priorities
-	for _, val := range valList {
-		val.VotingPower = 10
-	}
+	v1 = newValidator([]byte("v1"), 10)
+	v2 = newValidator([]byte("v2"), 10)
+	valList = []*Validator{v1, v2}
+
 	vals.UpdateWithChangeSet(valList)
-	assert.Nil(t, verifyValidatorSet(vals, 20))
+	assert.Nil(t, verifyValidatorSet(vals))
 
 	// Add new validators
-	newVals := make([]*Validator, 2)
-	for i, _ := range newVals {
-		newVals[i] = newValidator(
-			[]byte(fmt.Sprintf("a%v", i+10)),
-			200)
-	}
+	v3 := newValidator([]byte("v3"), 200)
+	v4 := newValidator([]byte("v4"), 200)
+	newVals := []*Validator{v3, v4}
+
 	vals.UpdateWithChangeSet(newVals)
-	assert.Nil(t, verifyValidatorSet(vals, 420))
+	assert.Nil(t, verifyValidatorSet(vals))
 
 	// delete vals
-	for _, val := range newVals {
-		val.VotingPower = 0
-	}
-	vals.UpdateWithChangeSet(newVals)
-	assert.Nil(t, verifyValidatorSet(vals, 20))
+	v3 = newValidator([]byte("v3"), 0)
+	v4 = newValidator([]byte("v4"), 0)
+	delVals := []*Validator{v3, v4}
 
+	vals.UpdateWithChangeSet(delVals)
+	assert.Nil(t, verifyValidatorSet(vals))
+
+	// verify order does not matter when we add
+	// Add new validators
+	vals1 := vals.Copy()
+	vals2 := vals.Copy()
+	v3 = newValidator([]byte("v3"), 333)
+	v4 = newValidator([]byte("v4"), 444)
+	newVals = []*Validator{v3, v4}
+	vals1.UpdateWithChangeSet(delVals)
+	assert.Nil(t, verifyValidatorSet(vals1))
+	newVals = []*Validator{v4, v3}
+	vals2.UpdateWithChangeSet(delVals)
+	assert.Nil(t, verifyValidatorSet(vals2))
+	assert.Nil(t, verifyValidatorSetEquiv(vals1, vals2))
+
+}
+
+func verifyValidatorEquiv(val1, val2 *Validator) error {
+	if !bytes.Equal(val1.Address, val2.Address) || val1.VotingPower != val2.VotingPower {
+		return fmt.Errorf("validators %s and %s are different", val1, val2)
+	}
+	return nil
+}
+
+func verifyValidatorSetEquiv(vals1, vals2 *ValidatorSet) error {
+	if len(vals1.Validators) != len(vals2.Validators) {
+		return fmt.Errorf("validator sets %s, %s don't have same num of vals", vals1, vals2)
+	}
+	if getTotalVotingPower(vals1) != getTotalVotingPower(vals2) {
+		return fmt.Errorf("validator sets %s, %s don't have the same total voting power", vals1, vals2)
+	}
+	if getTotalProposerPriority(vals1) != getTotalProposerPriority(vals2) {
+		return fmt.Errorf("validator sets %s, %s don't have the same total priorities", vals1, vals2)
+	}
+	for i, val1 := range vals1.Validators {
+		val2 :=  vals2.Validators[i]
+		if err := verifyValidatorEquiv(val1, val2); err != nil {
+			return fmt.Errorf("validator at index %d are different: %s", i, err)
+		}
+	}
+	return nil
+}
+
+func getTotalVotingPower (vals *ValidatorSet) int64 {
+	sum := int64(0)
+	for _, val := range vals.Validators {
+		sum += val.VotingPower
+	}
+	return sum
 }
 
 func getTotalProposerPriority (vals *ValidatorSet) int64 {
@@ -645,15 +691,22 @@ func getTotalProposerPriority (vals *ValidatorSet) int64 {
 	return sum
 }
 
-func verifyValidatorSet (vals *ValidatorSet, tvp int64) error {
-
+func verifyValidatorSet (vals *ValidatorSet) error {
+	// verify that the vals' tvp is set to the sum of the all vals voting powers
+	tvp := getTotalVotingPower(vals)
 	if vals.totalVotingPower != tvp {
-		return fmt.Errorf("expected %d. Got %d, vset=%s", tvp, vals.TotalVotingPower(), vals)
+		return fmt.Errorf("expected %d. Got %d, vset=%s", tvp, vals.totalVotingPower, vals)
 	}
+	// verify that validator priorities are centered
 	l := int64(len(vals.Validators))
 	tpp := getTotalProposerPriority(vals)
 	if  tpp > l || tpp < -l {
 		return fmt.Errorf("expected total prio in (-%d, %d). Got %d", l, l, tpp)
+	}
+	// verify priorities are scaled
+	dist := computeMaxMinPriorityDiff(vals)
+	if dist > K * tvp {
+		return fmt.Errorf("expected prio dist < %d. Got %d", K * tvp, dist)
 	}
 	return nil
 }
