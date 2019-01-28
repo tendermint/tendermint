@@ -12,7 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/test"
+	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
