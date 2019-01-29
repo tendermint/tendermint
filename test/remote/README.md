@@ -27,14 +27,6 @@ following:
 make deploy:001-reference
 ```
 
-To override the specific set of hosts we will use for deployment of the test
-network, simply do the following:
-
-```bash
-INVENTORY=inventory/aws-network-01 \
-    make deploy:001-reference
-```
-
 ## Executing test scenarios
 To execute a particular testing scenario, simply:
 
