@@ -20,12 +20,6 @@ func TestValidatorSetBasic(t *testing.T) {
 	// empty or nil validator lists are allowed,
 	// but attempting to IncrementProposerPriority on them will panic.
 	vset := NewValidatorSet([]*Validator{})
-	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
-
-	vset = NewValidatorSet(nil)
-	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
-
-	assert.EqualValues(t, vset, vset.Copy())
 	assert.False(t, vset.HasAddress([]byte("some val")))
 	idx, val := vset.GetByAddress([]byte("some val"))
 	assert.Equal(t, -1, idx)
@@ -600,6 +594,39 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestEmptySet(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("The code paniced")
+		}
+	}()
+
+	valList := []*Validator{}
+	vals := NewValidatorSet(valList)
+	vals.IncrementProposerPriority(1)
+	vals.RescalePriorities(100)
+	vals.shiftByAvgProposerPriority()
+	assert.Zero(t, computeMaxMinPriorityDiff(vals))
+	vals.GetProposer()
+
+	// Add to empty set
+	v1 := newValidator([]byte("v1"), 100)
+	v2 := newValidator([]byte("v2"), 100)
+	valList = []*Validator{v1, v2}
+	assert.Nil(t, vals.UpdateWithChangeSet(valList))
+	assert.Nil(t, verifyValidatorSet(vals))
+
+	// Delete all validators from set
+	v1 = newValidator([]byte("v1"), 0)
+	v2 = newValidator([]byte("v2"), 0)
+	delList := []*Validator{v1, v2}
+	assert.Nil(t, vals.UpdateWithChangeSet(delList))
+	assert.Nil(t, verifyValidatorSet(vals))
+
+	// Attempt delete from empty set
+	assert.NotNil(t, vals.UpdateWithChangeSet(delList))
+	assert.Nil(t, verifyValidatorSet(vals))
+}
 
 func TestValidatorUpdates(t *testing.T) {
 
@@ -609,7 +636,7 @@ func TestValidatorUpdates(t *testing.T) {
 	vals := NewValidatorSet(valList)
 	assert.Nil(t, verifyValidatorSet(vals))
 
-	// noop
+	// No changes
 	valList = []*Validator{}
 	valsc := vals.Copy()
 	assert.Nil(t, vals.UpdateWithChangeSet(valList))
