@@ -2,7 +2,7 @@ INVENTORY?=inventory/hosts
 
 include common/make/ansible.mk
 
-network\:%: venv/bin/ansible
+deploy\:%: venv/bin/ansible
 	@$(ACTIVATE_VENV); \
 	echo "Deploying network \"$*\"..."; \
 	cd networks/$*/; \

@@ -9,10 +9,11 @@ scenarios is [Ansible](https://docs.ansible.com/ansible/latest/).
 Following is a description of this folder's layout:
 
 ```
+|_ common/           Common `make` and Ansible includes
+|_ inventory/        Where to store all of your Ansible host inventory files
 |_ networks/         The different remote network configurations
 |_ scenarios/        The different testing scenarios from the client side
-|_ inventory/        Where to store all of your host inventory files
-|_ Makefile          The primary Makefile for executing the different scenarios
+|_ Makefile          The primary Makefile for executing the different network deployments and scenarios
 ```
 
 ## Requirements
@@ -23,7 +24,7 @@ To deploy a particular test network to the relevant hosts, simply do the
 following:
 
 ```bash
-make network:001-reference
+make deploy:001-reference
 ```
 
 To override the specific set of hosts we will use for deployment of the test
@@ -31,7 +32,7 @@ network, simply do the following:
 
 ```bash
 INVENTORY=inventory/aws-network-01 \
-    make network:001-reference
+    make deploy:001-reference
 ```
 
 ## Executing test scenarios
