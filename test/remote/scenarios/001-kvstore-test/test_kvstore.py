@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Test script for interacting with the Tendermint kvstore application
 
 import os
@@ -8,10 +9,11 @@ import base64
 import requests
 
 
-def test_kvstore(host_addr):
+def test_kvstore(put_host_addr, get_host_addr):
     """Executes a simple test against the key/value store running on the given
     Tendermint node."""
-    url = "http://%s" % host_addr
+
+    url = "http://%s" % put_host_addr
     # generate a random hex value to send through to the kv store
     test_value = binascii.b2a_hex(os.urandom(15)).decode('utf-8')
     payload = {'tx': '"test_value=%s"' % test_value}
@@ -21,6 +23,7 @@ def test_kvstore(host_addr):
         return 2
 
     # now try to fetch the value
+    url = "http://%s" % get_host_addr
     payload = {'data': '"test_value"'}
     r = requests.get(url+'/abci_query', params=payload)
     if r.status_code >= 400:
@@ -37,10 +40,10 @@ def test_kvstore(host_addr):
     return 0
 
 def main():
-    if len(sys.argv) > 1:
-        sys.exit(test_kvstore(sys.argv[1]))
+    if len(sys.argv) > 2:
+        sys.exit(test_kvstore(sys.argv[1], sys.argv[2]))
     else:
-        print("Missing parameter: target host/port")
+        print("Usage: test_kvstore.py <put_host> <get_host>")
         sys.exit(1)
 
 
