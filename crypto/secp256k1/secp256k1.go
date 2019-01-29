@@ -9,9 +9,7 @@ import (
 
 	"golang.org/x/crypto/ripemd160"
 
-	secp256k1 "github.com/btcsuite/btcd/btcec"
-
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	secp256k1wrap "github.com/tendermint/tendermint/crypto/secp256k1/wrapper"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -49,7 +47,7 @@ func (privKey PrivKeySecp256k1) Bytes() []byte {
 
 // Sign creates an ECDSA signature on curve Secp256k1, using SHA256 on the msg.
 func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
-	priv, _ := secp256k1wrap.PrivKeyFromBytes(secp256k1.S256(), privKey[:])
+	priv, _ := secp256k1wrap.PrivKeyFromBytes(secp256k1wrap.S256(), privKey[:])
 	sig, err := priv.Sign(crypto.Sha256(msg))
 	if err != nil {
 		return nil, err
@@ -60,7 +58,7 @@ func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
 // PubKey performs the point-scalar multiplication from the privKey on the
 // generator point to get the pubkey.
 func (privKey PrivKeySecp256k1) PubKey() crypto.PubKey {
-	_, pubkeyObject := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey[:])
+	_, pubkeyObject := secp256k1wrap.PrivKeyFromBytes(secp256k1wrap.S256(), privKey[:])
 	var pubkeyBytes PubKeySecp256k1
 	copy(pubkeyBytes[:], pubkeyObject.SerializeCompressed())
 	return pubkeyBytes
@@ -141,11 +139,11 @@ func (pubKey PubKeySecp256k1) Bytes() []byte {
 }
 
 func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sig []byte) bool {
-	pub, err := secp256k1.ParsePubKey(pubKey[:], secp256k1.S256())
+	pub, err := secp256k1wrap.ParsePubKey(pubKey[:], secp256k1wrap.S256())
 	if err != nil {
 		return false
 	}
-	parsedSig, err := secp256k1wrap.ParseSignature(sig[:], secp256k1.S256())
+	parsedSig, err := secp256k1wrap.ParseSignature(sig[:], secp256k1wrap.S256())
 	if err != nil {
 		return false
 	}

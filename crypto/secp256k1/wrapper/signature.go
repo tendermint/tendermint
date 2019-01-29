@@ -60,11 +60,11 @@ func ParseSignature(sigStr []byte, curve elliptic.Curve) (*Signature, error) {
 	return signature, nil
 }
 
-func (sig *Signature) Verify(hash []byte, pubKey *secp256k1.PublicKey) bool {
+func (sig *Signature) Verify(hash []byte, pubKey *PublicKey) bool {
 	if sig.S.Cmp(s256halfOrder) > 0 {
 		return false
 	}
-	return sig.Signature.Verify(hash, pubKey)
+	return sig.Signature.Verify(hash, (*secp256k1.PublicKey)(pubKey))
 }
 
 func S256() *secp256k1.KoblitzCurve {
