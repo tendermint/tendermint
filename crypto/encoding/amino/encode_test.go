@@ -128,18 +128,18 @@ func TestPubKeyInvalidDataProperReturnsEmpty(t *testing.T) {
 	require.Nil(t, pk)
 }
 
-func TestPubkeyAminoRoute(t *testing.T) {
+func TestPubkeyAminoName(t *testing.T) {
 	tests := []struct {
 		key   crypto.PubKey
 		want  string
 		found bool
 	}{
-		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoRoute, true},
-		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoRoute, true},
-		{&multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
+		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoName, true},
+		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoName, true},
+		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
 	}
 	for i, tc := range tests {
-		got, found := PubkeyAminoRoute(cdc, tc.key)
+		got, found := PubkeyAminoName(cdc, tc.key)
 		require.Equal(t, tc.found, found, "not equal on tc %d", i)
 		if tc.found {
 			require.Equal(t, tc.want, got, "not equal on tc %d", i)

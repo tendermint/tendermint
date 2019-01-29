@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -95,7 +96,10 @@ log_format = "{{ .BaseConfig.LogFormat }}"
 genesis_file = "{{ js .BaseConfig.Genesis }}"
 
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv_validator_file = "{{ js .BaseConfig.PrivValidator }}"
+priv_validator_key_file = "{{ js .BaseConfig.PrivValidatorKey }}"
+
+# Path to the JSON file containing the last sign state of a validator
+priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 
 # TCP or UNIX socket address for Tendermint to listen on for
 # connections from an external PrivValidator process
@@ -314,6 +318,10 @@ namespace = "{{ .Instrumentation.Namespace }}"
 /****** these are for test settings ***********/
 
 func ResetTestRoot(testName string) *Config {
+	return ResetTestRootWithChainID(testName, "")
+}
+
+func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	rootDir := os.ExpandEnv("$HOME/.tendermint_test")
 	rootDir = filepath.Join(rootDir, testName)
 	// Remove ~/.tendermint_test_bak
@@ -342,25 +350,31 @@ func ResetTestRoot(testName string) *Config {
 	baseConfig := DefaultBaseConfig()
 	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
 	genesisFilePath := filepath.Join(rootDir, baseConfig.Genesis)
-	privFilePath := filepath.Join(rootDir, baseConfig.PrivValidator)
+	privKeyFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorKey)
+	privStateFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorState)
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
 		writeDefaultConfigFile(configFilePath)
 	}
 	if !cmn.FileExists(genesisFilePath) {
+		if chainID == "" {
+			chainID = "tendermint_test"
+		}
+		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
 	}
 	// we always overwrite the priv val
-	cmn.MustWriteFile(privFilePath, []byte(testPrivValidator), 0644)
+	cmn.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
+	cmn.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
 
 	config := TestConfig().SetRoot(rootDir)
 	return config
 }
 
-var testGenesis = `{
+var testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
-  "chain_id": "tendermint_test",
+  "chain_id": "%s",
   "validators": [
     {
       "pub_key": {
@@ -374,7 +388,7 @@ var testGenesis = `{
   "app_hash": ""
 }`
 
-var testPrivValidator = `{
+var testPrivValidatorKey = `{
   "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
   "pub_key": {
     "type": "tendermint/PubKeyEd25519",
@@ -383,8 +397,11 @@ var testPrivValidator = `{
   "priv_key": {
     "type": "tendermint/PrivKeyEd25519",
     "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
-  },
-  "last_height": "0",
-  "last_round": "0",
-  "last_step": 0
+  }
+}`
+
+var testPrivValidatorState = `{
+  "height": "0",
+  "round": "0",
+  "step": 0
 }`

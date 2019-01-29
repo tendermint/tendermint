@@ -7,8 +7,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tendermint/go-amino"
-
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -142,14 +141,15 @@ func TestABCIEvidence(t *testing.T) {
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
+	pubKey := val.GetPubKey()
 	ev := &DuplicateVoteEvidence{
-		PubKey: val.GetPubKey(),
+		PubKey: pubKey,
 		VoteA:  makeVote(val, chainID, 0, 10, 2, 1, blockID),
 		VoteB:  makeVote(val, chainID, 0, 10, 2, 1, blockID2),
 	}
 	abciEv := TM2PB.Evidence(
 		ev,
-		NewValidatorSet([]*Validator{NewValidator(val.GetPubKey(), 10)}),
+		NewValidatorSet([]*Validator{NewValidator(pubKey, 10)}),
 		time.Now(),
 	)
 

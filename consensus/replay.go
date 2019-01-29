@@ -6,6 +6,7 @@ import (
 	"hash/crc32"
 	"io"
 	"reflect"
+
 	//"strconv"
 	//"strings"
 	"time"
@@ -196,6 +197,7 @@ type Handshaker struct {
 	stateDB      dbm.DB
 	initialState sm.State
 	store        sm.BlockStore
+	eventBus     types.BlockEventPublisher
 	genDoc       *types.GenesisDoc
 	logger       log.Logger
 
@@ -209,6 +211,7 @@ func NewHandshaker(stateDB dbm.DB, state sm.State,
 		stateDB:      stateDB,
 		initialState: state,
 		store:        store,
+		eventBus:     types.NopEventBus{},
 		genDoc:       genDoc,
 		logger:       log.NewNopLogger(),
 		nBlocks:      0,
@@ -217,6 +220,12 @@ func NewHandshaker(stateDB dbm.DB, state sm.State,
 
 func (h *Handshaker) SetLogger(l log.Logger) {
 	h.logger = l
+}
+
+// SetEventBus - sets the event bus for publishing block related events.
+// If not called, it defaults to types.NopEventBus.
+func (h *Handshaker) SetEventBus(eventBus types.BlockEventPublisher) {
+	h.eventBus = eventBus
 }
 
 func (h *Handshaker) NBlocks() int {
@@ -432,6 +441,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	meta := h.store.LoadBlockMeta(height)
 
 	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, sm.MockMempool{}, sm.MockEvidencePool{})
+	blockExec.SetEventBus(h.eventBus)
 
 	var err error
 	state, err = blockExec.ApplyBlock(state, meta.BlockID, block)

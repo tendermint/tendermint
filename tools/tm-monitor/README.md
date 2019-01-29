@@ -3,7 +3,7 @@
 Tendermint blockchain monitoring tool; watches over one or more nodes,
 collecting and providing various statistics to the user:
 
-- https://github.com/tendermint/tools/tree/master/tm-monitor
+- [https://github.com/tendermint/tendermint/tree/master/tools/tm-monitor](https://github.com/tendermint/tendermint/tree/master/tools/tm-monitor)
 
 ## Quick Start
 

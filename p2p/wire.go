@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 )
 

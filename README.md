@@ -1,8 +1,8 @@
 # Tendermint
 
 [Byzantine-Fault Tolerant](https://en.wikipedia.org/wiki/Byzantine_fault_tolerance)
-[State Machine Replication](https://en.wikipedia.org/wiki/State_machine_replication).
-Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)) for short.
+[State Machines](https://en.wikipedia.org/wiki/State_machine_replication).
+Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)), for short.
 
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/releases/latest)
 [![API Reference](
@@ -49,7 +49,7 @@ For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.
 
 Requirement|Notes
 ---|---
-Go version | Go1.10 or higher
+Go version | Go1.11.4 or higher
 
 ## Documentation
 
@@ -66,49 +66,26 @@ See the [install instructions](/docs/introduction/install.md)
 - [Remote cluster using terraform and ansible](/docs/networks/terraform-and-ansible.md)
 - [Join the Cosmos testnet](https://cosmos.network/testnet)
 
-## Resources
-
-### Tendermint Core
-
-For details about the blockchain data structures and the p2p protocols, see the
-the [Tendermint specification](/docs/spec).
-
-For details on using the software, see the [documentation](/docs/) which is also
-hosted at: https://tendermint.com/docs/
-
-### Tools
-
-Benchmarking and monitoring is provided by `tm-bench` and `tm-monitor`, respectively.
-Their code is found [here](/tools) and these binaries need to be built seperately.
-Additional documentation is found [here](/docs/tools).
-
-### Sub-projects
-
-* [Amino](http://github.com/tendermint/go-amino), a reflection-based improvement on proto3
-* [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
-
-### Applications
-
-* [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
-* [Ethermint](http://github.com/cosmos/ethermint); Ethereum on Tendermint
-* [Many more](https://tendermint.com/ecosystem)
-
-### Research
-
-* [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
-* [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
-* [Original Whitepaper](https://tendermint.com/static/docs/tendermint.pdf)
-* [Blog](https://blog.cosmos.network/tendermint/home)
-
 ## Contributing
 
-Yay open source! Please see our [contributing guidelines](CONTRIBUTING.md).
+Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions,
+and the [contributing guidelines](CONTRIBUTING.md) when submitting code.
+
+Join the larger community on the [forum](https://forum.cosmos.network/) and the [chat](https://riot.im/app/#/room/#tendermint:matrix.org).
+
+To learn more about the structure of the software, watch the [Developer
+Sessions](https://www.youtube.com/playlist?list=PLdQIb0qr3pnBbG5ZG-0gr3zM86_s8Rpqv)
+and read some [Architectural
+Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
+
+Learn more by reading the code and comparing it to the
+[specification](https://github.com/tendermint/tendermint/tree/develop/docs/spec).
 
 ## Versioning
 
-### SemVer
+### Semantic Versioning
 
-Tendermint uses [SemVer](http://semver.org/) to determine when and how the version changes.
+Tendermint uses [Semantic Versioning](http://semver.org/) to determine when and how the version changes.
 According to SemVer, anything in the public API can change at any time before version 1.0.0
 
 To provide some stability to Tendermint users in these 0.X.X days, the MINOR version is used
@@ -145,8 +122,40 @@ data into the new chain.
 However, any bump in the PATCH version should be compatible with existing histories
 (if not please open an [issue](https://github.com/tendermint/tendermint/issues)).
 
-For more information on upgrading, see [here](./UPGRADING.md)
+For more information on upgrading, see [UPGRADING.md](./UPGRADING.md)
 
-## Code of Conduct
+## Resources
 
-Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).
+### Tendermint Core
+
+For details about the blockchain data structures and the p2p protocols, see the
+[Tendermint specification](/docs/spec).
+
+For details on using the software, see the [documentation](/docs/) which is also
+hosted at: https://tendermint.com/docs/
+
+### Tools
+
+Benchmarking and monitoring is provided by `tm-bench` and `tm-monitor`, respectively.
+Their code is found [here](/tools) and these binaries need to be built seperately.
+Additional documentation is found [here](/docs/tools).
+
+### Sub-projects
+
+* [Amino](http://github.com/tendermint/go-amino), reflection-based proto3, with
+  interfaces
+* [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
+
+### Applications
+
+* [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
+* [Ethermint](http://github.com/cosmos/ethermint); Ethereum on Tendermint
+* [Many more](https://tendermint.com/ecosystem)
+
+### Research
+
+* [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
+* [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
+* [Original Whitepaper](https://tendermint.com/static/docs/tendermint.pdf)
+* [Blog](https://blog.cosmos.network/tendermint/home)
+

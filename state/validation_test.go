@@ -109,10 +109,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	// A block with too much evidence fails.
 	maxBlockSize := state.ConsensusParams.BlockSize.MaxBytes
-	maxEvidenceBytes := types.MaxEvidenceBytesPerBlock(maxBlockSize)
-	maxEvidence := maxEvidenceBytes / types.MaxEvidenceBytes
-	require.True(t, maxEvidence > 2)
-	for i := int64(0); i < maxEvidence; i++ {
+	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
+	require.True(t, maxNumEvidence > 2)
+	for i := int64(0); i < maxNumEvidence; i++ {
 		block.Evidence.Evidence = append(block.Evidence.Evidence, goodEvidence)
 	}
 	block.EvidenceHash = block.Evidence.Hash()
