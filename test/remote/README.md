@@ -28,6 +28,20 @@ In order to execute the various deployments or scenarios, you will need:
 Target platform for execution of these deployments/scenarios is either
 Linux/macOS.
 
+## Managing Python dependencies
+By default, the first time you execute a deployment or a scenario, a Python 3
+virtual environment will be created in the `test/remote/venv` folder in this
+Tendermint repo. A few dependencies will also automatically be downloaded and
+installed into this virtual environment.
+
+It's probably a good idea, however, to update these dependencies (if the
+`requirements.txt` changes):
+
+```bash
+# Update Python virtual environment and dependencies
+make update_deps
+```
+
 ## Deploying test networks
 To deploy a particular test network to the relevant hosts, simply do the
 following:
