@@ -20,7 +20,7 @@ Following is a description of this folder's layout:
 In order to execute the various deployments or scenarios, you will need:
 
 * `make`
-* Python 3.7+
+* Python 3.6+
 
 Target platform for execution of these deployments/scenarios is either
 Linux/macOS.
