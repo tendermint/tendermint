@@ -10,43 +10,27 @@
 // match, this message will be pushed to all clients, subscribed to that query.
 // See query subpackage for our implementation.
 //
-// Due to the blocking send implementation, a single subscriber can freeze an
-// entire server by not reading messages before it unsubscribes. To avoid such
-// scenario, subscribers must either:
+// Example:
 //
-// a) make sure they continue to read from the out channel until
-// Unsubscribe(All) is called
-//
-//     s.Subscribe(ctx, sub, qry, out)
-//     go func() {
-//         for msg := range out {
-//             // handle msg
-//             // will exit automatically when out is closed by Unsubscribe(All)
-//         }
-//     }()
-//     s.UnsubscribeAll(ctx, sub)
-//
-// b) drain the out channel before calling Unsubscribe(All)
-//
-//     s.Subscribe(ctx, sub, qry, out)
-//     defer func() {
-//         // drain out to make sure we don't block
-//     LOOP:
-//		     for {
-// 		     	   select {
-// 		     	   case <-out:
-// 		     	   default:
-// 		     	   	   break LOOP
-// 		     	   }
-// 		     }
-//         s.UnsubscribeAll(ctx, sub)
-//     }()
-//     for msg := range out {
-//         // handle msg
-//         if err != nil {
-//            return err
-//         }
+//     q, err := query.New("account.name='John'")
+//		 if err != nil {
+//		     return err
+//		 }
+//		 ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+//     defer cancel()
+//     subscription, err := pubsub.Subscribe(ctx, "johns-transactions", q, 1)
+//     if err != nil {
+//         return err
 //     }
+//
+//     for {
+//         select {
+//     	   case msgAndTags <- subscription.Out():
+//     		     // handle msg and tags
+//     	   case <-subscription.Cancelled():
+//     		     return subscription.Err()
+//		  	 }
+//		 }
 //
 package pubsub
 
@@ -77,19 +61,23 @@ var (
 	ErrAlreadySubscribed = errors.New("already subscribed")
 )
 
-type cmd struct {
-	op       operation
-	query    Query
-	ch       chan<- interface{}
-	clientID string
-	msg      interface{}
-	tags     TagMap
-}
-
 // Query defines an interface for a query to be used for subscribing.
 type Query interface {
 	Matches(tags TagMap) bool
 	String() string
+}
+
+type cmd struct {
+	op operation
+
+	// subscribe, unsubscribe
+	query        Query
+	subscription *Subscription
+	clientID     string
+
+	// publish
+	msg  interface{}
+	tags TagMap
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
@@ -106,37 +94,6 @@ type Server struct {
 
 // Option sets a parameter for the server.
 type Option func(*Server)
-
-// TagMap is used to associate tags to a message.
-// They can be queried by subscribers to choose messages they will received.
-type TagMap interface {
-	// Get returns the value for a key, or nil if no value is present.
-	// The ok result indicates whether value was found in the tags.
-	Get(key string) (value string, ok bool)
-	// Len returns the number of tags.
-	Len() int
-}
-
-type tagMap map[string]string
-
-var _ TagMap = (*tagMap)(nil)
-
-// NewTagMap constructs a new immutable tag set from a map.
-func NewTagMap(data map[string]string) TagMap {
-	return tagMap(data)
-}
-
-// Get returns the value for a key, or nil if no value is present.
-// The ok result indicates whether value was found in the tags.
-func (ts tagMap) Get(key string) (value string, ok bool) {
-	value, ok = ts[key]
-	return
-}
-
-// Len returns the number of tags.
-func (ts tagMap) Len() int {
-	return len(ts)
-}
 
 // NewServer returns a new server. See the commentary on the Option functions
 // for a detailed description of how to configure buffering. If no options are
@@ -174,11 +131,11 @@ func (s *Server) BufferCapacity() int {
 	return s.cmdsCap
 }
 
-// Subscribe creates a subscription for the given client. It accepts a channel
-// on which messages matching the given query can be received. An error will be
+// Subscribe creates a subscription for the given client. An error will be
 // returned to the caller if the context is canceled or if subscription already
-// exist for pair clientID and query.
-func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, out chan<- interface{}) error {
+// exist for pair clientID and query. outCapacity will be used to set a
+// capacity for Subscription#Out channel.
+func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, outCapacity int) (*Subscription, error) {
 	s.mtx.RLock()
 	clientSubscriptions, ok := s.subscriptions[clientID]
 	if ok {
@@ -186,22 +143,26 @@ func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, ou
 	}
 	s.mtx.RUnlock()
 	if ok {
-		return ErrAlreadySubscribed
+		return nil, ErrAlreadySubscribed
 	}
 
+	subscription := &Subscription{
+		out:       make(chan MsgAndTags, outCapacity),
+		cancelled: make(chan struct{}),
+	}
 	select {
-	case s.cmds <- cmd{op: sub, clientID: clientID, query: query, ch: out}:
+	case s.cmds <- cmd{op: sub, clientID: clientID, query: query, subscription: subscription}:
 		s.mtx.Lock()
 		if _, ok = s.subscriptions[clientID]; !ok {
 			s.subscriptions[clientID] = make(map[string]struct{})
 		}
 		s.subscriptions[clientID][query.String()] = struct{}{}
 		s.mtx.Unlock()
-		return nil
+		return subscription, nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil, ctx.Err()
 	case <-s.Quit():
-		return nil
+		return nil, nil
 	}
 }
 
@@ -285,8 +246,8 @@ func (s *Server) OnStop() {
 
 // NOTE: not goroutine safe
 type state struct {
-	// query string -> client -> ch
-	queryToChanMap map[string]map[string]chan<- interface{}
+	// query string -> client -> subscription
+	queryToSubscriptionMap map[string]map[string]*Subscription
 	// client -> query string -> struct{}
 	clientToQueryMap map[string]map[string]struct{}
 	// query string -> queryPlusRefCount
@@ -303,9 +264,9 @@ type queryPlusRefCount struct {
 // OnStart implements Service.OnStart by starting the server.
 func (s *Server) OnStart() error {
 	go s.loop(state{
-		queryToChanMap:   make(map[string]map[string]chan<- interface{}),
-		clientToQueryMap: make(map[string]map[string]struct{}),
-		queries:          make(map[string]*queryPlusRefCount),
+		queryToSubscriptionMap: make(map[string]map[string]*Subscription),
+		clientToQueryMap:       make(map[string]map[string]struct{}),
+		queries:                make(map[string]*queryPlusRefCount),
 	})
 	return nil
 }
@@ -321,33 +282,32 @@ loop:
 		switch cmd.op {
 		case unsub:
 			if cmd.query != nil {
-				state.remove(cmd.clientID, cmd.query)
+				state.remove(cmd.clientID, cmd.query, ErrUnsubscribed)
 			} else {
-				state.removeAll(cmd.clientID)
+				state.removeAll(cmd.clientID, ErrUnsubscribed)
 			}
 		case shutdown:
 			for clientID := range state.clientToQueryMap {
-				state.removeAll(clientID)
+				state.removeAll(clientID, nil)
 			}
 			break loop
 		case sub:
-			state.add(cmd.clientID, cmd.query, cmd.ch)
+			state.add(cmd.clientID, cmd.query, cmd.subscription)
 		case pub:
 			state.send(cmd.msg, cmd.tags)
 		}
 	}
 }
 
-func (state *state) add(clientID string, q Query, ch chan<- interface{}) {
+func (state *state) add(clientID string, q Query, subscription *Subscription) {
 	qStr := q.String()
 
-	// initialize clientToChannelMap per query if needed
-	if _, ok := state.queryToChanMap[qStr]; !ok {
-		state.queryToChanMap[qStr] = make(map[string]chan<- interface{})
+	// initialize clientToSubscriptionMap per query if needed
+	if _, ok := state.queryToSubscriptionMap[qStr]; !ok {
+		state.queryToSubscriptionMap[qStr] = make(map[string]*Subscription)
 	}
-
 	// create subscription
-	state.queryToChanMap[qStr][clientID] = ch
+	state.queryToSubscriptionMap[qStr][clientID] = subscription
 
 	// initialize queries if needed
 	if _, ok := state.queries[qStr]; !ok {
@@ -363,20 +323,23 @@ func (state *state) add(clientID string, q Query, ch chan<- interface{}) {
 	state.clientToQueryMap[clientID][qStr] = struct{}{}
 }
 
-func (state *state) remove(clientID string, q Query) {
+func (state *state) remove(clientID string, q Query, reason error) {
 	qStr := q.String()
 
-	clientToChannelMap, ok := state.queryToChanMap[qStr]
+	clientToSubscriptionMap, ok := state.queryToSubscriptionMap[qStr]
 	if !ok {
 		return
 	}
 
-	ch, ok := clientToChannelMap[clientID]
+	subscription, ok := clientToSubscriptionMap[clientID]
 	if !ok {
 		return
 	}
 
-	close(ch)
+	subscription.mtx.Lock()
+	subscription.err = reason
+	subscription.mtx.Unlock()
+	close(subscription.cancelled)
 
 	// remove the query from client map.
 	// if client is not subscribed to anything else, remove it.
@@ -387,9 +350,9 @@ func (state *state) remove(clientID string, q Query) {
 
 	// remove the client from query map.
 	// if query has no other clients subscribed, remove it.
-	delete(state.queryToChanMap[qStr], clientID)
-	if len(state.queryToChanMap[qStr]) == 0 {
-		delete(state.queryToChanMap, qStr)
+	delete(state.queryToSubscriptionMap[qStr], clientID)
+	if len(state.queryToSubscriptionMap[qStr]) == 0 {
+		delete(state.queryToSubscriptionMap, qStr)
 	}
 
 	// decrease ref counter in queries
@@ -400,21 +363,24 @@ func (state *state) remove(clientID string, q Query) {
 	}
 }
 
-func (state *state) removeAll(clientID string) {
+func (state *state) removeAll(clientID string, reason error) {
 	queryMap, ok := state.clientToQueryMap[clientID]
 	if !ok {
 		return
 	}
 
 	for qStr := range queryMap {
-		ch := state.queryToChanMap[qStr][clientID]
-		close(ch)
+		subscription := state.queryToSubscriptionMap[qStr][clientID]
+		subscription.mtx.Lock()
+		subscription.err = reason
+		subscription.mtx.Unlock()
+		close(subscription.cancelled)
 
 		// remove the client from query map.
 		// if query has no other clients subscribed, remove it.
-		delete(state.queryToChanMap[qStr], clientID)
-		if len(state.queryToChanMap[qStr]) == 0 {
-			delete(state.queryToChanMap, qStr)
+		delete(state.queryToSubscriptionMap[qStr], clientID)
+		if len(state.queryToSubscriptionMap[qStr]) == 0 {
+			delete(state.queryToSubscriptionMap, qStr)
 		}
 
 		// decrease ref counter in queries
@@ -430,11 +396,21 @@ func (state *state) removeAll(clientID string) {
 }
 
 func (state *state) send(msg interface{}, tags TagMap) {
-	for qStr, clientToChannelMap := range state.queryToChanMap {
+	for qStr, clientToSubscriptionMap := range state.queryToSubscriptionMap {
 		q := state.queries[qStr].q
 		if q.Matches(tags) {
-			for _, ch := range clientToChannelMap {
-				ch <- msg
+			for clientID, subscription := range clientToSubscriptionMap {
+				if cap(subscription.out) == 0 {
+					// block on unbuffered channel
+					subscription.out <- MsgAndTags{msg, tags}
+				} else {
+					// don't block on buffered channels
+					select {
+					case subscription.out <- MsgAndTags{msg, tags}:
+					default:
+						state.remove(clientID, q, ErrOutOfCapacity)
+					}
+				}
 			}
 		}
 	}
