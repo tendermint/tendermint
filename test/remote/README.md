@@ -27,9 +27,15 @@ following:
 make deploy:001-reference
 ```
 
+Each network deployment potentially has a different set of parameters that one
+can supply via environment variables. See each network's folder for details.
+
 ## Executing test scenarios
 To execute a particular testing scenario, simply:
 
 ```bash
-make scenario:001-simple-kvstore-interaction
+make scenario:001-kvstore-test
 ```
+
+This particular test scenario assumes you're running the `kvstore` proxy app in
+your Tendermint network.
