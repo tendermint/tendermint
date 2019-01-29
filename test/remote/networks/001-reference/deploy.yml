@@ -1,0 +1,55 @@
+---
+- hosts: tik
+  become: yes
+  vars:
+    always_deploy_svc: yes
+    local_tmbin: "{{ lookup('env', 'GOPATH') }}/src/github.com/tendermint/tendermint/build/tendermint"
+  tasks:
+    # Check if we need to configure the systemd service
+    - name: Check if Tendermint service is present
+      stat:
+        path: /etc/systemd/system/tendermint.service
+      register: tm_service
+    - name: Install Tendermint service
+      include_tasks: ../../common/ansible/install-tm-svc.yml
+      when: always_deploy_svc or not tm_service.stat.exists
+    - name: Ensure Tendermint service is stopped
+      service:
+        name: tendermint
+        state: stopped
+        enabled: no
+
+    # Sync the Tendermint binary
+    - name: Sync Tendermint binary to target machines
+      synchronize:
+        src: "{{ local_tmbin }}"
+        dest: /usr/bin/tendermint
+    - name: Set binary permissions
+      file:
+        path: /usr/bin/tendermint
+        owner: root
+        group: root
+        mode: 0755
+
+    # Sync the different nodes' configurations
+    - name: Erase Tendermint home folder
+      file:
+        path: /home/tendermint/.tendermint
+        state: absent
+    - name: Sync node configurations
+      synchronize:
+        src: "/tmp/nodes/{{ inventory_hostname }}/"
+        dest: /home/tendermint/.tendermint/
+    - name: Set Tendermint home permissions
+      file:
+        path: /home/tendermint/.tendermint
+        owner: tendermint
+        group: tendermint
+        recurse: yes
+
+    # Start the Tendermint service
+    - name: Start Tendermint
+      service:
+        name: tendermint
+        state: started
+        enabled: yes

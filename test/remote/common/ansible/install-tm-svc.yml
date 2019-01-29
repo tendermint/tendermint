@@ -1,0 +1,20 @@
+# ---------------------------
+# Installs Tendermint service
+# ---------------------------
+- name: Ensure service group exists
+  group:
+    name: tendermint
+    state: present
+- name: Ensure service user exists
+  user:
+    name: tendermint
+    group: tendermint
+    home: /home/tendermint
+    state: present
+- name: Copy service definition to nodes
+  copy:
+    src: config/tendermint.service
+    dest: /etc/systemd/system/tendermint.service
+- name: Reload systemd services
+  systemd:
+    daemon_reload: yes
