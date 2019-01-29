@@ -17,7 +17,13 @@ Following is a description of this folder's layout:
 ```
 
 ## Requirements
-TODO
+In order to execute the various deployments or scenarios, you will need:
+
+* `make`
+* Python 3.7+
+
+Target platform for execution of these deployments/scenarios is either
+Linux/macOS.
 
 ## Deploying test networks
 To deploy a particular test network to the relevant hosts, simply do the
