@@ -690,9 +690,17 @@ func TestValidatorUpdates(t *testing.T) {
 	// Change priorities
 	v1 = newValidator([]byte("v1"), 10)
 	v2 = newValidator([]byte("v2"), 10)
-	valList = []*Validator{v1, v2}
+	valList = []*Validator{v2, v1}
+	valCopy := []*Validator{v2, v1}
 	assert.Nil(t, vals.UpdateWithChangeSet(valList))
 	assert.Nil(t, verifyValidatorSet(vals))
+	// Verify passed in parameter has not changed
+	assert.Nil(t, verifyValidatorListEquiv(valList, valCopy))
+	// Verify that subsequent changes to valList does not change the validator set
+	valsCopy := vals.Copy()
+	v1.VotingPower = 15
+	v2.VotingPower = 5
+	assert.Nil(t, verifyValidatorSetEquiv(vals, valsCopy))
 
 	// Add new validators
 	v3 := newValidator([]byte("v3"), 200)
@@ -765,6 +773,16 @@ func verifyValidatorEquiv(val1, val2 *Validator) error {
 	return nil
 }
 
+func verifyValidatorListEquiv(list1, list2 []*Validator) error {
+	for i, val1 := range list1 {
+		val2 :=  list2[i]
+		if !bytes.Equal(val1.Address, val2.Address) || val1.VotingPower != val2.VotingPower {
+			return fmt.Errorf("different validators %s and %s at index %d", val1, val2, i)
+		}
+	}
+	return nil
+}
+
 func verifyValidatorSetEquiv(vals1, vals2 *ValidatorSet) error {
 	if len(vals1.Validators) != len(vals2.Validators) {
 		return fmt.Errorf("validator sets %s, %s don't have same num of vals", vals1, vals2)
@@ -775,12 +793,10 @@ func verifyValidatorSetEquiv(vals1, vals2 *ValidatorSet) error {
 	if getTotalProposerPriority(vals1) != getTotalProposerPriority(vals2) {
 		return fmt.Errorf("validator sets %s, %s don't have the same total priorities", vals1, vals2)
 	}
-	for i, val1 := range vals1.Validators {
-		val2 :=  vals2.Validators[i]
-		if err := verifyValidatorEquiv(val1, val2); err != nil {
-			return fmt.Errorf("validators at index %d are different: %s", i, err)
-		}
+	if err := verifyValidatorListEquiv(vals1.Validators, vals2.Validators); err != nil {
+		return fmt.Errorf("validator sets %s, %s don't have the same validators - %s", vals1, vals2, err)
 	}
+
 	return nil
 }
 

@@ -210,15 +210,19 @@ func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 	}
 }
 
+// Makes a copy of the validator list
+func validatorListCopy(valsList []*Validator) []*Validator {
+	valsCopy := make([]*Validator, len(valsList))
+	for i, val := range(valsList) {
+		valsCopy[i] = val.Copy()
+	}
+	return valsCopy
+}
+
 // Copy each validator into a new ValidatorSet
 func (vals *ValidatorSet) Copy() *ValidatorSet {
-	validators := make([]*Validator, len(vals.Validators))
-	for i, val := range vals.Validators {
-		// NOTE: must copy, since IncrementProposerPriority updates in place.
-		validators[i] = val.Copy()
-	}
 	return &ValidatorSet{
-		Validators:       validators,
+		Validators:       validatorListCopy(vals.Validators),
 		Proposer:         vals.Proposer,
 		totalVotingPower: vals.totalVotingPower,
 	}
@@ -462,14 +466,17 @@ func (currentSet *ValidatorSet) UpdateWithChangeList(updates []*Validator) error
 }
 
 // Checks changes against duplicates, splits the changes in updates and removals, sorts them by address
-func processChanges(changes []*Validator) (error, []*Validator, []*Validator) {
-
+func processChanges(ochanges []*Validator) (error, []*Validator, []*Validator) {
+	// Make a deep copy of the changes and sort by address
+	changes := validatorListCopy(ochanges)
 	sort.Sort(ValidatorsByAddress(changes))
+
 	removals := make([]*Validator, 0)
 	updates := make([]*Validator, 0)
 	var err error
 	prevAddr := []byte(nil)
 
+	// Scan changes by address and append valid validators to updates or removal
 	for _, valUpdate := range changes {
 		if bytes.Equal(valUpdate.Address, prevAddr) {
 			err := fmt.Errorf("duplicate entry %v in changes list %v", valUpdate, changes)
