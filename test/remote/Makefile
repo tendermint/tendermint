@@ -1,6 +1,6 @@
 INVENTORY?=inventory/hosts
 
-include common/make/ansible.mk
+include common/make/python-ansible.mk
 
 deploy\:%: venv/bin/ansible
 	@$(ACTIVATE_VENV); \
