@@ -211,6 +211,9 @@ func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, ou
 func (s *Server) Unsubscribe(ctx context.Context, clientID string, query Query) error {
 	s.mtx.RLock()
 	clientSubscriptions, ok := s.subscriptions[clientID]
+	if ok {
+		_, ok = clientSubscriptions[query.String()]
+	}
 	s.mtx.RUnlock()
 	if !ok {
 		return ErrSubscriptionNotFound
