@@ -1,3 +1,4 @@
 ansible
 pip
 requests
+locustio
