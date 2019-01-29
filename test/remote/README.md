@@ -21,6 +21,9 @@ In order to execute the various deployments or scenarios, you will need:
 
 * `make`
 * Python 3.6+
+* Tendermint [development
+  requirements](https://github.com/tendermint/tendermint#minimum-requirements)
+  (for building the Tendermint binary that we deploy to the test networks)
 
 Target platform for execution of these deployments/scenarios is either
 Linux/macOS.
