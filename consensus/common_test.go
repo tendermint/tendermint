@@ -25,6 +25,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
@@ -220,18 +221,17 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 
 // genesis
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
-	voteCh0 := make(chan interface{})
-	err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote, voteCh0)
+	voteCh0Sub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote)
 	if err != nil {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
 	}
 	voteCh := make(chan interface{})
 	go func() {
-		for v := range voteCh0 {
-			vote := v.(types.EventDataVote)
+		for msgAndTags := range voteCh0Sub.Out() {
+			vote := msgAndTags.Msg.(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-				voteCh <- v
+				voteCh <- msgAndTags.Msg
 			}
 		}
 	}()
@@ -311,7 +311,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 
 //-------------------------------------------------------------------------------
 
-func ensureNoNewEvent(ch <-chan interface{}, timeout time.Duration,
+func ensureNoNewEvent(ch <-chan tmpubsub.MsgAndTags, timeout time.Duration,
 	errorMessage string) {
 	select {
 	case <-time.After(timeout):
@@ -321,28 +321,28 @@ func ensureNoNewEvent(ch <-chan interface{}, timeout time.Duration,
 	}
 }
 
-func ensureNoNewEventOnChannel(ch <-chan interface{}) {
+func ensureNoNewEventOnChannel(ch <-chan tmpubsub.MsgAndTags) {
 	ensureNoNewEvent(
 		ch,
 		ensureTimeout,
 		"We should be stuck waiting, not receiving new event on the channel")
 }
 
-func ensureNoNewRoundStep(stepCh <-chan interface{}) {
+func ensureNoNewRoundStep(stepCh <-chan tmpubsub.MsgAndTags) {
 	ensureNoNewEvent(
 		stepCh,
 		ensureTimeout,
 		"We should be stuck waiting, not receiving NewRoundStep event")
 }
 
-func ensureNoNewUnlock(unlockCh <-chan interface{}) {
+func ensureNoNewUnlock(unlockCh <-chan tmpubsub.MsgAndTags) {
 	ensureNoNewEvent(
 		unlockCh,
 		ensureTimeout,
 		"We should be stuck waiting, not receiving Unlock event")
 }
 
-func ensureNoNewTimeout(stepCh <-chan interface{}, timeout int64) {
+func ensureNoNewTimeout(stepCh <-chan tmpubsub.MsgAndTags, timeout int64) {
 	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
 	ensureNoNewEvent(
 		stepCh,
@@ -351,7 +351,7 @@ func ensureNoNewTimeout(stepCh <-chan interface{}, timeout int64) {
 }
 
 func ensureNewEvent(
-	ch <-chan interface{},
+	ch <-chan tmpubsub.MsgAndTags,
 	height int64,
 	round int,
 	timeout time.Duration,
@@ -361,7 +361,7 @@ func ensureNewEvent(
 	case <-time.After(timeout):
 		panic(errorMessage)
 	case ev := <-ch:
-		rs, ok := ev.(types.EventDataRoundState)
+		rs, ok := ev.Msg.(types.EventDataRoundState)
 		if !ok {
 			panic(
 				fmt.Sprintf(
@@ -378,12 +378,12 @@ func ensureNewEvent(
 	}
 }
 
-func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
+func ensureNewRound(roundCh <-chan tmpubsub.MsgAndTags, height int64, round int) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewRound event")
 	case ev := <-roundCh:
-		rs, ok := ev.(types.EventDataNewRound)
+		rs, ok := ev.Msg.(types.EventDataNewRound)
 		if !ok {
 			panic(
 				fmt.Sprintf(
@@ -399,18 +399,18 @@ func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
 	}
 }
 
-func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, timeout int64) {
+func ensureNewTimeout(timeoutCh <-chan tmpubsub.MsgAndTags, height int64, round int, timeout int64) {
 	timeoutDuration := time.Duration(timeout*3) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }
 
-func ensureNewProposal(proposalCh <-chan interface{}, height int64, round int) {
+func ensureNewProposal(proposalCh <-chan tmpubsub.MsgAndTags, height int64, round int) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewProposal event")
 	case ev := <-proposalCh:
-		rs, ok := ev.(types.EventDataCompleteProposal)
+		rs, ok := ev.Msg.(types.EventDataCompleteProposal)
 		if !ok {
 			panic(
 				fmt.Sprintf(
@@ -426,17 +426,17 @@ func ensureNewProposal(proposalCh <-chan interface{}, height int64, round int) {
 	}
 }
 
-func ensureNewValidBlock(validBlockCh <-chan interface{}, height int64, round int) {
+func ensureNewValidBlock(validBlockCh <-chan tmpubsub.MsgAndTags, height int64, round int) {
 	ensureNewEvent(validBlockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for NewValidBlock event")
 }
 
-func ensureNewBlock(blockCh <-chan interface{}, height int64) {
+func ensureNewBlock(blockCh <-chan tmpubsub.MsgAndTags, height int64) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewBlock event")
 	case ev := <-blockCh:
-		block, ok := ev.(types.EventDataNewBlock)
+		block, ok := ev.Msg.(types.EventDataNewBlock)
 		if !ok {
 			panic(fmt.Sprintf("expected a *types.EventDataNewBlock, "+
 				"got %v. wrong subscription channel?",
@@ -448,12 +448,12 @@ func ensureNewBlock(blockCh <-chan interface{}, height int64) {
 	}
 }
 
-func ensureNewBlockHeader(blockCh <-chan interface{}, height int64, blockHash cmn.HexBytes) {
+func ensureNewBlockHeader(blockCh <-chan tmpubsub.MsgAndTags, height int64, blockHash cmn.HexBytes) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewBlockHeader event")
 	case ev := <-blockCh:
-		blockHeader, ok := ev.(types.EventDataNewBlockHeader)
+		blockHeader, ok := ev.Msg.(types.EventDataNewBlockHeader)
 		if !ok {
 			panic(fmt.Sprintf("expected a *types.EventDataNewBlockHeader, "+
 				"got %v. wrong subscription channel?",
@@ -468,9 +468,41 @@ func ensureNewBlockHeader(blockCh <-chan interface{}, height int64, blockHash cm
 	}
 }
 
-func ensureNewUnlock(unlockCh <-chan interface{}, height int64, round int) {
+func ensureNewUnlock(unlockCh <-chan tmpubsub.MsgAndTags, height int64, round int) {
 	ensureNewEvent(unlockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for NewUnlock event")
+}
+
+func ensureProposal(proposalCh <-chan tmpubsub.MsgAndTags, height int64, round int, propId types.BlockID) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewProposal event")
+	case ev := <-proposalCh:
+		rs, ok := ev.Msg.(types.EventDataCompleteProposal)
+		if !ok {
+			panic(
+				fmt.Sprintf(
+					"expected a EventDataCompleteProposal, got %v.Wrong subscription channel?",
+					reflect.TypeOf(rs)))
+		}
+		if rs.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
+		}
+		if rs.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
+		}
+		if !rs.BlockID.Equals(propId) {
+			panic("Proposed block does not match expected block")
+		}
+	}
+}
+
+func ensurePrecommit(voteCh <-chan interface{}, height int64, round int) {
+	ensureVote(voteCh, height, round, types.PrecommitType)
+}
+
+func ensurePrevote(voteCh <-chan interface{}, height int64, round int) {
+	ensureVote(voteCh, height, round, types.PrevoteType)
 }
 
 func ensureVote(voteCh <-chan interface{}, height int64, round int,
@@ -498,39 +530,7 @@ func ensureVote(voteCh <-chan interface{}, height int64, round int,
 	}
 }
 
-func ensureProposal(proposalCh <-chan interface{}, height int64, round int, propId types.BlockID) {
-	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for NewProposal event")
-	case ev := <-proposalCh:
-		rs, ok := ev.(types.EventDataCompleteProposal)
-		if !ok {
-			panic(
-				fmt.Sprintf(
-					"expected a EventDataCompleteProposal, got %v.Wrong subscription channel?",
-					reflect.TypeOf(rs)))
-		}
-		if rs.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, rs.Height))
-		}
-		if rs.Round != round {
-			panic(fmt.Sprintf("expected round %v, got %v", round, rs.Round))
-		}
-		if !rs.BlockID.Equals(propId) {
-			panic("Proposed block does not match expected block")
-		}
-	}
-}
-
-func ensurePrecommit(voteCh <-chan interface{}, height int64, round int) {
-	ensureVote(voteCh, height, round, types.PrecommitType)
-}
-
-func ensurePrevote(voteCh <-chan interface{}, height int64, round int) {
-	ensureVote(voteCh, height, round, types.PrevoteType)
-}
-
-func ensureNewEventOnChannel(ch <-chan interface{}) {
+func ensureNewEventOnChannel(ch <-chan tmpubsub.MsgAndTags) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for new activity on the channel")

@@ -12,7 +12,7 @@ import (
 const defaultCapacity = 0
 
 type EventBusSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
+	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (*tmpubsub.Subscription, error)
 	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
 }
@@ -52,8 +52,8 @@ func (b *EventBus) OnStop() {
 	b.pubsub.Stop()
 }
 
-func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
-	return b.pubsub.Subscribe(ctx, subscriber, query, out)
+func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (*tmpubsub.Subscription, error) {
+	return b.pubsub.Subscribe(ctx, subscriber, query, outCapacity...)
 }
 
 func (b *EventBus) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {

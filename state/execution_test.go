@@ -317,8 +317,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer eventBus.Stop()
 	blockExec.SetEventBus(eventBus)
 
-	updatesCh := make(chan interface{}, 1)
-	err = eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates, updatesCh)
+	updatesSub, err := eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates)
 	require.NoError(t, err)
 
 	block := makeBlock(state, 1)
@@ -342,13 +341,15 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	// test we threw an event
 	select {
-	case e := <-updatesCh:
-		event, ok := e.(types.EventDataValidatorSetUpdates)
+	case e := <-updatesSub.Out():
+		event, ok := e.Msg.(types.EventDataValidatorSetUpdates)
 		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", e)
 		if assert.NotEmpty(t, event.ValidatorUpdates) {
 			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
 			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
 		}
+	case <-updatesSub.Cancelled():
+		t.Fatal("updatesSub was cancelled.")
 	case <-time.After(1 * time.Second):
 		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
 	}

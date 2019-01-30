@@ -169,26 +169,14 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Subscribe to tx being committed in block.
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
-	deliverTxResCh := make(chan interface{}, 1)
 	q := types.EventQueryTxFor(tx)
-	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
+	deliverTxSub, err := eventBus.Subscribe(ctx, "mempool", q)
 	if err != nil {
 		err = errors.Wrap(err, "failed to subscribe to tx")
 		logger.Error("Error on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
-	defer func() {
-		// drain deliverTxResCh to make sure we don't block
-	LOOP:
-		for {
-			select {
-			case <-deliverTxResCh:
-			default:
-				break LOOP
-			}
-		}
-		eventBus.Unsubscribe(context.Background(), "mempool", q)
-	}()
+	defer eventBus.Unsubscribe(context.Background(), "mempool", q)
 
 	// Broadcast tx and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
@@ -213,17 +201,22 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// TODO: configurable?
 	var deliverTxTimeout = rpcserver.WriteTimeout / 2
 	select {
-	case deliverTxResMsg, ok := <-deliverTxResCh: // The tx was included in a block.
-		if !ok {
-			return nil, errors.New("Error on broadcastTxCommit: expected DeliverTxResult, got nil. Did the Tendermint stop?")
-		}
-		deliverTxRes := deliverTxResMsg.(types.EventDataTx)
+	case deliverTxResMsg := <-deliverTxSub.Out(): // The tx was included in a block.
+		deliverTxRes := deliverTxResMsg.Msg.(types.EventDataTx)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
 			DeliverTx: deliverTxRes.Result,
 			Hash:      tx.Hash(),
 			Height:    deliverTxRes.Height,
 		}, nil
+	case <-deliverTxSub.Cancelled():
+		err = errors.New("deliverTxSub was cancelled. Did the Tendermint stop?")
+		logger.Error("Error on broadcastTxCommit", "err", err)
+		return &ctypes.ResultBroadcastTxCommit{
+			CheckTx:   *checkTxRes,
+			DeliverTx: abci.ResponseDeliverTx{},
+			Hash:      tx.Hash(),
+		}, err
 	case <-time.After(deliverTxTimeout):
 		err = errors.New("Timed out waiting for tx to be included in a block")
 		logger.Error("Error on broadcastTxCommit", "err", err)

@@ -31,35 +31,44 @@ func NewIndexerService(idr TxIndexer, eventBus *types.EventBus) *IndexerService 
 // OnStart implements cmn.Service by subscribing for all transactions
 // and indexing them by tags.
 func (is *IndexerService) OnStart() error {
-	blockHeadersCh := make(chan interface{})
-	if err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryNewBlockHeader, blockHeadersCh); err != nil {
+	blockHeadersSub, err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryNewBlockHeader)
+	if err != nil {
 		return err
 	}
 
-	txsCh := make(chan interface{})
-	if err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryTx, txsCh); err != nil {
+	txsSub, err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryTx)
+	if err != nil {
 		return err
 	}
 
 	go func() {
 		for {
-			e, ok := <-blockHeadersCh
-			if !ok {
+			select {
+			case msgAndTags := <-blockHeadersSub.Out():
+				header := msgAndTags.Msg.(types.EventDataNewBlockHeader).Header
+				batch := NewBatch(header.NumTxs)
+				for i := int64(0); i < header.NumTxs; i++ {
+					select {
+					case msgAndTags := <-txsSub.Out():
+						txResult := msgAndTags.Msg.(types.EventDataTx).TxResult
+						batch.Add(&txResult)
+					case <-txsSub.Cancelled():
+						is.Logger.Error("Failed to index a block. txsSub was cancelled. Did the Tendermint stop?",
+							"err", txsSub.Err(),
+							"height", header.Height,
+							"numTxs", header.NumTxs,
+							"numProcessed", i,
+						)
+						return
+					}
+				}
+				is.idr.AddBatch(batch)
+				is.Logger.Info("Indexed block", "height", header.Height)
+			case <-blockHeadersSub.Cancelled():
+				is.Logger.Error("Failed to index a block. blockHeadersSub was cancelled. Did the Tendermint stop?",
+					"reason", blockHeadersSub.Err())
 				return
 			}
-			header := e.(types.EventDataNewBlockHeader).Header
-			batch := NewBatch(header.NumTxs)
-			for i := int64(0); i < header.NumTxs; i++ {
-				e, ok := <-txsCh
-				if !ok {
-					is.Logger.Error("Failed to index all transactions due to closed transactions channel", "height", header.Height, "numTxs", header.NumTxs, "numProcessed", i)
-					return
-				}
-				txResult := e.(types.EventDataTx).TxResult
-				batch.Add(&txResult)
-			}
-			is.idr.AddBatch(batch)
-			is.Logger.Info("Indexed block", "height", header.Height)
 		}
 	}()
 	return nil

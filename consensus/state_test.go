@@ -1565,11 +1565,11 @@ func TestStateOutputVoteStats(t *testing.T) {
 }
 
 // subscribe subscribes test client to the given query and returns a channel with cap = 1.
-func subscribe(eventBus *types.EventBus, q tmpubsub.Query) <-chan interface{} {
-	out := make(chan interface{}, 1)
-	err := eventBus.Subscribe(context.Background(), testSubscriber, q, out)
+func subscribe(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.MsgAndTags {
+	sub, err := eventBus.Subscribe(context.Background(), testSubscriber, q)
 	if err != nil {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
 	}
-	return out
+	// XXX: return a subscription?
+	return sub.Out()
 }
