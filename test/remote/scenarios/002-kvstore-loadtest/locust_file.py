@@ -39,33 +39,34 @@ class KVStoreBalancedRWTaskSequence(TaskSequence):
                         response.failure("Result does not match original value!")
 
 
-class Node0UserLocust(HttpLocust):
-    host = "http://tik0.sredev.co:26657"
-    weight = 1
-    task_set = KVStoreBalancedRWTaskSequence
-    min_wait = 100
-    max_wait = 500
+def make_node_locust_class(host_url, node_id):
+    """Class factory for creating locusts."""
+    class NodeUserLocust(HttpLocust):
+        host = host_url
+        weight = 1
+        task_set = KVStoreBalancedRWTaskSequence
+        min_wait = 100
+        max_wait = 500
+
+        def setup(self):
+            print("setup: %s with host = %s" % (self.__class__.__name__, self.host))
+
+    NodeUserLocust.__name__ = "Node%dUserLocust" % node_id
+    return NodeUserLocust
 
 
-class Node1UserLocust(HttpLocust):
-    host = "http://tik1.sredev.co:26657"
-    weight = 1
-    task_set = KVStoreBalancedRWTaskSequence
-    min_wait = 100
-    max_wait = 500
+DEFAULT_HOSTS = [
+    'http://tik0.sredev.co:26657',
+    'http://tik1.sredev.co:26657',
+    'http://tik2.sredev.co:26657',
+    'http://tik3.sredev.co:26657',
+]
 
+# Parse the nodes we want to attack from the environment
+HOST_URLS = os.environ.get('HOST_URLS', '::'.join(DEFAULT_HOSTS)).split('::')
 
-class Node2UserLocust(HttpLocust):
-    host = "http://tik2.sredev.co:26657"
-    weight = 1
-    task_set = KVStoreBalancedRWTaskSequence
-    min_wait = 100
-    max_wait = 500
-
-
-class Node3UserLocust(HttpLocust):
-    host = "http://tik3.sredev.co:26657"
-    weight = 1
-    task_set = KVStoreBalancedRWTaskSequence
-    min_wait = 100
-    max_wait = 500
+for i in range(len(HOST_URLS)):
+    node_cls = make_node_locust_class(HOST_URLS[i], i)
+    # Inject the class into global space, so it will be picked up by Locust
+    globals()[node_cls.__name__] = node_cls
+    print("Created class %s" % node_cls.__name__)

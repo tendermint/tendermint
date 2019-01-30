@@ -1,9 +1,8 @@
 NUM_CLIENTS?=1000
 HATCH_RATE?=20
 RUN_TIME?=60s
-DATETIME=$(shell date +%Y%m%dT%H%M%S)
-CSV_OUTPUT_FILE?=/tmp/002-kvstore-loadtest01-$(DATETIME)
-LOG_FILE?=/tmp/002-kvstore-loadtest01-$(DATETIME).log
+CSV_OUTPUT_FILE?=/tmp/002-kvstore-loadtest
+LOG_FILE?=/tmp/002-kvstore-loadtest.log
 .PHONY: execute
 
 execute:
