@@ -36,7 +36,32 @@ func deleteTempFile(fname string) {
 	}
 }
 
-func TestAddrBookGetSelectionWithMarkedGood(t *testing.T) {
+func TestAddrBookGetSelectionWithOneMarkedGood(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+	assert.Zero(t, book.Size())
+
+	N := 10
+	randAddrs := randNetAddressPairs(t, N)
+	for _, addr := range randAddrs {
+		book.AddAddress(addr.addr, addr.src)
+	}
+
+	// mark one addr as good
+	for _, addr := range randAddrs[:1] {
+		book.MarkGood(addr.addr)
+	}
+
+	// ensure we can get selection.
+	// this used to result in an infinite loop (!)
+	addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
+	assert.NotNil(t, addrs, "expected an address")
+}
+
+func TestAddrBookGetSelectionWithOneNotMarkedGood(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
@@ -47,14 +72,19 @@ func TestAddrBookGetSelectionWithMarkedGood(t *testing.T) {
 
 	N := 10
 	randAddrs := randNetAddressPairs(t, N)
-	for _, addr := range randAddrs {
+	// mark all addrs but one as good
+	for _, addr := range randAddrs[:N-1] {
 		book.AddAddress(addr.addr, addr.src)
-	}
-	for _, addr := range randAddrs[:1] {
 		book.MarkGood(addr.addr)
 	}
+	// add the last addr, don't mark as good
+	for _, addr := range randAddrs[N-1:] {
+		book.AddAddress(addr.addr, addr.src)
+	}
 
-	addrs := book.GetSelectionWithBias(10)
+	// ensure we can get selection.
+	// this used to result in an infinite loop (!)
+	addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 	assert.NotNil(t, addrs, "expected an address")
 }
 

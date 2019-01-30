@@ -417,6 +417,11 @@ ADDRS_LOOP:
 		pickFromOldBucket := int((float64(selectionIndex)/float64(numAddresses))*100) >= biasTowardsNewAddrs
 		pickFromOldBucket = (pickFromOldBucket && a.nOld > 0 && len(oldBucketToAddrsMap) < a.nOld) || a.nNew == 0
 
+		// if there's not enough new addrs to pick from, just return early.
+		if !pickFromOldBucket && len(newBucketToAddrsMap) >= a.nNew {
+			return selection
+		}
+
 		bucket := make(map[string]*knownAddress)
 
 		// loop until we pick a random non-empty bucket
