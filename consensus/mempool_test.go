@@ -12,7 +12,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	sm "github.com/tendermint/tendermint/state"
 	dbm "github.com/tendermint/tendermint/libs/db"
 )
 

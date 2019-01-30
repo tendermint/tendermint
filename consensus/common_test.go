@@ -118,6 +118,7 @@ func incrementRound(vss ...*validatorStub) {
 // Functions for transitioning the consensus state
 
 func startTestRound(cs *ConsensusState, height int64, round int) {
+	sm.SaveState(cs.blockExec.Db(),cs.state)	//for save height 1's validators info
 	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
 }
