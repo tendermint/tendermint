@@ -26,13 +26,13 @@ func TestEventBusPublishEventTx(t *testing.T) {
 
 	// PublishEventTx adds all these 3 tags, so the query below should work
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND baz=1", tx.Hash())
-	txEventsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
 	go func() {
-		e := <-txEventsSub.Out()
-		edt := e.Msg.(EventDataTx)
+		mt := <-txsSub.Out()
+		edt := mt.Msg().(EventDataTx)
 		assert.Equal(t, int64(1), edt.Height)
 		assert.Equal(t, uint32(0), edt.Index)
 		assert.Equal(t, tx, edt.Tx)
@@ -67,13 +67,13 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 
 	// PublishEventNewBlock adds the tm.event tag, so the query below should work
 	query := "tm.event='NewBlock' AND baz=1 AND foz=2"
-	txEventsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
 	go func() {
-		e := <-txEventsSub.Out()
-		edt := e.Msg.(EventDataNewBlock)
+		mt := <-blocksSub.Out()
+		edt := mt.Msg().(EventDataNewBlock)
 		assert.Equal(t, block, edt.Block)
 		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
 		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
@@ -106,13 +106,13 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 
 	// PublishEventNewBlockHeader adds the tm.event tag, so the query below should work
 	query := "tm.event='NewBlockHeader' AND baz=1 AND foz=2"
-	txEventsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
 	go func() {
-		e := <-txEventsSub.Out()
-		edt := e.Msg.(EventDataNewBlockHeader)
+		mt := <-headersSub.Out()
+		edt := mt.Msg().(EventDataNewBlockHeader)
 		assert.Equal(t, block.Header, edt.Header)
 		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
 		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
@@ -139,14 +139,14 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, err)
 	defer eventBus.Stop()
 
-	eventsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{})
+	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{})
 	require.NoError(t, err)
 
 	const numEventsExpected = 14
 	done := make(chan struct{})
 	go func() {
 		numEvents := 0
-		for range eventsSub.Out() {
+		for range sub.Out() {
 			numEvents++
 			if numEvents >= numEventsExpected {
 				close(done)

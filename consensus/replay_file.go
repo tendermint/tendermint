@@ -16,7 +16,6 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -122,7 +121,7 @@ func newPlayback(fileName string, fp *os.File, cs *ConsensusState, genState sm.S
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepSub *tmpubsub.Subscription) error {
+func (pb *playback) replayReset(count int, newStepSub types.Subscription) error {
 	pb.cs.Stop()
 	pb.cs.Wait()
 

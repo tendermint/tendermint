@@ -21,7 +21,6 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -37,12 +36,11 @@ func init() {
 
 func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 	[]*ConsensusReactor,
-	[]*tmpubsub.Subscription,
+	[]types.Subscription,
 	[]*types.EventBus,
 ) {
-	var err error
 	reactors := make([]*ConsensusReactor, N)
-	eventSubs := make([]*tmpubsub.Subscription, N)
+	blocksSubs := make([]types.Subscription, 0)
 	eventBuses := make([]*types.EventBus, N)
 	for i := 0; i < N; i++ {
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
@@ -54,8 +52,9 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 		eventBuses[i] = css[i].eventBus
 		reactors[i].SetEventBus(eventBuses[i])
 
-		eventSubs[i], err = eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
+		blocksSubs = append(blocksSubs, blocksSub)
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
@@ -72,7 +71,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 		s := reactors[i].conS.GetState()
 		reactors[i].SwitchToConsensus(s, 0)
 	}
-	return reactors, eventSubs, eventBuses
+	return reactors, blocksSubs, eventBuses
 }
 
 func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuses []*types.EventBus) {
@@ -173,15 +172,15 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	// wait till everyone makes the first new block with no evidence
 	timeoutWaitGroup(t, nValidators, func(j int) {
-		blockI := <-eventSubs[j].Out()
-		block := blockI.Msg.(types.EventDataNewBlock).Block
+		mt := <-eventSubs[j].Out()
+		block := mt.Msg().(types.EventDataNewBlock).Block
 		assert.True(t, len(block.Evidence.Evidence) == 0)
 	}, css)
 
 	// second block should have evidence
 	timeoutWaitGroup(t, nValidators, func(j int) {
-		blockI := <-eventSubs[j].Out()
-		block := blockI.Msg.(types.EventDataNewBlock).Block
+		mt := <-eventSubs[j].Out()
+		block := mt.Msg().(types.EventDataNewBlock).Block
 		assert.True(t, len(block.Evidence.Evidence) > 0)
 	}, css)
 }
@@ -445,17 +444,14 @@ func waitForAndValidateBlock(
 	t *testing.T,
 	n int,
 	activeVals map[string]struct{},
-	eventSubs []*tmpubsub.Subscription,
+	eventSubs []types.Subscription,
 	css []*ConsensusState,
 	txs ...[]byte,
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
 		css[j].Logger.Debug("waitForAndValidateBlock")
-		newBlockI, ok := <-eventSubs[j].Out()
-		if !ok {
-			return
-		}
-		newBlock := newBlockI.Msg.(types.EventDataNewBlock).Block
+		mt := <-eventSubs[j].Out()
+		newBlock := mt.Msg().(types.EventDataNewBlock).Block
 		css[j].Logger.Debug("waitForAndValidateBlock: Got block", "height", newBlock.Height)
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
@@ -470,7 +466,7 @@ func waitForAndValidateBlockWithTx(
 	t *testing.T,
 	n int,
 	activeVals map[string]struct{},
-	eventSubs []*tmpubsub.Subscription,
+	eventSubs []types.Subscription,
 	css []*ConsensusState,
 	txs ...[]byte,
 ) {
@@ -479,11 +475,8 @@ func waitForAndValidateBlockWithTx(
 	BLOCK_TX_LOOP:
 		for {
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx", "ntxs", ntxs)
-			newBlockI, ok := <-eventSubs[j].Out()
-			if !ok {
-				return
-			}
-			newBlock := newBlockI.Msg.(types.EventDataNewBlock).Block
+			mt := <-eventSubs[j].Out()
+			newBlock := mt.Msg().(types.EventDataNewBlock).Block
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx: Got block", "height", newBlock.Height)
 			err := validateBlock(newBlock, activeVals)
 			assert.Nil(t, err)
@@ -508,7 +501,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	t *testing.T,
 	n int,
 	updatedVals map[string]struct{},
-	eventSubs []*tmpubsub.Subscription,
+	eventSubs []types.Subscription,
 	css []*ConsensusState,
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
@@ -517,11 +510,8 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	LOOP:
 		for {
 			css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt")
-			newBlockI, ok := <-eventSubs[j].Out()
-			if !ok {
-				return
-			}
-			newBlock = newBlockI.Msg.(types.EventDataNewBlock).Block
+			mt := <-eventSubs[j].Out()
+			newBlock = mt.Msg().(types.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP

@@ -55,6 +55,16 @@ func (s *Subscription) Err() error {
 
 // MsgAndTags glues a message and tags together.
 type MsgAndTags struct {
-	Msg  interface{}
-	Tags TagMap
+	msg  interface{}
+	tags TagMap
+}
+
+// Msg returns a message.
+func (mt MsgAndTags) Msg() interface{} {
+	return mt.msg
+}
+
+// Tags returns tags.
+func (mt MsgAndTags) Tags() TagMap {
+	return mt.tags
 }

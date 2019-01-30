@@ -341,15 +341,15 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	// test we threw an event
 	select {
-	case e := <-updatesSub.Out():
-		event, ok := e.Msg.(types.EventDataValidatorSetUpdates)
-		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", e)
+	case mt := <-updatesSub.Out():
+		event, ok := mt.Msg().(types.EventDataValidatorSetUpdates)
+		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", mt.Msg())
 		if assert.NotEmpty(t, event.ValidatorUpdates) {
 			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
 			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
 		}
 	case <-updatesSub.Cancelled():
-		t.Fatal("updatesSub was cancelled.")
+		t.Fatal(fmt.Sprintf("updatesSub was cancelled (reason: %v)", updatesSub.Err()))
 	case <-time.After(1 * time.Second):
 		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
 	}

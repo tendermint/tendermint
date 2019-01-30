@@ -12,9 +12,15 @@ import (
 const defaultCapacity = 0
 
 type EventBusSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (*tmpubsub.Subscription, error)
+	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error)
 	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
+}
+
+type Subscription interface {
+	Out() <-chan tmpubsub.MsgAndTags
+	Cancelled() <-chan struct{}
+	Err() error
 }
 
 // EventBus is a common bus for all events going through the system. All calls
@@ -52,7 +58,7 @@ func (b *EventBus) OnStop() {
 	b.pubsub.Stop()
 }
 
-func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (*tmpubsub.Subscription, error) {
+func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error) {
 	return b.pubsub.Subscribe(ctx, subscriber, query, outCapacity...)
 }
 

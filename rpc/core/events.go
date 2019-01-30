@@ -101,7 +101,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
-	sub, err := eventBusFor(wsCtx).Subscribe(ctx, addr, q)
+	sub, err := eventBus.Subscribe(ctx, addr, q)
 	if err != nil {
 		return nil, err
 	}
@@ -109,13 +109,13 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 	go func() {
 		for {
 			select {
-			case event := <-sub.Out():
-				tmResult := &ctypes.ResultEvent{query, event.Msg.(tmtypes.TMEventData)}
+			case mt := <-sub.Out():
+				resultEvent := &ctypes.ResultEvent{query, mt.Msg().(tmtypes.TMEventData)}
 				wsCtx.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						wsCtx.Codec(),
 						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", wsCtx.Request.ID)),
-						tmResult,
+						resultEvent,
 					))
 			case <-sub.Cancelled():
 				wsCtx.TryWriteRPCResponse(
@@ -168,7 +168,7 @@ func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsub
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse query")
 	}
-	err = eventBusFor(wsCtx).Unsubscribe(context.Background(), addr, q)
+	err = eventBus.Unsubscribe(context.Background(), addr, q)
 	if err != nil {
 		return nil, err
 	}
@@ -202,17 +202,9 @@ func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsub
 func UnsubscribeAll(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, error) {
 	addr := wsCtx.GetRemoteAddr()
 	logger.Info("Unsubscribe from all", "remote", addr)
-	err := eventBusFor(wsCtx).UnsubscribeAll(context.Background(), addr)
+	err := eventBus.UnsubscribeAll(context.Background(), addr)
 	if err != nil {
 		return nil, err
 	}
 	return &ctypes.ResultUnsubscribe{}, nil
-}
-
-func eventBusFor(wsCtx rpctypes.WSRPCContext) tmtypes.EventBusSubscriber {
-	es := wsCtx.GetEventSubscriber()
-	if es == nil {
-		es = eventBus
-	}
-	return es
 }

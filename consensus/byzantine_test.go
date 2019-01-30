@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -50,7 +49,7 @@ func TestByzantine(t *testing.T) {
 		switches[i].SetLogger(p2pLogger.With("validator", i))
 	}
 
-	eventSubs := make([]*tmpubsub.Subscription, N)
+	eventSubs := make([]types.Subscription, N)
 	reactors := make([]p2p.Reactor, N)
 	for i := 0; i < N; i++ {
 		// make first val byzantine

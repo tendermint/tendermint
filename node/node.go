@@ -676,7 +676,11 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec, rpcserver.EventSubscriber(n.eventBus))
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec, rpcserver.DisconnectCallback(func(remoteAddr string) {
+			// Unsubscribe a client upon disconnect since it won't be able to do it
+			// itself.
+			n.eventBus.UnsubscribeAll(context.TODO(), remoteAddr)
+		}))
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)

@@ -44,13 +44,13 @@ func (is *IndexerService) OnStart() error {
 	go func() {
 		for {
 			select {
-			case msgAndTags := <-blockHeadersSub.Out():
-				header := msgAndTags.Msg.(types.EventDataNewBlockHeader).Header
+			case mt := <-blockHeadersSub.Out():
+				header := mt.Msg().(types.EventDataNewBlockHeader).Header
 				batch := NewBatch(header.NumTxs)
 				for i := int64(0); i < header.NumTxs; i++ {
 					select {
-					case msgAndTags := <-txsSub.Out():
-						txResult := msgAndTags.Msg.(types.EventDataTx).TxResult
+					case mt2 := <-txsSub.Out():
+						txResult := mt2.Msg().(types.EventDataTx).TxResult
 						batch.Add(&txResult)
 					case <-txsSub.Cancelled():
 						is.Logger.Error("Failed to index a block. txsSub was cancelled. Did the Tendermint stop?",
