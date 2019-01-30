@@ -47,8 +47,8 @@ installFromGithub() {
 
 installFromGithub mitchellh/gox 51ed453898ca5579fea9ad1f08dff6b121d9f2e8
 installFromGithub golang/dep 22125cfaa6ddc71e145b1535d4b7ee9744fefff2 cmd/dep
-## gometalinter v2.0.11
-installFromGithub alecthomas/gometalinter 17a7ffa42374937bfecabfb8d2efbd4db0c26741
+## gometalinter v3.0.0
+installFromGithub alecthomas/gometalinter df395bfa67c5d0630d936c0044cf07ff05086655
 installFromGithub gogo/protobuf 61dbc136cf5d2f08d68a011382652244990a53a9 protoc-gen-gogo
 installFromGithub square/certstrap e27060a3643e814151e65b9807b6b06d169580a7
 
