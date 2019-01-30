@@ -24,6 +24,10 @@ func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// TODO: this serializes to
+	//  0x30 <length> 0x02 <length r> r 0x02 <length s> s
+	// instead of r || s as we want
+	// use SignCompact instead and re-benchmark
 	return sig.Serialize(), nil
 }
 
@@ -32,6 +36,9 @@ func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sig []byte) bool {
 	if err != nil {
 		return false
 	}
+	// this will only parse correctly if the signature is in the form
+	//  0x30 <length> 0x02 <length r> r 0x02 <length s> s
+	// we want to accept sigs which are r || s (with padded r, s) and in lower-S form
 	parsedSig, err := secp256k1.ParseSignature(sig[:], secp256k1.S256())
 	if err != nil {
 		return false

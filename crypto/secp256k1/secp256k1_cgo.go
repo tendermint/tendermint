@@ -10,7 +10,6 @@ import (
 // Sign creates an ECDSA signature on curve Secp256k1, using SHA256 on the msg.
 func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
 	// TODO: if we don't want the additional computation here
-	//  C.secp256k1_ecdsa_recoverable_signature_serialize_compact(context, sigdata, &recid, &sigstruct))
 	//  we'd need to use the C library directly
 	//
 	// i.e. secp256k1.Sign calls
