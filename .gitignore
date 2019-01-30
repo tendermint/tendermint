@@ -44,3 +44,4 @@ terraform.tfstate.d
 .vscode
 
 /test/remote/venv/
+__pycache__
