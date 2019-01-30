@@ -15,6 +15,9 @@ LimitRSS=infinity
 LimitCORE=infinity
 LimitNOFILE=65536
 LimitMEMLOCK=infinity
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=tendermint
 
 [Install]
 WantedBy=multi-user.target
