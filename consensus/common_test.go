@@ -636,6 +636,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
+		state.Version.Consensus.App = kvstore.ProtocolVersion	//simulate handshake, receive app version
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
