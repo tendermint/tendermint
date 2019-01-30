@@ -87,7 +87,7 @@ func sendTxs(cs *ConsensusState, ctx context.Context) {
 			return
 		default:
 			tx := []byte{byte(i)}
-			cs.mempool.CheckTx(tx, nil)
+			assertMempool(cs.txNotifier).CheckTx(tx, nil)
 			i++
 		}
 	}

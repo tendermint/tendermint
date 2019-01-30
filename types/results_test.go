@@ -16,20 +16,21 @@ func TestABCIResults(t *testing.T) {
 	e := ABCIResult{Code: 14, Data: []byte("foo")}
 	f := ABCIResult{Code: 14, Data: []byte("bar")}
 
-	// Nil and []byte{} should produce the same hash.
-	require.Equal(t, a.Hash(), a.Hash())
-	require.Equal(t, b.Hash(), b.Hash())
-	require.Equal(t, a.Hash(), b.Hash())
+	// Nil and []byte{} should produce the same bytes
+	require.Equal(t, a.Bytes(), a.Bytes())
+	require.Equal(t, b.Bytes(), b.Bytes())
+	require.Equal(t, a.Bytes(), b.Bytes())
 
 	// a and b should be the same, don't go in results.
 	results := ABCIResults{a, c, d, e, f}
 
-	// Make sure each result hashes properly.
+	// Make sure each result serializes differently
 	var last []byte
-	for i, res := range results {
-		h := res.Hash()
-		assert.NotEqual(t, last, h, "%d", i)
-		last = h
+	assert.Equal(t, last, a.Bytes()) // first one is empty
+	for i, res := range results[1:] {
+		bz := res.Bytes()
+		assert.NotEqual(t, last, bz, "%d", i)
+		last = bz
 	}
 
 	// Make sure that we can get a root hash from results and verify proofs.
@@ -38,7 +39,7 @@ func TestABCIResults(t *testing.T) {
 
 	for i, res := range results {
 		proof := results.ProveResult(i)
-		valid := proof.Verify(root, res.Hash())
+		valid := proof.Verify(root, res.Bytes())
 		assert.NoError(t, valid, "%d", i)
 	}
 }

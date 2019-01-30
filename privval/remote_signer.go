@@ -4,41 +4,50 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
 )
 
-// RemoteSignerClient implements PrivValidator, it uses a socket to request signatures
+// Socket errors.
+var (
+	ErrConnTimeout = errors.New("remote signer timed out")
+)
+
+// RemoteSignerClient implements PrivValidator.
+// It uses a net.Conn to request signatures
 // from an external process.
 type RemoteSignerClient struct {
-	conn            net.Conn
+	conn net.Conn
+
+	// memoized
 	consensusPubKey crypto.PubKey
-	mtx             sync.Mutex
 }
 
 // Check that RemoteSignerClient implements PrivValidator.
 var _ types.PrivValidator = (*RemoteSignerClient)(nil)
 
 // NewRemoteSignerClient returns an instance of RemoteSignerClient.
-func NewRemoteSignerClient(
-	conn net.Conn,
-) (*RemoteSignerClient, error) {
-	sc := &RemoteSignerClient{
-		conn: conn,
-	}
-	pubKey, err := sc.getPubKey()
+func NewRemoteSignerClient(conn net.Conn) (*RemoteSignerClient, error) {
+
+	// retrieve and memoize the consensus public key once.
+	pubKey, err := getPubKey(conn)
 	if err != nil {
 		return nil, cmn.ErrorWrap(err, "error while retrieving public key for remote signer")
 	}
-	// retrieve and memoize the consensus public key once:
-	sc.consensusPubKey = pubKey
-	return sc, nil
+	return &RemoteSignerClient{
+		conn:            conn,
+		consensusPubKey: pubKey,
+	}, nil
+}
+
+// Close calls Close on the underlying net.Conn.
+func (sc *RemoteSignerClient) Close() error {
+	return sc.conn.Close()
 }
 
 // GetPubKey implements PrivValidator.
@@ -46,16 +55,14 @@ func (sc *RemoteSignerClient) GetPubKey() crypto.PubKey {
 	return sc.consensusPubKey
 }
 
-func (sc *RemoteSignerClient) getPubKey() (crypto.PubKey, error) {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
-	err := writeMsg(sc.conn, &PubKeyRequest{})
+// not thread-safe (only called on startup).
+func getPubKey(conn net.Conn) (crypto.PubKey, error) {
+	err := writeMsg(conn, &PubKeyRequest{})
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := readMsg(sc.conn)
+	res, err := readMsg(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -73,9 +80,6 @@ func (sc *RemoteSignerClient) getPubKey() (crypto.PubKey, error) {
 
 // SignVote implements PrivValidator.
 func (sc *RemoteSignerClient) SignVote(chainID string, vote *types.Vote) error {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
 	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
 	if err != nil {
 		return err
@@ -103,9 +107,6 @@ func (sc *RemoteSignerClient) SignProposal(
 	chainID string,
 	proposal *types.Proposal,
 ) error {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
 	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
 	if err != nil {
 		return err
@@ -129,9 +130,6 @@ func (sc *RemoteSignerClient) SignProposal(
 
 // Ping is used to check connection health.
 func (sc *RemoteSignerClient) Ping() error {
-	sc.mtx.Lock()
-	defer sc.mtx.Unlock()
-
 	err := writeMsg(sc.conn, &PingRequest{})
 	if err != nil {
 		return err
@@ -259,4 +257,19 @@ func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValida
 	}
 
 	return res, err
+}
+
+// IsConnTimeout returns a boolean indicating whether the error is known to
+// report that a connection timeout occurred. This detects both fundamental
+// network timeouts, as well as ErrConnTimeout errors.
+func IsConnTimeout(err error) bool {
+	if cmnErr, ok := err.(cmn.Error); ok {
+		if cmnErr.Data() == ErrConnTimeout {
+			return true
+		}
+	}
+	if _, ok := err.(timeoutError); ok {
+		return true
+	}
+	return false
 }

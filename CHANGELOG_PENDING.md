@@ -1,4 +1,4 @@
-## v0.27.4
+## v0.30.0
 
 *TBD*
 
@@ -7,29 +7,20 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [cli] Removed `node` `--proxy_app=dummy` option. Use `kvstore` (`persistent_kvstore`) instead.
-- [cli] Renamed `node` `--proxy_app=nilapp` to `--proxy_app=noop`.
-- [config] \#2992 `allow_duplicate_ip` is now set to false
-
-- [privval] \#2926 split up `PubKeyMsg` into `PubKeyRequest` and `PubKeyResponse` to be consistent with other message types
 
 * Apps
 
 * Go API
-- [types] \#2926 memoize consensus public key on initialization of remote signer and return the memoized key on
-`PrivValidator.GetPubKey()` instead of requesting it again
-- [types] \#2981 Remove `PrivValidator.GetAddress()`
 
 * Blockchain Protocol
 
 * P2P Protocol
-- multiple connections from the same IP are now disabled by default (see `allow_duplicate_ip` config option)
 
 ### FEATURES:
-- [privval] \#1181 Split immutable and mutable parts of priv_validator.json
 
 ### IMPROVEMENTS:
+- [tools] add go-deadlock tool to help detect deadlocks
 
 ### BUG FIXES:
-- [types] \#2926 do not panic if retrieving the private validator's public key fails
-- [consensus] \#3067 getBeginBlockValidatorInfo load validators from stateDB instead of state
+- [node] \#3186 EventBus and indexerService should be started before first block (for replay last block on handshake) execution
+- [consensus] \#3067 getBeginBlockValidatorInfo load validators from stateDB instead of from state

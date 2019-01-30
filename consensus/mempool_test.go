@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -19,14 +20,17 @@ func init() {
 	config = ResetConfig("consensus_mempool_test")
 }
 
+// for testing
+func assertMempool(txn txNotifier) sm.Mempool {
+	return txn.(sm.Mempool)
+}
+
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
-	blockDB := dbm.NewMemDB()
-	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
-	sm.SaveState(blockDB, state)
-	cs.mempool.EnableTxsAvailable()
+	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
@@ -43,10 +47,8 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(1, false, 10)
-	blockDB := dbm.NewMemDB()
-	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
-	sm.SaveState(blockDB, state)
-	cs.mempool.EnableTxsAvailable()
+  cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
@@ -60,10 +62,8 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
-	blockDB := dbm.NewMemDB()
-	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
-	sm.SaveState(blockDB, state)
-	cs.mempool.EnableTxsAvailable()
+	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
@@ -99,7 +99,7 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 	for i := start; i < end; i++ {
 		txBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := cs.mempool.CheckTx(txBytes, nil)
+		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil)
 		if err != nil {
 			panic(fmt.Sprintf("Error after CheckTx: %v", err))
 		}
@@ -153,7 +153,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 		// Try to send the tx through the mempool.
 		// CheckTx should not err, but the app should return a bad abci code
 		// and the tx should get removed from the pool
-		err := cs.mempool.CheckTx(txBytes, func(r *abci.Response) {
+		err := assertMempool(cs.txNotifier).CheckTx(txBytes, func(r *abci.Response) {
 			if r.GetCheckTx().Code != code.CodeTypeBadNonce {
 				t.Fatalf("expected checktx to return bad nonce, got %v", r)
 			}
@@ -165,7 +165,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 		// check for the tx
 		for {
-			txs := cs.mempool.ReapMaxBytesMaxGas(int64(len(txBytes)), -1)
+			txs := assertMempool(cs.txNotifier).ReapMaxBytesMaxGas(int64(len(txBytes)), -1)
 			if len(txs) == 0 {
 				emptyMempoolCh <- struct{}{}
 				return

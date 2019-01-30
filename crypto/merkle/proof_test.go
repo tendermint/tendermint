@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
