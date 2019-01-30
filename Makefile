@@ -249,30 +249,31 @@ fmt:
 metalinter:
 	@echo "--> Running linter"
 	@gometalinter $(LINT_FLAGS) --disable-all  \
+		--enable=vet \
+		--enable=vetshadow \
 		--enable=deadcode \
+		--enable=varcheck \
+		--enable=structcheck \
 	 	--enable=misspell \
 		--enable=safesql \
+		--enable=gosec \
+		--enable=goimports \
+		--enable=gofmt \
 		./...
-		#--enable=gas \
-		#--enable=maligned \
-		#--enable=dupl \
-		#--enable=errcheck \
-		#--enable=goconst \
-		#--enable=gocyclo \
-		#--enable=goimports \
-		#--enable=golint \ <== comments on anything exported
 		#--enable=gotype \
-	 	#--enable=ineffassign \
-	  #--enable=interfacer \
-	  #--enable=megacheck \
-	  #--enable=staticcheck \
-	  #--enable=structcheck \
-	  #--enable=unconvert \
-	  #--enable=unparam \
-		#--enable=unused \
-	  #--enable=varcheck \
-		#--enable=vet \
-		#--enable=vetshadow \
+		#--enable=gotypex \
+		#--enable=gocyclo \
+		#--enable=golint \
+		#--enable=maligned \
+		#--enable=errcheck \
+		#--enable=staticcheck \
+		#--enable=dupl \
+		#--enable=ineffassign \
+		#--enable=interfacer \
+		#--enable=unconvert \
+		#--enable=goconst \
+		#--enable=unparam \
+		#--enable=nakedret \
 
 metalinter_all:
 	@echo "--> Running linter (all)"
