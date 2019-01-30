@@ -184,8 +184,8 @@ func TestIndexAllTags(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexAllTags())
 
 	txResult := txResultWithTags([]cmn.KVPair{
-		cmn.KVPair{Key: []byte("account.owner"), Value: []byte("Ivan")},
-		cmn.KVPair{Key: []byte("account.number"), Value: []byte("1")},
+		{Key: []byte("account.owner"), Value: []byte("Ivan")},
+		{Key: []byte("account.number"), Value: []byte("1")},
 	})
 
 	err := indexer.Index(txResult)

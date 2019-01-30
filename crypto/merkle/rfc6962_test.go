@@ -26,7 +26,7 @@ import (
 func TestRFC6962Hasher(t *testing.T) {
 	_, leafHashTrail := trailsFromByteSlices([][]byte{[]byte("L123456")})
 	leafHash := leafHashTrail.Hash
-	_, leafHashTrail = trailsFromByteSlices([][]byte{[]byte{}})
+	_, leafHashTrail = trailsFromByteSlices([][]byte{{}})
 	emptyLeafHash := leafHashTrail.Hash
 	for _, tc := range []struct {
 		desc string

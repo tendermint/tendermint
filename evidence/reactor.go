@@ -48,7 +48,7 @@ func (evR *EvidenceReactor) SetLogger(l log.Logger) {
 // It returns the list of channels for this reactor.
 func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:       EvidenceChannel,
 			Priority: 5,
 		},
