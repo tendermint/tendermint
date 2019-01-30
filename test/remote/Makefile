@@ -5,7 +5,7 @@ include common/make/python-ansible.mk
 deploy\:%: venv/bin/ansible
 	@$(ACTIVATE_VENV); \
 	echo "Deploying network \"$*\"..."; \
-	INVENTORY=../../$(INVENTORY) $(MAKE) -C cd networks/$*/ deploy
+	INVENTORY=../../$(INVENTORY) $(MAKE) -C networks/$*/ deploy
 
 status\:%: venv/bin/ansible
 	@$(MAKE) -C networks/$*/ status
