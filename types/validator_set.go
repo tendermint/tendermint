@@ -89,13 +89,13 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	//  2*totalVotingPower/(maxPriority - minPriority)
 	diffMax := K * vals.TotalVotingPower()
 	vals.RescalePriorities(diffMax)
+	vals.shiftByAvgProposerPriority()
 
 	var proposer *Validator
 	// call IncrementProposerPriority(1) times times:
 	for i := 0; i < times; i++ {
 		proposer = vals.incrementProposerPriority()
 	}
-	vals.shiftByAvgProposerPriority()
 
 	vals.Proposer = proposer
 }
@@ -526,8 +526,7 @@ func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorS
 			return err
 		}
 	}
-
-	// Loop again and update the proposerPriority for newly added validators
+	// Loop again and update the proposerPriority for newly added and updated validators
 	for _, valUpdate := range updates {
 		address := valUpdate.Address
 		_, val := vals.GetByAddress(address)
@@ -536,10 +535,10 @@ func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorS
 			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
 			// un-bond and then re-bond to reset their (potentially previously negative) ProposerPriority to zero.
 			//
-			// Contract: totalVotingPower < MaxTotalVotingPower to ensure ProposerPriority does
+			// Contract: updatedVotingPower < MaxTotalVotingPower to ensure ProposerPriority does
 			// not exceed the bounds of int64.
 			//
-			// Compute ProposerPriority = -1.125*totalVotingPower == -(totalVotingPower + (totalVotingPower >> 3)).
+			// Compute ProposerPriority = -1.125*totalVotingPower == -(updatedVotingPower + (updatedVotingPower >> 3)).
 			valUpdate.ProposerPriority = -(updatedVotingPower + (updatedVotingPower >> 3))
 		} else {
 			valUpdate.ProposerPriority = val.ProposerPriority

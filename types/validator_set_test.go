@@ -837,22 +837,28 @@ func verifyValidatorSet (vals *ValidatorSet) error {
 }
 
 func BenchmarkUpdates(b *testing.B) {
+	const (
+		n = 100
+		m = 2000
+	)
+	// Init with n validators
+	vs := make([]*Validator, n)
+	for j := 0; j < n; j++ {
+		vs[j] = newValidator([]byte(fmt.Sprintf("v%d", j)), 100)
+	}
+	vals := NewValidatorSet(vs)
+	l := len(vals.Validators)
+
+	// Make m validators
+	nvs := make([]*Validator, m)
+	for j := 0; j < m; j++ {
+		nvs[j] = newValidator([]byte(fmt.Sprintf("v%d", j+l)), 1000)
+	}
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		// Init with n validators
-		n := 100
-		vs := make([]*Validator, n)
-		for j := 0; j < n; j++ {
-			vs[j] = newValidator([]byte(fmt.Sprintf("v%d", j)), 100)
-		}
-		vals := NewValidatorSet(vs)
-		assert.Nil(b, verifyValidatorSet(vals))
-		len := len(vals.Validators)
-		// Add m validators
-		m := 2000
-		nvs := make([]*Validator, m)
-		for j := 0; j < m; j++ {
-			nvs[j] = newValidator([]byte(fmt.Sprintf("v%d", j+len)), 1000)
-		}
-		assert.Nil(b, vals.UpdateWithChangeSet(nvs))
+		// Add m validators to valst
+		valst := vals.Copy()
+		assert.Nil(b, valst.UpdateWithChangeSet(nvs))
 	}
 }

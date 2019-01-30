@@ -384,7 +384,7 @@ func updateState(
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
 		//err := nValSet.UpdateWithChangeSet(validatorUpdates)
-		err := nValSet.UpdateWithChangeList(validatorUpdates)
+		err := nValSet.UpdateWithChangeSet(validatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
