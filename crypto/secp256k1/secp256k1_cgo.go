@@ -10,14 +10,6 @@ import (
 
 // Sign creates an ECDSA signature on curve Secp256k1, using SHA256 on the msg.
 func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
-	// TODO: if we don't want the additional computation here
-	//  we'd need to use the C library directly
-	//
-	// i.e. secp256k1.Sign calls
-	//  - C.secp256k1_ecdsa_sign_recoverable(context, sigdata, &recid, &sigstruct))
-	//  - C.secp256k1_ecdsa_recoverable_signature_serialize_compact(context, sigdata, &recid, &sigstruct)
-	//
-	// -> benchmark against what we had before (golang only) and the direct calls to the C API
 	rsv, err := secp256k1.Sign(crypto.Sha256(msg), privKey[:])
 	if err != nil {
 		return nil, err
