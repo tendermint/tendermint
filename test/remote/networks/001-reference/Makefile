@@ -1,5 +1,5 @@
 INVENTORY?=../../inventory/hosts
-.PHONY: deploy
+.PHONY: deploy status
 
 include ../../common/make/tendermint.mk
 
@@ -14,3 +14,6 @@ deploy: build-tmbin-linux
 	./fix-node-config.sh
 	ansible-playbook -i $(INVENTORY) deploy.yml
 	./check-status.sh
+
+status:
+	@SLEEP=0 ./check-status.sh

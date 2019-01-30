@@ -1,9 +1,14 @@
 #!/bin/sh
 
 EXIT_CODE=0
+SLEEP=${SLEEP:-3}
 
-echo "Waiting a few seconds for Tendermint network to start up..."
-sleep 3
+if (( ${SLEEP} > 0 )); then
+    echo "Waiting a few seconds for Tendermint network to start up..."
+    sleep ${SLEEP}
+fi
+
+echo "Checking network status (assumes node configuration files are all in /tmp/nodes/)..."
 
 # Run through each node and check its status to see if it's up
 for CFG_FILE in $(find /tmp/nodes -name 'config.toml'); do
