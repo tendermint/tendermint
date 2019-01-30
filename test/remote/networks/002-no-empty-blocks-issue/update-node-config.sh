@@ -10,6 +10,7 @@ for CFG_FILE in $(find /tmp/nodes -name 'config.toml'); do
         -e "s/^proxy_app = \(.*\)$/proxy_app = \"kvstore\"/" \
         -e "s/^moniker = \(.*\)$/moniker = \"${NODE_ID}\"/" \
         -e "s/^db_backend = \(.*\)$/db_backend = \"goleveldb\"/" \
+        -e "s/^log_level = \(.*\)$/log_level = \"main:info,state:info,consensus:info,*:error\"/" \
         -e "s/^log_format = \(.*\)$/log_format = \"json\"/" \
         -e "s/^addr_book_strict = \(.*\)$/addr_book_strict = true/" \
         -e "s/^flush_throttle_timeout = \(.*\)$/flush_throttle_timeout = \"10ms\"/" \

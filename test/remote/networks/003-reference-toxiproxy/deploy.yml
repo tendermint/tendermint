@@ -1,0 +1,123 @@
+---
+# We need one host dedicated to routing and controlling traffic between the
+# other nodes in the network. This will be our Toxiproxy node.
+- hosts:
+    - tik3
+  become: yes
+  vars:
+    toxiproxy_server_bin: "https://github.com/Shopify/toxiproxy/releases/download/v2.1.4/toxiproxy-server-linux-amd64"
+    toxiproxy_cli_bin: "https://github.com/Shopify/toxiproxy/releases/download/v2.1.4/toxiproxy-cli-linux-amd64"
+    toxiproxy_upstreams:
+      - { host: "tik0.sredev.co", node_id: "tik0", toxiproxy_p2p_port: 34000, toxiproxy_rpc_port: 34050 }
+      - { host: "tik1.sredev.co", node_id: "tik1", toxiproxy_p2p_port: 34001, toxiproxy_rpc_port: 34051 }
+      - { host: "tik2.sredev.co", node_id: "tik2", toxiproxy_p2p_port: 34002, toxiproxy_rpc_port: 34052 }
+  tasks:
+    # Check if Tendermint's running on this node - and stop/disable it
+    - name: Check if Tendermint service is present
+      stat: path=/etc/systemd/system/tendermint.service
+      register: tm_service
+    - name: Stop and disable Tendermint if running
+      service: name=tendermint state=stopped enabled=no
+      when: tm_service.stat.exists
+
+    # Check if we need to configure Toxiproxy systemd service
+    - name: Check if Toxiproxy service is present
+      stat: path=/etc/systemd/system/toxiproxy.service
+      register: tp_service
+    - name: Download latest Toxiproxy release (server + CLI)
+      get_url:
+        url: "{{ item.url }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+        mode: 0755
+      with_items:
+        - { url: "{{ toxiproxy_server_bin }}", dest: "/usr/bin/toxiproxy-server" }
+        - { url: "{{ toxiproxy_cli_bin }}", dest: "/usr/bin/toxiproxy-cli" }
+      when: not tp_service.stat.exists
+    - name: Copy Toxiproxy service script
+      copy: src=toxiproxy.service dest=/etc/systemd/system/toxiproxy.service
+      when: not tp_service.stat.exists
+    - name: Reload systemd services
+      systemd:
+        daemon_reload: yes
+    - name: Restart the Toxiproxy service
+      service: name=toxiproxy state=restarted enabled=yes
+    - name: Create Toxiproxy proxies
+      shell: |
+        toxiproxy-cli create {{ item.node_id }}-p2p \
+          --listen {{ item.toxiproxy_p2p_port }} \
+          --upstream 127.0.0.1:26656
+        
+        toxiproxy-cli create {{ item.node_id }}-rpc \
+          --listen {{ item.toxiproxy_rpc_port }} \
+          --upstream 127.0.0.1:26657
+      with_items: "{{ toxiproxy_upstreams }}"
+    # This is where the Toxiproxy magic is: the actual "toxic" elements we
+    # introduce into the network in the interaction between the Tendermint
+    # nodes. Here, all we're doing for now is adding some latency in the
+    # connections with a bit of jitter.
+    - name: Create Toxiproxy toxics to P2P ports
+      shell: |
+        toxiproxy-cli toxic add {{ item.node_id }}-p2p \
+          -t latency \
+          -n {{ item.node_id }}-p2p-latency \
+          -a latency=500 \
+          -a jitter=100
+      with_items: "{{ toxiproxy_upstreams }}"
+
+# These hosts will act as our Tendermint validator nodes in the network. They
+# will, however, only be able to see each other through tik3 - the Toxiproxy
+# node. This Toxiproxy node will then be able to control the network conditions
+# between the other 3 nodes through "toxics".
+- hosts:
+    - tik0
+    - tik1
+    - tik2
+  become: yes
+  vars:
+    always_deploy_svc: no
+    local_tmbin: "{{ lookup('env', 'GOPATH') }}/src/github.com/tendermint/tendermint/build/tendermint"
+  tasks:
+    # Check if we need to configure the Tendermint systemd service
+    - name: Check if Tendermint service is present
+      stat:
+        path: /etc/systemd/system/tendermint.service
+      register: tm_service
+    - name: Install Tendermint service
+      include_tasks: ../../common/ansible/install-tm-svc.yml
+      when: always_deploy_svc or not tm_service.stat.exists
+    - name: Stop and disable Tendermint service
+      service: name=tendermint state=stopped enabled=no
+
+    # Sync the Tendermint binary
+    - name: Sync Tendermint binary to target machines
+      synchronize:
+        src: "{{ local_tmbin }}"
+        dest: /usr/bin/tendermint
+    - name: Set binary permissions
+      file:
+        path: /usr/bin/tendermint
+        owner: root
+        group: root
+        mode: 0755
+
+    # Sync the different nodes' configurations
+    - name: Erase Tendermint home folder
+      file:
+        path: /home/tendermint/.tendermint
+        state: absent
+    - name: Sync node configurations
+      synchronize:
+        src: "/tmp/nodes/{{ inventory_hostname }}/"
+        dest: /home/tendermint/.tendermint/
+    - name: Set Tendermint home permissions
+      file:
+        path: /home/tendermint/.tendermint
+        owner: tendermint
+        group: tendermint
+        recurse: yes
+
+    # We can now safely start the Tendermint nodes
+    - name: Start Tendermint
+      service: name=tendermint state=started enabled=yes
