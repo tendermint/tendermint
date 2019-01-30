@@ -1,0 +1,27 @@
+---
+- name: Ensure load test group exists
+  group:
+    name: "{{ loadtest_group }}"
+    state: present
+- name: Ensure load test user exists
+  user:
+    name: "{{ loadtest_user }}"
+    group: "{{ loadtest_group }}"
+    home: "{{ loadtest_home }}"
+    state: present
+- name: Ensure that Python 3.6 is installed
+  yum:
+    name: python36
+    update_cache: yes
+    state: latest
+- name: Make sure venv directory is clear
+  file:
+    path: "{{ venv_dir }}"
+    state: absent
+- name: Copy requirements.txt file across
+  copy: "src=requirements.txt dest={{ loadtest_home }}"
+- name: Install Python dependencies into virtual environment
+  pip:
+    requirements: "{{ loadtest_home }}/requirements.txt"
+    virtualenv: "{{ venv_dir }}"
+    virtualenv_command: "python36 -m venv {{ venv_dir }}"
