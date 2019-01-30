@@ -4,6 +4,7 @@ package secp256k1
 
 import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+
 	"github.com/tendermint/tendermint/crypto"
 )
 
