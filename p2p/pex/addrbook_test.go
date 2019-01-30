@@ -36,6 +36,28 @@ func deleteTempFile(fname string) {
 	}
 }
 
+func TestAddrBookGetSelectionWithMarkedGood(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	// 0 addresses
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+	assert.Zero(t, book.Size())
+
+	N := 10
+	randAddrs := randNetAddressPairs(t, N)
+	for _, addr := range randAddrs {
+		book.AddAddress(addr.addr, addr.src)
+	}
+	for _, addr := range randAddrs[:1] {
+		book.MarkGood(addr.addr)
+	}
+
+	addrs := book.GetSelectionWithBias(10)
+	assert.NotNil(t, addrs, "expected an address")
+}
+
 func TestAddrBookPickAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
