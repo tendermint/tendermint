@@ -3,7 +3,7 @@ INVENTORY?=../../inventory/hosts
 
 include ../../common/make/tendermint.mk
 
-deploy: build-tmbin-linux
+deploy: $(TMBIN)
 	rm -rf /tmp/nodes/
 	tendermint testnet \
 		--v 4 \
