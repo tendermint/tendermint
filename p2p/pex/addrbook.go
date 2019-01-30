@@ -413,12 +413,12 @@ ADDRS_LOOP:
 	for selectionIndex < numAddresses {
 
 		// determine whether to pick from an old bucket.
-		biasedTowardsOldAddrs := int((float64(selectionIndex)/float64(numAddresses))*100) >= biasTowardsNewAddrs
-		// if there's not enough old addresses to pick from, then we can't pick from old bucket.
-		pickFromOldBucket := biasedTowardsOldAddrs && a.nOld > len(oldBucketToAddrsMap)
+		// if there's not enough old addresses to pick from, then we cant pick from old bucket.
+		pickFromOldBucket := int((float64(selectionIndex)/float64(numAddresses))*100) >= biasTowardsNewAddrs
+		pickFromOldBucket = (pickFromOldBucket && a.nOld > 0 && len(oldBucketToAddrsMap) < a.nOld) || a.nNew == 0
 
 		// if there's not enough new addrs to pick from, just return early.
-		if !pickFromOldBucket && a.nNew <= len(newBucketToAddrsMap) {
+		if !pickFromOldBucket && len(newBucketToAddrsMap) >= a.nNew {
 			return selection
 		}
 
