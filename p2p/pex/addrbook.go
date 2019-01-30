@@ -411,8 +411,12 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	selectionIndex := 0
 ADDRS_LOOP:
 	for selectionIndex < numAddresses {
+
+		// determine whether to pick from an old bucket.
+		// if there's not enough old addresses to pick from, then we cant pick from old bucket.
 		pickFromOldBucket := int((float64(selectionIndex)/float64(numAddresses))*100) >= biasTowardsNewAddrs
-		pickFromOldBucket = (pickFromOldBucket && a.nOld > 0) || a.nNew == 0
+		pickFromOldBucket = (pickFromOldBucket && a.nOld > 0 && len(oldBucketToAddrsMap) < a.nOld) || a.nNew == 0
+
 		bucket := make(map[string]*knownAddress)
 
 		// loop until we pick a random non-empty bucket
