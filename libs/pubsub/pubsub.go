@@ -18,7 +18,7 @@
 //		 }
 //		 ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
 //     defer cancel()
-//     subscription, err := pubsub.Subscribe(ctx, "johns-transactions", q, 1)
+//     subscription, err := pubsub.Subscribe(ctx, "johns-transactions", q)
 //     if err != nil {
 //         return err
 //     }
@@ -133,9 +133,28 @@ func (s *Server) BufferCapacity() int {
 
 // Subscribe creates a subscription for the given client. An error will be
 // returned to the caller if the context is canceled or if subscription already
-// exist for pair clientID and query. outCapacity will be used to set a
-// capacity for Subscription#Out channel.
-func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, outCapacity int) (*Subscription, error) {
+// exist for pair clientID and query. outCapacity can be used to set a
+// capacity for Subscription#Out channel (1 by default).
+func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, outCapacity ...int) (*Subscription, error) {
+	outCap := 1
+	if len(outCapacity) > 0 {
+		if outCapacity[0] <= 0 {
+			panic("Negative or zero capacity. Use SubscribeUnbuffered if you want an unbuffered channel")
+		}
+		outCap = outCapacity[0]
+	}
+
+	return s.subscribe(ctx, clientID, query, outCap)
+}
+
+// SubscribeUnbuffered does the same as Subscribe, except it returns a
+// subscription with unbuffered channel. Use with caution as it can freeze the
+// server.
+func (s *Server) SubscribeUnbuffered(ctx context.Context, clientID string, query Query) (*Subscription, error) {
+	return s.subscribe(ctx, clientID, query, 0)
+}
+
+func (s *Server) subscribe(ctx context.Context, clientID string, query Query, outCapacity int) (*Subscription, error) {
 	s.mtx.RLock()
 	clientSubscriptions, ok := s.subscriptions[clientID]
 	if ok {
@@ -263,7 +282,7 @@ type queryPlusRefCount struct {
 func (s *Server) OnStart() error {
 	go s.loop(state{
 		subscriptions: make(map[string]map[string]*Subscription),
-		queries:                make(map[string]*queryPlusRefCount),
+		queries:       make(map[string]*queryPlusRefCount),
 	})
 	return nil
 }
