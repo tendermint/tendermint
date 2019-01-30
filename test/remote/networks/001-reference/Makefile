@@ -13,3 +13,4 @@ deploy: build-tmbin-linux
 		--node-dir-prefix tik
 	./fix-node-config.sh
 	ansible-playbook -i $(INVENTORY) deploy.yml
+	./check-status.sh
