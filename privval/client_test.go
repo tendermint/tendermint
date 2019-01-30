@@ -37,11 +37,11 @@ func socketTestCases(t *testing.T) []socketTestCase {
 	require.NoError(t, err)
 	unixAddr := fmt.Sprintf("unix://%s", unixFilePath)
 	return []socketTestCase{
-		socketTestCase{
+		{
 			addr:   tcpAddr,
 			dialer: DialTCPFn(tcpAddr, testConnDeadline, ed25519.GenPrivKey()),
 		},
-		socketTestCase{
+		{
 			addr:   unixAddr,
 			dialer: DialUnixFn(unixFilePath),
 		},

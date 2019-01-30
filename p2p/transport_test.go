@@ -498,13 +498,13 @@ func TestTransportConnDuplicateIPFilter(t *testing.T) {
 	)
 
 	cs.Set(c, []net.IP{
-		net.IP{10, 0, 10, 1},
-		net.IP{10, 0, 10, 2},
-		net.IP{10, 0, 10, 3},
+		{10, 0, 10, 1},
+		{10, 0, 10, 2},
+		{10, 0, 10, 3},
 	})
 
 	if err := filter(cs, c, []net.IP{
-		net.IP{10, 0, 10, 2},
+		{10, 0, 10, 2},
 	}); err == nil {
 		t.Errorf("expected Peer to be rejected as duplicate")
 	}
