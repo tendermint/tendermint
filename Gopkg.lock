@@ -35,6 +35,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:b42be5a3601f833e0b9f2d6625d887ec1309764bfcac3d518f3db425dcd4ec5c"
+  name = "github.com/ethereum/go-ethereum"
+  packages = ["crypto/secp256k1"]
+  pruneopts = "T"
+  revision = "9dc5d1a915ac0e0bd8429d6ac41df50eec91de5f"
+  version = "v1.8.21"
+
+[[projects]]
   digest = "1:544229a3ca0fb2dd5ebc2896d3d2ff7ce096d9751635301e44e37e761349ee70"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
@@ -498,6 +506,7 @@
     "github.com/btcsuite/btcd/btcec",
     "github.com/btcsuite/btcutil/base58",
     "github.com/btcsuite/btcutil/bech32",
+    "github.com/ethereum/go-ethereum/crypto/secp256k1",
     "github.com/fortytw2/leaktest",
     "github.com/go-kit/kit/log",
     "github.com/go-kit/kit/log/level",
