@@ -19,34 +19,29 @@ var secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))
 
 // Sign creates an ECDSA signature on curve Secp256k1, using SHA256 on the msg.
 func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
+	// <(byte of 27+public key solution)+4 if compressed >< padded bytes for signature R><padded bytes for signature S>
+	// signature is in lower-S form:
 	priv, _ := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey[:])
-	sig, err := priv.Sign(crypto.Sha256(msg))
+	vrs, err := secp256k1.SignCompact(secp256k1.S256(), priv, crypto.Sha256(msg), false)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: this serializes to
-	//  0x30 <length> 0x02 <length r> r 0x02 <length s> s
-	// instead of r || s as we want
-	// use SignCompact instead and re-benchmark
-	return sig.Serialize(), nil
+	return vrs[1:], nil
 }
 
 func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sig []byte) bool {
-	pub, err := secp256k1.ParsePubKey(pubKey[:], secp256k1.S256())
-	if err != nil {
+	if len(sig) != 64 {
 		return false
 	}
-	// this will only parse correctly if the signature is in the form
-	//  0x30 <length> 0x02 <length r> r 0x02 <length s> s
-	// we want to accept sigs which are r || s (with padded r, s) and in lower-S form
-	parsedSig, err := secp256k1.ParseSignature(sig[:], secp256k1.S256())
+	signature := &secp256k1.Signature{R: new(big.Int).SetBytes(sig[:32]), S: new(big.Int).SetBytes(sig[32:])}
+	key, err := secp256k1.ParsePubKey(pubKey[:], secp256k1.S256())
 	if err != nil {
 		return false
 	}
 	// Reject malleable signatures. libsecp256k1 does this check but btcec doesn't.
-	// see: https://github.com/ethereum/go-ethereum/blob/f9401ae011ddf7f8d2d95020b7446c17f8d98dc1/crypto/signature_nocgo.go#L90-L93
-	if parsedSig.S.Cmp(secp256k1halfN) > 0 {
+	if signature.S.Cmp(secp256k1halfN) > 0 {
 		return false
 	}
-	return parsedSig.Verify(crypto.Sha256(msg), pub)
+	return signature.Verify(crypto.Sha256(msg), key)
+
 }
