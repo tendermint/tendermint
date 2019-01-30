@@ -14,7 +14,7 @@ func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
 	//  we'd need to use the C library directly
 	//
 	// i.e. secp256k1.Sign calls
-	//  - C.secp256k1_ecdsa_recoverable_signature_serialize_compact(context, sigdata, &recid, &sigstruct))
+	//  - C.secp256k1_ecdsa_sign_recoverable(context, sigdata, &recid, &sigstruct))
 	//  - C.secp256k1_ecdsa_recoverable_signature_serialize_compact(context, sigdata, &recid, &sigstruct)
 	//
 	// -> benchmark against what we had before (golang only) and the direct calls to the C API
