@@ -11,6 +11,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	sm "github.com/tendermint/tendermint/state"
 )
 
 func init() {
@@ -72,7 +73,7 @@ func TestByzantine(t *testing.T) {
 		err := eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
 		require.NoError(t, err)
 
-		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		conR := NewConsensusReactor(css[i], true) // so we don't start the consensus states
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
@@ -85,6 +86,7 @@ func TestByzantine(t *testing.T) {
 		}
 
 		reactors[i] = conRI
+		sm.SaveState(css[i].blockExec.Db(),css[i].state)	//for save height 1's validators info
 	}
 
 	defer func() {

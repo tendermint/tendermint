@@ -15,7 +15,7 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -118,7 +118,7 @@ func incrementRound(vss ...*validatorStub) {
 // Functions for transitioning the consensus state
 
 func startTestRound(cs *ConsensusState, height int64, round int) {
-	sm.SaveState(cs.blockExec.Db(),cs.state)	//for save height 1's validators info
+	sm.SaveState(cs.blockExec.Db(), cs.state) //for save height 1's validators info
 	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
 }
@@ -272,6 +272,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 
 	// Make ConsensusState
 	stateDB := blockDB
+	sm.SaveState(stateDB, state)	//for save height 1's validators info
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
@@ -601,7 +602,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
-		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
+		css[i] = newConsensusStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, stateDB)
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
@@ -637,7 +638,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
-		state.Version.Consensus.App = kvstore.ProtocolVersion	//simulate handshake, receive app version
+		state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
