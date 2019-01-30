@@ -3,6 +3,28 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.29.0
+
+This release contains some breaking changes to the block and p2p protocols,
+and will not be compatible with any previous versions of the software, primarily
+due to changes in how various data structures are hashed.
+
+Any implementations of Tendermint blockchain verification, including lite clients,
+will need to be updated. For specific details:
+- [Merkle tree](./docs/spec/blockchain/encoding.md#merkle-trees)
+- [ConsensusParams](./docs/spec/blockchain/state.md#consensusparams)
+
+There was also a small change to field ordering in the vote struct. Any
+implementations of an out-of-process validator (like a Key-Management Server)
+will need to be updated. For specific details:
+- [Vote](https://github.com/tendermint/tendermint/blob/develop/docs/spec/consensus/signing.md#votes)
+
+Finally, the proposer selection algorithm continues to evolve. See the
+[work-in-progress
+specification](https://github.com/tendermint/tendermint/pull/3140).
+
+For everything else, please see the [CHANGELOG](./CHANGELOG.md#v0.29.0).
+
 ## v0.28.0
 
 This release breaks the format for the `priv_validator.json` file

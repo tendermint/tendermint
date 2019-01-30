@@ -25,12 +25,6 @@ func (e errUnexpectedValidators) Error() string {
 		e.got, e.want)
 }
 
-type errTooMuchChange struct{}
-
-func (e errTooMuchChange) Error() string {
-	return "Insufficient signatures to validate due to valset changes"
-}
-
 type errUnknownValidators struct {
 	chainID string
 	height  int64
@@ -80,22 +74,6 @@ func ErrUnexpectedValidators(got, want []byte) error {
 func IsErrUnexpectedValidators(err error) bool {
 	if err_, ok := err.(cmn.Error); ok {
 		_, ok := err_.Data().(errUnexpectedValidators)
-		return ok
-	}
-	return false
-}
-
-//-----------------
-// ErrTooMuchChange
-
-// ErrTooMuchChange indicates that the underlying validator set was changed by >1/3.
-func ErrTooMuchChange() error {
-	return cmn.ErrorWrap(errTooMuchChange{}, "")
-}
-
-func IsErrTooMuchChange(err error) bool {
-	if err_, ok := err.(cmn.Error); ok {
-		_, ok := err_.Data().(errTooMuchChange)
 		return ok
 	}
 	return false

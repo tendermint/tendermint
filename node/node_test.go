@@ -15,10 +15,14 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -191,4 +195,111 @@ func testFreeAddr(t *testing.T) string {
 	defer ln.Close()
 
 	return fmt.Sprintf("127.0.0.1:%d", ln.Addr().(*net.TCPAddr).Port)
+}
+
+// create a proposal block using real and full
+// mempool and evidence pool and validate it.
+func TestCreateProposalBlock(t *testing.T) {
+	config := cfg.ResetTestRoot("node_create_proposal")
+	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	logger := log.TestingLogger()
+
+	var height int64 = 1
+	state, stateDB := state(1, height)
+	maxBytes := 16384
+	state.ConsensusParams.BlockSize.MaxBytes = int64(maxBytes)
+	proposerAddr, _ := state.Validators.GetByIndex(0)
+
+	// Make Mempool
+	memplMetrics := mempl.PrometheusMetrics("node_test")
+	mempool := mempl.NewMempool(
+		config.Mempool,
+		proxyApp.Mempool(),
+		state.LastBlockHeight,
+		mempl.WithMetrics(memplMetrics),
+		mempl.WithPreCheck(sm.TxPreCheck(state)),
+		mempl.WithPostCheck(sm.TxPostCheck(state)),
+	)
+	mempool.SetLogger(logger)
+
+	// Make EvidencePool
+	types.RegisterMockEvidencesGlobal()
+	evidence.RegisterMockEvidences()
+	evidenceDB := dbm.NewMemDB()
+	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
+	evidencePool := evidence.NewEvidencePool(stateDB, evidenceStore)
+	evidencePool.SetLogger(logger)
+
+	// fill the evidence pool with more evidence
+	// than can fit in a block
+	minEvSize := 12
+	numEv := (maxBytes / types.MaxEvidenceBytesDenominator) / minEvSize
+	for i := 0; i < numEv; i++ {
+		ev := types.NewMockRandomGoodEvidence(1, proposerAddr, cmn.RandBytes(minEvSize))
+		err := evidencePool.AddEvidence(ev)
+		assert.NoError(t, err)
+	}
+
+	// fill the mempool with more txs
+	// than can fit in a block
+	txLength := 1000
+	for i := 0; i < maxBytes/txLength; i++ {
+		tx := cmn.RandBytes(txLength)
+		err := mempool.CheckTx(tx, nil)
+		assert.NoError(t, err)
+	}
+
+	blockExec := sm.NewBlockExecutor(
+		stateDB,
+		logger,
+		proxyApp.Consensus(),
+		mempool,
+		evidencePool,
+	)
+
+	commit := &types.Commit{}
+	block, _ := blockExec.CreateProposalBlock(
+		height,
+		state, commit,
+		proposerAddr,
+	)
+
+	err = blockExec.ValidateBlock(state, block)
+	assert.NoError(t, err)
+
+}
+
+func state(nVals int, height int64) (sm.State, dbm.DB) {
+	vals := make([]types.GenesisValidator, nVals)
+	for i := 0; i < nVals; i++ {
+		secret := []byte(fmt.Sprintf("test%d", i))
+		pk := ed25519.GenPrivKeyFromSecret(secret)
+		vals[i] = types.GenesisValidator{
+			pk.PubKey().Address(),
+			pk.PubKey(),
+			1000,
+			fmt.Sprintf("test%d", i),
+		}
+	}
+	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
+		ChainID:    "test-chain",
+		Validators: vals,
+		AppHash:    nil,
+	})
+
+	// save validators to db for 2 heights
+	stateDB := dbm.NewMemDB()
+	sm.SaveState(stateDB, s)
+
+	for i := 1; i < int(height); i++ {
+		s.LastBlockHeight++
+		s.LastValidators = s.Validators.Copy()
+		sm.SaveState(stateDB, s)
+	}
+	return s, stateDB
 }

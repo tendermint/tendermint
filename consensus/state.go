@@ -57,6 +57,16 @@ func (ti *timeoutInfo) String() string {
 	return fmt.Sprintf("%v ; %d/%d %v", ti.Duration, ti.Height, ti.Round, ti.Step)
 }
 
+// interface to the mempool
+type txNotifier interface {
+	TxsAvailable() <-chan struct{}
+}
+
+// interface to the evidence pool
+type evidencePool interface {
+	AddEvidence(types.Evidence) error
+}
+
 // ConsensusState handles execution of the consensus algorithm.
 // It processes votes and proposals, and upon reaching agreement,
 // commits blocks to the chain and executes them against the application.
@@ -68,17 +78,23 @@ type ConsensusState struct {
 	config        *cfg.ConsensusConfig
 	privValidator types.PrivValidator // for signing votes
 
-	// services for creating and executing blocks
-	blockExec  *sm.BlockExecutor
+	// store blocks and commits
 	blockStore sm.BlockStore
-	mempool    sm.Mempool
-	evpool     sm.EvidencePool
+
+	// create and execute blocks
+	blockExec *sm.BlockExecutor
+
+	// notify us if txs are available
+	txNotifier txNotifier
+
+	// add evidence to the pool
+	// when it's detected
+	evpool evidencePool
 
 	// internal state
 	mtx sync.RWMutex
 	cstypes.RoundState
-	triggeredTimeoutPrecommit bool
-	state                     sm.State // State until height-1.
+	state sm.State // State until height-1.
 
 	// state changes may be triggered by: msgs from peers,
 	// msgs from ourself, or by timeouts
@@ -128,15 +144,15 @@ func NewConsensusState(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool sm.Mempool,
-	evpool sm.EvidencePool,
+	txNotifier txNotifier,
+	evpool evidencePool,
 	options ...StateOption,
 ) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		blockExec:        blockExec,
 		blockStore:       blockStore,
-		mempool:          mempool,
+		txNotifier:       txNotifier,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
@@ -484,7 +500,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	// If state isn't further out than cs.state, just ignore.
 	// This happens when SwitchToConsensus() is called in the reactor.
 	// We don't want to reset e.g. the Votes, but we still want to
-	// signal the new round step, because other services (eg. mempool)
+	// signal the new round step, because other services (eg. txNotifier)
 	// depend on having an up-to-date peer state!
 	if !cs.state.IsEmpty() && (state.LastBlockHeight <= cs.state.LastBlockHeight) {
 		cs.Logger.Info("Ignoring updateToState()", "newHeight", state.LastBlockHeight+1, "oldHeight", cs.state.LastBlockHeight+1)
@@ -599,7 +615,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
-		case <-cs.mempool.TxsAvailable():
+		case <-cs.txNotifier.TxsAvailable():
 			cs.handleTxsAvailable()
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Write(mi)
@@ -715,6 +731,7 @@ func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
+	cs.enterNewRound(cs.Height, 0)
 	cs.enterPropose(cs.Height, 0)
 }
 
@@ -765,7 +782,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		cs.ProposalBlockParts = nil
 	}
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
-	cs.triggeredTimeoutPrecommit = false
+	cs.TriggeredTimeoutPrecommit = false
 
 	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())
 	cs.metrics.Rounds.Set(float64(round))
@@ -921,20 +938,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		return
 	}
 
-	maxBytes := cs.state.ConsensusParams.BlockSize.MaxBytes
-	maxGas := cs.state.ConsensusParams.BlockSize.MaxGas
-	// bound evidence to 1/10th of the block
-	evidence := cs.evpool.PendingEvidence(types.MaxEvidenceBytesPerBlock(maxBytes))
-	// Mempool validated transactions
-	txs := cs.mempool.ReapMaxBytesMaxGas(types.MaxDataBytes(
-		maxBytes,
-		cs.state.Validators.Size(),
-		len(evidence),
-	), maxGas)
 	proposerAddr := cs.privValidator.GetPubKey().Address()
-	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
-
-	return block, parts
+	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1123,12 +1128,12 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 func (cs *ConsensusState) enterPrecommitWait(height int64, round int) {
 	logger := cs.Logger.With("height", height, "round", round)
 
-	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.triggeredTimeoutPrecommit) {
+	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
 		logger.Debug(
 			fmt.Sprintf(
 				"enterPrecommitWait(%v/%v): Invalid args. "+
-					"Current state is Height/Round: %v/%v/, triggeredTimeoutPrecommit:%v",
-				height, round, cs.Height, cs.Round, cs.triggeredTimeoutPrecommit))
+					"Current state is Height/Round: %v/%v/, TriggeredTimeoutPrecommit:%v",
+				height, round, cs.Height, cs.Round, cs.TriggeredTimeoutPrecommit))
 		return
 	}
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
@@ -1138,7 +1143,7 @@ func (cs *ConsensusState) enterPrecommitWait(height int64, round int) {
 
 	defer func() {
 		// Done enterPrecommitWait:
-		cs.triggeredTimeoutPrecommit = true
+		cs.TriggeredTimeoutPrecommit = true
 		cs.newStep()
 	}()
 

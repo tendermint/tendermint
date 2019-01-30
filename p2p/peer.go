@@ -18,15 +18,18 @@ type Peer interface {
 	cmn.Service
 	FlushStop()
 
-	ID() ID           // peer's cryptographic ID
-	RemoteIP() net.IP // remote IP of the connection
+	ID() ID               // peer's cryptographic ID
+	RemoteIP() net.IP     // remote IP of the connection
+	RemoteAddr() net.Addr // remote address of the connection
 
 	IsOutbound() bool   // did we dial the peer
 	IsPersistent() bool // do we redial this peer when we disconnect
 
+	CloseConn() error // close original connection
+
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
-	OriginalAddr() *NetAddress
+	OriginalAddr() *NetAddress // original address for outbound peers
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -296,6 +299,11 @@ func (p *peer) hasChannel(chID byte) bool {
 	return false
 }
 
+// CloseConn closes original connection. Used for cleaning up in cases where the peer had not been started at all.
+func (p *peer) CloseConn() error {
+	return p.peerConn.conn.Close()
+}
+
 //---------------------------------------------------
 // methods only used for testing
 // TODO: can we remove these?
@@ -305,8 +313,8 @@ func (pc *peerConn) CloseConn() {
 	pc.conn.Close() // nolint: errcheck
 }
 
-// Addr returns peer's remote network address.
-func (p *peer) Addr() net.Addr {
+// RemoteAddr returns peer's remote network address.
+func (p *peer) RemoteAddr() net.Addr {
 	return p.peerConn.conn.RemoteAddr()
 }
 

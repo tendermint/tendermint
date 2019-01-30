@@ -98,36 +98,29 @@ func TestListenerAcceptDeadlines(t *testing.T) {
 
 func TestListenerConnectDeadlines(t *testing.T) {
 	for _, tc := range listenerTestCases(t, time.Second, time.Millisecond) {
-		readyc := make(chan struct{})
-		donec := make(chan struct{})
-		go func(ln net.Listener) {
-			defer close(donec)
-
-			c, err := ln.Accept()
+		go func(dialer Dialer) {
+			_, err := dialer()
 			if err != nil {
-				t.Fatal(err)
+				panic(err)
 			}
-			<-readyc
+		}(tc.dialer)
 
-			time.Sleep(2 * time.Millisecond)
-
-			msg := make([]byte, 200)
-			_, err = c.Read(msg)
-			opErr, ok := err.(*net.OpError)
-			if !ok {
-				t.Fatalf("for %s listener, have %v, want *net.OpError", tc.description, err)
-			}
-
-			if have, want := opErr.Op, "read"; have != want {
-				t.Errorf("for %s listener, have %v, want %v", tc.description, have, want)
-			}
-		}(tc.listener)
-
-		_, err := tc.dialer()
+		c, err := tc.listener.Accept()
 		if err != nil {
 			t.Fatal(err)
 		}
-		close(readyc)
-		<-donec
+
+		time.Sleep(2 * time.Millisecond)
+
+		msg := make([]byte, 200)
+		_, err = c.Read(msg)
+		opErr, ok := err.(*net.OpError)
+		if !ok {
+			t.Fatalf("for %s listener, have %v, want *net.OpError", tc.description, err)
+		}
+
+		if have, want := opErr.Op, "read"; have != want {
+			t.Errorf("for %s listener, have %v, want %v", tc.description, have, want)
+		}
 	}
 }
