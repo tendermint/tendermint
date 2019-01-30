@@ -8,7 +8,7 @@ deploy\:%: venv/bin/ansible
 	cd networks/$*/; \
 	INVENTORY=../../$(INVENTORY) $(MAKE) deploy
 
-scenario\:%:
+scenario\:%: venv/bin/ansible
 	@echo "Executing scenario: $*..."
 	@$(ACTIVATE_VENV); \
 	cd scenarios/$*/; \
