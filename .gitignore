@@ -45,3 +45,5 @@ terraform.tfstate.d
 
 /test/remote/venv/
 __pycache__
+*.retry
+
