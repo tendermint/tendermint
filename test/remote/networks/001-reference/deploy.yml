@@ -5,10 +5,16 @@
     always_deploy_svc: no
     local_tmbin: "{{ lookup('env', 'GOPATH') }}/src/github.com/tendermint/tendermint/build/tendermint"
   tasks:
+    - name: Check if Toxiproxy service is present
+      stat: path=/etc/systemd/system/toxiproxy.service
+      register: tp_service
+    - name: Stop and disable Toxiproxy if present
+      service: name=toxiproxy state=stopped enabled=no
+      when: tp_service.stat.exists
+
     # Check if we need to configure the systemd service
     - name: Check if Tendermint service is present
-      stat:
-        path: /etc/systemd/system/tendermint.service
+      stat: path=/etc/systemd/system/tendermint.service
       register: tm_service
     - name: Install Tendermint service
       include_tasks: ../../common/ansible/install-tm-svc.yml
