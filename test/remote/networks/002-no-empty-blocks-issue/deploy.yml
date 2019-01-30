@@ -24,6 +24,15 @@
         name: tendermint
         state: stopped
         enabled: no
+    - name: Check if Tendermint log file exists
+      stat: path=/var/log/tendermint.log
+      register: tm_log
+    - name: Manually rotate log file
+      shell: |
+        mv /var/log/tendermint.log /var/log/tendermint.log.`date +%Y%m%d-%H%M%S`
+      when: tm_log.stat.exists
+    - name: Restart rsyslog to ensure continuation of Tendermint logging
+      service: name=rsyslog state=restarted
 
     # Sync the Tendermint binary
     - name: Sync Tendermint binary to target machines
