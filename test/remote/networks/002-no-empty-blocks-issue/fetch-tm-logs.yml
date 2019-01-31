@@ -12,11 +12,11 @@
         path: /var/log/tendermint.log
         remove: no
         format: bz2
-        dest: "/tmp/tendermint-{{ inventory_hostname }}.log.tar.bz2"
+        dest: "/tmp/tendermint-{{ inventory_hostname }}.log.bz2"
       when: tm_log.stat.exists
     - name: Fetch log file(s)
       fetch:
-        src: "/tmp/tendermint-{{ inventory_hostname }}.log.tar.bz2"
+        src: "/tmp/tendermint-{{ inventory_hostname }}.log.bz2"
         dest: "{{ logs_local_dir }}/"
         flat: yes
       when: tm_log.stat.exists
