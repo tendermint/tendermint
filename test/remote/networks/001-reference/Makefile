@@ -1,5 +1,6 @@
 INVENTORY?=../../inventory/hosts
-.PHONY: deploy status
+LOGS_DIR?=/tmp
+.PHONY: deploy fetch-tm-logs status
 
 include ../../common/make/tendermint.mk
 
@@ -14,6 +15,9 @@ deploy: $(TMBIN)
 	./update-node-config.sh
 	ansible-playbook -i $(INVENTORY) deploy.yml
 	./check-status.sh
+
+fetch-tm-logs:
+	ansible-playbook -i $(INVENTORY) fetch-tm-logs.yml
 
 status:
 	@SLEEP=0 ./check-status.sh

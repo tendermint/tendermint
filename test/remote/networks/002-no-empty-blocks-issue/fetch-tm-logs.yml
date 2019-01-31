@@ -1,0 +1,22 @@
+---
+- hosts: tik
+  become: yes
+  vars:
+    logs_local_dir: "{{ lookup('env', 'LOGS_DIR') }}"
+  tasks:
+    - name: Check whether Tendermint log file exists
+      stat: path=/var/log/tendermint.log
+      register: tm_log
+    - name: Compress log file (if it exists)
+      archive:
+        path: /var/log/tendermint.log
+        remove: no
+        format: bz2
+        dest: "/tmp/tendermint-{{ inventory_hostname }}.log.tar.bz2"
+      when: tm_log.stat.exists
+    - name: Fetch log file(s)
+      fetch:
+        src: "/tmp/tendermint-{{ inventory_hostname }}.log.tar.bz2"
+        dest: "{{ logs_local_dir }}/"
+        flat: yes
+      when: tm_log.stat.exists
