@@ -414,19 +414,19 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	var newAddressesAdded int
 
 	// number of new addresses that, if possible, should be in the beginning of the selection
-	numRequiredNewAdd := int(float64(biasTowardsNewAddrs)/float64(100) * float64(numAddresses))
+	numRequiredNewAdd := int(math.Round(float64(biasTowardsNewAddrs) / float64(100) * float64(numAddresses)))
 
 	selectionIndex := 0
 ADDRS_LOOP:
 	for selectionIndex < numAddresses {
 		// biasedTowardsOldAddrs indicates if the selection can switch to old addresses
-		biasedTowardsOldAddrs := selectionIndex > numRequiredNewAdd
+		biasedTowardsOldAddrs := selectionIndex >= numRequiredNewAdd
 		// An old addresses is selected if:
 		// - the bias is for old and old addressees are still available or,
 		// - there are no new addresses or all new addresses have been selected.
 		pickFromOldBucket :=
 			(biasedTowardsOldAddrs && oldAddressesAdded < a.nOld) || //
-			a.nNew == 0 || newAddressesAdded >= a.nNew
+				a.nNew == 0 || newAddressesAdded >= a.nNew
 
 		bucket := make(map[string]*knownAddress)
 

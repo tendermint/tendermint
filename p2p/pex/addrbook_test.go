@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"testing"
 
@@ -91,7 +92,7 @@ func TestAddrBookGetSelectionWithOneNotMarkedGood(t *testing.T) {
 func TestAddrBookAddressSelection(t *testing.T) {
 	booksizes := []int{10, 100, 320}
 	// for all book sizes above
-	for _, b := range(booksizes) {
+	for _, b := range booksizes {
 		// generate all possible combinations of old addresses (i) and new addresses (b-i)
 		for i := 0; i < b+1; i++ {
 			book := createAddrBookAddressSelection(t, i, b-i)
@@ -116,7 +117,7 @@ func countOldAndNewInAddrs(addrs []*p2p.NetAddress, book *addrBook) (nold, nnew 
 	nnew = 0
 	layout = make([]string, len(addrs))
 
-	for idx, addr := range(addrs) {
+	for idx, addr := range addrs {
 		layout[idx] = fmt.Sprintf("X%d", idx+1)
 		if addr == nil {
 			continue
@@ -157,7 +158,6 @@ func createAddrBookAddressSelection(t *testing.T, m, n int) *addrBook {
 
 	return book
 }
-
 
 func TestAddrBookPickAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
@@ -458,9 +458,16 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 			good++
 		}
 	}
+
 	got, expected := int((float64(good)/float64(len(selection)))*100), (100 - biasTowardsNewAddrs)
-	if got >= expected {
-		t.Fatalf("expected more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
+
+	// To protect against small changes due to rounding:
+	slack := int(math.Round(float64(100) / float64(len(selection))))
+	if got > expected+slack {
+		t.Fatalf("got more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
+	}
+	if got < expected-slack {
+		t.Fatalf("got fewer good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
 	}
 }
 
