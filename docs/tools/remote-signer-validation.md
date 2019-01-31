@@ -65,13 +65,13 @@ example, we will simply export a signing key from our local Tendermint instance.
 
 ```bash
 # Will generate all necessary Tendermint configuration files, including:
-# - /home/user/.tendermint/config/priv_validator_key.json
-# - /home/user/.tendermint/data/priv_validator_state.json
+# - ~/.tendermint/config/priv_validator_key.json
+# - ~/.tendermint/data/priv_validator_state.json
 tendermint init
 
 # Extract the signing key from our local Tendermint instance
 tm-signer-harness extract_key \      # Use the "extract_key" command
-    -tmhome /home/user/.tendermint \ # Where to find the Tendermint home directory
+    -tmhome ~/.tendermint \          # Where to find the Tendermint home directory
     -output ./signing.key            # Where to write the key
 ```
 
@@ -114,7 +114,7 @@ Now we get to run the signer test harness:
 ```bash
 tm-signer-harness run \             # The "run" command executes the tests
     -addr tcp://127.0.0.1:61219 \   # The address we promised KMS earlier
-    -tmhome /home/user/.tendermint  # Where to find our Tendermint configuration/data files.
+    -tmhome ~/.tendermint           # Where to find our Tendermint configuration/data files.
 ```
 
 If the current version of Tendermint and KMS are compatible, `tm-signer-harness`
