@@ -89,50 +89,113 @@ func TestAddrBookGetSelectionWithOneNotMarkedGood(t *testing.T) {
 	assert.NotNil(t, addrs, "expected an address")
 }
 
+// Computes the percentage (bias) of a number of addresses
+func numExpectedAddresses(bias, n int) int {
+	if n == 0 {
+		return 0
+	}
+	return int(math.Round((float64(bias) / float64(100)) * float64(n)))
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func listsAreEqual(a, b []int) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func TestAddrBookAddressSelection(t *testing.T) {
-	booksizes := []int{10, 100, 320}
+	booksizes := []int{10, 57, 235}
 	// for all book sizes above
 	for _, b := range booksizes {
 		// generate all possible combinations of old addresses (i) and new addresses (b-i)
-		for i := 0; i < b+1; i++ {
-			book := createAddrBookAddressSelection(t, i, b-i)
+		for m := 0; m < b+1; m++ {
+			n := b - m
+			book := createAddrBookAddressSelection(t, m, n)
 			addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
-			assert.NotNil(t, addrs, "expected an address")
+			r := len(addrs)
+			assert.NotNil(t, addrs, "expected a non-nill selection")
+			assert.NotZero(t, r, "expected at least one address in selection")
 
-			// TODO - verify that the number of old and new addresses are the ones expected
-			// TODO - verify that the order of the addresses is correct
-			oldaddrs, newaddrs, layout := countOldAndNewInAddrs(addrs, book)
-			_ = oldaddrs
-			_ = newaddrs
-			_ = layout
-			//fmt.Printf("\nold: %d, new: %d, Num old returned %d, Num new returned %d\n", i, b-i, oldaddr, newaddr)
-			//fmt.Println("Here is the layout", layout)
+			// verify that the number of old and new addresses are the ones expected
+			numold, numnew := countOldAndNewInAddrs(addrs, book)
+			assert.Equal(t, r, numold+numnew, "expected selection completely filled")
+
+			// Given:
+			// n - num new addrs, m - num old addrs
+			// k - num new addrs expected in the beginning (based on bias %)
+			// i=min(n, k), j=min(m, r-i)
+			//
+			// We expect this layout:
+			// indices:      0...i-1   i...i+j-1    i+j...r
+			// addresses:    N0..Ni-1  O0..Oj-1     Ni...
+			//
+			// There are at least one partition and at most three.
+
+			k := numExpectedAddresses(biasToSelectNewPeers, r)
+			i := min(n, k)
+			j := min(m, r-i)
+			expold := j
+			expnew := r - j
+
+			// compute some slack to protect against small differences due to rounding:
+			slack := int(math.Round(float64(100) / float64(len(addrs))))
+
+			// for now don't use slack as numExpectedAddresses() is exactly the formula used by GetSelectionWithBias()
+			if numnew < expnew || numnew > expnew {
+				fmt.Println("booksize", b)
+				t.Fatalf("expected new addrs %d (+/- %d), got %d", expnew, slack, numnew)
+			}
+			if numold < expold || numold > expold {
+				t.Fatalf("expected old addrs %d (+/- %d), got %d", expold, slack, numold)
+			}
+
+			// Verify that the order of addresses is correct
+			err, seqLens, seqTypes := analyseSelectionLayout(book, addrs)
+			assert.NoError(t, err, "expected a non-nill selection")
+
+			// Build a list with the expected lengths of partitions and another with the expected types
+			// expseqLens = [10, 22], expseqTypes = [1, 2]
+			// means we expect 10 new (type1) addresses followed by 22 old (type2) addresses.
+			var expseqLens []int
+			var expseqTypes []int
+			if j == 0 {
+				// all new
+				expseqLens = []int{r}
+				expseqTypes = []int{1}
+			} else if i == 0 {
+				// all old
+				expseqLens = []int{r}
+				expseqTypes = []int{2}
+			} else if r-i-j == 0 {
+				expseqLens = []int{i, j}
+				expseqTypes = []int{1, 2}
+			} else {
+				expseqLens = []int{i, j, r - i - j}
+				expseqTypes = []int{1, 2, 1}
+			}
+
+			assert.True(t, listsAreEqual(expseqLens, seqLens),
+				"expected sequence lengths of old/new %v, got %v", expseqLens, seqLens)
+			assert.True(t, listsAreEqual(expseqTypes, seqTypes),
+				"expected sequence lengths of old/new %v, got %v", expseqLens, seqLens)
 		}
 	}
-}
-
-// Counts the number of Old and New addresses returned and returns the order in the layout
-func countOldAndNewInAddrs(addrs []*p2p.NetAddress, book *addrBook) (nold, nnew int, layout []string) {
-	nold = 0
-	nnew = 0
-	layout = make([]string, len(addrs))
-
-	for idx, addr := range addrs {
-		layout[idx] = fmt.Sprintf("X%d", idx+1)
-		if addr == nil {
-			continue
-		}
-		if book.IsGood(addr) {
-			nold++
-			layout[idx] = fmt.Sprintf("O%d", idx+1)
-
-		} else {
-			nnew++
-			layout[idx] = fmt.Sprintf("N%d", idx+1)
-
-		}
-	}
-	return nold, nnew, layout
 }
 
 // Creates a Book with m old and n new addresses.
@@ -157,6 +220,54 @@ func createAddrBookAddressSelection(t *testing.T, m, n int) *addrBook {
 	}
 
 	return book
+}
+
+// Counts the number of Old and New addresses
+func countOldAndNewInAddrs(addrs []*p2p.NetAddress, book *addrBook) (nold, nnew int) {
+	nold = 0
+	nnew = 0
+
+	for _, addr := range addrs {
+		if addr == nil {
+			continue
+		}
+		if book.IsGood(addr) {
+			nold++
+		} else {
+			nnew++
+		}
+	}
+	return nold, nnew
+}
+
+func analyseSelectionLayout(book *addrBook, addrs []*p2p.NetAddress) (error, []int, []int) {
+	prev := 0
+	var seqLens []int
+	var seqTypes []int
+	cnt := 0
+	for i, addr := range addrs {
+		if addr == nil {
+			err := fmt.Errorf("nil addresses in selection, index %d", i)
+			return err, nil, nil
+		}
+		addrt := 0
+		if book.IsGood(addr) {
+			addrt = 2
+		} else {
+			addrt = 1
+		}
+
+		if addrt != prev && prev != 0 {
+			seqLens = append(seqLens, cnt)
+			seqTypes = append(seqTypes, prev)
+			cnt = 0
+		}
+		cnt++
+		prev = addrt
+	}
+	seqLens = append(seqLens, cnt)
+	seqTypes = append(seqTypes, prev)
+	return nil, seqLens, seqTypes
 }
 
 func TestAddrBookPickAddress(t *testing.T) {
@@ -461,7 +572,7 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 
 	got, expected := int((float64(good)/float64(len(selection)))*100), (100 - biasTowardsNewAddrs)
 
-	// To protect against small changes due to rounding:
+	// compute some slack to protect against small differences due to rounding:
 	slack := int(math.Round(float64(100) / float64(len(selection))))
 	if got > expected+slack {
 		t.Fatalf("got more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
