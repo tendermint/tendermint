@@ -438,11 +438,11 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 
 	state := genisisState.Copy()
 	// run the chain through state.ApplyBlock to build up the tendermint state
-	state = buildTMStateFromChain(config, stateDB, state, chain, mode)
+	state = buildTMStateFromChain(config, stateDB, state, chain, nBlocks, mode)
 	latestAppHash := state.AppHash
 
 	// make a new client creator
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), "2"))
+	kvstoreApp := kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
 	clientCreator2 := proxy.NewLocalClientCreator(kvstoreApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
@@ -536,9 +536,9 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 
 }
 
-func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, mode uint) sm.State {
+func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, nBlocks int, mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
-	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), "1")))
+	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
