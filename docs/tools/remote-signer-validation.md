@@ -90,7 +90,7 @@ as the `signer.key` file we just generated. Save the following to a file called
 ```toml
 [[validator]]
 addr = "tcp://127.0.0.1:61219"         # This is where we will find tm-signer-harness.
-chain_id = "test-chain-0XwP5E"         # The Tendermint chain ID for which KMS will be signing.
+chain_id = "test-chain-0XwP5E"         # The Tendermint chain ID for which KMS will be signing (found in ~/.tendermint/config/genesis.json).
 reconnect = true                       # true is the default
 secret_key = "./secret_connection.key" # Where to find our secret connection key.
 
