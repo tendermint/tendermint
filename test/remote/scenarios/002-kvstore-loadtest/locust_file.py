@@ -18,11 +18,11 @@ class KVStoreBalancedRWTaskSequence(TaskSequence):
         self.key = binascii.hexlify(os.urandom(16)).decode('utf-8')
         self.value = binascii.hexlify(os.urandom(16)).decode('utf-8')
         self.client.get(
-            '/broadcast_tx_commit',
+            '/broadcast_tx_sync',
             params={
                 'tx': '"%s=%s"' % (self.key, self.value),
             },
-            name='/broadcast_tx_commit?tx=[tx]',
+            name='/broadcast_tx_sync?tx=[tx]',
         )
 
     @seq_task(2)
