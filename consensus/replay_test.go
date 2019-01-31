@@ -28,11 +28,9 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"sync"
 )
 
 var consensusReplayConfig *cfg.Config
-var mtx sync.Mutex
 
 func init() {
 	consensusReplayConfig = ResetConfig("consensus_replay_test")
@@ -333,8 +331,6 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 	if validatorsChange {
 		nPeers := 7
 		nVals := 4
-		mtx.Lock()
-		defer mtx.Unlock()
 		css, peer0Config := randConsensusNetWithPeers(nVals, nPeers, fmt.Sprintf("replay_test_%d_%d", nBlocks, mode), newMockTickerFunc(true), newPersistentKVStoreWithPath)
 		privVal = css[0].privValidator
 		genisisState = css[0].state.Copy()
