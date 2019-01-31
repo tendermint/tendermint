@@ -254,6 +254,12 @@ const NUM_BLOCKS = 6
 var (
 	mempool = sm.MockMempool{}
 	evpool  = sm.MockEvidencePool{}
+
+	sim_privVal      types.PrivValidator
+	sim_genisisState sm.State
+	sim_config       *cfg.Config
+	sim_chain        []*types.Block
+	sim_commits      []*types.Commit
 )
 
 //---------------------------------------
@@ -263,6 +269,94 @@ var (
 // 1 - saved block but app and state are behind
 // 2 - save block and committed but state is behind
 var modes = []uint{0, 1, 2}
+
+func TestSimulateValidatorsChange(t *testing.T) {
+	nPeers := 7
+	nVals := 4
+	css, config := randConsensusNetWithPeers(nVals, nPeers, "replay_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+	sim_config = config
+	sim_privVal = css[0].privValidator
+	sim_genisisState = css[0].state.Copy()
+	logger := log.TestingLogger()
+
+	reactors, eventChans, eventBuses := startConsensusNet(t, css, nPeers)
+
+	// map of active validators
+	activeVals := make(map[string]struct{})
+	for i := 0; i < nVals; i++ {
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
+	}
+
+	// wait till everyone makes block 1
+	timeoutWaitGroup(t, nPeers, func(j int) {
+		<-eventChans[j]
+	}, css)
+
+	//---------------------------------------------------------------------------
+	logger.Info("---------------------------- Testing adding one validator")
+
+	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
+	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
+	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
+
+	// wait till everyone makes block 2
+	// ensure the commit includes all validators
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx1)
+
+	//---------------------------------------------------------------------------
+	logger.Info("---------------------------- Testing changing the voting power of one validator")
+
+	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
+	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
+	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
+
+	//height 3‘s block contains newValidatorTx1. It will make effect in height 5, will appear in height 6's block's commit
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
+
+	//---------------------------------------------------------------------------
+	logger.Info("---------------------------- Testing adding two validators at once")
+
+	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
+	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
+	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
+
+	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
+	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
+	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
+
+	//height 4
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
+
+	//---------------------------------------------------------------------------
+	logger.Info("---------------------------- Testing removing two validators at once")
+
+	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
+	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
+
+	//height 5
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
+	activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
+	//height 6
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
+	//activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
+	//activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
+	//delete(activeVals, string(newValidatorPubKey2.Address()))
+	//delete(activeVals, string(newValidatorPubKey3.Address()))
+	stopConsensusNet(logger, reactors, eventBuses)
+	for i := 0; i < nPeers; i++ {
+		css[i].Stop()
+		reactors[i].Stop()
+	}
+
+	sim_chain = make([]*types.Block, 0)
+	sim_commits = make([]*types.Commit, 0)
+	for i := 1; i <= NUM_BLOCKS; i++ {
+		sim_chain = append(sim_chain, css[0].blockStore.LoadBlock(int64(i)))
+		sim_commits = append(sim_commits, css[0].blockStore.LoadBlockCommit(int64(i)))
+	}
+	return
+}
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
@@ -329,94 +423,16 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 	var stateDB dbm.DB
 	var genisisState sm.State
 	if validatorsChange {
-		nPeers := 7
-		nVals := 4
-		css, peer0Config := randConsensusNetWithPeers(nVals, nPeers, fmt.Sprintf("replay_test_%d_%d", nBlocks, mode), newMockTickerFunc(true), newPersistentKVStoreWithPath)
-		privVal = css[0].privValidator
-		genisisState = css[0].state.Copy()
-		logger := log.TestingLogger()
-
-		reactors, eventChans, eventBuses := startConsensusNet(t, css, nPeers)
-
-		// map of active validators
-		activeVals := make(map[string]struct{})
-		for i := 0; i < nVals; i++ {
-			addr := css[i].privValidator.GetPubKey().Address()
-			activeVals[string(addr)] = struct{}{}
-		}
-
-		// wait till everyone makes block 1
-		timeoutWaitGroup(t, nPeers, func(j int) {
-			<-eventChans[j]
-		}, css)
-
-		//---------------------------------------------------------------------------
-		logger.Info("---------------------------- Testing adding one validator")
-
-		newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
-		valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
-		newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
-
-		// wait till everyone makes block 2
-		// ensure the commit includes all validators
-		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx1)
-
-		//---------------------------------------------------------------------------
-		logger.Info("---------------------------- Testing changing the voting power of one validator")
-
-		updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
-		updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
-		updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-
-		//height 3‘s block contains newValidatorTx1. It will make effect in height 5, will appear in height 6's block's commit
-		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
-
-		//---------------------------------------------------------------------------
-		logger.Info("---------------------------- Testing adding two validators at once")
-
-		newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
-		newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
-		newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
-
-		newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
-		newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
-		newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
-
-		//height 4
-		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
-
-		//---------------------------------------------------------------------------
-		logger.Info("---------------------------- Testing removing two validators at once")
-
-		removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
-		removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
-
-		//height 5
-		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
-		activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
-		//height 6
-		waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
-		//activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
-		//activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
-		//delete(activeVals, string(newValidatorPubKey2.Address()))
-		//delete(activeVals, string(newValidatorPubKey3.Address()))
-		stopConsensusNet(logger, reactors, eventBuses)
-		for i := 0; i < nPeers; i++ {
-			css[i].Stop()
-			reactors[i].Stop()
-		}
 		stateDB = dbm.NewMemDB()
+		genisisState = sim_genisisState
 		genisisState.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 		sm.SaveState(stateDB, genisisState)
-		chain = make([]*types.Block, 0)
-		for i := 1; i <= NUM_BLOCKS; i++ {
-			chain = append(chain, css[0].blockStore.LoadBlock(int64(i)))
-			commits = append(commits, css[0].blockStore.LoadBlockCommit(int64(i)))
-		}
-		config = peer0Config
+		config = sim_config
+		chain = sim_chain
+		commits = sim_commits
 		store = NewMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
-		config = ResetConfig(fmt.Sprintf("replay_test_%d_%d_s", nBlocks, mode))
+		config = ResetConfig(fmt.Sprintf("replay_test_s"))
 		walBody, err := WALWithNBlocks(NUM_BLOCKS)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
