@@ -331,17 +331,21 @@ func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval
 	}
 	logger.Info("Listening at", "proto", proto, "addr", addr)
 	var svln net.Listener
-	if proto == "unix" {
+	switch proto {
+	case "unix":
 		unixLn := privval.NewUnixListener(ln)
 		privval.UnixListenerAcceptDeadline(cfg.AcceptDeadline)(unixLn)
 		privval.UnixListenerConnDeadline(cfg.ConnDeadline)(unixLn)
 		svln = unixLn
-	} else {
+	case "tcp":
 		tcpLn := privval.NewTCPListener(ln, cfg.SecretConnKey)
 		privval.TCPListenerAcceptDeadline(cfg.AcceptDeadline)(tcpLn)
 		privval.TCPListenerConnDeadline(cfg.ConnDeadline)(tcpLn)
 		logger.Info("Resolved TCP address for listener", "addr", tcpLn.Addr())
 		svln = tcpLn
+	default:
+		logger.Error("Unsupported protocol (must be unix:// or tcp://)", "proto", proto)
+		return nil, newTestHarnessError(ErrInvalidParameters, nil, fmt.Sprintf("Unsupported protocol: %s", proto))
 	}
 	return privval.NewSocketVal(logger, svln), nil
 }
