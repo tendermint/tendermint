@@ -10,6 +10,10 @@ import os
 from locust import HttpLocust, TaskSequence, seq_task
 
 
+MIN_WAIT = int(os.environ('MIN_WAIT', 100))
+MAX_WAIT = int(os.environ('MAX_WAIT', 500))
+
+
 class KVStoreBalancedRWTaskSequence(TaskSequence):
     """A balanced read/write task set for interacting with the nodes."""
 
@@ -45,8 +49,8 @@ def make_node_locust_class(host_url, node_id):
         host = host_url
         weight = 1
         task_set = KVStoreBalancedRWTaskSequence
-        min_wait = 100
-        max_wait = 500
+        min_wait = MIN_WAIT
+        max_wait = MAX_WAIT
 
         def setup(self):
             print("setup: %s with host = %s" % (self.__class__.__name__, self.host))
