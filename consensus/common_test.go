@@ -31,6 +31,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	"path"
 )
 
 const (
@@ -609,7 +610,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) ([]*ConsensusState, *cfg.Config) {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func(string) abci.Application) ([]*ConsensusState, *cfg.Config) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
 	logger := consensusLogger()
@@ -638,7 +639,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 			privVal = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 		}
 
-		app := appFunc()
+		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 		state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
@@ -747,4 +748,8 @@ func newCounter() abci.Application {
 func newPersistentKVStore() abci.Application {
 	dir, _ := ioutil.TempDir("/tmp", "persistent-kvstore")
 	return kvstore.NewPersistentKVStoreApplication(dir)
+}
+
+func newPersistentKVStoreWithPath(dbDir string) abci.Application {
+	return kvstore.NewPersistentKVStoreApplication(dbDir)
 }

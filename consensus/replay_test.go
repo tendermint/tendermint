@@ -331,7 +331,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 	if validatorsChange {
 		nPeers := 7
 		nVals := 4
-		css, peer0Config := randConsensusNetWithPeers(nVals, nPeers, fmt.Sprintf("replay_test_%d_%d", nBlocks, mode), newMockTickerFunc(true), newPersistentKVStore)
+		css, peer0Config := randConsensusNetWithPeers(nVals, nPeers, fmt.Sprintf("replay_test_%d_%d", nBlocks, mode), newMockTickerFunc(true), newPersistentKVStoreWithPath)
 		privVal = css[0].privValidator
 		genisisState = css[0].state.Copy()
 		logger := log.TestingLogger()
