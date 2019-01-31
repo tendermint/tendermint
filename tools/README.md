@@ -1,4 +1,5 @@
 # tools
 
-Tools for working with Tendermint and associated technologies. Documentation can
-be found in the `README.md` of each of the subdirectories.
+Tools for working with Tendermint and associated technologies. Documentation for
+these tools can be found online in the [Tendermint tools
+documentation](https://tendermint.com/docs/tools/).
