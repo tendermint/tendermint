@@ -4,6 +4,7 @@
   vars:
     always_deploy_svc: no
     local_tmbin: "{{ lookup('env', 'GOPATH') }}/src/github.com/tendermint/tendermint/build/tendermint"
+    delete_logs: yes
   tasks:
     - name: Check if Toxiproxy service is present
       stat: path=/etc/systemd/system/toxiproxy.service
@@ -30,7 +31,10 @@
     - name: Manually rotate log file
       shell: |
         mv /var/log/tendermint.log /var/log/tendermint.log.`date +%Y%m%d-%H%M%S`
-      when: tm_log.stat.exists
+      when: tm_log.stat.exists and not delete_logs
+    - name: Delete logs if necessary
+      file: path=/var/log/tendermint.log state=absent
+      when: delete_logs
     - name: Restart rsyslog to ensure continuation of Tendermint logging
       service: name=rsyslog state=restarted
 
