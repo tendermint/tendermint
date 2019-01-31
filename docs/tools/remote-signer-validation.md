@@ -52,6 +52,13 @@ the hardware signing module requires a physical
 See the [KMS repo](https://github.com/tendermint/kms) for details on how to set
 KMS up on your local machine.
 
+If you have [Rust](https://www.rust-lang.org/) installed on your local machine,
+you can simply install KMS by:
+
+```bash
+cargo install tmkms
+```
+
 ### Step 2: Make keys for KMS
 The KMS software signing module needs a key with which to sign messages. In our
 example, we will simply export a signing key from our local Tendermint instance.
