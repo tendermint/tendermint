@@ -49,7 +49,7 @@ var _ error = (*TestHarnessError)(nil)
 // with this version of Tendermint.
 type TestHarness struct {
 	addr             string
-	sc               *privval.SocketVal
+	spv              *privval.SocketVal
 	fpv              *privval.FilePV
 	chainID          string
 	acceptRetries    int
@@ -101,14 +101,14 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	}
 	logger.Info("Loaded genesis file", "chainID", st.ChainID)
 
-	sc, err := newTestHarnessSocketVal(logger, cfg)
+	spv, err := newTestHarnessSocketVal(logger, cfg)
 	if err != nil {
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}
 
 	return &TestHarness{
 		addr:             cfg.BindAddr,
-		sc:               sc,
+		spv:              spv,
 		fpv:              fpv,
 		chainID:          st.ChainID,
 		acceptRetries:    cfg.AcceptRetries,
@@ -131,7 +131,7 @@ func (th *TestHarness) Run() {
 		var startErr error
 		for acceptRetries := th.acceptRetries; acceptRetries > 0; acceptRetries-- {
 			th.logger.Info("Attempting to accept incoming connection", "acceptRetries", acceptRetries)
-			if err := th.sc.Start(); err != nil {
+			if err := th.spv.Start(); err != nil {
 				// if it wasn't a timeout error
 				if _, ok := err.(timeoutError); !ok {
 					th.logger.Error("Failed to start listener", "err", err)
@@ -189,8 +189,8 @@ func (th *TestHarness) Run() {
 func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
 	th.logger.Info("Local", "pubKey", th.fpv.GetPubKey())
-	th.logger.Info("Remote", "pubKey", th.sc.GetPubKey())
-	if th.fpv.GetPubKey() != th.sc.GetPubKey() {
+	th.logger.Info("Remote", "pubKey", th.spv.GetPubKey())
+	if th.fpv.GetPubKey() != th.spv.GetPubKey() {
 		th.logger.Error("FAILED: Local and remote public keys do not match")
 		return newTestHarnessError(ErrTestPublicKeyFailed, nil, "")
 	}
@@ -218,7 +218,7 @@ func (th *TestHarness) TestSignProposal() error {
 		Timestamp: time.Now(),
 	}
 	propBytes := prop.SignBytes(th.chainID)
-	if err := th.sc.SignProposal(th.chainID, prop); err != nil {
+	if err := th.spv.SignProposal(th.chainID, prop); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
@@ -229,7 +229,7 @@ func (th *TestHarness) TestSignProposal() error {
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
 	// now validate the signature on the proposal
-	if th.sc.GetPubKey().VerifyBytes(propBytes, prop.Signature) {
+	if th.spv.GetPubKey().VerifyBytes(propBytes, prop.Signature) {
 		th.logger.Info("Successfully validated proposal signature")
 	} else {
 		th.logger.Error("FAILED: Proposal signature validation failed")
@@ -262,7 +262,7 @@ func (th *TestHarness) TestSignVote() error {
 		}
 		voteBytes := vote.SignBytes(th.chainID)
 		// sign the vote
-		if err := th.sc.SignVote(th.chainID, vote); err != nil {
+		if err := th.spv.SignVote(th.chainID, vote); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
@@ -273,7 +273,7 @@ func (th *TestHarness) TestSignVote() error {
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
 		// now validate the signature on the proposal
-		if th.sc.GetPubKey().VerifyBytes(voteBytes, vote.Signature) {
+		if th.spv.GetPubKey().VerifyBytes(voteBytes, vote.Signature) {
 			th.logger.Info("Successfully validated vote signature", "type", voteType)
 		} else {
 			th.logger.Error("FAILED: Vote signature validation failed", "type", voteType)
@@ -308,8 +308,8 @@ func (th *TestHarness) Shutdown(err error) {
 		}()
 	}
 
-	if th.sc.IsRunning() {
-		if err := th.sc.Stop(); err != nil {
+	if th.spv.IsRunning() {
+		if err := th.spv.Stop(); err != nil {
 			th.logger.Error("Failed to cleanly stop listener: %s", err.Error())
 		}
 	}
@@ -364,8 +364,12 @@ func newTestHarnessError(code int, err error, info string) *TestHarnessError {
 func (e *TestHarnessError) Error() string {
 	var msg string
 	switch e.Code {
+	case ErrInvalidParameters:
+		msg = "Invalid parameters supplied to application"
 	case ErrMaxAcceptRetriesReached:
 		msg = "Maximum accept retries reached"
+	case ErrFailedToLoadGenesisFile:
+		msg = "Failed to load genesis file"
 	case ErrFailedToCreateListener:
 		msg = "Failed to create listener"
 	case ErrFailedToStartListener:
