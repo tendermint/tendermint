@@ -79,11 +79,11 @@ module.exports = {
         title: "Tools",
         collapsable: false,
         children:  [
-	  "/tools/",
-	  "/tools/benchmarking",
-    "/tools/monitoring",
-    "/tools/remote-signer-validation"
-	]
+          "/tools/",
+          "/tools/benchmarking",
+          "/tools/monitoring",
+          "/tools/remote-signer-validation"
+        ]
       },
       {
         title: "Tendermint Spec",
