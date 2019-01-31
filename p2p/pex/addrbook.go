@@ -408,19 +408,25 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	newBucketToAddrsMap := make(map[int]map[string]struct{})
 	var newIndex int
 
+	// initialize counters used to count old and new added addresses.
+	// len(oldBucketToAddrsMap) cannot be used as multiple addresses can endup in the same bucket.
+	var oldAddressesAdded int
+	var newAddressesAdded int
+
+	// number of new addresses that, if possible, should be in the beginning of the selection
+	numRequiredNewAdd := int(float64(biasTowardsNewAddrs)/float64(100)) * numAddresses
+
 	selectionIndex := 0
 ADDRS_LOOP:
 	for selectionIndex < numAddresses {
-
-		// determine whether to pick from an old bucket.
-		// if there's not enough old addresses to pick from, then we cant pick from old bucket.
-		pickFromOldBucket := int((float64(selectionIndex)/float64(numAddresses))*100) >= biasTowardsNewAddrs
-		pickFromOldBucket = (pickFromOldBucket && a.nOld > 0 && len(oldBucketToAddrsMap) < a.nOld) || a.nNew == 0
-
-		// if there's not enough new addrs to pick from, just return early.
-		if !pickFromOldBucket && len(newBucketToAddrsMap) >= a.nNew {
-			return selection
-		}
+		// biasedTowardsOldAddrs indicates if the selection can switch to old addresses
+		biasedTowardsOldAddrs := selectionIndex >= numRequiredNewAdd
+		// An old addresses is selected if:
+		// - the bias is for old and old addressees are still available or,
+		// - there are no new addresses or all new addresses have been selected.
+		pickFromOldBucket :=
+			(biasedTowardsOldAddrs && oldAddressesAdded < a.nOld) || //
+			a.nNew == 0 || newAddressesAdded >= a.nNew
 
 		bucket := make(map[string]*knownAddress)
 
@@ -459,6 +465,7 @@ ADDRS_LOOP:
 				oldBucketToAddrsMap[oldIndex] = make(map[string]struct{})
 			}
 			oldBucketToAddrsMap[oldIndex][selectedAddr.String()] = struct{}{}
+			oldAddressesAdded++
 		} else {
 			if addrsMap, ok := newBucketToAddrsMap[newIndex]; ok {
 				if _, ok = addrsMap[selectedAddr.String()]; ok {
@@ -468,6 +475,7 @@ ADDRS_LOOP:
 				newBucketToAddrsMap[newIndex] = make(map[string]struct{})
 			}
 			newBucketToAddrsMap[newIndex][selectedAddr.String()] = struct{}{}
+			newAddressesAdded++
 		}
 
 		selection[selectionIndex] = selectedAddr

@@ -88,6 +88,77 @@ func TestAddrBookGetSelectionWithOneNotMarkedGood(t *testing.T) {
 	assert.NotNil(t, addrs, "expected an address")
 }
 
+func TestAddrBookAddressSelection(t *testing.T) {
+	booksizes := []int{10, 100, 320}
+	// for all book sizes above
+	for _, b := range(booksizes) {
+		// generate all possible combinations of old addresses (i) and new addresses (b-i)
+		for i := 0; i < b+1; i++ {
+			book := createAddrBookAddressSelection(t, i, b-i)
+			addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
+			assert.NotNil(t, addrs, "expected an address")
+
+			// TODO - verify that the number of old and new addresses are the ones expected
+			// TODO - verify that the order of the addresses is correct
+			oldaddrs, newaddrs, layout := countOldAndNewInAddrs(addrs, book)
+			_ = oldaddrs
+			_ = newaddrs
+			_ = layout
+			//fmt.Printf("\nold: %d, new: %d, Num old returned %d, Num new returned %d\n", i, b-i, oldaddr, newaddr)
+			//fmt.Println("Here is the layout", layout)
+		}
+	}
+}
+
+// Counts the number of Old and New addresses returned and returns the order in the layout
+func countOldAndNewInAddrs(addrs []*p2p.NetAddress, book *addrBook) (nold, nnew int, layout []string) {
+	nold = 0
+	nnew = 0
+	layout = make([]string, len(addrs))
+
+	for idx, addr := range(addrs) {
+		layout[idx] = fmt.Sprintf("X%d", idx+1)
+		if addr == nil {
+			continue
+		}
+		if book.IsGood(addr) {
+			nold++
+			layout[idx] = fmt.Sprintf("O%d", idx+1)
+
+		} else {
+			nnew++
+			layout[idx] = fmt.Sprintf("N%d", idx+1)
+
+		}
+	}
+	return nold, nnew, layout
+}
+
+// Creates a Book with m old and n new addresses.
+func createAddrBookAddressSelection(t *testing.T, m, n int) *addrBook {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+	assert.Zero(t, book.Size())
+
+	// create m entries and mark all old
+	randAddrs := randNetAddressPairs(t, m)
+	for _, addr := range randAddrs {
+		book.AddAddress(addr.addr, addr.src)
+		book.MarkGood(addr.addr)
+	}
+	// create n entries and leave all new
+	randAddrs = randNetAddressPairs(t, n)
+	for _, addr := range randAddrs {
+		book.AddAddress(addr.addr, addr.src)
+	}
+
+	return book
+}
+
+
 func TestAddrBookPickAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
