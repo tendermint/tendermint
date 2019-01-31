@@ -134,7 +134,6 @@ LOOP:
 		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		privValidator := loadPrivValidator(consensusReplayConfig)
 		cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewKVStoreApplication(), blockDB)
-		sm.SaveState(stateDB, state)
 		cs.SetLogger(logger)
 
 		// start sending transactions
@@ -250,11 +249,11 @@ func (w *crashingWAL) Wait()        { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
 // Handshake Tests
+const NUM_BLOCKS = 6
 
 var (
-	NUM_BLOCKS = 6
-	mempool    = sm.MockMempool{}
-	evpool     = sm.MockEvidencePool{}
+	mempool = sm.MockMempool{}
+	evpool  = sm.MockEvidencePool{}
 )
 
 //---------------------------------------
@@ -267,11 +266,9 @@ var modes = []uint{0, 1, 2}
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
-	NUM_BLOCKS = 6
 	for _, m := range modes {
 		testHandshakeReplay(t, 0, m, false)
 	}
-	NUM_BLOCKS = 20
 	for _, m := range modes {
 		testHandshakeReplay(t, 0, m, true)
 	}
@@ -279,11 +276,9 @@ func TestHandshakeReplayAll(t *testing.T) {
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
-	NUM_BLOCKS = 6
 	for _, m := range modes {
 		testHandshakeReplay(t, 1, m, false)
 	}
-	NUM_BLOCKS = 20
 	for _, m := range modes {
 		testHandshakeReplay(t, 1, m, true)
 	}
@@ -291,11 +286,9 @@ func TestHandshakeReplaySome(t *testing.T) {
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
-	NUM_BLOCKS = 6
 	for _, m := range modes {
 		testHandshakeReplay(t, NUM_BLOCKS-1, m, false)
 	}
-	NUM_BLOCKS = 20
 	for _, m := range modes {
 		testHandshakeReplay(t, NUM_BLOCKS-1, m, true)
 	}
@@ -303,11 +296,9 @@ func TestHandshakeReplayOne(t *testing.T) {
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
-	NUM_BLOCKS = 6
 	for _, m := range modes {
 		testHandshakeReplay(t, NUM_BLOCKS, m, false)
 	}
-	NUM_BLOCKS = 20
 	for _, m := range modes {
 		testHandshakeReplay(t, NUM_BLOCKS, m, true)
 	}
@@ -330,8 +321,7 @@ func tempWALWithData(data []byte) string {
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange bool) {
-	config := ResetConfig("proxy_test_")
-
+	var config *cfg.Config
 	var privVal types.PrivValidator
 	var chain []*types.Block
 	var commits []*types.Commit
@@ -369,23 +359,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 
 		// wait till everyone makes block 2
 		// ensure the commit includes all validators
-		// send newValTx to change vals in block 3
 		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx1)
-
-		// wait till everyone makes block 3.
-		// it includes the commit for block 2, which is by the original validator set
-		waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, newValidatorTx1)
-
-		// wait till everyone makes block 4.
-		// it includes the commit for block 3, which is by the original validator set
-		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
-
-		// the commits for block 4 should be with the updated validator set
-		activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
-
-		// wait till everyone makes block 5
-		// it includes the commit for block 4, which should have the updated validator set
-		waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
 
 		//---------------------------------------------------------------------------
 		logger.Info("---------------------------- Testing changing the voting power of one validator")
@@ -393,16 +367,9 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 		updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
 		updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
 		updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-		previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
 
+		//height 3‘s block contains newValidatorTx1. It will make effect in height 5, will appear in height 6's block's commit
 		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
-		waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
-		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
-		waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
-
-		if css[nVals].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-			t.Errorf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[nVals].GetRoundState().LastValidators.TotalVotingPower())
-		}
 
 		//---------------------------------------------------------------------------
 		logger.Info("---------------------------- Testing adding two validators at once")
@@ -415,12 +382,8 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 		newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
 		newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
+		//height 4
 		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
-		waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
-		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
-		activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
-		activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
-		waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
 
 		//---------------------------------------------------------------------------
 		logger.Info("---------------------------- Testing removing two validators at once")
@@ -428,24 +391,31 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 		removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
 		removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
 
+		//height 5
 		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
-		waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
-		waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
-		delete(activeVals, string(newValidatorPubKey2.Address()))
-		delete(activeVals, string(newValidatorPubKey3.Address()))
+		activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
+		//height 6
 		waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
+		//activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
+		//activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
+		//delete(activeVals, string(newValidatorPubKey2.Address()))
+		//delete(activeVals, string(newValidatorPubKey3.Address()))
 		stopConsensusNet(logger, reactors, eventBuses)
-
+		for i := 0; i < nPeers; i++ {
+			css[i].Stop()
+		}
 		stateDB = dbm.NewMemDB()
-		genisisState.Version.Consensus.App = kvstore.ProtocolVersion	//simulate handshake, receive app version
+		genisisState.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 		sm.SaveState(stateDB, genisisState)
 		chain = make([]*types.Block, 0)
 		for i := 1; i <= NUM_BLOCKS; i++ {
 			chain = append(chain, css[0].blockStore.LoadBlock(int64(i)))
-			commits=append(commits,css[0].blockStore.LoadBlockCommit(int64(i)))
+			commits = append(commits, css[0].blockStore.LoadBlockCommit(int64(i)))
 		}
+		config = ResetConfig("proxy_test_0")
 		store = NewMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
+		config = ResetConfig("proxy_test_0")
 		walBody, err := WALWithNBlocks(NUM_BLOCKS)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
@@ -478,9 +448,9 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2)
-		stateDB := dbm.NewMemDB()
-		sm.SaveState(stateDB, genisisState)
-		buildAppStateFromChain(proxyApp, stateDB, genisisState, chain, nBlocks, mode)
+		stateDB1 := dbm.NewMemDB()
+		sm.SaveState(stateDB1, genisisState)
+		buildAppStateFromChain(proxyApp, stateDB1, genisisState, chain, nBlocks, mode)
 	}
 
 	// now start the app using the handshake - it should sync
