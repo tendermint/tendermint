@@ -415,7 +415,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 		config = peer0Config
 		store = NewMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
-		config = ResetConfig(fmt.Sprintf("replay_test_%d_%d", nBlocks, mode))
+		config = ResetConfig(fmt.Sprintf("replay_test_%d_%d_s", nBlocks, mode))
 		walBody, err := WALWithNBlocks(NUM_BLOCKS)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
