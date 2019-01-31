@@ -72,7 +72,7 @@ tendermint init
 # Extract the signing key from our local Tendermint instance
 tm-signer-harness extract_key \      # Use the "extract_key" command
     -tmhome /home/user/.tendermint \ # Where to find the Tendermint home directory
-    -output ./signer.key             # Where to write the key
+    -output ./signing.key            # Where to write the key
 ```
 
 Also, because we want KMS to connect to `tm-signer-harness`, we will need to
