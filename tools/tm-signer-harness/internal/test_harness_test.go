@@ -76,13 +76,8 @@ func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
 	defer cleanup(cfg)
 
 	th, err := NewTestHarness(log.TestingLogger(), cfg)
-	assert.NoError(t, err)
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		th.Run()
-	}()
-	<-donec
+	require.NoError(t, err)
+	th.Run()
 	assert.Equal(t, ErrMaxAcceptRetriesReached, th.exitCode)
 }
 
@@ -145,7 +140,7 @@ func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.RemoteSign
 	defer cleanup(cfg)
 
 	th, err := NewTestHarness(log.TestingLogger(), cfg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
@@ -153,7 +148,7 @@ func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.RemoteSign
 	}()
 
 	rs := rsMaker(th)
-	assert.NoError(t, rs.Start())
+	require.NoError(t, rs.Start())
 	assert.True(t, rs.IsRunning())
 	defer rs.Stop()
 
