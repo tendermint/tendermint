@@ -331,7 +331,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 	if validatorsChange {
 		nPeers := 7
 		nVals := 4
-		css := randConsensusNetWithPeers(nVals, nPeers, "proxy_test", newMockTickerFunc(true), newPersistentKVStore)
+		css, peer0Config := randConsensusNetWithPeers(nVals, nPeers, "proxy_test", newMockTickerFunc(true), newPersistentKVStore)
 		privVal = css[0].privValidator
 		genisisState = css[0].state.Copy()
 		logger := log.TestingLogger()
@@ -412,7 +412,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 			chain = append(chain, css[0].blockStore.LoadBlock(int64(i)))
 			commits = append(commits, css[0].blockStore.LoadBlockCommit(int64(i)))
 		}
-		config = ResetConfig("proxy_test_0")
+		config = peer0Config
 		store = NewMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
 		config = ResetConfig("proxy_test_0")

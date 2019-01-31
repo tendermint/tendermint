@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -51,8 +51,8 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 		eventChans[i] = make(chan interface{}, 1)
 		err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
 		require.NoError(t, err)
-		if reactors[i].conS.state.LastBlockHeight == 0 {	//for reactor_test
-			sm.SaveState(reactors[i].conS.blockExec.Db(),reactors[i].conS.state)
+		if reactors[i].conS.state.LastBlockHeight == 0 { //for reactor_test
+			sm.SaveState(reactors[i].conS.blockExec.Db(), reactors[i].conS.state)
 		}
 	}
 	// make connected switches and start all reactors
@@ -326,7 +326,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	css, _ := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
 
 	logger := log.TestingLogger()
 

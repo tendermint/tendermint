@@ -271,7 +271,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 
 	// Make ConsensusState
 	stateDB := blockDB
-	sm.SaveState(stateDB, state)	//for save height 1's validators info
+	sm.SaveState(stateDB, state) //for save height 1's validators info
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
@@ -609,15 +609,19 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) ([]*ConsensusState, *cfg.Config) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
 	logger := consensusLogger()
+	var peer0Config *cfg.Config
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		if i == 0 {
+			peer0Config = thisConfig
+		}
 		var privVal types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]
@@ -643,7 +647,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-	return css
+	return css, peer0Config
 }
 
 func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
