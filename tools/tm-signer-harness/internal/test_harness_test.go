@@ -68,8 +68,7 @@ const (
 	"app_hash": ""
 }`
 
-	defaultAcceptDeadline = 100
-	defaultConnDeadline   = 100
+	defaultConnDeadline = 100
 )
 
 func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
