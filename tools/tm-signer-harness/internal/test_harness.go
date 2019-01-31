@@ -123,53 +123,6 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 // fails at present is to call os.Exit() with an exit code related to the error
 // that caused the tests to fail, or exit code 0 on success.
 func (th *TestHarness) Run() {
-	th.logger.Info("Starting test harness")
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		accepted := false
-		var startErr error
-		for acceptRetries := th.acceptRetries; acceptRetries > 0; acceptRetries-- {
-			th.logger.Info("Attempting to accept incoming connection", "acceptRetries", acceptRetries)
-			if err := th.spv.Start(); err != nil {
-				// if it wasn't a timeout error
-				if _, ok := err.(timeoutError); !ok {
-					th.logger.Error("Failed to start listener", "err", err)
-					th.Shutdown(newTestHarnessError(ErrFailedToStartListener, err, ""))
-					// we need the return statements in case this is being run
-					// from a unit test - otherwise this function will just die
-					// when os.Exit is called
-					return
-				}
-				startErr = err
-			} else {
-				accepted = true
-				break
-			}
-		}
-		if !accepted {
-			th.logger.Error("Maximum accept retries reached", "acceptRetries", th.acceptRetries)
-			th.Shutdown(newTestHarnessError(ErrMaxAcceptRetriesReached, startErr, ""))
-			return
-		}
-
-		// Run the tests
-		if err := th.TestPublicKey(); err != nil {
-			th.Shutdown(err)
-			return
-		}
-		if err := th.TestSignProposal(); err != nil {
-			th.Shutdown(err)
-			return
-		}
-		if err := th.TestSignVote(); err != nil {
-			th.Shutdown(err)
-			return
-		}
-		th.logger.Info("SUCCESS! All tests passed.")
-		th.Shutdown(nil)
-	}()
-
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
@@ -179,8 +132,48 @@ func (th *TestHarness) Run() {
 		}
 	}()
 
-	// Run until complete
-	<-donec
+	th.logger.Info("Starting test harness")
+	accepted := false
+	var startErr error
+	for acceptRetries := th.acceptRetries; acceptRetries > 0; acceptRetries-- {
+		th.logger.Info("Attempting to accept incoming connection", "acceptRetries", acceptRetries)
+		if err := th.spv.Start(); err != nil {
+			// if it wasn't a timeout error
+			if _, ok := err.(timeoutError); !ok {
+				th.logger.Error("Failed to start listener", "err", err)
+				th.Shutdown(newTestHarnessError(ErrFailedToStartListener, err, ""))
+				// we need the return statements in case this is being run
+				// from a unit test - otherwise this function will just die
+				// when os.Exit is called
+				return
+			}
+			startErr = err
+		} else {
+			accepted = true
+			break
+		}
+	}
+	if !accepted {
+		th.logger.Error("Maximum accept retries reached", "acceptRetries", th.acceptRetries)
+		th.Shutdown(newTestHarnessError(ErrMaxAcceptRetriesReached, startErr, ""))
+		return
+	}
+
+	// Run the tests
+	if err := th.TestPublicKey(); err != nil {
+		th.Shutdown(err)
+		return
+	}
+	if err := th.TestSignProposal(); err != nil {
+		th.Shutdown(err)
+		return
+	}
+	if err := th.TestSignVote(); err != nil {
+		th.Shutdown(err)
+		return
+	}
+	th.logger.Info("SUCCESS! All tests passed.")
+	th.Shutdown(nil)
 }
 
 // TestPublicKey just validates that we can (1) fetch the public key from the
