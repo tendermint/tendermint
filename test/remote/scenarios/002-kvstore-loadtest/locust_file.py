@@ -10,8 +10,8 @@ import os
 from locust import HttpLocust, TaskSequence, seq_task
 
 
-MIN_WAIT = int(os.environ('MIN_WAIT', 100))
-MAX_WAIT = int(os.environ('MAX_WAIT', 500))
+MIN_WAIT = int(os.environ.get('MIN_WAIT', 100))
+MAX_WAIT = int(os.environ.get('MAX_WAIT', 500))
 
 
 class KVStoreBalancedRWTaskSequence(TaskSequence):
