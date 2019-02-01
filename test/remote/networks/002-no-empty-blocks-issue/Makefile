@@ -1,5 +1,6 @@
 INVENTORY?=../../inventory/hosts
 LOGS_DIR?=/tmp
+FAST_MODE?=false
 .PHONY: deploy fetch-tm-logs status
 
 include ../../common/make/tendermint.mk
@@ -13,7 +14,9 @@ deploy: $(TMBIN)
 		--hostname-prefix tik \
 		--node-dir-prefix tik
 	./update-node-config.sh
-	ansible-playbook -i $(INVENTORY) deploy.yml
+	ansible-playbook -i $(INVENTORY) \
+		-e "{\"fast_mode\":${FAST_MODE}}" \
+		deploy.yml
 	./check-status.sh
 
 fetch-tm-logs:

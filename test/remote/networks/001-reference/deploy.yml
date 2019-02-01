@@ -4,21 +4,24 @@
   vars:
     always_deploy_svc: no
     local_tmbin: "{{ lookup('env', 'GOPATH') }}/src/github.com/tendermint/tendermint/build/tendermint"
+    fast_mode: no
   tasks:
     - name: Check if Toxiproxy service is present
       stat: path=/etc/systemd/system/toxiproxy.service
       register: tp_service
+      when: not fast_mode
     - name: Stop and disable Toxiproxy if present
       service: name=toxiproxy state=stopped enabled=no
-      when: tp_service.stat.exists
+      when: not fast_mode and tp_service.stat.exists
 
     # Check if we need to configure the systemd service
     - name: Check if Tendermint service is present
       stat: path=/etc/systemd/system/tendermint.service
       register: tm_service
+      when: not fast_mode
     - name: Install Tendermint service
       include_tasks: ../../common/ansible/install-tm-svc.yml
-      when: always_deploy_svc or not tm_service.stat.exists
+      when: not fast_mode and (always_deploy_svc or not tm_service.stat.exists)
     - name: Ensure Tendermint service is stopped
       service:
         name: tendermint
@@ -30,12 +33,14 @@
       synchronize:
         src: "{{ local_tmbin }}"
         dest: /usr/bin/tendermint
+      when: not fast_mode
     - name: Set binary permissions
       file:
         path: /usr/bin/tendermint
         owner: root
         group: root
         mode: 0755
+      when: not fast_mode
 
     # Sync the different nodes' configurations
     - name: Erase Tendermint home folder
