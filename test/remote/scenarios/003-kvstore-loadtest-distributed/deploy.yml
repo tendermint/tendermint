@@ -29,6 +29,7 @@
     num_clients: 1000
     hatch_rate: 20
     run_time: 5m
+    run_timeout: 330 # In seconds - must be longer than run_time.
     log_file: "{{ loadtest_home }}/loadtest.log"
     stdout_file: "{{ loadtest_home }}/loadtest.stdout.log"
   tasks:
@@ -93,6 +94,8 @@
       args:
         chdir: "{{ loadtest_home }}"
       ignore_errors: yes
+      async: "{{ run_timeout }}"
+      poll: 10
 
     - name: "Fetch the load test result files"
       fetch:
