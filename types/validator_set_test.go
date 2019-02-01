@@ -85,11 +85,20 @@ func TestEmptySet(t *testing.T) {
 
 	valList := []*Validator{}
 	vals := NewValidatorSet(valList)
+
 	vals.IncrementProposerPriority(1)
 	vals.RescalePriorities(100)
 	vals.shiftByAvgProposerPriority()
 	assert.Zero(t, computeMaxMinPriorityDiff(vals))
 	vals.GetProposer()
+
+	vals = NewValidatorSet(nil)
+	vals.IncrementProposerPriority(1)
+	vals.RescalePriorities(100)
+	vals.shiftByAvgProposerPriority()
+	assert.Zero(t, computeMaxMinPriorityDiff(vals))
+	vals.GetProposer()
+
 }
 
 func TestCopy(t *testing.T) {
