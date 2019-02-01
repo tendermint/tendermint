@@ -16,6 +16,7 @@
     expected_slave_count: 4
     force_update_venv: no
     fast_mode: no
+    results_output_dir: "/tmp/003-kvstore-loadtest-distributed"
 
     # Locust configuration parameters
     target_hosts:
@@ -28,7 +29,6 @@
     num_clients: 1000
     hatch_rate: 20
     run_time: 5m
-    run_time_timeout: 3600 # In seconds - make sure this is larger than run_time
     log_file: "{{ loadtest_home }}/loadtest.log"
     stdout_file: "{{ loadtest_home }}/loadtest.stdout.log"
   tasks:
@@ -93,13 +93,11 @@
       args:
         chdir: "{{ loadtest_home }}"
       ignore_errors: yes
-      async: "{{ run_time_timeout }}"
-      poll: 10
 
-    - name: Fetch the load test result files to /tmp/003-kvstore-loadtest-distributed
+    - name: "Fetch the load test result files"
       fetch:
         src: "{{ item }}"
-        dest: "/tmp/003-kvstore-loadtest-distributed/{{ inventory_hostname }}/"
+        dest: "{{ results_output_dir }}/{{ inventory_hostname }}/"
         flat: yes
         fail_on_missing: no
       with_items:
