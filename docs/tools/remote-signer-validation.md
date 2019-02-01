@@ -84,7 +84,7 @@ tmkms keygen secret_connection.key
 
 ### Step 3: Configure and run KMS
 KMS needs some configuration to tell it to use the softer signing module as well
-as the `signer.key` file we just generated. Save the following to a file called
+as the `signing.key` file we just generated. Save the following to a file called
 `tmkms.toml`:
 
 ```toml
