@@ -408,14 +408,11 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
-		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
-			cmn.PanicSanity(
-				fmt.Sprintf(
-					"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
-					r.CheckTx.Data,
-					memTx.tx,
-				),
-			)
+		if !bytes.Equal(tx, memTx.tx) {
+			panic(fmt.Sprintf(
+				"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
+				memTx.tx,
+				tx))
 		}
 		var postCheckErr error
 		if mem.postCheck != nil {

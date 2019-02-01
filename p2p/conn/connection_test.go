@@ -30,7 +30,7 @@ func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msg
 	cfg := DefaultMConnConfig()
 	cfg.PingInterval = 90 * time.Millisecond
 	cfg.PongTimeout = 45 * time.Millisecond
-	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
+	chDescs := []*ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
 	c.SetLogger(log.TestingLogger())
 	return c
