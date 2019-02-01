@@ -997,8 +997,7 @@ func restoreStateFromBlock(stateDb dbm.DB, blockStore *bc.BlockStore, rollbackHe
 func modifyPrivValidatorsFile(config *cfg.Config, rollbackHeight int64) types.PrivValidator {
 	var sig []byte
 	filePv := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	if config.RollbackHeightFlag{
-		fmt.Println("change rollback height")
+	if config.RollbackHeightFlag {
 		filePv.LastSignState.Height = rollbackHeight
 		filePv.LastSignState.Round = 0
 		filePv.LastSignState.Step = 0
