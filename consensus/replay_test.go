@@ -255,7 +255,6 @@ var (
 	mempool = sm.MockMempool{}
 	evpool  = sm.MockEvidencePool{}
 
-	sim_privVal      types.PrivValidator
 	sim_genisisState sm.State
 	sim_config       *cfg.Config
 	sim_chain        []*types.Block
@@ -275,7 +274,6 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	nVals := 4
 	css, config := randConsensusNetWithPeers(nVals, nPeers, "replay_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
 	sim_config = config
-	sim_privVal = css[0].privValidator
 	sim_genisisState = css[0].state.Copy()
 	logger := log.TestingLogger()
 
@@ -414,15 +412,14 @@ func tempWALWithData(data []byte) string {
 }
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
-func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange bool) {
+func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, testValidatorsChange bool) {
 	var config *cfg.Config
-	var privVal types.PrivValidator
 	var chain []*types.Block
 	var commits []*types.Commit
 	var store *mockBlockStore
 	var stateDB dbm.DB
 	var genisisState sm.State
-	if validatorsChange {
+	if testValidatorsChange {
 		ResetConfig("replay_test_m")
 		stateDB = dbm.NewMemDB()
 		genisisState = sim_genisisState
@@ -445,7 +442,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 		err = wal.Start()
 		require.NoError(t, err)
 		defer wal.Stop()
-		privVal = privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
