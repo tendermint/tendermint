@@ -1,6 +1,6 @@
 """
 Test file for generating load on a Tendermint network running the `kvstore`
-proxy application.
+proxy application from a single machine.
 """
 
 import base64
@@ -8,6 +8,10 @@ import binascii
 import os
 
 from locust import HttpLocust, TaskSequence, seq_task
+
+
+MIN_WAIT = int(os.environ.get('MIN_WAIT', 100))
+MAX_WAIT = int(os.environ.get('MAX_WAIT', 500))
 
 
 class KVStoreBalancedRWTaskSequence(TaskSequence):
@@ -18,11 +22,11 @@ class KVStoreBalancedRWTaskSequence(TaskSequence):
         self.key = binascii.hexlify(os.urandom(16)).decode('utf-8')
         self.value = binascii.hexlify(os.urandom(16)).decode('utf-8')
         self.client.get(
-            '/broadcast_tx_commit',
+            '/broadcast_tx_sync',
             params={
                 'tx': '"%s=%s"' % (self.key, self.value),
             },
-            name='/broadcast_tx_commit?tx=[tx]',
+            name='/broadcast_tx_sync?tx=[tx]',
         )
 
     @seq_task(2)
@@ -45,8 +49,8 @@ def make_node_locust_class(host_url, node_id):
         host = host_url
         weight = 1
         task_set = KVStoreBalancedRWTaskSequence
-        min_wait = 100
-        max_wait = 500
+        min_wait = MIN_WAIT
+        max_wait = MAX_WAIT
 
         def setup(self):
             print("setup: %s with host = %s" % (self.__class__.__name__, self.host))
