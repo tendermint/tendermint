@@ -272,9 +272,10 @@ var modes = []uint{0, 1, 2}
 func TestSimulateValidatorsChange(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, config := randConsensusNetWithPeers(nVals, nPeers, "replay_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+	css, genDoc, config := randConsensusNetWithPeers(nVals, nPeers, "replay_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
 	sim_config = config
-	sim_genisisState = css[0].state.Copy()
+	sim_genisisState, _ = sm.MakeGenesisState(genDoc)
+
 	logger := log.TestingLogger()
 
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, nPeers)
@@ -522,14 +523,13 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	defer proxyApp.Stop()
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
-	sm.SaveState(stateDB,state)	//save height 1's validatorsInfo
-
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
 		panic(err)
 	}
+	sm.SaveState(stateDB, state) //save height 1's validatorsInfo
 
 	switch mode {
 	case 0:
@@ -562,14 +562,13 @@ func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, c
 	defer proxyApp.Stop()
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
-	sm.SaveState(stateDB,state)	//save height 1's validatorsInfo
-
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
 		panic(err)
 	}
+	sm.SaveState(stateDB, state) //save height 1's validatorsInfo
 
 	switch mode {
 	case 0:

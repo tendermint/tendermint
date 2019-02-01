@@ -611,7 +611,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func(string) abci.Application) ([]*ConsensusState, *cfg.Config) {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func(string) abci.Application) ([]*ConsensusState, *types.GenesisDoc, *cfg.Config) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
 	logger := consensusLogger()
@@ -642,13 +642,17 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 
 		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
+		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
+			state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version. If don't do this, replay test will fail
+		}
 		app.InitChain(abci.RequestInitChain{Validators: vals})
+		//sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-	return css, peer0Config
+	return css, genDoc, peer0Config
 }
 
 func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {

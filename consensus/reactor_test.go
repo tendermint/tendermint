@@ -326,7 +326,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, _ := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+	css, _, _ := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
 
 	logger := log.TestingLogger()
 
