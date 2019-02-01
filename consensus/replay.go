@@ -255,8 +255,10 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	)
 
 	// Set AppVersion on the state.
-	h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
-	sm.SaveState(h.stateDB, h.initialState)
+	if h.initialState.Version.Consensus.App != version.Protocol(res.AppVersion) {
+		h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
+		sm.SaveState(h.stateDB, h.initialState)
+	}
 
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)

@@ -27,8 +27,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var mtx sync.Mutex
-
 func init() {
 	config = ResetConfig("consensus_reactor_test")
 }
@@ -40,7 +38,6 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
 	eventBuses := make([]*types.EventBus, N)
-	mtx.Lock()
 	for i := 0; i < N; i++ {
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
@@ -87,7 +84,6 @@ func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuse
 		b.Stop()
 	}
 	logger.Info("stopConsensusNet: DONE", "n", len(reactors))
-	mtx.Unlock()
 }
 
 // Ensure a testnet makes blocks
