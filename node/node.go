@@ -257,7 +257,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	if config.BaseConfig.RollbackFlag {
-		state, blockStore, privValidator = RollbackData(config, state, stateDB, blockStore, blockStoreDB, privValidator)
+		state, blockStore, privValidator = rollbackData(config, state, stateDB, blockStore, blockStoreDB, privValidator)
 	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
@@ -943,19 +943,17 @@ func splitAndTrimEmpty(s, sep, cutset string) []string {
 	return nonEmptyStrings
 }
 
-func RollbackData(config *cfg.Config, state sm.State, stateDb dbm.DB, blockStore *bc.BlockStore,
+func rollbackData(config *cfg.Config, state sm.State, stateDb dbm.DB, blockStore *bc.BlockStore,
 	blockStoreDB dbm.DB, privValidator types.PrivValidator) (sm.State, *bc.BlockStore, types.PrivValidator) {
 
-	if state.LastBlockHeight > int64(config.BaseConfig.RollbackHeight) {
-		stateRestore := restoreStateFromBlock(stateDb, blockStore, int64(config.BaseConfig.RollbackHeight))
+	if state.LastBlockHeight > config.BaseConfig.RollbackHeight {
+		stateRestore := restoreStateFromBlock(stateDb, blockStore, config.BaseConfig.RollbackHeight)
 		sm.SaveState(stateDb, stateRestore)
-		bc.BlockStoreStateJSON{Height: int64(config.BaseConfig.RollbackHeight)}.Save(blockStoreDB)
-		pv := modifyPrivValidatorsFile(config, int64(config.BaseConfig.RollbackHeight))
+		bc.BlockStoreStateJSON{Height: config.BaseConfig.RollbackHeight}.Save(blockStoreDB)
+		pv := modifyPrivValidatorsFile(config, config.BaseConfig.RollbackHeight)
 		blockStore = bc.NewBlockStore(blockStoreDB)
-		fmt.Println(blockStore.Height())
 		return stateRestore, blockStore, pv
 	} else {
-		fmt.Println("rollback height is bigger than the currentHeight")
 	}
 	return state, blockStore, privValidator
 }
@@ -972,8 +970,6 @@ func restoreStateFromBlock(stateDb dbm.DB, blockStore *bc.BlockStore, rollbackHe
 
 	block := blockStore.LoadBlock(rollbackHeight)
 	nextBlock := blockStore.LoadBlock(rollbackHeight + 1)
-
-	//TODO: rollback bls state here
 
 	return sm.State{
 		ChainID: block.ChainID,

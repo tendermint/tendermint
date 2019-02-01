@@ -193,7 +193,7 @@ type BaseConfig struct {
 
 	RollbackFlag bool `mapstructure:"rollback_data"` //false
 
-	RollbackHeight int `mapstructure:"rollback_height"`
+	RollbackHeight int64 `mapstructure:"rollback_height"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
