@@ -9,7 +9,7 @@
     loadtest_master_node: tok0
     loadtest_master_hostname: tok0.sredev.co
     expected_slave_count: 3
-    always_update_venv: no
+    force_update_venv: no
 
     # Locust configuration parameters
     target_hosts:
@@ -39,7 +39,7 @@
       register: venv
     - name: Configure virtual environment if not present
       include_tasks: venv.yml
-      when: always_update_venv or not venv.stat.exists
+      when: force_update_venv or not venv.stat.exists
     
     - name: Copy the necessary scripts across
       copy: "src={{ item }} dest={{ loadtest_home }}"
