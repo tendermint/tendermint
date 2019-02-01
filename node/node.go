@@ -257,7 +257,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	if config.BaseConfig.RollbackFlag {
-		state, blockStore, privValidator = rollbackData(config, state, stateDB, blockStore, blockStoreDB, privValidator)
+		state, blockStore, privValidator = unsafeRollbackData(config, state, stateDB, blockStore, blockStoreDB, privValidator)
 	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
@@ -943,7 +943,7 @@ func splitAndTrimEmpty(s, sep, cutset string) []string {
 	return nonEmptyStrings
 }
 
-func rollbackData(config *cfg.Config, state sm.State, stateDb dbm.DB, blockStore *bc.BlockStore,
+func unsafeRollbackData(config *cfg.Config, state sm.State, stateDb dbm.DB, blockStore *bc.BlockStore,
 	blockStoreDB dbm.DB, privValidator types.PrivValidator) (sm.State, *bc.BlockStore, types.PrivValidator) {
 
 	if state.LastBlockHeight > config.BaseConfig.RollbackHeight {
