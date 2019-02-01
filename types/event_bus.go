@@ -18,7 +18,7 @@ type EventBusSubscriber interface {
 }
 
 type Subscription interface {
-	Out() <-chan tmpubsub.MsgAndTags
+	Out() <-chan tmpubsub.Message
 	Cancelled() <-chan struct{}
 	Err() error
 }

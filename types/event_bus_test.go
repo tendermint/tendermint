@@ -31,8 +31,8 @@ func TestEventBusPublishEventTx(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		mt := <-txsSub.Out()
-		edt := mt.Msg().(EventDataTx)
+		msg := <-txsSub.Out()
+		edt := msg.Data().(EventDataTx)
 		assert.Equal(t, int64(1), edt.Height)
 		assert.Equal(t, uint32(0), edt.Index)
 		assert.Equal(t, tx, edt.Tx)
@@ -72,8 +72,8 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		mt := <-blocksSub.Out()
-		edt := mt.Msg().(EventDataNewBlock)
+		msg := <-blocksSub.Out()
+		edt := msg.Data().(EventDataNewBlock)
 		assert.Equal(t, block, edt.Block)
 		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
 		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
@@ -111,8 +111,8 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		mt := <-headersSub.Out()
-		edt := mt.Msg().(EventDataNewBlockHeader)
+		msg := <-headersSub.Out()
+		edt := msg.Data().(EventDataNewBlockHeader)
 		assert.Equal(t, block.Header, edt.Header)
 		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
 		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)

@@ -172,15 +172,15 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	// wait till everyone makes the first new block with no evidence
 	timeoutWaitGroup(t, nValidators, func(j int) {
-		mt := <-eventSubs[j].Out()
-		block := mt.Msg().(types.EventDataNewBlock).Block
+		msg := <-eventSubs[j].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
 		assert.True(t, len(block.Evidence.Evidence) == 0)
 	}, css)
 
 	// second block should have evidence
 	timeoutWaitGroup(t, nValidators, func(j int) {
-		mt := <-eventSubs[j].Out()
-		block := mt.Msg().(types.EventDataNewBlock).Block
+		msg := <-eventSubs[j].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
 		assert.True(t, len(block.Evidence.Evidence) > 0)
 	}, css)
 }
@@ -450,8 +450,8 @@ func waitForAndValidateBlock(
 ) {
 	timeoutWaitGroup(t, n, func(j int) {
 		css[j].Logger.Debug("waitForAndValidateBlock")
-		mt := <-eventSubs[j].Out()
-		newBlock := mt.Msg().(types.EventDataNewBlock).Block
+		msg := <-eventSubs[j].Out()
+		newBlock := msg.Data().(types.EventDataNewBlock).Block
 		css[j].Logger.Debug("waitForAndValidateBlock: Got block", "height", newBlock.Height)
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
@@ -475,8 +475,8 @@ func waitForAndValidateBlockWithTx(
 	BLOCK_TX_LOOP:
 		for {
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx", "ntxs", ntxs)
-			mt := <-eventSubs[j].Out()
-			newBlock := mt.Msg().(types.EventDataNewBlock).Block
+			msg := <-eventSubs[j].Out()
+			newBlock := msg.Data().(types.EventDataNewBlock).Block
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx: Got block", "height", newBlock.Height)
 			err := validateBlock(newBlock, activeVals)
 			assert.Nil(t, err)
@@ -510,8 +510,8 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	LOOP:
 		for {
 			css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt")
-			mt := <-eventSubs[j].Out()
-			newBlock = mt.Msg().(types.EventDataNewBlock).Block
+			msg := <-eventSubs[j].Out()
+			newBlock = msg.Data().(types.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP

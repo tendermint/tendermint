@@ -25,8 +25,8 @@
 //
 //     for {
 //         select {
-//     	   case msgAndTags <- subscription.Out():
-//     		     // handle msg and tags
+//     	   case msg <- subscription.Out():
+//     		     // handle msg.Data() and msg.Tags()
 //     	   case <-subscription.Cancelled():
 //     		     return subscription.Err()
 //		  	 }
@@ -170,7 +170,7 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query Query, ou
 	}
 
 	subscription := &Subscription{
-		out:       make(chan MsgAndTags, outCapacity),
+		out:       make(chan Message, outCapacity),
 		cancelled: make(chan struct{}),
 	}
 	select {
@@ -389,11 +389,11 @@ func (state *state) send(msg interface{}, tags TagMap) {
 			for clientID, subscription := range clientSubscriptions {
 				if cap(subscription.out) == 0 {
 					// block on unbuffered channel
-					subscription.out <- MsgAndTags{msg, tags}
+					subscription.out <- Message{msg, tags}
 				} else {
 					// don't block on buffered channels
 					select {
-					case subscription.out <- MsgAndTags{msg, tags}:
+					case subscription.out <- Message{msg, tags}:
 					default:
 						state.remove(clientID, qStr, ErrOutOfCapacity)
 					}

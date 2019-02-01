@@ -71,8 +71,8 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	defer c.UnsubscribeAll(ctx, subscriber)
 
 	select {
-	case mt := <-sub.Out():
-		return mt.Msg().(types.TMEventData), nil
+	case msg := <-sub.Out():
+		return msg.Data().(types.TMEventData), nil
 	case <-sub.Cancelled():
 		return nil, errors.New("subscription was cancelled")
 	case <-ctx.Done():

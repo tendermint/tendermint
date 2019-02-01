@@ -56,8 +56,8 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepSub typ
 		ticker := time.After(time.Second * 2)
 		if newStepSub != nil {
 			select {
-			case mt := <-newStepSub.Out():
-				m2 := mt.Msg().(types.EventDataRoundState)
+			case stepMsg := <-newStepSub.Out():
+				m2 := stepMsg.Data().(types.EventDataRoundState)
 				if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
 					return fmt.Errorf("RoundState mismatch. Got %v; Expected %v", m2, m)
 				}

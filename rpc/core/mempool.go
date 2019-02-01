@@ -201,8 +201,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// TODO: configurable?
 	var deliverTxTimeout = rpcserver.WriteTimeout / 2
 	select {
-	case mt := <-deliverTxSub.Out(): // The tx was included in a block.
-		deliverTxRes := mt.Msg().(types.EventDataTx)
+	case msg := <-deliverTxSub.Out(): // The tx was included in a block.
+		deliverTxRes := msg.Data().(types.EventDataTx)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
 			DeliverTx: deliverTxRes.Result,

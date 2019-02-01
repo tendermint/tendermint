@@ -20,7 +20,7 @@ var (
 // 2) channel which is closed if a client is too slow or choose to unsubscribe
 // 3) err indicating the reason for (2)
 type Subscription struct {
-	out chan MsgAndTags
+	out chan Message
 
 	cancelled chan struct{}
 	mtx       sync.RWMutex
@@ -30,7 +30,7 @@ type Subscription struct {
 // Out returns a channel onto which messages and tags are published.
 // Unsubscribe/UnsubscribeAll does not close the channel to avoid clients from
 // receiving a nil message.
-func (s *Subscription) Out() <-chan MsgAndTags {
+func (s *Subscription) Out() <-chan Message {
 	return s.out
 }
 
@@ -53,18 +53,18 @@ func (s *Subscription) Err() error {
 	return s.err
 }
 
-// MsgAndTags glues a message and tags together.
-type MsgAndTags struct {
-	msg  interface{}
+// Message glues data and tags together.
+type Message struct {
+	data interface{}
 	tags TagMap
 }
 
-// Msg returns a message.
-func (mt MsgAndTags) Msg() interface{} {
-	return mt.msg
+// Data returns an original data published.
+func (msg Message) Data() interface{} {
+	return msg.data
 }
 
-// Tags returns tags.
-func (mt MsgAndTags) Tags() TagMap {
-	return mt.tags
+// Tags returns tags, which matched the client's query.
+func (msg Message) Tags() TagMap {
+	return msg.tags
 }

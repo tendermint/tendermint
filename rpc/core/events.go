@@ -109,8 +109,8 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 	go func() {
 		for {
 			select {
-			case mt := <-sub.Out():
-				resultEvent := &ctypes.ResultEvent{query, mt.Msg().(tmtypes.TMEventData)}
+			case msg := <-sub.Out():
+				resultEvent := &ctypes.ResultEvent{query, msg.Data().(tmtypes.TMEventData)}
 				wsCtx.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						wsCtx.Codec(),
