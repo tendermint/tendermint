@@ -99,7 +99,7 @@ func saveState(db dbm.DB, state State, key []byte) {
 		saveValidatorsInfo(db, nextHeight, lastHeightVoteChanged, state.Validators)
 	}
 	//save software info
-	saveSoftware(db,nextHeight,state.Version.Software)
+	saveSoftware(db, nextHeight, state.Version.Software)
 	// Save next validators.
 	// Save next validators.
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
@@ -350,9 +350,8 @@ func LoadConsensusParamsChanged(db dbm.DB, height int64) int64 {
 	return paramsInfo.LastHeightChanged
 }
 
-
 func saveSoftware(db dbm.DB, height int64, software string) {
-	db.Set(calSoftwareHeight(height),[]byte(software))
+	db.Set(calSoftwareHeight(height), []byte(software))
 }
 
 func LoadSoftware(db dbm.DB, height int64) string {
