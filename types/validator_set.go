@@ -74,6 +74,9 @@ func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet
 // proposer. Panics if validator set is empty.
 // `times` must be positive.
 func (vals *ValidatorSet) IncrementProposerPriority(times int) {
+	if vals.IsNilOrEmpty() {
+		return
+	}
 	if times <= 0 {
 		panic("Cannot call IncrementProposerPriority with non-positive times")
 	}
@@ -95,6 +98,9 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 }
 
 func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
+	if vals.IsNilOrEmpty() {
+		return
+	}
 	// NOTE: This check is merely a sanity check which could be
 	// removed if all tests would init. voting power appropriately;
 	// i.e. diffMax should always be > 0
@@ -102,7 +108,7 @@ func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 		return
 	}
 
-	// Caculating ceil(diff/diffMax):
+	// Calculating ceil(diff/diffMax):
 	// Re-normalization is performed by dividing by an integer for simplicity.
 	// NOTE: This may make debugging priority issues easier as well.
 	diff := computeMaxMinPriorityDiff(vals)
@@ -146,6 +152,9 @@ func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
 
 // compute the difference between the max and min ProposerPriority of that set
 func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
+	if vals.IsNilOrEmpty() {
+		return 0
+	}
 	max := int64(math.MinInt64)
 	min := int64(math.MaxInt64)
 	for _, v := range vals.Validators {
@@ -173,6 +182,9 @@ func (vals *ValidatorSet) getValWithMostPriority() *Validator {
 }
 
 func (vals *ValidatorSet) shiftByAvgProposerPriority() {
+	if vals.IsNilOrEmpty() {
+		return
+	}
 	avgProposerPriority := vals.computeAvgProposerPriority()
 	for _, val := range vals.Validators {
 		val.ProposerPriority = safeSubClip(val.ProposerPriority, avgProposerPriority)
