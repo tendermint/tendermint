@@ -25,7 +25,8 @@ Requires the same prerequisites as for building
 [Tendermint](https://github.com/tendermint/tendermint).
 
 ## Building
-From this directory, simply run:
+From the `tools/tm-signer-harness` directory in your Tendermint source
+repository, simply run:
 
 ```bash
 make
@@ -35,7 +36,8 @@ make install
 ```
 
 ## Docker Image
-To build a Docker image containing the `tm-signer-harness`, simply run:
+To build a Docker image containing the `tm-signer-harness`, also from the
+`tools/tm-signer-harness` directory of your Tendermint source repo, simply run:
 
 ```bash
 make docker-image
@@ -95,7 +97,7 @@ reconnect = true                       # true is the default
 secret_key = "./secret_connection.key" # Where to find our secret connection key.
 
 [[providers.softsign]]
-id = "test-chain-0XwP5E"               # The Tendermint chain ID for which KMS will be signing.
+id = "test-chain-0XwP5E"               # The Tendermint chain ID for which KMS will be signing (same as validator.chain_id above).
 path = "./signing.key"                 # The signing key we extracted earlier.
 ```
 
