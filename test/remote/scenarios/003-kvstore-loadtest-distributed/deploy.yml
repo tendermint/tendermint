@@ -7,7 +7,7 @@
     loadtest_home: "/home/{{ loadtest_user }}"
     venv_dir: "{{ loadtest_home }}/venv"
     loadtest_master_node: tok0
-    loadtest_master_hostname: tok0.sredev.co
+    loadtest_master_hostname: 172.31.6.229     # Use internal IP of host as ports are blocked externally
     expected_slave_count: 3
     force_update_venv: no
 
