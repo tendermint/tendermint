@@ -85,6 +85,7 @@ type FilePVLastSignState struct {
 // we have already signed for this HRS, and can reuse the existing signature).
 // It panics if the HRS matches the arguments, there's a SignBytes, but no Signature.
 func (lss *FilePVLastSignState) CheckHRS(height int64, round int, step int8) (bool, error) {
+
 	if lss.Height > height {
 		return false, errors.New("Height regression")
 	}
