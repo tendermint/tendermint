@@ -73,7 +73,7 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	b.pubsub.PublishWithTags(ctx, eventData, tmpubsub.NewTagMap(map[string]string{EventTypeKey: eventType}))
+	b.pubsub.PublishWithTags(ctx, eventData, map[string]string{EventTypeKey: eventType})
 	return nil
 }
 
@@ -101,7 +101,7 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	logIfTagExists(EventTypeKey, tags, b.Logger)
 	tags[EventTypeKey] = EventNewBlock
 
-	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	b.pubsub.PublishWithTags(ctx, data, tags)
 	return nil
 }
 
@@ -117,7 +117,7 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	logIfTagExists(EventTypeKey, tags, b.Logger)
 	tags[EventTypeKey] = EventNewBlockHeader
 
-	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	b.pubsub.PublishWithTags(ctx, data, tags)
 	return nil
 }
 
@@ -148,7 +148,7 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	logIfTagExists(TxHeightKey, tags, b.Logger)
 	tags[TxHeightKey] = fmt.Sprintf("%d", data.Height)
 
-	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	b.pubsub.PublishWithTags(ctx, data, tags)
 	return nil
 }
 

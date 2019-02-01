@@ -21,7 +21,10 @@ implementation.
 */
 
 import (
+	"context"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -91,7 +94,9 @@ type NetworkClient interface {
 // EventsClient is reactive, you can subscribe to any message, given the proper
 // string. see tendermint/types/events.go
 type EventsClient interface {
-	types.EventBusSubscriber
+	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
+	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
+	UnsubscribeAll(ctx context.Context, subscriber string) error
 }
 
 // MempoolClient shows us data about current mempool state.

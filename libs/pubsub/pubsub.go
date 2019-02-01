@@ -63,7 +63,7 @@ var (
 
 // Query defines an interface for a query to be used for subscribing.
 type Query interface {
-	Matches(tags TagMap) bool
+	Matches(tags map[string]string) bool
 	String() string
 }
 
@@ -77,7 +77,7 @@ type cmd struct {
 
 	// publish
 	msg  interface{}
-	tags TagMap
+	tags map[string]string
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
@@ -131,10 +131,10 @@ func (s *Server) BufferCapacity() int {
 	return s.cmdsCap
 }
 
-// Subscribe creates a subscription for the given client. 
-// 
+// Subscribe creates a subscription for the given client.
+//
 // An error will be returned to the caller if the context is canceled or if
-// subscription already exist for pair clientID and query. 
+// subscription already exist for pair clientID and query.
 //
 // outCapacity can be used to set a capacity for Subscription#Out channel (1 by
 // default). Panics if outCapacity is less than or equal to zero. If you want
@@ -245,13 +245,13 @@ func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
 // Publish publishes the given message. An error will be returned to the caller
 // if the context is canceled.
 func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.PublishWithTags(ctx, msg, NewTagMap(make(map[string]string)))
+	return s.PublishWithTags(ctx, msg, make(map[string]string))
 }
 
 // PublishWithTags publishes the given message with the set of tags. The set is
 // matched with clients queries. If there is a match, the message is sent to
 // the client.
-func (s *Server) PublishWithTags(ctx context.Context, msg interface{}, tags TagMap) error {
+func (s *Server) PublishWithTags(ctx context.Context, msg interface{}, tags map[string]string) error {
 	select {
 	case s.cmds <- cmd{op: pub, msg: msg, tags: tags}:
 		return nil
@@ -382,7 +382,7 @@ func (state *state) removeAll(reason error) {
 	}
 }
 
-func (state *state) send(msg interface{}, tags TagMap) {
+func (state *state) send(msg interface{}, tags map[string]string) {
 	for qStr, clientSubscriptions := range state.subscriptions {
 		q := state.queries[qStr].q
 		if q.Matches(tags) {

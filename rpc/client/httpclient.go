@@ -257,7 +257,7 @@ type WSEvents struct {
 	ws       *rpcclient.WSClient
 
 	mtx           sync.RWMutex
-	subscriptions map[string]chan<- interface{}
+	subscriptions map[string]chan<- EventMessage
 }
 
 func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
@@ -265,7 +265,7 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 		cdc:           cdc,
 		endpoint:      endpoint,
 		remote:        remote,
-		subscriptions: make(map[string]chan<- interface{}),
+		subscriptions: make(map[string]chan<- EventMessage),
 	}
 
 	wsEvents.BaseService = *cmn.NewBaseService(nil, "WSEvents", wsEvents)
@@ -341,7 +341,7 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	for _, ch := range w.subscriptions {
 		close(ch)
 	}
-	w.subscriptions = make(map[string]chan<- interface{})
+	w.subscriptions = make(map[string]chan<- EventMessage)
 	w.mtx.Unlock()
 
 	return nil
@@ -382,7 +382,7 @@ func (w *WSEvents) eventListener() {
 			// Unsubscribe/UnsubscribeAll.
 			w.mtx.RLock()
 			if ch, ok := w.subscriptions[result.Query]; ok {
-				ch <- result.Data
+				ch <- EventMessage{result.Data, result.Tags}
 			}
 			w.mtx.RUnlock()
 		case <-w.Quit():

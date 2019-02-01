@@ -56,7 +56,7 @@ func (s *Subscription) Err() error {
 // Message glues data and tags together.
 type Message struct {
 	data interface{}
-	tags TagMap
+	tags map[string]string
 }
 
 // Data returns an original data published.
@@ -65,6 +65,6 @@ func (msg Message) Data() interface{} {
 }
 
 // Tags returns tags, which matched the client's query.
-func (msg Message) Tags() TagMap {
+func (msg Message) Tags() map[string]string {
 	return msg.tags
 }

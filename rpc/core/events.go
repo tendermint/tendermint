@@ -9,7 +9,6 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // Subscribe for events via WebSocket.
@@ -110,7 +109,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 		for {
 			select {
 			case msg := <-sub.Out():
-				resultEvent := &ctypes.ResultEvent{query, msg.Data().(tmtypes.TMEventData)}
+				resultEvent := &ctypes.ResultEvent{query, msg.Data(), msg.Tags()}
 				wsCtx.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						wsCtx.Codec(),

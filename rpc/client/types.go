@@ -1,5 +1,7 @@
 package client
 
+import "github.com/tendermint/tendermint/types"
+
 // ABCIQueryOptions can be used to provide options for ABCIQuery call other
 // than the DefaultABCIQueryOptions.
 type ABCIQueryOptions struct {
@@ -9,3 +11,9 @@ type ABCIQueryOptions struct {
 
 // DefaultABCIQueryOptions are latest height (0) and prove false.
 var DefaultABCIQueryOptions = ABCIQueryOptions{Height: 0, Prove: false}
+
+// EventMessage combines event data and tags.
+type EventMessage struct {
+	Data types.TMEventData
+	Tags map[string]string
+}
