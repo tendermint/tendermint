@@ -452,6 +452,9 @@ func updateState(
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
+		if nValSet.IsNilOrEmpty() {
+			return state, fmt.Errorf("Removing all validators is not allowed")
+		}
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
 	}

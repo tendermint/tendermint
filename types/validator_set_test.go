@@ -18,7 +18,6 @@ import (
 
 func TestValidatorSetBasic(t *testing.T) {
 	// empty or nil validator lists are allowed,
-	// but attempting to IncrementProposerPriority on them will panic.
 	vset := NewValidatorSet([]*Validator{})
 	assert.False(t, vset.HasAddress([]byte("some val")))
 	idx, val := vset.GetByAddress([]byte("some val"))
@@ -39,7 +38,6 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Nil(t, vset.Hash())
 
 	// add
-
 	val = randValidator_(vset.TotalVotingPower())
 	assert.True(t, vset.Add(val))
 	assert.True(t, vset.HasAddress(val.Address))
