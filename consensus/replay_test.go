@@ -521,6 +521,9 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	}
 	defer proxyApp.Stop()
 
+	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
+	sm.SaveState(stateDB,state)	//save height 1's validatorsInfo
+
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
@@ -557,6 +560,9 @@ func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, c
 		panic(err)
 	}
 	defer proxyApp.Stop()
+
+	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
+	sm.SaveState(stateDB,state)	//save height 1's validatorsInfo
 
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
