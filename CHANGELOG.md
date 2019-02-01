@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.29.1
+
+*January 24, 2019*
+
+Special thanks to external contributors on this release:
+@infinytum, @gauthamzz
+
+This release contains two important fixes: one for p2p layer where we sometimes
+were not closing connections and one for consensus layer where consensus with
+no empty blocks (`create_empty_blocks = false`) could halt.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS:
+- [pex] [\#3037](https://github.com/tendermint/tendermint/issues/3037) Only log "Reached max attempts to dial" once
+- [rpc] [\#3159](https://github.com/tendermint/tendermint/issues/3159) Expose
+  `triggered_timeout_commit` in the `/dump_consensus_state`
+
+### BUG FIXES:
+- [consensus] [\#3199](https://github.com/tendermint/tendermint/issues/3199) Fix consensus halt with no empty blocks from not resetting triggeredTimeoutCommit
+- [p2p] [\#2967](https://github.com/tendermint/tendermint/issues/2967) Fix file descriptor leak
+
 ## v0.29.0
 
 *January 21, 2019*
@@ -37,15 +60,15 @@ program](https://hackerone.com/tendermint).
 * CLI/RPC/Config
 
 * Apps
-- [state] [\#3049](https://github.com/tendermint/tendermint/issues/3049) Total voting power of the validator set is upper bounded by
+  - [state] [\#3049](https://github.com/tendermint/tendermint/issues/3049) Total voting power of the validator set is upper bounded by
     `MaxInt64 / 8`. Apps must ensure they do not return changes to the validator
     set that cause this maximum to be exceeded.
 
 * Go API
-- [node] [\#3082](https://github.com/tendermint/tendermint/issues/3082) MetricsProvider now requires you to pass a chain ID
-- [types] [\#2713](https://github.com/tendermint/tendermint/issues/2713) Rename `TxProof.LeafHash` to `TxProof.Leaf`
-- [crypto/merkle] [\#2713](https://github.com/tendermint/tendermint/issues/2713) `SimpleProof.Verify` takes a `leaf` instead of a
-  `leafHash` and performs the hashing itself
+  - [node] [\#3082](https://github.com/tendermint/tendermint/issues/3082) MetricsProvider now requires you to pass a chain ID
+  - [types] [\#2713](https://github.com/tendermint/tendermint/issues/2713) Rename `TxProof.LeafHash` to `TxProof.Leaf`
+  - [crypto/merkle] [\#2713](https://github.com/tendermint/tendermint/issues/2713) `SimpleProof.Verify` takes a `leaf` instead of a
+    `leafHash` and performs the hashing itself
 
 * Blockchain Protocol
   * [crypto/merkle] [\#2713](https://github.com/tendermint/tendermint/issues/2713) Merkle trees now match the RFC 6962 specification

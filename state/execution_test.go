@@ -309,8 +309,8 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB := state(1, 1)
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		MockMempool{}, MockEvidencePool{})
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), MockMempool{}, MockEvidencePool{})
+
 	eventBus := types.NewEventBus()
 	err = eventBus.Start()
 	require.NoError(t, err)

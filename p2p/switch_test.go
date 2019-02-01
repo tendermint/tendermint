@@ -3,7 +3,9 @@ package p2p
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -13,7 +15,6 @@ import (
 	"time"
 
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -474,6 +475,58 @@ func TestSwitchFullConnectivity(t *testing.T) {
 		if sw.Peers().Size() != 2 {
 			t.Fatalf("Expected each switch to be connected to 2 other, but %d switch only connected to %d", sw.Peers().Size(), i)
 		}
+	}
+}
+
+func TestSwitchAcceptRoutine(t *testing.T) {
+	cfg.MaxNumInboundPeers = 5
+
+	// make switch
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	err := sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	remotePeers := make([]*remotePeer, 0)
+	assert.Equal(t, 0, sw.Peers().Size())
+
+	// 1. check we connect up to MaxNumInboundPeers
+	for i := 0; i < cfg.MaxNumInboundPeers; i++ {
+		rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+		remotePeers = append(remotePeers, rp)
+		rp.Start()
+		c, err := rp.Dial(sw.NodeInfo().NetAddress())
+		require.NoError(t, err)
+		// spawn a reading routine to prevent connection from closing
+		go func(c net.Conn) {
+			for {
+				one := make([]byte, 1)
+				_, err := c.Read(one)
+				if err != nil {
+					return
+				}
+			}
+		}(c)
+	}
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
+
+	// 2. check we close new connections if we already have MaxNumInboundPeers peers
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	conn, err := rp.Dial(sw.NodeInfo().NetAddress())
+	require.NoError(t, err)
+	// check conn is closed
+	one := make([]byte, 1)
+	conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	_, err = conn.Read(one)
+	assert.Equal(t, io.EOF, err)
+	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
+	rp.Stop()
+
+	// stop remote peers
+	for _, rp := range remotePeers {
+		rp.Stop()
 	}
 }
 

@@ -15,9 +15,9 @@ import (
 func TestGenesisBad(t *testing.T) {
 	// test some bad ones from raw json
 	testCases := [][]byte{
-		[]byte{},              // empty
-		[]byte{1, 1, 1, 1, 1}, // junk
-		[]byte(`{}`),          // empty
+		{},              // empty
+		{1, 1, 1, 1, 1}, // junk
+		[]byte(`{}`),    // empty
 		[]byte(`{"chain_id":"mychain","validators":[{}]}`), // invalid validator
 		// missing pub_key type
 		[]byte(`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),

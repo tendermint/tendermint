@@ -73,9 +73,9 @@ func TestConditions(t *testing.T) {
 		s          string
 		conditions []query.Condition
 	}{
-		{s: "tm.events.type='NewBlock'", conditions: []query.Condition{query.Condition{Tag: "tm.events.type", Op: query.OpEqual, Operand: "NewBlock"}}},
-		{s: "tx.gas > 7 AND tx.gas < 9", conditions: []query.Condition{query.Condition{Tag: "tx.gas", Op: query.OpGreater, Operand: int64(7)}, query.Condition{Tag: "tx.gas", Op: query.OpLess, Operand: int64(9)}}},
-		{s: "tx.time >= TIME 2013-05-03T14:45:00Z", conditions: []query.Condition{query.Condition{Tag: "tx.time", Op: query.OpGreaterEqual, Operand: txTime}}},
+		{s: "tm.events.type='NewBlock'", conditions: []query.Condition{{Tag: "tm.events.type", Op: query.OpEqual, Operand: "NewBlock"}}},
+		{s: "tx.gas > 7 AND tx.gas < 9", conditions: []query.Condition{{Tag: "tx.gas", Op: query.OpGreater, Operand: int64(7)}, {Tag: "tx.gas", Op: query.OpLess, Operand: int64(9)}}},
+		{s: "tx.time >= TIME 2013-05-03T14:45:00Z", conditions: []query.Condition{{Tag: "tx.time", Op: query.OpGreaterEqual, Operand: txTime}}},
 	}
 
 	for _, tc := range testCases {

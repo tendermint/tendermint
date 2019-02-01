@@ -13,8 +13,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-var mockState = sm.State{}
-
 func TestMain(m *testing.M) {
 	types.RegisterMockEvidences(cdc)
 
