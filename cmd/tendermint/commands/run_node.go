@@ -46,7 +46,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	// rollback config
 	cmd.Flags().Bool("rollback_data", config.RollbackFlag, "rollback data flag")
-	cmd.Flags().Int("rollback_height", config.RollbackHeight, "rollback data height")
+	cmd.Flags().Int64("rollback_height", config.RollbackHeight, "rollback data height")
+	cmd.Flags().Bool("rollback_height_flag", config.RollbackHeightFlag, "rollback height flag")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.

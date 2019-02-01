@@ -194,6 +194,9 @@ type BaseConfig struct {
 	RollbackFlag bool `mapstructure:"rollback_data"` //false
 
 	RollbackHeight int64 `mapstructure:"rollback_height"`
+
+	//rollback falg that used to whether or not change height in Fv
+	RollbackHeightFlag bool `mapstructure:"rollback_height_flag"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -215,6 +218,7 @@ func DefaultBaseConfig() BaseConfig {
 		DBPath:             "data",
 		RollbackFlag:       false,
 		RollbackHeight:     0,
+		RollbackHeightFlag: false,
 	}
 }
 
