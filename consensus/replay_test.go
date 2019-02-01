@@ -423,8 +423,6 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, testValidatorsCha
 		ResetConfig("replay_test_m")
 		stateDB = dbm.NewMemDB()
 		genisisState = sim_genisisState
-		genisisState.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
-		sm.SaveState(stateDB, genisisState)
 		config = sim_config
 		chain = sim_chain
 		commits = sim_commits

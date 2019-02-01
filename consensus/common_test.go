@@ -643,7 +643,10 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
-		state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
+		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
+			state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version. If don't do this, replay test will fail
+		}
+		//sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
