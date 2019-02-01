@@ -43,6 +43,10 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	// consensus flags
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
+
+	// rollback config
+	cmd.Flags().Bool("rollback_data", config.RollbackFlag, "rollback data flag")
+	cmd.Flags().Int("rollback_height", config.RollbackHeight, "rollback data height")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.

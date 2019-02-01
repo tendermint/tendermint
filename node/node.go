@@ -256,6 +256,10 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
+	if config.BaseConfig.RollbackFlag {
+		state, blockStore, privValidator = RollbackData(config, state, stateDB, blockStore, blockStoreDB, privValidator)
+	}
+
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
@@ -937,4 +941,71 @@ func splitAndTrimEmpty(s, sep, cutset string) []string {
 		}
 	}
 	return nonEmptyStrings
+}
+
+func RollbackData(config *cfg.Config, state sm.State, stateDb dbm.DB, blockStore *bc.BlockStore,
+	blockStoreDB dbm.DB, privValidator types.PrivValidator) (sm.State, *bc.BlockStore, types.PrivValidator) {
+
+	if state.LastBlockHeight > int64(config.BaseConfig.RollbackHeight) {
+		stateRestore := restoreStateFromBlock(stateDb, blockStore, int64(config.BaseConfig.RollbackHeight))
+		sm.SaveState(stateDb, stateRestore)
+		bc.BlockStoreStateJSON{Height: int64(config.BaseConfig.RollbackHeight)}.Save(blockStoreDB)
+		pv := modifyPrivValidatorsFile(config, int64(config.BaseConfig.RollbackHeight))
+		blockStore = bc.NewBlockStore(blockStoreDB)
+		fmt.Println(blockStore.Height())
+		return stateRestore, blockStore, pv
+	} else {
+		fmt.Println("rollback height is bigger than the currentHeight")
+	}
+	return state, blockStore, privValidator
+}
+
+func restoreStateFromBlock(stateDb dbm.DB, blockStore *bc.BlockStore, rollbackHeight int64) sm.State {
+	validator, _ := sm.LoadValidators(stateDb, rollbackHeight+1)
+	validatorChanged := sm.LoadValidatorsChanged(stateDb, rollbackHeight)
+	lastvalidator, _ := sm.LoadValidators(stateDb, rollbackHeight)
+	nextvalidator, _ := sm.LoadValidators(stateDb, rollbackHeight+2)
+
+	consensusParams, _ := sm.LoadConsensusParams(stateDb, rollbackHeight)
+	consensusParamsChanged := sm.LoadConsensusParamsChanged(stateDb, rollbackHeight)
+	software := sm.LoadSoftware(stateDb, rollbackHeight)
+
+	block := blockStore.LoadBlock(rollbackHeight)
+	nextBlock := blockStore.LoadBlock(rollbackHeight + 1)
+
+	//TODO: rollback bls state here
+
+	return sm.State{
+		ChainID: block.ChainID,
+		Version: sm.Version{Consensus: block.Version, Software: software},
+
+		LastBlockID:      nextBlock.LastBlockID, //? true
+		LastBlockHeight:  block.Height,
+		LastBlockTime:    block.Time,
+		LastBlockTotalTx: block.TotalTxs,
+
+		NextValidators:              nextvalidator.Copy(),
+		Validators:                  validator.Copy(),
+		LastValidators:              lastvalidator.Copy(),
+		LastHeightValidatorsChanged: validatorChanged,
+
+		ConsensusParams:                  consensusParams,
+		LastHeightConsensusParamsChanged: consensusParamsChanged,
+
+		AppHash: nextBlock.AppHash.Bytes(),
+
+		LastResultsHash: block.LastResultsHash,
+	}
+}
+
+func modifyPrivValidatorsFile(config *cfg.Config, rollbackHeight int64) types.PrivValidator {
+	var sig []byte
+	filePv := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	filePv.LastSignState.Height = rollbackHeight
+	filePv.LastSignState.Round = 0
+	filePv.LastSignState.Step = 0
+	filePv.LastSignState.Signature = sig
+	filePv.LastSignState.SignBytes = nil
+	filePv.Save()
+	return filePv
 }

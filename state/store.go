@@ -23,6 +23,10 @@ func calcABCIResponsesKey(height int64) []byte {
 	return []byte(fmt.Sprintf("abciResponsesKey:%v", height))
 }
 
+func calSoftwareHeight(height int64) []byte {
+	return []byte(fmt.Sprintf("softwareKey:%v", height))
+}
+
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
 // or creates a new one from the given genesisFilePath and persists the result
 // to the database.
@@ -94,6 +98,9 @@ func saveState(db dbm.DB, state State, key []byte) {
 		lastHeightVoteChanged := int64(1)
 		saveValidatorsInfo(db, nextHeight, lastHeightVoteChanged, state.Validators)
 	}
+	//save software info
+	saveSoftware(db,nextHeight,state.Version.Software)
+	// Save next validators.
 	// Save next validators.
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	// Save next consensus params.
@@ -232,10 +239,26 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 	valInfo := &ValidatorsInfo{
 		LastHeightChanged: lastHeightChanged,
 	}
-	if lastHeightChanged == height {
-		valInfo.ValidatorSet = valSet
-	}
+	valInfo.ValidatorSet = valSet
 	db.Set(calcValidatorsKey(height), valInfo.Bytes())
+}
+
+func LoadValidatorsChanged(db dbm.DB, height int64) int64 {
+	buf := db.Get(calcValidatorsKey(height))
+	if len(buf) == 0 {
+		return 0
+	}
+
+	v := new(ValidatorsInfo)
+	err := cdc.UnmarshalBinaryBare(buf, v)
+	if err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.Exit(fmt.Sprintf(`LoadValidators: Data has been corrupted or its spec has changed:
+                %v\n`, err))
+	}
+	// TODO: ensure that buf is completely read.
+
+	return v.LastHeightChanged
 }
 
 //-----------------------------------------------------------------------------
@@ -307,4 +330,32 @@ func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params t
 		paramsInfo.ConsensusParams = params
 	}
 	db.Set(calcConsensusParamsKey(nextHeight), paramsInfo.Bytes())
+}
+
+func LoadConsensusParamsChanged(db dbm.DB, height int64) int64 {
+	buf := db.Get(calcConsensusParamsKey(height))
+	if len(buf) == 0 {
+		return 0
+	}
+
+	paramsInfo := new(ConsensusParamsInfo)
+	err := cdc.UnmarshalBinaryBare(buf, paramsInfo)
+	if err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.Exit(fmt.Sprintf(`LoadConsensusParams: Data has been corrupted or its spec has changed:
+                %v\n`, err))
+	}
+	// TODO: ensure that buf is completely read.
+
+	return paramsInfo.LastHeightChanged
+}
+
+
+func saveSoftware(db dbm.DB, height int64, software string) {
+	db.Set(calSoftwareHeight(height),[]byte(software))
+}
+
+func LoadSoftware(db dbm.DB, height int64) string {
+	softwareByte := db.Get(calSoftwareHeight(height))
+	return string(softwareByte)
 }
