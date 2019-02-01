@@ -10,9 +10,9 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
+	dbm "github.com/tendermint/tendermint/libs/db"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tendermint/libs/db"
 )
 
 func init() {
@@ -46,7 +46,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(1, false, 10)
-  cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)

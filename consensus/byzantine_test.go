@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -86,7 +86,7 @@ func TestByzantine(t *testing.T) {
 		}
 
 		reactors[i] = conRI
-		sm.SaveState(css[i].blockExec.Db(),css[i].state)	//for save height 1's validators info
+		sm.SaveState(css[i].blockExec.Db(), css[i].state) //for save height 1's validators info
 	}
 
 	defer func() {
