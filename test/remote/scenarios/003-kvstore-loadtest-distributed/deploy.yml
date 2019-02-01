@@ -1,5 +1,10 @@
 ---
-- hosts: tok
+- hosts:
+    - tok0
+    - tok1
+    - tok2
+    - tok3
+    - tak0
   become: yes
   vars:
     loadtest_user: "loadtest"
@@ -8,8 +13,9 @@
     venv_dir: "{{ loadtest_home }}/venv"
     loadtest_master_node: tok0
     loadtest_master_hostname: 172.31.6.229     # Use internal IP of host as ports are blocked externally
-    expected_slave_count: 3
+    expected_slave_count: 4
     force_update_venv: no
+    fast_mode: no
 
     # Locust configuration parameters
     target_hosts:
@@ -21,40 +27,45 @@
     csv_output_file: "{{ loadtest_home }}/loadtest"
     num_clients: 1000
     hatch_rate: 20
-    run_time: 60s
-    loadtest_timeout: 80s
+    run_time: 5m
+    run_time_timeout: 3600 # In seconds - make sure this is larger than run_time
     log_file: "{{ loadtest_home }}/loadtest.log"
     stdout_file: "{{ loadtest_home }}/loadtest.stdout.log"
   tasks:
     - name: Check if Tendermint service is present
       stat: "path=/etc/systemd/system/tendermint.service"
       register: tm_service
+      when: (not fast_mode)
     - name: Stop Tendermint if service is present
       service: name=tendermint state=stopped
-      when: tm_service.stat.exists
+      when: (not fast_mode) and tm_service.stat.exists
     
     # Check if the virtual environment exists on the target machine
     - name: Check if the virtual environment folder exists
       stat: "path={{ venv_dir }}"
       register: venv
+      when: (not fast_mode)
     - name: Configure virtual environment if not present
       include_tasks: venv.yml
-      when: force_update_venv or not venv.stat.exists
+      when: (not fast_mode) and (force_update_venv or not venv.stat.exists)
     
     - name: Copy the necessary scripts across
       copy: "src={{ item }} dest={{ loadtest_home }}"
       with_items:
         - "locust_file.py"
         - "execute_load_test.sh"
+      when: (not fast_mode)
     - name: Configure the permissions for the loadtest user home folder
       file:
         path: "{{ loadtest_home }}"
         owner: "{{ loadtest_user }}"
         group: "{{ loadtest_group }}"
+      when: (not fast_mode)
     - name: Configure executable permissions for load test execution script
       file:
         path: "{{ loadtest_home }}/execute_load_test.sh"
         mode: 0755
+      when: (not fast_mode)
     - name: Clear out existing log/statistics files, if they exist
       file:
         path: "{{ item }}"
@@ -73,7 +84,6 @@
           NUM_CLIENTS={{ num_clients }} \
           HATCH_RATE={{ hatch_rate }} \
           RUN_TIME={{ run_time }} \
-          LOADTEST_TIMEOUT={{ loadtest_timeout }} \
           LOG_FILE={{ log_file }} \
           STDOUT_FILE={{ stdout_file }} \
           EXPECTED_SLAVE_COUNT={{ expected_slave_count }} \
@@ -83,6 +93,8 @@
       args:
         chdir: "{{ loadtest_home }}"
       ignore_errors: yes
+      async: "{{ run_time_timeout }}"
+      poll: 10
 
     - name: Fetch the load test result files to /tmp/003-kvstore-loadtest-distributed
       fetch:
