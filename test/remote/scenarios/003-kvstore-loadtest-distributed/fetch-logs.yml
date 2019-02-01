@@ -1,0 +1,28 @@
+---
+- hosts:
+    - tok0
+    - tok1
+    - tok2
+    - tok3
+    - tak0
+  become: yes
+  vars:
+    loadtest_user: "loadtest"
+    loadtest_home: "/home/{{ loadtest_user }}"
+    results_output_dir: "/tmp/003-kvstore-loadtest-distributed"
+
+    csv_output_file: "{{ loadtest_home }}/loadtest"
+    log_file: "{{ loadtest_home }}/loadtest.log"
+    stdout_file: "{{ loadtest_home }}/loadtest.stdout.log"
+  tasks:
+    - name: "Fetch the load test result files"
+      fetch:
+        src: "{{ item }}"
+        dest: "{{ results_output_dir }}/{{ inventory_hostname }}/"
+        flat: yes
+        fail_on_missing: no
+      with_items:
+        - "{{ csv_output_file }}_distribution.csv"
+        - "{{ csv_output_file }}_requests.csv"
+        - "{{ log_file }}"
+        - "{{ stdout_file }}"
