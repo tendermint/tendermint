@@ -23,4 +23,4 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 - [node] \#3186 EventBus and indexerService should be started before first block (for replay last block on handshake) execution
-- [consensus] \#3067 getBeginBlockValidatorInfo load validators from stateDB instead of from state
+- [consensus] \#3067 getBeginBlockValidatorInfo load validators from stateDB instead of from state for solve replay issue
