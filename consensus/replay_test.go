@@ -423,6 +423,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 	var stateDB dbm.DB
 	var genisisState sm.State
 	if validatorsChange {
+		ResetConfig("replay_test_m")
 		stateDB = dbm.NewMemDB()
 		genisisState = sim_genisisState
 		genisisState.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
@@ -432,7 +433,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, validatorsChange 
 		commits = sim_commits
 		store = NewMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
-		config = ResetConfig(fmt.Sprintf("replay_test_s"))
+		config = ResetConfig("replay_test_s")
 		walBody, err := WALWithNBlocks(NUM_BLOCKS)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
