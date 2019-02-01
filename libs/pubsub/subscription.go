@@ -59,6 +59,10 @@ type Message struct {
 	tags map[string]string
 }
 
+func NewMessage(data interface{}, tags map[string]string) Message {
+	return Message{data, tags}
+}
+
 // Data returns an original data published.
 func (msg Message) Data() interface{} {
 	return msg.data
