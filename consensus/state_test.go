@@ -1288,8 +1288,9 @@ func (n *fakeTxNotifier) Notify() {
 }
 
 func TestStartNextHeightCorrectly(t *testing.T) {
+	config.Consensus.SkipTimeoutCommit = false
 	cs1, vss := randConsensusState(4)
-	cs1.config.SkipTimeoutCommit = false
+	// DATA RACE
 	cs1.txNotifier = &fakeTxNotifier{ch: make(chan struct{})}
 
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
