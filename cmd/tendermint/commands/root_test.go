@@ -22,10 +22,6 @@ var (
 	defaultRoot = os.ExpandEnv("$HOME/.some/test/dir")
 )
 
-const (
-	rootName = "root"
-)
-
 // clearConfig clears env vars, the given root dir, and resets viper.
 func clearConfig(dir string) {
 	if err := os.Unsetenv("TMHOME"); err != nil {
