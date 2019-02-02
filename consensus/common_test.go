@@ -218,15 +218,14 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 	cs.mtx.Unlock()
 }
 
-// genesis
 func subscribeToVoter(cs *ConsensusState, addr []byte) <-chan tmpubsub.Message {
-	voteCh0Sub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote)
+	votesSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote)
 	if err != nil {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
 	}
 	ch := make(chan tmpubsub.Message)
 	go func() {
-		for msg := range voteCh0Sub.Out() {
+		for msg := range votesSub.Out() {
 			vote := msg.Data().(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {

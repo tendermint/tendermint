@@ -82,7 +82,6 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 			return err
 		}
 
-		// TODO: pass a subscription
 		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
 			return err
 		}
@@ -223,7 +222,6 @@ func (pb *playback) replayConsoleLoop() int {
 			defer pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 
 			if len(tokens) == 1 {
-				// TODO: pass a subscription
 				if err := pb.replayReset(1, newStepSub); err != nil {
 					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
@@ -234,7 +232,6 @@ func (pb *playback) replayConsoleLoop() int {
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
 				} else {
-					// TODO: pass a subscription
 					if err := pb.replayReset(i, newStepSub); err != nil {
 						pb.cs.Logger.Error("Replay reset error", "err", err)
 					}
