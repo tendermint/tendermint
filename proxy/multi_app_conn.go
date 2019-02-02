@@ -12,6 +12,7 @@ import (
 type AppConns interface {
 	cmn.Service
 
+	State() AppConnState
 	Mempool() AppConnMempool
 	Consensus() AppConnConsensus
 	Query() AppConnQuery
@@ -30,6 +31,7 @@ func NewAppConns(clientCreator ClientCreator) AppConns {
 type multiAppConn struct {
 	cmn.BaseService
 
+	stateConn     *appConnState
 	mempoolConn   *appConnMempool
 	consensusConn *appConnConsensus
 	queryConn     *appConnQuery
@@ -44,6 +46,11 @@ func NewMultiAppConn(clientCreator ClientCreator) *multiAppConn {
 	}
 	multiAppConn.BaseService = *cmn.NewBaseService(nil, "multiAppConn", multiAppConn)
 	return multiAppConn
+}
+
+// Returns the state connection
+func (app *multiAppConn) State() AppConnState {
+	return app.stateConn
 }
 
 // Returns the mempool connection
@@ -72,6 +79,17 @@ func (app *multiAppConn) OnStart() error {
 		return errors.Wrap(err, "Error starting ABCI client (query connection)")
 	}
 	app.queryConn = NewAppConnQuery(querycli)
+
+	// state connection
+	statecli, err := app.clientCreator.NewABCIClient()
+	if err != nil {
+		return errors.Wrap(err, "Error creating ABCI client (state connection)")
+	}
+	statecli.SetLogger(app.Logger.With("module", "abci-client", "connection", "state"))
+	if err := statecli.Start(); err != nil {
+		return errors.Wrap(err, "Error starting ABCI client (state connection)")
+	}
+	app.stateConn = NewAppConnState(statecli)
 
 	// mempool connection
 	memcli, err := app.clientCreator.NewABCIClient()

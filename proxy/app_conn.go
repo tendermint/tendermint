@@ -30,6 +30,17 @@ type AppConnMempool interface {
 	FlushSync() error
 }
 
+type AppConnState interface {
+	SetResponseCallback(abcicli.Callback)
+	Error() error
+
+	LatestSnapshot() (height int64, numKeys []int64, err error)
+	ReadSnapshotChunk(height int64, startIndex, endIndex int64) (chunk [][]byte, err error)
+	StartRecovery(height int64, numKeys []int64) error
+	WriteRecoveryChunk(chunk [][]byte) error
+	EndRecovery(height int64) error
+}
+
 type AppConnQuery interface {
 	Error() error
 
@@ -38,6 +49,47 @@ type AppConnQuery interface {
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 
 	//	SetOptionSync(key string, value string) (res types.Result)
+}
+
+//-----------------------------------------------------------------------------------------
+// Implements AppConnConsensus (subset of abcicli.Client)
+
+type appConnState struct {
+	appConn abcicli.Client
+}
+
+func NewAppConnState(appConn abcicli.Client) *appConnState {
+	return &appConnState{
+		appConn: appConn,
+	}
+}
+
+func (app *appConnState) SetResponseCallback(cb abcicli.Callback) {
+	app.appConn.SetResponseCallback(cb)
+}
+
+func (app *appConnState) Error() error {
+	return app.appConn.Error()
+}
+
+func (app *appConnState) LatestSnapshot() (height int64, numKeys []int64, err error) {
+	return app.appConn.LatestSnapshot()
+}
+
+func (app *appConnState) ReadSnapshotChunk(height int64, startIndex, endIndex int64) (chunk [][]byte, err error) {
+	return app.appConn.ReadSnapshotChunk(height, startIndex, endIndex)
+}
+
+func (app *appConnState) StartRecovery(height int64, numKeys []int64) error {
+	return app.appConn.StartRecovery(height, numKeys)
+}
+
+func (app *appConnState) WriteRecoveryChunk(chunk [][]byte) error {
+	return app.appConn.WriteRecoveryChunk(chunk)
+}
+
+func (app *appConnState) EndRecovery(height int64) error {
+	return app.appConn.EndRecovery(height)
 }
 
 //-----------------------------------------------------------------------------------------

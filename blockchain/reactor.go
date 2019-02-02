@@ -125,6 +125,24 @@ func (bcR *BlockchainReactor) OnStop() {
 	bcR.pool.Stop()
 }
 
+// SwitchToBlockchain switches from fastest_sync mode to blockchain mode.
+// It resets the state, turns off fastest_sync, and starts the blockchain state-machine
+func (bcR *BlockchainReactor) SwitchToBlockchain(state sm.State) {
+	bcR.Logger.Info("SwitchToBlockchain")
+	bcR.initialState = state
+
+	bcR.fastSync = true
+	bcR.pool.height = state.LastBlockHeight + 1
+	bcR.store.SetHeight(state.LastBlockHeight)
+	err := bcR.pool.Start()
+	bcR.Logger.Debug("state lastheight: %d, apphash: %X\n", state.LastBlockHeight, state.AppHash)
+	if err != nil {
+		bcR.Logger.Error("Error starting blockchainReactor", "err", err)
+		return
+	}
+	go bcR.poolRoutine()
+}
+
 // GetChannels implements Reactor
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
@@ -260,7 +278,7 @@ FOR_LOOP:
 			outbound, inbound, _ := bcR.Switch.NumPeers()
 			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "total", lenRequesters,
 				"outbound", outbound, "inbound", inbound)
-			if bcR.pool.IsCaughtUp() {
+			if bcR.pool.IsCaughtUp() && blocksSynced > 0 {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
@@ -335,6 +353,7 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
+				bcR.Logger.Debug("state lastheight: %d, apphash: %X\n", state.LastBlockHeight, state.AppHash)
 				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?

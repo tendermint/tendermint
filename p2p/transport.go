@@ -410,7 +410,6 @@ func (mt *MultiplexTransport) wrapPeer(
 	cfg peerConfig,
 	dialedAddr *NetAddress,
 ) Peer {
-
 	peerConn := newPeerConn(
 		cfg.outbound,
 		cfg.persistent,

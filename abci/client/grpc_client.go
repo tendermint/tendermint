@@ -299,3 +299,19 @@ func (cli *grpcClient) EndBlockSync(params types.RequestEndBlock) (*types.Respon
 	reqres := cli.EndBlockAsync(params)
 	return reqres.Response.GetEndBlock(), cli.Error()
 }
+
+func (cli *grpcClient) LatestSnapshot() (height int64, numKeys []int64, err error) {
+	return 0, make([]int64, 0), nil
+}
+func (cli *grpcClient) ReadSnapshotChunk(height int64, startIndex, endIndex int64) (chunk [][]byte, err error) {
+	return make([][]byte, 0), nil
+}
+func (cli *grpcClient) StartRecovery(height int64, numKeys []int64) error {
+	return nil
+}
+func (cli *grpcClient) WriteRecoveryChunk(chunk [][]byte) error {
+	return nil
+}
+func (cli *grpcClient) EndRecovery(height int64) error {
+	return nil
+}
