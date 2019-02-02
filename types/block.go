@@ -487,28 +487,27 @@ type Commit struct {
 	Precommits []*Vote `json:"precommits"`
 
 	// Volatile
-	firstPrecommit *Vote
-	hash           cmn.HexBytes
-	bitArray       *cmn.BitArray
+	height   int64
+	round    int
+	hash     cmn.HexBytes
+	bitArray *cmn.BitArray
 }
 
-// FirstPrecommit returns the first non-nil precommit in the commit.
-// If all precommits are nil, it returns an empty precommit with height 0.
-func (commit *Commit) FirstPrecommit() *Vote {
+// memoizeHeightRound memoizes the height and round of the commit using
+// the first non-nil vote.
+func (commit *Commit) memoizeHeightRound() {
 	if len(commit.Precommits) == 0 {
-		return nil
+		return
 	}
-	if commit.firstPrecommit != nil {
-		return commit.firstPrecommit
+	if commit.height > 0 {
+		return
 	}
 	for _, precommit := range commit.Precommits {
 		if precommit != nil {
-			commit.firstPrecommit = precommit
-			return precommit
+			commit.height = precommit.Height
+			commit.round = precommit.Round
+			return
 		}
-	}
-	return &Vote{
-		Type: PrecommitType,
 	}
 }
 
@@ -517,7 +516,8 @@ func (commit *Commit) Height() int64 {
 	if len(commit.Precommits) == 0 {
 		return 0
 	}
-	return commit.FirstPrecommit().Height
+	commit.memoizeHeightRound()
+	return commit.height
 }
 
 // Round returns the round of the commit
@@ -525,7 +525,8 @@ func (commit *Commit) Round() int {
 	if len(commit.Precommits) == 0 {
 		return 0
 	}
-	return commit.FirstPrecommit().Round
+	commit.memoizeHeightRound()
+	return commit.round
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
