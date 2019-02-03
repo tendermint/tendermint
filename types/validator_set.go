@@ -391,7 +391,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		}
 		_, val := vals.GetByIndex(idx)
 		// Validate signature.
-		precommitSignBytes := precommit.SignBytes(chainID)
+		precommitSignBytes := commit.ToVote(precommit).SignBytes(chainID)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
@@ -475,7 +475,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		seen[idx] = true
 
 		// Validate signature.
-		precommitSignBytes := precommit.SignBytes(chainID)
+		precommitSignBytes := commit.ToVote(precommit).SignBytes(chainID)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return cmn.NewError("Invalid commit -- invalid signature: %v", precommit)
 		}

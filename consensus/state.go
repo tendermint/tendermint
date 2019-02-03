@@ -472,7 +472,7 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		if precommit == nil {
 			continue
 		}
-		added, err := lastPrecommits.AddVote(precommit)
+		added, err := lastPrecommits.AddVote(seenCommit.ToVote(precommit))
 		if !added || err != nil {
 			cmn.PanicCrisis(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
 		}
@@ -1330,7 +1330,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	missingValidators := 0
 	missingValidatorsPower := int64(0)
 	for i, val := range cs.Validators.Validators {
-		var vote *types.Vote
+		var vote *types.CommitSig
 		if i < len(block.LastCommit.Precommits) {
 			vote = block.LastCommit.Precommits[i]
 		}

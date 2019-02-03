@@ -477,14 +477,28 @@ func (h *Header) StringIndented(indent string) string {
 
 //-------------------------------------
 
+// CommitSig is a vote included in a Commit.
+// For now, it is identical to a vote,
+// but in the future it will contain fewer fields
+// to eliminate the redundancy in commits.
+type CommitSig Vote
+
+func (cs *CommitSig) toVote() *Vote {
+	if cs == nil {
+		return nil
+	}
+	v := Vote(*cs)
+	return &v
+}
+
 // Commit contains the evidence that a block was committed by a set of validators.
 // NOTE: Commit is empty for height 1, but never nil.
 type Commit struct {
 	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
 	// Any peer with a block can gossip precommits by index with a peer without recalculating the
 	// active ValidatorSet.
-	BlockID    BlockID `json:"block_id"`
-	Precommits []*Vote `json:"precommits"`
+	BlockID    BlockID      `json:"block_id"`
+	Precommits []*CommitSig `json:"precommits"`
 
 	// Volatile
 	height   int64
@@ -509,6 +523,12 @@ func (commit *Commit) memoizeHeightRound() {
 			return
 		}
 	}
+}
+
+// ToVote converts a CommitSig to a Vote.
+// If the CommitSig is nil, the Vote will be nil.
+func (commit *Commit) ToVote(cs *CommitSig) *Vote {
+	return cs.toVote()
 }
 
 // Height returns the height of the commit
@@ -557,7 +577,7 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 
 // GetByIndex returns the vote corresponding to a given validator index
 func (commit *Commit) GetByIndex(index int) *Vote {
-	return commit.Precommits[index]
+	return commit.ToVote(commit.Precommits[index])
 }
 
 // IsCommit returns true if there is at least one vote
@@ -623,7 +643,7 @@ func (commit *Commit) StringIndented(indent string) string {
 	}
 	precommitStrings := make([]string, len(commit.Precommits))
 	for i, precommit := range commit.Precommits {
-		precommitStrings[i] = precommit.String()
+		precommitStrings[i] = commit.ToVote(precommit).String()
 	}
 	return fmt.Sprintf(`Commit{
 %s  BlockID:    %v
