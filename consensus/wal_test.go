@@ -68,8 +68,8 @@ func TestWALTruncate(t *testing.T) {
 func TestWALEncoderDecoder(t *testing.T) {
 	now := tmtime.Now()
 	msgs := []TimedWALMessage{
-		TimedWALMessage{Time: now, Msg: EndHeightMessage{0}},
-		TimedWALMessage{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
+		{Time: now, Msg: EndHeightMessage{0}},
+		{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
 	}
 
 	b := new(bytes.Buffer)
