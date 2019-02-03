@@ -483,6 +483,14 @@ func (h *Header) StringIndented(indent string) string {
 // to eliminate the redundancy in commits.
 type CommitSig Vote
 
+// String returns the underlying Vote.String()
+func (cs *CommitSig) String() string {
+	return cs.toVote().String()
+}
+
+// toVote converts the CommitSig to a vote.
+// Once CommitSig has fewer fields than vote, it will
+// need to be replaced.
 func (cs *CommitSig) toVote() *Vote {
 	if cs == nil {
 		return nil
@@ -507,6 +515,13 @@ type Commit struct {
 	bitArray *cmn.BitArray
 }
 
+// VoteSignBytes constructs the SignBytes for the given CommitSig.
+// The only unique part of the SignBytes is the Timestamp - all other fields
+// are otherwise the same for all validators.
+func (commit *Commit) VoteSignBytes(chainID string, cs *CommitSig) []byte {
+	return cs.toVote().SignBytes(chainID)
+}
+
 // memoizeHeightRound memoizes the height and round of the commit using
 // the first non-nil vote.
 func (commit *Commit) memoizeHeightRound() {
@@ -527,6 +542,9 @@ func (commit *Commit) memoizeHeightRound() {
 
 // ToVote converts a CommitSig to a Vote.
 // If the CommitSig is nil, the Vote will be nil.
+// When CommitSig is reduced to contain fewer fields,
+// this will need access to the ValidatorSet to properly
+// reconstruct the vote.
 func (commit *Commit) ToVote(cs *CommitSig) *Vote {
 	return cs.toVote()
 }
@@ -575,12 +593,13 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 	return commit.bitArray
 }
 
-// GetByIndex returns the vote corresponding to a given validator index
+// GetByIndex returns the vote corresponding to a given validator index.
+// Implements VoteSetReader.
 func (commit *Commit) GetByIndex(index int) *Vote {
-	return commit.ToVote(commit.Precommits[index])
+	return commit.Precommits[index].toVote()
 }
 
-// IsCommit returns true if there is at least one vote
+// IsCommit returns true if there is at least one vote.
 func (commit *Commit) IsCommit() bool {
 	return len(commit.Precommits) != 0
 }
@@ -643,7 +662,7 @@ func (commit *Commit) StringIndented(indent string) string {
 	}
 	precommitStrings := make([]string, len(commit.Precommits))
 	for i, precommit := range commit.Precommits {
-		precommitStrings[i] = commit.ToVote(precommit).String()
+		precommitStrings[i] = precommit.String()
 	}
 	return fmt.Sprintf(`Commit{
 %s  BlockID:    %v
