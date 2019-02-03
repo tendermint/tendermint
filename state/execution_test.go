@@ -349,7 +349,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
 		}
 	case <-updatesSub.Cancelled():
-		t.Fatal(fmt.Sprintf("updatesSub was cancelled (reason: %v)", updatesSub.Err()))
+		t.Fatalf("updatesSub was cancelled (reason: %v)", updatesSub.Err())
 	case <-time.After(1 * time.Second):
 		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
 	}
