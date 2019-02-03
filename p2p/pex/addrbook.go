@@ -425,7 +425,7 @@ ADDRS_LOOP:
 		// - the bias is for old and old addressees are still available or,
 		// - there are no new addresses or all new addresses have been selected.
 		pickFromOldBucket :=
-			(biasedTowardsOldAddrs && oldAddressesAdded < a.nOld) || //
+			(biasedTowardsOldAddrs && oldAddressesAdded < a.nOld) ||
 				a.nNew == 0 || newAddressesAdded >= a.nNew
 
 		bucket := make(map[string]*knownAddress)
