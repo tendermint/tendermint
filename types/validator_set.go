@@ -368,6 +368,10 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 
 // Verify that +2/3 of the set had signed the given signBytes.
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *Commit) error {
+
+	if err := commit.ValidateBasic(); err != nil {
+		return err
+	}
 	if vals.Size() != len(commit.Precommits) {
 		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", vals.Size(), len(commit.Precommits))
 	}
@@ -380,20 +384,10 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 	}
 
 	talliedVotingPower := int64(0)
-	round := commit.Round()
 
 	for idx, precommit := range commit.Precommits {
 		if precommit == nil {
 			continue // OK, some precommits can be missing.
-		}
-		if precommit.Height != height {
-			return fmt.Errorf("Invalid commit -- wrong height: want %v got %v", height, precommit.Height)
-		}
-		if precommit.Round != round {
-			return fmt.Errorf("Invalid commit -- wrong round: want %v got %v", round, precommit.Round)
-		}
-		if precommit.Type != PrecommitType {
-			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
 		_, val := vals.GetByIndex(idx)
 		// Validate signature.
