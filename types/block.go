@@ -481,6 +481,7 @@ func (h *Header) StringIndented(indent string) string {
 // For now, it is identical to a vote,
 // but in the future it will contain fewer fields
 // to eliminate the redundancy in commits.
+// See https://github.com/tendermint/tendermint/issues/1648.
 type CommitSig Vote
 
 // String returns the underlying Vote.String()
@@ -489,8 +490,8 @@ func (cs *CommitSig) String() string {
 }
 
 // toVote converts the CommitSig to a vote.
-// Once CommitSig has fewer fields than vote, it will
-// need to be replaced.
+// Once CommitSig has fewer fields than vote,
+// converting to a Vote will require more information.
 func (cs *CommitSig) toVote() *Vote {
 	if cs == nil {
 		return nil
@@ -517,7 +518,7 @@ type Commit struct {
 
 // VoteSignBytes constructs the SignBytes for the given CommitSig.
 // The only unique part of the SignBytes is the Timestamp - all other fields
-// are otherwise the same for all validators.
+// signed over are otherwise the same for all validators.
 func (commit *Commit) VoteSignBytes(chainID string, cs *CommitSig) []byte {
 	return cs.toVote().SignBytes(chainID)
 }
