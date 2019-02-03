@@ -51,22 +51,30 @@ func (is *IndexerService) OnStart() error {
 					select {
 					case msg2 := <-txsSub.Out():
 						txResult := msg2.Data().(types.EventDataTx).TxResult
-						batch.Add(&txResult)
+						if err = batch.Add(&txResult); err != nil {
+							is.Logger.Error("Can't add tx to batch",
+								"height", header.Height,
+								"index", txResult.Index,
+								"err", err)
+						}
 					case <-txsSub.Cancelled():
-						is.Logger.Error("Failed to index a block. txsSub was cancelled. Did the Tendermint stop?",
-							"err", txsSub.Err(),
+						is.Logger.Error("Failed to index block. txsSub was cancelled. Did the Tendermint stop?",
 							"height", header.Height,
 							"numTxs", header.NumTxs,
 							"numProcessed", i,
+							"err", txsSub.Err(),
 						)
 						return
 					}
 				}
-				is.idr.AddBatch(batch)
-				is.Logger.Info("Indexed block", "height", header.Height)
+				if err = is.idr.AddBatch(batch); err != nil {
+					is.Logger.Error("Failed to index block", "height", header.Height, "err", err)
+				} else {
+					is.Logger.Info("Indexed block", "height", header.Height)
+				}
 			case <-blockHeadersSub.Cancelled():
-				is.Logger.Error("Failed to index a block. blockHeadersSub was cancelled. Did the Tendermint stop?",
-					"reason", blockHeadersSub.Err())
+				is.Logger.Error("blockHeadersSub was cancelled. Did the Tendermint stop?",
+					"err", blockHeadersSub.Err())
 				return
 			}
 		}

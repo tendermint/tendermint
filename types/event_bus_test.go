@@ -139,8 +139,7 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, err)
 	defer eventBus.Stop()
 
-	// FIXME: the test fails without a buffer
-	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, 14)
+	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{})
 	require.NoError(t, err)
 
 	const numEventsExpected = 14
