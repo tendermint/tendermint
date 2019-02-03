@@ -139,10 +139,11 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, err)
 	defer eventBus.Stop()
 
-	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{})
+	const numEventsExpected = 14
+
+	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, numEventsExpected)
 	require.NoError(t, err)
 
-	const numEventsExpected = 14
 	done := make(chan struct{})
 	go func() {
 		numEvents := 0
