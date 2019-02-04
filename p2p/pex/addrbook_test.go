@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -38,23 +39,8 @@ func deleteTempFile(fname string) {
 }
 
 func TestAddrBookGetSelectionWithOneMarkedGood(t *testing.T) {
-	fname := createTempFileName("addrbook_test")
-	defer deleteTempFile(fname)
-
-	book := NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
-	assert.Zero(t, book.Size())
-
-	N := 10
-	randAddrs := randNetAddressPairs(t, N)
-	for _, addr := range randAddrs {
-		book.AddAddress(addr.addr, addr.src)
-	}
-
-	// mark one addr as good
-	for _, addr := range randAddrs[:1] {
-		book.MarkGood(addr.addr)
-	}
+	// create a book with 10 addresses, 1 good/ old and 9 new
+	book := createAddrBookWithMOldAndNNewAddrs(t, 1, 9)
 
 	// ensure we can get selection.
 	// this used to result in an infinite loop (!)
@@ -63,25 +49,8 @@ func TestAddrBookGetSelectionWithOneMarkedGood(t *testing.T) {
 }
 
 func TestAddrBookGetSelectionWithOneNotMarkedGood(t *testing.T) {
-	fname := createTempFileName("addrbook_test")
-	defer deleteTempFile(fname)
-
-	// 0 addresses
-	book := NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
-	assert.Zero(t, book.Size())
-
-	N := 10
-	randAddrs := randNetAddressPairs(t, N)
-	// mark all addrs but one as good
-	for _, addr := range randAddrs[:N-1] {
-		book.AddAddress(addr.addr, addr.src)
-		book.MarkGood(addr.addr)
-	}
-	// add the last addr, don't mark as good
-	for _, addr := range randAddrs[N-1:] {
-		book.AddAddress(addr.addr, addr.src)
-	}
+	// create a book with 10 addresses, 9 good/ old and 1 new
+	book := createAddrBookWithMOldAndNNewAddrs(t, 9, 1)
 
 	// ensure we can get selection.
 	// this used to result in an infinite loop (!)
@@ -89,30 +58,8 @@ func TestAddrBookGetSelectionWithOneNotMarkedGood(t *testing.T) {
 	assert.NotNil(t, addrs, "expected an address")
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func listsAreEqual(a, b []int) bool {
-	if (a == nil) != (b == nil) {
-		return false
-	}
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
 // Creates a Book with m old and n new addresses.
-func createAddrBook(t *testing.T, m, n int) *addrBook {
+func createAddrBookWithMOldAndNNewAddrs(t *testing.T, m, n int) *addrBook {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
@@ -135,41 +82,34 @@ func createAddrBook(t *testing.T, m, n int) *addrBook {
 	return book
 }
 
-// Computes n * bias/100
-func numExpectedAddresses(bias, n int) int {
-	if n == 0 {
-		return 0
-	}
-	return int(math.Round((float64(bias) / float64(100)) * float64(n)))
-}
-
 // Counts the number of Old and New addresses
-func countOldAndNewInAddrs(addrs []*p2p.NetAddress, book *addrBook) (nold, nnew int) {
-	nold = 0
-	nnew = 0
+func countOldAndNewInAddrs(addrs []*p2p.NetAddress, book *addrBook) (nOld, nNew int) {
 
 	for _, addr := range addrs {
 		if addr == nil {
 			continue
 		}
 		if book.IsGood(addr) {
-			nold++
+			nOld++
 		} else {
-			nnew++
+			nNew++
 		}
 	}
-	return nold, nnew
+	return nOld, nNew
 }
 
-func analyseSelectionLayout(book *addrBook, addrs []*p2p.NetAddress) ([]int, []int, error) {
+// Analyse the layout of the selection specified by 'addrs'
+// Returns:
+// - seqLens - the lengths of the sequences of addresses of same type
+// - seqTypes - the types of sequences in selection
+func analyseSelectionLayout(book *addrBook, addrs []*p2p.NetAddress) (seqLens, seqTypes []int, err error) {
 	// address types are: 0 - nil, 1 - new, 2 - old
 	prevt := 0
-	var seqLens []int
-	var seqTypes []int
+
 	cnt := 0
 	for i, addr := range addrs {
 		if addr == nil {
-			err := fmt.Errorf("nil addresses in selection, index %d", i)
+			err = fmt.Errorf("nil addresses in selection, index %d", i)
 			return nil, nil, err
 		}
 		addrt := 0
@@ -193,7 +133,7 @@ func analyseSelectionLayout(book *addrBook, addrs []*p2p.NetAddress) ([]int, []i
 }
 
 func TestEmptyAddrBookSelection(t *testing.T) {
-	book := createAddrBook(t, 0, 0)
+	book := createAddrBookWithMOldAndNNewAddrs(t, 0, 0)
 	addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 	assert.Nil(t, addrs, "expected a nill selection")
 }
@@ -202,19 +142,20 @@ func testAddrBookAddressSelection(t *testing.T, b int) {
 	// generate all combinations of old (m) and new (n=b-m) addresses
 	for m := 0; m < b+1; m++ {
 		n := b - m
-		dbgstr := fmt.Sprintf("book: size %d, number new % d, old %d", b, n, m)
+		// debug string to show the context for potential failures
+		dbgStr := fmt.Sprintf("book: size %d, number new % d, old %d", b, n, m)
 
 		// create book and get selection
-		book := createAddrBook(t, m, n)
+		book := createAddrBookWithMOldAndNNewAddrs(t, m, n)
 		addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 
 		r := len(addrs)
-		assert.NotNil(t, addrs, "%s - expected a non-nill selection", dbgstr)
-		assert.NotZero(t, r, "%s - expected at least one address in selection", dbgstr)
+		assert.NotNil(t, addrs, "%s - expected a non-nill selection", dbgStr)
+		assert.NotZero(t, r, "%s - expected at least one address in selection", dbgStr)
 
 		// verify that the number of old and new addresses are the ones expected
-		numold, numnew := countOldAndNewInAddrs(addrs, book)
-		assert.Equal(t, r, numold+numnew, "%s - expected selection completely filled", dbgstr)
+		numOld, numNew := countOldAndNewInAddrs(addrs, book)
+		assert.Equal(t, r, numOld+numNew, "%s - expected selection completely filled", dbgStr)
 
 		// Given:
 		// n - num new addrs, m - num old addrs
@@ -226,26 +167,24 @@ func testAddrBookAddressSelection(t *testing.T, b int) {
 		// addresses:    N0..Ni-1  O0..Oj-1     Ni...
 		//
 		// There is at least one partition and at most three.
-		k := numExpectedAddresses(biasToSelectNewPeers, r)
-		i := min(n, k)
-		j := min(m, r-i)
-		expold := j
-		expnew := r - j
+		k := percentageOfNum(biasToSelectNewPeers, r)
+		i := cmn.MinInt(n, k)
+		j := cmn.MinInt(m, r-i)
+		expOld := j
+		expNew := r - j
 
-		// compute some slack to protect against small differences due to rounding:
-		slack := int(math.Round(float64(100) / float64(len(addrs))))
-
-		// for now don't use slack as numExpectedAddresses() is exactly the formula used by GetSelectionWithBias()
-		if numnew < expnew || numnew > expnew {
-			t.Fatalf("%s - expected new addrs %d (+/- %d), got %d", dbgstr, expnew, slack, numnew)
+		// Verify that the number of old and new addresses are as expected
+		if numNew < expNew || numNew > expNew {
+			t.Fatalf("%s - expected new addrs %d, got %d", dbgStr, expNew, numNew)
 		}
-		if numold < expold || numold > expold {
-			t.Fatalf("%s - expected old addrs %d (+/- %d), got %d", dbgstr, expold, slack, numold)
+		if numOld < expOld || numOld > expOld {
+			t.Fatalf("%s - expected old addrs %d, got %d", dbgStr, expOld, numOld)
 		}
 
-		// Verify that the order of addresses is correct
+		// Verify that the order of addresses is as expected
+		// Get the sequence types and lengths of the selection
 		seqLens, seqTypes, err := analyseSelectionLayout(book, addrs)
-		assert.NoError(t, err, "%s - expected a non-nill selection", dbgstr)
+		assert.NoError(t, err, "%s - expected a non-nill selection", dbgStr)
 
 		// Build a list with the expected lengths of partitions and another with the expected types, e.g.:
 		// expseqLens = [10, 22], expseqTypes = [1, 2]
@@ -268,12 +207,12 @@ func testAddrBookAddressSelection(t *testing.T, b int) {
 			expSeqTypes = []int{1, 2, 1}
 		}
 
-		assert.True(t, listsAreEqual(expSeqLens, seqLens),
+		assert.True(t, reflect.DeepEqual(expSeqLens, seqLens),
 			"%s - expected sequence lengths of old/new %v, got %v",
-			dbgstr, expSeqLens, seqLens)
-		assert.True(t, listsAreEqual(expSeqTypes, seqTypes),
+			dbgStr, expSeqLens, seqLens)
+		assert.True(t, reflect.DeepEqual(expSeqTypes, seqTypes),
 			"%s - expected sequence lengths of old/new %v, got %v",
-			dbgstr, expSeqLens, seqLens)
+			dbgStr, expSeqLens, seqLens)
 	}
 }
 
@@ -283,7 +222,7 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	for b := 1; b < N; b++ {
 		testAddrBookAddressSelection(t, b)
 	}
-	// Test for three books with sizes from following ranges
+	// Test for two books with sizes from following ranges
 	ranges := [...][]int{{33, 100}, {100, 175}}
 	var bsizes []int
 	for _, r := range ranges {
