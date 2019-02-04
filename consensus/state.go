@@ -307,6 +307,23 @@ func (cs *ConsensusState) OnStart() error {
 	// reload from consensus log to catchup
 	if cs.doWALCatchup {
 		if err := cs.catchupReplay(cs.Height); err != nil {
+			// don't try to recover from data corruption error
+			if IsDataCorruptionError(err) {
+				cs.Logger.Error("Encountered corrupt WAL file", "err", err.Error())
+				cs.Logger.Error("Please repair the WAL file before restarting")
+				fmt.Println(`You can attempt to repair the WAL as follows:
+
+----
+WALFILE=~/.tendermint/data/cs.wal/wal
+cp $WALFILE ${WALFILE}.bak # backup the file
+go run scripts/wal2json/main.go $WALFILE > wal.json # this will panic, but can be ignored
+rm $WALFILE # remove the corrupt file
+go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without corruption
+----`)
+
+				return err
+			}
+
 			cs.Logger.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "err", err.Error())
 			// NOTE: if we ever do return an error here,
 			// make sure to stop the timeoutTicker
@@ -624,6 +641,15 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			cs.handleMsg(mi)
 		case mi = <-cs.internalMsgQueue:
 			cs.wal.WriteSync(mi) // NOTE: fsync
+
+			if _, ok := mi.Msg.(*VoteMessage); ok {
+				// we actually want to simulate failing during
+				// the previous WriteSync, but this isn't easy to do.
+				// Equivalent would be to fail here and manually remove
+				// some bytes from the end of the wal.
+				fail.Fail() // XXX
+			}
+
 			// handles proposals, block parts, votes
 			cs.handleMsg(mi)
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
