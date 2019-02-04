@@ -319,8 +319,7 @@ cp $WALFILE ${WALFILE}.bak # backup the file
 go run scripts/wal2json/main.go $WALFILE > wal.json # this will panic, but can be ignored
 rm $WALFILE # remove the corrupt file
 go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without corruption
-----
-`)
+----`)
 
 				return err
 			}
