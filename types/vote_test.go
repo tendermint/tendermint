@@ -46,6 +46,8 @@ func exampleVote(t byte) *Vote {
 
 // Ensure that Vote and CommitSig have the same encoding.
 // This ensures using CommitSig isn't a breaking change.
+// This test will fail and can be removed once CommitSig contains only sigs and
+// timestamps.
 func TestVoteEncoding(t *testing.T) {
 	vote := examplePrecommit()
 	commitSig := vote.CommitSig()
@@ -53,7 +55,6 @@ func TestVoteEncoding(t *testing.T) {
 	bz1 := cdc.MustMarshalBinaryBare(vote)
 	bz2 := cdc.MustMarshalBinaryBare(commitSig)
 	assert.Equal(t, bz1, bz2)
-
 }
 
 func TestVoteSignable(t *testing.T) {

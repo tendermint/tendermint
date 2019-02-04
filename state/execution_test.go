@@ -65,16 +65,16 @@ func TestBeginBlockValidators(t *testing.T) {
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
 	now := tmtime.Now()
-	vote0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
-	vote1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
+	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
+	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
 
 	testCases := []struct {
 		desc                     string
 		lastCommitPrecommits     []*types.CommitSig
 		expectedAbsentValidators []int
 	}{
-		{"none absent", []*types.CommitSig{vote0, vote1}, []int{}},
-		{"one absent", []*types.CommitSig{vote0, nil}, []int{1}},
+		{"none absent", []*types.CommitSig{commitSig0, commitSig1}, []int{}},
+		{"one absent", []*types.CommitSig{commitSig0, nil}, []int{1}},
 		{"multiple absent", []*types.CommitSig{nil, nil}, []int{0, 1}},
 	}
 
@@ -136,10 +136,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 			types.TM2PB.Evidence(ev2, valSet, now)}},
 	}
 
-	vote0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
-	vote1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
-	votes := []*types.CommitSig{vote0, vote1}
-	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
+	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
+	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
+	commitSigs := []*types.CommitSig{commitSig0, commitSig1}
+	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: commitSigs}
 	for _, tc := range testCases {
 
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
