@@ -11,6 +11,7 @@ Special thanks to external contributors on this release:
 * Apps
 
 * Go API
+  - [types] \#3245 Commit uses `type CommitSig Vote` instead of `Vote` directly.
 
 * Blockchain Protocol
 
