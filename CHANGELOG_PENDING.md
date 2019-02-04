@@ -23,3 +23,5 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 - [node] \#3186 EventBus and indexerService should be started before first block (for replay last block on handshake) execution
+- [p2p] \#3247 Fix panic in SeedMode when calling FlushStop and OnStop
+  concurrently
