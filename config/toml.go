@@ -240,6 +240,9 @@ size = {{ .Mempool.Size }}
 # size of the cache (used to filter transactions we saw earlier)
 cache_size = {{ .Mempool.CacheSize }}
 
+# maximum size of all txs in the mempool in bytes
+max_bytes = {{ .Mempool.MaxBytes }}
+
 ##### consensus configuration options #####
 [consensus]
 

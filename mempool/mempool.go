@@ -147,6 +147,8 @@ type Mempool struct {
 	preCheck             PreCheckFunc
 	postCheck            PostCheckFunc
 
+	sizeBytes int64 // size of all txs in the mempool in bytes
+
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
 	cache txCache
@@ -265,8 +267,13 @@ func (mem *Mempool) Size() int {
 	return mem.txs.Len()
 }
 
-// Flushes the mempool connection to ensure async resCb calls are done e.g.
-// from CheckTx.
+// SizeBytes returns the size of all txs in the mempool in bytes.
+func (mem *Mempool) SizeBytes() int64 {
+	return atomic.LoadInt64(&mem.sizeBytes)
+}
+
+// FlushAppConn flushes the mempool connection to ensure async resCb calls are
+// done e.g. from CheckTx.
 func (mem *Mempool) FlushAppConn() error {
 	return mem.proxyAppConn.FlushSync()
 }
@@ -280,6 +287,7 @@ func (mem *Mempool) Flush() {
 
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		mem.txs.Remove(e)
+		_ = atomic.SwapInt64(&mem.sizeBytes, 0)
 		e.DetachPrev()
 	}
 }
@@ -309,6 +317,8 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	defer mem.proxyMtx.Unlock()
 
 	if mem.Size() >= mem.config.Size {
+		return ErrMempoolIsFull
+	} else if int64(len(tx))+mem.SizeBytes() > int64(mem.config.MaxBytes) {
 		return ErrMempoolIsFull
 	}
 
@@ -383,6 +393,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:        tx,
 			}
 			mem.txs.PushBack(memTx)
+			atomic.AddInt64(&mem.sizeBytes, int64(len(tx)))
 			mem.logger.Info("Added good transaction",
 				"tx", TxID(tx),
 				"res", r,
@@ -424,6 +435,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", TxID(tx), "res", r, "err", postCheckErr)
 			mem.txs.Remove(mem.recheckCursor)
+			atomic.AddInt64(&mem.sizeBytes, int64(-len(tx)))
 			mem.recheckCursor.DetachPrev()
 
 			// remove from cache (it might be good later)
@@ -597,6 +609,7 @@ func (mem *Mempool) removeTxs(txs types.Txs) []types.Tx {
 		if _, ok := txsMap[string(memTx.tx)]; ok {
 			// remove from clist
 			mem.txs.Remove(e)
+			atomic.AddInt64(&mem.sizeBytes, int64(-len(memTx.tx)))
 			e.DetachPrev()
 
 			// NOTE: we don't remove committed txs from the cache.

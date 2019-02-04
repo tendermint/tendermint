@@ -189,6 +189,9 @@ size = 5000
 # size of the cache (used to filter transactions we saw earlier)
 cache_size = 10000
 
+# maximum size of all txs in the mempool in bytes
+max_bytes = 1000000000
+
 ##### consensus configuration options #####
 [consensus]
 

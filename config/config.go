@@ -536,6 +536,8 @@ type MempoolConfig struct {
 	WalPath   string `mapstructure:"wal_dir"`
 	Size      int    `mapstructure:"size"`
 	CacheSize int    `mapstructure:"cache_size"`
+	// Maximum size of all txs in the mempool in bytes
+	MaxBytes int `mapstructure:"max_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -548,6 +550,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		// ABCI Recheck
 		Size:      5000,
 		CacheSize: 10000,
+		MaxBytes:  1000000000, // 1GB
 	}
 }
 
@@ -576,6 +579,9 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	}
 	if cfg.CacheSize < 0 {
 		return errors.New("cache_size can't be negative")
+	}
+	if cfg.MaxBytes <= 0 {
+		return errors.New("max_bytes must be a positive number")
 	}
 	return nil
 }
