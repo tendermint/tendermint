@@ -281,25 +281,25 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, err
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read checksum: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read checksum: %v", err)}
 	}
 	crc := binary.BigEndian.Uint32(b)
 
 	b = make([]byte, 4)
 	_, err = dec.rd.Read(b)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read length: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read length: %v", err)}
 	}
 	length := binary.BigEndian.Uint32(b)
 
 	if length > maxMsgSizeBytes {
-		return nil, fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)
+		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)}
 	}
 
 	data := make([]byte, length)
 	_, err = dec.rd.Read(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read data: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v", err)}
 	}
 
 	// check checksum before decoding data
