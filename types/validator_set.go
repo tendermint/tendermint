@@ -21,7 +21,7 @@ import (
 // and leaves room for defensive purposes.
 const (
 	MaxTotalVotingPower = int64(math.MaxInt64) / 8
-	K = 2
+	K                   = 2
 )
 
 // ValidatorSet represent a set of *Validator at a given height.
@@ -197,7 +197,7 @@ func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 // Makes a copy of the validator list
 func validatorListCopy(valsList []*Validator) []*Validator {
 	valsCopy := make([]*Validator, len(valsList))
-	for i, val := range(valsList) {
+	for i, val := range valsList {
 		valsCopy[i] = val.Copy()
 	}
 	return valsCopy
@@ -303,57 +303,6 @@ func (vals *ValidatorSet) Hash() []byte {
 	return merkle.SimpleHashFromByteSlices(bzs)
 }
 
-// Add adds val to the validator set and returns true. It returns false if val
-// is already in the set.
-func (vals *ValidatorSet) Add(val *Validator) (added bool) {
-	val = val.Copy()
-	idx := sort.Search(len(vals.Validators), func(i int) bool {
-		return bytes.Compare(val.Address, vals.Validators[i].Address) <= 0
-	})
-	if idx >= len(vals.Validators) {
-		vals.Validators = append(vals.Validators, val)
-		// Invalidate cache
-		vals.Proposer = nil
-		vals.totalVotingPower = 0
-		return true
-	} else if bytes.Equal(vals.Validators[idx].Address, val.Address) {
-		return false
-	} else {
-		newValidators := make([]*Validator, len(vals.Validators)+1)
-		copy(newValidators[:idx], vals.Validators[:idx])
-		newValidators[idx] = val
-		copy(newValidators[idx+1:], vals.Validators[idx:])
-		vals.Validators = newValidators
-		// Invalidate cache
-		vals.Proposer = nil
-		vals.totalVotingPower = 0
-		return true
-	}
-}
-
-// Update updates the ValidatorSet by copying in the val.
-// If the val is not found, it returns false; otherwise,
-// it returns true. The val.ProposerPriority field is ignored
-// and unchanged by this method.
-func (vals *ValidatorSet) Update(val *Validator) (updated bool) {
-	index, sameVal := vals.GetByAddress(val.Address)
-	if sameVal == nil {
-		return false
-	}
-	// Overwrite the ProposerPriority so it doesn't change.
-	// During block execution, the val passed in here comes
-	// from ABCI via PB2TM.ValidatorUpdates. Since ABCI
-	// doesn't know about ProposerPriority, PB2TM.ValidatorUpdates
-	// uses the default value of 0, which would cause issues for
-	// proposer selection every time a validator's voting power changes.
-	val.ProposerPriority = sameVal.ProposerPriority
-	vals.Validators[index] = val.Copy()
-	// Invalidate cache
-	vals.Proposer = nil
-	vals.totalVotingPower = 0
-	return true
-}
-
 // Remove deletes the validator with address. It returns the validator removed
 // and true. If returns nil and false if validator is not present in the set.
 func (vals *ValidatorSet) Remove(address []byte) (val *Validator, removed bool) {
@@ -386,9 +335,9 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 }
 
 // Checks changes against duplicates, splits the changes in updates and removals, sorts them by address
-func processChanges(ochanges []*Validator) (updates, removals []*Validator, err error) {
+func processChanges(origChanges []*Validator) (updates, removals []*Validator, err error) {
 	// Make a deep copy of the changes and sort by address
-	changes := validatorListCopy(ochanges)
+	changes := validatorListCopy(origChanges)
 	sort.Sort(ValidatorsByAddress(changes))
 
 	removals = make([]*Validator, 0)
@@ -418,10 +367,11 @@ func processChanges(ochanges []*Validator) (updates, removals []*Validator, err 
 }
 
 // Verifies a list of updates against a validator set, making sure the allowed
-// total voting power would not exceed if these updates would be applied to the set.
+// total voting power would not be exceeded if these updates would be applied to the set.
 // Computes the proposer priority for the validators not present in the set.
 // Returns error if first step fails.
-// updates parameter must be a list of unique validators to be added or updated.
+// 'updates' parameter must be a list of unique validators to be added or updated.
+// No changes are made to the validator set 'vals'.
 func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorSet) error {
 
 	// Scan the updates, compute new total voting power, check for overflow
@@ -431,7 +381,7 @@ func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorS
 		address := valUpdate.Address
 		_, val := vals.GetByAddress(address)
 		if val == nil { // add
-			updatedVotingPower +=  valUpdate.VotingPower
+			updatedVotingPower += valUpdate.VotingPower
 		} else { // update
 			updatedVotingPower += valUpdate.VotingPower - val.VotingPower
 		}
@@ -470,14 +420,14 @@ func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorS
 // Merges the vals' validator list with the updates list.
 // When two elements with same address are seen, the one from updates is selected.
 // Expects updates to be a list of updates sorted by address with no duplicates,
-// and to have been validated with validateUpdates().
+// and to have been validated with verifyUpdatesAndComputeNewPriorities().
 // The validator's priorities in 'updates' should be already computed.
 func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 
 	existing := make([]*Validator, len(vals.Validators))
 	copy(existing, vals.Validators)
 
-	merged := make([]*Validator, len(existing) + len(updates))
+	merged := make([]*Validator, len(existing)+len(updates))
 	i := 0
 
 	for len(existing) > 0 && len(updates) > 0 {
@@ -508,6 +458,7 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 }
 
 // Checks that the validators to be removed are part of the validator set.
+// No changes are made to the validator set 'vals'.
 func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
 
 	for _, valUpdate := range deletes {
@@ -522,7 +473,7 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
 
 // Removes the validators specified in 'deletes' from validator set 'vals'.
 // Should not fail as verification has been done before.
-func (vals *ValidatorSet)applyRemovals(deletes []*Validator) {
+func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 
 	for _, valUpdate := range deletes {
 		address := valUpdate.Address

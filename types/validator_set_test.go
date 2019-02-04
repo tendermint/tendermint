@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -45,31 +46,29 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Nil(t, vset.Hash())
 
 	// add
-
 	val = randValidator_(vset.TotalVotingPower())
-	assert.True(t, vset.Add(val))
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
+
 	assert.True(t, vset.HasAddress(val.Address))
-	idx, val2 := vset.GetByAddress(val.Address)
+	idx, _ = vset.GetByAddress(val.Address)
 	assert.Equal(t, 0, idx)
-	assert.Equal(t, val, val2)
-	addr, val2 = vset.GetByIndex(0)
+	addr, _ = vset.GetByIndex(0)
 	assert.Equal(t, []byte(val.Address), addr)
-	assert.Equal(t, val, val2)
 	assert.Equal(t, 1, vset.Size())
 	assert.Equal(t, val.VotingPower, vset.TotalVotingPower())
-	assert.Equal(t, val, vset.GetProposer())
 	assert.NotNil(t, vset.Hash())
 	assert.NotPanics(t, func() { vset.IncrementProposerPriority(1) })
+	assert.Equal(t, val.Address, vset.GetProposer().Address)
 
 	// update
-	assert.False(t, vset.Update(randValidator_(vset.TotalVotingPower())))
+	val = randValidator_(vset.TotalVotingPower())
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
 	_, val = vset.GetByAddress(val.Address)
 	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
-	// Mimic update from types.PB2TM.ValidatorUpdates which does not know about ProposerPriority
-	// and hence defaults to 0.
+
 	val.ProposerPriority = 0
-	assert.True(t, vset.Update(val))
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
 	_, val = vset.GetByAddress(val.Address)
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
 
@@ -116,8 +115,9 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	for i := 0; i < 1000; i++ {
 		privKey := ed25519.GenPrivKey()
 		pubKey := privKey.PubKey()
-		val := NewValidator(pubKey, 0)
-		if !vset.Add(val) {
+		val := NewValidator(pubKey, 10)
+		err := vset.UpdateWithChangeSet([]*Validator{val})
+		if err != nil {
 			panic("Failed to add validator")
 		}
 	}
@@ -284,7 +284,7 @@ func randPubKey() crypto.PubKey {
 func randValidator_(totalVotingPower int64) *Validator {
 	// this modulo limits the ProposerPriority/VotingPower to stay in the
 	// bounds of MaxTotalVotingPower minus the already existing voting power:
-	val := NewValidator(randPubKey(), cmn.RandInt64()%(MaxTotalVotingPower-totalVotingPower))
+	val := NewValidator(randPubKey(), int64(cmn.RandUint64()%uint64((MaxTotalVotingPower-totalVotingPower))))
 	val.ProposerPriority = cmn.RandInt64() % (MaxTotalVotingPower - totalVotingPower)
 	return val
 }
@@ -642,7 +642,7 @@ func TestValidatorUpdates(t *testing.T) {
 	valList = []*Validator{}
 	valsc := vals.Copy()
 	assert.NoError(t, vals.UpdateWithChangeSet(valList))
-	verifyValidatorSetEquiv(t, vals, valsc)
+	assert.True(t, reflect.DeepEqual(vals, valsc))
 
 	// Verify duplicate updates are caught and vals is not modified
 	v1 = newValidator([]byte("v3"), 10)
@@ -650,7 +650,7 @@ func TestValidatorUpdates(t *testing.T) {
 	valList = []*Validator{v1, v2, v1}
 	valsc = vals.Copy()
 	assert.Error(t, vals.UpdateWithChangeSet(valList))
-	verifyValidatorSetEquiv(t, vals, valsc)
+	assert.True(t, reflect.DeepEqual(vals, valsc))
 
 	// Verify overflows are caught and vals is not modified
 	v1 = newValidator([]byte("v3"), 10)
@@ -658,14 +658,14 @@ func TestValidatorUpdates(t *testing.T) {
 	valList = []*Validator{v1, v2}
 	valsc = vals.Copy()
 	assert.Error(t, vals.UpdateWithChangeSet(valList))
-	verifyValidatorSetEquiv(t, vals, valsc)
+	assert.True(t, reflect.DeepEqual(vals, valsc))
 
 	// Verify duplicate removes are caught and vals is not modified
 	v2 = newValidator([]byte("v2"), 0)
 	valList = []*Validator{v2, v2}
 	valsc = vals.Copy()
 	assert.Error(t, vals.UpdateWithChangeSet(valList))
-	verifyValidatorSetEquiv(t, vals, valsc)
+	assert.True(t, reflect.DeepEqual(vals, valsc))
 
 	// Verify a duplicate address across removes and adds is caught and vals is not modified
 	v2d := newValidator([]byte("v2"), 0)
@@ -673,21 +673,21 @@ func TestValidatorUpdates(t *testing.T) {
 	valList = []*Validator{v2d, v2m}
 	valsc = vals.Copy()
 	assert.Error(t, vals.UpdateWithChangeSet(valList))
-	verifyValidatorSetEquiv(t, vals, valsc)
+	assert.True(t, reflect.DeepEqual(vals, valsc))
 
 	// Verify negative voting power is caught and vals is not modified
 	v1 = newValidator([]byte("v3"), -10)
 	valList = []*Validator{v1}
 	valsc = vals.Copy()
 	assert.Error(t, vals.UpdateWithChangeSet(valList))
-	verifyValidatorSetEquiv(t, vals, valsc)
+	assert.True(t, reflect.DeepEqual(vals, valsc))
 
 	// Verify deleting non existing validator is caught and vals is not modified
 	v1 = newValidator([]byte("v7"), 0)
 	valList = []*Validator{v1}
 	valsc = vals.Copy()
 	assert.Error(t, vals.UpdateWithChangeSet(valList))
-	verifyValidatorSetEquiv(t, vals, valsc)
+	assert.True(t, reflect.DeepEqual(vals, valsc))
 
 	// Change priorities
 	v1 = newValidator([]byte("v1"), 10)
@@ -697,12 +697,13 @@ func TestValidatorUpdates(t *testing.T) {
 	assert.NoError(t, vals.UpdateWithChangeSet(valList))
 	verifyValidatorSet(t, vals)
 	// Verify passed in parameter has not changed
-	verifyValidatorListEquiv(t, valList, valCopy)
+	assert.True(t, reflect.DeepEqual(valList, valCopy))
+
 	// Verify that subsequent changes to valList does not change the validator set
 	valsCopy := vals.Copy()
 	v1.VotingPower = 15
 	v2.VotingPower = 5
-	verifyValidatorSetEquiv(t, vals, valsCopy)
+	assert.True(t, reflect.DeepEqual(vals, valsCopy))
 
 	// Add new validators
 	v3 := newValidator([]byte("v3"), 200)
@@ -732,7 +733,7 @@ func TestValidatorUpdates(t *testing.T) {
 	assert.NoError(t, vals2.UpdateWithChangeSet(newVals))
 	verifyValidatorSet(t, vals2)
 
-	verifyValidatorSetEquiv(t, vals1, vals2)
+	assert.True(t, reflect.DeepEqual(vals1, vals2))
 
 	// Verify order does not matter when modifying validators
 	vals1 = vals.Copy()
@@ -748,7 +749,7 @@ func TestValidatorUpdates(t *testing.T) {
 	assert.NoError(t, vals2.UpdateWithChangeSet(chVals))
 	verifyValidatorSet(t, vals2)
 
-	verifyValidatorSetEquiv(t, vals1, vals2)
+	assert.True(t, reflect.DeepEqual(vals1, vals2))
 
 	// Verify order does not matter when updates contain new and changed validators
 	vals1 = vals.Copy()
@@ -764,39 +765,10 @@ func TestValidatorUpdates(t *testing.T) {
 	assert.NoError(t, vals2.UpdateWithChangeSet(chVals))
 	verifyValidatorSet(t, vals2)
 
-	verifyValidatorSetEquiv(t, vals1, vals2)
+	assert.True(t, reflect.DeepEqual(vals1, vals2))
 }
 
-func verifyValidatorListEquiv(t *testing.T, list1, list2 []*Validator) {
-	for i, val1 := range list1 {
-		val2 :=  list2[i]
-		assert.True(t, bytes.Equal(val1.Address, val2.Address) && val1.VotingPower == val2.VotingPower,
-			"different validators %s and %s at index %d", val1, val2, i)
-		}
-}
-
-func verifyValidatorSetEquiv(t *testing.T, vals1, vals2 *ValidatorSet) {
-	assert.True(t, len(vals1.Validators) == len(vals2.Validators),
-		"validator sets %s, %s don't have same num of vals", vals1, vals2)
-
-	assert.True(t, getTotalVotingPower(vals1) == getTotalVotingPower(vals2),
-		"validator sets %s, %s don't have the same total voting power", vals1, vals2)
-
-	assert.True(t, getTotalProposerPriority(vals1) == getTotalProposerPriority(vals2),
-	"validator sets %s, %s don't have the same total priorities", vals1, vals2)
-
-	verifyValidatorListEquiv(t, vals1.Validators, vals2.Validators)
-}
-
-func getTotalVotingPower (vals *ValidatorSet) int64 {
-	sum := int64(0)
-	for _, val := range vals.Validators {
-		sum += val.VotingPower
-	}
-	return sum
-}
-
-func getTotalProposerPriority (vals *ValidatorSet) int64 {
+func getTotalProposerPriority(vals *ValidatorSet) int64 {
 	sum := int64(0)
 	for _, val := range vals.Validators {
 		sum += val.ProposerPriority
@@ -804,21 +776,21 @@ func getTotalProposerPriority (vals *ValidatorSet) int64 {
 	return sum
 }
 
-func verifyValidatorSet (t *testing.T, vals *ValidatorSet) {
+func verifyValidatorSet(t *testing.T, vals *ValidatorSet) {
 	// verify that the vals' tvp is set to the sum of the all vals voting powers
-	tvp := getTotalVotingPower(vals)
-	assert.True(t, vals.totalVotingPower == tvp ,
+	tvp := vals.TotalVotingPower()
+	assert.True(t, vals.totalVotingPower == tvp,
 		"expected %d. Got %d, vset=%s", tvp, vals.totalVotingPower, vals)
 
 	// verify that validator priorities are centered
 	l := int64(len(vals.Validators))
 	tpp := getTotalProposerPriority(vals)
-	assert.True(t, tpp <= l || tpp >= -l ,
+	assert.True(t, tpp <= l || tpp >= -l,
 		"expected total prio in (-%d, %d). Got %d", l, l, tpp)
 
 	// verify that priorities are scaled
 	dist := computeMaxMinPriorityDiff(vals)
-	assert.True(t, dist <= K * tvp, "expected prio dist < %d. Got %d", K * tvp, dist)
+	assert.True(t, dist <= K*tvp, "expected prio dist < %d. Got %d", K*tvp, dist)
 }
 
 func BenchmarkUpdates(b *testing.B) {
