@@ -320,8 +320,6 @@ go run scripts/wal2json/main.go $WALFILE > wal.json # this will panic, but can b
 rm $WALFILE # remove the corrupt file
 go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without corruption
 ----
-
-NOTE: be sure to set the WALFILE to the highest numbered file in the cs.wal directory.
 `)
 
 				return err
