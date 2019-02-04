@@ -228,7 +228,7 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	for _, r := range ranges {
 		bsizes = append(bsizes, cmn.RandIntn(r[1]-r[0])+r[0])
 	}
-	fmt.Printf("Testing address selection for the following booksizes %v\n", bsizes)
+	t.Logf("Testing address selection for the following booksizes %v\n", bsizes)
 	for _, b := range bsizes {
 		testAddrBookAddressSelection(t, b)
 	}

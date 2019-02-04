@@ -431,7 +431,7 @@ ADDRS_LOOP:
 		// numAddresses <= a.nOld + a.nNew therefore it is guaranteed that there are enough
 		// addresses to fill the selection
 		pickFromOldBucket :=
-			(biasedTowardsOldAddrs && oldAddressesAdded < a.nOld) || //
+			(biasedTowardsOldAddrs && oldAddressesAdded < a.nOld) ||
 				a.nNew == 0 || newAddressesAdded >= a.nNew
 
 		bucket := make(map[string]*knownAddress)
