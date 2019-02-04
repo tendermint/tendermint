@@ -78,7 +78,7 @@ func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet
 // `times` must be positive.
 func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	if vals.IsNilOrEmpty() {
-		return
+		panic("Cannot call IncrementProposerPriority with empty validator set")
 	}
 	if times <= 0 {
 		panic("Cannot call IncrementProposerPriority with non-positive times")
@@ -99,22 +99,6 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 
 	vals.Proposer = proposer
 }
-
-/*
-func (vals *ValidatorSet) RescalePriorities2() {
-	if vals.IsNilOrEmpty() {
-		return
-	}
-	tvp := vals.TotalVotingPower()
-	diff := computeMaxMinPriorityDiff(vals)
-	if diff > K * tvp {
-		ratio := float64(K * tvp) / float64(diff)
-		for _, val := range vals.Validators {
-			val.ProposerPriority = int64(float64(val.ProposerPriority) * ratio)
-		}
-	}
-}
-*/
 
 func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	if vals.IsNilOrEmpty() {
@@ -401,90 +385,25 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 	}
 }
 
-// If more or equal than 1/3 of total voting power changed in one block, then
-// a light client could never prove the transition externally. See
-// ./lite/doc.go for details on how a light client tracks validators.
-func (currentSet *ValidatorSet) UpdateWithChangeList(updates []*Validator) error {
-	for _, valUpdate := range updates {
-		// should already have been checked
-		if valUpdate.VotingPower < 0 {
-			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
-		}
-
-		address := valUpdate.Address
-		_, val := currentSet.GetByAddress(address)
-		// valUpdate.VotingPower is ensured to be non-negative in validation method
-		if valUpdate.VotingPower == 0 { // remove val
-			_, removed := currentSet.Remove(address)
-			if !removed {
-				return fmt.Errorf("Failed to remove validator %X", address)
-			}
-		} else if val == nil { // add val
-			// make sure we do not exceed MaxTotalVotingPower by adding this validator:
-			totalVotingPower := currentSet.TotalVotingPower()
-			updatedVotingPower := valUpdate.VotingPower + totalVotingPower
-			overflow := updatedVotingPower > MaxTotalVotingPower || updatedVotingPower < 0
-			if overflow {
-				return fmt.Errorf(
-					"Failed to add new validator %v. Adding it would exceed max allowed total voting power %v",
-					valUpdate,
-					MaxTotalVotingPower)
-			}
-			// TODO: issue #1558 update spec according to the following:
-			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
-			// unbond/rebond to reset their (potentially previously negative) ProposerPriority to zero.
-			//
-			// Contract: totalVotingPower < MaxTotalVotingPower to ensure ProposerPriority does
-			// not exceed the bounds of int64.
-			//
-			// Compute ProposerPriority = -1.125*totalVotingPower == -(totalVotingPower + (totalVotingPower >> 3)).
-			valUpdate.ProposerPriority = -(totalVotingPower + (totalVotingPower >> 3))
-			added := currentSet.Add(valUpdate)
-			if !added {
-				return fmt.Errorf("Failed to add new validator %v", valUpdate)
-			}
-		} else { // update val
-			// make sure we do not exceed MaxTotalVotingPower by updating this validator:
-			totalVotingPower := currentSet.TotalVotingPower()
-			curVotingPower := val.VotingPower
-			updatedVotingPower := totalVotingPower - curVotingPower + valUpdate.VotingPower
-			overflow := updatedVotingPower > MaxTotalVotingPower || updatedVotingPower < 0
-			if overflow {
-				return fmt.Errorf(
-					"Failed to update existing validator %v. Updating it would exceed max allowed total voting power %v",
-					valUpdate,
-					MaxTotalVotingPower)
-			}
-
-			updated := currentSet.Update(valUpdate)
-			if !updated {
-				return fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
-			}
-		}
-	}
-	return nil
-}
-
 // Checks changes against duplicates, splits the changes in updates and removals, sorts them by address
-func processChanges(ochanges []*Validator) (error, []*Validator, []*Validator) {
+func processChanges(ochanges []*Validator) (updates, removals []*Validator, err error) {
 	// Make a deep copy of the changes and sort by address
 	changes := validatorListCopy(ochanges)
 	sort.Sort(ValidatorsByAddress(changes))
 
-	removals := make([]*Validator, 0)
-	updates := make([]*Validator, 0)
-	var err error
+	removals = make([]*Validator, 0)
+	updates = make([]*Validator, 0)
 	prevAddr := []byte(nil)
 
 	// Scan changes by address and append valid validators to updates or removal
 	for _, valUpdate := range changes {
 		if bytes.Equal(valUpdate.Address, prevAddr) {
 			err := fmt.Errorf("duplicate entry %v in changes list %v", valUpdate, changes)
-			return err, nil, nil
+			return nil, nil, err
 		}
 		if valUpdate.VotingPower < 0 {
 			err := fmt.Errorf("voting power can't be negative %v", valUpdate)
-			return err, nil, nil
+			return nil, nil, err
 		}
 		if valUpdate.VotingPower == 0 {
 			// Add valUpdate to removals
@@ -495,7 +414,7 @@ func processChanges(ochanges []*Validator) (error, []*Validator, []*Validator) {
 		}
 		prevAddr = valUpdate.Address
 	}
-	return err, updates, removals
+	return updates, removals, nil
 }
 
 // Verifies a list of updates against a validator set, making sure the allowed
@@ -633,8 +552,8 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 		return nil
 	}
 
-	// check for duplicates within changes, split in 'updates' and 'deletes' lists (sorted)
-	err, updates, deletes := processChanges(changes)
+	// Check for duplicates within changes, split in 'updates' and 'deletes' lists (sorted)
+	updates, deletes, err := processChanges(changes)
 	if err != nil {
 		return err
 	}
