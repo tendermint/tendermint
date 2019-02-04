@@ -8,6 +8,7 @@ import (
 	"math"
 	"net"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -88,6 +89,10 @@ type MConnection struct {
 	// doneSendRoutine to close.
 	quitSendRoutine chan struct{}
 	doneSendRoutine chan struct{}
+
+	// used to ensure FlushStop and OnStop
+	// are safe to call concurrently.
+	stopMtx sync.Mutex
 
 	flushTimer *cmn.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer  *cmn.RepeatTimer   // send pings periodically
@@ -210,8 +215,17 @@ func (c *MConnection) OnStart() error {
 // It additionally ensures that all successful
 // .Send() calls will get flushed before closing
 // the connection.
-// NOTE: it is not safe to call this method more than once.
 func (c *MConnection) FlushStop() {
+	c.stopMtx.Lock()
+	defer c.stopMtx.Unlock()
+
+	select {
+	case <-c.quitSendRoutine:
+		// already quit via OnStop
+		return
+	default:
+	}
+
 	c.BaseService.OnStop()
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
@@ -247,6 +261,9 @@ func (c *MConnection) FlushStop() {
 
 // OnStop implements BaseService
 func (c *MConnection) OnStop() {
+	c.stopMtx.Lock()
+	defer c.stopMtx.Unlock()
+
 	select {
 	case <-c.quitSendRoutine:
 		// already quit via FlushStop
