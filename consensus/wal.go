@@ -183,7 +183,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 				break
 			}
 			if options.IgnoreDataCorruptionErrors && IsDataCorruptionError(err) {
-				wal.Logger.Info("Corrupted entry. Skipping...", "err", err)
+				wal.Logger.Error("Corrupted entry. Skipping...", "err", err)
 				// do nothing
 				continue
 			} else if err != nil {
