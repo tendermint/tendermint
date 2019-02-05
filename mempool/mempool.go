@@ -63,12 +63,24 @@ var (
 	// ErrTxInCache is returned to the client if we saw tx earlier
 	ErrTxInCache = errors.New("Tx already exists in cache")
 
-	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
-	ErrMempoolIsFull = errors.New("Mempool is full")
-
 	// ErrTxTooLarge means the tx is too big to be sent in a message to other peers
 	ErrTxTooLarge = fmt.Errorf("Tx too large. Max size is %d", maxTxSize)
 )
+
+// ErrMempoolIsFull means Tendermint & an application can't handle that much load
+type ErrMempoolIsFull struct {
+	numTxs           int
+	maxTxs           int
+	totalTxsBytes    int64
+	maxTotalTxsBytes int64
+}
+
+func (e ErrMempoolIsFull) Error() string {
+	return fmt.Sprintf(
+		"Mempool is full: number of txs %d (max: %d), total txs bytes %d (max: %d)",
+		e.numTxs, e.maxTxs,
+		e.totalTxsBytes, e.maxTotalTxsBytes)
+}
 
 // ErrPreCheck is returned when tx is too big
 type ErrPreCheck struct {
@@ -317,10 +329,11 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
 
-	if mem.Size() >= mem.config.Size {
-		return ErrMempoolIsFull
-	} else if int64(len(tx))+mem.TxsTotalBytes() > mem.config.MaxTxsTotalBytes {
-		return ErrMempoolIsFull
+	if mem.Size() >= mem.config.Size ||
+		int64(len(tx))+mem.TxsTotalBytes() > mem.config.MaxTxsTotalBytes {
+		return ErrMempoolIsFull{
+			mem.Size(), mem.config.Size,
+			mem.TxsTotalBytes(), mem.config.MaxTxsTotalBytes}
 	}
 
 	// The size of the corresponding amino-encoded TxMessage
