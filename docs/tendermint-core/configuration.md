@@ -183,14 +183,16 @@ recheck = true
 broadcast = true
 wal_dir = ""
 
-# size of the mempool
+# Maximum number of transactions in the mempool
 size = 5000
 
-# size of the cache (used to filter transactions we saw earlier)
-cache_size = 10000
+# Maximum size of the mempool in bytes
+# This only accounts for raw transactions (e.g. given 1MB transactions and
+# max_bytes=5MB, mempool will only accept 5 transactions).
+max_bytes = 1073741824
 
-# maximum size of all txs in the mempool in bytes
-max_bytes = 1000000000
+# Size of the cache (used to filter transactions we saw earlier) in transactions
+cache_size = 10000
 
 ##### consensus configuration options #####
 [consensus]

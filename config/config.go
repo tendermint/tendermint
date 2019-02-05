@@ -535,9 +535,8 @@ type MempoolConfig struct {
 	Broadcast bool   `mapstructure:"broadcast"`
 	WalPath   string `mapstructure:"wal_dir"`
 	Size      int    `mapstructure:"size"`
+	MaxBytes  int64  `mapstructure:"max_bytes"`
 	CacheSize int    `mapstructure:"cache_size"`
-	// Maximum size of all txs in the mempool in bytes
-	MaxBytes int `mapstructure:"max_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -546,11 +545,11 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Recheck:   true,
 		Broadcast: true,
 		WalPath:   "",
-		// Each signature verification takes .5ms, size reduced until we implement
+		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
 		Size:      5000,
+		MaxBytes:  1024 * 1024 * 1024, // 1GB
 		CacheSize: 10000,
-		MaxBytes:  1000000000, // 1GB
 	}
 }
 
@@ -577,11 +576,11 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.Size < 0 {
 		return errors.New("size can't be negative")
 	}
+	if cfg.MaxBytes < 0 {
+		return errors.New("max_bytes can't be negative")
+	}
 	if cfg.CacheSize < 0 {
 		return errors.New("cache_size can't be negative")
-	}
-	if cfg.MaxBytes <= 0 {
-		return errors.New("max_bytes must be a positive number")
 	}
 	return nil
 }

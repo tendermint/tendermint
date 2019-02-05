@@ -450,26 +450,26 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 
 }
 
-func TestMempoolSizeBytes(t *testing.T) {
+func TestMempoolTxsTotalBytes(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool := newMempoolWithApp(cc)
 
-	assert.EqualValues(t, 0, mempool.SizeBytes())
+	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
 
 	err := mempool.CheckTx([]byte{0x01}, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 1, mempool.SizeBytes())
+	assert.EqualValues(t, 1, mempool.TxsTotalBytes())
 
 	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
-	assert.EqualValues(t, 0, mempool.SizeBytes())
+	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
 
 	err = mempool.CheckTx([]byte{0x02, 0x03}, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 2, mempool.SizeBytes())
+	assert.EqualValues(t, 2, mempool.TxsTotalBytes())
 
 	mempool.Flush()
-	assert.EqualValues(t, 0, mempool.SizeBytes())
+	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
 }
 
 func checksumIt(data []byte) string {

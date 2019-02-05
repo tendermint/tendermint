@@ -147,7 +147,7 @@ type Mempool struct {
 	preCheck             PreCheckFunc
 	postCheck            PostCheckFunc
 
-	sizeBytes int64 // size of all txs in the mempool in bytes
+	txsTotalBytes int64 // see TxsTotalBytes
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -267,9 +267,9 @@ func (mem *Mempool) Size() int {
 	return mem.txs.Len()
 }
 
-// SizeBytes returns the size of all txs in the mempool in bytes.
-func (mem *Mempool) SizeBytes() int64 {
-	return atomic.LoadInt64(&mem.sizeBytes)
+// TxsTotalBytes returns the total size of all txs in the mempool.
+func (mem *Mempool) TxsTotalBytes() int64 {
+	return atomic.LoadInt64(&mem.txsTotalBytes)
 }
 
 // FlushAppConn flushes the mempool connection to ensure async resCb calls are
@@ -287,9 +287,10 @@ func (mem *Mempool) Flush() {
 
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		mem.txs.Remove(e)
-		_ = atomic.SwapInt64(&mem.sizeBytes, 0)
 		e.DetachPrev()
 	}
+
+	_ = atomic.SwapInt64(&mem.txsTotalBytes, 0)
 }
 
 // TxsFront returns the first transaction in the ordered list for peer
@@ -318,7 +319,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	if mem.Size() >= mem.config.Size {
 		return ErrMempoolIsFull
-	} else if int64(len(tx))+mem.SizeBytes() > int64(mem.config.MaxBytes) {
+	} else if int64(len(tx))+mem.TxsTotalBytes() > mem.config.MaxBytes {
 		return ErrMempoolIsFull
 	}
 
@@ -393,7 +394,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:        tx,
 			}
 			mem.txs.PushBack(memTx)
-			atomic.AddInt64(&mem.sizeBytes, int64(len(tx)))
+			atomic.AddInt64(&mem.txsTotalBytes, int64(len(tx)))
 			mem.logger.Info("Added good transaction",
 				"tx", TxID(tx),
 				"res", r,
@@ -435,7 +436,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", TxID(tx), "res", r, "err", postCheckErr)
 			mem.txs.Remove(mem.recheckCursor)
-			atomic.AddInt64(&mem.sizeBytes, int64(-len(tx)))
+			atomic.AddInt64(&mem.txsTotalBytes, int64(-len(tx)))
 			mem.recheckCursor.DetachPrev()
 
 			// remove from cache (it might be good later)
@@ -609,7 +610,7 @@ func (mem *Mempool) removeTxs(txs types.Txs) []types.Tx {
 		if _, ok := txsMap[string(memTx.tx)]; ok {
 			// remove from clist
 			mem.txs.Remove(e)
-			atomic.AddInt64(&mem.sizeBytes, int64(-len(memTx.tx)))
+			atomic.AddInt64(&mem.txsTotalBytes, int64(-len(memTx.tx)))
 			e.DetachPrev()
 
 			// NOTE: we don't remove committed txs from the cache.
