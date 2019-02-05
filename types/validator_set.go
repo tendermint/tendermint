@@ -45,19 +45,17 @@ type ValidatorSet struct {
 // NewValidatorSet initializes a ValidatorSet by copying over the
 // values from `valz`, a list of Validators. If valz is nil or empty,
 // the new ValidatorSet will have an empty list of Validators.
+// The addresses of vlaidators in `valz` must be unique otherwise the
+// function panics.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
-	validators := make([]*Validator, len(valz))
-	for i, val := range valz {
-		validators[i] = val.Copy()
-	}
-	sort.Sort(ValidatorsByAddress(validators))
-	vals := &ValidatorSet{
-		Validators: validators,
+	vals := &ValidatorSet{}
+	err := vals.UpdateWithChangeSet(valz)
+	if err != nil {
+		panic(fmt.Sprintf("cannot create validator set with %v (%s)", valz, err))
 	}
 	if len(valz) > 0 {
 		vals.IncrementProposerPriority(1)
 	}
-
 	return vals
 }
 

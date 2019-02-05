@@ -63,12 +63,11 @@ func (v *Validator) String() string {
 		return "nil-Validator"
 	}
 	return fmt.Sprintf("Validator{%v %v VP:%v A:%v}",
-		string(v.Address),
+		v.Address,
 		v.PubKey,
 		v.VotingPower,
 		v.ProposerPriority)
 }
-
 
 // Make pretty string for logging
 func ValidatorListString(vals []*Validator) string {
@@ -79,7 +78,6 @@ func ValidatorListString(vals []*Validator) string {
 
 	return strings.Join(chunks, ",")
 }
-
 
 // Bytes computes the unique encoding of a validator with a given voting power.
 // These are the bytes that gets hashed in consensus. It excludes address
