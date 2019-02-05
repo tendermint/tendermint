@@ -15,6 +15,9 @@ type EventBusSubscriber interface {
 	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error)
 	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
+
+	NumClients() int
+	NumClientSubscriptions(clientID string) int
 }
 
 type Subscription interface {
@@ -56,6 +59,14 @@ func (b *EventBus) OnStart() error {
 
 func (b *EventBus) OnStop() {
 	b.pubsub.Stop()
+}
+
+func (b *EventBus) NumClients() int {
+	return b.pubsub.NumClients()
+}
+
+func (b *EventBus) NumClientSubscriptions(clientID string) int {
+	return b.pubsub.NumClientSubscriptions(clientID)
 }
 
 func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error) {

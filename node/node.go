@@ -658,6 +658,9 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetConsensusReactor(n.consensusReactor)
 	rpccore.SetEventBus(n.eventBus)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
+	rpccore.MaxSubscriptionClients = n.config.RPC.MaxSubscriptionClients
+	rpccore.MaxSubscriptionsPerClient = n.config.RPC.MaxSubscriptionsPerClient
+	rpccore.TimeoutBroadcastTxCommit = n.config.RPC.TimeoutBroadcastTxCommit
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {

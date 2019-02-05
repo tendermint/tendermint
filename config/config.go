@@ -323,6 +323,17 @@ type RPCConfig struct {
 	// Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 	// 1024 - 40 - 10 - 50 = 924 = ~900
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
+
+	// Maximum number of unique clientIDs that can /subscribe
+	MaxSubscriptionClients int `mapstructure:"max_subscription_clients"`
+
+	// Maximum number of unique queries a given client can /subscribe to (note
+	// all calls to /broadcast_tx_commit uses the same client, so this would
+	// limit the number of /broadcast_tx_commit calls that can be open at once)
+	MaxSubscriptionsPerClient int `mapstructure:"max_subscriptions_per_client"`
+
+	// How long to wait for a tx to be committed during /broadcast_tx_commit
+	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -337,6 +348,10 @@ func DefaultRPCConfig() *RPCConfig {
 
 		Unsafe:             false,
 		MaxOpenConnections: 900,
+
+		MaxSubscriptionClients:    100,
+		MaxSubscriptionsPerClient: 5,
+		TimeoutBroadcastTxCommit:  10 * time.Second,
 	}
 }
 
@@ -357,6 +372,15 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.MaxOpenConnections < 0 {
 		return errors.New("max_open_connections can't be negative")
+	}
+	if cfg.MaxSubscriptionClients < 0 {
+		return errors.New("max_subscription_clients can't be negative")
+	}
+	if cfg.MaxSubscriptionsPerClient < 0 {
+		return errors.New("max_subscriptions_per_client can't be negative")
+	}
+	if cfg.TimeoutBroadcastTxCommit < 0 {
+		return errors.New("timeout_broadcast_tx_commit can't be negative")
 	}
 	return nil
 }

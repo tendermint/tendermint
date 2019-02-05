@@ -318,6 +318,16 @@ func (w *WSEvents) OnStop() {
 	}
 }
 
+// TODO: remove
+func (w *WSEvents) NumClients() int {
+	return 1
+}
+
+// TODO: remove
+func (w *WSEvents) NumClientSubscriptions(clientID string) int {
+	return len(w.subscriptions)
+}
+
 func (w *WSEvents) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (types.Subscription, error) {
 	q := query.String()
 
