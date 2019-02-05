@@ -290,9 +290,13 @@ func TestUnconfirmedTxs(t *testing.T) {
 	for i, c := range GetClients() {
 		mc, ok := c.(client.MempoolClient)
 		require.True(t, ok, "%d", i)
-		txs, err := mc.UnconfirmedTxs(1)
+		res, err := mc.UnconfirmedTxs(1)
 		require.Nil(t, err, "%d: %+v", i, err)
-		assert.Exactly(t, types.Txs{tx}, types.Txs(txs.Txs))
+
+		assert.Equal(t, 1, res.Count)
+		assert.Equal(t, 1, res.Total)
+		assert.Equal(t, mempool.TxsTotalBytes(), res.TotalBytes)
+		assert.Exactly(t, types.Txs{tx}, types.Txs(res.Txs))
 	}
 
 	mempool.Flush()
