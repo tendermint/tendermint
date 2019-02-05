@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -104,32 +103,32 @@ func countOldAndNewInAddrs(addrs []*p2p.NetAddress, book *addrBook) (nOld, nNew 
 // - seqTypes - the types of sequences in selection
 func analyseSelectionLayout(book *addrBook, addrs []*p2p.NetAddress) (seqLens, seqTypes []int, err error) {
 	// address types are: 0 - nil, 1 - new, 2 - old
-	prevt := 0
+	prevType := 0
 
-	cnt := 0
+	currentSeqLen := 0
 	for i, addr := range addrs {
 		if addr == nil {
 			err = fmt.Errorf("nil addresses in selection, index %d", i)
-			return nil, nil, err
+			return
 		}
-		addrt := 0
+		addrType := 0
 		if book.IsGood(addr) {
-			addrt = 2
+			addrType = 2
 		} else {
-			addrt = 1
+			addrType = 1
 		}
 
-		if addrt != prevt && prevt != 0 {
-			seqLens = append(seqLens, cnt)
-			seqTypes = append(seqTypes, prevt)
-			cnt = 0
+		if addrType != prevType && prevType != 0 {
+			seqLens = append(seqLens, currentSeqLen)
+			seqTypes = append(seqTypes, prevType)
+			currentSeqLen = 0
 		}
-		cnt++
-		prevt = addrt
+		currentSeqLen++
+		prevType = addrType
 	}
-	seqLens = append(seqLens, cnt)
-	seqTypes = append(seqTypes, prevt)
-	return seqLens, seqTypes, nil
+	seqLens = append(seqLens, currentSeqLen)
+	seqTypes = append(seqTypes, prevType)
+	return
 }
 
 func TestEmptyAddrBookSelection(t *testing.T) {
@@ -149,29 +148,31 @@ func testAddrBookAddressSelection(t *testing.T, b int) {
 		book := createAddrBookWithMOldAndNNewAddrs(t, m, n)
 		addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 
-		r := len(addrs)
+		nAddr := len(addrs)
 		assert.NotNil(t, addrs, "%s - expected a non-nill selection", dbgStr)
-		assert.NotZero(t, r, "%s - expected at least one address in selection", dbgStr)
+		assert.NotZero(t, nAddr, "%s - expected at least one address in selection", dbgStr)
 
-		// verify that the number of old and new addresses are the ones expected
+		// find the number of old and new addresses and verify that the selection is fully populated
+		// (i.e. there are no nil addresses)
 		numOld, numNew := countOldAndNewInAddrs(addrs, book)
-		assert.Equal(t, r, numOld+numNew, "%s - expected selection completely filled", dbgStr)
+		assert.Equal(t, nAddr, numOld+numNew, "%s - expected selection completely filled", dbgStr)
 
 		// Given:
 		// n - num new addrs, m - num old addrs
 		// k - num new addrs expected in the beginning (based on bias %)
-		// i=min(n, k), j=min(m, r-i)
+		// i=min(n, k), aka expFirstNew
+		// j=min(m, r-i), aka expOld
 		//
 		// We expect this layout:
 		// indices:      0...i-1   i...i+j-1    i+j...r
 		// addresses:    N0..Ni-1  O0..Oj-1     Ni...
 		//
 		// There is at least one partition and at most three.
-		k := percentageOfNum(biasToSelectNewPeers, r)
-		i := cmn.MinInt(n, k)
-		j := cmn.MinInt(m, r-i)
-		expOld := j
-		expNew := r - j
+		k := percentageOfNum(biasToSelectNewPeers, nAddr)
+		expFirstNew := cmn.MinInt(n, k)
+		expOld := cmn.MinInt(m, nAddr-expFirstNew)
+		expNew := nAddr - expOld
+		expLastNew := expNew - expFirstNew
 
 		// Verify that the number of old and new addresses are as expected
 		if numNew < expNew || numNew > expNew {
@@ -187,30 +188,38 @@ func testAddrBookAddressSelection(t *testing.T, b int) {
 		assert.NoError(t, err, "%s - expected a non-nill selection", dbgStr)
 
 		// Build a list with the expected lengths of partitions and another with the expected types, e.g.:
-		// expseqLens = [10, 22], expseqTypes = [1, 2]
+		// expSeqLens = [10, 22], expSeqTypes = [1, 2]
 		// means we expect 10 new (type 1) addresses followed by 22 old (type 2) addresses.
 		var expSeqLens []int
 		var expSeqTypes []int
-		if j == 0 {
-			// all new
-			expSeqLens = []int{r}
-			expSeqTypes = []int{1}
-		} else if i == 0 {
-			// all old
-			expSeqLens = []int{r}
-			expSeqTypes = []int{2}
-		} else if r-i-j == 0 {
-			expSeqLens = []int{i, j}
-			expSeqTypes = []int{1, 2}
-		} else {
-			expSeqLens = []int{i, j, r - i - j}
-			expSeqTypes = []int{1, 2, 1}
+
+		switch {
+		case expOld == 0:
+			{ // all new addresses
+				expSeqLens = []int{nAddr}
+				expSeqTypes = []int{1}
+			}
+		case expFirstNew == 0:
+			{ // all old addresses
+				expSeqLens = []int{nAddr}
+				expSeqTypes = []int{2}
+			}
+		case nAddr-expFirstNew-expOld == 0:
+			{ // new addresses, old addresses
+				expSeqLens = []int{expFirstNew, expOld}
+				expSeqTypes = []int{1, 2}
+			}
+		default:
+			{ // new addresses, old addresses, new addresses
+				expSeqLens = []int{expFirstNew, expOld, expLastNew}
+				expSeqTypes = []int{1, 2, 1}
+			}
 		}
 
-		assert.True(t, reflect.DeepEqual(expSeqLens, seqLens),
+		assert.Equal(t, expSeqLens, seqLens,
 			"%s - expected sequence lengths of old/new %v, got %v",
 			dbgStr, expSeqLens, seqLens)
-		assert.True(t, reflect.DeepEqual(expSeqTypes, seqTypes),
+		assert.Equal(t, expSeqTypes, seqTypes,
 			"%s - expected sequence lengths of old/new %v, got %v",
 			dbgStr, expSeqLens, seqLens)
 	}
@@ -224,12 +233,12 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	}
 	// Test for two books with sizes from following ranges
 	ranges := [...][]int{{33, 100}, {100, 175}}
-	var bsizes []int
+	var bSizes []int
 	for _, r := range ranges {
-		bsizes = append(bsizes, cmn.RandIntn(r[1]-r[0])+r[0])
+		bSizes = append(bSizes, cmn.RandIntn(r[1]-r[0])+r[0])
 	}
-	t.Logf("Testing address selection for the following booksizes %v\n", bsizes)
-	for _, b := range bsizes {
+	t.Logf("Testing address selection for the following booksizes %v\n", bSizes)
+	for _, b := range bSizes {
 		testAddrBookAddressSelection(t, b)
 	}
 }
