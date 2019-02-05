@@ -174,6 +174,18 @@ func (s *Server) BufferCapacity() int {
 	return s.cmdsCap
 }
 
+func (s *Server) NumClients() int {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	return len(s.subscriptions)
+}
+
+func (s *Server) NumClientSubscriptions(clientID string) int {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	return len(s.subscriptions[clientID])
+}
+
 // Subscribe creates a subscription for the given client. It accepts a channel
 // on which messages matching the given query can be received. An error will be
 // returned to the caller if the context is canceled or if subscription already

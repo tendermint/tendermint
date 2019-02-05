@@ -111,6 +111,17 @@ unsafe = false
 # 1024 - 40 - 10 - 50 = 924 = ~900
 max_open_connections = 900
 
+# Maximum number of unique clientIDs that can /subscribe
+max_subscription_clients = 100
+
+# Maximum number of unique queries a given client can /subscribe to (note
+# all calls to /broadcast_tx_commit uses the same client, so this would
+# limit the number of /broadcast_tx_commit calls that can be open at once)
+max_subscriptions_per_client = 5
+
+# How long to wait for a tx to be committed during /broadcast_tx_commit.
+timeout_broadcast_tx_commit = "10s"
+
 ##### peer to peer configuration options #####
 [p2p]
 

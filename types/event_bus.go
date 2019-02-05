@@ -15,6 +15,9 @@ type EventBusSubscriber interface {
 	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
 	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
+
+	NumClients() int
+	NumClientSubscriptions(clientID string) int
 }
 
 // EventBus is a common bus for all events going through the system. All calls
@@ -50,6 +53,14 @@ func (b *EventBus) OnStart() error {
 
 func (b *EventBus) OnStop() {
 	b.pubsub.Stop()
+}
+
+func (b *EventBus) NumClients() int {
+	return b.pubsub.NumClients()
+}
+
+func (b *EventBus) NumClientSubscriptions(clientID string) int {
+	return b.pubsub.NumClientSubscriptions(clientID)
 }
 
 func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {

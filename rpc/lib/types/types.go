@@ -249,6 +249,9 @@ type EventSubscriber interface {
 	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
 	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
+
+	NumClients() int
+	NumClientSubscriptions(clientID string) int
 }
 
 // websocket-only RPCFuncs take this as the first parameter.

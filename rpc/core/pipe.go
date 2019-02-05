@@ -1,6 +1,8 @@
 package core
 
 import (
+	"time"
+
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -71,6 +73,11 @@ var (
 	mempool          *mempl.Mempool
 
 	logger log.Logger
+
+	// XXX: godoc comment
+	MaxSubscriptionClients    int
+	MaxSubscriptionsPerClient int
+	TimeoutBroadcastTxCommit  time.Duration
 )
 
 func SetStateDB(db dbm.DB) {

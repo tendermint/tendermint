@@ -166,12 +166,21 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+	// XXX: should be the remote IP address of the caller
+	subscriber := "mempool"
+
+	if eventBus.NumClients() > MaxSubscriptionClients {
+		return nil, fmt.Errorf("max_subscription_clients %d reached", MaxSubscriptionClients)
+	} else if eventBus.NumClientSubscriptions(subscriber) > MaxSubscriptionsPerClient {
+		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", MaxSubscriptionsPerClient)
+	}
+
 	// Subscribe to tx being committed in block.
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	deliverTxResCh := make(chan interface{}, 1)
 	q := types.EventQueryTxFor(tx)
-	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
+	err := eventBus.Subscribe(ctx, subscriber, q, deliverTxResCh)
 	if err != nil {
 		err = errors.Wrap(err, "failed to subscribe to tx")
 		logger.Error("Error on broadcast_tx_commit", "err", err)
@@ -187,7 +196,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 				break LOOP
 			}
 		}
-		eventBus.Unsubscribe(context.Background(), "mempool", q)
+		eventBus.Unsubscribe(context.Background(), subscriber, q)
 	}()
 
 	// Broadcast tx and wait for CheckTx result

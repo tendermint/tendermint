@@ -92,6 +92,13 @@ import (
 // <aside class="notice">WebSocket only</aside>
 func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
 	addr := wsCtx.GetRemoteAddr()
+
+	if eventBusFor(wsCtx).NumClients() > MaxSubscriptionClients {
+		return nil, fmt.Errorf("max_subscription_clients %d reached", MaxSubscriptionClients)
+	} else if eventBusFor(wsCtx).NumClientSubscriptions(addr) > MaxSubscriptionsPerClient {
+		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", MaxSubscriptionsPerClient)
+	}
+
 	logger.Info("Subscribe to query", "remote", addr, "query", query)
 
 	q, err := tmquery.New(query)
