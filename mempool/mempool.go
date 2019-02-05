@@ -319,7 +319,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	if mem.Size() >= mem.config.Size {
 		return ErrMempoolIsFull
-	} else if int64(len(tx))+mem.TxsTotalBytes() > mem.config.MaxBytes {
+	} else if int64(len(tx))+mem.TxsTotalBytes() > mem.config.MaxTxsTotalBytes {
 		return ErrMempoolIsFull
 	}
 
