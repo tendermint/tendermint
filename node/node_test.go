@@ -88,13 +88,13 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 	}
 }
 
-func TestNodeDelayedStop(t *testing.T) {
-	config := cfg.ResetTestRoot("node_delayed_node_test")
+func TestNodeDelayedStart(t *testing.T) {
+	config := cfg.ResetTestRoot("node_delayed_start_test")
 	now := tmtime.Now()
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
-	n.GenesisDoc().GenesisTime = now.Add(5 * time.Second)
+	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 	require.NoError(t, err)
 
 	n.Start()
