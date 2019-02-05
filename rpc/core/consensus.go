@@ -3,6 +3,7 @@ package core
 import (
 	cm "github.com/tendermint/tendermint/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -47,7 +48,7 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
+func Validators(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the
 	// NextValidator of the last block.
 	height := consensusState.GetState().LastBlockHeight + 1
@@ -200,7 +201,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //   }
 // }
 // ```
-func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
+func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
 	peers := p2pPeers.Peers().List()
 	peerStates := make([]ctypes.PeerStateInfo, len(peers))
@@ -277,7 +278,7 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 //  }
 //}
 //```
-func ConsensusState() (*ctypes.ResultConsensusState, error) {
+func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
 	// Get self round state.
 	bz, err := consensusState.GetRoundStateSimpleJSON()
 	return &ctypes.ResultConsensusState{RoundState: bz}, err
@@ -320,7 +321,7 @@ func ConsensusState() (*ctypes.ResultConsensusState, error) {
 //   }
 // }
 // ```
-func ConsensusParams(heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
+func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
 	height := consensusState.GetState().LastBlockHeight + 1
 	height, err := getHeight(height, heightPtr)
 	if err != nil {

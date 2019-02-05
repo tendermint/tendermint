@@ -165,6 +165,17 @@ unsafe = {{ .RPC.Unsafe }}
 # 1024 - 40 - 10 - 50 = 924 = ~900
 max_open_connections = {{ .RPC.MaxOpenConnections }}
 
+# Maximum number of unique clientIDs that can /subscribe
+max_subscription_clients = {{ .RPC.MaxSubscriptionClients }}
+
+# Maximum number of unique queries a given client can /subscribe to
+# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
+# the estimated # maximum number of broadcast_tx_commit calls per block.
+max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
+
+# How long to wait for a tx to be committed during /broadcast_tx_commit.
+timeout_broadcast_tx_commit = "{{ .RPC.TimeoutBroadcastTxCommit }}"
+
 ##### peer to peer configuration options #####
 [p2p]
 

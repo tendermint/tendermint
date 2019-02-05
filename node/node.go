@@ -658,6 +658,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetConsensusReactor(n.consensusReactor)
 	rpccore.SetEventBus(n.eventBus)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
+	rpccore.SetConfig(*n.config.RPC)
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
@@ -675,8 +676,15 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec, rpcserver.EventSubscriber(n.eventBus))
-		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
+		wmLogger := rpcLogger.With("protocol", "websocket")
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec,
+			rpcserver.OnDisconnect(func(remoteAddr string) {
+				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+				if err != nil {
+					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+				}
+			}))
+		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
 
