@@ -39,7 +39,12 @@ func TestWALTruncate(t *testing.T) {
 	wal.SetLogger(log.TestingLogger())
 	err = wal.Start()
 	require.NoError(t, err)
-	defer wal.Stop()
+	defer func() {
+		wal.Stop()
+		// wait for the wal to finish shutting down so we
+		// can safely remove the directory
+		wal.Wait()
+	}()
 
 	//60 block's size nearly 70K, greater than group's headBuf size(4096 * 10), when headBuf is full, truncate content will Flush to the file.
 	//at this time, RotateFile is called, truncate content exist in each file.
