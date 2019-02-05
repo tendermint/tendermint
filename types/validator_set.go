@@ -194,6 +194,9 @@ func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 
 // Makes a copy of the validator list
 func validatorListCopy(valsList []*Validator) []*Validator {
+	if valsList == nil {
+		return nil
+	}
 	valsCopy := make([]*Validator, len(valsList))
 	for i, val := range valsList {
 		valsCopy[i] = val.Copy()
