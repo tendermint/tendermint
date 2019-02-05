@@ -255,27 +255,32 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 //
 // ```json
 // {
-//   "error": "",
-//   "result": {
-//     "txs": [],
-//     "n_txs": "0"
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
-// }
+//   "result" : {
+//       "txs" : [],
+//       "total_bytes" : "0",
+//       "count" : "0",
+//       "total" : "0"
+//     },
+//     "jsonrpc" : "2.0",
+//     "id" : ""
+//   }
+// ```
 //
 // ### Query Parameters
 //
 // | Parameter | Type | Default | Required | Description                          |
 // |-----------+------+---------+----------+--------------------------------------|
 // | limit     | int  | 30      | false    | Maximum number of entries (max: 100) |
-// ```
 func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
 	limit = validatePerPage(limit)
 
 	txs := mempool.ReapMaxTxs(limit)
-	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
+	return &ctypes.ResultUnconfirmedTxs{
+		Count:      len(txs),
+		Total:      mempool.Size(),
+		TotalBytes: mempool.TxsTotalBytes(),
+		Txs:        txs}, nil
 }
 
 // Get number of unconfirmed transactions.
@@ -298,15 +303,19 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 //
 // ```json
 // {
-//   "error": "",
-//   "result": {
-//     "txs": null,
-//     "n_txs": "0"
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
+//   "jsonrpc" : "2.0",
+//   "id" : "",
+//   "result" : {
+//     "count" : "0",
+//     "total_bytes" : "0",
+//     "txs" : null,
+//     "total" : "0"
+//   }
 // }
 // ```
 func NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	return &ctypes.ResultUnconfirmedTxs{N: mempool.Size()}, nil
+	return &ctypes.ResultUnconfirmedTxs{
+		Count:      mempool.Size(),
+		Total:      mempool.Size(),
+		TotalBytes: mempool.TxsTotalBytes()}, nil
 }

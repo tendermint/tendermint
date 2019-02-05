@@ -7,6 +7,7 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
+  - [rpc] \#3113 rename n_txs to count in `/num_unconfirmed_txs` and `/unconfirmed_txs`
 
 * Apps
 
@@ -19,6 +20,8 @@ Special thanks to external contributors on this release:
 
 ### FEATURES:
 - [mempool] \#3079 bound mempool memory usage (`mempool.max_txs_total_bytes` is set to 1GB by default; see config.toml)
+  mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
+  `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 
 ### IMPROVEMENTS:
 - [tools] add go-deadlock tool to help detect deadlocks

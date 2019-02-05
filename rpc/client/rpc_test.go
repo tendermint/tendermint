@@ -311,7 +311,9 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 		res, err := mc.NumUnconfirmedTxs()
 		require.Nil(t, err, "%d: %+v", i, err)
 
-		assert.Equal(t, mempoolSize, res.N)
+		assert.Equal(t, mempoolSize, res.Count)
+		assert.Equal(t, mempoolSize, res.Total)
+		assert.Equal(t, mempool.TxsTotalBytes(), res.TotalBytes)
 	}
 
 	mempool.Flush()
