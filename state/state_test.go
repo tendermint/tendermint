@@ -476,7 +476,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	totalPower := updatedVal1.VotingPower + updatedVal2.VotingPower
 	dist := wantVal2Prio - wantVal1Prio
 	// ratio := (dist + 2*totalPower - 1) / 2*totalPower = 98/22 = 4
-	ratio := (dist+2*totalPower-1)/(2*totalPower)
+	ratio := (dist + 2*totalPower - 1) / (2 * totalPower)
 	// v1(10):-38/4, v2(1):39/4
 	wantVal1Prio /= ratio // -9
 	wantVal2Prio /= ratio // 9
@@ -487,7 +487,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	// v1(10):1, v2(1):-1
 	wantVal2Prio += updatedVal2.VotingPower // 10 -> prop
 	wantVal1Prio += updatedVal1.VotingPower // 1
-	wantVal2Prio -= totalPower // -1
+	wantVal2Prio -= totalPower              // -1
 
 	assert.Equal(t, wantVal2Prio, updatedVal2.ProposerPriority)
 	assert.Equal(t, wantVal1Prio, updatedVal1.ProposerPriority)
@@ -552,18 +552,18 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 
 	// 1. Add
 	val2VotingPower := val1VotingPower
-	totalPower = val1VotingPower + val2VotingPower                      // 20
+	totalPower = val1VotingPower + val2VotingPower           // 20
 	v2PrioWhenAddedVal2 := -(totalPower + (totalPower >> 3)) // -22
 	// 2. Scale - noop
 	// 3. Center
 	avgSum := big.NewInt(0).Add(big.NewInt(v2PrioWhenAddedVal2), big.NewInt(oldVal1.ProposerPriority))
-	avg := avgSum.Div(avgSum, big.NewInt(2)) // -11
-	expectedVal2Prio := v2PrioWhenAddedVal2 - avg.Int64() // -11
+	avg := avgSum.Div(avgSum, big.NewInt(2))                   // -11
+	expectedVal2Prio := v2PrioWhenAddedVal2 - avg.Int64()      // -11
 	expectedVal1Prio := oldVal1.ProposerPriority - avg.Int64() // 11
 	// 4. Increment
-	expectedVal2Prio = expectedVal2Prio + val2VotingPower       // -11 + 10 = -1
+	expectedVal2Prio = expectedVal2Prio + val2VotingPower // -11 + 10 = -1
 	expectedVal1Prio = expectedVal1Prio + val1VotingPower // 11 + 10 == 21
-	expectedVal1Prio = expectedVal1Prio - totalPower // 1, val1 proposer
+	expectedVal1Prio = expectedVal1Prio - totalPower      // 1, val1 proposer
 
 	assert.EqualValues(t, expectedVal1Prio, updatedVal1.ProposerPriority)
 	assert.EqualValues(t, expectedVal2Prio, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
@@ -585,9 +585,9 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 
 	// check if expected proposer prio is matched:
 	// Increment
-	expectedVal2Prio2 := expectedVal2Prio + val2VotingPower       // -1 + 10 = 9
+	expectedVal2Prio2 := expectedVal2Prio + val2VotingPower // -1 + 10 = 9
 	expectedVal1Prio2 := expectedVal1Prio + val1VotingPower // 1 + 10 == 11
-	expectedVal1Prio2 = expectedVal1Prio2 - totalPower // -9, val1 proposer
+	expectedVal1Prio2 = expectedVal1Prio2 - totalPower      // -9, val1 proposer
 
 	assert.EqualValues(t, expectedVal1Prio2, updatedVal1.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
 	assert.EqualValues(t, expectedVal2Prio2, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
