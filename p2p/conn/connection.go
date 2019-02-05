@@ -85,8 +85,8 @@ type MConnection struct {
 	errored       uint32
 	config        MConnConfig
 
-	// Closing quitSendRoutine will cause
-	// doneSendRoutine to close.
+	// Closing quitSendRoutine will cause the sendRoutine to eventually quit.
+	// doneSendRoutine is closed when the sendRoutine actually quits.
 	quitSendRoutine chan struct{}
 	doneSendRoutine chan struct{}
 
@@ -437,7 +437,6 @@ FOR_LOOP:
 			c.sendMonitor.Update(int(_n))
 			c.flush()
 		case <-c.quitSendRoutine:
-			close(c.doneSendRoutine)
 			break FOR_LOOP
 		case <-c.send:
 			// Send some PacketMsgs
@@ -463,6 +462,7 @@ FOR_LOOP:
 
 	// Cleanup
 	c.stopPongTimer()
+	close(c.doneSendRoutine)
 }
 
 // Returns true if messages from channels were exhausted.
