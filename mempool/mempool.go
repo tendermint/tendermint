@@ -159,6 +159,7 @@ type Mempool struct {
 	preCheck             PreCheckFunc
 	postCheck            PostCheckFunc
 
+	// Atomic integers
 	txsTotalBytes int64 // see TxsTotalBytes
 
 	// Keep a cache of already-seen txs.
@@ -329,11 +330,15 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
 
-	if mem.Size() >= mem.config.Size ||
-		int64(len(tx))+mem.TxsTotalBytes() > mem.config.MaxTxsTotalBytes {
+	var (
+		memSize       = mem.Size()
+		txsTotalBytes = mem.TxsTotalBytes()
+	)
+	if memSize >= mem.config.Size ||
+		int64(len(tx))+txsTotalBytes > mem.config.MaxTxsTotalBytes {
 		return ErrMempoolIsFull{
-			mem.Size(), mem.config.Size,
-			mem.TxsTotalBytes(), mem.config.MaxTxsTotalBytes}
+			memSize, mem.config.Size,
+			txsTotalBytes, mem.config.MaxTxsTotalBytes}
 	}
 
 	// The size of the corresponding amino-encoded TxMessage
