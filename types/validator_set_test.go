@@ -644,70 +644,70 @@ func TestDetectDuplicatesInNewValidatorSet(t *testing.T) {
 	assert.Panics(t, func() { NewValidatorSet(valList) })
 }
 
-type TestVal struct {
+type testVal struct {
 	name  string
 	power int64
 }
 
 func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 	valSetUpdatesBasicTests := []struct {
-		startVals    []TestVal
-		updateVals   []TestVal
-		expectedVals []TestVal
+		startVals    []testVal
+		updateVals   []testVal
+		expectedVals []testVal
 		expError     bool
 	}{
 		// Operations that should result in error
 		0: { // updates leading to overflows
-			[]TestVal{{"v1", 10}, {"v2", 10}},
-			[]TestVal{{"v1", math.MaxInt64}},
-			[]TestVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", math.MaxInt64}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
 			true},
 		1: { // duplicate entries in changes
-			[]TestVal{{"v1", 10}, {"v2", 10}},
-			[]TestVal{{"v1", 11}, {"v1", 22}},
-			[]TestVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 11}, {"v1", 22}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
 			true},
 		2: { // duplicate entries in removes
-			[]TestVal{{"v1", 10}, {"v2", 10}},
-			[]TestVal{{"v1", 0}, {"v1", 0}},
-			[]TestVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 0}, {"v1", 0}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
 			true},
 		3: { // duplicate entries in removes + changes
-			[]TestVal{{"v1", 10}, {"v2", 10}},
-			[]TestVal{{"v1", 0}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
-			[]TestVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 0}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
 			true},
 		4: { // update with negative voting power
-			[]TestVal{{"v1", 10}, {"v2", 10}},
-			[]TestVal{{"v1", -123}},
-			[]TestVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", -123}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
 			true},
 		5: { // delete non existing validator
-			[]TestVal{{"v1", 10}, {"v2", 10}},
-			[]TestVal{{"v3", 0}},
-			[]TestVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v3", 0}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
 			true},
 
 		// Operations that should be successful
 		6: { // no changes
-			[]TestVal{{"v1", 10}, {"v2", 10}},
-			[]TestVal{},
-			[]TestVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{},
+			[]testVal{{"v1", 10}, {"v2", 10}},
 			false},
 		7: { // voting power changes
-			[]TestVal{{"v1", 10}, {"v2", 10}},
-			[]TestVal{{"v1", 11}, {"v2", 22}},
-			[]TestVal{{"v1", 11}, {"v2", 22}},
+			[]testVal{{"v1", 10}, {"v2", 10}},
+			[]testVal{{"v1", 11}, {"v2", 22}},
+			[]testVal{{"v1", 11}, {"v2", 22}},
 			false},
 		8: { // add new validators
-			[]TestVal{{"v1", 10}, {"v2", 20}},
-			[]TestVal{{"v3", 30}, {"v4", 40}},
-			[]TestVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 10}, {"v2", 20}},
+			[]testVal{{"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
 			false},
 		9: { // delete validators
-			[]TestVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
-			[]TestVal{{"v2", 0}},
-			[]TestVal{{"v1", 10}, {"v3", 30}},
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
+			[]testVal{{"v2", 0}},
+			[]testVal{{"v1", 10}, {"v3", 30}},
 			false},
 	}
 
@@ -735,8 +735,8 @@ func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 	}
 }
 
-func getValidatorResults(valList []*Validator) []TestVal {
-	testList := make([]TestVal, len(valList))
+func getValidatorResults(valList []*Validator) []testVal {
+	testList := make([]testVal, len(valList))
 	for i, val := range valList {
 		testList[i].name = string(val.Address)
 		testList[i].power = val.VotingPower
@@ -750,24 +750,24 @@ func TestValSetUpdatesOrderTestsExecute(t *testing.T) {
 	// updateVals - a sequence of updates to be applied to the set.
 	// updateVals is shuffled a number of times during testing to check for same resulting validator set.
 	valSetUpdatesOrderTests := []struct {
-		startVals  []TestVal
-		updateVals []TestVal
+		startVals  []testVal
+		updateVals []testVal
 	}{
 		0: { // order of changes should not matter, the final validator sets should be the same
-			[]TestVal{{"v1", 10}, {"v2", 10}, {"v3", 30}, {"v4", 40}},
-			[]TestVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
+			[]testVal{{"v1", 10}, {"v2", 10}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
 
 		1: { // order of additions should not matter
-			[]TestVal{{"v1", 10}, {"v2", 20}},
-			[]TestVal{{"v3", 30}, {"v4", 40}, {"v5", 50}, {"v6", 60}}},
+			[]testVal{{"v1", 10}, {"v2", 20}},
+			[]testVal{{"v3", 30}, {"v4", 40}, {"v5", 50}, {"v6", 60}}},
 
 		2: { // order of removals should not matter
-			[]TestVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
-			[]TestVal{{"v1", 0}, {"v3", 0}, {"v4", 0}}},
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 0}, {"v3", 0}, {"v4", 0}}},
 
 		3: { // order of mixed operations should not matter
-			[]TestVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
-			[]TestVal{{"v1", 0}, {"v3", 0}, {"v2", 22}, {"v5", 50}, {"v4", 44}}},
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 0}, {"v3", 0}, {"v2", 22}, {"v5", 50}, {"v4", 44}}},
 	}
 
 	for i, tt := range valSetUpdatesOrderTests {
@@ -804,49 +804,49 @@ func TestValSetUpdatesOrderTestsExecute(t *testing.T) {
 // Should perform a proper merge of updatedVals and startVals
 func TestValSetApplyUpdatesTestsExecute(t *testing.T) {
 	valSetUpdatesBasicTests := []struct {
-		startVals    []TestVal
-		updateVals   []TestVal
-		expectedVals []TestVal
+		startVals    []testVal
+		updateVals   []testVal
+		expectedVals []testVal
 	}{
 		// additions
 		0: { // prepend
-			[]TestVal{{"v4", 44}, {"v5", 55}},
-			[]TestVal{{"v1", 11}},
-			[]TestVal{{"v1", 11}, {"v4", 44}, {"v5", 55}}},
+			[]testVal{{"v4", 44}, {"v5", 55}},
+			[]testVal{{"v1", 11}},
+			[]testVal{{"v1", 11}, {"v4", 44}, {"v5", 55}}},
 		1: { // append
-			[]TestVal{{"v4", 44}, {"v5", 55}},
-			[]TestVal{{"v6", 66}},
-			[]TestVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
+			[]testVal{{"v4", 44}, {"v5", 55}},
+			[]testVal{{"v6", 66}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
 		2: { // insert
-			[]TestVal{{"v4", 44}, {"v6", 66}},
-			[]TestVal{{"v5", 55}},
-			[]TestVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
+			[]testVal{{"v4", 44}, {"v6", 66}},
+			[]testVal{{"v5", 55}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
 		3: { // insert multi
-			[]TestVal{{"v4", 44}, {"v6", 66}, {"v9", 99}},
-			[]TestVal{{"v5", 55}, {"v7", 77}, {"v8", 88}},
-			[]TestVal{{"v4", 44}, {"v5", 55}, {"v6", 66}, {"v7", 77}, {"v8", 88}, {"v9", 99}}},
+			[]testVal{{"v4", 44}, {"v6", 66}, {"v9", 99}},
+			[]testVal{{"v5", 55}, {"v7", 77}, {"v8", 88}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}, {"v7", 77}, {"v8", 88}, {"v9", 99}}},
 		// changes
 		4: { // head
-			[]TestVal{{"v1", 111}, {"v2", 22}},
-			[]TestVal{{"v1", 11}},
-			[]TestVal{{"v1", 11}, {"v2", 22}}},
+			[]testVal{{"v1", 111}, {"v2", 22}},
+			[]testVal{{"v1", 11}},
+			[]testVal{{"v1", 11}, {"v2", 22}}},
 		5: { // tail
-			[]TestVal{{"v1", 11}, {"v2", 222}},
-			[]TestVal{{"v2", 22}},
-			[]TestVal{{"v1", 11}, {"v2", 22}}},
+			[]testVal{{"v1", 11}, {"v2", 222}},
+			[]testVal{{"v2", 22}},
+			[]testVal{{"v1", 11}, {"v2", 22}}},
 		6: { // middle
-			[]TestVal{{"v1", 11}, {"v2", 222}, {"v3", 33}},
-			[]TestVal{{"v2", 22}},
-			[]TestVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
+			[]testVal{{"v1", 11}, {"v2", 222}, {"v3", 33}},
+			[]testVal{{"v2", 22}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
 		7: { // multi
-			[]TestVal{{"v1", 111}, {"v2", 222}, {"v3", 333}},
-			[]TestVal{{"v1", 11}, {"v2", 22}, {"v3", 33}},
-			[]TestVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
+			[]testVal{{"v1", 111}, {"v2", 222}, {"v3", 333}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
 		// additions and changes
 		8: {
-			[]TestVal{{"v1", 111}, {"v2", 22}},
-			[]TestVal{{"v1", 11}, {"v3", 33}, {"v4", 44}},
-			[]TestVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
+			[]testVal{{"v1", 111}, {"v2", 22}},
+			[]testVal{{"v1", 11}, {"v3", 33}, {"v4", 44}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
 	}
 
 	for i, tt := range valSetUpdatesBasicTests {
@@ -863,11 +863,11 @@ func TestValSetApplyUpdatesTestsExecute(t *testing.T) {
 	}
 }
 
-func permutation(valList []TestVal) []TestVal {
+func permutation(valList []testVal) []testVal {
 	if len(valList) == 0 {
 		return nil
 	}
-	permList := make([]TestVal, len(valList))
+	permList := make([]testVal, len(valList))
 	perm := rand.Perm(len(valList))
 	for i, v := range perm {
 		permList[v] = valList[i]
@@ -875,7 +875,7 @@ func permutation(valList []TestVal) []TestVal {
 	return permList
 }
 
-func createNewValidatorList(testValList []TestVal) []*Validator {
+func createNewValidatorList(testValList []testVal) []*Validator {
 	var valList []*Validator
 	for _, val := range testValList {
 		valList = append(valList, newValidator([]byte(val.name), val.power))
@@ -883,7 +883,7 @@ func createNewValidatorList(testValList []TestVal) []*Validator {
 	return valList
 }
 
-func createNewValidatorSet(testValList []TestVal) *ValidatorSet {
+func createNewValidatorSet(testValList []testVal) *ValidatorSet {
 	valList := createNewValidatorList(testValList)
 	valSet := NewValidatorSet(valList)
 	return valSet
