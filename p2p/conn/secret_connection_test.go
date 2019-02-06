@@ -398,12 +398,3 @@ func BenchmarkSecretConnection(b *testing.B) {
 	}
 	//barSecConn.Close() race condition
 }
-
-func fingerprint(bz []byte) []byte {
-	const fbsize = 40
-	if len(bz) < fbsize {
-		return bz
-	} else {
-		return bz[:fbsize]
-	}
-}

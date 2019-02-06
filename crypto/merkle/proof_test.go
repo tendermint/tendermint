@@ -26,17 +26,17 @@ func NewDominoOp(key, input, output string) DominoOp {
 	}
 }
 
-func DominoOpDecoder(pop ProofOp) (ProofOperator, error) {
-	if pop.Type != ProofOpDomino {
-		panic("unexpected proof op type")
-	}
-	var op DominoOp // a bit strange as we'll discard this, but it works.
-	err := amino.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
-	if err != nil {
-		return nil, cmn.ErrorWrap(err, "decoding ProofOp.Data into SimpleValueOp")
-	}
-	return NewDominoOp(string(pop.Key), op.Input, op.Output), nil
-}
+// func DominoOpDecoder(pop ProofOp) (ProofOperator, error) {
+// 	if pop.Type != ProofOpDomino {
+// 		panic("unexpected proof op type")
+// 	}
+// 	var op DominoOp // a bit strange as we'll discard this, but it works.
+// 	err := amino.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
+// 	if err != nil {
+// 		return nil, cmn.ErrorWrap(err, "decoding ProofOp.Data into SimpleValueOp")
+// 	}
+// 	return NewDominoOp(string(pop.Key), op.Input, op.Output), nil
+// }
 
 func (dop DominoOp) ProofOp() ProofOp {
 	bz := amino.MustMarshalBinaryLengthPrefixed(dop)

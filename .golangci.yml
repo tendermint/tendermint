@@ -26,8 +26,6 @@ linters:
     - stylecheck
     - deadcode
     - prealloc
-    - unused
-    - gosimple
 
 # linters-settings:
 #   govet:

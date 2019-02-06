@@ -65,44 +65,44 @@ func TestTrustMetricCopyNilPointer(t *testing.T) {
 }
 
 // XXX: This test fails non-deterministically
-func _TestTrustMetricStopPause(t *testing.T) {
-	// The TestTicker will provide manual control over
-	// the passing of time within the metric
-	tt := NewTestTicker()
-	tm := NewMetric()
-	tm.SetTicker(tt)
-	tm.Start()
-	// Allow some time intervals to pass and pause
-	tt.NextTick()
-	tt.NextTick()
-	tm.Pause()
+// func _TestTrustMetricStopPause(t *testing.T) {
+// 	// The TestTicker will provide manual control over
+// 	// the passing of time within the metric
+// 	tt := NewTestTicker()
+// 	tm := NewMetric()
+// 	tm.SetTicker(tt)
+// 	tm.Start()
+// 	// Allow some time intervals to pass and pause
+// 	tt.NextTick()
+// 	tt.NextTick()
+// 	tm.Pause()
 
-	// could be 1 or 2 because Pause and NextTick race
-	first := tm.Copy().numIntervals
+// 	// could be 1 or 2 because Pause and NextTick race
+// 	first := tm.Copy().numIntervals
 
-	// Allow more time to pass and check the intervals are unchanged
-	tt.NextTick()
-	tt.NextTick()
-	assert.Equal(t, first, tm.Copy().numIntervals)
+// 	// Allow more time to pass and check the intervals are unchanged
+// 	tt.NextTick()
+// 	tt.NextTick()
+// 	assert.Equal(t, first, tm.Copy().numIntervals)
 
-	// Get the trust metric activated again
-	tm.GoodEvents(5)
-	// Allow some time intervals to pass and stop
-	tt.NextTick()
-	tt.NextTick()
-	tm.Stop()
-	tm.Wait()
+// 	// Get the trust metric activated again
+// 	tm.GoodEvents(5)
+// 	// Allow some time intervals to pass and stop
+// 	tt.NextTick()
+// 	tt.NextTick()
+// 	tm.Stop()
+// 	tm.Wait()
 
-	second := tm.Copy().numIntervals
-	// Allow more intervals to pass while the metric is stopped
-	// and check that the number of intervals match
-	tm.NextTimeInterval()
-	tm.NextTimeInterval()
-	// XXX: fails non-deterministically:
-	// expected 5, got 6
-	assert.Equal(t, second+2, tm.Copy().numIntervals)
+// 	second := tm.Copy().numIntervals
+// 	// Allow more intervals to pass while the metric is stopped
+// 	// and check that the number of intervals match
+// 	tm.NextTimeInterval()
+// 	tm.NextTimeInterval()
+// 	// XXX: fails non-deterministically:
+// 	// expected 5, got 6
+// 	assert.Equal(t, second+2, tm.Copy().numIntervals)
 
-	if first > second {
-		t.Fatalf("numIntervals should always increase or stay the same over time")
-	}
-}
+// 	if first > second {
+// 		t.Fatalf("numIntervals should always increase or stay the same over time")
+// 	}
+// }
