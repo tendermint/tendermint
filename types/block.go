@@ -516,6 +516,14 @@ type Commit struct {
 	bitArray *cmn.BitArray
 }
 
+// NewCommit returns a new Commit with the given blockID and precommits.
+func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
+	return &Commit{
+		BlockID:    blockID,
+		Precommits: precommits,
+	}
+}
+
 // VoteSignBytes constructs the SignBytes for the given CommitSig.
 // The only unique part of the SignBytes is the Timestamp - all other fields
 // signed over are otherwise the same for all validators.
