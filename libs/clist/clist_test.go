@@ -2,6 +2,8 @@ package clist
 
 import (
 	"fmt"
+	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -65,98 +67,100 @@ func TestSmall(t *testing.T) {
 
 // This test is quite hacky because it relies on SetFinalizer
 // which isn't guaranteed to run at all.
-//func TestGCFifo(t *testing.T) {
-//	if runtime.GOARCH != "amd64" {
-//		t.Skipf("Skipping on non-amd64 machine")
-//	}
+//nolint:unused,deadcode
+func _TestGCFifo(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("Skipping on non-amd64 machine")
+	}
 
-//	const numElements = 1000000
-//	l := New()
-//	gcCount := new(uint64)
+	const numElements = 1000000
+	l := New()
+	gcCount := new(uint64)
 
-//	// SetFinalizer doesn't work well with circular structures,
-//	// so we construct a trivial non-circular structure to
-//	// track.
-//	type value struct {
-//		Int int
-//	}
-//	done := make(chan struct{})
+	// SetFinalizer doesn't work well with circular structures,
+	// so we construct a trivial non-circular structure to
+	// track.
+	type value struct {
+		Int int
+	}
+	done := make(chan struct{})
 
-//	for i := 0; i < numElements; i++ {
-//		v := new(value)
-//		v.Int = i
-//		l.PushBack(v)
-//		runtime.SetFinalizer(v, func(v *value) {
-//			atomic.AddUint64(gcCount, 1)
-//		})
-//	}
+	for i := 0; i < numElements; i++ {
+		v := new(value)
+		v.Int = i
+		l.PushBack(v)
+		runtime.SetFinalizer(v, func(v *value) {
+			atomic.AddUint64(gcCount, 1)
+		})
+	}
 
-//	for el := l.Front(); el != nil; {
-//		l.Remove(el)
-//		//oldEl := el
-//		el = el.Next()
-//		//oldEl.DetachPrev()
-//		//oldEl.DetachNext()
-//	}
+	for el := l.Front(); el != nil; {
+		l.Remove(el)
+		//oldEl := el
+		el = el.Next()
+		//oldEl.DetachPrev()
+		//oldEl.DetachNext()
+	}
 
-//	runtime.GC()
-//	time.Sleep(time.Second * 3)
-//	runtime.GC()
-//	time.Sleep(time.Second * 3)
-//	_ = done
+	runtime.GC()
+	time.Sleep(time.Second * 3)
+	runtime.GC()
+	time.Sleep(time.Second * 3)
+	_ = done
 
-//	if *gcCount != numElements {
-//		t.Errorf("Expected gcCount to be %v, got %v", numElements,
-//			*gcCount)
-//	}
-//}
+	if *gcCount != numElements {
+		t.Errorf("Expected gcCount to be %v, got %v", numElements,
+			*gcCount)
+	}
+}
 
 // This test is quite hacky because it relies on SetFinalizer
 // which isn't guaranteed to run at all.
-// func TestGCRandom(t *testing.T) {
-// 	if runtime.GOARCH != "amd64" {
-// 		t.Skipf("Skipping on non-amd64 machine")
-// 	}
+//nolint:unused,deadcode
+func TestGCRandom(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("Skipping on non-amd64 machine")
+	}
 
-// 	const numElements = 1000000
-// 	l := New()
-// 	gcCount := 0
+	const numElements = 1000000
+	l := New()
+	gcCount := 0
 
-// 	// SetFinalizer doesn't work well with circular structures,
-// 	// so we construct a trivial non-circular structure to
-// 	// track.
-// 	type value struct {
-// 		Int int
-// 	}
+	// SetFinalizer doesn't work well with circular structures,
+	// so we construct a trivial non-circular structure to
+	// track.
+	type value struct {
+		Int int
+	}
 
-// 	for i := 0; i < numElements; i++ {
-// 		v := new(value)
-// 		v.Int = i
-// 		l.PushBack(v)
-// 		runtime.SetFinalizer(v, func(v *value) {
-// 			gcCount++
-// 		})
-// 	}
+	for i := 0; i < numElements; i++ {
+		v := new(value)
+		v.Int = i
+		l.PushBack(v)
+		runtime.SetFinalizer(v, func(v *value) {
+			gcCount++
+		})
+	}
 
-// 	els := make([]*CElement, 0, numElements)
-// 	for el := l.Front(); el != nil; el = el.Next() {
-// 		els = append(els, el)
-// 	}
+	els := make([]*CElement, 0, numElements)
+	for el := l.Front(); el != nil; el = el.Next() {
+		els = append(els, el)
+	}
 
-// 	for _, i := range cmn.RandPerm(numElements) {
-// 		el := els[i]
-// 		l.Remove(el)
-// 		_ = el.Next()
-// 	}
+	for _, i := range cmn.RandPerm(numElements) {
+		el := els[i]
+		l.Remove(el)
+		_ = el.Next()
+	}
 
-// 	runtime.GC()
-// 	time.Sleep(time.Second * 3)
+	runtime.GC()
+	time.Sleep(time.Second * 3)
 
-// 	if gcCount != numElements {
-// 		t.Errorf("Expected gcCount to be %v, got %v", numElements,
-// 			gcCount)
-// 	}
-// }
+	if gcCount != numElements {
+		t.Errorf("Expected gcCount to be %v, got %v", numElements,
+			gcCount)
+	}
+}
 
 func TestScanRightDeleteRandom(t *testing.T) {
 

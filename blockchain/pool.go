@@ -364,22 +364,23 @@ func (pool *BlockPool) sendError(err error, peerID p2p.ID) {
 }
 
 // for debugging purposes
-// func (pool *BlockPool) debug() string {
-// 	pool.mtx.Lock()
-// 	defer pool.mtx.Unlock()
+//nolint:unused
+func (pool *BlockPool) debug() string {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
 
-// 	str := ""
-// 	nextHeight := pool.height + pool.requestersLen()
-// 	for h := pool.height; h < nextHeight; h++ {
-// 		if pool.requesters[h] == nil {
-// 			str += fmt.Sprintf("H(%v):X ", h)
-// 		} else {
-// 			str += fmt.Sprintf("H(%v):", h)
-// 			str += fmt.Sprintf("B?(%v) ", pool.requesters[h].block != nil)
-// 		}
-// 	}
-// 	return str
-// }
+	str := ""
+	nextHeight := pool.height + pool.requestersLen()
+	for h := pool.height; h < nextHeight; h++ {
+		if pool.requesters[h] == nil {
+			str += fmt.Sprintf("H(%v):X ", h)
+		} else {
+			str += fmt.Sprintf("H(%v):", h)
+			str += fmt.Sprintf("B?(%v) ", pool.requesters[h].block != nil)
+		}
+	}
+	return str
+}
 
 //-------------------------------------
 

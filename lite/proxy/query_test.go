@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,8 @@ import (
 
 var node *nm.Node
 var chainID = "tendermint_test" // TODO use from config.
-// var waitForEventTimeout = 5 * time.Second
+//nolint:unused
+var waitForEventTimeout = 5 * time.Second
 
 // TODO fix tests!!
 
@@ -41,83 +43,84 @@ func kvstoreTx(k, v []byte) []byte {
 
 // TODO: enable it after general proof format has been adapted
 // in abci/examples/kvstore.go
-// func TestAppProofs(t *testing.T) {
-// 	assert, require := assert.New(t), require.New(t)
+//nolint:unused,deadcode
+func _TestAppProofs(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
 
-// 	prt := defaultProofRuntime()
-// 	cl := client.NewLocal(node)
-// 	client.WaitForHeight(cl, 1, nil)
+	prt := defaultProofRuntime()
+	cl := client.NewLocal(node)
+	client.WaitForHeight(cl, 1, nil)
 
-// 	// This sets up our trust on the node based on some past point.
-// 	source := certclient.NewProvider(chainID, cl)
-// 	seed, err := source.LatestFullCommit(chainID, 1, 1)
-// 	require.NoError(err, "%#v", err)
-// 	cert := lite.NewBaseVerifier(chainID, seed.Height(), seed.Validators)
+	// This sets up our trust on the node based on some past point.
+	source := certclient.NewProvider(chainID, cl)
+	seed, err := source.LatestFullCommit(chainID, 1, 1)
+	require.NoError(err, "%#v", err)
+	cert := lite.NewBaseVerifier(chainID, seed.Height(), seed.Validators)
 
-// 	// Wait for tx confirmation.
-// 	done := make(chan int64)
-// 	go func() {
-// 		evtTyp := types.EventTx
-// 		_, err = client.WaitForOneEvent(cl, evtTyp, waitForEventTimeout)
-// 		require.Nil(err, "%#v", err)
-// 		close(done)
-// 	}()
+	// Wait for tx confirmation.
+	done := make(chan int64)
+	go func() {
+		evtTyp := types.EventTx
+		_, err = client.WaitForOneEvent(cl, evtTyp, waitForEventTimeout)
+		require.Nil(err, "%#v", err)
+		close(done)
+	}()
 
-// 	// Submit a transaction.
-// 	k := []byte("my-key")
-// 	v := []byte("my-value")
-// 	tx := kvstoreTx(k, v)
-// 	br, err := cl.BroadcastTxCommit(tx)
-// 	require.NoError(err, "%#v", err)
-// 	require.EqualValues(0, br.CheckTx.Code, "%#v", br.CheckTx)
-// 	require.EqualValues(0, br.DeliverTx.Code)
-// 	brh := br.Height
+	// Submit a transaction.
+	k := []byte("my-key")
+	v := []byte("my-value")
+	tx := kvstoreTx(k, v)
+	br, err := cl.BroadcastTxCommit(tx)
+	require.NoError(err, "%#v", err)
+	require.EqualValues(0, br.CheckTx.Code, "%#v", br.CheckTx)
+	require.EqualValues(0, br.DeliverTx.Code)
+	brh := br.Height
 
-// 	// Fetch latest after tx commit.
-// 	<-done
-// 	latest, err := source.LatestFullCommit(chainID, 1, 1<<63-1)
-// 	require.NoError(err, "%#v", err)
-// 	rootHash := latest.SignedHeader.AppHash
-// 	if rootHash == nil {
-// 		// Fetch one block later, AppHash hasn't been committed yet.
-// 		// TODO find a way to avoid doing this.
-// 		client.WaitForHeight(cl, latest.SignedHeader.Height+1, nil)
-// 		latest, err = source.LatestFullCommit(chainID, latest.SignedHeader.Height+1, 1<<63-1)
-// 		require.NoError(err, "%#v", err)
-// 		rootHash = latest.SignedHeader.AppHash
-// 	}
-// 	require.NotNil(rootHash)
+	// Fetch latest after tx commit.
+	<-done
+	latest, err := source.LatestFullCommit(chainID, 1, 1<<63-1)
+	require.NoError(err, "%#v", err)
+	rootHash := latest.SignedHeader.AppHash
+	if rootHash == nil {
+		// Fetch one block later, AppHash hasn't been committed yet.
+		// TODO find a way to avoid doing this.
+		client.WaitForHeight(cl, latest.SignedHeader.Height+1, nil)
+		latest, err = source.LatestFullCommit(chainID, latest.SignedHeader.Height+1, 1<<63-1)
+		require.NoError(err, "%#v", err)
+		rootHash = latest.SignedHeader.AppHash
+	}
+	require.NotNil(rootHash)
 
-// 	// verify a query before the tx block has no data (and valid non-exist proof)
-// 	bs, height, proof, err := GetWithProof(prt, k, brh-1, cl, cert)
-// 	require.NoError(err, "%#v", err)
-// 	// require.NotNil(proof)
-// 	// TODO: Ensure that *some* keys will be there, ensuring that proof is nil,
-// 	// (currently there's a race condition)
-// 	// and ensure that proof proves absence of k.
-// 	require.Nil(bs)
+	// verify a query before the tx block has no data (and valid non-exist proof)
+	bs, height, proof, err := GetWithProof(prt, k, brh-1, cl, cert)
+	require.NoError(err, "%#v", err)
+	// require.NotNil(proof)
+	// TODO: Ensure that *some* keys will be there, ensuring that proof is nil,
+	// (currently there's a race condition)
+	// and ensure that proof proves absence of k.
+	require.Nil(bs)
 
-// 	// but given that block it is good
-// 	bs, height, proof, err = GetWithProof(prt, k, brh, cl, cert)
-// 	require.NoError(err, "%#v", err)
-// 	require.NotNil(proof)
-// 	require.Equal(height, brh)
+	// but given that block it is good
+	bs, height, proof, err = GetWithProof(prt, k, brh, cl, cert)
+	require.NoError(err, "%#v", err)
+	require.NotNil(proof)
+	require.Equal(height, brh)
 
-// 	assert.EqualValues(v, bs)
-// 	err = prt.VerifyValue(proof, rootHash, string(k), bs) // XXX key encoding
-// 	assert.NoError(err, "%#v", err)
+	assert.EqualValues(v, bs)
+	err = prt.VerifyValue(proof, rootHash, string(k), bs) // XXX key encoding
+	assert.NoError(err, "%#v", err)
 
-// 	// Test non-existing key.
-// 	missing := []byte("my-missing-key")
-// 	bs, _, proof, err = GetWithProof(prt, missing, 0, cl, cert)
-// 	require.NoError(err)
-// 	require.Nil(bs)
-// 	require.NotNil(proof)
-// 	err = prt.VerifyAbsence(proof, rootHash, string(missing)) // XXX VerifyAbsence(), keyencoding
-// 	assert.NoError(err, "%#v", err)
-// 	err = prt.VerifyAbsence(proof, rootHash, string(k)) // XXX VerifyAbsence(), keyencoding
-// 	assert.Error(err, "%#v", err)
-// }
+	// Test non-existing key.
+	missing := []byte("my-missing-key")
+	bs, _, proof, err = GetWithProof(prt, missing, 0, cl, cert)
+	require.NoError(err)
+	require.Nil(bs)
+	require.NotNil(proof)
+	err = prt.VerifyAbsence(proof, rootHash, string(missing)) // XXX VerifyAbsence(), keyencoding
+	assert.NoError(err, "%#v", err)
+	err = prt.VerifyAbsence(proof, rootHash, string(k)) // XXX VerifyAbsence(), keyencoding
+	assert.Error(err, "%#v", err)
+}
 
 func TestTxProofs(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
