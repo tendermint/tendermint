@@ -26,8 +26,10 @@ import (
 )
 
 func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
-	config := cfg.ResetTestRoot("mempool_test")
+	return newMempoolWithAppAndConfig(cc, cfg.ResetTestRoot("mempool_test"))
+}
 
+func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) *Mempool {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
@@ -453,22 +455,69 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 func TestMempoolTxsTotalBytes(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	config := cfg.ResetTestRoot("mempool_test")
+	config.Mempool.MaxTxsTotalBytes = 10
+	mempool := newMempoolWithAppAndConfig(cc, config)
 
+	// 1. zero by default
 	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
 
+	// 2. len(tx) after CheckTx
 	err := mempool.CheckTx([]byte{0x01}, nil)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, mempool.TxsTotalBytes())
 
+	// 3. zero again after tx is removed by Update
 	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
 	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
 
+	// 4. zero after Flush
 	err = mempool.CheckTx([]byte{0x02, 0x03}, nil)
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, mempool.TxsTotalBytes())
 
 	mempool.Flush()
+	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
+
+	// 5. ErrMempoolIsFull is returned when/if MaxTxsTotalBytes limit is reached.
+	err = mempool.CheckTx([]byte{0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04}, nil)
+	require.NoError(t, err)
+	err = mempool.CheckTx([]byte{0x05}, nil)
+	if assert.Error(t, err) {
+		assert.IsType(t, ErrMempoolIsFull{}, err)
+	}
+
+	// 6. zero after tx is rechecked and removed due to not being valid anymore
+	app2 := counter.NewCounterApplication(true)
+	cc = proxy.NewLocalClientCreator(app2)
+	mempool = newMempoolWithApp(cc)
+
+	txBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(txBytes, uint64(0))
+	txBytes2 := make([]byte, 8)
+	binary.BigEndian.PutUint64(txBytes2, uint64(1))
+
+	err = mempool.CheckTx(txBytes, nil)
+	require.NoError(t, err)
+	err = mempool.CheckTx(txBytes2, nil)
+	require.NoError(t, err)
+	assert.EqualValues(t, 16, mempool.TxsTotalBytes())
+
+	appConnCon, _ := cc.NewABCIClient()
+	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
+	err = appConnCon.Start()
+	require.Nil(t, err)
+	defer appConnCon.Stop()
+	res, err := appConnCon.DeliverTxSync(txBytes)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Code)
+	res2, err := appConnCon.CommitSync()
+	require.NoError(t, err)
+	require.NotEmpty(t, res2.Data)
+
+	// Note we say we've committed txBytes2, but actually it was txBytes.
+	// That way we can check (6).
+	mempool.Update(1, []types.Tx{txBytes2}, nil, nil)
 	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
 }
 
