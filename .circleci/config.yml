@@ -3,7 +3,7 @@ version: 2
 defaults: &defaults
   working_directory: /go/src/github.com/tendermint/tendermint
   docker:
-    - image: circleci/golang:1.11.4
+    - image: circleci/golang:1.11.5
   environment:
     GOBIN: /tmp/workspace/bin
 
@@ -279,7 +279,7 @@ jobs:
   localnet:
       working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
       machine:
-        image: circleci/classic:latest
+        image: circleci/golang:1.11.5
       environment:
         GOBIN: /home/circleci/.go_workspace/bin
         GOPATH: /home/circleci/.go_workspace/
