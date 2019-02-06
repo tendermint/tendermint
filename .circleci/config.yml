@@ -292,7 +292,7 @@ jobs:
             name: run localnet and exit on failure
             command: |
               set -x
-              docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang:latest make build-linux
+              docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang:1.11.4 make build-linux
               make localnet-start &
               ./scripts/localnet-blocks-test.sh 40 5 10 localhost
 
