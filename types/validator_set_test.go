@@ -628,7 +628,7 @@ func TestEmptySet(t *testing.T) {
 
 }
 
-func TestDetectDuplicatesInNewValidatorSet(t *testing.T) {
+func TestUpdatesForNewValidatorSet(t *testing.T) {
 
 	v1 := newValidator([]byte("v1"), 100)
 	v2 := newValidator([]byte("v2"), 100)
@@ -642,6 +642,21 @@ func TestDetectDuplicatesInNewValidatorSet(t *testing.T) {
 	v113 := newValidator([]byte("v1"), 234)
 	valList = []*Validator{v111, v112, v113}
 	assert.Panics(t, func() { NewValidatorSet(valList) })
+
+	// Verify set including validator with voting power 0 cannot be created
+	v1 = newValidator([]byte("v1"), 0)
+	v2 = newValidator([]byte("v2"), 22)
+	v3 := newValidator([]byte("v3"), 33)
+	valList = []*Validator{v1, v2, v3}
+	assert.Panics(t, func() { NewValidatorSet(valList) })
+
+	// Verify set including validator with negative voting power cannot be created
+	v1 = newValidator([]byte("v1"), 10)
+	v2 = newValidator([]byte("v2"), -20)
+	v3 = newValidator([]byte("v3"), 30)
+	valList = []*Validator{v1, v2, v3}
+	assert.Panics(t, func() { NewValidatorSet(valList) })
+
 }
 
 type testVal struct {
@@ -708,6 +723,11 @@ func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
 			[]testVal{{"v2", 0}},
 			[]testVal{{"v1", 10}, {"v3", 30}},
+			false},
+		10: { // delete all validators
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
+			[]testVal{{"v1", 0}, {"v2", 0}, {"v3", 0}},
+			[]testVal{},
 			false},
 	}
 

@@ -52,9 +52,9 @@ type ValidatorSet struct {
 // function panics.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	vals := &ValidatorSet{}
-	err := vals.UpdateWithChangeSet(valz)
+	err := vals.updateWithChangeSet(valz, false)
 	if err != nil {
-		panic(fmt.Sprintf("cannot create validator set with %v (%s)", valz, err))
+		panic(fmt.Sprintf("cannot create validator set: %s", err))
 	}
 	if len(valz) > 0 {
 		vals.IncrementProposerPriority(1)
@@ -339,6 +339,12 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 }
 
 // Checks changes against duplicates, splits the changes in updates and removals, sorts them by address
+//
+// Returns:
+// updates, removals - the sorted lists of updates and removals
+// err - non-nil if duplicate entries or entries with negative voting power are seen
+//
+// No changes are made to 'updates'
 func processChanges(origChanges []*Validator) (updates, removals []*Validator, err error) {
 	// Make a deep copy of the changes and sort by address
 	changes := validatorListCopy(origChanges)
@@ -346,60 +352,70 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 
 	removals = make([]*Validator, 0)
 	updates = make([]*Validator, 0)
-	prevAddr := []byte(nil)
+	var prevAddr Address
 
-	// Scan changes by address and append valid validators to updates or removal
+	// Scan changes by address and append valid validators to updates or removals lists
 	for _, valUpdate := range changes {
 		if bytes.Equal(valUpdate.Address, prevAddr) {
-			err := fmt.Errorf("duplicate entry %v in changes list %v", valUpdate, changes)
-			return nil, nil, err
+			err = fmt.Errorf("duplicate entry %v in %v", valUpdate, changes)
+			return
 		}
 		if valUpdate.VotingPower < 0 {
-			err := fmt.Errorf("voting power can't be negative %v", valUpdate)
-			return nil, nil, err
+			err = fmt.Errorf("voting power can't be negative %v", valUpdate)
+			return
 		}
 		if valUpdate.VotingPower == 0 {
-			// Add valUpdate to removals
 			removals = append(removals, valUpdate)
 		} else {
-			// Add valUpdate to updates
 			updates = append(updates, valUpdate)
 		}
 		prevAddr = valUpdate.Address
 	}
-	return updates, removals, nil
+	return
 }
 
 // Verifies a list of updates against a validator set, making sure the allowed
 // total voting power would not be exceeded if these updates would be applied to the set.
-// Computes the proposer priority for the validators not present in the set.
-// Returns error if first step fails.
-// 'updates' parameter must be a list of unique validators to be added or updated.
+//
+// Returns:
+// updatedTotalVotingPower - the new total voting power if these updates would be applied
+// err - non-nil if the maximum allowed total voting power would be exceeded
+//
 // No changes are made to the validator set 'vals'.
-func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorSet) error {
+func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVotingPower int64, err error) {
 
 	// Scan the updates, compute new total voting power, check for overflow
-	updatedVotingPower := vals.TotalVotingPower()
+	updatedTotalVotingPower = vals.TotalVotingPower()
 
 	for _, valUpdate := range updates {
 		address := valUpdate.Address
 		_, val := vals.GetByAddress(address)
 		if val == nil { // add
-			updatedVotingPower += valUpdate.VotingPower
+			updatedTotalVotingPower += valUpdate.VotingPower
 		} else { // update
-			updatedVotingPower += valUpdate.VotingPower - val.VotingPower
+			updatedTotalVotingPower += valUpdate.VotingPower - val.VotingPower
 		}
 
-		overflow := updatedVotingPower > MaxTotalVotingPower || updatedVotingPower < 0
+		overflow := updatedTotalVotingPower > MaxTotalVotingPower || updatedTotalVotingPower < 0
 		if overflow {
-			err := fmt.Errorf(
+			err = fmt.Errorf(
 				"failed to add/update validator %v. total voting power would exceed the max allowed %v",
-				valUpdate,
-				MaxTotalVotingPower)
-			return err
+				valUpdate, MaxTotalVotingPower)
+			return
 		}
 	}
-	// Loop again and update the proposerPriority for newly added and updated validators
+
+	return
+}
+
+// Computes the proposer priority for the validators not present in the set based on 'updatedTotalVotingPower'
+// Leaves unchanged the priorities of validators that are changed.
+//
+// 'updates' parameter must be a list of unique validators to be added or updated.
+// No changes are made to the validator set 'vals'.
+func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotalVotingPower int64) {
+
+	// Scan and update the proposerPriority for newly added and updated validators
 	for _, valUpdate := range updates {
 		address := valUpdate.Address
 		_, val := vals.GetByAddress(address)
@@ -412,20 +428,19 @@ func verifyUpdatesAndComputeNewPriorities(updates []*Validator, vals *ValidatorS
 			// not exceed the bounds of int64.
 			//
 			// Compute ProposerPriority = -1.125*totalVotingPower == -(updatedVotingPower + (updatedVotingPower >> 3)).
-			valUpdate.ProposerPriority = -(updatedVotingPower + (updatedVotingPower >> 3))
+			valUpdate.ProposerPriority = -(updatedTotalVotingPower + (updatedTotalVotingPower >> 3))
 		} else {
 			valUpdate.ProposerPriority = val.ProposerPriority
 		}
 	}
 
-	return nil
+	return
 }
 
 // Merges the vals' validator list with the updates list.
 // When two elements with same address are seen, the one from updates is selected.
-// Expects updates to be a list of updates sorted by address with no duplicates,
-// and to have been validated with verifyUpdatesAndComputeNewPriorities().
-// The validator's priorities in 'updates' should be already computed.
+// Expects updates to be a list of updates sorted by address with no duplicates or errors,
+// must have been validated with verifyUpdates() and priorities computed with computeNewPriorities().
 func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 
 	existing := make([]*Validator, len(vals.Validators))
@@ -441,7 +456,7 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 		} else {
 			merged[i] = updates[0]
 			if bytes.Equal(existing[0].Address, updates[0].Address) {
-				// validator present in both, so advance existing also
+				// validator present in both, advance existing
 				existing = existing[1:]
 			}
 			updates = updates[1:]
@@ -489,19 +504,52 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 	}
 }
 
+// Removes the validators specified in 'deletes' from validator set 'vals'.
+// 'deletes' must be sorted.
+// Should not fail as verification has been done before.
+func (vals *ValidatorSet) applyRemovals2(deletes []*Validator) {
+
+	existing := make([]*Validator, len(vals.Validators))
+	copy(existing, vals.Validators)
+
+	merged := make([]*Validator, len(existing)-len(deletes))
+	i := 0
+
+	for len(existing) > 0 && len(deletes) > 0 {
+		if bytes.Equal(existing[0].Address, deletes[0].Address) {
+			deletes = deletes[1:]
+		} else {
+			merged[i] = existing[0]
+			i++
+		}
+		existing = existing[1:]
+	}
+	for j := 0; j < len(existing); j++ {
+		merged[i] = existing[j]
+		i++
+	}
+	vals.Validators = merged[:i]
+	vals.totalVotingPower = 0
+}
+
 // UpdateWithChangeSet attempts to update the validator set with 'changes'
 // It performs the following steps:
-// - validates the changes making sure there are no duplicates and
-// separates them in updates and deletes
-// - verifies that applying the updates will not result in errors (e.g. overflows)
-// - computes the priorities of validators that are added and/or changed against the final set
-// - verifies that applying the removals will not result in errors
-//   Note: currently an error is issued if a validator to be removed is not present in the set
-// - applies the updates against the validator set and performs scaling of priority values
-// - applies the removals against the validator set and performs scaling and centering of priority values
-// If error is detected during verification steps an error is returned and the validator set
+// - validates the changes making sure there are no duplicates and splits them in updates and deletes
+// - verifies that applying the changes will not result in errors
+// - computes the priorities of new validators against the final set
+// - applies the updates against the validator set
+// - applies the removals against the validator set
+// - performs scaling and centering of priority values
+// If error is detected during verification steps it is returned and the validator set
 // is not changed.
 func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
+	return vals.updateWithChangeSet(changes, true)
+}
+
+// main function used by UpdateWithChangeSet() and NewValidatorSet()
+// If 'allowDeletes' is false then delete operations are not allowed and must be reported if
+// present in 'changes'
+func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool) error {
 
 	if len(changes) <= 0 {
 		return nil
@@ -513,9 +561,8 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 		return err
 	}
 
-	// Verify that applying the 'updates' against 'vals' will not result in error.
-	// If no errors, priorities of validators in 'updates' are computed.
-	if err = verifyUpdatesAndComputeNewPriorities(updates, vals); err != nil {
+	if !allowDeletes && len(deletes) != 0 {
+		err = fmt.Errorf("cannot process validators with voting power 0: %v", deletes)
 		return err
 	}
 
@@ -524,12 +571,21 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 		return err
 	}
 
-	// Apply updates and rescale
-	vals.applyUpdates(updates)
-	vals.RescalePriorities(PriorityWindowSizeFactor * vals.TotalVotingPower())
+	// Verify that applying the 'updates' against 'vals' will not result in error.
+	updatedTotalVotingPower, err := verifyUpdates(updates, vals)
+	if err != nil {
+		return err
+	}
 
-	// Apply removals, rescale and recenter
+	// Compute the priorities for updates
+	computeNewPriorities(updates, vals, updatedTotalVotingPower)
+
+	// Apply updates and removals
+	vals.applyUpdates(updates)
 	vals.applyRemovals(deletes)
+	//vals.applyRemovals2(deletes)
+
+	// Scale and center
 	vals.RescalePriorities(PriorityWindowSizeFactor * vals.TotalVotingPower())
 	vals.shiftByAvgProposerPriority()
 
