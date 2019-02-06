@@ -279,7 +279,7 @@ jobs:
   localnet:
       working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
       machine:
-        image: circleci/golang:1.11.5
+        image: circleci/classic:latest
       environment:
         GOBIN: /home/circleci/.go_workspace/bin
         GOPATH: /home/circleci/.go_workspace/
