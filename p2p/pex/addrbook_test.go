@@ -134,22 +134,22 @@ func analyseSelectionLayout(book *addrBook, addrs []*p2p.NetAddress) (seqLens, s
 func TestEmptyAddrBookSelection(t *testing.T) {
 	book := createAddrBookWithMOldAndNNewAddrs(t, 0, 0)
 	addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
-	assert.Nil(t, addrs, "expected a nill selection")
+	assert.Nil(t, addrs, "expected a nil selection")
 }
 
-func testAddrBookAddressSelection(t *testing.T, b int) {
+func testAddrBookAddressSelection(t *testing.T, booksize int) {
 	// generate all combinations of old (m) and new (n=b-m) addresses
-	for m := 0; m < b+1; m++ {
-		n := b - m
+	for nOld := 0; nOld < booksize+1; nOld++ {
+		nNew := booksize - nOld
 		// debug string to show the context for potential failures
-		dbgStr := fmt.Sprintf("book: size %d, number new % d, old %d", b, n, m)
+		dbgStr := fmt.Sprintf("book: size %d, number new % d, old %d", booksize, nNew, nOld)
 
 		// create book and get selection
-		book := createAddrBookWithMOldAndNNewAddrs(t, m, n)
+		book := createAddrBookWithMOldAndNNewAddrs(t, nOld, nNew)
 		addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 
 		nAddr := len(addrs)
-		assert.NotNil(t, addrs, "%s - expected a non-nill selection", dbgStr)
+		assert.NotNil(t, addrs, "%s - expected a non-nil selection", dbgStr)
 		assert.NotZero(t, nAddr, "%s - expected at least one address in selection", dbgStr)
 
 		// find the number of old and new addresses and verify that the selection is fully populated
@@ -169,8 +169,8 @@ func testAddrBookAddressSelection(t *testing.T, b int) {
 		//
 		// There is at least one partition and at most three.
 		k := percentageOfNum(biasToSelectNewPeers, nAddr)
-		expFirstNew := cmn.MinInt(n, k)
-		expOld := cmn.MinInt(m, nAddr-expFirstNew)
+		expFirstNew := cmn.MinInt(nNew, k)
+		expOld := cmn.MinInt(nOld, nAddr-expFirstNew)
 		expNew := nAddr - expOld
 		expLastNew := expNew - expFirstNew
 
@@ -185,7 +185,7 @@ func testAddrBookAddressSelection(t *testing.T, b int) {
 		// Verify that the order of addresses is as expected
 		// Get the sequence types and lengths of the selection
 		seqLens, seqTypes, err := analyseSelectionLayout(book, addrs)
-		assert.NoError(t, err, "%s - expected a non-nill selection", dbgStr)
+		assert.NoError(t, err, "%s - expected a non-nil selection", dbgStr)
 
 		// Build a list with the expected lengths of partitions and another with the expected types, e.g.:
 		// expSeqLens = [10, 22], expSeqTypes = [1, 2]
@@ -220,14 +220,14 @@ func testAddrBookAddressSelection(t *testing.T, b int) {
 			"%s - expected sequence lengths of old/new %v, got %v",
 			dbgStr, expSeqLens, seqLens)
 		assert.Equal(t, expSeqTypes, seqTypes,
-			"%s - expected sequence lengths of old/new %v, got %v",
-			dbgStr, expSeqLens, seqLens)
+			"%s - expected sequence types (1-new, 2-old) was %v, got %v",
+			dbgStr, expSeqTypes, seqTypes)
 	}
 }
 
 func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	// test books with smaller size, < N
-	N := 32
+	const N = 32
 	for b := 1; b < N; b++ {
 		testAddrBookAddressSelection(t, b)
 	}
