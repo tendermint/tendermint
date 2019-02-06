@@ -83,7 +83,7 @@ jobs:
           command: |
             set -ex
             export PATH="$GOBIN:$PATH"
-            make metalinter
+            make lint
       - run:
           name: check_dep
           command: |
