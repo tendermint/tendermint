@@ -444,15 +444,18 @@ func testAddrBookAddressSelection(t *testing.T, bookSize int) {
 		defer deleteTempFile(fname)
 		addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 		assert.NotNil(t, addrs, "%s - expected a non-nil selection", dbgStr)
-
 		nAddrs := len(addrs)
-
 		assert.NotZero(t, nAddrs, "%s - expected at least one address in selection", dbgStr)
 
-		// find the number of old and new addresses and verify that the selection
-		// is fully populated (i.e. there are no nil addresses)
+		// check there's no nil addresses
+		for _, addr := range addrs {
+			if addr == nil {
+				t.Fatalf("%s - got nil address in selection %v", dbgStr, addrs)
+			}
+		}
+
+		// XXX: shadowing
 		nOld, nNew := countOldAndNewAddrsInSelection(addrs, book)
-		assertMOldAndNNewAddrsInSelection(t, nOld, nNew, addrs, book)
 
 		// Given:
 		// n - num new addrs, m - num old addrs
@@ -474,8 +477,6 @@ func testAddrBookAddressSelection(t *testing.T, bookSize int) {
 		)
 
 		// Verify that the number of old and new addresses are as expected
-		// XXX: Why verify expected numbers if assertMOldAndNNewAddrsInSelection
-		// which does exact comparison passes?
 		if nNew < expNew || nNew > expNew {
 			t.Fatalf("%s - expected new addrs %d, got %d", dbgStr, expNew, nNew)
 		}
