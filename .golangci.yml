@@ -25,7 +25,6 @@ linters:
     - scopelint
     - stylecheck
     - deadcode
-    - prealloc
 
 # linters-settings:
 #   govet:
