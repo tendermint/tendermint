@@ -112,9 +112,18 @@ func (wal *baseWAL) OnStart() error {
 	return err
 }
 
+// Stop the underlying autofile group.
+// Use Wait() to ensure it's finished shutting down
+// before cleaning up files.
 func (wal *baseWAL) OnStop() {
 	wal.group.Stop()
 	wal.group.Close()
+}
+
+// Wait for the underlying autofile group to finish shutting down
+// so it's safe to cleanup files.
+func (wal *baseWAL) Wait() {
+	wal.group.Wait()
 }
 
 // Write is called in newStep and for each receive on the
