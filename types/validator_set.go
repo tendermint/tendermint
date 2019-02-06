@@ -12,16 +12,19 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// The maximum allowed total voting power.
+// MaxTotalVotingPower - The maximum allowed total voting power.
 // It needs to be sufficiently small to, in all cases::
 // 1. prevent clipping in incrementProposerPriority()
-// 2. let (diff+diffMax-1) not overflow in IncrementPropposerPriotity()
+// 2. let (diff+diffMax-1) not overflow in IncrementProposerPriority()
 // (Proof of 1 is tricky, left to the reader).
 // It could be higher, but this is sufficiently large for our purposes,
 // and leaves room for defensive purposes.
+// PriorityWindowSizeFactor - is a constant that when multiplied with the total voting power gives
+// the maximum allowed distance between validator priorities.
+
 const (
-	MaxTotalVotingPower = int64(math.MaxInt64) / 8
-	K                   = 2
+	MaxTotalVotingPower      = int64(math.MaxInt64) / 8
+	PriorityWindowSizeFactor = 2
 )
 
 // ValidatorSet represent a set of *Validator at a given height.
@@ -85,7 +88,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	// Cap the difference between priorities to be proportional to 2*totalPower by
 	// re-normalizing priorities, i.e., rescale all priorities by multiplying with:
 	//  2*totalVotingPower/(maxPriority - minPriority)
-	diffMax := K * vals.TotalVotingPower()
+	diffMax := PriorityWindowSizeFactor * vals.TotalVotingPower()
 	vals.RescalePriorities(diffMax)
 	vals.shiftByAvgProposerPriority()
 
@@ -523,11 +526,11 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 
 	// Apply updates and rescale
 	vals.applyUpdates(updates)
-	vals.RescalePriorities(K * vals.TotalVotingPower())
+	vals.RescalePriorities(PriorityWindowSizeFactor * vals.TotalVotingPower())
 
 	// Apply removals, rescale and recenter
 	vals.applyRemovals(deletes)
-	vals.RescalePriorities(K * vals.TotalVotingPower())
+	vals.RescalePriorities(PriorityWindowSizeFactor * vals.TotalVotingPower())
 	vals.shiftByAvgProposerPriority()
 
 	return nil
