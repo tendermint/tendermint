@@ -954,7 +954,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	if cs.Height == 1 {
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = &types.Commit{}
+		commit = types.NewCommit(types.BlockID{}, nil)
 	} else if cs.LastCommit.HasTwoThirdsMajority() {
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
