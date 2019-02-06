@@ -228,11 +228,14 @@ test_race:
 
 # uses https://github.com/sasha-s/go-deadlock/ to detect potential deadlocks
 test_with_deadlock:
+	make set_with_deadlock
+	make test
+	make cleanup_after_test_with_deadlock
+
+set_with_deadlock:
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.RWMutex/deadlock.RWMutex/'
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.Mutex/deadlock.Mutex/'
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 goimports -w
-	make test
-	make cleanup_after_test_with_deadlock
 
 # cleanes up after you ran test_with_deadlock
 cleanup_after_test_with_deadlock:
