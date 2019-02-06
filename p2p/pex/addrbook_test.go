@@ -45,6 +45,11 @@ func TestAddrBookGetSelectionWithOneMarkedGood(t *testing.T) {
 	// this used to result in an infinite loop (!)
 	addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 	assert.NotNil(t, addrs, "expected an address")
+	nAddr := len(addrs)
+	nOld, nNew := countOldAndNewInAddrs(addrs, book)
+	assert.Equal(t, nAddr, nOld+nNew,
+		"expected only non-nil addresses, got %v new, %v old, %v nil",
+		nNew, nOld, nAddr-nOld-nNew)
 }
 
 func TestAddrBookGetSelectionWithOneNotMarkedGood(t *testing.T) {
@@ -55,6 +60,11 @@ func TestAddrBookGetSelectionWithOneNotMarkedGood(t *testing.T) {
 	// this used to result in an infinite loop (!)
 	addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 	assert.NotNil(t, addrs, "expected an address")
+	nAddr := len(addrs)
+	nOld, nNew := countOldAndNewInAddrs(addrs, book)
+	assert.Equal(t, nAddr, nOld+nNew,
+		"expected only non-nil addresses, got %v new, %v old, %v nil",
+		nNew, nOld, nAddr-nOld-nNew)
 }
 
 // Creates a Book with m old and n new addresses.
@@ -155,7 +165,9 @@ func testAddrBookAddressSelection(t *testing.T, booksize int) {
 		// find the number of old and new addresses and verify that the selection is fully populated
 		// (i.e. there are no nil addresses)
 		numOld, numNew := countOldAndNewInAddrs(addrs, book)
-		assert.Equal(t, nAddr, numOld+numNew, "%s - expected selection completely filled", dbgStr)
+		assert.Equal(t, nAddr, numOld+numNew,
+			"%s - expected only non-nil addresses, got %v new, %v old, %v nil",
+			dbgStr, numNew, numOld, nAddr-numOld-numNew)
 
 		// Given:
 		// n - num new addrs, m - num old addrs
