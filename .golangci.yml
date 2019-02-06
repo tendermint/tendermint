@@ -24,7 +24,6 @@ linters:
     - gochecknoinits
     - scopelint
     - stylecheck
-    - deadcode
 
 # linters-settings:
 #   govet:
