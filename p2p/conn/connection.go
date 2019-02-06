@@ -166,9 +166,6 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 		onError:       onError,
 		config:        config,
 		created:       time.Now(),
-
-		quitSendRoutine: make(chan struct{}),
-		doneSendRoutine: make(chan struct{}),
 	}
 
 	// Create channels
@@ -207,6 +204,8 @@ func (c *MConnection) OnStart() error {
 	c.pingTimer = cmn.NewRepeatTimer("ping", c.config.PingInterval)
 	c.pongTimeoutCh = make(chan bool, 1)
 	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateStats)
+	c.quitSendRoutine = make(chan struct{})
+	c.doneSendRoutine = make(chan struct{})
 	go c.sendRoutine()
 	go c.recvRoutine()
 	return nil
