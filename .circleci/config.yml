@@ -3,7 +3,7 @@ version: 2
 defaults: &defaults
   working_directory: /go/src/github.com/tendermint/tendermint
   docker:
-    - image: circleci/golang:1.11.5
+    - image: circleci/golang:1.11.4
   environment:
     GOBIN: /tmp/workspace/bin
 
@@ -292,9 +292,7 @@ jobs:
             name: run localnet and exit on failure
             command: |
               set -x
-              make get_tools
-              make get_vendor_deps
-              make build-linux
+              docker run --rm -v "$PWD":/usr/src/github.com/tendermint/tendermint -w /usr/src/github.com/tendermint/tendermint golang:latest make build-linux
               make localnet-start &
               ./scripts/localnet-blocks-test.sh 40 5 10 localhost
 
