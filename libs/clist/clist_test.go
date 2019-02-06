@@ -117,7 +117,7 @@ func _TestGCFifo(t *testing.T) {
 // This test is quite hacky because it relies on SetFinalizer
 // which isn't guaranteed to run at all.
 //nolint:unused,deadcode
-func TestGCRandom(t *testing.T) {
+func _TestGCRandom(t *testing.T) {
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("Skipping on non-amd64 machine")
 	}
