@@ -8,6 +8,7 @@ Special thanks to external contributors on this release:
 
 * CLI/RPC/Config
   - [rpc] \#3113 rename n_txs to count in `/num_unconfirmed_txs` and `/unconfirmed_txs`
+  - [config] \#3079 rename `mempool.size` to `mempool.max_txs`
 
 * Apps
 

@@ -534,7 +534,7 @@ type MempoolConfig struct {
 	Recheck          bool   `mapstructure:"recheck"`
 	Broadcast        bool   `mapstructure:"broadcast"`
 	WalPath          string `mapstructure:"wal_dir"`
-	Size             int    `mapstructure:"size"`
+	MaxTxs           int    `mapstructure:"max_txs"`
 	MaxTxsTotalBytes int64  `mapstructure:"max_txs_total_bytes"`
 	CacheSize        int    `mapstructure:"cache_size"`
 }
@@ -545,9 +545,9 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Recheck:   true,
 		Broadcast: true,
 		WalPath:   "",
-		// Each signature verification takes .5ms, Size reduced until we implement
+		// Each signature verification takes .5ms, MaxTxs reduced until we implement
 		// ABCI Recheck
-		Size:             5000,
+		MaxTxs:           5000,
 		MaxTxsTotalBytes: 1024 * 1024 * 1024, // 1GB
 		CacheSize:        10000,
 	}
@@ -573,7 +573,7 @@ func (cfg *MempoolConfig) WalEnabled() bool {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *MempoolConfig) ValidateBasic() error {
-	if cfg.Size < 0 {
+	if cfg.MaxTxs < 0 {
 		return errors.New("size can't be negative")
 	}
 	if cfg.MaxTxsTotalBytes < 0 {
