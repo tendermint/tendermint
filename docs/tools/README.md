@@ -1,4 +1,7 @@
 # Overview
 
-Tendermint comes with some tools for [benchmarking](./benchmarking.md)
-and [monitoring](./monitoring.md).
+Tendermint comes with some tools for:
+
+* [Benchmarking](./benchmarking.md)
+* [Monitoring](./monitoring.md)
+* [Validation of remote signers](./remote-signer-validation.md)
