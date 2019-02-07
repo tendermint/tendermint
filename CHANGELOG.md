@@ -18,6 +18,7 @@ Also adds support for the libsecp256k1 package as found in go-ethereum.
     In preparation for removing redundant fields from the commit [\#1648](https://github.com/tendermint/tendermint/issues/1648)
 
 ### IMPROVEMENTS:
+- [consensus] [\#3246](https://github.com/tendermint/tendermint/issues/3246) Better logging and notes on recovery for corrupted WAL file
 - [crypto] [\#3163](https://github.com/tendermint/tendermint/issues/3163) Use ethereum's libsecp256k1 go-wrapper for signatures when cgo is available
 - [crypto] [\#3162](https://github.com/tendermint/tendermint/issues/3162) Wrap btcd instead of forking it to keep up with fixes (used if cgo is not available)
 - [makefile] [\#3233](https://github.com/tendermint/tendermint/issues/3233) Use golangci-lint instead of go-metalinter
