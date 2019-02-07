@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -60,8 +61,17 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	eventCh := make(chan *ctypes.ResultEvent, 1)
+	errCh := make(chan error, 1)
+	callback := func(event *ctypes.ResultEvent, err error) {
+		if err != nil {
+			errCh <- err
+		} else {
+			eventCh <- event
+		}
+	}
 	// register for the next event of this type
-	sub, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(evtTyp))
+	err := c.Subscribe(ctx, subscriber, types.QueryForEvent(evtTyp).String(), callback)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to subscribe")
 	}
@@ -69,10 +79,10 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	defer c.UnsubscribeAll(ctx, subscriber)
 
 	select {
-	case msg := <-sub.Out():
-		return msg.Data().(types.TMEventData), nil
-	case <-sub.Cancelled():
-		return nil, errors.New("subscription was cancelled")
+	case event := <-eventCh:
+		return event.Data.(types.TMEventData), nil
+	case err := <-errCh:
+		return nil, err
 	case <-ctx.Done():
 		return nil, errors.New("timed out waiting for event")
 	}

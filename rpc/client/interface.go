@@ -21,6 +21,8 @@ implementation.
 */
 
 import (
+	"context"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -88,10 +90,23 @@ type NetworkClient interface {
 	Health() (*ctypes.ResultHealth, error)
 }
 
+// EventCallback is used by Subscribe to deliver events.
+type EventCallback func(event *ctypes.ResultEvent, err error)
+
 // EventsClient is reactive, you can subscribe to any message, given the proper
 // string. see tendermint/types/events.go
 type EventsClient interface {
-	types.EventBusSubscriber
+	// Subscribe subscribes given subscriber to query. When a matching event is
+	// published, callback is called (err is nil). When/if subscription is
+	// terminated, callback is called again with non-nil error.
+	//
+	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
+	// or UnsubscribeAll.
+	Subscribe(ctx context.Context, subscriber, query string, callback EventCallback) error
+	// Unsubscribe unsubscribes given subscriber from query.
+	Unsubscribe(ctx context.Context, subscriber, query string) error
+	// UnsubscribeAll unsubscribes given subscriber from all the queries.
+	UnsubscribeAll(ctx context.Context, subscriber string) error
 }
 
 // MempoolClient shows us data about current mempool state.

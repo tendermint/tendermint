@@ -3,8 +3,10 @@ package client
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -140,14 +142,47 @@ func (Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.Resu
 	return core.TxSearch(query, prove, page, perPage)
 }
 
-func (c *Local) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (types.Subscription, error) {
-	return c.EventBus.Subscribe(ctx, subscriber, query, outCapacity...)
+// Subscribe implements EventsClient by using local eventBus to subscribe given
+// subscriber to query.
+func (c *Local) Subscribe(ctx context.Context, subscriber, query string, callback EventCallback) error {
+	q, err := tmquery.New(query)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse query")
+	}
+	sub, err := c.EventBus.Subscribe(ctx, subscriber, q)
+	if err != nil {
+		return errors.Wrap(err, "failed to subscribe")
+	}
+
+	go func() {
+		for {
+			select {
+			case msg := <-sub.Out():
+				// can panic
+				callback(&ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}, nil)
+			case <-sub.Cancelled():
+				// can panic
+				callback(nil, sub.Err())
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
-func (c *Local) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
-	return c.EventBus.Unsubscribe(ctx, subscriber, query)
+// Unsubscribe implements EventsClient by using local eventBus to unsubscribe
+// given subscriber from query.
+func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error {
+	q, err := tmquery.New(query)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse query")
+	}
+	return c.EventBus.Unsubscribe(ctx, subscriber, q)
 }
 
+// UnsubscribeAll implements EventsClient by using local eventBus to
+// unsubscribe given subscriber from all queries.
 func (c *Local) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	return c.EventBus.UnsubscribeAll(ctx, subscriber)
 }
