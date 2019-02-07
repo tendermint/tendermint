@@ -509,11 +509,11 @@ type Commit struct {
 	BlockID    BlockID      `json:"block_id"`
 	Precommits []*CommitSig `json:"precommits"`
 
-	// memoized in constructor from Precommits
-	height int64
-	round  int
-
 	// memoized in first call to corresponding method
+	// NOTE: can't memoize in constructor because constructor
+	// isn't used for unmarshaling
+	height   int64
+	round    int
 	hash     cmn.HexBytes
 	bitArray *cmn.BitArray
 }
@@ -522,13 +522,9 @@ type Commit struct {
 // TODO: memoize ValidatorSet in constructor so votes can be easily reconstructed
 // from CommitSig after #1648.
 func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
-	height, round := firstHeightRound(precommits)
 	return &Commit{
 		BlockID:    blockID,
 		Precommits: precommits,
-
-		height: height,
-		round:  round,
 	}
 }
 
@@ -539,20 +535,22 @@ func (commit *Commit) VoteSignBytes(chainID string, cs *CommitSig) []byte {
 	return commit.ToVote(cs).SignBytes(chainID)
 }
 
-// firstHeightRound returns the height and round from the first non-nil precommit.
-func firstHeightRound(precommits []*CommitSig) (height int64, round int) {
-	if len(precommits) == 0 {
+// memoizeHeightRound memoizes the height and round of the commit using
+// the first non-nil vote.
+func (commit *Commit) memoizeHeightRound() {
+	if len(commit.Precommits) == 0 {
 		return
 	}
-	for _, precommit := range precommits {
+	if commit.height > 0 {
+		return
+	}
+	for _, precommit := range commit.Precommits {
 		if precommit != nil {
-			return precommit.Height, precommit.Round
+			commit.height = precommit.Height
+			commit.round = precommit.Round
+			return
 		}
 	}
-	// All precommits were nil.
-	// This should not happen in practice,
-	// but we try it in tests.
-	return
 }
 
 // ToVote converts a CommitSig to a Vote.
@@ -565,11 +563,13 @@ func (commit *Commit) ToVote(cs *CommitSig) *Vote {
 
 // Height returns the height of the commit
 func (commit *Commit) Height() int64 {
+	commit.memoizeHeightRound()
 	return commit.height
 }
 
 // Round returns the round of the commit
 func (commit *Commit) Round() int {
+	commit.memoizeHeightRound()
 	return commit.round
 }
 
