@@ -144,8 +144,8 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 		if err == io.EOF {
 			break
 		} else if IsDataCorruptionError(err) {
-			cs.Logger.Debug("data has been corrupted in last height of consensus WAL", "err", err, "height", csHeight)
-			panic(fmt.Sprintf("data has been corrupted (%v) in last height %d of consensus WAL", err, csHeight))
+			cs.Logger.Error("data has been corrupted in last height of consensus WAL", "err", err, "height", csHeight)
+			return err
 		} else if err != nil {
 			return err
 		}

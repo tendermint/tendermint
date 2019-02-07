@@ -321,17 +321,12 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, valset.Validators))
 		}
 
-		// Collect the vote info (list of validators and whether or not they signed).
-		for i, val := range valset.Validators {
-			var vote *types.Vote
-			if i < len(block.LastCommit.Precommits) {
-				vote = block.LastCommit.Precommits[i]
-			}
-			voteInfo := abci.VoteInfo{
-				Validator:       types.TM2PB.Validator(val),
-				SignedLastBlock: vote != nil,
-			}
-			voteInfos[i] = voteInfo
+	// Collect the vote info (list of validators and whether or not they signed).
+	voteInfos := make([]abci.VoteInfo, len(lastValSet.Validators))
+	for i, val := range lastValSet.Validators {
+		var vote *types.CommitSig
+		if i < len(block.LastCommit.Precommits) {
+			vote = block.LastCommit.Precommits[i]
 		}
 
 		for i, ev := range block.Evidence.Evidence {
