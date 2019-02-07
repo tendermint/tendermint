@@ -20,11 +20,13 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [tools] add go-deadlock tool to help detect deadlocks
-- [crypto] \#3163 use ethereum's libsecp256k1 go-wrapper for signatures when cgo is available
-- [crypto] \#3162 wrap btcd instead of forking it to keep up with fixes (used if cgo is not available)
+- [tools] Add go-deadlock tool to help detect deadlocks
+- [tools] \#3106 Add tm-signer-harness test harness for remote signers
+- [crypto] \#3163 Use ethereum's libsecp256k1 go-wrapper for signatures when cgo is available
+- [crypto] \#3162 Wrap btcd instead of forking it to keep up with fixes (used if cgo is not available)
 
 ### BUG FIXES:
 - [node] \#3186 EventBus and indexerService should be started before first block (for replay last block on handshake) execution
+- [p2p] \#3232 Fix infinite loop leading to addrbook deadlock for seed nodes
 - [p2p] \#3247 Fix panic in SeedMode when calling FlushStop and OnStop
   concurrently

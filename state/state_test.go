@@ -938,10 +938,6 @@ func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
 	}
 }
 
-func pk() []byte {
-	return ed25519.GenPrivKey().PubKey().Bytes()
-}
-
 func TestApplyUpdates(t *testing.T) {
 	initParams := makeParams(1, 2, 3)
 
