@@ -528,7 +528,7 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 
 	// Test for two books with sizes from following ranges
 	ranges := [...][]int{{33, 100}, {100, 175}}
-	var bookSizes []int
+	bookSizes := make([]int, 0, len(ranges))
 	for _, r := range ranges {
 		bookSizes = append(bookSizes, cmn.RandIntn(r[1]-r[0])+r[0])
 	}
