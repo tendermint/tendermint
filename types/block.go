@@ -490,8 +490,8 @@ func (cs *CommitSig) String() string {
 }
 
 // toVote converts the CommitSig to a vote.
-// Once CommitSig has fewer fields than vote,
-// converting to a Vote will require more information.
+// TODO: deprecate for #1648. Converting to Vote will require
+// access to ValidatorSet.
 func (cs *CommitSig) toVote() *Vote {
 	if cs == nil {
 		return nil
@@ -557,10 +557,9 @@ func firstHeightRound(precommits []*CommitSig) (height int64, round int) {
 
 // ToVote converts a CommitSig to a Vote.
 // If the CommitSig is nil, the Vote will be nil.
-// When CommitSig is reduced to contain fewer fields,
-// this will need access to the ValidatorSet to properly
-// reconstruct the vote.
 func (commit *Commit) ToVote(cs *CommitSig) *Vote {
+	// TODO: use commit.validatorSet to reconstruct vote
+	// and deprecate .toVote
 	return cs.toVote()
 }
 
@@ -601,9 +600,10 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 }
 
 // GetByIndex returns the vote corresponding to a given validator index.
+// Panics if `index >= commit.Size()`.
 // Implements VoteSetReader.
 func (commit *Commit) GetByIndex(index int) *Vote {
-	return commit.Precommits[index].toVote()
+	return commit.ToVote(commit.Precommits[index])
 }
 
 // IsCommit returns true if there is at least one vote.
