@@ -368,8 +368,23 @@ func ensureNewEvent(ch <-chan tmpubsub.Message, height int64, round int, timeout
 	}
 }
 
-func ensureNewRoundStep(stepCh <-chan tmpubsub.Message, height int64, round int) {
-	ensureNewEvent(stepCh, height, round, ensureTimeout, "Timeout expired while waiting for NewStep event")
+func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for NewRound event")
+	case msg := <-roundCh:
+		newRoundEvent, ok := msg.Data().(types.EventDataNewRound)
+		if !ok {
+			panic(fmt.Sprintf("expected a EventDataNewRound, got %T. Wrong subscription channel?",
+				msg.Data()))
+		}
+		if newRoundEvent.Height != height {
+			panic(fmt.Sprintf("expected height %v, got %v", height, newRoundEvent.Height))
+		}
+		if newRoundEvent.Round != round {
+			panic(fmt.Sprintf("expected round %v, got %v", round, newRoundEvent.Round))
+		}
+	}
 }
 
 func ensureNewTimeout(timeoutCh <-chan tmpubsub.Message, height int64, round int, timeout int64) {
