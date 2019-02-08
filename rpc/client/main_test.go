@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 	// start a tendermint node (and kvstore) in the background to test against
 	dir, err := ioutil.TempDir("/tmp", "rpc-client-test")
 	if err != nil {
-		fmt.Println(err)
+		m.Fatal(err)
 		os.Exit(1)
 	}
 	app := kvstore.NewPersistentKVStoreApplication(dir)
