@@ -1,5 +1,52 @@
 # Changelog
 
+## v0.30.0
+
+*February 8th, 2019*
+
+This release fixes yet another issue with the proposer selection algorithm.
+We hope it's the last one, but we won't be surprised if it's not.
+We plan to one day expose the selection algorithm more directly to
+the application ([\#3285](https://github.com/tendermint/tendermint/issues/3285)), and even to support randomness ([\#763](https://github.com/tendermint/tendermint/issues/763)).
+For more, see issues marked
+[proposer-selection](https://github.com/tendermint/tendermint/labels/proposer-selection).
+
+This release also includes a fix to prevent Tendermint from including the same
+piece of evidence in more than one block. This issue was reported by @chengwenxi in our
+[bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+* Apps
+  - [state] [\#3222](https://github.com/tendermint/tendermint/issues/3222)
+    Duplicate updates for the same validator are forbidden. Apps must ensure
+    that a given `ResponseEndBlock.ValidatorUpdates` contains only one entry per pubkey.
+
+* Go API
+  - [types] [\#3222](https://github.com/tendermint/tendermint/issues/3222)
+    Remove `Add` and `Update` methods from `ValidatorSet` in favor of new
+    `UpdateWithChangeSet`. This allows updates to be applied as a set, instead of
+    one at a time.
+
+* Block Protocol
+  - [state] [\#3286](https://github.com/tendermint/tendermint/issues/3286) Blocks that include already committed evidence are invalid.
+
+* P2P Protocol
+  - [consensus] [\#3222](https://github.com/tendermint/tendermint/issues/3222)
+    Validator updates are applied as a set, instead of one at a time, thus
+    impacting the proposer priority calculation. This ensures that the proposer
+    selection algorithm does not depend on the order of updates in
+    `ResponseEndBlock.ValidatorUpdates`.
+
+### IMPROVEMENTS:
+- [crypto] [\#3279](https://github.com/tendermint/tendermint/issues/3279) Use `btcec.S256().N` directly instead of hard coding a copy.
+
+### BUG FIXES:
+- [state] [\#3222](https://github.com/tendermint/tendermint/issues/3222) Fix validator set updates so they are applied as a set, rather
+  than one at a time. This makes the proposer selection algorithm independent of
+  the order of updates in `ResponseEndBlock.ValidatorUpdates`.
+- [evidence] [\#3286](https://github.com/tendermint/tendermint/issues/3286) Don't add committed evidence to evidence pool.
+
 ## v0.29.2
 
 *February 7th, 2019*
@@ -11,7 +58,7 @@ Special thanks to external contributors on this release:
 `crypto` packages:
 - p2p:
   - Partial fix for MITM attacks on the p2p connection. MITM conditions may
-    still exist. See \#3010.
+    still exist. See [\#3010](https://github.com/tendermint/tendermint/issues/3010).
 - crypto:
   - Eliminate our fork of `btcd` and use the `btcd/btcec` library directly for
     native secp256k1 signing. Note we still modify the signature encoding to

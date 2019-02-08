@@ -1,4 +1,4 @@
-## v0.30
+## v0.31.0
 
 **
 
@@ -14,8 +14,6 @@ Special thanks to external contributors on this release:
 
 * Blockchain Protocol
 
- - [types] Reject blocks which contain already committed evidence
-
 * P2P Protocol
 
 ### FEATURES:
@@ -23,6 +21,3 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
-
- - [evidence] Do not store evidence which was already marked as committed
-
