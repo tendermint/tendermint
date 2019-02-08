@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -26,6 +26,7 @@ func NewDominoOp(key, input, output string) DominoOp {
 	}
 }
 
+//nolint:unused
 func DominoOpDecoder(pop ProofOp) (ProofOperator, error) {
 	if pop.Type != ProofOpDomino {
 		panic("unexpected proof op type")

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
 	// "sync"
 	"testing"
 	"time"
@@ -38,7 +39,12 @@ func TestWALTruncate(t *testing.T) {
 	wal.SetLogger(log.TestingLogger())
 	err = wal.Start()
 	require.NoError(t, err)
-	defer wal.Stop()
+	defer func() {
+		wal.Stop()
+		// wait for the wal to finish shutting down so we
+		// can safely remove the directory
+		wal.Wait()
+	}()
 
 	//60 block's size nearly 70K, greater than group's headBuf size(4096 * 10), when headBuf is full, truncate content will Flush to the file.
 	//at this time, RotateFile is called, truncate content exist in each file.
@@ -67,8 +73,8 @@ func TestWALTruncate(t *testing.T) {
 func TestWALEncoderDecoder(t *testing.T) {
 	now := tmtime.Now()
 	msgs := []TimedWALMessage{
-		TimedWALMessage{Time: now, Msg: EndHeightMessage{0}},
-		TimedWALMessage{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
+		{Time: now, Msg: EndHeightMessage{0}},
+		{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
 	}
 
 	b := new(bytes.Buffer)

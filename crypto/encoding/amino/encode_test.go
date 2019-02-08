@@ -25,9 +25,8 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 		assert.Equal(t, byterSrc.Bytes(), bz, "Amino binary vs Bytes() mismatch")
 	}
 	// Make sure we have the expected length.
-	if size != -1 {
-		assert.Equal(t, size, len(bz), "Amino binary size mismatch")
-	}
+	assert.Equal(t, size, len(bz), "Amino binary size mismatch")
+
 	// Unmarshal.
 	err = cdc.UnmarshalBinaryBare(bz, dst)
 	require.Nil(t, err, "%+v", err)
