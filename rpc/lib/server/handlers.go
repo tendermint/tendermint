@@ -113,43 +113,56 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			return
 		}
 
-		var request types.RPCRequest
-		err = json.Unmarshal(b, &request)
+		// first try to unmarshal the incoming request as an array of RPC requests
+		var requests []types.RPCRequest
+		var responses []types.RPCResponse
+		err = json.Unmarshal(b, &requests)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshalling request")))
-			return
-		}
-		// A Notification is a Request object without an "id" member.
-		// The Server MUST NOT reply to a Notification, including those that are within a batch request.
-		if request.ID == types.JSONRPCStringID("") {
-			logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
-			return
-		}
-		if len(r.URL.Path) > 1 {
-			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(request.ID, errors.Errorf("Path %s is invalid", r.URL.Path)))
-			return
-		}
-		rpcFunc := funcMap[request.Method]
-		if rpcFunc == nil || rpcFunc.ws {
-			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
-			return
-		}
-		var args []reflect.Value
-		if len(request.Params) > 0 {
-			args, err = jsonParamsToArgsRPC(rpcFunc, cdc, request.Params)
+			// next, try to unmarshal as a single request
+			var request types.RPCRequest
+			err = json.Unmarshal(b, &request)
 			if err != nil {
-				WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+				WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshalling request")))
 				return
 			}
+			requests = []types.RPCRequest{request}
 		}
-		returns := rpcFunc.f.Call(args)
-		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
-		result, err := unreflectResult(returns)
-		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, err))
-			return
+
+		for i := 0; i < len(requests); i++ {
+			request := requests[i]
+			// A Notification is a Request object without an "id" member.
+			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
+			if request.ID == types.JSONRPCStringID("") {
+				logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
+				continue
+			}
+			if len(r.URL.Path) > 1 {
+				responses = append(responses, types.RPCInvalidRequestError(request.ID, errors.Errorf("Path %s is invalid", r.URL.Path)))
+				continue
+			}
+			rpcFunc := funcMap[request.Method]
+			if rpcFunc == nil || rpcFunc.ws {
+				responses = append(responses, types.RPCMethodNotFoundError(request.ID))
+				continue
+			}
+			var args []reflect.Value
+			if len(request.Params) > 0 {
+				args, err = jsonParamsToArgsRPC(rpcFunc, cdc, request.Params)
+				if err != nil {
+					responses = append(responses, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+					continue
+				}
+			}
+			returns := rpcFunc.f.Call(args)
+			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
+			result, err := unreflectResult(returns)
+			if err != nil {
+				responses = append(responses, types.RPCInternalError(request.ID, err))
+				continue
+			}
+			responses = append(responses, types.NewRPCSuccessResponse(cdc, request.ID, result))
 		}
-		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
+		WriteRPCResponseArrayHTTP(w, responses)
 	}
 }
 

@@ -11,7 +11,9 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -434,4 +436,62 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 	}
+}
+
+func TestBatchedJSONRPCCalls(t *testing.T) {
+	c := getHTTPClient()
+	k1, v1, tx1 := MakeTxKV()
+	k2, v2, tx2 := MakeTxKV()
+
+	c.StartBatch()
+	_, err := c.BroadcastTxCommit(tx1)
+	require.NoError(t, err)
+	_, err = c.BroadcastTxCommit(tx2)
+	require.NoError(t, err)
+	bresults, err := c.SendBatch()
+	require.NoError(t, err)
+	require.Len(t, bresults, 2)
+
+	bresult0, ok := bresults[0].(*ctypes.ResultBroadcastTxCommit)
+	require.True(t, ok)
+	bresult1, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
+	require.True(t, ok)
+	apph := cmn.MaxInt64(bresult0.Height, bresult1.Height) + 1
+
+	client.WaitForHeight(c, apph, nil)
+
+	c.StartBatch()
+	_, err = c.ABCIQuery("/key", k1)
+	require.NoError(t, err)
+	_, err = c.ABCIQuery("/key", k2)
+	require.NoError(t, err)
+	qresults, err := c.SendBatch()
+	require.NoError(t, err)
+	require.Len(t, qresults, 2)
+
+	qresult0, ok := qresults[0].(*ctypes.ResultABCIQuery)
+	require.True(t, ok)
+	qresult1, ok := qresults[1].(*ctypes.ResultABCIQuery)
+	require.True(t, ok)
+
+	require.Equal(t, qresult0.Response.Key, k1)
+	require.Equal(t, qresult1.Response.Key, k2)
+	require.Equal(t, qresult0.Response.Value, v1)
+	require.Equal(t, qresult1.Response.Value, v2)
+}
+
+func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
+	c := getHTTPClient()
+	_, _, tx1 := MakeTxKV()
+	_, _, tx2 := MakeTxKV()
+
+	c.StartBatch()
+	require.True(t, c.IsBatching())
+	_, err := c.BroadcastTxCommit(tx1)
+	require.NoError(t, err)
+	_, err = c.BroadcastTxCommit(tx2)
+	require.NoError(t, err)
+	// we want to make sure we cleared 2 pending requests
+	require.Equal(t, 2, c.CancelBatch())
+	require.False(t, c.IsBatching())
 }

@@ -81,11 +81,19 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 
 //------------------------------------------------------------------------------------
 
+// jsonRPCBufferedRequest allows us to track buffered requests, as well as their
+// anticipated response structures.
+type jsonRPCBufferedRequest struct {
+	request types.RPCRequest
+	result  interface{}
+}
+
 // JSONRPCClient takes params as a slice
 type JSONRPCClient struct {
-	address string
-	client  *http.Client
-	cdc     *amino.Codec
+	address  string
+	client   *http.Client
+	cdc      *amino.Codec
+	reqBatch []jsonRPCBufferedRequest
 }
 
 // NewJSONRPCClient returns a JSONRPCClient pointed at the given address.
@@ -107,9 +115,7 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	if err != nil {
 		return nil, err
 	}
-	// log.Info(string(requestBytes))
 	requestBuf := bytes.NewBuffer(requestBytes)
-	// log.Info(Fmt("RPC request to %v (%v): %v", c.remote, method, string(requestBytes)))
 	httpResponse, err := c.client.Post(c.address, "text/json", requestBuf)
 	if err != nil {
 		return nil, err
@@ -120,8 +126,57 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	if err != nil {
 		return nil, err
 	}
-	// 	log.Info(Fmt("RPC response: %v", string(responseBytes)))
 	return unmarshalResponseBytes(c.cdc, responseBytes, result)
+}
+
+// EnqueueCall will add a single RPC request to the batch of requests we are
+// buffering to be able to send later through SendEnqueued().
+func (c *JSONRPCClient) EnqueueCall(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+	request, err := types.MapToRequest(c.cdc, types.JSONRPCStringID("jsonrpc-client"), method, params)
+	if err != nil {
+		return nil, err
+	}
+	c.reqBatch = append(c.reqBatch, jsonRPCBufferedRequest{request: request, result: result})
+	return result, nil
+}
+
+// SendEnqueued will send all buffered requests as a single batch. If there are
+// no buffered requests, it will return an error.
+func (c *JSONRPCClient) SendEnqueued() ([]interface{}, error) {
+	if len(c.reqBatch) == 0 {
+		return nil, errors.Errorf("No requests enqueued to be sent")
+	}
+	defer c.ClearEnqueued()
+	reqs := make([]types.RPCRequest, len(c.reqBatch))
+	results := make([]interface{}, len(c.reqBatch))
+	for i := 0; i < len(c.reqBatch); i++ {
+		reqs[i] = c.reqBatch[i].request
+		results[i] = c.reqBatch[i].result
+	}
+	// serialize the array of requests into a single JSON object
+	requestBytes, err := json.Marshal(reqs)
+	if err != nil {
+		return nil, err
+	}
+	httpResponse, err := c.client.Post(c.address, "text/json", bytes.NewBuffer(requestBytes))
+	if err != nil {
+		return nil, err
+	}
+	defer httpResponse.Body.Close() // nolint: errcheck
+
+	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
+	if err != nil {
+		return nil, err
+	}
+	return unmarshalResponseBytesArray(c.cdc, responseBytes, results)
+}
+
+// ClearEnqueued will clear out all buffered RPC requests without sending them.
+// It will return the number of buffered requests that were cleared.
+func (c *JSONRPCClient) ClearEnqueued() int {
+	count := len(c.reqBatch)
+	c.reqBatch = []jsonRPCBufferedRequest{}
+	return count
 }
 
 func (c *JSONRPCClient) Codec() *amino.Codec {
@@ -198,6 +253,30 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, result inter
 		return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
 	}
 	return result, nil
+}
+
+func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, results []interface{}) ([]interface{}, error) {
+	var err error
+	var responses []types.RPCResponse
+	err = json.Unmarshal(responseBytes, &responses)
+	if err != nil {
+		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
+	}
+	// No response error checking here as there may be a mixture of successful
+	// and unsuccessful responses.
+
+	if len(results) != len(responses) {
+		return nil, errors.Errorf("Expected %d result objects into which to inject responses, but got %d", len(responses), len(results))
+	}
+
+	// Unmarshal the Result fields into the final result objects
+	for i := 0; i < len(responses); i++ {
+		err = cdc.UnmarshalJSON(responses[i].Result, results[i])
+		if err != nil {
+			return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
+		}
+	}
+	return results, nil
 }
 
 func argsToURLValues(cdc *amino.Codec, args map[string]interface{}) (url.Values, error) {

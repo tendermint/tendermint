@@ -104,6 +104,23 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
 	w.Write(jsonBytes) // nolint: errcheck, gas
 }
 
+// WriteRPCResponseArrayHTTP will do the same as WriteRPCResponseHTTP, except it
+// can write arrays of responses for batched request/response interactions via
+// the JSON RPC.
+func WriteRPCResponseArrayHTTP(w http.ResponseWriter, res []types.RPCResponse) {
+	if len(res) == 1 {
+		WriteRPCResponseHTTP(w, res[0])
+	} else {
+		jsonBytes, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(jsonBytes) // nolint: errcheck, gas
+	}
+}
+
 //-----------------------------------------------------------------------------
 
 // Wraps an HTTP handler, adding error logging.
