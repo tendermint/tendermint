@@ -12,7 +12,6 @@ Special thanks to external contributors on this release:
 - p2p:
   - Partial fix for MITM attacks on the p2p connection. MITM conditions may
     still exist. See \#3010.
-  - Fixes for deadlocks when `seed_mode=true`.
 - crypto:
   - Eliminate our fork of `btcd` and use the `btcd/btcec` library directly for
     native secp256k1 signing. Note we still modify the signature encoding to
