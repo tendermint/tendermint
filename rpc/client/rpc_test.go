@@ -444,40 +444,44 @@ func TestBatchedJSONRPCCalls(t *testing.T) {
 	k2, v2, tx2 := MakeTxKV()
 
 	c.StartBatch()
-	_, err := c.BroadcastTxCommit(tx1)
+	r1, err := c.BroadcastTxCommit(tx1)
 	require.NoError(t, err)
-	_, err = c.BroadcastTxCommit(tx2)
+	r2, err := c.BroadcastTxCommit(tx2)
 	require.NoError(t, err)
 	bresults, err := c.SendBatch()
 	require.NoError(t, err)
 	require.Len(t, bresults, 2)
 
-	bresult0, ok := bresults[0].(*ctypes.ResultBroadcastTxCommit)
+	bresult1, ok := bresults[0].(*ctypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
-	bresult1, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
+	require.Equal(t, *bresult1, *r1)
+	bresult2, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
-	apph := cmn.MaxInt64(bresult0.Height, bresult1.Height) + 1
+	require.Equal(t, *bresult2, *r2)
+	apph := cmn.MaxInt64(bresult1.Height, bresult2.Height) + 1
 
 	client.WaitForHeight(c, apph, nil)
 
 	c.StartBatch()
-	_, err = c.ABCIQuery("/key", k1)
+	q1, err := c.ABCIQuery("/key", k1)
 	require.NoError(t, err)
-	_, err = c.ABCIQuery("/key", k2)
+	q2, err := c.ABCIQuery("/key", k2)
 	require.NoError(t, err)
 	qresults, err := c.SendBatch()
 	require.NoError(t, err)
 	require.Len(t, qresults, 2)
 
-	qresult0, ok := qresults[0].(*ctypes.ResultABCIQuery)
+	qresult1, ok := qresults[0].(*ctypes.ResultABCIQuery)
 	require.True(t, ok)
-	qresult1, ok := qresults[1].(*ctypes.ResultABCIQuery)
+	require.Equal(t, *qresult1, *q1)
+	qresult2, ok := qresults[1].(*ctypes.ResultABCIQuery)
 	require.True(t, ok)
+	require.Equal(t, *qresult2, *q2)
 
-	require.Equal(t, qresult0.Response.Key, k1)
-	require.Equal(t, qresult1.Response.Key, k2)
-	require.Equal(t, qresult0.Response.Value, v1)
-	require.Equal(t, qresult1.Response.Value, v2)
+	require.Equal(t, qresult1.Response.Key, k1)
+	require.Equal(t, qresult2.Response.Key, k2)
+	require.Equal(t, qresult1.Response.Value, v1)
+	require.Equal(t, qresult2.Response.Value, v2)
 }
 
 func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
