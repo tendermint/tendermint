@@ -350,8 +350,8 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 	changes := validatorListCopy(origChanges)
 	sort.Sort(ValidatorsByAddress(changes))
 
-	removals = make([]*Validator, 0)
-	updates = make([]*Validator, 0)
+	removals = make([]*Validator, 0, len(changes))
+	updates = make([]*Validator, 0, len(changes))
 	var prevAddr Address
 
 	// Scan changes by address and append valid validators to updates or removals lists
@@ -413,8 +413,9 @@ func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVoting
 //
 // 'updates' parameter must be a list of unique validators to be added or updated.
 // No changes are made to the validator set 'vals'.
-func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotalVotingPower int64) {
+func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotalVotingPower int64) int {
 
+	numNew := 0
 	// Scan and update the proposerPriority for newly added and updated validators
 	for _, valUpdate := range updates {
 		address := valUpdate.Address
@@ -429,12 +430,13 @@ func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotal
 			//
 			// Compute ProposerPriority = -1.125*totalVotingPower == -(updatedVotingPower + (updatedVotingPower >> 3)).
 			valUpdate.ProposerPriority = -(updatedTotalVotingPower + (updatedTotalVotingPower >> 3))
+			numNew++
 		} else {
 			valUpdate.ProposerPriority = val.ProposerPriority
 		}
 	}
 
-	return
+	return numNew
 }
 
 // Merges the vals' validator list with the updates list.
@@ -463,10 +465,12 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 		}
 		i++
 	}
+
 	for j := 0; j < len(existing); j++ {
 		merged[i] = existing[j]
 		i++
 	}
+
 	for j := 0; j < len(updates); j++ {
 		merged[i] = updates[j]
 		i++
@@ -578,7 +582,11 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	}
 
 	// Compute the priorities for updates
-	computeNewPriorities(updates, vals, updatedTotalVotingPower)
+	numNewValidators := computeNewPriorities(updates, vals, updatedTotalVotingPower)
+	if len(vals.Validators)+numNewValidators <= len(deletes) {
+		err = fmt.Errorf("applying the validator changes would result in empty set")
+		return err
+	}
 
 	// Apply updates and removals
 	vals.applyUpdates(updates)

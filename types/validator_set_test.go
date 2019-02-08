@@ -621,7 +621,7 @@ func TestEmptySet(t *testing.T) {
 	v1 = newValidator([]byte("v1"), 0)
 	v2 = newValidator([]byte("v2"), 0)
 	delList := []*Validator{v1, v2}
-	assert.NoError(t, valSet.UpdateWithChangeSet(delList))
+	assert.Error(t, valSet.UpdateWithChangeSet(delList))
 
 	// Attempt delete from empty set
 	assert.Error(t, valSet.UpdateWithChangeSet(delList))
@@ -727,8 +727,8 @@ func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 		10: { // delete all validators
 			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
 			[]testVal{{"v1", 0}, {"v2", 0}, {"v3", 0}},
-			[]testVal{},
-			false},
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
+			true},
 	}
 
 	for i, tt := range valSetUpdatesBasicTests {
