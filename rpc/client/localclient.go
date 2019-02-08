@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/core"
@@ -144,31 +145,50 @@ func (Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.Resu
 
 // Subscribe implements EventsClient by using local eventBus to subscribe given
 // subscriber to query.
-func (c *Local) Subscribe(ctx context.Context, subscriber, query string, callback EventCallback) error {
+func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse query")
+		return nil, errors.Wrap(err, "failed to parse query")
 	}
 	sub, err := c.EventBus.Subscribe(ctx, subscriber, q)
 	if err != nil {
-		return errors.Wrap(err, "failed to subscribe")
+		return nil, errors.Wrap(err, "failed to subscribe")
 	}
 
-	go func() {
+	outCap := 0
+	if len(outCapacity) > 0 {
+		outCap = outCapacity[0]
+	}
+
+	outc := make(chan ctypes.ResultEvent, outCap)
+	go func(sub types.Subscription) {
 		for {
 			select {
 			case msg := <-sub.Out():
-				// can panic
-				callback(&ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}, nil)
+				if cap(out) == 0 {
+					outc <- ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
+				} else {
+					select {
+					case outc <- ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}:
+					default:
+						// XXX: log error
+					}
+				}
 			case <-sub.Cancelled():
-				// can panic
-				callback(nil, sub.Err())
+				if sub.Err() != tmpubsub.ErrUnsubscribed {
+					// resubscribe with exponential timeout
+					var err error
+					sub, err = c.EventBus.Subscribe(ctx, subscriber, q)
+					if err != nil {
+						// TODO
+					}
+				}
 				return
 			}
 		}
-	}()
+	}(sub)
 
-	return nil
+	return outc, nil
 }
 
 // Unsubscribe implements EventsClient by using local eventBus to unsubscribe

@@ -90,19 +90,17 @@ type NetworkClient interface {
 	Health() (*ctypes.ResultHealth, error)
 }
 
-// EventCallback is used by Subscribe to deliver events.
-type EventCallback func(event *ctypes.ResultEvent, err error)
-
 // EventsClient is reactive, you can subscribe to any message, given the proper
 // string. see tendermint/types/events.go
 type EventsClient interface {
-	// Subscribe subscribes given subscriber to query. When a matching event is
-	// published, callback is called (err is nil). When/if subscription is
-	// terminated, callback is called again with non-nil error.
+	// Subscribe subscribes given subscriber to query. Returns an unbuffered
+	// channel onto which events are published. An error is returned if it fails
+	// to subscribe. outCapacity can be used optionally to set capacity for the
+	// channel. Channel is never closed to prevent accidental reads.
 	//
 	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
 	// or UnsubscribeAll.
-	Subscribe(ctx context.Context, subscriber, query string, callback EventCallback) error
+	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error)
 	// Unsubscribe unsubscribes given subscriber from query.
 	Unsubscribe(ctx context.Context, subscriber, query string) error
 	// UnsubscribeAll unsubscribes given subscriber from all the queries.
