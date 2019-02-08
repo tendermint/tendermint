@@ -18,7 +18,15 @@ import (
 
 func TestValidatorSetBasic(t *testing.T) {
 	// empty or nil validator lists are allowed,
+	// empty or nil validator lists are allowed,
+	// but attempting to IncrementProposerPriority on them will panic.
 	vset := NewValidatorSet([]*Validator{})
+	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
+
+	vset = NewValidatorSet(nil)
+	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
+
+	assert.EqualValues(t, vset, vset.Copy())
 	assert.False(t, vset.HasAddress([]byte("some val")))
 	idx, val := vset.GetByAddress([]byte("some val"))
 	assert.Equal(t, -1, idx)
@@ -72,31 +80,6 @@ func TestValidatorSetBasic(t *testing.T) {
 	val2, removed = vset.Remove(val.Address)
 	assert.Equal(t, val.Address, val2.Address)
 	assert.True(t, removed)
-}
-
-func TestEmptySet(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("The code paniced")
-		}
-	}()
-
-	valList := []*Validator{}
-	vals := NewValidatorSet(valList)
-
-	vals.IncrementProposerPriority(1)
-	vals.RescalePriorities(100)
-	vals.shiftByAvgProposerPriority()
-	assert.Zero(t, computeMaxMinPriorityDiff(vals))
-	vals.GetProposer()
-
-	vals = NewValidatorSet(nil)
-	vals.IncrementProposerPriority(1)
-	vals.RescalePriorities(100)
-	vals.shiftByAvgProposerPriority()
-	assert.Zero(t, computeMaxMinPriorityDiff(vals))
-	vals.GetProposer()
-
 }
 
 func TestCopy(t *testing.T) {
