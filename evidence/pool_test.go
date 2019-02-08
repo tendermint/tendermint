@@ -56,8 +56,8 @@ func TestEvidencePool(t *testing.T) {
 	valAddr := []byte("val1")
 	height := int64(5)
 	stateDB := initializeValidatorState(valAddr, height)
-	store := NewEvidenceStore(dbm.NewMemDB())
-	pool := NewEvidencePool(stateDB, store)
+	evidenceDB := dbm.NewMemDB()
+	pool := NewEvidencePool(stateDB, evidenceDB)
 
 	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
 	badEvidence := types.MockBadEvidence{goodEvidence}

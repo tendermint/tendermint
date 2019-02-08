@@ -94,7 +94,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
 	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
-
 }
 
 // ValidateBlock validates the given block against the given state.

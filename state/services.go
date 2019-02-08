@@ -80,6 +80,7 @@ type BlockStore interface {
 // evidence pool
 
 // EvidencePool defines the EvidencePool interface used by the ConsensusState.
+// Get/Set/Commit
 type EvidencePool interface {
 	PendingEvidence(int64) []types.Evidence
 	AddEvidence(types.Evidence) error

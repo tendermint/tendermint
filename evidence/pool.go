@@ -28,7 +28,8 @@ type EvidencePool struct {
 	state sm.State
 }
 
-func NewEvidencePool(stateDB dbm.DB, evidenceStore *EvidenceStore) *EvidencePool {
+func NewEvidencePool(stateDB, evidenceDB dbm.DB) *EvidencePool {
+	evidenceStore := NewEvidenceStore(evidenceDB)
 	evpool := &EvidencePool{
 		stateDB:       stateDB,
 		state:         sm.LoadState(stateDB),

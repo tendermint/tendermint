@@ -345,8 +345,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceStore)
+	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
 	evidencePool.SetLogger(evidenceLogger)
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
