@@ -29,7 +29,7 @@ type PersistentKVStoreApplication struct {
 	// validator set
 	ValUpdates []types.ValidatorUpdate
 
-	relation map[string]types.PubKey // address to pubkey
+	valAddrToPubKeyMap map[string]types.PubKey
 
 	logger log.Logger
 }
