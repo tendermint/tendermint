@@ -84,3 +84,24 @@ func TestEvidencePool(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, pool.evidenceList.Len())
 }
+
+func TestEvidencePoolIsCommitted(t *testing.T) {
+	// Initialization:
+	valAddr := []byte("validator_address")
+	height := int64(42)
+	stateDB := initializeValidatorState(valAddr, height)
+	evidenceDB := dbm.NewMemDB()
+	pool := NewEvidencePool(stateDB, evidenceDB)
+
+	// evidence not seen yet:
+	evidence := types.NewMockGoodEvidence(height, 0, valAddr)
+	assert.False(t, pool.IsCommitted(evidence))
+
+	// evidence seen but not yet committed:
+	assert.NoError(t, pool.AddEvidence(evidence))
+	assert.False(t, pool.IsCommitted(evidence))
+
+	// evidence seen and committed:
+	pool.MarkEvidenceAsCommitted(height, []types.Evidence{evidence})
+	assert.True(t, pool.IsCommitted(evidence))
+}

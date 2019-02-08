@@ -167,7 +167,7 @@ func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int
 func (store *EvidenceStore) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
 	ei := store.getEvidenceInfo(evidence)
 	if ei.Evidence == nil {
-		// nothin to do
+		// nothing to do; we did not store the evidence yet (AddNewEvidence):
 		return
 	}
 	// remove from the outqueue

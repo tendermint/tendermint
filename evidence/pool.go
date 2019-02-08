@@ -133,6 +133,12 @@ func (evpool *EvidencePool) MarkEvidenceAsCommitted(height int64, evidence []typ
 
 }
 
+// IsCommitted returns true if we have already seen this exact evidence and it is already marked as committed.
+func (evpool *EvidencePool) IsCommitted(evidence types.Evidence) bool {
+	ei := evpool.evidenceStore.getEvidenceInfo(evidence)
+	return ei.Evidence != nil && ei.Committed
+}
+
 func (evpool *EvidencePool) removeEvidence(height, maxAge int64, blockEvidenceMap map[string]struct{}) {
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
 		ev := e.Value.(types.Evidence)

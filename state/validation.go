@@ -13,7 +13,7 @@ import (
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
+func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
@@ -144,6 +144,9 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	for _, ev := range block.Evidence.Evidence {
 		if err := VerifyEvidence(stateDB, state, ev); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
+		}
+		if evidencePool != nil && evidencePool.IsCommitted(ev) {
+			return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
 		}
 	}
 
