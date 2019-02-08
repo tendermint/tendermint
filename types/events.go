@@ -11,21 +11,30 @@ import (
 
 // Reserved event types (alphabetically sorted).
 const (
-	EventCompleteProposal    = "CompleteProposal"
-	EventLock                = "Lock"
+	// Block level events for mass consumption by users.
+	// These events are triggered from the state package,
+	// after a block has been committed.
+	// These are also used by the tx indexer for async indexing.
+	// All of this data can be fetched through the rpc.
 	EventNewBlock            = "NewBlock"
 	EventNewBlockHeader      = "NewBlockHeader"
-	EventNewRound            = "NewRound"
-	EventNewRoundStep        = "NewRoundStep"
-	EventPolka               = "Polka"
-	EventRelock              = "Relock"
-	EventTimeoutPropose      = "TimeoutPropose"
-	EventTimeoutWait         = "TimeoutWait"
 	EventTx                  = "Tx"
-	EventUnlock              = "Unlock"
-	EventValidBlock          = "ValidBlock"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
-	EventVote                = "Vote"
+
+	// Internal consensus events.
+	// These are used for testing the consensus state machine.
+	// They can also be used to build real-time consensus visualizers.
+	EventCompleteProposal = "CompleteProposal"
+	EventLock             = "Lock"
+	EventNewRound         = "NewRound"
+	EventNewRoundStep     = "NewRoundStep"
+	EventPolka            = "Polka"
+	EventRelock           = "Relock"
+	EventTimeoutPropose   = "TimeoutPropose"
+	EventTimeoutWait      = "TimeoutWait"
+	EventUnlock           = "Unlock"
+	EventValidBlock       = "ValidBlock"
+	EventVote             = "Vote"
 )
 
 ///////////////////////////////////////////////////////////////////////////////

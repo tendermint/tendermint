@@ -49,8 +49,7 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
-func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus,
-	mempool Mempool, evpool EvidencePool, options ...BlockExecutorOption) *BlockExecutor {
+func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus, mempool Mempool, evpool EvidencePool, options ...BlockExecutorOption) *BlockExecutor {
 	res := &BlockExecutor{
 		db:       db,
 		proxyApp: proxyApp,
@@ -316,7 +315,7 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 	// Collect the vote info (list of validators and whether or not they signed).
 	voteInfos := make([]abci.VoteInfo, len(lastValSet.Validators))
 	for i, val := range lastValSet.Validators {
-		var vote *types.Vote
+		var vote *types.CommitSig
 		if i < len(block.LastCommit.Precommits) {
 			vote = block.LastCommit.Precommits[i]
 		}

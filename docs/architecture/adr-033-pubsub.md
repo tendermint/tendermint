@@ -5,13 +5,17 @@ Author: Anton Kaliaev (@melekes)
 ## Changelog
 
 02-10-2018: Initial draft
+
 16-01-2019: Second version based on our conversation with Jae
+
 17-01-2019: Third version explaining how new design solves current issues
+
+25-01-2019: Fourth version to treat buffered and unbuffered channels differently
 
 ## Context
 
 Since the initial version of the pubsub, there's been a number of issues
-raised: #951, #1879, #1880. Some of them are high-level issues questioning the
+raised: [#951], [#1879], [#1880]. Some of them are high-level issues questioning the
 core design choices made. Others are minor and mostly about the interface of
 `Subscribe()` / `Publish()` functions.
 
@@ -51,7 +55,10 @@ channels to distribute msg to these goroutines).
 
 ### Non-blocking send
 
-There is also a question whenever we should have a non-blocking send:
+There is also a question whenever we should have a non-blocking send.
+Currently, sends are blocking, so publishing to one client can block on
+publishing to another. This means a slow or unresponsive client can halt the
+system. Instead, we can use a non-blocking send:
 
 ```go
 for each subscriber {
@@ -87,11 +94,26 @@ Go channels are de-facto standard for carrying data between goroutines.
 ### Why `Subscribe()` accepts an `out` channel?
 
 Because in our tests, we create buffered channels (cap: 1). Alternatively, we
-can make capacity an argument.
+can make capacity an argument and return a channel.
 
 ## Decision
 
-Change Subscribe() function to return a `Subscription` struct:
+### MsgAndTags
+
+Use a `MsgAndTags` struct on the subscription channel to indicate what tags the
+msg matched.
+
+```go
+type MsgAndTags struct {
+    Msg interface{}
+    Tags TagMap
+}
+```
+
+### Subscription Struct
+
+
+Change `Subscribe()` function to return a `Subscription` struct:
 
 ```go
 type Subscription struct {
@@ -103,18 +125,18 @@ func (s *Subscription) Cancelled() <-chan struct{}
 func (s *Subscription) Err() error
 ```
 
-Out returns a channel onto which messages and tags are published.
-Unsubscribe/UnsubscribeAll does not close the channel to avoid clients from
+`Out()` returns a channel onto which messages and tags are published.
+`Unsubscribe`/`UnsubscribeAll` does not close the channel to avoid clients from
 receiving a nil message.
 
-Cancelled returns a channel that's closed when the subscription is terminated
+`Cancelled()` returns a channel that's closed when the subscription is terminated
 and supposed to be used in a select statement.
 
-If Cancelled is not closed yet, Err() returns nil.
-If Cancelled is closed, Err returns a non-nil error explaining why:
-Unsubscribed if the subscriber choose to unsubscribe,
-OutOfCapacity if the subscriber is not pulling messages fast enough and the Out channel become full.
-After Err returns a non-nil error, successive calls to Err() return the same error.
+If the channel returned by `Cancelled()` is not closed yet, `Err()` returns nil.
+If the channel is closed, `Err()` returns a non-nil error explaining why:
+`ErrUnsubscribed` if the subscriber choose to unsubscribe,
+`ErrOutOfCapacity` if the subscriber is not pulling messages fast enough and the channel returned by `Out()` became full.
+After `Err()` returns a non-nil error, successive calls to `Err() return the same error.
 
 ```go
 subscription, err := pubsub.Subscribe(...)
@@ -130,42 +152,68 @@ select {
 }
 ```
 
-Make Out() channel buffered (cap: 1) by default. In most cases, we want to
+### Capacity and Subscriptions
+
+Make the `Out()` channel buffered (with capacity 1) by default. In most cases, we want to
 terminate the slow subscriber. Only in rare cases, we want to block the pubsub
 (e.g. when debugging consensus). This should lower the chances of the pubsub
 being frozen.
 
 ```go
-// outCap can be used to set capacity of Out channel (1 by default). Set to 0
-for unbuffered channel (WARNING: it may block the pubsub).
+// outCap can be used to set capacity of Out channel
+// (1 by default, must be greater than 0).
 Subscribe(ctx context.Context, clientID string, query Query, outCap... int) (Subscription, error) {
 ```
 
-Also, Out() channel should return tags along with a message:
+Use a different function for an unbuffered channel:
 
 ```go
-type MsgAndTags struct {
-    Msg interface{}
-    Tags TagMap
-}
+// Subscription uses an unbuffered channel. Publishing will block.
+SubscribeUnbuffered(ctx context.Context, clientID string, query Query) (Subscription, error) {
 ```
 
-to inform clients of which Tags were used with Msg.
+SubscribeUnbuffered should not be exposed to users.
+
+### Blocking/Nonblocking
+
+The publisher should treat these kinds of channels separately.
+It should block on unbuffered channels (for use with internal consensus events
+in the consensus tests) and not block on the buffered ones. If a client is too
+slow to keep up with it's messages, it's subscription is terminated:
+
+for each subscription {
+    out := subscription.outChan
+    if cap(out) == 0 {
+        // block on unbuffered channel
+        out <- msg
+    } else {
+        // don't block on buffered channels
+        select {
+            case out <- msg:
+            default:
+                // set the error, notify on the cancel chan
+                subscription.err = fmt.Errorf("client is too slow for msg)
+                close(subscription.cancelChan)
+
+                // ... unsubscribe and close out
+        }
+    }
+}
 
 ### How this new design solves the current issues?
 
-https://github.com/tendermint/tendermint/issues/951 (https://github.com/tendermint/tendermint/issues/1880)
+[#951] ([#1880]):
 
 Because of non-blocking send, situation where we'll deadlock is not possible
 anymore. If the client stops reading messages, it will be removed.
 
-https://github.com/tendermint/tendermint/issues/1879
+[#1879]:
 
 MsgAndTags is used now instead of a plain message.
 
 ### Future problems and their possible solutions
 
-https://github.com/tendermint/tendermint/issues/2826
+[#2826]
 
 One question I am still pondering about: how to prevent pubsub from slowing
 down consensus. We can increase the pubsub queue size (which is 0 now). Also,
@@ -191,3 +239,9 @@ In review
 - (since v1) no concurrency when it comes to publishing messages
 
 ### Neutral
+
+
+[#951]: https://github.com/tendermint/tendermint/issues/951
+[#1879]: https://github.com/tendermint/tendermint/issues/1879
+[#1880]: https://github.com/tendermint/tendermint/issues/1880
+[#2826]: https://github.com/tendermint/tendermint/issues/2826

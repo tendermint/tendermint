@@ -46,7 +46,7 @@ func NewMonitor(options ...func(*Monitor)) *Monitor {
 		nodeQuit:                      make(map[string]chan struct{}),
 		recalculateNetworkUptimeEvery: 10 * time.Second,
 		numValidatorsUpdateInterval:   5 * time.Second,
-		logger: log.NewNopLogger(),
+		logger:                        log.NewNopLogger(),
 	}
 
 	for _, option := range options {

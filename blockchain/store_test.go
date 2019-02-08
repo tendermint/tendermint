@@ -6,6 +6,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
+
+// make a Commit with a single vote containing just the height and a timestamp
+func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
+	return &types.Commit{
+		Precommits: []*types.CommitSig{
+			{Height: height, Timestamp: timestamp},
+		},
+	}
+}
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
@@ -86,8 +96,7 @@ var (
 	partSet     = block.MakePartSet(2)
 	part1       = partSet.GetPart(0)
 	part2       = partSet.GetPart(1)
-	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: tmtime.Now()}}}
+	seenCommit1 = makeTestCommit(10, tmtime.Now())
 )
 
 // TODO: This test should be simplified ...
@@ -107,8 +116,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	// save a block
 	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 	validPartSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: tmtime.Now()}}}
+	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
@@ -127,8 +135,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	// End of setup, test data
 
-	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: tmtime.Now()}}}
+	commitAtH10 := makeTestCommit(10, tmtime.Now())
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
@@ -351,9 +358,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 
 	partSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: tmtime.Now()}}}
-
+	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
