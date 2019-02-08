@@ -33,9 +33,10 @@ piece of evidence in more than one block. This issue was reported by @chengwenxi
 
 * P2P Protocol
   - [consensus] [\#3222](https://github.com/tendermint/tendermint/issues/3222)
-    Apply validator updates as a set instead of one at a time. This ensures that
-    the effect on proposer selection is the same, regardless of the order of
-    updates.
+    Validator updates are applied as a set, instead of one at a time, thus
+    impacting the proposer priority calculation. This ensures that the proposer
+    selection algorithm does not depend on the order of updates in
+    `ResponseEndBlock.ValidatorUpdates`.
 
 ### IMPROVEMENTS:
 - [crypto] [\#3279](https://github.com/tendermint/tendermint/issues/3279) Use `btcec.S256().N` directly instead of hard coding a copy.
