@@ -7,9 +7,17 @@
 Special thanks to external contributors on this release:
 @ackratos, @rickyyangz
 
-Bug fix release including fixes for `seed_mode=true` and non-deterministic
-tests.
-Also adds support for the libsecp256k1 package as found in go-ethereum.
+**Note**: This release contains security sensitive patches in the `p2p` and
+`crypto` packages:
+- p2p:
+  - Partial fix for MITM attacks on the p2p connection. MITM conditions may
+    still exist. See \#3010.
+  - Fixes for deadlocks when `seed_mode=true`.
+- crypto:
+  - Eliminate our fork of `btcd` and use the `btcd/btcec` library directly for
+    native secp256k1 signing. Note we still modify the signature encoding to
+    prevent malleability.
+  - Support the libsecp256k1 library via CGo through the `go-ethereum/crypto/secp256k1` package.
 
 ### BREAKING CHANGES:
 
