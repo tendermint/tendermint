@@ -2,7 +2,6 @@ package core
 
 import (
 	cm "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -17,6 +16,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // state, err := client.Validators()
 // ```
 //
@@ -28,7 +32,7 @@ import (
 // 	"result": {
 // 		"validators": [
 // 			{
-// 				"accum": "0",
+// 				"proposer_priority": "0",
 // 				"voting_power": "10",
 // 				"pub_key": {
 // 					"data": "68DFDA7E50F82946E7E8546BED37944A422CD1B831E70DF66BA3B8430593944D",
@@ -68,6 +72,11 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // state, err := client.DumpConsensusState()
 // ```
 //
@@ -93,7 +102,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //               "value": "SBctdhRBcXtBgdI/8a/alTsUhGXqGs9k5ylV1u5iKHg="
 //             },
 //             "voting_power": "10",
-//             "accum": "0"
+//             "proposer_priority": "0"
 //           }
 //         ],
 //         "proposer": {
@@ -103,7 +112,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //             "value": "SBctdhRBcXtBgdI/8a/alTsUhGXqGs9k5ylV1u5iKHg="
 //           },
 //           "voting_power": "10",
-//           "accum": "0"
+//           "proposer_priority": "0"
 //         }
 //       },
 //       "proposal": null,
@@ -139,7 +148,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //               "value": "SBctdhRBcXtBgdI/8a/alTsUhGXqGs9k5ylV1u5iKHg="
 //             },
 //             "voting_power": "10",
-//             "accum": "0"
+//             "proposer_priority": "0"
 //           }
 //         ],
 //         "proposer": {
@@ -149,7 +158,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //             "value": "SBctdhRBcXtBgdI/8a/alTsUhGXqGs9k5ylV1u5iKHg="
 //           },
 //           "voting_power": "10",
-//           "accum": "0"
+//           "proposer_priority": "0"
 //         }
 //       }
 //     },
@@ -194,14 +203,17 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	peers := p2pPeers.Peers().List()
 	peerStates := make([]ctypes.PeerStateInfo, len(peers))
 	for i, peer := range peers {
-		peerState := peer.Get(types.PeerStateKey).(*cm.PeerState)
+		peerState, ok := peer.Get(types.PeerStateKey).(*cm.PeerState)
+		if !ok { // peer does not have a state yet
+			continue
+		}
 		peerStateJSON, err := peerState.ToJSON()
 		if err != nil {
 			return nil, err
 		}
 		peerStates[i] = ctypes.PeerStateInfo{
 			// Peer basic info.
-			NodeAddress: p2p.IDAddressString(peer.ID(), peer.NodeInfo().ListenAddr),
+			NodeAddress: peer.NodeInfo().NetAddress().String(),
 			// Peer consensus state.
 			PeerState: peerStateJSON,
 		}
@@ -223,6 +235,11 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // state, err := client.ConsensusState()
 // ```
 //
@@ -271,6 +288,11 @@ func ConsensusState() (*ctypes.ResultConsensusState, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // state, err := client.ConsensusParams()
 // ```
 //

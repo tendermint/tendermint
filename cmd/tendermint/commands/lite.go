@@ -26,12 +26,12 @@ just with added trust and running locally.`,
 }
 
 var (
-	listenAddr            string
-	nodeAddr              string
-	chainID               string
-	home                  string
-	maxOpenConnections    int
-	cacheSize  int
+	listenAddr         string
+	nodeAddr           string
+	chainID            string
+	home               string
+	maxOpenConnections int
+	cacheSize          int
 )
 
 func init() {
@@ -39,7 +39,7 @@ func init() {
 	LiteCmd.Flags().StringVar(&nodeAddr, "node", "tcp://localhost:26657", "Connect to a Tendermint node at this address")
 	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
-	LiteCmd.Flags().IntVar(&maxOpenConnections,"max-open-connections",900,"Maximum number of simultaneous connections (including WebSocket).")
+	LiteCmd.Flags().IntVar(&maxOpenConnections, "max-open-connections", 900, "Maximum number of simultaneous connections (including WebSocket).")
 	LiteCmd.Flags().IntVar(&cacheSize, "cache-size", 10, "Specify the memory trust store cache size")
 }
 

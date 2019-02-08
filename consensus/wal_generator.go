@@ -38,9 +38,11 @@ func WALGenerateNBlocks(wr io.Writer, numBlocks int) (err error) {
 
 	/////////////////////////////////////////////////////////////////////////////
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
-	// NOTE: we can't import node package because of circular dependency
-	privValidatorFile := config.PrivValidatorFile()
-	privValidator := privval.LoadOrGenFilePV(privValidatorFile)
+	// NOTE: we can't import node package because of circular dependency.
+	// NOTE: we don't do handshake so need to set state.Version.Consensus.App directly.
+	privValidatorKeyFile := config.PrivValidatorKeyFile()
+	privValidatorStateFile := config.PrivValidatorStateFile()
+	privValidator := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
 		return errors.Wrap(err, "failed to read genesis file")
@@ -51,6 +53,7 @@ func WALGenerateNBlocks(wr io.Writer, numBlocks int) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "failed to make genesis state")
 	}
+	state.Version.Consensus.App = kvstore.ProtocolVersion
 	blockStore := bc.NewBlockStore(blockStoreDB)
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))

@@ -50,13 +50,14 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivValidator, valIndex int) *types.Vote {
 	privVal := privVals[valIndex]
+	addr := privVal.GetPubKey().Address()
 	vote := &types.Vote{
-		ValidatorAddress: privVal.GetAddress(),
+		ValidatorAddress: addr,
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
-		Type:             types.VoteTypePrecommit,
+		Type:             types.PrecommitType,
 		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()

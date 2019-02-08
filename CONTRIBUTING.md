@@ -27,8 +27,8 @@ Of course, replace `ebuchman` with your git handle.
 
 To pull in updates from the origin repo, run
 
-    * `git fetch upstream`
-    * `git rebase upstream/master` (or whatever branch you want)
+  * `git fetch upstream`
+  * `git rebase upstream/master` (or whatever branch you want)
 
 Please don't make Pull Requests to `master`.
 
@@ -50,6 +50,11 @@ as apps, tools, and the core, should use dep.
 Run `dep status` to get a list of vendor dependencies that may not be
 up-to-date.
 
+When updating dependencies, please only update the particular dependencies you
+need. Instead of running `dep ensure -update`, which will update anything,
+specify exactly the dependency you want to update, eg.
+`dep ensure -update github.com/tendermint/go-amino`.
+
 ## Vagrant
 
 If you are a [Vagrant](https://www.vagrantup.com/) user, you can get started
@@ -64,43 +69,74 @@ vagrant ssh
 make test
 ```
 
-## Testing
+## Changelog
 
-All repos should be hooked up to [CircleCI](https://circleci.com/).
+Every fix, improvement, feature, or breaking change should be made in a
+pull-request that includes an update to the `CHANGELOG_PENDING.md` file.
 
-If they have `.go` files in the root directory, they will be automatically
-tested by circle using `go test -v -race ./...`. If not, they will need a
-`circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
-includes its continuous integration status using a badge in the `README.md`.
+Changelog entries should be formatted as follows:
+
+```
+- [module] \#xxx Some description about the change (@contributor)
+```
+
+Here, `module` is the part of the code that changed (typically a
+top-level Go package), `xxx` is the pull-request number, and `contributor`
+is the author/s of the change.
+
+It's also acceptable for `xxx` to refer to the relevent issue number, but pull-request
+numbers are preferred.
+Note this means pull-requests should be opened first so the changelog can then
+be updated with the pull-request's number.
+There is no need to include the full link, as this will be added
+automatically during release. But please include the backslash and pound, eg. `\#2313`.
+
+Changelog entries should be ordered alphabetically according to the
+`module`, and numerically according to the pull-request number.
+
+Changes with multiple classifications should be doubly included (eg. a bug fix
+that is also a breaking change should be recorded under both).
+
+Breaking changes are further subdivided according to the APIs/users they impact.
+Any change that effects multiple APIs/users should be recorded multiply - for
+instance, a change to the `Blockchain Protocol` that removes a field from the
+header should also be recorded under `CLI/RPC/Config` since the field will be
+removed from the header in rpc responses as well.
 
 ## Branching Model and Release
 
-User-facing repos should adhere to the branching model: http://nvie.com/posts/a-successful-git-branching-model/.
-That is, these repos should be well versioned, and any merge to master requires a version bump and tagged release.
-
-Libraries need not follow the model strictly, but would be wise to,
-especially `go-p2p` and `go-rpc`, as their versions are referenced in tendermint core.
+All repos should adhere to the branching model: http://nvie.com/posts/a-successful-git-branching-model/.
+This means that all pull-requests should be made against develop. Any merge to
+master constitutes a tagged release.
 
 ### Development Procedure:
 - the latest state of development is on `develop`
 - `develop` must never fail `make test`
-- no --force onto `develop` (except when reverting a broken commit, which should seldom happen)
+- never --force onto `develop` (except when reverting a broken commit, which should seldom happen)
 - create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`)
-- before submitting a pull request, begin `git rebase` on top of `develop`
+- make changes and update the `CHANGELOG_PENDING.md` to record your change
+- before submitting a pull request, run `git rebase` on top of the latest `develop`
 
 ### Pull Merge Procedure:
-- ensure pull branch is rebased on develop
+- ensure pull branch is based on a recent develop
 - run `make test` to ensure that all tests pass
 - merge pull request
-- the `unstable` branch may be used to aggregate pull merges before testing once
-- push master may request that pull requests be rebased on top of `unstable`
+- the `unstable` branch may be used to aggregate pull merges before fixing tests
 
 ### Release Procedure:
 - start on `develop`
 - run integration tests (see `test_integrations` in Makefile)
-- prepare changelog/release issue
+- prepare changelog:
+    - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
+    - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
+      all issues
+    - run `bash ./scripts/authors.sh` to get a list of authors since the latest
+      release, and add the github aliases of external contributors to the top of
+      the changelog. To lookup an alias from an email, try `bash
+      ./scripts/authors.sh <email>`
+    - reset the `CHANGELOG_PENDING.md`
 - bump versions
-- push to release-vX.X.X to run the extended integration tests on the CI
+- push to release/vX.X.X to run the extended integration tests on the CI
 - merge to master
 - merge master back to develop
 
@@ -115,3 +151,13 @@ especially `go-p2p` and `go-rpc`, as their versions are referenced in tendermint
 - merge hotfix-vX.X.X to master
 - merge hotfix-vX.X.X to develop
 - delete the hotfix-vX.X.X branch
+
+
+## Testing
+
+All repos should be hooked up to [CircleCI](https://circleci.com/).
+
+If they have `.go` files in the root directory, they will be automatically
+tested by circle using `go test -v -race ./...`. If not, they will need a
+`circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
+includes its continuous integration status using a badge in the `README.md`.

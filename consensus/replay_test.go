@@ -17,9 +17,10 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/version"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -86,7 +87,7 @@ func sendTxs(cs *ConsensusState, ctx context.Context) {
 			return
 		default:
 			tx := []byte{byte(i)}
-			cs.mempool.CheckTx(tx, nil)
+			assertMempool(cs.txNotifier).CheckTx(tx, nil)
 			i++
 		}
 	}
@@ -314,30 +315,23 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	config := ResetConfig("proxy_test_")
 
 	walBody, err := WALWithNBlocks(NUM_BLOCKS)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := privval.LoadFilePV(config.PrivValidatorFile())
+	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
 	wal, err := NewWAL(walFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	wal.SetLogger(log.TestingLogger())
-	if err := wal.Start(); err != nil {
-		t.Fatal(err)
-	}
+	err = wal.Start()
+	require.NoError(t, err)
 	defer wal.Stop()
 
 	chain, commits, err := makeBlockchainFromWAL(wal)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), kvstore.ProtocolVersion)
 	store.chain = chain
 	store.commits = commits
 
@@ -352,7 +346,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2)
-		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey())
+		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey(), kvstore.ProtocolVersion)
 		buildAppStateFromChain(proxyApp, stateDB, state, chain, nBlocks, mode)
 	}
 
@@ -442,7 +436,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
 	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), "1")))
-	proxyApp := proxy.NewAppConns(clientCreator) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
+	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
@@ -519,7 +513,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
 				var block = new(types.Block)
-				_, err = cdc.UnmarshalBinaryReader(thisBlockParts.GetReader(), block, 0)
+				_, err = cdc.UnmarshalBinaryLengthPrefixedReader(thisBlockParts.GetReader(), block, 0)
 				if err != nil {
 					panic(err)
 				}
@@ -542,17 +536,17 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 				return nil, nil, err
 			}
 		case *types.Vote:
-			if p.Type == types.VoteTypePrecommit {
+			if p.Type == types.PrecommitType {
 				thisBlockCommit = &types.Commit{
 					BlockID:    p.BlockID,
-					Precommits: []*types.Vote{p},
+					Precommits: []*types.CommitSig{p.CommitSig()},
 				}
 			}
 		}
 	}
 	// grab the last block too
 	var block = new(types.Block)
-	_, err = cdc.UnmarshalBinaryReader(thisBlockParts.GetReader(), block, 0)
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(thisBlockParts.GetReader(), block, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -574,7 +568,7 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 	case msgInfo:
 		switch msg := m.Msg.(type) {
 		case *ProposalMessage:
-			return &msg.Proposal.BlockPartsHeader
+			return &msg.Proposal.BlockID.PartsHeader
 		case *BlockPartMessage:
 			return msg.Part
 		case *VoteMessage:
@@ -588,9 +582,10 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 }
 
 // fresh state and mock store
-func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (dbm.DB, sm.State, *mockBlockStore) {
+func stateAndStore(config *cfg.Config, pubKey crypto.PubKey, appVersion version.Protocol) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	state.Version.Consensus.App = appVersion
 	store := NewMockBlockStore(config, state.ConsensusParams)
 	return stateDB, state, store
 }
@@ -638,8 +633,8 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("proxy_test_")
-	privVal := privval.LoadFilePV(config.PrivValidatorFile())
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
+	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)
 
 	oldValAddr := state.Validators.Validators[0].Address
 
@@ -662,12 +657,6 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	expectValAddr := val.Address
 	assert.NotEqual(t, oldValAddr, newValAddr)
 	assert.Equal(t, newValAddr, expectValAddr)
-}
-
-func newInitChainApp(vals []abci.ValidatorUpdate) *initChainApp {
-	return &initChainApp{
-		vals: vals,
-	}
 }
 
 // returns the vals on InitChain

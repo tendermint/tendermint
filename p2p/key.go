@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -17,7 +16,7 @@ type ID string
 
 // IDByteLength is the length of a crypto.Address. Currently only 20.
 // TODO: support other length addresses ?
-const IDByteLength = tmhash.Size
+const IDByteLength = crypto.AddressSize
 
 //------------------------------------------------------------------------------
 // Persistent peer ID

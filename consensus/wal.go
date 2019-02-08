@@ -13,6 +13,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -95,6 +96,11 @@ func (wal *baseWAL) Group() *auto.Group {
 	return wal.group
 }
 
+func (wal *baseWAL) SetLogger(l log.Logger) {
+	wal.BaseService.Logger = l
+	wal.group.SetLogger(l)
+}
+
 func (wal *baseWAL) OnStart() error {
 	size, err := wal.group.Head.Size()
 	if err != nil {
@@ -106,9 +112,18 @@ func (wal *baseWAL) OnStart() error {
 	return err
 }
 
+// Stop the underlying autofile group.
+// Use Wait() to ensure it's finished shutting down
+// before cleaning up files.
 func (wal *baseWAL) OnStop() {
 	wal.group.Stop()
 	wal.group.Close()
+}
+
+// Wait for the underlying autofile group to finish shutting down
+// so it's safe to cleanup files.
+func (wal *baseWAL) Wait() {
+	wal.group.Wait()
 }
 
 // Write is called in newStep and for each receive on the
@@ -157,7 +172,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 	// NOTE: starting from the last file in the group because we're usually
 	// searching for the last height. See replay.go
 	min, max := wal.group.MinIndex(), wal.group.MaxIndex()
-	wal.Logger.Debug("Searching for height", "height", height, "min", min, "max", max)
+	wal.Logger.Info("Searching for height", "height", height, "min", min, "max", max)
 	for index := max; index >= min; index-- {
 		gr, err = wal.group.NewReader(index)
 		if err != nil {
@@ -177,7 +192,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 				break
 			}
 			if options.IgnoreDataCorruptionErrors && IsDataCorruptionError(err) {
-				wal.Logger.Debug("Corrupted entry. Skipping...", "err", err)
+				wal.Logger.Error("Corrupted entry. Skipping...", "err", err)
 				// do nothing
 				continue
 			} else if err != nil {
@@ -188,7 +203,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 			if m, ok := msg.Msg.(EndHeightMessage); ok {
 				lastHeightFound = m.Height
 				if m.Height == height { // found
-					wal.Logger.Debug("Found", "height", height, "index", index)
+					wal.Logger.Info("Found", "height", height, "index", index)
 					return gr, true, nil
 				}
 			}
@@ -275,25 +290,25 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, err
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read checksum: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read checksum: %v", err)}
 	}
 	crc := binary.BigEndian.Uint32(b)
 
 	b = make([]byte, 4)
 	_, err = dec.rd.Read(b)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read length: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read length: %v", err)}
 	}
 	length := binary.BigEndian.Uint32(b)
 
 	if length > maxMsgSizeBytes {
-		return nil, fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)
+		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)}
 	}
 
 	data := make([]byte, length)
 	_, err = dec.rd.Read(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read data: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v", err)}
 	}
 
 	// check checksum before decoding data

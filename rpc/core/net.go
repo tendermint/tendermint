@@ -1,8 +1,11 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -14,6 +17,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // info, err := client.NetInfo()
 // ```
 //
@@ -37,10 +45,15 @@ import (
 func NetInfo() (*ctypes.ResultNetInfo, error) {
 	peers := []ctypes.Peer{}
 	for _, peer := range p2pPeers.Peers().List() {
+		nodeInfo, ok := peer.NodeInfo().(p2p.DefaultNodeInfo)
+		if !ok {
+			return nil, fmt.Errorf("peer.NodeInfo() is not DefaultNodeInfo")
+		}
 		peers = append(peers, ctypes.Peer{
-			NodeInfo:         peer.NodeInfo(),
+			NodeInfo:         nodeInfo,
 			IsOutbound:       peer.IsOutbound(),
 			ConnectionStatus: peer.Status(),
+			RemoteIP:         peer.RemoteIP(),
 		})
 	}
 	// TODO: Should we include PersistentPeers and Seeds in here?
@@ -88,6 +101,11 @@ func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, 
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // genesis, err := client.Genesis()
 // ```
 //

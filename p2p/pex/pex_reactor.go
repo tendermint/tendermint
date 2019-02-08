@@ -208,21 +208,38 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *pexRequestMessage:
-		// Check we're not receiving too many requests
-		if err := r.receiveRequest(src); err != nil {
-			r.Switch.StopPeerForError(src, err)
-			return
-		}
 
-		// Seeds disconnect after sending a batch of addrs
-		// NOTE: this is a prime candidate for amplification attacks
+		// NOTE: this is a prime candidate for amplification attacks,
 		// so it's important we
 		// 1) restrict how frequently peers can request
 		// 2) limit the output size
-		if r.config.SeedMode {
+
+		// If we're a seed and this is an inbound peer,
+		// respond once and disconnect.
+		if r.config.SeedMode && !src.IsOutbound() {
+			id := string(src.ID())
+			v := r.lastReceivedRequests.Get(id)
+			if v != nil {
+				// FlushStop/StopPeer are already
+				// running in a go-routine.
+				return
+			}
+			r.lastReceivedRequests.Set(id, time.Now())
+
+			// Send addrs and disconnect
 			r.SendAddrs(src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
-			r.Switch.StopPeerGracefully(src)
+			go func() {
+				// In a go-routine so it doesn't block .Receive.
+				src.FlushStop()
+				r.Switch.StopPeerGracefully(src)
+			}()
+
 		} else {
+			// Check we're not receiving requests too frequently.
+			if err := r.receiveRequest(src); err != nil {
+				r.Switch.StopPeerForError(src, err)
+				return
+			}
 			r.SendAddrs(src, r.book.GetSelection())
 		}
 
@@ -288,21 +305,37 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
-		return cmn.NewError("Received unsolicited pexAddrsMessage")
+		return errors.New("Unsolicited pexAddrsMessage")
 	}
 	r.requestsSent.Delete(id)
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
-		// NOTE: GetSelection methods should never return nil addrs
+		// Validate netAddr. Disconnect from a peer if it sends us invalid data.
 		if netAddr == nil {
-			return cmn.NewError("received nil addr")
+			return errors.New("nil address in pexAddrsMessage")
+		}
+		// TODO: extract validating logic from NewNetAddressStringWithOptionalID
+		// and put it in netAddr#Valid (#2722)
+		na, err := p2p.NewNetAddressString(netAddr.String())
+		if err != nil {
+			return fmt.Errorf("%s address in pexAddrsMessage is invalid: %v",
+				netAddr.String(),
+				err,
+			)
 		}
 
-		err := r.book.AddAddress(netAddr, srcAddr)
-		r.logErrAddrBook(err)
+		// NOTE: we check netAddr validity and routability in book#AddAddress.
+		err = r.book.AddAddress(na, srcAddr)
+		if err != nil {
+			r.logErrAddrBook(err)
+			// XXX: should we be strict about incoming data and disconnect from a
+			// peer here too?
+			continue
+		}
 
-		// If this address came from a seed node, try to connect to it without waiting.
+		// If this address came from a seed node, try to connect to it without
+		// waiting.
 		for _, seedAddr := range r.seedAddrs {
 			if seedAddr.Equals(srcAddr) {
 				r.ensurePeers()
@@ -438,7 +471,11 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 	attempts, lastDialed := r.dialAttemptsInfo(addr)
 
 	if attempts > maxAttemptsToDial {
-		r.Logger.Error("Reached max attempts to dial", "addr", addr, "attempts", attempts)
+		// Do not log the message if the addr gets readded.
+		if attempts+1 == maxAttemptsToDial {
+			r.Logger.Info("Reached max attempts to dial", "addr", addr, "attempts", attempts)
+			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
+		}
 		r.book.MarkBad(addr)
 		return
 	}
@@ -579,10 +616,9 @@ func (of oldestFirst) Less(i, j int) bool { return of[i].LastAttempt.Before(of[j
 // getPeersToCrawl returns addresses of potential peers that we wish to validate.
 // NOTE: The status information is ordered as described above.
 func (r *PEXReactor) getPeersToCrawl() []crawlPeerInfo {
-	var of oldestFirst
-
 	// TODO: be more selective
 	addrs := r.book.ListOfKnownAddresses()
+	of := make(oldestFirst, 0, len(addrs))
 	for _, addr := range addrs {
 		if len(addr.ID()) == 0 {
 			continue // dont use peers without id

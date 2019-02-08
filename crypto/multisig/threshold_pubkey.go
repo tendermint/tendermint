@@ -2,7 +2,6 @@ package multisig
 
 import (
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // PubKeyMultisigThreshold implements a K of N threshold multisig.
@@ -11,7 +10,7 @@ type PubKeyMultisigThreshold struct {
 	PubKeys []crypto.PubKey `json:"pubkeys"`
 }
 
-var _ crypto.PubKey = &PubKeyMultisigThreshold{}
+var _ crypto.PubKey = PubKeyMultisigThreshold{}
 
 // NewPubKeyMultisigThreshold returns a new PubKeyMultisigThreshold.
 // Panics if len(pubkeys) < k or 0 >= k.
@@ -22,7 +21,7 @@ func NewPubKeyMultisigThreshold(k int, pubkeys []crypto.PubKey) crypto.PubKey {
 	if len(pubkeys) < k {
 		panic("threshold k of n multisignature: len(pubkeys) < k")
 	}
-	return &PubKeyMultisigThreshold{uint(k), pubkeys}
+	return PubKeyMultisigThreshold{uint(k), pubkeys}
 }
 
 // VerifyBytes expects sig to be an amino encoded version of a MultiSignature.
@@ -31,8 +30,8 @@ func NewPubKeyMultisigThreshold(k int, pubkeys []crypto.PubKey) crypto.PubKey {
 // and all signatures are valid. (Not just k of the signatures)
 // The multisig uses a bitarray, so multiple signatures for the same key is not
 // a concern.
-func (pk *PubKeyMultisigThreshold) VerifyBytes(msg []byte, marshalledSig []byte) bool {
-	var sig *Multisignature
+func (pk PubKeyMultisigThreshold) VerifyBytes(msg []byte, marshalledSig []byte) bool {
+	var sig Multisignature
 	err := cdc.UnmarshalBinaryBare(marshalledSig, &sig)
 	if err != nil {
 		return false
@@ -64,19 +63,19 @@ func (pk *PubKeyMultisigThreshold) VerifyBytes(msg []byte, marshalledSig []byte)
 }
 
 // Bytes returns the amino encoded version of the PubKeyMultisigThreshold
-func (pk *PubKeyMultisigThreshold) Bytes() []byte {
+func (pk PubKeyMultisigThreshold) Bytes() []byte {
 	return cdc.MustMarshalBinaryBare(pk)
 }
 
 // Address returns tmhash(PubKeyMultisigThreshold.Bytes())
-func (pk *PubKeyMultisigThreshold) Address() crypto.Address {
-	return crypto.Address(tmhash.Sum(pk.Bytes()))
+func (pk PubKeyMultisigThreshold) Address() crypto.Address {
+	return crypto.AddressHash(pk.Bytes())
 }
 
 // Equals returns true iff pk and other both have the same number of keys, and
 // all constituent keys are the same, and in the same order.
-func (pk *PubKeyMultisigThreshold) Equals(other crypto.PubKey) bool {
-	otherKey, sameType := other.(*PubKeyMultisigThreshold)
+func (pk PubKeyMultisigThreshold) Equals(other crypto.PubKey) bool {
+	otherKey, sameType := other.(PubKeyMultisigThreshold)
 	if !sameType {
 		return false
 	}

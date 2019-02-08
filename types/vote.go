@@ -12,7 +12,7 @@ import (
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes int64 = 200
+	MaxVoteBytes int64 = 223
 )
 
 var (
@@ -43,41 +43,34 @@ func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflic
 	}
 }
 
-// Types of votes
-// TODO Make a new type "VoteType"
-const (
-	VoteTypePrevote   = byte(0x01)
-	VoteTypePrecommit = byte(0x02)
-)
-
-func IsVoteTypeValid(type_ byte) bool {
-	switch type_ {
-	case VoteTypePrevote:
-		return true
-	case VoteTypePrecommit:
-		return true
-	default:
-		return false
-	}
-}
-
 // Address is hex bytes.
 type Address = crypto.Address
 
-// Represents a prevote, precommit, or commit vote from validators for consensus.
+// Vote represents a prevote, precommit, or commit vote from validators for
+// consensus.
 type Vote struct {
-	ValidatorAddress Address   `json:"validator_address"`
-	ValidatorIndex   int       `json:"validator_index"`
-	Height           int64     `json:"height"`
-	Round            int       `json:"round"`
-	Timestamp        time.Time `json:"timestamp"`
-	Type             byte      `json:"type"`
-	BlockID          BlockID   `json:"block_id"` // zero if vote is nil.
-	Signature        []byte    `json:"signature"`
+	Type             SignedMsgType `json:"type"`
+	Height           int64         `json:"height"`
+	Round            int           `json:"round"`
+	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time     `json:"timestamp"`
+	ValidatorAddress Address       `json:"validator_address"`
+	ValidatorIndex   int           `json:"validator_index"`
+	Signature        []byte        `json:"signature"`
+}
+
+// CommitSig converts the Vote to a CommitSig.
+// If the Vote is nil, the CommitSig will be nil.
+func (vote *Vote) CommitSig() *CommitSig {
+	if vote == nil {
+		return nil
+	}
+	cs := CommitSig(*vote)
+	return &cs
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinary(CanonicalizeVote(chainID, vote))
+	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
 	if err != nil {
 		panic(err)
 	}
@@ -95,9 +88,9 @@ func (vote *Vote) String() string {
 	}
 	var typeString string
 	switch vote.Type {
-	case VoteTypePrevote:
+	case PrevoteType:
 		typeString = "Prevote"
-	case VoteTypePrecommit:
+	case PrecommitType:
 		typeString = "Precommit"
 	default:
 		cmn.PanicSanity("Unknown vote type")
@@ -112,7 +105,8 @@ func (vote *Vote) String() string {
 		typeString,
 		cmn.Fingerprint(vote.BlockID.Hash),
 		cmn.Fingerprint(vote.Signature),
-		CanonicalTime(vote.Timestamp))
+		CanonicalTime(vote.Timestamp),
+	)
 }
 
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
@@ -122,6 +116,46 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 
 	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
 		return ErrVoteInvalidSignature
+	}
+	return nil
+}
+
+// ValidateBasic performs basic validation.
+func (vote *Vote) ValidateBasic() error {
+	if !IsVoteTypeValid(vote.Type) {
+		return errors.New("Invalid Type")
+	}
+	if vote.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if vote.Round < 0 {
+		return errors.New("Negative Round")
+	}
+
+	// NOTE: Timestamp validation is subtle and handled elsewhere.
+
+	if err := vote.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("Wrong BlockID: %v", err)
+	}
+	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
+	// non-empty PartsSetHeader:
+	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
+		return fmt.Errorf("BlockID must be either empty or complete, got: %v", vote.BlockID)
+	}
+	if len(vote.ValidatorAddress) != crypto.AddressSize {
+		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
+			crypto.AddressSize,
+			len(vote.ValidatorAddress),
+		)
+	}
+	if vote.ValidatorIndex < 0 {
+		return errors.New("Negative ValidatorIndex")
+	}
+	if len(vote.Signature) == 0 {
+		return errors.New("Signature is missing")
+	}
+	if len(vote.Signature) > MaxSignatureSize {
+		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
 }

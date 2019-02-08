@@ -19,6 +19,9 @@ const (
 
 //------------------------------------------------------------
 // core types for a genesis definition
+// NOTE: any changes to the genesis definition should
+// be reflected in the documentation:
+// docs/tendermint-core/using-tendermint.md
 
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {

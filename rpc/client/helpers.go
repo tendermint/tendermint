@@ -69,7 +69,18 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	}
 
 	// make sure to unregister after the test is over
-	defer c.UnsubscribeAll(ctx, subscriber)
+	defer func() {
+		// drain evts to make sure we don't block
+	LOOP:
+		for {
+			select {
+			case <-evts:
+			default:
+				break LOOP
+			}
+		}
+		c.UnsubscribeAll(ctx, subscriber)
+	}()
 
 	select {
 	case evt := <-evts:

@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -99,7 +99,7 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 }
 
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	request, err := types.MapToRequest(c.cdc, "jsonrpc-client", method, params)
+	request, err := types.MapToRequest(c.cdc, types.JSONRPCStringID("jsonrpc-client"), method, params)
 	if err != nil {
 		return nil, err
 	}

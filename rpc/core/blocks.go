@@ -18,6 +18,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // info, err := client.BlockchainInfo(10, 10)
 // ```
 //
@@ -123,6 +128,11 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // info, err := client.Block(10)
 // ```
 //
@@ -235,6 +245,11 @@ func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // info, err := client.Commit(11)
 // ```
 //
@@ -329,6 +344,11 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // info, err := client.BlockResults(10)
 // ```
 //

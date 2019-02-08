@@ -63,7 +63,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		part := bs.LoadBlockPart(height, i)
 		buf = append(buf, part.Bytes...)
 	}
-	err := cdc.UnmarshalBinary(buf, block)
+	err := cdc.UnmarshalBinaryLengthPrefixed(buf, block)
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.

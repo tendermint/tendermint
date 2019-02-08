@@ -2,8 +2,10 @@ package state
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
@@ -25,18 +27,25 @@ func TestValidateBlockHeader(t *testing.T) {
 	err := blockExec.ValidateBlock(state, block)
 	require.NoError(t, err)
 
+	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
+	wrongVersion1 := state.Version.Consensus
+	wrongVersion1.Block += 1
+	wrongVersion2 := state.Version.Consensus
+	wrongVersion2.App += 1
 
 	// Manipulation of any header field causes failure.
 	testCases := []struct {
 		name          string
 		malleateBlock func(block *types.Block)
 	}{
-		{"ChainID wrong", func(block *types.Block) { block.ChainID = "not-the-real-one" }}, // wrong chain id
-		{"Height wrong", func(block *types.Block) { block.Height += 10 }},                  // wrong height
-		// TODO(#2589) (#2587) : {"Time", func(block *types.Block) { block.Time.Add(-time.Second * 3600 * 24) }}, // wrong time
-		{"NumTxs wrong", func(block *types.Block) { block.NumTxs += 10 }},     // wrong num txs
-		{"TotalTxs wrong", func(block *types.Block) { block.TotalTxs += 10 }}, // wrong total txs
+		{"Version wrong1", func(block *types.Block) { block.Version = wrongVersion1 }},
+		{"Version wrong2", func(block *types.Block) { block.Version = wrongVersion2 }},
+		{"ChainID wrong", func(block *types.Block) { block.ChainID = "not-the-real-one" }},
+		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
+		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 3600 * 24) }},
+		{"NumTxs wrong", func(block *types.Block) { block.NumTxs += 10 }},
+		{"TotalTxs wrong", func(block *types.Block) { block.TotalTxs += 10 }},
 
 		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartsHeader.Total += 10 }},
 		{"LastCommitHash wrong", func(block *types.Block) { block.LastCommitHash = wrongHash }},
@@ -100,10 +109,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	// A block with too much evidence fails.
 	maxBlockSize := state.ConsensusParams.BlockSize.MaxBytes
-	maxEvidenceBytes := types.MaxEvidenceBytesPerBlock(maxBlockSize)
-	maxEvidence := maxEvidenceBytes / types.MaxEvidenceBytes
-	require.True(t, maxEvidence > 2)
-	for i := int64(0); i < maxEvidence; i++ {
+	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
+	require.True(t, maxNumEvidence > 2)
+	for i := int64(0); i < maxNumEvidence; i++ {
 		block.Evidence.Evidence = append(block.Evidence.Evidence, goodEvidence)
 	}
 	block.EvidenceHash = block.Evidence.Hash()

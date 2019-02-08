@@ -21,6 +21,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+type peerState struct {
+	height int64
+}
+
+func (ps peerState) GetHeight() int64 {
+	return ps.height
+}
+
 // mempoolLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
 func mempoolLogger() log.Logger {
@@ -107,6 +115,11 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 			r.Stop()
 		}
 	}()
+	for _, r := range reactors {
+		for _, peer := range r.Switch.Peers().List() {
+			peer.Set(types.PeerStateKey, peerState{1})
+		}
+	}
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others

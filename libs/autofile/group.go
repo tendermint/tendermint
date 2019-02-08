@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -68,6 +67,11 @@ type Group struct {
 	minIndex           int // Includes head
 	maxIndex           int // Includes head, where Head will move to
 
+	// close this when the processTicks routine is done.
+	// this ensures we can cleanup the dir after calling Stop
+	// and the routine won't be trying to access it anymore
+	doneProcessTicks chan struct{}
+
 	// TODO: When we start deleting files, we need to start tracking GroupReaders
 	// and their dependencies.
 }
@@ -91,6 +95,7 @@ func OpenGroup(headPath string, groupOptions ...func(*Group)) (g *Group, err err
 		groupCheckDuration: defaultGroupCheckDuration,
 		minIndex:           0,
 		maxIndex:           0,
+		doneProcessTicks:   make(chan struct{}),
 	}
 
 	for _, option := range groupOptions {
@@ -139,6 +144,11 @@ func (g *Group) OnStart() error {
 func (g *Group) OnStop() {
 	g.ticker.Stop()
 	g.Flush() // flush any uncommitted data
+}
+
+func (g *Group) Wait() {
+	// wait for processTicks routine to finish
+	<-g.doneProcessTicks
 }
 
 // Close closes the head file. The group must be stopped by this moment.
@@ -212,6 +222,7 @@ func (g *Group) Flush() error {
 }
 
 func (g *Group) processTicks() {
+	defer close(g.doneProcessTicks)
 	for {
 		select {
 		case <-g.ticker.C:
@@ -231,7 +242,8 @@ func (g *Group) checkHeadSizeLimit() {
 	}
 	size, err := g.Head.Size()
 	if err != nil {
-		panic(err)
+		g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path, "err", err)
+		return
 	}
 	if size >= limit {
 		g.RotateFile()
@@ -253,21 +265,21 @@ func (g *Group) checkTotalSizeLimit() {
 		}
 		if index == gInfo.MaxIndex {
 			// Special degenerate case, just do nothing.
-			log.Println("WARNING: Group's head " + g.Head.Path + "may grow without bound")
+			g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path)
 			return
 		}
 		pathToRemove := filePathForIndex(g.Head.Path, index, gInfo.MaxIndex)
-		fileInfo, err := os.Stat(pathToRemove)
+		fInfo, err := os.Stat(pathToRemove)
 		if err != nil {
-			log.Println("WARNING: Failed to fetch info for file @" + pathToRemove)
+			g.Logger.Error("Failed to fetch info for file", "file", pathToRemove)
 			continue
 		}
 		err = os.Remove(pathToRemove)
 		if err != nil {
-			log.Println(err)
+			g.Logger.Error("Failed to remove path", "path", pathToRemove)
 			return
 		}
-		totalSize -= fileInfo.Size()
+		totalSize -= fInfo.Size()
 	}
 }
 

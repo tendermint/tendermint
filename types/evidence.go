@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	amino "github.com/tendermint/go-amino"
@@ -14,7 +15,7 @@ import (
 
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes int64 = 440
+	MaxEvidenceBytes int64 = 484
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -35,8 +36,8 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // ErrEvidenceOverflow is for when there is too much evidence in a block.
 type ErrEvidenceOverflow struct {
-	MaxBytes int64
-	GotBytes int64
+	MaxNum int64
+	GotNum int64
 }
 
 // NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
@@ -46,7 +47,7 @@ func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
 
 // Error returns a string representation of the error.
 func (err *ErrEvidenceOverflow) Error() string {
-	return fmt.Sprintf("Too much evidence: Max %d bytes, got %d bytes", err.MaxBytes, err.GotBytes)
+	return fmt.Sprintf("Too much evidence: Max %d, got %d", err.MaxNum, err.GotNum)
 }
 
 //-------------------------------------------
@@ -55,10 +56,12 @@ func (err *ErrEvidenceOverflow) Error() string {
 type Evidence interface {
 	Height() int64                                     // height of the equivocation
 	Address() []byte                                   // address of the equivocating validator
+	Bytes() []byte                                     // bytes which compromise the evidence
 	Hash() []byte                                      // hash of the evidence
 	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
 	Equal(Evidence) bool                               // check equality of evidence
 
+	ValidateBasic() error
 	String() string
 }
 
@@ -69,13 +72,23 @@ func RegisterEvidences(cdc *amino.Codec) {
 
 func RegisterMockEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(MockGoodEvidence{}, "tendermint/MockGoodEvidence", nil)
+	cdc.RegisterConcrete(MockRandomGoodEvidence{}, "tendermint/MockRandomGoodEvidence", nil)
 	cdc.RegisterConcrete(MockBadEvidence{}, "tendermint/MockBadEvidence", nil)
 }
 
-// MaxEvidenceBytesPerBlock returns the maximum evidence size per block -
-// 1/10th of the maximum block size.
-func MaxEvidenceBytesPerBlock(blockMaxBytes int64) int64 {
-	return blockMaxBytes / 10
+const (
+	MaxEvidenceBytesDenominator = 10
+)
+
+// MaxEvidencePerBlock returns the maximum number of evidences
+// allowed in the block and their maximum total size (limitted to 1/10th
+// of the maximum block size).
+// TODO: change to a constant, or to a fraction of the validator set size.
+// See https://github.com/tendermint/tendermint/issues/2590
+func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
+	maxBytes := blockMaxBytes / MaxEvidenceBytesDenominator
+	maxNum := maxBytes / MaxEvidenceBytes
+	return maxNum, maxBytes
 }
 
 //-------------------------------------------
@@ -87,6 +100,8 @@ type DuplicateVoteEvidence struct {
 	VoteA  *Vote
 	VoteB  *Vote
 }
+
+var _ Evidence = &DuplicateVoteEvidence{}
 
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
@@ -102,6 +117,11 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 // Address returns the address of the validator.
 func (dve *DuplicateVoteEvidence) Address() []byte {
 	return dve.PubKey.Address()
+}
+
+// Hash returns the hash of the evidence.
+func (dve *DuplicateVoteEvidence) Bytes() []byte {
+	return cdcEncode(dve)
 }
 
 // Hash returns the hash of the evidence.
@@ -164,13 +184,51 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	return bytes.Equal(dveHash, evHash)
 }
 
+// ValidateBasic performs basic validation.
+func (dve *DuplicateVoteEvidence) ValidateBasic() error {
+	if len(dve.PubKey.Bytes()) == 0 {
+		return errors.New("Empty PubKey")
+	}
+	if dve.VoteA == nil || dve.VoteB == nil {
+		return fmt.Errorf("One or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
+	}
+	if err := dve.VoteA.ValidateBasic(); err != nil {
+		return fmt.Errorf("Invalid VoteA: %v", err)
+	}
+	if err := dve.VoteB.ValidateBasic(); err != nil {
+		return fmt.Errorf("Invalid VoteB: %v", err)
+	}
+	return nil
+}
+
 //-----------------------------------------------------------------
+
+// UNSTABLE
+type MockRandomGoodEvidence struct {
+	MockGoodEvidence
+	randBytes []byte
+}
+
+var _ Evidence = &MockRandomGoodEvidence{}
+
+// UNSTABLE
+func NewMockRandomGoodEvidence(height int64, address []byte, randBytes []byte) MockRandomGoodEvidence {
+	return MockRandomGoodEvidence{
+		MockGoodEvidence{height, address}, randBytes,
+	}
+}
+
+func (e MockRandomGoodEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.randBytes))
+}
 
 // UNSTABLE
 type MockGoodEvidence struct {
 	Height_  int64
 	Address_ []byte
 }
+
+var _ Evidence = &MockGoodEvidence{}
 
 // UNSTABLE
 func NewMockGoodEvidence(height int64, idx int, address []byte) MockGoodEvidence {
@@ -182,12 +240,16 @@ func (e MockGoodEvidence) Address() []byte { return e.Address_ }
 func (e MockGoodEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.Address_))
 }
+func (e MockGoodEvidence) Bytes() []byte {
+	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.Address_))
+}
 func (e MockGoodEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
 func (e MockGoodEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockGoodEvidence)
 	return e.Height_ == e2.Height_ &&
 		bytes.Equal(e.Address_, e2.Address_)
 }
+func (e MockGoodEvidence) ValidateBasic() error { return nil }
 func (e MockGoodEvidence) String() string {
 	return fmt.Sprintf("GoodEvidence: %d/%s", e.Height_, e.Address_)
 }
@@ -205,6 +267,7 @@ func (e MockBadEvidence) Equal(ev Evidence) bool {
 	return e.Height_ == e2.Height_ &&
 		bytes.Equal(e.Address_, e2.Address_)
 }
+func (e MockBadEvidence) ValidateBasic() error { return nil }
 func (e MockBadEvidence) String() string {
 	return fmt.Sprintf("BadEvidence: %d/%s", e.Height_, e.Address_)
 }
@@ -216,18 +279,14 @@ type EvidenceList []Evidence
 
 // Hash returns the simple merkle root hash of the EvidenceList.
 func (evl EvidenceList) Hash() []byte {
-	// Recursive impl.
-	// Copied from crypto/merkle to avoid allocations
-	switch len(evl) {
-	case 0:
-		return nil
-	case 1:
-		return evl[0].Hash()
-	default:
-		left := EvidenceList(evl[:(len(evl)+1)/2]).Hash()
-		right := EvidenceList(evl[(len(evl)+1)/2:]).Hash()
-		return merkle.SimpleHashFromTwoHashes(left, right)
+	// These allocations are required because Evidence is not of type Bytes, and
+	// golang slices can't be typed cast. This shouldn't be a performance problem since
+	// the Evidence size is capped.
+	evidenceBzs := make([][]byte, len(evl))
+	for i := 0; i < len(evl); i++ {
+		evidenceBzs[i] = evl[i].Bytes()
 	}
+	return merkle.SimpleHashFromByteSlices(evidenceBzs)
 }
 
 func (evl EvidenceList) String() string {

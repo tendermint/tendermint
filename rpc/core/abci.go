@@ -3,8 +3,8 @@ package core
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 // Query the application for some information.
@@ -15,6 +15,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.ABCIQuery("", "abcd", true)
 // ```
 //
@@ -69,6 +74,11 @@ func ABCIQuery(path string, data cmn.HexBytes, height int64, prove bool) (*ctype
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // info, err := client.ABCIInfo()
 // ```
 //
@@ -87,7 +97,7 @@ func ABCIQuery(path string, data cmn.HexBytes, height int64, prove bool) (*ctype
 // }
 // ```
 func ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	resInfo, err := proxyAppQuery.InfoSync(abci.RequestInfo{Version: version.Version})
+	resInfo, err := proxyAppQuery.InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -12,24 +11,38 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// Returns an empty kvstore peer
-func randPeer(ip net.IP) *peer {
+// mockPeer for testing the PeerSet
+type mockPeer struct {
+	cmn.BaseService
+	ip net.IP
+	id ID
+}
+
+func (mp *mockPeer) FlushStop()                              { mp.Stop() }
+func (mp *mockPeer) TrySend(chID byte, msgBytes []byte) bool { return true }
+func (mp *mockPeer) Send(chID byte, msgBytes []byte) bool    { return true }
+func (mp *mockPeer) NodeInfo() NodeInfo                      { return DefaultNodeInfo{} }
+func (mp *mockPeer) Status() ConnectionStatus                { return ConnectionStatus{} }
+func (mp *mockPeer) ID() ID                                  { return mp.id }
+func (mp *mockPeer) IsOutbound() bool                        { return false }
+func (mp *mockPeer) IsPersistent() bool                      { return true }
+func (mp *mockPeer) Get(s string) interface{}                { return s }
+func (mp *mockPeer) Set(string, interface{})                 {}
+func (mp *mockPeer) RemoteIP() net.IP                        { return mp.ip }
+func (mp *mockPeer) OriginalAddr() *NetAddress               { return nil }
+func (mp *mockPeer) RemoteAddr() net.Addr                    { return &net.TCPAddr{IP: mp.ip, Port: 8800} }
+func (mp *mockPeer) CloseConn() error                        { return nil }
+
+// Returns a mock peer
+func newMockPeer(ip net.IP) *mockPeer {
 	if ip == nil {
 		ip = net.IP{127, 0, 0, 1}
 	}
-
 	nodeKey := NodeKey{PrivKey: ed25519.GenPrivKey()}
-	p := &peer{
-		nodeInfo: NodeInfo{
-			ID:         nodeKey.ID(),
-			ListenAddr: fmt.Sprintf("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),
-		},
-		metrics: NopMetrics(),
+	return &mockPeer{
+		ip: ip,
+		id: nodeKey.ID(),
 	}
-
-	p.ip = ip
-
-	return p
 }
 
 func TestPeerSetAddRemoveOne(t *testing.T) {
@@ -39,7 +52,7 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 
 	var peerList []Peer
 	for i := 0; i < 5; i++ {
-		p := randPeer(net.IP{127, 0, 0, byte(i)})
+		p := newMockPeer(net.IP{127, 0, 0, byte(i)})
 		if err := peerSet.Add(p); err != nil {
 			t.Error(err)
 		}
@@ -49,13 +62,15 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 	n := len(peerList)
 	// 1. Test removing from the front
 	for i, peerAtFront := range peerList {
-		peerSet.Remove(peerAtFront)
+		removed := peerSet.Remove(peerAtFront)
+		assert.True(t, removed)
 		wantSize := n - i - 1
 		for j := 0; j < 2; j++ {
 			assert.Equal(t, false, peerSet.Has(peerAtFront.ID()), "#%d Run #%d: failed to remove peer", i, j)
 			assert.Equal(t, wantSize, peerSet.Size(), "#%d Run #%d: failed to remove peer and decrement size", i, j)
 			// Test the route of removing the now non-existent element
-			peerSet.Remove(peerAtFront)
+			removed := peerSet.Remove(peerAtFront)
+			assert.False(t, removed)
 		}
 	}
 
@@ -70,7 +85,8 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 	// b) In reverse, remove each element
 	for i := n - 1; i >= 0; i-- {
 		peerAtEnd := peerList[i]
-		peerSet.Remove(peerAtEnd)
+		removed := peerSet.Remove(peerAtEnd)
+		assert.True(t, removed)
 		assert.Equal(t, false, peerSet.Has(peerAtEnd.ID()), "#%d: failed to remove item at end", i)
 		assert.Equal(t, i, peerSet.Size(), "#%d: differing sizes after peerSet.Remove(atEndPeer)", i)
 	}
@@ -83,7 +99,7 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 	peers := []Peer{}
 	N := 100
 	for i := 0; i < N; i++ {
-		peer := randPeer(net.IP{127, 0, 0, byte(i)})
+		peer := newMockPeer(net.IP{127, 0, 0, byte(i)})
 		if err := peerSet.Add(peer); err != nil {
 			t.Errorf("Failed to add new peer")
 		}
@@ -94,7 +110,8 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 	}
 
 	for i, peer := range peers {
-		peerSet.Remove(peer)
+		removed := peerSet.Remove(peer)
+		assert.True(t, removed)
 		if peerSet.Has(peer.ID()) {
 			t.Errorf("Failed to remove peer")
 		}
@@ -107,7 +124,7 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 func TestPeerSetAddDuplicate(t *testing.T) {
 	t.Parallel()
 	peerSet := NewPeerSet()
-	peer := randPeer(nil)
+	peer := newMockPeer(nil)
 
 	n := 20
 	errsChan := make(chan error)
@@ -149,7 +166,7 @@ func TestPeerSetGet(t *testing.T) {
 
 	var (
 		peerSet = NewPeerSet()
-		peer    = randPeer(nil)
+		peer    = newMockPeer(nil)
 	)
 
 	assert.Nil(t, peerSet.Get(peer.ID()), "expecting a nil lookup, before .Add")

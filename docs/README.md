@@ -21,7 +21,7 @@ For more details on using Tendermint, see the respective documentation for
 
 ## Contribute
 
-To contribute to the documentation, see [this file](./DOCS_README.md) for details of the build process and
+To contribute to the documentation, see [this file](https://github.com/tendermint/tendermint/blob/master/docs/DOCS_README.md) for details of the build process and
 considerations when making changes.
 
 ## Version

@@ -1,15 +1,14 @@
 package core
 
 import (
-	"time"
-
 	"github.com/tendermint/tendermint/consensus"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
@@ -21,7 +20,7 @@ const (
 	maxPerPage     = 100
 )
 
-var subscribeTimeout = 5 * time.Second
+var subscribeTimeout = rpcserver.WriteTimeout / 2
 
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
@@ -150,8 +149,19 @@ func validatePage(page, perPage, totalCount int) int {
 }
 
 func validatePerPage(perPage int) int {
-	if perPage < 1 || perPage > maxPerPage {
+	if perPage < 1 {
 		return defaultPerPage
+	} else if perPage > maxPerPage {
+		return maxPerPage
 	}
 	return perPage
+}
+
+func validateSkipCount(page, perPage int) int {
+	skipCount := (page - 1) * perPage
+	if skipCount < 0 {
+		return 0
+	}
+
+	return skipCount
 }

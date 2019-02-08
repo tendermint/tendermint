@@ -27,6 +27,17 @@ const (
 	reconnectBackOffBaseSeconds = 3
 )
 
+// MConnConfig returns an MConnConfig with fields updated
+// from the P2PConfig.
+func MConnConfig(cfg *config.P2PConfig) conn.MConnConfig {
+	mConfig := conn.DefaultMConnConfig()
+	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
+	mConfig.SendRate = cfg.SendRate
+	mConfig.RecvRate = cfg.RecvRate
+	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
+	return mConfig
+}
+
 //-----------------------------------------------------------------------------
 
 // An AddrBook represents an address book from the pex package, which is used
@@ -70,8 +81,6 @@ type Switch struct {
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
 
-	mConfig conn.MConnConfig
-
 	rng *cmn.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
@@ -101,14 +110,6 @@ func NewSwitch(
 
 	// Ensure we have a completely undeterministic PRNG.
 	sw.rng = cmn.NewRand()
-
-	mConfig := conn.DefaultMConnConfig()
-	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
-	mConfig.SendRate = cfg.SendRate
-	mConfig.RecvRate = cfg.RecvRate
-	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
-
-	sw.mConfig = mConfig
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 
@@ -209,8 +210,11 @@ func (sw *Switch) OnStart() error {
 func (sw *Switch) OnStop() {
 	// Stop peers
 	for _, p := range sw.peers.List() {
+		sw.transport.Cleanup(p)
 		p.Stop()
-		sw.peers.Remove(p)
+		if sw.peers.Remove(p) {
+			sw.metrics.Peers.Add(float64(-1))
+		}
 	}
 
 	// Stop reactors
@@ -298,8 +302,10 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	sw.peers.Remove(peer)
-	sw.metrics.Peers.Add(float64(-1))
+	if sw.peers.Remove(peer) {
+		sw.metrics.Peers.Add(float64(-1))
+	}
+	sw.transport.Cleanup(peer)
 	peer.Stop()
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
@@ -325,6 +331,11 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 	sw.Logger.Info("Reconnecting to peer", "addr", addr)
 	for i := 0; i < reconnectAttempts; i++ {
 		if !sw.IsRunning() {
+			return
+		}
+
+		if sw.IsDialingOrExistingAddress(addr) {
+			sw.Logger.Debug("Peer connection has been established or dialed while we waiting next try", "addr", addr)
 			return
 		}
 
@@ -415,12 +426,15 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			if addr.Same(ourAddr) {
 				sw.Logger.Debug("Ignore attempt to connect to ourselves", "addr", addr, "ourAddr", ourAddr)
 				return
-			} else if sw.IsDialingOrExistingAddress(addr) {
+			}
+
+			sw.randomSleep(0)
+
+			if sw.IsDialingOrExistingAddress(addr) {
 				sw.Logger.Debug("Ignore attempt to connect to an existing peer", "addr", addr)
 				return
 			}
 
-			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
 				switch err.(type) {
@@ -466,14 +480,12 @@ func (sw *Switch) acceptRoutine() {
 			metrics:      sw.metrics,
 		})
 		if err != nil {
-			switch err.(type) {
+			switch err := err.(type) {
 			case ErrRejected:
-				rErr := err.(ErrRejected)
-
-				if rErr.IsSelf() {
+				if err.IsSelf() {
 					// Remove the given address from the address book and add to our addresses
 					// to avoid dialing in the future.
-					addr := rErr.Addr()
+					addr := err.Addr()
 					sw.addrBook.RemoveAddress(&addr)
 					sw.addrBook.AddOurAddress(&addr)
 				}
@@ -496,6 +508,12 @@ func (sw *Switch) acceptRoutine() {
 					"err", err,
 					"numPeers", sw.peers.Size(),
 				)
+				// We could instead have a retry loop around the acceptRoutine,
+				// but that would need to stop and let the node shutdown eventually.
+				// So might as well panic and let process managers restart the node.
+				// There's no point in letting the node run without the acceptRoutine,
+				// since it won't be able to accept new connections.
+				panic(fmt.Errorf("accept routine exited: %v", err))
 			}
 
 			break
@@ -511,13 +529,16 @@ func (sw *Switch) acceptRoutine() {
 				"max", sw.config.MaxNumInboundPeers,
 			)
 
-			_ = p.Stop()
+			sw.transport.Cleanup(p)
 
 			continue
 		}
 
 		if err := sw.addPeer(p); err != nil {
-			_ = p.Stop()
+			sw.transport.Cleanup(p)
+			if p.IsRunning() {
+				_ = p.Stop()
+			}
 			sw.Logger.Info(
 				"Ignoring inbound connection: error while adding peer",
 				"err", err,
@@ -560,9 +581,13 @@ func (sw *Switch) addOutboundPeerWithConfig(
 				// to avoid dialing in the future.
 				sw.addrBook.RemoveAddress(addr)
 				sw.addrBook.AddOurAddress(addr)
+
+				return err
 			}
 		}
 
+		// retry persistent peers after
+		// any dial error besides IsSelf()
 		if persistent {
 			go sw.reconnectToPeer(addr)
 		}
@@ -571,7 +596,10 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	if err := sw.addPeer(p); err != nil {
-		_ = p.Stop()
+		sw.transport.Cleanup(p)
+		if p.IsRunning() {
+			_ = p.Stop()
+		}
 		return err
 	}
 
@@ -606,19 +634,24 @@ func (sw *Switch) filterPeer(p Peer) error {
 	return nil
 }
 
-// addPeer starts up the Peer and adds it to the Switch.
+// addPeer starts up the Peer and adds it to the Switch. Error is returned if
+// the peer is filtered out or failed to start or can't be added.
 func (sw *Switch) addPeer(p Peer) error {
 	if err := sw.filterPeer(p); err != nil {
 		return err
 	}
 
-	p.SetLogger(sw.Logger.With("peer", p.NodeInfo().NetAddress().String))
+	p.SetLogger(sw.Logger.With("peer", p.NodeInfo().NetAddress()))
 
-	// All good. Start peer
+	// Handle the shut down case where the switch has stopped but we're
+	// concurrently trying to add a peer.
 	if sw.IsRunning() {
+		// All good. Start peer
 		if err := sw.startInitPeer(p); err != nil {
 			return err
 		}
+	} else {
+		sw.Logger.Error("Won't start a peer - switch is not running", "peer", p)
 	}
 
 	// Add the peer to .peers.

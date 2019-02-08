@@ -13,44 +13,32 @@ import (
 const TimeFormat = time.RFC3339Nano
 
 type CanonicalBlockID struct {
-	Hash        cmn.HexBytes           `json:"hash,omitempty"`
-	PartsHeader CanonicalPartSetHeader `json:"parts,omitempty"`
+	Hash        cmn.HexBytes
+	PartsHeader CanonicalPartSetHeader
 }
 
 type CanonicalPartSetHeader struct {
-	Hash  cmn.HexBytes `json:"hash,omitempty"`
-	Total int          `json:"total,omitempty"`
+	Hash  cmn.HexBytes
+	Total int
 }
 
 type CanonicalProposal struct {
-	ChainID          string                 `json:"@chain_id"`
-	Type             string                 `json:"@type"`
-	BlockPartsHeader CanonicalPartSetHeader `json:"block_parts_header"`
-	Height           int64                  `json:"height"`
-	POLBlockID       CanonicalBlockID       `json:"pol_block_id"`
-	POLRound         int                    `json:"pol_round"`
-	Round            int                    `json:"round"`
-	Timestamp        time.Time              `json:"timestamp"`
+	Type      SignedMsgType // type alias for byte
+	Height    int64         `binary:"fixed64"`
+	Round     int64         `binary:"fixed64"`
+	POLRound  int64         `binary:"fixed64"`
+	BlockID   CanonicalBlockID
+	Timestamp time.Time
+	ChainID   string
 }
 
 type CanonicalVote struct {
-	ChainID   string           `json:"@chain_id"`
-	Type      string           `json:"@type"`
-	BlockID   CanonicalBlockID `json:"block_id"`
-	Height    int64            `json:"height"`
-	Round     int              `json:"round"`
-	Timestamp time.Time        `json:"timestamp"`
-	VoteType  byte             `json:"type"`
-}
-
-type CanonicalHeartbeat struct {
-	ChainID          string  `json:"@chain_id"`
-	Type             string  `json:"@type"`
-	Height           int64   `json:"height"`
-	Round            int     `json:"round"`
-	Sequence         int     `json:"sequence"`
-	ValidatorAddress Address `json:"validator_address"`
-	ValidatorIndex   int     `json:"validator_index"`
+	Type      SignedMsgType // type alias for byte
+	Height    int64         `binary:"fixed64"`
+	Round     int64         `binary:"fixed64"`
+	BlockID   CanonicalBlockID
+	Timestamp time.Time
+	ChainID   string
 }
 
 //-----------------------------------
@@ -72,38 +60,24 @@ func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
 
 func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
 	return CanonicalProposal{
-		ChainID:          chainID,
-		Type:             "proposal",
-		BlockPartsHeader: CanonicalizePartSetHeader(proposal.BlockPartsHeader),
-		Height:           proposal.Height,
-		Timestamp:        proposal.Timestamp,
-		POLBlockID:       CanonicalizeBlockID(proposal.POLBlockID),
-		POLRound:         proposal.POLRound,
-		Round:            proposal.Round,
+		Type:      ProposalType,
+		Height:    proposal.Height,
+		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		POLRound:  int64(proposal.POLRound),
+		BlockID:   CanonicalizeBlockID(proposal.BlockID),
+		Timestamp: proposal.Timestamp,
+		ChainID:   chainID,
 	}
 }
 
 func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
 	return CanonicalVote{
-		ChainID:   chainID,
-		Type:      "vote",
-		BlockID:   CanonicalizeBlockID(vote.BlockID),
+		Type:      vote.Type,
 		Height:    vote.Height,
-		Round:     vote.Round,
+		Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		BlockID:   CanonicalizeBlockID(vote.BlockID),
 		Timestamp: vote.Timestamp,
-		VoteType:  vote.Type,
-	}
-}
-
-func CanonicalizeHeartbeat(chainID string, heartbeat *Heartbeat) CanonicalHeartbeat {
-	return CanonicalHeartbeat{
-		ChainID:          chainID,
-		Type:             "heartbeat",
-		Height:           heartbeat.Height,
-		Round:            heartbeat.Round,
-		Sequence:         heartbeat.Sequence,
-		ValidatorAddress: heartbeat.ValidatorAddress,
-		ValidatorIndex:   heartbeat.ValidatorIndex,
+		ChainID:   chainID,
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -34,6 +35,21 @@ func GetClients() []client.Client {
 		getHTTPClient(),
 		getLocalClient(),
 	}
+}
+
+func TestCorsEnabled(t *testing.T) {
+	origin := rpctest.GetConfig().RPC.CORSAllowedOrigins[0]
+	remote := strings.Replace(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http", -1)
+
+	req, err := http.NewRequest("GET", remote, nil)
+	require.Nil(t, err, "%+v", err)
+	req.Header.Set("Origin", origin)
+	c := &http.Client{}
+	resp, err := c.Do(req)
+	defer resp.Body.Close()
+
+	require.Nil(t, err, "%+v", err)
+	assert.Equal(t, resp.Header.Get("Access-Control-Allow-Origin"), origin)
 }
 
 // Make sure status is correct (we connect properly)
@@ -269,6 +285,42 @@ func TestBroadcastTxCommit(t *testing.T) {
 	}
 }
 
+func TestUnconfirmedTxs(t *testing.T) {
+	_, _, tx := MakeTxKV()
+
+	mempool := node.MempoolReactor().Mempool
+	_ = mempool.CheckTx(tx, nil)
+
+	for i, c := range GetClients() {
+		mc, ok := c.(client.MempoolClient)
+		require.True(t, ok, "%d", i)
+		txs, err := mc.UnconfirmedTxs(1)
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.Exactly(t, types.Txs{tx}, types.Txs(txs.Txs))
+	}
+
+	mempool.Flush()
+}
+
+func TestNumUnconfirmedTxs(t *testing.T) {
+	_, _, tx := MakeTxKV()
+
+	mempool := node.MempoolReactor().Mempool
+	_ = mempool.CheckTx(tx, nil)
+	mempoolSize := mempool.Size()
+
+	for i, c := range GetClients() {
+		mc, ok := c.(client.MempoolClient)
+		require.True(t, ok, "%d", i)
+		res, err := mc.NumUnconfirmedTxs()
+		require.Nil(t, err, "%d: %+v", i, err)
+
+		assert.Equal(t, mempoolSize, res.N)
+	}
+
+	mempool.Flush()
+}
+
 func TestTx(t *testing.T) {
 	// first we broadcast a tx
 	c := getHTTPClient()
@@ -358,21 +410,33 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// query by height
-		result, err = c.TxSearch(fmt.Sprintf("tx.height >= %d", txHeight), true, 1, 30)
+		result, err = c.TxSearch(fmt.Sprintf("tx.height=%d", txHeight), true, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 1)
 
-		// we query for non existing tx
+		// query for non existing tx
 		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 
-		// we query using a tag (see kvstore application)
+		// query using a tag (see kvstore application)
 		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
+
+		// query using a tag (see kvstore application) and height
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, 1, 30)
+		require.Nil(t, err, "%+v", err)
+		if len(result.Txs) == 0 {
+			t.Fatal("expected a lot of transactions")
+		}
+
+		// query a non existing tx with page 1 and txsPerPage 1
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, result.Txs, 0)
 	}
 }
 

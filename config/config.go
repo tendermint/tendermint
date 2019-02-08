@@ -14,6 +14,11 @@ const (
 	FuzzModeDrop = iota
 	// FuzzModeDelay is a mode in which we randomly sleep
 	FuzzModeDelay
+
+	// LogFormatPlain is a format for colored text
+	LogFormatPlain = "plain"
+	// LogFormatJSON is a format for json output
+	LogFormatJSON = "json"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -30,15 +35,24 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
-	defaultPrivValName  = "priv_validator.json"
+	defaultPrivValKeyName   = "priv_validator_key.json"
+	defaultPrivValStateName = "priv_validator_state.json"
+
 	defaultNodeKeyName  = "node_key.json"
 	defaultAddrBookName = "addrbook.json"
 
-	defaultConfigFilePath  = filepath.Join(defaultConfigDir, defaultConfigFileName)
-	defaultGenesisJSONPath = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
-	defaultPrivValPath     = filepath.Join(defaultConfigDir, defaultPrivValName)
-	defaultNodeKeyPath     = filepath.Join(defaultConfigDir, defaultNodeKeyName)
-	defaultAddrBookPath    = filepath.Join(defaultConfigDir, defaultAddrBookName)
+	defaultConfigFilePath   = filepath.Join(defaultConfigDir, defaultConfigFileName)
+	defaultGenesisJSONPath  = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
+	defaultPrivValKeyPath   = filepath.Join(defaultConfigDir, defaultPrivValKeyName)
+	defaultPrivValStatePath = filepath.Join(defaultDataDir, defaultPrivValStateName)
+
+	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
+	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+)
+
+var (
+	oldPrivVal     = "priv_validator.json"
+	oldPrivValPath = filepath.Join(defaultConfigDir, oldPrivVal)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -94,6 +108,9 @@ func (cfg *Config) SetRoot(root string) *Config {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *Config) ValidateBasic() error {
+	if err := cfg.BaseConfig.ValidateBasic(); err != nil {
+		return err
+	}
 	if err := cfg.RPC.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [rpc] section")
 	}
@@ -145,11 +162,17 @@ type BaseConfig struct {
 	// Output level for logging
 	LogLevel string `mapstructure:"log_level"`
 
+	// Output format: 'plain' (colored text) or 'json'
+	LogFormat string `mapstructure:"log_format"`
+
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis_file"`
 
 	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
-	PrivValidator string `mapstructure:"priv_validator_file"`
+	PrivValidatorKey string `mapstructure:"priv_validator_key_file"`
+
+	// Path to the JSON file containing the last sign state of a validator
+	PrivValidatorState string `mapstructure:"priv_validator_state_file"`
 
 	// TCP or UNIX socket address for Tendermint to listen on for
 	// connections from an external PrivValidator process
@@ -172,18 +195,20 @@ type BaseConfig struct {
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:           defaultGenesisJSONPath,
-		PrivValidator:     defaultPrivValPath,
-		NodeKey:           defaultNodeKeyPath,
-		Moniker:           defaultMoniker,
-		ProxyApp:          "tcp://127.0.0.1:26658",
-		ABCI:              "socket",
-		LogLevel:          DefaultPackageLogLevels(),
-		ProfListenAddress: "",
-		FastSync:          true,
-		FilterPeers:       false,
-		DBBackend:         "leveldb",
-		DBPath:            "data",
+		Genesis:            defaultGenesisJSONPath,
+		PrivValidatorKey:   defaultPrivValKeyPath,
+		PrivValidatorState: defaultPrivValStatePath,
+		NodeKey:            defaultNodeKeyPath,
+		Moniker:            defaultMoniker,
+		ProxyApp:           "tcp://127.0.0.1:26658",
+		ABCI:               "socket",
+		LogLevel:           DefaultPackageLogLevels(),
+		LogFormat:          LogFormatPlain,
+		ProfListenAddress:  "",
+		FastSync:           true,
+		FilterPeers:        false,
+		DBBackend:          "leveldb",
+		DBPath:             "data",
 	}
 }
 
@@ -206,9 +231,20 @@ func (cfg BaseConfig) GenesisFile() string {
 	return rootify(cfg.Genesis, cfg.RootDir)
 }
 
-// PrivValidatorFile returns the full path to the priv_validator.json file
-func (cfg BaseConfig) PrivValidatorFile() string {
-	return rootify(cfg.PrivValidator, cfg.RootDir)
+// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+func (cfg BaseConfig) PrivValidatorKeyFile() string {
+	return rootify(cfg.PrivValidatorKey, cfg.RootDir)
+}
+
+// PrivValidatorFile returns the full path to the priv_validator_state.json file
+func (cfg BaseConfig) PrivValidatorStateFile() string {
+	return rootify(cfg.PrivValidatorState, cfg.RootDir)
+}
+
+// OldPrivValidatorFile returns the full path of the priv_validator.json from pre v0.28.0.
+// TODO: eventually remove.
+func (cfg BaseConfig) OldPrivValidatorFile() string {
+	return rootify(oldPrivValPath, cfg.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
@@ -219,6 +255,17 @@ func (cfg BaseConfig) NodeKeyFile() string {
 // DBDir returns the full path to the database directory
 func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
+}
+
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg BaseConfig) ValidateBasic() error {
+	switch cfg.LogFormat {
+	case LogFormatPlain, LogFormatJSON:
+	default:
+		return errors.New("unknown log_format (must be 'plain' or 'json')")
+	}
+	return nil
 }
 
 // DefaultLogLevel returns a default log level of "error"
@@ -242,13 +289,25 @@ type RPCConfig struct {
 	// TCP or UNIX socket address for the RPC server to listen on
 	ListenAddress string `mapstructure:"laddr"`
 
+	// A list of origins a cross-domain request can be executed from.
+	// If the special '*' value is present in the list, all origins will be allowed.
+	// An origin may contain a wildcard (*) to replace 0 or more characters (i.e.: http://*.domain.com).
+	// Only one wildcard can be used per origin.
+	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins"`
+
+	// A list of methods the client is allowed to use with cross-domain requests.
+	CORSAllowedMethods []string `mapstructure:"cors_allowed_methods"`
+
+	// A list of non simple headers the client is allowed to use with cross-domain requests.
+	CORSAllowedHeaders []string `mapstructure:"cors_allowed_headers"`
+
 	// TCP or UNIX socket address for the gRPC server to listen on
 	// NOTE: This server only supports /broadcast_tx_commit
 	GRPCListenAddress string `mapstructure:"grpc_laddr"`
 
 	// Maximum number of simultaneous connections.
 	// Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	GRPCMaxOpenConnections int `mapstructure:"grpc_max_open_connections"`
@@ -258,7 +317,7 @@ type RPCConfig struct {
 
 	// Maximum number of simultaneous connections (including WebSocket).
 	// Does not include gRPC connections. See grpc_max_open_connections
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	// Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -269,8 +328,10 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress: "tcp://0.0.0.0:26657",
-
+		ListenAddress:          "tcp://0.0.0.0:26657",
+		CORSAllowedOrigins:     []string{},
+		CORSAllowedMethods:     []string{"HEAD", "GET", "POST"},
+		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 		GRPCListenAddress:      "",
 		GRPCMaxOpenConnections: 900,
 
@@ -298,6 +359,11 @@ func (cfg *RPCConfig) ValidateBasic() error {
 		return errors.New("max_open_connections can't be negative")
 	}
 	return nil
+}
+
+// IsCorsEnabled returns true if cross-origin resource sharing is enabled.
+func (cfg *RPCConfig) IsCorsEnabled() bool {
+	return len(cfg.CORSAllowedOrigins) != 0
 }
 
 //-----------------------------------------------------------------------------
@@ -392,7 +458,7 @@ func DefaultP2PConfig() *P2PConfig {
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
 		SeedMode:                false,
-		AllowDuplicateIP:        true, // so non-breaking yet
+		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
 		TestDialFail:            false,
@@ -497,6 +563,11 @@ func (cfg *MempoolConfig) WalDir() string {
 	return rootify(cfg.WalPath, cfg.RootDir)
 }
 
+// WalEnabled returns true if the WAL is enabled.
+func (cfg *MempoolConfig) WalEnabled() bool {
+	return cfg.WalPath != ""
+}
+
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *MempoolConfig) ValidateBasic() error {
@@ -565,7 +636,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 // TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
 	cfg := DefaultConsensusConfig()
-	cfg.TimeoutPropose = 100 * time.Millisecond
+	cfg.TimeoutPropose = 40 * time.Millisecond
 	cfg.TimeoutProposeDelta = 1 * time.Millisecond
 	cfg.TimeoutPrevote = 10 * time.Millisecond
 	cfg.TimeoutPrevoteDelta = 1 * time.Millisecond
@@ -727,12 +798,12 @@ type InstrumentationConfig struct {
 	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
 
 	// Maximum number of simultaneous connections.
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
 
-	// Tendermint instrumentation namespace.
+	// Instrumentation namespace.
 	Namespace string `mapstructure:"namespace"`
 }
 

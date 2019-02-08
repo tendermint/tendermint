@@ -30,6 +30,12 @@ For example, the byte-array `[0xA, 0xB]` would be encoded as `0x020A0B`,
 while a byte-array containing 300 entires beginning with `[0xA, 0xB, ...]` would
 be encoded as `0xAC020A0B...` where `0xAC02` is the UVarint encoding of 300.
 
+## Hashing
+
+Tendermint uses `SHA256` as its hash function.
+Objects are always Amino encoded before being hashed.
+So `SHA256(obj)` is short for `SHA256(AminoEncode(obj))`.
+
 ## Public Key Cryptography
 
 Tendermint uses Amino to distinguish between different types of private keys,
@@ -59,40 +65,36 @@ You can simply use below table and concatenate Prefix || Length (of raw bytes) |
 | PubKeySecp256k1    | tendermint/PubKeySecp256k1    | 0xEB5AE987 | 0x21     |       |
 | PrivKeyEd25519     | tendermint/PrivKeyEd25519     | 0xA3288910 | 0x40     |       |
 | PrivKeySecp256k1   | tendermint/PrivKeySecp256k1   | 0xE1B0F79B | 0x20     |       |
-| SignatureEd25519   | tendermint/SignatureEd25519   | 0x2031EA53 | 0x40     |       |
-| SignatureSecp256k1 | tendermint/SignatureSecp256k1 | 0x7FC4A495 | variable |
+| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
 
-|
+### Example
 
-### Examples
-
-1. For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
+For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
    `020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
    would be encoded as
-   `EB5AE98221020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
+   `EB5AE98721020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
 
-2. For example, the variable size Secp256k1 signature (in this particular example 70 or 0x46 bytes)
-   `304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
-   would be encoded as
-   `16E1FEEA46304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
+### Key Types
 
-### Addresses
-
-Addresses for each public key types are computed as follows:
+Each type specifies it's own pubkey, address, and signature format.
 
 #### Ed25519
 
-First 20-bytes of the SHA256 hash of the raw 32-byte public key:
+TODO: pubkey
+
+The address is the first 20-bytes of the SHA256 hash of the raw 32-byte public key:
 
 ```
 address = SHA256(pubkey)[:20]
 ```
 
-NOTE: before v0.22.0, this was the RIPEMD160 of the Amino encoded public key.
+The signature is the raw 64-byte ED25519 signature.
 
 #### Secp256k1
 
-RIPEMD160 hash of the SHA256 hash of the OpenSSL compressed public key:
+TODO: pubkey
+
+The address is the RIPEMD160 hash of the SHA256 hash of the OpenSSL compressed public key:
 
 ```
 address = RIPEMD160(SHA256(pubkey))
@@ -100,12 +102,21 @@ address = RIPEMD160(SHA256(pubkey))
 
 This is the same as Bitcoin.
 
+The signature is the 64-byte concatenation of ECDSA `r` and `s` (ie. `r || s`),
+where `s` is lexicographically less than its inverse, to prevent malleability.
+This is like Ethereum, but without the extra byte for pubkey recovery, since
+Tendermint assumes the pubkey is always provided anyway.
+
+#### Multisig
+
+TODO
+
 ## Other Common Types
 
 ### BitArray
 
-The BitArray is used in block headers and some consensus messages to signal
-whether or not something was done by each validator. BitArray is represented
+The BitArray is used in some consensus messages to represent votes received from
+validators, or parts received in a block. It is represented
 with a struct containing the number of bits (`Bits`) and the bit-array itself
 encoded in base64 (`Elems`).
 
@@ -127,24 +138,27 @@ representing `1` and `0`. Ie. the BitArray `10110` would be JSON encoded as
 Part is used to break up blocks into pieces that can be gossiped in parallel
 and securely verified using a Merkle tree of the parts.
 
-Part contains the index of the part in the larger set (`Index`), the actual
-underlying data of the part (`Bytes`), and a simple Merkle proof that the part is contained in
-the larger set (`Proof`).
+Part contains the index of the part (`Index`), the actual
+underlying data of the part (`Bytes`), and a Merkle proof that the part is contained in
+the set (`Proof`).
 
 ```go
 type Part struct {
     Index int
-    Bytes byte[]
-    Proof byte[]
+    Bytes []byte
+    Proof SimpleProof
 }
 ```
+
+See details of SimpleProof, below.
 
 ### MakeParts
 
 Encode an object using Amino and slice it into parts.
+Tendermint uses a part size of 65536 bytes.
 
 ```go
-func MakeParts(obj interface{}, partSize int) []Part
+func MakeParts(block Block) []Part
 ```
 
 ## Merkle Trees
@@ -152,12 +166,17 @@ func MakeParts(obj interface{}, partSize int) []Part
 For an overview of Merkle trees, see
 [wikipedia](https://en.wikipedia.org/wiki/Merkle_tree)
 
-A Simple Tree is a simple compact binary tree for a static list of items. Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure. In a Simple Tree, the transactions and validation signatures of a block are hashed using this simple merkle tree logic.
+We use the RFC 6962 specification of a merkle tree, with sha256 as the hash function.
+Merkle trees are used throughout Tendermint to compute a cryptographic digest of a data structure.
+The differences between RFC 6962 and the simplest form a merkle tree are that:
 
-If the number of items is not a power of two, the tree will not be full
-and some leaf nodes will be at different levels. Simple Tree tries to
-keep both sides of the tree the same size, but the left side may be one
-greater, for example:
+1) leaf nodes and inner nodes have different hashes.
+   This is for "second pre-image resistance", to prevent the proof to an inner node being valid as the proof of a leaf.
+   The leaf nodes are `SHA256(0x00 || leaf_data)`, and inner nodes are `SHA256(0x01 || left_hash || right_hash)`.
+
+2) When the number of items isn't a power of two, the left half of the tree is as big as it could be.
+   (The smallest power of two less than the number of items) This allows new leaves to be added with less
+   recomputation. For example:
 
 ```
    Simple Tree with 6 items           Simple Tree with 7 items
@@ -171,69 +190,79 @@ greater, for example:
      / \             / \                / \             / \
     /   \           /   \              /   \           /   \
    /     \         /     \            /     \         /     \
-  *       h2      *       h5         *       *       *       h6
- / \             / \                / \     / \     / \
-h0  h1          h3  h4             h0  h1  h2  h3  h4  h5
+  *       *       h4     h5          *       *       *       h6
+ / \     / \                        / \     / \     / \
+h0  h1  h2 h3                      h0  h1  h2  h3  h4  h5
 ```
 
-Tendermint always uses the `TMHASH` hash function, which is the first 20-bytes
-of the SHA256:
+### MerkleRoot
 
-```
-func TMHASH(bz []byte) []byte {
-    shasum := SHA256(bz)
-    return shasum[:20]
-}
-```
-
-### Simple Merkle Root
-
-The function `SimpleMerkleRoot` is a simple recursive function defined as follows:
+The function `MerkleRoot` is a simple recursive function defined as follows:
 
 ```go
-func SimpleMerkleRoot(hashes [][]byte) []byte{
-    switch len(hashes) {
-    case 0:
-        return nil
-    case 1:
-        return hashes[0]
-    default:
-        left := SimpleMerkleRoot(hashes[:(len(hashes)+1)/2])
-        right := SimpleMerkleRoot(hashes[(len(hashes)+1)/2:])
-        return SimpleConcatHash(left, right)
-    }
+// SHA256(0x00 || leaf)
+func leafHash(leaf []byte) []byte {
+	return tmhash.Sum(append(0x00, leaf...))
 }
 
-func SimpleConcatHash(left, right []byte) []byte{
-    left = encodeByteSlice(left)
-    right = encodeByteSlice(right)
-    return TMHASH(append(left, right))
+// SHA256(0x01 || left || right)
+func innerHash(left []byte, right []byte) []byte {
+	return tmhash.Sum(append(0x01, append(left, right...)...))
+}
+
+// largest power of 2 less than k
+func getSplitPoint(k int) { ... }
+
+func MerkleRoot(items [][]byte) []byte{
+	switch len(items) {
+	case 0:
+		return nil
+	case 1:
+		return leafHash(leafs[0])
+	default:
+		k := getSplitPoint(len(items))
+		left := MerkleRoot(items[:k])
+		right := MerkleRoot(items[k:])
+		return innerHash(left, right)
+	}
 }
 ```
 
-Note that the leaves are Amino encoded as byte-arrays (ie. simple Uvarint length
-prefix) before being concatenated together and hashed.
+Note: `MerkleRoot` operates on items which are arbitrary byte arrays, not
+necessarily hashes. For items which need to be hashed first, we introduce the
+`Hashes` function:
 
-Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
-For `struct` arguments, we compute a `[][]byte` containing the hash of each
-field in the struct sorted by the hash of the field name.
-For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
+```
+func Hashes(items [][]byte) [][]byte {
+    return SHA256 of each item
+}
+```
+
+Note: we will abuse notion and invoke `MerkleRoot` with arguments of type `struct` or type `[]struct`.
+For `struct` arguments, we compute a `[][]byte` containing the amino encoding of each
+field in the struct, in the same order the fields appear in the struct.
+For `[]struct` arguments, we compute a `[][]byte` by amino encoding the individual `struct` elements.
 
 ### Simple Merkle Proof
 
-Proof that a leaf is in a Merkle tree consists of a simple structure:
+Proof that a leaf is in a Merkle tree is composed as follows:
 
-```
+```golang
 type SimpleProof struct {
+        Total int
+        Index int
+        LeafHash []byte
         Aunts [][]byte
 }
 ```
 
-Which is verified using the following:
+Which is verified as follows:
 
-```
-func (proof SimpleProof) Verify(index, total int, leafHash, rootHash []byte) bool {
-	computedHash := computeHashFromAunts(index, total, leafHash, proof.Aunts)
+```golang
+func (proof SimpleProof) Verify(rootHash []byte, leaf []byte) bool {
+	assert(proof.LeafHash, leafHash(leaf)
+
+	computedHash := computeHashFromAunts(proof.Index, proof.Total, proof.LeafHash, proof.Aunts)
     return computedHash == rootHash
 }
 
@@ -247,25 +276,17 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 
 	assert(len(innerHashes) > 0)
 
-	numLeft := (total + 1) / 2
+	numLeft := getSplitPoint(total) // largest power of 2 less than total
 	if index < numLeft {
 		leftHash := computeHashFromAunts(index, numLeft, leafHash, innerHashes[:len(innerHashes)-1])
 		assert(leftHash != nil)
-		return SimpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
+		return innerHash(leftHash, innerHashes[len(innerHashes)-1])
 	}
 	rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
 	assert(rightHash != nil)
-	return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
+	return innerHash(innerHashes[len(innerHashes)-1], rightHash)
 }
 ```
-
-### Simple Tree with Dictionaries
-
-The Simple Tree is used to merkelize a list of items, so to merkelize a
-(short) dictionary of key-value pairs, encode the dictionary as an
-ordered list of `KVPair` structs. The block hash is such a hash
-derived from all the fields of the block `Header`. The state hash is
-similarly derived.
 
 ### IAVL+ Tree
 
@@ -300,20 +321,24 @@ Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
 
 Signed messages (eg. votes, proposals) in the consensus are encoded using Amino.
 
-When signing, the elements of a message are sorted alphabetically by key and prepended with
-a `chain_id` and `type` field.
+When signing, the elements of a message are re-ordered so the fixed-length fields
+are first, making it easy to quickly check the type, height, and round.
+The `ChainID` is also appended to the end.
 We call this encoding the SignBytes. For instance, SignBytes for a vote is the Amino encoding of the following struct:
 
 ```go
 type CanonicalVote struct {
-	ChainID   string
-	Type      string
+	Type      byte
+	Height    int64            `binary:"fixed64"`
+	Round     int64            `binary:"fixed64"`
 	BlockID   CanonicalBlockID
-	Height    int64
-	Round     int
 	Timestamp time.Time
-	VoteType  byte
+	ChainID   string
 }
 ```
 
-NOTE: see [#1622](https://github.com/tendermint/tendermint/issues/1622) for how field ordering will change
+The field ordering and the fixed sized encoding for the first three fields is optimized to ease parsing of SignBytes
+in HSMs. It creates fixed offsets for relevant fields that need to be read in this context.
+For more details, see the [signing spec](/docs/spec/consensus/signing.md).
+Also, see the motivating discussion in
+[#1622](https://github.com/tendermint/tendermint/issues/1622).

@@ -15,6 +15,7 @@ validation.
 
 ```go
 type State struct {
+    Version     Version
     LastResults []Result
     AppHash []byte
 
@@ -55,11 +56,11 @@ type Validator struct {
 }
 ```
 
-When hashing the Validator struct, the pubkey is not hashed,
-because the address is already the hash of the pubkey.
+When hashing the Validator struct, the address is not included,
+because it is redundant with the pubkey.
 
 The `state.Validators`, `state.LastValidators`, and `state.NextValidators`, must always by sorted by validator address,
-so that there is a canonical order for computing the SimpleMerkleRoot.
+so that there is a canonical order for computing the MerkleRoot.
 
 We also define a `TotalVotingPower` function, to return the total voting power:
 
@@ -77,31 +78,43 @@ func TotalVotingPower(vals []Validators) int64{
 
 ConsensusParams define various limits for blockchain data structures.
 Like validator sets, they are set during genesis and can be updated by the application through ABCI.
+When hashed, only a subset of the params are included, to allow the params to
+evolve without breaking the header.
 
-```
+```go
 type ConsensusParams struct {
 	BlockSize
-	TxSize
-	BlockGossip
-	EvidenceParams
+	Evidence
+	Validator
+}
+
+type hashedParams struct {
+    BlockMaxBytes int64
+    BlockMaxGas   int64
+}
+
+func (params ConsensusParams) Hash() []byte {
+    SHA256(hashedParams{
+        BlockMaxBytes: params.BlockSize.MaxBytes,
+        BlockMaxGas: params.BlockSize.MaxGas,
+    })
 }
 
 type BlockSize struct {
-	MaxBytes        int
+	MaxBytes        int64
 	MaxGas          int64
 }
 
-type TxSize struct {
-	MaxBytes int
-	MaxGas   int64
-}
-
-type BlockGossip struct {
-	BlockPartSizeBytes int
-}
-
-type EvidenceParams struct {
+type Evidence struct {
 	MaxAge int64
+}
+
+type Validator struct {
+	PubKeyTypes []string
+}
+
+type ValidatorParams struct {
+	PubKeyTypes []string
 }
 ```
 
@@ -114,20 +127,15 @@ otherwise.
 Blocks should additionally be limited by the amount of "gas" consumed by the
 transactions in the block, though this is not yet implemented.
 
-#### TxSize
-
-These parameters are not yet enforced and may disappear. See [issue
-#2347](https://github.com/tendermint/tendermint/issues/2347).
-
-#### BlockGossip
-
-When gossipping blocks in the consensus, they are first split into parts. The
-size of each part is `ConsensusParams.BlockGossip.BlockPartSizeBytes`.
-
-#### EvidenceParams
+#### Evidence
 
 For evidence in a block to be valid, it must satisfy:
 
 ```
-block.Header.Height - evidence.Height < ConsensusParams.EvidenceParams.MaxAge
+block.Header.Height - evidence.Height < ConsensusParams.Evidence.MaxAge
 ```
+
+#### Validator
+
+Validators from genesis file and `ResponseEndBlock` must have pubkeys of type ∈
+`ConsensusParams.Validator.PubKeyTypes`.

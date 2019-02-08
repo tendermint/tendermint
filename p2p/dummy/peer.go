@@ -25,6 +25,11 @@ func NewPeer() *peer {
 	return p
 }
 
+// FlushStop just calls Stop.
+func (p *peer) FlushStop() {
+	p.Stop()
+}
+
 // ID always returns dummy.
 func (p *peer) ID() p2p.ID {
 	return p2p.ID("dummy")
@@ -42,12 +47,22 @@ func (p *peer) IsPersistent() bool {
 
 // NodeInfo always returns empty node info.
 func (p *peer) NodeInfo() p2p.NodeInfo {
-	return p2p.NodeInfo{}
+	return p2p.DefaultNodeInfo{}
 }
 
 // RemoteIP always returns localhost.
 func (p *peer) RemoteIP() net.IP {
 	return net.ParseIP("127.0.0.1")
+}
+
+// Addr always returns tcp://localhost:8800.
+func (p *peer) RemoteAddr() net.Addr {
+	return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8800}
+}
+
+// CloseConn always returns nil.
+func (p *peer) CloseConn() error {
+	return nil
 }
 
 // Status always returns empry connection status.

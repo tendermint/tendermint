@@ -89,14 +89,16 @@ func saveState(db dbm.DB, state State, key []byte) {
 	nextHeight := state.LastBlockHeight + 1
 	// If first block, save validators for block 1.
 	if nextHeight == 1 {
-		lastHeightVoteChanged := int64(1) // Due to Tendermint validator set changes being delayed 1 block.
+		// This extra logic due to Tendermint validator set changes being delayed 1 block.
+		// It may get overwritten due to InitChain validator updates.
+		lastHeightVoteChanged := int64(1)
 		saveValidatorsInfo(db, nextHeight, lastHeightVoteChanged, state.Validators)
 	}
 	// Save next validators.
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	// Save next consensus params.
 	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
-	db.SetSync(stateKey, state.Bytes())
+	db.SetSync(key, state.Bytes())
 }
 
 //------------------------------------------------------------------------
@@ -105,8 +107,9 @@ func saveState(db dbm.DB, state State, key []byte) {
 // of the various ABCI calls during block processing.
 // It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
-	DeliverTx []*abci.ResponseDeliverTx
-	EndBlock  *abci.ResponseEndBlock
+	DeliverTx  []*abci.ResponseDeliverTx
+	EndBlock   *abci.ResponseEndBlock
+	BeginBlock *abci.ResponseBeginBlock
 }
 
 // NewABCIResponses returns a new ABCIResponses
@@ -191,12 +194,14 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 				),
 			)
 		}
+		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - valInfo.LastHeightChanged)) // mutate
 		valInfo = valInfo2
 	}
 
 	return valInfo.ValidatorSet, nil
 }
 
+// CONTRACT: Returned ValidatorsInfo can be mutated.
 func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	buf := db.Get(calcValidatorsKey(height))
 	if len(buf) == 0 {
@@ -215,18 +220,22 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	return v
 }
 
-// saveValidatorsInfo persists the validator set for the next block to disk.
+// saveValidatorsInfo persists the validator set.
+// `height` is the effective height for which the validator is responsible for signing.
 // It should be called from s.Save(), right before the state itself is persisted.
 // If the validator set did not change after processing the latest block,
 // only the last height for which the validators changed is persisted.
-func saveValidatorsInfo(db dbm.DB, nextHeight, changeHeight int64, valSet *types.ValidatorSet) {
-	valInfo := &ValidatorsInfo{
-		LastHeightChanged: changeHeight,
+func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
+	if lastHeightChanged > height {
+		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
-	if changeHeight == nextHeight {
+	valInfo := &ValidatorsInfo{
+		LastHeightChanged: lastHeightChanged,
+	}
+	if lastHeightChanged == height {
 		valInfo.ValidatorSet = valSet
 	}
-	db.Set(calcValidatorsKey(nextHeight), valInfo.Bytes())
+	db.Set(calcValidatorsKey(height), valInfo.Bytes())
 }
 
 //-----------------------------------------------------------------------------
@@ -251,7 +260,7 @@ func LoadConsensusParams(db dbm.DB, height int64) (types.ConsensusParams, error)
 		return empty, ErrNoConsensusParamsForHeight{height}
 	}
 
-	if paramsInfo.ConsensusParams == empty {
+	if paramsInfo.ConsensusParams.Equals(&empty) {
 		paramsInfo2 := loadConsensusParamsInfo(db, paramsInfo.LastHeightChanged)
 		if paramsInfo2 == nil {
 			panic(

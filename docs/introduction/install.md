@@ -79,11 +79,9 @@ make install
 
 Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7).
 
-Build Tendermint with C libraries: `make build_c`.
-
 ### Ubuntu
 
-Install LevelDB with snappy:
+Install LevelDB with snappy (optionally):
 
 ```
 sudo apt-get update
@@ -95,9 +93,9 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
   tar -zxvf v1.20.tar.gz && \
   cd leveldb-1.20/ && \
   make && \
-  cp -r out-static/lib* out-shared/lib* /usr/local/lib/ && \
+  sudo cp -r out-static/lib* out-shared/lib* /usr/local/lib/ && \
   cd include/ && \
-  cp -r leveldb /usr/local/include/ && \
+  sudo cp -r leveldb /usr/local/include/ && \
   sudo ldconfig && \
   rm -f v1.20.tar.gz
 ```
@@ -109,8 +107,16 @@ Set database backend to cleveldb:
 db_backend = "cleveldb"
 ```
 
-To build Tendermint, run
+To install Tendermint, run
 
 ```
-CGO_LDFLAGS="-lsnappy" go build -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`" -tags "tendermint gcc" -o build/tendermint ./cmd/tendermint/
+CGO_LDFLAGS="-lsnappy" make install_c
 ```
+
+or run
+
+```
+CGO_LDFLAGS="-lsnappy" make build_c
+```
+
+to put the binary in `./build`.

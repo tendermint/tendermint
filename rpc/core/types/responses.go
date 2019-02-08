@@ -2,10 +2,11 @@ package core_types
 
 import (
 	"encoding/json"
+	"net"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -74,9 +75,9 @@ type ValidatorInfo struct {
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      p2p.NodeInfo  `json:"node_info"`
-	SyncInfo      SyncInfo      `json:"sync_info"`
-	ValidatorInfo ValidatorInfo `json:"validator_info"`
+	NodeInfo      p2p.DefaultNodeInfo `json:"node_info"`
+	SyncInfo      SyncInfo            `json:"sync_info"`
+	ValidatorInfo ValidatorInfo       `json:"validator_info"`
 }
 
 // Is TxIndexing enabled
@@ -107,9 +108,10 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	p2p.NodeInfo     `json:"node_info"`
+	NodeInfo         p2p.DefaultNodeInfo  `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
+	RemoteIP         net.IP               `json:"remote_ip"`
 }
 
 // Validators for a height

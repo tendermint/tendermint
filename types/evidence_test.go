@@ -17,12 +17,13 @@ type voteData struct {
 }
 
 func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
+	addr := val.GetPubKey().Address()
 	v := &Vote{
-		ValidatorAddress: val.GetAddress(),
+		ValidatorAddress: addr,
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Type:             byte(step),
+		Type:             SignedMsgType(step),
 		BlockID:          blockID,
 	}
 	err := val.SignVote(chainID, v)
@@ -61,7 +62,7 @@ func TestEvidence(t *testing.T) {
 		{vote1, makeVote(val, chainID, 0, 10, 3, 1, blockID2), false},    // wrong round
 		{vote1, makeVote(val, chainID, 0, 10, 2, 2, blockID2), false},    // wrong step
 		{vote1, makeVote(val2, chainID, 0, 10, 2, 1, blockID), false},    // wrong validator
-		{vote1, badVote, false},                                          // signed by wrong key
+		{vote1, badVote, false}, // signed by wrong key
 	}
 
 	pubKey := val.GetPubKey()
@@ -105,7 +106,7 @@ func TestMaxEvidenceBytes(t *testing.T) {
 		VoteB:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
 	}
 
-	bz, err := cdc.MarshalBinary(ev)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(ev)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, MaxEvidenceBytes, len(bz))
@@ -119,5 +120,40 @@ func randomDuplicatedVoteEvidence() *DuplicateVoteEvidence {
 	return &DuplicateVoteEvidence{
 		VoteA: makeVote(val, chainID, 0, 10, 2, 1, blockID),
 		VoteB: makeVote(val, chainID, 0, 10, 2, 1, blockID2),
+	}
+}
+
+func TestDuplicateVoteEvidenceValidation(t *testing.T) {
+	val := NewMockPV()
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt64, tmhash.Sum([]byte("partshash")))
+	const chainID = "mychain"
+
+	testCases := []struct {
+		testName         string
+		malleateEvidence func(*DuplicateVoteEvidence)
+		expectErr        bool
+	}{
+		{"Good DuplicateVoteEvidence", func(ev *DuplicateVoteEvidence) {}, false},
+		{"Nil vote A", func(ev *DuplicateVoteEvidence) { ev.VoteA = nil }, true},
+		{"Nil vote B", func(ev *DuplicateVoteEvidence) { ev.VoteB = nil }, true},
+		{"Nil votes", func(ev *DuplicateVoteEvidence) {
+			ev.VoteA = nil
+			ev.VoteB = nil
+		}, true},
+		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
+			ev.VoteA = makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, blockID2)
+		}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			ev := &DuplicateVoteEvidence{
+				PubKey: secp256k1.GenPrivKey().PubKey(),
+				VoteA:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID),
+				VoteB:  makeVote(val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0x02, blockID2),
+			}
+			tc.malleateEvidence(ev)
+			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
 	}
 }

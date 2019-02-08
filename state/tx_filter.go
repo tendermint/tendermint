@@ -1,15 +1,22 @@
 package state
 
 import (
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 
-// TxFilter returns a function to filter transactions. The function limits the
-// size of a transaction to the maximum block's data size.
-func TxFilter(state State) func(tx types.Tx) bool {
+// TxPreCheck returns a function to filter transactions before processing.
+// The function limits the size of a transaction to the block's maximum data size.
+func TxPreCheck(state State) mempl.PreCheckFunc {
 	maxDataBytes := types.MaxDataBytesUnknownEvidence(
 		state.ConsensusParams.BlockSize.MaxBytes,
 		state.Validators.Size(),
 	)
-	return func(tx types.Tx) bool { return int64(len(tx)) <= maxDataBytes }
+	return mempl.PreCheckAminoMaxBytes(maxDataBytes)
+}
+
+// TxPostCheck returns a function to filter transactions after processing.
+// The function limits the gas wanted by a transaction to the block's maximum total gas.
+func TxPostCheck(state State) mempl.PostCheckFunc {
+	return mempl.PostCheckMaxGas(state.ConsensusParams.BlockSize.MaxGas)
 }

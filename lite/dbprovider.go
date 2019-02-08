@@ -13,6 +13,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var _ PersistentProvider = (*DBProvider)(nil)
+
+// DBProvider stores commits and validator sets in a DB.
 type DBProvider struct {
 	logger log.Logger
 	label  string
@@ -56,7 +59,7 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 	// We might be overwriting what we already have, but
 	// it makes the logic easier for now.
 	vsKey := validatorSetKey(fc.ChainID(), fc.Height())
-	vsBz, err := dbp.cdc.MarshalBinary(fc.Validators)
+	vsBz, err := dbp.cdc.MarshalBinaryLengthPrefixed(fc.Validators)
 	if err != nil {
 		return err
 	}
@@ -64,7 +67,7 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
 	// Save the fc.NextValidators.
 	nvsKey := validatorSetKey(fc.ChainID(), fc.Height()+1)
-	nvsBz, err := dbp.cdc.MarshalBinary(fc.NextValidators)
+	nvsBz, err := dbp.cdc.MarshalBinaryLengthPrefixed(fc.NextValidators)
 	if err != nil {
 		return err
 	}
@@ -72,7 +75,7 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
 	// Save the fc.SignedHeader
 	shKey := signedHeaderKey(fc.ChainID(), fc.Height())
-	shBz, err := dbp.cdc.MarshalBinary(fc.SignedHeader)
+	shBz, err := dbp.cdc.MarshalBinaryLengthPrefixed(fc.SignedHeader)
 	if err != nil {
 		return err
 	}
@@ -105,8 +108,8 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 	}
 
 	itr := dbp.db.ReverseIterator(
-		signedHeaderKey(chainID, maxHeight),
-		signedHeaderKey(chainID, minHeight-1),
+		signedHeaderKey(chainID, minHeight),
+		append(signedHeaderKey(chainID, maxHeight), byte(0x00)),
 	)
 	defer itr.Close()
 
@@ -121,7 +124,7 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 			// Found the latest full commit signed header.
 			shBz := itr.Value()
 			sh := types.SignedHeader{}
-			err := dbp.cdc.UnmarshalBinary(shBz, &sh)
+			err := dbp.cdc.UnmarshalBinaryLengthPrefixed(shBz, &sh)
 			if err != nil {
 				return FullCommit{}, err
 			} else {
@@ -150,7 +153,7 @@ func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *ty
 		err = lerr.ErrUnknownValidators(chainID, height)
 		return
 	}
-	err = dbp.cdc.UnmarshalBinary(vsBz, &valset)
+	err = dbp.cdc.UnmarshalBinaryLengthPrefixed(vsBz, &valset)
 	if err != nil {
 		return
 	}
@@ -190,8 +193,8 @@ func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
 	dbp.logger.Info("DBProvider.deleteAfterN()...", "chainID", chainID, "after", after)
 
 	itr := dbp.db.ReverseIterator(
-		signedHeaderKey(chainID, 1<<63-1),
-		signedHeaderKey(chainID, 0),
+		signedHeaderKey(chainID, 1),
+		append(signedHeaderKey(chainID, 1<<63-1), byte(0x00)),
 	)
 	defer itr.Close()
 

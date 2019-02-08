@@ -18,7 +18,7 @@ echo "1. restart peer $ID"
 docker stop "local_testnet_$ID"
 echo "stopped local_testnet_$ID"
 # preserve addrbook.json
-docker cp "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/config/addrbook.json" "/tmp/addrbook.json"
+docker cp "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach0/config/addrbook.json" "/tmp/addrbook.json"
 set +e #CIRCLE
 docker rm -vf "local_testnet_$ID"
 set -e
@@ -32,11 +32,11 @@ bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$CLIENT_NAME" "test/p2p
 
 # Now we know that the node is up.
 
-docker cp "/tmp/addrbook.json" "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/config/addrbook.json"
+docker cp "/tmp/addrbook.json" "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach0/config/addrbook.json"
 echo "with the following addrbook:"
 cat /tmp/addrbook.json
 # exec doesn't work on circle
-# docker exec "local_testnet_$ID" cat "/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/config/addrbook.json"
+# docker exec "local_testnet_$ID" cat "/go/src/github.com/tendermint/tendermint/test/p2p/data/mach0/config/addrbook.json"
 echo ""
 
 echo "----------------------------------------------------------------------"

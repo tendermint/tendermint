@@ -20,84 +20,94 @@
 #   unused-packages = true
 #
 ###########################################################
-# NOTE: All packages should be pinned to specific versions.
-# Packages without releases must pin to a commit.
 
-
+# Allow only patch releases for serialization libraries
 [[constraint]]
-  name = "github.com/go-kit/kit"
-  version = "=0.6.0"
+  name = "github.com/tendermint/go-amino"
+  version = "~0.14.1"
 
 [[constraint]]
   name = "github.com/gogo/protobuf"
-  version = "=1.1.1"
+  version = "~1.1.1"
 
 [[constraint]]
   name = "github.com/golang/protobuf"
-  version = "=1.1.0"
+  version = "~1.1.0"
+
+# Allow only minor releases for other libraries
+[[constraint]]
+  name = "github.com/go-kit/kit"
+  version = "^0.6.0"
 
 [[constraint]]
   name = "github.com/gorilla/websocket"
-  version = "=1.2.0"
+  version = "^1.2.0"
+
+[[constraint]]
+  name = "github.com/rs/cors"
+  version = "^1.6.0"
 
 [[constraint]]
   name = "github.com/pkg/errors"
-  version = "=0.8.0"
+  version = "^0.8.0"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
-  version = "=0.0.1"
+  version = "^0.0.1"
 
 [[constraint]]
   name = "github.com/spf13/viper"
-  version = "=1.0.0"
+  version = "^1.0.0"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "=1.2.1"
-
-[[constraint]]
-  name = "github.com/tendermint/go-amino"
-  version = "v0.12.0-rc0"
+  version = "^1.2.1"
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  version = "=1.13.0"
+  version = "^1.13.0"
 
 [[constraint]]
   name = "github.com/fortytw2/leaktest"
-  version = "=1.2.0"
+  version = "^1.2.0"
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "^0.9.1"
+
+# we use the secp256k1 implementation:
+[[constraint]]
+  name = "github.com/ethereum/go-ethereum"
+  version = "^v1.8.21"
+
+   # Prevent dep from pruning build scripts and codegen templates
+   # note: this leaves the whole go-ethereum package in vendor
+   # can be removed when https://github.com/golang/dep/issues/1847 is resolved
+   [[prune.project]]
+     name = "github.com/ethereum/go-ethereum"
+     unused-packages = false
 
 ###################################
 ## Some repos dont have releases.
 ## Pin to revision
 
 [[constraint]]
+  name = "github.com/btcsuite/btcd"
+  revision = "ed77733ec07dfc8a513741138419b8d9d3de9d2d"
+
+[[constraint]]
   name = "golang.org/x/crypto"
-  source = "github.com/tendermint/crypto"
-  revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
+  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
 
 [[override]]
   name = "github.com/jmhodges/levigo"
   revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
-
-[[constraint]]
-  name = "github.com/ebuchman/fail-test"
-  revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
 
 # last revision used by go-crypto
 [[constraint]]
   name = "github.com/btcsuite/btcutil"
   revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
-[[constraint]]
-  name = "github.com/tendermint/btcd"
-  revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
-
-# Haven't made a release since 2016.
-[[constraint]]
-  name = "github.com/prometheus/client_golang"
-  revision = "ae27198cdd90bf12cd134ad79d1366a6cf49f632"
 
 [[constraint]]
   name = "github.com/rcrowley/go-metrics"

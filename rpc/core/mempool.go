@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -24,6 +24,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.BroadcastTxAsync("123")
 // ```
 //
@@ -51,7 +56,7 @@ import (
 func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := mempool.CheckTx(tx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
+		return nil, err
 	}
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
@@ -64,6 +69,11 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.BroadcastTxSync("456")
 // ```
 //
@@ -94,7 +104,7 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 		resCh <- res
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
+		return nil, err
 	}
 	res := <-resCh
 	r := res.GetCheckTx()
@@ -106,8 +116,9 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	}, nil
 }
 
-// CONTRACT: only returns error if mempool.BroadcastTx errs (ie. problem with the app)
-// or if we timeout waiting for tx to commit.
+// CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
+// waiting for tx to commit.
+//
 // If CheckTx or DeliverTx fail, no error will be returned, but the returned result
 // will contain a non-OK ABCI code.
 //
@@ -117,6 +128,11 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.BroadcastTxCommit("789")
 // ```
 //
@@ -150,20 +166,31 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-	// subscribe to tx being committed in block
+	// Subscribe to tx being committed in block.
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
-	deliverTxResCh := make(chan interface{})
+	deliverTxResCh := make(chan interface{}, 1)
 	q := types.EventQueryTxFor(tx)
 	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
 	if err != nil {
 		err = errors.Wrap(err, "failed to subscribe to tx")
-		logger.Error("Error on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
+		logger.Error("Error on broadcast_tx_commit", "err", err)
+		return nil, err
 	}
-	defer eventBus.Unsubscribe(context.Background(), "mempool", q)
+	defer func() {
+		// drain deliverTxResCh to make sure we don't block
+	LOOP:
+		for {
+			select {
+			case <-deliverTxResCh:
+			default:
+				break LOOP
+			}
+		}
+		eventBus.Unsubscribe(context.Background(), "mempool", q)
+	}()
 
-	// broadcast the tx and register checktx callback
+	// Broadcast tx and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
 	err = mempool.CheckTx(tx, func(res *abci.Response) {
 		checkTxResCh <- res
@@ -172,40 +199,39 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
 	}
-	checkTxRes := <-checkTxResCh
-	checkTxR := checkTxRes.GetCheckTx()
-	if checkTxR.Code != abci.CodeTypeOK {
-		// CheckTx failed!
+	checkTxResMsg := <-checkTxResCh
+	checkTxRes := checkTxResMsg.GetCheckTx()
+	if checkTxRes.Code != abci.CodeTypeOK {
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxR,
+			CheckTx:   *checkTxRes,
 			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, nil
 	}
 
-	// Wait for the tx to be included in a block,
-	// timeout after something reasonable.
+	// Wait for the tx to be included in a block or timeout.
 	// TODO: configurable?
-	timer := time.NewTimer(60 * 2 * time.Second)
+	var deliverTxTimeout = rpcserver.WriteTimeout / 2
 	select {
-	case deliverTxResMsg := <-deliverTxResCh:
+	case deliverTxResMsg, ok := <-deliverTxResCh: // The tx was included in a block.
+		if !ok {
+			return nil, errors.New("Error on broadcastTxCommit: expected DeliverTxResult, got nil. Did the Tendermint stop?")
+		}
 		deliverTxRes := deliverTxResMsg.(types.EventDataTx)
-		// The tx was included in a block.
-		deliverTxR := deliverTxRes.Result
-		logger.Info("DeliverTx passed ", "tx", cmn.HexBytes(tx), "response", deliverTxR)
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxR,
-			DeliverTx: deliverTxR,
+			CheckTx:   *checkTxRes,
+			DeliverTx: deliverTxRes.Result,
 			Hash:      tx.Hash(),
 			Height:    deliverTxRes.Height,
 		}, nil
-	case <-timer.C:
-		logger.Error("failed to include tx")
+	case <-time.After(deliverTxTimeout):
+		err = errors.New("Timed out waiting for tx to be included in a block")
+		logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxR,
+			CheckTx:   *checkTxRes,
 			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
-		}, fmt.Errorf("Timed out waiting for transaction to be included in a block")
+		}, err
 	}
 }
 
@@ -217,6 +243,11 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.UnconfirmedTxs()
 // ```
 //
@@ -255,6 +286,11 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.UnconfirmedTxs()
 // ```
 //

@@ -18,12 +18,18 @@ func TestTxFilter(t *testing.T) {
 	genDoc := randomGenesisDoc()
 	genDoc.ConsensusParams.BlockSize.MaxBytes = 3000
 
+	// Max size of Txs is much smaller than size of block,
+	// since we need to account for commits and evidence.
 	testCases := []struct {
-		tx        types.Tx
-		isTxValid bool
+		tx    types.Tx
+		isErr bool
 	}{
-		{types.Tx(cmn.RandBytes(250)), true},
-		{types.Tx(cmn.RandBytes(3001)), false},
+		{types.Tx(cmn.RandBytes(250)), false},
+		{types.Tx(cmn.RandBytes(1809)), false},
+		{types.Tx(cmn.RandBytes(1810)), false},
+		{types.Tx(cmn.RandBytes(1811)), true},
+		{types.Tx(cmn.RandBytes(1812)), true},
+		{types.Tx(cmn.RandBytes(3000)), true},
 	}
 
 	for i, tc := range testCases {
@@ -31,8 +37,12 @@ func TestTxFilter(t *testing.T) {
 		state, err := LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		require.NoError(t, err)
 
-		f := TxFilter(state)
-		assert.Equal(t, tc.isTxValid, f(tc.tx), "#%v", i)
+		f := TxPreCheck(state)
+		if tc.isErr {
+			assert.NotNil(t, f(tc.tx), "#%v", i)
+		} else {
+			assert.Nil(t, f(tc.tx), "#%v", i)
+		}
 	}
 }
 

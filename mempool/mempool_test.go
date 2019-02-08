@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -66,7 +67,13 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 			t.Error(err)
 		}
 		if err := mempool.CheckTx(txBytes, nil); err != nil {
-			t.Fatalf("Error after CheckTx: %v", err)
+			// Skip invalid txs.
+			// TestMempoolFilters will fail otherwise. It asserts a number of txs
+			// returned.
+			if IsPreCheckError(err) {
+				continue
+			}
+			t.Fatalf("CheckTx failed: %v while checking #%d tx", err, i)
 		}
 	}
 	return txs
@@ -102,11 +109,11 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 0, -1, 0},
 		{20, 0, 10, 0},
 		{20, 10, 10, 0},
-		{20, 21, 10, 1},
-		{20, 210, -1, 10},
-		{20, 210, 5, 5},
-		{20, 210, 10, 10},
-		{20, 210, 15, 10},
+		{20, 22, 10, 1},
+		{20, 220, -1, 10},
+		{20, 220, 5, 5},
+		{20, 220, 10, 10},
+		{20, 220, 15, 10},
 		{20, 20000, -1, 20},
 		{20, 20000, 5, 5},
 		{20, 20000, 30, 20},
@@ -126,53 +133,46 @@ func TestMempoolFilters(t *testing.T) {
 	mempool := newMempoolWithApp(cc)
 	emptyTxArr := []types.Tx{[]byte{}}
 
-	nopPreFilter := func(tx types.Tx) bool { return true }
-	nopPostFilter := func(tx types.Tx, res *abci.ResponseCheckTx) bool { return true }
-
-	// This is the same filter we expect to be used within node/node.go and state/execution.go
-	nBytePreFilter := func(n int) func(tx types.Tx) bool {
-		return func(tx types.Tx) bool {
-			// We have to account for the amino overhead in the tx size as well
-			aminoOverhead := amino.UvarintSize(uint64(len(tx)))
-			return (len(tx) + aminoOverhead) <= n
-		}
-	}
-
-	nGasPostFilter := func(n int64) func(tx types.Tx, res *abci.ResponseCheckTx) bool {
-		return func(tx types.Tx, res *abci.ResponseCheckTx) bool {
-			if n == -1 {
-				return true
-			}
-			return res.GasWanted <= n
-		}
-	}
+	nopPreFilter := func(tx types.Tx) error { return nil }
+	nopPostFilter := func(tx types.Tx, res *abci.ResponseCheckTx) error { return nil }
 
 	// each table driven test creates numTxsToCreate txs with checkTx, and at the end clears all remaining txs.
 	// each tx has 20 bytes + amino overhead = 21 bytes, 1 gas
 	tests := []struct {
 		numTxsToCreate int
-		preFilter      func(tx types.Tx) bool
-		postFilter     func(tx types.Tx, res *abci.ResponseCheckTx) bool
+		preFilter      PreCheckFunc
+		postFilter     PostCheckFunc
 		expectedNumTxs int
 	}{
 		{10, nopPreFilter, nopPostFilter, 10},
-		{10, nBytePreFilter(10), nopPostFilter, 0},
-		{10, nBytePreFilter(20), nopPostFilter, 0},
-		{10, nBytePreFilter(21), nopPostFilter, 10},
-		{10, nopPreFilter, nGasPostFilter(-1), 10},
-		{10, nopPreFilter, nGasPostFilter(0), 0},
-		{10, nopPreFilter, nGasPostFilter(1), 10},
-		{10, nopPreFilter, nGasPostFilter(3000), 10},
-		{10, nBytePreFilter(10), nGasPostFilter(20), 0},
-		{10, nBytePreFilter(30), nGasPostFilter(20), 10},
-		{10, nBytePreFilter(21), nGasPostFilter(1), 10},
-		{10, nBytePreFilter(21), nGasPostFilter(0), 0},
+		{10, PreCheckAminoMaxBytes(10), nopPostFilter, 0},
+		{10, PreCheckAminoMaxBytes(20), nopPostFilter, 0},
+		{10, PreCheckAminoMaxBytes(22), nopPostFilter, 10},
+		{10, nopPreFilter, PostCheckMaxGas(-1), 10},
+		{10, nopPreFilter, PostCheckMaxGas(0), 0},
+		{10, nopPreFilter, PostCheckMaxGas(1), 10},
+		{10, nopPreFilter, PostCheckMaxGas(3000), 10},
+		{10, PreCheckAminoMaxBytes(10), PostCheckMaxGas(20), 0},
+		{10, PreCheckAminoMaxBytes(30), PostCheckMaxGas(20), 10},
+		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(1), 10},
+		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(0), 0},
 	}
 	for tcIndex, tt := range tests {
 		mempool.Update(1, emptyTxArr, tt.preFilter, tt.postFilter)
 		checkTxs(t, mempool, tt.numTxsToCreate)
 		require.Equal(t, tt.expectedNumTxs, mempool.Size(), "mempool had the incorrect size, on test case %d", tcIndex)
 		mempool.Flush()
+	}
+}
+
+func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(cc)
+	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
+	err := mempool.CheckTx([]byte{0x01}, nil)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrTxInCache, err)
 	}
 }
 
@@ -385,18 +385,69 @@ func TestMempoolCloseWAL(t *testing.T) {
 
 	// 7. Invoke CloseWAL() and ensure it discards the
 	// WAL thus any other write won't go through.
-	require.True(t, mempool.CloseWAL(), "CloseWAL should CloseWAL")
+	mempool.CloseWAL()
 	mempool.CheckTx(types.Tx([]byte("bar")), nil)
 	sum2 := checksumFile(walFilepath, t)
 	require.Equal(t, sum1, sum2, "expected no change to the WAL after invoking CloseWAL() since it was discarded")
 
-	// 8. Second CloseWAL should do nothing
-	require.False(t, mempool.CloseWAL(), "CloseWAL should CloseWAL")
-
-	// 9. Sanity check to ensure that the WAL file still exists
+	// 8. Sanity check to ensure that the WAL file still exists
 	m3, err := filepath.Glob(filepath.Join(rootDir, "*"))
 	require.Nil(t, err, "successful globbing expected")
 	require.Equal(t, 1, len(m3), "expecting the wal match in")
+}
+
+// Size of the amino encoded TxMessage is the length of the
+// encoded byte array, plus 1 for the struct field, plus 4
+// for the amino prefix.
+func txMessageSize(tx types.Tx) int {
+	return amino.ByteSliceSize(tx) + 1 + 4
+}
+
+func TestMempoolMaxMsgSize(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempl := newMempoolWithApp(cc)
+
+	testCases := []struct {
+		len int
+		err bool
+	}{
+		// check small txs. no error
+		{10, false},
+		{1000, false},
+		{1000000, false},
+
+		// check around maxTxSize
+		// changes from no error to error
+		{maxTxSize - 2, false},
+		{maxTxSize - 1, false},
+		{maxTxSize, false},
+		{maxTxSize + 1, true},
+		{maxTxSize + 2, true},
+
+		// check around maxMsgSize. all error
+		{maxMsgSize - 1, true},
+		{maxMsgSize, true},
+		{maxMsgSize + 1, true},
+	}
+
+	for i, testCase := range testCases {
+		caseString := fmt.Sprintf("case %d, len %d", i, testCase.len)
+
+		tx := cmn.RandBytes(testCase.len)
+		err := mempl.CheckTx(tx, nil)
+		msg := &TxMessage{tx}
+		encoded := cdc.MustMarshalBinaryBare(msg)
+		require.Equal(t, len(encoded), txMessageSize(tx), caseString)
+		if !testCase.err {
+			require.True(t, len(encoded) <= maxMsgSize, caseString)
+			require.NoError(t, err, caseString)
+		} else {
+			require.True(t, len(encoded) > maxMsgSize, caseString)
+			require.Equal(t, err, ErrTxTooLarge, caseString)
+		}
+	}
+
 }
 
 func checksumIt(data []byte) string {

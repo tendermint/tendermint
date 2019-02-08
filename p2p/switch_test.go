@@ -3,10 +3,18 @@ package p2p
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -143,6 +151,7 @@ func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, r
 				}
 				return
 			}
+
 		case <-time.After(timeout):
 			t.Fatalf("Expected to have received 1 message in channel #%v, got zero", channel)
 		}
@@ -334,6 +343,54 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert.False(p.IsRunning())
 }
 
+func TestSwitchStopPeerForError(t *testing.T) {
+	s := httptest.NewServer(stdprometheus.UninstrumentedHandler())
+	defer s.Close()
+
+	scrapeMetrics := func() string {
+		resp, _ := http.Get(s.URL)
+		buf, _ := ioutil.ReadAll(resp.Body)
+		return string(buf)
+	}
+
+	namespace, subsystem, name := config.TestInstrumentationConfig().Namespace, MetricsSubsystem, "peers"
+	re := regexp.MustCompile(namespace + `_` + subsystem + `_` + name + ` ([0-9\.]+)`)
+	peersMetricValue := func() float64 {
+		matches := re.FindStringSubmatch(scrapeMetrics())
+		f, _ := strconv.ParseFloat(matches[1], 64)
+		return f
+	}
+
+	p2pMetrics := PrometheusMetrics(namespace)
+
+	// make two connected switches
+	sw1, sw2 := MakeSwitchPair(t, func(i int, sw *Switch) *Switch {
+		// set metrics on sw1
+		if i == 0 {
+			opt := WithMetrics(p2pMetrics)
+			opt(sw)
+		}
+		return initSwitchFunc(i, sw)
+	})
+
+	assert.Equal(t, len(sw1.Peers().List()), 1)
+	assert.EqualValues(t, 1, peersMetricValue())
+
+	// send messages to the peer from sw1
+	p := sw1.Peers().List()[0]
+	p.Send(0x1, []byte("here's a message to send"))
+
+	// stop sw2. this should cause the p to fail,
+	// which results in calling StopPeerForError internally
+	sw2.Stop()
+
+	// now call StopPeerForError explicitly, eg. from a reactor
+	sw1.StopPeerForError(p, fmt.Errorf("some err"))
+
+	assert.Equal(t, len(sw1.Peers().List()), 0)
+	assert.EqualValues(t, 0, peersMetricValue())
+}
+
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
@@ -418,6 +475,58 @@ func TestSwitchFullConnectivity(t *testing.T) {
 		if sw.Peers().Size() != 2 {
 			t.Fatalf("Expected each switch to be connected to 2 other, but %d switch only connected to %d", sw.Peers().Size(), i)
 		}
+	}
+}
+
+func TestSwitchAcceptRoutine(t *testing.T) {
+	cfg.MaxNumInboundPeers = 5
+
+	// make switch
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	err := sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	remotePeers := make([]*remotePeer, 0)
+	assert.Equal(t, 0, sw.Peers().Size())
+
+	// 1. check we connect up to MaxNumInboundPeers
+	for i := 0; i < cfg.MaxNumInboundPeers; i++ {
+		rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+		remotePeers = append(remotePeers, rp)
+		rp.Start()
+		c, err := rp.Dial(sw.NodeInfo().NetAddress())
+		require.NoError(t, err)
+		// spawn a reading routine to prevent connection from closing
+		go func(c net.Conn) {
+			for {
+				one := make([]byte, 1)
+				_, err := c.Read(one)
+				if err != nil {
+					return
+				}
+			}
+		}(c)
+	}
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
+
+	// 2. check we close new connections if we already have MaxNumInboundPeers peers
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	conn, err := rp.Dial(sw.NodeInfo().NetAddress())
+	require.NoError(t, err)
+	// check conn is closed
+	one := make([]byte, 1)
+	conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	_, err = conn.Read(one)
+	assert.Equal(t, io.EOF, err)
+	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
+	rp.Stop()
+
+	// stop remote peers
+	for _, rp := range remotePeers {
+		rp.Stop()
 	}
 }
 

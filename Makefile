@@ -1,7 +1,7 @@
 GOTOOLS = \
 	github.com/mitchellh/gox \
 	github.com/golang/dep/cmd/dep \
-	github.com/alecthomas/gometalinter \
+	github.com/golangci/golangci-lint/cmd/golangci-lint \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/square/certstrap
 GOBIN?=${GOPATH}/bin
@@ -11,12 +11,9 @@ INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protob
 BUILD_TAGS?='tendermint'
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
-LINT_FLAGS = --exclude '.*\.pb\.go' --exclude 'vendor/*' --vendor --deadline=600s
-
 all: check build test install
 
 check: check_tools get_vendor_deps
-
 
 ########################################
 ### Build Tendermint
@@ -33,10 +30,13 @@ build_race:
 install:
 	CGO_ENABLED=0 go install  $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 
+install_c:
+	CGO_ENABLED=1 go install  $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" ./cmd/tendermint
+
 ########################################
 ### Protobuf
 
-protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc
+protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
 
 %.pb.go: %.proto
 	## If you get the following error,
@@ -51,6 +51,8 @@ protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc
 
 # see protobuf section above
 protoc_abci: abci/types/types.pb.go
+
+protoc_proto3types: types/proto3/block.pb.go
 
 build_abci:
 	@go build -i ./abci/cmd/...
@@ -77,8 +79,6 @@ check_tools:
 get_tools:
 	@echo "--> Installing tools"
 	./scripts/get_tools.sh
-	@echo "--> Downloading linters (this may take awhile)"
-	$(GOPATH)/src/github.com/alecthomas/gometalinter/scripts/install.sh -b $(GOBIN)
 
 update_tools:
 	@echo "--> Updating tools"
@@ -220,6 +220,22 @@ test_race:
 	@echo "--> Running go test --race"
 	@GOCACHE=off go test -p 1 -v -race $(PACKAGES)
 
+# uses https://github.com/sasha-s/go-deadlock/ to detect potential deadlocks
+test_with_deadlock:
+	make set_with_deadlock
+	make test
+	make cleanup_after_test_with_deadlock
+
+set_with_deadlock:
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.RWMutex/deadlock.RWMutex/'
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.Mutex/deadlock.Mutex/'
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 goimports -w
+
+# cleanes up after you ran test_with_deadlock
+cleanup_after_test_with_deadlock:
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/deadlock.RWMutex/sync.RWMutex/'
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/deadlock.Mutex/sync.Mutex/'
+	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 goimports -w
 
 ########################################
 ### Formatting, linting, and vetting
@@ -227,38 +243,9 @@ test_race:
 fmt:
 	@go fmt ./...
 
-metalinter:
+lint:
 	@echo "--> Running linter"
-	@gometalinter $(LINT_FLAGS) --disable-all  \
-		--enable=deadcode \
-		--enable=gosimple \
-	 	--enable=misspell \
-		--enable=safesql \
-		./...
-		#--enable=gas \
-		#--enable=maligned \
-		#--enable=dupl \
-		#--enable=errcheck \
-		#--enable=goconst \
-		#--enable=gocyclo \
-		#--enable=goimports \
-		#--enable=golint \ <== comments on anything exported
-		#--enable=gotype \
-	 	#--enable=ineffassign \
-	   	#--enable=interfacer \
-	   	#--enable=megacheck \
-	   	#--enable=staticcheck \
-	   	#--enable=structcheck \
-	   	#--enable=unconvert \
-	   	#--enable=unparam \
-		#--enable=unused \
-	   	#--enable=varcheck \
-		#--enable=vet \
-		#--enable=vetshadow \
-
-metalinter_all:
-	@echo "--> Running linter (all)"
-	gometalinter $(LINT_FLAGS) --enable-all --disable=lll ./...
+	@golangci-lint run
 
 DESTINATION = ./index.html.md
 
@@ -282,12 +269,11 @@ build-docker:
 ### Local testnet using docker
 
 # Build linux binary on other platforms
-build-linux:
+build-linux: get_tools get_vendor_deps
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 
 build-docker-localnode:
-	cd networks/local
-	make
+	@cd networks/local && make
 
 # Run a 4-node testnet locally
 localnet-start: localnet-stop
@@ -325,4 +311,4 @@ build-slate:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race build_abci dist install install_abci check_dep check_tools get_tools update_tools get_vendor_deps draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all
+.PHONY: check build build_race build_abci dist install install_abci check_dep check_tools get_tools update_tools get_vendor_deps draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint

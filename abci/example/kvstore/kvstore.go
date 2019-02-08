@@ -10,11 +10,14 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/version"
 )
 
 var (
 	stateKey        = []byte("stateKey")
 	kvPairPrefixKey = []byte("kvPairKey:")
+
+	ProtocolVersion version.Protocol = 0x1
 )
 
 type State struct {
@@ -65,7 +68,11 @@ func NewKVStoreApplication() *KVStoreApplication {
 }
 
 func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size)}
+	return types.ResponseInfo{
+		Data:       fmt.Sprintf("{\"size\":%v}", app.state.Size),
+		Version:    version.ABCIVersion,
+		AppVersion: ProtocolVersion.Uint64(),
+	}
 }
 
 // tx is either "key=value" or just arbitrary bytes
