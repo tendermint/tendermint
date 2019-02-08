@@ -69,7 +69,7 @@ func (v *Validator) String() string {
 		v.ProposerPriority)
 }
 
-// Make pretty string for logging
+// ValidatorListString returns a prettified validator list for logging purposes.
 func ValidatorListString(vals []*Validator) string {
 	chunks := make([]string, len(vals))
 	for i, val := range vals {

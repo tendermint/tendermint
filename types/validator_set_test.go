@@ -605,9 +605,9 @@ func TestEmptySet(t *testing.T) {
 	var valList []*Validator
 	valSet := NewValidatorSet(valList)
 	assert.Panics(t, func() { valSet.IncrementProposerPriority(1) })
-	valSet.RescalePriorities(100)
-	valSet.shiftByAvgProposerPriority()
-	assert.Zero(t, computeMaxMinPriorityDiff(valSet))
+	assert.Panics(t, func() { valSet.RescalePriorities(100) })
+	assert.Panics(t, func() { valSet.shiftByAvgProposerPriority() })
+	assert.Panics(t, func() { assert.Zero(t, computeMaxMinPriorityDiff(valSet)) })
 	valSet.GetProposer()
 
 	// Add to empty set
@@ -909,14 +909,6 @@ func createNewValidatorSet(testValList []testVal) *ValidatorSet {
 	return valSet
 }
 
-func getTotalProposerPriority(valSet *ValidatorSet) int64 {
-	sum := int64(0)
-	for _, val := range valSet.Validators {
-		sum += val.ProposerPriority
-	}
-	return sum
-}
-
 func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
 	// verify that the vals' tvp is set to the sum of the all vals voting powers
 	tvp := valSet.TotalVotingPower()
@@ -925,7 +917,7 @@ func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
 
 	// verify that validator priorities are centered
 	l := int64(len(valSet.Validators))
-	tpp := getTotalProposerPriority(valSet)
+	tpp := valSet.TotalVotingPower()
 	assert.True(t, tpp <= l || tpp >= -l,
 		"expected total priority in (-%d, %d). Got %d", l, l, tpp)
 

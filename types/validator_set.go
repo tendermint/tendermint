@@ -12,8 +12,8 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// MaxTotalVotingPower - The maximum allowed total voting power.
-// It needs to be sufficiently small to, in all cases::
+// MaxTotalVotingPower - the maximum allowed total voting power.
+// It needs to be sufficiently small to, in all cases:
 // 1. prevent clipping in incrementProposerPriority()
 // 2. let (diff+diffMax-1) not overflow in IncrementProposerPriority()
 // (Proof of 1 is tricky, left to the reader).
@@ -48,7 +48,7 @@ type ValidatorSet struct {
 // NewValidatorSet initializes a ValidatorSet by copying over the
 // values from `valz`, a list of Validators. If valz is nil or empty,
 // the new ValidatorSet will have an empty list of Validators.
-// The addresses of vlaidators in `valz` must be unique otherwise the
+// The addresses of validators in `valz` must be unique otherwise the
 // function panics.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	vals := &ValidatorSet{}
@@ -79,7 +79,7 @@ func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet
 // `times` must be positive.
 func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	if vals.IsNilOrEmpty() {
-		panic("Cannot call IncrementProposerPriority with empty validator set")
+		panic("empty validator set")
 	}
 	if times <= 0 {
 		panic("Cannot call IncrementProposerPriority with non-positive times")
@@ -103,7 +103,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 
 func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	if vals.IsNilOrEmpty() {
-		return
+		panic("empty validator set")
 	}
 	// NOTE: This check is merely a sanity check which could be
 	// removed if all tests would init. voting power appropriately;
@@ -157,7 +157,7 @@ func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
 // compute the difference between the max and min ProposerPriority of that set
 func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
 	if vals.IsNilOrEmpty() {
-		return 0
+		panic("empty validator set")
 	}
 	max := int64(math.MinInt64)
 	min := int64(math.MaxInt64)
@@ -187,7 +187,7 @@ func (vals *ValidatorSet) getValWithMostPriority() *Validator {
 
 func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 	if vals.IsNilOrEmpty() {
-		return
+		panic("empty validator set")
 	}
 	avgProposerPriority := vals.computeAvgProposerPriority()
 	for _, val := range vals.Validators {
@@ -344,7 +344,7 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 // updates, removals - the sorted lists of updates and removals
 // err - non-nil if duplicate entries or entries with negative voting power are seen
 //
-// No changes are made to 'updates'
+// No changes are made to 'origChanges'
 func processChanges(origChanges []*Validator) (updates, removals []*Validator, err error) {
 	// Make a deep copy of the changes and sort by address
 	changes := validatorListCopy(origChanges)
@@ -358,11 +358,11 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 	for _, valUpdate := range changes {
 		if bytes.Equal(valUpdate.Address, prevAddr) {
 			err = fmt.Errorf("duplicate entry %v in %v", valUpdate, changes)
-			return
+			return nil, nil, err
 		}
 		if valUpdate.VotingPower < 0 {
 			err = fmt.Errorf("voting power can't be negative %v", valUpdate)
-			return
+			return nil, nil, err
 		}
 		if valUpdate.VotingPower == 0 {
 			removals = append(removals, valUpdate)
@@ -371,7 +371,7 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 		}
 		prevAddr = valUpdate.Address
 	}
-	return
+	return updates, removals, err
 }
 
 // Verifies a list of updates against a validator set, making sure the allowed
@@ -396,16 +396,21 @@ func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVoting
 			updatedTotalVotingPower += valUpdate.VotingPower - val.VotingPower
 		}
 
-		overflow := updatedTotalVotingPower > MaxTotalVotingPower || updatedTotalVotingPower < 0
+		if updatedTotalVotingPower < 0 {
+			err = fmt.Errorf(
+				"failed to add/update validator with negative voting power %v",
+				valUpdate)
+			return 0, err
+		}
+		overflow := updatedTotalVotingPower > MaxTotalVotingPower
 		if overflow {
 			err = fmt.Errorf(
-				"failed to add/update validator %v. total voting power would exceed the max allowed %v",
+				"failed to add/update validator %v, total voting power would exceed the max allowed %v",
 				valUpdate, MaxTotalVotingPower)
-			return
+			return 0, err
 		}
 	}
-
-	return
+	return updatedTotalVotingPower, nil
 }
 
 // Computes the proposer priority for the validators not present in the set based on 'updatedTotalVotingPower'
@@ -482,16 +487,17 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 
 // Checks that the validators to be removed are part of the validator set.
 // No changes are made to the validator set 'vals'.
-func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
+func verifyRemovals(deletes []*Validator, vals *ValidatorSet) (deletedVotingPower int64, err error) {
 
 	for _, valUpdate := range deletes {
 		address := valUpdate.Address
 		_, val := vals.GetByAddress(address)
 		if val == nil {
-			return fmt.Errorf("failed to find validator %X to remove", address)
+			return 0, fmt.Errorf("failed to find validator %X to remove", address)
 		}
+		deletedVotingPower += val.VotingPower
 	}
-	return nil
+	return deletedVotingPower, nil
 }
 
 // Removes the validators specified in 'deletes' from validator set 'vals'.
@@ -571,7 +577,8 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	}
 
 	// Verify that applying the 'deletes' against 'vals' will not result in error.
-	if err = verifyRemovals(deletes, vals); err != nil {
+	deletedVotingPower, err := verifyRemovals(deletes, vals)
+	if err != nil {
 		return err
 	}
 
@@ -582,6 +589,7 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	}
 
 	// Compute the priorities for updates
+	updatedTotalVotingPower += deletedVotingPower
 	numNewValidators := computeNewPriorities(updates, vals, updatedTotalVotingPower)
 	if len(vals.Validators)+numNewValidators <= len(deletes) {
 		err = fmt.Errorf("applying the validator changes would result in empty set")
