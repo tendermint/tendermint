@@ -664,88 +664,189 @@ type testVal struct {
 	power int64
 }
 
+func testValSet(nVals int, power int64) []testVal {
+	vals := make([]testVal, nVals)
+	for i := 0; i < nVals; i++ {
+		vals[i] = testVal{fmt.Sprintf("v%d", i+1), power}
+	}
+	return vals
+}
+
+type valSetErrTestCase struct {
+	startVals  []testVal
+	updateVals []testVal
+}
+
+func executeValSetErrTestCase(t *testing.T, idx int, tt valSetErrTestCase) {
+	// create a new set and apply updates, keeping copies for the checks
+	valSet := createNewValidatorSet(tt.startVals)
+	valSetCopy := valSet.Copy()
+	valList := createNewValidatorList(tt.updateVals)
+	valListCopy := validatorListCopy(valList)
+	err := valSet.UpdateWithChangeSet(valList)
+
+	// for errors check the validator set has not been changed
+	assert.Error(t, err, "test %d", idx)
+	assert.Equal(t, valSet, valSetCopy, "test %v", idx)
+
+	// check the parameter list has not changed
+	assert.Equal(t, valList, valListCopy, "test %v", idx)
+}
+
+func TestValSetUpdatesDuplicateEntries(t *testing.T) {
+	testCases := []valSetErrTestCase{
+		// Duplicate entries in changes
+		{ // first entry is duplicated change
+			testValSet(2, 10),
+			[]testVal{{"v1", 11}, {"v1", 22}},
+		},
+		{ // second entry is duplicated change
+			testValSet(2, 10),
+			[]testVal{{"v2", 11}, {"v2", 22}},
+		},
+		{ // change duplicates are separated by a valid change
+			testValSet(2, 10),
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v1", 12}},
+		},
+		{ // change duplicates are separated by a valid change
+			testValSet(3, 10),
+			[]testVal{{"v1", 11}, {"v3", 22}, {"v1", 12}},
+		},
+
+		// Duplicate entries in remove
+		{ // first entry is duplicated remove
+			testValSet(2, 10),
+			[]testVal{{"v1", 0}, {"v1", 0}},
+		},
+		{ // second entry is duplicated remove
+			testValSet(2, 10),
+			[]testVal{{"v2", 0}, {"v2", 0}},
+		},
+		{ // remove duplicates are separated by a valid remove
+			testValSet(2, 10),
+			[]testVal{{"v1", 0}, {"v2", 0}, {"v1", 0}},
+		},
+		{ // remove duplicates are separated by a valid remove
+			testValSet(3, 10),
+			[]testVal{{"v1", 0}, {"v3", 0}, {"v1", 0}},
+		},
+
+		{ // remove and update same val
+			testValSet(2, 10),
+			[]testVal{{"v1", 0}, {"v2", 20}, {"v1", 30}},
+		},
+		{ // duplicate entries in removes + changes
+			testValSet(2, 10),
+			[]testVal{{"v1", 0}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
+		},
+		{ // duplicate entries in removes + changes
+			testValSet(3, 10),
+			[]testVal{{"v1", 0}, {"v3", 5}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
+		},
+	}
+
+	for i, tt := range testCases {
+		executeValSetErrTestCase(t, i, tt)
+	}
+}
+
+func TestValSetUpdatesOverflows(t *testing.T) {
+	maxVP := MaxTotalVotingPower
+	testCases := []valSetErrTestCase{
+		{ // single update leading to overflow
+			testValSet(2, 10),
+			[]testVal{{"v1", math.MaxInt64}},
+		},
+		{ // single update leading to overflow
+			testValSet(2, 10),
+			[]testVal{{"v2", math.MaxInt64}},
+		},
+		{ // add validator leading to exceed Max
+			testValSet(1, maxVP-1),
+			[]testVal{{"v2", 5}},
+		},
+		{ // add validator leading to exceed Max
+			testValSet(2, maxVP/3),
+			[]testVal{{"v3", maxVP / 2}},
+		},
+	}
+
+	for i, tt := range testCases {
+		executeValSetErrTestCase(t, i, tt)
+	}
+}
+
+func TestValSetUpdatesOtherErrors(t *testing.T) {
+	testCases := []valSetErrTestCase{
+		{ // update with negative voting power
+			testValSet(2, 10),
+			[]testVal{{"v1", -123}},
+		},
+		{ // update with negative voting power
+			testValSet(2, 10),
+			[]testVal{{"v2", -123}},
+		},
+		{ // remove non-existing validator
+			testValSet(2, 10),
+			[]testVal{{"v3", 0}},
+		},
+		{ // delete all validators
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
+			[]testVal{{"v1", 0}, {"v2", 0}, {"v3", 0}},
+		},
+	}
+
+	for i, tt := range testCases {
+		executeValSetErrTestCase(t, i, tt)
+	}
+}
+
 func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 	valSetUpdatesBasicTests := []struct {
 		startVals    []testVal
 		updateVals   []testVal
 		expectedVals []testVal
-		expError     bool
 	}{
-		// Operations that should result in error
-		0: { // updates leading to overflows
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			[]testVal{{"v1", math.MaxInt64}},
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			true},
-		1: { // duplicate entries in changes
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			[]testVal{{"v1", 11}, {"v1", 22}},
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			true},
-		2: { // duplicate entries in removes
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			[]testVal{{"v1", 0}, {"v1", 0}},
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			true},
-		3: { // duplicate entries in removes + changes
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			[]testVal{{"v1", 0}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			true},
-		4: { // update with negative voting power
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			[]testVal{{"v1", -123}},
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			true},
-		5: { // delete non existing validator
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			[]testVal{{"v3", 0}},
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			true},
-
-		// Operations that should be successful
-		6: { // no changes
-			[]testVal{{"v1", 10}, {"v2", 10}},
+		{ // no changes
+			testValSet(2, 10),
 			[]testVal{},
-			[]testVal{{"v1", 10}, {"v2", 10}},
-			false},
-		7: { // voting power changes
-			[]testVal{{"v1", 10}, {"v2", 10}},
+			testValSet(2, 10),
+		},
+		{ // voting power changes
+			testValSet(2, 10),
 			[]testVal{{"v1", 11}, {"v2", 22}},
 			[]testVal{{"v1", 11}, {"v2", 22}},
-			false},
-		8: { // add new validators
+		},
+		{ // add new validators
 			[]testVal{{"v1", 10}, {"v2", 20}},
 			[]testVal{{"v3", 30}, {"v4", 40}},
 			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
-			false},
-		9: { // delete validators
+		},
+		{ // add new validator to middle
+			[]testVal{{"v1", 10}, {"v3", 20}},
+			[]testVal{{"v2", 30}},
+			[]testVal{{"v1", 10}, {"v2", 30}, {"v3", 20}},
+		},
+		{ // add new validator to beginning
+			[]testVal{{"v2", 10}, {"v3", 20}},
+			[]testVal{{"v1", 30}},
+			[]testVal{{"v1", 30}, {"v2", 10}, {"v3", 20}},
+		},
+		{ // delete validators
 			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
 			[]testVal{{"v2", 0}},
 			[]testVal{{"v1", 10}, {"v3", 30}},
-			false},
-		10: { // delete all validators
-			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
-			[]testVal{{"v1", 0}, {"v2", 0}, {"v3", 0}},
-			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
-			true},
+		},
 	}
 
 	for i, tt := range valSetUpdatesBasicTests {
 		// create a new set and apply updates, keeping copies for the checks
 		valSet := createNewValidatorSet(tt.startVals)
-		valSetCopy := valSet.Copy()
 		valList := createNewValidatorList(tt.updateVals)
 		valListCopy := validatorListCopy(valList)
 		err := valSet.UpdateWithChangeSet(valList)
+		assert.NoError(t, err, "test %d", i)
 
-		if tt.expError {
-			// for errors check the validator set has not been changed
-			assert.Error(t, err, "test %d", i)
-			assert.Equal(t, valSet, valSetCopy, "test %v", i)
-		} else {
-			assert.NoError(t, err, "test %d", i)
-		}
 		// check the parameter list has not changed
 		assert.Equal(t, valList, valListCopy, "test %v", i)
 
