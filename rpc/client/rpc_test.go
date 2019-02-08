@@ -567,7 +567,8 @@ func TestBroadcastDuplicateVote(t *testing.T) {
 
 		for _, fake := range fakes {
 			_, err := c.BroadcastDuplicateVote(fake.PubKey, *fake.VoteA, *fake.VoteB)
-			require.Error(t, err, "Broadcasting fake evidence succeed", fake.String())
+			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
+			require.True(t, strings.HasPrefix(err.Error(), "Error broadcasting evidence, adding evidence"), "Broadcasting fake evidence failed on HTTP call: %s", fake.String())
 		}
 
 	}

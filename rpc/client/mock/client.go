@@ -35,6 +35,7 @@ type Client struct {
 	client.HistoryClient
 	client.StatusClient
 	client.EventsClient
+	client.EvidenceClient
 	cmn.Service
 }
 
@@ -133,4 +134,8 @@ func (c Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 
 func (c Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
 	return core.Validators(height)
+}
+
+func (c Client) BroadcastEvidence(pubkey crypto.PubKey, vote1, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error) {
+	return core.BroadcastDuplicateVote(pubkey, vote1, vote2)
 }

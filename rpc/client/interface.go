@@ -52,7 +52,6 @@ type SignClient interface {
 	Validators(height *int64) (*ctypes.ResultValidators, error)
 	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
 	TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error)
-	BroadcastDuplicateVote(pubkey crypto.PubKey, vote1 types.Vote, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error)
 }
 
 // HistoryClient shows us data from genesis to now in large chunks.
@@ -76,6 +75,7 @@ type Client interface {
 	HistoryClient
 	StatusClient
 	EventsClient
+	EvidenceClient
 }
 
 // NetworkClient is general info about the network state.  May not
@@ -100,4 +100,9 @@ type EventsClient interface {
 type MempoolClient interface {
 	UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
+}
+
+// EvidenceClient is used for submitting evidence for malicious behaviours
+type EvidenceClient interface {
+	BroadcastDuplicateVote(pubkey crypto.PubKey, vote1 types.Vote, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error)
 }

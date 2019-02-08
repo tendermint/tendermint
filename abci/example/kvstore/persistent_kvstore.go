@@ -44,9 +44,9 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	state := loadState(db)
 
 	return &PersistentKVStoreApplication{
-		app:      &KVStoreApplication{state: state},
-		relation: make(map[string]types.PubKey),
-		logger:   log.NewNopLogger(),
+		app:                &KVStoreApplication{state: state},
+		valAddrToPubKeyMap: make(map[string]types.PubKey),
+		logger:             log.NewNopLogger(),
 	}
 }
 
@@ -122,8 +122,11 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 		switch ev.Type {
 		case tmtypes.ABCIEvidenceTypeDuplicateVote:
 			// decrease voting power by 1
+			if ev.TotalVotingPower == 0 {
+				continue
+			}
 			app.updateValidator(types.ValidatorUpdate{
-				PubKey: app.relation[string(ev.Validator.Address)],
+				PubKey: app.valAddrToPubKeyMap[string(ev.Validator.Address)],
 				Power:  ev.TotalVotingPower - 1,
 			})
 		}
@@ -212,7 +215,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 		}
 		app.app.state.db.Delete(key)
 
-		delete(app.relation, string(pubkey.Address()))
+		delete(app.valAddrToPubKeyMap, string(pubkey.Address()))
 
 	} else {
 		// add or update validator
@@ -224,7 +227,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 		}
 		app.app.state.db.Set(key, value.Bytes())
 
-		app.relation[string(pubkey.Address())] = v.PubKey
+		app.valAddrToPubKeyMap[string(pubkey.Address())] = v.PubKey
 	}
 
 	// we only update the changes array if we successfully updated the tree
