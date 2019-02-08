@@ -17,10 +17,13 @@ Special thanks to external contributors on this release:
     native secp256k1 signing. Note we still modify the signature encoding to
     prevent malleability.
   - Support the libsecp256k1 library via CGo through the `go-ethereum/crypto/secp256k1` package.
+  - Eliminate MixEntropy functions
 
 ### BREAKING CHANGES:
 
 * Go API
+  - [crypto] [\#3278](https://github.com/tendermint/tendermint/issues/3278) Remove
+    MixEntropy functions
   - [types] [\#3245](https://github.com/tendermint/tendermint/issues/3245) Commit uses `type CommitSig Vote` instead of `Vote` directly.
     In preparation for removing redundant fields from the commit [\#1648](https://github.com/tendermint/tendermint/issues/1648)
 
