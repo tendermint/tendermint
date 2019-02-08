@@ -520,34 +520,6 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 	}
 }
 
-// Removes the validators specified in 'deletes' from validator set 'vals'.
-// 'deletes' must be sorted.
-// Should not fail as verification has been done before.
-func (vals *ValidatorSet) applyRemovals2(deletes []*Validator) {
-
-	existing := make([]*Validator, len(vals.Validators))
-	copy(existing, vals.Validators)
-
-	merged := make([]*Validator, len(existing)-len(deletes))
-	i := 0
-
-	for len(existing) > 0 && len(deletes) > 0 {
-		if bytes.Equal(existing[0].Address, deletes[0].Address) {
-			deletes = deletes[1:]
-		} else {
-			merged[i] = existing[0]
-			i++
-		}
-		existing = existing[1:]
-	}
-	for j := 0; j < len(existing); j++ {
-		merged[i] = existing[j]
-		i++
-	}
-	vals.Validators = merged[:i]
-	vals.totalVotingPower = 0
-}
-
 // UpdateWithChangeSet attempts to update the validator set with 'changes'
 // It performs the following steps:
 // - validates the changes making sure there are no duplicates and splits them in updates and deletes
@@ -605,7 +577,6 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	// Apply updates and removals
 	vals.applyUpdates(updates)
 	vals.applyRemovals(deletes)
-	//vals.applyRemovals2(deletes)
 
 	// Scale and center
 	vals.RescalePriorities(PriorityWindowSizeFactor * vals.TotalVotingPower())
