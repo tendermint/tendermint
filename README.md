@@ -96,6 +96,7 @@ include the in-process Go APIs.
 That said, breaking changes in the following packages will be documented in the
 CHANGELOG even if they don't lead to MINOR version bumps:
 
+- crypto
 - types
 - rpc/client
 - config
