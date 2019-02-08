@@ -79,7 +79,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
+		lastCommit := types.NewCommit(prevBlockID, tc.lastCommitPrecommits)
 
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
@@ -139,7 +139,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
 	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
 	commitSigs := []*types.CommitSig{commitSig0, commitSig1}
-	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: commitSigs}
+	lastCommit := types.NewCommit(prevBlockID, commitSigs)
 	for _, tc := range testCases {
 
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)

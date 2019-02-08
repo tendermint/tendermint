@@ -260,7 +260,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		evidencePool,
 	)
 
-	commit := &types.Commit{}
+	commit := types.NewCommit(types.BlockID{}, nil)
 	block, _ := blockExec.CreateProposalBlock(
 		height,
 		state, commit,

@@ -490,8 +490,8 @@ func (cs *CommitSig) String() string {
 }
 
 // toVote converts the CommitSig to a vote.
-// Once CommitSig has fewer fields than vote,
-// converting to a Vote will require more information.
+// TODO: deprecate for #1648. Converting to Vote will require
+// access to ValidatorSet.
 func (cs *CommitSig) toVote() *Vote {
 	if cs == nil {
 		return nil
@@ -509,18 +509,30 @@ type Commit struct {
 	BlockID    BlockID      `json:"block_id"`
 	Precommits []*CommitSig `json:"precommits"`
 
-	// Volatile
+	// memoized in first call to corresponding method
+	// NOTE: can't memoize in constructor because constructor
+	// isn't used for unmarshaling
 	height   int64
 	round    int
 	hash     cmn.HexBytes
 	bitArray *cmn.BitArray
 }
 
+// NewCommit returns a new Commit with the given blockID and precommits.
+// TODO: memoize ValidatorSet in constructor so votes can be easily reconstructed
+// from CommitSig after #1648.
+func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
+	return &Commit{
+		BlockID:    blockID,
+		Precommits: precommits,
+	}
+}
+
 // VoteSignBytes constructs the SignBytes for the given CommitSig.
 // The only unique part of the SignBytes is the Timestamp - all other fields
 // signed over are otherwise the same for all validators.
 func (commit *Commit) VoteSignBytes(chainID string, cs *CommitSig) []byte {
-	return cs.toVote().SignBytes(chainID)
+	return commit.ToVote(cs).SignBytes(chainID)
 }
 
 // memoizeHeightRound memoizes the height and round of the commit using
@@ -543,27 +555,20 @@ func (commit *Commit) memoizeHeightRound() {
 
 // ToVote converts a CommitSig to a Vote.
 // If the CommitSig is nil, the Vote will be nil.
-// When CommitSig is reduced to contain fewer fields,
-// this will need access to the ValidatorSet to properly
-// reconstruct the vote.
 func (commit *Commit) ToVote(cs *CommitSig) *Vote {
+	// TODO: use commit.validatorSet to reconstruct vote
+	// and deprecate .toVote
 	return cs.toVote()
 }
 
 // Height returns the height of the commit
 func (commit *Commit) Height() int64 {
-	if len(commit.Precommits) == 0 {
-		return 0
-	}
 	commit.memoizeHeightRound()
 	return commit.height
 }
 
 // Round returns the round of the commit
 func (commit *Commit) Round() int {
-	if len(commit.Precommits) == 0 {
-		return 0
-	}
 	commit.memoizeHeightRound()
 	return commit.round
 }
@@ -595,9 +600,10 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 }
 
 // GetByIndex returns the vote corresponding to a given validator index.
+// Panics if `index >= commit.Size()`.
 // Implements VoteSetReader.
 func (commit *Commit) GetByIndex(index int) *Vote {
-	return commit.Precommits[index].toVote()
+	return commit.ToVote(commit.Precommits[index])
 }
 
 // IsCommit returns true if there is at least one vote.
