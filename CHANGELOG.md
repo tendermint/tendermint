@@ -12,7 +12,8 @@ For more, see issues marked
 [proposer-selection](https://github.com/tendermint/tendermint/labels/proposer-selection).
 
 This release also includes a fix to prevent Tendermint from including the same
-piece of evidence in more than one block.
+piece of evidence in more than one block. This issue was reported by @chengwenxi in our
+[bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -28,15 +29,13 @@ piece of evidence in more than one block.
     one at a time.
 
 * Block Protocol
-  - [state] Prevent the same evidence from being committed more than once.
+  - [state] \#3286 Blocks that include already committed evidence are invalid.
 
 * P2P Protocol
   - [consensus] [\#3222](https://github.com/tendermint/tendermint/issues/3222)
     Apply validator updates as a set instead of one at a time. This ensures that
     the effect on proposer selection is the same, regardless of the order of
     updates.
-
-### FEATURES:
 
 ### IMPROVEMENTS:
 - [crypto] \#3279 Use `btcec.S256().N` directly instead of hard coding a copy.
@@ -45,6 +44,7 @@ piece of evidence in more than one block.
 - [state] \#3222 Fix validator set updates so they are applied as a set, rather
   than one at a time. This makes the proposer selection algorithm independent of
   the order of updates in `ResponseEndBlock.ValidatorUpdates`.
+- [evidence] \#3286 Don't add committed evidence to evidence pool.
 
 ## v0.29.2
 
