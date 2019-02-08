@@ -483,7 +483,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 
 	// 3. Center - noop
 	// 4. IncrementProposerPriority() ->
-	// v1(10):-9+10, v2(1):9+1 -> v2 proposer so substract tvp(11)
+	// v1(10):-9+10, v2(1):9+1 -> v2 proposer so subsract tvp(11)
 	// v1(10):1, v2(1):-1
 	wantVal2Prio += updatedVal2.VotingPower // 10 -> prop
 	wantVal1Prio += updatedVal1.VotingPower // 1
