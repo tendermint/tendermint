@@ -121,6 +121,31 @@ func TestValidateBlockEvidence(t *testing.T) {
 	require.True(t, ok)
 }
 
+// always returns true if asked if any evidence was already committed.
+type mockEvPoolAlwaysCommitted struct{}
+
+func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
+func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
+func (m mockEvPoolAlwaysCommitted) Update(*types.Block, State)             {}
+func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
+
+func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
+	var height int64 = 1
+	state, stateDB := state(1, int(height))
+
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, mockEvPoolAlwaysCommitted{})
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	addr, _ := state.Validators.GetByIndex(0)
+	alreadyCommittedEvidence := types.NewMockGoodEvidence(height, 0, addr)
+	block.Evidence.Evidence = []types.Evidence{alreadyCommittedEvidence}
+	block.EvidenceHash = block.Evidence.Hash()
+	err := blockExec.ValidateBlock(state, block)
+
+	require.Error(t, err)
+	require.IsType(t, err, &types.ErrEvidenceInvalid{})
+}
+
 /*
 	TODO(#2589):
 	- test unmarshalling BlockParts that are too big into a Block that
