@@ -196,7 +196,7 @@ func (em *EventMeter) RegisterDisconnectCallback(f DisconnectCallbackFunc) {
 // Private
 
 func (em *EventMeter) subscribe() error {
-	for query, _ := range em.queryToMetricMap {
+	for query := range em.queryToMetricMap {
 		if err := em.wsc.Subscribe(context.TODO(), query); err != nil {
 			return err
 		}

@@ -616,10 +616,9 @@ func (of oldestFirst) Less(i, j int) bool { return of[i].LastAttempt.Before(of[j
 // getPeersToCrawl returns addresses of potential peers that we wish to validate.
 // NOTE: The status information is ordered as described above.
 func (r *PEXReactor) getPeersToCrawl() []crawlPeerInfo {
-	var of oldestFirst
-
 	// TODO: be more selective
 	addrs := r.book.ListOfKnownAddresses()
+	of := make(oldestFirst, 0, len(addrs))
 	for _, addr := range addrs {
 		if len(addr.ID()) == 0 {
 			continue // dont use peers without id

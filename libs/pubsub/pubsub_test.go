@@ -115,6 +115,25 @@ func TestUnsubscribe(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestClientUnsubscribesTwice(t *testing.T) {
+	s := pubsub.NewServer()
+	s.SetLogger(log.TestingLogger())
+	s.Start()
+	defer s.Stop()
+
+	ctx := context.Background()
+	ch := make(chan interface{})
+	err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"), ch)
+	require.NoError(t, err)
+	err = s.Unsubscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	require.NoError(t, err)
+
+	err = s.Unsubscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	assert.Equal(t, pubsub.ErrSubscriptionNotFound, err)
+	err = s.UnsubscribeAll(ctx, clientID)
+	assert.Equal(t, pubsub.ErrSubscriptionNotFound, err)
+}
+
 func TestResubscribe(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())

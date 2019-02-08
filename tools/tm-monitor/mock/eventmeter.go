@@ -4,7 +4,7 @@ import (
 	stdlog "log"
 	"reflect"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/log"
 	em "github.com/tendermint/tendermint/tools/tm-monitor/eventmeter"
 )
