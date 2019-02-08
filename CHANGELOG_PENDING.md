@@ -9,5 +9,6 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [rpc] \#3280 Add support for batched requests/responses in JSON RPC
 
 ### BUG FIXES:
