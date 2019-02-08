@@ -896,7 +896,7 @@ func permutation(valList []testVal) []testVal {
 }
 
 func createNewValidatorList(testValList []testVal) []*Validator {
-	var valList []*Validator
+	valList := make([]*Validator, 0, len(testValList))
 	for _, val := range testValList {
 		valList = append(valList, newValidator([]byte(val.name), val.power))
 	}
