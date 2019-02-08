@@ -338,8 +338,7 @@ FOR_LOOP:
 				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
-					cmn.PanicQ(fmt.Sprintf("Failed to process committed block (%d:%X): %v",
-						first.Height, first.Hash(), err))
+					cmn.Exit(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 				}
 				blocksSynced++
 

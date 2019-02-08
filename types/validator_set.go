@@ -75,7 +75,7 @@ func (vals *ValidatorSet) CopyIncrementProposerPriority(times int) *ValidatorSet
 // `times` must be positive.
 func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	if vals.IsNilOrEmpty() {
-		return
+		panic("Cannot call IncrementProposerPriority with an empty or nil validator set")
 	}
 	if times <= 0 {
 		panic("Cannot call IncrementProposerPriority with non-positive times")

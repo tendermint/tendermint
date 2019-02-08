@@ -429,6 +429,11 @@ func updateValidators(currentSet *types.ValidatorSet, updates []*types.Validator
 			}
 		}
 	}
+
+	if currentSet.IsNilOrEmpty() {
+		return fmt.Errorf("Processing updates would delete all validators")
+	}
+
 	return nil
 }
 
@@ -451,9 +456,6 @@ func updateState(
 		err := updateValidators(nValSet, validatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
-		}
-		if nValSet.IsNilOrEmpty() {
-			return state, fmt.Errorf("Removing all validators is not allowed")
 		}
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
