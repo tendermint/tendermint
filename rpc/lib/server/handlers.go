@@ -162,7 +162,9 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			}
 			responses = append(responses, types.NewRPCSuccessResponse(cdc, request.ID, result))
 		}
-		WriteRPCResponseArrayHTTP(w, responses)
+		if len(responses) > 0 {
+			WriteRPCResponseArrayHTTP(w, responses)
+		}
 	}
 }
 
