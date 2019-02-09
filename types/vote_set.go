@@ -545,10 +545,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	for i, v := range voteSet.votes {
 		commitSigs[i] = v.CommitSig()
 	}
-	return &Commit{
-		BlockID:    *voteSet.maj23,
-		Precommits: commitSigs,
-	}
+	return NewCommit(*voteSet.maj23, commitSigs)
 }
 
 //--------------------------------------------------------------------------------

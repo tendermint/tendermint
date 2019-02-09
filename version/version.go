@@ -20,7 +20,7 @@ const (
 	// Must be a string because scripts like dist.sh read this file.
 	// XXX: Don't change the name of this variable or you will break
 	// automation :)
-	TMCoreSemVer = "0.29.2"
+	TMCoreSemVer = "0.30.0"
 
 	// ABCISemVer is the semantic version of the ABCI library
 	ABCISemVer  = "0.15.0"
@@ -38,10 +38,12 @@ func (p Protocol) Uint64() uint64 {
 
 var (
 	// P2PProtocol versions all p2p behaviour and msgs.
-	P2PProtocol Protocol = 6
+	// This includes proposer selection.
+	P2PProtocol Protocol = 7
 
 	// BlockProtocol versions all block data structures and processing.
-	BlockProtocol Protocol = 9
+	// This includes validity of blocks and state updates.
+	BlockProtocol Protocol = 10
 )
 
 //------------------------------------------------------------------------
