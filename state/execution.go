@@ -305,7 +305,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 	voteInfos := make([]abci.VoteInfo, len(block.LastCommit.Precommits))
 	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	if block.Height > 1 {
-		valset, err := LoadValidators(stateDB, block.Height-1)
+		lastValSet, err := LoadValidators(stateDB, block.Height-1)
 		if err != nil {
 			panic(err) // shouldn't happen
 		}
@@ -314,19 +314,23 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 		// only applies after first block
 
 		precommitLen := len(block.LastCommit.Precommits)
-		valSetLen := len(valset.Validators)
+		valSetLen := len(lastValSet.Validators)
 		if precommitLen != valSetLen {
 			// sanity check
 			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, valset.Validators))
+				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, lastValSet.Validators))
 		}
 
-	// Collect the vote info (list of validators and whether or not they signed).
-	voteInfos := make([]abci.VoteInfo, len(lastValSet.Validators))
-	for i, val := range lastValSet.Validators {
-		var vote *types.CommitSig
-		if i < len(block.LastCommit.Precommits) {
-			vote = block.LastCommit.Precommits[i]
+		for i, val := range lastValSet.Validators {
+			var vote *types.CommitSig
+			if i < len(block.LastCommit.Precommits) {
+				vote = block.LastCommit.Precommits[i]
+			}
+			voteInfo := abci.VoteInfo{
+				Validator:       types.TM2PB.Validator(val),
+				SignedLastBlock: vote != nil,
+			}
+			voteInfos[i] = voteInfo
 		}
 
 		for i, ev := range block.Evidence.Evidence {
@@ -340,6 +344,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 			byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
 		}
 	}
+
 	commitInfo := abci.LastCommitInfo{
 		Round: int32(block.LastCommit.Round()),
 		Votes: voteInfos,
