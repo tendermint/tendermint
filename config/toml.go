@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -322,20 +323,8 @@ func ResetTestRoot(testName string) *Config {
 }
 
 func ResetTestRootWithChainID(testName string, chainID string) *Config {
-	rootDir := os.ExpandEnv("$HOME/.tendermint_test")
-	rootDir = filepath.Join(rootDir, testName)
-	// Remove ~/.tendermint_test_bak
-	if cmn.FileExists(rootDir + "_bak") {
-		if err := os.RemoveAll(rootDir + "_bak"); err != nil {
-			cmn.PanicSanity(err.Error())
-		}
-	}
-	// Move ~/.tendermint_test to ~/.tendermint_test_bak
-	if cmn.FileExists(rootDir) {
-		if err := os.Rename(rootDir, rootDir+"_bak"); err != nil {
-			cmn.PanicSanity(err.Error())
-		}
-	}
+	// create a unique, concurrency-safe test directory under $HOME/.tendermint_test/
+	rootDir := mustCreateTestRootDir(testName, chainID)
 	// Create new dir
 	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
 		cmn.PanicSanity(err.Error())
@@ -370,6 +359,18 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 
 	config := TestConfig().SetRoot(rootDir)
 	return config
+}
+
+func mustCreateTestRootDir(testName, chainID string) string {
+	homeDir := os.ExpandEnv("$HOME/.tendermint_test")
+	if err := os.MkdirAll(homeDir, 0777); err != nil {
+		cmn.PanicSanity(err.Error())
+	}
+	rootDir, err := ioutil.TempDir(homeDir, fmt.Sprintf("%s-%s_", chainID, testName))
+	if err != nil {
+		cmn.PanicSanity(err.Error())
+	}
+	return rootDir
 }
 
 var testGenesisFmt = `{
