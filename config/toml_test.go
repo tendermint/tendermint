@@ -1,11 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -94,17 +92,4 @@ func checkConfig(configFile string) bool {
 		}
 	}
 	return valid
-}
-
-func TestMustCreateTestRootDir(t *testing.T) {
-	testName, chainID := t.Name(), "gaia-11000"
-	rootDir := mustCreateTestRootDir(chainID, testName)
-	defer os.RemoveAll(rootDir)
-	homeDir := os.ExpandEnv("$HOME/.tendermint_test")
-	prefix := fmt.Sprintf("%s-%s_", testName, chainID)
-	pattern := fmt.Sprintf("%s.+", filepath.Join(homeDir, prefix))
-	re := regexp.MustCompilePOSIX(pattern)
-	if !re.MatchString(rootDir) {
-		t.Fatalf("pattern=%q does not match rootDir=%q", pattern, rootDir)
-	}
 }

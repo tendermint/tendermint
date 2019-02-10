@@ -324,8 +324,15 @@ func ResetTestRoot(testName string) *Config {
 
 func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	// create a unique, concurrency-safe test directory under $HOME/.tendermint_test/
-	rootDir := mustCreateTestRootDir(testName, chainID)
-	// Create new dir
+	homeDir := os.ExpandEnv("$HOME/.tendermint_test")
+	if err := os.MkdirAll(homeDir, 0700); err != nil {
+		panic(err)
+	}
+	rootDir, err := ioutil.TempDir(homeDir, fmt.Sprintf("%s-%s_", chainID, testName))
+	if err != nil {
+		panic(err)
+	}
+	// ensure config and data subdirs are created
 	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), 0700); err != nil {
 		panic(err)
 	}
@@ -356,18 +363,6 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 
 	config := TestConfig().SetRoot(rootDir)
 	return config
-}
-
-func mustCreateTestRootDir(testName, chainID string) string {
-	homeDir := os.ExpandEnv("$HOME/.tendermint_test")
-	if err := os.MkdirAll(homeDir, 0700); err != nil {
-		panic(err)
-	}
-	rootDir, err := ioutil.TempDir(homeDir, fmt.Sprintf("%s-%s_", chainID, testName))
-	if err != nil {
-		panic(err)
-	}
-	return rootDir
 }
 
 var testGenesisFmt = `{
