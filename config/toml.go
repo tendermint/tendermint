@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"text/template"
 
@@ -324,11 +323,7 @@ func ResetTestRoot(testName string) *Config {
 
 func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	// create a unique, concurrency-safe test directory under $HOME/.tendermint_test/
-	homeDir := os.ExpandEnv("$HOME/.tendermint_test")
-	if err := os.MkdirAll(homeDir, 0700); err != nil {
-		panic(err)
-	}
-	rootDir, err := ioutil.TempDir(homeDir, fmt.Sprintf("%s-%s_", chainID, testName))
+	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
 		panic(err)
 	}
