@@ -10,6 +10,9 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+// DefaultDirPerm is the default permissions used when creating directories.
+const DefaultDirPerm = 0700
+
 var configTemplate *template.Template
 
 func init() {
@@ -24,13 +27,13 @@ func init() {
 // EnsureRoot creates the root, config, and data directories if they don't exist,
 // and panics if it fails.
 func EnsureRoot(rootDir string) {
-	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
+	if err := cmn.EnsureDir(rootDir, DefaultDirPerm); err != nil {
 		cmn.PanicSanity(err.Error())
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), 0700); err != nil {
+	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
 		cmn.PanicSanity(err.Error())
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), 0700); err != nil {
+	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
 		cmn.PanicSanity(err.Error())
 	}
 
@@ -328,10 +331,10 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 		panic(err)
 	}
 	// ensure config and data subdirs are created
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), 0700); err != nil {
+	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
 		panic(err)
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), 0700); err != nil {
+	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
 		panic(err)
 	}
 
