@@ -50,6 +50,7 @@ func TestEnsureTestRoot(t *testing.T) {
 
 	// create root dir
 	cfg := ResetTestRoot(testName)
+	defer os.RemoveAll(cfg.RootDir)
 	rootDir := cfg.RootDir
 
 	// make sure config is set properly

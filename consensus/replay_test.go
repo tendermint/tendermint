@@ -32,8 +32,19 @@ import (
 
 var consensusReplayConfig *cfg.Config
 
-func init() {
+func TestMain(m *testing.M) {
 	consensusReplayConfig = ResetConfig("consensus_replay_test")
+	config = ResetConfig("consensus_reactor_test")
+	configStateTest := ResetConfig("consensus_state_test")
+	configMempoolTest := ResetConfig("consensus_mempool_test")
+	configByzantineTest := ResetConfig("consensus_byzantine_test")
+	code := m.Run()
+	os.RemoveAll(consensusReplayConfig.RootDir)
+	os.RemoveAll(config.RootDir)
+	os.RemoveAll(configStateTest.RootDir)
+	os.RemoveAll(configMempoolTest.RootDir)
+	os.RemoveAll(configByzantineTest.RootDir)
+	os.Exit(code)
 }
 
 // These tests ensure we can always recover from failure at any part of the consensus process.
@@ -313,8 +324,9 @@ func tempWALWithData(data []byte) string {
 // Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	config := ResetConfig("proxy_test_")
+	defer os.RemoveAll(config.RootDir)
 
-	walBody, err := WALWithNBlocks(NUM_BLOCKS)
+	walBody, err := WALWithNBlocks(t, NUM_BLOCKS)
 	require.NoError(t, err)
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
@@ -631,6 +643,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("proxy_test_")
+	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)
 

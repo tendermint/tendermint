@@ -27,10 +27,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func init() {
-	config = ResetConfig("consensus_reactor_test")
-}
-
 //----------------------------------------------
 // in-process testnets
 
@@ -86,7 +82,10 @@ func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuse
 // Ensure a testnet makes blocks
 func TestReactorBasic(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	css, rootDirs := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	for _, dir := range rootDirs {
+		defer os.RemoveAll(dir)
+	}
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 	// wait till everyone makes the first new block
@@ -116,6 +115,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		defer os.RemoveAll(thisConfig.RootDir)
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
@@ -218,10 +218,13 @@ func (m *mockEvidencePool) IsCommitted(types.Evidence) bool { return false }
 // Ensure a testnet makes blocks when there are txs
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
+	css, rootDirs := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
 		func(c *cfg.Config) {
 			c.Consensus.CreateEmptyBlocks = false
 		})
+	for _, dir := range rootDirs {
+		defer os.RemoveAll(dir)
+	}
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
@@ -239,7 +242,10 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 // Test we record stats about votes and block parts from other peers.
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	css, rootDirs := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	for _, dir := range rootDirs {
+		defer os.RemoveAll(dir)
+	}
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
@@ -263,7 +269,10 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 func TestReactorVotingPowerChange(t *testing.T) {
 	nVals := 4
 	logger := log.TestingLogger()
-	css := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	css, rootDirs := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	for _, dir := range rootDirs {
+		defer os.RemoveAll(dir)
+	}
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, nVals)
 	defer stopConsensusNet(logger, reactors, eventBuses)
 
@@ -324,7 +333,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	css, dirs := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	for _, d := range dirs {
+		defer os.RemoveAll(d)
+	}
 
 	logger := log.TestingLogger()
 
@@ -422,7 +434,10 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 // Check we can make blocks with skip_timeout_commit=false
 func TestReactorWithTimeoutCommit(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newCounter)
+	css, rootDirs := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newCounter)
+	for _, dir := range rootDirs {
+		defer os.RemoveAll(dir)
+	}
 	// override default SkipTimeoutCommit == true for tests
 	for i := 0; i < N; i++ {
 		css[i].config.SkipTimeoutCommit = false

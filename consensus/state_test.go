@@ -18,10 +18,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func init() {
-	config = ResetConfig("consensus_state_test")
-}
-
 /*
 
 ProposeSuite
