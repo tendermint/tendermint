@@ -363,7 +363,7 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 
 func mustCreateTestRootDir(testName, chainID string) string {
 	homeDir := os.ExpandEnv("$HOME/.tendermint_test")
-	if err := os.MkdirAll(homeDir, 0777); err != nil {
+	if err := os.MkdirAll(homeDir, 0700); err != nil {
 		cmn.PanicSanity(err.Error())
 	}
 	rootDir, err := ioutil.TempDir(homeDir, fmt.Sprintf("%s-%s_", chainID, testName))
