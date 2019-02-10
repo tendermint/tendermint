@@ -326,9 +326,6 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	// create a unique, concurrency-safe test directory under $HOME/.tendermint_test/
 	rootDir := mustCreateTestRootDir(testName, chainID)
 	// Create new dir
-	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
-		cmn.PanicSanity(err.Error())
-	}
 	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), 0700); err != nil {
 		cmn.PanicSanity(err.Error())
 	}
