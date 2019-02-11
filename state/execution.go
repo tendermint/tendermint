@@ -446,7 +446,7 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 	})
 
 	for i, tx := range block.Data.Txs {
-		eventBus.PublishEventTx(types.EventDataTx{types.TxResult{
+		eventBus.PublishEventTx(types.EventDataTx{TxResult: types.TxResult{
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,

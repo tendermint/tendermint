@@ -64,7 +64,6 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivVali
 	err := privVal.SignVote(chainID, vote)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
-		return nil
 	}
 	return vote
 }

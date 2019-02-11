@@ -245,11 +245,11 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
 					}
-					if err := nodeConn.PipeReader.Close(); err != nil {
-						t.Error(err)
-						return nil, err, true
-					}
-					return nil, nil, false
+					// if err := nodeConn.PipeReader.Close(); err != nil {
+					// 	t.Error(err)
+					// 	return nil, err, true
+					// }
+					// return nil, nil, false
 				},
 			)
 			assert.True(t, ok, "Unexpected task abortion")
