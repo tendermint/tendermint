@@ -74,9 +74,13 @@ var (
 
 	logger log.Logger
 
-	// XXX: godoc comment
+	// config variables
+
+	// MaxSubscriptionClients mirrors RPCConfig.MaxSubscriptionClients
 	MaxSubscriptionClients    int
+	// MaxSubscriptionsPerClient mirrors RPCConfig.MaxSubscriptionsPerClient
 	MaxSubscriptionsPerClient int
+	// TimeoutBroadcastTxCommit mirrors RPCConfig.TimeoutBroadcastTxCommit
 	TimeoutBroadcastTxCommit  time.Duration
 )
 

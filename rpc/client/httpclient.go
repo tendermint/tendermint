@@ -272,6 +272,7 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 	return wsEvents
 }
 
+// OnStart implements cmn.Service by starting WSClient and event loop.
 func (w *WSEvents) OnStart() error {
 	w.ws = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
 		w.redoSubscriptions()
@@ -287,12 +288,9 @@ func (w *WSEvents) OnStart() error {
 	return nil
 }
 
-// Stop wraps the BaseService/eventSwitch actions as Start does
+// OnStop implements cmn.Service by stopping WSClient.
 func (w *WSEvents) OnStop() {
-	err := w.ws.Stop()
-	if err != nil {
-		w.Logger.Error("failed to stop WSClient", "err", err)
-	}
+	_ = w.ws.Stop()
 }
 
 // Subscribe implements EventsClient by using WSClient to subscribe given
