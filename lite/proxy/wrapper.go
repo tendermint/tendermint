@@ -1,12 +1,17 @@
 package proxy
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/lite"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 var _ rpcclient.Client = Wrapper{}
@@ -143,6 +148,55 @@ func (w Wrapper) Commit(height *int64) (*ctypes.ResultCommit, error) {
 		err = w.cert.Verify(sh)
 	}
 	return res, err
+}
+
+// SubscribeWS subscribes for events using the given query and remote address as
+// a subscriber, but does not verify responses (FIXME)!
+func (w Wrapper) SubscribeWS(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := w.Client.Subscribe(ctx, wsCtx.GetRemoteAddr(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		for {
+			select {
+			case resultEvent := <-out:
+				wsCtx.TryWriteRPCResponse(
+					rpctypes.NewRPCSuccessResponse(
+						wsCtx.Codec(),
+						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", wsCtx.Request.ID)),
+						resultEvent,
+					))
+			case <-w.Client.Quit():
+				return
+			}
+		}
+	}()
+
+	return &ctypes.ResultSubscribe{}, nil
+}
+
+// UnsubscribeWS calls original client's Unsubscribe using remote address as a
+// subscriber.
+func (w Wrapper) UnsubscribeWS(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsubscribe, error) {
+	err := w.Client.Unsubscribe(context.Background(), wsCtx.GetRemoteAddr(), query)
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultUnsubscribe{}, nil
+}
+
+// UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
+// as a subscriber.
+func (w Wrapper) UnsubscribeAllWS(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, error) {
+	err := w.Client.UnsubscribeAll(context.Background(), wsCtx.GetRemoteAddr())
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultUnsubscribe{}, nil
 }
 
 // // WrappedSwitch creates a websocket connection that auto-verifies any info

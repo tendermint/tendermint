@@ -62,9 +62,9 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 	return map[string]*rpcserver.RPCFunc{
 		// Subscribe/unsubscribe are reserved for websocket events.
-		"subscribe":       rpcserver.NewWSRPCFunc(c.Subscribe, "query"),
-		"unsubscribe":     rpcserver.NewWSRPCFunc(c.Unsubscribe, "query"),
-		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAll, ""),
+		"subscribe":       rpcserver.NewWSRPCFunc(c.(Wrapper).SubscribeWS, "query"),
+		"unsubscribe":     rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeWS, "query"),
+		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeAllWS, ""),
 
 		// info API
 		"status":     rpcserver.NewRPCFunc(c.Status, ""),
