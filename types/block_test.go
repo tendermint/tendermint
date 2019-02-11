@@ -198,7 +198,6 @@ func TestCommit(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	assert.NotNil(t, commit.FirstPrecommit())
 	assert.Equal(t, h-1, commit.Height())
 	assert.Equal(t, 1, commit.Round())
 	assert.Equal(t, PrecommitType, SignedMsgType(commit.Type()))

@@ -70,7 +70,7 @@ func TestValidateBlock(t *testing.T) {
 			},
 			signedHeader: types.SignedHeader{
 				Header: &types.Header{Height: 11},
-				Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("0xDEADBEEF")}},
+				Commit: types.NewCommit(types.BlockID{Hash: []byte("0xDEADBEEF")}, nil),
 			},
 			wantErr: "Data hash doesn't match header",
 		},
@@ -81,7 +81,7 @@ func TestValidateBlock(t *testing.T) {
 			},
 			signedHeader: types.SignedHeader{
 				Header: &types.Header{Height: 11},
-				Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("DEADBEEF")}},
+				Commit: types.NewCommit(types.BlockID{Hash: []byte("DEADBEEF")}, nil),
 			},
 		},
 		// End Header.Data hash mismatch test
@@ -169,7 +169,7 @@ func TestValidateBlockMeta(t *testing.T) {
 					ValidatorsHash: []byte("Tendermint"),
 					Time:           testTime2,
 				},
-				Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("DEADBEEF")}},
+				Commit: types.NewCommit(types.BlockID{Hash: []byte("DEADBEEF")}, nil),
 			},
 			wantErr: "Headers don't match",
 		},
@@ -188,7 +188,7 @@ func TestValidateBlockMeta(t *testing.T) {
 					ValidatorsHash: []byte("Tendermint-x"),
 					Time:           testTime2,
 				},
-				Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("DEADBEEF")}},
+				Commit: types.NewCommit(types.BlockID{Hash: []byte("DEADBEEF")}, nil),
 			},
 			wantErr: "Headers don't match",
 		},

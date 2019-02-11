@@ -87,17 +87,17 @@ type FilePVLastSignState struct {
 func (lss *FilePVLastSignState) CheckHRS(height int64, round int, step int8) (bool, error) {
 
 	if lss.Height > height {
-		return false, errors.New("Height regression")
+		return false, fmt.Errorf("Height regression. Got %v, last height %v", height, lss.Height)
 	}
 
 	if lss.Height == height {
 		if lss.Round > round {
-			return false, errors.New("Round regression")
+			return false, fmt.Errorf("Round regression at height %v. Got %v, last round %v", height, round, lss.Round)
 		}
 
 		if lss.Round == round {
 			if lss.Step > step {
-				return false, errors.New("Step regression")
+				return false, fmt.Errorf("Step regression at height %v round %v. Got %v, last step %v", height, round, step, lss.Step)
 			} else if lss.Step == step {
 				if lss.SignBytes != nil {
 					if lss.Signature == nil {

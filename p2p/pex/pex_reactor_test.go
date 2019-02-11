@@ -316,6 +316,81 @@ func TestPEXReactorCrawlStatus(t *testing.T) {
 	// TODO: test
 }
 
+// connect a peer to a seed, wait a bit, then stop it.
+// this should give it time to request addrs and for the seed
+// to call FlushStop, and allows us to test calling Stop concurrently
+// with FlushStop. Before a fix, this non-deterministically reproduced
+// https://github.com/tendermint/tendermint/issues/3231.
+func TestPEXReactorSeedModeFlushStop(t *testing.T) {
+	N := 2
+	switches := make([]*p2p.Switch, N)
+
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
+	books := make([]*addrBook, N)
+	logger := log.TestingLogger()
+
+	// create switches
+	for i := 0; i < N; i++ {
+		switches[i] = p2p.MakeSwitch(cfg, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
+			books[i].SetLogger(logger.With("pex", i))
+			sw.SetAddrBook(books[i])
+
+			sw.SetLogger(logger.With("pex", i))
+
+			config := &PEXReactorConfig{}
+			if i == 0 {
+				// first one is a seed node
+				config = &PEXReactorConfig{SeedMode: true}
+			}
+			r := NewPEXReactor(books[i], config)
+			r.SetLogger(logger.With("pex", i))
+			r.SetEnsurePeersPeriod(250 * time.Millisecond)
+			sw.AddReactor("pex", r)
+
+			return sw
+		})
+	}
+
+	for _, sw := range switches {
+		err := sw.Start() // start switch and reactors
+		require.Nil(t, err)
+	}
+
+	reactor := switches[0].Reactors()["pex"].(*PEXReactor)
+	peerID := switches[1].NodeInfo().ID()
+
+	err = switches[1].DialPeerWithAddress(switches[0].NodeInfo().NetAddress(), false)
+	assert.NoError(t, err)
+
+	// sleep up to a second while waiting for the peer to send us a message.
+	// this isn't perfect since it's possible the peer sends us a msg and we FlushStop
+	// before this loop catches it. but non-deterministically it works pretty well.
+	for i := 0; i < 1000; i++ {
+		v := reactor.lastReceivedRequests.Get(string(peerID))
+		if v != nil {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	// by now the FlushStop should have happened. Try stopping the peer.
+	// it should be safe to do this.
+	peers := switches[0].Peers().List()
+	for _, peer := range peers {
+		peer.Stop()
+	}
+
+	// stop the switches
+	for _, s := range switches {
+		s.Stop()
+	}
+}
+
 func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	peer := p2p.CreateRandomPeer(false)
 

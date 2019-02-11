@@ -37,8 +37,8 @@ func makeAndConnectEvidenceReactors(config *cfg.Config, stateDBs []dbm.DB) []*Ev
 	logger := evidenceLogger()
 	for i := 0; i < N; i++ {
 
-		store := NewEvidenceStore(dbm.NewMemDB())
-		pool := NewEvidencePool(stateDBs[i], store)
+		evidenceDB := dbm.NewMemDB()
+		pool := NewEvidencePool(stateDBs[i], evidenceDB)
 		reactors[i] = NewEvidenceReactor(pool)
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
