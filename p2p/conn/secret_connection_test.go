@@ -238,6 +238,10 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 					for {
 						n, err := nodeSecretConn.Read(readBuffer)
 						if err == io.EOF {
+							if err := nodeConn.PipeReader.Close(); err != nil {
+								t.Error(err)
+								return nil, err, true
+							}
 							return nil, nil, false
 						} else if err != nil {
 							t.Errorf("Failed to read from nodeSecretConn: %v", err)
@@ -245,11 +249,6 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
 					}
-					if err := nodeConn.PipeReader.Close(); err != nil {
-						t.Error(err)
-						return nil, err, true
-					}
-					return nil, nil, false
 				},
 			)
 			assert.True(t, ok, "Unexpected task abortion")
