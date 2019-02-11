@@ -532,7 +532,26 @@ func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
 // The only unique part of the SignBytes is the Timestamp - all other fields
 // signed over are otherwise the same for all validators.
 func (commit *Commit) VoteSignBytes(chainID string, cs *CommitSig) []byte {
-	return commit.ToVote(cs).SignBytes(chainID)
+	canonicalVote := commit.canonicalVote(chainID, cs)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(canonicalVote)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+// make the canonical vote sign bytes for this commit using
+// the timestamp given in the commitSig.
+func (commit *Commit) canonicalVote(chainID string, commitSig *CommitSig) CanonicalVote {
+	commit.memoizeHeightRound()
+	return CanonicalVote{
+		Type:      PrecommitType,
+		Height:    commit.height,
+		Round:     int64(commit.round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		BlockID:   CanonicalizeBlockID(commit.BlockID),
+		Timestamp: commitSig.Timestamp,
+		ChainID:   chainID,
+	}
 }
 
 // memoizeHeightRound memoizes the height and round of the commit using
@@ -602,6 +621,8 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 // GetByIndex returns the vote corresponding to a given validator index.
 // Panics if `index >= commit.Size()`.
 // Implements VoteSetReader.
+// TODO: deprecate this and use custom functions to get votes
+// from the Commit and ValidatorSet when needed.
 func (commit *Commit) GetByIndex(index int) *Vote {
 	return commit.ToVote(commit.Precommits[index])
 }
