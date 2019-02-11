@@ -313,12 +313,12 @@ func TestProposerFrequency(t *testing.T) {
 		}
 	}
 
-	// some random test cases with up to 300 validators
+	// some random test cases with up to 100 validators
 	maxVals := 100
 	maxPower := 1000
 	nTestCases := 5
 	for i := 0; i < nTestCases; i++ {
-		N := cmn.RandInt() % maxVals
+		N := cmn.RandInt()%maxVals + 1
 		vals := make([]*types.Validator, N)
 		totalVotePower := int64(0)
 		for j := 0; j < N; j++ {
