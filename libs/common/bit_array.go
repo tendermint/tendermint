@@ -412,7 +412,6 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 			bA2.SetIndex(i, true)
 		}
 	}
-	// assignment copies lock value to *bA: github.com/tendermint/tendermint/libs/common.BitArray contains sync.Mutex
 	*bA = *bA2 //nolint:govet
 	return nil
 }
