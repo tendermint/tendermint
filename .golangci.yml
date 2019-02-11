@@ -19,7 +19,6 @@ linters:
     - lll
     - gochecknoglobals
     - gocritic
-    - gosec
     - gochecknoinits
     - scopelint
     - stylecheck
