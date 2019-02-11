@@ -266,7 +266,7 @@ func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Si
 	binary.PutUvarint(tx[32:40], uint64(time.Now().Unix()))
 
 	// 40-* random data
-	if _, err := rand.Read(tx[40:]); err != nil {
+	if _, err := rand.Read(tx[40:]); err != nil { //nolint: gosec
 		panic(errors.Wrap(err, "failed to read random bytes"))
 	}
 
