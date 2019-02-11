@@ -307,27 +307,6 @@ func (vals *ValidatorSet) Hash() []byte {
 	return merkle.SimpleHashFromByteSlices(bzs)
 }
 
-// Remove deletes the validator with address. It returns the validator removed
-// and true. If returns nil and false if validator is not present in the set.
-func (vals *ValidatorSet) Remove(address []byte) (val *Validator, removed bool) {
-	idx := sort.Search(len(vals.Validators), func(i int) bool {
-		return bytes.Compare(address, vals.Validators[i].Address) <= 0
-	})
-	if idx >= len(vals.Validators) || !bytes.Equal(vals.Validators[idx].Address, address) {
-		return nil, false
-	}
-	removedVal := vals.Validators[idx]
-	newValidators := vals.Validators[:idx]
-	if idx+1 < len(vals.Validators) {
-		newValidators = append(newValidators, vals.Validators[idx+1:]...)
-	}
-	vals.Validators = newValidators
-	// Invalidate cache
-	vals.Proposer = nil
-	vals.totalVotingPower = 0
-	return removedVal, true
-}
-
 // Iterate will run the given function over the set.
 func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 	for i, val := range vals.Validators {
@@ -489,7 +468,6 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 	}
 
 	vals.Validators = merged[:i]
-	vals.totalVotingPower = 0
 }
 
 // Checks that the validators to be removed are part of the validator set.
@@ -510,35 +488,32 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
 // Should not fail as verification has been done before.
 func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 
-	for _, valUpdate := range deletes {
-		address := valUpdate.Address
-		_, removed := vals.Remove(address)
-		if !removed {
-			// Should never happen
-			panic(fmt.Sprintf("failed to remove validator %X", address))
-		}
-	}
-}
+	existing := make([]*Validator, len(vals.Validators))
+	copy(existing, vals.Validators)
 
-// UpdateWithChangeSet attempts to update the validator set with 'changes'
-// It performs the following steps:
-// - validates the changes making sure there are no duplicates and splits them in updates and deletes
-// - verifies that applying the changes will not result in errors
-// - computes the total voting power BEFORE removals to ensure that in the next steps the relative priorities
-//   across old and newly added validators is fair
-// - computes the priorities of new validators against the final set
-// - applies the updates against the validator set
-// - applies the removals against the validator set
-// - performs scaling and centering of priority values
-// If error is detected during verification steps it is returned and the validator set
-// is not changed.
-func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
-	return vals.updateWithChangeSet(changes, true)
+	merged := make([]*Validator, len(existing)-len(deletes))
+	i := 0
+
+	for len(existing) > 0 && len(deletes) > 0 {
+		if bytes.Equal(existing[0].Address, deletes[0].Address) {
+			deletes = deletes[1:]
+		} else {
+			merged[i] = existing[0]
+			i++
+		}
+		existing = existing[1:]
+	}
+	for j := 0; j < len(existing); j++ {
+		merged[i] = existing[j]
+		i++
+	}
+	vals.Validators = merged[:i]
+	vals.totalVotingPower = 0
 }
 
 // main function used by UpdateWithChangeSet() and NewValidatorSet()
 // If 'allowDeletes' is false then delete operations are not allowed and must be reported if
-// present in 'changes'
+// present in 'changes'. This flag is set by NewValidatorSet() caller.
 func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool) error {
 
 	if len(changes) <= 0 {
@@ -569,9 +544,13 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 
 	// Compute the priorities for updates
 	numNewValidators := computeNewPriorities(updates, vals, updatedTotalVotingPower)
-	if len(vals.Validators)+numNewValidators <= len(deletes) {
+	if len(vals.Validators)+numNewValidators == len(deletes) {
 		err = fmt.Errorf("applying the validator changes would result in empty set")
 		return err
+	}
+
+	if len(vals.Validators)+numNewValidators < len(deletes) {
+		panic("internal error, more deletes than validators after verification")
 	}
 
 	// Apply updates and removals
@@ -583,6 +562,22 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	vals.shiftByAvgProposerPriority()
 
 	return nil
+}
+
+// UpdateWithChangeSet attempts to update the validator set with 'changes'
+// It performs the following steps:
+// - validates the changes making sure there are no duplicates and splits them in updates and deletes
+// - verifies that applying the changes will not result in errors
+// - computes the total voting power BEFORE removals to ensure that in the next steps the relative priorities
+//   across old and newly added validators is fair
+// - computes the priorities of new validators against the final set
+// - applies the updates against the validator set
+// - applies the removals against the validator set
+// - performs scaling and centering of priority values
+// If an error is detected during verification steps, it is returned and the validator set
+// is not changed.
+func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
+	return vals.updateWithChangeSet(changes, true)
 }
 
 // Verify that +2/3 of the set had signed the given signBytes.
