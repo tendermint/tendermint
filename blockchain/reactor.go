@@ -8,7 +8,6 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -338,7 +337,7 @@ FOR_LOOP:
 				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
-					cmn.Exit(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 				}
 				blocksSynced++
 

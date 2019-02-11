@@ -377,7 +377,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 
 	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
 	assert.NotNil(t, err)
-	assert.True(t, len(state.NextValidators.Validators) > 0, "state's NextValidators is empty")
+	assert.NotEmpty(t, state.NextValidators.Validators)
 
 }
 
