@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -351,10 +352,14 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 // After being reconnected, it is necessary to redo subscription to server
 // otherwise no data will be automatically received.
 func (w *WSEvents) redoSubscriptions() {
+	const timeout = 5 * time.Second
 	for q := range w.subscriptions {
-		// NOTE: no timeout for resubscribing
-		// FIXME: better logging/handling of errors??
-		w.ws.Subscribe(context.Background(), q)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		_ = w.ws.Subscribe(ctx, q)
+		// FIXME: err is either ErrAlreadySubscribed or max client (subscriptions per
+		// client) reached.
+		// We can ignore ErrAlreadySubscribed, but need to retry in the second case.
+		cancel()
 	}
 }
 
@@ -373,7 +378,7 @@ func (w *WSEvents) eventListener() {
 			if resp.Error != nil {
 				w.Logger.Error("WS error", "err", resp.Error.Error())
 				// we don't know which subscription failed, so redo all of them
-				// resubscribe with exponential timeout
+				// ErrAlreadySubscribed can be ignored
 				w.redoSubscriptions()
 				continue
 			}

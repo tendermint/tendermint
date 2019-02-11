@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -171,18 +172,28 @@ func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapa
 					select {
 					case outc <- ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}:
 					default:
-						// XXX: log error
+						// XXX: client has missed an event. inform it somehow!
 					}
 				}
 			case <-sub.Cancelled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
-					// resubscribe with exponential timeout
+					// resubscribe
 					var err error
-					sub, err = c.EventBus.Subscribe(ctx, subscriber, q)
-					if err != nil {
-						// TODO
+					for {
+						if !c.IsRunning() {
+							return
+						}
+
+						ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+						defer cancel()
+						sub, err = c.EventBus.Subscribe(ctx, subscriber, q)
+						if err == nil {
+							break
+						}
 					}
 				}
+				return
+			case <-c.Quit():
 				return
 			}
 		}

@@ -681,9 +681,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wmLogger := rpcLogger.With("protocol", "websocket")
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec,
 			rpcserver.OnDisconnect(func(remoteAddr string) {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				err := n.eventBus.UnsubscribeAll(ctx, remoteAddr)
+				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil {
 					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}

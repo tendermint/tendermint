@@ -3,7 +3,6 @@ package proxy
 import (
 	"context"
 	"net/http"
-	"time"
 
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/log"
@@ -36,14 +35,12 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 	mux := http.NewServeMux()
 	rpcserver.RegisterRPCFuncs(mux, r, cdc, logger)
 
-	wm := rpcserver.NewWebsocketManager(r, cdc, rpcserver.OnDisconnect(func(remoteAddr string) {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		err := c.UnsubscribeAll(ctx, remoteAddr)
-		if err != nil {
+	unsubscribeFromAllEvents := func(remoteAddr string) {
+		if err := c.UnsubscribeAll(context.Background(), remoteAddr); err != nil {
 			logger.Error("Failed to unsubscribe from events", "err", err)
 		}
-	}))
+	}
+	wm := rpcserver.NewWebsocketManager(r, cdc, rpcserver.OnDisconnect(unsubscribeFromAllEvents))
 	wm.SetLogger(logger)
 	core.SetLogger(logger)
 	mux.HandleFunc(wsEndpoint, wm.WebsocketHandler)

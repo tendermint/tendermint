@@ -3,7 +3,6 @@ package proxy
 import (
 	"context"
 	"fmt"
-	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 
@@ -153,9 +152,7 @@ func (w Wrapper) Commit(height *int64) (*ctypes.ResultCommit, error) {
 // SubscribeWS subscribes for events using the given query and remote address as
 // a subscriber, but does not verify responses (FIXME)!
 func (w Wrapper) SubscribeWS(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	out, err := w.Client.Subscribe(ctx, wsCtx.GetRemoteAddr(), query)
+	out, err := w.Client.Subscribe(context.Background(), wsCtx.GetRemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
