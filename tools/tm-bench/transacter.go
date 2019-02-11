@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -154,12 +154,12 @@ func (t *transacter) sendLoop(connIndex int) {
 	}()
 
 	// hash of the host name is a part of each tx
-	var hostnameHash [md5.Size]byte
+	var hostnameHash [sha256.Size]byte
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "127.0.0.1"
 	}
-	hostnameHash = md5.Sum([]byte(hostname))
+	hostnameHash = sha256.Sum256([]byte(hostname))
 	// each transaction embeds connection index, tx number and hash of the hostname
 	// we update the tx number between successive txs
 	tx := generateTx(connIndex, txNumber, t.Size, hostnameHash)
@@ -257,7 +257,7 @@ func connect(host string) (*websocket.Conn, *http.Response, error) {
 	return websocket.DefaultDialer.Dial(u.String(), nil)
 }
 
-func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [md5.Size]byte) []byte {
+func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Size]byte) []byte {
 	tx := make([]byte, txSize)
 
 	binary.PutUvarint(tx[:8], uint64(connIndex))
