@@ -19,7 +19,6 @@ import (
 
 func TestValidatorSetBasic(t *testing.T) {
 	// empty or nil validator lists are allowed,
-	// empty or nil validator lists are allowed,
 	// but attempting to IncrementProposerPriority on them will panic.
 	vset := NewValidatorSet([]*Validator{})
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
