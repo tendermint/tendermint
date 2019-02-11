@@ -1,7 +1,6 @@
 package rpctypes
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -10,9 +9,6 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // a wrapper to emulate a sum type: jsonrpcid = string | int
@@ -241,7 +237,6 @@ type WSRPCConnection interface {
 	GetRemoteAddr() string
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
-	GetEventSubscriber() EventSubscriber
 	Codec() *amino.Codec
 }
 
@@ -249,16 +244,6 @@ type WSRPCConnection interface {
 type WSRPCContext struct {
 	Request RPCRequest
 	WSRPCConnection
-}
-
-// EventSubscriber mirrors tendermint/tendermint/types.EventBusSubscriber
-type EventSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (tmtypes.Subscription, error)
-	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
-	UnsubscribeAll(ctx context.Context, subscriber string) error
-
-	NumClients() int
-	NumClientSubscriptions(clientID string) int
 }
 
 //----------------------------------------

@@ -1,7 +1,9 @@
 package proxy
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/log"
@@ -34,7 +36,14 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 	mux := http.NewServeMux()
 	rpcserver.RegisterRPCFuncs(mux, r, cdc, logger)
 
-	wm := rpcserver.NewWebsocketManager(r, cdc, rpcserver.EventSubscriber(c))
+	wm := rpcserver.NewWebsocketManager(r, cdc, rpcserver.OnDisconnect(func(remoteAddr string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		err := c.UnsubscribeAll(ctx, remoteAddr)
+		if err != nil {
+			logger.Error("Failed to unsubscribe from events", "err", err)
+		}
+	}))
 	wm.SetLogger(logger)
 	core.SetLogger(logger)
 	mux.HandleFunc(wsEndpoint, wm.WebsocketHandler)
@@ -51,13 +60,11 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 //
 // if we want security, the client must implement it as a secure client
 func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
-
 	return map[string]*rpcserver.RPCFunc{
 		// Subscribe/unsubscribe are reserved for websocket events.
-		// We can just use the core tendermint impl, which uses the
-		// EventSwitch we registered in NewWebsocketManager above
-		"subscribe":   rpcserver.NewWSRPCFunc(core.Subscribe, "query"),
-		"unsubscribe": rpcserver.NewWSRPCFunc(core.Unsubscribe, "query"),
+		"subscribe":       rpcserver.NewWSRPCFunc(c.Subscribe, "query"),
+		"unsubscribe":     rpcserver.NewWSRPCFunc(c.Unsubscribe, "query"),
+		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAll, ""),
 
 		// info API
 		"status":     rpcserver.NewRPCFunc(c.Status, ""),

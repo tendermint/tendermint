@@ -2,7 +2,6 @@ package rpcserver
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -434,8 +433,8 @@ type wsConnection struct {
 	// Send pings to server with this period. Must be less than readWait, but greater than zero.
 	pingPeriod time.Duration
 
-	// object that is used to subscribe / unsubscribe from events
-	eventSub types.EventSubscriber
+	// callback which is called upon disconnect
+	onDisconnect func(remoteAddr string)
 }
 
 // NewWSConnection wraps websocket.Conn.
@@ -468,12 +467,11 @@ func NewWSConnection(
 	return wsc
 }
 
-// EventSubscriber sets object that is used to subscribe / unsubscribe from
-// events - not Goroutine-safe. If none given, default node's eventBus will be
-// used.
-func EventSubscriber(eventSub types.EventSubscriber) func(*wsConnection) {
+// OnDisconnect sets a callback which is used upon disconnect - not
+// Goroutine-safe. Nop by default.
+func OnDisconnect(onDisconnect func(remoteAddr string)) func(*wsConnection) {
 	return func(wsc *wsConnection) {
-		wsc.eventSub = eventSub
+		wsc.onDisconnect = onDisconnect
 	}
 }
 
@@ -527,8 +525,8 @@ func (wsc *wsConnection) OnStop() {
 	// Both read and write loops close the websocket connection when they exit their loops.
 	// The writeChan is never closed, to allow WriteRPCResponse() to fail.
 
-	if wsc.eventSub != nil {
-		wsc.eventSub.UnsubscribeAll(context.TODO(), wsc.remoteAddr)
+	if wsc.onDisconnect != nil {
+		wsc.onDisconnect(wsc.remoteAddr)
 	}
 }
 
@@ -536,11 +534,6 @@ func (wsc *wsConnection) OnStop() {
 // It implements WSRPCConnection
 func (wsc *wsConnection) GetRemoteAddr() string {
 	return wsc.remoteAddr
-}
-
-// GetEventSubscriber implements WSRPCConnection by returning event subscriber.
-func (wsc *wsConnection) GetEventSubscriber() types.EventSubscriber {
-	return wsc.eventSub
 }
 
 // WriteRPCResponse pushes a response to the writeChan, and blocks until it is accepted.
