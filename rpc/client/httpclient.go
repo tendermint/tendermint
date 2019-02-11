@@ -325,9 +325,8 @@ func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 	}
 
 	w.mtx.Lock()
-	out, ok := w.subscriptions[query]
+	_, ok := w.subscriptions[query]
 	if ok {
-		close(out)
 		delete(w.subscriptions, query)
 	}
 	w.mtx.Unlock()
@@ -343,9 +342,6 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	}
 
 	w.mtx.Lock()
-	for _, out := range w.subscriptions {
-		close(out)
-	}
 	w.subscriptions = make(map[string]chan ctypes.ResultEvent)
 	w.mtx.Unlock()
 
@@ -389,8 +385,6 @@ func (w *WSEvents) eventListener() {
 				continue
 			}
 
-			// NOTE: writing also happens inside mutex so we can't close a channel in
-			// Unsubscribe/UnsubscribeAll.
 			w.mtx.RLock()
 			if out, ok := w.subscriptions[result.Query]; ok {
 				if cap(out) == 0 {
@@ -399,7 +393,7 @@ func (w *WSEvents) eventListener() {
 					select {
 					case out <- *result:
 					default:
-						w.Logger.Error("wanted to publish ResultEvent, but out channel is full", "ResultEvent", result, "query", result.Query)
+						w.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
 					}
 				}
 			}
