@@ -165,7 +165,7 @@ func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapa
 		for {
 			select {
 			case msg := <-sub.Out():
-				if cap(out) == 0 {
+				if cap(outc) == 0 {
 					outc <- ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
 				} else {
 					select {
