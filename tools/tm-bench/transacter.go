@@ -6,6 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
+	// it is ok to use math/rand here: we do not need a cryptographically secure random
+	// number generator here and we can run the tests a bit faster
 	"math/rand"
 	"net"
 	"net/http"

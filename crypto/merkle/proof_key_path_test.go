@@ -1,8 +1,8 @@
 package merkle
 
 import (
-	// it is ok here to use math/rand; we do not need cryptographically secure random
-	// number generator here and test run a bit faster
+	// it is ok to use math/rand here: we do not need a cryptographically secure random
+	// number generator here and we can run the tests a bit faster
 	"math/rand"
 	"testing"
 
