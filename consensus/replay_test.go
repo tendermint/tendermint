@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -32,11 +33,13 @@ import (
 
 func TestMain(m *testing.M) {
 	config = ResetConfig("consensus_reactor_test")
+	consensusReplayConfig = ResetConfig("consensus_replay_test")
 	configStateTest := ResetConfig("consensus_state_test")
 	configMempoolTest := ResetConfig("consensus_mempool_test")
 	configByzantineTest := ResetConfig("consensus_byzantine_test")
 	code := m.Run()
 	os.RemoveAll(config.RootDir)
+	os.RemoveAll(consensusReplayConfig.RootDir)
 	os.RemoveAll(configStateTest.RootDir)
 	os.RemoveAll(configMempoolTest.RootDir)
 	os.RemoveAll(configByzantineTest.RootDir)
@@ -103,9 +106,6 @@ func sendTxs(cs *ConsensusState, ctx context.Context) {
 
 // TestWALCrash uses crashing WAL to test we can recover from any WAL failure.
 func TestWALCrash(t *testing.T) {
-	consensusReplayConfig := cfg.ResetTestRoot(t.Name())
-	fmt.Fprintf(os.Stderr, "cons dir: %s\n", consensusReplayConfig.RootDir)
-	defer os.RemoveAll(consensusReplayConfig.RootDir)
 	testCases := []struct {
 		name         string
 		initFn       func(dbm.DB, *ConsensusState, context.Context)
@@ -121,7 +121,8 @@ func TestWALCrash(t *testing.T) {
 			3},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
+		consensusReplayConfig := ResetConfig(fmt.Sprintf("%s_%d", t.Name(), i))
 		t.Run(tc.name, func(t *testing.T) {
 			crashWALandCheckLiveness(t, consensusReplayConfig, tc.initFn, tc.heightToStop)
 		})
@@ -154,6 +155,8 @@ LOOP:
 
 		// clean up WAL file from the previous iteration
 		walFile := cs.config.WalFile()
+		fmt.Printf("%s %s\n", walFile, filepath.Dir(walFile))
+		ensureDir(filepath.Dir(walFile), 0700)
 		os.Remove(walFile)
 
 		// set crashing WAL
@@ -281,29 +284,37 @@ var modes = []uint{0, 1, 2}
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, 0, m)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, 0, m)
 	}
 }
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, 1, m)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, 1, m)
 	}
 }
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, NUM_BLOCKS-1, m)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, NUM_BLOCKS-1, m)
 	}
 }
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, NUM_BLOCKS, m)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, NUM_BLOCKS, m)
 	}
 }
 
@@ -323,10 +334,7 @@ func tempWALWithData(data []byte) string {
 }
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
-func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
-	config := ResetConfig("proxy_test_")
-	defer os.RemoveAll(config.RootDir)
-
+func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint) {
 	walBody, err := WALWithNBlocks(t, NUM_BLOCKS)
 	require.NoError(t, err)
 	walFile := tempWALWithData(walBody)
