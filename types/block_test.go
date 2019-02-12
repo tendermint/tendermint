@@ -194,7 +194,7 @@ func TestNilDataHashDoesntCrash(t *testing.T) {
 func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -208,7 +208,7 @@ func TestCommit(t *testing.T) {
 	require.NotNil(t, commit.BitArray())
 	assert.Equal(t, cmn.NewBitArray(10).Size(), commit.BitArray().Size())
 
-	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
+	assert.Equal(t, voteSet.GetByIndex(0), NewCommitVotes(commit, valSet).GetByIndex(0))
 	assert.True(t, commit.IsCommit())
 }
 
