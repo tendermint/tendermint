@@ -122,13 +122,13 @@ Let's assume that after the last run the proposer priorities were as shown in fi
 The procedure could continue without modifications. However, after a sufficiently large number of modifications in validator set, the priority values would migrate towards maximum or minimum allowed values causing truncations due to overflow detection.
 For this reason, the selection procedure adds another __new step__ that centers the current priority values such that the priority sum remains close to 0. 
 
-|Priority   Run |-3 | -2 | -1 | 0  | 1   | 2   | 4 |Comment
-|---------------|-- | ---|--- |--- |---  |---  |---|--------
-| last run      |p3 |    |    |    | p1  | p2  |   |__remove p2__
-| nextrun       |   |    |    |    |     |     |   |
-| __new step__  |   | p3 |    |    |     | p1  |   |A(i) -= avg, avg = -1
-|               |   |    |    |    | p3  | p1  |   |A(i)+=VP(i)
-|               |   |    | p1 |    | p3  |     |   |A(p1)-= P
+|Priority   Run  |-3  | -2 | -1 | 0  | 1   | 2   | 4 |Comment
+|--------------- |--- | ---|--- |--- |---  |---  |---|--------
+| last run       |p3  |    |    |    | p1  | p2  |   |__remove p2__
+| nextrun        |    |    |    |    |     |     |   |
+| __new step__   |    | p3 |    |    |     | p1  |   |A(i) -= avg, avg = -1
+|                |    |    |    |    | p3  | p1  |   |A(i)+=VP(i)
+|                |    |    | p1 |    | p3  |     |   |A(p1)-= P
 
 The modified selection algorithm is:
 
@@ -151,28 +151,15 @@ Observations:
 #### New Validator
 When a new validator is added, same problem as the one described for removal appears, the sum of priorities in the new set is not zero. This is fixed with the centering step introduced above.
 
-One other issue that needs to be addressed is the following. A validator V that has just been elected is moved to the end of the queue. If the validator set is large and/ or other validators have significantly higher power, V will have to wait a more runs to be elected. If V removes and re-adds itself to the set, it would make a significant (albeit unfair) "jump" ahead in the queue. 
+One other issue that needs to be addressed is the following. A validator V that has just been elected is moved to the end of the queue. If the validator set is large and/ or other validators have significantly higher power, V will have to wait many runs to be elected. If V removes and re-adds itself to the set, it would make a significant (albeit unfair) "jump" ahead in the queue. 
 
-In order to prevent this, when a new validator is added, its initial priority is not set to 0 but to a lower value. This value is determined from the simulation of the above scenario: it is assumed that V had just proposed a block and was at the back of the queue when it was removed and re-added. In addition, to discourage intentional unbound/ bound operations, a penalty factor is applied.
+In order to prevent this, when a new validator is added, its initial priority is set to:
 
-If `vset = {v1,..,vn, V}` and `V` would be selected as proposer then it would have gone through the following changes:
+    A(V) = -1.125 *  P
 
-    ...
-      A(V)+=VP(V) // part of first for loop
-    ...
-    A(V)-=P  
+where P is the total voting power of the set including V.
 
-It follows that `A(V)-=sum(VP(i) for i in {v1,..,vn})`
-
-When `V` is added to the `{v1,..,vn}` since its initial priority is set to 0, the adjusted value will be:
-
-    A(V) = -sum(VP(i) for i in {v1,..,vn})
-
-Curent implementation uses a penalty factor of 1.125, so the initial priority for a newly added validator is:
-    
-    A(V) ~ -1.125 * P
-
-1.125 was chosen because it provides a small punishment that is efficient to calculate. See [here](https://github.com/tendermint/tendermint/pull/2785#discussion_r235038971) for more details.
+Curent implementation uses the penalty factor of 1.125 because it provides a small punishment that is efficient to calculate. See [here](https://github.com/tendermint/tendermint/pull/2785#discussion_r235038971) for more details.
 
 If we consider the validator set where p3 has just been added:
 
@@ -180,24 +167,24 @@ Validator | p1 | p2 | p3
 ----------|--- |--- |---
 VP        | 1  | 3  | 8
 
-Assume that at the last run the proposer priorities were as shown in first row with their sum being 0. Then p3 is added with:
+then p3 will start with proposer priority:
 
-A(p3) = -1.125 * (1 + 3) ~ 4
+    A(p3) = -1.125 * (1 + 3 + 8) ~ -13
 
 Note that since current computation uses integer division there is penalty loss when sum of the voting power is less than 8.
 
 In the next run, p3 will still be ahead in the queue, elected as proposer and moved back in the queue.
 
-|Priority   Run | -8 | -7 | -4 | -3 | -2 | -1 | 0  | 1 | 2 | 3 | 4 | 5 |Alg step
-|---------------|--- |--- |--- |--- |----|--- |--- |---|---|---|---|---|--------
-|last run       |    |    |    |    | p2 |    |    |   | p1|   |   |   |__add p3__
-|               |    |    | p3 |    | p2 |    |    |   | p1|   |   |   |A(p3) = -4
-|next run       |    |    |    | p3 |    | p2 |    |   |   | p1|   |   |A(i) -= avg, avg = -1
-|               |    |    |    |    |    |    |    |   | p2|   | p1| p3|A(i)+=VP(i)
-|               |    | p3 |    |    |    |    |    |   | p2|   | p1|   |A(p3)-=P
+|Priority   Run |-13 | -9 | -5 | -2 | -1 | 0  | 1 | 2 | 5 | 6 | 7 |Alg step
+|---------------|--- |--- |--- |----|--- |--- |---|---|---|---|---|--------
+|last run       |    |    |    | p2 |    |    |   | p1|   |   |   |__add p3__
+|               | p3 |    |    | p2 |    |    |   | p1|   |   |   |A(p3) = -4
+|next run       |    | p3 |    |    |    |    |   | p2|   | p1|   |A(i) -= avg, avg = -4
+|               |    |    |    |    | p3 |    |   |   | p2|   | p1|A(i)+=VP(i)
+|               |    |    | p1 |    | p3 |    |   |   | p2|   |   |A(p1)-=P
 
 ### Proposer Priority Range
-With the introduction of centering, some interesting cases occur. Low power validators that bind early in a set that includes high power validator(s) benefit from subsequent additions to the set. This is because these early validators run through more "right" shift operations during centering, operations that increase their priority.
+With the introduction of centering, some interesting cases occur. Low power validators that bind early in a set that includes high power validator(s) benefit from subsequent additions to the set. This is because these early validators run through more right shift operations during centering, operations that increase their priority.
 
 As an example, consider the set where p2 is added after p1, with priority -1.125 * 80k = -90k. After the selection procedure runs once:
 
@@ -215,7 +202,7 @@ Validator | p1  | p2 | p3
 ----------|-----|--- |----
 VP        | 80k | 10 | 10 
 
-2. Run selection once. The notation '..p'/'p..' means very deviation compared to column priority.
+2. Run selection once. The notation '..p'/'p..' means very small deviations compared to column priority.
 
 |Priority  Run | -90k..| -60k | -45k   | -15k| 0 | 45k | 75k  | 155k   | Comment
 |--------------|------ |----- |------- |---- |---|---- |----- |------- |---------
@@ -262,10 +249,9 @@ The modified selection algorithm is:
         A(prop) -= P
 
 Observations:
-- With this modification, the max distance between priorites becomes 2 * P.
+- With this modification, the maximum distance between priorites becomes 2 * P.
 
-Note also that even during steady state the priority range may increase beyond 2 * P. The scaling introduced here also helps to keep the range bounded. 
-*[2 might be updated soon to 1]*
+Note also that even during steady state the priority range may increase beyond 2 * P. The scaling introduced here  helps to keep the range bounded. 
 
 ### Wrinkles
 
@@ -303,4 +289,3 @@ Intuitively, a process v jumps ahead in the queue at most (max(A) - min(A))/VP(v
     f(v) ~ VP(v)/(max(A)-min(A)) = 1/k * VP(v)/P
 
 For current implementation, this means v should be proposer at least VP(v) times out of k * P runs, with scaling factor k=2.
-*[formal proof required for smaller k]*
