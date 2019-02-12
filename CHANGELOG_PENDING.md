@@ -21,3 +21,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [consensus] \#3297 Flush WAL on stop to prevent data corruption during
+  graceful shutdown
