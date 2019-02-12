@@ -251,7 +251,7 @@ type WSRPCContext struct {
 	WSRPCConnection
 }
 
-// EventSubscriber mirros tendermint/tendermint/types.EventBusSubscriber
+// EventSubscriber mirrors tendermint/tendermint/types.EventBusSubscriber
 type EventSubscriber interface {
 	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (tmtypes.Subscription, error)
 	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error

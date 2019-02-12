@@ -38,7 +38,7 @@ func TestSubscribe(t *testing.T) {
 	assertReceive(t, "Quicksilver", subscription.Out())
 }
 
-func TestSubscribeWithOutCapacity(t *testing.T) {
+func TestSubscribeWithoutCapacity(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
 	s.Start()
