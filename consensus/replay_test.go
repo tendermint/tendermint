@@ -30,16 +30,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var consensusReplayConfig *cfg.Config
-
 func TestMain(m *testing.M) {
-	consensusReplayConfig = ResetConfig("consensus_replay_test")
 	config = ResetConfig("consensus_reactor_test")
 	configStateTest := ResetConfig("consensus_state_test")
 	configMempoolTest := ResetConfig("consensus_mempool_test")
 	configByzantineTest := ResetConfig("consensus_byzantine_test")
 	code := m.Run()
-	os.RemoveAll(consensusReplayConfig.RootDir)
 	os.RemoveAll(config.RootDir)
 	os.RemoveAll(configStateTest.RootDir)
 	os.RemoveAll(configMempoolTest.RootDir)
@@ -62,7 +58,8 @@ func TestMain(m *testing.M) {
 // and which ones we need the wal for - then we'd also be able to only flush the
 // wal writer when we need to, instead of with every message.
 
-func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, blockDB dbm.DB, stateDB dbm.DB) {
+func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
+	lastBlockHeight int64, blockDB dbm.DB, stateDB dbm.DB) {
 	logger := log.TestingLogger()
 	state, _ := sm.LoadStateFromDBOrGenesisFile(stateDB, consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
@@ -106,6 +103,9 @@ func sendTxs(cs *ConsensusState, ctx context.Context) {
 
 // TestWALCrash uses crashing WAL to test we can recover from any WAL failure.
 func TestWALCrash(t *testing.T) {
+	consensusReplayConfig := cfg.ResetTestRoot(t.Name())
+	fmt.Fprintf(os.Stderr, "cons dir: %s\n", consensusReplayConfig.RootDir)
+	defer os.RemoveAll(consensusReplayConfig.RootDir)
 	testCases := []struct {
 		name         string
 		initFn       func(dbm.DB, *ConsensusState, context.Context)
@@ -123,12 +123,13 @@ func TestWALCrash(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			crashWALandCheckLiveness(t, tc.initFn, tc.heightToStop)
+			crashWALandCheckLiveness(t, consensusReplayConfig, tc.initFn, tc.heightToStop)
 		})
 	}
 }
 
-func crashWALandCheckLiveness(t *testing.T, initFn func(dbm.DB, *ConsensusState, context.Context), heightToStop int64) {
+func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
+	initFn func(dbm.DB, *ConsensusState, context.Context), heightToStop int64) {
 	walPaniced := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPaniced, heightToStop: heightToStop}
 
@@ -174,7 +175,7 @@ LOOP:
 			t.Logf("WAL paniced: %v", err)
 
 			// make sure we can make blocks after a crash
-			startNewConsensusStateAndWaitForBlock(t, cs.Height, blockDB, stateDB)
+			startNewConsensusStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateDB)
 
 			// stop consensus state and transactions sender (initFn)
 			cs.Stop()
