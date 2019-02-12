@@ -307,15 +307,15 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	}
 
 	data := make([]byte, length)
-	_, err = dec.rd.Read(data)
+	n, err := dec.rd.Read(data)
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v (read: %d, wanted: %d)", err, n, length)}
 	}
 
 	// check checksum before decoding data
 	actualCRC := crc32.Checksum(data, crc32c)
 	if actualCRC != crc {
-		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: (read: %v, actual: %v)", crc, actualCRC)}
+		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: read: %v, actual: %v", crc, actualCRC)}
 	}
 
 	var res = new(TimedWALMessage) // nolint: gosimple
