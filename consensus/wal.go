@@ -78,7 +78,7 @@ type baseWAL struct {
 
 	syncTicker   *time.Ticker
 	syncInterval time.Duration
-	testChan     chan string
+	testChan     chan string // TODO: Remove this and replace with testBus
 }
 
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
