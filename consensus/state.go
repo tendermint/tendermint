@@ -485,11 +485,11 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
 	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.PrecommitType, state.LastValidators)
-	for _, precommit := range seenCommit.Precommits {
+	for idx, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
 		}
-		added, err := lastPrecommits.AddVote(seenCommit.ToVote(precommit))
+		added, err := lastPrecommits.AddVote(seenCommit.ToVote(idx, precommit, state.LastValidators))
 		if !added || err != nil {
 			cmn.PanicCrisis(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
 		}

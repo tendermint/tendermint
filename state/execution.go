@@ -72,6 +72,11 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 	blockExec.eventBus = eventBus
 }
 
+// LoadValidators loads the validator set from the given height.
+func (blockExec *BlockExecutor) LoadValidators(height int64) (*types.ValidatorSet, error) {
+	return LoadValidators(blockExec.db, height)
+}
+
 // CreateProposalBlock calls state.MakeBlock with evidence from the evpool
 // and txs from the mempool. The max bytes must be big enough to fit the commit.
 // Up to 1/10th of the block space is allcoated for maximum sized evidence.
