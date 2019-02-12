@@ -354,6 +354,33 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 }
 
+// TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
+// would result in empty set causes no panic, an error is raised and NextValidators is not updated
+func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	state, stateDB := state(1, 1)
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), MockMempool{}, MockEvidencePool{})
+
+	block := makeBlock(state, 1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+
+	// Remove the only validator
+	app.ValidatorUpdates = []abci.ValidatorUpdate{
+		{PubKey: types.TM2PB.PubKey(state.Validators.Validators[0].PubKey), Power: 0},
+	}
+
+	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
+	assert.NotNil(t, err)
+	assert.NotEmpty(t, state.NextValidators.Validators)
+
+}
+
 //----------------------------------------------------------------------------
 
 // make some bogus txs
