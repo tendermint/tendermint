@@ -109,7 +109,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 
 	go func() {
 		for event := range ch {
-			tmResult := &ctypes.ResultEvent{query, event.(tmtypes.TMEventData)}
+			tmResult := &ctypes.ResultEvent{Query: query, Data: event.(tmtypes.TMEventData)}
 			wsCtx.TryWriteRPCResponse(rpctypes.NewRPCSuccessResponse(wsCtx.Codec(), rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", wsCtx.Request.ID)), tmResult))
 		}
 	}()

@@ -378,36 +378,6 @@ func ensureNewEvent(
 	}
 }
 
-func ensureNewRoundStep(stepCh <-chan interface{}, height int64, round int) {
-	ensureNewEvent(
-		stepCh,
-		height,
-		round,
-		ensureTimeout,
-		"Timeout expired while waiting for NewStep event")
-}
-
-func ensureNewVote(voteCh <-chan interface{}, height int64, round int) {
-	select {
-	case <-time.After(ensureTimeout):
-		break
-	case v := <-voteCh:
-		edv, ok := v.(types.EventDataVote)
-		if !ok {
-			panic(fmt.Sprintf("expected a *types.Vote, "+
-				"got %v. wrong subscription channel?",
-				reflect.TypeOf(v)))
-		}
-		vote := edv.Vote
-		if vote.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, vote.Height))
-		}
-		if vote.Round != round {
-			panic(fmt.Sprintf("expected round %v, got %v", round, vote.Round))
-		}
-	}
-}
-
 func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
 	select {
 	case <-time.After(ensureTimeout):
@@ -651,7 +621,6 @@ func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 		}
 	}
 	panic("didnt find peer in switches")
-	return -1
 }
 
 //-------------------------------------------------------------------------------
@@ -729,8 +698,7 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
 }
 
-func (mockTicker) SetLogger(log.Logger) {
-}
+func (*mockTicker) SetLogger(log.Logger) {}
 
 //------------------------------------
 

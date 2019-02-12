@@ -77,8 +77,6 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 
 			// Run forever
 			select {}
-
-			return nil
 		},
 	}
 

@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 
-	underlyingSecp256k1 "github.com/tendermint/btcd/btcec"
+	underlyingSecp256k1 "github.com/btcsuite/btcd/btcec"
 )
 
 type keyData struct {

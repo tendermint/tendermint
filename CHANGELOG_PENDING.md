@@ -1,6 +1,6 @@
-## v0.30.0
+## v0.31.0
 
-*TBD*
+**
 
 Special thanks to external contributors on this release:
 
@@ -19,7 +19,7 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [tools] add go-deadlock tool to help detect deadlocks
 
 ### BUG FIXES:
-- [node] \#3186 EventBus and indexerService should be started before first block (for replay last block on handshake) execution
+- [consensus] \#3297 Flush WAL on stop to prevent data corruption during
+  graceful shutdown
