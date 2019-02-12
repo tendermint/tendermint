@@ -26,8 +26,8 @@ import (
 func TestByzantine(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
-	css, rootDirs := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
-	for _, dir := range rootDirs {
+	css, configRootDirs := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
+	for _, dir := range configRootDirs {
 		defer os.RemoveAll(dir)
 	}
 

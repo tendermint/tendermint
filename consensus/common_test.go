@@ -589,12 +589,12 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
 	logger := consensusLogger()
-	rootDirs := []string{}
+	configRootDirs := []string{}
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
-		rootDirs = append(rootDirs, thisConfig.RootDir)
+		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		var privVal types.PrivValidator
 		if i < nValidators {
@@ -620,7 +620,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-	return css, rootDirs
+	return css, configRootDirs
 }
 
 func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
