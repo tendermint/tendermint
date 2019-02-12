@@ -1,6 +1,8 @@
 package types
 
 import (
+	// it is ok to use math/rand here: we do not need a cryptographically secure random
+	// number generator here and we can run the tests a bit faster
 	"crypto/rand"
 	"math"
 	"os"
@@ -162,8 +164,8 @@ func TestBlockString(t *testing.T) {
 func makeBlockIDRandom() BlockID {
 	blockHash := make([]byte, tmhash.Size)
 	partSetHash := make([]byte, tmhash.Size)
-	rand.Read(blockHash)
-	rand.Read(partSetHash)
+	rand.Read(blockHash)   //nolint: gosec
+	rand.Read(partSetHash) //nolint: gosec
 	blockPartsHeader := PartSetHeader{123, partSetHash}
 	return BlockID{blockHash, blockPartsHeader}
 }
