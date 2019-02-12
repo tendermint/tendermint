@@ -27,9 +27,11 @@ func TestByzantine(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
 	css, configRootDirs := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
-	for _, dir := range configRootDirs {
-		defer os.RemoveAll(dir)
-	}
+	defer func() {
+		for _, dir := range configRootDirs {
+			os.RemoveAll(dir)
+		}
+	}()
 
 	// give the byzantine validator a normal ticker
 	ticker := NewTimeoutTicker()
