@@ -22,6 +22,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	walTestSyncInterval = time.Duration(100) * time.Millisecond
+)
+
 func TestWALTruncate(t *testing.T) {
 	walDir, err := ioutil.TempDir("", "wal")
 	require.NoError(t, err)
@@ -129,6 +133,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	walFile := filepath.Join(walDir, "wal")
 	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
 	require.NoError(t, err)
+	wal.SetSyncInterval(walTestSyncInterval)
 	wal.SetLogger(log.TestingLogger())
 	require.NoError(t, wal.Start())
 	defer func() {
@@ -142,8 +147,8 @@ func TestWALPeriodicSync(t *testing.T) {
 	select {
 	case m := <-wal.testChan:
 		require.Equal(t, "TICK", m)
-	case <-time.After(walSyncInterval + (time.Duration(100) * time.Millisecond)):
-		t.Fatalf("Expected to receive tick notification from test within %.2f seconds, but did not", walSyncInterval.Seconds())
+	case <-time.After(walTestSyncInterval + (time.Duration(100) * time.Millisecond)):
+		t.Fatalf("Expected to receive tick notification from test within %.2f seconds, but did not", walTestSyncInterval.Seconds())
 	}
 
 	h := int64(4)

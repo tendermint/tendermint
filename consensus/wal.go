@@ -23,7 +23,7 @@ const (
 	maxMsgSizeBytes = 1024 * 1024 // 1MB
 
 	// how often the WAL should be sync'd during period sync'ing
-	walSyncInterval = time.Duration(2) * time.Second
+	walDefaultSyncInterval = time.Duration(2) * time.Second
 )
 
 //--------------------------------------------------------
@@ -76,8 +76,9 @@ type baseWAL struct {
 
 	enc *WALEncoder
 
-	syncTicker *time.Ticker
-	testChan   chan string
+	syncTicker   *time.Ticker
+	syncInterval time.Duration
+	testChan     chan string
 }
 
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
@@ -91,12 +92,18 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		return nil, err
 	}
 	wal := &baseWAL{
-		group:    group,
-		enc:      NewWALEncoder(group),
-		testChan: make(chan string),
+		group:        group,
+		enc:          NewWALEncoder(group),
+		testChan:     make(chan string),
+		syncInterval: walDefaultSyncInterval,
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
+}
+
+// SetSyncInterval allows us to override the periodic sync interval for the WAL.
+func (wal *baseWAL) SetSyncInterval(i time.Duration) {
+	wal.syncInterval = i
 }
 
 func (wal *baseWAL) Group() *auto.Group {
@@ -116,7 +123,7 @@ func (wal *baseWAL) OnStart() error {
 		wal.WriteSync(EndHeightMessage{0})
 	}
 	err = wal.group.Start()
-	wal.syncTicker = time.NewTicker(walSyncInterval)
+	wal.syncTicker = time.NewTicker(wal.syncInterval)
 	go wal.processSyncTicks()
 	return err
 }
