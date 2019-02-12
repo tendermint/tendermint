@@ -137,7 +137,6 @@ func (wal *baseWAL) processSyncTicks() {
 				wal.Logger.Error("Failed to flush WAL", "err", err)
 				wal.testChan <- "ERROR"
 			} else {
-				wal.Logger.Debug("Successfully sync'd WAL to disk")
 				wal.testChan <- "TICK"
 			}
 		case <-wal.Quit():
