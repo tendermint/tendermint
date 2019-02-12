@@ -121,6 +121,41 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	assert.Equal(t, rs.Height, h+1, fmt.Sprintf("wrong height"))
 }
 
+func TestWALPeriodicSync(t *testing.T) {
+	walDir, err := ioutil.TempDir("", "wal")
+	require.NoError(t, err)
+	defer os.RemoveAll(walDir)
+
+	walFile := filepath.Join(walDir, "wal")
+	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
+	require.NoError(t, err)
+	wal.SetLogger(log.TestingLogger())
+	require.NoError(t, wal.Start())
+	defer func() {
+		wal.Stop()
+		wal.Wait()
+	}()
+
+	err = WALGenerateNBlocks(wal.Group(), 5)
+	require.NoError(t, err)
+
+	select {
+	case m := <-wal.testChan:
+		require.Equal(t, "TICK", m)
+	case <-time.After(walSyncInterval + (time.Duration(100) * time.Millisecond)):
+		t.Fatalf("Expected to receive tick notification from test within %.2f seconds, but did not", walSyncInterval.Seconds())
+	}
+
+	h := int64(4)
+	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
+	assert.NoError(t, err, fmt.Sprintf("expected not to err on height %d", h))
+	assert.True(t, found, fmt.Sprintf("expected to find end height for %d", h))
+	assert.NotNil(t, gr, "expected group not to be nil")
+	if gr != nil {
+		defer gr.Close()
+	}
+}
+
 /*
 var initOnce sync.Once
 

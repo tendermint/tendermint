@@ -24,10 +24,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// WALGenerateNBlocks generates a consensus WAL. It does this by spining up a
+// WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
 // stripped down version of node (proxy app, event bus, consensus state) with a
 // persistent kvstore application and special consensus wal instance
-// (byteBufferWAL) and waits until numBlocks are created. If the node fails to produce given numBlocks, it returns an error.
+// (byteBufferWAL) and waits until numBlocks are created. If the node fails to
+// produce given numBlocks, it returns an error.
 func WALGenerateNBlocks(wr io.Writer, numBlocks int) (err error) {
 	config := getConfig()
 

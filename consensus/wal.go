@@ -21,6 +21,9 @@ import (
 const (
 	// must be greater than types.BlockPartSizeBytes + a few bytes
 	maxMsgSizeBytes = 1024 * 1024 // 1MB
+
+	// how often the WAL should be sync'd during period sync'ing
+	walSyncInterval = time.Duration(2) * time.Second
 )
 
 //--------------------------------------------------------
@@ -72,6 +75,9 @@ type baseWAL struct {
 	group *auto.Group
 
 	enc *WALEncoder
+
+	syncTicker *time.Ticker
+	testChan   chan string
 }
 
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
@@ -85,8 +91,9 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		return nil, err
 	}
 	wal := &baseWAL{
-		group: group,
-		enc:   NewWALEncoder(group),
+		group:    group,
+		enc:      NewWALEncoder(group),
+		testChan: make(chan string),
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
@@ -109,13 +116,35 @@ func (wal *baseWAL) OnStart() error {
 		wal.WriteSync(EndHeightMessage{0})
 	}
 	err = wal.group.Start()
+	wal.syncTicker = time.NewTicker(walSyncInterval)
+	go wal.processSyncTicks()
 	return err
+}
+
+// processSyncTicks allows us to periodically attempt to sync the WAL to disk.
+func (wal *baseWAL) processSyncTicks() {
+	for {
+		select {
+		case <-wal.syncTicker.C:
+			if err := wal.group.Flush(); err != nil {
+				wal.Logger.Error("Failed to flush WAL", "err", err)
+				wal.testChan <- "ERROR"
+			} else {
+				wal.Logger.Debug("Successfully sync'd WAL to disk")
+				wal.testChan <- "TICK"
+			}
+		case <-wal.Quit():
+			wal.testChan <- "QUIT"
+			return
+		}
+	}
 }
 
 // Stop the underlying autofile group.
 // Use Wait() to ensure it's finished shutting down
 // before cleaning up files.
 func (wal *baseWAL) OnStop() {
+	wal.syncTicker.Stop()
 	wal.group.Flush()
 	wal.group.Stop()
 	wal.group.Close()
