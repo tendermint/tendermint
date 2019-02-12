@@ -118,8 +118,8 @@ func TestWALCrash(t *testing.T) {
 }
 
 func crashWALandCheckLiveness(t *testing.T, initFn func(dbm.DB, *ConsensusState, context.Context), heightToStop int64) {
-	walPaniced := make(chan error)
-	crashingWal := &crashingWAL{panicCh: walPaniced, heightToStop: heightToStop}
+	walPanicked := make(chan error)
+	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
 
 	i := 1
 LOOP:
@@ -159,8 +159,8 @@ LOOP:
 		i++
 
 		select {
-		case err := <-walPaniced:
-			t.Logf("WAL paniced: %v", err)
+		case err := <-walPanicked:
+			t.Logf("WAL panicked: %v", err)
 
 			// make sure we can make blocks after a crash
 			startNewConsensusStateAndWaitForBlock(t, cs.Height, blockDB, stateDB)
@@ -181,14 +181,14 @@ LOOP:
 
 // crashingWAL is a WAL which crashes or rather simulates a crash during Save
 // (before and after). It remembers a message for which we last panicked
-// (lastPanicedForMsgIndex), so we don't panic for it in subsequent iterations.
+// (lastPanickedForMsgIndex), so we don't panic for it in subsequent iterations.
 type crashingWAL struct {
 	next         WAL
 	panicCh      chan error
 	heightToStop int64
 
-	msgIndex               int // current message index
-	lastPanicedForMsgIndex int // last message for which we panicked
+	msgIndex                int // current message index
+	lastPanickedForMsgIndex int // last message for which we panicked
 }
 
 // WALWriteError indicates a WAL crash.
@@ -223,8 +223,8 @@ func (w *crashingWAL) Write(m WALMessage) {
 		return
 	}
 
-	if w.msgIndex > w.lastPanicedForMsgIndex {
-		w.lastPanicedForMsgIndex = w.msgIndex
+	if w.msgIndex > w.lastPanickedForMsgIndex {
+		w.lastPanickedForMsgIndex = w.msgIndex
 		_, file, line, _ := runtime.Caller(1)
 		w.panicCh <- WALWriteError{fmt.Sprintf("failed to write %T to WAL (fileline: %s:%d)", m, file, line)}
 		runtime.Goexit()
