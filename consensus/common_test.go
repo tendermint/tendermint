@@ -568,9 +568,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		for _, opt := range configOpts {
 			opt(thisConfig)
 		}
-		walFilePath := filepath.Dir(thisConfig.Consensus.WalFile())
-		ensureDir(walFilePath, 0700) // dir for wal
-		configRootDirs = append(configRootDirs, walFilePath)
+		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
