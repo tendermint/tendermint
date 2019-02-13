@@ -6,7 +6,6 @@ import (
 	"hash/crc32"
 	"io"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -78,11 +77,9 @@ type baseWAL struct {
 
 	enc *WALEncoder
 
-	flushTicker       *time.Ticker
-	flushInterval     time.Duration
-	lastPeriodicFlush time.Time
-	lastFlush         time.Time
-	mtx               *sync.RWMutex
+	flushTicker     *time.Ticker
+	flushInterval   time.Duration
+	periodicFlushFn func(*baseWAL) error // Allows for dependency injection.
 }
 
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
@@ -96,11 +93,16 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		return nil, err
 	}
 	wal := &baseWAL{
-		group:             group,
-		enc:               NewWALEncoder(group),
-		flushInterval:     walDefaultFlushInterval,
-		lastPeriodicFlush: time.Now(),
-		mtx:               &sync.RWMutex{},
+		group:         group,
+		enc:           NewWALEncoder(group),
+		flushInterval: walDefaultFlushInterval,
+		periodicFlushFn: func(w *baseWAL) error {
+			err := w.Flush()
+			if err != nil {
+				w.Logger.Error("Failed to flush WAL", "err", err)
+			}
+			return err
+		},
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
@@ -109,22 +111,6 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 // SetFlushInterval allows us to override the periodic flush interval for the WAL.
 func (wal *baseWAL) SetFlushInterval(i time.Duration) {
 	wal.flushInterval = i
-}
-
-// LastPeriodicFlush gives the last time at which the periodic sync was
-// successfully executed.
-func (wal *baseWAL) LastPeriodicFlush() time.Time {
-	wal.mtx.RLock()
-	defer wal.mtx.RUnlock()
-	return wal.lastPeriodicFlush
-}
-
-// LastFlush reports on the last time at which the WAL's Flush method was called
-// successfully.
-func (wal *baseWAL) LastFlush() time.Time {
-	wal.mtx.RLock()
-	defer wal.mtx.RUnlock()
-	return wal.lastFlush
 }
 
 func (wal *baseWAL) Group() *auto.Group {
@@ -154,13 +140,7 @@ func (wal *baseWAL) processFlushTicks() {
 	for {
 		select {
 		case <-wal.flushTicker.C:
-			if err := wal.Flush(); err != nil {
-				wal.Logger.Error("Failed to flush WAL", "err", err)
-			} else {
-				wal.mtx.Lock()
-				wal.lastPeriodicFlush = time.Now()
-				wal.mtx.Unlock()
-			}
+			wal.periodicFlushFn(wal)
 		case <-wal.Quit():
 			return
 		}
@@ -169,13 +149,7 @@ func (wal *baseWAL) processFlushTicks() {
 
 // Flush will attempt to flush the underlying group's data to disk.
 func (wal *baseWAL) Flush() error {
-	var err error
-	if err = wal.group.Flush(); err != nil {
-		wal.mtx.Lock()
-		wal.lastFlush = time.Now()
-		wal.mtx.Unlock()
-	}
-	return err
+	return wal.group.Flush()
 }
 
 // Stop the underlying autofile group.

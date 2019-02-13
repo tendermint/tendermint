@@ -133,31 +133,35 @@ func TestWALPeriodicSync(t *testing.T) {
 	walFile := filepath.Join(walDir, "wal")
 	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
 	require.NoError(t, err)
+
 	wal.SetFlushInterval(walTestFlushInterval)
 	wal.SetLogger(log.TestingLogger())
+
+	flushChan := make(chan string)
+	oldFn := wal.periodicFlushFn
+	wal.periodicFlushFn = func(w *baseWAL) error {
+		err := oldFn(w)
+		if err == nil {
+			flushChan <- "TICK"
+		}
+		return err
+	}
+
 	require.NoError(t, wal.Start())
-	walStarted := time.Now().UnixNano()
 	defer func() {
 		wal.Stop()
 		wal.Wait()
 	}()
 
-	require.True(
-		t,
-		wal.LastPeriodicFlush().UnixNano() < walStarted,
-		"The last periodic sync should have been prior to WAL start time",
-	)
-
 	err = WALGenerateNBlocks(wal.Group(), 5)
 	require.NoError(t, err)
 
-	time.Sleep(walTestFlushInterval + (time.Duration(10) * time.Millisecond))
-
-	require.True(
-		t,
-		wal.LastPeriodicFlush().UnixNano() > walStarted,
-		"The last group flush operation should have occurred in the background by periodic sync",
-	)
+	select {
+	case m := <-flushChan:
+		require.Equal(t, "TICK", m)
+	case <-time.After((time.Duration(10) * time.Millisecond) + walTestFlushInterval):
+		t.Fatal("Timed out waiting for periodic sync to take place")
+	}
 
 	h := int64(4)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
