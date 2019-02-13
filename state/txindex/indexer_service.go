@@ -36,7 +36,11 @@ func (is *IndexerService) OnStart() error {
 		return err
 	}
 
-	txsSub, err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryTx)
+	// If there're no other subscribers, goroutine below may not pull messages
+	// fast enough. To solve it, we either need to increase the capacity here or
+	// change pubsub to wait a little bit (say, 10ms) before cancelling the
+	// subscription.
+	txsSub, err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryTx, 100)
 	if err != nil {
 		return err
 	}
