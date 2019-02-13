@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	walTestSyncInterval = time.Duration(100) * time.Millisecond
+	walTestFlushInterval = time.Duration(100) * time.Millisecond
 )
 
 func TestWALTruncate(t *testing.T) {
@@ -133,23 +133,31 @@ func TestWALPeriodicSync(t *testing.T) {
 	walFile := filepath.Join(walDir, "wal")
 	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
 	require.NoError(t, err)
-	wal.SetSyncInterval(walTestSyncInterval)
+	wal.SetFlushInterval(walTestFlushInterval)
 	wal.SetLogger(log.TestingLogger())
 	require.NoError(t, wal.Start())
+	walStarted := time.Now().UnixNano()
 	defer func() {
 		wal.Stop()
 		wal.Wait()
 	}()
 
+	require.True(
+		t,
+		wal.LastPeriodicFlush().UnixNano() < walStarted,
+		"The last periodic sync should have been prior to WAL start time",
+	)
+
 	err = WALGenerateNBlocks(wal.Group(), 5)
 	require.NoError(t, err)
 
-	select {
-	case m := <-wal.testChan:
-		require.Equal(t, "TICK", m)
-	case <-time.After(walTestSyncInterval + (time.Duration(100) * time.Millisecond)):
-		t.Fatalf("Expected to receive tick notification from test within %.2f seconds, but did not", walTestSyncInterval.Seconds())
-	}
+	time.Sleep(walTestFlushInterval + (time.Duration(10) * time.Millisecond))
+
+	require.True(
+		t,
+		wal.LastPeriodicFlush().UnixNano() > walStarted,
+		"The last group flush operation should have occurred in the background by periodic sync",
+	)
 
 	h := int64(4)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})

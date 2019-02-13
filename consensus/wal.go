@@ -6,6 +6,7 @@ import (
 	"hash/crc32"
 	"io"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -23,7 +24,7 @@ const (
 	maxMsgSizeBytes = 1024 * 1024 // 1MB
 
 	// how often the WAL should be sync'd during period sync'ing
-	walDefaultSyncInterval = time.Duration(2) * time.Second
+	walDefaultFlushInterval = time.Duration(2) * time.Second
 )
 
 //--------------------------------------------------------
@@ -76,9 +77,11 @@ type baseWAL struct {
 
 	enc *WALEncoder
 
-	syncTicker   *time.Ticker
-	syncInterval time.Duration
-	testChan     chan string // TODO: Remove this and replace with testBus
+	flushTicker       *time.Ticker
+	flushInterval     time.Duration
+	lastPeriodicFlush time.Time
+	lastFlush         time.Time
+	mtx               *sync.RWMutex
 }
 
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
@@ -92,18 +95,35 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		return nil, err
 	}
 	wal := &baseWAL{
-		group:        group,
-		enc:          NewWALEncoder(group),
-		testChan:     make(chan string),
-		syncInterval: walDefaultSyncInterval,
+		group:             group,
+		enc:               NewWALEncoder(group),
+		flushInterval:     walDefaultFlushInterval,
+		lastPeriodicFlush: time.Now(),
+		mtx:               &sync.RWMutex{},
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
 }
 
-// SetSyncInterval allows us to override the periodic sync interval for the WAL.
-func (wal *baseWAL) SetSyncInterval(i time.Duration) {
-	wal.syncInterval = i
+// SetFlushInterval allows us to override the periodic flush interval for the WAL.
+func (wal *baseWAL) SetFlushInterval(i time.Duration) {
+	wal.flushInterval = i
+}
+
+// LastPeriodicFlush gives the last time at which the periodic sync was
+// successfully executed.
+func (wal *baseWAL) LastPeriodicFlush() time.Time {
+	wal.mtx.RLock()
+	defer wal.mtx.RUnlock()
+	return wal.lastPeriodicFlush
+}
+
+// LastFlush reports on the last time at which the WAL's Flush method was called
+// successfully.
+func (wal *baseWAL) LastFlush() time.Time {
+	wal.mtx.RLock()
+	defer wal.mtx.RUnlock()
+	return wal.lastFlush
 }
 
 func (wal *baseWAL) Group() *auto.Group {
@@ -123,7 +143,7 @@ func (wal *baseWAL) OnStart() error {
 		wal.WriteSync(EndHeightMessage{0})
 	}
 	err = wal.group.Start()
-	wal.syncTicker = time.NewTicker(wal.syncInterval)
+	wal.flushTicker = time.NewTicker(wal.flushInterval)
 	go wal.processSyncTicks()
 	return err
 }
@@ -132,26 +152,35 @@ func (wal *baseWAL) OnStart() error {
 func (wal *baseWAL) processSyncTicks() {
 	for {
 		select {
-		case <-wal.syncTicker.C:
-			if err := wal.group.Flush(); err != nil {
+		case <-wal.flushTicker.C:
+			if err := wal.Flush(); err != nil {
 				wal.Logger.Error("Failed to flush WAL", "err", err)
-				wal.testChan <- "ERROR"
 			} else {
-				wal.testChan <- "TICK"
+				wal.mtx.Lock()
+				wal.lastPeriodicFlush = time.Now()
+				wal.mtx.Unlock()
 			}
 		case <-wal.Quit():
-			wal.testChan <- "QUIT"
 			return
 		}
 	}
+}
+
+// Flush will attempt to flush the underlying group's data to disk.
+func (wal *baseWAL) Flush() error {
+	var err error
+	if err = wal.Flush(); err != nil {
+		wal.lastFlush = time.Now()
+	}
+	return err
 }
 
 // Stop the underlying autofile group.
 // Use Wait() to ensure it's finished shutting down
 // before cleaning up files.
 func (wal *baseWAL) OnStop() {
-	wal.syncTicker.Stop()
-	wal.group.Flush()
+	wal.flushTicker.Stop()
+	wal.Flush()
 	wal.group.Stop()
 	wal.group.Close()
 }
@@ -185,7 +214,7 @@ func (wal *baseWAL) WriteSync(msg WALMessage) {
 	}
 
 	wal.Write(msg)
-	if err := wal.group.Flush(); err != nil {
+	if err := wal.Flush(); err != nil {
 		panic(fmt.Sprintf("Error flushing consensus wal buf to file. Error: %v \n", err))
 	}
 }
