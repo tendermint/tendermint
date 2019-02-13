@@ -110,7 +110,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 		for {
 			select {
 			case msg := <-sub.Out():
-        resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
+				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
 				wsCtx.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						wsCtx.Codec(),
