@@ -552,7 +552,7 @@ func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
 	}
 }
 
-// ToVote conversts the CommitSig to a Vote using the ValidatorAddress contained in the valSet.
+// ToVote converts the CommitSig to a Vote using the ValidatorAddress contained in the valSet.
 func (commit *Commit) ToVote(valIdx int, commitSig *CommitSig, valSet *ValidatorSet) *Vote {
 	commit.memoizeHeightRound()
 	valAddr, _ := valSet.GetByIndex(valIdx)

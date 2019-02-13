@@ -641,8 +641,10 @@ OUTER_LOOP:
 			commit := conR.conS.blockStore.LoadBlockCommit(prs.Height)
 			valSet, err := conR.conS.blockExec.LoadValidators(prs.Height)
 			if err != nil {
-				// we should have the validator set for this height by now!
-				panic(err)
+				// This should never happen as we should have the validator
+				// set for this height by now. In any case, don't panic.
+				logger.Error("Failed to load validator set for commit", "height", prs.Height, "err", err)
+				continue OUTER_LOOP
 			}
 			commitVotes := types.NewCommitVotes(commit, valSet)
 			if ps.PickSendVote(commitVotes) {
