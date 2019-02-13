@@ -77,11 +77,11 @@ var (
 	// config variables
 
 	// MaxSubscriptionClients mirrors RPCConfig.MaxSubscriptionClients
-	MaxSubscriptionClients    int
+	MaxSubscriptionClients int
 	// MaxSubscriptionsPerClient mirrors RPCConfig.MaxSubscriptionsPerClient
 	MaxSubscriptionsPerClient int
 	// TimeoutBroadcastTxCommit mirrors RPCConfig.TimeoutBroadcastTxCommit
-	TimeoutBroadcastTxCommit  time.Duration
+	TimeoutBroadcastTxCommit time.Duration
 )
 
 func SetStateDB(db dbm.DB) {
