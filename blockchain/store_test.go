@@ -23,11 +23,8 @@ import (
 
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
-	return &types.Commit{
-		Precommits: []*types.CommitSig{
-			{Height: height, Timestamp: timestamp},
-		},
-	}
+	commitSigs := []*types.CommitSig{{Height: height, Timestamp: timestamp}}
+	return types.NewCommit(types.BlockID{}, commitSigs)
 }
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {

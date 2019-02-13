@@ -91,7 +91,6 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 		}
 		pb.count++
 	}
-	return nil
 }
 
 //------------------------------------------------
@@ -271,7 +270,6 @@ func (pb *playback) replayConsoleLoop() int {
 			fmt.Println(pb.count)
 		}
 	}
-	return 0
 }
 
 //--------------------------------------------------------------------------------

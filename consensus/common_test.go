@@ -602,7 +602,6 @@ func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 		}
 	}
 	panic("didnt find peer in switches")
-	return -1
 }
 
 //-------------------------------------------------------------------------------
@@ -680,8 +679,7 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
 }
 
-func (mockTicker) SetLogger(log.Logger) {
-}
+func (*mockTicker) SetLogger(log.Logger) {}
 
 //------------------------------------
 

@@ -1,8 +1,8 @@
 package mempool
 
 import (
-	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -451,7 +451,7 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 }
 
 func checksumIt(data []byte) string {
-	h := md5.New()
+	h := sha256.New()
 	h.Write(data)
 	return fmt.Sprintf("%x", h.Sum(nil))
 }

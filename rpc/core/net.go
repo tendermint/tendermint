@@ -77,7 +77,7 @@ func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	if err != nil {
 		return &ctypes.ResultDialSeeds{}, err
 	}
-	return &ctypes.ResultDialSeeds{"Dialing seeds in progress. See /net_info for details"}, nil
+	return &ctypes.ResultDialSeeds{Log: "Dialing seeds in progress. See /net_info for details"}, nil
 }
 
 func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
@@ -90,7 +90,7 @@ func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, 
 	if err != nil {
 		return &ctypes.ResultDialPeers{}, err
 	}
-	return &ctypes.ResultDialPeers{"Dialing peers in progress. See /net_info for details"}, nil
+	return &ctypes.ResultDialPeers{Log: "Dialing peers in progress. See /net_info for details"}, nil
 }
 
 // Get genesis file.
@@ -136,5 +136,5 @@ func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, 
 // }
 // ```
 func Genesis() (*ctypes.ResultGenesis, error) {
-	return &ctypes.ResultGenesis{genDoc}, nil
+	return &ctypes.ResultGenesis{Genesis: genDoc}, nil
 }

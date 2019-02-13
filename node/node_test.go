@@ -228,11 +228,10 @@ func TestCreateProposalBlock(t *testing.T) {
 	mempool.SetLogger(logger)
 
 	// Make EvidencePool
-	types.RegisterMockEvidencesGlobal()
+	types.RegisterMockEvidencesGlobal() // XXX!
 	evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
-	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceStore)
+	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
 	evidencePool.SetLogger(logger)
 
 	// fill the evidence pool with more evidence
@@ -262,7 +261,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		evidencePool,
 	)
 
-	commit := &types.Commit{}
+	commit := types.NewCommit(types.BlockID{}, nil)
 	block, _ := blockExec.CreateProposalBlock(
 		height,
 		state, commit,
@@ -271,7 +270,6 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	err = blockExec.ValidateBlock(state, block)
 	assert.NoError(t, err)
-
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB) {

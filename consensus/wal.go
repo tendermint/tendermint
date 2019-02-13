@@ -116,6 +116,7 @@ func (wal *baseWAL) OnStart() error {
 // Use Wait() to ensure it's finished shutting down
 // before cleaning up files.
 func (wal *baseWAL) OnStop() {
+	wal.group.Flush()
 	wal.group.Stop()
 	wal.group.Close()
 }
