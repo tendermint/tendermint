@@ -70,7 +70,6 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *
 	cs.SetLogger(logger)
 
 	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
-	// fmt.Printf("====== WAL: \n\r%s\n", bytes)
 	t.Logf("====== WAL: \n\r%X\n", bytes)
 
 	err := cs.Start()
@@ -137,7 +136,6 @@ func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
 	i := 1
 LOOP:
 	for {
-		// fmt.Printf("====== LOOP %d\n", i)
 		t.Logf("====== LOOP %d\n", i)
 
 		// create consensus state from a clean slate
@@ -155,7 +153,6 @@ LOOP:
 
 		// clean up WAL file from the previous iteration
 		walFile := cs.config.WalFile()
-		fmt.Printf("%s %s\n", walFile, filepath.Dir(walFile))
 		ensureDir(filepath.Dir(walFile), 0700)
 		os.Remove(walFile)
 

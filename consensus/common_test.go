@@ -37,6 +37,9 @@ const (
 	testSubscriber = "test-client"
 )
 
+// A cleanupFunc cleans up any config / test files created for a particular test.
+type cleanupFunc func()
+
 // genesis, chain_id, priv_val
 var config *cfg.Config // NOTE: must be reset for each _test.go file
 var consensusReplayConfig *cfg.Config
@@ -556,7 +559,7 @@ func consensusLogger() log.Logger {
 }
 
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
-	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) ([]*ConsensusState, []string) {
+	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) ([]*ConsensusState, cleanupFunc) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*ConsensusState, nValidators)
 	logger := consensusLogger()
@@ -578,12 +581,16 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-	return css, configRootDirs
+	return css, func() {
+		for _, dir := range configRootDirs {
+			os.RemoveAll(dir)
+		}
+	}
 }
 
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker,
-	appFunc func() abci.Application) ([]*ConsensusState, []string) {
+	appFunc func() abci.Application) ([]*ConsensusState, cleanupFunc) {
 
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
@@ -619,7 +626,11 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-	return css, configRootDirs
+	return css, func() {
+		for _, dir := range configRootDirs {
+			os.RemoveAll(dir)
+		}
+	}
 }
 
 func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
@@ -715,6 +726,9 @@ func newCounter() abci.Application {
 }
 
 func newPersistentKVStore() abci.Application {
-	dir, _ := ioutil.TempDir("/tmp", "persistent-kvstore")
+	dir, err := ioutil.TempDir("", "persistent-kvstore")
+	if err != nil {
+		panic(err)
+	}
 	return kvstore.NewPersistentKVStoreApplication(dir)
 }

@@ -325,7 +325,7 @@ func ResetTestRoot(testName string) *Config {
 }
 
 func ResetTestRootWithChainID(testName string, chainID string) *Config {
-	// create a unique, concurrency-safe test directory under $HOME/.tendermint_test/
+	// create a unique, concurrency-safe test directory under os.TempDir()
 	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
 		panic(err)

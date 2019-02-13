@@ -22,13 +22,16 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
+// A cleanupFunc cleans up any config / test files created for a particular test.
+type cleanupFunc func()
+
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	commitSigs := []*types.CommitSig{{Height: height, Timestamp: timestamp}}
 	return types.NewCommit(types.BlockID{}, commitSigs)
 }
 
-func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, func()) {
+func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
 	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
@@ -97,7 +100,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	var cleanup func()
+	var cleanup cleanupFunc
 	state, _, cleanup = makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	block = makeBlock(1, state, new(types.Commit))
 	partSet = block.MakePartSet(2)

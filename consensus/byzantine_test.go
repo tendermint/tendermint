@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -26,12 +25,8 @@ import (
 func TestByzantine(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
-	css, configRootDirs := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
-	defer func() {
-		for _, dir := range configRootDirs {
-			os.RemoveAll(dir)
-		}
-	}()
+	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
+	defer cleanup()
 
 	// give the byzantine validator a normal ticker
 	ticker := NewTimeoutTicker()
