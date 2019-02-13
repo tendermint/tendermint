@@ -144,12 +144,12 @@ func (wal *baseWAL) OnStart() error {
 	}
 	err = wal.group.Start()
 	wal.flushTicker = time.NewTicker(wal.flushInterval)
-	go wal.processSyncTicks()
+	go wal.processFlushTicks()
 	return err
 }
 
-// processSyncTicks allows us to periodically attempt to sync the WAL to disk.
-func (wal *baseWAL) processSyncTicks() {
+// processFlushTicks allows us to periodically attempt to sync the WAL to disk.
+func (wal *baseWAL) processFlushTicks() {
 	for {
 		select {
 		case <-wal.flushTicker.C:
@@ -169,8 +169,10 @@ func (wal *baseWAL) processSyncTicks() {
 // Flush will attempt to flush the underlying group's data to disk.
 func (wal *baseWAL) Flush() error {
 	var err error
-	if err = wal.Flush(); err != nil {
+	if err = wal.group.Flush(); err != nil {
+		wal.mtx.Lock()
 		wal.lastFlush = time.Now()
+		wal.mtx.Unlock()
 	}
 	return err
 }
