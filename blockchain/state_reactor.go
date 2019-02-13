@@ -54,6 +54,7 @@ type StateReactor struct {
 
 	requestsCh <-chan StateRequest
 	errorsCh   <-chan peerError
+	quitCh chan struct{}
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -83,6 +84,7 @@ func NewStateReactor(state sm.State, stateDB dbm.DB, app proxy.AppConnState, sta
 		stateSync:    stateSync,
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
+		quitCh: 	  make(chan struct{}),
 	}
 	bcSR.BaseReactor = *p2p.NewBaseReactor("BlockchainStateReactor", bcSR)
 	return bcSR
@@ -219,10 +221,10 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			bcSR.app.EndRecovery(msg.State.LastBlockHeight)
 
 			bcSR.Logger.Info("Time to switch to blockchain reactor!", "height", msg.State.LastBlockHeight+1)
-			bcSR.pool.Stop()
+			bcSR.quitCh <- struct{}{}
 
 			bcR := bcSR.Switch.Reactor("BLOCKCHAIN").(*BlockchainReactor)
-			bcR.SwitchToBlockchain(*msg.State)
+			bcR.SwitchToBlockchain(msg.State)
 		}
 
 	case *bcStateStatusRequestMessage:
@@ -235,24 +237,30 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		if state.LastBlockHeight != height {
 			bcSR.Logger.Error("application and state height is inconsistent")
 		}
-		msgBytes := cdc.MustMarshalBinaryBare(&bcStateStatusResponseMessage{state.LastBlockHeight, numKeys})
+		msgBytes := cdc.MustMarshalBinaryBare(&bcStateStatusResponseMessage{height, numKeys})
 		queued := src.TrySend(StateChannel, msgBytes)
 		if !queued {
 			// sorry
 		}
 	case *bcStateStatusResponseMessage:
-		// if pool is not initialized yet (this is first state status response), we init it
-		if bcSR.pool.height == 0 {
-			// TODO: make this a init method and make it thread safe
-			bcSR.app.StartRecovery(msg.Height, msg.NumKeys)
-			bcSR.pool.height = msg.Height
-			bcSR.pool.numKeys = msg.NumKeys
-			bcSR.pool.totalKeys = 0
-			for _, numKey := range bcSR.pool.numKeys {
-				bcSR.pool.totalKeys += numKey
+		if msg.Height == 0 {
+			bcR := bcSR.Switch.Reactor("BLOCKCHAIN").(*BlockchainReactor)
+			bcSR.quitCh <- struct{}{}
+			bcR.SwitchToBlockchain(nil)
+		} else {
+			// if pool is not initialized yet (this is first state status response), we init it
+			if bcSR.pool.height == 0 {
+				// TODO: make this a init method and make it thread safe
+				bcSR.app.StartRecovery(msg.Height, msg.NumKeys)
+				bcSR.pool.height = msg.Height
+				bcSR.pool.numKeys = msg.NumKeys
+				bcSR.pool.totalKeys = 0
+				for _, numKey := range bcSR.pool.numKeys {
+					bcSR.pool.totalKeys += numKey
+				}
 			}
+			bcSR.pool.SetPeerHeight(src.ID(), msg.Height)
 		}
-		bcSR.pool.SetPeerHeight(src.ID(), msg.Height)
 	default:
 		bcSR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -297,6 +305,10 @@ FOR_LOOP:
 			} else {
 				bcSR.Logger.Info("still waiting for peer response for application state", "numPending", numPending)
 			}
+
+		// we don't want sync state anymore, but we still need keep reactor running to serve state request
+		case <- bcSR.quitCh:
+			break FOR_LOOP
 
 		case <-bcSR.Quit():
 			break FOR_LOOP

@@ -361,8 +361,9 @@ func NewNode(config *cfg.Config,
 
 	// TODO: revisit - seems doesn't need Copy state
 	stateReactor := bc.NewStateReactor(state, stateDB, proxyApp.State(), stateSync)
+	stateReactor.SetLogger(logger.With("module", "state"))
 
-	blockExecLogger := logger.With("module", "state")
+	blockExecLogger := logger.With("module", "exec")
 	// make block executor for consensus and blockchain reactors to execute blocks
 	blockExec := sm.NewBlockExecutor(
 		stateDB,

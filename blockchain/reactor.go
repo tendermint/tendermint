@@ -127,15 +127,17 @@ func (bcR *BlockchainReactor) OnStop() {
 
 // SwitchToBlockchain switches from fastest_sync mode to blockchain mode.
 // It resets the state, turns off fastest_sync, and starts the blockchain state-machine
-func (bcR *BlockchainReactor) SwitchToBlockchain(state sm.State) {
+func (bcR *BlockchainReactor) SwitchToBlockchain(state *sm.State) {
 	bcR.Logger.Info("SwitchToBlockchain")
-	bcR.initialState = state
+	if state != nil {
+		bcR.initialState = *state
+		bcR.pool.height = state.LastBlockHeight + 1
+		bcR.store.SetHeight(state.LastBlockHeight)
+		bcR.Logger.Debug("SwitchToBlockchain", "lastheight", state.LastBlockHeight, "apphash", state.AppHash)
+	}
 
 	bcR.fastSync = true
-	bcR.pool.height = state.LastBlockHeight + 1
-	bcR.store.SetHeight(state.LastBlockHeight)
 	err := bcR.pool.Start()
-	bcR.Logger.Debug("state lastheight: %d, apphash: %X\n", state.LastBlockHeight, state.AppHash)
 	if err != nil {
 		bcR.Logger.Error("Error starting blockchainReactor", "err", err)
 		return
