@@ -584,11 +584,15 @@ func (commit *Commit) VoteSignBytes(chainID string, cs *CommitSig) []byte {
 // the timestamp given in the commitSig.
 func (commit *Commit) canonicalVote(chainID string, commitSig *CommitSig) CanonicalVote {
 	commit.memoizeHeightRound()
+	// NOTE: this commitSig might be for a nil blockID,
+	// so we can't just use commit.BlockID here.
+	// For #1648, CommitSig will need to indicate what BlockID it's for !
+	blockID := CanonicalizeBlockID(commitSig.BlockID)
 	return CanonicalVote{
 		Type:      PrecommitType,
 		Height:    commit.height,
 		Round:     int64(commit.round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
-		BlockID:   CanonicalizeBlockID(commit.BlockID),
+		BlockID:   blockID,
 		Timestamp: commitSig.Timestamp,
 		ChainID:   chainID,
 	}
