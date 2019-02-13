@@ -46,13 +46,8 @@ func (is *IndexerService) OnStart() error {
 			select {
 			case msg := <-blockHeadersSub.Out():
 				header := msg.Data().(types.EventDataNewBlockHeader).Header
-				if header.NumTxs == 0 {
-					continue
-				}
 				batch := NewBatch(header.NumTxs)
-				i := int64(0)
-			TXS_LOOP:
-				for {
+				for i := int64(0); i < header.NumTxs; i++ {
 					select {
 					case msg2 := <-txsSub.Out():
 						txResult := msg2.Data().(types.EventDataTx).TxResult
@@ -61,10 +56,6 @@ func (is *IndexerService) OnStart() error {
 								"height", header.Height,
 								"index", txResult.Index,
 								"err", err)
-						}
-						i++
-						if i == header.NumTxs {
-							break TXS_LOOP
 						}
 					case <-txsSub.Cancelled():
 						is.Logger.Error("Failed to index block. txsSub was cancelled. Did the Tendermint stop?",
