@@ -656,7 +656,6 @@ func permutation(valList []testVal) []testVal {
 		return nil
 	}
 	permList := make([]testVal, len(valList))
-	//perm := rand.Perm(len(valList))
 	perm := cmn.RandPerm(len(valList))
 	for i, v := range perm {
 		permList[v] = valList[i]
@@ -679,6 +678,9 @@ func createNewValidatorSet(testValList []testVal) *ValidatorSet {
 }
 
 func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
+	// verify that the capacity and length of validators is the same
+	assert.Equal(t, len(valSet.Validators), cap(valSet.Validators))
+
 	// verify that the vals' tvp is set to the sum of the all vals voting powers
 	tvp := valSet.totalVotingPower
 	assert.Equal(t, valSet.TotalVotingPower(), tvp,
@@ -1102,19 +1104,44 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 	const nMaxElections = 5000
 
 	testCases := []testVSetCfg{
-		0: {
+		0: { // remove high power validator, keep old equal lower power validators
+			startVals:    []testVal{{"v1", 1}, {"v2", 1}, {"v3", 1000}},
+			deletedVals:  []testVal{{"v3", 0}},
+			updatedVals:  []testVal{},
+			addedVals:    []testVal{},
+			expectedVals: []testVal{{"v1", 1}, {"v2", 1}},
+		},
+		1: { // remove high power validator, keep old different power validators
+			startVals:    []testVal{{"v1", 1}, {"v2", 10}, {"v3", 1000}},
+			deletedVals:  []testVal{{"v3", 0}},
+			updatedVals:  []testVal{},
+			addedVals:    []testVal{},
+			expectedVals: []testVal{{"v1", 1}, {"v2", 10}},
+		},
+		2: { // remove high power validator, add new low power validators, keep old lower power
 			startVals:    []testVal{{"v1", 1}, {"v2", 2}, {"v3", 1000}},
 			deletedVals:  []testVal{{"v3", 0}},
 			updatedVals:  []testVal{{"v2", 1}},
 			addedVals:    []testVal{{"v4", 40}, {"v5", 50}},
 			expectedVals: []testVal{{"v1", 1}, {"v2", 1}, {"v4", 40}, {"v5", 50}},
 		},
+
 		// generate a configuration with 100 validators,
 		// randomly select validators for updates and deletes, and
-		// generate 100 new validators to be added
-		1: randTestVSetCfg(t, 100, 10),
+		// generate 10 new validators to be added
+		3: randTestVSetCfg(t, 100, 10),
 
-		2: randTestVSetCfg(t, 1000, 1000),
+		4: randTestVSetCfg(t, 1000, 100),
+
+		5: randTestVSetCfg(t, 10, 100),
+
+		6: randTestVSetCfg(t, 100, 1000),
+
+		7: randTestVSetCfg(t, 1000, 1000),
+
+		8: randTestVSetCfg(t, 10000, 1000),
+
+		9: randTestVSetCfg(t, 1000, 10000),
 	}
 
 	for _, cfg := range testCases {
@@ -1130,7 +1157,7 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 
 func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
 
-	// Run election a number of times up to nMaxElections, sort validators by priorities
+	// Run election up to nMaxElections times, sort validators by priorities
 	valSet.IncrementProposerPriority(cmn.RandInt()%nMaxElections + 1)
 	origValsPriSorted := validatorListCopy(valSet.Validators)
 	sort.Sort(validatorsByPriority(origValsPriSorted))

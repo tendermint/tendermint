@@ -436,8 +436,7 @@ func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotal
 // must have been validated with verifyUpdates() and priorities computed with computeNewPriorities().
 func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 
-	existing := make([]*Validator, len(vals.Validators))
-	copy(existing, vals.Validators)
+	existing := vals.Validators
 
 	merged := make([]*Validator, len(existing)+len(updates))
 	i := 0
@@ -488,8 +487,7 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
 // Should not fail as verification has been done before.
 func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 
-	existing := make([]*Validator, len(vals.Validators))
-	copy(existing, vals.Validators)
+	existing := vals.Validators
 
 	merged := make([]*Validator, len(existing)-len(deletes))
 	i := 0
@@ -503,12 +501,13 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 		}
 		existing = existing[1:]
 	}
+
 	for j := 0; j < len(existing); j++ {
 		merged[i] = existing[j]
 		i++
 	}
+
 	vals.Validators = merged[:i]
-	vals.totalVotingPower = 0
 }
 
 // main function used by UpdateWithChangeSet() and NewValidatorSet()
@@ -556,6 +555,10 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	// Apply updates and removals
 	vals.applyUpdates(updates)
 	vals.applyRemovals(deletes)
+
+	// reset totalVotingPower since changes were made to the set,
+	// this will cause vals.TotalVotingPower() to recompute it.
+	vals.totalVotingPower = 0
 
 	// Scale and center
 	vals.RescalePriorities(PriorityWindowSizeFactor * vals.TotalVotingPower())
