@@ -246,6 +246,7 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 // consensus states
 
 func newConsensusState(state sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
+	config := cfg.ResetTestRoot("consensus_state_test")
 	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
@@ -404,7 +405,7 @@ func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
 }
 
 func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, timeout int64) {
-	timeoutDuration := time.Duration(timeout*3) * time.Nanosecond
+	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }
