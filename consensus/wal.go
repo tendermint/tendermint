@@ -60,6 +60,7 @@ type WAL interface {
 	WriteSync(WALMessage)
 	Group() *auto.Group
 	SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error)
+	Flush() error
 
 	Start() error
 	Stop() error
@@ -404,3 +405,4 @@ func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *a
 func (nilWAL) Start() error { return nil }
 func (nilWAL) Stop() error  { return nil }
 func (nilWAL) Wait()        {}
+func (nilWAL) Flush() error { return nil }

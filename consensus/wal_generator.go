@@ -217,3 +217,4 @@ func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptio
 func (w *byteBufferWAL) Start() error { return nil }
 func (w *byteBufferWAL) Stop() error  { return nil }
 func (w *byteBufferWAL) Wait()        {}
+func (w *byteBufferWAL) Flush() error { return nil }

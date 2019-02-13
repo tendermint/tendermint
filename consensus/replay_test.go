@@ -246,6 +246,7 @@ func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions
 func (w *crashingWAL) Start() error { return w.next.Start() }
 func (w *crashingWAL) Stop() error  { return w.next.Stop() }
 func (w *crashingWAL) Wait()        { w.next.Wait() }
+func (w *crashingWAL) Flush() error { return w.Group().Flush() }
 
 //------------------------------------------------------------------------------------------
 // Handshake Tests

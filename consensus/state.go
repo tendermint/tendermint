@@ -908,6 +908,9 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 		}
 	}
 
+	// First flush the WAL to disk
+	cs.wal.Flush()
+
 	// Make proposal
 	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
@@ -1673,6 +1676,9 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 }
 
 func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+	// Make sure we flush the WAL to disk.
+	cs.wal.Flush()
+
 	addr := cs.privValidator.GetPubKey().Address()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 
