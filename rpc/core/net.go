@@ -43,7 +43,8 @@ import (
 // }
 // ```
 func NetInfo() (*ctypes.ResultNetInfo, error) {
-	peers := []ctypes.Peer{}
+	out, in, _ := p2pPeers.NumPeers()
+	peers := make([]ctypes.Peer, 0, out+in)
 	for _, peer := range p2pPeers.Peers().List() {
 		nodeInfo, ok := peer.NodeInfo().(p2p.DefaultNodeInfo)
 		if !ok {
@@ -53,7 +54,7 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 			NodeInfo:         nodeInfo,
 			IsOutbound:       peer.IsOutbound(),
 			ConnectionStatus: peer.Status(),
-			RemoteIP:         peer.RemoteIP(),
+			RemoteIP:         peer.RemoteIP().String(),
 		})
 	}
 	// TODO: Should we include PersistentPeers and Seeds in here?
