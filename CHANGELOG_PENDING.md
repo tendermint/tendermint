@@ -22,6 +22,7 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [libs/common] \#3238 exit with zero (0) code upon receiving SIGTERM/SIGINT
 
 ### BUG FIXES:
 - [consensus] \#3297 Flush WAL on stop to prevent data corruption during

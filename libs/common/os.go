@@ -49,7 +49,7 @@ func TrapSignal(logger logger, cb func()) {
 			if cb != nil {
 				cb()
 			}
-			os.Exit(1)
+			os.Exit(0)
 		}
 	}()
 }
