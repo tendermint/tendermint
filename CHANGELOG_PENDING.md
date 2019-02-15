@@ -21,5 +21,9 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
-- [consensus] \#3297 Flush WAL on stop to prevent data corruption during
+
+* [consensus] \#3297 Flush WAL on stop to prevent data corruption during
   graceful shutdown
+* [cmd] [\#3314](https://github.com/tendermint/tendermint/issues/3314) Return an
+  error on `show_validator` when the private validator file does not exist.
+  
