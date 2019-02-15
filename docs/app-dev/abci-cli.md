@@ -240,7 +240,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
         return err
     }
 
-	  // Stop upon receiving SIGTERM or CTRL-C.
+    // Stop upon receiving SIGTERM or CTRL-C.
     cmn.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
