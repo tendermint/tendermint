@@ -20,7 +20,7 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 
-* \#3291 Make config.ResetTestRootWithChainID() create concurrency-safe test directories.
+- [config] \#3291 Make config.ResetTestRootWithChainID() create concurrency-safe test directories.
 
 ### BUG FIXES:
 - [consensus] \#3297 Flush WAL on stop to prevent data corruption during
