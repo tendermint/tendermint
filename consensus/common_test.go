@@ -124,7 +124,9 @@ func startTestRound(cs *ConsensusState, height int64, round int) {
 
 // Create proposal block from cs1 but sign it with vs
 func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round int) (proposal *types.Proposal, block *types.Block) {
+	cs1.mtx.Lock()
 	block, blockParts := cs1.createProposalBlock()
+	cs1.mtx.Unlock()
 	if block == nil { // on error
 		panic("error creating proposal block")
 	}
