@@ -23,3 +23,4 @@ Special thanks to external contributors on this release:
 ### BUG FIXES:
 - [consensus] \#3297 Flush WAL on stop to prevent data corruption during
   graceful shutdown
+- [consensus] \#3310 Reset TriggeredTimeoutPrecommit before starting next height  

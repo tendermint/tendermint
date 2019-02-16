@@ -1326,12 +1326,13 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 	// add precommits
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
+	time.Sleep(5 * time.Millisecond)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
-
-	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
 
 	rs = cs1.GetRoundState()
 	assert.True(t, rs.TriggeredTimeoutPrecommit)
+
+	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
 
 	cs1.txNotifier.(*fakeTxNotifier).Notify()
 
