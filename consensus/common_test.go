@@ -130,9 +130,13 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	}
 
 	// Make proposal
-	polRound, propBlockID := cs1.ValidRound, types.BlockID{block.Hash(), blockParts.Header()}
+	cs1.mtx.RLock()
+	validRound := cs1.ValidRound
+	chainID := cs1.state.ChainID
+	cs1.mtx.RUnlock()
+	polRound, propBlockID := validRound, types.BlockID{block.Hash(), blockParts.Header()}
 	proposal = types.NewProposal(height, round, polRound, propBlockID)
-	if err := vs.SignProposal(cs1.state.ChainID, proposal); err != nil {
+	if err := vs.SignProposal(chainID, proposal); err != nil {
 		panic(err)
 	}
 	return
