@@ -29,3 +29,4 @@ Special thanks to external contributors on this release:
   * IPv6 ("2001:db8::1"), if ip is a valid IPv6 address
 * [cmd] \#3314 Return an
   error on `show_validator` when the private validator file does not exist
+* [p2p] \#3321 Authenticate a peer against its NetAddress.ID while dialing 
