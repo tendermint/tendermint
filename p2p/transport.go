@@ -194,7 +194,7 @@ func (mt *MultiplexTransport) Dial(
 		return nil, err
 	}
 
-	secretConn, nodeInfo, err := mt.upgrade(c, addr)
+	secretConn, nodeInfo, err := mt.upgrade(c, &addr)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +355,7 @@ func (mt *MultiplexTransport) upgrade(
 	// For outgoing conns, ensure connection key matches dialed key.
 	connID := PubKeyToID(secretConn.RemotePubKey())
 	if dialedAddr != nil {
-		if dialedID := dialedAddr.ID(); connID != dialedID {
+		if dialedID := dialedAddr.ID; connID != dialedID {
 			return nil, nil, ErrRejected{
 				conn: c,
 				id:   connID,
