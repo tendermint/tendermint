@@ -403,6 +403,39 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	}
 }
 
+func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
+	mt := testSetupMultiplexTransport(t)
+
+	var (
+		pv     = ed25519.GenPrivKey()
+		dialer = newMultiplexTransport(
+			testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
+			NodeKey{
+				PrivKey: pv,
+			},
+		)
+	)
+
+	wrongID := PubKeyToID(ed25519.GenPrivKey().PubKey())
+	dialerAddrAndID := string(wrongID) + "@" + mt.listener.Addr().String()
+	addr, err := NewNetAddressStringWithOptionalID(dialerAddrAndID)
+	if err != nil {
+		t.Fatalf("invalid address with ID: %v", err)
+	}
+
+	_, err = dialer.Dial(*addr, peerConfig{})
+	if err != nil {
+		t.Logf("connection failed: %v", err)
+		if err, ok := err.(ErrRejected); ok {
+			if !err.IsAuthFailure() {
+				t.Errorf("expected auth failure")
+			}
+		} else {
+			t.Errorf("expected ErrRejected")
+		}
+	}
+}
+
 func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 	mt := testSetupMultiplexTransport(t)
 
@@ -470,7 +503,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	if err := <-errc; err != nil {
 		if err, ok := err.(ErrRejected); ok {
 			if !err.IsSelf() {
-				t.Errorf("expected to reject self")
+				t.Errorf("expected to reject self, got: %v", err)
 			}
 		} else {
 			t.Errorf("expected ErrRejected")
@@ -482,7 +515,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	_, err := mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsSelf() {
-			t.Errorf("expected to reject self")
+			t.Errorf("expected to reject self, got: %v", err)
 		}
 	} else {
 		t.Errorf("expected ErrRejected")
