@@ -566,6 +566,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	cs.CommitRound = -1
 	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
+	cs.TriggeredTimeoutPrecommit = false
 
 	cs.state = state
 
