@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -25,7 +26,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 	pv := privval.LoadFilePV(keyFilePath, config.PrivValidatorStateFile())
 	bz, err := cdc.MarshalJSON(pv.GetPubKey())
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to marshal private validator pubkey")
 	}
 
 	fmt.Println(string(bz))

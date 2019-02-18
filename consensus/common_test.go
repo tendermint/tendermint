@@ -37,7 +37,8 @@ const (
 	testSubscriber = "test-client"
 )
 
-// A cleanupFunc cleans up any config / test files created for a particular test.
+// A cleanupFunc cleans up any config / test files created for a particular
+// test.
 type cleanupFunc func()
 
 // genesis, chain_id, priv_val

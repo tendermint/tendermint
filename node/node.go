@@ -793,6 +793,11 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
+// Config returns the Node's config.
+func (n *Node) Config() *cfg.Config {
+	return n.config
+}
+
 //------------------------------------------------------------------------------
 
 func (n *Node) Listeners() []string {

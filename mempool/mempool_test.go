@@ -25,7 +25,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func newMempoolWithApp(cc proxy.ClientCreator) (*Mempool, func()) {
+// A cleanupFunc cleans up any config / test files created for a particular
+// test.
+type cleanupFunc func()
+
+func newMempoolWithApp(cc proxy.ClientCreator) (*Mempool, cleanupFunc) {
 	config := cfg.ResetTestRoot("mempool_test")
 
 	appConnMem, _ := cc.NewABCIClient()
