@@ -643,7 +643,6 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-
 	return css, genDoc, peer0Config, func() {
 		for _, dir := range configRootDirs {
 			os.RemoveAll(dir)
