@@ -157,16 +157,6 @@ func TestWALPeriodicSync(t *testing.T) {
 	wal.SetFlushInterval(walTestFlushInterval)
 	wal.SetLogger(log.TestingLogger())
 
-	flushChan := make(chan string)
-	oldFn := wal.periodicFlushFn
-	wal.periodicFlushFn = func(w *baseWAL) error {
-		err := oldFn(w)
-		if err == nil {
-			flushChan <- "TICK"
-		}
-		return err
-	}
-
 	require.NoError(t, wal.Start())
 	defer func() {
 		wal.Stop()
@@ -176,15 +166,13 @@ func TestWALPeriodicSync(t *testing.T) {
 	err = WALGenerateNBlocks(wal.Group(), 5)
 	require.NoError(t, err)
 
-	select {
-	case m := <-flushChan:
-		require.Equal(t, "TICK", m)
-	case <-time.After((time.Duration(10) * time.Millisecond) + walTestFlushInterval):
-		t.Fatal("Timed out waiting for periodic sync to take place")
-	}
-
 	h := int64(4)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
+	assert.Error(t, err, fmt.Sprintf("expected to get an error for height %d", h))
+
+	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
+
+	gr, found, err = wal.SearchForEndHeight(h, &WALSearchOptions{})
 	assert.NoError(t, err, fmt.Sprintf("expected not to err on height %d", h))
 	assert.True(t, found, fmt.Sprintf("expected to find end height for %d", h))
 	assert.NotNil(t, gr, "expected group not to be nil")

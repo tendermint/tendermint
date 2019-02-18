@@ -77,9 +77,8 @@ type baseWAL struct {
 
 	enc *WALEncoder
 
-	flushTicker     *time.Ticker
-	flushInterval   time.Duration
-	periodicFlushFn func(*baseWAL) error // Allows for dependency injection.
+	flushTicker   *time.Ticker
+	flushInterval time.Duration
 }
 
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
@@ -96,13 +95,6 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		group:         group,
 		enc:           NewWALEncoder(group),
 		flushInterval: walDefaultFlushInterval,
-		periodicFlushFn: func(w *baseWAL) error {
-			err := w.Flush()
-			if err != nil {
-				w.Logger.Error("Failed to flush WAL", "err", err)
-			}
-			return err
-		},
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
@@ -140,7 +132,10 @@ func (wal *baseWAL) processFlushTicks() {
 	for {
 		select {
 		case <-wal.flushTicker.C:
-			wal.periodicFlushFn(wal)
+			err := wal.Flush()
+			if err != nil {
+				wal.Logger.Error("Periodic WAL flush failed", "err", err)
+			}
 		case <-wal.Quit():
 			return
 		}
