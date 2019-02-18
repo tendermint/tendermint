@@ -270,12 +270,17 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 	return &WALEncoder{wr}
 }
 
-// Encode writes the custom encoding of v to the stream.
+// Encode writes the custom encoding of v to the stream. It returns an error if
+// the amino-encoded size of v is greater than 1MB. Any error encountered
+// during the write is also returned.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	data := cdc.MustMarshalBinaryBare(v)
 
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
+	if length > maxMsgSizeBytes {
+		return fmt.Errorf("Msg is too big: %d bytes, max: %d bytes", length, maxMsgSizeBytes)
+	}
 	totalLength := 8 + int(length)
 
 	msg := make([]byte, totalLength)
@@ -348,15 +353,15 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	}
 
 	data := make([]byte, length)
-	_, err = dec.rd.Read(data)
+	n, err := dec.rd.Read(data)
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v (read: %d, wanted: %d)", err, n, length)}
 	}
 
 	// check checksum before decoding data
 	actualCRC := crc32.Checksum(data, crc32c)
 	if actualCRC != crc {
-		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: (read: %v, actual: %v)", crc, actualCRC)}
+		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: read: %v, actual: %v", crc, actualCRC)}
 	}
 
 	var res = new(TimedWALMessage) // nolint: gosimple

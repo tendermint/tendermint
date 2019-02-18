@@ -99,6 +99,26 @@ func TestWALEncoderDecoder(t *testing.T) {
 	}
 }
 
+func TestWALWritePanicsIfMsgIsTooBig(t *testing.T) {
+	walDir, err := ioutil.TempDir("", "wal")
+	require.NoError(t, err)
+	defer os.RemoveAll(walDir)
+	walFile := filepath.Join(walDir, "wal")
+
+	wal, err := NewWAL(walFile)
+	require.NoError(t, err)
+	err = wal.Start()
+	require.NoError(t, err)
+	defer func() {
+		wal.Stop()
+		// wait for the wal to finish shutting down so we
+		// can safely remove the directory
+		wal.Wait()
+	}()
+
+	assert.Panics(t, func() { wal.Write(make([]byte, maxMsgSizeBytes+1)) })
+}
+
 func TestWALSearchForEndHeight(t *testing.T) {
 	walBody, err := WALWithNBlocks(6)
 	if err != nil {
