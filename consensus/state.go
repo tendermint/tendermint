@@ -908,7 +908,7 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 		}
 	}
 
-	// First flush the WAL to disk
+	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign, and the privValidator will refuse to sign anything.
 	cs.wal.Flush()
 
 	// Make proposal
