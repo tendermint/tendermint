@@ -14,7 +14,7 @@ import (
 func TestRemoteDB(t *testing.T) {
 	cert := "test.crt"
 	key := "test.key"
-	ln, err := net.Listen("tcp", "0.0.0.0:0")
+	ln, err := net.Listen("tcp", "localhost:0")
 	require.Nil(t, err, "expecting a port to have been assigned on which we can listen")
 	srv, err := grpcdb.NewServer(cert, key)
 	require.Nil(t, err)

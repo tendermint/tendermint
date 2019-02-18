@@ -195,5 +195,5 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	// we only update the changes array if we successfully updated the tree
 	app.ValUpdates = append(app.ValUpdates, v)
 
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Info: "updateValidator"}
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }

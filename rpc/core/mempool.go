@@ -275,7 +275,7 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 	limit = validatePerPage(limit)
 
 	txs := mempool.ReapMaxTxs(limit)
-	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
+	return &ctypes.ResultUnconfirmedTxs{N: len(txs), Txs: txs}, nil
 }
 
 // Get number of unconfirmed transactions.

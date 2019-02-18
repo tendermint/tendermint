@@ -269,7 +269,7 @@ build-docker:
 ### Local testnet using docker
 
 # Build linux binary on other platforms
-build-linux:
+build-linux: get_tools get_vendor_deps
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 
 build-docker-localnode:

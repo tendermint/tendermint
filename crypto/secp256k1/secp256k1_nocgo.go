@@ -1,4 +1,4 @@
-// +build !cgo
+// +build !libsecp256k1
 
 package secp256k1
 
@@ -14,8 +14,7 @@ import (
 // see:
 //  - https://github.com/ethereum/go-ethereum/blob/f9401ae011ddf7f8d2d95020b7446c17f8d98dc1/crypto/signature_nocgo.go#L90-L93
 //  - https://github.com/ethereum/go-ethereum/blob/f9401ae011ddf7f8d2d95020b7446c17f8d98dc1/crypto/crypto.go#L39
-var secp256k1N, _ = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
-var secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))
+var secp256k1halfN = new(big.Int).Rsh(secp256k1.S256().N, 1)
 
 // Sign creates an ECDSA signature on curve Secp256k1, using SHA256 on the msg.
 // The returned signature will be of the form R || S (in lower-S form).
@@ -53,8 +52,8 @@ func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sigStr []byte) bool {
 // that len(sigStr) == 64.
 func signatureFromBytes(sigStr []byte) *secp256k1.Signature {
 	return &secp256k1.Signature{
-		new(big.Int).SetBytes(sigStr[:32]),
-		new(big.Int).SetBytes(sigStr[32:64]),
+		R: new(big.Int).SetBytes(sigStr[:32]),
+		S: new(big.Int).SetBytes(sigStr[32:64]),
 	}
 }
 

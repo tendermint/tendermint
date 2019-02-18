@@ -3,6 +3,7 @@ package consensus
 import (
 	"encoding/binary"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -15,10 +16,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func init() {
-	config = ResetConfig("consensus_mempool_test")
-}
-
 // for testing
 func assertMempool(txn txNotifier) sm.Mempool {
 	return txn.(sm.Mempool)
@@ -26,6 +23,7 @@ func assertMempool(txn txNotifier) sm.Mempool {
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
+	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
@@ -44,6 +42,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
+	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
@@ -59,6 +58,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
+	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())

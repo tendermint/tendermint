@@ -336,7 +336,7 @@ func (h *Handshaker) ReplayBlocks(
 
 	} else if storeBlockHeight < appBlockHeight {
 		// the app should never be ahead of the store (but this is under app's control)
-		return appHash, sm.ErrAppBlockHeightTooHigh{storeBlockHeight, appBlockHeight}
+		return appHash, sm.ErrAppBlockHeightTooHigh{CoreHeight: storeBlockHeight, AppHeight: appBlockHeight}
 
 	} else if storeBlockHeight < stateBlockHeight {
 		// the state should never be ahead of the store (this is under tendermint's control)
@@ -491,6 +491,9 @@ type mockProxyApp struct {
 func (mock *mockProxyApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
 	r := mock.abciResponses.DeliverTx[mock.txCount]
 	mock.txCount++
+	if r == nil { //it could be nil because of amino unMarshall, it will cause an empty ResponseDeliverTx to become nil
+		return abci.ResponseDeliverTx{}
+	}
 	return *r
 }
 

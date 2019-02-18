@@ -17,23 +17,32 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/version"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
-var consensusReplayConfig *cfg.Config
-
-func init() {
+func TestMain(m *testing.M) {
+	config = ResetConfig("consensus_reactor_test")
 	consensusReplayConfig = ResetConfig("consensus_replay_test")
+	configStateTest := ResetConfig("consensus_state_test")
+	configMempoolTest := ResetConfig("consensus_mempool_test")
+	configByzantineTest := ResetConfig("consensus_byzantine_test")
+	code := m.Run()
+	os.RemoveAll(config.RootDir)
+	os.RemoveAll(consensusReplayConfig.RootDir)
+	os.RemoveAll(configStateTest.RootDir)
+	os.RemoveAll(configMempoolTest.RootDir)
+	os.RemoveAll(configByzantineTest.RootDir)
+	sim_cleanupFunc()
+	os.Exit(code)
 }
 
 // These tests ensure we can always recover from failure at any part of the consensus process.
@@ -51,7 +60,8 @@ func init() {
 // and which ones we need the wal for - then we'd also be able to only flush the
 // wal writer when we need to, instead of with every message.
 
-func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, blockDB dbm.DB, stateDB dbm.DB) {
+func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
+	lastBlockHeight int64, blockDB dbm.DB, stateDB dbm.DB) {
 	logger := log.TestingLogger()
 	state, _ := sm.LoadStateFromDBOrGenesisFile(stateDB, consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
@@ -59,7 +69,6 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, 
 	cs.SetLogger(logger)
 
 	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
-	// fmt.Printf("====== WAL: \n\r%s\n", bytes)
 	t.Logf("====== WAL: \n\r%X\n", bytes)
 
 	err := cs.Start()
@@ -110,21 +119,22 @@ func TestWALCrash(t *testing.T) {
 			3},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
+		consensusReplayConfig := ResetConfig(fmt.Sprintf("%s_%d", t.Name(), i))
 		t.Run(tc.name, func(t *testing.T) {
-			crashWALandCheckLiveness(t, tc.initFn, tc.heightToStop)
+			crashWALandCheckLiveness(t, consensusReplayConfig, tc.initFn, tc.heightToStop)
 		})
 	}
 }
 
-func crashWALandCheckLiveness(t *testing.T, initFn func(dbm.DB, *ConsensusState, context.Context), heightToStop int64) {
+func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
+	initFn func(dbm.DB, *ConsensusState, context.Context), heightToStop int64) {
 	walPaniced := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPaniced, heightToStop: heightToStop}
 
 	i := 1
 LOOP:
 	for {
-		// fmt.Printf("====== LOOP %d\n", i)
 		t.Logf("====== LOOP %d\n", i)
 
 		// create consensus state from a clean slate
@@ -163,7 +173,7 @@ LOOP:
 			t.Logf("WAL paniced: %v", err)
 
 			// make sure we can make blocks after a crash
-			startNewConsensusStateAndWaitForBlock(t, cs.Height, blockDB, stateDB)
+			startNewConsensusStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateDB)
 
 			// stop consensus state and transactions sender (initFn)
 			cs.Stop()
@@ -259,6 +269,7 @@ var (
 	sim_config       *cfg.Config
 	sim_chain        []*types.Block
 	sim_commits      []*types.Commit
+	sim_cleanupFunc  cleanupFunc
 )
 
 //---------------------------------------
@@ -269,12 +280,14 @@ var (
 // 2 - save block and committed but state is behind
 var modes = []uint{0, 1, 2}
 
+// This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func TestSimulateValidatorsChange(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, genDoc, config := randConsensusNetWithPeers(nVals, nPeers, "replay_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+	css, genDoc, config, cleanup := randConsensusNetWithPeers(nVals, nPeers, "replay_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
 	sim_config = config
 	sim_genisisState, _ = sm.MakeGenesisState(genDoc)
+	sim_cleanupFunc = cleanup
 
 	logger := log.TestingLogger()
 
@@ -338,15 +351,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
 	//height 6
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
-	//activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
-	//activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
-	//delete(activeVals, string(newValidatorPubKey2.Address()))
-	//delete(activeVals, string(newValidatorPubKey3.Address()))
 	stopConsensusNet(logger, reactors, eventBuses)
-	for i := 0; i < nPeers; i++ {
-		css[i].Stop()
-		reactors[i].Stop()
-	}
 
 	sim_chain = make([]*types.Block, 0)
 	sim_commits = make([]*types.Commit, 0)
@@ -354,46 +359,111 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		sim_chain = append(sim_chain, css[0].blockStore.LoadBlock(int64(i)))
 		sim_commits = append(sim_commits, css[0].blockStore.LoadBlockCommit(int64(i)))
 	}
-	return
+}
+
+// Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
+func TestMockProxyApp(t *testing.T) {
+	logger := log.TestingLogger()
+	var validTxs, invalidTxs = 0, 0
+	txIndex := 0
+
+	assert.NotPanics(t, func() {
+		abciResWithEmptyDeliverTx := new(sm.ABCIResponses)
+		abciResWithEmptyDeliverTx.DeliverTx = make([]*abci.ResponseDeliverTx, 0)
+		abciResWithEmptyDeliverTx.DeliverTx = append(abciResWithEmptyDeliverTx.DeliverTx, &abci.ResponseDeliverTx{})
+
+		// called when saveABCIResponses:
+		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
+		loadedAbciRes := new(sm.ABCIResponses)
+
+		// this also happens sm.LoadABCIResponses
+		err := cdc.UnmarshalBinaryBare(bytes, loadedAbciRes)
+		require.NoError(t, err)
+
+		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
+
+		abciRes := new(sm.ABCIResponses)
+		abciRes.DeliverTx = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTx))
+		// Execute transactions and get hash.
+		proxyCb := func(req *abci.Request, res *abci.Response) {
+			switch r := res.Value.(type) {
+			case *abci.Response_DeliverTx:
+				// TODO: make use of res.Log
+				// TODO: make use of this info
+				// Blocks may include invalid txs.
+				txRes := r.DeliverTx
+				if txRes.Code == abci.CodeTypeOK {
+					validTxs++
+				} else {
+					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
+					invalidTxs++
+				}
+				abciRes.DeliverTx[txIndex] = txRes
+				txIndex++
+			}
+		}
+		mock.SetResponseCallback(proxyCb)
+
+		someTx := []byte("tx")
+		mock.DeliverTxAsync(someTx)
+	})
+	assert.True(t, validTxs == 1)
+	assert.True(t, invalidTxs == 0)
 }
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, 0, m, false)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, 0, m, false)
 	}
-	for _, m := range modes {
-		testHandshakeReplay(t, 0, m, true)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, 0, m, true)
 	}
 }
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, 1, m, false)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, 1, m, false)
 	}
-	for _, m := range modes {
-		testHandshakeReplay(t, 1, m, true)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, 1, m, true)
 	}
 }
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, NUM_BLOCKS-1, m, false)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, NUM_BLOCKS-1, m, false)
 	}
-	for _, m := range modes {
-		testHandshakeReplay(t, NUM_BLOCKS-1, m, true)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, NUM_BLOCKS-1, m, true)
 	}
 }
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
-	for _, m := range modes {
-		testHandshakeReplay(t, NUM_BLOCKS, m, false)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, NUM_BLOCKS, m, false)
 	}
-	for _, m := range modes {
-		testHandshakeReplay(t, NUM_BLOCKS, m, true)
+	for i, m := range modes {
+		config := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), i))
+		defer os.RemoveAll(config.RootDir)
+		testHandshakeReplay(t, config, NUM_BLOCKS, m, true)
 	}
 }
 
@@ -413,15 +483,13 @@ func tempWALWithData(data []byte) string {
 }
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
-func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, testValidatorsChange bool) {
-	var config *cfg.Config
+func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint, testValidatorsChange bool) {
 	var chain []*types.Block
 	var commits []*types.Commit
 	var store *mockBlockStore
 	var stateDB dbm.DB
 	var genisisState sm.State
 	if testValidatorsChange {
-		ResetConfig("replay_test_m")
 		stateDB = dbm.NewMemDB()
 		genisisState = sim_genisisState
 		config = sim_config
@@ -429,11 +497,12 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, testValidatorsCha
 		commits = sim_commits
 		store = NewMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
-		config = ResetConfig("replay_test_s")
-		walBody, err := WALWithNBlocks(NUM_BLOCKS)
+		walBody, err := WALWithNBlocks(t, NUM_BLOCKS)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
 		config.Consensus.SetWalFile(walFile)
+
+		privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
 		wal, err := NewWAL(walFile)
 		require.NoError(t, err)
@@ -441,7 +510,6 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, testValidatorsCha
 		err = wal.Start()
 		require.NoError(t, err)
 		defer wal.Stop()
-		privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
@@ -658,10 +726,8 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			}
 		case *types.Vote:
 			if p.Type == types.PrecommitType {
-				thisBlockCommit = &types.Commit{
-					BlockID:    p.BlockID,
-					Precommits: []*types.CommitSig{p.CommitSig()},
-				}
+				commitSigs := []*types.CommitSig{p.CommitSig()}
+				thisBlockCommit = types.NewCommit(p.BlockID, commitSigs)
 			}
 		}
 	}
@@ -755,6 +821,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("proxy_test_")
+	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)
 

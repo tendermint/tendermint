@@ -21,8 +21,8 @@ const maxRestarts = 25
 type Node struct {
 	rpcAddr string
 
-	IsValidator bool          `json:"is_validator"` // validator or non-validator?
-	pubKey      crypto.PubKey `json:"pub_key"`
+	IsValidator bool `json:"is_validator"` // validator or non-validator?
+	pubKey      crypto.PubKey
 
 	Name         string  `json:"name"`
 	Online       bool    `json:"online"`

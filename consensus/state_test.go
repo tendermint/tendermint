@@ -18,10 +18,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func init() {
-	config = ResetConfig("consensus_state_test")
-}
-
 /*
 
 ProposeSuite
@@ -1288,8 +1284,8 @@ func (n *fakeTxNotifier) Notify() {
 }
 
 func TestStartNextHeightCorrectly(t *testing.T) {
+	config.Consensus.SkipTimeoutCommit = false
 	cs1, vss := randConsensusState(4)
-	cs1.config.SkipTimeoutCommit = false
 	cs1.txNotifier = &fakeTxNotifier{ch: make(chan struct{})}
 
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -1326,18 +1322,77 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 	// add precommits
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
+	time.Sleep(5 * time.Millisecond)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
-
-	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
 
 	rs = cs1.GetRoundState()
 	assert.True(t, rs.TriggeredTimeoutPrecommit)
+
+	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
 
 	cs1.txNotifier.(*fakeTxNotifier).Notify()
 
 	ensureNewTimeout(timeoutProposeCh, height+1, round, cs1.config.TimeoutPropose.Nanoseconds())
 	rs = cs1.GetRoundState()
 	assert.False(t, rs.TriggeredTimeoutPrecommit, "triggeredTimeoutPrecommit should be false at the beginning of each round")
+}
+
+func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
+	config.Consensus.SkipTimeoutCommit = false
+	cs1, vss := randConsensusState(4)
+
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, cs1.Round
+
+	partSize := types.BlockPartSizeBytes
+
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	newBlockHeader := subscribe(cs1.eventBus, types.EventQueryNewBlockHeader)
+	addr := cs1.privValidator.GetPubKey().Address()
+	voteCh := subscribeToVoter(cs1, addr)
+
+	// start round and wait for propose and prevote
+	startTestRound(cs1, height, round)
+	ensureNewRound(newRoundCh, height, round)
+
+	ensureNewProposal(proposalCh, height, round)
+	rs := cs1.GetRoundState()
+	theBlockHash := rs.ProposalBlock.Hash()
+	theBlockParts := rs.ProposalBlockParts.Header()
+
+	ensurePrevote(voteCh, height, round)
+	validatePrevote(t, cs1, round, vss[0], theBlockHash)
+
+	signAddVotes(cs1, types.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
+
+	ensurePrecommit(voteCh, height, round)
+	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
+
+	rs = cs1.GetRoundState()
+
+	// add precommits
+	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
+	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
+	time.Sleep(5 * time.Millisecond)
+	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
+
+	rs = cs1.GetRoundState()
+	assert.True(t, rs.TriggeredTimeoutPrecommit)
+
+	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
+
+	prop, propBlock := decideProposal(cs1, vs2, height+1, 0)
+	propBlockParts := propBlock.MakePartSet(partSize)
+
+	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+	ensureNewProposal(proposalCh, height+1, 0)
+
+	rs = cs1.GetRoundState()
+	assert.False(t, rs.TriggeredTimeoutPrecommit, "triggeredTimeoutPrecommit should be false at the beginning of each height")
 }
 
 //------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
-## v0.30.0
+## v0.31.0
 
-*TBD*
+**
 
 Special thanks to external contributors on this release:
 
@@ -11,7 +11,6 @@ Special thanks to external contributors on this release:
 * Apps
 
 * Go API
-  - [types] \#3245 Commit uses `type CommitSig Vote` instead of `Vote` directly.
 
 * Blockchain Protocol
 
@@ -20,13 +19,18 @@ Special thanks to external contributors on this release:
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [tools] Add go-deadlock tool to help detect deadlocks
-- [tools] \#3106 Add tm-signer-harness test harness for remote signers
-- [crypto] \#3163 Use ethereum's libsecp256k1 go-wrapper for signatures when cgo is available
-- [crypto] \#3162 Wrap btcd instead of forking it to keep up with fixes (used if cgo is not available)
+
+- [config] \#3291 Make config.ResetTestRootWithChainID() create concurrency-safe test directories.
 
 ### BUG FIXES:
-- [node] \#3186 EventBus and indexerService should be started before first block (for replay last block on handshake) execution
+* [consensus] \#3297 Flush WAL on stop to prevent data corruption during
+  graceful shutdown
+- [consensus] \#3302 Reset TriggeredTimeoutPrecommit before starting next
+  height
+- [rpc] \#3251 Fix /net_info#peers#remote_ip format. New format spec:
+  * dotted decimal ("192.0.2.1"), if ip is an IPv4 or IP4-mapped IPv6 address
+  * IPv6 ("2001:db8::1"), if ip is a valid IPv6 address
+* [cmd] \#3314 Return an error on `show_validator` when the private validator
+  file does not exist
+* [p2p] \#3321 Authenticate a peer against its NetAddress.ID while dialing
 - [consensus/replay] \#3067 getBeginBlockValidatorInfo loads validators from stateDB instead of state
-- [p2p] \#3247 Fix panic in SeedMode when calling FlushStop and OnStop
-  concurrently
