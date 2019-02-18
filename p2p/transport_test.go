@@ -412,8 +412,7 @@ func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
 	)
 
 	wrongID := PubKeyToID(ed25519.GenPrivKey().PubKey())
-	dialerAddrAndID := string(wrongID) + "@" + mt.listener.Addr().String()
-	addr, err := NewNetAddressStringWithOptionalID(dialerAddrAndID)
+	addr, err := NewNetAddressStringWithOptionalID(IDAddressString(wrongID, mt.listener.Addr().String()))
 	if err != nil {
 		t.Fatalf("invalid address with ID: %v", err)
 	}
@@ -606,7 +605,7 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 		)
 	)
 
-	addr, err := NewNetAddressStringWithOptionalID(IDAddressString(id, "@127.0.0.1:0"))
+	addr, err := NewNetAddressStringWithOptionalID(IDAddressString(id, "127.0.0.1:0"))
 	if err != nil {
 		t.Fatal(err)
 	}
