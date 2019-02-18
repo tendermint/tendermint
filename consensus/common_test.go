@@ -37,8 +37,12 @@ const (
 	testSubscriber = "test-client"
 )
 
+// A cleanupFunc cleans up any config / test files created for a particular test.
+type cleanupFunc func()
+
 // genesis, chain_id, priv_val
 var config *cfg.Config // NOTE: must be reset for each _test.go file
+var consensusReplayConfig *cfg.Config
 var ensureTimeout = time.Millisecond * 100
 
 func ensureDir(dir string, mode os.FileMode) {
@@ -248,6 +252,7 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 // consensus states
 
 func newConsensusState(state sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
+	config := cfg.ResetTestRoot("consensus_state_test")
 	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
@@ -406,7 +411,7 @@ func ensureNewRound(roundCh <-chan interface{}, height int64, round int) {
 }
 
 func ensureNewTimeout(timeoutCh <-chan interface{}, height int64, round int, timeout int64) {
-	timeoutDuration := time.Duration(timeout*3) * time.Nanosecond
+	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }
@@ -560,14 +565,17 @@ func consensusLogger() log.Logger {
 	}).With("module", "consensus")
 }
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application, configOpts ...func(*cfg.Config)) []*ConsensusState {
+func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
+	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) ([]*ConsensusState, cleanupFunc) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*ConsensusState, nValidators)
 	logger := consensusLogger()
+	configRootDirs := make([]string, 0, nValidators)
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		for _, opt := range configOpts {
 			opt(thisConfig)
 		}
@@ -580,18 +588,26 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-	return css
+	return css, func() {
+		for _, dir := range configRootDirs {
+			os.RemoveAll(dir)
+		}
+	}
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker,
+	appFunc func() abci.Application) ([]*ConsensusState, cleanupFunc) {
+
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
 	logger := consensusLogger()
+	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		var privVal types.PrivValidator
 		if i < nValidators {
@@ -617,7 +633,11 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
-	return css
+	return css, func() {
+		for _, dir := range configRootDirs {
+			os.RemoveAll(dir)
+		}
+	}
 }
 
 func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
@@ -713,6 +733,9 @@ func newCounter() abci.Application {
 }
 
 func newPersistentKVStore() abci.Application {
-	dir, _ := ioutil.TempDir("/tmp", "persistent-kvstore")
+	dir, err := ioutil.TempDir("", "persistent-kvstore")
+	if err != nil {
+		panic(err)
+	}
 	return kvstore.NewPersistentKVStoreApplication(dir)
 }

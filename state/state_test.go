@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, State) {
 	state, err := LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
 
-	tearDown := func(t *testing.T) {}
+	tearDown := func(t *testing.T) { os.RemoveAll(config.RootDir) }
 
 	return tearDown, stateDB, state
 }
@@ -802,10 +803,10 @@ func TestLargeGenesisValidator(t *testing.T) {
 func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 	const valSetSize = 2
 	tearDown, stateDB, state := setupTestCase(t)
+	defer tearDown(t)
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	SaveState(stateDB, state)
-	defer tearDown(t)
 
 	nextHeight := state.LastBlockHeight + 1
 
@@ -825,11 +826,11 @@ func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
 	tearDown, stateDB, state := setupTestCase(t)
+	defer tearDown(t)
 	require.Equal(t, int64(0), state.LastBlockHeight)
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	SaveState(stateDB, state)
-	defer tearDown(t)
 
 	_, valOld := state.Validators.GetByIndex(0)
 	var pubkeyOld = valOld.PubKey
