@@ -100,8 +100,8 @@ func GetGRPCClient() core_grpc.BroadcastAPIClient {
 }
 
 // StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
-func StartTendermint(app abci.Application) (*nm.Node, func()) {
-	node, cleanup := NewTendermint(app)
+func StartTendermint(app abci.Application) *nm.Node {
+	node := NewTendermint(app)
 	err := node.Start()
 	if err != nil {
 		panic(err)
@@ -113,11 +113,19 @@ func StartTendermint(app abci.Application) (*nm.Node, func()) {
 
 	fmt.Println("Tendermint running!")
 
-	return node, cleanup
+	return node
+}
+
+// StopTendermint stops a test tendermint server, waits until it's stopped and
+// cleans up test/config files.
+func StopTendermint(node *nm.Node) {
+	node.Stop()
+	node.Wait()
+	os.RemoveAll(node.Config().RootDir)
 }
 
 // NewTendermint creates a new tendermint server and sleeps forever
-func NewTendermint(app abci.Application) (*nm.Node, func()) {
+func NewTendermint(app abci.Application) *nm.Node {
 	// Create & start node
 	config := GetConfig()
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
@@ -138,5 +146,5 @@ func NewTendermint(app abci.Application) (*nm.Node, func()) {
 	if err != nil {
 		panic(err)
 	}
-	return node, func() { os.RemoveAll(config.RootDir) }
+	return node
 }

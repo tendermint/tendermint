@@ -15,13 +15,12 @@ import (
 func TestMain(m *testing.M) {
 	// start a tendermint node in the background to test against
 	app := kvstore.NewKVStoreApplication()
-	node, cleanup := rpctest.StartTendermint(app)
+	node := rpctest.StartTendermint(app)
+
 	code := m.Run()
 
 	// and shut down proper at the end
-	node.Stop()
-	node.Wait()
-	cleanup()
+	rpctest.StopTendermint(node)
 	os.Exit(code)
 }
 

@@ -22,7 +22,8 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// A cleanupFunc cleans up any config / test files created for a particular test.
+// A cleanupFunc cleans up any config / test files created for a particular
+// test.
 type cleanupFunc func()
 
 // make a Commit with a single vote containing just the height and a timestamp
