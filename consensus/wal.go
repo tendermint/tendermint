@@ -23,7 +23,7 @@ const (
 	maxMsgSizeBytes = 1024 * 1024 // 1MB
 
 	// how often the WAL should be sync'd during period sync'ing
-	walDefaultFlushInterval = time.Duration(2) * time.Second
+	walDefaultFlushInterval = 2 * time.Second
 )
 
 //--------------------------------------------------------
