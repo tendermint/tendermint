@@ -32,8 +32,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	node.Stop()
-	node.Wait()
+	rpctest.StopTendermint(node)
 	os.Exit(code)
 }
 
