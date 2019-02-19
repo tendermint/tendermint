@@ -441,10 +441,10 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 	i := 0
 
 	for len(existing) > 0 && len(updates) > 0 {
-		if bytes.Compare(existing[0].Address, updates[0].Address) < 0 { // new validator
+		if bytes.Compare(existing[0].Address, updates[0].Address) < 0 { // unchanged validator
 			merged[i] = existing[0]
 			existing = existing[1:]
-		} else { // apply update or skip
+		} else { // apply add or update
 			merged[i] = updates[0]
 			if bytes.Equal(existing[0].Address, updates[0].Address) {
 				// validator present in both, advance existing
