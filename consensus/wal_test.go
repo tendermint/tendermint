@@ -39,11 +39,16 @@ func TestWALTruncate(t *testing.T) {
 	wal.SetLogger(log.TestingLogger())
 	err = wal.Start()
 	require.NoError(t, err)
-	defer wal.Stop()
+	defer func() {
+		wal.Stop()
+		// wait for the wal to finish shutting down so we
+		// can safely remove the directory
+		wal.Wait()
+	}()
 
 	//60 block's size nearly 70K, greater than group's headBuf size(4096 * 10), when headBuf is full, truncate content will Flush to the file.
 	//at this time, RotateFile is called, truncate content exist in each file.
-	err = WALGenerateNBlocks(wal.Group(), 60)
+	err = WALGenerateNBlocks(t, wal.Group(), 60)
 	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
@@ -90,8 +95,28 @@ func TestWALEncoderDecoder(t *testing.T) {
 	}
 }
 
+func TestWALWritePanicsIfMsgIsTooBig(t *testing.T) {
+	walDir, err := ioutil.TempDir("", "wal")
+	require.NoError(t, err)
+	defer os.RemoveAll(walDir)
+	walFile := filepath.Join(walDir, "wal")
+
+	wal, err := NewWAL(walFile)
+	require.NoError(t, err)
+	err = wal.Start()
+	require.NoError(t, err)
+	defer func() {
+		wal.Stop()
+		// wait for the wal to finish shutting down so we
+		// can safely remove the directory
+		wal.Wait()
+	}()
+
+	assert.Panics(t, func() { wal.Write(make([]byte, maxMsgSizeBytes+1)) })
+}
+
 func TestWALSearchForEndHeight(t *testing.T) {
-	walBody, err := WALWithNBlocks(6)
+	walBody, err := WALWithNBlocks(t, 6)
 	if err != nil {
 		t.Fatal(err)
 	}

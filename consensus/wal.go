@@ -112,9 +112,19 @@ func (wal *baseWAL) OnStart() error {
 	return err
 }
 
+// Stop the underlying autofile group.
+// Use Wait() to ensure it's finished shutting down
+// before cleaning up files.
 func (wal *baseWAL) OnStop() {
+	wal.group.Flush()
 	wal.group.Stop()
 	wal.group.Close()
+}
+
+// Wait for the underlying autofile group to finish shutting down
+// so it's safe to cleanup files.
+func (wal *baseWAL) Wait() {
+	wal.group.Wait()
 }
 
 // Write is called in newStep and for each receive on the
@@ -163,7 +173,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 	// NOTE: starting from the last file in the group because we're usually
 	// searching for the last height. See replay.go
 	min, max := wal.group.MinIndex(), wal.group.MaxIndex()
-	wal.Logger.Debug("Searching for height", "height", height, "min", min, "max", max)
+	wal.Logger.Info("Searching for height", "height", height, "min", min, "max", max)
 	for index := max; index >= min; index-- {
 		gr, err = wal.group.NewReader(index)
 		if err != nil {
@@ -183,7 +193,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 				break
 			}
 			if options.IgnoreDataCorruptionErrors && IsDataCorruptionError(err) {
-				wal.Logger.Debug("Corrupted entry. Skipping...", "err", err)
+				wal.Logger.Error("Corrupted entry. Skipping...", "err", err)
 				// do nothing
 				continue
 			} else if err != nil {
@@ -194,7 +204,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 			if m, ok := msg.Msg.(EndHeightMessage); ok {
 				lastHeightFound = m.Height
 				if m.Height == height { // found
-					wal.Logger.Debug("Found", "height", height, "index", index)
+					wal.Logger.Info("Found", "height", height, "index", index)
 					return gr, true, nil
 				}
 			}
@@ -219,12 +229,17 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 	return &WALEncoder{wr}
 }
 
-// Encode writes the custom encoding of v to the stream.
+// Encode writes the custom encoding of v to the stream. It returns an error if
+// the amino-encoded size of v is greater than 1MB. Any error encountered
+// during the write is also returned.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	data := cdc.MustMarshalBinaryBare(v)
 
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
+	if length > maxMsgSizeBytes {
+		return fmt.Errorf("Msg is too big: %d bytes, max: %d bytes", length, maxMsgSizeBytes)
+	}
 	totalLength := 8 + int(length)
 
 	msg := make([]byte, totalLength)
@@ -281,31 +296,31 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, err
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read checksum: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read checksum: %v", err)}
 	}
 	crc := binary.BigEndian.Uint32(b)
 
 	b = make([]byte, 4)
 	_, err = dec.rd.Read(b)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read length: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read length: %v", err)}
 	}
 	length := binary.BigEndian.Uint32(b)
 
 	if length > maxMsgSizeBytes {
-		return nil, fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)
+		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)}
 	}
 
 	data := make([]byte, length)
-	_, err = dec.rd.Read(data)
+	n, err := dec.rd.Read(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read data: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v (read: %d, wanted: %d)", err, n, length)}
 	}
 
 	// check checksum before decoding data
 	actualCRC := crc32.Checksum(data, crc32c)
 	if actualCRC != crc {
-		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: (read: %v, actual: %v)", crc, actualCRC)}
+		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: read: %v, actual: %v", crc, actualCRC)}
 	}
 
 	var res = new(TimedWALMessage) // nolint: gosimple

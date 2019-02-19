@@ -13,10 +13,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func init() {
-	config = ResetConfig("consensus_byzantine_test")
-}
-
 //----------------------------------------------
 // byzantine failures
 
@@ -29,7 +25,8 @@ func init() {
 func TestByzantine(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
-	css := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
+	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
+	defer cleanup()
 
 	// give the byzantine validator a normal ticker
 	ticker := NewTimeoutTicker()
@@ -76,8 +73,7 @@ func TestByzantine(t *testing.T) {
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
-		var conRI p2p.Reactor // nolint: gotype, gosimple
-		conRI = conR
+		var conRI p2p.Reactor = conR
 
 		// make first val byzantine
 		if i == 0 {

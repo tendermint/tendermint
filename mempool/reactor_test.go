@@ -49,7 +49,8 @@ func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor 
 	for i := 0; i < N; i++ {
 		app := kvstore.NewKVStoreApplication()
 		cc := proxy.NewLocalClientCreator(app)
-		mempool := newMempoolWithApp(cc)
+		mempool, cleanup := newMempoolWithApp(cc)
+		defer cleanup()
 
 		reactors[i] = NewMempoolReactor(config.Mempool, mempool) // so we dont start the consensus states
 		reactors[i].SetLogger(logger.With("validator", i))
