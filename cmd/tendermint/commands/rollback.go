@@ -43,21 +43,20 @@ var RollbackCmd = &cobra.Command{
 }
 
 func rollbackData(cmd *cobra.Command, args []string) error {
-	fmt.Println("you are rollbacking data")
 	// Get BlockStore
 
 	newPrivValKey := config.PrivValidatorKeyFile()
 	newPrivValState := config.PrivValidatorStateFile()
 	privValidator := privval.LoadOrGenFilePV(newPrivValKey, newPrivValState)
 
-	blockStoreDB, err := node.DefaultDBProvider(&node.DBContext{"blockstore", config})
+	blockStoreDB, err := node.DefaultDBProvider(& node.DBContext{"blockstore", config})
 	if err != nil {
 		return err
 	}
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB, err := node.DefaultDBProvider(&node.DBContext{"state", config})
+	stateDB, err := node.DefaultDBProvider(& node.DBContext{"state", config})
 	if err != nil {
 		return err
 	}
