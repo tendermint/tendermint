@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -18,17 +17,16 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/version"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestMain(m *testing.M) {
@@ -153,7 +151,6 @@ LOOP:
 
 		// clean up WAL file from the previous iteration
 		walFile := cs.config.WalFile()
-		ensureDir(filepath.Dir(walFile), 0700)
 		os.Remove(walFile)
 
 		// set crashing WAL

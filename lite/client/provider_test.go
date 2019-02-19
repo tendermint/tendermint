@@ -15,13 +15,11 @@ import (
 
 func TestMain(m *testing.M) {
 	app := kvstore.NewKVStoreApplication()
-	node, cleanup := rpctest.StartTendermint(app)
-	defer cleanup()
+	node := rpctest.StartTendermint(app)
 
 	code := m.Run()
 
-	node.Stop()
-	node.Wait()
+	rpctest.StopTendermint(node)
 	os.Exit(code)
 }
 

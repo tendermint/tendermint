@@ -27,15 +27,12 @@ var waitForEventTimeout = 5 * time.Second
 // TODO fix tests!!
 
 func TestMain(m *testing.M) {
-	var cleanup func()
 	app := kvstore.NewKVStoreApplication()
-	node, cleanup = rpctest.StartTendermint(app)
+	node = rpctest.StartTendermint(app)
 
 	code := m.Run()
 
-	node.Stop()
-	node.Wait()
-	cleanup()
+	rpctest.StopTendermint(node)
 	os.Exit(code)
 }
 
