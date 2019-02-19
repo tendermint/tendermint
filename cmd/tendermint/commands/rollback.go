@@ -85,7 +85,7 @@ func rollbackData(cmd *cobra.Command, args []string) error {
 func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	bytes := db.Get(genesisDocKey)
 	if len(bytes) == 0 {
-		return nil, cmn.ErrorWrap(nil,"Genesis doc not found")
+		return nil, cmn.ErrorWrap(nil, "Genesis doc not found")
 	}
 	var genDoc *types.GenesisDoc
 	err := cdc.UnmarshalJSON(bytes, &genDoc)
