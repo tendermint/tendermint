@@ -91,7 +91,7 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	var genDoc *types.GenesisDoc
 	err := cdc.UnmarshalJSON(bytes, &genDoc)
 	if err != nil {
-		return nil,cmn.ErrorWrap(err,"Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes)
+		return nil, cmn.ErrorWrap(err, "Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", bytes)
 	}
 	return genDoc, nil
 }
