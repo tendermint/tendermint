@@ -80,9 +80,6 @@ func rollbackData(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(blockStore.Height())
-	fmt.Println(state.AppHash)
-
 	if config.RollbackFlag {
 		unsafeRollbackData(config, state, stateDB, blockStore, blockStoreDB, privValidator)
 	}
