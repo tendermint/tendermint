@@ -26,6 +26,7 @@ func main() {
 		cmd.TestnetFilesCmd,
 		cmd.ShowNodeIDCmd,
 		cmd.GenNodeKeyCmd,
+		cmd.RollbackCmd,
 		cmd.VersionCmd)
 
 	// NOTE:
