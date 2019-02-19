@@ -49,8 +49,6 @@ func rollbackData(cmd *cobra.Command, args []string) error {
 	newPrivValKey := config.PrivValidatorKeyFile()
 	newPrivValState := config.PrivValidatorStateFile()
 	privValidator := privval.LoadOrGenFilePV(newPrivValKey, newPrivValState)
-	fmt.Println(privValidator.String())
-	fmt.Println(config.GenesisFile())
 
 	blockStoreDB, err := node.DefaultDBProvider(&node.DBContext{"blockstore", config})
 	if err != nil {

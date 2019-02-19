@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# usage rollbackAllPeer.sh $rollbackHeight
+# usage rollbackSomePeer.sh $rollbackHeight i.e rollbackSomePeer.sh 200
 
 docker stop peer1 && docker stop peer2
 docker rm peer1 && docker rm peer2
@@ -12,6 +12,7 @@ echo $address
 ## rollback data and restart node
 for((i=1;i<3;i++))
 do
+	tendermint rollback --home="$PWD/newtm/node$i/" --rollback_data=true --rollback_height=$1 --rollback_height_flag=false
 	rm -rf $PWD/newtm/node$i/data/cs.wal
     port2=$((26656 + $i * 10))
     port3=$((26657 + $i * 10))

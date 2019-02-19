@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 cd ../../../cmd/tendermint && go build && mv tendermint /usr/bin
-cd ../../test/rollback/rollbackAllPeer
+cd ../../test/rollback/rollbackSomePeer
 
 
 tendermint testnet --v=4
