@@ -10,6 +10,7 @@ mv mytestnet newtm
 typeset -l address
 address=$(cat $PWD/newtm/node0/config/priv_validator_key.json | jq ".address" |sed 's/\"//g')
 echo $address
+echo "{\"priv_key\":"$(cat $PWD/newtm/node0/config/priv_validator_key.json | jq ".priv_key")"}"  >$PWD/newtm/node0/config/node_key.json
 
 echo "docker run -tid --net=bridge --name=peer0 -p 26656:26656 -p 26657:26657 -p 26658:26658 -v $PWD/newtm/node0:/chaindata -v /usr/bin:/bin  ubuntu /bin/tendermint node --proxy_app=kvstore --p2p.pex=false --log_level=info --home /chaindata" > startNode.sh
 
