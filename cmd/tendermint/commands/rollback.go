@@ -158,7 +158,7 @@ func restoreStateFromBlock(stateDb dbm.DB, blockStore *bc.BlockStore, rollbackHe
 	}
 }
 
-func modifyPrivValidatorsFile(config *cfg.Config, rollbackHeight int64) error{
+func modifyPrivValidatorsFile(config *cfg.Config, rollbackHeight int64) error {
 	var sig []byte
 	filePv := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	if config.RollbackHeightFlag {
