@@ -435,17 +435,16 @@ func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotal
 // Expects updates to be a list of updates sorted by address with no duplicates or errors,
 // must have been validated with verifyUpdates() and priorities computed with computeNewPriorities().
 func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
-
 	existing := vals.Validators
 
 	merged := make([]*Validator, len(existing)+len(updates))
 	i := 0
 
 	for len(existing) > 0 && len(updates) > 0 {
-		if bytes.Compare(existing[0].Address, updates[0].Address) < 0 {
+		if bytes.Compare(existing[0].Address, updates[0].Address) < 0 { // new validator
 			merged[i] = existing[0]
 			existing = existing[1:]
-		} else {
+		} else { // apply update or skip
 			merged[i] = updates[0]
 			if bytes.Equal(existing[0].Address, updates[0].Address) {
 				// validator present in both, advance existing
@@ -456,11 +455,12 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 		i++
 	}
 
+	// add the elements which are left
 	for j := 0; j < len(existing); j++ {
 		merged[i] = existing[j]
 		i++
 	}
-
+	// OR add updates which are left
 	for j := 0; j < len(updates); j++ {
 		merged[i] = updates[j]
 		i++
@@ -486,22 +486,27 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
 // Removes the validators specified in 'deletes' from validator set 'vals'.
 // Should not fail as verification has been done before.
 func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
+	if len(deletes) > len(vals.Validators) {
+		panic("There are more deletes than validators")
+	}
 
 	existing := vals.Validators
 
 	merged := make([]*Validator, len(existing)-len(deletes))
 	i := 0
 
-	for len(existing) > 0 && len(deletes) > 0 {
+	// loop over deletes until we removed all of them
+	for len(deletes) > 0 {
 		if bytes.Equal(existing[0].Address, deletes[0].Address) {
 			deletes = deletes[1:]
-		} else {
+		} else { // leave it in the resulting slice
 			merged[i] = existing[0]
 			i++
 		}
 		existing = existing[1:]
 	}
 
+	// add the elements which are left
 	for j := 0; j < len(existing); j++ {
 		merged[i] = existing[j]
 		i++
