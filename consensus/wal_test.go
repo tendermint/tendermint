@@ -165,16 +165,16 @@ func TestWALPeriodicSync(t *testing.T) {
 	err = WALGenerateNBlocks(t, wal.Group(), 5)
 	require.NoError(t, err)
 
-	h := int64(4)
-	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
-	assert.Error(t, err, "expected to get an error for height %d", h)
-	if gr != nil {
-		gr.Close()
-	}
+	// We should have data in the buffer now
+	assert.NotZero(t, wal.Group().Buffered())
 
 	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
 
-	gr, found, err = wal.SearchForEndHeight(h, &WALSearchOptions{})
+	// The data should have been flushed by the periodic sync
+	assert.Zero(t, wal.Group().Buffered())
+
+	h := int64(4)
+	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
 	assert.NoError(t, err, "expected not to err on height %d", h)
 	assert.True(t, found, "expected to find end height for %d", h)
 	assert.NotNil(t, gr)
