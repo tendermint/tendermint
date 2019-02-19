@@ -81,6 +81,9 @@ type baseWAL struct {
 	flushInterval time.Duration
 }
 
+// NewWAL attempts to create a new write-ahead logger based on `baseWAL`, which
+// implements all of the required WAL functionality. This base WAL also flushes
+// data to disk every 2s.
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
 	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
