@@ -886,12 +886,18 @@ func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 		// create a new set and apply updates, keeping copies for the checks
 		valSet := createNewValidatorSet(tt.startVals)
 		valList := createNewValidatorList(tt.updateVals)
-		valListCopy := validatorListCopy(valList)
 		err := valSet.UpdateWithChangeSet(valList)
 		assert.NoError(t, err, "test %d", i)
 
-		// check the parameter list has not changed
-		assert.Equal(t, valList, valListCopy, "test %v", i)
+		valListCopy := validatorListCopy(valSet.Validators)
+		// check that the voting power in the set's validators is not changing if the voting power
+		// is changed in the list of validators previously passed as parameter to UpdateWithChangeSet.
+		// this is to make sure copies of the validators are made by UpdateWithChangeSet.
+		if len(valList) > 0 {
+			valList[0].VotingPower += 1
+			assert.Equal(t, toTestValList(valListCopy), toTestValList(valSet.Validators), "test %v", i)
+
+		}
 
 		// check the final validator list is as expected and the set is properly scaled and centered.
 		assert.Equal(t, tt.expectedVals, toTestValList(valSet.Validators), "test %v", i)
