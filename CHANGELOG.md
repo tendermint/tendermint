@@ -2,31 +2,31 @@
 
 ## v0.30.1
 
-*February 18th, 2019*
+*February 20th, 2019*
 
-This release fixes the state machine halt and DataCorruptionError after restart
-in `game_of_stakes_6`. It also adds a check that validates the NetAddress.ID of
-the peer we're dialing.
+This release fixes a consensus halt and a DataCorruptionError after restart
+discovered in `game_of_stakes_6`. It also fixes a security issue in the p2p
+handshake by authenticating the NetAddress.ID of the peer we're dialing.
 
 ### IMPROVEMENTS:
 
-- [config] [\#3291](https://github.com/tendermint/tendermint/issues/3291) Make
+* [config] [\#3291](https://github.com/tendermint/tendermint/issues/3291) Make
   config.ResetTestRootWithChainID() create concurrency-safe test directories.
 
 ### BUG FIXES:
 
 * [consensus] [\#3295](https://github.com/tendermint/tendermint/issues/3295)
-  Flush WAL on stop to prevent data corruption during graceful shutdown
-- [consensus] [\#3302](https://github.com/tendermint/tendermint/issues/3302)
-  Reset TriggeredTimeoutPrecommit before starting next height
-- [rpc] [\#3251](https://github.com/tendermint/tendermint/issues/3251) Fix
-  /net_info#peers#remote_ip format. New format spec:
+  Flush WAL on stop to prevent data corruption during graceful shutdown.
+* [consensus] [\#3302](https://github.com/tendermint/tendermint/issues/3302)
+  Fix possible halt by resetting TriggeredTimeoutPrecommit before starting next height.
+* [rpc] [\#3251](https://github.com/tendermint/tendermint/issues/3251) Fix
+  `/net_info#peers#remote_ip` format. New format spec:
   * dotted decimal ("192.0.2.1"), if ip is an IPv4 or IP4-mapped IPv6 address
   * IPv6 ("2001:db8::1"), if ip is a valid IPv6 address
 * [cmd] [\#3314](https://github.com/tendermint/tendermint/issues/3314) Return
-  an error on `show_validator` when the private validator file does not exist
+  an error on `show_validator` when the private validator file does not exist.
 * [p2p] [\#3010](https://github.com/tendermint/tendermint/issues/3010#issuecomment-464287627)
-  Authenticate a peer against its NetAddress.ID while dialing
+  Authenticate a peer against its NetAddress.ID when dialing.
 
 ## v0.30.0
 
