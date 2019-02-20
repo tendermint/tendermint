@@ -118,9 +118,9 @@ func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	// NOTE: This may make debugging priority issues easier as well.
 	diff := computeMaxMinPriorityDiff(vals)
 	ratio := (diff + diffMax - 1) / diffMax
-	if ratio > 1 {
+	if diff > diffMax {
 		for _, val := range vals.Validators {
-			val.ProposerPriority /= ratio
+			val.ProposerPriority = val.ProposerPriority / ratio
 		}
 	}
 }

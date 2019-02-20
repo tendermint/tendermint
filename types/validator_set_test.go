@@ -708,7 +708,7 @@ func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
 	// verify that validator priorities are centered
 	valsCount := int64(len(valSet.Validators))
 	tpp := valSetTotalProposerPriority(valSet)
-	assert.True(t, tpp <= valsCount || tpp >= -valsCount,
+	assert.True(t, tpp <= valsCount && tpp >= -valsCount,
 		"expected total priority in (-%d, %d). Got %d", valsCount, valsCount, tpp)
 
 	// verify that priorities are scaled
