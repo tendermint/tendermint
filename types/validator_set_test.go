@@ -677,20 +677,39 @@ func createNewValidatorSet(testValList []testVal) *ValidatorSet {
 	return valSet
 }
 
+func valSetTotalVotingPower(valSet *ValidatorSet) int64 {
+	sum := int64(0)
+	for _, val := range valSet.Validators {
+		// mind overflow
+		sum = safeAddClip(sum, val.VotingPower)
+	}
+	return sum
+}
+
+func valSetTotalProposerPriority(valSet *ValidatorSet) int64 {
+	sum := int64(0)
+	for _, val := range valSet.Validators {
+		// mind overflow
+		sum = safeAddClip(sum, val.ProposerPriority)
+	}
+	return sum
+}
+
 func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
 	// verify that the capacity and length of validators is the same
 	assert.Equal(t, len(valSet.Validators), cap(valSet.Validators))
 
 	// verify that the vals' tvp is set to the sum of the all vals voting powers
 	tvp := valSet.totalVotingPower
-	assert.Equal(t, valSet.TotalVotingPower(), tvp,
-		"expected TVP %d. Got %d, valSet=%s", tvp, valSet.totalVotingPower, valSet)
+	expectedTVP := valSetTotalVotingPower(valSet)
+	assert.Equal(t, expectedTVP, tvp,
+		"expected TVP %d. Got %d, valSet=%s", expectedTVP, tvp, valSet)
 
 	// verify that validator priorities are centered
-	l := int64(len(valSet.Validators))
-	tpp := valSet.TotalVotingPower()
-	assert.True(t, tpp <= l || tpp >= -l,
-		"expected total priority in (-%d, %d). Got %d", l, l, tpp)
+	valsCount := int64(len(valSet.Validators))
+	tpp := valSetTotalProposerPriority(valSet)
+	assert.True(t, tpp <= valsCount || tpp >= -valsCount,
+		"expected total priority in (-%d, %d). Got %d", valsCount, valsCount, tpp)
 
 	// verify that priorities are scaled
 	dist := computeMaxMinPriorityDiff(valSet)
@@ -1097,11 +1116,10 @@ func applyChangesToValSet(t *testing.T, valSet *ValidatorSet, valsLists ...[]tes
 }
 
 func isAddressInList(address []byte, valsList []testVal) bool {
-	for len(valsList) > 0 {
-		if bytes.Equal([]byte(valsList[0].name), address) {
+	for _, val := range valsList {
+		if bytes.Equal([]byte(val.name), address) {
 			return true
 		}
-		valsList = valsList[1:]
 	}
 	return false
 }

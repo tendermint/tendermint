@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -487,7 +488,7 @@ func verifyRemovals(deletes []*Validator, vals *ValidatorSet) error {
 // Should not fail as verification has been done before.
 func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 	if len(deletes) > len(vals.Validators) {
-		panic("There are more deletes than validators")
+		panic("more deletes than validators")
 	}
 
 	existing := vals.Validators
@@ -549,12 +550,12 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	// Compute the priorities for updates
 	numNewValidators := computeNewPriorities(updates, vals, updatedTotalVotingPower)
 	if len(vals.Validators)+numNewValidators == len(deletes) {
-		err = fmt.Errorf("applying the validator changes would result in empty set")
+		err = errors.New("applying the validator changes would result in empty set")
 		return err
 	}
 
 	if len(vals.Validators)+numNewValidators < len(deletes) {
-		panic("internal error, more deletes than validators after verification")
+		panic("more deletes than validators after verification")
 	}
 
 	// Apply updates and removals
