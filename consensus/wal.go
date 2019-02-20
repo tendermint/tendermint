@@ -68,7 +68,7 @@ type WAL interface {
 
 // Write ahead logger writes msgs to disk before they are processed.
 // Can be used for crash-recovery and deterministic replay.
-// TODO: currently the wal is overwritten during replay catchup give it a mode
+// TODO: currently the wal is overwritten during replay catchup, give it a mode
 // so it's either reading or appending - must read to end to start appending
 // again.
 type baseWAL struct {
