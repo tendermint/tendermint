@@ -21,6 +21,9 @@ import (
 const (
 	// must be greater than types.BlockPartSizeBytes + a few bytes
 	maxMsgSizeBytes = 1024 * 1024 // 1MB
+
+	// how often the WAL should be sync'd during period sync'ing
+	walDefaultFlushInterval = 2 * time.Second
 )
 
 //--------------------------------------------------------
@@ -56,6 +59,7 @@ type WAL interface {
 	WriteSync(WALMessage)
 	Group() *auto.Group
 	SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error)
+	Flush() error
 
 	Start() error
 	Stop() error
@@ -72,8 +76,14 @@ type baseWAL struct {
 	group *auto.Group
 
 	enc *WALEncoder
+
+	flushTicker   *time.Ticker
+	flushInterval time.Duration
 }
 
+// NewWAL attempts to create a new write-ahead logger based on `baseWAL`, which
+// implements all of the required WAL functionality. This base WAL also flushes
+// data to disk every 2s.
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
 	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
@@ -85,11 +95,17 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		return nil, err
 	}
 	wal := &baseWAL{
-		group: group,
-		enc:   NewWALEncoder(group),
+		group:         group,
+		enc:           NewWALEncoder(group),
+		flushInterval: walDefaultFlushInterval,
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
+}
+
+// SetFlushInterval allows us to override the periodic flush interval for the WAL.
+func (wal *baseWAL) SetFlushInterval(i time.Duration) {
+	wal.flushInterval = i
 }
 
 func (wal *baseWAL) Group() *auto.Group {
@@ -109,14 +125,37 @@ func (wal *baseWAL) OnStart() error {
 		wal.WriteSync(EndHeightMessage{0})
 	}
 	err = wal.group.Start()
+	wal.flushTicker = time.NewTicker(wal.flushInterval)
+	go wal.processFlushTicks()
 	return err
+}
+
+// processFlushTicks allows us to periodically attempt to sync the WAL to disk.
+func (wal *baseWAL) processFlushTicks() {
+	for {
+		select {
+		case <-wal.flushTicker.C:
+			err := wal.Flush()
+			if err != nil {
+				wal.Logger.Error("Periodic WAL flush failed", "err", err)
+			}
+		case <-wal.Quit():
+			return
+		}
+	}
+}
+
+// Flush will attempt to flush the underlying group's data to disk.
+func (wal *baseWAL) Flush() error {
+	return wal.group.Flush()
 }
 
 // Stop the underlying autofile group.
 // Use Wait() to ensure it's finished shutting down
 // before cleaning up files.
 func (wal *baseWAL) OnStop() {
-	wal.group.Flush()
+	wal.flushTicker.Stop()
+	wal.Flush()
 	wal.group.Stop()
 	wal.group.Close()
 }
@@ -150,7 +189,7 @@ func (wal *baseWAL) WriteSync(msg WALMessage) {
 	}
 
 	wal.Write(msg)
-	if err := wal.group.Flush(); err != nil {
+	if err := wal.Flush(); err != nil {
 		panic(fmt.Sprintf("Error flushing consensus wal buf to file. Error: %v \n", err))
 	}
 }
@@ -343,3 +382,4 @@ func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *a
 func (nilWAL) Start() error { return nil }
 func (nilWAL) Stop() error  { return nil }
 func (nilWAL) Wait()        {}
+func (nilWAL) Flush() error { return nil }
