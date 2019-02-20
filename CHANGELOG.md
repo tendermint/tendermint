@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.30.1
+
+*February 20th, 2019*
+
+This release fixes a consensus halt and a DataCorruptionError after restart
+discovered in `game_of_stakes_6`. It also fixes a security issue in the p2p
+handshake by authenticating the NetAddress.ID of the peer we're dialing.
+
+### IMPROVEMENTS:
+
+* [config] [\#3291](https://github.com/tendermint/tendermint/issues/3291) Make
+  config.ResetTestRootWithChainID() create concurrency-safe test directories.
+
+### BUG FIXES:
+
+* [consensus] [\#3295](https://github.com/tendermint/tendermint/issues/3295)
+  Flush WAL on stop to prevent data corruption during graceful shutdown.
+* [consensus] [\#3302](https://github.com/tendermint/tendermint/issues/3302)
+  Fix possible halt by resetting TriggeredTimeoutPrecommit before starting next height.
+* [rpc] [\#3251](https://github.com/tendermint/tendermint/issues/3251) Fix
+  `/net_info#peers#remote_ip` format. New format spec:
+  * dotted decimal ("192.0.2.1"), if ip is an IPv4 or IP4-mapped IPv6 address
+  * IPv6 ("2001:db8::1"), if ip is a valid IPv6 address
+* [cmd] [\#3314](https://github.com/tendermint/tendermint/issues/3314) Return
+  an error on `show_validator` when the private validator file does not exist.
+* [p2p] [\#3010](https://github.com/tendermint/tendermint/issues/3010#issuecomment-464287627)
+  Authenticate a peer against its NetAddress.ID when dialing.
+
 ## v0.30.0
 
 *February 8th, 2019*
@@ -89,7 +117,7 @@ Special thanks to external contributors on this release:
 - [p2p] [\#3247](https://github.com/tendermint/tendermint/issues/3247) Fix panic in SeedMode when calling FlushStop and OnStop
   concurrently
 - [p2p] [\#3040](https://github.com/tendermint/tendermint/issues/3040) Fix MITM on secret connection by checking low-order points
-- [privval] [\#3258](https://github.com/tendermint/tendermint/issues/3258) Fix race between sign requests and ping requests in socket
+- [privval] [\#3258](https://github.com/tendermint/tendermint/issues/3258) Fix race between sign requests and ping requests in socket that was causing messages to be corrupted
 
 ## v0.29.1
 

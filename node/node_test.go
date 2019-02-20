@@ -31,6 +31,7 @@ import (
 
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
+	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
@@ -90,6 +91,7 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 
 func TestNodeDelayedStart(t *testing.T) {
 	config := cfg.ResetTestRoot("node_delayed_start_test")
+	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
 
 	// create & start node
@@ -104,6 +106,7 @@ func TestNodeDelayedStart(t *testing.T) {
 
 func TestNodeSetAppVersion(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
+	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
@@ -124,6 +127,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	addr := "tcp://" + testFreeAddr(t)
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = addr
 
 	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
@@ -153,6 +157,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	addrNoPrefix := testFreeAddr(t)
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = addrNoPrefix
 
 	_, err := DefaultNewNode(config, log.TestingLogger())
@@ -164,6 +169,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	defer os.Remove(tmpfile) // clean up
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
 	dialer := privval.DialUnixFn(tmpfile)
@@ -200,6 +206,7 @@ func testFreeAddr(t *testing.T) string {
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
+	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()

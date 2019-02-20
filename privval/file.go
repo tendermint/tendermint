@@ -31,7 +31,6 @@ func voteToStep(vote *types.Vote) int8 {
 		return stepPrecommit
 	default:
 		panic("Unknown vote type")
-		return 0
 	}
 }
 

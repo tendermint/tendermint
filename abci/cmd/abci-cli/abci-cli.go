@@ -394,7 +394,6 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	return nil
 }
 
 func muxOnCommands(cmd *cobra.Command, pArgs []string) error {

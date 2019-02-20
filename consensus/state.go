@@ -566,6 +566,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	cs.CommitRound = -1
 	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
+	cs.TriggeredTimeoutPrecommit = false
 
 	cs.state = state
 
@@ -909,7 +910,7 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	}
 
 	// Make proposal
-	propBlockId := types.BlockID{block.Hash(), blockParts.Header()}
+	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 
@@ -1320,7 +1321,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
-	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{block.Hash(), blockParts.Header()}, block)
+	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}, block)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := cmn.Kill()
@@ -1543,7 +1544,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		}
 
 		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
-		cs.eventBus.PublishEventVote(types.EventDataVote{vote})
+		cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 		cs.evsw.FireEvent(types.EventVote, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
@@ -1571,7 +1572,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		return
 	}
 
-	cs.eventBus.PublishEventVote(types.EventDataVote{vote})
+	cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 	cs.evsw.FireEvent(types.EventVote, vote)
 
 	switch vote.Type {
@@ -1683,7 +1684,7 @@ func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, heade
 		Round:            cs.Round,
 		Timestamp:        cs.voteTime(),
 		Type:             type_,
-		BlockID:          types.BlockID{hash, header},
+		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
 	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
 	return vote, err
