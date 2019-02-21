@@ -2,10 +2,15 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"io"
+	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // zipDir zips all the contents found in src, including both files and
@@ -97,4 +102,16 @@ func copyFile(src, dest string) error {
 	}
 
 	return os.Chmod(dest, srcInfo.Mode())
+}
+
+// writeStateToFile pretty JSON encodes an object and writes it to file composed
+// of dir and filename. It returns an error upon failure to encode or write to
+// file.
+func writeStateJSONToFile(state interface{}, dir, filename string) error {
+	stateJSON, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return errors.Wrap(err, "failed to encode state dump")
+	}
+
+	return ioutil.WriteFile(path.Join(dir, filename), stateJSON, os.ModePerm)
 }

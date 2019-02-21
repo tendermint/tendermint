@@ -8,14 +8,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "tendermint-debug",
-	Short: "A debugging utility to kill a Tendermint process while aggregating useful data",
-	Long: `A debugging utility that may be used to kill a Tendermint process while also
-aggregating Tendermint process data such as the latest node state, including
-consensus and networking state, go-routine state, and the node's WAL and config
-information. This aggregated data is packaged into a compressed archive.
-
-The tendermint-debug utility may also be used to continuously dump Tendermint
-process data into a single location.`,
+	Short: "A debugging utility to kill or watch a Tendermint process while aggregating useful data",
 }
 
 func init() {

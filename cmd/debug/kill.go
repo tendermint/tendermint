@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"syscall"
@@ -27,8 +25,12 @@ var (
 var killCmd = &cobra.Command{
 	Use:   "kill [pid] [compressed-output-file]",
 	Short: "Kill a Tendermint process while aggregating and packaging debugging data",
-	Args:  cobra.ExactArgs(2),
-	RunE:  killTendermintProc,
+	Long: `A debugging utility that may be used to kill a Tendermint process while also
+aggregating Tendermint process data such as the latest node state, including
+consensus and networking state, go-routine state, and the node's WAL and config
+information. This aggregated data is packaged into a compressed archive.`,
+	Args: cobra.ExactArgs(2),
+	RunE: killTendermintProc,
 }
 
 func init() {
@@ -158,6 +160,8 @@ func copyConfig(dir string) error {
 // An error is not returned if any subsequent syscall fails.
 func killProc(pid uint64, dir string) error {
 	// pipe STDERR output from tailing the Tendermint process to a file
+	//
+	// NOTE: This will only work on UNIX systems.
 	cmd := exec.Command("tail", "-f", fmt.Sprintf("/proc/%d/fd/2", pid))
 
 	outFile, err := os.Create(filepath.Join(dir, "stacktrace.out"))
@@ -183,8 +187,8 @@ func killProc(pid uint64, dir string) error {
 
 		// allow some time to allow the Tendermint process to be killed
 		//
-		// TODO: Is there a way to 'wait' for a kill to succeed? Regardless, this
-		// should be ample time.
+		// TODO: We should 'wait' for a kill to succeed. Regardless, this should be
+		// ample time.
 		time.Sleep(5 * time.Second)
 
 		if err := cmd.Process.Kill(); err != nil {
@@ -200,16 +204,4 @@ func killProc(pid uint64, dir string) error {
 	}
 
 	return nil
-}
-
-// writeStateToFile pretty JSON encodes an object and writes it to file composed
-// of dir and filename. It returns an error upon failure to encode or write to
-// file.
-func writeStateJSONToFile(state interface{}, dir, filename string) error {
-	stateJSON, err := json.MarshalIndent(state, "", "  ")
-	if err != nil {
-		return errors.Wrap(err, "failed to encode state dump")
-	}
-
-	return ioutil.WriteFile(path.Join(dir, filename), stateJSON, os.ModePerm)
 }
