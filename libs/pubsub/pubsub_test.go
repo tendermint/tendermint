@@ -33,12 +33,27 @@ func TestSubscribe(t *testing.T) {
 	require.NoError(t, err)
 	assertReceive(t, "Ka-Zar", subscription.Out())
 
-	err = s.Publish(ctx, "Quicksilver")
-	require.NoError(t, err)
-	assertReceive(t, "Quicksilver", subscription.Out())
+	published := make(chan struct{})
+	go func() {
+		defer close(published)
+
+		err := s.Publish(ctx, "Quicksilver")
+		assert.NoError(t, err)
+
+		err = s.Publish(ctx, "Asylum")
+		assert.NoError(t, err)
+	}()
+
+	select {
+	case <-published:
+		assertReceive(t, "Quicksilver", subscription.Out())
+		assertCancelled(t, subscription, pubsub.ErrOutOfCapacity)
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Expected Publish(Asylum) not to block")
+	}
 }
 
-func TestSubscribeWithoutCapacity(t *testing.T) {
+func TestSubscribeWithCapacity(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
 	s.Start()
@@ -47,6 +62,8 @@ func TestSubscribeWithoutCapacity(t *testing.T) {
 	ctx := context.Background()
 	assert.Panics(t, func() {
 		s.Subscribe(ctx, clientID, query.Empty{}, -1)
+	})
+	assert.Panics(t, func() {
 		s.Subscribe(ctx, clientID, query.Empty{}, 0)
 	})
 	subscription, err := s.Subscribe(ctx, clientID, query.Empty{}, 1)
@@ -65,11 +82,42 @@ func TestSubscribeUnbuffered(t *testing.T) {
 	ctx := context.Background()
 	subscription, err := s.SubscribeUnbuffered(ctx, clientID, query.Empty{})
 	require.NoError(t, err)
+
+	published := make(chan struct{})
 	go func() {
-		err = s.Publish(ctx, "Ultron")
-		require.NoError(t, err)
+		defer close(published)
+
+		err := s.Publish(ctx, "Ultron")
+		assert.NoError(t, err)
+
+		err = s.Publish(ctx, "Darkhawk")
+		assert.NoError(t, err)
 	}()
-	assertReceive(t, "Ultron", subscription.Out())
+
+	select {
+	case <-published:
+		t.Fatal("Expected Publish(Darkhawk) to block")
+	case <-time.After(100 * time.Millisecond):
+		assertReceive(t, "Ultron", subscription.Out())
+		assertReceive(t, "Darkhawk", subscription.Out())
+	}
+}
+
+func TestSlowClientIsRemovedWithErrOutOfCapacity(t *testing.T) {
+	s := pubsub.NewServer()
+	s.SetLogger(log.TestingLogger())
+	s.Start()
+	defer s.Stop()
+
+	ctx := context.Background()
+	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
+	require.NoError(t, err)
+	err = s.Publish(ctx, "Fat Cobra")
+	require.NoError(t, err)
+	err = s.Publish(ctx, "Viper")
+	require.NoError(t, err)
+
+	assertCancelled(t, subscription, pubsub.ErrOutOfCapacity)
 }
 
 func TestDifferentClients(t *testing.T) {
@@ -139,10 +187,7 @@ func TestUnsubscribe(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, len(subscription.Out()), "Should not receive anything after Unsubscribe")
 
-	_, ok := <-subscription.Cancelled()
-	assert.False(t, ok)
-
-	assert.Equal(t, pubsub.ErrUnsubscribed, subscription.Err())
+	assertCancelled(t, subscription, pubsub.ErrUnsubscribed)
 }
 
 func TestClientUnsubscribesTwice(t *testing.T) {
@@ -202,12 +247,8 @@ func TestUnsubscribeAll(t *testing.T) {
 	assert.Zero(t, len(subscription1.Out()), "Should not receive anything after UnsubscribeAll")
 	assert.Zero(t, len(subscription2.Out()), "Should not receive anything after UnsubscribeAll")
 
-	_, ok := <-subscription1.Cancelled()
-	assert.False(t, ok)
-	assert.Equal(t, pubsub.ErrUnsubscribed, subscription1.Err())
-	_, ok = <-subscription2.Cancelled()
-	assert.False(t, ok)
-	assert.Equal(t, pubsub.ErrUnsubscribed, subscription2.Err())
+	assertCancelled(t, subscription1, pubsub.ErrUnsubscribed)
+	assertCancelled(t, subscription2, pubsub.ErrUnsubscribed)
 }
 
 func TestBufferCapacity(t *testing.T) {
@@ -311,4 +352,10 @@ func assertReceive(t *testing.T, expected interface{}, ch <-chan pubsub.Message,
 		t.Errorf("Expected to receive %v from the channel, got nothing after 1s", expected)
 		debug.PrintStack()
 	}
+}
+
+func assertCancelled(t *testing.T, subscription *pubsub.Subscription, err error) {
+	_, ok := <-subscription.Cancelled()
+	assert.False(t, ok)
+	assert.Equal(t, err, subscription.Err())
 }

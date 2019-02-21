@@ -27,6 +27,14 @@ type Subscription struct {
 	err       error
 }
 
+// NewSubscription returns a new subscription with the given outCapacity.
+func NewSubscription(outCapacity int) *Subscription {
+	return &Subscription{
+		out:       make(chan Message, outCapacity),
+		cancelled: make(chan struct{}),
+	}
+}
+
 // Out returns a channel onto which messages and tags are published.
 // Unsubscribe/UnsubscribeAll does not close the channel to avoid clients from
 // receiving a nil message.
@@ -51,6 +59,13 @@ func (s *Subscription) Err() error {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	return s.err
+}
+
+func (s *Subscription) cancel(err error) {
+	s.mtx.Lock()
+	s.err = err
+	s.mtx.Unlock()
+	close(s.cancelled)
 }
 
 // Message glues data and tags together.
