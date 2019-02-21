@@ -30,7 +30,7 @@ aggregating Tendermint process data such as the latest node state, including
 consensus and networking state, go-routine state, and the node's WAL and config
 information. This aggregated data is packaged into a compressed archive.`,
 	Args: cobra.ExactArgs(2),
-	RunE: killTendermintProc,
+	RunE: killCmdHandler,
 }
 
 func init() {
@@ -50,7 +50,7 @@ func init() {
 	)
 }
 
-func killTendermintProc(cmd *cobra.Command, args []string) error {
+func killCmdHandler(cmd *cobra.Command, args []string) error {
 	pid, err := strconv.ParseUint(args[0], 10, 64)
 	if err != nil {
 		return err
