@@ -254,21 +254,29 @@ func (vals *ValidatorSet) Size() int {
 	return len(vals.Validators)
 }
 
-// TotalVotingPower returns the sum of the voting powers of all validators.
-func (vals *ValidatorSet) TotalVotingPower() int64 {
-	if vals.totalVotingPower == 0 {
-		sum := int64(0)
-		for _, val := range vals.Validators {
-			// mind overflow
-			sum = safeAddClip(sum, val.VotingPower)
-		}
+// force recalculation of the set's total voting power
+func (vals *ValidatorSet) updateTotalVotingPower() {
+
+	sum := int64(0)
+	for _, val := range vals.Validators {
+		// mind overflow
+		sum = safeAddClip(sum, val.VotingPower)
 		if sum > MaxTotalVotingPower {
 			panic(fmt.Sprintf(
 				"Total voting power should be guarded to not exceed %v; got: %v",
 				MaxTotalVotingPower,
 				sum))
 		}
-		vals.totalVotingPower = sum
+	}
+
+	vals.totalVotingPower = sum
+}
+
+// TotalVotingPower returns the sum of the voting powers of all validators.
+// It recomputes the total voting power if required.
+func (vals *ValidatorSet) TotalVotingPower() int64 {
+	if vals.totalVotingPower == 0 {
+		vals.updateTotalVotingPower()
 	}
 	return vals.totalVotingPower
 }
@@ -550,8 +558,7 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	// Compute the priorities for updates
 	numNewValidators := computeNewPriorities(updates, vals, updatedTotalVotingPower)
 	if len(vals.Validators)+numNewValidators == len(deletes) {
-		err = errors.New("applying the validator changes would result in empty set")
-		return err
+		return errors.New("applying the validator changes would result in empty set")
 	}
 
 	if len(vals.Validators)+numNewValidators < len(deletes) {
@@ -562,9 +569,8 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	vals.applyUpdates(updates)
 	vals.applyRemovals(deletes)
 
-	// reset totalVotingPower since changes were made to the set,
-	// this will cause vals.TotalVotingPower() to recompute it.
-	vals.totalVotingPower = 0
+	// Update total voting power
+	vals.updateTotalVotingPower()
 
 	// Scale and center
 	vals.RescalePriorities(PriorityWindowSizeFactor * vals.TotalVotingPower())

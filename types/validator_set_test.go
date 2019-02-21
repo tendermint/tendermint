@@ -677,15 +677,6 @@ func createNewValidatorSet(testValList []testVal) *ValidatorSet {
 	return valSet
 }
 
-func valSetTotalVotingPower(valSet *ValidatorSet) int64 {
-	sum := int64(0)
-	for _, val := range valSet.Validators {
-		// mind overflow
-		sum = safeAddClip(sum, val.VotingPower)
-	}
-	return sum
-}
-
 func valSetTotalProposerPriority(valSet *ValidatorSet) int64 {
 	sum := int64(0)
 	for _, val := range valSet.Validators {
@@ -699,16 +690,17 @@ func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
 	// verify that the capacity and length of validators is the same
 	assert.Equal(t, len(valSet.Validators), cap(valSet.Validators))
 
-	// verify that the vals' tvp is set to the sum of the all vals voting powers
-	tvp := valSet.totalVotingPower
-	expectedTVP := valSetTotalVotingPower(valSet)
-	assert.Equal(t, expectedTVP, tvp,
-		"expected TVP %d. Got %d, valSet=%s", expectedTVP, tvp, valSet)
+	// verify that the set's total voting power has been updated
+	tvp := valSet.TotalVotingPower()
+	valSet.updateTotalVotingPower()
+	expectedTvp := valSet.TotalVotingPower()
+	assert.Equal(t, expectedTvp, tvp,
+		"expected TVP %d. Got %d, valSet=%s", expectedTvp, tvp, valSet)
 
 	// verify that validator priorities are centered
 	valsCount := int64(len(valSet.Validators))
 	tpp := valSetTotalProposerPriority(valSet)
-	assert.True(t, tpp <= valsCount && tpp >= -valsCount,
+	assert.True(t, tpp < valsCount && tpp > -valsCount,
 		"expected total priority in (-%d, %d). Got %d", valsCount, valsCount, tpp)
 
 	// verify that priorities are scaled
