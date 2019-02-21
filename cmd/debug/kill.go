@@ -88,7 +88,6 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := killProc(pid, tmpDir); err != nil {
-		fmt.Printf("%T\n", err)
 		return err
 	}
 
