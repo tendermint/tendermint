@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -179,6 +180,12 @@ func killProc(pid uint64, dir string) error {
 		if err := syscall.Kill(int(pid), syscall.SIGABRT); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to kill Tendermint process: %s", err)
 		}
+
+		// allow some time to allow the Tendermint process to be killed
+		//
+		// TODO: Is there a way to 'wait' for a kill to succeed? Regardless, this
+		// should be ample time.
+		time.Sleep(5 * time.Second)
 
 		if err := cmd.Process.Kill(); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to kill Tendermint process output redirection: %s", err)
