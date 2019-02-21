@@ -53,6 +53,11 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	outFile := args[1]
+	if outFile == "" {
+		return errors.New("invalid output file")
+	}
+
 	rpc := rpcclient.NewHTTP(nodeAddr, "/websocket")
 
 	conf := cfg.DefaultConfig()
@@ -91,7 +96,7 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return zipDir(tmpDir, args[1])
+	return zipDir(tmpDir, outFile)
 }
 
 // dumpStatus gets node status state dump from the Tendermint RPC and writes it
