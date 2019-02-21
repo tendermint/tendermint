@@ -209,6 +209,13 @@ func (g *Group) WriteLine(line string) error {
 	return err
 }
 
+// Buffered returns the size of the currently buffered data.
+func (g *Group) Buffered() int {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+	return g.headBuf.Buffered()
+}
+
 // Flush writes any buffered data to the underlying file and commits the
 // current content of the file to stable storage.
 func (g *Group) Flush() error {

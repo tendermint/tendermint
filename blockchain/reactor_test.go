@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -125,6 +126,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 func TestNoBlockResponse(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
 	maxBlockHeight := int64(65)
@@ -184,6 +186,7 @@ func TestNoBlockResponse(t *testing.T) {
 // that seems extreme.
 func TestBadBlockStopsPeer(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
 	maxBlockHeight := int64(148)
