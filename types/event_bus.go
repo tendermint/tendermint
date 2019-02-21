@@ -62,6 +62,8 @@ func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpub
 	return b.pubsub.Subscribe(ctx, subscriber, query, outCapacity...)
 }
 
+// This method can be used for a local consensus explorer and synchronous
+// testing. Do not use for for public facing / untrusted subscriptions!
 func (b *EventBus) SubscribeUnbuffered(ctx context.Context, subscriber string, query tmpubsub.Query) (Subscription, error) {
 	return b.pubsub.SubscribeUnbuffered(ctx, subscriber, query)
 }
