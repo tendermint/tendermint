@@ -21,6 +21,9 @@ import (
 const (
 	// must be greater than types.BlockPartSizeBytes + a few bytes
 	maxMsgSizeBytes = 1024 * 1024 // 1MB
+
+	// how often the WAL should be sync'd during period sync'ing
+	walDefaultFlushInterval = 2 * time.Second
 )
 
 //--------------------------------------------------------
@@ -56,6 +59,7 @@ type WAL interface {
 	WriteSync(WALMessage)
 	Group() *auto.Group
 	SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error)
+	Flush() error
 
 	Start() error
 	Stop() error
@@ -63,17 +67,23 @@ type WAL interface {
 }
 
 // Write ahead logger writes msgs to disk before they are processed.
-// Can be used for crash-recovery and deterministic replay
-// TODO: currently the wal is overwritten during replay catchup
-//   give it a mode so it's either reading or appending - must read to end to start appending again
+// Can be used for crash-recovery and deterministic replay.
+// TODO: currently the wal is overwritten during replay catchup, give it a mode
+// so it's either reading or appending - must read to end to start appending
+// again.
 type baseWAL struct {
 	cmn.BaseService
 
 	group *auto.Group
 
 	enc *WALEncoder
+
+	flushTicker   *time.Ticker
+	flushInterval time.Duration
 }
 
+// NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
+// WAL. It's flushed and synced to disk every 2s and once when stopped.
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
 	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
@@ -85,11 +95,17 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		return nil, err
 	}
 	wal := &baseWAL{
-		group: group,
-		enc:   NewWALEncoder(group),
+		group:         group,
+		enc:           NewWALEncoder(group),
+		flushInterval: walDefaultFlushInterval,
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
+}
+
+// SetFlushInterval allows us to override the periodic flush interval for the WAL.
+func (wal *baseWAL) SetFlushInterval(i time.Duration) {
+	wal.flushInterval = i
 }
 
 func (wal *baseWAL) Group() *auto.Group {
@@ -109,12 +125,43 @@ func (wal *baseWAL) OnStart() error {
 		wal.WriteSync(EndHeightMessage{0})
 	}
 	err = wal.group.Start()
+	wal.flushTicker = time.NewTicker(wal.flushInterval)
+	go wal.processFlushTicks()
 	return err
 }
 
+func (wal *baseWAL) processFlushTicks() {
+	for {
+		select {
+		case <-wal.flushTicker.C:
+			if err := wal.Flush(); err != nil {
+				wal.Logger.Error("Periodic WAL flush failed", "err", err)
+			}
+		case <-wal.Quit():
+			return
+		}
+	}
+}
+
+// Flush will attempt to flush and fsync the underlying group's data to disk.
+func (wal *baseWAL) Flush() error {
+	return wal.group.Flush()
+}
+
+// Stop the underlying autofile group.
+// Use Wait() to ensure it's finished shutting down
+// before cleaning up files.
 func (wal *baseWAL) OnStop() {
+	wal.flushTicker.Stop()
+	wal.Flush()
 	wal.group.Stop()
 	wal.group.Close()
+}
+
+// Wait for the underlying autofile group to finish shutting down
+// so it's safe to cleanup files.
+func (wal *baseWAL) Wait() {
+	wal.group.Wait()
 }
 
 // Write is called in newStep and for each receive on the
@@ -140,7 +187,7 @@ func (wal *baseWAL) WriteSync(msg WALMessage) {
 	}
 
 	wal.Write(msg)
-	if err := wal.group.Flush(); err != nil {
+	if err := wal.Flush(); err != nil {
 		panic(fmt.Sprintf("Error flushing consensus wal buf to file. Error: %v \n", err))
 	}
 }
@@ -219,12 +266,17 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 	return &WALEncoder{wr}
 }
 
-// Encode writes the custom encoding of v to the stream.
+// Encode writes the custom encoding of v to the stream. It returns an error if
+// the amino-encoded size of v is greater than 1MB. Any error encountered
+// during the write is also returned.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	data := cdc.MustMarshalBinaryBare(v)
 
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
+	if length > maxMsgSizeBytes {
+		return fmt.Errorf("Msg is too big: %d bytes, max: %d bytes", length, maxMsgSizeBytes)
+	}
 	totalLength := 8 + int(length)
 
 	msg := make([]byte, totalLength)
@@ -297,15 +349,15 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	}
 
 	data := make([]byte, length)
-	_, err = dec.rd.Read(data)
+	n, err := dec.rd.Read(data)
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to read data: %v (read: %d, wanted: %d)", err, n, length)}
 	}
 
 	// check checksum before decoding data
 	actualCRC := crc32.Checksum(data, crc32c)
 	if actualCRC != crc {
-		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: (read: %v, actual: %v)", crc, actualCRC)}
+		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: read: %v, actual: %v", crc, actualCRC)}
 	}
 
 	var res = new(TimedWALMessage) // nolint: gosimple
@@ -328,3 +380,4 @@ func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *a
 func (nilWAL) Start() error { return nil }
 func (nilWAL) Stop() error  { return nil }
 func (nilWAL) Wait()        {}
+func (nilWAL) Flush() error { return nil }

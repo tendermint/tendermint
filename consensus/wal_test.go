@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"crypto/rand"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,6 +19,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	walTestFlushInterval = time.Duration(100) * time.Millisecond
 )
 
 func TestWALTruncate(t *testing.T) {
@@ -39,11 +42,16 @@ func TestWALTruncate(t *testing.T) {
 	wal.SetLogger(log.TestingLogger())
 	err = wal.Start()
 	require.NoError(t, err)
-	defer wal.Stop()
+	defer func() {
+		wal.Stop()
+		// wait for the wal to finish shutting down so we
+		// can safely remove the directory
+		wal.Wait()
+	}()
 
 	//60 block's size nearly 70K, greater than group's headBuf size(4096 * 10), when headBuf is full, truncate content will Flush to the file.
 	//at this time, RotateFile is called, truncate content exist in each file.
-	err = WALGenerateNBlocks(wal.Group(), 60)
+	err = WALGenerateNBlocks(t, wal.Group(), 60)
 	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
@@ -52,9 +60,9 @@ func TestWALTruncate(t *testing.T) {
 
 	h := int64(50)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
-	assert.NoError(t, err, fmt.Sprintf("expected not to err on height %d", h))
-	assert.True(t, found, fmt.Sprintf("expected to find end height for %d", h))
-	assert.NotNil(t, gr, "expected group not to be nil")
+	assert.NoError(t, err, "expected not to err on height %d", h)
+	assert.True(t, found, "expected to find end height for %d", h)
+	assert.NotNil(t, gr)
 	defer gr.Close()
 
 	dec := NewWALDecoder(gr)
@@ -62,7 +70,7 @@ func TestWALTruncate(t *testing.T) {
 	assert.NoError(t, err, "expected to decode a message")
 	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
-	assert.Equal(t, rs.Height, h+1, fmt.Sprintf("wrong height"))
+	assert.Equal(t, rs.Height, h+1, "wrong height")
 }
 
 func TestWALEncoderDecoder(t *testing.T) {
@@ -90,8 +98,28 @@ func TestWALEncoderDecoder(t *testing.T) {
 	}
 }
 
+func TestWALWritePanicsIfMsgIsTooBig(t *testing.T) {
+	walDir, err := ioutil.TempDir("", "wal")
+	require.NoError(t, err)
+	defer os.RemoveAll(walDir)
+	walFile := filepath.Join(walDir, "wal")
+
+	wal, err := NewWAL(walFile)
+	require.NoError(t, err)
+	err = wal.Start()
+	require.NoError(t, err)
+	defer func() {
+		wal.Stop()
+		// wait for the wal to finish shutting down so we
+		// can safely remove the directory
+		wal.Wait()
+	}()
+
+	assert.Panics(t, func() { wal.Write(make([]byte, maxMsgSizeBytes+1)) })
+}
+
 func TestWALSearchForEndHeight(t *testing.T) {
-	walBody, err := WALWithNBlocks(6)
+	walBody, err := WALWithNBlocks(t, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,9 +131,9 @@ func TestWALSearchForEndHeight(t *testing.T) {
 
 	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
-	assert.NoError(t, err, fmt.Sprintf("expected not to err on height %d", h))
-	assert.True(t, found, fmt.Sprintf("expected to find end height for %d", h))
-	assert.NotNil(t, gr, "expected group not to be nil")
+	assert.NoError(t, err, "expected not to err on height %d", h)
+	assert.True(t, found, "expected to find end height for %d", h)
+	assert.NotNil(t, gr)
 	defer gr.Close()
 
 	dec := NewWALDecoder(gr)
@@ -113,7 +141,46 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	assert.NoError(t, err, "expected to decode a message")
 	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
-	assert.Equal(t, rs.Height, h+1, fmt.Sprintf("wrong height"))
+	assert.Equal(t, rs.Height, h+1, "wrong height")
+}
+
+func TestWALPeriodicSync(t *testing.T) {
+	walDir, err := ioutil.TempDir("", "wal")
+	require.NoError(t, err)
+	defer os.RemoveAll(walDir)
+
+	walFile := filepath.Join(walDir, "wal")
+	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
+	require.NoError(t, err)
+
+	wal.SetFlushInterval(walTestFlushInterval)
+	wal.SetLogger(log.TestingLogger())
+
+	require.NoError(t, wal.Start())
+	defer func() {
+		wal.Stop()
+		wal.Wait()
+	}()
+
+	err = WALGenerateNBlocks(t, wal.Group(), 5)
+	require.NoError(t, err)
+
+	// We should have data in the buffer now
+	assert.NotZero(t, wal.Group().Buffered())
+
+	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
+
+	// The data should have been flushed by the periodic sync
+	assert.Zero(t, wal.Group().Buffered())
+
+	h := int64(4)
+	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
+	assert.NoError(t, err, "expected not to err on height %d", h)
+	assert.True(t, found, "expected to find end height for %d", h)
+	assert.NotNil(t, gr)
+	if gr != nil {
+		gr.Close()
+	}
 }
 
 /*

@@ -2,7 +2,6 @@ package core_types
 
 import (
 	"encoding/json"
-	"net"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -111,7 +110,7 @@ type Peer struct {
 	NodeInfo         p2p.DefaultNodeInfo  `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
-	RemoteIP         net.IP               `json:"remote_ip"`
+	RemoteIP         string               `json:"remote_ip"`
 }
 
 // Validators for a height

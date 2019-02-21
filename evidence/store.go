@@ -117,32 +117,33 @@ func (store *EvidenceStore) listEvidence(prefixKey string, maxNum int64) (eviden
 	return evidence
 }
 
-// GetEvidence fetches the evidence with the given height and hash.
-func (store *EvidenceStore) GetEvidence(height int64, hash []byte) *EvidenceInfo {
+// GetEvidenceInfo fetches the EvidenceInfo with the given height and hash.
+// If not found, ei.Evidence is nil.
+func (store *EvidenceStore) GetEvidenceInfo(height int64, hash []byte) EvidenceInfo {
 	key := keyLookupFromHeightAndHash(height, hash)
 	val := store.db.Get(key)
 
 	if len(val) == 0 {
-		return nil
+		return EvidenceInfo{}
 	}
 	var ei EvidenceInfo
 	err := cdc.UnmarshalBinaryBare(val, &ei)
 	if err != nil {
 		panic(err)
 	}
-	return &ei
+	return ei
 }
 
 // AddNewEvidence adds the given evidence to the database.
 // It returns false if the evidence is already stored.
 func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int64) bool {
 	// check if we already have seen it
-	ei_ := store.GetEvidence(evidence.Height(), evidence.Hash())
-	if ei_ != nil && ei_.Evidence != nil {
+	ei := store.getEvidenceInfo(evidence)
+	if ei.Evidence != nil {
 		return false
 	}
 
-	ei := EvidenceInfo{
+	ei = EvidenceInfo{
 		Committed: false,
 		Priority:  priority,
 		Evidence:  evidence,
@@ -165,6 +166,11 @@ func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int
 // MarkEvidenceAsBroadcasted removes evidence from Outqueue.
 func (store *EvidenceStore) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
 	ei := store.getEvidenceInfo(evidence)
+	if ei.Evidence == nil {
+		// nothing to do; we did not store the evidence yet (AddNewEvidence):
+		return
+	}
+	// remove from the outqueue
 	key := keyOutqueue(evidence, ei.Priority)
 	store.db.Delete(key)
 }
@@ -177,8 +183,12 @@ func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	pendingKey := keyPending(evidence)
 	store.db.Delete(pendingKey)
 
-	ei := store.getEvidenceInfo(evidence)
-	ei.Committed = true
+	// committed EvidenceInfo doens't need priority
+	ei := EvidenceInfo{
+		Committed: true,
+		Evidence:  evidence,
+		Priority:  0,
+	}
 
 	lookupKey := keyLookup(evidence)
 	store.db.SetSync(lookupKey, cdc.MustMarshalBinaryBare(ei))
@@ -187,13 +197,7 @@ func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
 //---------------------------------------------------
 // utils
 
+// getEvidenceInfo is convenience for calling GetEvidenceInfo if we have the full evidence.
 func (store *EvidenceStore) getEvidenceInfo(evidence types.Evidence) EvidenceInfo {
-	key := keyLookup(evidence)
-	var ei EvidenceInfo
-	b := store.db.Get(key)
-	err := cdc.UnmarshalBinaryBare(b, &ei)
-	if err != nil {
-		panic(err)
-	}
-	return ei
+	return store.GetEvidenceInfo(evidence.Height(), evidence.Hash())
 }

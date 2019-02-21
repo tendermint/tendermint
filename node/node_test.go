@@ -31,6 +31,7 @@ import (
 
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
+	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
@@ -88,13 +89,14 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 	}
 }
 
-func TestNodeDelayedStop(t *testing.T) {
-	config := cfg.ResetTestRoot("node_delayed_node_test")
+func TestNodeDelayedStart(t *testing.T) {
+	config := cfg.ResetTestRoot("node_delayed_start_test")
+	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
-	n.GenesisDoc().GenesisTime = now.Add(5 * time.Second)
+	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 	require.NoError(t, err)
 
 	n.Start()
@@ -104,6 +106,7 @@ func TestNodeDelayedStop(t *testing.T) {
 
 func TestNodeSetAppVersion(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
+	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
@@ -124,6 +127,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	addr := "tcp://" + testFreeAddr(t)
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = addr
 
 	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
@@ -133,6 +137,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 		types.NewMockPV(),
 		dialer,
 	)
+	privval.RemoteSignerConnDeadline(100 * time.Millisecond)(pvsc)
 
 	go func() {
 		err := pvsc.Start()
@@ -152,6 +157,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	addrNoPrefix := testFreeAddr(t)
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = addrNoPrefix
 
 	_, err := DefaultNewNode(config, log.TestingLogger())
@@ -163,6 +169,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	defer os.Remove(tmpfile) // clean up
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
 	dialer := privval.DialUnixFn(tmpfile)
@@ -172,20 +179,18 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		types.NewMockPV(),
 		dialer,
 	)
+	privval.RemoteSignerConnDeadline(100 * time.Millisecond)(pvsc)
 
-	done := make(chan struct{})
 	go func() {
-		defer close(done)
-		n, err := DefaultNewNode(config, log.TestingLogger())
+		err := pvsc.Start()
 		require.NoError(t, err)
-		assert.IsType(t, &privval.SocketVal{}, n.PrivValidator())
 	}()
-
-	err := pvsc.Start()
-	require.NoError(t, err)
 	defer pvsc.Stop()
 
-	<-done
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	assert.IsType(t, &privval.SocketVal{}, n.PrivValidator())
+
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.
@@ -201,6 +206,7 @@ func testFreeAddr(t *testing.T) string {
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
+	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
@@ -228,11 +234,10 @@ func TestCreateProposalBlock(t *testing.T) {
 	mempool.SetLogger(logger)
 
 	// Make EvidencePool
-	types.RegisterMockEvidencesGlobal()
+	types.RegisterMockEvidencesGlobal() // XXX!
 	evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
-	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceStore)
+	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
 	evidencePool.SetLogger(logger)
 
 	// fill the evidence pool with more evidence
@@ -262,7 +267,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		evidencePool,
 	)
 
-	commit := &types.Commit{}
+	commit := types.NewCommit(types.BlockID{}, nil)
 	block, _ := blockExec.CreateProposalBlock(
 		height,
 		state, commit,
@@ -271,7 +276,6 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	err = blockExec.ValidateBlock(state, block)
 	assert.NoError(t, err)
-
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB) {

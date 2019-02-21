@@ -1,8 +1,8 @@
 package mempool
 
 import (
-	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -25,11 +25,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
+// A cleanupFunc cleans up any config / test files created for a particular
+// test.
+type cleanupFunc func()
+
+func newMempoolWithApp(cc proxy.ClientCreator) (*Mempool, cleanupFunc) {
 	return newMempoolWithAppAndConfig(cc, cfg.ResetTestRoot("mempool_test"))
 }
 
-func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) *Mempool {
+func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) (*Mempool, cleanupFunc) {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
@@ -38,7 +42,7 @@ func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) *Mem
 	}
 	mempool := NewMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger())
-	return mempool
+	return mempool, func() { os.RemoveAll(config.RootDir) }
 }
 
 func ensureNoFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
@@ -84,7 +88,8 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 func TestReapMaxBytesMaxGas(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 
 	// Ensure gas calculation behaves as expected
 	checkTxs(t, mempool, 1)
@@ -132,7 +137,8 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 func TestMempoolFilters(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 	emptyTxArr := []types.Tx{[]byte{}}
 
 	nopPreFilter := func(tx types.Tx) error { return nil }
@@ -170,7 +176,8 @@ func TestMempoolFilters(t *testing.T) {
 func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
 	err := mempool.CheckTx([]byte{0x01}, nil)
 	if assert.Error(t, err) {
@@ -181,7 +188,8 @@ func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 	mempool.EnableTxsAvailable()
 
 	timeoutMS := 500
@@ -226,7 +234,9 @@ func TestSerialReap(t *testing.T) {
 	app.SetOption(abci.RequestSetOption{Key: "serial", Value: "on"})
 	cc := proxy.NewLocalClientCreator(app)
 
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
+
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
 	err := appConnCon.Start()
@@ -366,6 +376,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// 3. Create the mempool
 	wcfg := cfg.DefaultMempoolConfig()
 	wcfg.RootDir = rootDir
+	defer os.RemoveAll(wcfg.RootDir)
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
@@ -408,7 +419,8 @@ func txMessageSize(tx types.Tx) int {
 func TestMempoolMaxMsgSize(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempl := newMempoolWithApp(cc)
+	mempl, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 
 	testCases := []struct {
 		len int
@@ -457,7 +469,8 @@ func TestMempoolTxsBytes(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(app)
 	config := cfg.ResetTestRoot("mempool_test")
 	config.Mempool.MaxTxsBytes = 10
-	mempool := newMempoolWithAppAndConfig(cc, config)
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
+  defer cleanup()
 
 	// 1. zero by default
 	assert.EqualValues(t, 0, mempool.TxsBytes())
@@ -490,7 +503,8 @@ func TestMempoolTxsBytes(t *testing.T) {
 	// 6. zero after tx is rechecked and removed due to not being valid anymore
 	app2 := counter.NewCounterApplication(true)
 	cc = proxy.NewLocalClientCreator(app2)
-	mempool = newMempoolWithApp(cc)
+	mempool, cleanup = newMempoolWithApp(cc)
+  defer cleanup()
 
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
@@ -517,7 +531,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 }
 
 func checksumIt(data []byte) string {
-	h := md5.New()
+	h := sha256.New()
 	h.Write(data)
 	return fmt.Sprintf("%x", h.Sum(nil))
 }

@@ -345,8 +345,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceStore)
+	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
 	evidencePool.SetLogger(evidenceLogger)
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
@@ -792,6 +791,11 @@ func (n *Node) GenesisDoc() *types.GenesisDoc {
 // ProxyApp returns the Node's AppConns, representing its connections to the ABCI application.
 func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
+}
+
+// Config returns the Node's config.
+func (n *Node) Config() *cfg.Config {
+	return n.config
 }
 
 //------------------------------------------------------------------------------

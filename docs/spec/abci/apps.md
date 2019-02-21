@@ -171,6 +171,10 @@ Note that the maximum total power of the validator set is bounded by
 they do not make changes to the validator set that cause it to exceed this
 limit.
 
+Additionally, applications must ensure that a single set of updates does not contain any duplicates -
+a given public key can only appear in an update once. If an update includes
+duplicates, the block execution will fail irrecoverably.
+
 ### InitChain
 
 ResponseInitChain can return a list of validators.
