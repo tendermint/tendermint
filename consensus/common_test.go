@@ -127,20 +127,18 @@ func startTestRound(cs *ConsensusState, height int64, round int) {
 	cs.startRoutines(0)
 }
 
-// Create proposal block from cs1 but sign it with vs
+// Create proposal block from cs1 but sign it with vs.
 func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round int) (proposal *types.Proposal, block *types.Block) {
 	cs1.mtx.Lock()
 	block, blockParts := cs1.createProposalBlock()
+	validRound := cs1.ValidRound
+	chainID := cs1.state.ChainID
 	cs1.mtx.Unlock()
-	if block == nil { // on error
-		panic("error creating proposal block")
+	if block == nil {
+		panic("Failed to createProposalBlock. Did you forget to add commit for previous block?")
 	}
 
 	// Make proposal
-	cs1.mtx.RLock()
-	validRound := cs1.ValidRound
-	chainID := cs1.state.ChainID
-	cs1.mtx.RUnlock()
 	polRound, propBlockID := validRound, types.BlockID{block.Hash(), blockParts.Header()}
 	proposal = types.NewProposal(height, round, polRound, propBlockID)
 	if err := vs.SignProposal(chainID, proposal); err != nil {
