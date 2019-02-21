@@ -174,8 +174,8 @@ func killProc(pid uint64, dir string) error {
 
 	// kill the underlying Tendermint process and subsequent tailing process
 	go func() {
-		// Killing the Tendermint process with the '-ABRT|-6' signal should result
-		// in a goroutine stacktrace.
+		// Killing the Tendermint process with the '-ABRT|-6' signal will result in
+		// a goroutine stacktrace.
 		if err := syscall.Kill(int(pid), syscall.SIGABRT); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to kill Tendermint process: %s", err)
 		}
