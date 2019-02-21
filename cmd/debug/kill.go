@@ -166,6 +166,7 @@ func killProc(pid uint64, dir string) error {
 	defer outFile.Close()
 
 	cmd.Stdout = outFile
+	cmd.Stderr = outFile
 
 	if err := cmd.Start(); err != nil {
 		return err
