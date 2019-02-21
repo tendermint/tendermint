@@ -6,17 +6,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	rootCmd.AddCommand(killCmd)
-	rootCmd.AddCommand(dumpCmd)
-}
-
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
-	}
-}
-
 var rootCmd = &cobra.Command{
 	Use:   "tendermint-debug",
 	Short: "A debugging utility to kill a Tendermint process while aggregating useful data",
@@ -27,4 +16,15 @@ information. This aggregated data is packaged into a compressed archive.
 
 The tendermint-debug utility may also be used to continuously dump Tendermint
 process data into a single location.`,
+}
+
+func init() {
+	rootCmd.AddCommand(killCmd)
+	rootCmd.AddCommand(dumpCmd)
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
