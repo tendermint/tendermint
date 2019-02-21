@@ -156,17 +156,18 @@ func TestWALPeriodicSync(t *testing.T) {
 	wal.SetFlushInterval(walTestFlushInterval)
 	wal.SetLogger(log.TestingLogger())
 
-	require.NoError(t, wal.Start())
-	defer func() {
-		wal.Stop()
-		wal.Wait()
-	}()
-
+	// Generate some data
 	err = WALGenerateNBlocks(t, wal.Group(), 5)
 	require.NoError(t, err)
 
 	// We should have data in the buffer now
 	assert.NotZero(t, wal.Group().Buffered())
+
+	require.NoError(t, wal.Start())
+	defer func() {
+		wal.Stop()
+		wal.Wait()
+	}()
 
 	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
 
