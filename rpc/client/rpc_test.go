@@ -295,7 +295,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 
 		assert.Equal(t, 1, res.Count)
 		assert.Equal(t, 1, res.Total)
-		assert.Equal(t, mempool.TxsTotalBytes(), res.TotalBytes)
+		assert.Equal(t, mempool.TxsBytes(), res.TotalBytes)
 		assert.Exactly(t, types.Txs{tx}, types.Txs(res.Txs))
 	}
 
@@ -317,7 +317,7 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 
 		assert.Equal(t, mempoolSize, res.Count)
 		assert.Equal(t, mempoolSize, res.Total)
-		assert.Equal(t, mempool.TxsTotalBytes(), res.TotalBytes)
+		assert.Equal(t, mempool.TxsBytes(), res.TotalBytes)
 	}
 
 	mempool.Flush()

@@ -279,7 +279,7 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 	return &ctypes.ResultUnconfirmedTxs{
 		Count:      len(txs),
 		Total:      mempool.Size(),
-		TotalBytes: mempool.TxsTotalBytes(),
+		TotalBytes: mempool.TxsBytes(),
 		Txs:        txs}, nil
 }
 
@@ -317,5 +317,5 @@ func NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 	return &ctypes.ResultUnconfirmedTxs{
 		Count:      mempool.Size(),
 		Total:      mempool.Size(),
-		TotalBytes: mempool.TxsTotalBytes()}, nil
+		TotalBytes: mempool.TxsBytes()}, nil
 }

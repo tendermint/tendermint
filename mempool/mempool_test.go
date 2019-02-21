@@ -452,34 +452,34 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 
 }
 
-func TestMempoolTxsTotalBytes(t *testing.T) {
+func TestMempoolTxsBytes(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	config := cfg.ResetTestRoot("mempool_test")
-	config.Mempool.MaxTxsTotalBytes = 10
+	config.Mempool.MaxTxsBytes = 10
 	mempool := newMempoolWithAppAndConfig(cc, config)
 
 	// 1. zero by default
-	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
+	assert.EqualValues(t, 0, mempool.TxsBytes())
 
 	// 2. len(tx) after CheckTx
 	err := mempool.CheckTx([]byte{0x01}, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 1, mempool.TxsTotalBytes())
+	assert.EqualValues(t, 1, mempool.TxsBytes())
 
 	// 3. zero again after tx is removed by Update
 	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
-	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
+	assert.EqualValues(t, 0, mempool.TxsBytes())
 
 	// 4. zero after Flush
 	err = mempool.CheckTx([]byte{0x02, 0x03}, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 2, mempool.TxsTotalBytes())
+	assert.EqualValues(t, 2, mempool.TxsBytes())
 
 	mempool.Flush()
-	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
+	assert.EqualValues(t, 0, mempool.TxsBytes())
 
-	// 5. ErrMempoolIsFull is returned when/if MaxTxsTotalBytes limit is reached.
+	// 5. ErrMempoolIsFull is returned when/if MaxTxsBytes limit is reached.
 	err = mempool.CheckTx([]byte{0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04}, nil)
 	require.NoError(t, err)
 	err = mempool.CheckTx([]byte{0x05}, nil)
@@ -497,7 +497,7 @@ func TestMempoolTxsTotalBytes(t *testing.T) {
 
 	err = mempool.CheckTx(txBytes, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 8, mempool.TxsTotalBytes())
+	assert.EqualValues(t, 8, mempool.TxsBytes())
 
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
@@ -513,7 +513,7 @@ func TestMempoolTxsTotalBytes(t *testing.T) {
 
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
 	mempool.Update(1, []types.Tx{}, nil, nil)
-	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
+	assert.EqualValues(t, 0, mempool.TxsBytes())
 }
 
 func checksumIt(data []byte) string {

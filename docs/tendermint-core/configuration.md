@@ -188,8 +188,8 @@ size = 5000
 
 # Limit the total size of all txs in the mempool.
 # This only accounts for raw transactions (e.g. given 1MB transactions and
-# max_txs_total_bytes=5MB, mempool will only accept 5 transactions).
-max_txs_total_bytes = 1073741824
+# max_txs_bytes=5MB, mempool will only accept 5 transactions).
+max_txs_bytes = 1073741824
 
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = 10000
