@@ -82,6 +82,10 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if err := copyConfig(tmpDir); err != nil {
+		return err
+	}
+
 	return zipDir(tmpDir, args[1])
 }
 
@@ -93,7 +97,7 @@ func dumpStatus(rpc *rpcclient.HTTP, dir, filename string) error {
 		return errors.Wrap(err, "failed to get node status")
 	}
 
-	return writeStateToFile(status, dir, filename)
+	return writeStateJSONToFile(status, dir, filename)
 }
 
 // dumpNetInfo gets network information state dump from the Tendermint RPC and
@@ -104,7 +108,7 @@ func dumpNetInfo(rpc *rpcclient.HTTP, dir, filename string) error {
 		return errors.Wrap(err, "failed to get node network information")
 	}
 
-	return writeStateToFile(netInfo, dir, filename)
+	return writeStateJSONToFile(netInfo, dir, filename)
 }
 
 // dumpConsensusState gets consensus state dump from the Tendermint RPC and
@@ -115,7 +119,7 @@ func dumpConsensusState(rpc *rpcclient.HTTP, dir, filename string) error {
 		return errors.Wrap(err, "failed to get node consensus dump")
 	}
 
-	return writeStateToFile(consDump, dir, filename)
+	return writeStateJSONToFile(consDump, dir, filename)
 }
 
 // copyWAL copies the Tendermint node's WAL file. It returns an error if the
@@ -127,10 +131,19 @@ func copyWAL(conf *cfg.Config, dir string) error {
 	return copyFile(walPath, filepath.Join(dir, walFile))
 }
 
+// copyConfig copies the Tendermint node's config file. It returns an error if
+// the config file cannot be read or copied.
+func copyConfig(dir string) error {
+	configFile := "config.toml"
+	configPath := filepath.Join(nodeHome, "config", configFile)
+
+	return copyFile(configPath, filepath.Join(dir, configFile))
+}
+
 // writeStateToFile pretty JSON encodes an object and writes it to file composed
 // of dir and filename. It returns an error upon failure to encode or write to
 // file.
-func writeStateToFile(state interface{}, dir, filename string) error {
+func writeStateJSONToFile(state interface{}, dir, filename string) error {
 	stateJSON, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return errors.Wrap(err, "failed to encode state dump")
