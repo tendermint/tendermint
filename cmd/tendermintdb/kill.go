@@ -28,7 +28,10 @@ var killCmd = &cobra.Command{
 	Long: `A debugging utility that may be used to kill a Tendermint process while also
 aggregating Tendermint process data such as the latest node state, including
 consensus and networking state, go-routine state, and the node's WAL and config
-information. This aggregated data is packaged into a compressed archive.`,
+information. This aggregated data is packaged into a compressed archive.
+
+Example:
+$ tendermintdb 34255 /path/to/tm-debug.zip`,
 	Args: cobra.ExactArgs(2),
 	RunE: killCmdHandler,
 }
