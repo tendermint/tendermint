@@ -179,7 +179,7 @@ type ResultTxSearch struct {
 
 // List of mempool txs
 type ResultUnconfirmedTxs struct {
-	Count      int        `json:"count"`
+	Count      int        `json:"n_txs"`
 	Total      int        `json:"total"`
 	TotalBytes int64      `json:"total_bytes"`
 	Txs        []types.Tx `json:"txs"`

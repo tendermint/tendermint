@@ -7,7 +7,6 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-  - [rpc] \#3113 rename n_txs to count in `/num_unconfirmed_txs` and `/unconfirmed_txs`
 
 * Apps
 
