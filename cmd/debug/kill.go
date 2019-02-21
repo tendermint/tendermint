@@ -1,15 +1,12 @@
 package main
 
 import (
-	"archive/zip"
 	"encoding/json"
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -49,7 +46,6 @@ func init() {
 
 func killTendermintProc(cmd *cobra.Command, args []string) error {
 	// 4. config
-	// 5. WAL
 
 	_, err := strconv.ParseUint(args[0], 10, 64)
 	if err != nil {
@@ -57,6 +53,10 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 	}
 
 	rpc := rpcclient.NewHTTP(nodeAddr, "/websocket")
+
+	conf := cfg.DefaultConfig()
+	conf = conf.SetRoot(nodeHome)
+	cfg.EnsureRoot(conf.RootDir)
 
 	// Create a temporary directory which will contain all the state dumps and
 	// relevant files and directories that will be compressed into a file.
@@ -75,6 +75,10 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := dumpConsensusState(rpc, tmpDir, "consensus_state.json"); err != nil {
+		return err
+	}
+
+	if err := copyWAL(conf, tmpDir); err != nil {
 		return err
 	}
 
@@ -114,6 +118,15 @@ func dumpConsensusState(rpc *rpcclient.HTTP, dir, filename string) error {
 	return writeStateToFile(consDump, dir, filename)
 }
 
+// copyWAL copies the Tendermint node's WAL file. It returns an error if the
+// WAL file cannot be read or copied.
+func copyWAL(conf *cfg.Config, dir string) error {
+	walPath := conf.Consensus.WalFile()
+	walFile := filepath.Base(walPath)
+
+	return copyFile(walPath, filepath.Join(dir, walFile))
+}
+
 // writeStateToFile pretty JSON encodes an object and writes it to file composed
 // of dir and filename. It returns an error upon failure to encode or write to
 // file.
@@ -124,64 +137,4 @@ func writeStateToFile(state interface{}, dir, filename string) error {
 	}
 
 	return ioutil.WriteFile(path.Join(dir, filename), stateJSON, os.ModePerm)
-}
-
-// zipDir zips all the contents found in src, including both files and
-// directories, into a destination file dest. It returns an error upon failure.
-// It assumes src is a directory.
-func zipDir(src, dest string) error {
-	zipFile, err := os.Create(dest)
-	if err != nil {
-		return err
-	}
-	defer zipFile.Close()
-
-	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
-
-	dirName := filepath.Base(dest)
-	baseDir := strings.TrimSuffix(dirName, filepath.Ext(dirName))
-
-	filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			return err
-		}
-
-		// Each execution of this utility on a Tendermint process will result in a
-		// unique file.
-		header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, src))
-
-		// Handle cases where the content to be zipped is a file or a directory,
-		// where a directory must have a '/' suffix.
-		if info.IsDir() {
-			header.Name += "/"
-		} else {
-			header.Method = zip.Deflate
-		}
-
-		headerWriter, err := zipWriter.CreateHeader(header)
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		file, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		_, err = io.Copy(headerWriter, file)
-		return err
-	})
-
-	return nil
 }
