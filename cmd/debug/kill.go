@@ -81,6 +81,8 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 	return zipDir(tmpDir, args[1])
 }
 
+// dumpStatus gets node status state dump from the Tendermint RPC and writes it
+// to file. It returns an error upon failure.
 func dumpStatus(rpc *rpcclient.HTTP, dir, filename string) error {
 	status, err := rpc.Status()
 	if err != nil {
@@ -90,6 +92,8 @@ func dumpStatus(rpc *rpcclient.HTTP, dir, filename string) error {
 	return writeStateToFile(status, dir, filename)
 }
 
+// dumpNetInfo gets network information state dump from the Tendermint RPC and
+// writes it to file. It returns an error upon failure.
 func dumpNetInfo(rpc *rpcclient.HTTP, dir, filename string) error {
 	netInfo, err := rpc.NetInfo()
 	if err != nil {
@@ -99,6 +103,8 @@ func dumpNetInfo(rpc *rpcclient.HTTP, dir, filename string) error {
 	return writeStateToFile(netInfo, dir, filename)
 }
 
+// dumpConsensusState gets consensus state dump from the Tendermint RPC and
+// writes it to file. It returns an error upon failure.
 func dumpConsensusState(rpc *rpcclient.HTTP, dir, filename string) error {
 	consDump, err := rpc.DumpConsensusState()
 	if err != nil {
@@ -108,6 +114,9 @@ func dumpConsensusState(rpc *rpcclient.HTTP, dir, filename string) error {
 	return writeStateToFile(consDump, dir, filename)
 }
 
+// writeStateToFile pretty JSON encodes an object and writes it to file composed
+// of dir and filename. It returns an error upon failure to encode or write to
+// file.
 func writeStateToFile(state interface{}, dir, filename string) error {
 	stateJSON, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
@@ -117,6 +126,9 @@ func writeStateToFile(state interface{}, dir, filename string) error {
 	return ioutil.WriteFile(path.Join(dir, filename), stateJSON, os.ModePerm)
 }
 
+// zipDir zips all the contents found in src, including both files and
+// directories, into a destination file dest. It returns an error upon failure.
+// It assumes src is a directory.
 func zipDir(src, dest string) error {
 	zipFile, err := os.Create(dest)
 	if err != nil {
