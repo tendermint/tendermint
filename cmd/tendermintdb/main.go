@@ -7,7 +7,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "tendermint-debug",
+	Use:   "tendermintdb",
 	Short: "A debugging utility to kill or watch a Tendermint process while aggregating useful data",
 }
 
