@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
+	"syscall"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -45,9 +48,7 @@ func init() {
 }
 
 func killTendermintProc(cmd *cobra.Command, args []string) error {
-	// 4. config
-
-	_, err := strconv.ParseUint(args[0], 10, 64)
+	pid, err := strconv.ParseUint(args[0], 10, 64)
 	if err != nil {
 		return err
 	}
@@ -83,6 +84,11 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := copyConfig(tmpDir); err != nil {
+		return err
+	}
+
+	if err := killProc(pid, tmpDir); err != nil {
+		fmt.Printf("%T\n", err)
 		return err
 	}
 
@@ -138,6 +144,50 @@ func copyConfig(dir string) error {
 	configPath := filepath.Join(nodeHome, "config", configFile)
 
 	return copyFile(configPath, filepath.Join(dir, configFile))
+}
+
+// killProc attempts to kill the Tendermint process with a given PID with an
+// ABORT signal which should result in a goroutine stacktrace. The PID's STDERR
+// is tailed and piped to a file under the directory dir. An error is returned
+// if the output file cannot be created or the tail command cannot be started.
+// An error is not returned if any subsequent syscall fails.
+func killProc(pid uint64, dir string) error {
+	// pipe STDERR output from tailing the Tendermint process to a file
+	cmd := exec.Command("tail", "-f", fmt.Sprintf("/proc/%d/fd/2", pid))
+
+	outFile, err := os.Create(filepath.Join(dir, "stacktrace.out"))
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	cmd.Stdout = outFile
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// kill the underlying Tendermint process and subsequent tailing process
+	go func() {
+		// Killing the Tendermint process with the '-ABRT|-6' signal should result
+		// in a goroutine stacktrace.
+		if err := syscall.Kill(int(pid), syscall.SIGABRT); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to kill Tendermint process: %s", err)
+		}
+
+		if err := cmd.Process.Kill(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to kill Tendermint process output redirection: %s", err)
+		}
+	}()
+
+	if err := cmd.Wait(); err != nil {
+		// only return an error not invoked by a manual kill
+		if _, ok := err.(*exec.ExitError); !ok {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // writeStateToFile pretty JSON encodes an object and writes it to file composed
