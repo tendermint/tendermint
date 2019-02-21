@@ -470,7 +470,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	config := cfg.ResetTestRoot("mempool_test")
 	config.Mempool.MaxTxsBytes = 10
 	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
-  defer cleanup()
+	defer cleanup()
 
 	// 1. zero by default
 	assert.EqualValues(t, 0, mempool.TxsBytes())
@@ -504,7 +504,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	app2 := counter.NewCounterApplication(true)
 	cc = proxy.NewLocalClientCreator(app2)
 	mempool, cleanup = newMempoolWithApp(cc)
-  defer cleanup()
+	defer cleanup()
 
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
