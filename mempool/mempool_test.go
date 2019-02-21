@@ -494,14 +494,10 @@ func TestMempoolTxsTotalBytes(t *testing.T) {
 
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
-	txBytes2 := make([]byte, 8)
-	binary.BigEndian.PutUint64(txBytes2, uint64(1))
 
 	err = mempool.CheckTx(txBytes, nil)
 	require.NoError(t, err)
-	err = mempool.CheckTx(txBytes2, nil)
-	require.NoError(t, err)
-	assert.EqualValues(t, 16, mempool.TxsTotalBytes())
+	assert.EqualValues(t, 8, mempool.TxsTotalBytes())
 
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
@@ -515,9 +511,8 @@ func TestMempoolTxsTotalBytes(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, res2.Data)
 
-	// Note we say we've committed txBytes2, but actually it was txBytes.
-	// That way we can check (6).
-	mempool.Update(1, []types.Tx{txBytes2}, nil, nil)
+	// Pretend like we committed nothing so txBytes gets rechecked and removed.
+	mempool.Update(1, []types.Tx{}, nil, nil)
 	assert.EqualValues(t, 0, mempool.TxsTotalBytes())
 }
 
