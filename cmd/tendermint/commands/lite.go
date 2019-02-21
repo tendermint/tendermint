@@ -43,7 +43,7 @@ func init() {
 	LiteCmd.Flags().IntVar(&cacheSize, "cache-size", 10, "Specify the memory trust store cache size")
 }
 
-func ensureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
+func EnsureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return "", err
@@ -64,11 +64,11 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		// TODO: close up shop
 	})
 
-	nodeAddr, err := ensureAddrHasSchemeOrDefaultToTCP(nodeAddr)
+	nodeAddr, err := EnsureAddrHasSchemeOrDefaultToTCP(nodeAddr)
 	if err != nil {
 		return err
 	}
-	listenAddr, err := ensureAddrHasSchemeOrDefaultToTCP(listenAddr)
+	listenAddr, err := EnsureAddrHasSchemeOrDefaultToTCP(listenAddr)
 	if err != nil {
 		return err
 	}
