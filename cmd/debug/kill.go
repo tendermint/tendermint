@@ -3,7 +3,6 @@ package main
 import (
 	"archive/zip"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,15 +10,17 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	cfg "github.com/tendermint/tendermint/config"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
 var (
 	nodeAddr string
+	nodeHome string
 )
 
 var killCmd = &cobra.Command{
@@ -30,34 +31,30 @@ var killCmd = &cobra.Command{
 }
 
 func init() {
-	// killCmd.Flags().SortFlags = true
+	killCmd.Flags().SortFlags = true
 
-	// killCmd.Flags().UintVarP(&pid, "pid", "p", 0, "The Tendermint process PID")
-	// killCmd.Flags().StringVarP(&dirOut, "out", "o", 0, "The Tendermint process PID")
-	killCmd.Flags().StringVar(&nodeAddr, "node-addr", "tcp://localhost:26657", "The Tendermint RPC address (<host>:<port>)")
+	killCmd.Flags().StringVar(
+		&nodeAddr,
+		"node-addr",
+		"tcp://localhost:26657",
+		"The Tendermint node's RPC address (<host>:<port>)",
+	)
+	killCmd.Flags().StringVar(
+		&nodeHome,
+		"node-home",
+		os.ExpandEnv(filepath.Join("$HOME", cfg.DefaultTendermintDir)),
+		"The Tendermint node's home directory",
+	)
 }
 
 func killTendermintProc(cmd *cobra.Command, args []string) error {
-	// 1. fetch state from /status
-	// 2. fetch state from /net_info
-	// 3. fetch state from /dump_consensus_state
-	// ...
+	// 4. config
+	// 5. WAL
 
 	_, err := strconv.ParseUint(args[0], 10, 64)
 	if err != nil {
 		return err
 	}
-
-	// if _, err := os.Stat(outDir); os.IsNotExist(err) {
-	// 	if err := os.Mkdir(outDir, os.ModePerm); err != nil {
-	// 		return errors.Wrap(err, "failed to create missing directory")
-	// 	}
-	// }
-
-	// outDir = path.Join(outDir, "tendermint_debug_state")
-	// if err := os.Mkdir(outDir, os.ModePerm); err != nil {
-	// 	return err
-	// }
 
 	rpc := rpcclient.NewHTTP(nodeAddr, "/websocket")
 
@@ -81,7 +78,7 @@ func killTendermintProc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return zipContentsToFile(tmpDir, args[1])
+	return zipDir(tmpDir, args[1])
 }
 
 func dumpStatus(rpc *rpcclient.HTTP, dir, filename string) error {
@@ -120,7 +117,7 @@ func writeStateToFile(state interface{}, dir, filename string) error {
 	return ioutil.WriteFile(path.Join(dir, filename), stateJSON, os.ModePerm)
 }
 
-func zipContentsToFile(src, dest string) error {
+func zipDir(src, dest string) error {
 	zipFile, err := os.Create(dest)
 	if err != nil {
 		return err
@@ -130,7 +127,8 @@ func zipContentsToFile(src, dest string) error {
 	zipWriter := zip.NewWriter(zipFile)
 	defer zipWriter.Close()
 
-	baseDir := fmt.Sprintf("tendermint_debug_%d", time.Now().Unix())
+	dirName := filepath.Base(dest)
+	baseDir := strings.TrimSuffix(dirName, filepath.Ext(dirName))
 
 	filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -142,6 +140,8 @@ func zipContentsToFile(src, dest string) error {
 			return err
 		}
 
+		// Each execution of this utility on a Tendermint process will result in a
+		// unique file.
 		header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, src))
 
 		// Handle cases where the content to be zipped is a file or a directory,
