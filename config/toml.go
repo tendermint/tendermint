@@ -235,7 +235,7 @@ broadcast = {{ .Mempool.Broadcast }}
 wal_dir = "{{ js .Mempool.WalPath }}"
 
 # Maximum number of transactions in the mempool
-max_txs = {{ .Mempool.MaxTxs }}
+size = {{ .Mempool.Size }}
 
 # Limit the total size of all txs in the mempool.
 # This only accounts for raw transactions (e.g. given 1MB transactions and
