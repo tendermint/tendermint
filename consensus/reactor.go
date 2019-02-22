@@ -217,10 +217,13 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
-	// Get peer states
+	// Get peer state
 	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
 	if !ok {
-		panic(fmt.Sprintf("Peer %v has no state", src))
+		// Peer does not have a state yet. We set it in AddPeer, but because the
+		// peer is started before we add it to reactors, we can receive a message
+		// before AddPeer is called.
+		return
 	}
 
 	switch chID {

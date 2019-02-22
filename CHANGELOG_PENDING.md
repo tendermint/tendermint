@@ -21,3 +21,4 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [consensus] \#3304 do not panic if the peer does not have a state in Receive
