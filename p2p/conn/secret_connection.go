@@ -29,7 +29,10 @@ const aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
 const aeadKeySize = chacha20poly1305.KeySize
 const aeadNonceSize = chacha20poly1305.NonceSize
 
-var ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
+var (
+	ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
+	ErrSharedSecretIsZero     = errors.New("shared secret is all zeroes")
+)
 
 // SecretConnection implements net.Conn.
 // It is an implementation of the STS protocol.
@@ -91,6 +94,13 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 
 	// Compute common diffie hellman secret using X25519.
 	dhSecret := computeDHSecret(remEphPub, locEphPriv)
+
+	// reject if the returned shared secret is all zeroes
+	// related to: https://github.com/tendermint/tendermint/issues/3010
+	zero := new([32]byte)
+	if subtle.ConstantTimeCompare(dhSecret[:], zero[:]) == 1 {
+		return nil, ErrSharedSecretIsZero
+	}
 
 	// generate the secret used for receiving, sending, challenge via hkdf-sha2 on dhSecret
 	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(dhSecret, locIsLeast)
