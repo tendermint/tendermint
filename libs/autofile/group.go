@@ -131,21 +131,23 @@ func GroupTotalSizeLimit(limit int64) func(*Group) {
 	}
 }
 
-// OnStart implements Service by starting the goroutine that checks file and
-// group limits.
+// OnStart implements cmn.Service by starting the goroutine that checks file
+// and group limits.
 func (g *Group) OnStart() error {
 	g.ticker = time.NewTicker(g.groupCheckDuration)
 	go g.processTicks()
 	return nil
 }
 
-// OnStop implements Service by stopping the goroutine described above.
+// OnStop implements cmn.Service by stopping the goroutine described above.
 // NOTE: g.Head must be closed separately using Close.
 func (g *Group) OnStop() {
 	g.ticker.Stop()
-	g.Flush() // flush any uncommitted data
+	g.FlushAndSync()
 }
 
+// Wait blocks until all internal goroutines are finished. Supposed to be
+// called after Stop.
 func (g *Group) Wait() {
 	// wait for processTicks routine to finish
 	<-g.doneProcessTicks
@@ -153,7 +155,7 @@ func (g *Group) Wait() {
 
 // Close closes the head file. The group must be stopped by this moment.
 func (g *Group) Close() {
-	g.Flush() // flush any uncommitted data
+	g.FlushAndSync()
 
 	g.mtx.Lock()
 	_ = g.Head.closeFile()
@@ -216,9 +218,9 @@ func (g *Group) Buffered() int {
 	return g.headBuf.Buffered()
 }
 
-// Flush writes any buffered data to the underlying file and commits the
-// current content of the file to stable storage.
-func (g *Group) Flush() error {
+// FlushAndSync writes any buffered data to the underlying file and commits the
+// current content of the file to stable storage (fsync).
+func (g *Group) FlushAndSync() error {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 	err := g.headBuf.Flush()
