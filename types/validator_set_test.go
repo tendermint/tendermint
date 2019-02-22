@@ -672,9 +672,7 @@ func createNewValidatorList(testValList []testVal) []*Validator {
 }
 
 func createNewValidatorSet(testValList []testVal) *ValidatorSet {
-	valList := createNewValidatorList(testValList)
-	valSet := NewValidatorSet(valList)
-	return valSet
+	return NewValidatorSet(createNewValidatorList(testValList))
 }
 
 func valSetTotalProposerPriority(valSet *ValidatorSet) int64 {
@@ -815,6 +813,10 @@ func TestValSetUpdatesOverflows(t *testing.T) {
 			testValSet(2, 10),
 			[]testVal{{"v2", math.MaxInt64}},
 		},
+		{ // add validator leading to overflow
+			testValSet(1, maxVP),
+			[]testVal{{"v2", math.MaxInt64}},
+		},
 		{ // add validator leading to exceed Max
 			testValSet(1, maxVP-1),
 			[]testVal{{"v2", 5}},
@@ -822,6 +824,10 @@ func TestValSetUpdatesOverflows(t *testing.T) {
 		{ // add validator leading to exceed Max
 			testValSet(2, maxVP/3),
 			[]testVal{{"v3", maxVP / 2}},
+		},
+		{ // add validator leading to exceed Max
+			testValSet(1, maxVP),
+			[]testVal{{"v2", maxVP}},
 		},
 	}
 
@@ -905,7 +911,7 @@ func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 		// is changed in the list of validators previously passed as parameter to UpdateWithChangeSet.
 		// this is to make sure copies of the validators are made by UpdateWithChangeSet.
 		if len(valList) > 0 {
-			valList[0].VotingPower += 1
+			valList[0].VotingPower++
 			assert.Equal(t, toTestValList(valListCopy), toTestValList(valSet.Validators), "test %v", i)
 
 		}
