@@ -78,13 +78,14 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *
 	// in the WAL itself. Assuming the consensus state is running, replay of any
 	// WAL, including the empty one, should eventually be followed by a new
 	// block, or else something is wrong.
-	newBlockCh := make(chan interface{}, 1)
-	err = cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, newBlockCh)
+	newBlockSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 	require.NoError(t, err)
 	select {
-	case <-newBlockCh:
+	case <-newBlockSub.Out():
+	case <-newBlockSub.Cancelled():
+		t.Fatal("newBlockSub was cancelled")
 	case <-time.After(120 * time.Second):
-		t.Fatalf("Timed out waiting for new block (see trace above)")
+		t.Fatal("Timed out waiting for new block (see trace above)")
 	}
 }
 

@@ -51,25 +51,13 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 	cs.startForReplay()
 
 	// ensure all new step events are regenerated as expected
-	newStepCh := make(chan interface{}, 1)
 
 	ctx := context.Background()
-	err := cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, newStepCh)
+	newStepSub, err := cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 	if err != nil {
 		return errors.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 	}
-	defer func() {
-		// drain newStepCh to make sure we don't block
-	LOOP:
-		for {
-			select {
-			case <-newStepCh:
-			default:
-				break LOOP
-			}
-		}
-		cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
-	}()
+	defer cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 
 	// just open the file for reading, no need to use wal
 	fp, err := os.OpenFile(file, os.O_RDONLY, 0600)
@@ -94,7 +82,7 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 			return err
 		}
 
-		if err := pb.cs.readReplayMessage(msg, newStepCh); err != nil {
+		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
 			return err
 		}
 
@@ -131,7 +119,7 @@ func newPlayback(fileName string, fp *os.File, cs *ConsensusState, genState sm.S
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
+func (pb *playback) replayReset(count int, newStepSub types.Subscription) error {
 	pb.cs.Stop()
 	pb.cs.Wait()
 
@@ -161,7 +149,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 		} else if err != nil {
 			return err
 		}
-		if err := pb.cs.readReplayMessage(msg, newStepCh); err != nil {
+		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
 			return err
 		}
 		pb.count++
@@ -225,27 +213,15 @@ func (pb *playback) replayConsoleLoop() int {
 
 			ctx := context.Background()
 			// ensure all new step events are regenerated as expected
-			newStepCh := make(chan interface{}, 1)
 
-			err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, newStepCh)
+			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 			if err != nil {
 				cmn.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
 			}
-			defer func() {
-				// drain newStepCh to make sure we don't block
-			LOOP:
-				for {
-					select {
-					case <-newStepCh:
-					default:
-						break LOOP
-					}
-				}
-				pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
-			}()
+			defer pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 
 			if len(tokens) == 1 {
-				if err := pb.replayReset(1, newStepCh); err != nil {
+				if err := pb.replayReset(1, newStepSub); err != nil {
 					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
 			} else {
@@ -255,7 +231,7 @@ func (pb *playback) replayConsoleLoop() int {
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
 				} else {
-					if err := pb.replayReset(i, newStepCh); err != nil {
+					if err := pb.replayReset(i, newStepSub); err != nil {
 						pb.cs.Logger.Error("Replay reset error", "err", err)
 					}
 				}
