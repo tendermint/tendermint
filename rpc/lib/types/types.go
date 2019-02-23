@@ -12,6 +12,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // a wrapper to emulate a sum type: jsonrpcid = string | int
@@ -244,17 +245,17 @@ type WSRPCConnection interface {
 	Codec() *amino.Codec
 }
 
-// EventSubscriber mirros tendermint/tendermint/types.EventBusSubscriber
-type EventSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
-	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
-	UnsubscribeAll(ctx context.Context, subscriber string) error
-}
-
 // websocket-only RPCFuncs take this as the first parameter.
 type WSRPCContext struct {
 	Request RPCRequest
 	WSRPCConnection
+}
+
+// EventSubscriber mirrors tendermint/tendermint/types.EventBusSubscriber
+type EventSubscriber interface {
+	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (tmtypes.Subscription, error)
+	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
+	UnsubscribeAll(ctx context.Context, subscriber string) error
 }
 
 //----------------------------------------

@@ -249,6 +249,28 @@ func (c *HTTP) Validators(height *int64) (*ctypes.ResultValidators, error) {
 
 /** websocket event stuff here... **/
 
+type subscription struct {
+	out       chan tmpubsub.Message
+	cancelled chan struct{}
+
+	mtx sync.RWMutex
+	err error
+}
+
+func (s *subscription) Out() <-chan tmpubsub.Message {
+	return s.out
+}
+
+func (s *subscription) Cancelled() <-chan struct{} {
+	return s.cancelled
+}
+
+func (s *subscription) Err() error {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	return s.err
+}
+
 type WSEvents struct {
 	cmn.BaseService
 	cdc      *amino.Codec
@@ -256,8 +278,9 @@ type WSEvents struct {
 	endpoint string
 	ws       *rpcclient.WSClient
 
-	mtx           sync.RWMutex
-	subscriptions map[string]chan<- interface{}
+	mtx sync.RWMutex
+	// query -> subscription
+	subscriptions map[string]*subscription
 }
 
 func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
@@ -265,7 +288,7 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 		cdc:           cdc,
 		endpoint:      endpoint,
 		remote:        remote,
-		subscriptions: make(map[string]chan<- interface{}),
+		subscriptions: make(map[string]*subscription),
 	}
 
 	wsEvents.BaseService = *cmn.NewBaseService(nil, "WSEvents", wsEvents)
@@ -295,21 +318,29 @@ func (w *WSEvents) OnStop() {
 	}
 }
 
-func (w *WSEvents) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
+func (w *WSEvents) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (types.Subscription, error) {
 	q := query.String()
 
 	err := w.ws.Subscribe(ctx, q)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	outCap := 1
+	if len(outCapacity) > 0 && outCapacity[0] >= 0 {
+		outCap = outCapacity[0]
 	}
 
 	w.mtx.Lock()
 	// subscriber param is ignored because Tendermint will override it with
 	// remote IP anyway.
-	w.subscriptions[q] = out
+	w.subscriptions[q] = &subscription{
+		out:       make(chan tmpubsub.Message, outCap),
+		cancelled: make(chan struct{}),
+	}
 	w.mtx.Unlock()
 
-	return nil
+	return w.subscriptions[q], nil
 }
 
 func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
@@ -321,9 +352,12 @@ func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber string, query tmp
 	}
 
 	w.mtx.Lock()
-	ch, ok := w.subscriptions[q]
+	sub, ok := w.subscriptions[q]
 	if ok {
-		close(ch)
+		close(sub.cancelled)
+		sub.mtx.Lock()
+		sub.err = errors.New("unsubscribed")
+		sub.mtx.Unlock()
 		delete(w.subscriptions, q)
 	}
 	w.mtx.Unlock()
@@ -338,10 +372,13 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	}
 
 	w.mtx.Lock()
-	for _, ch := range w.subscriptions {
-		close(ch)
+	for _, sub := range w.subscriptions {
+		close(sub.cancelled)
+		sub.mtx.Lock()
+		sub.err = errors.New("unsubscribed")
+		sub.mtx.Unlock()
 	}
-	w.subscriptions = make(map[string]chan<- interface{})
+	w.subscriptions = make(map[string]*subscription)
 	w.mtx.Unlock()
 
 	return nil
@@ -381,8 +418,8 @@ func (w *WSEvents) eventListener() {
 			// NOTE: writing also happens inside mutex so we can't close a channel in
 			// Unsubscribe/UnsubscribeAll.
 			w.mtx.RLock()
-			if ch, ok := w.subscriptions[result.Query]; ok {
-				ch <- result.Data
+			if sub, ok := w.subscriptions[result.Query]; ok {
+				sub.out <- tmpubsub.NewMessage(result.Data, result.Tags)
 			}
 			w.mtx.RUnlock()
 		case <-w.Quit():
