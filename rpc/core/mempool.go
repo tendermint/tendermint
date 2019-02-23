@@ -258,7 +258,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 //   "result" : {
 //       "txs" : [],
 //       "total_bytes" : "0",
-//       "count" : "0",
+//       "n_txs" : "0",
 //       "total" : "0"
 //     },
 //     "jsonrpc" : "2.0",
@@ -306,7 +306,7 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 //   "jsonrpc" : "2.0",
 //   "id" : "",
 //   "result" : {
-//     "count" : "0",
+//     "n_txs" : "0",
 //     "total_bytes" : "0",
 //     "txs" : null,
 //     "total" : "0"
