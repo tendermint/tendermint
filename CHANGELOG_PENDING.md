@@ -21,3 +21,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+- [p2p] \#3347 Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
