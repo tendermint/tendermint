@@ -12,6 +12,9 @@ Special thanks to external contributors on this release:
 * Apps
 
 * Go API
+- [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
+  * previously it was dumping "captured ..." msg to os.Stdout
+  * TrapSignal should not be responsible for blocking thread of execution
 
 * Blockchain Protocol
 
@@ -23,6 +26,7 @@ Special thanks to external contributors on this release:
   `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 
 ### IMPROVEMENTS:
+- [libs/common] \#3238 exit with zero (0) code upon receiving SIGTERM/SIGINT
 
 ### BUG FIXES:
 

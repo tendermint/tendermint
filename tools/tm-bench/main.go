@@ -4,14 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/go-kit/kit/log/term"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
 )
@@ -94,18 +93,12 @@ Examples:
 		"broadcast_tx_"+broadcastTxMethod,
 	)
 
-	// Quit when interrupted or received SIGTERM.
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		for sig := range c {
-			fmt.Printf("captured %v, exiting...\n", sig)
-			for _, t := range transacters {
-				t.Stop()
-			}
-			os.Exit(1)
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
+		for _, t := range transacters {
+			t.Stop()
 		}
-	}()
+	})
 
 	// Wait until transacters have begun until we get the start time.
 	timeStart := time.Now()
