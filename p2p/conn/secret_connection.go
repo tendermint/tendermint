@@ -93,13 +93,9 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	locIsLeast := bytes.Equal(locEphPub[:], loEphPub[:])
 
 	// Compute common diffie hellman secret using X25519.
-	dhSecret := computeDHSecret(remEphPub, locEphPriv)
-
-	// reject if the returned shared secret is all zeroes
-	// related to: https://github.com/tendermint/tendermint/issues/3010
-	zero := new([32]byte)
-	if subtle.ConstantTimeCompare(dhSecret[:], zero[:]) == 1 {
-		return nil, ErrSharedSecretIsZero
+	dhSecret, err := computeDHSecret(remEphPub, locEphPriv)
+	if err != nil {
+		return nil, err
 	}
 
 	// generate the secret used for receiving, sending, challenge via hkdf-sha2 on dhSecret
@@ -240,9 +236,12 @@ func (sc *SecretConnection) SetWriteDeadline(t time.Time) error {
 
 func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	var err error
+	// TODO: Probably not a problem but ask Tony: different from the rust implementation (uses x25519-dalek),
+	// we do not "clamp" the private key scalar:
+	// see: https://github.com/dalek-cryptography/x25519-dalek/blob/34676d336049df2bba763cc076a75e47ae1f170f/src/x25519.rs#L56-L74
 	ephPub, ephPriv, err = box.GenerateKey(crand.Reader)
 	if err != nil {
-		panic("Could not generate ephemeral keypairs")
+		panic("Could not generate ephemeral key-pair")
 	}
 	return
 }
@@ -359,9 +358,20 @@ func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, 
 	return
 }
 
-func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte) {
+// computeDHSecret computes a shared secret Diffie-Hellman secret
+// from a the own local private key and the others public key.
+//
+// It returns an error if the computed shared secret is all zeroes.
+func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte, err error) {
 	shrKey = new([32]byte)
 	curve25519.ScalarMult(shrKey, locPrivKey, remPubKey)
+
+	// reject if the returned shared secret is all zeroes
+	// related to: https://github.com/tendermint/tendermint/issues/3010
+	zero := new([32]byte)
+	if subtle.ConstantTimeCompare(shrKey[:], zero[:]) == 1 {
+		return nil, ErrSharedSecretIsZero
+	}
 	return
 }
 
