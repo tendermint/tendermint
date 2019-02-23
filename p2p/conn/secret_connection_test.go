@@ -100,7 +100,7 @@ func TestSecretConnectionHandshake(t *testing.T) {
 	}
 }
 
-// Test that shareEphPubKey rejects lower order publich keys based on an
+// Test that shareEphPubKey rejects lower order public keys based on an
 // (incomplete) blacklist.
 func TestShareLowOrderPubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
