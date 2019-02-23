@@ -54,10 +54,14 @@ func main() {
 		panic(err)
 	}
 
-	cmn.TrapSignal(func() {
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
 		err := rs.Stop()
 		if err != nil {
 			panic(err)
 		}
 	})
+
+	// Run forever.
+	select {}
 }

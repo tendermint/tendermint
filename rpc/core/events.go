@@ -101,16 +101,30 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
-	ch := make(chan interface{})
-	err = eventBusFor(wsCtx).Subscribe(ctx, addr, q, ch)
+	sub, err := eventBusFor(wsCtx).Subscribe(ctx, addr, q)
 	if err != nil {
 		return nil, err
 	}
 
 	go func() {
-		for event := range ch {
-			tmResult := &ctypes.ResultEvent{Query: query, Data: event.(tmtypes.TMEventData)}
-			wsCtx.TryWriteRPCResponse(rpctypes.NewRPCSuccessResponse(wsCtx.Codec(), rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", wsCtx.Request.ID)), tmResult))
+		for {
+			select {
+			case msg := <-sub.Out():
+				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
+				wsCtx.TryWriteRPCResponse(
+					rpctypes.NewRPCSuccessResponse(
+						wsCtx.Codec(),
+						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", wsCtx.Request.ID)),
+						resultEvent,
+					))
+			case <-sub.Cancelled():
+				wsCtx.TryWriteRPCResponse(
+					rpctypes.RPCServerError(rpctypes.JSONRPCStringID(
+						fmt.Sprintf("%v#event", wsCtx.Request.ID)),
+						fmt.Errorf("subscription was cancelled (reason: %v)", sub.Err()),
+					))
+				return
+			}
 		}
 	}()
 
