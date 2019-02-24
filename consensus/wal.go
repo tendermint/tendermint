@@ -53,20 +53,13 @@ func RegisterWALMessages(cdc *amino.Codec) {
 //--------------------------------------------------------
 // Simple write-ahead logger
 
-// WALReader is an interface that embeds io.Reader and allows to close it after
-// you're done reading.
-type WALReader interface {
-	io.Reader
-	Close() error
-}
-
 // WAL is an interface for any write-ahead logger.
 type WAL interface {
 	Write(WALMessage)
 	WriteSync(WALMessage)
 	FlushAndSync() error
 
-	SearchForEndHeight(height int64, options *WALSearchOptions) (rd WALReader, found bool, err error)
+	SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error)
 
 	// service methods
 	Start() error
@@ -217,7 +210,7 @@ type WALSearchOptions struct {
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
-func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd WALReader, found bool, err error) {
+func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	var (
 		msg *TimedWALMessage
 		gr  *auto.GroupReader
@@ -393,7 +386,7 @@ var _ WAL = nilWAL{}
 func (nilWAL) Write(m WALMessage)     {}
 func (nilWAL) WriteSync(m WALMessage) {}
 func (nilWAL) FlushAndSync() error    { return nil }
-func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd WALReader, found bool, err error) {
+func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 func (nilWAL) Start() error { return nil }

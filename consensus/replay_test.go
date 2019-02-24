@@ -251,7 +251,7 @@ func (w *crashingWAL) WriteSync(m WALMessage) {
 
 func (w *crashingWAL) FlushAndSync() error { return w.next.FlushAndSync() }
 
-func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd WALReader, found bool, err error) {
+func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return w.next.SearchForEndHeight(height, options)
 }
 
