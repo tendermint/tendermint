@@ -70,7 +70,7 @@ func main() {
 	for {
 		n, err := os.Stdin.Read(buf)
 		group.Write(buf[:n])
-		group.Flush()
+		group.FlushAndSync()
 		if err != nil {
 			group.Stop()
 			if err == io.EOF {

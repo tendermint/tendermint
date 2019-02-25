@@ -19,7 +19,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
@@ -201,6 +200,8 @@ type crashingWAL struct {
 	lastPanickedForMsgIndex int // last message for which we panicked
 }
 
+var _ WAL = &crashingWAL{}
+
 // WALWriteError indicates a WAL crash.
 type WALWriteError struct {
 	msg string
@@ -248,15 +249,15 @@ func (w *crashingWAL) WriteSync(m WALMessage) {
 	w.Write(m)
 }
 
-func (w *crashingWAL) Group() *auto.Group { return w.next.Group() }
-func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
+func (w *crashingWAL) FlushAndSync() error { return w.next.FlushAndSync() }
+
+func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return w.next.SearchForEndHeight(height, options)
 }
 
 func (w *crashingWAL) Start() error { return w.next.Start() }
 func (w *crashingWAL) Stop() error  { return w.next.Stop() }
 func (w *crashingWAL) Wait()        { w.next.Wait() }
-func (w *crashingWAL) Flush() error { return w.Group().Flush() }
 
 //------------------------------------------------------------------------------------------
 // Handshake Tests
