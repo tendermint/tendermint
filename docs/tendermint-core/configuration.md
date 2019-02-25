@@ -268,3 +268,22 @@ max_open_connections = 3
 # Instrumentation namespace
 namespace = "tendermint"
 ```
+
+## Empty blocks VS no empty blocks
+
+**create_empty_blocks = true**
+
+If `create_empty_blocks` is set to `true` in your config, blocks will be
+created ~ every second (with default consensus parameters which are explained
+[here](https://forum.cosmos.network/t/consensus-timeouts-explained/1421)). You
+can regulate the delay between blocks by changing the `timeout_commit`. E.g.
+`timeout_commit = "10s"` should result in ~ 10 second blocks.
+
+**create_empty_blocks = false**
+
+In this setting, blocks are created when txs received. Note after the block N,
+Tendermint creates something we call a "proof block" (if the app hash changes)
+N+1 [#2487 (comment)](https://github.com/tendermint/tendermint/issues/2487#issuecomment-424899799).
+Plus, if you set `create_empty_blocks_interval` to something other than the
+default (`0`), Tendermint will be creating empty blocks even in the absence of
+transactions every `create_empty_blocks_interval`.
