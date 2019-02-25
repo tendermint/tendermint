@@ -50,7 +50,7 @@ type SignerValidatorEndpoint struct {
 	// Methods on the underlying net.Conn itself are already goroutine safe.
 	mtx sync.Mutex
 
-	// TODO: Invert relation here, encapsulate the connection. Signer can hide all this functionality
+	// TODO: Signer should encapsulate and hide the endpoint completely. Invert the relation
 	signer *SignerRemote
 }
 
