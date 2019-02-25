@@ -52,7 +52,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 		require.NoError(t, err)
 		blocksSubs = append(blocksSubs, blocksSub)
 
-    if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
+		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
 			sm.SaveState(css[i].blockExec.Db(), css[i].state)
 		}
 	}

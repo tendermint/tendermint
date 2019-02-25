@@ -293,7 +293,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, nPeers)
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nPeers)
 
 	// map of active validators
 	activeVals := make(map[string]struct{})
@@ -304,7 +304,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	// wait till everyone makes block 1
 	timeoutWaitGroup(t, nPeers, func(j int) {
-		<-eventChans[j]
+		<-blocksSubs[j].Out()
 	}, css)
 
 	//---------------------------------------------------------------------------
@@ -316,7 +316,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx1)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx1)
 
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing changing the voting power of one validator")
@@ -326,7 +326,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 
 	//height 3‘s block contains newValidatorTx1. It will make effect in height 5, will appear in height 6's block's commit
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateValidatorTx1)
 
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing adding two validators at once")
@@ -340,7 +340,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
 	//height 4
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx2, newValidatorTx3)
 
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing removing two validators at once")
@@ -349,10 +349,10 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
 
 	//height 5
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, removeValidatorTx2, removeValidatorTx3)
 	activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
 	//height 6
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 	stopConsensusNet(logger, reactors, eventBuses)
 
 	sim_chain = make([]*types.Block, 0)
