@@ -14,12 +14,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// TestRemoteSignerRetryTCPOnly will test connection retry attempts over TCP. We
+// TestSignerRemoteRetryTCPOnly will test connection retry attempts over TCP. We
 // don't need this for Unix sockets because the OS instantly knows the state of
 // both ends of the socket connection. This basically causes the
-// RemoteSigner.dialer() call inside RemoteSigner.connect() to return
+// SignerServiceEndpoint.dialer() call inside SignerServiceEndpoint.connect() to return
 // successfully immediately, putting an instant stop to any retry attempts.
-func TestRemoteSignerRetryTCPOnly(t *testing.T) {
+func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	var (
 		attemptc = make(chan int)
 		retries  = 2
@@ -47,18 +47,18 @@ func TestRemoteSignerRetryTCPOnly(t *testing.T) {
 		}
 	}(ln, attemptc)
 
-	rs := NewRemoteSigner(
+	serviceEndpoint := NewSignerServiceEndpoint(
 		log.TestingLogger(),
 		cmn.RandStr(12),
 		types.NewMockPV(),
 		DialTCPFn(ln.Addr().String(), testTimeoutReadWrite, ed25519.GenPrivKey()),
 	)
-	defer rs.Stop()
+	defer serviceEndpoint.Stop()
 
-	RemoteSignerTimeoutReadWrite(time.Millisecond)(rs)
-	RemoteSignerConnRetries(retries)(rs)
+	SignerServiceEndpointTimeoutReadWrite(time.Millisecond)(serviceEndpoint)
+	SignerServiceEndpointConnRetries(retries)(serviceEndpoint)
 
-	assert.Equal(t, rs.Start(), ErrDialRetryMax)
+	assert.Equal(t, serviceEndpoint.Start(), ErrDialRetryMax)
 
 	select {
 	case attempts := <-attemptc:

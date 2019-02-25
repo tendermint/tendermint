@@ -23,7 +23,7 @@ func newPrivKey() ed25519.PrivKeyEd25519 {
 type listenerTestCase struct {
 	description string // For test reporting purposes.
 	listener    net.Listener
-	dialer      Dialer
+	dialer      SocketDialer
 }
 
 // testUnixAddr will attempt to obtain a platform-independent temporary file
@@ -98,7 +98,7 @@ func TestListenerTimeoutAccept(t *testing.T) {
 
 func TestListenerTimeoutReadWrite(t *testing.T) {
 	for _, tc := range listenerTestCases(t, time.Second, time.Millisecond) {
-		go func(dialer Dialer) {
+		go func(dialer SocketDialer) {
 			_, err := dialer()
 			if err != nil {
 				panic(err)

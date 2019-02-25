@@ -18,40 +18,40 @@ var (
 	ErrConnTimeout = errors.New("remote signer timed out")
 )
 
-// RemoteSignerClient implements PrivValidator.
+// SignerRemote implements PrivValidator.
 // It uses a net.Conn to request signatures
 // from an external process.
-type RemoteSignerClient struct {
+type SignerRemote struct {
 	conn net.Conn
 
 	// memoized
 	consensusPubKey crypto.PubKey
 }
 
-// Check that RemoteSignerClient implements PrivValidator.
-var _ types.PrivValidator = (*RemoteSignerClient)(nil)
+// Check that SignerRemote implements PrivValidator.
+var _ types.PrivValidator = (*SignerRemote)(nil)
 
-// NewRemoteSignerClient returns an instance of RemoteSignerClient.
-func NewRemoteSignerClient(conn net.Conn) (*RemoteSignerClient, error) {
+// NewSignerRemote returns an instance of SignerRemote.
+func NewSignerRemote(conn net.Conn) (*SignerRemote, error) {
 
 	// retrieve and memoize the consensus public key once.
 	pubKey, err := getPubKey(conn)
 	if err != nil {
 		return nil, cmn.ErrorWrap(err, "error while retrieving public key for remote signer")
 	}
-	return &RemoteSignerClient{
+	return &SignerRemote{
 		conn:            conn,
 		consensusPubKey: pubKey,
 	}, nil
 }
 
 // Close calls Close on the underlying net.Conn.
-func (sc *RemoteSignerClient) Close() error {
+func (sc *SignerRemote) Close() error {
 	return sc.conn.Close()
 }
 
 // GetPubKey implements PrivValidator.
-func (sc *RemoteSignerClient) GetPubKey() crypto.PubKey {
+func (sc *SignerRemote) GetPubKey() crypto.PubKey {
 	return sc.consensusPubKey
 }
 
@@ -79,7 +79,7 @@ func getPubKey(conn net.Conn) (crypto.PubKey, error) {
 }
 
 // SignVote implements PrivValidator.
-func (sc *RemoteSignerClient) SignVote(chainID string, vote *types.Vote) error {
+func (sc *SignerRemote) SignVote(chainID string, vote *types.Vote) error {
 	err := writeMsg(sc.conn, &SignVoteRequest{Vote: vote})
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (sc *RemoteSignerClient) SignVote(chainID string, vote *types.Vote) error {
 }
 
 // SignProposal implements PrivValidator.
-func (sc *RemoteSignerClient) SignProposal(
+func (sc *SignerRemote) SignProposal(
 	chainID string,
 	proposal *types.Proposal,
 ) error {
@@ -129,7 +129,7 @@ func (sc *RemoteSignerClient) SignProposal(
 }
 
 // Ping is used to check connection health.
-func (sc *RemoteSignerClient) Ping() error {
+func (sc *SignerRemote) Ping() error {
 	err := writeMsg(sc.conn, &PingRequest{})
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func (sc *RemoteSignerClient) Ping() error {
 	return nil
 }
 
-// RemoteSignerMsg is sent between RemoteSigner and the RemoteSigner client.
+// RemoteSignerMsg is sent between SignerServiceEndpoint and the SignerServiceEndpoint client.
 type RemoteSignerMsg interface{}
 
 func RegisterRemoteSignerMsg(cdc *amino.Codec) {
@@ -207,7 +207,7 @@ type RemoteSignerError struct {
 }
 
 func (e *RemoteSignerError) Error() string {
-	return fmt.Sprintf("RemoteSigner returned error #%d: %s", e.Code, e.Description)
+	return fmt.Sprintf("SignerServiceEndpoint returned error #%d: %s", e.Code, e.Description)
 }
 
 func readMsg(r io.Reader) (msg RemoteSignerMsg, err error) {

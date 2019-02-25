@@ -15,12 +15,12 @@ var (
 	ErrDialRetryMax = errors.New("dialed maximum retries")
 )
 
-// Dialer dials a remote address and returns a net.Conn or an error.
-type Dialer func() (net.Conn, error)
+// SocketDialer dials a remote address and returns a net.Conn or an error.
+type SocketDialer func() (net.Conn, error)
 
 // DialTCPFn dials the given tcp addr, using the given timeoutReadWrite and
 // privKey for the authenticated encryption handshake.
-func DialTCPFn(addr string, timeoutReadWrite time.Duration, privKey ed25519.PrivKeyEd25519) Dialer {
+func DialTCPFn(addr string, timeoutReadWrite time.Duration, privKey ed25519.PrivKeyEd25519) SocketDialer {
 	return func() (net.Conn, error) {
 		conn, err := cmn.Connect(addr)
 		if err == nil {
@@ -35,7 +35,7 @@ func DialTCPFn(addr string, timeoutReadWrite time.Duration, privKey ed25519.Priv
 }
 
 // DialUnixFn dials the given unix socket.
-func DialUnixFn(addr string) Dialer {
+func DialUnixFn(addr string) SocketDialer {
 	return func() (net.Conn, error) {
 		unixAddr := &net.UnixAddr{Name: addr, Net: "unix"}
 		return net.DialUnix("unix", nil, unixAddr)

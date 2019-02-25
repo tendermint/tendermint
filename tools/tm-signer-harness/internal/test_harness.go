@@ -49,7 +49,7 @@ var _ error = (*TestHarnessError)(nil)
 // with this version of Tendermint.
 type TestHarness struct {
 	addr             string
-	spv              *privval.KMSListener
+	spv              *privval.SignerValidatorEndpoint
 	fpv              *privval.FilePV
 	chainID          string
 	acceptRetries    int
@@ -314,7 +314,7 @@ func (th *TestHarness) Shutdown(err error) {
 
 // newTestHarnessSocketVal creates our client instance which we will use for
 // testing.
-func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval.KMSListener, error) {
+func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval.SignerValidatorEndpoint, error) {
 	proto, addr := cmn.ProtocolAndAddress(cfg.BindAddr)
 	if proto == "unix" {
 		// make sure the socket doesn't exist - if so, try to delete it
@@ -347,7 +347,7 @@ func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval
 		logger.Error("Unsupported protocol (must be unix:// or tcp://)", "proto", proto)
 		return nil, newTestHarnessError(ErrInvalidParameters, nil, fmt.Sprintf("Unsupported protocol: %s", proto))
 	}
-	return privval.NewKMSListener(logger, svln), nil
+	return privval.NewSignerValidatorEndpoint(logger, svln), nil
 }
 
 func newTestHarnessError(code int, err error, info string) *TestHarnessError {

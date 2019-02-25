@@ -84,7 +84,7 @@ func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
 func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.RemoteSigner {
+		func(th *TestHarness) *privval.SignerServiceEndpoint {
 			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, false, false)
 		},
 		NoError,
@@ -94,7 +94,7 @@ func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.RemoteSigner {
+		func(th *TestHarness) *privval.SignerServiceEndpoint {
 			return newMockRemoteSigner(t, th, ed25519.GenPrivKey(), false, false)
 		},
 		ErrTestPublicKeyFailed,
@@ -104,7 +104,7 @@ func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.RemoteSigner {
+		func(th *TestHarness) *privval.SignerServiceEndpoint {
 			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, true, false)
 		},
 		ErrTestSignProposalFailed,
@@ -114,15 +114,15 @@ func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 func TestRemoteSignerVoteSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.RemoteSigner {
+		func(th *TestHarness) *privval.SignerServiceEndpoint {
 			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, false, true)
 		},
 		ErrTestSignVoteFailed,
 	)
 }
 
-func newMockRemoteSigner(t *testing.T, th *TestHarness, privKey crypto.PrivKey, breakProposalSigning bool, breakVoteSigning bool) *privval.RemoteSigner {
-	return privval.NewRemoteSigner(
+func newMockRemoteSigner(t *testing.T, th *TestHarness, privKey crypto.PrivKey, breakProposalSigning bool, breakVoteSigning bool) *privval.SignerServiceEndpoint {
+	return privval.NewSignerServiceEndpoint(
 		th.logger,
 		th.chainID,
 		types.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning),
@@ -135,7 +135,7 @@ func newMockRemoteSigner(t *testing.T, th *TestHarness, privKey crypto.PrivKey, 
 }
 
 // For running relatively standard tests.
-func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.RemoteSigner, expectedExitCode int) {
+func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.SignerServiceEndpoint, expectedExitCode int) {
 	cfg := makeConfig(t, 100, 3)
 	defer cleanup(cfg)
 
