@@ -69,7 +69,7 @@ type BlockPool struct {
 	height     int64 // the lowest key in requesters.
 	// peers
 	peers         map[p2p.ID]*bpPeer
-	maxPeerHeight int64 // the heighest reported height
+	maxPeerHeight int64 // the biggest reported height
 
 	// atomic
 	numPending int32 // number of requests pending assignment or block response
