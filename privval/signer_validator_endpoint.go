@@ -1,7 +1,6 @@
 package privval
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -16,11 +15,6 @@ import (
 const (
 	defaultHeartbeatSeconds = 2
 	defaultMaxDialRetries   = 10
-)
-
-// Socket errors.
-var (
-	ErrUnexpectedResponse = errors.New("received unexpected response")
 )
 
 var (
@@ -45,7 +39,7 @@ type SignerValidatorEndpoint struct {
 	listener net.Listener
 
 	// ping
-	cancelPing      chan struct{}
+	cancelPingCh    chan struct{}
 	pingTicker      *time.Ticker
 	heartbeatPeriod time.Duration
 
@@ -54,7 +48,7 @@ type SignerValidatorEndpoint struct {
 	// All messages are request/response, so we hold the mutex
 	// so only one request/response pair can happen at a time.
 	// Methods on the underlying net.Conn itself are already goroutine safe.
-	mtx    sync.Mutex
+	mtx sync.Mutex
 
 	// TODO: Invert relation here, encapsulate the connection. Signer can hide all this functionality
 	signer *SignerRemote
@@ -64,10 +58,7 @@ type SignerValidatorEndpoint struct {
 var _ types.PrivValidator = (*SignerValidatorEndpoint)(nil)
 
 // NewSignerValidatorEndpoint returns an instance of SignerValidatorEndpoint.
-func NewSignerValidatorEndpoint(
-	logger log.Logger,
-	listener net.Listener,
-) *SignerValidatorEndpoint {
+func NewSignerValidatorEndpoint(logger log.Logger, listener net.Listener) *SignerValidatorEndpoint {
 	sc := &SignerValidatorEndpoint{
 		listener:        listener,
 		heartbeatPeriod: heartbeatPeriod,
@@ -142,7 +133,7 @@ func (ve *SignerValidatorEndpoint) OnStart() error {
 	}
 
 	// Start a routine to keep the connection alive
-	ve.cancelPing = make(chan struct{}, 1)
+	ve.cancelPingCh = make(chan struct{}, 1)
 	ve.pingTicker = time.NewTicker(ve.heartbeatPeriod)
 	go func() {
 		for {
@@ -167,7 +158,7 @@ func (ve *SignerValidatorEndpoint) OnStart() error {
 
 					ve.Logger.Info("Re-created connection to remote signer", "impl", ve)
 				}
-			case <-ve.cancelPing:
+			case <-ve.cancelPingCh:
 				ve.pingTicker.Stop()
 				return
 			}
@@ -179,8 +170,8 @@ func (ve *SignerValidatorEndpoint) OnStart() error {
 
 // OnStop implements cmn.Service.
 func (ve *SignerValidatorEndpoint) OnStop() {
-	if ve.cancelPing != nil {
-		close(ve.cancelPing)
+	if ve.cancelPingCh != nil {
+		close(ve.cancelPingCh)
 	}
 	ve.Close()
 }

@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -21,14 +20,14 @@ import (
 // successfully immediately, putting an instant stop to any retry attempts.
 func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	var (
-		attemptc = make(chan int)
-		retries  = 2
+		attemptCh = make(chan int)
+		retries   = 2
 	)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	go func(ln net.Listener, attemptc chan<- int) {
+	go func(ln net.Listener, attemptCh chan<- int) {
 		attempts := 0
 
 		for {
@@ -41,11 +40,11 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 			attempts++
 
 			if attempts == retries {
-				attemptc <- attempts
+				attemptCh <- attempts
 				break
 			}
 		}
-	}(ln, attemptc)
+	}(ln, attemptCh)
 
 	serviceEndpoint := NewSignerServiceEndpoint(
 		log.TestingLogger(),
@@ -61,30 +60,9 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	assert.Equal(t, serviceEndpoint.Start(), ErrDialRetryMax)
 
 	select {
-	case attempts := <-attemptc:
+	case attempts := <-attemptCh:
 		assert.Equal(t, retries, attempts)
 	case <-time.After(100 * time.Millisecond):
 		t.Error("expected remote to observe connection attempts")
 	}
-}
-
-func TestIsConnTimeoutForFundamentalTimeouts(t *testing.T) {
-	// Generate a networking timeout
-	dialer := DialTCPFn(testFreeTCPAddr(t), time.Millisecond, ed25519.GenPrivKey())
-	_, err := dialer()
-	assert.Error(t, err)
-	assert.True(t, IsConnTimeout(err))
-}
-
-func TestIsConnTimeoutForWrappedConnTimeouts(t *testing.T) {
-	dialer := DialTCPFn(testFreeTCPAddr(t), time.Millisecond, ed25519.GenPrivKey())
-	_, err := dialer()
-	assert.Error(t, err)
-	err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
-	assert.True(t, IsConnTimeout(err))
-}
-
-func TestIsConnTimeoutForNonTimeoutErrors(t *testing.T) {
-	assert.False(t, IsConnTimeout(cmn.ErrorWrap(ErrDialRetryMax, "max retries exceeded")))
-	assert.False(t, IsConnTimeout(errors.New("completely irrelevant error")))
 }
