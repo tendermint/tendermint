@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -24,13 +23,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// WALGenerateNBlocks generates a consensus WAL. It does this by spining up a
+// WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
 // stripped down version of node (proxy app, event bus, consensus state) with a
 // persistent kvstore application and special consensus wal instance
 // (byteBufferWAL) and waits until numBlocks are created. If the node fails to produce given numBlocks, it returns an error.
 func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	config := getConfig(t)
-	defer os.RemoveAll(config.RootDir)
 
 	app := kvstore.NewPersistentKVStoreApplication(filepath.Join(config.DBDir(), "wal_generator"))
 
@@ -205,3 +203,4 @@ func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptio
 func (w *byteBufferWAL) Start() error { return nil }
 func (w *byteBufferWAL) Stop() error  { return nil }
 func (w *byteBufferWAL) Wait()        {}
+func (w *byteBufferWAL) Flush() error { return nil }

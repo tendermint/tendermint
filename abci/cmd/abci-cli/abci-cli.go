@@ -636,9 +636,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 }
 
 func cmdCounter(cmd *cobra.Command, args []string) error {
-
 	app := counter.NewCounterApplication(flagSerial)
-
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
@@ -651,12 +649,14 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Wait forever
-	cmn.TrapSignal(func() {
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
-	return nil
+
+	// Run forever.
+	select {}
 }
 
 func cmdKVStore(cmd *cobra.Command, args []string) error {
@@ -681,12 +681,14 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Wait forever
-	cmn.TrapSignal(func() {
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
-	return nil
+
+	// Run forever.
+	select {}
 }
 
 //--------------------------------------------------------------------------------

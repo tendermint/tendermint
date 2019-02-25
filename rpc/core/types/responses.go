@@ -178,8 +178,10 @@ type ResultTxSearch struct {
 
 // List of mempool txs
 type ResultUnconfirmedTxs struct {
-	N   int        `json:"n_txs"`
-	Txs []types.Tx `json:"txs"`
+	Count      int        `json:"n_txs"`
+	Total      int        `json:"total"`
+	TotalBytes int64      `json:"total_bytes"`
+	Txs        []types.Tx `json:"txs"`
 }
 
 // Info abci msg
@@ -205,4 +207,5 @@ type (
 type ResultEvent struct {
 	Query string            `json:"query"`
 	Data  types.TMEventData `json:"data"`
+	Tags  map[string]string `json:"tags"`
 }

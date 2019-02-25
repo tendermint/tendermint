@@ -237,10 +237,15 @@ recheck = {{ .Mempool.Recheck }}
 broadcast = {{ .Mempool.Broadcast }}
 wal_dir = "{{ js .Mempool.WalPath }}"
 
-# size of the mempool
+# Maximum number of transactions in the mempool
 size = {{ .Mempool.Size }}
 
-# size of the cache (used to filter transactions we saw earlier)
+# Limit the total size of all txs in the mempool.
+# This only accounts for raw transactions (e.g. given 1MB transactions and
+# max_txs_bytes=5MB, mempool will only accept 5 transactions).
+max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
+
+# Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
 
 ##### consensus configuration options #####

@@ -909,6 +909,9 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 		}
 	}
 
+	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign, and the privValidator will refuse to sign anything.
+	cs.wal.Flush()
+
 	// Make proposal
 	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
@@ -1674,6 +1677,9 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 }
 
 func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+	// Flush the WAL. Otherwise, we may not recompute the same vote to sign, and the privValidator will refuse to sign anything.
+	cs.wal.Flush()
+
 	addr := cs.privValidator.GetPubKey().Address()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 

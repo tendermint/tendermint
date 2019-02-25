@@ -526,6 +526,7 @@ func (wsc *wsConnection) OnStart() error {
 func (wsc *wsConnection) OnStop() {
 	// Both read and write loops close the websocket connection when they exit their loops.
 	// The writeChan is never closed, to allow WriteRPCResponse() to fail.
+
 	if wsc.eventSub != nil {
 		wsc.eventSub.UnsubscribeAll(context.TODO(), wsc.remoteAddr)
 	}
