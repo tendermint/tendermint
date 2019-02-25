@@ -1,7 +1,7 @@
 package privval
 
 import (
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
@@ -46,6 +46,7 @@ type SignProposalRequest struct {
 	Proposal *types.Proposal
 }
 
+// SignedProposalResponse is a PrivValidatorSocket message containing a proposal response
 type SignedProposalResponse struct {
 	Proposal *types.Proposal
 	Error    *RemoteSignerError
@@ -55,5 +56,6 @@ type SignedProposalResponse struct {
 type PingRequest struct {
 }
 
+// PingRequest is a PrivValidatorSocket response to keep the connection alive.
 type PingResponse struct {
 }

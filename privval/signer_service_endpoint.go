@@ -85,7 +85,7 @@ func (se *SignerServiceEndpoint) OnStop() {
 }
 
 func (se *SignerServiceEndpoint) connect() (net.Conn, error) {
-	for retries := 0; retries < se.connRetries ; retries++ {
+	for retries := 0; retries < se.connRetries; retries++ {
 		// Don't sleep if it is the first retry.
 		if retries > 0 {
 			time.Sleep(se.timeoutReadWrite)
