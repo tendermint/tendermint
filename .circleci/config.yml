@@ -14,6 +14,21 @@ docs_update_config: &docs_update_config
   environment:
     AWS_REGION: us-east-1
 
+release_management: &release_management
+  working_directory: /go/src/github.com/tendermint/tendermint
+  docker:
+    - image: circleci/golang
+
+release_tagging: &release_tagging
+  docker:
+    - image: interchainio/gpg
+
+# Todo: See what image I can get that has docker and expect installed
+release_management_docker: &release_management_docker
+  working_directory: /go/src/github.com/tendermint/tendermint
+  docker:
+    - image: circleci/expect
+
 jobs:
   setup_dependencies:
     <<: *defaults
@@ -241,6 +256,123 @@ jobs:
           command: |
             chamber exec tendermint -- start_website_build
 
+#Only runs on vX.X branches
+  auto_tag_release:
+    <<: *release_tagging
+    steps:
+      - checkout
+      - run:
+          name: Tag release on the branch
+          command: |
+            if [[ ${CIRCLE_PROJECT_REPONAME} == tendermint ]]; then
+              export LAST_COMMIT="`git log -1 --pretty=%H --no-merges`"
+              export LAST_COMMIT_TAG="`git tag --contains ${LAST_COMMIT}`"
+              if [ -z "${LAST_COMMIT_TAG}" ] ;then
+                echo "Last commit had no tag. Possibly freshly created branch. Standing down."
+                exit
+              fi
+              cat <<< "${SECURITY_GPG_PUBLIC_KEY}" > /tmp/public.key
+              GPG_PUBLIC_LONGKEY="6323C6778CEA2A2C" gpg-import /tmp/public.key
+              rm /tmp/public.key
+              git verify-tag signedtag 2> verify-tag || echo "Tag signature not found. Continue."
+              cat verify-tag
+              if [ -n "`head -2 verify-tag | tail -1 | grep 'gpg: *using RSA key 4567C9CCE9C2060C190439286323C6778CEA2A2C'`" ] && [ -n "`tail -1 verify-tag | grep '^gpg: Good signature from \"Tendermint Security <security@tendermint.com>\"'`" ]; then
+                echo "Last tag is from Tendermint Security. Release is managed by Tendermint Security, stopping."
+                exit
+              fi
+            fi
+            export LAST_TAG="`git describe --tags --abbrev=0 --match "${CIRCLE_BRANCH}.*"`"
+            echo "Last tag: ${LAST_TAG}"
+            export NEXT_TAG="`python -u scripts/release_management/bump-semver.py --version "${LAST_TAG:-${CIRCLE_BRANCH}}"`"
+            echo "Next tag: ${NEXT_TAG}"
+            cat <<< "${GPG_PRIVATE_KEY}" > /tmp/priv.key
+            gpg-import /tmp/priv.key
+            rm /tmp/priv.key
+            gpg-cache-passphrase
+            git config --global user.email "$(gpg -K | grep ^uid | sed 's/uid\s\s*\[[^]][^]]*\]\s*\(\S\S*\)\s\s*<\([^>][^>]*\)>$/\2/')"
+            git config --global user.name "$(gpg -K | grep ^uid | sed 's/uid\s\s*\[[^]][^]]*\]\s*\(\S\S*\)\s\s*<\([^>][^>]*\)>$/\1/')"
+            git tag -sam "Release ${NEXT_TAG} by automation" "${NEXT_TAG}"
+            git push --tags
+
+#Only runs on tags
+  prepare_for_release:
+    <<: *release_management
+    steps:
+      - checkout
+      - run:
+          name: Build dependencies
+          command: |
+            make get_tools get_vendor_deps
+      - save_cache:
+          key: v1-release-deps-{{ .Branch }}-{{ .Revision }}-{{ .Environment.CIRCLE_TAG }}
+          paths:
+            - "vendor"
+
+  build_artifacts:
+    <<: *release_management
+    parallelism: 4
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-release-deps-{{ .Branch }}-{{ .Revision }}-{{ .Environment.CIRCLE_TAG }}
+      - run:
+          name: Build artifact
+          command: |
+            if test -z "${CIRCLE_TAG}" ;then export CIRCLE_TAG=v0.0.0 ;fi
+            if test ${CIRCLE_NODE_INDEX:-0} == 0 ;then export GOOS=linux GOARCH=amd64   && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+            if test ${CIRCLE_NODE_INDEX:-0} == 1 ;then export GOOS=darwin GOARCH=amd64  && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+            if test ${CIRCLE_NODE_INDEX:-0} == 2 ;then export GOOS=windows GOARCH=amd64 && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+            if test ${CIRCLE_NODE_INDEX:-0} == 3 ;then export GOOS=linux GOARCH=arm     && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+      - persist_to_workspace:
+          root: build
+          paths:
+            - "*.zip"
+            - "tendermint_linux_amd64"
+
+  release_artifacts:
+    <<: *release_management
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Deploy to GitHub
+          command: |
+            if test -z "${CIRCLE_TAG}" ;then echo "Untagged release request. Exiting." ;exit ;fi
+            echo "---"
+            ls -la /tmp/workspace
+            echo "---"
+            python -u scripts/release_management/sha-files.py
+            echo "---"
+            cat /tmp/workspace/SHA256SUMS
+            echo "---"
+            if test ${CIRCLE_PROJECT_REPONAME} == "security" ;then scripts/release_management/github-public-newbranch.bash ;fi
+            export RELEASE_ID="`python -u scripts/release_management/github-draft.py`"
+            echo "Release ID: ${RELEASE_ID}"
+            #if test -z "${CIRCLE_TAG}" ;then export CIRCLE_TAG=v0.0.0 ;fi
+            #Todo: Parallelize upload - but make sure publish only runs once
+            export GOOS=linux GOARCH=amd64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            export GOOS=darwin GOARCH=amd64  && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            export GOOS=windows GOARCH=amd64 && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            export GOOS=linux GOARCH=arm     && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
+
+  release_docker:
+    <<: *release_management_docker
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Deploy to Docker Hub
+          command: |
+            cp /tmp/workspace/tendermint_linux_amd64 DOCKER/tendermint
+            docker build --label="tendermint" --tag="tendermint/tendermint:${CIRCLE_TAG}" --tag="tendermint/tendermint:latest" "DOCKER"
+            docker login -u "${DOCKERHUB_USER}" --password-stdin <<< "${DOCKERHUB_PASS}"
+            docker push "tendermint/tendermint"
+            docker logout
+
 workflows:
   version: 2
   test-suite:
@@ -277,3 +409,33 @@ workflows:
       - upload_coverage:
           requires:
             - test_cover
+  release:
+    jobs:
+      - auto_tag_release:
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
+      - prepare_for_release:
+          filters:
+            tags:
+              only:
+                - /v[0-9]+\.[0-9]+\.[0-9]+/
+      - build_artifacts:
+          requires:
+            - prepare_for_release
+          filters:
+            tags:
+              only:
+                - /v[0-9]+\.[0-9]+\.[0-9]+/
+      - release_artifacts:
+          requires:
+            - prepare_for_release
+            - build_artifacts
+          filters:
+            tags:
+              only:
+                - /v[0-9]+\.[0-9]+\.[0-9]+/
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
