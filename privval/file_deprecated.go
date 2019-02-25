@@ -10,7 +10,7 @@ import (
 )
 
 // OldFilePV is the old version of the FilePV, pre v0.28.0.
-// TODO: Can we delete this?
+// Deprecated: Use FilePV instead.
 type OldFilePV struct {
 	Address       types.Address  `json:"address"`
 	PubKey        crypto.PubKey  `json:"pub_key"`
