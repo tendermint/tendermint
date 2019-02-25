@@ -18,5 +18,5 @@ type RemoteSignerError struct {
 }
 
 func (e *RemoteSignerError) Error() string {
-	return fmt.Sprintf("SignerServiceEndpoint returned error #%d: %s", e.Code, e.Description)
+	return fmt.Sprintf("signerServiceEndpoint returned error #%d: %s", e.Code, e.Description)
 }

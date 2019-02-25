@@ -189,8 +189,8 @@ func (ve *SignerValidatorEndpoint) reset() (closed bool, err error) {
 
 	// first check if the conn already exists and close it.
 	if ve.signer != nil {
-		if err := ve.signer.Close(); err != nil {
-			ve.Logger.Error("error closing socket val connection during reset", "err", err)
+		if tmpErr := ve.signer.Close(); tmpErr != nil {
+			ve.Logger.Error("error closing socket val connection during reset", "err", tmpErr)
 		}
 	}
 
@@ -208,8 +208,8 @@ func (ve *SignerValidatorEndpoint) reset() (closed bool, err error) {
 	ve.signer, err = NewSignerRemote(conn)
 	if err != nil {
 		// failed to fetch the pubkey. close out the connection.
-		if err := conn.Close(); err != nil {
-			ve.Logger.Error("error closing connection", "err", err)
+		if tmpErr := conn.Close(); tmpErr != nil {
+			ve.Logger.Error("error closing connection", "err", tmpErr)
 		}
 		return false, err
 	}
