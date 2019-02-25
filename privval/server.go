@@ -5,26 +5,18 @@ import (
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
-)
-
-// Socket errors.
-var (
-	ErrDialRetryMax = errors.New("dialed maximum retries")
 )
 
 // RemoteSignerOption sets an optional parameter on the RemoteSigner.
 type RemoteSignerOption func(*RemoteSigner)
 
-// RemoteSignerConnDeadline sets the read and write deadline for connections
+// RemoteSignerTimeoutReadWrite sets the read and write timeout for connections
 // from external signing processes.
-func RemoteSignerConnDeadline(deadline time.Duration) RemoteSignerOption {
-	return func(ss *RemoteSigner) { ss.connDeadline = deadline }
+func RemoteSignerTimeoutReadWrite(timeout time.Duration) RemoteSignerOption {
+	return func(ss *RemoteSigner) { ss.timeoutReadWrite = timeout }
 }
 
 // RemoteSignerConnRetries sets the amount of attempted retries to connect.
@@ -37,39 +29,13 @@ func RemoteSignerConnRetries(retries int) RemoteSignerOption {
 type RemoteSigner struct {
 	cmn.BaseService
 
-	chainID      string
-	connDeadline time.Duration
-	connRetries  int
-	privVal      types.PrivValidator
+	chainID          string
+	timeoutReadWrite time.Duration
+	connRetries      int
+	privVal          types.PrivValidator
 
 	dialer Dialer
 	conn   net.Conn
-}
-
-// Dialer dials a remote address and returns a net.Conn or an error.
-type Dialer func() (net.Conn, error)
-
-// DialTCPFn dials the given tcp addr, using the given connTimeout and privKey for the
-// authenticated encryption handshake.
-func DialTCPFn(addr string, connTimeout time.Duration, privKey ed25519.PrivKeyEd25519) Dialer {
-	return func() (net.Conn, error) {
-		conn, err := cmn.Connect(addr)
-		if err == nil {
-			err = conn.SetDeadline(time.Now().Add(connTimeout))
-		}
-		if err == nil {
-			conn, err = p2pconn.MakeSecretConnection(conn, privKey)
-		}
-		return conn, err
-	}
-}
-
-// DialUnixFn dials the given unix socket.
-func DialUnixFn(addr string) Dialer {
-	return func() (net.Conn, error) {
-		unixAddr := &net.UnixAddr{Name: addr, Net: "unix"}
-		return net.DialUnix("unix", nil, unixAddr)
-	}
 }
 
 // NewRemoteSigner return a RemoteSigner that will dial using the given
@@ -82,11 +48,11 @@ func NewRemoteSigner(
 	dialer Dialer,
 ) *RemoteSigner {
 	rs := &RemoteSigner{
-		chainID:      chainID,
-		connDeadline: time.Second * defaultConnDeadlineSeconds,
-		connRetries:  defaultDialRetries,
-		privVal:      privVal,
-		dialer:       dialer,
+		chainID:          chainID,
+		timeoutReadWrite: time.Second * defaultTimeoutReadWriteSeconds,
+		connRetries:      defaultDialRetries,
+		privVal:          privVal,
+		dialer:           dialer,
 	}
 
 	rs.BaseService = *cmn.NewBaseService(logger, "RemoteSigner", rs)
@@ -122,7 +88,7 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 	for retries := rs.connRetries; retries > 0; retries-- {
 		// Don't sleep if it is the first retry.
 		if retries != rs.connRetries {
-			time.Sleep(rs.connDeadline)
+			time.Sleep(rs.timeoutReadWrite)
 		}
 		conn, err := rs.dialer()
 		if err != nil {
@@ -142,7 +108,11 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 		}
 
 		// Reset the connection deadline
-		conn.SetDeadline(time.Now().Add(rs.connDeadline))
+		deadline := time.Now().Add(rs.timeoutReadWrite)
+		err := conn.SetDeadline(deadline)
+		if err != nil {
+			return
+		}
 
 		req, err := readMsg(conn)
 		if err != nil {

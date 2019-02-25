@@ -133,7 +133,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 		types.NewMockPV(),
 		dialer,
 	)
-	privval.RemoteSignerConnDeadline(100 * time.Millisecond)(pvsc)
+	privval.RemoteSignerTimeoutReadWrite(100 * time.Millisecond)(pvsc)
 
 	go func() {
 		err := pvsc.Start()
@@ -145,7 +145,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SocketVal{}, n.PrivValidator())
+	assert.IsType(t, &privval.KMSListener{}, n.PrivValidator())
 }
 
 // address without a protocol must result in error
@@ -173,7 +173,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		types.NewMockPV(),
 		dialer,
 	)
-	privval.RemoteSignerConnDeadline(100 * time.Millisecond)(pvsc)
+	privval.RemoteSignerTimeoutReadWrite(100 * time.Millisecond)(pvsc)
 
 	go func() {
 		err := pvsc.Start()
@@ -183,7 +183,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SocketVal{}, n.PrivValidator())
+	assert.IsType(t, &privval.KMSListener{}, n.PrivValidator())
 
 }
 

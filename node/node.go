@@ -909,7 +909,7 @@ func createAndStartPrivValidatorSocketClient(
 		)
 	}
 
-	pvsc := privval.NewSocketVal(logger.With("module", "privval"), listener)
+	pvsc := privval.NewKMSListener(logger.With("module", "privval"), listener)
 	if err := pvsc.Start(); err != nil {
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}

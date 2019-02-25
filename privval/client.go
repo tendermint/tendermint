@@ -27,19 +27,19 @@ var (
 	connHeartbeat = time.Second * defaultConnHeartBeatSeconds
 )
 
-// SocketValOption sets an optional parameter on the SocketVal.
-type SocketValOption func(*SocketVal)
+// KMSListenerOption sets an optional parameter on the SocketVal.
+type KMSListenerOption func(*KMSListener)
 
 // SocketValHeartbeat sets the period on which to check the liveness of the
 // connected Signer connections.
-func SocketValHeartbeat(period time.Duration) SocketValOption {
-	return func(sc *SocketVal) { sc.connHeartbeat = period }
+func SocketValHeartbeat(period time.Duration) KMSListenerOption {
+	return func(sc *KMSListener) { sc.connHeartbeat = period }
 }
 
 // SocketVal implements PrivValidator.
 // It listens for an external process to dial in and uses
 // the socket to request signatures.
-type SocketVal struct {
+type KMSListener struct {
 	cmn.BaseService
 
 	listener net.Listener
@@ -55,26 +55,25 @@ type SocketVal struct {
 	// ping routine.
 	// All messages are request/response, so we hold the mutex
 	// so only one request/response pair can happen at a time.
-	// Methods on the underlying net.Conn itself
-	// are already gorountine safe.
+	// Methods on the underlying net.Conn itself are already goroutine safe.
 	mtx    sync.Mutex
 	signer *RemoteSignerClient
 }
 
-// Check that SocketVal implements PrivValidator.
-var _ types.PrivValidator = (*SocketVal)(nil)
+// Check that KMSListener implements PrivValidator.
+var _ types.PrivValidator = (*KMSListener)(nil)
 
-// NewSocketVal returns an instance of SocketVal.
-func NewSocketVal(
+// NewKMSListener returns an instance of KMSListener.
+func NewKMSListener(
 	logger log.Logger,
 	listener net.Listener,
-) *SocketVal {
-	sc := &SocketVal{
+) *KMSListener {
+	sc := &KMSListener{
 		listener:      listener,
 		connHeartbeat: connHeartbeat,
 	}
 
-	sc.BaseService = *cmn.NewBaseService(logger, "SocketVal", sc)
+	sc.BaseService = *cmn.NewBaseService(logger, "KMSListener", sc)
 
 	return sc
 }
@@ -83,21 +82,21 @@ func NewSocketVal(
 // Implement PrivValidator
 
 // GetPubKey implements PrivValidator.
-func (sc *SocketVal) GetPubKey() crypto.PubKey {
+func (sc *KMSListener) GetPubKey() crypto.PubKey {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 	return sc.signer.GetPubKey()
 }
 
 // SignVote implements PrivValidator.
-func (sc *SocketVal) SignVote(chainID string, vote *types.Vote) error {
+func (sc *KMSListener) SignVote(chainID string, vote *types.Vote) error {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 	return sc.signer.SignVote(chainID, vote)
 }
 
 // SignProposal implements PrivValidator.
-func (sc *SocketVal) SignProposal(chainID string, proposal *types.Proposal) error {
+func (sc *KMSListener) SignProposal(chainID string, proposal *types.Proposal) error {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 	return sc.signer.SignProposal(chainID, proposal)
@@ -107,14 +106,14 @@ func (sc *SocketVal) SignProposal(chainID string, proposal *types.Proposal) erro
 // More thread safe methods proxied to the signer
 
 // Ping is used to check connection health.
-func (sc *SocketVal) Ping() error {
+func (sc *KMSListener) Ping() error {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 	return sc.signer.Ping()
 }
 
 // Close closes the underlying net.Conn.
-func (sc *SocketVal) Close() {
+func (sc *KMSListener) Close() {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 	if sc.signer != nil {
@@ -134,7 +133,7 @@ func (sc *SocketVal) Close() {
 // Service start and stop
 
 // OnStart implements cmn.Service.
-func (sc *SocketVal) OnStart() error {
+func (sc *KMSListener) OnStart() error {
 	if closed, err := sc.reset(); err != nil {
 		sc.Logger.Error("OnStart", "err", err)
 		return err
@@ -179,7 +178,7 @@ func (sc *SocketVal) OnStart() error {
 }
 
 // OnStop implements cmn.Service.
-func (sc *SocketVal) OnStop() {
+func (sc *KMSListener) OnStop() {
 	if sc.cancelPing != nil {
 		close(sc.cancelPing)
 	}
@@ -193,7 +192,7 @@ func (sc *SocketVal) OnStop() {
 // connection is closed in OnStop.
 // returns true if the listener is closed
 // (ie. it returns a nil conn).
-func (sc *SocketVal) reset() (closed bool, err error) {
+func (sc *KMSListener) reset() (closed bool, err error) {
 	sc.mtx.Lock()
 	defer sc.mtx.Unlock()
 
@@ -227,8 +226,8 @@ func (sc *SocketVal) reset() (closed bool, err error) {
 }
 
 // Attempt to accept a connection.
-// Times out after the listener's acceptDeadline
-func (sc *SocketVal) acceptConnection() (net.Conn, error) {
+// Times out after the listener's timeoutAccept
+func (sc *KMSListener) acceptConnection() (net.Conn, error) {
 	conn, err := sc.listener.Accept()
 	if err != nil {
 		if !sc.IsRunning() {

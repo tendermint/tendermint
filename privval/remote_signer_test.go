@@ -51,11 +51,11 @@ func TestRemoteSignerRetryTCPOnly(t *testing.T) {
 		log.TestingLogger(),
 		cmn.RandStr(12),
 		types.NewMockPV(),
-		DialTCPFn(ln.Addr().String(), testConnDeadline, ed25519.GenPrivKey()),
+		DialTCPFn(ln.Addr().String(), testTimeoutReadWrite, ed25519.GenPrivKey()),
 	)
 	defer rs.Stop()
 
-	RemoteSignerConnDeadline(time.Millisecond)(rs)
+	RemoteSignerTimeoutReadWrite(time.Millisecond)(rs)
 	RemoteSignerConnRetries(retries)(rs)
 
 	assert.Equal(t, rs.Start(), ErrDialRetryMax)

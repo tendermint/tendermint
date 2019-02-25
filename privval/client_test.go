@@ -17,13 +17,13 @@ import (
 )
 
 var (
-	testAcceptDeadline = defaultAcceptDeadlineSeconds * time.Second
+	testTimeoutAccept = defaultTimeoutAcceptSeconds * time.Second
 
-	testConnDeadline    = 100 * time.Millisecond
-	testConnDeadline2o3 = 66 * time.Millisecond // 2/3 of the other one
+	testTimeoutReadWrite    = 100 * time.Millisecond
+	testTimeoutReadWrite2o3 = 66 * time.Millisecond // 2/3 of the other one
 
-	testHeartbeatTimeout    = 10 * time.Millisecond
-	testHeartbeatTimeout3o2 = 6 * time.Millisecond // 3/2 of the other one
+	testTimeoutHeartbeat    = 10 * time.Millisecond
+	testTimeoutHeartbeat3o2 = 6 * time.Millisecond // 3/2 of the other one
 )
 
 type socketTestCase struct {
@@ -39,7 +39,7 @@ func socketTestCases(t *testing.T) []socketTestCase {
 	return []socketTestCase{
 		{
 			addr:   tcpAddr,
-			dialer: DialTCPFn(tcpAddr, testConnDeadline, ed25519.GenPrivKey()),
+			dialer: DialTCPFn(tcpAddr, testTimeoutReadWrite, ed25519.GenPrivKey()),
 		},
 		{
 			addr:   unixAddr,
@@ -145,14 +145,14 @@ func TestSocketPVVoteResetDeadline(t *testing.T) {
 			defer sc.Stop()
 			defer rs.Stop()
 
-			time.Sleep(testConnDeadline2o3)
+			time.Sleep(testTimeoutReadWrite2o3)
 
 			require.NoError(t, rs.privVal.SignVote(chainID, want))
 			require.NoError(t, sc.SignVote(chainID, have))
 			assert.Equal(t, want.Signature, have.Signature)
 
 			// This would exceed the deadline if it was not extended by the previous message
-			time.Sleep(testConnDeadline2o3)
+			time.Sleep(testTimeoutReadWrite2o3)
 
 			require.NoError(t, rs.privVal.SignVote(chainID, want))
 			require.NoError(t, sc.SignVote(chainID, have))
@@ -165,21 +165,21 @@ func TestSocketPVVoteKeepalive(t *testing.T) {
 	for _, tc := range socketTestCases(t) {
 		func() {
 			var (
-				chainID = cmn.RandStr(12)
-				sc, rs  = testSetupSocketPair(t, chainID, types.NewMockPV(), tc.addr, tc.dialer)
+				chainID                   = cmn.RandStr(12)
+				kmsListener, remoteSigner = testSetupSocketPair(t, chainID, types.NewMockPV(), tc.addr, tc.dialer)
 
 				ts    = time.Now()
 				vType = types.PrecommitType
 				want  = &types.Vote{Timestamp: ts, Type: vType}
 				have  = &types.Vote{Timestamp: ts, Type: vType}
 			)
-			defer sc.Stop()
-			defer rs.Stop()
+			defer kmsListener.Stop()
+			defer remoteSigner.Stop()
 
-			time.Sleep(testConnDeadline * 2)
+			time.Sleep(testTimeoutReadWrite * 2)
 
-			require.NoError(t, rs.privVal.SignVote(chainID, want))
-			require.NoError(t, sc.SignVote(chainID, have))
+			require.NoError(t, remoteSigner.privVal.SignVote(chainID, want))
+			require.NoError(t, kmsListener.SignVote(chainID, have))
 			assert.Equal(t, want.Signature, have.Signature)
 		}()
 	}
@@ -194,7 +194,7 @@ func TestSocketPVDeadline(t *testing.T) {
 				sc              = newSocketVal(log.TestingLogger(), tc.addr, thisConnTimeout)
 			)
 
-			go func(sc *SocketVal) {
+			go func(sc *KMSListener) {
 				defer close(listenc)
 
 				// Note: the TCP connection times out at the accept() phase,
@@ -282,12 +282,12 @@ func TestErrUnexpectedResponse(t *testing.T) {
 					types.NewMockPV(),
 					tc.dialer,
 				)
-				sc = newSocketVal(logger, tc.addr, testConnDeadline)
+				sc = newSocketVal(logger, tc.addr, testTimeoutReadWrite)
 			)
 
 			testStartSocketPV(t, readyc, sc)
 			defer sc.Stop()
-			RemoteSignerConnDeadline(time.Millisecond)(rs)
+			RemoteSignerTimeoutReadWrite(time.Millisecond)(rs)
 			RemoteSignerConnRetries(100)(rs)
 			// we do not want to Start() the remote signer here and instead use the connection to
 			// reply with intentionally wrong replies below:
@@ -336,13 +336,13 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 					types.NewMockPV(),
 					tc.dialer,
 				)
-				thisConnTimeout = testConnDeadline
+				thisConnTimeout = testTimeoutReadWrite
 				sc              = newSocketVal(logger, tc.addr, thisConnTimeout)
 			)
 			// Ping every:
-			SocketValHeartbeat(testHeartbeatTimeout)(sc)
+			SocketValHeartbeat(testTimeoutHeartbeat)(sc)
 
-			RemoteSignerConnDeadline(testConnDeadline)(rs)
+			RemoteSignerTimeoutReadWrite(testTimeoutReadWrite)(rs)
 			RemoteSignerConnRetries(10)(rs)
 
 			testStartSocketPV(t, readyc, sc)
@@ -351,7 +351,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			assert.True(t, rs.IsRunning())
 
 			<-readyc
-			time.Sleep(testHeartbeatTimeout * 2)
+			time.Sleep(testTimeoutHeartbeat * 2)
 
 			rs.Stop()
 			rs2 := NewRemoteSigner(
@@ -361,7 +361,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 				tc.dialer,
 			)
 			// let some pings pass
-			time.Sleep(testHeartbeatTimeout3o2)
+			time.Sleep(testTimeoutHeartbeat3o2)
 			require.NoError(t, rs2.Start())
 			assert.True(t, rs2.IsRunning())
 			defer rs2.Stop()
@@ -371,12 +371,12 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			//
 			// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
 			// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=SocketVal
-			time.Sleep(testConnDeadline * 2)
+			time.Sleep(testTimeoutReadWrite * 2)
 		}()
 	}
 }
 
-func newSocketVal(logger log.Logger, addr string, connDeadline time.Duration) *SocketVal {
+func newSocketVal(logger log.Logger, addr string, connDeadline time.Duration) *KMSListener {
 	proto, address := cmn.ProtocolAndAddress(addr)
 	ln, err := net.Listen(proto, address)
 	logger.Info("Listening at", "proto", proto, "address", address)
@@ -386,16 +386,16 @@ func newSocketVal(logger log.Logger, addr string, connDeadline time.Duration) *S
 	var svln net.Listener
 	if proto == "unix" {
 		unixLn := NewUnixListener(ln)
-		UnixListenerAcceptDeadline(testAcceptDeadline)(unixLn)
-		UnixListenerConnDeadline(connDeadline)(unixLn)
+		UnixListenerTimeoutAccept(testTimeoutAccept)(unixLn)
+		UnixListenerTimeoutReadWrite(connDeadline)(unixLn)
 		svln = unixLn
 	} else {
 		tcpLn := NewTCPListener(ln, ed25519.GenPrivKey())
-		TCPListenerAcceptDeadline(testAcceptDeadline)(tcpLn)
-		TCPListenerConnDeadline(connDeadline)(tcpLn)
+		TCPListenerTimeoutAccept(testTimeoutAccept)(tcpLn)
+		TCPListenerTimeoutReadWrite(connDeadline)(tcpLn)
 		svln = tcpLn
 	}
-	return NewSocketVal(logger, svln)
+	return NewKMSListener(logger, svln)
 }
 
 func testSetupSocketPair(
@@ -404,34 +404,34 @@ func testSetupSocketPair(
 	privValidator types.PrivValidator,
 	addr string,
 	dialer Dialer,
-) (*SocketVal, *RemoteSigner) {
+) (*KMSListener, *RemoteSigner) {
 	var (
-		logger  = log.TestingLogger()
-		privVal = privValidator
-		readyc  = make(chan struct{})
-		rs      = NewRemoteSigner(
+		logger       = log.TestingLogger()
+		privVal      = privValidator
+		readyc       = make(chan struct{})
+		remoteSigner = NewRemoteSigner(
 			logger,
 			chainID,
 			privVal,
 			dialer,
 		)
 
-		thisConnTimeout = testConnDeadline
-		sc              = newSocketVal(logger, addr, thisConnTimeout)
+		thisConnTimeout = testTimeoutReadWrite
+		socketVal       = newSocketVal(logger, addr, thisConnTimeout)
 	)
 
-	SocketValHeartbeat(testHeartbeatTimeout)(sc)
-	RemoteSignerConnDeadline(testConnDeadline)(rs)
-	RemoteSignerConnRetries(1e6)(rs)
+	SocketValHeartbeat(testTimeoutHeartbeat)(socketVal)
+	RemoteSignerTimeoutReadWrite(testTimeoutReadWrite)(remoteSigner)
+	RemoteSignerConnRetries(1e6)(remoteSigner)
 
-	testStartSocketPV(t, readyc, sc)
+	testStartSocketPV(t, readyc, socketVal)
 
-	require.NoError(t, rs.Start())
-	assert.True(t, rs.IsRunning())
+	require.NoError(t, remoteSigner.Start())
+	assert.True(t, remoteSigner.IsRunning())
 
 	<-readyc
 
-	return sc, rs
+	return socketVal, remoteSigner
 }
 
 func testReadWriteResponse(t *testing.T, resp RemoteSignerMsg, rsConn net.Conn) {
@@ -442,8 +442,8 @@ func testReadWriteResponse(t *testing.T, resp RemoteSignerMsg, rsConn net.Conn) 
 	require.NoError(t, err)
 }
 
-func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *SocketVal) {
-	go func(sc *SocketVal) {
+func testStartSocketPV(t *testing.T, readyc chan struct{}, sc *KMSListener) {
+	go func(sc *KMSListener) {
 		require.NoError(t, sc.Start())
 		assert.True(t, sc.IsRunning())
 
