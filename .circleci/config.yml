@@ -14,6 +14,17 @@ docs_update_config: &docs_update_config
   environment:
     AWS_REGION: us-east-1
 
+release_management: &release_management
+  working_directory: /go/src/github.com/tendermint/tendermint
+  docker:
+    - image: circleci/golang
+
+# Todo: See what image I can get that has docker and expect installed
+release_management_docker: &release_management_docker
+  working_directory: /go/src/github.com/tendermint/tendermint
+  docker:
+    - image: circleci/expect
+
 jobs:
   setup_dependencies:
     <<: *defaults
@@ -241,6 +252,112 @@ jobs:
           command: |
             chamber exec tendermint -- start_website_build
 
+#Only runs on vX.X branches
+  get_release_number:
+    <<: *release_management
+    steps:
+      - checkout
+      - run:
+          name: Get next release number
+          command: |
+            export LAST_TAG="`git describe --tags --abbrev=0 --match "${CIRCLE_BRANCH}.*"`"
+            echo "Last tag: ${LAST_TAG}"
+            if [ -z "${LAST_TAG}" ]; then
+              export LAST_TAG="${CIRCLE_BRANCH}"
+              echo "Last tag not found. Possibly fresh branch. Setting ${LAST_TAG} as tag."
+            fi
+            export NEXT_TAG="`python -u scripts/release_management/bump-semver.py --version "${LAST_TAG}"`"
+            echo "Next tag: ${NEXT_TAG}"
+            echo "export CIRCLE_TAG=\"${NEXT_TAG}\"" > release-version.source
+      - persist_to_workspace:
+          root: .
+          paths:
+            - "release-version.source"
+
+  prepare_for_release:
+    <<: *release_management
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Build dependencies
+          command: |
+            make get_tools get_vendor_deps
+      - save_cache:
+          key: v1-release-deps-{{ .Branch }}-{{ .Revision }}-{{ .Environment.CIRCLE_TAG }}
+          paths:
+            - "vendor"
+
+  build_artifacts:
+    <<: *release_management
+    parallelism: 4
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-release-deps-{{ .Branch }}-{{ .Revision }}-{{ .Environment.CIRCLE_TAG }}
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Build artifact
+          command: |
+            # Setting CIRCLE_TAG because we do not tag the release ourselves.
+            source /tmp/workspace/release-version.source
+            if test ${CIRCLE_NODE_INDEX:-0} == 0 ;then export GOOS=linux GOARCH=amd64   && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+            if test ${CIRCLE_NODE_INDEX:-0} == 1 ;then export GOOS=darwin GOARCH=amd64  && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+            if test ${CIRCLE_NODE_INDEX:-0} == 2 ;then export GOOS=windows GOARCH=amd64 && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+            if test ${CIRCLE_NODE_INDEX:-0} == 3 ;then export GOOS=linux GOARCH=arm     && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+      - persist_to_workspace:
+          root: build
+          paths:
+            - "*.zip"
+            - "tendermint_linux_amd64"
+
+  release_artifacts:
+    <<: *release_management
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Deploy to GitHub
+          command: |
+            # Setting CIRCLE_TAG because we do not tag the release ourselves.
+            source /tmp/workspace/release-version.source
+            echo "---"
+            ls -la /tmp/workspace/*.zip
+            echo "---"
+            python -u scripts/release_management/sha-files.py
+            echo "---"
+            cat /tmp/workspace/SHA256SUMS
+            echo "---"
+            export RELEASE_ID="`python -u scripts/release_management/github-draft.py`"
+            echo "Release ID: ${RELEASE_ID}"
+            #Todo: Parallelize upload - but make sure publish only runs once and only after all uploads finished
+            export GOOS=linux GOARCH=amd64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            export GOOS=darwin GOARCH=amd64  && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            export GOOS=windows GOARCH=amd64 && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            export GOOS=linux GOARCH=arm     && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
+
+  release_docker:
+    <<: *release_management_docker
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Deploy to Docker Hub
+          command: |
+            # Setting CIRCLE_TAG because we do not tag the release ourselves.
+            source /tmp/workspace/release-version.source
+            cp /tmp/workspace/tendermint_linux_amd64 DOCKER/tendermint
+            docker build --label="tendermint" --tag="tendermint/tendermint:${CIRCLE_TAG}" --tag="tendermint/tendermint:latest" "DOCKER"
+            docker login -u "${DOCKERHUB_USER}" --password-stdin <<< "${DOCKERHUB_PASS}"
+            docker push "tendermint/tendermint"
+            docker logout
+
 workflows:
   version: 2
   test-suite:
@@ -277,3 +394,43 @@ workflows:
       - upload_coverage:
           requires:
             - test_cover
+  release:
+    jobs:
+      - get_release_number:
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
+      - prepare_for_release:
+          requires:
+            - get_release_number
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
+      - build_artifacts:
+          requires:
+            - get_release_number
+            - prepare_for_release
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
+#      - release_artifacts:
+#          requires:
+#            - get_release_number
+#            - prepare_for_release
+#            - build_artifacts
+#          filters:
+#            branches:
+#              only:
+#                - /v[0-9]+\.[0-9]+/
+#      - release_docker:
+#          requires:
+#            - get_release_number
+#            - prepare_for_release
+#            - build_artifacts
+#          filters:
+#            branches:
+#              only:
+#                - /v[0-9]+\.[0-9]+/
