@@ -41,7 +41,6 @@ func TestMain(m *testing.M) {
 	os.RemoveAll(configStateTest.RootDir)
 	os.RemoveAll(configMempoolTest.RootDir)
 	os.RemoveAll(configByzantineTest.RootDir)
-	sim_cleanupFunc()
 	os.Exit(code)
 }
 
@@ -282,7 +281,7 @@ var (
 // 2 - save block and committed but state is behind
 var modes = []uint{0, 1, 2}
 
-// This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
+// This actually is not a test, it's for storing validator change tx data for testHandshakeReplay
 func TestSimulateValidatorsChange(t *testing.T) {
 	nPeers := 7
 	nVals := 4
@@ -363,56 +362,6 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 }
 
-// Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
-func TestMockProxyApp(t *testing.T) {
-	logger := log.TestingLogger()
-	var validTxs, invalidTxs = 0, 0
-	txIndex := 0
-
-	assert.NotPanics(t, func() {
-		abciResWithEmptyDeliverTx := new(sm.ABCIResponses)
-		abciResWithEmptyDeliverTx.DeliverTx = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.DeliverTx = append(abciResWithEmptyDeliverTx.DeliverTx, &abci.ResponseDeliverTx{})
-
-		// called when saveABCIResponses:
-		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
-		loadedAbciRes := new(sm.ABCIResponses)
-
-		// this also happens sm.LoadABCIResponses
-		err := cdc.UnmarshalBinaryBare(bytes, loadedAbciRes)
-		require.NoError(t, err)
-
-		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
-
-		abciRes := new(sm.ABCIResponses)
-		abciRes.DeliverTx = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTx))
-		// Execute transactions and get hash.
-		proxyCb := func(req *abci.Request, res *abci.Response) {
-			switch r := res.Value.(type) {
-			case *abci.Response_DeliverTx:
-				// TODO: make use of res.Log
-				// TODO: make use of this info
-				// Blocks may include invalid txs.
-				txRes := r.DeliverTx
-				if txRes.Code == abci.CodeTypeOK {
-					validTxs++
-				} else {
-					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
-					invalidTxs++
-				}
-				abciRes.DeliverTx[txIndex] = txRes
-				txIndex++
-			}
-		}
-		mock.SetResponseCallback(proxyCb)
-
-		someTx := []byte("tx")
-		mock.DeliverTxAsync(someTx)
-	})
-	assert.True(t, validTxs == 1)
-	assert.True(t, invalidTxs == 0)
-}
-
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
 	for i, m := range modes {
@@ -467,6 +416,57 @@ func TestHandshakeReplayNone(t *testing.T) {
 		defer os.RemoveAll(config.RootDir)
 		testHandshakeReplay(t, config, NUM_BLOCKS, m, true)
 	}
+}
+
+// Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
+func TestMockProxyApp(t *testing.T) {
+	sim_cleanupFunc() //clean the test env created in TestSimulateValidatorsChange
+	logger := log.TestingLogger()
+	var validTxs, invalidTxs = 0, 0
+	txIndex := 0
+
+	assert.NotPanics(t, func() {
+		abciResWithEmptyDeliverTx := new(sm.ABCIResponses)
+		abciResWithEmptyDeliverTx.DeliverTx = make([]*abci.ResponseDeliverTx, 0)
+		abciResWithEmptyDeliverTx.DeliverTx = append(abciResWithEmptyDeliverTx.DeliverTx, &abci.ResponseDeliverTx{})
+
+		// called when saveABCIResponses:
+		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
+		loadedAbciRes := new(sm.ABCIResponses)
+
+		// this also happens sm.LoadABCIResponses
+		err := cdc.UnmarshalBinaryBare(bytes, loadedAbciRes)
+		require.NoError(t, err)
+
+		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
+
+		abciRes := new(sm.ABCIResponses)
+		abciRes.DeliverTx = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTx))
+		// Execute transactions and get hash.
+		proxyCb := func(req *abci.Request, res *abci.Response) {
+			switch r := res.Value.(type) {
+			case *abci.Response_DeliverTx:
+				// TODO: make use of res.Log
+				// TODO: make use of this info
+				// Blocks may include invalid txs.
+				txRes := r.DeliverTx
+				if txRes.Code == abci.CodeTypeOK {
+					validTxs++
+				} else {
+					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
+					invalidTxs++
+				}
+				abciRes.DeliverTx[txIndex] = txRes
+				txIndex++
+			}
+		}
+		mock.SetResponseCallback(proxyCb)
+
+		someTx := []byte("tx")
+		mock.DeliverTxAsync(someTx)
+	})
+	assert.True(t, validTxs == 1)
+	assert.True(t, invalidTxs == 0)
 }
 
 func tempWALWithData(data []byte) string {
