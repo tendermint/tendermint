@@ -280,12 +280,17 @@ the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit
 
 **create_empty_blocks = false**
 
-In this setting, blocks are created when txs received. Note after the block N,
-Tendermint creates something we call a "proof block" (if the app hash changes)
-N+1 [#2487 (comment)](https://github.com/tendermint/tendermint/issues/2487#issuecomment-424899799).
+In this setting, blocks are created when transactions received. Note after the
+block N, Tendermint creates something we call a "proof block" (if the app hash
+changes) N+1 [#2487
+(comment)](https://github.com/tendermint/tendermint/issues/2487#issuecomment-424899799).
+
 Plus, if you set `create_empty_blocks_interval` to something other than the
 default (`0`), Tendermint will be creating empty blocks even in the absence of
-transactions every `create_empty_blocks_interval`.
+transactions every `create_empty_blocks_interval`. For instance, with
+`create_empty_blocks = false` and `create_empty_blocks_interval = "30s"`,
+Tendermint will only create blocks if there are transactions, or after waiting
+30s without receiving any transactions.
 
 ## Consensus timeouts explained
 
