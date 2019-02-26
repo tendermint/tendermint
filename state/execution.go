@@ -300,10 +300,12 @@ func execBlockOnProxyApp(
 }
 
 func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
-	voteInfos := make([]abci.VoteInfo, len(block.LastCommit.Precommits))
+	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
 	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
+	var lastValSet *types.ValidatorSet
+	var err error
 	if block.Height > 1 {
-		lastValSet, err := LoadValidators(stateDB, block.Height-1)
+		lastValSet, err = LoadValidators(stateDB, block.Height-1)
 		if err != nil {
 			panic(err) // shouldn't happen
 		}
@@ -311,36 +313,38 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 		// Sanity check that commit length matches validator set size -
 		// only applies after first block
 
-		precommitLen := len(block.LastCommit.Precommits)
+		precommitLen := block.LastCommit.Size()
 		valSetLen := len(lastValSet.Validators)
 		if precommitLen != valSetLen {
 			// sanity check
 			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, lastValSet.Validators))
 		}
+	} else {
+		lastValSet = types.NewValidatorSet(nil)
+	}
 
-		for i, val := range lastValSet.Validators {
-			var vote *types.CommitSig
-			if i < len(block.LastCommit.Precommits) {
-				vote = block.LastCommit.Precommits[i]
-			}
-			voteInfo := abci.VoteInfo{
-				Validator:       types.TM2PB.Validator(val),
-				SignedLastBlock: vote != nil,
-			}
-			voteInfos[i] = voteInfo
+	for i, val := range lastValSet.Validators {
+		var vote *types.CommitSig
+		if i < len(block.LastCommit.Precommits) {
+			vote = block.LastCommit.Precommits[i]
 		}
+		voteInfo := abci.VoteInfo{
+			Validator:       types.TM2PB.Validator(val),
+			SignedLastBlock: vote != nil,
+		}
+		voteInfos[i] = voteInfo
+	}
 
-		for i, ev := range block.Evidence.Evidence {
-			// We need the validator set. We already did this in validateBlock.
-			// TODO: Should we instead cache the valset in the evidence itself and add
-			// `SetValidatorSet()` and `ToABCI` methods ?
-			valset, err := LoadValidators(stateDB, ev.Height())
-			if err != nil {
-				panic(err) // shouldn't happen
-			}
-			byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
+	for i, ev := range block.Evidence.Evidence {
+		// We need the validator set. We already did this in validateBlock.
+		// TODO: Should we instead cache the valset in the evidence itself and add
+		// `SetValidatorSet()` and `ToABCI` methods ?
+		valset, err := LoadValidators(stateDB, ev.Height())
+		if err != nil {
+			panic(err) // shouldn't happen
 		}
+		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
 	}
 
 	commitInfo := abci.LastCommitInfo{

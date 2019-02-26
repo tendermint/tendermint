@@ -262,15 +262,19 @@ func (w *crashingWAL) Flush() error { return w.Group().Flush() }
 // Handshake Tests
 const NUM_BLOCKS = 6
 
+type testSim struct {
+	GenesisState sm.State
+	Config       *cfg.Config
+	Chain        []*types.Block
+	Commits      []*types.Commit
+	CleanupFunc  cleanupFunc
+}
+
 var (
 	mempool = sm.MockMempool{}
 	evpool  = sm.MockEvidencePool{}
 
-	sim_genisisState sm.State
-	sim_config       *cfg.Config
-	sim_chain        []*types.Block
-	sim_commits      []*types.Commit
-	sim_cleanupFunc  cleanupFunc
+	sim testSim
 )
 
 //---------------------------------------
@@ -286,9 +290,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	nPeers := 7
 	nVals := 4
 	css, genDoc, config, cleanup := randConsensusNetWithPeers(nVals, nPeers, "replay_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
-	sim_config = config
-	sim_genisisState, _ = sm.MakeGenesisState(genDoc)
-	sim_cleanupFunc = cleanup
+	sim.Config = config
+	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
+	sim.CleanupFunc = cleanup
 
 	logger := log.TestingLogger()
 
@@ -354,73 +358,57 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 	stopConsensusNet(logger, reactors, eventBuses)
 
-	sim_chain = make([]*types.Block, 0)
-	sim_commits = make([]*types.Commit, 0)
+	sim.Chain = make([]*types.Block, 0)
+	sim.Commits = make([]*types.Commit, 0)
 	for i := 1; i <= NUM_BLOCKS; i++ {
-		sim_chain = append(sim_chain, css[0].blockStore.LoadBlock(int64(i)))
-		sim_commits = append(sim_commits, css[0].blockStore.LoadBlockCommit(int64(i)))
+		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(int64(i)))
+		sim.Commits = append(sim.Commits, css[0].blockStore.LoadBlockCommit(int64(i)))
 	}
 }
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
-	for i, m := range modes {
-		config := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), i))
-		defer os.RemoveAll(config.RootDir)
+	for _, m := range modes {
 		testHandshakeReplay(t, config, 0, m, false)
 	}
-	for i, m := range modes {
-		config := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), i))
-		defer os.RemoveAll(config.RootDir)
+	for _, m := range modes {
 		testHandshakeReplay(t, config, 0, m, true)
 	}
 }
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
-	for i, m := range modes {
-		config := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), i))
-		defer os.RemoveAll(config.RootDir)
+	for _, m := range modes {
 		testHandshakeReplay(t, config, 1, m, false)
 	}
-	for i, m := range modes {
-		config := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), i))
-		defer os.RemoveAll(config.RootDir)
+	for _, m := range modes {
 		testHandshakeReplay(t, config, 1, m, true)
 	}
 }
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
-	for i, m := range modes {
-		config := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), i))
-		defer os.RemoveAll(config.RootDir)
+	for _, m := range modes {
 		testHandshakeReplay(t, config, NUM_BLOCKS-1, m, false)
 	}
-	for i, m := range modes {
-		config := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), i))
-		defer os.RemoveAll(config.RootDir)
+	for _, m := range modes {
 		testHandshakeReplay(t, config, NUM_BLOCKS-1, m, true)
 	}
 }
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
-	for i, m := range modes {
-		config := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), i))
-		defer os.RemoveAll(config.RootDir)
+	for _, m := range modes {
 		testHandshakeReplay(t, config, NUM_BLOCKS, m, false)
 	}
-	for i, m := range modes {
-		config := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), i))
-		defer os.RemoveAll(config.RootDir)
+	for _, m := range modes {
 		testHandshakeReplay(t, config, NUM_BLOCKS, m, true)
 	}
 }
 
 // Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
 func TestMockProxyApp(t *testing.T) {
-	sim_cleanupFunc() //clean the test env created in TestSimulateValidatorsChange
+	sim.CleanupFunc() //clean the test env created in TestSimulateValidatorsChange
 	logger := log.TestingLogger()
 	var validTxs, invalidTxs = 0, 0
 	txIndex := 0
@@ -492,13 +480,17 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	var stateDB dbm.DB
 	var genisisState sm.State
 	if testValidatorsChange {
+		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
+		defer os.RemoveAll(testConfig.RootDir)
 		stateDB = dbm.NewMemDB()
-		genisisState = sim_genisisState
-		config = sim_config
-		chain = sim_chain
-		commits = sim_commits
+		genisisState = sim.GenesisState
+		config = sim.Config
+		chain = sim.Chain
+		commits = sim.Commits
 		store = NewMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
+		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
+		defer os.RemoveAll(testConfig.RootDir)
 		walBody, err := WALWithNBlocks(t, NUM_BLOCKS)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
