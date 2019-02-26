@@ -66,7 +66,7 @@ func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsen
 	return res
 }
 
-func (blockExec *BlockExecutor) Db() dbm.DB {
+func (blockExec *BlockExecutor) DB() dbm.DB {
 	return blockExec.db
 }
 

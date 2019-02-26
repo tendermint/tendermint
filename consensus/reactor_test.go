@@ -53,7 +53,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 		blocksSubs = append(blocksSubs, blocksSub)
 
 		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
-			sm.SaveState(css[i].blockExec.Db(), css[i].state)
+			sm.SaveState(css[i].blockExec.DB(), css[i].state)
 		}
 	}
 	// make connected switches and start all reactors

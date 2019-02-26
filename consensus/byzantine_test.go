@@ -82,7 +82,7 @@ func TestByzantine(t *testing.T) {
 		}
 
 		reactors[i] = conRI
-		sm.SaveState(css[i].blockExec.Db(), css[i].state) //for save height 1's validators info
+		sm.SaveState(css[i].blockExec.DB(), css[i].state) //for save height 1's validators info
 	}
 
 	defer func() {
