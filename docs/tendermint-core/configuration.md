@@ -274,10 +274,9 @@ namespace = "tendermint"
 **create_empty_blocks = true**
 
 If `create_empty_blocks` is set to `true` in your config, blocks will be
-created ~ every second (with default consensus parameters which are explained
-[here](https://forum.cosmos.network/t/consensus-timeouts-explained/1421)). You
-can regulate the delay between blocks by changing the `timeout_commit`. E.g.
-`timeout_commit = "10s"` should result in ~ 10 second blocks.
+created ~ every second (with default consensus parameters). You can regulate
+the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit
+= "10s"` should result in ~ 10 second blocks.
 
 **create_empty_blocks = false**
 
@@ -287,3 +286,44 @@ N+1 [#2487 (comment)](https://github.com/tendermint/tendermint/issues/2487#issue
 Plus, if you set `create_empty_blocks_interval` to something other than the
 default (`0`), Tendermint will be creating empty blocks even in the absence of
 transactions every `create_empty_blocks_interval`.
+
+## Consensus timeouts explained
+
+There's a variety of information about timeouts in [Running in
+production](/docs/tendermint-core/running-in-production.html)
+
+You can also find more detailed technical explanation in the spec: [The latest
+gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
+
+```
+[consensus]
+...
+
+timeout_propose = "3s"
+timeout_propose_delta = "500ms"
+timeout_prevote = "1s"
+timeout_prevote_delta = "500ms"
+timeout_precommit = "1s"
+timeout_precommit_delta = "500ms"
+timeout_commit = "1s"
+```
+
+Note that in a successful round, the only timeout that we absolutely wait no
+matter what is `timeout_commit`.
+
+Here's a brief summary of the timeouts:
+
+- `timeout_propose` = how long we wait for a proposal block before prevoting
+  nil
+- `timeout_propose_delta` = how much timeout_propose increases with each round
+- `timeout_prevote` = how long we wait after receiving +2/3 prevotes for
+  anything (ie. not a single block or nil)
+- `timeout_prevote_delta` = how much the timeout_prevote increases with each
+  round
+- `timeout_precommit` = how long we wait after receiving +2/3 precommits for
+  anything (ie. not a single block or nil)
+- `timeout_precommit_delta` = how much the timeout_precommit increases with
+  each round
+- `timeout_commit` = how long we wait after committing a block, before starting
+  on the new height (this gives us a chance to receive some more precommits,
+  even though we already have +2/3)
