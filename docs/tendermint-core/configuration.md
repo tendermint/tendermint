@@ -302,7 +302,7 @@ Tendermint will only create blocks if there are transactions, or after waiting
 ## Consensus timeouts explained
 
 There's a variety of information about timeouts in [Running in
-production](/docs/tendermint-core/running-in-production.html)
+production](./running-in-production.html)
 
 You can also find more detailed technical explanation in the spec: [The latest
 gossip on BFT consensus](https://arxiv.org/abs/1807.04938).

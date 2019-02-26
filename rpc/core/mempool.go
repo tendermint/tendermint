@@ -19,6 +19,11 @@ import (
 // Returns right away, with no response. Does not wait for CheckTx nor
 // DeliverTx results.
 //
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
+//
+//
 // ```shell
 // curl 'localhost:26657/broadcast_tx_async?tx="123"'
 // ```
@@ -54,50 +59,6 @@ import (
 // | Parameter | Type | Default | Required | Description     |
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
-//
-// To send a UTF8 string byte array, you simply quote the value of the tx parameter on the GET request:
-//
-//     GET http://myserver:46657/broadcast_tx_async?tx="hello"
-//
-// This sends a 5 byte transaction "h e l l o" [68 65 6c 6c 6f]
-//
-//     GET http://myserver:46657/broadcast_tx_async?tx="5"
-//
-// This sends a 4 byte transaction "5" (UTF8) [e2 82 ac 35]
-//
-// To send as raw hex, you MUST omit the quotes AND prefix the hex string with 0x
-//
-//     GET http://myserver:46657/broadcast_tx_async?tx=0x01020304
-//
-// This sends a 4 byte transaction [01 02 03 04]
-//
-// If you prefer to POST your data as json, you have to Base64 encode your transaction byte array.
-//
-// ```
-// POST http://myserver:46657
-// {
-//   "method": "broadcast_tx_async",
-//   "jsonrpc": "2.0",
-//   "params": {"tx": "AQIDBA=="},
-//   "id": ""
-// }
-// ```
-//
-// This sends the same 4 byte transaction [01 02 03 04]
-//
-// Note that you CANNOT POST your transaction as hex like so:
-//
-// ```
-// {
-//   "method": "broadcast_tx_async",
-//   "jsonrpc": "2.0",
-//   "params": {"tx": "0x01020304"},
-//   "id": ""
-// }
-// ```
-//
-// You'll get a 400 Bad Request with error: "Error converting json params to
-// arguments: illegal base64 data at input byte 8"
 func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := mempool.CheckTx(tx, nil)
 	if err != nil {
@@ -107,6 +68,10 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 // Returns with the response from CheckTx. Does not wait for DeliverTx result.
+//
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
 //
 // ```shell
 // curl 'localhost:26657/broadcast_tx_sync?tx="456"'
@@ -143,50 +108,6 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // | Parameter | Type | Default | Required | Description     |
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
-//
-// To send a UTF8 string byte array, you simply quote the value of the tx parameter on the GET request:
-//
-//     GET http://myserver:46657/broadcast_tx_sync?tx="hello"
-//
-// This sends a 5 byte transaction "h e l l o" [68 65 6c 6c 6f]
-//
-//     GET http://myserver:46657/broadcast_tx_sync?tx="5"
-//
-// This sends a 4 byte transaction "5" (UTF8) [e2 82 ac 35]
-//
-// To send as raw hex, you MUST omit the quotes AND prefix the hex string with 0x
-//
-//     GET http://myserver:46657/broadcast_tx_sync?tx=0x01020304
-//
-// This sends a 4 byte transaction [01 02 03 04]
-//
-// If you prefer to POST your data as json, you have to Base64 encode your transaction byte array.
-//
-// ```
-// POST http://myserver:46657
-// {
-//   "method": "broadcast_tx_sync",
-//   "jsonrpc": "2.0",
-//   "params": {"tx": "AQIDBA=="},
-//   "id": ""
-// }
-// ```
-//
-// This sends the same 4 byte transaction [01 02 03 04]
-//
-// Note that you CANNOT POST your transaction as hex like so:
-//
-// ```
-// {
-//   "method": "broadcast_tx_sync",
-//   "jsonrpc": "2.0",
-//   "params": {"tx": "0x01020304"},
-//   "id": ""
-// }
-// ```
-//
-// You'll get a 400 Bad Request with error: "Error converting json params to
-// arguments: illegal base64 data at input byte 8"
 func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.Response, 1)
 	err := mempool.CheckTx(tx, func(res *abci.Response) {
@@ -212,6 +133,11 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 //
 // If CheckTx or DeliverTx fail, no error will be returned, but the returned result
 // will contain a non-OK ABCI code.
+//
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
+//
 //
 // ```shell
 // curl 'localhost:26657/broadcast_tx_commit?tx="789"'
@@ -256,50 +182,6 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // | Parameter | Type | Default | Required | Description     |
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
-//
-// To send a UTF8 string byte array, you simply quote the value of the tx parameter on the GET request:
-//
-//     GET http://myserver:46657/broadcast_tx_commit?tx="hello"
-//
-// This sends a 5 byte transaction "h e l l o" [68 65 6c 6c 6f]
-//
-//     GET http://myserver:46657/broadcast_tx_commit?tx="5"
-//
-// This sends a 4 byte transaction "5" (UTF8) [e2 82 ac 35]
-//
-// To send as raw hex, you MUST omit the quotes AND prefix the hex string with 0x
-//
-//     GET http://myserver:46657/broadcast_tx_commit?tx=0x01020304
-//
-// This sends a 4 byte transaction [01 02 03 04]
-//
-// If you prefer to POST your data as json, you have to Base64 encode your transaction byte array.
-//
-// ```
-// POST http://myserver:46657
-// {
-//   "method": "broadcast_tx_commit",
-//   "jsonrpc": "2.0",
-//   "params": {"tx": "AQIDBA=="},
-//   "id": ""
-// }
-// ```
-//
-// This sends the same 4 byte transaction [01 02 03 04]
-//
-// Note that you CANNOT POST your transaction as hex like so:
-//
-// ```
-// {
-//   "method": "broadcast_tx_commit",
-//   "jsonrpc": "2.0",
-//   "params": {"tx": "0x01020304"},
-//   "id": ""
-// }
-// ```
-//
-// You'll get a 400 Bad Request with error: "Error converting json params to
-// arguments: illegal base64 data at input byte 8"
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Subscribe to tx being committed in block.
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
