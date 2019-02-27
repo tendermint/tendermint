@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/db/remotedb"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -58,8 +59,20 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // DefaultDBProvider returns a database using the DBBackend and DBDir
 // specified in the ctx.Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	dbType := dbm.DBBackendType(ctx.Config.DBBackend)
-	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
+	if !ctx.Config.RemoteDB {
+		dbType := dbm.DBBackendType(ctx.Config.DBBackend)
+		return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
+	} else {
+		client, err := remotedb.NewRemoteDB(ctx.Config.RemoteDbUrl, ctx.Config.RemoteDbCertPath)
+		if err != nil {
+			cmn.PanicCrisis(fmt.Sprintf("Failed to new client: %v", err))
+		}
+		err = client.InitRemote(&remotedb.Init{Name: ctx.ID, Type: "leveldb"})
+		if err != nil {
+			cmn.PanicCrisis(fmt.Sprintf("Failed to init: %v", err))
+		}
+		return client, nil
+	}
 }
 
 // GenesisDocProvider returns a GenesisDoc.

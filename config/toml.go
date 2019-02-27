@@ -87,6 +87,15 @@ db_backend = "{{ .BaseConfig.DBBackend }}"
 # Database directory
 db_dir = "{{ js .BaseConfig.DBPath }}"
 
+# Use remotedb or not: true | false
+remote_db = "{{ .BaseConfig.RemoteDB }}"
+
+# The url access the remotedb by grpcdb
+remote_db_url = "{{ .BaseConfig.RemoteDbUrl }}"
+
+# The path of cert use to access remotedb
+remote_db_path = "{{ .BaseConfig.RemoteDbPath }}"
+
 # Output level for logging, including package level options
 log_level = "{{ .BaseConfig.LogLevel }}"
 

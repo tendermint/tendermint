@@ -159,6 +159,15 @@ type BaseConfig struct {
 	// Database directory
 	DBPath string `mapstructure:"db_dir"`
 
+	// Use Remotedb or not
+	RemoteDB bool `mapstructure:"remote_db"`
+
+	// the url access the remotedb by grpcdb
+	RemoteDbUrl string `mapstructure:"remote_db_url`
+
+	// the path of cert use to access remotedb
+	RemoteDbCertPath string `mapstructure:"remotedb_cert_path`
+
 	// Output level for logging
 	LogLevel string `mapstructure:"log_level"`
 
@@ -209,6 +218,9 @@ func DefaultBaseConfig() BaseConfig {
 		FilterPeers:        false,
 		DBBackend:          "leveldb",
 		DBPath:             "data",
+		RemoteDB:           false,
+		RemoteDbUrl:        "",
+		RemoteDbCertPath:   "",
 	}
 }
 
