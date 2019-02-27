@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
@@ -53,9 +52,9 @@ func TestMatches(t *testing.T) {
 		}
 
 		if tc.matches {
-			assert.True(t, q.Matches(pubsub.NewTagMap(tc.tags)), "Query '%s' should match %v", tc.s, tc.tags)
+			assert.True(t, q.Matches(tc.tags), "Query '%s' should match %v", tc.s, tc.tags)
 		} else {
-			assert.False(t, q.Matches(pubsub.NewTagMap(tc.tags)), "Query '%s' should not match %v", tc.s, tc.tags)
+			assert.False(t, q.Matches(tc.tags), "Query '%s' should not match %v", tc.s, tc.tags)
 		}
 	}
 }
@@ -73,9 +72,9 @@ func TestConditions(t *testing.T) {
 		s          string
 		conditions []query.Condition
 	}{
-		{s: "tm.events.type='NewBlock'", conditions: []query.Condition{query.Condition{Tag: "tm.events.type", Op: query.OpEqual, Operand: "NewBlock"}}},
-		{s: "tx.gas > 7 AND tx.gas < 9", conditions: []query.Condition{query.Condition{Tag: "tx.gas", Op: query.OpGreater, Operand: int64(7)}, query.Condition{Tag: "tx.gas", Op: query.OpLess, Operand: int64(9)}}},
-		{s: "tx.time >= TIME 2013-05-03T14:45:00Z", conditions: []query.Condition{query.Condition{Tag: "tx.time", Op: query.OpGreaterEqual, Operand: txTime}}},
+		{s: "tm.events.type='NewBlock'", conditions: []query.Condition{{Tag: "tm.events.type", Op: query.OpEqual, Operand: "NewBlock"}}},
+		{s: "tx.gas > 7 AND tx.gas < 9", conditions: []query.Condition{{Tag: "tx.gas", Op: query.OpGreater, Operand: int64(7)}, {Tag: "tx.gas", Op: query.OpLess, Operand: int64(9)}}},
+		{s: "tx.time >= TIME 2013-05-03T14:45:00Z", conditions: []query.Condition{{Tag: "tx.time", Op: query.OpGreaterEqual, Operand: txTime}}},
 	}
 
 	for _, tc := range testCases {

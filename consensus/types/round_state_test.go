@@ -3,7 +3,7 @@ package types
 import (
 	"testing"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
@@ -16,7 +16,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	// Random validators
 	nval, ntxs := 100, 100
 	vset, _ := types.RandValidatorSet(nval, 1)
-	precommits := make([]*types.Vote, nval)
+	precommits := make([]*types.CommitSig, nval)
 	blockID := types.BlockID{
 		Hash: cmn.RandBytes(20),
 		PartsHeader: types.PartSetHeader{
@@ -25,12 +25,12 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	}
 	sig := make([]byte, ed25519.SignatureSize)
 	for i := 0; i < nval; i++ {
-		precommits[i] = &types.Vote{
+		precommits[i] = (&types.Vote{
 			ValidatorAddress: types.Address(cmn.RandBytes(20)),
 			Timestamp:        tmtime.Now(),
 			BlockID:          blockID,
 			Signature:        sig,
-		}
+		}).CommitSig()
 	}
 	txs := make([]types.Tx, ntxs)
 	for i := 0; i < ntxs; i++ {
@@ -53,11 +53,8 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 		Data: types.Data{
 			Txs: txs,
 		},
-		Evidence: types.EvidenceData{},
-		LastCommit: &types.Commit{
-			BlockID:    blockID,
-			Precommits: precommits,
-		},
+		Evidence:   types.EvidenceData{},
+		LastCommit: types.NewCommit(blockID, precommits),
 	}
 	parts := block.MakePartSet(4096)
 	// Random Proposal

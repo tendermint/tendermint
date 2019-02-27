@@ -4,6 +4,7 @@ import (
 	"bytes"
 	crand "crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -27,6 +28,11 @@ const totalFrameSize = dataMaxSize + dataLenSize
 const aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
 const aeadKeySize = chacha20poly1305.KeySize
 const aeadNonceSize = chacha20poly1305.NonceSize
+
+var (
+	ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
+	ErrSharedSecretIsZero     = errors.New("shared secret is all zeroes")
+)
 
 // SecretConnection implements net.Conn.
 // It is an implementation of the STS protocol.
@@ -87,7 +93,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	locIsLeast := bytes.Equal(locEphPub[:], loEphPub[:])
 
 	// Compute common diffie hellman secret using X25519.
-	dhSecret := computeDHSecret(remEphPub, locEphPriv)
+	dhSecret, err := computeDHSecret(remEphPub, locEphPriv)
+	if err != nil {
+		return nil, err
+	}
 
 	// generate the secret used for receiving, sending, challenge via hkdf-sha2 on dhSecret
 	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(dhSecret, locIsLeast)
@@ -227,9 +236,12 @@ func (sc *SecretConnection) SetWriteDeadline(t time.Time) error {
 
 func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	var err error
+	// TODO: Probably not a problem but ask Tony: different from the rust implementation (uses x25519-dalek),
+	// we do not "clamp" the private key scalar:
+	// see: https://github.com/dalek-cryptography/x25519-dalek/blob/34676d336049df2bba763cc076a75e47ae1f170f/src/x25519.rs#L56-L74
 	ephPub, ephPriv, err = box.GenerateKey(crand.Reader)
 	if err != nil {
-		panic("Could not generate ephemeral keypairs")
+		panic("Could not generate ephemeral key-pair")
 	}
 	return
 }
@@ -251,6 +263,9 @@ func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[3
 			if err2 != nil {
 				return nil, err2, true // abort
 			}
+			if hasSmallOrder(_remEphPub) {
+				return nil, ErrSmallOrderRemotePubKey, true
+			}
 			return _remEphPub, nil, false
 		},
 	)
@@ -264,6 +279,52 @@ func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[3
 	// Otherwise:
 	var _remEphPub = trs.FirstValue().([32]byte)
 	return &_remEphPub, nil
+}
+
+// use the samne blacklist as lib sodium (see https://eprint.iacr.org/2017/806.pdf for reference):
+// https://github.com/jedisct1/libsodium/blob/536ed00d2c5e0c65ac01e29141d69a30455f2038/src/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.c#L11-L17
+var blacklist = [][32]byte{
+	// 0 (order 4)
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+	// 1 (order 1)
+	{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+	// 325606250916557431795983626356110631294008115727848805560023387167927233504
+	//   (order 8)
+	{0xe0, 0xeb, 0x7a, 0x7c, 0x3b, 0x41, 0xb8, 0xae, 0x16, 0x56, 0xe3,
+		0xfa, 0xf1, 0x9f, 0xc4, 0x6a, 0xda, 0x09, 0x8d, 0xeb, 0x9c, 0x32,
+		0xb1, 0xfd, 0x86, 0x62, 0x05, 0x16, 0x5f, 0x49, 0xb8, 0x00},
+	// 39382357235489614581723060781553021112529911719440698176882885853963445705823
+	//    (order 8)
+	{0x5f, 0x9c, 0x95, 0xbc, 0xa3, 0x50, 0x8c, 0x24, 0xb1, 0xd0, 0xb1,
+		0x55, 0x9c, 0x83, 0xef, 0x5b, 0x04, 0x44, 0x5c, 0xc4, 0x58, 0x1c,
+		0x8e, 0x86, 0xd8, 0x22, 0x4e, 0xdd, 0xd0, 0x9f, 0x11, 0x57},
+	// p-1 (order 2)
+	{0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f},
+	// p (=0, order 4)
+	{0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f},
+	// p+1 (=1, order 1)
+	{0xee, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f},
+}
+
+func hasSmallOrder(pubKey [32]byte) bool {
+	isSmallOrderPoint := false
+	for _, bl := range blacklist {
+		if subtle.ConstantTimeCompare(pubKey[:], bl[:]) == 1 {
+			isSmallOrderPoint = true
+			break
+		}
+	}
+	return isSmallOrderPoint
 }
 
 func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, sendSecret *[aeadKeySize]byte, challenge *[32]byte) {
@@ -297,9 +358,20 @@ func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, 
 	return
 }
 
-func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte) {
+// computeDHSecret computes a Diffie-Hellman shared secret key
+// from our own local private key and the other's public key.
+//
+// It returns an error if the computed shared secret is all zeroes.
+func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte, err error) {
 	shrKey = new([32]byte)
 	curve25519.ScalarMult(shrKey, locPrivKey, remPubKey)
+
+	// reject if the returned shared secret is all zeroes
+	// related to: https://github.com/tendermint/tendermint/issues/3010
+	zero := new([32]byte)
+	if subtle.ConstantTimeCompare(shrKey[:], zero[:]) == 1 {
+		return nil, ErrSharedSecretIsZero
+	}
 	return
 }
 

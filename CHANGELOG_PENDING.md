@@ -1,26 +1,36 @@
-## v0.30.0
+## v0.31.0
 
-*TBD*
+**
 
 Special thanks to external contributors on this release:
 
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
+- [httpclient] Update Subscribe interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
 
 * Apps
 
 * Go API
+- [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
+  * previously it was dumping "captured ..." msg to os.Stdout
+  * TrapSignal should not be responsible for blocking thread of execution
 
 * Blockchain Protocol
 
 * P2P Protocol
 
 ### FEATURES:
+- [mempool] \#3079 bound mempool memory usage (`mempool.max_txs_bytes` is set to 1GB by default; see config.toml)
+  mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
+  `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 
 ### IMPROVEMENTS:
+- [libs/common] \#3238 exit with zero (0) code upon receiving SIGTERM/SIGINT
 
 - [mempool] \#2778 No longer send txs back to peers who sent it to you
 
 ### BUG FIXES:
-- [p2p] \#2967 Fix file descriptor leaks
+
+- [p2p/conn] \#3347 Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
+- [libs/pubsub] \#951, \#1880 use non-blocking send when dispatching messages [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)

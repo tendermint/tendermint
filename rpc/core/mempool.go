@@ -169,26 +169,14 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// Subscribe to tx being committed in block.
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
-	deliverTxResCh := make(chan interface{}, 1)
 	q := types.EventQueryTxFor(tx)
-	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
+	deliverTxSub, err := eventBus.Subscribe(ctx, "mempool", q)
 	if err != nil {
 		err = errors.Wrap(err, "failed to subscribe to tx")
 		logger.Error("Error on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
-	defer func() {
-		// drain deliverTxResCh to make sure we don't block
-	LOOP:
-		for {
-			select {
-			case <-deliverTxResCh:
-			default:
-				break LOOP
-			}
-		}
-		eventBus.Unsubscribe(context.Background(), "mempool", q)
-	}()
+	defer eventBus.Unsubscribe(context.Background(), "mempool", q)
 
 	// Broadcast tx and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
@@ -213,17 +201,22 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// TODO: configurable?
 	var deliverTxTimeout = rpcserver.WriteTimeout / 2
 	select {
-	case deliverTxResMsg, ok := <-deliverTxResCh: // The tx was included in a block.
-		if !ok {
-			return nil, errors.New("Error on broadcastTxCommit: expected DeliverTxResult, got nil. Did the Tendermint stop?")
-		}
-		deliverTxRes := deliverTxResMsg.(types.EventDataTx)
+	case msg := <-deliverTxSub.Out(): // The tx was included in a block.
+		deliverTxRes := msg.Data().(types.EventDataTx)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
 			DeliverTx: deliverTxRes.Result,
 			Hash:      tx.Hash(),
 			Height:    deliverTxRes.Height,
 		}, nil
+	case <-deliverTxSub.Cancelled():
+		err = errors.New("deliverTxSub was cancelled. Did the Tendermint stop?")
+		logger.Error("Error on broadcastTxCommit", "err", err)
+		return &ctypes.ResultBroadcastTxCommit{
+			CheckTx:   *checkTxRes,
+			DeliverTx: abci.ResponseDeliverTx{},
+			Hash:      tx.Hash(),
+		}, err
 	case <-time.After(deliverTxTimeout):
 		err = errors.New("Timed out waiting for tx to be included in a block")
 		logger.Error("Error on broadcastTxCommit", "err", err)
@@ -255,27 +248,32 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 //
 // ```json
 // {
-//   "error": "",
-//   "result": {
-//     "txs": [],
-//     "n_txs": "0"
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
-// }
+//   "result" : {
+//       "txs" : [],
+//       "total_bytes" : "0",
+//       "n_txs" : "0",
+//       "total" : "0"
+//     },
+//     "jsonrpc" : "2.0",
+//     "id" : ""
+//   }
+// ```
 //
 // ### Query Parameters
 //
 // | Parameter | Type | Default | Required | Description                          |
 // |-----------+------+---------+----------+--------------------------------------|
 // | limit     | int  | 30      | false    | Maximum number of entries (max: 100) |
-// ```
 func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
 	limit = validatePerPage(limit)
 
 	txs := mempool.ReapMaxTxs(limit)
-	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
+	return &ctypes.ResultUnconfirmedTxs{
+		Count:      len(txs),
+		Total:      mempool.Size(),
+		TotalBytes: mempool.TxsBytes(),
+		Txs:        txs}, nil
 }
 
 // Get number of unconfirmed transactions.
@@ -298,15 +296,19 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 //
 // ```json
 // {
-//   "error": "",
-//   "result": {
-//     "txs": null,
-//     "n_txs": "0"
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
+//   "jsonrpc" : "2.0",
+//   "id" : "",
+//   "result" : {
+//     "n_txs" : "0",
+//     "total_bytes" : "0",
+//     "txs" : null,
+//     "total" : "0"
+//   }
 // }
 // ```
 func NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	return &ctypes.ResultUnconfirmedTxs{N: mempool.Size()}, nil
+	return &ctypes.ResultUnconfirmedTxs{
+		Count:      mempool.Size(),
+		Total:      mempool.Size(),
+		TotalBytes: mempool.TxsBytes()}, nil
 }

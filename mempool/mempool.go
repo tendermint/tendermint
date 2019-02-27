@@ -69,12 +69,25 @@ var (
 	// ErrTxInCache is returned to the client if we saw tx earlier
 	ErrTxInCache = errors.New("Tx already exists in cache")
 
-	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
-	ErrMempoolIsFull = errors.New("Mempool is full")
-
 	// ErrTxTooLarge means the tx is too big to be sent in a message to other peers
 	ErrTxTooLarge = fmt.Errorf("Tx too large. Max size is %d", maxTxSize)
 )
+
+// ErrMempoolIsFull means Tendermint & an application can't handle that much load
+type ErrMempoolIsFull struct {
+	numTxs int
+	maxTxs int
+
+	txsBytes    int64
+	maxTxsBytes int64
+}
+
+func (e ErrMempoolIsFull) Error() string {
+	return fmt.Sprintf(
+		"Mempool is full: number of txs %d (max: %d), total txs bytes %d (max: %d)",
+		e.numTxs, e.maxTxs,
+		e.txsBytes, e.maxTxsBytes)
+}
 
 // ErrPreCheck is returned when tx is too big
 type ErrPreCheck struct {
@@ -152,6 +165,9 @@ type Mempool struct {
 	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
 	preCheck             PreCheckFunc
 	postCheck            PostCheckFunc
+
+	// Atomic integers
+	txsBytes int64 // see TxsBytes
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -271,8 +287,13 @@ func (mem *Mempool) Size() int {
 	return mem.txs.Len()
 }
 
-// Flushes the mempool connection to ensure async resCb calls are done e.g.
-// from CheckTx.
+// TxsBytes returns the total size of all txs in the mempool.
+func (mem *Mempool) TxsBytes() int64 {
+	return atomic.LoadInt64(&mem.txsBytes)
+}
+
+// FlushAppConn flushes the mempool connection to ensure async resCb calls are
+// done e.g. from CheckTx.
 func (mem *Mempool) FlushAppConn() error {
 	return mem.proxyAppConn.FlushSync()
 }
@@ -288,6 +309,8 @@ func (mem *Mempool) Flush() {
 		mem.txs.Remove(e)
 		e.DetachPrev()
 	}
+
+	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 }
 
 // TxsFront returns the first transaction in the ordered list for peer
@@ -321,8 +344,15 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
 
-	if mem.Size() >= mem.config.Size {
-		return ErrMempoolIsFull
+	var (
+		memSize  = mem.Size()
+		txsBytes = mem.TxsBytes()
+	)
+	if memSize >= mem.config.Size ||
+		int64(len(tx))+txsBytes > mem.config.MaxTxsBytes {
+		return ErrMempoolIsFull{
+			memSize, mem.config.Size,
+			txsBytes, mem.config.MaxTxsBytes}
 	}
 
 	// The size of the corresponding amino-encoded TxMessage
@@ -413,6 +443,7 @@ func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 				tx:        tx,
 			}
 			mem.txs.PushBack(memTx)
+			atomic.AddInt64(&mem.txsBytes, int64(len(tx)))
 			mem.logger.Info("Added good transaction",
 				"tx", TxID(tx),
 				"res", r,
@@ -438,14 +469,11 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
-		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
-			cmn.PanicSanity(
-				fmt.Sprintf(
-					"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
-					r.CheckTx.Data,
-					memTx.tx,
-				),
-			)
+		if !bytes.Equal(tx, memTx.tx) {
+			panic(fmt.Sprintf(
+				"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
+				memTx.tx,
+				tx))
 		}
 		var postCheckErr error
 		if mem.postCheck != nil {
@@ -457,6 +485,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", TxID(tx), "res", r, "err", postCheckErr)
 			mem.txs.Remove(mem.recheckCursor)
+			atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 			mem.recheckCursor.DetachPrev()
 
 			// remove from cache (it might be good later)
@@ -630,6 +659,7 @@ func (mem *Mempool) removeTxs(txs types.Txs) []types.Tx {
 		if _, ok := txsMap[string(memTx.tx)]; ok {
 			// remove from clist
 			mem.txs.Remove(e)
+			atomic.AddInt64(&mem.txsBytes, int64(-len(memTx.tx)))
 			e.DetachPrev()
 
 			// NOTE: we don't remove committed txs from the cache.

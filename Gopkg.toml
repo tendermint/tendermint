@@ -75,13 +75,25 @@
   name = "github.com/prometheus/client_golang"
   version = "^0.9.1"
 
+# we use the secp256k1 implementation:
 [[constraint]]
-  name = "github.com/tendermint/btcd"
-  version = "v0.1.1"
+  name = "github.com/ethereum/go-ethereum"
+  version = "^v1.8.21"
+
+   # Prevent dep from pruning build scripts and codegen templates
+   # note: this leaves the whole go-ethereum package in vendor
+   # can be removed when https://github.com/golang/dep/issues/1847 is resolved
+   [[prune.project]]
+     name = "github.com/ethereum/go-ethereum"
+     unused-packages = false
 
 ###################################
 ## Some repos dont have releases.
 ## Pin to revision
+
+[[constraint]]
+  name = "github.com/btcsuite/btcd"
+  revision = "ed77733ec07dfc8a513741138419b8d9d3de9d2d"
 
 [[constraint]]
   name = "golang.org/x/crypto"

@@ -94,8 +94,7 @@ type ConsensusState struct {
 	// internal state
 	mtx sync.RWMutex
 	cstypes.RoundState
-	triggeredTimeoutPrecommit bool
-	state                     sm.State // State until height-1.
+	state sm.State // State until height-1.
 
 	// state changes may be triggered by: msgs from peers,
 	// msgs from ourself, or by timeouts
@@ -308,6 +307,23 @@ func (cs *ConsensusState) OnStart() error {
 	// reload from consensus log to catchup
 	if cs.doWALCatchup {
 		if err := cs.catchupReplay(cs.Height); err != nil {
+			// don't try to recover from data corruption error
+			if IsDataCorruptionError(err) {
+				cs.Logger.Error("Encountered corrupt WAL file", "err", err.Error())
+				cs.Logger.Error("Please repair the WAL file before restarting")
+				fmt.Println(`You can attempt to repair the WAL as follows:
+
+----
+WALFILE=~/.tendermint/data/cs.wal/wal
+cp $WALFILE ${WALFILE}.bak # backup the file
+go run scripts/wal2json/main.go $WALFILE > wal.json # this will panic, but can be ignored
+rm $WALFILE # remove the corrupt file
+go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without corruption
+----`)
+
+				return err
+			}
+
 			cs.Logger.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "err", err.Error())
 			// NOTE: if we ever do return an error here,
 			// make sure to stop the timeoutTicker
@@ -438,7 +454,7 @@ func (cs *ConsensusState) updateRoundStep(round int, step cstypes.RoundStepType)
 // enterNewRound(height, 0) at cs.StartTime.
 func (cs *ConsensusState) scheduleRound0(rs *cstypes.RoundState) {
 	//cs.Logger.Info("scheduleRound0", "now", tmtime.Now(), "startTime", cs.StartTime)
-	sleepDuration := rs.StartTime.Sub(tmtime.Now()) // nolint: gotype, gosimple
+	sleepDuration := rs.StartTime.Sub(tmtime.Now())
 	cs.scheduleTimeout(sleepDuration, rs.Height, 0, cstypes.RoundStepNewHeight)
 }
 
@@ -473,7 +489,7 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		if precommit == nil {
 			continue
 		}
-		added, err := lastPrecommits.AddVote(precommit)
+		added, err := lastPrecommits.AddVote(seenCommit.ToVote(precommit))
 		if !added || err != nil {
 			cmn.PanicCrisis(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
 		}
@@ -550,6 +566,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	cs.CommitRound = -1
 	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
+	cs.TriggeredTimeoutPrecommit = false
 
 	cs.state = state
 
@@ -625,6 +642,15 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			cs.handleMsg(mi)
 		case mi = <-cs.internalMsgQueue:
 			cs.wal.WriteSync(mi) // NOTE: fsync
+
+			if _, ok := mi.Msg.(*VoteMessage); ok {
+				// we actually want to simulate failing during
+				// the previous WriteSync, but this isn't easy to do.
+				// Equivalent would be to fail here and manually remove
+				// some bytes from the end of the wal.
+				fail.Fail() // XXX
+			}
+
 			// handles proposals, block parts, votes
 			cs.handleMsg(mi)
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
@@ -732,6 +758,7 @@ func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
+	cs.enterNewRound(cs.Height, 0)
 	cs.enterPropose(cs.Height, 0)
 }
 
@@ -782,7 +809,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		cs.ProposalBlockParts = nil
 	}
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
-	cs.triggeredTimeoutPrecommit = false
+	cs.TriggeredTimeoutPrecommit = false
 
 	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())
 	cs.metrics.Rounds.Set(float64(round))
@@ -882,8 +909,11 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 		}
 	}
 
+	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign, and the privValidator will refuse to sign anything.
+	cs.wal.FlushAndSync()
+
 	// Make proposal
-	propBlockId := types.BlockID{block.Hash(), blockParts.Header()}
+	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 
@@ -928,7 +958,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	if cs.Height == 1 {
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = &types.Commit{}
+		commit = types.NewCommit(types.BlockID{}, nil)
 	} else if cs.LastCommit.HasTwoThirdsMajority() {
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
@@ -1128,12 +1158,12 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 func (cs *ConsensusState) enterPrecommitWait(height int64, round int) {
 	logger := cs.Logger.With("height", height, "round", round)
 
-	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.triggeredTimeoutPrecommit) {
+	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
 		logger.Debug(
 			fmt.Sprintf(
 				"enterPrecommitWait(%v/%v): Invalid args. "+
-					"Current state is Height/Round: %v/%v/, triggeredTimeoutPrecommit:%v",
-				height, round, cs.Height, cs.Round, cs.triggeredTimeoutPrecommit))
+					"Current state is Height/Round: %v/%v/, TriggeredTimeoutPrecommit:%v",
+				height, round, cs.Height, cs.Round, cs.TriggeredTimeoutPrecommit))
 		return
 	}
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
@@ -1143,7 +1173,7 @@ func (cs *ConsensusState) enterPrecommitWait(height int64, round int) {
 
 	defer func() {
 		// Done enterPrecommitWait:
-		cs.triggeredTimeoutPrecommit = true
+		cs.TriggeredTimeoutPrecommit = true
 		cs.newStep()
 	}()
 
@@ -1294,7 +1324,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
-	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{block.Hash(), blockParts.Header()}, block)
+	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}, block)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := cmn.Kill()
@@ -1330,7 +1360,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	missingValidators := 0
 	missingValidatorsPower := int64(0)
 	for i, val := range cs.Validators.Validators {
-		var vote *types.Vote
+		var vote *types.CommitSig
 		if i < len(block.LastCommit.Precommits) {
 			vote = block.LastCommit.Precommits[i]
 		}
@@ -1517,7 +1547,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		}
 
 		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
-		cs.eventBus.PublishEventVote(types.EventDataVote{vote})
+		cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 		cs.evsw.FireEvent(types.EventVote, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
@@ -1545,7 +1575,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		return
 	}
 
-	cs.eventBus.PublishEventVote(types.EventDataVote{vote})
+	cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 	cs.evsw.FireEvent(types.EventVote, vote)
 
 	switch vote.Type {
@@ -1647,6 +1677,9 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 }
 
 func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+	// Flush the WAL. Otherwise, we may not recompute the same vote to sign, and the privValidator will refuse to sign anything.
+	cs.wal.FlushAndSync()
+
 	addr := cs.privValidator.GetPubKey().Address()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 
@@ -1657,7 +1690,7 @@ func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, heade
 		Round:            cs.Round,
 		Timestamp:        cs.voteTime(),
 		Type:             type_,
-		BlockID:          types.BlockID{hash, header},
+		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
 	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
 	return vote, err

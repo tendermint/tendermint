@@ -12,7 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/test"
+	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -42,9 +42,9 @@ func TestCorsEnabled(t *testing.T) {
 	req.Header.Set("Origin", origin)
 	c := &http.Client{}
 	resp, err := c.Do(req)
+	require.Nil(t, err, "%+v", err)
 	defer resp.Body.Close()
 
-	require.Nil(t, err, "%+v", err)
 	assert.Equal(t, resp.Header.Get("Access-Control-Allow-Origin"), origin)
 }
 
@@ -290,9 +290,13 @@ func TestUnconfirmedTxs(t *testing.T) {
 	for i, c := range GetClients() {
 		mc, ok := c.(client.MempoolClient)
 		require.True(t, ok, "%d", i)
-		txs, err := mc.UnconfirmedTxs(1)
+		res, err := mc.UnconfirmedTxs(1)
 		require.Nil(t, err, "%d: %+v", i, err)
-		assert.Exactly(t, types.Txs{tx}, types.Txs(txs.Txs))
+
+		assert.Equal(t, 1, res.Count)
+		assert.Equal(t, 1, res.Total)
+		assert.Equal(t, mempool.TxsBytes(), res.TotalBytes)
+		assert.Exactly(t, types.Txs{tx}, types.Txs(res.Txs))
 	}
 
 	mempool.Flush()
@@ -311,7 +315,9 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 		res, err := mc.NumUnconfirmedTxs()
 		require.Nil(t, err, "%d: %+v", i, err)
 
-		assert.Equal(t, mempoolSize, res.N)
+		assert.Equal(t, mempoolSize, res.Count)
+		assert.Equal(t, mempoolSize, res.Total)
+		assert.Equal(t, mempool.TxsBytes(), res.TotalBytes)
 	}
 
 	mempool.Flush()

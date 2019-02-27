@@ -5,11 +5,14 @@ set -e
 # specific git hash.
 #
 # repos it installs:
-#   github.com/mitchellh/gox
 #   github.com/golang/dep/cmd/dep
-#   gopkg.in/alecthomas/gometalinter.v2
 #   github.com/gogo/protobuf/protoc-gen-gogo
 #   github.com/square/certstrap
+#   github.com/mitchellh/gox
+#   github.com/golangci/golangci-lint
+#   github.com/petermattis/goid
+#   github.com/sasha-s/go-deadlock
+#   goimports
 
 ## check if GOPATH is set
 if [ -z ${GOPATH+x} ]; then
@@ -45,9 +48,22 @@ installFromGithub() {
 	echo ""
 }
 
-installFromGithub mitchellh/gox 51ed453898ca5579fea9ad1f08dff6b121d9f2e8
+######################## COMMON TOOLS ########################################
 installFromGithub golang/dep 22125cfaa6ddc71e145b1535d4b7ee9744fefff2 cmd/dep
-## gometalinter v2.0.11
-installFromGithub alecthomas/gometalinter 17a7ffa42374937bfecabfb8d2efbd4db0c26741
+
+######################## DEVELOPER TOOLS #####################################
 installFromGithub gogo/protobuf 61dbc136cf5d2f08d68a011382652244990a53a9 protoc-gen-gogo
+
 installFromGithub square/certstrap e27060a3643e814151e65b9807b6b06d169580a7
+
+# used to build tm-monitor & tm-bench binaries
+installFromGithub mitchellh/gox 51ed453898ca5579fea9ad1f08dff6b121d9f2e8
+
+## golangci-lint v1.13.2
+installFromGithub golangci/golangci-lint 7b2421d55194c9dc385eff7720a037aa9244ca3c cmd/golangci-lint
+
+## make test_with_deadlock
+## XXX: https://github.com/tendermint/tendermint/issues/3242
+installFromGithub petermattis/goid b0b1615b78e5ee59739545bb38426383b2cda4c9
+installFromGithub sasha-s/go-deadlock d68e2bc52ae3291765881b9056f2c1527f245f1e
+go get golang.org/x/tools/cmd/goimports
