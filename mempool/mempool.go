@@ -466,14 +466,12 @@ func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)
 		}
 		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
-			var senders sync.Map
-			senders.Store(peerID, true)
 			memTx := &mempoolTx{
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
-				senders:   senders,
 				tx:        tx,
 			}
+			memTx.senders.Store(peerID, true)
 			mem.addTx(memTx)
 			mem.logger.Info("Added good transaction",
 				"tx", TxID(tx),
