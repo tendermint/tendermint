@@ -35,11 +35,57 @@ type MempoolReactor struct {
 	p2p.BaseReactor
 	config  *cfg.MempoolConfig
 	Mempool *Mempool
+	ids     *mempoolIDs
+}
 
-	idMtx     sync.RWMutex
-	nextID    uint16 // assumes that a node will never have over 65536 active peers
+type mempoolIDs struct {
+	mtx       sync.RWMutex
 	peerMap   map[p2p.ID]uint16
+	nextID    uint16              // assumes that a node will never have over 65536 active peers
 	activeIDs map[uint16]struct{} // used to check if a given peerID key is used, the value doesn't matter
+}
+
+// Reserve searches for the next unused ID and assignes it to the peer.
+func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) {
+	ids.mtx.Lock()
+	defer ids.mtx.Unlock()
+
+	curID := ids.nextPeerID()
+	ids.peerMap[peer.ID()] = curID
+	ids.activeIDs[curID] = struct{}{}
+}
+
+// nextPeerID returns the next unused peer ID to use.
+// This assumes that ids's mutex is already locked.
+func (ids *mempoolIDs) nextPeerID() uint16 {
+	_, idExists := ids.activeIDs[ids.nextID]
+	for idExists {
+		ids.nextID++
+		_, idExists = ids.activeIDs[ids.nextID]
+	}
+	curID := ids.nextID
+	ids.nextID++
+	return curID
+}
+
+// Reclaim returns the ID reserved for the peer back to unused pool.
+func (ids *mempoolIDs) Reclaim(peer p2p.Peer) {
+	ids.mtx.Lock()
+	defer ids.mtx.Unlock()
+
+	removedID, ok := ids.peerMap[peer.ID()]
+	if ok {
+		delete(ids.activeIDs, removedID)
+		delete(ids.peerMap, peer.ID())
+	}
+}
+
+// GetForPeer returns an ID reserved for the peer.
+func (ids *mempoolIDs) GetForPeer(peer p2p.Peer) uint16 {
+	ids.mtx.RLock()
+	defer ids.mtx.RUnlock()
+
+	return ids.peerMap[peer.ID()]
 }
 
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
@@ -47,10 +93,11 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
-
-		peerMap:   make(map[p2p.ID]uint16),
-		activeIDs: map[uint16]struct{}{0: {}},
-		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
+		ids: &mempoolIDs{
+			peerMap:   make(map[p2p.ID]uint16),
+			activeIDs: map[uint16]struct{}{0: {}},
+			nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
+		},
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
@@ -81,37 +128,16 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 	}
 }
 
-// nextPeerID returns the next peer ID to use.
-// This assumes that memR's idMtx is already locked
-func (memR *MempoolReactor) nextPeerID() uint16 {
-	_, idExists := memR.activeIDs[memR.nextID]
-	for idExists {
-		memR.nextID++
-		_, idExists = memR.activeIDs[memR.nextID]
-	}
-	curID := memR.nextID
-	memR.nextID++
-	return curID
-}
-
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
-	memR.idMtx.Lock()
-	defer memR.idMtx.Unlock()
-	curID := memR.nextPeerID()
-	memR.peerMap[peer.ID()] = curID
-	memR.activeIDs[curID] = struct{}{}
+	memR.ids.ReserveForPeer(peer)
 	go memR.broadcastTxRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	memR.idMtx.Lock()
-	defer memR.idMtx.Unlock()
-	removedID := memR.peerMap[peer.ID()]
-	delete(memR.peerMap, peer.ID())
-	delete(memR.activeIDs, removedID)
+	memR.ids.Reclaim(peer)
 	// broadcast routine checks if peer is gone and returns
 }
 
@@ -128,10 +154,8 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		memR.idMtx.RLock()
-		peerID := memR.peerMap[src.ID()]
-		memR.idMtx.RUnlock()
-		err := memR.Mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{peerID})
+		peerID := memR.ids.GetForPeer(src)
+		err := memR.Mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{PeerID: peerID})
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", TxID(msg.Tx), "err", err)
 		}
@@ -152,9 +176,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		return
 	}
 
-	memR.idMtx.RLock()
-	peerID := memR.peerMap[peer.ID()]
-	memR.idMtx.RUnlock()
+	peerID := memR.ids.GetForPeer(peer)
 	var next *clist.CElement
 	for {
 		// This happens because the CElement we were looking at got garbage

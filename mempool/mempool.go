@@ -31,8 +31,8 @@ type PreCheckFunc func(types.Tx) error
 // transaction doesn't require more gas than available for the block.
 type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
 
-// TxInfo are parameters that get passed when attempting to add
-// a tx to the mempool
+// TxInfo are parameters that get passed when attempting to add a tx to the
+// mempool.
 type TxInfo struct {
 	PeerID uint16
 }
@@ -336,7 +336,7 @@ func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
-	return mem.CheckTxWithInfo(tx, cb, TxInfo{UnknownPeerID})
+	return mem.CheckTxWithInfo(tx, cb, TxInfo{PeerID: UnknownPeerID})
 }
 
 // CheckTxWithInfo performs the same operation as CheckTx, but with extra meta data about the tx.

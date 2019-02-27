@@ -66,7 +66,7 @@ func ensureFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 
 func checkTxs(t *testing.T, mempool *Mempool, count int, peerID uint16) types.Txs {
 	txs := make(types.Txs, count)
-	txInfo := TxInfo{peerID}
+	txInfo := TxInfo{PeerID: peerID}
 	for i := 0; i < count; i++ {
 		txBytes := make([]byte, 20)
 		txs[i] = txBytes
