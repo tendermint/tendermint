@@ -121,6 +121,24 @@ func incrementRound(vss ...*validatorStub) {
 	}
 }
 
+type ValidatorStubsByAddress []*validatorStub
+
+func (vss ValidatorStubsByAddress) Len() int {
+	return len(vss)
+}
+
+func (vss ValidatorStubsByAddress) Less(i, j int) bool {
+	return bytes.Compare(vss[i].GetPubKey().Address(), vss[j].GetPubKey().Address()) == -1
+}
+
+func (vss ValidatorStubsByAddress) Swap(i, j int) {
+	it := vss[i]
+	vss[i] = vss[j]
+	vss[i].Index = i
+	vss[j] = it
+	vss[j].Index = j
+}
+
 //-------------------------------------------------------------------------------
 // Functions for transitioning the consensus state
 

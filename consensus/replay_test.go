@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"sort"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -294,69 +296,176 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
 	sim.CleanupFunc = cleanup
 
-	logger := log.TestingLogger()
+	partSize := types.BlockPartSizeBytes
 
-	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nPeers)
+	newRoundCh := subscribe(css[0].eventBus, types.EventQueryNewRound)
+	proposalCh := subscribe(css[0].eventBus, types.EventQueryCompleteProposal)
 
-	// map of active validators
-	activeVals := make(map[string]struct{})
-	for i := 0; i < nVals; i++ {
-		addr := css[i].privValidator.GetPubKey().Address()
-		activeVals[string(addr)] = struct{}{}
+	vss := make([]*validatorStub, nPeers)
+	for i := 0; i < nPeers; i++ {
+		vss[i] = NewValidatorStub(css[i].privValidator, i)
 	}
+	height, round := css[0].Height, css[0].Round
+	// start the machine
+	startTestRound(css[0], height, round)
+	incrementHeight(vss...)
+	ensureNewRound(newRoundCh, height, 0)
+	ensureNewProposal(proposalCh, height, round)
+	rs := css[0].GetRoundState()
+	signAddVotes(css[0], types.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	ensureNewRound(newRoundCh, height+1, 0)
 
-	// wait till everyone makes block 1
-	timeoutWaitGroup(t, nPeers, func(j int) {
-		<-blocksSubs[j].Out()
-	}, css)
-
-	//---------------------------------------------------------------------------
-	logger.Info("---------------------------- Testing adding one validator")
-
+	//height 2
+	height++
+	incrementHeight(vss...)
 	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
 	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
+	err := assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil)
+	assert.Nil(t, err)
+	propBlock, _ := css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
+	propBlockParts := propBlock.MakePartSet(partSize)
+	blockID := types.BlockID{propBlock.Hash(), propBlockParts.Header()}
+	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
+	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
+		t.Fatal("failed to sign bad proposal", err)
+	}
 
-	// wait till everyone makes block 2
-	// ensure the commit includes all validators
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx1)
+	// set the proposal block
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+	ensureNewProposal(proposalCh, height, round)
+	rs = css[0].GetRoundState()
+	signAddVotes(css[0], types.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	ensureNewRound(newRoundCh, height+1, 0)
 
-	//---------------------------------------------------------------------------
-	logger.Info("---------------------------- Testing changing the voting power of one validator")
-
+	//height 3
+	height++
+	incrementHeight(vss...)
 	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
 	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
+	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil)
+	assert.Nil(t, err)
+	propBlock, _ = css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
+	propBlockParts = propBlock.MakePartSet(partSize)
+	blockID = types.BlockID{propBlock.Hash(), propBlockParts.Header()}
+	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
+	if err := vss[2].SignProposal(config.ChainID(), proposal); err != nil {
+		t.Fatal("failed to sign bad proposal", err)
+	}
 
-	//height 3‘s block contains newValidatorTx1. It will make effect in height 5, will appear in height 6's block's commit
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateValidatorTx1)
+	// set the proposal block
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+	ensureNewProposal(proposalCh, height, round)
+	rs = css[0].GetRoundState()
+	signAddVotes(css[0], types.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	ensureNewRound(newRoundCh, height+1, 0)
 
-	//---------------------------------------------------------------------------
-	logger.Info("---------------------------- Testing adding two validators at once")
-
+	//height 4
+	height++
+	incrementHeight(vss...)
 	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
 	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
-
+	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx2, nil)
+	assert.Nil(t, err)
 	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
 	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
+	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil)
+	assert.Nil(t, err)
+	propBlock, _ = css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
+	propBlockParts = propBlock.MakePartSet(partSize)
+	blockID = types.BlockID{propBlock.Hash(), propBlockParts.Header()}
+	newVss := make([]*validatorStub, nVals+1)
+	copy(newVss, vss[:nVals+1])
+	sort.Sort(ValidatorStubsByAddress(newVss))
+	selfIndex := 0
+	for i, vs := range newVss {
+		if vs.GetPubKey().Equals(css[0].privValidator.GetPubKey()) {
+			selfIndex = i
+			break
+		}
+	}
 
-	//height 4
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx2, newValidatorTx3)
+	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
+	if err := vss[3].SignProposal(config.ChainID(), proposal); err != nil {
+		t.Fatal("failed to sign bad proposal", err)
+	}
 
-	//---------------------------------------------------------------------------
-	logger.Info("---------------------------- Testing removing two validators at once")
+	// set the proposal block
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+	ensureNewProposal(proposalCh, height, round)
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
-	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
+	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx2, nil)
+	assert.Nil(t, err)
+
+	rs = css[0].GetRoundState()
+	for i := 0; i < nVals+1; i++ {
+		if i == selfIndex {
+			continue
+		}
+		signAddVotes(css[0], types.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+	}
+
+	ensureNewRound(newRoundCh, height+1, 0)
 
 	//height 5
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, removeValidatorTx2, removeValidatorTx3)
-	activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
+	height++
+	incrementHeight(vss...)
+	ensureNewProposal(proposalCh, height, round)
+	rs = css[0].GetRoundState()
+	for i := 0; i < nVals+1; i++ {
+		if i == selfIndex {
+			continue
+		}
+		signAddVotes(css[0], types.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+	}
+	ensureNewRound(newRoundCh, height+1, 0)
+
 	//height 6
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
-	stopConsensusNet(logger, reactors, eventBuses)
+	height++
+	incrementHeight(vss...)
+	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
+	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx3, nil)
+	assert.Nil(t, err)
+	propBlock, _ = css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
+	propBlockParts = propBlock.MakePartSet(partSize)
+	blockID = types.BlockID{propBlock.Hash(), propBlockParts.Header()}
+	newVss = make([]*validatorStub, nVals+3)
+	copy(newVss, vss[:nVals+3])
+	sort.Sort(ValidatorStubsByAddress(newVss))
+	for i, vs := range newVss {
+		if vs.GetPubKey().Equals(css[0].privValidator.GetPubKey()) {
+			selfIndex = i
+			break
+		}
+	}
+	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
+	if err := vss[1].SignProposal(config.ChainID(), proposal); err != nil {
+		t.Fatal("failed to sign bad proposal", err)
+	}
+
+	// set the proposal block
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+	ensureNewProposal(proposalCh, height, round)
+	rs = css[0].GetRoundState()
+	for i := 0; i < nVals+3; i++ {
+		if i == selfIndex {
+			continue
+		}
+		signAddVotes(css[0], types.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+	}
+	ensureNewRound(newRoundCh, height+1, 0)
 
 	sim.Chain = make([]*types.Block, 0)
 	sim.Commits = make([]*types.Commit, 0)
