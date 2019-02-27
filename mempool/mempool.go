@@ -156,7 +156,8 @@ type Mempool struct {
 
 	proxyMtx             sync.Mutex
 	proxyAppConn         proxy.AppConnMempool
-	txs                  *clist.CList    // concurrent linked-list of good txs
+	txs                  *clist.CList // concurrent linked-list of good txs
+	txsMap               map[[sha256.Size]byte]*clist.CElement
 	height               int64           // the last block Update()'d to
 	rechecking           int32           // for re-checking filtered txs on Update()
 	recheckCursor        *clist.CElement // next expected response
@@ -195,6 +196,7 @@ func NewMempool(
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
+		txsMap:        make(map[[sha256.Size]byte]*clist.CElement),
 		height:        height,
 		rechecking:    0,
 		recheckCursor: nil,
@@ -310,6 +312,7 @@ func (mem *Mempool) Flush() {
 		e.DetachPrev()
 	}
 
+	mem.txsMap = make(map[[sha256.Size]byte]*clist.CElement)
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 }
 
@@ -369,7 +372,21 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	}
 
 	// CACHE
-	if !mem.cache.PushTxWithInfo(tx, txInfo) {
+	if !mem.cache.Push(tx) {
+		// record the sender
+		e, ok := mem.txsMap[sha256.Sum256(tx)]
+		if ok {
+			memTx := e.Value.(*mempoolTx)
+			// for i := 0; i < len(memTx.senders); i++ {
+			// 	if txInfo.PeerID == memTx.senders[i] {
+			// 		// TODO: consider punishing peer for dups,
+			// 		// its non-trivial since invalid txs can become valid,
+			// 		// but they can spam the same tx with little cost to them atm.
+			// 	}
+			// }
+			memTx.senders = append(memTx.senders, txInfo.PeerID)
+		}
+
 		return ErrTxInCache
 	}
 	// END CACHE
@@ -436,6 +453,13 @@ func (mem *Mempool) reqResCb(tx []byte, peerID uint16) func(res *abci.Response) 
 	}
 }
 
+func (mem *Mempool) addTx(memTx *mempoolTx) {
+	e := mem.txs.PushBack(memTx)
+	mem.txsMap[sha256.Sum256(memTx.tx)] = e
+	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
+	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
+}
+
 func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
@@ -450,15 +474,13 @@ func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 				senders:   []uint16{peerID},
 				tx:        tx,
 			}
-			mem.txs.PushBack(memTx)
-			atomic.AddInt64(&mem.txsBytes, int64(len(tx)))
+			mem.addTx(memTx)
 			mem.logger.Info("Added good transaction",
 				"tx", TxID(tx),
 				"res", r,
 				"height", memTx.height,
 				"total", mem.Size(),
 			)
-			mem.metrics.TxSizeBytes.Observe(float64(len(tx)))
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
@@ -469,6 +491,17 @@ func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 		}
 	default:
 		// ignore other messages
+	}
+}
+
+func (mem *Mempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
+	mem.txs.Remove(elem)
+	elem.DetachPrev()
+	delete(mem.txsMap, sha256.Sum256(tx))
+	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
+
+	if removeFromCache {
+		mem.cache.Remove(tx)
 	}
 }
 
@@ -492,12 +525,8 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		} else {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", TxID(tx), "res", r, "err", postCheckErr)
-			mem.txs.Remove(mem.recheckCursor)
-			atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
-			mem.recheckCursor.DetachPrev()
-
-			// remove from cache (it might be good later)
-			mem.cache.Remove(tx)
+			// NOTE: we remove tx from the cache because it might be good later
+			mem.removeTx(tx, mem.recheckCursor, true)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -627,7 +656,7 @@ func (mem *Mempool) Update(
 
 	// Add committed transactions to cache (if missing).
 	for _, tx := range txs {
-		_ = mem.cache.PushTxWithInfo(tx, TxInfo{UnknownPeerID})
+		_ = mem.cache.Push(tx)
 	}
 
 	// Remove committed transactions.
@@ -665,12 +694,9 @@ func (mem *Mempool) removeTxs(txs types.Txs) []types.Tx {
 		memTx := e.Value.(*mempoolTx)
 		// Remove the tx if it's already in a block.
 		if _, ok := txsMap[string(memTx.tx)]; ok {
-			// remove from clist
-			mem.txs.Remove(e)
-			atomic.AddInt64(&mem.txsBytes, int64(-len(memTx.tx)))
-			e.DetachPrev()
-
 			// NOTE: we don't remove committed txs from the cache.
+			mem.removeTx(memTx.tx, e, false)
+
 			continue
 		}
 		txsLeft = append(txsLeft, memTx.tx)
@@ -714,7 +740,7 @@ func (memTx *mempoolTx) Height() int64 {
 
 type txCache interface {
 	Reset()
-	PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool
+	Push(tx types.Tx) bool
 	Remove(tx types.Tx)
 }
 
@@ -746,9 +772,9 @@ func (cache *mapTxCache) Reset() {
 	cache.mtx.Unlock()
 }
 
-// PushTxWithInfo adds the given tx to the cache and returns true. It returns false if tx
-// is already in the cache.
-func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
+// Push adds the given tx to the cache and returns true. It returns
+// false if tx is already in the cache.
+func (cache *mapTxCache) Push(tx types.Tx) bool {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
 
@@ -756,18 +782,6 @@ func (cache *mapTxCache) PushTxWithInfo(tx types.Tx, txInfo TxInfo) bool {
 	txHash := sha256.Sum256(tx)
 	if listEntry, exists := cache.map_[txHash]; exists {
 		cache.list.MoveToBack(listEntry)
-		// TODO: Make it possible to get main mempool list entry, then perform
-		// logic similar to the following:
-		// memTx, _ := listEntry.Value.(*mempoolTx)
-		// for i := 0; i < len(memTx.senders); i++ {
-		// 	if txInfo.PeerID == memTx.senders[i] {
-		// 		// TODO: consider punishing peer for dups,
-		// 		// its non-trivial since invalid txs can become valid,
-		// 		// but they can spam the same tx with little cost to them atm.
-		// 		return false
-		// 	}
-		// }
-		// memTx.senders = append(memTx.senders, txInfo.PeerID)
 		return false
 	}
 
@@ -801,6 +815,6 @@ type nopTxCache struct{}
 
 var _ txCache = (*nopTxCache)(nil)
 
-func (nopTxCache) Reset()                               {}
-func (nopTxCache) PushTxWithInfo(types.Tx, TxInfo) bool { return true }
-func (nopTxCache) Remove(types.Tx)                      {}
+func (nopTxCache) Reset()             {}
+func (nopTxCache) Push(types.Tx) bool { return true }
+func (nopTxCache) Remove(types.Tx)    {}

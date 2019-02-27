@@ -21,7 +21,7 @@ func TestCacheRemove(t *testing.T) {
 		txBytes := make([]byte, 32)
 		rand.Read(txBytes)
 		txs[i] = txBytes
-		cache.PushTxWithInfo(txBytes, TxInfo{UnknownPeerID})
+		cache.Push(txBytes)
 		// make sure its added to both the linked list and the map
 		require.Equal(t, i+1, len(cache.map_))
 		require.Equal(t, i+1, cache.list.Len())
