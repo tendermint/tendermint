@@ -190,16 +190,9 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
-		// ensure peer hasn't already sent us this tx
-		sendTxToPeer := true
-		for _, sender := range memTx.senders {
-			if peerID == sender {
-				sendTxToPeer = false
-				break
-			}
-		}
 
-		if sendTxToPeer {
+		// ensure peer hasn't already sent us this tx
+		if _, ok := memTx.senders.Load(peerID); !ok {
 			// send memTx
 			msg := &TxMessage{Tx: memTx.tx}
 			success := peer.Send(MempoolChannel, cdc.MustMarshalBinaryBare(msg))

@@ -377,14 +377,12 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 		e, ok := mem.txsMap[sha256.Sum256(tx)]
 		if ok {
 			memTx := e.Value.(*mempoolTx)
-			// for i := 0; i < len(memTx.senders); i++ {
-			// 	if txInfo.PeerID == memTx.senders[i] {
+			// 	if _, ok := memTx.senders.Load(txInfo.PeerID); ok {
 			// 		// TODO: consider punishing peer for dups,
 			// 		// its non-trivial since invalid txs can become valid,
 			// 		// but they can spam the same tx with little cost to them atm.
 			// 	}
-			// }
-			memTx.senders = append(memTx.senders, txInfo.PeerID)
+			memTx.senders.Store(txInfo.PeerID, true)
 		}
 
 		return ErrTxInCache
@@ -468,10 +466,12 @@ func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)
 		}
 		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
+			var senders sync.Map
+			senders.Store(peerID, true)
 			memTx := &mempoolTx{
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
-				senders:   []uint16{peerID},
+				senders:   senders,
 				tx:        tx,
 			}
 			mem.addTx(memTx)
@@ -727,7 +727,7 @@ func (mem *Mempool) recheckTxs(txs []types.Tx) {
 type mempoolTx struct {
 	height    int64    // height that this tx had been validated in
 	gasWanted int64    // amount of gas this tx states it will require
-	senders   []uint16 // ids of peers who've sent us this tx
+	senders   sync.Map // ids of peers who've sent us this tx
 	tx        types.Tx //
 }
 
