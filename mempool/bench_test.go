@@ -29,7 +29,8 @@ func BenchmarkReap(b *testing.B) {
 func BenchmarkCheckTx(b *testing.B) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 
 	for i := 0; i < b.N; i++ {
 		tx := make([]byte, 8)

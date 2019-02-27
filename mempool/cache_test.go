@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -36,7 +37,8 @@ func TestCacheRemove(t *testing.T) {
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 
 	// reAddIndices & txsInCache can have elements > numTxsToCreate
 	// also assumes max index is 255 for convenience
@@ -55,25 +57,31 @@ func TestCacheAfterUpdate(t *testing.T) {
 	for tcIndex, tc := range tests {
 		for i := 0; i < tc.numTxsToCreate; i++ {
 			tx := types.Tx{byte(i)}
-			mempool.CheckTx(tx, nil)
+			err := mempool.CheckTx(tx, nil)
+			require.NoError(t, err)
 		}
+
 		updateTxs := []types.Tx{}
 		for _, v := range tc.updateIndices {
 			tx := types.Tx{byte(v)}
 			updateTxs = append(updateTxs, tx)
 		}
 		mempool.Update(int64(tcIndex), updateTxs, nil, nil)
+
 		for _, v := range tc.reAddIndices {
 			tx := types.Tx{byte(v)}
-			mempool.CheckTx(tx, nil)
+			_ = mempool.CheckTx(tx, nil)
 		}
+
 		cache := mempool.cache.(*mapTxCache)
 		node := cache.list.Front()
 		counter := 0
 		for node != nil {
-			require.NotEqual(t, len(tc.txsInCache), counter, "cache larger than expected on testcase %d", tcIndex)
+			require.NotEqual(t, len(tc.txsInCache), counter,
+				"cache larger than expected on testcase %d", tcIndex)
+
 			nodeVal := node.Value.([sha256.Size]byte)
-			expectedBz := sha256.Sum256([]byte{byte(tc.txsInCache[counter])})
+			expectedBz := sha256.Sum256([]byte{byte(tc.txsInCache[len(tc.txsInCache)-counter-1])})
 			// Reference for reading the errors:
 			// >>> sha256('\x00').hexdigest()
 			// '6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d'
@@ -86,7 +94,8 @@ func TestCacheAfterUpdate(t *testing.T) {
 			counter++
 			node = node.Next()
 		}
-		require.Equal(t, len(tc.txsInCache), counter, "cache smaller than expected on testcase %d", tcIndex)
+		require.Equal(t, len(tc.txsInCache), counter,
+			"cache smaller than expected on testcase %d", tcIndex)
 		mempool.Flush()
 	}
 }

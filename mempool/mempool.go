@@ -406,25 +406,33 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	return nil
 }
 
-// ABCI callback function. This is used for handling rechecks,
-// as the normal case is handled by the reqRes callback so it can
-// incorporate local information.
+// ABCI callback function. This is used for handling rechecks, as the normal
+// case is handled by the reqRes callback so it can incorporate local
+// information.
 func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
-	if mem.recheckCursor != nil {
-		mem.metrics.RecheckTimes.Add(1)
-		mem.resCbRecheck(req, res)
+	if mem.recheckCursor == nil {
+		return
 	}
+
+	mem.metrics.RecheckTimes.Add(1)
+	mem.resCbRecheck(req, res)
+
+	// update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
 // ABCI request result callback function incorporates local information, like
-// the peer that sent us this tx, so we can avoid sending it back to the same peer.
+// the peer that sent us this tx, so we can avoid sending it back to the same
+// peer.
 func (mem *Mempool) reqResCb(tx []byte, peerID uint16) func(res *abci.Response) {
 	return func(res *abci.Response) {
 		if mem.recheckCursor != nil {
 			return
 		}
 		mem.resCbNormal(tx, peerID, res)
+
+		// update metrics
+		mem.metrics.Size.Set(float64(mem.Size()))
 	}
 }
 

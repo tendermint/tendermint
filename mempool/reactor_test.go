@@ -7,15 +7,13 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/go-kit/kit/log/term"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/go-kit/kit/log/term"
-
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	"github.com/tendermint/tendermint/libs/log"
-
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"

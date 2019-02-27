@@ -7,9 +7,9 @@ import (
 	"time"
 
 	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
-
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -22,8 +22,8 @@ const (
 	maxTxSize  = maxMsgSize - 8 // account for amino overhead of TxMessage
 
 	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
-  
-  // UnknownPeerID is the peer ID to use when running CheckTx when there is
+
+	// UnknownPeerID is the peer ID to use when running CheckTx when there is
 	// no peer (e.g. RPC)
 	UnknownPeerID uint16 = 0
 )
@@ -49,7 +49,7 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 		Mempool: mempool,
 
 		peerMap:   make(map[p2p.ID]uint16),
-		activeIDs: map[uint16]struct{}{0: struct{}{}},
+		activeIDs: map[uint16]struct{}{0: {}},
 		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
