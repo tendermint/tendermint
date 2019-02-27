@@ -375,14 +375,13 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	if !mem.cache.Push(tx) {
 		// record the sender
 		e, ok := mem.txsMap[sha256.Sum256(tx)]
-		if ok {
+		if ok { // tx may be in cache, but not in the mempool
 			memTx := e.Value.(*mempoolTx)
-			// 	if _, ok := memTx.senders.Load(txInfo.PeerID); ok {
-			// 		// TODO: consider punishing peer for dups,
-			// 		// its non-trivial since invalid txs can become valid,
-			// 		// but they can spam the same tx with little cost to them atm.
-			// 	}
-			memTx.senders.Store(txInfo.PeerID, true)
+			if _, loaded := memTx.senders.LoadOrStore(txInfo.PeerID, true); loaded {
+				// TODO: consider punishing peer for dups,
+				// its non-trivial since invalid txs can become valid,
+				// but they can spam the same tx with little cost to them atm.
+			}
 		}
 
 		return ErrTxInCache
