@@ -727,7 +727,7 @@ func (mem *Mempool) recheckTxs(txs []types.Tx) {
 type mempoolTx struct {
 	height    int64    // height that this tx had been validated in
 	gasWanted int64    // amount of gas this tx states it will require
-	senders   sync.Map // ids of peers who've sent us this tx
+	senders   sync.Map // ids of peers who've sent us this tx (as a map for quick lookups)
 	tx        types.Tx //
 }
 
@@ -780,8 +780,8 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 
 	// Use the tx hash in the cache
 	txHash := sha256.Sum256(tx)
-	if listEntry, exists := cache.map_[txHash]; exists {
-		cache.list.MoveToBack(listEntry)
+	if moved, exists := cache.map_[txHash]; exists {
+		cache.list.MoveToBack(moved)
 		return false
 	}
 
