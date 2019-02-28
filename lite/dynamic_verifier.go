@@ -208,6 +208,8 @@ func (dv *DynamicVerifier) verifyAndSave(trustedFC, sourceFC FullCommit) error {
 // for height h, using repeated applications of bisection if necessary.
 //
 // Returns ErrCommitNotFound if source provider doesn't have the commit for h.
+// TODO: bisection is disabled for now.
+// nolint:unused
 func (dv *DynamicVerifier) updateToHeight(h int64) (FullCommit, error) {
 
 	// Fetch latest full commit from source.
