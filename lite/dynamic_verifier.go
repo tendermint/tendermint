@@ -131,7 +131,7 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 			trustedFC.NextValidators.Hash(),
 			shdr.Header.ValidatorsHash) {
 			// ... update.
-			trustedFC, err = dv.fetchAndverifyAllUpToHeight(prevHeight)
+			trustedFC, err = dv.fetchAndVerifyToHeight(prevHeight)
 			if err != nil {
 				return err
 			}
@@ -268,7 +268,14 @@ FOR_LOOP:
 	}
 }
 
-func (dv *DynamicVerifier) fetchAndverifyAllUpToHeight(h int64) (FullCommit, error) {
+// fetchAndVerifyToHeight will fetch, verify, and store all intermediate
+// full commits from the last trusted one up to the given height h.
+//
+// If all of the above steps are successful it returns the full commit at
+// height h and no error.
+//
+// It returns ErrCommitNotFound if source provider doesn't have the commit for h.
+func (dv *DynamicVerifier) fetchAndVerifyToHeight(h int64) (FullCommit, error) {
 	// Fetch latest full commit from trusted.
 	trustedFC, err := dv.trusted.LatestFullCommit(dv.chainID, 1, h)
 	if err != nil {
