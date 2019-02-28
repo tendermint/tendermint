@@ -61,7 +61,7 @@ func (m *Request) Reset()         { *m = Request{} }
 func (m *Request) String() string { return proto.CompactTextString(m) }
 func (*Request) ProtoMessage()    {}
 func (*Request) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{0}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{0}
 }
 func (m *Request) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -483,7 +483,7 @@ func (m *RequestEcho) Reset()         { *m = RequestEcho{} }
 func (m *RequestEcho) String() string { return proto.CompactTextString(m) }
 func (*RequestEcho) ProtoMessage()    {}
 func (*RequestEcho) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{1}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{1}
 }
 func (m *RequestEcho) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -529,7 +529,7 @@ func (m *RequestFlush) Reset()         { *m = RequestFlush{} }
 func (m *RequestFlush) String() string { return proto.CompactTextString(m) }
 func (*RequestFlush) ProtoMessage()    {}
 func (*RequestFlush) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{2}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{2}
 }
 func (m *RequestFlush) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -571,7 +571,7 @@ func (m *RequestInfo) Reset()         { *m = RequestInfo{} }
 func (m *RequestInfo) String() string { return proto.CompactTextString(m) }
 func (*RequestInfo) ProtoMessage()    {}
 func (*RequestInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{3}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{3}
 }
 func (m *RequestInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -634,7 +634,7 @@ func (m *RequestSetOption) Reset()         { *m = RequestSetOption{} }
 func (m *RequestSetOption) String() string { return proto.CompactTextString(m) }
 func (*RequestSetOption) ProtoMessage()    {}
 func (*RequestSetOption) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{4}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{4}
 }
 func (m *RequestSetOption) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -692,7 +692,7 @@ func (m *RequestInitChain) Reset()         { *m = RequestInitChain{} }
 func (m *RequestInitChain) String() string { return proto.CompactTextString(m) }
 func (*RequestInitChain) ProtoMessage()    {}
 func (*RequestInitChain) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{5}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{5}
 }
 func (m *RequestInitChain) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -770,7 +770,7 @@ func (m *RequestQuery) Reset()         { *m = RequestQuery{} }
 func (m *RequestQuery) String() string { return proto.CompactTextString(m) }
 func (*RequestQuery) ProtoMessage()    {}
 func (*RequestQuery) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{6}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{6}
 }
 func (m *RequestQuery) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -841,7 +841,7 @@ func (m *RequestBeginBlock) Reset()         { *m = RequestBeginBlock{} }
 func (m *RequestBeginBlock) String() string { return proto.CompactTextString(m) }
 func (*RequestBeginBlock) ProtoMessage()    {}
 func (*RequestBeginBlock) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{7}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{7}
 }
 func (m *RequestBeginBlock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -909,7 +909,7 @@ func (m *RequestCheckTx) Reset()         { *m = RequestCheckTx{} }
 func (m *RequestCheckTx) String() string { return proto.CompactTextString(m) }
 func (*RequestCheckTx) ProtoMessage()    {}
 func (*RequestCheckTx) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{8}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{8}
 }
 func (m *RequestCheckTx) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -956,7 +956,7 @@ func (m *RequestDeliverTx) Reset()         { *m = RequestDeliverTx{} }
 func (m *RequestDeliverTx) String() string { return proto.CompactTextString(m) }
 func (*RequestDeliverTx) ProtoMessage()    {}
 func (*RequestDeliverTx) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{9}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{9}
 }
 func (m *RequestDeliverTx) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1003,7 +1003,7 @@ func (m *RequestEndBlock) Reset()         { *m = RequestEndBlock{} }
 func (m *RequestEndBlock) String() string { return proto.CompactTextString(m) }
 func (*RequestEndBlock) ProtoMessage()    {}
 func (*RequestEndBlock) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{10}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{10}
 }
 func (m *RequestEndBlock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1049,7 +1049,7 @@ func (m *RequestCommit) Reset()         { *m = RequestCommit{} }
 func (m *RequestCommit) String() string { return proto.CompactTextString(m) }
 func (*RequestCommit) ProtoMessage()    {}
 func (*RequestCommit) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{11}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{11}
 }
 func (m *RequestCommit) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1102,7 +1102,7 @@ func (m *Response) Reset()         { *m = Response{} }
 func (m *Response) String() string { return proto.CompactTextString(m) }
 func (*Response) ProtoMessage()    {}
 func (*Response) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{12}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{12}
 }
 func (m *Response) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1555,7 +1555,7 @@ func (m *ResponseException) Reset()         { *m = ResponseException{} }
 func (m *ResponseException) String() string { return proto.CompactTextString(m) }
 func (*ResponseException) ProtoMessage()    {}
 func (*ResponseException) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{13}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{13}
 }
 func (m *ResponseException) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1602,7 +1602,7 @@ func (m *ResponseEcho) Reset()         { *m = ResponseEcho{} }
 func (m *ResponseEcho) String() string { return proto.CompactTextString(m) }
 func (*ResponseEcho) ProtoMessage()    {}
 func (*ResponseEcho) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{14}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{14}
 }
 func (m *ResponseEcho) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1648,7 +1648,7 @@ func (m *ResponseFlush) Reset()         { *m = ResponseFlush{} }
 func (m *ResponseFlush) String() string { return proto.CompactTextString(m) }
 func (*ResponseFlush) ProtoMessage()    {}
 func (*ResponseFlush) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{15}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{15}
 }
 func (m *ResponseFlush) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1692,7 +1692,7 @@ func (m *ResponseInfo) Reset()         { *m = ResponseInfo{} }
 func (m *ResponseInfo) String() string { return proto.CompactTextString(m) }
 func (*ResponseInfo) ProtoMessage()    {}
 func (*ResponseInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{16}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{16}
 }
 func (m *ResponseInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1771,7 +1771,7 @@ func (m *ResponseSetOption) Reset()         { *m = ResponseSetOption{} }
 func (m *ResponseSetOption) String() string { return proto.CompactTextString(m) }
 func (*ResponseSetOption) ProtoMessage()    {}
 func (*ResponseSetOption) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{17}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{17}
 }
 func (m *ResponseSetOption) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1833,7 +1833,7 @@ func (m *ResponseInitChain) Reset()         { *m = ResponseInitChain{} }
 func (m *ResponseInitChain) String() string { return proto.CompactTextString(m) }
 func (*ResponseInitChain) ProtoMessage()    {}
 func (*ResponseInitChain) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{18}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{18}
 }
 func (m *ResponseInitChain) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1896,7 +1896,7 @@ func (m *ResponseQuery) Reset()         { *m = ResponseQuery{} }
 func (m *ResponseQuery) String() string { return proto.CompactTextString(m) }
 func (*ResponseQuery) ProtoMessage()    {}
 func (*ResponseQuery) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{19}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{19}
 }
 func (m *ResponseQuery) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1999,7 +1999,7 @@ func (m *ResponseBeginBlock) Reset()         { *m = ResponseBeginBlock{} }
 func (m *ResponseBeginBlock) String() string { return proto.CompactTextString(m) }
 func (*ResponseBeginBlock) ProtoMessage()    {}
 func (*ResponseBeginBlock) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{20}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{20}
 }
 func (m *ResponseBeginBlock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2053,7 +2053,7 @@ func (m *ResponseCheckTx) Reset()         { *m = ResponseCheckTx{} }
 func (m *ResponseCheckTx) String() string { return proto.CompactTextString(m) }
 func (*ResponseCheckTx) ProtoMessage()    {}
 func (*ResponseCheckTx) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{21}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{21}
 }
 func (m *ResponseCheckTx) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2156,7 +2156,7 @@ func (m *ResponseDeliverTx) Reset()         { *m = ResponseDeliverTx{} }
 func (m *ResponseDeliverTx) String() string { return proto.CompactTextString(m) }
 func (*ResponseDeliverTx) ProtoMessage()    {}
 func (*ResponseDeliverTx) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{22}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{22}
 }
 func (m *ResponseDeliverTx) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2254,7 +2254,7 @@ func (m *ResponseEndBlock) Reset()         { *m = ResponseEndBlock{} }
 func (m *ResponseEndBlock) String() string { return proto.CompactTextString(m) }
 func (*ResponseEndBlock) ProtoMessage()    {}
 func (*ResponseEndBlock) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{23}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{23}
 }
 func (m *ResponseEndBlock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2316,7 +2316,7 @@ func (m *ResponseCommit) Reset()         { *m = ResponseCommit{} }
 func (m *ResponseCommit) String() string { return proto.CompactTextString(m) }
 func (*ResponseCommit) ProtoMessage()    {}
 func (*ResponseCommit) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{24}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{24}
 }
 func (m *ResponseCommit) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2367,7 +2367,7 @@ func (m *ConsensusParams) Reset()         { *m = ConsensusParams{} }
 func (m *ConsensusParams) String() string { return proto.CompactTextString(m) }
 func (*ConsensusParams) ProtoMessage()    {}
 func (*ConsensusParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{25}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{25}
 }
 func (m *ConsensusParams) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2432,7 +2432,7 @@ func (m *BlockSizeParams) Reset()         { *m = BlockSizeParams{} }
 func (m *BlockSizeParams) String() string { return proto.CompactTextString(m) }
 func (*BlockSizeParams) ProtoMessage()    {}
 func (*BlockSizeParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{26}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{26}
 }
 func (m *BlockSizeParams) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2488,7 +2488,7 @@ func (m *EvidenceParams) Reset()         { *m = EvidenceParams{} }
 func (m *EvidenceParams) String() string { return proto.CompactTextString(m) }
 func (*EvidenceParams) ProtoMessage()    {}
 func (*EvidenceParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{27}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{27}
 }
 func (m *EvidenceParams) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2536,7 +2536,7 @@ func (m *ValidatorParams) Reset()         { *m = ValidatorParams{} }
 func (m *ValidatorParams) String() string { return proto.CompactTextString(m) }
 func (*ValidatorParams) ProtoMessage()    {}
 func (*ValidatorParams) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{28}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{28}
 }
 func (m *ValidatorParams) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2584,7 +2584,7 @@ func (m *LastCommitInfo) Reset()         { *m = LastCommitInfo{} }
 func (m *LastCommitInfo) String() string { return proto.CompactTextString(m) }
 func (*LastCommitInfo) ProtoMessage()    {}
 func (*LastCommitInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{29}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{29}
 }
 func (m *LastCommitInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2658,7 +2658,7 @@ func (m *Header) Reset()         { *m = Header{} }
 func (m *Header) String() string { return proto.CompactTextString(m) }
 func (*Header) ProtoMessage()    {}
 func (*Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{30}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{30}
 }
 func (m *Header) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2811,7 +2811,7 @@ func (m *Version) Reset()         { *m = Version{} }
 func (m *Version) String() string { return proto.CompactTextString(m) }
 func (*Version) ProtoMessage()    {}
 func (*Version) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{31}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{31}
 }
 func (m *Version) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2866,7 +2866,7 @@ func (m *BlockID) Reset()         { *m = BlockID{} }
 func (m *BlockID) String() string { return proto.CompactTextString(m) }
 func (*BlockID) ProtoMessage()    {}
 func (*BlockID) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{32}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{32}
 }
 func (m *BlockID) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2921,7 +2921,7 @@ func (m *PartSetHeader) Reset()         { *m = PartSetHeader{} }
 func (m *PartSetHeader) String() string { return proto.CompactTextString(m) }
 func (*PartSetHeader) ProtoMessage()    {}
 func (*PartSetHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{33}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{33}
 }
 func (m *PartSetHeader) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2978,7 +2978,7 @@ func (m *Validator) Reset()         { *m = Validator{} }
 func (m *Validator) String() string { return proto.CompactTextString(m) }
 func (*Validator) ProtoMessage()    {}
 func (*Validator) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{34}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{34}
 }
 func (m *Validator) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3034,7 +3034,7 @@ func (m *ValidatorUpdate) Reset()         { *m = ValidatorUpdate{} }
 func (m *ValidatorUpdate) String() string { return proto.CompactTextString(m) }
 func (*ValidatorUpdate) ProtoMessage()    {}
 func (*ValidatorUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{35}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{35}
 }
 func (m *ValidatorUpdate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3090,7 +3090,7 @@ func (m *VoteInfo) Reset()         { *m = VoteInfo{} }
 func (m *VoteInfo) String() string { return proto.CompactTextString(m) }
 func (*VoteInfo) ProtoMessage()    {}
 func (*VoteInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{36}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{36}
 }
 func (m *VoteInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3145,7 +3145,7 @@ func (m *PubKey) Reset()         { *m = PubKey{} }
 func (m *PubKey) String() string { return proto.CompactTextString(m) }
 func (*PubKey) ProtoMessage()    {}
 func (*PubKey) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{37}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{37}
 }
 func (m *PubKey) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3203,7 +3203,7 @@ func (m *Evidence) Reset()         { *m = Evidence{} }
 func (m *Evidence) String() string { return proto.CompactTextString(m) }
 func (*Evidence) ProtoMessage()    {}
 func (*Evidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_5b877df1938afe10, []int{38}
+	return fileDescriptor_types_dfa4953f824ab2aa, []int{38}
 }
 func (m *Evidence) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8448,6 +8448,9 @@ func encodeVarintPopulateTypes(dAtA []byte, v uint64) []byte {
 	return dAtA
 }
 func (m *Request) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Value != nil {
@@ -8460,6 +8463,9 @@ func (m *Request) Size() (n int) {
 }
 
 func (m *Request_Echo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Echo != nil {
@@ -8469,6 +8475,9 @@ func (m *Request_Echo) Size() (n int) {
 	return n
 }
 func (m *Request_Flush) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Flush != nil {
@@ -8478,6 +8487,9 @@ func (m *Request_Flush) Size() (n int) {
 	return n
 }
 func (m *Request_Info) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Info != nil {
@@ -8487,6 +8499,9 @@ func (m *Request_Info) Size() (n int) {
 	return n
 }
 func (m *Request_SetOption) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.SetOption != nil {
@@ -8496,6 +8511,9 @@ func (m *Request_SetOption) Size() (n int) {
 	return n
 }
 func (m *Request_InitChain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.InitChain != nil {
@@ -8505,6 +8523,9 @@ func (m *Request_InitChain) Size() (n int) {
 	return n
 }
 func (m *Request_Query) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Query != nil {
@@ -8514,6 +8535,9 @@ func (m *Request_Query) Size() (n int) {
 	return n
 }
 func (m *Request_BeginBlock) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.BeginBlock != nil {
@@ -8523,6 +8547,9 @@ func (m *Request_BeginBlock) Size() (n int) {
 	return n
 }
 func (m *Request_CheckTx) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.CheckTx != nil {
@@ -8532,6 +8559,9 @@ func (m *Request_CheckTx) Size() (n int) {
 	return n
 }
 func (m *Request_EndBlock) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.EndBlock != nil {
@@ -8541,6 +8571,9 @@ func (m *Request_EndBlock) Size() (n int) {
 	return n
 }
 func (m *Request_Commit) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Commit != nil {
@@ -8550,6 +8583,9 @@ func (m *Request_Commit) Size() (n int) {
 	return n
 }
 func (m *Request_DeliverTx) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.DeliverTx != nil {
@@ -8559,6 +8595,9 @@ func (m *Request_DeliverTx) Size() (n int) {
 	return n
 }
 func (m *RequestEcho) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Message)
@@ -8572,6 +8611,9 @@ func (m *RequestEcho) Size() (n int) {
 }
 
 func (m *RequestFlush) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.XXX_unrecognized != nil {
@@ -8581,6 +8623,9 @@ func (m *RequestFlush) Size() (n int) {
 }
 
 func (m *RequestInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Version)
@@ -8600,6 +8645,9 @@ func (m *RequestInfo) Size() (n int) {
 }
 
 func (m *RequestSetOption) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Key)
@@ -8617,6 +8665,9 @@ func (m *RequestSetOption) Size() (n int) {
 }
 
 func (m *RequestInitChain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.Time)
@@ -8646,6 +8697,9 @@ func (m *RequestInitChain) Size() (n int) {
 }
 
 func (m *RequestQuery) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Data)
@@ -8669,6 +8723,9 @@ func (m *RequestQuery) Size() (n int) {
 }
 
 func (m *RequestBeginBlock) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Hash)
@@ -8692,6 +8749,9 @@ func (m *RequestBeginBlock) Size() (n int) {
 }
 
 func (m *RequestCheckTx) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Tx)
@@ -8705,6 +8765,9 @@ func (m *RequestCheckTx) Size() (n int) {
 }
 
 func (m *RequestDeliverTx) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Tx)
@@ -8718,6 +8781,9 @@ func (m *RequestDeliverTx) Size() (n int) {
 }
 
 func (m *RequestEndBlock) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Height != 0 {
@@ -8730,6 +8796,9 @@ func (m *RequestEndBlock) Size() (n int) {
 }
 
 func (m *RequestCommit) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.XXX_unrecognized != nil {
@@ -8739,6 +8808,9 @@ func (m *RequestCommit) Size() (n int) {
 }
 
 func (m *Response) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Value != nil {
@@ -8751,6 +8823,9 @@ func (m *Response) Size() (n int) {
 }
 
 func (m *Response_Exception) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Exception != nil {
@@ -8760,6 +8835,9 @@ func (m *Response_Exception) Size() (n int) {
 	return n
 }
 func (m *Response_Echo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Echo != nil {
@@ -8769,6 +8847,9 @@ func (m *Response_Echo) Size() (n int) {
 	return n
 }
 func (m *Response_Flush) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Flush != nil {
@@ -8778,6 +8859,9 @@ func (m *Response_Flush) Size() (n int) {
 	return n
 }
 func (m *Response_Info) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Info != nil {
@@ -8787,6 +8871,9 @@ func (m *Response_Info) Size() (n int) {
 	return n
 }
 func (m *Response_SetOption) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.SetOption != nil {
@@ -8796,6 +8883,9 @@ func (m *Response_SetOption) Size() (n int) {
 	return n
 }
 func (m *Response_InitChain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.InitChain != nil {
@@ -8805,6 +8895,9 @@ func (m *Response_InitChain) Size() (n int) {
 	return n
 }
 func (m *Response_Query) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Query != nil {
@@ -8814,6 +8907,9 @@ func (m *Response_Query) Size() (n int) {
 	return n
 }
 func (m *Response_BeginBlock) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.BeginBlock != nil {
@@ -8823,6 +8919,9 @@ func (m *Response_BeginBlock) Size() (n int) {
 	return n
 }
 func (m *Response_CheckTx) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.CheckTx != nil {
@@ -8832,6 +8931,9 @@ func (m *Response_CheckTx) Size() (n int) {
 	return n
 }
 func (m *Response_DeliverTx) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.DeliverTx != nil {
@@ -8841,6 +8943,9 @@ func (m *Response_DeliverTx) Size() (n int) {
 	return n
 }
 func (m *Response_EndBlock) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.EndBlock != nil {
@@ -8850,6 +8955,9 @@ func (m *Response_EndBlock) Size() (n int) {
 	return n
 }
 func (m *Response_Commit) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Commit != nil {
@@ -8859,6 +8967,9 @@ func (m *Response_Commit) Size() (n int) {
 	return n
 }
 func (m *ResponseException) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Error)
@@ -8872,6 +8983,9 @@ func (m *ResponseException) Size() (n int) {
 }
 
 func (m *ResponseEcho) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Message)
@@ -8885,6 +8999,9 @@ func (m *ResponseEcho) Size() (n int) {
 }
 
 func (m *ResponseFlush) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.XXX_unrecognized != nil {
@@ -8894,6 +9011,9 @@ func (m *ResponseFlush) Size() (n int) {
 }
 
 func (m *ResponseInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Data)
@@ -8921,6 +9041,9 @@ func (m *ResponseInfo) Size() (n int) {
 }
 
 func (m *ResponseSetOption) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Code != 0 {
@@ -8941,6 +9064,9 @@ func (m *ResponseSetOption) Size() (n int) {
 }
 
 func (m *ResponseInitChain) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.ConsensusParams != nil {
@@ -8960,6 +9086,9 @@ func (m *ResponseInitChain) Size() (n int) {
 }
 
 func (m *ResponseQuery) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Code != 0 {
@@ -9002,6 +9131,9 @@ func (m *ResponseQuery) Size() (n int) {
 }
 
 func (m *ResponseBeginBlock) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if len(m.Tags) > 0 {
@@ -9017,6 +9149,9 @@ func (m *ResponseBeginBlock) Size() (n int) {
 }
 
 func (m *ResponseCheckTx) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Code != 0 {
@@ -9057,6 +9192,9 @@ func (m *ResponseCheckTx) Size() (n int) {
 }
 
 func (m *ResponseDeliverTx) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Code != 0 {
@@ -9097,6 +9235,9 @@ func (m *ResponseDeliverTx) Size() (n int) {
 }
 
 func (m *ResponseEndBlock) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if len(m.ValidatorUpdates) > 0 {
@@ -9122,6 +9263,9 @@ func (m *ResponseEndBlock) Size() (n int) {
 }
 
 func (m *ResponseCommit) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Data)
@@ -9135,6 +9279,9 @@ func (m *ResponseCommit) Size() (n int) {
 }
 
 func (m *ConsensusParams) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.BlockSize != nil {
@@ -9156,6 +9303,9 @@ func (m *ConsensusParams) Size() (n int) {
 }
 
 func (m *BlockSizeParams) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.MaxBytes != 0 {
@@ -9171,6 +9321,9 @@ func (m *BlockSizeParams) Size() (n int) {
 }
 
 func (m *EvidenceParams) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.MaxAge != 0 {
@@ -9183,6 +9336,9 @@ func (m *EvidenceParams) Size() (n int) {
 }
 
 func (m *ValidatorParams) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if len(m.PubKeyTypes) > 0 {
@@ -9198,6 +9354,9 @@ func (m *ValidatorParams) Size() (n int) {
 }
 
 func (m *LastCommitInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Round != 0 {
@@ -9216,6 +9375,9 @@ func (m *LastCommitInfo) Size() (n int) {
 }
 
 func (m *Header) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = m.Version.Size()
@@ -9280,6 +9442,9 @@ func (m *Header) Size() (n int) {
 }
 
 func (m *Version) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Block != 0 {
@@ -9295,6 +9460,9 @@ func (m *Version) Size() (n int) {
 }
 
 func (m *BlockID) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Hash)
@@ -9310,6 +9478,9 @@ func (m *BlockID) Size() (n int) {
 }
 
 func (m *PartSetHeader) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Total != 0 {
@@ -9326,6 +9497,9 @@ func (m *PartSetHeader) Size() (n int) {
 }
 
 func (m *Validator) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Address)
@@ -9342,6 +9516,9 @@ func (m *Validator) Size() (n int) {
 }
 
 func (m *ValidatorUpdate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = m.PubKey.Size()
@@ -9356,6 +9533,9 @@ func (m *ValidatorUpdate) Size() (n int) {
 }
 
 func (m *VoteInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = m.Validator.Size()
@@ -9370,6 +9550,9 @@ func (m *VoteInfo) Size() (n int) {
 }
 
 func (m *PubKey) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Type)
@@ -9387,6 +9570,9 @@ func (m *PubKey) Size() (n int) {
 }
 
 func (m *Evidence) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Type)
@@ -15171,12 +15357,12 @@ var (
 	ErrIntOverflowTypes   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("abci/types/types.proto", fileDescriptor_types_5b877df1938afe10) }
+func init() { proto.RegisterFile("abci/types/types.proto", fileDescriptor_types_dfa4953f824ab2aa) }
 func init() {
-	golang_proto.RegisterFile("abci/types/types.proto", fileDescriptor_types_5b877df1938afe10)
+	golang_proto.RegisterFile("abci/types/types.proto", fileDescriptor_types_dfa4953f824ab2aa)
 }
 
-var fileDescriptor_types_5b877df1938afe10 = []byte{
+var fileDescriptor_types_dfa4953f824ab2aa = []byte{
 	// 2214 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xdc, 0x58, 0xcb, 0x73, 0x1b, 0xc7,
 	0xd1, 0xe7, 0x82, 0x20, 0x81, 0x6d, 0x10, 0x0f, 0x8d, 0x28, 0x09, 0xc2, 0xe7, 0x8f, 0x54, 0xad,

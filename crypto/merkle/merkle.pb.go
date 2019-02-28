@@ -39,7 +39,7 @@ func (m *ProofOp) Reset()         { *m = ProofOp{} }
 func (m *ProofOp) String() string { return proto.CompactTextString(m) }
 func (*ProofOp) ProtoMessage()    {}
 func (*ProofOp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_merkle_5d3f6051907285da, []int{0}
+	return fileDescriptor_merkle_24be8bc4e405ac66, []int{0}
 }
 func (m *ProofOp) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -101,7 +101,7 @@ func (m *Proof) Reset()         { *m = Proof{} }
 func (m *Proof) String() string { return proto.CompactTextString(m) }
 func (*Proof) ProtoMessage()    {}
 func (*Proof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_merkle_5d3f6051907285da, []int{1}
+	return fileDescriptor_merkle_24be8bc4e405ac66, []int{1}
 }
 func (m *Proof) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -395,6 +395,9 @@ func encodeVarintPopulateMerkle(dAtA []byte, v uint64) []byte {
 	return dAtA
 }
 func (m *ProofOp) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.Type)
@@ -416,6 +419,9 @@ func (m *ProofOp) Size() (n int) {
 }
 
 func (m *Proof) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if len(m.Ops) > 0 {
@@ -772,9 +778,9 @@ var (
 	ErrIntOverflowMerkle   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("crypto/merkle/merkle.proto", fileDescriptor_merkle_5d3f6051907285da) }
+func init() { proto.RegisterFile("crypto/merkle/merkle.proto", fileDescriptor_merkle_24be8bc4e405ac66) }
 
-var fileDescriptor_merkle_5d3f6051907285da = []byte{
+var fileDescriptor_merkle_24be8bc4e405ac66 = []byte{
 	// 200 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4a, 0x2e, 0xaa, 0x2c,
 	0x28, 0xc9, 0xd7, 0xcf, 0x4d, 0x2d, 0xca, 0xce, 0x49, 0x85, 0x52, 0x7a, 0x05, 0x45, 0xf9, 0x25,

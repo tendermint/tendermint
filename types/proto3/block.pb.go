@@ -30,7 +30,7 @@ func (m *PartSetHeader) Reset()         { *m = PartSetHeader{} }
 func (m *PartSetHeader) String() string { return proto.CompactTextString(m) }
 func (*PartSetHeader) ProtoMessage()    {}
 func (*PartSetHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_57c41dfc0fc285b3, []int{0}
+	return fileDescriptor_block_1ca6cebf74619a45, []int{0}
 }
 func (m *PartSetHeader) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PartSetHeader.Unmarshal(m, b)
@@ -76,7 +76,7 @@ func (m *BlockID) Reset()         { *m = BlockID{} }
 func (m *BlockID) String() string { return proto.CompactTextString(m) }
 func (*BlockID) ProtoMessage()    {}
 func (*BlockID) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_57c41dfc0fc285b3, []int{1}
+	return fileDescriptor_block_1ca6cebf74619a45, []int{1}
 }
 func (m *BlockID) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BlockID.Unmarshal(m, b)
@@ -141,7 +141,7 @@ func (m *Header) Reset()         { *m = Header{} }
 func (m *Header) String() string { return proto.CompactTextString(m) }
 func (*Header) ProtoMessage()    {}
 func (*Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_57c41dfc0fc285b3, []int{2}
+	return fileDescriptor_block_1ca6cebf74619a45, []int{2}
 }
 func (m *Header) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Header.Unmarshal(m, b)
@@ -285,7 +285,7 @@ func (m *Version) Reset()         { *m = Version{} }
 func (m *Version) String() string { return proto.CompactTextString(m) }
 func (*Version) ProtoMessage()    {}
 func (*Version) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_57c41dfc0fc285b3, []int{3}
+	return fileDescriptor_block_1ca6cebf74619a45, []int{3}
 }
 func (m *Version) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Version.Unmarshal(m, b)
@@ -336,7 +336,7 @@ func (m *Timestamp) Reset()         { *m = Timestamp{} }
 func (m *Timestamp) String() string { return proto.CompactTextString(m) }
 func (*Timestamp) ProtoMessage()    {}
 func (*Timestamp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_57c41dfc0fc285b3, []int{4}
+	return fileDescriptor_block_1ca6cebf74619a45, []int{4}
 }
 func (m *Timestamp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Timestamp.Unmarshal(m, b)
@@ -378,9 +378,9 @@ func init() {
 	proto.RegisterType((*Timestamp)(nil), "proto3.Timestamp")
 }
 
-func init() { proto.RegisterFile("types/proto3/block.proto", fileDescriptor_block_57c41dfc0fc285b3) }
+func init() { proto.RegisterFile("types/proto3/block.proto", fileDescriptor_block_1ca6cebf74619a45) }
 
-var fileDescriptor_block_57c41dfc0fc285b3 = []byte{
+var fileDescriptor_block_1ca6cebf74619a45 = []byte{
 	// 451 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x53, 0x5f, 0x6f, 0xd3, 0x30,
 	0x10, 0x57, 0x68, 0xda, 0xae, 0x97, 0x76, 0x1d, 0x27, 0x40, 0x16, 0x4f, 0x55, 0x04, 0xa8, 0xbc,
