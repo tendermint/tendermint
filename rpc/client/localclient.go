@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	nm "github.com/tendermint/tendermint/node"
@@ -31,6 +32,7 @@ powerful control during testing, you probably want the "client/mock" package.
 */
 type Local struct {
 	*types.EventBus
+	Logger log.Logger
 }
 
 // NewLocal configures a client that calls the Node directly.
@@ -43,6 +45,7 @@ func NewLocal(node *nm.Node) *Local {
 	node.ConfigureRPC()
 	return &Local{
 		EventBus: node.EventBus(),
+		Logger:   log.NewNopLogger(),
 	}
 }
 
@@ -51,6 +54,11 @@ var (
 	_ NetworkClient = Local{}
 	_ EventsClient  = (*Local)(nil)
 )
+
+// SetLogger allows to set a logger on the client.
+func (c *Local) SetLogger(l log.Logger) {
+	c.Logger = l
+}
 
 func (Local) Status() (*ctypes.ResultStatus, error) {
 	return core.Status()
@@ -145,7 +153,9 @@ func (Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.Resu
 }
 
 // Subscribe implements EventsClient by using local eventBus to subscribe given
-// subscriber to query.
+// subscriber to query.By default, returns a channel with cap=1. Error is
+// returned if it fails to subscribe.
+// Channel is never closed to prevent clients from seeing an erroneus event.
 func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -156,7 +166,7 @@ func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapa
 		return nil, errors.Wrap(err, "failed to subscribe")
 	}
 
-	outCap := 0
+	outCap := 1
 	if len(outCapacity) > 0 {
 		outCap = outCapacity[0]
 	}
@@ -166,18 +176,20 @@ func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapa
 		for {
 			select {
 			case msg := <-sub.Out():
+				result := ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
 				if cap(outc) == 0 {
-					outc <- ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
+					outc <- result
 				} else {
 					select {
-					case outc <- ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}:
+					case outc <- result:
 					default:
-						// XXX: client has missed an event. inform it somehow!
+						c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
 					}
 				}
 			case <-sub.Cancelled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
 					// resubscribe
+					c.Logger.Error("subscription was cancelled, resubscribing...", "err", err, "query", query)
 					var err error
 					for {
 						if !c.IsRunning() {

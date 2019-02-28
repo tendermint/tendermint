@@ -168,10 +168,10 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// XXX: should be the remote IP address of the caller
 	subscriber := "mempool"
 
-	if eventBus.NumClients() > MaxSubscriptionClients {
-		return nil, fmt.Errorf("max_subscription_clients %d reached", MaxSubscriptionClients)
-	} else if eventBus.NumClientSubscriptions(subscriber) > MaxSubscriptionsPerClient {
-		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", MaxSubscriptionsPerClient)
+	if eventBus.NumClients() > config.MaxSubscriptionClients {
+		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
+	} else if eventBus.NumClientSubscriptions(subscriber) > config.MaxSubscriptionsPerClient {
+		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", config.MaxSubscriptionsPerClient)
 	}
 
 	// Subscribe to tx being committed in block.
@@ -223,7 +223,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, err
-	case <-time.After(TimeoutBroadcastTxCommit):
+	case <-time.After(config.TimeoutBroadcastTxCommit):
 		err = errors.New("Timed out waiting for tx to be included in a block")
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{

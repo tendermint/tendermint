@@ -1,8 +1,7 @@
 package core
 
 import (
-	"time"
-
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -74,14 +73,7 @@ var (
 
 	logger log.Logger
 
-	// config variables
-
-	// MaxSubscriptionClients mirrors RPCConfig.MaxSubscriptionClients
-	MaxSubscriptionClients int
-	// MaxSubscriptionsPerClient mirrors RPCConfig.MaxSubscriptionsPerClient
-	MaxSubscriptionsPerClient int
-	// TimeoutBroadcastTxCommit mirrors RPCConfig.TimeoutBroadcastTxCommit
-	TimeoutBroadcastTxCommit time.Duration
+	config cfg.RPCConfig
 )
 
 func SetStateDB(db dbm.DB) {
@@ -142,6 +134,11 @@ func SetLogger(l log.Logger) {
 
 func SetEventBus(b *types.EventBus) {
 	eventBus = b
+}
+
+// SetConfig sets an RPCConfig.
+func SetConfig(c cfg.RPCConfig) {
+	config = c
 }
 
 func validatePage(page, perPage, totalCount int) int {

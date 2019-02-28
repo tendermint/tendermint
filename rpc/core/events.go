@@ -93,10 +93,10 @@ import (
 func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
 	addr := wsCtx.GetRemoteAddr()
 
-	if eventBus.NumClients() > MaxSubscriptionClients {
-		return nil, fmt.Errorf("max_subscription_clients %d reached", MaxSubscriptionClients)
-	} else if eventBus.NumClientSubscriptions(addr) > MaxSubscriptionsPerClient {
-		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", MaxSubscriptionsPerClient)
+	if eventBus.NumClients() > config.MaxSubscriptionClients {
+		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
+	} else if eventBus.NumClientSubscriptions(addr) > config.MaxSubscriptionsPerClient {
+		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", config.MaxSubscriptionsPerClient)
 	}
 
 	logger.Info("Subscribe to query", "remote", addr, "query", query)

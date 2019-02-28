@@ -295,7 +295,9 @@ func (w *WSEvents) OnStop() {
 }
 
 // Subscribe implements EventsClient by using WSClient to subscribe given
-// subscriber to query.
+// subscriber to query. By default, returns a channel with cap=1. Error is
+// returned if it fails to subscribe.
+// Channel is never closed to prevent clients from seeing an erroneus event.
 func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
 	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 
@@ -303,7 +305,7 @@ func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
 		return nil, err
 	}
 
-	outCap := 0
+	outCap := 1
 	if len(outCapacity) > 0 {
 		outCap = outCapacity[0]
 	}
