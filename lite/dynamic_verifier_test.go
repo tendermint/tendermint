@@ -176,8 +176,12 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 		trust.SaveFullCommit(fcz[i])
 	}
 
-	// See if we can jump forward using trusted full commits.
-	// Souce doesn't have fcz[9] so cert.LastTrustedHeight wont' change.
+	// We do not jump forward using trusted full commits.
+	// Instead, we need to store the "gap" (height 7) in source s.t.
+	// Verfiy can retrieve it from somewhere.
+	// Source doesn't have fcz[9] so cert.LastTrustedHeight wont' change.
+	err = source.SaveFullCommit(fcz[6])
+	require.Nil(err, "%+v", err)
 	err = source.SaveFullCommit(fcz[7])
 	require.Nil(err, "%+v", err)
 	sh := fcz[8].SignedHeader
@@ -254,9 +258,21 @@ func TestConcurrencyInquirerVerify(t *testing.T) {
 	cert := NewDynamicVerifier(chainID, trust, source)
 	cert.SetLogger(log.TestingLogger())
 
+	// If we were using bisection / updateToHeight having the full commits
+	// for height 8 and 9 would be sufficient.
+	// verifyAndSave would return no error from 1 = h -> h' = 8 as
+	// the validator set has not changed. As per
+	// https://github.com/tendermint/tendermint/issues/3259
+	// we verify all headers in order. So we need the source to have
+	// all headers in between [1, ..., 7], too.
+	for i := 1; i < 7; i++ {
+		err = source.SaveFullCommit(fcz[i])
+		require.NoError(err, "%+v", err)
+	}
 	err = source.SaveFullCommit(fcz[7])
+	require.NoError(err, "%+v", err)
 	err = source.SaveFullCommit(fcz[8])
-	require.Nil(err, "%+v", err)
+	require.NoError(err, "%+v", err)
 	sh := fcz[8].SignedHeader
 
 	var wg sync.WaitGroup

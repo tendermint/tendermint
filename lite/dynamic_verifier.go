@@ -131,7 +131,7 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 			trustedFC.NextValidators.Hash(),
 			shdr.Header.ValidatorsHash) {
 			// ... update.
-			trustedFC, err = dv.updateToHeight(prevHeight)
+			trustedFC, err = dv.fetchAndverifyAllUpToHeight(prevHeight)
 			if err != nil {
 				return err
 			}
@@ -264,6 +264,50 @@ FOR_LOOP:
 		}
 		return FullCommit{}, err
 	}
+}
+
+func (dv *DynamicVerifier) fetchAndverifyAllUpToHeight(h int64) (FullCommit, error) {
+	// Fetch latest full commit from trusted.
+	trustedFC, err := dv.trusted.LatestFullCommit(dv.chainID, 1, h)
+	if err != nil {
+		return FullCommit{}, err
+	}
+	// We already were at the requested height.
+	if trustedFC.Height() == h {
+		return trustedFC, nil
+	}
+	// fetch FullCommits height by height until we reach h
+	for heightToFetch := trustedFC.Height() + 1; heightToFetch <= h; heightToFetch++ {
+
+		nextFC, err := dv.source.LatestFullCommit(dv.chainID, heightToFetch, heightToFetch)
+		if err != nil {
+			return FullCommit{}, err
+		}
+		fmt.Println(nextFC.Height())
+		if nextFC.Height() != heightToFetch {
+			return FullCommit{}, lerr.ErrCommitNotFound()
+		}
+
+		if err := nextFC.ValidateFull(dv.chainID); err != nil {
+			return FullCommit{}, err
+		}
+		// Update height for height.
+		// TODO: do we want the lite client to store the intermediate commits,
+		//  or only the latest/last one?
+		if err := dv.verifyAndSave(trustedFC, nextFC); err != nil {
+			return FullCommit{}, err
+		}
+		// updated trustedFC for next height / iteration:
+		trustedFC, err = dv.trusted.LatestFullCommit(dv.chainID, 1, heightToFetch)
+		if err != nil {
+			return FullCommit{}, err
+		}
+	}
+	// we have stored and verified all headers
+	if trustedFC.Height() == h {
+		return trustedFC, nil
+	}
+	return FullCommit{}, fmt.Errorf("could not update to requested height %v; reached: %v", h, trustedFC.Height())
 }
 
 func (dv *DynamicVerifier) LastTrustedHeight() int64 {

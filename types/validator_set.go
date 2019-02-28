@@ -639,7 +639,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 // can't make arbitrary state transitions.  You still need > 2/3 Byzantine to
 // make arbitrary state transitions.
 //
-// To preserve this property in the light client, we also require > 2/3 of the
+// To preserve this property in the lite client, we also require > 2/3 of the
 // old vals to sign the future commit at H, that way we preserve the property
 // that if they weren't being truthful about the validator set at H (block hash
 // -> vals hash) or about the app state (block hash -> app hash) we can slash
