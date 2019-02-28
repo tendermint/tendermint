@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 )
 
 const (
@@ -381,6 +382,9 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout_broadcast_tx_commit can't be negative")
+	}
+	if cfg.TimeoutBroadcastTxCommit > rpcserver.WriteTimeout {
+		return fmt.Errorf("timeout_broadcast_tx_commit can't be greater than rpc server's write timeout: %v", rpcserver.WriteTimeout)
 	}
 	return nil
 }
