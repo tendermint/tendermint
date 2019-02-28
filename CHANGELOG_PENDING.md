@@ -27,3 +27,4 @@
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
   to 16 (as a result, the node will stop retrying after a 35 hours time window)
 - [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests
+- [p2p] \#3346 Init data structures for peer before starting it (previously was done in AddPeer) (fixes #3346 and #3338; @guagualvcha)

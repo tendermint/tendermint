@@ -216,6 +216,13 @@ func (r *PEXReactor) logErrAddrBook(err error) {
 	}
 }
 
+func (r *PEXReactor) InitPeer(peer Peer) Peer {
+	id := string(peer.ID())
+	r.requestsSent.Delete(id)
+	r.lastReceivedRequests.Delete(id)
+	return peer
+}
+
 // RemovePeer implements Reactor.
 func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 	id := string(p.ID())

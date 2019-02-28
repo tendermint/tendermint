@@ -29,8 +29,8 @@ type Reactor interface {
 	// CONTRACT: msgBytes are not nil.
 	Receive(chID byte, peer Peer, msgBytes []byte)
 
-	// InitAddPeer is called by switch before peer is started.
-	InitAddPeer(peer Peer) Peer
+	// InitPeer is called by switch before peer is started.
+	InitPeer(peer Peer) Peer
 }
 
 //--------------------------------------
@@ -54,4 +54,4 @@ func (*BaseReactor) GetChannels() []*conn.ChannelDescriptor        { return nil 
 func (*BaseReactor) AddPeer(peer Peer)                             {}
 func (*BaseReactor) RemovePeer(peer Peer, reason interface{})      {}
 func (*BaseReactor) Receive(chID byte, peer Peer, msgBytes []byte) {}
-func (*BaseReactor) InitAddPeer(peer Peer) Peer                    { return peer }
+func (*BaseReactor) InitPeer(peer Peer) Peer                       { return peer }

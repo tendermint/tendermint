@@ -177,7 +177,7 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	}
 }
 
-func (conR *ConsensusReactor) InitAddPeer(peer p2p.Peer) p2p.Peer {
+func (conR *ConsensusReactor) InitPeer(peer p2p.Peer) p2p.Peer {
 	// Create peerState for peer
 	peerState := NewPeerState(peer).SetLogger(conR.Logger)
 	peer.Set(types.PeerStateKey, peerState)
