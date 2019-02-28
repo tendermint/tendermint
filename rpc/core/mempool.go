@@ -16,7 +16,13 @@ import (
 //-----------------------------------------------------------------------------
 // NOTE: tx should be signed, but this is only checked at the app level (not by Tendermint!)
 
-// Returns right away, with no response
+// Returns right away, with no response. Does not wait for CheckTx nor
+// DeliverTx results.
+//
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
+//
 //
 // ```shell
 // curl 'localhost:26657/broadcast_tx_async?tx="123"'
@@ -61,7 +67,11 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
 
-// Returns with the response from CheckTx.
+// Returns with the response from CheckTx. Does not wait for DeliverTx result.
+//
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
 //
 // ```shell
 // curl 'localhost:26657/broadcast_tx_sync?tx="456"'
@@ -116,11 +126,18 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	}, nil
 }
 
+// Returns with the responses from CheckTx and DeliverTx.
+//
 // CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
 // waiting for tx to commit.
 //
 // If CheckTx or DeliverTx fail, no error will be returned, but the returned result
 // will contain a non-OK ABCI code.
+//
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
+//
 //
 // ```shell
 // curl 'localhost:26657/broadcast_tx_commit?tx="789"'

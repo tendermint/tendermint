@@ -268,3 +268,74 @@ max_open_connections = 3
 # Instrumentation namespace
 namespace = "tendermint"
 ```
+
+## Empty blocks VS no empty blocks
+
+**create_empty_blocks = true**
+
+If `create_empty_blocks` is set to `true` in your config, blocks will be
+created ~ every second (with default consensus parameters). You can regulate
+the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit
+= "10s"` should result in ~ 10 second blocks.
+
+**create_empty_blocks = false**
+
+In this setting, blocks are created when transactions received.
+
+Note after the block H, Tendermint creates something we call a "proof block"
+(only if the application hash changed) H+1. The reason for this is to support
+proofs. If you have a transaction in block H that changes the state to X, the
+new application hash will only be included in block H+1. If after your
+transaction is committed, you want to get a lite-client proof for the new state
+(X), you need the new block to be committed in order to do that because the new
+block has the new application hash for the state X. That's why we make a new
+(empty) block if the application hash changes. Otherwise, you won't be able to
+make a proof for the new state.
+
+Plus, if you set `create_empty_blocks_interval` to something other than the
+default (`0`), Tendermint will be creating empty blocks even in the absence of
+transactions every `create_empty_blocks_interval`. For instance, with
+`create_empty_blocks = false` and `create_empty_blocks_interval = "30s"`,
+Tendermint will only create blocks if there are transactions, or after waiting
+30 seconds without receiving any transactions.
+
+## Consensus timeouts explained
+
+There's a variety of information about timeouts in [Running in
+production](./running-in-production.html)
+
+You can also find more detailed technical explanation in the spec: [The latest
+gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
+
+```
+[consensus]
+...
+
+timeout_propose = "3s"
+timeout_propose_delta = "500ms"
+timeout_prevote = "1s"
+timeout_prevote_delta = "500ms"
+timeout_precommit = "1s"
+timeout_precommit_delta = "500ms"
+timeout_commit = "1s"
+```
+
+Note that in a successful round, the only timeout that we absolutely wait no
+matter what is `timeout_commit`.
+
+Here's a brief summary of the timeouts:
+
+- `timeout_propose` = how long we wait for a proposal block before prevoting
+  nil
+- `timeout_propose_delta` = how much timeout_propose increases with each round
+- `timeout_prevote` = how long we wait after receiving +2/3 prevotes for
+  anything (ie. not a single block or nil)
+- `timeout_prevote_delta` = how much the timeout_prevote increases with each
+  round
+- `timeout_precommit` = how long we wait after receiving +2/3 precommits for
+  anything (ie. not a single block or nil)
+- `timeout_precommit_delta` = how much the timeout_precommit increases with
+  each round
+- `timeout_commit` = how long we wait after committing a block, before starting
+  on the new height (this gives us a chance to receive some more precommits,
+  even though we already have +2/3)

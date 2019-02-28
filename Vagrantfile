@@ -34,6 +34,10 @@ Vagrant.configure("2") do |config|
     mv go /usr/local
     rm -f go1.11.linux-amd64.tar.gz
 
+    # install nodejs (for docs)
+    curl -sL https://deb.nodesource.com/setup_11.x | bash -
+    apt-get install -y nodejs
+
     # cleanup
     apt-get autoremove -y
 
