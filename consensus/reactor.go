@@ -177,6 +177,13 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	}
 }
 
+func (conR *ConsensusReactor) InitAddPeer(peer p2p.Peer) p2p.Peer {
+	// Create peerState for peer
+	peerState := NewPeerState(peer).SetLogger(conR.Logger)
+	peer.Set(types.PeerStateKey, peerState)
+	return peer
+}
+
 // RemovePeer implements Reactor
 func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {

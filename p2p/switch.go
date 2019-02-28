@@ -700,6 +700,9 @@ func (sw *Switch) addPeer(p Peer) error {
 	}
 	sw.metrics.Peers.Add(float64(1))
 
+	for _, reactor := range sw.reactors {
+		p = reactor.InitAddPeer(p)
+	}
 	// Start all the reactor protocols on the peer.
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(p)
