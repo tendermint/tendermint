@@ -646,19 +646,19 @@ func (sw *Switch) addPeer(p Peer) error {
 	// Handle the shut down case where the switch has stopped but we're
 	// concurrently trying to add a peer.
 	if sw.IsRunning() {
-		// All good. Start peer
+		// Add the peer to PeerSet.
+		// We add peer first, if start peer failed, need remove it.
+		// It should not err since we already checked peers.Has().
+		if err := sw.peers.Add(p); err != nil {
+			return err
+		}
+		// All good. Start peer, startInitPeer should not panic
 		if err := sw.startInitPeer(p); err != nil {
+			sw.peers.Remove(p)
 			return err
 		}
 	} else {
 		sw.Logger.Error("Won't start a peer - switch is not running", "peer", p)
-	}
-
-	// Add the peer to .peers.
-	// We start it first so that a peer in the list is safe to Stop.
-	// It should not err since we already checked peers.Has().
-	if err := sw.peers.Add(p); err != nil {
-		return err
 	}
 
 	sw.Logger.Info("Added peer", "peer", p)
