@@ -105,6 +105,10 @@ type ResultDialPeers struct {
 	Log string `json:"log"`
 }
 
+type ResultSetReadonly struct {
+	Log string `json:"log"`
+}
+
 // A peer
 type Peer struct {
 	NodeInfo         p2p.DefaultNodeInfo  `json:"node_info"`

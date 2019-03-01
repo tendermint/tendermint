@@ -50,4 +50,6 @@ func AddUnsafeRoutes() {
 	Routes["unsafe_start_cpu_profiler"] = rpc.NewRPCFunc(UnsafeStartCPUProfiler, "filename")
 	Routes["unsafe_stop_cpu_profiler"] = rpc.NewRPCFunc(UnsafeStopCPUProfiler, "")
 	Routes["unsafe_write_heap_profile"] = rpc.NewRPCFunc(UnsafeWriteHeapProfile, "filename")
+
+	Routes["set_readonly"] = rpc.NewRPCFunc(SetReadonly, "readonly")
 }
