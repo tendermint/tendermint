@@ -116,6 +116,14 @@ func StartTendermint(app abci.Application) *nm.Node {
 	return node
 }
 
+// StopTendermint stops a test tendermint server, waits until it's stopped and
+// cleans up test/config files.
+func StopTendermint(node *nm.Node) {
+	node.Stop()
+	node.Wait()
+	os.RemoveAll(node.Config().RootDir)
+}
+
 // NewTendermint creates a new tendermint server and sleeps forever
 func NewTendermint(app abci.Application) *nm.Node {
 	// Create & start node

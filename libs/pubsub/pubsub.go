@@ -169,10 +169,7 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query Query, ou
 		return nil, ErrAlreadySubscribed
 	}
 
-	subscription := &Subscription{
-		out:       make(chan Message, outCapacity),
-		cancelled: make(chan struct{}),
-	}
+	subscription := NewSubscription(outCapacity)
 	select {
 	case s.cmds <- cmd{op: sub, clientID: clientID, query: query, subscription: subscription}:
 		s.mtx.Lock()
@@ -360,10 +357,7 @@ func (state *state) remove(clientID string, qStr string, reason error) {
 		return
 	}
 
-	subscription.mtx.Lock()
-	subscription.err = reason
-	subscription.mtx.Unlock()
-	close(subscription.cancelled)
+	subscription.cancel(reason)
 
 	// remove client from query map.
 	// if query has no other clients subscribed, remove it.

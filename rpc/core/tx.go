@@ -17,7 +17,7 @@ import (
 // place.
 //
 // ```shell
-// curl "localhost:26657/tx?hash=0x2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
+// curl "localhost:26657/tx?hash=0xF87370F68C82D9AC7201248ECA48CEC5F16FFEC99C461C1B2961341A2FE9C1C8"
 // ```
 //
 // ```go
@@ -27,7 +27,8 @@ import (
 //   // handle error
 // }
 // defer client.Stop()
-// tx, err := client.Tx([]byte("2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"), true)
+// hashBytes, err := hex.DecodeString("F87370F68C82D9AC7201248ECA48CEC5F16FFEC99C461C1B2961341A2FE9C1C8")
+// tx, err := client.Tx(hashBytes, true)
 // ```
 //
 // > The above command returns JSON structured like this:
