@@ -13,6 +13,7 @@ import (
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -61,11 +62,11 @@ func (c *Local) SetLogger(l log.Logger) {
 }
 
 func (Local) Status() (*ctypes.ResultStatus, error) {
-	return core.Status()
+	return core.Status(&rpctypes.Context{})
 }
 
 func (Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	return core.ABCIInfo()
+	return core.ABCIInfo(&rpctypes.Context{})
 }
 
 func (c *Local) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
@@ -73,83 +74,83 @@ func (c *Local) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQue
 }
 
 func (Local) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	return core.ABCIQuery(path, data, opts.Height, opts.Prove)
+	return core.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
 }
 
 func (Local) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-	return core.BroadcastTxCommit(tx)
+	return core.BroadcastTxCommit(&rpctypes.Context{}, tx)
 }
 
 func (Local) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	return core.BroadcastTxAsync(tx)
+	return core.BroadcastTxAsync(&rpctypes.Context{}, tx)
 }
 
 func (Local) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	return core.BroadcastTxSync(tx)
+	return core.BroadcastTxSync(&rpctypes.Context{}, tx)
 }
 
 func (Local) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
-	return core.UnconfirmedTxs(limit)
+	return core.UnconfirmedTxs(&rpctypes.Context{}, limit)
 }
 
 func (Local) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	return core.NumUnconfirmedTxs()
+	return core.NumUnconfirmedTxs(&rpctypes.Context{})
 }
 
 func (Local) NetInfo() (*ctypes.ResultNetInfo, error) {
-	return core.NetInfo()
+	return core.NetInfo(&rpctypes.Context{})
 }
 
 func (Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
-	return core.DumpConsensusState()
+	return core.DumpConsensusState(&rpctypes.Context{})
 }
 
 func (Local) ConsensusState() (*ctypes.ResultConsensusState, error) {
-	return core.ConsensusState()
+	return core.ConsensusState(&rpctypes.Context{})
 }
 
 func (Local) Health() (*ctypes.ResultHealth, error) {
-	return core.Health()
+	return core.Health(&rpctypes.Context{})
 }
 
 func (Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
-	return core.UnsafeDialSeeds(seeds)
+	return core.UnsafeDialSeeds(&rpctypes.Context{}, seeds)
 }
 
 func (Local) DialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
-	return core.UnsafeDialPeers(peers, persistent)
+	return core.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent)
 }
 
 func (Local) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-	return core.BlockchainInfo(minHeight, maxHeight)
+	return core.BlockchainInfo(&rpctypes.Context{}, minHeight, maxHeight)
 }
 
 func (Local) Genesis() (*ctypes.ResultGenesis, error) {
-	return core.Genesis()
+	return core.Genesis(&rpctypes.Context{})
 }
 
 func (Local) Block(height *int64) (*ctypes.ResultBlock, error) {
-	return core.Block(height)
+	return core.Block(&rpctypes.Context{}, height)
 }
 
 func (Local) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
-	return core.BlockResults(height)
+	return core.BlockResults(&rpctypes.Context{}, height)
 }
 
 func (Local) Commit(height *int64) (*ctypes.ResultCommit, error) {
-	return core.Commit(height)
+	return core.Commit(&rpctypes.Context{}, height)
 }
 
 func (Local) Validators(height *int64) (*ctypes.ResultValidators, error) {
-	return core.Validators(height)
+	return core.Validators(&rpctypes.Context{}, height)
 }
 
 func (Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
-	return core.Tx(hash, prove)
+	return core.Tx(&rpctypes.Context{}, hash, prove)
 }
 
 func (Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
-	return core.TxSearch(query, prove, page, perPage)
+	return core.TxSearch(&rpctypes.Context{}, query, prove, page, perPage)
 }
 
 // Subscribe implements EventsClient by using local eventBus to subscribe given

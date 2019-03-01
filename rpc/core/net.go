@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 // Get network info.
@@ -42,7 +43,7 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func NetInfo() (*ctypes.ResultNetInfo, error) {
+func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 	peers := []ctypes.Peer{}
 	for _, peer := range p2pPeers.Peers().List() {
 		nodeInfo, ok := peer.NodeInfo().(p2p.DefaultNodeInfo)
@@ -67,7 +68,7 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 	}, nil
 }
 
-func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialSeeds, error) {
 	if len(seeds) == 0 {
 		return &ctypes.ResultDialSeeds{}, errors.New("No seeds provided")
 	}
@@ -80,7 +81,7 @@ func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return &ctypes.ResultDialSeeds{Log: "Dialing seeds in progress. See /net_info for details"}, nil
 }
 
-func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
+func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, errors.New("No peers provided")
 	}
@@ -135,6 +136,6 @@ func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, 
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Genesis() (*ctypes.ResultGenesis, error) {
+func Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 	return &ctypes.ResultGenesis{Genesis: genDoc}, nil
 }

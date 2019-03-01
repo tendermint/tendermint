@@ -90,8 +90,8 @@ import (
 // | query     | string | ""      | true     | Query       |
 //
 // <aside class="notice">WebSocket only</aside>
-func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
-	addr := wsCtx.GetRemoteAddr()
+func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
+	addr := ctx.RemoteAddr()
 
 	if eventBus.NumClients() > config.MaxSubscriptionClients {
 		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
@@ -106,9 +106,9 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 		return nil, errors.Wrap(err, "failed to parse query")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
+	subCtx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
-	sub, err := eventBus.Subscribe(ctx, addr, q)
+	sub, err := eventBus.Subscribe(subCtx, addr, q)
 	if err != nil {
 		return nil, err
 	}
@@ -118,19 +118,19 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 			select {
 			case msg := <-sub.Out():
 				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
-				wsCtx.TryWriteRPCResponse(
+				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
-						wsCtx.Codec(),
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", wsCtx.Request.ID)),
+						ctx.WSConn.Codec(),
+						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))
 			case <-sub.Cancelled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
 					// should not happen
-					wsCtx.TryWriteRPCResponse(
+					ctx.WSConn.TryWriteRPCResponse(
 						rpctypes.RPCServerError(rpctypes.JSONRPCStringID(
-							fmt.Sprintf("%v#event", wsCtx.Request.ID)),
-							fmt.Errorf("subscription was cancelled (reason: %v).", sub.Err()),
+							fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+							fmt.Errorf("subscription was cancelled (reason: %v)", sub.Err()),
 						))
 				}
 				return
@@ -171,8 +171,8 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 // | query     | string | ""      | true     | Query       |
 //
 // <aside class="notice">WebSocket only</aside>
-func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsubscribe, error) {
-	addr := wsCtx.GetRemoteAddr()
+func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
+	addr := ctx.RemoteAddr()
 	logger.Info("Unsubscribe from query", "remote", addr, "query", query)
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -209,8 +209,8 @@ func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsub
 // ```
 //
 // <aside class="notice">WebSocket only</aside>
-func UnsubscribeAll(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, error) {
-	addr := wsCtx.GetRemoteAddr()
+func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
+	addr := ctx.RemoteAddr()
 	logger.Info("Unsubscribe from all", "remote", addr)
 	err := eventBus.UnsubscribeAll(context.Background(), addr)
 	if err != nil {

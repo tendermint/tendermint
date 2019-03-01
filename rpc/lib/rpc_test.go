@@ -63,23 +63,23 @@ var Routes = map[string]*server.RPCFunc{
 // Amino codec required to encode/decode everything above.
 var RoutesCdc = amino.NewCodec()
 
-func EchoResult(v string) (*ResultEcho, error) {
+func EchoResult(ctx *types.Context, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoWSResult(wsCtx types.WSRPCContext, v string) (*ResultEcho, error) {
+func EchoWSResult(ctx *types.Context, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoIntResult(v int) (*ResultEchoInt, error) {
+func EchoIntResult(ctx *types.Context, v int) (*ResultEchoInt, error) {
 	return &ResultEchoInt{v}, nil
 }
 
-func EchoBytesResult(v []byte) (*ResultEchoBytes, error) {
+func EchoBytesResult(ctx *types.Context, v []byte) (*ResultEchoBytes, error) {
 	return &ResultEchoBytes{v}, nil
 }
 
-func EchoDataBytesResult(v cmn.HexBytes) (*ResultEchoDataBytes, error) {
+func EchoDataBytesResult(ctx *types.Context, v cmn.HexBytes) (*ResultEchoDataBytes, error) {
 	return &ResultEchoDataBytes{v}, nil
 }
 

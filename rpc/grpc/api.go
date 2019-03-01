@@ -5,6 +5,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	core "github.com/tendermint/tendermint/rpc/core"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 type broadcastAPI struct {
@@ -16,7 +17,8 @@ func (bapi *broadcastAPI) Ping(ctx context.Context, req *RequestPing) (*Response
 }
 
 func (bapi *broadcastAPI) BroadcastTx(ctx context.Context, req *RequestBroadcastTx) (*ResponseBroadcastTx, error) {
-	res, err := core.BroadcastTxCommit(req.Tx)
+	// XXX: empty context ... no remote addr!
+	res, err := core.BroadcastTxCommit(&rpctypes.Context{}, req.Tx)
 	if err != nil {
 		return nil, err
 	}

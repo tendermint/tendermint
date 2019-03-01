@@ -151,8 +151,8 @@ func (w Wrapper) Commit(height *int64) (*ctypes.ResultCommit, error) {
 
 // SubscribeWS subscribes for events using the given query and remote address as
 // a subscriber, but does not verify responses (FIXME)!
-func (w Wrapper) SubscribeWS(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
-	out, err := w.Client.Subscribe(context.Background(), wsCtx.GetRemoteAddr(), query)
+func (w Wrapper) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
+	out, err := w.Client.Subscribe(context.Background(), ctx.RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -161,10 +161,10 @@ func (w Wrapper) SubscribeWS(wsCtx rpctypes.WSRPCContext, query string) (*ctypes
 		for {
 			select {
 			case resultEvent := <-out:
-				wsCtx.TryWriteRPCResponse(
+				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
-						wsCtx.Codec(),
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", wsCtx.Request.ID)),
+						ctx.WSConn.Codec(),
+						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))
 			case <-w.Client.Quit():
@@ -178,8 +178,8 @@ func (w Wrapper) SubscribeWS(wsCtx rpctypes.WSRPCContext, query string) (*ctypes
 
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
-func (w Wrapper) UnsubscribeWS(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsubscribe, error) {
-	err := w.Client.Unsubscribe(context.Background(), wsCtx.GetRemoteAddr(), query)
+func (w Wrapper) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
+	err := w.Client.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -188,8 +188,8 @@ func (w Wrapper) UnsubscribeWS(wsCtx rpctypes.WSRPCContext, query string) (*ctyp
 
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
-func (w Wrapper) UnsubscribeAllWS(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, error) {
-	err := w.Client.UnsubscribeAll(context.Background(), wsCtx.GetRemoteAddr())
+func (w Wrapper) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
+	err := w.Client.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
 	if err != nil {
 		return nil, err
 	}
