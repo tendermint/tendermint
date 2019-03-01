@@ -155,7 +155,7 @@ import (
 //   }
 // ```
 func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
-  out, in, _ := p2pPeers.NumPeers()
+	out, in, _ := p2pPeers.NumPeers()
 	peers := make([]ctypes.Peer, 0, out+in)
 	for _, peer := range p2pPeers.Peers().List() {
 		nodeInfo, ok := peer.NodeInfo().(p2p.DefaultNodeInfo)

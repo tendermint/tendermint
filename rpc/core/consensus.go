@@ -278,7 +278,7 @@ func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState
 //  }
 //}
 //```
-func ConsensusState(ctx *rpctypes.Context, ) (*ctypes.ResultConsensusState, error) {
+func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
 	// Get self round state.
 	bz, err := consensusState.GetRoundStateSimpleJSON()
 	return &ctypes.ResultConsensusState{RoundState: bz}, err
