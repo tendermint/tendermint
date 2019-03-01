@@ -178,7 +178,7 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 
 	// We do not jump forward using trusted full commits.
 	// Instead, we need to store the "gap" (height 7) in source s.t.
-	// Verfiy can retrieve it from somewhere.
+	// Verify can retrieve it from somewhere.
 	// Source doesn't have fcz[9] so cert.LastTrustedHeight wont' change.
 	err = source.SaveFullCommit(fcz[6])
 	require.Nil(err, "%+v", err)
