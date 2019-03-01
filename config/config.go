@@ -328,9 +328,7 @@ type RPCConfig struct {
 	// Maximum number of unique clientIDs that can /subscribe
 	MaxSubscriptionClients int `mapstructure:"max_subscription_clients"`
 
-	// Maximum number of unique queries a given client can /subscribe to (note
-	// all calls to /broadcast_tx_commit uses the same client, so this would
-	// limit the number of /broadcast_tx_commit calls that can be open at once)
+	// Maximum number of unique queries a given client can /subscribe to
 	MaxSubscriptionsPerClient int `mapstructure:"max_subscriptions_per_client"`
 
 	// How long to wait for a tx to be committed during /broadcast_tx_commit

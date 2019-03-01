@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
@@ -15,13 +16,17 @@ import (
 )
 
 /*
-HTTP is a Client implementation that communicates
-with a tendermint node over json rpc and websockets.
+HTTP is a Client implementation that communicates with a tendermint node over
+json rpc and websockets.
 
-This is the main implementation you probably want to use in
-production code.  There are other implementations when calling
-the tendermint node in-process (local), or when you want to mock
-out the server for test code (mock).
+This is the main implementation you probably want to use in production code.
+There are other implementations when calling the tendermint node in-process
+(Local), or when you want to mock out the server for test code (mock).
+
+You can subscribe for any event published by Tendermint using Subscribe method.
+Note delivery is best-effort. If you don't read events fast enough or network
+is slow, Tendermint might cancel the subscription. The client will attempt to
+resubscribe (you don't need to do anything).
 */
 type HTTP struct {
 	remote string
