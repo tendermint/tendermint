@@ -58,7 +58,7 @@ func TestResetValidator(t *testing.T) {
 	// priv val after signing is not same as empty
 	assert.NotEqual(t, privVal.LastSignState, emptyState)
 
-	// priv val after reset is same as empty
+	// priv val after connect is same as empty
 	privVal.Reset()
 	assert.Equal(t, privVal.LastSignState, emptyState)
 }

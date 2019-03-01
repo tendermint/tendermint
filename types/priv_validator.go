@@ -12,6 +12,7 @@ import (
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {
+	// TODO: Why it is not possible to return an error? nil feels not enough..
 	GetPubKey() crypto.PubKey
 
 	SignVote(chainID string, vote *Vote) error

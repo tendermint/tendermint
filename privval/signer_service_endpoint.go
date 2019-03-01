@@ -60,79 +60,107 @@ func NewSignerServiceEndpoint(
 }
 
 // OnStart implements cmn.Service.
-func (se *SignerServiceEndpoint) OnStart() error {
-	conn, err := se.connect()
+func (ss *SignerServiceEndpoint) OnStart() error {
+	conn, err := ss.connect()
 	if err != nil {
-		se.Logger.Error("OnStart", "err", err)
+		ss.Logger.Error("OnStart", "err", err)
 		return err
 	}
 
-	se.conn = conn
-	go se.handleConnection(conn)
+	ss.conn = conn
+	go ss.handleConnection(conn)
 
 	return nil
 }
 
 // OnStop implements cmn.Service.
-func (se *SignerServiceEndpoint) OnStop() {
-	if se.conn == nil {
+func (ss *SignerServiceEndpoint) OnStop() {
+	if ss.conn == nil {
 		return
 	}
 
-	if err := se.conn.Close(); err != nil {
-		se.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
+	if err := ss.conn.Close(); err != nil {
+		ss.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
 	}
 }
 
-func (se *SignerServiceEndpoint) connect() (net.Conn, error) {
-	for retries := 0; retries < se.connRetries; retries++ {
+func (ss *SignerServiceEndpoint) connect() (net.Conn, error) {
+	for retries := 0; retries < ss.connRetries; retries++ {
 		// Don't sleep if it is the first retry.
 		if retries > 0 {
-			time.Sleep(se.timeoutReadWrite)
+			time.Sleep(ss.timeoutReadWrite)
 		}
 
-		conn, err := se.dialer()
+		conn, err := ss.dialer()
 		if err == nil {
 			return conn, nil
 		}
 
-		se.Logger.Error("dialing", "err", err)
+		ss.Logger.Error("dialing", "err", err)
 	}
 
 	return nil, ErrDialRetryMax
 }
 
-func (se *SignerServiceEndpoint) handleConnection(conn net.Conn) {
+func (ss *SignerServiceEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
+	// TODO: Avoid duplication
+	// TODO: Check connection status
+
+	const maxRemoteSignerMsgSize = 1024 * 10
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(ss.conn, &msg, maxRemoteSignerMsgSize)
+	if _, ok := err.(timeoutError); ok {
+		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
+	}
+
+	return
+}
+
+func (ss *SignerServiceEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+	// TODO: Avoid duplication
+	// TODO: Check connection status
+
+	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, msg)
+	if _, ok := err.(timeoutError); ok {
+		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
+	}
+
+	// TODO: Probably can assert that is a response type and check for error here
+	// Check the impact of KMS/Rust
+
+	return
+}
+
+func (ss *SignerServiceEndpoint) handleConnection(conn net.Conn) {
 	for {
-		if !se.IsRunning() {
+		if !ss.IsRunning() {
 			return // Ignore error from listener closing.
 		}
 
 		// Reset the connection deadline
-		deadline := time.Now().Add(se.timeoutReadWrite)
+		deadline := time.Now().Add(ss.timeoutReadWrite)
 		err := conn.SetDeadline(deadline)
 		if err != nil {
 			return
 		}
 
-		req, err := readMsg(conn)
+		req, err := ss.readMessage()
 		if err != nil {
 			if err != io.EOF {
-				se.Logger.Error("handleConnection readMsg", "err", err)
+				ss.Logger.Error("handleConnection readMessage", "err", err)
 			}
 			return
 		}
 
-		res, err := handleRequest(req, se.chainID, se.privVal)
+		res, err := handleRequest(req, ss.chainID, ss.privVal)
 
 		if err != nil {
 			// only log the error; we'll reply with an error in res
-			se.Logger.Error("handleConnection handleRequest", "err", err)
+			ss.Logger.Error("handleConnection handleRequest", "err", err)
 		}
 
-		err = writeMsg(conn, res)
+		err = ss.writeMessage(res)
 		if err != nil {
-			se.Logger.Error("handleConnection writeMsg", "err", err)
+			ss.Logger.Error("handleConnection writeMessage", "err", err)
 			return
 		}
 	}

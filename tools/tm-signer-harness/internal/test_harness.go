@@ -49,7 +49,7 @@ var _ error = (*TestHarnessError)(nil)
 // with this version of Tendermint.
 type TestHarness struct {
 	addr             string
-	spv              *privval.SignerValidatorEndpoint
+	spv              *privval.SignerRemote
 	fpv              *privval.FilePV
 	chainID          string
 	acceptRetries    int
@@ -101,7 +101,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 	}
 	logger.Info("Loaded genesis file", "chainID", st.ChainID)
 
-	spv, err := newTestHarnessSocketVal(logger, cfg)
+	spv, err := newTestHarnessSignerRemote(logger, cfg)
 	if err != nil {
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}
@@ -312,9 +312,8 @@ func (th *TestHarness) Shutdown(err error) {
 	}
 }
 
-// newTestHarnessSocketVal creates our client instance which we will use for
-// testing.
-func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval.SignerValidatorEndpoint, error) {
+// newTestHarnessSignerRemote creates our client instance which we will use for testing.
+func newTestHarnessSignerRemote(logger log.Logger, cfg TestHarnessConfig) (*privval.SignerValidatorEndpoint, error) {
 	proto, addr := cmn.ProtocolAndAddress(cfg.BindAddr)
 	if proto == "unix" {
 		// make sure the socket doesn't exist - if so, try to delete it

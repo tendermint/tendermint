@@ -21,6 +21,8 @@ func RegisterRemoteSignerMsg(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&PingResponse{}, "tendermint/remotesigner/PingResponse", nil)
 }
 
+// TODO: Add ChainIDRequest
+
 // PubKeyRequest requests the consensus public key from the remote signer.
 type PubKeyRequest struct{}
 
