@@ -10,7 +10,7 @@ import (
 // SignerRemote implements PrivValidator.
 // It uses a net.Conn to request signatures from an external process.
 type SignerRemote struct {
-	endpoint SignerValidatorEndpoint
+	endpoint *SignerValidatorEndpoint
 
 	// memoized
 	consensusPubKey crypto.PubKey
@@ -20,7 +20,7 @@ type SignerRemote struct {
 var _ types.PrivValidator = (*SignerRemote)(nil)
 
 // NewSignerRemote returns an instance of SignerRemote.
-func NewSignerRemote(endpoint SignerValidatorEndpoint) (*SignerRemote, error) {
+func NewSignerRemote(endpoint *SignerValidatorEndpoint) (*SignerRemote, error) {
 
 	// TODO: Fix this
 	//// retrieve and memoize the consensus public key once.

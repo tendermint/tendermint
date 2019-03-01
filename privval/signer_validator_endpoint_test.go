@@ -1,7 +1,6 @@
 package privval
 
 import (
-	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -24,7 +23,7 @@ var (
 	testTimeoutHeartbeat3o2 = 6 * time.Millisecond // 3/2 of the other one
 )
 
-type socketTestCase struct {
+type dialerTestCase struct {
 	addr   string
 	dialer SocketDialer
 }
@@ -83,146 +82,6 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	}
 }
 
-//func TestSocketPVAddress(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		// Execute the test within a closure to ensure the deferred statements
-//		// are called between each for loop iteration, for isolated test cases.
-//		func() {
-//			var (
-//				chainID                            = common.RandStr(12)
-//				validatorEndpoint, serviceEndpoint = getMockEndpoints(t, chainID, types.NewMockPV(), tc.addr, tc.dialer)
-//			)
-//			defer validatorEndpoint.Stop()
-//			defer serviceEndpoint.Stop()
-//
-//			serviceAddr := serviceEndpoint.privVal.GetPubKey().Address()
-//			validatorAddr := validatorEndpoint.GetPubKey().Address()
-//
-//			assert.Equal(t, serviceAddr, validatorAddr)
-//		}()
-//	}
-//}
-//
-//
-//func TestSocketPVProposal(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				chainID                            = common.RandStr(12)
-//				validatorEndpoint, serviceEndpoint = getMockEndpoints(
-//					t,
-//					chainID,
-//					types.NewMockPV(),
-//					tc.addr,
-//					tc.dialer)
-//
-//				ts             = time.Now()
-//				privProposal   = &types.Proposal{Timestamp: ts}
-//				clientProposal = &types.Proposal{Timestamp: ts}
-//			)
-//			defer validatorEndpoint.Stop()
-//			defer serviceEndpoint.Stop()
-//
-//			require.NoError(t, serviceEndpoint.privVal.SignProposal(chainID, privProposal))
-//			require.NoError(t, validatorEndpoint.SignProposal(chainID, clientProposal))
-//
-//			assert.Equal(t, privProposal.Signature, clientProposal.Signature)
-//		}()
-//	}
-//}
-//
-//func TestSocketPVVote(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				chainID                            = common.RandStr(12)
-//				validatorEndpoint, serviceEndpoint = getMockEndpoints(
-//					t,
-//					chainID,
-//					types.NewMockPV(),
-//					tc.addr,
-//					tc.dialer)
-//
-//				ts    = time.Now()
-//				vType = types.PrecommitType
-//				want  = &types.Vote{Timestamp: ts, Type: vType}
-//				have  = &types.Vote{Timestamp: ts, Type: vType}
-//			)
-//			defer validatorEndpoint.Stop()
-//			defer serviceEndpoint.Stop()
-//
-//			require.NoError(t, serviceEndpoint.privVal.SignVote(chainID, want))
-//			require.NoError(t, validatorEndpoint.SignVote(chainID, have))
-//			assert.Equal(t, want.Signature, have.Signature)
-//		}()
-//	}
-//}
-//
-//func TestSocketPVVoteResetDeadline(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				chainID                            = common.RandStr(12)
-//				validatorEndpoint, serviceEndpoint = getMockEndpoints(
-//					t,
-//					chainID,
-//					types.NewMockPV(),
-//					tc.addr,
-//					tc.dialer)
-//
-//				ts    = time.Now()
-//				vType = types.PrecommitType
-//				want  = &types.Vote{Timestamp: ts, Type: vType}
-//				have  = &types.Vote{Timestamp: ts, Type: vType}
-//			)
-//			defer validatorEndpoint.Stop()
-//			defer serviceEndpoint.Stop()
-//
-//			time.Sleep(testTimeoutReadWrite2o3)
-//
-//			require.NoError(t, serviceEndpoint.privVal.SignVote(chainID, want))
-//			require.NoError(t, validatorEndpoint.SignVote(chainID, have))
-//			assert.Equal(t, want.Signature, have.Signature)
-//
-//			// This would exceed the deadline if it was not extended by the previous message
-//			time.Sleep(testTimeoutReadWrite2o3)
-//
-//			require.NoError(t, serviceEndpoint.privVal.SignVote(chainID, want))
-//			require.NoError(t, validatorEndpoint.SignVote(chainID, have))
-//			assert.Equal(t, want.Signature, have.Signature)
-//		}()
-//	}
-//}
-//
-//func TestSocketPVVoteKeepalive(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				chainID                            = common.RandStr(12)
-//				validatorEndpoint, serviceEndpoint = getMockEndpoints(
-//					t,
-//					chainID,
-//					types.NewMockPV(),
-//					tc.addr,
-//					tc.dialer)
-//
-//				ts    = time.Now()
-//				vType = types.PrecommitType
-//				want  = &types.Vote{Timestamp: ts, Type: vType}
-//				have  = &types.Vote{Timestamp: ts, Type: vType}
-//			)
-//			defer validatorEndpoint.Stop()
-//			defer serviceEndpoint.Stop()
-//
-//			time.Sleep(testTimeoutReadWrite * 2)
-//
-//			require.NoError(t, serviceEndpoint.privVal.SignVote(chainID, want))
-//			require.NoError(t, validatorEndpoint.SignVote(chainID, have))
-//			assert.Equal(t, want.Signature, have.Signature)
-//		}()
-//	}
-//}
-//
 //func TestSocketPVDeadline(t *testing.T) {
 //	for _, tc := range getTestCases(t) {
 //		func() {
@@ -254,67 +113,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 //		}()
 //	}
 //}
-//
-//func TestRemoteSignVoteErrors(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				chainID                            = common.RandStr(12)
-//				validatorEndpoint, serviceEndpoint = getMockEndpoints(
-//					t,
-//					chainID,
-//					types.NewErroringMockPV(),
-//					tc.addr,
-//					tc.dialer)
-//
-//				ts    = time.Now()
-//				vType = types.PrecommitType
-//				vote  = &types.Vote{Timestamp: ts, Type: vType}
-//			)
-//			defer validatorEndpoint.Stop()
-//			defer serviceEndpoint.Stop()
-//
-//			err := validatorEndpoint.SignVote("", vote)
-//			require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
-//
-//			err = serviceEndpoint.privVal.SignVote(chainID, vote)
-//			require.Error(t, err)
-//			err = validatorEndpoint.SignVote(chainID, vote)
-//			require.Error(t, err)
-//		}()
-//	}
-//}
-//
-//func TestRemoteSignProposalErrors(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				chainID                            = common.RandStr(12)
-//				validatorEndpoint, serviceEndpoint = getMockEndpoints(
-//					t,
-//					chainID,
-//					types.NewErroringMockPV(),
-//					tc.addr,
-//					tc.dialer)
-//
-//				ts       = time.Now()
-//				proposal = &types.Proposal{Timestamp: ts}
-//			)
-//			defer validatorEndpoint.Stop()
-//			defer serviceEndpoint.Stop()
-//
-//			err := validatorEndpoint.SignProposal("", proposal)
-//			require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
-//
-//			err = serviceEndpoint.privVal.SignProposal(chainID, proposal)
-//			require.Error(t, err)
-//
-//			err = validatorEndpoint.SignProposal(chainID, proposal)
-//			require.Error(t, err)
-//		}()
-//	}
-//}
-//
+
 //func TestErrUnexpectedResponse(t *testing.T) {
 //	for _, tc := range getTestCases(t) {
 //		func() {
@@ -430,24 +229,6 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 //}
 
 ///////////////////////////////////
-
-func getTestCases(t *testing.T) []socketTestCase {
-	tcpAddr := fmt.Sprintf("tcp://%s", testFreeTCPAddr(t))
-	unixFilePath, err := testUnixAddr()
-	require.NoError(t, err)
-	unixAddr := fmt.Sprintf("unix://%s", unixFilePath)
-
-	return []socketTestCase{
-		{
-			addr:   tcpAddr,
-			dialer: DialTCPFn(tcpAddr, testTimeoutReadWrite, ed25519.GenPrivKey()),
-		},
-		{
-			addr:   unixAddr,
-			dialer: DialUnixFn(unixFilePath),
-		},
-	}
-}
 
 func newSignerValidatorEndpoint(logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerValidatorEndpoint {
 	proto, address := common.ProtocolAndAddress(addr)

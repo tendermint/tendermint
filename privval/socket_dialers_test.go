@@ -1,6 +1,8 @@
 package privval
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
@@ -8,6 +10,24 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
+
+func getDialerTestCases(t *testing.T) []dialerTestCase {
+	tcpAddr := fmt.Sprintf("tcp://%s", testFreeTCPAddr(t))
+	unixFilePath, err := testUnixAddr()
+	require.NoError(t, err)
+	unixAddr := fmt.Sprintf("unix://%s", unixFilePath)
+
+	return []dialerTestCase{
+		{
+			addr:   tcpAddr,
+			dialer: DialTCPFn(tcpAddr, testTimeoutReadWrite, ed25519.GenPrivKey()),
+		},
+		{
+			addr:   unixAddr,
+			dialer: DialUnixFn(unixFilePath),
+		},
+	}
+}
 
 func TestIsConnTimeoutForFundamentalTimeouts(t *testing.T) {
 	// Generate a networking timeout

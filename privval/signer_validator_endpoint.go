@@ -195,6 +195,9 @@ func (ve *SignerValidatorEndpoint) readMessage() (msg RemoteSignerMsg, err error
 
 func (ve *SignerValidatorEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	// TODO: Check connection status
+	if ve.conn == nil {
+		return fmt.Errorf("endpoint is not connected")
+	}
 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ve.conn, msg)
 	if _, ok := err.(timeoutError); ok {
