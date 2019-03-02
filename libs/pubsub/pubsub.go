@@ -88,6 +88,8 @@ type Server struct {
 	cmds    chan cmd
 	cmdsCap int
 
+	// check if we have subscription before
+	// subscribing or unsubscribing
 	mtx           sync.RWMutex
 	subscriptions map[string]map[string]struct{} // subscriber -> query (string) -> empty struct
 }
