@@ -300,7 +300,7 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 			t.Errorf("expected peer to be duplicate. got %v", errRej)
 		}
 	} else {
-		t.Errorf("expected ErrRejected, got %v", errRej)
+		t.Errorf("expected ErrRejected, got %v", err)
 	}
 }
 
