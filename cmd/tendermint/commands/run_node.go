@@ -43,6 +43,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	// consensus flags
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
+	cmd.Flags().Bool("consensus.readonly", config.Consensus.Readonly, "Set this to true to make validator skip producing blocks")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.

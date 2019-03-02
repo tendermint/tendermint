@@ -162,7 +162,7 @@ func NewConsensusState(
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
-		readonly:					false,
+		readonly:					config.Readonly,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -893,10 +893,10 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	// validator is readonly, do nothing
 	if (cs.readonly) {
-		logger.Info("enterPropose: Validator is in readonly mode")
+		logger.Info("enterPropose: Validator is in readonly mode. Skipping..")
 		return
 	}
-
+	
 	defer func() {
 		// Done enterPropose:
 		cs.updateRoundStep(round, cstypes.RoundStepPropose)

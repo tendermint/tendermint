@@ -263,6 +263,9 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 # Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
 blocktime_iota = "{{ .Consensus.BlockTimeIota }}"
 
+# Do not produce blocks, just observe (for validator)
+readonly = {{ .Consensus.Readonly }}
+
 ##### transactions indexer configuration options #####
 [tx_index]
 
