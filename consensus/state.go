@@ -891,12 +891,6 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	}
 	logger.Debug("This node is a validator " + strconv.FormatBool(cs.readonly))
 
-	// validator is readonly, do nothing
-	if (cs.readonly) {
-		logger.Info("enterPropose: Validator is in readonly mode. Skipping..")
-		return
-	}
-	
 	defer func() {
 		// Done enterPropose:
 		cs.updateRoundStep(round, cstypes.RoundStepPropose)
@@ -915,6 +909,13 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	if cs.isProposer() {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
+
+		// validator is readonly, do nothing
+		if (cs.readonly) {
+			logger.Info("enterPropose: Validator is in readonly mode. Skipping..")
+			return
+		}
+
 		if height%32 == 0 {
 			rsp, err := cs.proxyApp.CheckBridgeSync(abci.RequestCheckBridge{Height: int32(round)})
 			if err != nil {
