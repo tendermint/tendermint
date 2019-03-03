@@ -156,15 +156,24 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 	// SignedHeader.Height - 1. To sync to SignedHeader.Height, we need
 	// the validator set at SignedHeader.Height + 1 so we can verify the
 	// SignedHeader.NextValidatorSet.
-	// TODO: is the ValidateFull below mostly redundant with the BaseVerifier.Verify above?
-	// See https://github.com/tendermint/tendermint/issues/3174.
 
 	// Get the next validator set.
 	nextValset, err := dv.source.ValidatorSet(dv.chainID, shdr.Height+1)
 	if lerr.IsErrUnknownValidators(err) {
-		// Ignore this error.
+		// Only log this error.
+		// TODO: Why?
+		// See https://github.com/tendermint/tendermint/issues/3174
+		dv.logger.Info("Could not retrieve validator set from source",
+			"height", shdr.Height+1,
+			"chainID", dv.chainID)
 		return nil
 	} else if err != nil {
+		return err
+	}
+	// Validate the only missing bit of the full commit:
+	// Verify the SignedHeader.NextValidatorSet matches the validator set
+	// at height = SignedHeader.Height + 1.
+	if err := validateNextValset(shdr, nextValset); err != nil {
 		return err
 	}
 
@@ -174,13 +183,24 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 		Validators:     trustedFC.NextValidators,
 		NextValidators: nextValset,
 	}
-	// Validate the full commit.  This checks the cryptographic
-	// signatures of Commit against Validators.
-	if err := nfc.ValidateFull(dv.chainID); err != nil {
-		return err
-	}
 	// Trust it.
 	return dv.trusted.SaveFullCommit(nfc)
+}
+
+func validateNextValset(shdr types.SignedHeader, nextValset *types.ValidatorSet) error {
+	if nextValset.Size() == 0 {
+		return fmt.Errorf("need non-empty ValidatorSet")
+	}
+	if !bytes.Equal(
+		shdr.NextValidatorsHash,
+		nextValset.Hash()) {
+		return fmt.Errorf("header has next valset hash %X but next valset hash is %X",
+			shdr.NextValidatorsHash,
+			nextValset.Hash(),
+		)
+	}
+	// all good
+	return nil
 }
 
 // verifyAndSave will verify if this is a valid source full commit given the
