@@ -94,7 +94,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int) {
 	vals.shiftByAvgProposerPriority()
 
 	var proposer *Validator
-	// call IncrementProposerPriority(1) times times:
+	// Call IncrementProposerPriority(1) times times.
 	for i := 0; i < times; i++ {
 		proposer = vals.incrementProposerPriority()
 	}
@@ -131,15 +131,15 @@ func (vals *ValidatorSet) incrementProposerPriority() *Validator {
 		newPrio := safeAddClip(val.ProposerPriority, val.VotingPower)
 		val.ProposerPriority = newPrio
 	}
-	// Decrement the validator with most ProposerPriority:
+	// Decrement the validator with most ProposerPriority.
 	mostest := vals.getValWithMostPriority()
-	// mind underflow
+	// Mind the underflow.
 	mostest.ProposerPriority = safeSubClip(mostest.ProposerPriority, vals.TotalVotingPower())
 
 	return mostest
 }
 
-// should not be called on an empty validator set
+// Should not be called on an empty validator set.
 func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
 	n := int64(len(vals.Validators))
 	sum := big.NewInt(0)
@@ -151,11 +151,11 @@ func (vals *ValidatorSet) computeAvgProposerPriority() int64 {
 		return avg.Int64()
 	}
 
-	// this should never happen: each val.ProposerPriority is in bounds of int64
+	// This should never happen: each val.ProposerPriority is in bounds of int64.
 	panic(fmt.Sprintf("Cannot represent avg ProposerPriority as an int64 %v", avg))
 }
 
-// compute the difference between the max and min ProposerPriority of that set
+// Compute the difference between the max and min ProposerPriority of that set.
 func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
 	if vals.IsNilOrEmpty() {
 		panic("empty validator set")
@@ -196,7 +196,7 @@ func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 	}
 }
 
-// Makes a copy of the validator list
+// Makes a copy of the validator list.
 func validatorListCopy(valsList []*Validator) []*Validator {
 	if valsList == nil {
 		return nil
@@ -208,7 +208,7 @@ func validatorListCopy(valsList []*Validator) []*Validator {
 	return valsCopy
 }
 
-// Copy each validator into a new ValidatorSet
+// Copy each validator into a new ValidatorSet.
 func (vals *ValidatorSet) Copy() *ValidatorSet {
 	return &ValidatorSet{
 		Validators:       validatorListCopy(vals.Validators),
@@ -254,7 +254,7 @@ func (vals *ValidatorSet) Size() int {
 	return len(vals.Validators)
 }
 
-// force recalculation of the set's total voting power
+// Force recalculation of the set's total voting power.
 func (vals *ValidatorSet) updateTotalVotingPower() {
 
 	sum := int64(0)
@@ -326,15 +326,15 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 	}
 }
 
-// Checks changes against duplicates, splits the changes in updates and removals, sorts them by address
+// Checks changes against duplicates, splits the changes in updates and removals, sorts them by address.
 //
 // Returns:
 // updates, removals - the sorted lists of updates and removals
 // err - non-nil if duplicate entries or entries with negative voting power are seen
 //
-// No changes are made to 'origChanges'
+// No changes are made to 'origChanges'.
 func processChanges(origChanges []*Validator) (updates, removals []*Validator, err error) {
-	// make a deep copy of the changes and sort by address
+	// Make a deep copy of the changes and sort by address.
 	changes := validatorListCopy(origChanges)
 	sort.Sort(ValidatorsByAddress(changes))
 
@@ -342,7 +342,7 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 	updates = make([]*Validator, 0, len(changes))
 	var prevAddr Address
 
-	// Scan changes by address and append valid validators to updates or removals lists
+	// Scan changes by address and append valid validators to updates or removals lists.
 	for _, valUpdate := range changes {
 		if bytes.Equal(valUpdate.Address, prevAddr) {
 			err = fmt.Errorf("duplicate entry %v in %v", valUpdate, changes)
@@ -353,7 +353,8 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 			return nil, nil, err
 		}
 		if valUpdate.VotingPower > MaxTotalVotingPower {
-			err = fmt.Errorf("voting power can't be higher than %v: %v ", MaxTotalVotingPower, valUpdate)
+			err = fmt.Errorf("to prevent clipping/ overflow, voting power can't be higher than %v: %v ",
+				MaxTotalVotingPower, valUpdate)
 			return nil, nil, err
 		}
 		if valUpdate.VotingPower == 0 {
@@ -368,20 +369,16 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 
 // Verifies a list of updates against a validator set, making sure the allowed
 // total voting power would not be exceeded if these updates would be applied to the set.
-// It also computes:
-//  - the total voting power of the set that would result after the updates but
-// before the removals,
-//  - the number of new validators
 //
 // Returns:
 // updatedTotalVotingPower - the new total voting power if these updates would be applied
-// numNew - number of new validators
+// numNewValidators - number of new validators
 // err - non-nil if the maximum allowed total voting power would be exceeded
 //
 // 'updates' should be a list of proper validator changes, i.e. they have been verified
 // by processChanges for duplicates and invalid values.
 // No changes are made to the validator set 'vals'.
-func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVotingPower int64, numNew int, err error) {
+func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVotingPower int64, numNewValidators int, err error) {
 
 	updatedTotalVotingPower = vals.TotalVotingPower()
 
@@ -389,11 +386,11 @@ func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVoting
 		address := valUpdate.Address
 		_, val := vals.GetByAddress(address)
 		if val == nil {
-			// new validator, add its voting power the the total
+			// New validator, add its voting power the the total.
 			updatedTotalVotingPower += valUpdate.VotingPower
-			numNew++
+			numNewValidators++
 		} else {
-			// updated validator, add the difference in power to the total
+			// Updated validator, add the difference in power to the total.
 			updatedTotalVotingPower += valUpdate.VotingPower - val.VotingPower
 		}
 		overflow := updatedTotalVotingPower > MaxTotalVotingPower
@@ -405,10 +402,10 @@ func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVoting
 		}
 	}
 
-	return updatedTotalVotingPower, numNew, nil
+	return updatedTotalVotingPower, numNewValidators, nil
 }
 
-// Computes the proposer priority for the validators not present in the set based on 'updatedTotalVotingPower'
+// Computes the proposer priority for the validators not present in the set based on 'updatedTotalVotingPower'.
 // Leaves unchanged the priorities of validators that are changed.
 //
 // 'updates' parameter must be a list of unique validators to be added or updated.
@@ -449,10 +446,11 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 		if bytes.Compare(existing[0].Address, updates[0].Address) < 0 { // unchanged validator
 			merged[i] = existing[0]
 			existing = existing[1:]
-		} else { // apply add or update
+		} else {
+			// Apply add or update.
 			merged[i] = updates[0]
 			if bytes.Equal(existing[0].Address, updates[0].Address) {
-				// validator present in both, advance existing
+				// Validator is present in both, advance existing.
 				existing = existing[1:]
 			}
 			updates = updates[1:]
@@ -460,12 +458,12 @@ func (vals *ValidatorSet) applyUpdates(updates []*Validator) {
 		i++
 	}
 
-	// add the elements which are left
+	// Add the elements which are left.
 	for j := 0; j < len(existing); j++ {
 		merged[i] = existing[j]
 		i++
 	}
-	// OR add updates which are left
+	// OR add updates which are left.
 	for j := 0; j < len(updates); j++ {
 		merged[i] = updates[j]
 		i++
@@ -500,18 +498,18 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 	merged := make([]*Validator, len(existing)-len(deletes))
 	i := 0
 
-	// loop over deletes until we removed all of them
+	// Loop over deletes until we removed all of them.
 	for len(deletes) > 0 {
 		if bytes.Equal(existing[0].Address, deletes[0].Address) {
 			deletes = deletes[1:]
-		} else { // leave it in the resulting slice
+		} else { // Leave it in the resulting slice.
 			merged[i] = existing[0]
 			i++
 		}
 		existing = existing[1:]
 	}
 
-	// add the elements which are left
+	// Add the elements which are left.
 	for j := 0; j < len(existing); j++ {
 		merged[i] = existing[j]
 		i++
@@ -520,7 +518,7 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 	vals.Validators = merged[:i]
 }
 
-// main function used by UpdateWithChangeSet() and NewValidatorSet()
+// Main function used by UpdateWithChangeSet() and NewValidatorSet().
 // If 'allowDeletes' is false then delete operations (identified by validators with voting power 0)
 // are not allowed and will trigger an error if present in 'changes'.
 // The 'allowDeletes' flag is set to false by NewValidatorSet() and to true by UpdateWithChangeSet().
@@ -530,7 +528,7 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 		return nil
 	}
 
-	// check for duplicates within changes, split in 'updates' and 'deletes' lists (sorted)
+	// Check for duplicates within changes, split in 'updates' and 'deletes' lists (sorted).
 	updates, deletes, err := processChanges(changes)
 	if err != nil {
 		return err
@@ -540,39 +538,39 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 		return fmt.Errorf("cannot process validators with voting power 0: %v", deletes)
 	}
 
-	// verify that applying the 'deletes' against 'vals' will not result in error
+	// Verify that applying the 'deletes' against 'vals' will not result in error.
 	if err := verifyRemovals(deletes, vals); err != nil {
 		return err
 	}
 
-	// verify that applying the 'updates' against 'vals' will not result in error
+	// Verify that applying the 'updates' against 'vals' will not result in error.
 	updatedTotalVotingPower, numNewValidators, err := verifyUpdates(updates, vals)
 	if err != nil {
 		return err
 	}
 
-	// check that the resulting set will not be empty
+	// Check that the resulting set will not be empty.
 	if numNewValidators == 0 && len(vals.Validators) == len(deletes) {
 		return errors.New("applying the validator changes would result in empty set")
 	}
 
-	// compute the priorities for updates
+	// Compute the priorities for updates.
 	computeNewPriorities(updates, vals, updatedTotalVotingPower)
 
-	// apply updates and removals
+	// Apply updates and removals.
 	vals.applyUpdates(updates)
 	vals.applyRemovals(deletes)
 
 	vals.updateTotalVotingPower()
 
-	// scale and center
+	// Scale and center.
 	vals.RescalePriorities(PriorityWindowSizeFactor * vals.TotalVotingPower())
 	vals.shiftByAvgProposerPriority()
 
 	return nil
 }
 
-// UpdateWithChangeSet attempts to update the validator set with 'changes'
+// UpdateWithChangeSet attempts to update the validator set with 'changes'.
 // It performs the following steps:
 // - validates the changes making sure there are no duplicates and splits them in updates and deletes
 // - verifies that applying the changes will not result in errors
@@ -771,7 +769,7 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 //-------------------------------------
 // Implements sort for sorting validators by address.
 
-// Sort validators by address
+// Sort validators by address.
 type ValidatorsByAddress []*Validator
 
 func (valz ValidatorsByAddress) Len() int {
@@ -789,7 +787,7 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 }
 
 //----------------------------------------
-// For testing
+// for testing
 
 // RandValidatorSet returns a randomized validator set, useful for testing.
 // NOTE: PrivValidator are in order.
@@ -808,7 +806,7 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []Pr
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Safe addition/subtraction
+// safe addition/subtraction
 
 func safeAdd(a, b int64) (int64, bool) {
 	if b > 0 && a > math.MaxInt64-b {
