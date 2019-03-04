@@ -47,16 +47,8 @@ func (fc FullCommit) ValidateFull(chainID string) error {
 		)
 	}
 	// Ensure that NextValidators exists and matches the header.
-	if fc.NextValidators.Size() == 0 {
-		return errors.New("need FullCommit.NextValidators")
-	}
-	if !bytes.Equal(
-		fc.SignedHeader.NextValidatorsHash,
-		fc.NextValidators.Hash()) {
-		return fmt.Errorf("header has next vhash %X but next valset hash is %X",
-			fc.SignedHeader.NextValidatorsHash,
-			fc.NextValidators.Hash(),
-		)
+	if err := fc.ensureNextValidators(); err != nil {
+		return err
 	}
 	// Validate the header.
 	err := fc.SignedHeader.ValidateBasic(chainID)
@@ -68,6 +60,22 @@ func (fc FullCommit) ValidateFull(chainID string) error {
 	return fc.Validators.VerifyCommit(
 		hdr.ChainID, cmt.BlockID,
 		hdr.Height, cmt)
+}
+
+// Ensure that NextValidators exists and matches the header.
+func (fc FullCommit) ensureNextValidators() error {
+	if fc.NextValidators.Size() == 0 {
+		return errors.New("need FullCommit.NextValidators")
+	}
+	if !bytes.Equal(
+		fc.SignedHeader.NextValidatorsHash,
+		fc.NextValidators.Hash()) {
+		return fmt.Errorf("header has next vhash %X but next valset hash is %X",
+			fc.SignedHeader.NextValidatorsHash,
+			fc.NextValidators.Hash(),
+		)
+	}
+	return nil
 }
 
 // Height returns the height of the header.

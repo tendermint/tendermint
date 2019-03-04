@@ -170,12 +170,6 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 	} else if err != nil {
 		return err
 	}
-	// Validate the only missing bit of the full commit:
-	// Verify the SignedHeader.NextValidatorSet matches the validator set
-	// at height = SignedHeader.Height + 1.
-	if err := validateNextValset(shdr, nextValset); err != nil {
-		return err
-	}
 
 	// Create filled FullCommit.
 	nfc := FullCommit{
@@ -183,24 +177,14 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 		Validators:     trustedFC.NextValidators,
 		NextValidators: nextValset,
 	}
+	// Validate the only missing bit of the full commit:
+	// Verify the SignedHeader.NextValidatorSet matches the validator set
+	// at height = SignedHeader.Height + 1.
+	if err := nfc.ensureNextValidators(); err != nil {
+		return err
+	}
 	// Trust it.
 	return dv.trusted.SaveFullCommit(nfc)
-}
-
-func validateNextValset(shdr types.SignedHeader, nextValset *types.ValidatorSet) error {
-	if nextValset.Size() == 0 {
-		return fmt.Errorf("need non-empty ValidatorSet")
-	}
-	if !bytes.Equal(
-		shdr.NextValidatorsHash,
-		nextValset.Hash()) {
-		return fmt.Errorf("header has next valset hash %X but next valset hash is %X",
-			shdr.NextValidatorsHash,
-			nextValset.Hash(),
-		)
-	}
-	// all good
-	return nil
 }
 
 // verifyAndSave will verify if this is a valid source full commit given the
