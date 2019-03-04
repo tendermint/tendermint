@@ -44,7 +44,6 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 
 	go func(ln net.Listener, attemptCh chan<- int) {
 		attempts := 0
-
 		for {
 			conn, err := ln.Accept()
 			require.NoError(t, err)
@@ -82,151 +81,59 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	}
 }
 
-//func TestSocketPVDeadline(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				listenc           = make(chan struct{})
-//				thisConnTimeout   = 100 * time.Millisecond
-//				validatorEndpoint = newSignerValidatorEndpoint(log.TestingLogger(), tc.addr, thisConnTimeout)
-//			)
-//
-//			go func(sc *SignerListenerEndpoint) {
-//				defer close(listenc)
-//
-//				// Note: the TCP connection times out at the accept() phase,
-//				// whereas the Unix domain sockets connection times out while
-//				// attempting to fetch the remote signer's public key.
-//				assert.True(t, IsConnTimeout(sc.Start()))
-//
-//				assert.False(t, sc.IsRunning())
-//			}(validatorEndpoint)
-//
-//			for {
-//				_, err := common.Connect(tc.addr)
-//				if err == nil {
-//					break
-//				}
-//			}
-//
-//			<-listenc
-//		}()
-//	}
-//}
+func TestRetryConnToRemoteSigner(t *testing.T) {
+	for _, tc := range getDialerTestCases(t) {
+		func() {
+			var (
+				logger  = log.TestingLogger()
+				chainID = common.RandStr(12)
+				readyCh = make(chan struct{})
 
-//func TestErrUnexpectedResponse(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				logger  = log.TestingLogger()
-//				chainID = common.RandStr(12)
-//				readyCh = make(chan struct{})
-//				errCh   = make(chan error, 1)
-//
-//				serviceEndpoint = NewSignerDialerEndpoint(
-//					logger,
-//					chainID,
-//					types.NewMockPV(),
-//					tc.dialer,
-//				)
-//
-//				validatorEndpoint = newSignerValidatorEndpoint(
-//					logger,
-//					tc.addr,
-//					testTimeoutReadWrite)
-//			)
-//
-//			getStartEndpoint(t, readyCh, validatorEndpoint)
-//			defer validatorEndpoint.Stop()
-//			SignerServiceEndpointTimeoutReadWrite(time.Millisecond)(serviceEndpoint)
-//			SignerServiceEndpointConnRetries(100)(serviceEndpoint)
-//			// we do not want to Start() the remote signer here and instead use the connection to
-//			// reply with intentionally wrong replies below:
-//			rsConn, err := serviceEndpoint.connect()
-//			defer rsConn.Close()
-//			require.NoError(t, err)
-//			require.NotNil(t, rsConn)
-//			// send over public key to get the remote signer running:
-//			go testReadWriteResponse(t, &PubKeyResponse{}, rsConn)
-//			<-readyCh
-//
-//			// Proposal:
-//			go func(errc chan error) {
-//				errc <- validatorEndpoint.SignProposal(chainID, &types.Proposal{})
-//			}(errCh)
-//
-//			// read request and write wrong response:
-//			go testReadWriteResponse(t, &SignedVoteResponse{}, rsConn)
-//			err = <-errCh
-//			require.Error(t, err)
-//			require.Equal(t, err, ErrUnexpectedResponse)
-//
-//			// Vote:
-//			go func(errc chan error) {
-//				errc <- validatorEndpoint.SignVote(chainID, &types.Vote{})
-//			}(errCh)
-//			// read request and write wrong response:
-//			go testReadWriteResponse(t, &SignedProposalResponse{}, rsConn)
-//			err = <-errCh
-//			require.Error(t, err)
-//			require.Equal(t, err, ErrUnexpectedResponse)
-//		}()
-//	}
-//}
-//
-//func TestRetryConnToRemoteSigner(t *testing.T) {
-//	for _, tc := range getTestCases(t) {
-//		func() {
-//			var (
-//				logger  = log.TestingLogger()
-//				chainID = common.RandStr(12)
-//				readyCh = make(chan struct{})
-//
-//				serviceEndpoint = NewSignerDialerEndpoint(
-//					logger,
-//					chainID,
-//					types.NewMockPV(),
-//					tc.dialer,
-//				)
-//				thisConnTimeout   = testTimeoutReadWrite
-//				validatorEndpoint = newSignerValidatorEndpoint(logger, tc.addr, thisConnTimeout)
-//			)
-//			// Ping every:
-//			SignerValidatorEndpointSetHeartbeat(testTimeoutHeartbeat)(validatorEndpoint)
-//
-//			SignerServiceEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
-//			SignerServiceEndpointConnRetries(10)(serviceEndpoint)
-//
-//			getStartEndpoint(t, readyCh, validatorEndpoint)
-//			defer validatorEndpoint.Stop()
-//			require.NoError(t, serviceEndpoint.Start())
-//			assert.True(t, serviceEndpoint.IsRunning())
-//
-//			<-readyCh
-//			time.Sleep(testTimeoutHeartbeat * 2)
-//
-//			serviceEndpoint.Stop()
-//			rs2 := NewSignerDialerEndpoint(
-//				logger,
-//				chainID,
-//				types.NewMockPV(),
-//				tc.dialer,
-//			)
-//			// let some pings pass
-//			time.Sleep(testTimeoutHeartbeat3o2)
-//			require.NoError(t, rs2.Start())
-//			assert.True(t, rs2.IsRunning())
-//			defer rs2.Stop()
-//
-//			// give the client some time to re-establish the conn to the remote signer
-//			// should see sth like this in the logs:
-//			//
-//			// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
-//			// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=SocketVal
-//			time.Sleep(testTimeoutReadWrite * 2)
-//		}()
-//	}
-//}
+				serviceEndpoint = NewSignerDialerEndpoint(
+					logger,
+					chainID,
+					types.NewMockPV(),
+					tc.dialer,
+				)
+				thisConnTimeout   = testTimeoutReadWrite
+				validatorEndpoint = newSignerValidatorEndpoint(logger, tc.addr, thisConnTimeout)
+			)
+			// Ping every:
+			SignerValidatorEndpointSetHeartbeat(testTimeoutHeartbeat)(validatorEndpoint)
+
+			SignerServiceEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
+			SignerServiceEndpointConnRetries(10)(serviceEndpoint)
+
+			getStartEndpoint(t, readyCh, validatorEndpoint)
+			defer validatorEndpoint.Stop()
+			require.NoError(t, serviceEndpoint.Start())
+			assert.True(t, serviceEndpoint.IsRunning())
+
+			<-readyCh
+			time.Sleep(testTimeoutHeartbeat * 2)
+
+			serviceEndpoint.Stop()
+			rs2 := NewSignerDialerEndpoint(
+				logger,
+				chainID,
+				types.NewMockPV(),
+				tc.dialer,
+			)
+			// let some pings pass
+			time.Sleep(testTimeoutHeartbeat3o2)
+			require.NoError(t, rs2.Start())
+			assert.True(t, rs2.IsRunning())
+			defer rs2.Stop()
+
+			// give the client some time to re-establish the conn to the remote signer
+			// should see sth like this in the logs:
+			//
+			// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
+			// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=SocketVal
+			time.Sleep(testTimeoutReadWrite * 2)
+		}()
+	}
+}
 
 ///////////////////////////////////
 
@@ -299,11 +206,3 @@ func getMockEndpoints(
 
 	return validatorEndpoint, serviceEndpoint
 }
-
-//func testReadWriteResponse(t *testing.T, resp RemoteSignerMsg, rsConn net.Conn) {
-//	_, err := readMessage(rsConn)
-//	require.NoError(t, err)
-//
-//	err = writeMessage(rsConn, resp)
-//	require.NoError(t, err)
-//}

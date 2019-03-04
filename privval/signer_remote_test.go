@@ -195,6 +195,7 @@ func TestSignerSignVoteErrors(t *testing.T) {
 			ts := time.Now()
 			vote := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
+			// Replace signer service privval with one that always fails
 			tc.signerService.privVal = types.NewErroringMockPV()
 			tc.mockPV = types.NewErroringMockPV()
 
@@ -209,6 +210,41 @@ func TestSignerSignVoteErrors(t *testing.T) {
 
 			err = tc.signer.SignVote(tc.chainID, vote)
 			require.Error(t, err)
+		}()
+	}
+}
+
+type BrokenSignerDialerEndpoint struct {
+	SignerDialerEndpoint
+}
+
+func (ss *BrokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, PingResponse{})
+	return
+}
+
+func TestSignerUnexpectedResponse(t *testing.T) {
+	for _, tc := range getSignerTestCases(t) {
+		func() {
+			// TODO: This test is actually not working. Fails for a different reason
+
+			tc.signerService.privVal = types.NewErroringMockPV()
+			tc.mockPV = types.NewErroringMockPV()
+
+			// Replace signer service with a broken one
+			tc.signerService.OnStop()
+			tmp := BrokenSignerDialerEndpoint{*tc.signerService}
+			tmp.OnStart()
+
+			defer tmp.OnStop()
+			defer tc.signer.Close()
+
+			ts := time.Now()
+			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+
+			e := tc.signer.SignVote(tc.chainID, want)
+			println(e.Error())
+			require.Error(t, e)
 		}()
 	}
 }

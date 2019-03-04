@@ -162,8 +162,8 @@ func TestSignVote(t *testing.T) {
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
-	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
-	block2 := types.BlockID{[]byte{3, 2, 1}, types.PartSetHeader{}}
+	block1 := types.BlockID{Hash: []byte{1, 2, 3}}
+	block2 := types.BlockID{Hash: []byte{3, 2, 1}}
 	height, round := int64(10), 1
 	voteType := byte(types.PrevoteType)
 
@@ -277,7 +277,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	// test vote
 	{
 		voteType := byte(types.PrevoteType)
-		blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
+		blockID := types.BlockID{Hash: []byte{1, 2, 3}}
 		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")
