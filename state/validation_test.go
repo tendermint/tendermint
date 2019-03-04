@@ -108,7 +108,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	// A block with too much evidence fails.
-	maxBlockSize := state.ConsensusParams.BlockSize.MaxBytes
+	maxBlockSize := state.ConsensusParams.Block.MaxBytes
 	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
 	require.True(t, maxNumEvidence > 2)
 	for i := int64(0); i < maxNumEvidence; i++ {

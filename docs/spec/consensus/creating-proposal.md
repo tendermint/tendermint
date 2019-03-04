@@ -4,7 +4,7 @@ A block consists of a header, transactions, votes (the commit),
 and a list of evidence of malfeasance (ie. signing conflicting votes).
 
 We include no more than 1/10th of the maximum block size
-(`ConsensusParams.BlockSize.MaxBytes`) of evidence with each block.
+(`ConsensusParams.Block.MaxBytes`) of evidence with each block.
 
 ## Reaping transactions from the mempool
 
