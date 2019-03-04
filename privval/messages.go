@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// RemoteSignerMsg is sent between SignerServiceEndpoint and the SignerServiceEndpoint client.
+// RemoteSignerMsg is sent between SignerDialerEndpoint and the SignerDialerEndpoint client.
 type RemoteSignerMsg interface{}
 
 func RegisterRemoteSignerMsg(cdc *amino.Codec) {

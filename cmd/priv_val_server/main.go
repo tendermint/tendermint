@@ -48,7 +48,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	rs := privval.NewSignerServiceEndpoint(logger, *chainID, pv, dialer)
+	rs := privval.NewSignerDialerEndpoint(logger, *chainID, pv, dialer)
 	err := rs.Start()
 	if err != nil {
 		panic(err)

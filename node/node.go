@@ -16,12 +16,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -926,33 +925,14 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 	db.SetSync(genesisDocKey, bytes)
 }
 
-func createAndStartPrivValidatorSocketClient(
-	listenAddr string,
-	logger log.Logger,
-) (types.PrivValidator, error) {
-	var listener net.Listener
-
-	protocol, address := cmn.ProtocolAndAddress(listenAddr)
-	ln, err := net.Listen(protocol, address)
+func createAndStartPrivValidatorSocketClient(listenAddr string, logger log.Logger) (types.PrivValidator, error) {
+	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
-		return nil, err
-	}
-	switch protocol {
-	case "unix":
-		listener = privval.NewUnixListener(ln)
-	case "tcp":
-		// TODO: persist this key so external signer
-		// can actually authenticate us
-		listener = privval.NewTCPListener(ln, ed25519.GenPrivKey())
-	default:
-		return nil, fmt.Errorf(
-			"Wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
-			protocol,
-		)
+		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 
-	pvsc := privval.NewSignerValidatorEndpoint(logger.With("module", "privval"), listener)
-	if err := pvsc.Start(); err != nil {
+	pvsc, err := privval.NewSignerRemote(pve)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 

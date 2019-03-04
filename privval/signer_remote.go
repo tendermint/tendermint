@@ -3,14 +3,15 @@ package privval
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
 
 // SignerRemote implements PrivValidator.
-// It uses a net.Conn to request signatures from an external process.
+// It uses a validator endpoint to request signatures from an external process.
 type SignerRemote struct {
-	endpoint *SignerValidatorEndpoint
+	endpoint *SignerListenerEndpoint
 
 	// memoized
 	consensusPubKey crypto.PubKey
@@ -20,7 +21,12 @@ type SignerRemote struct {
 var _ types.PrivValidator = (*SignerRemote)(nil)
 
 // NewSignerRemote returns an instance of SignerRemote.
-func NewSignerRemote(endpoint *SignerValidatorEndpoint) (*SignerRemote, error) {
+func NewSignerRemote(endpoint *SignerListenerEndpoint) (*SignerRemote, error) {
+	if !endpoint.IsRunning() {
+		if err := endpoint.Start(); err != nil {
+			return nil, errors.Wrap(err, "failed to start private validator")
+		}
+	}
 
 	// TODO: Fix this
 	//// retrieve and memoize the consensus public key once.

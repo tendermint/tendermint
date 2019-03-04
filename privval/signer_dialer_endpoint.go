@@ -10,23 +10,25 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// SignerServiceEndpointOption sets an optional parameter on the SignerServiceEndpoint.
-type SignerServiceEndpointOption func(*SignerServiceEndpoint)
+// SignerServiceEndpointOption sets an optional parameter on the SignerDialerEndpoint.
+type SignerServiceEndpointOption func(*SignerDialerEndpoint)
 
 // SignerServiceEndpointTimeoutReadWrite sets the read and write timeout for connections
 // from external signing processes.
 func SignerServiceEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceEndpointOption {
-	return func(ss *SignerServiceEndpoint) { ss.timeoutReadWrite = timeout }
+	return func(ss *SignerDialerEndpoint) { ss.timeoutReadWrite = timeout }
 }
 
 // SignerServiceEndpointConnRetries sets the amount of attempted retries to connect.
 func SignerServiceEndpointConnRetries(retries int) SignerServiceEndpointOption {
-	return func(ss *SignerServiceEndpoint) { ss.connRetries = retries }
+	return func(ss *SignerDialerEndpoint) { ss.connRetries = retries }
 }
 
-// SignerServiceEndpoint dials using its dialer and responds to any
+// TODO: Create a type for a signerEndpoint (common for both listener/dialer)
+
+// SignerDialerEndpoint dials using its dialer and responds to any
 // signature requests using its privVal.
-type SignerServiceEndpoint struct {
+type SignerDialerEndpoint struct {
 	cmn.BaseService
 
 	chainID          string
@@ -38,16 +40,16 @@ type SignerServiceEndpoint struct {
 	conn   net.Conn
 }
 
-// NewSignerServiceEndpoint returns a SignerServiceEndpoint that will dial using the given
+// NewSignerDialerEndpoint returns a SignerDialerEndpoint that will dial using the given
 // dialer and respond to any signature requests over the connection
 // using the given privVal.
-func NewSignerServiceEndpoint(
+func NewSignerDialerEndpoint(
 	logger log.Logger,
 	chainID string,
 	privVal types.PrivValidator,
 	dialer SocketDialer,
-) *SignerServiceEndpoint {
-	se := &SignerServiceEndpoint{
+) *SignerDialerEndpoint {
+	se := &SignerDialerEndpoint{
 		chainID:          chainID,
 		timeoutReadWrite: time.Second * defaultTimeoutReadWriteSeconds,
 		connRetries:      defaultMaxDialRetries,
@@ -55,12 +57,12 @@ func NewSignerServiceEndpoint(
 		dialer:           dialer,
 	}
 
-	se.BaseService = *cmn.NewBaseService(logger, "SignerServiceEndpoint", se)
+	se.BaseService = *cmn.NewBaseService(logger, "SignerDialerEndpoint", se)
 	return se
 }
 
 // OnStart implements cmn.Service.
-func (ss *SignerServiceEndpoint) OnStart() error {
+func (ss *SignerDialerEndpoint) OnStart() error {
 	conn, err := ss.connect()
 	if err != nil {
 		ss.Logger.Error("OnStart", "err", err)
@@ -74,7 +76,7 @@ func (ss *SignerServiceEndpoint) OnStart() error {
 }
 
 // OnStop implements cmn.Service.
-func (ss *SignerServiceEndpoint) OnStop() {
+func (ss *SignerDialerEndpoint) OnStop() {
 	if ss.conn == nil {
 		return
 	}
@@ -84,7 +86,7 @@ func (ss *SignerServiceEndpoint) OnStop() {
 	}
 }
 
-func (ss *SignerServiceEndpoint) connect() (net.Conn, error) {
+func (ss *SignerDialerEndpoint) connect() (net.Conn, error) {
 	for retries := 0; retries < ss.connRetries; retries++ {
 		// Don't sleep if it is the first retry.
 		if retries > 0 {
@@ -102,7 +104,7 @@ func (ss *SignerServiceEndpoint) connect() (net.Conn, error) {
 	return nil, ErrDialRetryMax
 }
 
-func (ss *SignerServiceEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
+func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	// TODO: Avoid duplication
 	// TODO: Check connection status
 
@@ -115,7 +117,7 @@ func (ss *SignerServiceEndpoint) readMessage() (msg RemoteSignerMsg, err error) 
 	return
 }
 
-func (ss *SignerServiceEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+func (ss *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	// TODO: Avoid duplication
 	// TODO: Check connection status
 
@@ -130,7 +132,7 @@ func (ss *SignerServiceEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	return
 }
 
-func (ss *SignerServiceEndpoint) handleConnection(conn net.Conn) {
+func (ss *SignerDialerEndpoint) handleConnection(conn net.Conn) {
 	for {
 		if !ss.IsRunning() {
 			return // Ignore error from listener closing.

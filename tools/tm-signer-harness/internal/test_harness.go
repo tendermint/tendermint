@@ -313,7 +313,7 @@ func (th *TestHarness) Shutdown(err error) {
 }
 
 // newTestHarnessSignerRemote creates our client instance which we will use for testing.
-func newTestHarnessSignerRemote(logger log.Logger, cfg TestHarnessConfig) (*privval.SignerValidatorEndpoint, error) {
+func newTestHarnessSignerRemote(logger log.Logger, cfg TestHarnessConfig) (*privval.SignerListenerEndpoint, error) {
 	proto, addr := cmn.ProtocolAndAddress(cfg.BindAddr)
 	if proto == "unix" {
 		// make sure the socket doesn't exist - if so, try to delete it
@@ -346,7 +346,7 @@ func newTestHarnessSignerRemote(logger log.Logger, cfg TestHarnessConfig) (*priv
 		logger.Error("Unsupported protocol (must be unix:// or tcp://)", "proto", proto)
 		return nil, newTestHarnessError(ErrInvalidParameters, nil, fmt.Sprintf("Unsupported protocol: %s", proto))
 	}
-	return privval.NewSignerValidatorEndpoint(logger, svln), nil
+	return privval.NewSignerListenerEndpoint(logger, svln), nil
 }
 
 func newTestHarnessError(code int, err error, info string) *TestHarnessError {

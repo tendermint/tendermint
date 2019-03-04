@@ -2,11 +2,11 @@ package privval
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 

@@ -31,7 +31,7 @@ type dialerTestCase struct {
 // TestSignerRemoteRetryTCPOnly will test connection retry attempts over TCP. We
 // don't need this for Unix sockets because the OS instantly knows the state of
 // both ends of the socket connection. This basically causes the
-// SignerServiceEndpoint.dialer() call inside SignerServiceEndpoint.connect() to return
+// SignerDialerEndpoint.dialer() call inside SignerDialerEndpoint.connect() to return
 // successfully immediately, putting an instant stop to any retry attempts.
 func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	var (
@@ -61,7 +61,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 		}
 	}(ln, attemptCh)
 
-	serviceEndpoint := NewSignerServiceEndpoint(
+	serviceEndpoint := NewSignerDialerEndpoint(
 		log.TestingLogger(),
 		common.RandStr(12),
 		types.NewMockPV(),
@@ -91,7 +91,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 //				validatorEndpoint = newSignerValidatorEndpoint(log.TestingLogger(), tc.addr, thisConnTimeout)
 //			)
 //
-//			go func(sc *SignerValidatorEndpoint) {
+//			go func(sc *SignerListenerEndpoint) {
 //				defer close(listenc)
 //
 //				// Note: the TCP connection times out at the accept() phase,
@@ -123,7 +123,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 //				readyCh = make(chan struct{})
 //				errCh   = make(chan error, 1)
 //
-//				serviceEndpoint = NewSignerServiceEndpoint(
+//				serviceEndpoint = NewSignerDialerEndpoint(
 //					logger,
 //					chainID,
 //					types.NewMockPV(),
@@ -182,7 +182,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 //				chainID = common.RandStr(12)
 //				readyCh = make(chan struct{})
 //
-//				serviceEndpoint = NewSignerServiceEndpoint(
+//				serviceEndpoint = NewSignerDialerEndpoint(
 //					logger,
 //					chainID,
 //					types.NewMockPV(),
@@ -206,7 +206,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 //			time.Sleep(testTimeoutHeartbeat * 2)
 //
 //			serviceEndpoint.Stop()
-//			rs2 := NewSignerServiceEndpoint(
+//			rs2 := NewSignerDialerEndpoint(
 //				logger,
 //				chainID,
 //				types.NewMockPV(),
@@ -230,7 +230,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 
 ///////////////////////////////////
 
-func newSignerValidatorEndpoint(logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerValidatorEndpoint {
+func newSignerValidatorEndpoint(logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerListenerEndpoint {
 	proto, address := common.ProtocolAndAddress(addr)
 
 	ln, err := net.Listen(proto, address)
@@ -253,11 +253,11 @@ func newSignerValidatorEndpoint(logger log.Logger, addr string, timeoutReadWrite
 		listener = tcpLn
 	}
 
-	return NewSignerValidatorEndpoint(logger, listener)
+	return NewSignerListenerEndpoint(logger, listener)
 }
 
-func getStartEndpoint(t *testing.T, readyCh chan struct{}, sv *SignerValidatorEndpoint) {
-	go func(sv *SignerValidatorEndpoint) {
+func getStartEndpoint(t *testing.T, readyCh chan struct{}, sv *SignerListenerEndpoint) {
+	go func(sv *SignerListenerEndpoint) {
 		require.NoError(t, sv.Start())
 		assert.True(t, sv.IsRunning())
 		readyCh <- struct{}{}
@@ -270,13 +270,13 @@ func getMockEndpoints(
 	privValidator types.PrivValidator,
 	addr string,
 	socketDialer SocketDialer,
-) (*SignerValidatorEndpoint, *SignerServiceEndpoint) {
+) (*SignerListenerEndpoint, *SignerDialerEndpoint) {
 
 	var (
 		logger          = log.TestingLogger()
 		privVal         = privValidator
 		readyCh         = make(chan struct{})
-		serviceEndpoint = NewSignerServiceEndpoint(
+		serviceEndpoint = NewSignerDialerEndpoint(
 			logger,
 			chainID,
 			privVal,

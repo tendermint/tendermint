@@ -20,14 +20,13 @@ var (
 )
 
 // SignerValidatorEndpointOption sets an optional parameter on the SocketVal.
-type SignerValidatorEndpointOption func(*SignerValidatorEndpoint)
+type SignerValidatorEndpointOption func(*SignerListenerEndpoint)
 
 // SignerValidatorEndpointSetHeartbeat sets the period on which to check the liveness of the
 // connected Signer connections.
 func SignerValidatorEndpointSetHeartbeat(period time.Duration) SignerValidatorEndpointOption {
-	return func(sc *SignerValidatorEndpoint) { sc.heartbeatPeriod = period }
+	return func(sc *SignerListenerEndpoint) { sc.heartbeatPeriod = period }
 }
-
 
 // TODO: Add a type for SignerEndpoints
 // getConnection
@@ -40,12 +39,12 @@ func SignerValidatorEndpointSetHeartbeat(period time.Duration) SignerValidatorEn
 // SocketVal implements PrivValidator.
 // It listens for an external process to dial in and uses
 // the socket to request signatures.
-type SignerValidatorEndpoint struct {
+type SignerListenerEndpoint struct {
 	cmn.BaseService
 
-	mtx sync.Mutex
+	mtx      sync.Mutex
 	listener net.Listener
-	conn net.Conn
+	conn     net.Conn
 
 	// ping
 	cancelPingCh    chan struct{}
@@ -53,20 +52,20 @@ type SignerValidatorEndpoint struct {
 	heartbeatPeriod time.Duration
 }
 
-// NewSignerValidatorEndpoint returns an instance of SignerValidatorEndpoint.
-func NewSignerValidatorEndpoint(logger log.Logger, listener net.Listener) *SignerValidatorEndpoint {
-	sc := &SignerValidatorEndpoint{
+// NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
+func NewSignerListenerEndpoint(logger log.Logger, listener net.Listener) *SignerListenerEndpoint {
+	sc := &SignerListenerEndpoint{
 		listener:        listener,
 		heartbeatPeriod: heartbeatPeriod,
 	}
 
-	sc.BaseService = *cmn.NewBaseService(logger, "SignerValidatorEndpoint", sc)
+	sc.BaseService = *cmn.NewBaseService(logger, "SignerListenerEndpoint", sc)
 
 	return sc
 }
 
 // OnStart implements cmn.Service.
-func (ve *SignerValidatorEndpoint) OnStart() error {
+func (ve *SignerListenerEndpoint) OnStart() error {
 	closed, err := ve.connect()
 	// TODO: Improve. Connection state should be kept in a variable
 
@@ -118,7 +117,7 @@ func (ve *SignerValidatorEndpoint) OnStart() error {
 }
 
 // OnStop implements cmn.Service.
-func (ve *SignerValidatorEndpoint) OnStop() {
+func (ve *SignerListenerEndpoint) OnStop() {
 	if ve.cancelPingCh != nil {
 		close(ve.cancelPingCh)
 	}
@@ -126,7 +125,7 @@ func (ve *SignerValidatorEndpoint) OnStop() {
 }
 
 // Close closes the underlying net.Conn.
-func (ve *SignerValidatorEndpoint) Close() error {
+func (ve *SignerListenerEndpoint) Close() error {
 	ve.mtx.Lock()
 	defer ve.mtx.Unlock()
 
@@ -148,7 +147,7 @@ func (ve *SignerValidatorEndpoint) Close() error {
 }
 
 // SendRequest sends a request and waits for a response
-func (ve *SignerValidatorEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSignerMsg, error) {
+func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSignerMsg, error) {
 	ve.mtx.Lock()
 	defer ve.mtx.Unlock()
 
@@ -166,7 +165,7 @@ func (ve *SignerValidatorEndpoint) SendRequest(request RemoteSignerMsg) (RemoteS
 }
 
 // Ping is used to check connection health.
-func (ve *SignerValidatorEndpoint) ping() error {
+func (ve *SignerListenerEndpoint) ping() error {
 	response, err := ve.SendRequest(&PingRequest{})
 
 	if err != nil {
@@ -181,7 +180,7 @@ func (ve *SignerValidatorEndpoint) ping() error {
 	return nil
 }
 
-func (ve *SignerValidatorEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
+func (ve *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	// TODO: Check connection status
 
 	const maxRemoteSignerMsgSize = 1024 * 10
@@ -193,7 +192,7 @@ func (ve *SignerValidatorEndpoint) readMessage() (msg RemoteSignerMsg, err error
 	return
 }
 
-func (ve *SignerValidatorEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+func (ve *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	// TODO: Check connection status
 	if ve.conn == nil {
 		return fmt.Errorf("endpoint is not connected")
@@ -211,7 +210,7 @@ func (ve *SignerValidatorEndpoint) writeMessage(msg RemoteSignerMsg) (err error)
 // connection is closed in OnStop.
 // returns true if the listener is closed (ie. it returns a nil conn).
 // TODO: Improve this
-func (ve *SignerValidatorEndpoint) connect() (closed bool, err error) {
+func (ve *SignerListenerEndpoint) connect() (closed bool, err error) {
 	ve.mtx.Lock()
 	defer ve.mtx.Unlock()
 
@@ -247,7 +246,7 @@ func (ve *SignerValidatorEndpoint) connect() (closed bool, err error) {
 // acceptConnection attempts to accept a connection
 // it will timeout after the listener's timeoutAccept
 // TODO: There is no reason for this separate accept
-func (ve *SignerValidatorEndpoint) acceptConnection() (net.Conn, error) {
+func (ve *SignerListenerEndpoint) acceptConnection() (net.Conn, error) {
 	conn, err := ve.listener.Accept()
 	if err != nil {
 		if !ve.IsRunning() {

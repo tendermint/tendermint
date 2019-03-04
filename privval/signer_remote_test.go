@@ -1,19 +1,20 @@
 package privval
 
 import (
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
-	"testing"
-	"time"
 )
 
 type signerTestCase struct {
 	chainID       string
 	mockPV        types.PrivValidator
 	signer        *SignerRemote
-	signerService *SignerServiceEndpoint // TODO: Replace once it is encapsulated
+	signerService *SignerDialerEndpoint // TODO: Replace once it is encapsulated
 }
 
 func getSignerTestCases(t *testing.T) []signerTestCase {
@@ -51,8 +52,8 @@ func TestSignerClose(t *testing.T) {
 			assert.NoError(t, err)
 
 			//// FIXME: An error is logged but OnStop hides it
-			//err = tc.signerService.Stop()
-			//assert.NoError(t, err)
+			err = tc.signerService.Stop()
+			assert.NoError(t, err)
 		}()
 	}
 }
