@@ -27,6 +27,10 @@
   version = "~0.14.1"
 
 [[constraint]]
+  name = "github.com/tendermint/tendermint"
+  branch = "develop"
+
+[[constraint]]
   name = "github.com/gogo/protobuf"
   version = "~1.2.1"
 

@@ -17,16 +17,6 @@
   revision = "ed77733ec07dfc8a513741138419b8d9d3de9d2d"
 
 [[projects]]
-  digest = "1:1d8e1cb71c33a9470bbbae09bfec09db43c6bf358dfcae13cd8807c4e2a9a2bf"
-  name = "github.com/btcsuite/btcutil"
-  packages = [
-    "base58",
-    "bech32",
-  ]
-  pruneopts = "UT"
-  revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
-
-[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -41,14 +31,6 @@
   pruneopts = "T"
   revision = "9dc5d1a915ac0e0bd8429d6ac41df50eec91de5f"
   version = "v1.8.21"
-
-[[projects]]
-  digest = "1:544229a3ca0fb2dd5ebc2896d3d2ff7ce096d9751635301e44e37e761349ee70"
-  name = "github.com/fortytw2/leaktest"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "a5ef70473c97b71626b9abeda80ee92ba2a7de9e"
-  version = "v1.2.0"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -376,11 +358,74 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:00d2b3e64cdc3fa69aa250dfbe4cc38c4837d4f37e62279be2ae52107ffbbb44"
+  branch = "develop"
+  digest = "1:b1de00edc9f3e6a91d8dae9c36c47238f7a996147901be939b499d0ceb1d2f2b"
+  name = "github.com/tendermint/tendermint"
+  packages = [
+    "abci/client",
+    "abci/example/code",
+    "abci/example/counter",
+    "abci/example/kvstore",
+    "abci/types",
+    "blockchain",
+    "config",
+    "consensus",
+    "consensus/types",
+    "crypto",
+    "crypto/ed25519",
+    "crypto/encoding/amino",
+    "crypto/merkle",
+    "crypto/multisig",
+    "crypto/multisig/bitarray",
+    "crypto/secp256k1",
+    "crypto/tmhash",
+    "evidence",
+    "libs/autofile",
+    "libs/cli",
+    "libs/cli/flags",
+    "libs/clist",
+    "libs/common",
+    "libs/db",
+    "libs/events",
+    "libs/fail",
+    "libs/flowrate",
+    "libs/log",
+    "libs/pubsub",
+    "libs/pubsub/query",
+    "lite",
+    "lite/client",
+    "lite/errors",
+    "lite/proxy",
+    "mempool",
+    "node",
+    "p2p",
+    "p2p/conn",
+    "p2p/pex",
+    "p2p/upnp",
+    "privval",
+    "proxy",
+    "rpc/client",
+    "rpc/core",
+    "rpc/core/types",
+    "rpc/grpc",
+    "rpc/lib/client",
+    "rpc/lib/server",
+    "rpc/lib/types",
+    "state",
+    "state/txindex",
+    "state/txindex/kv",
+    "state/txindex/null",
+    "types",
+    "types/time",
+    "version",
+  ]
+  pruneopts = ""
+  revision = "52771e1287eb44eabae99e6d2781a57c577821bb"
+
+[[projects]]
+  digest = "1:b6621a5e9003d7d809993d49217a841d27ef85b4bc0459115d3fd1f8c1518999"
   name = "golang.org/x/crypto"
   packages = [
-    "bcrypt",
-    "blowfish",
     "chacha20poly1305",
     "curve25519",
     "ed25519",
@@ -390,8 +435,6 @@
     "internal/subtle",
     "nacl/box",
     "nacl/secretbox",
-    "openpgp/armor",
-    "openpgp/errors",
     "poly1305",
     "ripemd160",
     "salsa20/salsa",
@@ -503,53 +546,29 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/btcsuite/btcd/btcec",
-    "github.com/btcsuite/btcutil/base58",
-    "github.com/btcsuite/btcutil/bech32",
-    "github.com/ethereum/go-ethereum/crypto/secp256k1",
-    "github.com/fortytw2/leaktest",
-    "github.com/go-kit/kit/log",
-    "github.com/go-kit/kit/log/level",
-    "github.com/go-kit/kit/log/term",
-    "github.com/go-kit/kit/metrics",
-    "github.com/go-kit/kit/metrics/discard",
-    "github.com/go-kit/kit/metrics/prometheus",
-    "github.com/go-logfmt/logfmt",
-    "github.com/gogo/protobuf/gogoproto",
-    "github.com/gogo/protobuf/jsonpb",
-    "github.com/gogo/protobuf/proto",
-    "github.com/gogo/protobuf/types",
-    "github.com/golang/protobuf/proto",
-    "github.com/golang/protobuf/ptypes/timestamp",
-    "github.com/gorilla/websocket",
-    "github.com/jmhodges/levigo",
     "github.com/pkg/errors",
-    "github.com/prometheus/client_golang/prometheus",
-    "github.com/prometheus/client_golang/prometheus/promhttp",
-    "github.com/rcrowley/go-metrics",
-    "github.com/rs/cors",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
-    "github.com/syndtr/goleveldb/leveldb",
-    "github.com/syndtr/goleveldb/leveldb/errors",
-    "github.com/syndtr/goleveldb/leveldb/iterator",
-    "github.com/syndtr/goleveldb/leveldb/opt",
     "github.com/tendermint/go-amino",
-    "golang.org/x/crypto/bcrypt",
-    "golang.org/x/crypto/chacha20poly1305",
-    "golang.org/x/crypto/curve25519",
-    "golang.org/x/crypto/ed25519",
-    "golang.org/x/crypto/hkdf",
-    "golang.org/x/crypto/nacl/box",
-    "golang.org/x/crypto/nacl/secretbox",
-    "golang.org/x/crypto/openpgp/armor",
-    "golang.org/x/crypto/ripemd160",
-    "golang.org/x/net/context",
-    "golang.org/x/net/netutil",
-    "google.golang.org/grpc",
-    "google.golang.org/grpc/credentials",
+    "github.com/tendermint/tendermint/config",
+    "github.com/tendermint/tendermint/consensus",
+    "github.com/tendermint/tendermint/crypto/ed25519",
+    "github.com/tendermint/tendermint/crypto/encoding/amino",
+    "github.com/tendermint/tendermint/libs/cli",
+    "github.com/tendermint/tendermint/libs/cli/flags",
+    "github.com/tendermint/tendermint/libs/common",
+    "github.com/tendermint/tendermint/libs/log",
+    "github.com/tendermint/tendermint/lite/proxy",
+    "github.com/tendermint/tendermint/node",
+    "github.com/tendermint/tendermint/p2p",
+    "github.com/tendermint/tendermint/p2p/upnp",
+    "github.com/tendermint/tendermint/privval",
+    "github.com/tendermint/tendermint/rpc/client",
+    "github.com/tendermint/tendermint/types",
+    "github.com/tendermint/tendermint/types/time",
+    "github.com/tendermint/tendermint/version",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
