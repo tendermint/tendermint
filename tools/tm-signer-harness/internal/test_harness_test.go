@@ -41,17 +41,18 @@ const (
 	"genesis_time": "2019-01-15T11:56:34.8963Z",
 	"chain_id": "test-chain-0XwP5E",
 	"consensus_params": {
-		"block_size": {
-		"max_bytes": "22020096",
-		"max_gas": "-1"
+		"block": {
+			"max_bytes": "22020096",
+			"max_gas": "-1",
+			"time_iota_ms": "1000"
 		},
 		"evidence": {
-		"max_age": "100000"
+			"max_age": "100000"
 		},
 		"validator": {
-		"pub_key_types": [
-			"ed25519"
-		]
+			"pub_key_types": [
+				"ed25519"
+			]
 		}
 	},
 	"validators": [
