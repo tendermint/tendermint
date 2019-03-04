@@ -16,7 +16,13 @@ import (
 //-----------------------------------------------------------------------------
 // NOTE: tx should be signed, but this is only checked at the app level (not by Tendermint!)
 
-// Returns right away, with no response
+// Returns right away, with no response. Does not wait for CheckTx nor
+// DeliverTx results.
+//
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
+//
 //
 // ```shell
 // curl 'localhost:26657/broadcast_tx_async?tx="123"'
@@ -61,7 +67,11 @@ func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadca
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
 
-// Returns with the response from CheckTx.
+// Returns with the response from CheckTx. Does not wait for DeliverTx result.
+//
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
 //
 // ```shell
 // curl 'localhost:26657/broadcast_tx_sync?tx="456"'
@@ -116,11 +126,18 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 	}, nil
 }
 
+// Returns with the responses from CheckTx and DeliverTx.
+//
 // CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
 // waiting for tx to commit.
 //
 // If CheckTx or DeliverTx fail, no error will be returned, but the returned result
 // will contain a non-OK ABCI code.
+//
+// Please refer to
+// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+// for formatting/encoding rules.
+//
 //
 // ```shell
 // curl 'localhost:26657/broadcast_tx_commit?tx="789"'
@@ -254,27 +271,32 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 //
 // ```json
 // {
-//   "error": "",
-//   "result": {
-//     "txs": [],
-//     "n_txs": "0"
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
-// }
+//   "result" : {
+//       "txs" : [],
+//       "total_bytes" : "0",
+//       "n_txs" : "0",
+//       "total" : "0"
+//     },
+//     "jsonrpc" : "2.0",
+//     "id" : ""
+//   }
+// ```
 //
 // ### Query Parameters
 //
 // | Parameter | Type | Default | Required | Description                          |
 // |-----------+------+---------+----------+--------------------------------------|
 // | limit     | int  | 30      | false    | Maximum number of entries (max: 100) |
-// ```
 func UnconfirmedTxs(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
 	limit = validatePerPage(limit)
 
 	txs := mempool.ReapMaxTxs(limit)
-	return &ctypes.ResultUnconfirmedTxs{N: len(txs), Txs: txs}, nil
+	return &ctypes.ResultUnconfirmedTxs{
+		Count:      len(txs),
+		Total:      mempool.Size(),
+		TotalBytes: mempool.TxsBytes(),
+		Txs:        txs}, nil
 }
 
 // Get number of unconfirmed transactions.
@@ -297,15 +319,19 @@ func UnconfirmedTxs(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmed
 //
 // ```json
 // {
-//   "error": "",
-//   "result": {
-//     "txs": null,
-//     "n_txs": "0"
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
+//   "jsonrpc" : "2.0",
+//   "id" : "",
+//   "result" : {
+//     "n_txs" : "0",
+//     "total_bytes" : "0",
+//     "txs" : null,
+//     "total" : "0"
+//   }
 // }
 // ```
 func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error) {
-	return &ctypes.ResultUnconfirmedTxs{N: mempool.Size()}, nil
+	return &ctypes.ResultUnconfirmedTxs{
+		Count:      mempool.Size(),
+		Total:      mempool.Size(),
+		TotalBytes: mempool.TxsBytes()}, nil
 }

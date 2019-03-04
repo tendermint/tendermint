@@ -63,7 +63,8 @@ module.exports = {
           "/tendermint-core/light-client-protocol",
           "/tendermint-core/metrics",
           "/tendermint-core/secure-p2p",
-          "/tendermint-core/validators"
+          "/tendermint-core/validators",
+          "/tendermint-core/mempool"
         ]
       },
       {

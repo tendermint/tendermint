@@ -32,8 +32,10 @@ func TestWALTruncate(t *testing.T) {
 
 	walFile := filepath.Join(walDir, "wal")
 
-	//this magic number 4K can truncate the content when RotateFile. defaultHeadSizeLimit(10M) is hard to simulate.
-	//this magic number 1 * time.Millisecond make RotateFile check frequently. defaultGroupCheckDuration(5s) is hard to simulate.
+	// this magic number 4K can truncate the content when RotateFile.
+	// defaultHeadSizeLimit(10M) is hard to simulate.
+	// this magic number 1 * time.Millisecond make RotateFile check frequently.
+	// defaultGroupCheckDuration(5s) is hard to simulate.
 	wal, err := NewWAL(walFile,
 		autofile.GroupHeadSizeLimit(4096),
 		autofile.GroupCheckDuration(1*time.Millisecond),
@@ -49,14 +51,15 @@ func TestWALTruncate(t *testing.T) {
 		wal.Wait()
 	}()
 
-	//60 block's size nearly 70K, greater than group's headBuf size(4096 * 10), when headBuf is full, truncate content will Flush to the file.
-	//at this time, RotateFile is called, truncate content exist in each file.
+	// 60 block's size nearly 70K, greater than group's headBuf size(4096 * 10),
+	// when headBuf is full, truncate content will Flush to the file. at this
+	// time, RotateFile is called, truncate content exist in each file.
 	err = WALGenerateNBlocks(t, wal.Group(), 60)
 	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
 
-	wal.Group().Flush()
+	wal.FlushAndSync()
 
 	h := int64(50)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -156,17 +159,18 @@ func TestWALPeriodicSync(t *testing.T) {
 	wal.SetFlushInterval(walTestFlushInterval)
 	wal.SetLogger(log.TestingLogger())
 
-	require.NoError(t, wal.Start())
-	defer func() {
-		wal.Stop()
-		wal.Wait()
-	}()
-
+	// Generate some data
 	err = WALGenerateNBlocks(t, wal.Group(), 5)
 	require.NoError(t, err)
 
 	// We should have data in the buffer now
 	assert.NotZero(t, wal.Group().Buffered())
+
+	require.NoError(t, wal.Start())
+	defer func() {
+		wal.Stop()
+		wal.Wait()
+	}()
 
 	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
 

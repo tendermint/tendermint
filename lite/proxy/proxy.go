@@ -70,7 +70,7 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 		"block":      rpcserver.NewRPCFunc(c.Block, "height"),
 		"commit":     rpcserver.NewRPCFunc(c.Commit, "height"),
 		"tx":         rpcserver.NewRPCFunc(c.Tx, "hash,prove"),
-		"validators": rpcserver.NewRPCFunc(c.Validators, ""),
+		"validators": rpcserver.NewRPCFunc(c.Validators, "height"),
 
 		// broadcast API
 		"broadcast_tx_commit": rpcserver.NewRPCFunc(c.BroadcastTxCommit, "tx"),
@@ -78,7 +78,7 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 		"broadcast_tx_async":  rpcserver.NewRPCFunc(c.BroadcastTxAsync, "tx"),
 
 		// abci API
-		"abci_query": rpcserver.NewRPCFunc(c.ABCIQuery, "path,data,prove"),
+		"abci_query": rpcserver.NewRPCFunc(c.ABCIQuery, "path,data"),
 		"abci_info":  rpcserver.NewRPCFunc(c.ABCIInfo, ""),
 	}
 }

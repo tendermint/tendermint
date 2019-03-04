@@ -299,6 +299,9 @@ func (pool *BlockPool) removePeer(peerID p2p.ID) {
 			requester.redo(peerID)
 		}
 	}
+	if p, exist := pool.peers[peerID]; exist && p.timeout != nil {
+		p.timeout.Stop()
+	}
 	delete(pool.peers, peerID)
 }
 

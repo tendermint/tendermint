@@ -49,7 +49,7 @@ var _ error = (*TestHarnessError)(nil)
 // with this version of Tendermint.
 type TestHarness struct {
 	addr             string
-	spv              *privval.SocketVal
+	spv              *privval.SignerValidatorEndpoint
 	fpv              *privval.FilePV
 	chainID          string
 	acceptRetries    int
@@ -314,7 +314,7 @@ func (th *TestHarness) Shutdown(err error) {
 
 // newTestHarnessSocketVal creates our client instance which we will use for
 // testing.
-func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval.SocketVal, error) {
+func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval.SignerValidatorEndpoint, error) {
 	proto, addr := cmn.ProtocolAndAddress(cfg.BindAddr)
 	if proto == "unix" {
 		// make sure the socket doesn't exist - if so, try to delete it
@@ -334,20 +334,20 @@ func newTestHarnessSocketVal(logger log.Logger, cfg TestHarnessConfig) (*privval
 	switch proto {
 	case "unix":
 		unixLn := privval.NewUnixListener(ln)
-		privval.UnixListenerAcceptDeadline(cfg.AcceptDeadline)(unixLn)
-		privval.UnixListenerConnDeadline(cfg.ConnDeadline)(unixLn)
+		privval.UnixListenerTimeoutAccept(cfg.AcceptDeadline)(unixLn)
+		privval.UnixListenerTimeoutReadWrite(cfg.ConnDeadline)(unixLn)
 		svln = unixLn
 	case "tcp":
 		tcpLn := privval.NewTCPListener(ln, cfg.SecretConnKey)
-		privval.TCPListenerAcceptDeadline(cfg.AcceptDeadline)(tcpLn)
-		privval.TCPListenerConnDeadline(cfg.ConnDeadline)(tcpLn)
+		privval.TCPListenerTimeoutAccept(cfg.AcceptDeadline)(tcpLn)
+		privval.TCPListenerTimeoutReadWrite(cfg.ConnDeadline)(tcpLn)
 		logger.Info("Resolved TCP address for listener", "addr", tcpLn.Addr())
 		svln = tcpLn
 	default:
 		logger.Error("Unsupported protocol (must be unix:// or tcp://)", "proto", proto)
 		return nil, newTestHarnessError(ErrInvalidParameters, nil, fmt.Sprintf("Unsupported protocol: %s", proto))
 	}
-	return privval.NewSocketVal(logger, svln), nil
+	return privval.NewSignerValidatorEndpoint(logger, svln), nil
 }
 
 func newTestHarnessError(code int, err error, info string) *TestHarnessError {

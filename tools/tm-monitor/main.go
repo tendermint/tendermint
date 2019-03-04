@@ -58,13 +58,17 @@ Examples:
 		ton.Start()
 	}
 
-	cmn.TrapSignal(func() {
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
 		if !noton {
 			ton.Stop()
 		}
 		monitor.Stop()
 		listener.Close()
 	})
+
+	// Run forever.
+	select {}
 }
 
 func startMonitor(endpoints string) *monitor.Monitor {

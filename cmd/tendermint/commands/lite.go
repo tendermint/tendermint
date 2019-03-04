@@ -43,7 +43,7 @@ func init() {
 	LiteCmd.Flags().IntVar(&cacheSize, "cache-size", 10, "Specify the memory trust store cache size")
 }
 
-func ensureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
+func EnsureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return "", err
@@ -59,11 +59,16 @@ func ensureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	nodeAddr, err := ensureAddrHasSchemeOrDefaultToTCP(nodeAddr)
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
+		// TODO: close up shop
+	})
+
+	nodeAddr, err := EnsureAddrHasSchemeOrDefaultToTCP(nodeAddr)
 	if err != nil {
 		return err
 	}
-	listenAddr, err := ensureAddrHasSchemeOrDefaultToTCP(listenAddr)
+	listenAddr, err := EnsureAddrHasSchemeOrDefaultToTCP(listenAddr)
 	if err != nil {
 		return err
 	}
@@ -86,9 +91,6 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return cmn.ErrorWrap(err, "starting proxy")
 	}
 
-	cmn.TrapSignal(func() {
-		// TODO: close up shop
-	})
-
-	return nil
+	// Run forever
+	select {}
 }

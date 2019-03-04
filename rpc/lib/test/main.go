@@ -26,17 +26,19 @@ type Result struct {
 }
 
 func main() {
-	mux := http.NewServeMux()
-	cdc := amino.NewCodec()
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	var (
+		mux    = http.NewServeMux()
+		cdc    = amino.NewCodec()
+		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	)
+
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {})
+
 	rpcserver.RegisterRPCFuncs(mux, routes, cdc, logger)
 	listener, err := rpcserver.Listen("0.0.0.0:8008", rpcserver.Config{})
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
-	go rpcserver.StartHTTPServer(listener, mux, logger)
-	// Wait forever
-	cmn.TrapSignal(func() {
-	})
-
+	rpcserver.StartHTTPServer(listener, mux, logger)
 }
