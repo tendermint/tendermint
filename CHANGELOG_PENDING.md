@@ -24,6 +24,9 @@ Special thanks to external contributors on this release:
 - [mempool] \#3079 bound mempool memory usage (`mempool.max_txs_bytes` is set to 1GB by default; see config.toml)
   mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
   `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
+- [config] \#2920 Remove `consensus.blocktime_iota` parameter
+- [genesis] \#2920 Add `time_iota_ms` to block's consensus parameters
+- [genesis] \#2920 Rename `consensus_params.block_size` to `consensus_params.block`
 
 ### IMPROVEMENTS:
 - [libs/common] \#3238 exit with zero (0) code upon receiving SIGTERM/SIGINT
