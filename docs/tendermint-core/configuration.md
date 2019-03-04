@@ -115,8 +115,8 @@ max_open_connections = 900
 max_subscription_clients = 100
 
 # Maximum number of unique queries a given client can /subscribe to
-# If you're using GRPC and /broadcast_tx_commit, set to the estimated
-# maximum number of broadcast_tx_commit calls per block.
+# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
+the estimated # maximum number of broadcast_tx_commit calls per block.
 max_subscriptions_per_client = 5
 
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
