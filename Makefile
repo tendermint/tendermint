@@ -19,19 +19,19 @@ check: check_tools get_vendor_deps
 ### Build Tendermint
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o build/tendermint ./cmd/tendermint/
+	cd ./cmd && CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o build/tendermint ./tendermint/
 
 build_c:
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" -o build/tendermint ./cmd/tendermint/
+	cd ./cmd && CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" -o build/tendermint ./tendermint/
 
 build_race:
-	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o build/tendermint ./cmd/tendermint
+	cd ./cmd && CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o build/tendermint ./tendermint
 
 install:
-	CGO_ENABLED=0 go install  $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+	cd ./cmd && CGO_ENABLED=0 go install  $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./tendermint
 
 install_c:
-	CGO_ENABLED=1 go install  $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" ./cmd/tendermint
+	cd ./cmd && CGO_ENABLED=1 go install  $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" ./tendermint
 
 ########################################
 ### Protobuf
@@ -87,7 +87,7 @@ update_tools:
 #Update dependencies
 get_vendor_deps:
 	@echo "--> Running dep"
-	@dep ensure
+	@cd cmd && dep ensure
 
 #For ABCI and libs
 get_protoc:
