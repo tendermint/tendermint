@@ -34,6 +34,7 @@ powerful control during testing, you probably want the "client/mock" package.
 type Local struct {
 	*types.EventBus
 	Logger log.Logger
+	ctx    *rpctypes.Context
 }
 
 // NewLocal configures a client that calls the Node directly.
@@ -47,12 +48,13 @@ func NewLocal(node *nm.Node) *Local {
 	return &Local{
 		EventBus: node.EventBus(),
 		Logger:   log.NewNopLogger(),
+		ctx:      &rpctypes.Context{},
 	}
 }
 
 var (
 	_ Client        = (*Local)(nil)
-	_ NetworkClient = Local{}
+	_ NetworkClient = (*Local)(nil)
 	_ EventsClient  = (*Local)(nil)
 )
 
@@ -61,102 +63,98 @@ func (c *Local) SetLogger(l log.Logger) {
 	c.Logger = l
 }
 
-func (Local) Status() (*ctypes.ResultStatus, error) {
-	return core.Status(&rpctypes.Context{})
+func (c *Local) Status() (*ctypes.ResultStatus, error) {
+	return core.Status(c.ctx)
 }
 
-func (Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	return core.ABCIInfo(&rpctypes.Context{})
+func (c *Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
+	return core.ABCIInfo(c.ctx)
 }
 
 func (c *Local) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
 }
 
-func (Local) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	return core.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
+func (c *Local) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	return core.ABCIQuery(c.ctx, path, data, opts.Height, opts.Prove)
 }
 
-func (Local) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-	return core.BroadcastTxCommit(&rpctypes.Context{}, tx)
+func (c *Local) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+	return core.BroadcastTxCommit(c.ctx, tx)
 }
 
-func (Local) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	return core.BroadcastTxAsync(&rpctypes.Context{}, tx)
+func (c *Local) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+	return core.BroadcastTxAsync(c.ctx, tx)
 }
 
-func (Local) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	return core.BroadcastTxSync(&rpctypes.Context{}, tx)
+func (c *Local) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+	return core.BroadcastTxSync(c.ctx, tx)
 }
 
-func (Local) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
-	return core.UnconfirmedTxs(&rpctypes.Context{}, limit)
+func (c *Local) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+	return core.UnconfirmedTxs(c.ctx, limit)
 }
 
-func (Local) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
-	return core.NumUnconfirmedTxs(&rpctypes.Context{})
+func (c *Local) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
+	return core.NumUnconfirmedTxs(c.ctx)
 }
 
-func (Local) NetInfo() (*ctypes.ResultNetInfo, error) {
-	return core.NetInfo(&rpctypes.Context{})
+func (c *Local) NetInfo() (*ctypes.ResultNetInfo, error) {
+	return core.NetInfo(c.ctx)
 }
 
-func (Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
-	return core.DumpConsensusState(&rpctypes.Context{})
+func (c *Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
+	return core.DumpConsensusState(c.ctx)
 }
 
-func (Local) ConsensusState() (*ctypes.ResultConsensusState, error) {
-	return core.ConsensusState(&rpctypes.Context{})
+func (c *Local) ConsensusState() (*ctypes.ResultConsensusState, error) {
+	return core.ConsensusState(c.ctx)
 }
 
-func (Local) Health() (*ctypes.ResultHealth, error) {
-	return core.Health(&rpctypes.Context{})
+func (c *Local) Health() (*ctypes.ResultHealth, error) {
+	return core.Health(c.ctx)
 }
 
-func (Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
-	return core.UnsafeDialSeeds(&rpctypes.Context{}, seeds)
+func (c *Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+	return core.UnsafeDialSeeds(c.ctx, seeds)
 }
 
-func (Local) DialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
-	return core.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent)
+func (c *Local) DialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
+	return core.UnsafeDialPeers(c.ctx, peers, persistent)
 }
 
-func (Local) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-	return core.BlockchainInfo(&rpctypes.Context{}, minHeight, maxHeight)
+func (c *Local) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+	return core.BlockchainInfo(c.ctx, minHeight, maxHeight)
 }
 
-func (Local) Genesis() (*ctypes.ResultGenesis, error) {
-	return core.Genesis(&rpctypes.Context{})
+func (c *Local) Genesis() (*ctypes.ResultGenesis, error) {
+	return core.Genesis(c.ctx)
 }
 
-func (Local) Block(height *int64) (*ctypes.ResultBlock, error) {
-	return core.Block(&rpctypes.Context{}, height)
+func (c *Local) Block(height *int64) (*ctypes.ResultBlock, error) {
+	return core.Block(c.ctx, height)
 }
 
-func (Local) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
-	return core.BlockResults(&rpctypes.Context{}, height)
+func (c *Local) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
+	return core.BlockResults(c.ctx, height)
 }
 
-func (Local) Commit(height *int64) (*ctypes.ResultCommit, error) {
-	return core.Commit(&rpctypes.Context{}, height)
+func (c *Local) Commit(height *int64) (*ctypes.ResultCommit, error) {
+	return core.Commit(c.ctx, height)
 }
 
-func (Local) Validators(height *int64) (*ctypes.ResultValidators, error) {
-	return core.Validators(&rpctypes.Context{}, height)
+func (c *Local) Validators(height *int64) (*ctypes.ResultValidators, error) {
+	return core.Validators(c.ctx, height)
 }
 
-func (Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
-	return core.Tx(&rpctypes.Context{}, hash, prove)
+func (c *Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
+	return core.Tx(c.ctx, hash, prove)
 }
 
-func (Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
-	return core.TxSearch(&rpctypes.Context{}, query, prove, page, perPage)
+func (c *Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
+	return core.TxSearch(c.ctx, query, prove, page, perPage)
 }
 
-// Subscribe implements EventsClient by using local eventBus to subscribe given
-// subscriber to query.By default, returns a channel with cap=1. Error is
-// returned if it fails to subscribe.
-// Channel is never closed to prevent clients from seeing an erroneus event.
 func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -173,50 +171,59 @@ func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapa
 	}
 
 	outc := make(chan ctypes.ResultEvent, outCap)
-	go func(sub types.Subscription) {
-		for {
-			select {
-			case msg := <-sub.Out():
-				result := ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
-				if cap(outc) == 0 {
-					outc <- result
-				} else {
-					select {
-					case outc <- result:
-					default:
-						c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
-					}
-				}
-			case <-sub.Cancelled():
-				if sub.Err() != tmpubsub.ErrUnsubscribed {
-					// resubscribe
-					c.Logger.Error("subscription was cancelled, resubscribing...", "err", err, "query", query)
-					var err error
-					for {
-						if !c.IsRunning() {
-							return
-						}
-
-						ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-						defer cancel()
-						sub, err = c.EventBus.Subscribe(ctx, subscriber, q)
-						if err == nil {
-							break
-						}
-					}
-				}
-				return
-			case <-c.Quit():
-				return
-			}
-		}
-	}(sub)
+	go c.eventsRoutine(sub, subscriber, q, outc)
 
 	return outc, nil
 }
 
-// Unsubscribe implements EventsClient by using local eventBus to unsubscribe
-// given subscriber from query.
+func (c *Local) eventsRoutine(sub types.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
+	for {
+		select {
+		case msg := <-sub.Out():
+			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Tags: msg.Tags()}
+			if cap(outc) == 0 {
+				outc <- result
+			} else {
+				select {
+				case outc <- result:
+				default:
+					c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
+				}
+			}
+		case <-sub.Cancelled():
+			if sub.Err() == tmpubsub.ErrUnsubscribed {
+				return
+			}
+
+			c.Logger.Error("subscription was cancelled, resubscribing...", "err", sub.Err(), "query", q.String())
+			sub = c.resubscribe(subscriber, q)
+			if sub == nil { // client was stopped
+				return
+			}
+		case <-c.Quit():
+			return
+		}
+	}
+}
+
+// try to resubscribe with exponential timeout
+func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscription {
+	attempts := 0
+	for {
+		if !c.IsRunning() {
+			return nil
+		}
+
+		sub, err := c.EventBus.Subscribe(context.Background(), subscriber, q)
+		if err == nil {
+			return sub
+		}
+
+		attempts++
+		time.Sleep((10 << uint(attempts)) * time.Millisecond)
+	}
+}
+
 func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error {
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -225,8 +232,6 @@ func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error
 	return c.EventBus.Unsubscribe(ctx, subscriber, q)
 }
 
-// UnsubscribeAll implements EventsClient by using local eventBus to
-// unsubscribe given subscriber from all queries.
 func (c *Local) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	return c.EventBus.UnsubscribeAll(ctx, subscriber)
 }

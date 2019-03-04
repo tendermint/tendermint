@@ -17,13 +17,14 @@ func (bapi *broadcastAPI) Ping(ctx context.Context, req *RequestPing) (*Response
 }
 
 func (bapi *broadcastAPI) BroadcastTx(ctx context.Context, req *RequestBroadcastTx) (*ResponseBroadcastTx, error) {
-	// XXX: empty context ... no remote addr!
+	// NOTE: there's no way to get client's remote address
+	// see https://stackoverflow.com/questions/33684570/session-and-remote-ip-address-in-grpc-go
 	res, err := core.BroadcastTxCommit(&rpctypes.Context{}, req.Tx)
 	if err != nil {
 		return nil, err
 	}
-	return &ResponseBroadcastTx{
 
+	return &ResponseBroadcastTx{
 		CheckTx: &abci.ResponseCheckTx{
 			Code: res.CheckTx.Code,
 			Data: res.CheckTx.Data,

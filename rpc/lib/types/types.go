@@ -248,7 +248,7 @@ type WSRPCConnection interface {
 // Context is the first parameter for all functions. It carries a json-rpc
 // request, http request and websocket connection.
 //
-// - JSONReq is non-nil when JSONRPC is called over websocket.
+// - JSONReq is non-nil when JSONRPC is called over websocket or HTTP.
 // - WSConn is non-nil when we're connected via a websocket.
 // - HTTPReq is non-nil when URI or JSONRPC is called over HTTP.
 type Context struct {
