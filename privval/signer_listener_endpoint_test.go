@@ -18,9 +18,6 @@ var (
 
 	testTimeoutReadWrite    = 100 * time.Millisecond
 	testTimeoutReadWrite2o3 = 66 * time.Millisecond // 2/3 of the other one
-
-	testTimeoutHeartbeat    = 10 * time.Millisecond
-	testTimeoutHeartbeat3o2 = 6 * time.Millisecond // 3/2 of the other one
 )
 
 type dialerTestCase struct {
@@ -31,7 +28,7 @@ type dialerTestCase struct {
 // TestSignerRemoteRetryTCPOnly will test connection retry attempts over TCP. We
 // don't need this for Unix sockets because the OS instantly knows the state of
 // both ends of the socket connection. This basically causes the
-// SignerDialerEndpoint.dialer() call inside SignerDialerEndpoint.tryAcceptConnection() to return
+// SignerDialerEndpoint.dialer() call inside SignerDialerEndpoint.AcceptNewConnection() to return
 // successfully immediately, putting an instant stop to any retry attempts.
 func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	var (
@@ -98,8 +95,6 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 				thisConnTimeout   = testTimeoutReadWrite
 				validatorEndpoint = newSignerValidatorEndpoint(logger, tc.addr, thisConnTimeout)
 			)
-			// Ping every:
-			SignerValidatorEndpointSetHeartbeat(testTimeoutHeartbeat)(validatorEndpoint)
 
 			SignerServiceEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
 			SignerServiceEndpointConnRetries(10)(serviceEndpoint)
@@ -110,7 +105,6 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			assert.True(t, serviceEndpoint.IsRunning())
 
 			<-readyCh
-			time.Sleep(testTimeoutHeartbeat * 2)
 
 			serviceEndpoint.Stop()
 			rs2 := NewSignerDialerEndpoint(
@@ -120,7 +114,6 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 				tc.dialer,
 			)
 			// let some pings pass
-			time.Sleep(testTimeoutHeartbeat3o2)
 			require.NoError(t, rs2.Start())
 			assert.True(t, rs2.IsRunning())
 			defer rs2.Stop()
@@ -193,7 +186,6 @@ func getMockEndpoints(
 		validatorEndpoint = newSignerValidatorEndpoint(logger, addr, testTimeoutReadWrite)
 	)
 
-	SignerValidatorEndpointSetHeartbeat(testTimeoutHeartbeat)(validatorEndpoint)
 	SignerServiceEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
 	SignerServiceEndpointConnRetries(1e6)(serviceEndpoint)
 

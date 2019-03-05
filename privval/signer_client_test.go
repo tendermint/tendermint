@@ -14,7 +14,7 @@ type signerTestCase struct {
 	chainID       string
 	mockPV        types.PrivValidator
 	signer        *SignerClient
-	signerService *SignerDialerEndpoint // TODO: Replace once it is encapsulated
+	signerService *SignerDialerEndpoint
 }
 
 func getSignerTestCases(t *testing.T) []signerTestCase {
@@ -125,7 +125,6 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 			require.NoError(t, tc.signer.SignVote(tc.chainID, have))
 			assert.Equal(t, want.Signature, have.Signature)
 
-			// FIXME: Lots of ping errors that do not bubble up
 			// TODO: Clarify what is actually being tested
 
 			// This would exceed the deadline if it was not extended by the previous message
@@ -148,14 +147,16 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 			defer tc.signerService.OnStop()
 			defer tc.signer.Close()
 
+			// Check that even if the client does not request a
+			// signature for a long time. The service is will available
+			tc.signerService.Logger.Info("TEST. Forced Wait")
 			time.Sleep(testTimeoutReadWrite * 2)
+			tc.signerService.Logger.Info("TEST. Forced Wait - DONE")
 
 			require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
 			require.NoError(t, tc.signer.SignVote(tc.chainID, have))
-			assert.Equal(t, want.Signature, have.Signature)
 
-			// FIXME: Lots of ping errors that do not bubble up
-			// TODO: Clarify what is actually being tested and how it differs from TestSignerVoteResetDeadline
+			assert.Equal(t, want.Signature, have.Signature)
 		}()
 	}
 }
@@ -214,7 +215,7 @@ type BrokenSignerDialerEndpoint struct {
 }
 
 func (ss *BrokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, PingResponse{})
+	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, PubKeyResponse{})
 	return
 }
 
