@@ -20,7 +20,7 @@ func SignerServiceEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceE
 	return func(ss *SignerDialerEndpoint) { ss.timeoutReadWrite = timeout }
 }
 
-// SignerServiceEndpointConnRetries sets the amount of attempted retries to tryConnect.
+// SignerServiceEndpointConnRetries sets the amount of attempted retries to tryAcceptConnection.
 func SignerServiceEndpointConnRetries(retries int) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.connRetries = retries }
 }
