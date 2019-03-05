@@ -145,6 +145,10 @@ func (w Wrapper) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	return res, err
 }
 
+func (w Wrapper) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
+	w.prt.RegisterOpDecoder(typ, dec)
+}
+
 // // WrappedSwitch creates a websocket connection that auto-verifies any info
 // // coming through before passing it along.
 // //

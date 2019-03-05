@@ -23,7 +23,7 @@ func newPrivKey() ed25519.PrivKeyEd25519 {
 type listenerTestCase struct {
 	description string // For test reporting purposes.
 	listener    net.Listener
-	dialer      Dialer
+	dialer      SocketDialer
 }
 
 // testUnixAddr will attempt to obtain a platform-independent temporary file
@@ -39,23 +39,23 @@ func testUnixAddr() (string, error) {
 	return addr, nil
 }
 
-func tcpListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Duration) listenerTestCase {
+func tcpListenerTestCase(t *testing.T, timeoutAccept, timeoutReadWrite time.Duration) listenerTestCase {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tcpLn := NewTCPListener(ln, newPrivKey())
-	TCPListenerAcceptDeadline(acceptDeadline)(tcpLn)
-	TCPListenerConnDeadline(connectDeadline)(tcpLn)
+	TCPListenerTimeoutAccept(timeoutAccept)(tcpLn)
+	TCPListenerTimeoutReadWrite(timeoutReadWrite)(tcpLn)
 	return listenerTestCase{
 		description: "TCP",
 		listener:    tcpLn,
-		dialer:      DialTCPFn(ln.Addr().String(), testConnDeadline, newPrivKey()),
+		dialer:      DialTCPFn(ln.Addr().String(), testTimeoutReadWrite, newPrivKey()),
 	}
 }
 
-func unixListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Duration) listenerTestCase {
+func unixListenerTestCase(t *testing.T, timeoutAccept, timeoutReadWrite time.Duration) listenerTestCase {
 	addr, err := testUnixAddr()
 	if err != nil {
 		t.Fatal(err)
@@ -66,8 +66,8 @@ func unixListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Dur
 	}
 
 	unixLn := NewUnixListener(ln)
-	UnixListenerAcceptDeadline(acceptDeadline)(unixLn)
-	UnixListenerConnDeadline(connectDeadline)(unixLn)
+	UnixListenerTimeoutAccept(timeoutAccept)(unixLn)
+	UnixListenerTimeoutReadWrite(timeoutReadWrite)(unixLn)
 	return listenerTestCase{
 		description: "Unix",
 		listener:    unixLn,
@@ -75,14 +75,14 @@ func unixListenerTestCase(t *testing.T, acceptDeadline, connectDeadline time.Dur
 	}
 }
 
-func listenerTestCases(t *testing.T, acceptDeadline, connectDeadline time.Duration) []listenerTestCase {
+func listenerTestCases(t *testing.T, timeoutAccept, timeoutReadWrite time.Duration) []listenerTestCase {
 	return []listenerTestCase{
-		tcpListenerTestCase(t, acceptDeadline, connectDeadline),
-		unixListenerTestCase(t, acceptDeadline, connectDeadline),
+		tcpListenerTestCase(t, timeoutAccept, timeoutReadWrite),
+		unixListenerTestCase(t, timeoutAccept, timeoutReadWrite),
 	}
 }
 
-func TestListenerAcceptDeadlines(t *testing.T) {
+func TestListenerTimeoutAccept(t *testing.T) {
 	for _, tc := range listenerTestCases(t, time.Millisecond, time.Second) {
 		_, err := tc.listener.Accept()
 		opErr, ok := err.(*net.OpError)
@@ -96,9 +96,9 @@ func TestListenerAcceptDeadlines(t *testing.T) {
 	}
 }
 
-func TestListenerConnectDeadlines(t *testing.T) {
+func TestListenerTimeoutReadWrite(t *testing.T) {
 	for _, tc := range listenerTestCases(t, time.Second, time.Millisecond) {
-		go func(dialer Dialer) {
+		go func(dialer SocketDialer) {
 			_, err := dialer()
 			if err != nil {
 				panic(err)

@@ -31,7 +31,6 @@ func voteToStep(vote *types.Vote) int8 {
 		return stepPrecommit
 	default:
 		panic("Unknown vote type")
-		return 0
 	}
 }
 
@@ -50,7 +49,7 @@ type FilePVKey struct {
 func (pvKey FilePVKey) Save() {
 	outFile := pvKey.filePath
 	if outFile == "" {
-		panic("Cannot save PrivValidator key: filePath not set")
+		panic("cannot save PrivValidator key: filePath not set")
 	}
 
 	jsonBytes, err := cdc.MarshalJSONIndent(pvKey, "", "  ")
@@ -87,17 +86,17 @@ type FilePVLastSignState struct {
 func (lss *FilePVLastSignState) CheckHRS(height int64, round int, step int8) (bool, error) {
 
 	if lss.Height > height {
-		return false, errors.New("Height regression")
+		return false, fmt.Errorf("height regression. Got %v, last height %v", height, lss.Height)
 	}
 
 	if lss.Height == height {
 		if lss.Round > round {
-			return false, errors.New("Round regression")
+			return false, fmt.Errorf("round regression at height %v. Got %v, last round %v", height, round, lss.Round)
 		}
 
 		if lss.Round == round {
 			if lss.Step > step {
-				return false, errors.New("Step regression")
+				return false, fmt.Errorf("step regression at height %v round %v. Got %v, last step %v", height, round, step, lss.Step)
 			} else if lss.Step == step {
 				if lss.SignBytes != nil {
 					if lss.Signature == nil {
@@ -105,7 +104,7 @@ func (lss *FilePVLastSignState) CheckHRS(height int64, round int, step int8) (bo
 					}
 					return true, nil
 				}
-				return false, errors.New("No SignBytes found")
+				return false, errors.New("no SignBytes found")
 			}
 		}
 	}
@@ -116,7 +115,7 @@ func (lss *FilePVLastSignState) CheckHRS(height int64, round int, step int8) (bo
 func (lss *FilePVLastSignState) Save() {
 	outFile := lss.filePath
 	if outFile == "" {
-		panic("Cannot save FilePVLastSignState: filePath not set")
+		panic("cannot save FilePVLastSignState: filePath not set")
 	}
 	jsonBytes, err := cdc.MarshalJSONIndent(lss, "", "  ")
 	if err != nil {
@@ -238,7 +237,7 @@ func (pv *FilePV) GetPubKey() crypto.PubKey {
 // chainID. Implements PrivValidator.
 func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
 	if err := pv.signVote(chainID, vote); err != nil {
-		return fmt.Errorf("Error signing vote: %v", err)
+		return fmt.Errorf("error signing vote: %v", err)
 	}
 	return nil
 }
@@ -247,7 +246,7 @@ func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
 // the chainID. Implements PrivValidator.
 func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
 	if err := pv.signProposal(chainID, proposal); err != nil {
-		return fmt.Errorf("Error signing proposal: %v", err)
+		return fmt.Errorf("error signing proposal: %v", err)
 	}
 	return nil
 }
@@ -304,7 +303,7 @@ func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
 			vote.Timestamp = timestamp
 			vote.Signature = lss.Signature
 		} else {
-			err = fmt.Errorf("Conflicting data")
+			err = fmt.Errorf("conflicting data")
 		}
 		return err
 	}
@@ -346,7 +345,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 			proposal.Timestamp = timestamp
 			proposal.Signature = lss.Signature
 		} else {
-			err = fmt.Errorf("Conflicting data")
+			err = fmt.Errorf("conflicting data")
 		}
 		return err
 	}

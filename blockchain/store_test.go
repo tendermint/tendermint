@@ -3,9 +3,11 @@ package blockchain
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"runtime/debug"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +22,17 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
+// A cleanupFunc cleans up any config / test files created for a particular
+// test.
+type cleanupFunc func()
+
+// make a Commit with a single vote containing just the height and a timestamp
+func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
+	commitSigs := []*types.CommitSig{{Height: height, Timestamp: timestamp}}
+	return types.NewCommit(types.BlockID{}, commitSigs)
+}
+
+func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
 	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
@@ -30,7 +42,7 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
 	}
-	return state, NewBlockStore(blockDB)
+	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
 }
 
 func TestLoadBlockStoreStateJSON(t *testing.T) {
@@ -80,20 +92,32 @@ func freshBlockStore() (*BlockStore, db.DB) {
 }
 
 var (
-	state, _ = makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
-
-	block       = makeBlock(1, state, new(types.Commit))
-	partSet     = block.MakePartSet(2)
-	part1       = partSet.GetPart(0)
-	part2       = partSet.GetPart(1)
-	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: tmtime.Now()}}}
+	state       sm.State
+	block       *types.Block
+	partSet     *types.PartSet
+	part1       *types.Part
+	part2       *types.Part
+	seenCommit1 *types.Commit
 )
+
+func TestMain(m *testing.M) {
+	var cleanup cleanupFunc
+	state, _, cleanup = makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
+	block = makeBlock(1, state, new(types.Commit))
+	partSet = block.MakePartSet(2)
+	part1 = partSet.GetPart(0)
+	part2 = partSet.GetPart(1)
+	seenCommit1 = makeTestCommit(10, tmtime.Now())
+	code := m.Run()
+	cleanup()
+	os.Exit(code)
+}
 
 // TODO: This test should be simplified ...
 
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
+	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
+	defer cleanup()
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
 	// check there are no blocks at various heights
@@ -107,8 +131,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	// save a block
 	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 	validPartSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: tmtime.Now()}}}
+	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
@@ -127,8 +150,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	// End of setup, test data
 
-	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: tmtime.Now()}}}
+	commitAtH10 := makeTestCommit(10, tmtime.Now())
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
@@ -346,14 +368,13 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
+	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
+	defer cleanup()
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 
 	partSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: tmtime.Now()}}}
-
+	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 

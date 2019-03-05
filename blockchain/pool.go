@@ -301,6 +301,9 @@ func (pool *BlockPool) removePeer(peerID p2p.ID) {
 			requester.redo(peerID)
 		}
 	}
+	if p, exist := pool.peers[peerID]; exist && p.timeout != nil {
+		p.timeout.Stop()
+	}
 	delete(pool.peers, peerID)
 }
 
@@ -365,7 +368,8 @@ func (pool *BlockPool) sendError(err error, peerID p2p.ID) {
 	pool.errorsCh <- peerError{err, peerID}
 }
 
-// unused by tendermint; left for debugging purposes
+// for debugging purposes
+//nolint:unused
 func (pool *BlockPool) debug() string {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()

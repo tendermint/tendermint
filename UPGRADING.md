@@ -3,6 +3,29 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.30.0
+
+This release contains a breaking change to both the block and p2p protocols,
+however it may be compatible with blockchains created with v0.29.0 depending on
+the chain history. If your blockchain has not included any pieces of evidence,
+or no piece of evidence has been included in more than one block,
+and if your application has never returned multiple updates
+for the same validator in a single block, then v0.30.0 will work fine with
+blockchains created with v0.29.0.
+
+The p2p protocol change is to fix the proposer selection algorithm again.
+Note that proposer selection is purely a p2p concern right
+now since the algorithm is only relevant during real time consensus.
+This change is thus compatible with v0.29.0, but
+all nodes must be upgraded to avoid disagreements on the proposer.
+
+### Applications
+
+Applications must ensure they do not return duplicates in
+`ResponseEndBlock.ValidatorUpdates`. A pubkey must only appear once per set of
+updates. Duplicates will cause irrecoverable failure. If you have a very good
+reason why we shouldn't do this, please open an issue.
+
 ## v0.29.0
 
 This release contains some breaking changes to the block and p2p protocols,

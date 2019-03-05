@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -43,6 +44,19 @@ func exampleVote(t byte) *Vote {
 	}
 }
 
+// Ensure that Vote and CommitSig have the same encoding.
+// This ensures using CommitSig isn't a breaking change.
+// This test will fail and can be removed once CommitSig contains only sigs and
+// timestamps.
+func TestVoteEncoding(t *testing.T) {
+	vote := examplePrecommit()
+	commitSig := vote.CommitSig()
+	cdc := amino.NewCodec()
+	bz1 := cdc.MustMarshalBinaryBare(vote)
+	bz2 := cdc.MustMarshalBinaryBare(commitSig)
+	assert.Equal(t, bz1, bz2)
+}
+
 func TestVoteSignable(t *testing.T) {
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")
@@ -53,23 +67,23 @@ func TestVoteSignable(t *testing.T) {
 	require.Equal(t, expected, signBytes, "Got unexpected sign bytes for Vote.")
 }
 
-func TestVoteSignableTestVectors(t *testing.T) {
-	vote := CanonicalizeVote("", &Vote{Height: 1, Round: 1})
+func TestVoteSignBytesTestVectors(t *testing.T) {
 
 	tests := []struct {
-		canonicalVote CanonicalVote
-		want          []byte
+		chainID string
+		vote    *Vote
+		want    []byte
 	}{
-		{
-			CanonicalizeVote("", &Vote{}),
+		0: {
+			"", &Vote{},
 			// NOTE: Height and Round are skipped here. This case needs to be considered while parsing.
-			// []byte{0x2a, 0x9, 0x9, 0x0, 0x9, 0x6e, 0x88, 0xf1, 0xff, 0xff, 0xff},
-			[]byte{0x2a, 0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
+			[]byte{0xd, 0x2a, 0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
 		},
 		// with proper (fixed size) height and round (PreCommit):
-		{
-			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrecommitType}),
+		1: {
+			"", &Vote{Height: 1, Round: 1, Type: PrecommitType},
 			[]byte{
+				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
 				0x2,                                    // PrecommitType
 				0x11,                                   // (field_number << 3) | wire_type
@@ -81,9 +95,10 @@ func TestVoteSignableTestVectors(t *testing.T) {
 				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
 		},
 		// with proper (fixed size) height and round (PreVote):
-		{
-			CanonicalizeVote("", &Vote{Height: 1, Round: 1, Type: PrevoteType}),
+		2: {
+			"", &Vote{Height: 1, Round: 1, Type: PrevoteType},
 			[]byte{
+				0x21,                                   // length
 				0x8,                                    // (field_number << 3) | wire_type
 				0x1,                                    // PrevoteType
 				0x11,                                   // (field_number << 3) | wire_type
@@ -94,9 +109,10 @@ func TestVoteSignableTestVectors(t *testing.T) {
 				// remaining fields (timestamp):
 				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
 		},
-		{
-			vote,
+		3: {
+			"", &Vote{Height: 1, Round: 1},
 			[]byte{
+				0x1f,                                   // length
 				0x11,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
@@ -106,9 +122,10 @@ func TestVoteSignableTestVectors(t *testing.T) {
 				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1},
 		},
 		// containing non-empty chain_id:
-		{
-			CanonicalizeVote("test_chain_id", &Vote{Height: 1, Round: 1}),
+		4: {
+			"test_chain_id", &Vote{Height: 1, Round: 1},
 			[]byte{
+				0x2e,                                   // length
 				0x11,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
@@ -121,9 +138,7 @@ func TestVoteSignableTestVectors(t *testing.T) {
 		},
 	}
 	for i, tc := range tests {
-		got, err := cdc.MarshalBinaryBare(tc.canonicalVote)
-		require.NoError(t, err)
-
+		got := tc.vote.SignBytes(tc.chainID)
 		require.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
 	}
 }

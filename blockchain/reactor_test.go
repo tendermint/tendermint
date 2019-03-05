@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -95,13 +96,13 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := &types.Commit{}
+		lastCommit := types.NewCommit(types.BlockID{}, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0])
-			lastCommit = &types.Commit{Precommits: []*types.Vote{vote}, BlockID: lastBlockMeta.BlockID}
+			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0]).CommitSig()
+			lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{vote})
 		}
 
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
@@ -125,6 +126,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 func TestNoBlockResponse(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
 	maxBlockHeight := int64(65)
@@ -184,6 +186,7 @@ func TestNoBlockResponse(t *testing.T) {
 // that seems extreme.
 func TestBadBlockStopsPeer(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
 	maxBlockHeight := int64(148)

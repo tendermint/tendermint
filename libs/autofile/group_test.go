@@ -55,7 +55,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 		err := g.WriteLine(cmn.RandStr(999))
 		require.NoError(t, err, "Error appending to head")
 	}
-	g.Flush()
+	g.FlushAndSync()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Even calling checkHeadSizeLimit manually won't rotate it.
@@ -65,7 +65,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	// Write 1000 more bytes.
 	err := g.WriteLine(cmn.RandStr(999))
 	require.NoError(t, err, "Error appending to head")
-	g.Flush()
+	g.FlushAndSync()
 
 	// Calling checkHeadSizeLimit this time rolls it.
 	g.checkHeadSizeLimit()
@@ -74,7 +74,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	// Write 1000 more bytes.
 	err = g.WriteLine(cmn.RandStr(999))
 	require.NoError(t, err, "Error appending to head")
-	g.Flush()
+	g.FlushAndSync()
 
 	// Calling checkHeadSizeLimit does nothing.
 	g.checkHeadSizeLimit()
@@ -85,7 +85,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 		err = g.WriteLine(cmn.RandStr(999))
 		require.NoError(t, err, "Error appending to head")
 	}
-	g.Flush()
+	g.FlushAndSync()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 2000000, 1000000)
 
 	// Calling checkHeadSizeLimit rolls it again.
@@ -95,7 +95,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	// Write 1000 more bytes.
 	_, err = g.Head.Write([]byte(cmn.RandStr(999) + "\n"))
 	require.NoError(t, err, "Error appending to head")
-	g.Flush()
+	g.FlushAndSync()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
 
 	// Calling checkHeadSizeLimit does nothing.
@@ -212,12 +212,12 @@ func TestRotateFile(t *testing.T) {
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
 	g.WriteLine("Line 3")
-	g.Flush()
+	g.FlushAndSync()
 	g.RotateFile()
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("Line 6")
-	g.Flush()
+	g.FlushAndSync()
 
 	// Read g.Head.Path+"000"
 	body1, err := ioutil.ReadFile(g.Head.Path + ".000")
@@ -244,13 +244,13 @@ func TestFindLast1(t *testing.T) {
 	g.WriteLine("Line 2")
 	g.WriteLine("# a")
 	g.WriteLine("Line 3")
-	g.Flush()
+	g.FlushAndSync()
 	g.RotateFile()
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("Line 6")
 	g.WriteLine("# b")
-	g.Flush()
+	g.FlushAndSync()
 
 	match, found, err := g.FindLast("#")
 	assert.NoError(t, err)
@@ -267,14 +267,14 @@ func TestFindLast2(t *testing.T) {
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
 	g.WriteLine("Line 3")
-	g.Flush()
+	g.FlushAndSync()
 	g.RotateFile()
 	g.WriteLine("# a")
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("# b")
 	g.WriteLine("Line 6")
-	g.Flush()
+	g.FlushAndSync()
 
 	match, found, err := g.FindLast("#")
 	assert.NoError(t, err)
@@ -293,12 +293,12 @@ func TestFindLast3(t *testing.T) {
 	g.WriteLine("Line 2")
 	g.WriteLine("# b")
 	g.WriteLine("Line 3")
-	g.Flush()
+	g.FlushAndSync()
 	g.RotateFile()
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("Line 6")
-	g.Flush()
+	g.FlushAndSync()
 
 	match, found, err := g.FindLast("#")
 	assert.NoError(t, err)
@@ -315,12 +315,12 @@ func TestFindLast4(t *testing.T) {
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
 	g.WriteLine("Line 3")
-	g.Flush()
+	g.FlushAndSync()
 	g.RotateFile()
 	g.WriteLine("Line 4")
 	g.WriteLine("Line 5")
 	g.WriteLine("Line 6")
-	g.Flush()
+	g.FlushAndSync()
 
 	match, found, err := g.FindLast("#")
 	assert.NoError(t, err)
@@ -336,7 +336,7 @@ func TestWrite(t *testing.T) {
 
 	written := []byte("Medusa")
 	g.Write(written)
-	g.Flush()
+	g.FlushAndSync()
 
 	read := make([]byte, len(written))
 	gr, err := g.NewReader(0)
@@ -357,11 +357,11 @@ func TestGroupReaderRead(t *testing.T) {
 
 	professor := []byte("Professor Monster")
 	g.Write(professor)
-	g.Flush()
+	g.FlushAndSync()
 	g.RotateFile()
 	frankenstein := []byte("Frankenstein's Monster")
 	g.Write(frankenstein)
-	g.Flush()
+	g.FlushAndSync()
 
 	totalWrittenLength := len(professor) + len(frankenstein)
 	read := make([]byte, totalWrittenLength)
@@ -386,12 +386,12 @@ func TestGroupReaderRead2(t *testing.T) {
 
 	professor := []byte("Professor Monster")
 	g.Write(professor)
-	g.Flush()
+	g.FlushAndSync()
 	g.RotateFile()
 	frankenstein := []byte("Frankenstein's Monster")
 	frankensteinPart := []byte("Frankenstein")
 	g.Write(frankensteinPart) // note writing only a part
-	g.Flush()
+	g.FlushAndSync()
 
 	totalLength := len(professor) + len(frankenstein)
 	read := make([]byte, totalLength)
@@ -427,7 +427,7 @@ func TestMaxIndex(t *testing.T) {
 	assert.Zero(t, g.MaxIndex(), "MaxIndex should be zero at the beginning")
 
 	g.WriteLine("Line 1")
-	g.Flush()
+	g.FlushAndSync()
 	g.RotateFile()
 
 	assert.Equal(t, 1, g.MaxIndex(), "MaxIndex should point to the last file")

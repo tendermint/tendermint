@@ -3,12 +3,15 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"path/filepath"
 	"text/template"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
+
+// DefaultDirPerm is the default permissions used when creating directories.
+const DefaultDirPerm = 0700
 
 var configTemplate *template.Template
 
@@ -24,13 +27,13 @@ func init() {
 // EnsureRoot creates the root, config, and data directories if they don't exist,
 // and panics if it fails.
 func EnsureRoot(rootDir string) {
-	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
+	if err := cmn.EnsureDir(rootDir, DefaultDirPerm); err != nil {
 		cmn.PanicSanity(err.Error())
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), 0700); err != nil {
+	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
 		cmn.PanicSanity(err.Error())
 	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), 0700); err != nil {
+	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
 		cmn.PanicSanity(err.Error())
 	}
 
@@ -126,9 +129,6 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # If true, query the ABCI app on connecting to a new peer
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
-
-# If false, will not check appHash when apply block
-with_app_stat = {{ .BaseConfig.WithAppStat }}
 
 ##### advanced configuration options #####
 
@@ -246,10 +246,15 @@ recheck = {{ .Mempool.Recheck }}
 broadcast = {{ .Mempool.Broadcast }}
 wal_dir = "{{ js .Mempool.WalPath }}"
 
-# size of the mempool
+# Maximum number of transactions in the mempool
 size = {{ .Mempool.Size }}
 
-# size of the cache (used to filter transactions we saw earlier)
+# Limit the total size of all txs in the mempool.
+# This only accounts for raw transactions (e.g. given 1MB transactions and
+# max_txs_bytes=5MB, mempool will only accept 5 transactions).
+max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
+
+# Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
 
 ##### consensus configuration options #####
@@ -275,9 +280,6 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
-
-# Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
-blocktime_iota = "{{ .Consensus.BlockTimeIota }}"
 
 ##### transactions indexer configuration options #####
 [tx_index]
@@ -334,29 +336,17 @@ func ResetTestRoot(testName string) *Config {
 }
 
 func ResetTestRootWithChainID(testName string, chainID string) *Config {
-	rootDir := os.ExpandEnv("$HOME/.tendermint_test")
-	rootDir = filepath.Join(rootDir, testName)
-	// Remove ~/.tendermint_test_bak
-	if cmn.FileExists(rootDir + "_bak") {
-		if err := os.RemoveAll(rootDir + "_bak"); err != nil {
-			cmn.PanicSanity(err.Error())
-		}
+	// create a unique, concurrency-safe test directory under os.TempDir()
+	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
+	if err != nil {
+		panic(err)
 	}
-	// Move ~/.tendermint_test to ~/.tendermint_test_bak
-	if cmn.FileExists(rootDir) {
-		if err := os.Rename(rootDir, rootDir+"_bak"); err != nil {
-			cmn.PanicSanity(err.Error())
-		}
+	// ensure config and data subdirs are created
+	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+		panic(err)
 	}
-	// Create new dir
-	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
-		cmn.PanicSanity(err.Error())
-	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), 0700); err != nil {
-		cmn.PanicSanity(err.Error())
-	}
-	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), 0700); err != nil {
-		cmn.PanicSanity(err.Error())
+	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+		panic(err)
 	}
 
 	baseConfig := DefaultBaseConfig()

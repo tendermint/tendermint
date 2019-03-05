@@ -345,8 +345,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
-	evidencePool := evidence.NewEvidencePool(stateDB, evidenceStore)
+	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
 	evidencePool.SetLogger(evidenceLogger)
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
@@ -812,6 +811,11 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
+// Config returns the Node's config.
+func (n *Node) Config() *cfg.Config {
+	return n.config
+}
+
 //------------------------------------------------------------------------------
 
 func (n *Node) Listeners() []string {
@@ -929,7 +933,7 @@ func createAndStartPrivValidatorSocketClient(
 		)
 	}
 
-	pvsc := privval.NewSocketVal(logger.With("module", "privval"), listener)
+	pvsc := privval.NewSignerValidatorEndpoint(logger.With("module", "privval"), listener)
 	if err := pvsc.Start(); err != nil {
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}

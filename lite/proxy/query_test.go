@@ -21,6 +21,7 @@ import (
 
 var node *nm.Node
 var chainID = "tendermint_test" // TODO use from config.
+//nolint:unused
 var waitForEventTimeout = 5 * time.Second
 
 // TODO fix tests!!
@@ -31,8 +32,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	node.Stop()
-	node.Wait()
+	rpctest.StopTendermint(node)
 	os.Exit(code)
 }
 
@@ -42,6 +42,7 @@ func kvstoreTx(k, v []byte) []byte {
 
 // TODO: enable it after general proof format has been adapted
 // in abci/examples/kvstore.go
+//nolint:unused,deadcode
 func _TestAppProofs(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
