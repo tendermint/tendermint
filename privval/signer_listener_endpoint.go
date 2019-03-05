@@ -120,6 +120,7 @@ func (ve *SignerListenerEndpoint) OnStart() error {
 func (ve *SignerListenerEndpoint) OnStop() {
 	if ve.cancelPingCh != nil {
 		close(ve.cancelPingCh)
+		ve.cancelPingCh = nil
 	}
 	_ = ve.Close()
 }
@@ -134,6 +135,7 @@ func (ve *SignerListenerEndpoint) Close() error {
 			ve.Logger.Error("Closing connection", "err", err)
 			return err
 		}
+		ve.conn = nil
 	}
 
 	if ve.listener != nil {
@@ -186,7 +188,7 @@ func (ve *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error)
 	const maxRemoteSignerMsgSize = 1024 * 10
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(ve.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
+		err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
 	}
 
 	return
@@ -200,7 +202,7 @@ func (ve *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) 
 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ve.conn, msg)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
+		err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
 	}
 
 	return
@@ -222,7 +224,7 @@ func (ve *SignerListenerEndpoint) connect() (closed bool, err error) {
 	}
 
 	// wait for a new conn
-	ve.conn, err = ve.acceptConnection()
+	ve.conn, err = ve.listener.Accept()
 	if err != nil {
 		return false, err
 	}
@@ -241,18 +243,4 @@ func (ve *SignerListenerEndpoint) connect() (closed bool, err error) {
 		return false, err
 	}
 	return false, nil
-}
-
-// acceptConnection attempts to accept a connection
-// it will timeout after the listener's timeoutAccept
-// TODO: There is no reason for this separate accept
-func (ve *SignerListenerEndpoint) acceptConnection() (net.Conn, error) {
-	conn, err := ve.listener.Accept()
-	if err != nil {
-		if !ve.IsRunning() {
-			return nil, nil // Ignore error from listener closing.
-		}
-		return nil, err
-	}
-	return conn, nil
 }

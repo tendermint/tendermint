@@ -41,6 +41,6 @@ func TestIsConnTimeoutForWrappedConnTimeouts(t *testing.T) {
 	dialer := DialTCPFn(testFreeTCPAddr(t), time.Millisecond, ed25519.GenPrivKey())
 	_, err := dialer()
 	assert.Error(t, err)
-	err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
+	err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
 	assert.True(t, IsConnTimeout(err))
 }

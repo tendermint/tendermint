@@ -7,7 +7,8 @@ import (
 // Socket errors.
 var (
 	ErrUnexpectedResponse = fmt.Errorf("received unexpected response")
-	ErrConnTimeout        = fmt.Errorf("remote signer timed out")
+	ErrListenerTimeout    = fmt.Errorf("signer listening endpoint timed out")
+	ErrDialerTimeout      = fmt.Errorf("signer dialer endpoint timed out")
 )
 
 // RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.

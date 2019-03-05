@@ -49,7 +49,7 @@ var _ error = (*TestHarnessError)(nil)
 // with this version of Tendermint.
 type TestHarness struct {
 	addr             string
-	spv              *privval.SignerRemote
+	spv              *privval.SignerClient
 	fpv              *privval.FilePV
 	chainID          string
 	acceptRetries    int

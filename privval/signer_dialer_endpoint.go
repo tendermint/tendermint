@@ -111,7 +111,7 @@ func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	const maxRemoteSignerMsgSize = 1024 * 10
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(ss.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
+		err = cmn.ErrorWrap(ErrDialerTimeout, err.Error())
 	}
 
 	return
@@ -123,7 +123,7 @@ func (ss *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, msg)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
+		err = cmn.ErrorWrap(ErrDialerTimeout, err.Error())
 	}
 
 	// TODO: Probably can assert that is a response type and check for error here
@@ -145,6 +145,7 @@ func (ss *SignerDialerEndpoint) handleConnection(conn net.Conn) {
 			return
 		}
 
+		// TODO: As soon as it connects, most likely it will timeout
 		req, err := ss.readMessage()
 		if err != nil {
 			if err != io.EOF {

@@ -931,7 +931,7 @@ func createAndStartPrivValidatorSocketClient(listenAddr string, logger log.Logge
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 
-	pvsc, err := privval.NewSignerRemote(pve)
+	pvsc, err := privval.NewSignerClient(pve)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}
