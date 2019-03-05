@@ -30,6 +30,15 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 - [libs/common] \#3238 exit with zero (0) code upon receiving SIGTERM/SIGINT
+- [libs/db] \#3378 CLevelDB#Stats now returns the following properties:
+  - leveldb.num-files-at-level{n}
+  - leveldb.stats
+  - leveldb.sstables
+  - leveldb.blockpool
+  - leveldb.cachedblock
+  - leveldb.openedtables
+  - leveldb.alivesnaps
+  - leveldb.aliveiters
 
 ### BUG FIXES:
 
