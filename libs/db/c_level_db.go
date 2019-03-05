@@ -128,7 +128,7 @@ func (db *CLevelDB) Print() {
 
 // Implements DB.
 func (db *CLevelDB) Stats() map[string]string {
-	const keys = []string{
+	keys := []string{
 		"leveldb.aliveiters",
 		"leveldb.alivesnaps",
 		"leveldb.blockpool",
