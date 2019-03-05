@@ -93,9 +93,9 @@ import (
 func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
 	addr := ctx.RemoteAddr()
 
-	if eventBus.NumClients() > config.MaxSubscriptionClients {
+	if eventBus.NumClients() >= config.MaxSubscriptionClients {
 		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
-	} else if eventBus.NumClientSubscriptions(addr) > config.MaxSubscriptionsPerClient {
+	} else if eventBus.NumClientSubscriptions(addr) >= config.MaxSubscriptionsPerClient {
 		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", config.MaxSubscriptionsPerClient)
 	}
 
@@ -127,10 +127,16 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 			case <-sub.Cancelled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
 					// should not happen
+					var reason string
+					if sub.Err() == nil {
+						reason = "Tendermint exited"
+					} else {
+						reason = sub.Err().Error()
+					}
 					ctx.WSConn.TryWriteRPCResponse(
 						rpctypes.RPCServerError(rpctypes.JSONRPCStringID(
 							fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
-							fmt.Errorf("subscription was cancelled (reason: %v)", sub.Err()),
+							fmt.Errorf("subscription was cancelled (reason: %s)", reason),
 						))
 				}
 				return

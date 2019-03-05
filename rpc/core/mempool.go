@@ -128,6 +128,11 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 
 // Returns with the responses from CheckTx and DeliverTx.
 //
+// IMPORTANT: use only for testing and development. In production, use
+// BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
+// result using JSONRPC via a websocket. See
+// https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+//
 // CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
 // waiting for tx to commit.
 //
@@ -185,9 +190,9 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	subscriber := ctx.RemoteAddr()
 
-	if eventBus.NumClients() > config.MaxSubscriptionClients {
+	if eventBus.NumClients() >= config.MaxSubscriptionClients {
 		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
-	} else if eventBus.NumClientSubscriptions(subscriber) > config.MaxSubscriptionsPerClient {
+	} else if eventBus.NumClientSubscriptions(subscriber) >= config.MaxSubscriptionsPerClient {
 		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", config.MaxSubscriptionsPerClient)
 	}
 
@@ -233,7 +238,13 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 			Height:    deliverTxRes.Height,
 		}, nil
 	case <-deliverTxSub.Cancelled():
-		err = errors.New("deliverTxSub was cancelled. Did the Tendermint stop?")
+		var reason string
+		if deliverTxSub.Err() == nil {
+			reason = "Tendermint exited"
+		} else {
+			reason = deliverTxSub.Err().Error()
+		}
+		err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,

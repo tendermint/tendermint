@@ -112,6 +112,8 @@ unsafe = false
 max_open_connections = 900
 
 # Maximum number of unique clientIDs that can /subscribe
+# If you're using /broadcast_tx_commit, set to the estimated maximum number
+# of broadcast_tx_commit calls per block.
 max_subscription_clients = 100
 
 # Maximum number of unique queries a given client can /subscribe to

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
@@ -281,7 +283,8 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 // OnStart implements cmn.Service by starting WSClient and event loop.
 func (w *WSEvents) OnStart() error {
 	w.ws = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
-		w.redoSubscriptions()
+		// resubscribe immediately
+		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
 	w.ws.SetCodec(w.cdc)
 
@@ -358,22 +361,21 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 
 // After being reconnected, it is necessary to redo subscription to server
 // otherwise no data will be automatically received.
-func (w *WSEvents) redoSubscriptions() {
-	const timeout = 5 * time.Second
+func (w *WSEvents) redoSubscriptionsAfter(d time.Duration) {
+	time.Sleep(d)
+
 	for q := range w.subscriptions {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		_ = w.ws.Subscribe(ctx, q)
-		// FIXME: err is either ErrAlreadySubscribed or max client (subscriptions per
-		// client) reached.
-		// We can ignore ErrAlreadySubscribed, but need to retry in the second case.
-		cancel()
+		err := w.ws.Subscribe(context.Background(), q)
+		if err != nil {
+			w.Logger.Error("Failed to resubscribe", "err", err)
+		}
 	}
 }
 
-// eventListener is an infinite loop pulling all websocket events
-// and pushing them to the EventSwitch.
-//
-// the goroutine only stops by closing quit
+func isErrAlreadySubscribed(err error) bool {
+	return strings.Contains(err.Error(), tmpubsub.ErrAlreadySubscribed.Error())
+}
+
 func (w *WSEvents) eventListener() {
 	for {
 		select {
@@ -384,9 +386,15 @@ func (w *WSEvents) eventListener() {
 
 			if resp.Error != nil {
 				w.Logger.Error("WS error", "err", resp.Error.Error())
-				// we don't know which subscription failed, so redo all of them
-				// ErrAlreadySubscribed can be ignored
-				w.redoSubscriptions()
+				// Error can be ErrAlreadySubscribed or max client (subscriptions per
+				// client) reached or Tendermint exited.
+				// We can ignore ErrAlreadySubscribed, but need to retry in other
+				// cases.
+				if !isErrAlreadySubscribed(resp.Error) {
+					// Resubscribe after 1 second to give Tendermint time to restart (if
+					// crashed).
+					w.redoSubscriptionsAfter(1 * time.Second)
+				}
 				continue
 			}
 

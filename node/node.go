@@ -26,6 +26,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -680,7 +681,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec,
 			rpcserver.OnDisconnect(func(remoteAddr string) {
 				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
-				if err != nil {
+				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
 					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}
 			}))
