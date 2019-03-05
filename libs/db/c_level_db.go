@@ -129,7 +129,16 @@ func (db *CLevelDB) Print() {
 // Implements DB.
 func (db *CLevelDB) Stats() map[string]string {
 	// TODO: Find the available properties for the C LevelDB implementation
-	keys := []string{}
+	keys := []string{
+		"leveldb.num-files-at-level{n}",
+		"leveldb.stats",
+		"leveldb.sstables",
+		"leveldb.blockpool",
+		"leveldb.cachedblock",
+		"leveldb.openedtables",
+		"leveldb.alivesnaps",
+		"leveldb.aliveiters",
+	}
 
 	stats := make(map[string]string)
 	for _, key := range keys {
