@@ -16,6 +16,8 @@ const (
 	// MaxStateSizeBytes is the maximum permitted size of the blocks.
 	// TODO: reduce this by segmentation
 	MaxStateSizeBytes = 1048576000 // 1000MB
+
+	MonitorWindowInSeconds = 40
 )
 
 // ConsensusParams contains consensus critical parameters that determine the

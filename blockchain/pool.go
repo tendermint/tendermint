@@ -66,6 +66,7 @@ type BlockPool struct {
 	mtx sync.Mutex
 	// block requests
 	requesters map[int64]*bpRequester
+	initHeight int64
 	height     int64 // the lowest key in requesters.
 	// peers
 	peers         map[p2p.ID]*bpPeer
@@ -83,6 +84,7 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 		peers: make(map[p2p.ID]*bpPeer),
 
 		requesters: make(map[int64]*bpRequester),
+		initHeight: start,
 		height:     start,
 		numPending: 0,
 
@@ -412,7 +414,7 @@ func (peer *bpPeer) setLogger(l log.Logger) {
 }
 
 func (peer *bpPeer) resetMonitor() {
-	peer.recvMonitor = flow.New(time.Second, time.Second*40)
+	peer.recvMonitor = flow.New(time.Second, time.Second * types.MonitorWindowInSeconds)
 	initialValue := float64(minRecvRate) * math.E
 	peer.recvMonitor.SetREMA(initialValue)
 }

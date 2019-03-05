@@ -351,17 +351,20 @@ func NewNode(config *cfg.Config,
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 
-	stateSync := config.StateSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
 		if bytes.Equal(privValidator.GetPubKey().Address(), addr) {
-			stateSync = false
+			config.StateSync = false
 		}
 	}
 
-	// TODO: revisit - seems doesn't need Copy state
-	stateReactor := bc.NewStateReactor(state, stateDB, proxyApp.State(), stateSync)
-	stateReactor.SetLogger(logger.With("module", "state"))
+	var stateReactor *bc.StateReactor
+	if config.StateSyncReactor {
+		// !!!This method may change config.StateSync!!!
+		// so the later reactor need read config.StateSync rather than a copied variable
+		stateReactor = bc.NewStateReactor(stateDB, proxyApp.State(), config)
+		stateReactor.SetLogger(logger.With("module", "statesync"))
+	}
 
 	blockExecLogger := logger.With("module", "exec")
 	// make block executor for consensus and blockchain reactors to execute blocks
@@ -375,7 +378,7 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync && !stateSync)
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync && !config.StateSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make ConsensusReactor
@@ -392,7 +395,7 @@ func NewNode(config *cfg.Config,
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync || stateSync, cs.ReactorMetrics(csMetrics))
+	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync || config.StateSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 
 	// services which will be publishing and/or subscribing for messages (events)
@@ -478,7 +481,9 @@ func NewNode(config *cfg.Config,
 	)
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
-	sw.AddReactor("STATE", stateReactor)
+	if config.StateSyncReactor {
+		sw.AddReactor("STATE", stateReactor)
+	}
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)

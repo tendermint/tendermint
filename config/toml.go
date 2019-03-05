@@ -79,6 +79,9 @@ moniker = "{{ .BaseConfig.Moniker }}"
 fast_sync = {{ .BaseConfig.FastSync }}
 
 
+# As state sync is an experimental feature, this switch can totally disable it on core network nodes (validator, witness)
+state_sync_reactor = {{ .BaseConfig.StateSyncReactor }}
+
 # If this node is many days behind the tip of the chain, StateSync
 # allows them to catchup quickly by downloading app state (without historical blocks)
 # in parallel and start syncing block afterwards
@@ -123,6 +126,9 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # If true, query the ABCI app on connecting to a new peer
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
+
+# If false, will not check appHash when apply block
+with_app_stat = {{ .BaseConfig.WithAppStat }}
 
 ##### advanced configuration options #####
 

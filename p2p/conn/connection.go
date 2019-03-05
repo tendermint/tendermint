@@ -8,6 +8,7 @@ import (
 	"math"
 	"net"
 	"reflect"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -283,6 +284,7 @@ func (c *MConnection) flush() {
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
 		err := cmn.ErrorWrap(r, "recovered panic in MConnection")
+		c.Logger.Error("MConnection flush failed", "err", debug.Stack())
 		c.stopForError(err)
 	}
 }

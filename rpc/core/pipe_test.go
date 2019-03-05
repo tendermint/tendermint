@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestPaginationPage(t *testing.T) {
@@ -47,6 +49,8 @@ func TestPaginationPage(t *testing.T) {
 }
 
 func TestPaginationPerPage(t *testing.T) {
+	logger = log.NewNopLogger()
+
 	cases := []struct {
 		totalCount int
 		perPage    int
