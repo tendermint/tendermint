@@ -49,7 +49,7 @@ For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.
 
 Requirement|Notes
 ---|---
-Go version | Go1.12.0 or higher
+Go version | Go1.11.4 or higher
 
 ## Documentation
 
