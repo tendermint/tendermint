@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -19,7 +20,7 @@ func SignerServiceEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceE
 	return func(ss *SignerDialerEndpoint) { ss.timeoutReadWrite = timeout }
 }
 
-// SignerServiceEndpointConnRetries sets the amount of attempted retries to connect.
+// SignerServiceEndpointConnRetries sets the amount of attempted retries to tryConnect.
 func SignerServiceEndpointConnRetries(retries int) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.connRetries = retries }
 }
@@ -83,6 +84,7 @@ func (ss *SignerDialerEndpoint) OnStop() {
 
 	if err := ss.conn.Close(); err != nil {
 		ss.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
+		ss.conn = nil
 	}
 }
 
@@ -105,8 +107,19 @@ func (ss *SignerDialerEndpoint) connect() (net.Conn, error) {
 }
 
 func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
-	// TODO: Avoid duplication
-	// TODO: Check connection status
+	// TODO: Avoid duplication. Unify endpoints
+
+	if ss.conn == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+
+	// Reset read deadline
+	deadline := time.Now().Add(ss.timeoutReadWrite)
+	ss.Logger.Debug("SignerDialerEndpoint: readMessage", "deadline", deadline)
+	err = ss.conn.SetReadDeadline(deadline)
+	if err != nil {
+		return
+	}
 
 	const maxRemoteSignerMsgSize = 1024 * 10
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(ss.conn, &msg, maxRemoteSignerMsgSize)
@@ -118,16 +131,24 @@ func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 }
 
 func (ss *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
-	// TODO: Avoid duplication
-	// TODO: Check connection status
+	// TODO: Avoid duplication. Unify endpoints
+
+	if ss.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+
+	// Reset read deadline
+	deadline := time.Now().Add(ss.timeoutReadWrite)
+	ss.Logger.Debug("SignerDialerEndpoint: readMessage", "deadline", deadline)
+	err = ss.conn.SetWriteDeadline(deadline)
+	if err != nil {
+		return
+	}
 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, msg)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrDialerTimeout, err.Error())
 	}
-
-	// TODO: Probably can assert that is a response type and check for error here
-	// Check the impact of KMS/Rust
 
 	return
 }
@@ -138,18 +159,12 @@ func (ss *SignerDialerEndpoint) handleConnection(conn net.Conn) {
 			return // Ignore error from listener closing.
 		}
 
-		// Reset the connection deadline
-		deadline := time.Now().Add(ss.timeoutReadWrite)
-		err := conn.SetDeadline(deadline)
-		if err != nil {
-			return
-		}
+		ss.Logger.Debug("SignerDialerEndpoint: connected", "timeout", ss.timeoutReadWrite)
 
-		// TODO: As soon as it connects, most likely it will timeout
 		req, err := ss.readMessage()
 		if err != nil {
 			if err != io.EOF {
-				ss.Logger.Error("handleConnection readMessage", "err", err)
+				ss.Logger.Error("SignerDialerEndpoint handleConnection", "err", err)
 			}
 			return
 		}

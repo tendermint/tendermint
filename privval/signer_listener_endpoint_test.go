@@ -31,7 +31,7 @@ type dialerTestCase struct {
 // TestSignerRemoteRetryTCPOnly will test connection retry attempts over TCP. We
 // don't need this for Unix sockets because the OS instantly knows the state of
 // both ends of the socket connection. This basically causes the
-// SignerDialerEndpoint.dialer() call inside SignerDialerEndpoint.connect() to return
+// SignerDialerEndpoint.dialer() call inside SignerDialerEndpoint.tryConnect() to return
 // successfully immediately, putting an instant stop to any retry attempts.
 func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	var (

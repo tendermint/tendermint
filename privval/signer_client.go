@@ -2,6 +2,7 @@ package privval
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto"
@@ -41,28 +42,41 @@ func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
 }
 
 // Close calls Close on the underlying net.Conn.
-func (sr *SignerClient) Close() error {
-	return sr.endpoint.Close()
+func (sc *SignerClient) Close() error {
+	return sc.endpoint.Close()
+}
+
+// Close calls Close on the underlying net.Conn.
+func (sc *SignerClient) IsConnected() bool {
+	return sc.endpoint.IsConnected()
+}
+
+// Close calls Close on the underlying net.Conn.
+func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
+	if sc.endpoint == nil {
+		return fmt.Errorf("endpoint has not been defined")
+	}
+	return sc.endpoint.WaitForConnection(maxWait)
 }
 
 //--------------------------------------------------------
 // Implement PrivValidator
 
 // GetPubKey implements PrivValidator.
-func (sr *SignerClient) GetPubKey() crypto.PubKey {
-	response, err := sr.endpoint.SendRequest(&PubKeyRequest{})
+func (sc *SignerClient) GetPubKey() crypto.PubKey {
+	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
 		return nil
 	}
 
 	pubKeyResp, ok := response.(*PubKeyResponse)
 	if !ok {
-		sr.endpoint.Logger.Error("response is not PubKeyResponse")
+		sc.endpoint.Logger.Error("response is not PubKeyResponse")
 		return nil
 	}
 
 	if pubKeyResp.Error != nil {
-		sr.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
+		sc.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
 		return nil
 	}
 
@@ -70,8 +84,8 @@ func (sr *SignerClient) GetPubKey() crypto.PubKey {
 }
 
 // SignVote implements PrivValidator.
-func (sr *SignerClient) SignVote(chainID string, vote *types.Vote) error {
-	response, err := sr.endpoint.SendRequest(&SignVoteRequest{Vote: vote})
+func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
+	response, err := sc.endpoint.SendRequest(&SignVoteRequest{Vote: vote})
 	if err != nil {
 		return err
 	}
@@ -90,8 +104,8 @@ func (sr *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 }
 
 // SignProposal implements PrivValidator.
-func (sr *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
-	response, err := sr.endpoint.SendRequest(&SignProposalRequest{Proposal: proposal})
+func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
+	response, err := sc.endpoint.SendRequest(&SignProposalRequest{Proposal: proposal})
 	if err != nil {
 		return err
 	}
@@ -108,11 +122,7 @@ func (sr *SignerClient) SignProposal(chainID string, proposal *types.Proposal) e
 	return nil
 }
 
-func handleRequest(
-	req RemoteSignerMsg,
-	chainID string,
-	privVal types.PrivValidator) (RemoteSignerMsg, error) {
-
+func handleRequest(req RemoteSignerMsg, chainID string, privVal types.PrivValidator) (RemoteSignerMsg, error) {
 	var res RemoteSignerMsg
 	var err error
 

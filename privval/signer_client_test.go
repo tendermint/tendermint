@@ -48,9 +48,6 @@ func TestSignerClose(t *testing.T) {
 			err := tc.signer.Close()
 			assert.NoError(t, err)
 
-			err = tc.signer.endpoint.Stop()
-			assert.NoError(t, err)
-
 			err = tc.signerService.Stop()
 			assert.NoError(t, err)
 		}()
@@ -60,18 +57,18 @@ func TestSignerClose(t *testing.T) {
 func TestSignerGetPubKey(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		func() {
-			defer tc.signer.Close()
 			defer tc.signerService.OnStop()
+			defer tc.signer.Close()
 
 			pubKey := tc.signer.GetPubKey()
 			expectedPubKey := tc.mockPV.GetPubKey()
 
 			assert.Equal(t, expectedPubKey, pubKey)
 
-			//addr := tc.signer.GetPubKey().Address()
-			//expectedAddr := tc.mockPV.GetPubKey().Address()
-			//
-			//assert.Equal(t, expectedAddr, addr)
+			addr := tc.signer.GetPubKey().Address()
+			expectedAddr := tc.mockPV.GetPubKey().Address()
+
+			assert.Equal(t, expectedAddr, addr)
 		}()
 	}
 }
@@ -83,8 +80,8 @@ func TestSignerProposal(t *testing.T) {
 			want := &types.Proposal{Timestamp: ts}
 			have := &types.Proposal{Timestamp: ts}
 
-			defer tc.signer.Close()
 			defer tc.signerService.OnStop()
+			defer tc.signer.Close()
 
 			require.NoError(t, tc.mockPV.SignProposal(tc.chainID, want))
 			require.NoError(t, tc.signer.SignProposal(tc.chainID, have))
@@ -101,8 +98,8 @@ func TestSignerVote(t *testing.T) {
 			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signer.Close()
 			defer tc.signerService.OnStop()
+			defer tc.signer.Close()
 
 			require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
 			require.NoError(t, tc.signer.SignVote(tc.chainID, have))
@@ -119,8 +116,8 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signer.Close()
 			defer tc.signerService.OnStop()
+			defer tc.signer.Close()
 
 			time.Sleep(testTimeoutReadWrite2o3)
 
@@ -148,8 +145,8 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signer.Close()
 			defer tc.signerService.OnStop()
+			defer tc.signer.Close()
 
 			time.Sleep(testTimeoutReadWrite * 2)
 
@@ -170,8 +167,8 @@ func TestSignerSignProposalErrors(t *testing.T) {
 			tc.signerService.privVal = types.NewErroringMockPV()
 			tc.mockPV = types.NewErroringMockPV()
 
-			defer tc.signer.Close()
 			defer tc.signerService.OnStop()
+			defer tc.signer.Close()
 
 			//ts := time.Now()
 			//proposal := &types.Proposal{Timestamp: ts}
@@ -197,8 +194,8 @@ func TestSignerSignVoteErrors(t *testing.T) {
 			tc.signerService.privVal = types.NewErroringMockPV()
 			tc.mockPV = types.NewErroringMockPV()
 
-			defer tc.signer.Close()
 			defer tc.signerService.OnStop()
+			defer tc.signer.Close()
 
 			err := tc.signer.SignVote(tc.chainID, vote)
 			require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
