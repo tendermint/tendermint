@@ -497,6 +497,13 @@ func (sw *Switch) acceptRoutine() {
 				)
 
 				continue
+			case ErrFilterTimeout:
+				sw.Logger.Error(
+					"Peer filter timed out",
+					"err", err,
+				)
+
+				continue
 			case *ErrTransportClosed:
 				sw.Logger.Error(
 					"Stopped accept routine, as transport is closed",
