@@ -28,7 +28,8 @@ There are other implementations when calling the tendermint node in-process
 You can subscribe for any event published by Tendermint using Subscribe method.
 Note delivery is best-effort. If you don't read events fast enough or network
 is slow, Tendermint might cancel the subscription. The client will attempt to
-resubscribe (you don't need to do anything).
+resubscribe (you don't need to do anything). It will keep trying every second
+indefinitely until successful.
 */
 type HTTP struct {
 	remote string

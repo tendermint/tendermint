@@ -126,7 +126,6 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 					))
 			case <-sub.Cancelled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
-					// should not happen
 					var reason string
 					if sub.Err() == nil {
 						reason = "Tendermint exited"

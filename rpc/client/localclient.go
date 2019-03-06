@@ -30,6 +30,12 @@ are compiled in process.
 
 For real clients, you probably want to use client.HTTP.  For more
 powerful control during testing, you probably want the "client/mock" package.
+
+You can subscribe for any event published by Tendermint using Subscribe method.
+Note delivery is best-effort. If you don't read events fast enough, Tendermint
+might cancel the subscription. The client will attempt to resubscribe (you
+don't need to do anything). It will keep trying indefinitely with exponential
+backoff (10ms -> 20ms -> 40ms) until successful.
 */
 type Local struct {
 	*types.EventBus
@@ -206,7 +212,7 @@ func (c *Local) eventsRoutine(sub types.Subscription, subscriber string, q tmpub
 	}
 }
 
-// try to resubscribe with exponential timeout
+// Try to resubscribe with exponential backoff.
 func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscription {
 	attempts := 0
 	for {
@@ -220,7 +226,7 @@ func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscript
 		}
 
 		attempts++
-		time.Sleep((10 << uint(attempts)) * time.Millisecond)
+		time.Sleep((10 << uint(attempts)) * time.Millisecond) // 10ms -> 20ms -> 40ms
 	}
 }
 

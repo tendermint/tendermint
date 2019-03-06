@@ -154,7 +154,7 @@ func (w Wrapper) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 }
 
 // SubscribeWS subscribes for events using the given query and remote address as
-// a subscriber, but does not verify responses (FIXME)!
+// a subscriber, but does not verify responses (UNSAFE)!
 func (w Wrapper) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
 	out, err := w.Client.Subscribe(context.Background(), ctx.RemoteAddr(), query)
 	if err != nil {
@@ -165,6 +165,8 @@ func (w Wrapper) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 		for {
 			select {
 			case resultEvent := <-out:
+				// XXX(melekes) We should have a switch here that performs a validation
+				// depending on the event's type.
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						ctx.WSConn.Codec(),
