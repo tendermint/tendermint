@@ -123,11 +123,11 @@ func TestDBIteratorNonemptyBeginAfter(t *testing.T) {
 
 func TestDBBatchWrite(t *testing.T) {
 	testCases := []struct {
-		modify func(batch ddb.Batch)
+		modify func(batch Batch)
 		calls  map[string]int
 	}{
 		0: {
-			func(batch ddb.Batch) {
+			func(batch Batch) {
 				batch.Set(bz("1"), bz("1"))
 				batch.Set(bz("2"), bz("2"))
 				batch.Delete(bz("3"))
@@ -140,7 +140,7 @@ func TestDBBatchWrite(t *testing.T) {
 			},
 		},
 		1: {
-			func(batch ddb.Batch) {
+			func(batch Batch) {
 				batch.Set(bz("1"), bz("1"))
 				batch.Set(bz("2"), bz("2"))
 				batch.Set(bz("4"), bz("4"))
@@ -153,7 +153,7 @@ func TestDBBatchWrite(t *testing.T) {
 			},
 		},
 		2: {
-			func(batch ddb.Batch) {
+			func(batch Batch) {
 				batch.Set(bz("1"), bz("1"))
 				batch.Set(bz("2"), bz("2"))
 				batch.Delete(bz("3"))
@@ -166,7 +166,7 @@ func TestDBBatchWrite(t *testing.T) {
 			},
 		},
 		3: {
-			func(batch ddb.Batch) {
+			func(batch Batch) {
 				batch.Set(bz("1"), bz("1"))
 				batch.Set(bz("2"), bz("2"))
 				batch.Set(bz("4"), bz("4"))
@@ -187,9 +187,9 @@ func TestDBBatchWrite(t *testing.T) {
 
 		tc.modify(batch)
 
-		for call, got := range mdb.calls {
-			exp := tc.calls[call]
-			assert.Equal(t, exp, got, "#%v", i)
+		for call, exp := range tc.calls {
+			got := mdb.calls[call]
+			assert.Equal(t, exp, got, "#%v - key: %s", i, call)
 		}
 	}
 }
