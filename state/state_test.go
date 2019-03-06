@@ -668,6 +668,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 		// no changes in voting power (ProposerPrio += VotingPower == Voting in 1st round; than shiftByAvg == 0,
 		// than -Total == -Voting)
 		// -> no change in ProposerPrio (stays zero):
@@ -692,6 +693,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	block := makeBlock(oldState, oldState.LastBlockHeight+1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 	updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
+	require.NoError(t, err)
 
 	lastState := updatedState
 	for i := 0; i < 200; i++ {

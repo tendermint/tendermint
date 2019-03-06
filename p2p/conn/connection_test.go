@@ -495,8 +495,7 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	defer mconnServer.Stop()
 
 	// send msg with unknown msg type
-	err := error(nil)
-	err = amino.EncodeUvarint(mconnClient.conn, 4)
+	err := amino.EncodeUvarint(mconnClient.conn, 4)
 	assert.Nil(t, err)
 	_, err = mconnClient.conn.Write([]byte{0xFF, 0xFF, 0xFF, 0xFF})
 	assert.Nil(t, err)

@@ -44,7 +44,7 @@ func TestApplyBlock(t *testing.T) {
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 	//nolint:ineffassign
-	state, err = blockExec.ApplyBlock(state, blockID, block) 
+	state, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
 
 	// TODO check state and mempool
