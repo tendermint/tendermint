@@ -11,7 +11,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -80,9 +79,8 @@ func TestBlockEvents(t *testing.T) {
 	}
 }
 
-func TestTxEventsSentWithBroadcastTxAsync(t *testing.T)  { testTxEventsSent(t, "async") }
-func TestTxEventsSentWithBroadcastTxSync(t *testing.T)   { testTxEventsSent(t, "sync") }
-func TestTxEventsSentWithBroadcastTxCommit(t *testing.T) { testTxEventsSent(t, "commit") }
+func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) { testTxEventsSent(t, "async") }
+func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "sync") }
 
 func testTxEventsSent(t *testing.T, broadcastMethod string) {
 	for i, c := range GetClients() {
@@ -102,21 +100,18 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 			evtTyp := types.EventTx
 
 			// send
-			var txres *ctypes.ResultBroadcastTx
-			var err error
 			switch broadcastMethod {
 			case "async":
-				txres, err = c.BroadcastTxAsync(tx)
+				txres, err := c.BroadcastTxAsync(tx)
+				require.NoError(t, err)
+				require.Equal(t, txres.Code, abci.CodeTypeOK)
 			case "sync":
-				txres, err = c.BroadcastTxSync(tx)
-			case "commit":
-				txres, err = c.BroadcastTxCommit(tx)
+				txres, err := c.BroadcastTxSync(tx)
+				require.NoError(t, err)
+				require.Equal(t, txres.Code, abci.CodeTypeOK)
 			default:
 				panic(fmt.Sprintf("Unknown broadcastMethod %s", broadcastMethod))
 			}
-
-			require.Nil(t, err, "%+v", err)
-			require.Equal(t, txres.Code, abci.CodeTypeOK) // FIXME
 
 			// and wait for confirmation
 			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
