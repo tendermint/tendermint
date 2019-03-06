@@ -255,6 +255,7 @@ func TestConcurrencyInquirerVerify(t *testing.T) {
 	cert.SetLogger(log.TestingLogger())
 
 	err = source.SaveFullCommit(fcz[7])
+	require.Nil(err, "%+v", err)
 	err = source.SaveFullCommit(fcz[8])
 	require.Nil(err, "%+v", err)
 	sh := fcz[8].SignedHeader

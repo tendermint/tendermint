@@ -71,7 +71,7 @@ import (
 // }
 // ```
 func Status() (*ctypes.ResultStatus, error) {
-	var latestHeight int64 = -1
+	var latestHeight int64
 	if consensusReactor.FastSync() {
 		latestHeight = blockStore.Height()
 	} else {

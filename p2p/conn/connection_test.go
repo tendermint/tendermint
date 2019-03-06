@@ -223,7 +223,10 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping (one byte)
-		var packet, err = Packet(nil), error(nil)
+		var (
+			packet Packet
+			err    error
+		)
 		_, err = cdc.UnmarshalBinaryLengthPrefixedReader(server, &packet, maxPingPongPacketSize)
 		require.Nil(t, err)
 		serverGotPing <- struct{}{}

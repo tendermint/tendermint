@@ -93,6 +93,7 @@ func _TestAppProofs(t *testing.T) {
 	// verify a query before the tx block has no data (and valid non-exist proof)
 	bs, height, proof, err := GetWithProof(prt, k, brh-1, cl, cert)
 	require.NoError(err, "%#v", err)
+	require.Equal(height, brh-1)
 	// require.NotNil(proof)
 	// TODO: Ensure that *some* keys will be there, ensuring that proof is nil,
 	// (currently there's a race condition)
