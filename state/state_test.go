@@ -708,6 +708,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 		updatedStateInner, err := updateState(lastState, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 		lastState = updatedStateInner
 	}
 	// set state to last state of above iteration
@@ -737,6 +738,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		block := makeBlock(oldState, oldState.LastBlockHeight+1)
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 		state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 	}
 	require.Equal(t, 10+2, len(state.NextValidators.Validators))
 
@@ -768,6 +770,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		block = makeBlock(curState, curState.LastBlockHeight+1)
 		blockID = types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 		curState, err = updateState(curState, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 		if !bytes.Equal(curState.Validators.Proposer.Address, curState.NextValidators.Proposer.Address) {
 			isProposerUnchanged = false
 		}
@@ -792,6 +795,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err = updateState(updatedState, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 		if i > numVals { // expect proposers to cycle through after the first iteration (of numVals blocks):
 			if proposers[i%numVals] == nil {
 				proposers[i%numVals] = updatedState.NextValidators.Proposer
