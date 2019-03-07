@@ -75,6 +75,10 @@
   name = "github.com/prometheus/client_golang"
   version = "^0.9.1"
 
+[[constraint]]
+  name = "github.com/jmhodges/levigo"
+  version = "^1.0.0"
+
 ###################################
 ## Some repos dont have releases.
 ## Pin to revision
@@ -86,10 +90,6 @@
 [[constraint]]
   name = "golang.org/x/crypto"
   revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
-
-[[override]]
-  name = "github.com/jmhodges/levigo"
-  revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
 
 # last revision used by go-crypto
 [[constraint]]
