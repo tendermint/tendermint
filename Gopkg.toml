@@ -75,12 +75,15 @@
   name = "github.com/prometheus/client_golang"
   version = "^0.9.1"
 
+[[constraint]]
+  name = "github.com/jmhodges/levigo"
+  version = "^1.0.0"
+
 ###################################
 ## Repos which don't have releases.
 
 ## - github.com/btcsuite/btcd
 ## - golang.org/x/crypto
-## - github.com/jmhodges/levigo
 ## - github.com/btcsuite/btcutil
 ## - github.com/rcrowley/go-metrics
 ## - golang.org/x/net
