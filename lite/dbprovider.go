@@ -258,14 +258,15 @@ func parseKey(key []byte) (chainID string, height int64, part string, ok bool) {
 }
 
 func parseSignedHeaderKey(key []byte) (chainID string, height int64, ok bool) {
-	chainID, height, part, _ := parseKey(key)
+	var part string
+	chainID, height, part, ok = parseKey(key)
 	if part != "sh" {
 		return "", 0, false
 	}
-	return chainID, height, true
+	return
 }
 
 func parseChainKeyPrefix(key []byte) (chainID string, height int64, ok bool) {
-	chainID, height, _, _ = parseKey(key)
-	return chainID, height, true
+	chainID, height, _, ok = parseKey(key)
+	return
 }
