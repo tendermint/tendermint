@@ -175,7 +175,7 @@ The differences between RFC 6962 and the simplest form a merkle tree are that:
    The leaf nodes are `SHA256(0x00 || leaf_data)`, and inner nodes are `SHA256(0x01 || left_hash || right_hash)`.
 
 2) When the number of items isn't a power of two, the left half of the tree is as big as it could be.
-   (The smallest power of two less than the number of items) This allows new leaves to be added with less
+   (The largest power of two less than the number of items) This allows new leaves to be added with less
    recomputation. For example:
 
 ```
