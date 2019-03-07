@@ -679,7 +679,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		err = cs.setProposal(msg.Proposal)
+		_ = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		added, err = cs.addProposalBlockPart(msg, peerID)
@@ -689,7 +689,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 
 		if err != nil && msg.Round != cs.Round {
 			cs.Logger.Debug("Received block part from wrong round", "height", cs.Height, "csRound", cs.Round, "blockRound", msg.Round)
-			err = nil
+			// err = nil
 		}
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
@@ -716,10 +716,10 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	default:
 		cs.Logger.Error("Unknown msg type", reflect.TypeOf(msg))
 	}
-	if err != nil {
-		cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
-			"type", reflect.TypeOf(msg), "peer", peerID, "err", err, "msg", msg)
-	}
+	// if err != nil {
+	// 	cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
+	// 		"type", reflect.TypeOf(msg), "peer", peerID, "err", err, "msg", msg)
+	// }
 }
 
 func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
