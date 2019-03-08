@@ -5,7 +5,6 @@ linters:
   enable-all: true
   disable:
     - gocyclo
-    - golint
     - maligned
     - errcheck
     - staticcheck
