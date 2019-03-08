@@ -79,7 +79,7 @@ func waitForTxs(t *testing.T, txs types.Txs, reactors []*MempoolReactor) {
 		close(done)
 	}()
 
-	timer := time.After(TIMEOUT)
+	timer := time.After(timeout)
 	select {
 	case <-timer:
 		t.Fatal("Timed out waiting for txs")
@@ -103,8 +103,8 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 }
 
 const (
-	NumTxs  = 1000
-	TIMEOUT = 120 * time.Second // ridiculously high because CircleCI is slow
+	numTxs  = 1000
+	timeout = 120 * time.Second // ridiculously high because CircleCI is slow
 )
 
 func TestReactorBroadcastTxMessage(t *testing.T) {
@@ -124,7 +124,7 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
-	txs := checkTxs(t, reactors[0].Mempool, NumTxs)
+	txs := checkTxs(t, reactors[0].Mempool, numTxs)
 	waitForTxs(t, txs, reactors)
 }
 
