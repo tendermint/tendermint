@@ -504,7 +504,7 @@ func (sw *Switch) acceptRoutine() {
 				)
 
 				continue
-			case *ErrTransportClosed:
+			case ErrTransportClosed:
 				sw.Logger.Error(
 					"Stopped accept routine, as transport is closed",
 					"numPeers", sw.peers.Size(),
