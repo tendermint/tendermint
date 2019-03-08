@@ -127,7 +127,7 @@ type ExternalIPAddress struct {
 	IP      string
 }
 
-type UPNPService struct {
+type Service struct {
 	ServiceType string `xml:"serviceType"`
 	ControlURL  string `xml:"controlURL"`
 }
@@ -137,7 +137,7 @@ type DeviceList struct {
 }
 
 type ServiceList struct {
-	Service []UPNPService `xml:"service"`
+	Service []Service `xml:"service"`
 }
 
 type Device struct {
@@ -161,7 +161,7 @@ func getChildDevice(d *Device, deviceType string) *Device {
 	return nil
 }
 
-func getChildService(d *Device, serviceType string) *UPNPService {
+func getChildService(d *Device, serviceType string) *Service {
 	sl := d.ServiceList.Service
 	for i := 0; i < len(sl); i++ {
 		if strings.Contains(sl[i].ServiceType, serviceType) {
@@ -289,7 +289,7 @@ func soapRequest(url, function, message, domain string) (r *http.Response, err e
 }
 
 type statusInfo struct {
-	externalIpAddress string
+	externalIPAddress string
 }
 
 func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
@@ -332,9 +332,9 @@ func (n *upnpNAT) GetExternalAddress() (addr net.IP, err error) {
 	if err != nil {
 		return
 	}
-	addr = net.ParseIP(info.externalIpAddress)
+	addr = net.ParseIP(info.externalIPAddress)
 	if addr == nil {
-		err = fmt.Errorf("Failed to parse IP: %v", info.externalIpAddress)
+		err = fmt.Errorf("Failed to parse IP: %v", info.externalIPAddress)
 	}
 	return
 }

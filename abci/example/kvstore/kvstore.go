@@ -54,20 +54,20 @@ func prefixKey(key []byte) []byte {
 
 //---------------------------------------------------
 
-var _ types.Application = (*KVStoreApplication)(nil)
+var _ types.Application = (*Application)(nil)
 
-type KVStoreApplication struct {
+type Application struct {
 	types.BaseApplication
 
 	state State
 }
 
-func NewKVStoreApplication() *KVStoreApplication {
+func NewKVStoreApplication() *Application {
 	state := loadState(dbm.NewMemDB())
-	return &KVStoreApplication{state: state}
+	return &Application{state: state}
 }
 
-func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{
 		Data:       fmt.Sprintf("{\"size\":%v}", app.state.Size),
 		Version:    version.ABCIVersion,
@@ -76,7 +76,7 @@ func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.Respon
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *Application) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	var key, value []byte
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) == 2 {
@@ -85,7 +85,7 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 		key, value = tx, tx
 	}
 	app.state.db.Set(prefixKey(key), value)
-	app.state.Size += 1
+	app.state.Size++
 
 	tags := []cmn.KVPair{
 		{Key: []byte("app.creator"), Value: []byte("Cosmoshi Netowoko")},
@@ -94,41 +94,31 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
 }
 
-func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+func (app *Application) CheckTx(tx []byte) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
-func (app *KVStoreApplication) Commit() types.ResponseCommit {
+func (app *Application) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)
 	binary.PutVarint(appHash, app.state.Size)
 	app.state.AppHash = appHash
-	app.state.Height += 1
+	app.state.Height++
 	saveState(app.state)
 	return types.ResponseCommit{Data: appHash}
 }
 
-func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+	resQuery.Key = reqQuery.Data
+	value := app.state.db.Get(prefixKey(reqQuery.Data))
+	resQuery.Value = value
 	if reqQuery.Prove {
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Index = -1 // TODO make Proof return index
-		resQuery.Key = reqQuery.Data
-		resQuery.Value = value
-		if value != nil {
-			resQuery.Log = "exists"
-		} else {
-			resQuery.Log = "does not exist"
-		}
-		return
-	} else {
-		resQuery.Key = reqQuery.Data
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
-		resQuery.Value = value
-		if value != nil {
-			resQuery.Log = "exists"
-		} else {
-			resQuery.Log = "does not exist"
-		}
-		return
 	}
+	if value != nil {
+		resQuery.Log = "exists"
+	} else {
+		resQuery.Log = "does not exist"
+	}
+	return
 }

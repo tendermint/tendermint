@@ -68,6 +68,8 @@ type validatorStub struct {
 
 var testMinPower int64 = 10
 
+//nolint:golint suppress: exported func NewValidatorStub returns unexported type *consensus.validatorStub, which can be annoying to use
+//because validatorStub is used in test //FIXME
 func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
 		Index:         valIndex,

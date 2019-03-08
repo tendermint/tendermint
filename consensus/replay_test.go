@@ -88,7 +88,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *
 	}
 }
 
-func sendTxs(cs *ConsensusState, ctx context.Context) {
+func sendTxs(ctx context.Context, cs *ConsensusState) {
 	for i := 0; i < 256; i++ {
 		select {
 		case <-ctx.Done():
@@ -113,7 +113,7 @@ func TestWALCrash(t *testing.T) {
 			1},
 		{"many non-empty blocks",
 			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
-				go sendTxs(cs, ctx)
+				go sendTxs(ctx, cs)
 			},
 			3},
 	}
@@ -263,7 +263,7 @@ func (w *crashingWAL) Wait()        { w.next.Wait() }
 // Handshake Tests
 
 const (
-	NUM_BLOCKS = 6
+	NumBlocks = 6
 )
 
 var (
@@ -302,7 +302,7 @@ func TestHandshakeReplayOne(t *testing.T) {
 	for i, m := range modes {
 		config := ResetConfig(fmt.Sprintf("%s_%v", t.Name(), i))
 		defer os.RemoveAll(config.RootDir)
-		testHandshakeReplay(t, config, NUM_BLOCKS-1, m)
+		testHandshakeReplay(t, config, NumBlocks-1, m)
 	}
 }
 
@@ -311,7 +311,7 @@ func TestHandshakeReplayNone(t *testing.T) {
 	for i, m := range modes {
 		config := ResetConfig(fmt.Sprintf("%s_%v", t.Name(), i))
 		defer os.RemoveAll(config.RootDir)
-		testHandshakeReplay(t, config, NUM_BLOCKS, m)
+		testHandshakeReplay(t, config, NumBlocks, m)
 	}
 }
 
@@ -332,7 +332,7 @@ func tempWALWithData(data []byte) string {
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint) {
-	walBody, err := WALWithNBlocks(t, NUM_BLOCKS)
+	walBody, err := WALWithNBlocks(t, NumBlocks)
 	require.NoError(t, err)
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
@@ -391,8 +391,8 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		t.Fatalf("Expected app hashes to match after handshake/replay. got %X, expected %X", res.LastBlockAppHash, latestAppHash)
 	}
 
-	expectedBlocksToSync := NUM_BLOCKS - nBlocks
-	if nBlocks == NUM_BLOCKS && mode > 0 {
+	expectedBlocksToSync := NumBlocks - nBlocks
+	if nBlocks == NumBlocks && mode > 0 {
 		expectedBlocksToSync++
 	} else if nBlocks > 0 && mode == 1 {
 		expectedBlocksToSync++
@@ -499,6 +499,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		return nil, nil, err
 	}
 	if !found {
+		//nolint:golint WAL is capitalized ...
 		return nil, nil, fmt.Errorf("WAL does not contain height %d.", 1)
 	}
 	defer gr.Close() // nolint: errcheck

@@ -21,7 +21,7 @@ type localClient struct {
 	Callback
 }
 
-func NewLocalClient(mtx *sync.Mutex, app types.Application) *localClient {
+func NewLocalClient(mtx *sync.Mutex, app types.Application) Client {
 	if mtx == nil {
 		mtx = new(sync.Mutex)
 	}

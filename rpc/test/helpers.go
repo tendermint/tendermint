@@ -31,12 +31,11 @@ func waitForRPC() {
 	ctypes.RegisterAmino(client.Codec())
 	result := new(ctypes.ResultStatus)
 	for {
-		_, err := client.Call("status", map[string]interface{}{}, result)
-		if err == nil {
-			return
-		} else {
+		if _, err := client.Call("status", map[string]interface{}{}, result); err != nil {
 			fmt.Println("error", err)
 			time.Sleep(time.Millisecond)
+		} else {
+			return
 		}
 	}
 }

@@ -322,14 +322,12 @@ func persistentArgs(line []byte) []string {
 func compose(fs []func() error) error {
 	if len(fs) == 0 {
 		return nil
-	} else {
-		err := fs[0]()
-		if err == nil {
-			return compose(fs[1:])
-		} else {
-			return err
-		}
 	}
+	if err := fs[0](); err != nil {
+		return err
+	}
+
+	return compose(fs[1:])
 }
 
 func cmdTest(cmd *cobra.Command, args []string) error {
@@ -419,7 +417,7 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 			}
 
 			// otherwise, we need to skip the next one too
-			i += 1
+			i++
 			continue
 		}
 

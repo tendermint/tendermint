@@ -913,8 +913,8 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	cs.wal.FlushAndSync()
 
 	// Make proposal
-	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
+	propBlockID := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 
 		// send proposal and block parts on internal msg queue

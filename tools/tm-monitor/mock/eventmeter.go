@@ -42,12 +42,12 @@ func (e *EventMeter) Call(callback string, args ...interface{}) {
 	}
 }
 
-type RpcClient struct {
+type RPCClient struct {
 	Stubs map[string]interface{}
 	cdc   *amino.Codec
 }
 
-func (c *RpcClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+func (c *RPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	s, ok := c.Stubs[method]
 	if !ok {
 		stdlog.Fatalf("Call to %s, but no stub is defined for it", method)
@@ -60,10 +60,10 @@ func (c *RpcClient) Call(method string, params map[string]interface{}, result in
 	return s, nil
 }
 
-func (c *RpcClient) Codec() *amino.Codec {
+func (c *RPCClient) Codec() *amino.Codec {
 	return c.cdc
 }
 
-func (c *RpcClient) SetCodec(cdc *amino.Codec) {
+func (c *RPCClient) SetCodec(cdc *amino.Codec) {
 	c.cdc = cdc
 }

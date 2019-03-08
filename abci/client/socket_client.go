@@ -39,6 +39,9 @@ type socketClient struct {
 
 }
 
+//nolint:golint this should return the interface (Client) instead of the unexported type
+// TestSocketClientStopForErrorDeadlock and other tests use
+// methods of this type though (socketClient.StopForError)
 func NewSocketClient(addr string, mustConnect bool) *socketClient {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),

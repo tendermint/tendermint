@@ -53,8 +53,8 @@ func ErrCommitNotFound() error {
 }
 
 func IsErrCommitNotFound(err error) bool {
-	if err_, ok := err.(cmn.Error); ok {
-		_, ok := err_.Data().(errCommitNotFound)
+	if cmnErr, ok := err.(cmn.Error); ok {
+		_, ok := cmnErr.Data().(errCommitNotFound)
 		return ok
 	}
 	return false
@@ -72,8 +72,8 @@ func ErrUnexpectedValidators(got, want []byte) error {
 }
 
 func IsErrUnexpectedValidators(err error) bool {
-	if err_, ok := err.(cmn.Error); ok {
-		_, ok := err_.Data().(errUnexpectedValidators)
+	if cmnErr, ok := err.(cmn.Error); ok {
+		_, ok := cmnErr.Data().(errUnexpectedValidators)
 		return ok
 	}
 	return false
@@ -88,8 +88,8 @@ func ErrUnknownValidators(chainID string, height int64) error {
 }
 
 func IsErrUnknownValidators(err error) bool {
-	if err_, ok := err.(cmn.Error); ok {
-		_, ok := err_.Data().(errUnknownValidators)
+	if cmnErr, ok := err.(cmn.Error); ok {
+		_, ok := cmnErr.Data().(errUnknownValidators)
 		return ok
 	}
 	return false
@@ -103,8 +103,8 @@ func ErrEmptyTree() error {
 }
 
 func IsErrEmptyTree(err error) bool {
-	if err_, ok := err.(cmn.Error); ok {
-		_, ok := err_.Data().(errEmptyTree)
+	if cmnErr, ok := err.(cmn.Error); ok {
+		_, ok := cmnErr.Data().(errEmptyTree)
 		return ok
 	}
 	return false

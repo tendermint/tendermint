@@ -103,7 +103,7 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 }
 
 const (
-	NUM_TXS = 1000
+	NumTxs  = 1000
 	TIMEOUT = 120 * time.Second // ridiculously high because CircleCI is slow
 )
 
@@ -124,7 +124,7 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
-	txs := checkTxs(t, reactors[0].Mempool, NUM_TXS)
+	txs := checkTxs(t, reactors[0].Mempool, NumTxs)
 	waitForTxs(t, txs, reactors)
 }
 

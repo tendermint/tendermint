@@ -4,8 +4,8 @@ var (
 	// GitCommit is the current HEAD set using ldflags.
 	GitCommit string
 
-	// Version is the built softwares version.
-	Version string = TMCoreSemVer
+	// Version is the built software version.
+	Version = TMCoreSemVer
 )
 
 func init() {

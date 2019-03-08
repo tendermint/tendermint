@@ -535,9 +535,9 @@ func (bpr *bpRequester) reset() {
 // Tells bpRequester to pick another peer and try again.
 // NOTE: Nonblocking, and does nothing if another redo
 // was already requested.
-func (bpr *bpRequester) redo(peerId p2p.ID) {
+func (bpr *bpRequester) redo(peerID p2p.ID) {
 	select {
-	case bpr.redoCh <- peerId:
+	case bpr.redoCh <- peerID:
 	default:
 	}
 }

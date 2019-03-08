@@ -53,6 +53,8 @@ func (e peerError) Error() string {
 }
 
 // BlockchainReactor handles long-term catchup syncing.
+//nolint:golint suppress:
+//type name will be used as blockchain.BlockchainReactor by other packages, and that stutters; consider calling this Reactor (golint)
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
@@ -367,6 +369,8 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 // Messages
 
 // BlockchainMessage is a generic message for this reactor.
+//nolint:golint suppress:
+//type name will be used as blockchain.BlockchainMessage by other packages, and that stutters; consider calling this Reactor (golint)
 type BlockchainMessage interface {
 	ValidateBasic() error
 }
@@ -418,8 +422,8 @@ func (m *bcNoBlockResponseMessage) ValidateBasic() error {
 	return nil
 }
 
-func (brm *bcNoBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", brm.Height)
+func (m *bcNoBlockResponseMessage) String() string {
+	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", m.Height)
 }
 
 //-------------------------------------

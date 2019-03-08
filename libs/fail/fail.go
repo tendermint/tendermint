@@ -40,13 +40,13 @@ func Fail() {
 		Exit()
 	}
 
-	callIndex += 1
+	callIndex++
 }
 
-// FailRand should be called n successive times.
+// Rand should be called n successive times.
 // It will fail on a random one of those calls
 // n must be greater than 0
-func FailRand(n int) {
+func Rand(n int) {
 	if callIndexToFail < 0 {
 		return
 	}
@@ -63,10 +63,10 @@ func FailRand(n int) {
 		}
 	}
 
-	callRandIndex += 1
+	callRandIndex++
 
 	if callRandIndex == n {
-		callIndex += 1
+		callIndex++
 	}
 }
 

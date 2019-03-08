@@ -1037,7 +1037,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false
 	}
 
-	height, round, type_, size := votes.Height(), votes.Round(), types.SignedMsgType(votes.Type()), votes.Size()
+	height, round, msgType, size := votes.Height(), votes.Round(), types.SignedMsgType(votes.Type()), votes.Size()
 
 	// Lazily set data using 'votes'.
 	if votes.IsCommit() {
@@ -1045,7 +1045,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	}
 	ps.ensureVoteBitArrays(height, size)
 
-	psVotes := ps.getVoteBitArray(height, round, type_)
+	psVotes := ps.getVoteBitArray(height, round, msgType)
 	if psVotes == nil {
 		return nil, false // Not something worth sending
 	}
@@ -1055,14 +1055,14 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	return nil, false
 }
 
-func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.SignedMsgType) *cmn.BitArray {
-	if !types.IsVoteTypeValid(type_) {
+func (ps *PeerState) getVoteBitArray(height int64, round int, msgType types.SignedMsgType) *cmn.BitArray {
+	if !types.IsVoteTypeValid(msgType) {
 		return nil
 	}
 
 	if ps.PRS.Height == height {
 		if ps.PRS.Round == round {
-			switch type_ {
+			switch msgType {
 			case types.PrevoteType:
 				return ps.PRS.Prevotes
 			case types.PrecommitType:
@@ -1070,7 +1070,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 			}
 		}
 		if ps.PRS.CatchupCommitRound == round {
-			switch type_ {
+			switch msgType {
 			case types.PrevoteType:
 				return nil
 			case types.PrecommitType:
@@ -1078,7 +1078,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 			}
 		}
 		if ps.PRS.ProposalPOLRound == round {
-			switch type_ {
+			switch msgType {
 			case types.PrevoteType:
 				return ps.PRS.ProposalPOL
 			case types.PrecommitType:
@@ -1089,7 +1089,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 	}
 	if ps.PRS.Height == height+1 {
 		if ps.PRS.LastCommitRound == round {
-			switch type_ {
+			switch msgType {
 			case types.PrevoteType:
 				return nil
 			case types.PrecommitType:
@@ -1356,6 +1356,7 @@ func (ps *PeerState) StringIndented(indent string) string {
 // Messages
 
 // ConsensusMessage is a message that can be sent and received on the ConsensusReactor
+//nolint:golint suppress: type name will be used as consensus.ConsensusMessage by other packages, and that stutters; consider calling this Message
 type ConsensusMessage interface {
 	ValidateBasic() error
 }

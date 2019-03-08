@@ -16,7 +16,7 @@ type peer struct {
 var _ p2p.Peer = (*peer)(nil)
 
 // NewPeer creates new dummy peer.
-func NewPeer() *peer {
+func NewPeer() p2p.Peer {
 	p := &peer{
 		kv: make(map[string]interface{}),
 	}
