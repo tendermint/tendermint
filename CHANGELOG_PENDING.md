@@ -40,6 +40,8 @@ Special thanks to external contributors on this release:
   - leveldb.alivesnaps
   - leveldb.aliveiters
 
+CI/CD: * [\#3396](https://github.com/tendermint/tendermint/pull/3396)
+
 ### BUG FIXES:
 
 - [p2p/conn] \#3347 Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
