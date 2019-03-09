@@ -54,6 +54,7 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
 	dbp.logger.Info("DBProvider.SaveFullCommit()...", "fc", fc)
 	batch := dbp.db.NewBatch()
+	defer batch.Close()
 
 	// Save the fc.validators.
 	// We might be overwriting what we already have, but
