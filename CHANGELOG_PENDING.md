@@ -3,6 +3,7 @@
 **
 
 Special thanks to external contributors on this release:
+@Stumble
 
 ### BREAKING CHANGES:
 
@@ -15,6 +16,7 @@ Special thanks to external contributors on this release:
 - [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
   * previously it was dumping "captured ..." msg to os.Stdout
   * TrapSignal should not be responsible for blocking thread of execution
+- [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Add Close() method to Batch interface (@Stumble)
 
 * Blockchain Protocol
 
@@ -40,9 +42,7 @@ Special thanks to external contributors on this release:
   - leveldb.alivesnaps
   - leveldb.aliveiters
 
-CI/CD: * [\#3396](https://github.com/tendermint/tendermint/pull/3396)
-
 ### BUG FIXES:
-
 - [p2p/conn] \#3347 Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
 - [libs/pubsub] \#951, \#1880 use non-blocking send when dispatching messages [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
+- [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Fix CLevelDB memory leak (@Stumble)
