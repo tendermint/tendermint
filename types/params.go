@@ -36,6 +36,7 @@ type BlockParams struct {
 	MaxBytes int64 `json:"max_bytes"`
 	MaxGas   int64 `json:"max_gas"`
 	// Minimum time increment between consecutive blocks (in milliseconds)
+	// Not exposed to the application.
 	TimeIotaMs int64 `json:"time_iota_ms"`
 }
 
