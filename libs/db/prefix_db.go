@@ -248,6 +248,10 @@ func (pb prefixBatch) WriteSync() {
 	pb.source.WriteSync()
 }
 
+func (pb prefixBatch) Close() {
+	pb.source.Close()
+}
+
 //----------------------------------------
 // prefixIterator
 
