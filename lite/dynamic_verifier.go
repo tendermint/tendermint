@@ -212,7 +212,7 @@ func (dv *DynamicVerifier) verifyAndSave(trustedFC, sourceFC FullCommit) error {
 // for height h, using repeated applications of bisection if necessary.
 //
 // Returns ErrCommitNotFound if source provider doesn't have the commit for h.
-// TODO: bisection is disabled for now.
+// TODO: bisection is disabled for now: https://github.com/tendermint/tendermint/issues/3259
 // nolint:unused
 func (dv *DynamicVerifier) updateToHeight(h int64) (FullCommit, error) {
 
@@ -288,6 +288,12 @@ func (dv *DynamicVerifier) fetchAndVerifyToHeight(h int64) (FullCommit, error) {
 	// We already were at the requested height.
 	if trustedFC.Height() == h {
 		return trustedFC, nil
+	}
+	if trustedFC.Height() > h {
+		panic(fmt.Sprintf("unexpected height (%v) while retrieving latest trusted FullCommit; expected to be <= %v",
+			trustedFC.Height(),
+			h,
+		))
 	}
 	// fetch FullCommits height by height until we reach h
 	for heightToFetch := trustedFC.Height() + 1; heightToFetch <= h; heightToFetch++ {
