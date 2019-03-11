@@ -825,6 +825,10 @@ func (cs *ConsensusState) SetReadonly(readonly bool) {
 	cs.Logger.Info("[SetReadonly]: Set to " + strconv.FormatBool(readonly) + " " + strconv.FormatBool(cs.readonly))
 }
 
+func (cs *ConsensusState) IsReadonly() bool {
+	return cs.readonly;
+}
+
 func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 	logger := cs.Logger.With("height", height, "round", round)
 	addr := cs.privValidator.GetAddress()

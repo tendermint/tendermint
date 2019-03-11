@@ -32,6 +32,7 @@ type Consensus interface {
 	GetRoundStateJSON() ([]byte, error)
 	GetRoundStateSimpleJSON() ([]byte, error)
 	SetReadonly(readonly bool)
+	IsReadonly() bool
 }
 
 type transport interface {

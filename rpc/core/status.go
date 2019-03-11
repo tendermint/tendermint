@@ -106,6 +106,7 @@ func Status() (*ctypes.ResultStatus, error) {
 			Address:     pubKey.Address(),
 			PubKey:      pubKey,
 			VotingPower: votingPower,
+			IsReadonly:	 consensusState.IsReadonly(),
 		},
 	}
 
