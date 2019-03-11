@@ -722,7 +722,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// Stringify err to avoid TestReactorValidatorSetChanges test timed out
 		// after 5m0s.
 		cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
-			"peer", peerID, "err", err.Error(), "msg", msg)
+			"peer", peerID, "err", err.Error(), "msg", fmt.Sprintf("%v", msg))
 	}
 }
 
