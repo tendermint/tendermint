@@ -305,9 +305,13 @@ func (dv *DynamicVerifier) fetchAndVerifyToHeight(h int64) (FullCommit, error) {
 			return FullCommit{}, err
 		}
 		// Update height for height.
-		// TODO: do we want the lite client to store the intermediate commits,
-		//  or only the latest/last one?
-		if err := dv.verifyAndSave(trustedFC, nextFC); err != nil {
+		// Note: different from the bisection code, we only
+		// verify but do not store intermediate commits.
+		if err := trustedFC.NextValidators.VerifyFutureCommit(
+			nextFC.Validators,
+			dv.chainID, nextFC.SignedHeader.Commit.BlockID,
+			nextFC.SignedHeader.Height, nextFC.SignedHeader.Commit,
+		); err != nil {
 			return FullCommit{}, err
 		}
 		// updated trustedFC for next height / iteration:
