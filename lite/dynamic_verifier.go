@@ -213,7 +213,7 @@ func (dv *DynamicVerifier) verifyAndSave(trustedFC, sourceFC FullCommit) error {
 //
 // Returns ErrCommitNotFound if source provider doesn't have the commit for h.
 // TODO: bisection is disabled for now: https://github.com/tendermint/tendermint/issues/3259
-// nolint:unused
+//nolint:unused
 func (dv *DynamicVerifier) updateToHeight(h int64) (FullCommit, error) {
 
 	// Fetch latest full commit from source.
