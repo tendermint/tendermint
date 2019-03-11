@@ -167,13 +167,15 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
-	require.Nil(err)
+	require.NoError(err)
+
 	cert := NewDynamicVerifier(chainID, trust, source)
 	cert.SetLogger(log.TestingLogger())
 
 	// Store a few full commits as trust.
 	for _, i := range []int{2, 5} {
-		trust.SaveFullCommit(fcz[i])
+		err := trust.SaveFullCommit(fcz[i])
+		require.NoError(err)
 	}
 
 	// We do not jump forward using trusted full commits.
@@ -181,44 +183,46 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	// Verify can retrieve it from somewhere.
 	// Source doesn't have fcz[9] so cert.LastTrustedHeight wont' change.
 	err = source.SaveFullCommit(fcz[6])
-	require.Nil(err, "%+v", err)
+	require.NoError(err)
 	err = source.SaveFullCommit(fcz[7])
-	require.Nil(err, "%+v", err)
+	require.NoError(err)
 	sh := fcz[8].SignedHeader
 	err = cert.Verify(sh)
-	require.Nil(err, "%+v", err)
-	assert.Equal(fcz[7].Height(), cert.LastTrustedHeight())
+	require.NoError(err)
+	// This assertion assumes we store intermediate full commits
+	// TODO: re-enable when bisection is re-enabled: https://github.com/tendermint/tendermint/issues/3259
+	// assert.Equal(fcz[7].Height(), cert.LastTrustedHeight())
 	fc_, err := trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
-	require.NotNil(err, "%+v", err)
+	require.Error(err)
 	assert.Equal(fc_, (FullCommit{}))
 
 	// With fcz[9] Verify will update last trusted height.
 	err = source.SaveFullCommit(fcz[9])
-	require.Nil(err, "%+v", err)
+	require.NoError(err)
 	sh = fcz[8].SignedHeader
 	err = cert.Verify(sh)
-	require.Nil(err, "%+v", err)
+	require.NoError(err)
 	assert.Equal(fcz[8].Height(), cert.LastTrustedHeight())
 	fc_, err = trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
-	require.Nil(err, "%+v", err)
+	require.NoError(err)
 	assert.Equal(fc_.Height(), fcz[8].Height())
 
 	// Add access to all full commits via untrusted source.
 	for i := 0; i < count; i++ {
 		err := source.SaveFullCommit(fcz[i])
-		require.Nil(err)
+		require.NoError(err)
 	}
 
 	// Try to check an unknown seed in the past.
 	sh = fcz[3].SignedHeader
 	err = cert.Verify(sh)
-	require.Nil(err, "%+v", err)
+	require.NoError(err)
 	assert.Equal(fcz[8].Height(), cert.LastTrustedHeight())
 
 	// Jump all the way forward again.
 	sh = fcz[count-1].SignedHeader
 	err = cert.Verify(sh)
-	require.Nil(err, "%+v", err)
+	require.NoError(err)
 	assert.Equal(fcz[9].Height(), cert.LastTrustedHeight())
 }
 
