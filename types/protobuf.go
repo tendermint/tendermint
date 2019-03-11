@@ -222,7 +222,11 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 }
 
 func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
-	params := ConsensusParams{}
+	params := ConsensusParams{
+		Block:     BlockParams{},
+		Evidence:  EvidenceParams{},
+		Validator: ValidatorParams{},
+	}
 
 	// we must defensively consider any structs may be nil
 	if csp.Block != nil {
