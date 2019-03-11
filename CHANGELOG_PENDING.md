@@ -46,3 +46,4 @@ CI/CD: * [\#3396](https://github.com/tendermint/tendermint/pull/3396)
 
 - [p2p/conn] \#3347 Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
 - [libs/pubsub] \#951, \#1880 use non-blocking send when dispatching messages [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
+- [p2p] \#3369 do not panic when filter times out
