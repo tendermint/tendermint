@@ -9,7 +9,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -59,7 +59,7 @@ import (
 // | Parameter | Type | Default | Required | Description     |
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
-func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := mempool.CheckTx(tx, nil)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // | Parameter | Type | Default | Required | Description     |
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
-func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.Response, 1)
 	err := mempool.CheckTx(tx, func(res *abci.Response) {
 		resCh <- res
@@ -127,6 +127,11 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 }
 
 // Returns with the responses from CheckTx and DeliverTx.
+//
+// IMPORTANT: use only for testing and development. In production, use
+// BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
+// result using JSONRPC via a websocket. See
+// https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
 //
 // CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
 // waiting for tx to commit.
@@ -182,18 +187,26 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // | Parameter | Type | Default | Required | Description     |
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
-func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+	subscriber := ctx.RemoteAddr()
+
+	if eventBus.NumClients() >= config.MaxSubscriptionClients {
+		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
+	} else if eventBus.NumClientSubscriptions(subscriber) >= config.MaxSubscriptionsPerClient {
+		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", config.MaxSubscriptionsPerClient)
+	}
+
 	// Subscribe to tx being committed in block.
-	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
+	subCtx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	q := types.EventQueryTxFor(tx)
-	deliverTxSub, err := eventBus.Subscribe(ctx, "mempool", q)
+	deliverTxSub, err := eventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
 		err = errors.Wrap(err, "failed to subscribe to tx")
 		logger.Error("Error on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
-	defer eventBus.Unsubscribe(context.Background(), "mempool", q)
+	defer eventBus.Unsubscribe(context.Background(), subscriber, q)
 
 	// Broadcast tx and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
@@ -215,8 +228,6 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	}
 
 	// Wait for the tx to be included in a block or timeout.
-	// TODO: configurable?
-	var deliverTxTimeout = rpcserver.WriteTimeout / 2
 	select {
 	case msg := <-deliverTxSub.Out(): // The tx was included in a block.
 		deliverTxRes := msg.Data().(types.EventDataTx)
@@ -227,14 +238,20 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 			Height:    deliverTxRes.Height,
 		}, nil
 	case <-deliverTxSub.Cancelled():
-		err = errors.New("deliverTxSub was cancelled. Did the Tendermint stop?")
+		var reason string
+		if deliverTxSub.Err() == nil {
+			reason = "Tendermint exited"
+		} else {
+			reason = deliverTxSub.Err().Error()
+		}
+		err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
 			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, err
-	case <-time.After(deliverTxTimeout):
+	case <-time.After(config.TimeoutBroadcastTxCommit):
 		err = errors.New("Timed out waiting for tx to be included in a block")
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
@@ -281,7 +298,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 // | Parameter | Type | Default | Required | Description                          |
 // |-----------+------+---------+----------+--------------------------------------|
 // | limit     | int  | 30      | false    | Maximum number of entries (max: 100) |
-func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+// ```
+func UnconfirmedTxs(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
 	limit = validatePerPage(limit)
 
@@ -323,7 +341,7 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 //   }
 // }
 // ```
-func NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
+func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error) {
 	return &ctypes.ResultUnconfirmedTxs{
 		Count:      mempool.Size(),
 		Total:      mempool.Size(),

@@ -671,8 +671,8 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	defer cs.mtx.Unlock()
 
 	var (
-		err   error
 		added bool
+		err   error
 	)
 	msg, peerID := mi.Msg, mi.PeerID
 	switch msg := msg.(type) {
@@ -714,11 +714,15 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
 	default:
-		cs.Logger.Error("Unknown msg type", reflect.TypeOf(msg))
+		cs.Logger.Error("Unknown msg type", "type", reflect.TypeOf(msg))
+		return
 	}
+
 	if err != nil {
-		cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
-			"peer", peerID, "err", err, "msg", msg)
+		// Causes TestReactorValidatorSetChanges to timeout
+		// https://github.com/tendermint/tendermint/issues/3406
+		// cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
+		// 	"peer", peerID, "err", err, "msg", msg)
 	}
 }
 

@@ -1,6 +1,7 @@
 package core
 
 import (
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -71,6 +72,8 @@ var (
 	mempool          *mempl.Mempool
 
 	logger log.Logger
+
+	config cfg.RPCConfig
 )
 
 func SetStateDB(db dbm.DB) {
@@ -131,6 +134,11 @@ func SetLogger(l log.Logger) {
 
 func SetEventBus(b *types.EventBus) {
 	eventBus = b
+}
+
+// SetConfig sets an RPCConfig.
+func SetConfig(c cfg.RPCConfig) {
+	config = c
 }
 
 func validatePage(page, perPage, totalCount int) int {

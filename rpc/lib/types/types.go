@@ -1,18 +1,15 @@
 package rpctypes
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // a wrapper to emulate a sum type: jsonrpcid = string | int
@@ -236,30 +233,47 @@ func RPCServerError(id jsonrpcid, err error) RPCResponse {
 
 //----------------------------------------
 
-// *wsConnection implements this interface.
+// WSRPCConnection represents a websocket connection.
 type WSRPCConnection interface {
+	// GetRemoteAddr returns a remote address of the connection.
 	GetRemoteAddr() string
+	// WriteRPCResponse writes the resp onto connection (BLOCKING).
 	WriteRPCResponse(resp RPCResponse)
+	// TryWriteRPCResponse tries to write the resp onto connection (NON-BLOCKING).
 	TryWriteRPCResponse(resp RPCResponse) bool
-	GetEventSubscriber() EventSubscriber
+	// Codec returns an Amino codec used.
 	Codec() *amino.Codec
 }
 
-// websocket-only RPCFuncs take this as the first parameter.
-type WSRPCContext struct {
-	Request RPCRequest
-	WSRPCConnection
+// Context is the first parameter for all functions. It carries a json-rpc
+// request, http request and websocket connection.
+//
+// - JSONReq is non-nil when JSONRPC is called over websocket or HTTP.
+// - WSConn is non-nil when we're connected via a websocket.
+// - HTTPReq is non-nil when URI or JSONRPC is called over HTTP.
+type Context struct {
+	// json-rpc request
+	JSONReq *RPCRequest
+	// websocket connection
+	WSConn WSRPCConnection
+	// http request
+	HTTPReq *http.Request
 }
 
-// EventSubscriber mirrors tendermint/tendermint/types.EventBusSubscriber
-type EventSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (tmtypes.Subscription, error)
-	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
-	UnsubscribeAll(ctx context.Context, subscriber string) error
+// RemoteAddr returns either HTTPReq#RemoteAddr or result of the
+// WSConn#GetRemoteAddr().
+func (ctx *Context) RemoteAddr() string {
+	if ctx.HTTPReq != nil {
+		return ctx.HTTPReq.RemoteAddr
+	} else if ctx.WSConn != nil {
+		return ctx.WSConn.GetRemoteAddr()
+	}
+	return ""
 }
 
 //----------------------------------------
 // SOCKETS
+
 //
 // Determine if its a unix or tcp socket.
 // If tcp, must specify the port; `0.0.0.0` will return incorrectly as "unix" since there's no port

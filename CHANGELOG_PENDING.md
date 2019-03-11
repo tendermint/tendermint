@@ -3,11 +3,12 @@
 **
 
 Special thanks to external contributors on this release:
+@srmo
 
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [httpclient] Update Subscribe interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
+- [rpc/client] Update Subscribe interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
 
 * Apps
 
@@ -25,8 +26,9 @@ Special thanks to external contributors on this release:
   mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
   `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 - [config] \#2920 Remove `consensus.blocktime_iota` parameter
-- [genesis] \#2920 Add `time_iota_ms` to block's consensus parameters
+- [genesis] \#2920 Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
 - [genesis] \#2920 Rename `consensus_params.block_size` to `consensus_params.block`
+- [lite] add `/unsubscribe_all` endpoint, which allows you to unsubscribe from all events
 
 ### IMPROVEMENTS:
 - [libs/common] \#3238 exit with zero (0) code upon receiving SIGTERM/SIGINT
@@ -40,12 +42,8 @@ Special thanks to external contributors on this release:
   - leveldb.alivesnaps
   - leveldb.aliveiters
 
-CI/CD: * [\#3396](https://github.com/tendermint/tendermint/pull/3396)
-
 ### BUG FIXES:
-
-
 - [p2p/conn] \#3347 Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
 - [libs/pubsub] \#951, \#1880 use non-blocking send when dispatching messages [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
 - [p2p] \#3369 do not panic when filter times out
-- [testnet] \#3408 testnet fails when creating non-validator configs
+- [cmd] \#3408 Fix `testnet` command's panic when creating non-validator configs (using `--n` flag) (@srmo)
