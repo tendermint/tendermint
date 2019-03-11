@@ -31,6 +31,17 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 - [libs/common] \#3238 exit with zero (0) code upon receiving SIGTERM/SIGINT
+- [libs/db] \#3378 CLevelDB#Stats now returns the following properties:
+  - leveldb.num-files-at-level{n}
+  - leveldb.stats
+  - leveldb.sstables
+  - leveldb.blockpool
+  - leveldb.cachedblock
+  - leveldb.openedtables
+  - leveldb.alivesnaps
+  - leveldb.aliveiters
+
+CI/CD: * [\#3396](https://github.com/tendermint/tendermint/pull/3396)
 
 ### BUG FIXES:
 - [p2p/conn] \#3347 Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
