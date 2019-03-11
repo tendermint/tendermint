@@ -670,31 +670,26 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
-	var (
-		added bool
-		err   error
-	)
 	msg, peerID := mi.Msg, mi.PeerID
 	switch msg := msg.(type) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		err = cs.setProposal(msg.Proposal)
+		cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		added, err = cs.addProposalBlockPart(msg, peerID)
+		added, err := cs.addProposalBlockPart(msg, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
 
 		if err != nil && msg.Round != cs.Round {
 			cs.Logger.Debug("Received block part from wrong round", "height", cs.Height, "csRound", cs.Round, "blockRound", msg.Round)
-			err = nil
 		}
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		added, err = cs.tryAddVote(msg.Vote, peerID)
+		added, err := cs.tryAddVote(msg.Vote, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
@@ -715,14 +710,6 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// We could make note of this and help filter in broadcastHasVoteMessage().
 	default:
 		cs.Logger.Error("Unknown msg type", "type", reflect.TypeOf(msg))
-		return
-	}
-
-	if err != nil {
-		// Stringify err to avoid TestReactorValidatorSetChanges test timed out
-		// after 5m0s.
-		cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
-			"peer", peerID, "err", err.Error(), "msg", fmt.Sprintf("%v", msg))
 	}
 }
 
