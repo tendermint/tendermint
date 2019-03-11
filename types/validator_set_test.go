@@ -1113,15 +1113,6 @@ func applyChangesToValSet(t *testing.T, valSet *ValidatorSet, valsLists ...[]tes
 	assert.NoError(t, err)
 }
 
-func isAddressInList(address []byte, valsList []testVal) bool {
-	for _, val := range valsList {
-		if bytes.Equal([]byte(val.name), address) {
-			return true
-		}
-	}
-	return false
-}
-
 func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 	const nMaxElections = 5000
 
@@ -1205,25 +1196,6 @@ func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg tes
 		for _, val := range addedValsPriSlice[1:] {
 			assert.Equal(t, expectedPri, val.ProposerPriority)
 		}
-	}
-
-	// check that the priority order for validators that remained is the same
-	// as in the original set
-	remainingValsPriSlice := updatedValsPriSorted[len(cfg.addedVals):]
-
-	for len(remainingValsPriSlice) > 0 {
-		addressInChanged := remainingValsPriSlice[0].Address
-		addressInOld := origValsPriSorted[0].Address
-
-		// skip validators in original list that have been removed
-		if isAddressInList(addressInOld, cfg.deletedVals) {
-			origValsPriSorted = origValsPriSorted[1:]
-			continue
-		}
-		assert.Equal(t, addressInOld, addressInChanged, "wrong priority order")
-
-		remainingValsPriSlice = remainingValsPriSlice[1:]
-		origValsPriSorted = origValsPriSorted[1:]
 	}
 }
 
