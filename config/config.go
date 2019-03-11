@@ -587,6 +587,8 @@ type ConsensusConfig struct {
 
 	// Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
 	BlockTimeIota time.Duration `mapstructure:"blocktime_iota"`
+
+	Readonly bool `mapstructure:"readonly"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -606,6 +608,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 		BlockTimeIota:               1000 * time.Millisecond,
+		Readonly:										 false,
 	}
 }
 

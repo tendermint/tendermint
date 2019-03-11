@@ -31,6 +31,8 @@ type Consensus interface {
 	GetLastHeight() int64
 	GetRoundStateJSON() ([]byte, error)
 	GetRoundStateSimpleJSON() ([]byte, error)
+	SetReadonly(readonly bool)
+	IsReadonly() bool
 }
 
 type transport interface {

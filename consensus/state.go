@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"sync"
 	"time"
+	"strconv"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/fail"
@@ -127,6 +128,8 @@ type ConsensusState struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
+	readonly 		bool	
 }
 
 // StateOption sets an optional parameter on the ConsensusState.
@@ -159,6 +162,7 @@ func NewConsensusState(
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
+		readonly:					config.Readonly,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -808,14 +812,35 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
 }
 
+func (cs *ConsensusState) isValidator() bool {
+	return cs.privValidator != nil && 
+				 cs.Validators.HasAddress(cs.privValidator.GetAddress())
+}
+
+func (cs *ConsensusState) SetReadonly(readonly bool) {
+	cs.readonly = readonly
+	cs.Logger.Info("[SetReadonly]: Set to " + strconv.FormatBool(readonly) + " " + strconv.FormatBool(cs.readonly))
+}
+
+func (cs *ConsensusState) IsReadonly() bool {
+	return cs.readonly;
+}
+
 func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 	logger := cs.Logger.With("height", height, "round", round)
 	addr := cs.privValidator.GetAddress()
 
-	if !cs.Validators.HasAddress(addr) {
-		logger.Debug("Not sending proposalHearbeat. This node is not a validator", "addr", addr, "vals", cs.Validators)
+	if !cs.isValidator() {
+		logger.Info("Not sending proposalHearbeat. This node is not a validator", "addr", addr, "vals", cs.Validators)
 		return
 	}
+
+	// validator is readonly, do nothing
+	if (cs.readonly) {
+		cs.Logger.Info("proposalHeartbeat: Validator is in readonly mode")
+		return
+	}
+
 	counter := 0
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	chainID := cs.state.ChainID
@@ -852,6 +877,19 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	}
 	logger.Info(fmt.Sprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
+	// Nothing more to do if we're not a validator
+	if cs.privValidator == nil {
+		logger.Debug("This node is not a validator 1")
+		return
+	}
+
+	// if not a validator, we're done
+	if !cs.isValidator() {
+		logger.Debug("This node is not a validator 2", "addr", cs.privValidator.GetAddress(), "vals", cs.Validators)
+		return
+	}
+	logger.Debug("This node is a validator " + strconv.FormatBool(cs.readonly))
+
 	defer func() {
 		// Done enterPropose:
 		cs.updateRoundStep(round, cstypes.RoundStepPropose)
@@ -868,21 +906,15 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
 	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
 
-	// Nothing more to do if we're not a validator
-	if cs.privValidator == nil {
-		logger.Debug("This node is not a validator 1")
-		return
-	}
-
-	// if not a validator, we're done
-	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
-		logger.Debug("This node is not a validator 2", "addr", cs.privValidator.GetAddress(), "vals", cs.Validators)
-		return
-	}
-	logger.Debug("This node is a validator")
-
 	if cs.isProposer() {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
+
+		// validator is readonly, do nothing
+		if (cs.readonly) {
+			logger.Info("enterPropose: Validator is in readonly mode. Skipping..")
+			return
+		}
+
 		if height%32 == 0 {
 			rsp, err := cs.proxyApp.CheckBridgeSync(abci.RequestCheckBridge{Height: int32(round)})
 			if err != nil {
@@ -1736,9 +1768,16 @@ func (cs *ConsensusState) voteTime() time.Time {
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
 	// if we don't have a key or we're not in the validator set, do nothing
-	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+	if !cs.isValidator() {
 		return nil
 	}
+
+	// validator is readonly, do nothing
+	if (cs.readonly) {
+		cs.Logger.Info("signAddVote: Validator is in readonly mode")
+		return nil
+	}
+
 	vote, err := cs.signVote(type_, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})

@@ -70,6 +70,7 @@ type ValidatorInfo struct {
 	Address     cmn.HexBytes  `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
 	VotingPower int64         `json:"voting_power"`
+	IsReadonly  bool					`json:"is_readonly"`
 }
 
 // Node Status
@@ -102,6 +103,10 @@ type ResultDialSeeds struct {
 
 // Log from dialing peers
 type ResultDialPeers struct {
+	Log string `json:"log"`
+}
+
+type ResultSetReadonly struct {
 	Log string `json:"log"`
 }
 
