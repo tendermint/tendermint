@@ -25,7 +25,7 @@ Special thanks to external contributors on this release:
   mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
   `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 - [config] \#2920 Remove `consensus.blocktime_iota` parameter
-- [genesis] \#2920 Add `time_iota_ms` to block's consensus parameters
+- [genesis] \#2920 Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
 - [genesis] \#2920 Rename `consensus_params.block_size` to `consensus_params.block`
 
 ### IMPROVEMENTS:
@@ -39,8 +39,6 @@ Special thanks to external contributors on this release:
   - leveldb.openedtables
   - leveldb.alivesnaps
   - leveldb.aliveiters
-
-CI/CD: * [\#3396](https://github.com/tendermint/tendermint/pull/3396)
 
 ### BUG FIXES:
 
