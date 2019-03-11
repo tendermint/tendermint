@@ -295,8 +295,9 @@ func (dv *DynamicVerifier) fetchAndVerifyToHeight(h int64) (FullCommit, error) {
 			h,
 		))
 	}
+	currentFC := trustedFC
 	// fetch FullCommits height by height until we reach h
-	for heightToFetch := trustedFC.Height() + 1; heightToFetch <= h; heightToFetch++ {
+	for heightToFetch := currentFC.Height() + 1; heightToFetch <= h; heightToFetch++ {
 
 		nextFC, err := dv.source.LatestFullCommit(dv.chainID, heightToFetch, heightToFetch)
 		if err != nil {
@@ -310,10 +311,9 @@ func (dv *DynamicVerifier) fetchAndVerifyToHeight(h int64) (FullCommit, error) {
 		if err := nextFC.ValidateFull(dv.chainID); err != nil {
 			return FullCommit{}, err
 		}
-		// Update height for height.
 		// Note: different from the bisection code, we only
 		// verify but do not store intermediate commits.
-		if err := trustedFC.NextValidators.VerifyFutureCommit(
+		if err := currentFC.NextValidators.VerifyFutureCommit(
 			nextFC.Validators,
 			dv.chainID, nextFC.SignedHeader.Commit.BlockID,
 			nextFC.SignedHeader.Height, nextFC.SignedHeader.Commit,
@@ -321,14 +321,11 @@ func (dv *DynamicVerifier) fetchAndVerifyToHeight(h int64) (FullCommit, error) {
 			return FullCommit{}, err
 		}
 		// updated trustedFC for next height / iteration:
-		trustedFC, err = dv.trusted.LatestFullCommit(dv.chainID, 1, heightToFetch)
-		if err != nil {
-			return FullCommit{}, err
-		}
+		currentFC = nextFC
 	}
-	// we have stored and verified all headers
-	if trustedFC.Height() == h {
-		return trustedFC, nil
+	// we have verified all headers up to height h
+	if currentFC.Height() == h {
+		return currentFC, nil
 	}
 	return FullCommit{}, fmt.Errorf("could not update to requested height %v; reached: %v", h, trustedFC.Height())
 }

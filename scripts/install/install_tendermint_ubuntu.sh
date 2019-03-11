@@ -13,7 +13,7 @@ REPO=github.com/tendermint/tendermint
 # change this to a specific release or branch
 BRANCH=master
 
-GO_VERSION=1.11.4
+GO_VERSION=1.12
 
 sudo apt-get update -y
 sudo apt-get install -y make

@@ -125,9 +125,9 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
-		BlockSize: &abci.BlockSizeParams{
-			MaxBytes: params.BlockSize.MaxBytes,
-			MaxGas:   params.BlockSize.MaxGas,
+		Block: &abci.BlockParams{
+			MaxBytes: params.Block.MaxBytes,
+			MaxGas:   params.Block.MaxGas,
 		},
 		Evidence: &abci.EvidenceParams{
 			MaxAge: params.Evidence.MaxAge,
@@ -222,16 +222,31 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 }
 
 func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
-	return ConsensusParams{
-		BlockSize: BlockSizeParams{
-			MaxBytes: csp.BlockSize.MaxBytes,
-			MaxGas:   csp.BlockSize.MaxGas,
-		},
-		Evidence: EvidenceParams{
-			MaxAge: csp.Evidence.MaxAge,
-		},
-		Validator: ValidatorParams{
-			PubKeyTypes: csp.Validator.PubKeyTypes,
-		},
+	params := ConsensusParams{
+		Block:     BlockParams{},
+		Evidence:  EvidenceParams{},
+		Validator: ValidatorParams{},
 	}
+
+	// we must defensively consider any structs may be nil
+	if csp.Block != nil {
+		params.Block = BlockParams{
+			MaxBytes: csp.Block.MaxBytes,
+			MaxGas:   csp.Block.MaxGas,
+		}
+	}
+
+	if csp.Evidence != nil {
+		params.Evidence = EvidenceParams{
+			MaxAge: csp.Evidence.MaxAge,
+		}
+	}
+
+	if csp.Validator != nil {
+		params.Validator = ValidatorParams{
+			PubKeyTypes: csp.Validator.PubKeyTypes,
+		}
+	}
+
+	return params
 }

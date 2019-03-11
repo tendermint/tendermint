@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 )
 
 const (
@@ -323,6 +324,19 @@ type RPCConfig struct {
 	// Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 	// 1024 - 40 - 10 - 50 = 924 = ~900
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
+
+	// Maximum number of unique clientIDs that can /subscribe
+	// If you're using /broadcast_tx_commit, set to the estimated maximum number
+	// of broadcast_tx_commit calls per block.
+	MaxSubscriptionClients int `mapstructure:"max_subscription_clients"`
+
+	// Maximum number of unique queries a given client can /subscribe to
+	// If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set
+	// to the estimated maximum number of broadcast_tx_commit calls per block.
+	MaxSubscriptionsPerClient int `mapstructure:"max_subscriptions_per_client"`
+
+	// How long to wait for a tx to be committed during /broadcast_tx_commit
+	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -337,6 +351,10 @@ func DefaultRPCConfig() *RPCConfig {
 
 		Unsafe:             false,
 		MaxOpenConnections: 900,
+
+		MaxSubscriptionClients:    100,
+		MaxSubscriptionsPerClient: 5,
+		TimeoutBroadcastTxCommit:  10 * time.Second,
 	}
 }
 
@@ -357,6 +375,18 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.MaxOpenConnections < 0 {
 		return errors.New("max_open_connections can't be negative")
+	}
+	if cfg.MaxSubscriptionClients < 0 {
+		return errors.New("max_subscription_clients can't be negative")
+	}
+	if cfg.MaxSubscriptionsPerClient < 0 {
+		return errors.New("max_subscriptions_per_client can't be negative")
+	}
+	if cfg.TimeoutBroadcastTxCommit < 0 {
+		return errors.New("timeout_broadcast_tx_commit can't be negative")
+	}
+	if cfg.TimeoutBroadcastTxCommit > rpcserver.WriteTimeout {
+		return fmt.Errorf("timeout_broadcast_tx_commit can't be greater than rpc server's write timeout: %v", rpcserver.WriteTimeout)
 	}
 	return nil
 }
@@ -613,9 +643,6 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
-
-	// Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
-	BlockTimeIota time.Duration `mapstructure:"blocktime_iota"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -634,7 +661,6 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
-		BlockTimeIota:               1000 * time.Millisecond,
 	}
 }
 
@@ -651,14 +677,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
-	cfg.BlockTimeIota = 10 * time.Millisecond
 	return cfg
-}
-
-// MinValidVoteTime returns the minimum acceptable block time.
-// See the [BFT time spec](https://godoc.org/github.com/tendermint/tendermint/docs/spec/consensus/bft-time.md).
-func (cfg *ConsensusConfig) MinValidVoteTime(lastBlockTime time.Time) time.Time {
-	return lastBlockTime.Add(cfg.BlockTimeIota)
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
@@ -737,9 +756,6 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.PeerQueryMaj23SleepDuration < 0 {
 		return errors.New("peer_query_maj23_sleep_duration can't be negative")
-	}
-	if cfg.BlockTimeIota < 0 {
-		return errors.New("blocktime_iota can't be negative")
 	}
 	return nil
 }

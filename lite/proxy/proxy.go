@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"net/http"
 
 	amino "github.com/tendermint/go-amino"
@@ -34,7 +35,12 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 	mux := http.NewServeMux()
 	rpcserver.RegisterRPCFuncs(mux, r, cdc, logger)
 
-	wm := rpcserver.NewWebsocketManager(r, cdc, rpcserver.EventSubscriber(c))
+	unsubscribeFromAllEvents := func(remoteAddr string) {
+		if err := c.UnsubscribeAll(context.Background(), remoteAddr); err != nil {
+			logger.Error("Failed to unsubscribe from events", "err", err)
+		}
+	}
+	wm := rpcserver.NewWebsocketManager(r, cdc, rpcserver.OnDisconnect(unsubscribeFromAllEvents))
 	wm.SetLogger(logger)
 	core.SetLogger(logger)
 	mux.HandleFunc(wsEndpoint, wm.WebsocketHandler)
@@ -51,13 +57,11 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 //
 // if we want security, the client must implement it as a secure client
 func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
-
 	return map[string]*rpcserver.RPCFunc{
 		// Subscribe/unsubscribe are reserved for websocket events.
-		// We can just use the core tendermint impl, which uses the
-		// EventSwitch we registered in NewWebsocketManager above
-		"subscribe":   rpcserver.NewWSRPCFunc(core.Subscribe, "query"),
-		"unsubscribe": rpcserver.NewWSRPCFunc(core.Unsubscribe, "query"),
+		"subscribe":       rpcserver.NewWSRPCFunc(c.(Wrapper).SubscribeWS, "query"),
+		"unsubscribe":     rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeWS, "query"),
+		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeAllWS, ""),
 
 		// info API
 		"status":     rpcserver.NewRPCFunc(c.Status, ""),
@@ -66,7 +70,7 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 		"block":      rpcserver.NewRPCFunc(c.Block, "height"),
 		"commit":     rpcserver.NewRPCFunc(c.Commit, "height"),
 		"tx":         rpcserver.NewRPCFunc(c.Tx, "hash,prove"),
-		"validators": rpcserver.NewRPCFunc(c.Validators, ""),
+		"validators": rpcserver.NewRPCFunc(c.Validators, "height"),
 
 		// broadcast API
 		"broadcast_tx_commit": rpcserver.NewRPCFunc(c.BroadcastTxCommit, "tx"),
@@ -74,7 +78,7 @@ func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 		"broadcast_tx_async":  rpcserver.NewRPCFunc(c.BroadcastTxAsync, "tx"),
 
 		// abci API
-		"abci_query": rpcserver.NewRPCFunc(c.ABCIQuery, "path,data,prove"),
+		"abci_query": rpcserver.NewRPCFunc(c.ABCIQuery, "path,data"),
 		"abci_info":  rpcserver.NewRPCFunc(c.ABCIInfo, ""),
 	}
 }

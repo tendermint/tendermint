@@ -45,14 +45,14 @@ func TestInquirerValidPath(t *testing.T) {
 
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
-	require.Nil(err)
+	require.NoError(err)
 	cert := NewDynamicVerifier(chainID, trust, source)
 	cert.SetLogger(log.TestingLogger())
 
 	// This should fail validation:
 	sh := fcz[count-1].SignedHeader
 	err = cert.Verify(sh)
-	require.NotNil(err)
+	require.Error(err)
 
 	// Adding a few commits in the middle should be insufficient.
 	for i := 10; i < 13; i++ {
@@ -60,15 +60,15 @@ func TestInquirerValidPath(t *testing.T) {
 		require.Nil(err)
 	}
 	err = cert.Verify(sh)
-	assert.NotNil(err)
+	assert.Error(err)
 
 	// With more info, we succeed.
 	for i := 0; i < count; i++ {
 		err := source.SaveFullCommit(fcz[i])
-		require.Nil(err)
+		require.NoError(err)
 	}
 	err = cert.Verify(sh)
-	assert.Nil(err, "%+v", err)
+	assert.NoError(err)
 }
 
 func TestDynamicVerify(t *testing.T) {
@@ -254,7 +254,7 @@ func TestConcurrencyInquirerVerify(t *testing.T) {
 
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
-	require.Nil(err)
+	require.NoError(err)
 	cert := NewDynamicVerifier(chainID, trust, source)
 	cert.SetLogger(log.TestingLogger())
 
@@ -270,7 +270,7 @@ func TestConcurrencyInquirerVerify(t *testing.T) {
 		require.NoError(err, "%+v", err)
 	}
 	err = source.SaveFullCommit(fcz[7])
-	require.NoError(err, "%+v", err)
+	require.NoError(err)
 	err = source.SaveFullCommit(fcz[8])
 	require.NoError(err, "%+v", err)
 	sh := fcz[8].SignedHeader
@@ -287,6 +287,6 @@ func TestConcurrencyInquirerVerify(t *testing.T) {
 	}
 	wg.Wait()
 	for _, err := range errList {
-		require.Nil(err)
+		require.NoError(err)
 	}
 }

@@ -260,3 +260,7 @@ func (bat *batch) WriteSync() {
 		panic(fmt.Sprintf("RemoteDB.BatchWriteSync: %v", err))
 	}
 }
+
+func (bat *batch) Close() {
+	bat.ops = nil
+}

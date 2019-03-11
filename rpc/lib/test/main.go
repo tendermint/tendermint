@@ -6,16 +6,18 @@ import (
 	"os"
 
 	amino "github.com/tendermint/go-amino"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 var routes = map[string]*rpcserver.RPCFunc{
 	"hello_world": rpcserver.NewRPCFunc(HelloWorld, "name,num"),
 }
 
-func HelloWorld(name string, num int) (Result, error) {
+func HelloWorld(ctx *rpctypes.Context, name string, num int) (Result, error) {
 	return Result{fmt.Sprintf("hi %s %d", name, num)}, nil
 }
 
