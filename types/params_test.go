@@ -111,18 +111,17 @@ func TestConsensusParamsUpdate(t *testing.T) {
 			makeParams(1, 2, 10, 3, valEd25519),
 			&abci.ConsensusParams{
 				Block: &abci.BlockParams{
-					MaxBytes:   100,
-					MaxGas:     200,
-					TimeIotaMs: 300,
+					MaxBytes: 100,
+					MaxGas:   200,
 				},
 				Evidence: &abci.EvidenceParams{
-					MaxAge: 400,
+					MaxAge: 300,
 				},
 				Validator: &abci.ValidatorParams{
 					PubKeyTypes: valSecp256k1,
 				},
 			},
-			makeParams(100, 200, 300, 400, valSecp256k1),
+			makeParams(100, 200, 10, 300, valSecp256k1),
 		},
 	}
 	for _, tc := range testCases {

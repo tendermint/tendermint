@@ -65,6 +65,8 @@ func TestABCIConsensusParams(t *testing.T) {
 	cp := DefaultConsensusParams()
 	abciCP := TM2PB.ConsensusParams(cp)
 	cp2 := PB2TM.ConsensusParams(abciCP)
+	// TimeIotaMs is not a part of ABCI consensus params
+	cp2.Block.TimeIotaMs = cp.Block.TimeIotaMs
 
 	assert.Equal(t, *cp, cp2)
 }

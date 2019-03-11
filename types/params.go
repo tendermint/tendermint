@@ -169,7 +169,6 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	if params2.Block != nil {
 		res.Block.MaxBytes = params2.Block.MaxBytes
 		res.Block.MaxGas = params2.Block.MaxGas
-		res.Block.TimeIotaMs = params2.Block.TimeIotaMs
 	}
 	if params2.Evidence != nil {
 		res.Evidence.MaxAge = params2.Evidence.MaxAge
