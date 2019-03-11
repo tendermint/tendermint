@@ -78,6 +78,7 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 // AddBatch indexes a batch of transactions using the given list of tags.
 func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
+	defer storeBatch.Close()
 
 	for _, result := range b.Ops {
 		hash := result.Tx.Hash()
@@ -109,6 +110,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 // Index indexes a single transaction using the given list of tags.
 func (txi *TxIndex) Index(result *types.TxResult) error {
 	b := txi.store.NewBatch()
+	defer b.Close()
 
 	hash := result.Tx.Hash()
 
