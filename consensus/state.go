@@ -710,7 +710,6 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 		// XXX: should we fire timeout here (for timeout commit)?
 		cs.enterNewRound(ti.Height, 0)
 	case cstypes.RoundStepNewRound:
-		cs.Logger.Info("[handleTimeout] enterPropose")
 		cs.enterPropose(ti.Height, 0)
 	case cstypes.RoundStepPropose:
 		cs.eventBus.PublishEventTimeoutPropose(cs.RoundStateEvent())
@@ -732,7 +731,6 @@ func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
-	cs.Logger.Info("[handleTxsAvailable] enterPropose")
 	cs.enterPropose(cs.Height, 0)
 }
 
@@ -799,7 +797,6 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		}
 		go cs.proposalHeartbeat(height, round)
 	} else {
-		cs.Logger.Info("[enterNewRound] enterPropose")
 		cs.enterPropose(height, round)
 	}
 }
@@ -837,8 +834,6 @@ func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 		logger.Info("Not sending proposalHearbeat. This node is not a validator", "addr", addr, "vals", cs.Validators)
 		return
 	}
-
-	cs.Logger.Info("proposalHeartbeat: I'm here")
 
 	// validator is readonly, do nothing
 	if (cs.readonly) {
