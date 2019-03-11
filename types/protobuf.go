@@ -126,9 +126,8 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
 		Block: &abci.BlockParams{
-			MaxBytes:   params.Block.MaxBytes,
-			MaxGas:     params.Block.MaxGas,
-			TimeIotaMs: params.Block.TimeIotaMs,
+			MaxBytes: params.Block.MaxBytes,
+			MaxGas:   params.Block.MaxGas,
 		},
 		Evidence: &abci.EvidenceParams{
 			MaxAge: params.Evidence.MaxAge,
@@ -223,14 +222,17 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 }
 
 func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
-	params := ConsensusParams{}
+	params := ConsensusParams{
+		Block:     BlockParams{},
+		Evidence:  EvidenceParams{},
+		Validator: ValidatorParams{},
+	}
 
 	// we must defensively consider any structs may be nil
 	if csp.Block != nil {
 		params.Block = BlockParams{
-			MaxBytes:   csp.Block.MaxBytes,
-			MaxGas:     csp.Block.MaxGas,
-			TimeIotaMs: csp.Block.TimeIotaMs,
+			MaxBytes: csp.Block.MaxBytes,
+			MaxGas:   csp.Block.MaxGas,
 		}
 	}
 

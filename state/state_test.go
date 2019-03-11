@@ -992,12 +992,11 @@ func TestApplyUpdates(t *testing.T) {
 		2: {initParams,
 			abci.ConsensusParams{
 				Block: &abci.BlockParams{
-					MaxBytes:   44,
-					MaxGas:     55,
-					TimeIotaMs: 66,
+					MaxBytes: 44,
+					MaxGas:   55,
 				},
 			},
-			makeParams(44, 55, 66, 4)},
+			makeParams(44, 55, 3, 4)},
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
