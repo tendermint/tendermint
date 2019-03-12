@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.30.2
+
+*March 10th, 2019*
+
+This release fixes a CLevelDB memory leak. It was happening because we were not
+closing the WriteBatch object after use. See [levigo's
+godoc](https://godoc.org/github.com/jmhodges/levigo#WriteBatch.Close) for the
+Close method. Special thanks goes to @Stumble who both reported an issue in
+[cosmos-sdk](https://github.com/cosmos/cosmos-sdk/issues/3842) and provided a
+fix here.
+
+### BREAKING CHANGES:
+
+* Go API
+- [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Add Close() method to Batch interface (@Stumble)
+
+### BUG FIXES:
+- [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Fix CLevelDB memory leak (@Stumble)
+
 ## v0.30.1
 
 *February 20th, 2019*
