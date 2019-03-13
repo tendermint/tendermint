@@ -54,7 +54,6 @@ Special thanks to external contributors on this release:
 - [cmd] [\#3408](https://github.com/tendermint/tendermint/issues/3408) Fix `testnet` command's panic when creating non-validator configs (using `--n` flag) (@srmo)
 - [blockchain] [\#3358](https://github.com/tendermint/tendermint/pull/3358) Fix timer leak in `BlockPool` (@guagualvcha)
 - [p2p] [\#3359](https://github.com/tendermint/tendermint/pull/3359) Fix order of events: start peer, then add it to `PeerSet`, and then start reactors on peer. This prevents receiving to error before actually starting or adding the peer to the set. (@guagualvcha)
-- [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)
 
 ## v0.30.2
 
