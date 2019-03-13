@@ -20,7 +20,6 @@ Special thanks to external contributors on this release:
 - [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
   * previously it was dumping "captured ..." msg to os.Stdout
   * TrapSignal should not be responsible for blocking thread of execution
-- [privval] [\#3351](https://github.com/tendermint/tendermint/pull/3351) First part of larger refactoring that clarifies and separates concerns in the privval package.
 - [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)   
 
 * Blockchain Protocol
@@ -46,6 +45,7 @@ Special thanks to external contributors on this release:
   - leveldb.openedtables
   - leveldb.alivesnaps
   - leveldb.aliveiters
+- [privval] [\#3351](https://github.com/tendermint/tendermint/pull/3351) First part of larger refactoring that clarifies and separates concerns in the privval package.
 
 ### BUG FIXES:
 - [p2p/conn] [\#3347](https://github.com/tendermint/tendermint/issues/3347) Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
