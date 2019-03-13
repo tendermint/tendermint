@@ -53,7 +53,7 @@ Special thanks to external contributors on this release:
 - [p2p] [\#3369](https://github.com/tendermint/tendermint/issues/3369) do not panic when filter times out
 - [cmd] [\#3408](https://github.com/tendermint/tendermint/issues/3408) Fix `testnet` command's panic when creating non-validator configs (using `--n` flag) (@srmo)
 - [blockchain] [\#3358](https://github.com/tendermint/tendermint/pull/3358) Fix timer leak in `BlockPool` (@guagualvcha)
-- [p2p] [\#3359](https://github.com/tendermint/tendermint/pull/3359) Fix order of events: start peer, then add it to `PeerSet`, and then start reactors on peer. This prevents receiving to error before actually starting or adding the peer to the set. (@guagualvcha)
+- [p2p] [\#3359](https://github.com/tendermint/tendermint/pull/3359) Fix reconnecting report duplicate ID error due to race condition between adding peer to peerSet and starting it (@guagualvcha)
 
 ## v0.30.2
 
