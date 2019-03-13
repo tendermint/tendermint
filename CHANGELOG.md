@@ -21,6 +21,8 @@ Special thanks to external contributors on this release:
   * previously it was dumping "captured ..." msg to os.Stdout
   * TrapSignal should not be responsible for blocking thread of execution
 
+- [privval] [\#3351](https://github.com/tendermint/tendermint/pull/3351) First part of larger refactoring that clarifies and separates concerns in the privval package.   
+
 * Blockchain Protocol
 
 * P2P Protocol
