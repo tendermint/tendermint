@@ -14,6 +14,8 @@ Special thanks to external contributors on this release:
 
 * Apps
 
+- [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block` in ABCI ConsensusParams
+
 * Go API
 - [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
   * previously it was dumping "captured ..." msg to os.Stdout
@@ -29,7 +31,6 @@ Special thanks to external contributors on this release:
   `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 - [config] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Remove `consensus.blocktime_iota` parameter
 - [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
-- [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block`
 - [lite] add `/unsubscribe_all` endpoint, which allows you to unsubscribe from all events
 
 ### IMPROVEMENTS:
