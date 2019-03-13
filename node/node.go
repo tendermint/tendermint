@@ -363,6 +363,8 @@ func NewNode(config *cfg.Config,
 		// so the later reactor need read config.StateSync rather than a copied variable
 		stateReactor = bc.NewStateReactor(stateDB, proxyApp.State(), config)
 		stateReactor.SetLogger(logger.With("module", "statesync"))
+	} else {
+		config.StateSync = false
 	}
 
 	blockExecLogger := logger.With("module", "exec")

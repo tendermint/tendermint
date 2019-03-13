@@ -25,8 +25,10 @@ const (
 	// StateChannel is a channel for state and status updates (`StateStore` height)
 	StateChannel = byte(0x35)
 
-	// check if we should retry sync
-	retrySeconds = 30
+	// check if we should retry broadcast state status msg
+	retrySeconds = 5
+	// check if we are timeout and retry request again, 20 minutes here
+	timeoutSeconds = 1200
 	// how long should we start to request state (we need collect enough peers and their height but shouldn't make their app state pruned)
 	startRequestStateSeconds = 10
 
@@ -37,6 +39,7 @@ const (
 	// TODO: REVIEW before final merge
 	bcStateResponseMessagePrefixSize   = 8
 	bcStateResponseMessageFieldKeySize = 2
+	keysPerRequest                     = 5000 // should be around 500K
 	maxStateMsgSize                    = types.MaxStateSizeBytes +
 		bcStateResponseMessagePrefixSize +
 		bcStateResponseMessageFieldKeySize
@@ -205,7 +208,7 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	bcSR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+	//bcSR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcStateRequestMessage:
@@ -222,8 +225,10 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 		// received all chunks!
 		if bcSR.pool.isComplete() {
+			bcSR.quitCh <- struct{}{}
+
 			chunksToWrite := make([][]byte, 0, bcSR.pool.totalKeys)
-			for startIdx := int64(0); startIdx < bcSR.pool.totalKeys; startIdx += bcSR.pool.step {
+			for startIdx := int64(0); startIdx < bcSR.pool.totalKeys; startIdx += keysPerRequest {
 				if chunks, ok := bcSR.pool.chunks[startIdx]; ok {
 					for _, chunk := range chunks {
 						chunksToWrite = append(chunksToWrite, chunk)
@@ -237,13 +242,12 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				bcSR.Logger.Error("Failed to recover application state", "err", err)
 			}
 
-			bcSR.app.EndRecovery(msg.State.LastBlockHeight)
+			bcSR.app.EndRecovery(bcSR.pool.state.LastBlockHeight)
 
-			bcSR.Logger.Info("Time to switch to blockchain reactor!", "height", msg.State.LastBlockHeight+1)
-			bcSR.quitCh <- struct{}{}
+			bcSR.Logger.Info("Time to switch to blockchain reactor!", "height", bcSR.pool.state.LastBlockHeight+1)
 
 			bcR := bcSR.Switch.Reactor("BLOCKCHAIN").(*BlockchainReactor)
-			bcR.SwitchToBlockchain(msg.State)
+			bcR.SwitchToBlockchain(bcSR.pool.state)
 		}
 
 	case *bcStateStatusRequestMessage:
@@ -251,10 +255,6 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		height, numKeys, err := bcSR.app.LatestSnapshot()
 		if err != nil {
 			bcSR.Logger.Error("failed to load application state", "err", err)
-		}
-		state := sm.LoadState(bcSR.stateDB)
-		if state.LastBlockHeight != height {
-			bcSR.Logger.Error("application and state height is inconsistent")
 		}
 		msgBytes := cdc.MustMarshalBinaryBare(&bcStateStatusResponseMessage{height, numKeys})
 		if msg, err := bcSR.compress(msgBytes); err == nil {
@@ -289,8 +289,11 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 func (bcSR *StateReactor) poolRoutine() {
 	bcSR.BroadcastStateStatusRequest()
 	retryTicker := time.NewTicker(retrySeconds * time.Second)
+	timeoutTicker := time.NewTicker(timeoutSeconds * time.Second)
 	startRequestStateTicker := time.NewTicker(startRequestStateSeconds * time.Second)
-
+	defer retryTicker.Stop()
+	defer timeoutTicker.Stop()
+	defer startRequestStateTicker.Stop()
 FOR_LOOP:
 	for {
 		select {
@@ -300,6 +303,7 @@ FOR_LOOP:
 				continue FOR_LOOP // Peer has since been disconnected.
 			}
 			msgBytes := cdc.MustMarshalBinaryBare(&bcStateRequestMessage{request.Height, request.StartIndex, request.EndIndex})
+			bcSR.Logger.Info("try to request state", "peer", peer.ID(), "startIdx", request.StartIndex, "endIdx", request.EndIndex)
 			if msg, err := bcSR.compress(msgBytes); err == nil {
 				queued := peer.TrySend(StateChannel, msg)
 				if !queued {
@@ -317,6 +321,9 @@ FOR_LOOP:
 			}
 
 		case <-retryTicker.C:
+			bcSR.BroadcastStateStatusRequest()
+
+		case <- timeoutTicker.C:
 			bcSR.pool.reset()
 			bcSR.BroadcastStateStatusRequest()
 
