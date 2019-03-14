@@ -7,6 +7,12 @@
 Special thanks to external contributors on this release:
 @danil-lashin, @guagualvcha, @jleni, @siburu, @silasdavis, @srmo, @Stumble, @svenstaro 
 
+This release brings pubsub 2.0, limits the mempool size to 1GB (max_txs_bytes) and number of `/subscribe` WebSocket 
+clients (`max_subscription_clients`) and adds `/unsubscribe_all` endpoint to the lite client. 
+It also contains many smaller improvements and bug-fixes. 
+Pubsub 2.0 is an improved version of the older pubsub, which is a) non-blocking b) has nicer API. 
+Note our HttpClient's interface got updated to reflect the pubsub changes and now also has a better API for WebSocket subscriptions.
+
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
