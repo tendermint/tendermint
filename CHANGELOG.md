@@ -17,6 +17,9 @@ Note our HttpClient's interface got updated to reflect the pubsub changes and no
 
 * CLI/RPC/Config
 - [rpc/client] Update Subscribe interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
+- [config] Add `rpc.max_subscription_clients` config parameter to control how many unique clientIDs can `/subscribe` at the same time
+- [config] Add `rpc.max_subscriptions_per_client` config parameter to control how many unique queries a given client can `/subscribe` to
+- [config] Add `rpc.max_subscription_clients` config parameter allowing you to change time to wait for a tx to be committed during `/broadcast_tx_commit`
 
 * Apps
 
