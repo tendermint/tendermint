@@ -3,6 +3,24 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.31.0
+
+Since the pubsub no longer blocks on sending, some WS clients might stop working as expected. 
+If your WS client is not consuming events fast enough, Tendermint can terminate the subscription. 
+In this case, the WS client will receive an error with description:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "{ID}#event",
+  "error": {
+    "code": -32000,
+    "msg": "Server error",
+    "data": "subscription was cancelled (reason: client is not pulling messages fast enough)" // or "subscription was cancelled (reason: Tendermint exited)"
+  }
+}
+```
+
 ## v0.30.0
 
 This release contains a breaking change to both the block and p2p protocols,

@@ -14,10 +14,13 @@ Special thanks to external contributors on this release:
 
 * Apps
 
+- [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block` in ABCI ConsensusParams
+
 * Go API
 - [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
   * previously it was dumping "captured ..." msg to os.Stdout
   * TrapSignal should not be responsible for blocking thread of execution
+- [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)   
 
 * Blockchain Protocol
 
@@ -29,7 +32,6 @@ Special thanks to external contributors on this release:
   `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 - [config] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Remove `consensus.blocktime_iota` parameter
 - [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
-- [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block`
 - [lite] add `/unsubscribe_all` endpoint, which allows you to unsubscribe from all events
 
 ### IMPROVEMENTS:
@@ -43,12 +45,15 @@ Special thanks to external contributors on this release:
   - leveldb.openedtables
   - leveldb.alivesnaps
   - leveldb.aliveiters
+- [privval] [\#3351](https://github.com/tendermint/tendermint/pull/3351) First part of larger refactoring that clarifies and separates concerns in the privval package.
 
 ### BUG FIXES:
 - [p2p/conn] [\#3347](https://github.com/tendermint/tendermint/issues/3347) Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
 - [libs/pubsub] [\#951](https://github.com/tendermint/tendermint/issues/951), [\#1880](https://github.com/tendermint/tendermint/issues/1880) use non-blocking send when dispatching messages [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
 - [p2p] [\#3369](https://github.com/tendermint/tendermint/issues/3369) do not panic when filter times out
 - [cmd] [\#3408](https://github.com/tendermint/tendermint/issues/3408) Fix `testnet` command's panic when creating non-validator configs (using `--n` flag) (@srmo)
+- [blockchain] [\#3358](https://github.com/tendermint/tendermint/pull/3358) Fix timer leak in `BlockPool` (@guagualvcha)
+- [p2p] [\#3359](https://github.com/tendermint/tendermint/pull/3359) Fix reconnecting report duplicate ID error due to race condition between adding peer to peerSet and starting it (@guagualvcha)
 
 ## v0.30.2
 
