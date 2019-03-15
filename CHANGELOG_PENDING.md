@@ -16,6 +16,7 @@ Special thanks to external contributors on this release:
 - [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
   * previously it was dumping "captured ..." msg to os.Stdout
   * TrapSignal should not be responsible for blocking thread of execution
+- [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
 
 * Blockchain Protocol
 
