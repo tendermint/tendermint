@@ -24,6 +24,7 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
+  - [config] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Remove `consensus.blocktime_iota` parameter
   - [rpc] [\#3227](https://github.com/tendermint/tendermint/issues/3227) New PubSub design does not block on clients when publishing
     messages. Slow clients may miss messages and receive an error, terminating
     the subscription.
@@ -34,7 +35,7 @@ program](https://hackerone.com/tendermint).
 * Apps
   - [abci] [\#3403](https://github.com/tendermint/tendermint/issues/3403) Remove `time_iota_ms` from BlockParams. This is a
     ConsensusParam but need not be exposed to the app for now.
-  - [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block` in ABCI ConsensusParams
+  - [abci] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block` in ABCI ConsensusParams
 
 * Go API
   - [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
@@ -48,17 +49,15 @@ program](https://hackerone.com/tendermint).
 * P2P Protocol
 
 ### FEATURES:
-- [config] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Remove `consensus.blocktime_iota` parameter
 - [config] [\#3269](https://github.com/tendermint/tendermint/issues/2826) New configuration values for controlling RPC subscriptions:
     - `rpc.max_subscription_clients` sets the maximum number of unique clients
       with open subscriptions
     - `rpc.max_subscriptions_per_client`sets the maximum number of unique
       subscriptions from a given client
     - `rpc.timeout_broadcast_tx_commit` sets the time to wait for a tx to be committed during `/broadcast_tx_commit`
-- [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
+- [types] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
 - [lite] [\#3269](https://github.com/tendermint/tendermint/issues/3269) Add `/unsubscribe_all` endpoint to unsubscribe from all events
-- [mempool] [\#3079](https://github.com/tendermint/tendermint/issues/3079) bound mempool memory usage (`mempool.max_txs_bytes` is set to 1GB by default; see config.toml)
-  mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
+- [mempool] [\#3079](https://github.com/tendermint/tendermint/issues/3079) Bound mempool memory usage via the `mempool.max_txs_bytes` configuration value. Set to 1GB by default. The mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
   `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 
 ### IMPROVEMENTS:
