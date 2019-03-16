@@ -5,31 +5,30 @@
 *March 13th, 2019*
 
 Special thanks to external contributors on this release:
-@danil-lashin, @guagualvcha, @jleni, @siburu, @silasdavis, @srmo, @Stumble, @svenstaro 
+@danil-lashin, @guagualvcha, @jleni, @siburu, @silasdavis, @srmo, @Stumble, @svenstaro
 
-This release brings pubsub 2.0, limits the mempool size to 1GB (max_txs_bytes) and number of `/subscribe` WebSocket 
-clients (`max_subscription_clients`) and adds `/unsubscribe_all` endpoint to the lite client. 
-It also contains many smaller improvements and bug-fixes. 
-Pubsub 2.0 is an improved version of the older pubsub, which is a) non-blocking b) has nicer API. 
+This release brings pubsub 2.0, limits the mempool size to 1GB (max_txs_bytes) and number of `/subscribe` WebSocket
+clients (`max_subscription_clients`) and adds `/unsubscribe_all` endpoint to the lite client.
+It also contains many smaller improvements and bug-fixes.
+Pubsub 2.0 is an improved version of the older pubsub, which is a) non-blocking b) has nicer API.
 Note our HttpClient's interface got updated to reflect the pubsub changes and now also has a better API for WebSocket subscriptions.
 
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [rpc/client] Update Subscribe interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
-- [config] [\#2826](https://github.com/tendermint/tendermint/issues/2826) Add `rpc.max_subscription_clients` config parameter to control how many unique clientIDs can `/subscribe` at the same time
-- [config] [\#2826](https://github.com/tendermint/tendermint/issues/2826) Add `rpc.max_subscriptions_per_client` config parameter to control how many unique queries a given client can `/subscribe` to
-- [config] [\#2826](https://github.com/tendermint/tendermint/issues/2826) Add `rpc.max_subscription_clients` config parameter allowing you to change time to wait for a tx to be committed during `/broadcast_tx_commit`
+  - [rpc/client] Update Subscribe interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
+  - [config] [\#2826](https://github.com/tendermint/tendermint/issues/2826) Add `rpc.max_subscription_clients` config parameter to control how many unique clientIDs can `/subscribe` at the same time
+  - [config] [\#2826](https://github.com/tendermint/tendermint/issues/2826) Add `rpc.max_subscriptions_per_client` config parameter to control how many unique queries a given client can `/subscribe` to
+  - [config] [\#2826](https://github.com/tendermint/tendermint/issues/2826) Add `rpc.max_subscription_clients` config parameter allowing you to change time to wait for a tx to be committed during `/broadcast_tx_commit`
 
 * Apps
-
-- [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block` in ABCI ConsensusParams
+  - [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block` in ABCI ConsensusParams
 
 * Go API
-- [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
-  * previously it was dumping "captured ..." msg to os.Stdout
-  * TrapSignal should not be responsible for blocking thread of execution
-- [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)   
+  - [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
+    * previously it was dumping "captured ..." msg to os.Stdout
+    * TrapSignal should not be responsible for blocking thread of execution
+  - [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)
 
 * Blockchain Protocol
 
@@ -78,7 +77,7 @@ fix here.
 ### BREAKING CHANGES:
 
 * Go API
-- [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Add Close() method to Batch interface (@Stumble)
+  - [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Add Close() method to Batch interface (@Stumble)
 
 ### BUG FIXES:
 - [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Fix CLevelDB memory leak (@Stumble)
