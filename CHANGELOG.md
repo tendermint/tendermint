@@ -24,15 +24,15 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-  - [rpc] \#3227 New PubSub design does not block on clients when publishing
+  - [rpc] [\#3227](https://github.com/tendermint/tendermint/issues/3227) New PubSub design does not block on clients when publishing
     messages. Slow clients may miss messages and receive an error, terminating
     the subscription.
   - [rpc] [\#3269](https://github.com/tendermint/tendermint/issues/2826) Limit number of unique clientIDs with open subscriptions. Configurable via `rpc.max_subscription_clients`
   - [rpc] [\#3269](https://github.com/tendermint/tendermint/issues/2826) Limit number of unique queries a given client can subscribe to at once. Configurable via `rpc.max_subscriptions_per_client`.
-  - [rpc/client] \#3269 Update `EventsClient` interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md). This includes `Subscribe`, `Unsubscribe`, and `UnsubscribeAll` methods.
+  - [rpc/client] [\#3269](https://github.com/tendermint/tendermint/issues/3269) Update `EventsClient` interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md). This includes `Subscribe`, `Unsubscribe`, and `UnsubscribeAll` methods.
 
 * Apps
-  - [abci] \#3403 Remove `time_iota_ms` from BlockParams. This is a
+  - [abci] [\#3403](https://github.com/tendermint/tendermint/issues/3403) Remove `time_iota_ms` from BlockParams. This is a
     ConsensusParam but need not be exposed to the app for now.
   - [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block` in ABCI ConsensusParams
 
@@ -41,7 +41,7 @@ program](https://hackerone.com/tendermint).
     * previously it was dumping "captured ..." msg to os.Stdout
     * TrapSignal should not be responsible for blocking thread of execution
   - [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)
-  - [types] \#3354 Remove RoundState from EventDataRoundState
+  - [types] [\#3354](https://github.com/tendermint/tendermint/issues/3354) Remove RoundState from EventDataRoundState
 
 * Blockchain Protocol
 
@@ -56,17 +56,17 @@ program](https://hackerone.com/tendermint).
       subscriptions from a given client
     - `rpc.timeout_broadcast_tx_commit` sets the time to wait for a tx to be committed during `/broadcast_tx_commit`
 - [genesis] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
-- [lite] \#3269 Add `/unsubscribe_all` endpoint to unsubscribe from all events
+- [lite] [\#3269](https://github.com/tendermint/tendermint/issues/3269) Add `/unsubscribe_all` endpoint to unsubscribe from all events
 - [mempool] [\#3079](https://github.com/tendermint/tendermint/issues/3079) bound mempool memory usage (`mempool.max_txs_bytes` is set to 1GB by default; see config.toml)
   mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
   `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
 
 ### IMPROVEMENTS:
-- [all] \#3385, \#3386 Various linting improvements
-- [crypto] \#3371 Copy in secp256k1 package from go-ethereum instead of importing
+- [all] [\#3385](https://github.com/tendermint/tendermint/issues/3385), [\#3386](https://github.com/tendermint/tendermint/issues/3386) Various linting improvements
+- [crypto] [\#3371](https://github.com/tendermint/tendermint/issues/3371) Copy in secp256k1 package from go-ethereum instead of importing
   go-ethereum (@silasdavis)
-- [deps] \#3382 Don't pin repos without releases
-- [deps] \#3357, \#3389, \#3392 Update gogo/protobuf, golang/protobuf, levigo, golang.org/x/crypto
+- [deps] [\#3382](https://github.com/tendermint/tendermint/issues/3382) Don't pin repos without releases
+- [deps] [\#3357](https://github.com/tendermint/tendermint/issues/3357), [\#3389](https://github.com/tendermint/tendermint/issues/3389), [\#3392](https://github.com/tendermint/tendermint/issues/3392) Update gogo/protobuf, golang/protobuf, levigo, golang.org/x/crypto
 - [libs/common] [\#3238](https://github.com/tendermint/tendermint/issues/3238) exit with zero (0) code upon receiving SIGTERM/SIGINT
 - [libs/db] [\#3378](https://github.com/tendermint/tendermint/issues/3378) CLevelDB#Stats now returns the following properties:
   - leveldb.num-files-at-level{n}
@@ -83,7 +83,7 @@ program](https://hackerone.com/tendermint).
 - [blockchain] [\#3358](https://github.com/tendermint/tendermint/pull/3358) Fix timer leak in `BlockPool` (@guagualvcha)
 - [cmd] [\#3408](https://github.com/tendermint/tendermint/issues/3408) Fix `testnet` command's panic when creating non-validator configs (using `--n` flag) (@srmo)
 - [libs/pubsub] [\#951](https://github.com/tendermint/tendermint/issues/951), [\#1880](https://github.com/tendermint/tendermint/issues/1880) Use non-blocking send when dispatching messages [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
-- [lite] \#3364 Fix `/validators` and `/abci_query` proxy endpoints
+- [lite] [\#3364](https://github.com/tendermint/tendermint/issues/3364) Fix `/validators` and `/abci_query` proxy endpoints
   (@guagualvcha)
 - [p2p/conn] [\#3347](https://github.com/tendermint/tendermint/issues/3347) Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
 - [p2p] [\#3369](https://github.com/tendermint/tendermint/issues/3369) Do not panic when filter times out
