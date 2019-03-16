@@ -2,16 +2,24 @@
 
 ## v0.31.0
 
-*March 13th, 2019*
+*March 16th, 2019*
 
 Special thanks to external contributors on this release:
 @danil-lashin, @guagualvcha, @jleni, @siburu, @silasdavis, @srmo, @Stumble, @svenstaro
 
-This release brings pubsub 2.0, limits the mempool size to 1GB (max_txs_bytes) and number of `/subscribe` WebSocket
-clients (`max_subscription_clients`) and adds `/unsubscribe_all` endpoint to the lite client.
-It also contains many smaller improvements and bug-fixes.
-Pubsub 2.0 is an improved version of the older pubsub, which is a) non-blocking b) has nicer API.
-Note our HttpClient's interface got updated to reflect the pubsub changes and now also has a better API for WebSocket subscriptions.
+This release is primarily about the new pubsub implementation, dubbed `pubsub 2.0`, and related changes,
+like configurable limits on the number of active RPC subscriptions at a time (`max_subscription_clients`).
+Pubsub 2.0 is an improved version of the older pubsub that is non-blocking and has a nicer API.
+Note the improved pubsub API also resulted in some improvements to the HTTPClient interface and the API for WebSocket subscriptions.
+This release also adds a configurable limit to the mempool size, `max_txs_bytes`, with
+default 1GB, and includes many smaller improvements and bug-fixes.
+
+See the [v0.31.0
+Milestone](https://github.com/tendermint/tendermint/milestone/19?closed=1) for
+more details.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
