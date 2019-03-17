@@ -211,7 +211,7 @@ func TestSignerSignVoteErrors(t *testing.T) {
 }
 
 type BrokenSignerDialerEndpoint struct {
-	SignerDialerEndpoint
+	*SignerDialerEndpoint
 }
 
 func (ss *BrokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
@@ -229,7 +229,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 
 			// Replace signer service with a broken one
 			tc.signerService.OnStop()
-			tmp := BrokenSignerDialerEndpoint{*tc.signerService}
+			tmp := BrokenSignerDialerEndpoint{tc.signerService}
 			tmp.OnStart()
 
 			defer tmp.OnStop()

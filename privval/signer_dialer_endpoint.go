@@ -112,7 +112,7 @@ func (ss *SignerDialerEndpoint) serviceLoop() {
 	defer close(ss.stoppedCh)
 
 	retries := 0
-	var err error = nil
+	var err error
 
 	for {
 		select {
@@ -130,7 +130,7 @@ func (ss *SignerDialerEndpoint) serviceLoop() {
 
 					if err != nil {
 						ss.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
-						retries += 1
+						retries++
 						continue
 					}
 				}
