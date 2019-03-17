@@ -29,13 +29,13 @@ func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
 		}
 	}
 
-	// TODO: Fix this
+	// TODO(jleni): Fix this
 	//// retrieve and memoize the consensus public key once.
 	//pubKey, err := getPubKey(conn)
 	//if err != nil {
 	//	return nil, cmn.ErrorWrap(err, "error while retrieving public key for remote signer")
 	//}
-	// TODO: Fix this
+	// TODO(jleni): Fix this
 
 	//return &SignerClient{endpoint: endpoint, consensusPubKey: pubKey,}, nil
 	return &SignerClient{endpoint: endpoint}, nil

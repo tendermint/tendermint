@@ -33,12 +33,13 @@ type dialerTestCase struct {
 func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	var (
 		attemptCh = make(chan int)
-		retries   = 2
+		retries   = 10
 	)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
+	// Continuously Accept connection and close {attempts} times
 	go func(ln net.Listener, attemptCh chan<- int) {
 		attempts := 0
 		for {
@@ -68,7 +69,8 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	SignerServiceEndpointTimeoutReadWrite(time.Millisecond)(serviceEndpoint)
 	SignerServiceEndpointConnRetries(retries)(serviceEndpoint)
 
-	assert.Equal(t, serviceEndpoint.Start(), ErrDialRetryMax)
+	err = serviceEndpoint.Start()
+	assert.NoError(t, err)
 
 	select {
 	case attempts := <-attemptCh:

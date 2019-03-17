@@ -125,7 +125,7 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 			require.NoError(t, tc.signer.SignVote(tc.chainID, have))
 			assert.Equal(t, want.Signature, have.Signature)
 
-			// TODO: Clarify what is actually being tested
+			// TODO(jleni): Clarify what is actually being tested
 
 			// This would exceed the deadline if it was not extended by the previous message
 			time.Sleep(testTimeoutReadWrite2o3)
@@ -222,7 +222,7 @@ func (ss *BrokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err err
 func TestSignerUnexpectedResponse(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		func() {
-			// TODO: This test is actually not working. Fails for a different reason
+			// TODO(jleni): This test is actually not working. Fails for a different reason
 
 			tc.signerService.privVal = types.NewErroringMockPV()
 			tc.mockPV = types.NewErroringMockPV()

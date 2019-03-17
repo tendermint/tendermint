@@ -31,7 +31,7 @@ func SignerServiceEndpointConnRetries(retries int) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.maxConnRetries = retries }
 }
 
-// TODO: Create a common type for a signerEndpoint (common for both listener/dialer)
+// TODO(jleni): Create a common type for a signerEndpoint (common for both listener/dialer)
 // getConnection
 // AcceptNewConnection
 // read
@@ -102,6 +102,7 @@ func (ss *SignerDialerEndpoint) OnStop() {
 	if ss.conn != nil {
 		if err := ss.conn.Close(); err != nil {
 			ss.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
+			ss.Logger.Debug("Reset conn")
 			ss.conn = nil
 		}
 	}
@@ -117,6 +118,8 @@ func (ss *SignerDialerEndpoint) serviceLoop() {
 		select {
 		default:
 			{
+				ss.Logger.Debug("Try connect", "retries", retries, "max", ss.maxConnRetries)
+
 				if retries > ss.maxConnRetries {
 					ss.Logger.Error("Maximum retries reached", "retries", retries)
 					return
@@ -124,8 +127,9 @@ func (ss *SignerDialerEndpoint) serviceLoop() {
 
 				if ss.conn == nil {
 					ss.conn, err = ss.dialer()
+
 					if err != nil {
-						ss.Logger.Error("SignerDialerEndpoint::serviceLoop", "err", err)
+						ss.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
 						retries += 1
 						continue
 					}
@@ -144,7 +148,7 @@ func (ss *SignerDialerEndpoint) serviceLoop() {
 }
 
 func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
-	// TODO: Avoid duplication. Unify endpoints
+	// TODO(jleni): Avoid duplication. Unify endpoints
 	if ss.conn == nil {
 		return nil, fmt.Errorf("not connected")
 	}
@@ -152,6 +156,7 @@ func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	// Reset read deadline
 	deadline := time.Now().Add(ss.timeoutReadWrite)
 	ss.Logger.Debug("SignerDialerEndpoint: readMessage", "deadline", deadline)
+
 	err = ss.conn.SetReadDeadline(deadline)
 	if err != nil {
 		return
@@ -167,7 +172,7 @@ func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 }
 
 func (ss *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
-	// TODO: Avoid duplication. Unify endpoints
+	// TODO(jleni): Avoid duplication. Unify endpoints
 
 	if ss.conn == nil {
 		return fmt.Errorf("not connected")

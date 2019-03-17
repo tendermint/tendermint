@@ -13,7 +13,6 @@ import (
 // SignerValidatorEndpointOption sets an optional parameter on the SocketVal.
 type SignerValidatorEndpointOption func(*SignerListenerEndpoint)
 
-
 // SignerListenerEndpoint listens for an external process to dial in
 // and keeps the connection alive by dropping and reconnecting
 type SignerListenerEndpoint struct {
@@ -28,10 +27,10 @@ type SignerListenerEndpoint struct {
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
 func NewSignerListenerEndpoint(logger log.Logger, listener net.Listener) *SignerListenerEndpoint {
-	
+
 	sc := &SignerListenerEndpoint{
-		listener:        listener,
-		timeoutReadWrite : defaultTimeoutReadWriteSeconds * time.Second,
+		listener:         listener,
+		timeoutReadWrite: defaultTimeoutReadWriteSeconds * time.Second,
 	}
 
 	sc.BaseService = *cmn.NewBaseService(logger, "SignerListenerEndpoint", sc)
@@ -68,7 +67,7 @@ func (ve *SignerListenerEndpoint) IsConnected() bool {
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
 func (ve *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error {
-	// TODO: complete this
+	// TODO(jleni): complete this
 	return nil
 }
 
@@ -126,7 +125,7 @@ func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 
 // IsConnected indicates if there is an active connection
 func (ve *SignerListenerEndpoint) isConnected() bool {
-//	return ve.IsRunning() && ve.conn != nil
+	//	return ve.IsRunning() && ve.conn != nil
 	return ve.conn != nil
 }
 
