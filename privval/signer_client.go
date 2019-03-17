@@ -13,9 +13,6 @@ import (
 // It uses a validator endpoint to request signatures from an external process.
 type SignerClient struct {
 	endpoint *SignerListenerEndpoint
-
-	// memoized
-	consensusPubKey crypto.PubKey
 }
 
 // Check that SignerClient implements PrivValidator.
@@ -29,15 +26,6 @@ func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
 		}
 	}
 
-	// TODO(jleni): Fix this
-	//// retrieve and memoize the consensus public key once.
-	//pubKey, err := getPubKey(conn)
-	//if err != nil {
-	//	return nil, cmn.ErrorWrap(err, "error while retrieving public key for remote signer")
-	//}
-	// TODO(jleni): Fix this
-
-	//return &SignerClient{endpoint: endpoint, consensusPubKey: pubKey,}, nil
 	return &SignerClient{endpoint: endpoint}, nil
 }
 
