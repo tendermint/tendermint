@@ -42,7 +42,7 @@ func NewSignerListenerEndpoint(logger log.Logger, listener net.Listener) *Signer
 func (ve *SignerListenerEndpoint) OnStart() error {
 	ve.Logger.Debug("SignerListenerEndpoint: OnStart")
 
-	err := ve.AcceptNewConnection()
+	err := ve.acceptNewConnection()
 	if err != nil {
 		ve.Logger.Error("OnStart", "err", err)
 		return err
@@ -67,8 +67,11 @@ func (ve *SignerListenerEndpoint) IsConnected() bool {
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
 func (ve *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error {
-	// TODO(jleni): complete this
-	return nil
+	ve.mtx.Lock()
+	defer ve.mtx.Unlock()
+
+	// TODO(jleni): Pass maxwait through
+	return ve.ensureConnection()
 }
 
 // Close closes the underlying net.Conn.
@@ -96,18 +99,14 @@ func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 	defer ve.mtx.Unlock()
 
 	ve.Logger.Debug("SignerListenerEndpoint: Send request", "connected", ve.isConnected())
-
-	if !ve.isConnected() {
-		ve.Logger.Info("SignerListenerEndpoint: Reconnecting")
-		err := ve.AcceptNewConnection()
-		if err != nil {
-			return nil, cmn.ErrorWrap(ErrListenerNoConnection, "could not reconnect")
-		}
+	err := ve.ensureConnection()
+	if err != nil {
+		return nil, err
 	}
 
 	ve.Logger.Debug("Send request. Write")
 
-	err := ve.writeMessage(request)
+	err = ve.writeMessage(request)
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +124,17 @@ func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 
 // IsConnected indicates if there is an active connection
 func (ve *SignerListenerEndpoint) isConnected() bool {
-	//	return ve.IsRunning() && ve.conn != nil
-	return ve.conn != nil
+	return ve.IsRunning() && ve.conn != nil
+}
+
+func (ve *SignerListenerEndpoint) ensureConnection() error {
+	if !ve.isConnected() {
+		err := ve.acceptNewConnection()
+		if err != nil {
+			return cmn.ErrorWrap(ErrListenerNoConnection, "could not reconnect")
+		}
+	}
+	return nil
 }
 
 // dropConnection closes the current connection but does not touch the listening socket
@@ -193,11 +201,7 @@ func (ve *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) 
 	return
 }
 
-// AcceptNewConnection waits to accept a new connection.
-func (ve *SignerListenerEndpoint) AcceptNewConnection() error {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
-
+func (ve *SignerListenerEndpoint) acceptNewConnection() error {
 	ve.Logger.Debug("SignerListenerEndpoint: AcceptNewConnection")
 
 	if !ve.IsRunning() || ve.listener == nil {

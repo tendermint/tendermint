@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
@@ -32,11 +31,8 @@ func SignerServiceEndpointConnRetries(retries int) SignerServiceEndpointOption {
 }
 
 // TODO(jleni): Create a common type for a signerEndpoint (common for both listener/dialer)
-// getConnection
-// AcceptNewConnection
 // read
 // write
-// close
 
 // SignerDialerEndpoint dials using its dialer and responds to any
 // signature requests using its privVal.
@@ -95,17 +91,34 @@ func (ss *SignerDialerEndpoint) OnStart() error {
 
 // OnStop implements cmn.Service.
 func (ss *SignerDialerEndpoint) OnStop() {
-	// Trigger a stop and wait
+	ss.Logger.Debug("SignerDialerEndpoint: OnStop calling Close")
+	_ = ss.Close()
+}
+
+// IsConnected indicates if there is an active connection
+func (ss *SignerDialerEndpoint) IsConnected() bool {
+	ss.mtx.Lock()
+	defer ss.mtx.Unlock()
+	return ss.isConnected()
+}
+
+// Close closes the underlying net.Conn.
+func (ss *SignerDialerEndpoint) Close() error {
+	ss.mtx.Lock()
+	defer ss.mtx.Unlock()
+
 	close(ss.stopCh)
 	<-ss.stoppedCh
 
+	ss.Logger.Debug("SignerDialerEndpoint: Close")
 	if ss.conn != nil {
 		if err := ss.conn.Close(); err != nil {
 			ss.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
-			ss.Logger.Debug("Reset conn")
 			ss.conn = nil
 		}
 	}
+
+	return nil
 }
 
 func (ss *SignerDialerEndpoint) serviceLoop() {
@@ -209,7 +222,7 @@ func (ss *SignerDialerEndpoint) handleRequest() {
 		return
 	}
 
-	res, err := handleMessage(req, ss.chainID, ss.privVal)
+	res, err := HandleValidatorRequest(req, ss.chainID, ss.privVal)
 
 	if err != nil {
 		// only log the error; we'll reply with an error in res
@@ -223,35 +236,7 @@ func (ss *SignerDialerEndpoint) handleRequest() {
 	}
 }
 
-func handleMessage(req RemoteSignerMsg, chainID string, privVal types.PrivValidator) (RemoteSignerMsg, error) {
-	var res RemoteSignerMsg
-	var err error
-
-	switch r := req.(type) {
-	case *PubKeyRequest:
-		var p crypto.PubKey
-		p = privVal.GetPubKey()
-		res = &PubKeyResponse{p, nil}
-
-	case *SignVoteRequest:
-		err = privVal.SignVote(chainID, r.Vote)
-		if err != nil {
-			res = &SignedVoteResponse{nil, &RemoteSignerError{0, err.Error()}}
-		} else {
-			res = &SignedVoteResponse{r.Vote, nil}
-		}
-
-	case *SignProposalRequest:
-		err = privVal.SignProposal(chainID, r.Proposal)
-		if err != nil {
-			res = &SignedProposalResponse{nil, &RemoteSignerError{0, err.Error()}}
-		} else {
-			res = &SignedProposalResponse{r.Proposal, nil}
-		}
-
-	default:
-		err = fmt.Errorf("unknown msg: %v", r)
-	}
-
-	return res, err
+// IsConnected indicates if there is an active connection
+func (ve *SignerDialerEndpoint) isConnected() bool {
+	return ve.IsRunning() && ve.conn != nil
 }

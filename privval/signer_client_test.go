@@ -214,6 +214,7 @@ type BrokenSignerDialerEndpoint struct {
 	*SignerDialerEndpoint
 }
 
+// nolint
 func (ss *BrokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, PubKeyResponse{})
 	return
