@@ -18,11 +18,13 @@ type SignerValidatorEndpointOption func(*SignerListenerEndpoint)
 type SignerListenerEndpoint struct {
 	cmn.BaseService
 
-	mtx      sync.Mutex
+	extMtx   sync.Mutex
 	listener net.Listener
 	conn     net.Conn
 
 	timeoutReadWrite time.Duration
+
+	stopCh, stoppedCh chan struct{}
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
@@ -42,13 +44,11 @@ func NewSignerListenerEndpoint(logger log.Logger, listener net.Listener) *Signer
 func (ve *SignerListenerEndpoint) OnStart() error {
 	ve.Logger.Debug("SignerListenerEndpoint: OnStart")
 
-	err := ve.acceptNewConnection()
-	if err != nil {
-		ve.Logger.Error("OnStart", "err", err)
-		return err
-	}
+	ve.stopCh = make(chan struct{})
+	ve.stoppedCh = make(chan struct{})
 
-	ve.Logger.Debug("SignerListenerEndpoint OnStart", "connected", ve.isConnected())
+	go ve.serviceLoop()
+
 	return nil
 }
 
@@ -56,50 +56,53 @@ func (ve *SignerListenerEndpoint) OnStart() error {
 func (ve *SignerListenerEndpoint) OnStop() {
 	ve.Logger.Debug("SignerListenerEndpoint: OnStop calling Close")
 	_ = ve.Close()
+
+	// Stop listening
+	if ve.listener != nil {
+		if err := ve.listener.Close(); err != nil {
+			ve.Logger.Error("Closing Listener", "err", err)
+		}
+	}
+
+	// Stop service loop
+	close(ve.stopCh)
+	<-ve.stoppedCh
+}
+
+// Close closes the underlying net.Conn.
+func (ve *SignerListenerEndpoint) Close() error {
+	ve.extMtx.Lock()
+	defer ve.extMtx.Unlock()
+	ve.Logger.Debug("SignerListenerEndpoint: Close")
+
+	ve.dropConnection()
+
+	return nil
 }
 
 // IsConnected indicates if there is an active connection
 func (ve *SignerListenerEndpoint) IsConnected() bool {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
+	ve.extMtx.Lock()
+	defer ve.extMtx.Unlock()
 	return ve.isConnected()
 }
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
 func (ve *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
-
-	// TODO(jleni): Pass maxwait through
-	return ve.ensureConnection()
-}
-
-// Close closes the underlying net.Conn.
-func (ve *SignerListenerEndpoint) Close() error {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
-
-	ve.Logger.Debug("SignerListenerEndpoint: Close")
-
-	ve.dropConnection()
-
-	if ve.listener != nil {
-		if err := ve.listener.Close(); err != nil {
-			ve.Logger.Error("Closing Listener", "err", err)
-			return err
-		}
-	}
-
-	return nil
+	ve.extMtx.Lock()
+	defer ve.extMtx.Unlock()
+	return ve.ensureConnection(maxWait)
 }
 
 // SendRequest sends a request and waits for a response
 func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSignerMsg, error) {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
+	ve.extMtx.Lock()
+	defer ve.extMtx.Unlock()
+
+	// TODO: Add retries.. that include dropping the connection and
 
 	ve.Logger.Debug("SignerListenerEndpoint: Send request", "connected", ve.isConnected())
-	err := ve.ensureConnection()
+	err := ve.ensureConnection(ve.timeoutReadWrite)
 	if err != nil {
 		return nil, err
 	}
@@ -127,12 +130,9 @@ func (ve *SignerListenerEndpoint) isConnected() bool {
 	return ve.IsRunning() && ve.conn != nil
 }
 
-func (ve *SignerListenerEndpoint) ensureConnection() error {
+func (ve *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
+	// TODO: Check that is connected
 	if !ve.isConnected() {
-		err := ve.acceptNewConnection()
-		if err != nil {
-			return cmn.ErrorWrap(ErrListenerNoConnection, "could not reconnect")
-		}
 	}
 	return nil
 }
@@ -140,10 +140,9 @@ func (ve *SignerListenerEndpoint) ensureConnection() error {
 // dropConnection closes the current connection but does not touch the listening socket
 func (ve *SignerListenerEndpoint) dropConnection() {
 	ve.Logger.Debug("SignerListenerEndpoint: dropConnection")
-
 	if ve.conn != nil {
 		if err := ve.conn.Close(); err != nil {
-			ve.Logger.Error("Closing connection", "err", err)
+			ve.Logger.Error("SignerListenerEndpoint::dropConnection", "err", err)
 		}
 		ve.conn = nil
 	}
@@ -201,32 +200,48 @@ func (ve *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) 
 	return
 }
 
+func (ve *SignerListenerEndpoint) serviceLoop() {
+	defer close(ve.stoppedCh)
+
+	for {
+		select {
+		default:
+			{
+				ve.Logger.Debug("Listening for new connection")
+				_ = ve.acceptNewConnection()
+			}
+
+		case <-ve.stopCh:
+			{
+				return
+			}
+		}
+	}
+}
+
 func (ve *SignerListenerEndpoint) acceptNewConnection() error {
+	// TODO: add proper locking
 	ve.Logger.Debug("SignerListenerEndpoint: AcceptNewConnection")
 
 	if !ve.IsRunning() || ve.listener == nil {
 		return fmt.Errorf("endpoint is closing")
 	}
 
+	// TODO: add proper locking
 	// if the conn already exists and close it.
-	if ve.conn != nil {
-		if tmpErr := ve.conn.Close(); tmpErr != nil {
-			ve.Logger.Error("AcceptNewConnection: error closing old connection", "err", tmpErr)
-		}
-	}
-
-	// Forget old connection
-	ve.conn = nil
+	ve.dropConnection()
 
 	// wait for a new conn
 	conn, err := ve.listener.Accept()
 	if err != nil {
 		ve.Logger.Debug("listener accept failed", "err", err)
+		ve.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
 		return err
 	}
 
 	ve.conn = conn
 	ve.Logger.Info("SignerListenerEndpoint: New connection")
+	// TODO: add proper locking
 
 	return nil
 }

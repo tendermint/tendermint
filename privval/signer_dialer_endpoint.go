@@ -85,7 +85,6 @@ func (ss *SignerDialerEndpoint) OnStart() error {
 
 	go ss.serviceLoop()
 
-	ss.Logger.Debug("OnStart - done")
 	return nil
 }
 
@@ -93,24 +92,18 @@ func (ss *SignerDialerEndpoint) OnStart() error {
 func (ss *SignerDialerEndpoint) OnStop() {
 	ss.Logger.Debug("SignerDialerEndpoint: OnStop calling Close")
 	_ = ss.Close()
-}
 
-// IsConnected indicates if there is an active connection
-func (ss *SignerDialerEndpoint) IsConnected() bool {
-	ss.mtx.Lock()
-	defer ss.mtx.Unlock()
-	return ss.isConnected()
+	// Stop service loop
+	close(ss.stopCh)
+	<-ss.stoppedCh
 }
 
 // Close closes the underlying net.Conn.
 func (ss *SignerDialerEndpoint) Close() error {
 	ss.mtx.Lock()
 	defer ss.mtx.Unlock()
-
-	close(ss.stopCh)
-	<-ss.stoppedCh
-
 	ss.Logger.Debug("SignerDialerEndpoint: Close")
+
 	if ss.conn != nil {
 		if err := ss.conn.Close(); err != nil {
 			ss.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
@@ -121,54 +114,25 @@ func (ss *SignerDialerEndpoint) Close() error {
 	return nil
 }
 
-func (ss *SignerDialerEndpoint) serviceLoop() {
-	defer close(ss.stoppedCh)
-
-	retries := 0
-	var err error
-
-	for {
-		select {
-		default:
-			{
-				ss.Logger.Debug("Try connect", "retries", retries, "max", ss.maxConnRetries)
-
-				if retries > ss.maxConnRetries {
-					ss.Logger.Error("Maximum retries reached", "retries", retries)
-					return
-				}
-
-				if ss.conn == nil {
-					ss.conn, err = ss.dialer()
-
-					if err != nil {
-						ss.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
-						retries++
-						continue
-					}
-				}
-
-				retries = 0
-				ss.handleRequest()
-			}
-
-		case <-ss.stopCh:
-			{
-				return
-			}
-		}
-	}
+// IsConnected indicates if there is an active connection
+func (ss *SignerDialerEndpoint) IsConnected() bool {
+	ss.mtx.Lock()
+	defer ss.mtx.Unlock()
+	return ss.isConnected()
 }
 
 func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	// TODO(jleni): Avoid duplication. Unify endpoints
-	if ss.conn == nil {
+	if !ss.isConnected() {
 		return nil, fmt.Errorf("not connected")
 	}
 
 	// Reset read deadline
 	deadline := time.Now().Add(ss.timeoutReadWrite)
-	ss.Logger.Debug("SignerDialerEndpoint: readMessage", "deadline", deadline)
+	ss.Logger.Debug(
+		"SignerDialerEndpoint: readMessage",
+		"timeout", ss.timeoutReadWrite,
+		"deadline", deadline)
 
 	err = ss.conn.SetReadDeadline(deadline)
 	if err != nil {
@@ -239,4 +203,43 @@ func (ss *SignerDialerEndpoint) handleRequest() {
 // IsConnected indicates if there is an active connection
 func (ve *SignerDialerEndpoint) isConnected() bool {
 	return ve.IsRunning() && ve.conn != nil
+}
+
+func (ss *SignerDialerEndpoint) serviceLoop() {
+	defer close(ss.stoppedCh)
+
+	retries := 0
+	var err error
+
+	for {
+		select {
+		default:
+			{
+				ss.Logger.Debug("Try connect", "retries", retries, "max", ss.maxConnRetries)
+
+				if retries > ss.maxConnRetries {
+					ss.Logger.Error("Maximum retries reached", "retries", retries)
+					return
+				}
+
+				if ss.conn == nil {
+					ss.conn, err = ss.dialer()
+
+					if err != nil {
+						ss.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
+						retries++
+						continue
+					}
+				}
+
+				retries = 0
+				ss.handleRequest()
+			}
+
+		case <-ss.stopCh:
+			{
+				return
+			}
+		}
+	}
 }
