@@ -21,8 +21,6 @@ const (
 	maxPerPage     = 100
 )
 
-var subscribeTimeout = rpcserver.WriteTimeout / 2
-
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 
@@ -137,7 +135,11 @@ func SetEventBus(b *types.EventBus) {
 }
 
 // SetConfig sets an RPCConfig.
+// If necessary it adjusts (increases) the WriteTimeout for writing to the http
+// connection to ensure rpcserver.WriteTimeout() > c.TimeoutBroadcastTxCommit.
+// For details see: https://github.com/tendermint/tendermint/issues/3435
 func SetConfig(c cfg.RPCConfig) {
+	rpcserver.AdjustWriteTimeout(c)
 	config = c
 }
 

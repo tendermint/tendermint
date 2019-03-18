@@ -3,8 +3,12 @@ package core
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	cfg "github.com/tendermint/tendermint/config"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 )
 
 func TestPaginationPage(t *testing.T) {
@@ -65,4 +69,14 @@ func TestPaginationPerPage(t *testing.T) {
 		p := validatePerPage(c.perPage)
 		assert.Equal(t, c.newPerPage, p, fmt.Sprintf("%v", c))
 	}
+}
+
+func TestSetConfig(t *testing.T) {
+	orig := config
+	c := cfg.DefaultRPCConfig()
+	c.TimeoutBroadcastTxCommit = rpcserver.WriteTimeout() + 10*time.Second
+	SetConfig(*c)
+	assert.True(t, config.TimeoutBroadcastTxCommit < rpcserver.WriteTimeout())
+
+	config = orig
 }

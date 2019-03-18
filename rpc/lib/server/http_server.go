@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/netutil"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -31,14 +32,40 @@ const (
 	// same as the net/http default
 	maxHeaderBytes = 1 << 20
 
-	// Timeouts for reading/writing to the http connection.
-	// Public so handlers can read them -
-	// /broadcast_tx_commit has it's own timeout, which should
-	// be less than the WriteTimeout here.
+	// Timeout for reading to the http connection.
+	// Public so handlers can read it.
 	// TODO: use a config instead.
-	ReadTimeout  = 3 * time.Second
-	WriteTimeout = 20 * time.Second
+	ReadTimeout = 3 * time.Second
 )
+
+var (
+	// Timeout for writing to the http connection.
+	// Use the WriteTimeout() function to read this.
+	writeTimeout = 20 * time.Second
+)
+
+// AdjustWriteTimeout adjusts the timeout for writing to the http connection
+// if necessary.
+// That is if and only if the passed in RPCConfig contains
+// a TimeoutBroadcastTxCommit which is larger than the WriteTimeout.
+// Call this method with your RPCConfig before starting a http server.
+//
+// /broadcast_tx_commit has it's own timeout, which should
+// be less than the WriteTimeout here.
+func AdjustWriteTimeout(cfg config.RPCConfig) (changed bool) {
+	if cfg.TimeoutBroadcastTxCommit > writeTimeout {
+		delta := 2 * time.Second // we just need to make sure the resulting timeout is large enough
+		writeTimeout = cfg.TimeoutBroadcastTxCommit + delta
+		changed = true
+	}
+	return
+}
+
+// WriteTimeout returns the currently set timeout for writing to an http
+// connection. Handlers might need to read this parameter.
+func WriteTimeout() time.Duration {
+	return writeTimeout
+}
 
 // StartHTTPServer takes a listener and starts an HTTP server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
@@ -48,7 +75,7 @@ func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Log
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		ReadTimeout:    ReadTimeout,
-		WriteTimeout:   WriteTimeout,
+		WriteTimeout:   writeTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
 	err := s.Serve(listener)
@@ -70,7 +97,7 @@ func StartHTTPAndTLSServer(
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		ReadTimeout:    ReadTimeout,
-		WriteTimeout:   WriteTimeout,
+		WriteTimeout:   writeTimeout,
 		MaxHeaderBytes: maxHeaderBytes,
 	}
 	err := s.ServeTLS(listener, certFile, keyFile)
