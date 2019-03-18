@@ -47,11 +47,8 @@ var (
 // AdjustWriteTimeout adjusts the timeout for writing to the http connection
 // if necessary.
 // That is if and only if the passed in RPCConfig contains
-// a TimeoutBroadcastTxCommit which is larger than the WriteTimeout.
-// Call this method with your RPCConfig before starting a http server.
-//
-// /broadcast_tx_commit has it's own timeout, which should
-// be less than the WriteTimeout here.
+// a TimeoutBroadcastTxCommit (used by /broadcast_tx_commit) which is larger
+// than the WriteTimeout.
 func AdjustWriteTimeout(cfg config.RPCConfig) (changed bool) {
 	if cfg.TimeoutBroadcastTxCommit > writeTimeout {
 		delta := 2 * time.Second // we just need to make sure the resulting timeout is large enough
