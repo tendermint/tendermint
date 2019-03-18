@@ -25,6 +25,8 @@ type SignerListenerEndpoint struct {
 	timeoutReadWrite time.Duration
 
 	stopCh, stoppedCh chan struct{}
+	connectCh         chan struct{}
+	connectedCh       chan net.Conn
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
@@ -47,7 +49,11 @@ func (ve *SignerListenerEndpoint) OnStart() error {
 	ve.stopCh = make(chan struct{})
 	ve.stoppedCh = make(chan struct{})
 
+	ve.connectCh = make(chan struct{})
+	ve.connectedCh = make(chan net.Conn)
+
 	go ve.serviceLoop()
+	ve.connectCh <- struct{}{}
 
 	return nil
 }
@@ -57,6 +63,7 @@ func (ve *SignerListenerEndpoint) OnStop() {
 	ve.Logger.Debug("SignerListenerEndpoint: OnStop calling Close")
 	_ = ve.Close()
 
+	ve.Logger.Debug("SignerListenerEndpoint: OnStop stop listening")
 	// Stop listening
 	if ve.listener != nil {
 		if err := ve.listener.Close(); err != nil {
@@ -64,8 +71,10 @@ func (ve *SignerListenerEndpoint) OnStop() {
 		}
 	}
 
+	ve.Logger.Debug("SignerListenerEndpoint: OnStop close stopCh")
 	// Stop service loop
-	close(ve.stopCh)
+
+	ve.stopCh <- struct{}{}
 	<-ve.stoppedCh
 }
 
@@ -77,6 +86,7 @@ func (ve *SignerListenerEndpoint) Close() error {
 
 	ve.dropConnection()
 
+	ve.Logger.Debug("SignerListenerEndpoint: Closed")
 	return nil
 }
 
@@ -128,24 +138,6 @@ func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 // IsConnected indicates if there is an active connection
 func (ve *SignerListenerEndpoint) isConnected() bool {
 	return ve.IsRunning() && ve.conn != nil
-}
-
-func (ve *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
-	// TODO: Check that is connected
-	if !ve.isConnected() {
-	}
-	return nil
-}
-
-// dropConnection closes the current connection but does not touch the listening socket
-func (ve *SignerListenerEndpoint) dropConnection() {
-	ve.Logger.Debug("SignerListenerEndpoint: dropConnection")
-	if ve.conn != nil {
-		if err := ve.conn.Close(); err != nil {
-			ve.Logger.Error("SignerListenerEndpoint::dropConnection", "err", err)
-		}
-		ve.conn = nil
-	}
 }
 
 func (ve *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
@@ -200,48 +192,104 @@ func (ve *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) 
 	return
 }
 
+func (ve *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
+	if !ve.isConnected() {
+		// Is there a connection ready?
+		select {
+		case ve.conn = <-ve.connectedCh:
+			{
+				ve.Logger.Debug("SignerListenerEndpoint: received connection")
+				return nil
+			}
+		default:
+			{
+				ve.Logger.Debug("SignerListenerEndpoint: no connection is ready")
+			}
+		}
+
+		// should we trigger a reconnect?
+		select {
+		case ve.connectCh <- struct{}{}:
+			{
+				ve.Logger.Debug("SignerListenerEndpoint: triggered a reconnect")
+			}
+		default:
+			{
+				ve.Logger.Debug("SignerListenerEndpoint: reconnect in progress")
+			}
+		}
+
+		// block until connected or timeout
+		select {
+		case ve.conn = <-ve.connectedCh:
+			{
+				ve.Logger.Debug("SignerListenerEndpoint: connected")
+			}
+		case <-time.After(maxWait):
+			{
+				ve.Logger.Debug("SignerListenerEndpoint: timeout")
+				return ErrListenerTimeout
+			}
+		}
+	}
+	return nil
+}
+
+// dropConnection closes the current connection but does not touch the listening socket
+func (ve *SignerListenerEndpoint) dropConnection() {
+	ve.Logger.Debug("SignerListenerEndpoint: dropConnection")
+	if ve.conn != nil {
+		if err := ve.conn.Close(); err != nil {
+			ve.Logger.Error("SignerListenerEndpoint::dropConnection", "err", err)
+		}
+		ve.conn = nil
+	}
+	ve.Logger.Debug("SignerListenerEndpoint: dropConnection DONE")
+}
+
 func (ve *SignerListenerEndpoint) serviceLoop() {
 	defer close(ve.stoppedCh)
+	defer ve.Logger.Debug("SignerListenerEndpoint::serviceLoop EXIT")
+	ve.Logger.Debug("SignerListenerEndpoint::serviceLoop")
 
 	for {
 		select {
-		default:
+		case <-ve.connectCh:
 			{
-				ve.Logger.Debug("Listening for new connection")
-				_ = ve.acceptNewConnection()
+				for {
+					ve.Logger.Info("Listening for new connection")
+					conn, err := ve.acceptNewConnection()
+					if err == nil {
+						ve.Logger.Info("Connected")
+						ve.connectedCh <- conn
+						break
+					}
+				}
 			}
 
 		case <-ve.stopCh:
 			{
+				ve.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
 				return
 			}
 		}
 	}
 }
 
-func (ve *SignerListenerEndpoint) acceptNewConnection() error {
-	// TODO: add proper locking
+func (ve *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
 	ve.Logger.Debug("SignerListenerEndpoint: AcceptNewConnection")
 
 	if !ve.IsRunning() || ve.listener == nil {
-		return fmt.Errorf("endpoint is closing")
+		return nil, fmt.Errorf("endpoint is closing")
 	}
-
-	// TODO: add proper locking
-	// if the conn already exists and close it.
-	ve.dropConnection()
 
 	// wait for a new conn
 	conn, err := ve.listener.Accept()
 	if err != nil {
 		ve.Logger.Debug("listener accept failed", "err", err)
-		ve.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
-		return err
+		return nil, err
 	}
 
-	ve.conn = conn
 	ve.Logger.Info("SignerListenerEndpoint: New connection")
-	// TODO: add proper locking
-
-	return nil
+	return conn, nil
 }

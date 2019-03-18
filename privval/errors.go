@@ -4,10 +4,17 @@ import (
 	"fmt"
 )
 
+type ListenerTimeoutError struct{}
+
+// Implement the net.Error interface.
+func (e ListenerTimeoutError) Error() string   { return "listening endpoint timed out" }
+func (e ListenerTimeoutError) Timeout() bool   { return true }
+func (e ListenerTimeoutError) Temporary() bool { return true }
+
 // Socket errors.
 var (
 	ErrUnexpectedResponse   = fmt.Errorf("received unexpected response")
-	ErrListenerTimeout      = fmt.Errorf("signer listening endpoint timed out")
+	ErrListenerTimeout      = ListenerTimeoutError{}
 	ErrListenerNoConnection = fmt.Errorf("signer listening endpoint is not connected")
 	ErrDialerTimeout        = fmt.Errorf("signer dialer endpoint timed out")
 )
