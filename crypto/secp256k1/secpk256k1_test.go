@@ -99,12 +99,12 @@ func TestSignRecoverAbleAndValidateSecp256k1(t *testing.T) {
 	// recover publickey
 	rPubkey, err := privKey.RecoverPubkeyFromSign(msg, sig)
 	require.Nil(t, err)
-	assert.True(t, bytes.Compare(pubKey.Bytes(), rPubkey.Bytes())==0)
+	assert.True(t, bytes.Compare(pubKey.Bytes(), rPubkey.Bytes()) == 0)
 
 	// Mutate the signature, just one bit.
 	sig[3] ^= byte(0x01)
 
 	assert.False(t, pubKey.VerifyBytes(msg, sig))
 	errPubKey, _ := privKey.RecoverPubkeyFromSign(msg, sig)
-	assert.False(t, bytes.Compare(pubKey.Bytes(), errPubKey.Bytes())==0)
+	assert.False(t, bytes.Compare(pubKey.Bytes(), errPubKey.Bytes()) == 0)
 }

@@ -75,7 +75,6 @@ func serializeSig(sig *secp256k1.Signature) []byte {
 	return sigBytes
 }
 
-
 // SignRecoverAble creates an ECDSA signature on curve Secp256k1, a recoverable ECDSA signature .
 // it returns the result that is in 65-byte [R || S || V]
 // the lengeth of hash should must be 32 bytes
@@ -108,6 +107,5 @@ func (privKey PrivKeySecp256k1) RecoverPubkeyFromSign(msg, sig []byte) (crypto.P
 
 	copy(pubkeyBytes[:], pubkeyObj.SerializeCompressed())
 	return pubkeyBytes, nil
-
 
 }

@@ -21,7 +21,7 @@ func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
 
 func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sig []byte) bool {
 	// if the signature is in the 65-byte [R || S || V] remove [V]
-	if len(sig) == 65{
+	if len(sig) == 65 {
 		sig = sig[0:64]
 	}
 	return secp256k1.VerifySignature(pubKey[:], crypto.Sha256(msg), sig)
@@ -42,7 +42,7 @@ func (privKey PrivKeySecp256k1) SignRecoverAble(msg []byte) ([]byte, error) {
 func (privKey PrivKeySecp256k1) RecoverPubkeyFromSign(msg, sig []byte) (crypto.PubKey, error) {
 	pubkey, err := secp256k1.RecoverPubkey(crypto.Sha256(msg), sig)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 	x, y := elliptic.Unmarshal(secp256k1.S256(), pubkey)
 
