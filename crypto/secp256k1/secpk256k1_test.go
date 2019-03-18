@@ -1,6 +1,7 @@
 package secp256k1_test
 
 import (
+	"bytes"
 	"encoding/hex"
 	"testing"
 
@@ -83,4 +84,27 @@ func TestSecp256k1LoadPrivkeyAndSerializeIsIdentity(t *testing.T) {
 		serializedBytes := priv.Serialize()
 		require.Equal(t, privKeyBytes[:], serializedBytes)
 	}
+}
+
+func TestSignRecoverAbleAndValidateSecp256k1(t *testing.T) {
+	privKey := secp256k1.GenPrivKey()
+	pubKey := privKey.PubKey()
+
+	msg := crypto.CRandBytes(128)
+	sig, err := privKey.SignRecoverAble(msg)
+	require.Nil(t, err)
+
+	assert.True(t, pubKey.VerifyBytes(msg, sig))
+
+	// recover publickey
+	rPubkey, err := privKey.RecoverPubkeyFromSign(msg, sig)
+	require.Nil(t, err)
+	assert.True(t, bytes.Compare(pubKey.Bytes(), rPubkey.Bytes())==0)
+
+	// Mutate the signature, just one bit.
+	sig[3] ^= byte(0x01)
+
+	assert.False(t, pubKey.VerifyBytes(msg, sig))
+	errPubKey, _ := privKey.RecoverPubkeyFromSign(msg, sig)
+	assert.False(t, bytes.Compare(pubKey.Bytes(), errPubKey.Bytes())==0)
 }
