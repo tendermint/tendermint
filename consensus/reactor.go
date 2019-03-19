@@ -100,10 +100,10 @@ func (conR *ConsensusReactor) OnStop() {
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
 func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int) {
 	conR.Logger.Info("SwitchToConsensus")
-	conR.conS.reconstructLastCommit(state)
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
 	// broadcast a NewRoundStepMessage.
 	conR.conS.updateToState(state)
+	conR.conS.reconstructLastCommit(state)
 
 	conR.mtx.Lock()
 	conR.fastSync = false
