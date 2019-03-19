@@ -9,7 +9,6 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
@@ -135,11 +134,7 @@ func SetEventBus(b *types.EventBus) {
 }
 
 // SetConfig sets an RPCConfig.
-// If necessary it adjusts (increases) the WriteTimeout for writing to the http
-// connection to ensure rpcserver.WriteTimeout() > c.TimeoutBroadcastTxCommit.
-// For details see: https://github.com/tendermint/tendermint/issues/3435
 func SetConfig(c cfg.RPCConfig) {
-	rpcserver.AdjustWriteTimeout(c)
 	config = c
 }
 

@@ -9,7 +9,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -198,9 +197,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	}
 
 	// Subscribe to tx being committed in block.
-	subscribeTimeout := rpcserver.WriteTimeout() / 2
-	subCtx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
-	defer cancel()
+	subCtx := context.TODO()
 	q := types.EventQueryTxFor(tx)
 	deliverTxSub, err := eventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
