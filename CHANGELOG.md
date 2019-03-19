@@ -43,6 +43,7 @@ program](https://hackerone.com/tendermint).
     * TrapSignal should not be responsible for blocking thread of execution
   - [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)
   - [types] [\#3354](https://github.com/tendermint/tendermint/issues/3354) Remove RoundState from EventDataRoundState
+  - [rpc] [\#3435](https://github.com/tendermint/tendermint/issues/3435) `StartHTTPServer` / `StartHTTPAndTLSServer` now require a Config (use `rpcserver.DefaultConfig`)
 
 * Blockchain Protocol
 
@@ -77,6 +78,7 @@ program](https://hackerone.com/tendermint).
   - leveldb.alivesnaps
   - leveldb.aliveiters
 - [privval] [\#3351](https://github.com/tendermint/tendermint/pull/3351) First part of larger refactoring that clarifies and separates concerns in the privval package.
+- [rpc] [\#3435](https://github.com/tendermint/tendermint/issues/3435) setting `TimeoutBroadcastTxCommit` may increase the HTTP global write timeout
 
 ### BUG FIXES:
 - [blockchain] [\#3358](https://github.com/tendermint/tendermint/pull/3358) Fix timer leak in `BlockPool` (@guagualvcha)
