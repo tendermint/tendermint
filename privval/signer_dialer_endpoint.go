@@ -214,35 +214,31 @@ func (ss *SignerDialerEndpoint) serviceLoop() {
 	for {
 		select {
 		default:
-			{
-				ss.Logger.Debug("Try connect", "retries", retries, "max", ss.maxConnRetries)
+			ss.Logger.Debug("Try connect", "retries", retries, "max", ss.maxConnRetries)
 
-				if retries > ss.maxConnRetries {
-					ss.Logger.Error("Maximum retries reached", "retries", retries)
-					return
-				}
-
-				if ss.conn == nil {
-					ss.conn, err = ss.dialer()
-					if err != nil {
-						ss.Logger.Info("Try connect", "err", err)
-						ss.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
-						retries++
-
-						// Wait between retries
-						time.Sleep(ss.retryWait)
-						continue
-					}
-				}
-
-				retries = 0
-				ss.handleRequest()
-			}
-
-		case <-ss.stopCh:
-			{
+			if retries > ss.maxConnRetries {
+				ss.Logger.Error("Maximum retries reached", "retries", retries)
 				return
 			}
+
+			if ss.conn == nil {
+				ss.conn, err = ss.dialer()
+				if err != nil {
+					ss.Logger.Info("Try connect", "err", err)
+					ss.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
+					retries++
+
+					// Wait between retries
+					time.Sleep(ss.retryWait)
+					continue
+				}
+			}
+
+			retries = 0
+			ss.handleRequest()
+
+		case <-ss.stopCh:
+			return
 		}
 	}
 }

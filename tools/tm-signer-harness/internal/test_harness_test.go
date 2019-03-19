@@ -73,7 +73,7 @@ const (
 )
 
 func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
-	cfg := makeConfig(t, 200, 2)
+	cfg := makeConfig(t, 1, 2)
 	defer cleanup(cfg)
 
 	th, err := NewTestHarness(log.TestingLogger(), cfg)
