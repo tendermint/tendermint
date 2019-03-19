@@ -43,88 +43,88 @@ func NewSignerListenerEndpoint(logger log.Logger, listener net.Listener) *Signer
 }
 
 // OnStart implements cmn.Service.
-func (ve *SignerListenerEndpoint) OnStart() error {
-	ve.Logger.Debug("SignerListenerEndpoint: OnStart")
+func (sl *SignerListenerEndpoint) OnStart() error {
+	sl.Logger.Debug("SignerListenerEndpoint: OnStart")
 
-	ve.stopCh = make(chan struct{})
-	ve.stoppedCh = make(chan struct{})
+	sl.stopCh = make(chan struct{})
+	sl.stoppedCh = make(chan struct{})
 
-	ve.connectCh = make(chan struct{})
-	ve.connectedCh = make(chan net.Conn)
+	sl.connectCh = make(chan struct{})
+	sl.connectedCh = make(chan net.Conn)
 
-	go ve.serviceLoop()
-	ve.connectCh <- struct{}{}
+	go sl.serviceLoop()
+	sl.connectCh <- struct{}{}
 
 	return nil
 }
 
 // OnStop implements cmn.Service.
-func (ve *SignerListenerEndpoint) OnStop() {
-	ve.Logger.Debug("SignerListenerEndpoint: OnStop calling Close")
-	_ = ve.Close()
+func (sl *SignerListenerEndpoint) OnStop() {
+	sl.Logger.Debug("SignerListenerEndpoint: OnStop calling Close")
+	_ = sl.Close()
 
-	ve.Logger.Debug("SignerListenerEndpoint: OnStop stop listening")
+	sl.Logger.Debug("SignerListenerEndpoint: OnStop stop listening")
 	// Stop listening
-	if ve.listener != nil {
-		if err := ve.listener.Close(); err != nil {
-			ve.Logger.Error("Closing Listener", "err", err)
+	if sl.listener != nil {
+		if err := sl.listener.Close(); err != nil {
+			sl.Logger.Error("Closing Listener", "err", err)
 		}
 	}
 
 	// Stop service loop
-	ve.stopCh <- struct{}{}
-	<-ve.stoppedCh
+	sl.stopCh <- struct{}{}
+	<-sl.stoppedCh
 }
 
 // Close closes the underlying net.Conn.
-func (ve *SignerListenerEndpoint) Close() error {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
-	ve.Logger.Debug("SignerListenerEndpoint: Close")
+func (sl *SignerListenerEndpoint) Close() error {
+	sl.mtx.Lock()
+	defer sl.mtx.Unlock()
+	sl.Logger.Debug("SignerListenerEndpoint: Close")
 
-	ve.dropConnection()
+	sl.dropConnection()
 	return nil
 }
 
 // IsConnected indicates if there is an active connection
-func (ve *SignerListenerEndpoint) IsConnected() bool {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
-	return ve.isConnected()
+func (sl *SignerListenerEndpoint) IsConnected() bool {
+	sl.mtx.Lock()
+	defer sl.mtx.Unlock()
+	return sl.isConnected()
 }
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
-func (ve *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
-	return ve.ensureConnection(maxWait)
+func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error {
+	sl.mtx.Lock()
+	defer sl.mtx.Unlock()
+	return sl.ensureConnection(maxWait)
 }
 
 // SendRequest sends a request and waits for a response
-func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSignerMsg, error) {
-	ve.mtx.Lock()
-	defer ve.mtx.Unlock()
+func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSignerMsg, error) {
+	sl.mtx.Lock()
+	defer sl.mtx.Unlock()
 
 	// TODO: Add retries.. that include dropping the connection and
 
-	ve.Logger.Debug("SignerListenerEndpoint: Send request", "connected", ve.isConnected())
-	err := ve.ensureConnection(ve.timeoutReadWrite)
+	sl.Logger.Debug("SignerListenerEndpoint: Send request", "connected", sl.isConnected())
+	err := sl.ensureConnection(sl.timeoutReadWrite)
 	if err != nil {
 		return nil, err
 	}
 
-	ve.Logger.Debug("Send request. Write")
+	sl.Logger.Debug("Send request. Write")
 
-	err = ve.writeMessage(request)
+	err = sl.writeMessage(request)
 	if err != nil {
 		return nil, err
 	}
 
-	ve.Logger.Debug("Send request. Read")
+	sl.Logger.Debug("Send request. Read")
 
-	res, err := ve.readMessage()
+	res, err := sl.readMessage()
 	if err != nil {
-		ve.Logger.Debug("Read Error", "err", err)
+		sl.Logger.Debug("Read Error", "err", err)
 		return nil, err
 	}
 
@@ -132,55 +132,55 @@ func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 }
 
 // IsConnected indicates if there is an active connection
-func (ve *SignerListenerEndpoint) isConnected() bool {
-	return ve.IsRunning() && ve.conn != nil
+func (sl *SignerListenerEndpoint) isConnected() bool {
+	return sl.IsRunning() && sl.conn != nil
 }
 
-func (ve *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
-	if !ve.isConnected() {
+func (sl *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
+	if !sl.isConnected() {
 		return nil, cmn.ErrorWrap(ErrListenerNoConnection, "endpoint is not connected")
 	}
 
 	// Reset read deadline
-	deadline := time.Now().Add(ve.timeoutReadWrite)
-	ve.Logger.Debug(
+	deadline := time.Now().Add(sl.timeoutReadWrite)
+	sl.Logger.Debug(
 		"SignerListenerEndpoint: readMessage",
-		"timeout", ve.timeoutReadWrite,
+		"timeout", sl.timeoutReadWrite,
 		"deadline", deadline)
 
-	err = ve.conn.SetReadDeadline(deadline)
+	err = sl.conn.SetReadDeadline(deadline)
 	if err != nil {
 		return
 	}
 
 	const maxRemoteSignerMsgSize = 1024 * 10
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(ve.conn, &msg, maxRemoteSignerMsgSize)
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(sl.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
-		ve.dropConnection()
+		sl.dropConnection()
 	}
 
 	return
 }
 
-func (ve *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
-	if !ve.isConnected() {
+func (sl *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+	if !sl.isConnected() {
 		return cmn.ErrorWrap(ErrListenerNoConnection, "endpoint is not connected")
 	}
 
 	// Reset read deadline
-	deadline := time.Now().Add(ve.timeoutReadWrite)
-	ve.Logger.Debug(
+	deadline := time.Now().Add(sl.timeoutReadWrite)
+	sl.Logger.Debug(
 		"SignerListenerEndpoint: writeMessage",
-		"timeout", ve.timeoutReadWrite,
+		"timeout", sl.timeoutReadWrite,
 		"deadline", deadline)
 
-	err = ve.conn.SetWriteDeadline(deadline)
+	err = sl.conn.SetWriteDeadline(deadline)
 	if err != nil {
 		return
 	}
 
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ve.conn, msg)
+	_, err = cdc.MarshalBinaryLengthPrefixedWriter(sl.conn, msg)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
 	}
@@ -188,42 +188,42 @@ func (ve *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) 
 	return
 }
 
-func (ve *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
-	if !ve.isConnected() {
+func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
+	if !sl.isConnected() {
 		// Is there a connection ready?
 		select {
-		case ve.conn = <-ve.connectedCh:
+		case sl.conn = <-sl.connectedCh:
 			{
-				ve.Logger.Debug("SignerListenerEndpoint: received connection")
+				sl.Logger.Debug("SignerListenerEndpoint: received connection")
 				return nil
 			}
 		default:
 			{
-				ve.Logger.Debug("SignerListenerEndpoint: no connection is ready")
+				sl.Logger.Debug("SignerListenerEndpoint: no connection is ready")
 			}
 		}
 
 		// should we trigger a reconnect?
 		select {
-		case ve.connectCh <- struct{}{}:
+		case sl.connectCh <- struct{}{}:
 			{
-				ve.Logger.Debug("SignerListenerEndpoint: triggered a reconnect")
+				sl.Logger.Debug("SignerListenerEndpoint: triggered a reconnect")
 			}
 		default:
 			{
-				ve.Logger.Debug("SignerListenerEndpoint: reconnect in progress")
+				sl.Logger.Debug("SignerListenerEndpoint: reconnect in progress")
 			}
 		}
 
 		// block until connected or timeout
 		select {
-		case ve.conn = <-ve.connectedCh:
+		case sl.conn = <-sl.connectedCh:
 			{
-				ve.Logger.Debug("SignerListenerEndpoint: connected")
+				sl.Logger.Debug("SignerListenerEndpoint: connected")
 			}
 		case <-time.After(maxWait):
 			{
-				ve.Logger.Debug("SignerListenerEndpoint: timeout")
+				sl.Logger.Debug("SignerListenerEndpoint: timeout")
 				return ErrListenerTimeout
 			}
 		}
@@ -232,37 +232,37 @@ func (ve *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 }
 
 // dropConnection closes the current connection but does not touch the listening socket
-func (ve *SignerListenerEndpoint) dropConnection() {
-	if ve.conn != nil {
-		if err := ve.conn.Close(); err != nil {
-			ve.Logger.Error("SignerListenerEndpoint::dropConnection", "err", err)
+func (sl *SignerListenerEndpoint) dropConnection() {
+	if sl.conn != nil {
+		if err := sl.conn.Close(); err != nil {
+			sl.Logger.Error("SignerListenerEndpoint::dropConnection", "err", err)
 		}
-		ve.conn = nil
+		sl.conn = nil
 	}
 }
 
-func (ve *SignerListenerEndpoint) serviceLoop() {
-	defer close(ve.stoppedCh)
-	ve.Logger.Debug("SignerListenerEndpoint::serviceLoop")
+func (sl *SignerListenerEndpoint) serviceLoop() {
+	defer close(sl.stoppedCh)
+	sl.Logger.Debug("SignerListenerEndpoint::serviceLoop")
 
 	for {
 		select {
-		case <-ve.connectCh:
+		case <-sl.connectCh:
 			{
 				for {
-					ve.Logger.Info("Listening for new connection")
-					conn, err := ve.acceptNewConnection()
+					sl.Logger.Info("Listening for new connection")
+					conn, err := sl.acceptNewConnection()
 					if err == nil {
-						ve.Logger.Info("Connected")
+						sl.Logger.Info("Connected")
 
 						select {
-						case ve.connectedCh <- conn:
+						case sl.connectedCh <- conn:
 							{
-								ve.Logger.Debug("SignerListenerEndpoint: connection relayed")
+								sl.Logger.Debug("SignerListenerEndpoint: connection relayed")
 							}
-						case <-ve.stopCh:
+						case <-sl.stopCh:
 							{
-								ve.Logger.Debug("SignerListenerEndpoint: stopping")
+								sl.Logger.Debug("SignerListenerEndpoint: stopping")
 								return
 							}
 						}
@@ -270,29 +270,29 @@ func (ve *SignerListenerEndpoint) serviceLoop() {
 				}
 			}
 
-		case <-ve.stopCh:
+		case <-sl.stopCh:
 			{
-				ve.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
+				sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
 				return
 			}
 		}
 	}
 }
 
-func (ve *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
-	ve.Logger.Debug("SignerListenerEndpoint: AcceptNewConnection")
+func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
+	sl.Logger.Debug("SignerListenerEndpoint: AcceptNewConnection")
 
-	if !ve.IsRunning() || ve.listener == nil {
+	if !sl.IsRunning() || sl.listener == nil {
 		return nil, fmt.Errorf("endpoint is closing")
 	}
 
 	// wait for a new conn
-	conn, err := ve.listener.Accept()
+	conn, err := sl.listener.Accept()
 	if err != nil {
-		ve.Logger.Debug("listener accept failed", "err", err)
+		sl.Logger.Debug("listener accept failed", "err", err)
 		return nil, err
 	}
 
-	ve.Logger.Info("SignerListenerEndpoint: New connection")
+	sl.Logger.Info("SignerListenerEndpoint: New connection")
 	return conn, nil
 }

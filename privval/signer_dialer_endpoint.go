@@ -76,38 +76,38 @@ func NewSignerDialerEndpoint(
 }
 
 // OnStart implements cmn.Service.
-func (ss *SignerDialerEndpoint) OnStart() error {
-	ss.Logger.Debug("SignerDialerEndpoint: OnStart")
+func (sd *SignerDialerEndpoint) OnStart() error {
+	sd.Logger.Debug("SignerDialerEndpoint: OnStart")
 
-	ss.stopCh = make(chan struct{})
-	ss.stoppedCh = make(chan struct{})
+	sd.stopCh = make(chan struct{})
+	sd.stoppedCh = make(chan struct{})
 
-	go ss.serviceLoop()
+	go sd.serviceLoop()
 
 	return nil
 }
 
 // OnStop implements cmn.Service.
-func (ss *SignerDialerEndpoint) OnStop() {
-	ss.Logger.Debug("SignerDialerEndpoint: OnStop calling Close")
+func (sd *SignerDialerEndpoint) OnStop() {
+	sd.Logger.Debug("SignerDialerEndpoint: OnStop calling Close")
 
 	// Stop service loop
-	close(ss.stopCh)
-	<-ss.stoppedCh
+	close(sd.stopCh)
+	<-sd.stoppedCh
 
-	_ = ss.Close()
+	_ = sd.Close()
 }
 
 // Close closes the underlying net.Conn.
-func (ss *SignerDialerEndpoint) Close() error {
-	ss.mtx.Lock()
-	defer ss.mtx.Unlock()
-	ss.Logger.Debug("SignerDialerEndpoint: Close")
+func (sd *SignerDialerEndpoint) Close() error {
+	sd.mtx.Lock()
+	defer sd.mtx.Unlock()
+	sd.Logger.Debug("SignerDialerEndpoint: Close")
 
-	if ss.conn != nil {
-		if err := ss.conn.Close(); err != nil {
-			ss.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
-			ss.conn = nil
+	if sd.conn != nil {
+		if err := sd.conn.Close(); err != nil {
+			sd.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
+			sd.conn = nil
 		}
 	}
 
@@ -115,32 +115,36 @@ func (ss *SignerDialerEndpoint) Close() error {
 }
 
 // IsConnected indicates if there is an active connection
-func (ss *SignerDialerEndpoint) IsConnected() bool {
-	ss.mtx.Lock()
-	defer ss.mtx.Unlock()
-	return ss.isConnected()
+func (sd *SignerDialerEndpoint) IsConnected() bool {
+	sd.mtx.Lock()
+	defer sd.mtx.Unlock()
+	return sd.isConnected()
 }
 
-func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
-	// TODO(jleni): Avoid duplication. Unify endpoints
-	if !ss.isConnected() {
+// IsConnected indicates if there is an active connection
+func (sd *SignerDialerEndpoint) isConnected() bool {
+	return sd.IsRunning() && sd.conn != nil
+}
+
+func (sd *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
+	if !sd.isConnected() {
 		return nil, fmt.Errorf("not connected")
 	}
 
 	// Reset read deadline
-	deadline := time.Now().Add(ss.timeoutReadWrite)
-	ss.Logger.Debug(
+	deadline := time.Now().Add(sd.timeoutReadWrite)
+	sd.Logger.Debug(
 		"SignerDialerEndpoint: readMessage",
-		"timeout", ss.timeoutReadWrite,
+		"timeout", sd.timeoutReadWrite,
 		"deadline", deadline)
 
-	err = ss.conn.SetReadDeadline(deadline)
+	err = sd.conn.SetReadDeadline(deadline)
 	if err != nil {
 		return
 	}
 
 	const maxRemoteSignerMsgSize = 1024 * 10
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(ss.conn, &msg, maxRemoteSignerMsgSize)
+	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(sd.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrDialerReadTimeout, err.Error())
 	}
@@ -148,22 +152,23 @@ func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	return
 }
 
-func (ss *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
-	// TODO(jleni): Avoid duplication. Unify endpoints
-
-	if ss.conn == nil {
-		return fmt.Errorf("not connected")
+func (sd *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+	if !sd.isConnected() {
+		return cmn.ErrorWrap(ErrListenerNoConnection, "endpoint is not connected")
 	}
 
 	// Reset read deadline
-	deadline := time.Now().Add(ss.timeoutReadWrite)
-	ss.Logger.Debug("SignerDialerEndpoint: readMessage", "deadline", deadline)
-	err = ss.conn.SetWriteDeadline(deadline)
+	deadline := time.Now().Add(sd.timeoutReadWrite)
+	sd.Logger.Debug("SignerDialerEndpoint: readMessage",
+		"timeout", sd.timeoutReadWrite,
+		"deadline", deadline)
+
+	err = sd.conn.SetWriteDeadline(deadline)
 	if err != nil {
 		return
 	}
 
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, msg)
+	_, err = cdc.MarshalBinaryLengthPrefixedWriter(sd.conn, msg)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrDialerWriteTimeout, err.Error())
 	}
@@ -171,42 +176,37 @@ func (ss *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	return
 }
 
-func (ss *SignerDialerEndpoint) handleRequest() {
-	if !ss.IsRunning() {
+func (sd *SignerDialerEndpoint) handleRequest() {
+	if !sd.IsRunning() {
 		return // Ignore error from listener closing.
 	}
 
-	ss.Logger.Info("SignerDialerEndpoint: connected", "timeout", ss.timeoutReadWrite)
+	sd.Logger.Info("SignerDialerEndpoint: connected", "timeout", sd.timeoutReadWrite)
 
-	req, err := ss.readMessage()
+	req, err := sd.readMessage()
 	if err != nil {
 		if err != io.EOF {
-			ss.Logger.Error("SignerDialerEndpoint handleMessage", "err", err)
+			sd.Logger.Error("SignerDialerEndpoint handleMessage", "err", err)
 		}
 		return
 	}
 
-	res, err := HandleValidatorRequest(req, ss.chainID, ss.privVal)
+	res, err := HandleValidatorRequest(req, sd.chainID, sd.privVal)
 
 	if err != nil {
 		// only log the error; we'll reply with an error in res
-		ss.Logger.Error("handleMessage handleMessage", "err", err)
+		sd.Logger.Error("handleMessage handleMessage", "err", err)
 	}
 
-	err = ss.writeMessage(res)
+	err = sd.writeMessage(res)
 	if err != nil {
-		ss.Logger.Error("handleMessage writeMessage", "err", err)
+		sd.Logger.Error("handleMessage writeMessage", "err", err)
 		return
 	}
 }
 
-// IsConnected indicates if there is an active connection
-func (ve *SignerDialerEndpoint) isConnected() bool {
-	return ve.IsRunning() && ve.conn != nil
-}
-
-func (ss *SignerDialerEndpoint) serviceLoop() {
-	defer close(ss.stoppedCh)
+func (sd *SignerDialerEndpoint) serviceLoop() {
+	defer close(sd.stoppedCh)
 
 	retries := 0
 	var err error
@@ -214,30 +214,30 @@ func (ss *SignerDialerEndpoint) serviceLoop() {
 	for {
 		select {
 		default:
-			ss.Logger.Debug("Try connect", "retries", retries, "max", ss.maxConnRetries)
+			sd.Logger.Debug("Try connect", "retries", retries, "max", sd.maxConnRetries)
 
-			if retries > ss.maxConnRetries {
-				ss.Logger.Error("Maximum retries reached", "retries", retries)
+			if retries > sd.maxConnRetries {
+				sd.Logger.Error("Maximum retries reached", "retries", retries)
 				return
 			}
 
-			if ss.conn == nil {
-				ss.conn, err = ss.dialer()
+			if sd.conn == nil {
+				sd.conn, err = sd.dialer()
 				if err != nil {
-					ss.Logger.Info("Try connect", "err", err)
-					ss.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
+					sd.Logger.Info("Try connect", "err", err)
+					sd.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
 					retries++
 
 					// Wait between retries
-					time.Sleep(ss.retryWait)
+					time.Sleep(sd.retryWait)
 					continue
 				}
 			}
 
 			retries = 0
-			ss.handleRequest()
+			sd.handleRequest()
 
-		case <-ss.stopCh:
+		case <-sd.stopCh:
 			return
 		}
 	}
