@@ -324,12 +324,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			if res.ConsensusParams != nil {
-				// Preserve TimeIotaMs since it's not exposed to the application.
-				timeIotaMs := state.ConsensusParams.Block.TimeIotaMs
-				{
-					state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)
-				}
-				state.ConsensusParams.Block.TimeIotaMs = timeIotaMs
+				state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams, state.ConsensusParams.Block.TimeIotaMs)
 			}
 			sm.SaveState(h.stateDB, state)
 		}
