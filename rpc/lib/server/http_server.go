@@ -33,7 +33,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		MaxOpenConnections: 0, // unlimited
 		ReadTimeout:        12 * time.Second,
-		WriteTimeout:       10 * time.Second,
+		WriteTimeout:       12 * time.Second,
 	}
 }
 

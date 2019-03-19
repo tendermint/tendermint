@@ -122,6 +122,9 @@ max_subscription_clients = 100
 max_subscriptions_per_client = 5
 
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
+# WARNING: Using a value larger than 10s will result in increasing the
+# global HTTP write timeout, which applies to all connections and endpoints.
+# See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "10s"
 
 ##### peer to peer configuration options #####
