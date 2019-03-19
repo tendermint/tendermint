@@ -138,7 +138,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 		types.NewMockPV(),
 		dialer,
 	)
-	privval.SignerServiceEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
+	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
 
 	go func() {
 		err := pvsc.Start()
@@ -180,7 +180,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		types.NewMockPV(),
 		dialer,
 	)
-	privval.SignerServiceEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
+	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
 
 	go func() {
 		err := pvsc.Start()
@@ -191,7 +191,6 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	assert.IsType(t, &privval.SignerClient{}, n.PrivValidator())
-
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.

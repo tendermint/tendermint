@@ -296,18 +296,23 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
+	pubKey := privValidator.GetPubKey()
+	if pubKey == nil {
+		return nil, fmt.Errorf("could not retrieve pubkey")
+	}
+
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		privValAddr := privValidator.GetPubKey().Address()
+
+		privValAddr := pubKey.Address()
 		if bytes.Equal(privValAddr, addr) {
 			fastSync = false
 		}
 	}
 
-	pubKey := privValidator.GetPubKey()
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
 	if state.Validators.HasAddress(addr) {

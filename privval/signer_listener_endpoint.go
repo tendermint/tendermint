@@ -18,7 +18,7 @@ type SignerValidatorEndpointOption func(*SignerListenerEndpoint)
 type SignerListenerEndpoint struct {
 	cmn.BaseService
 
-	extMtx   sync.Mutex
+	mtx      sync.Mutex
 	listener net.Listener
 	conn     net.Conn
 
@@ -71,43 +71,39 @@ func (ve *SignerListenerEndpoint) OnStop() {
 		}
 	}
 
-	ve.Logger.Debug("SignerListenerEndpoint: OnStop close stopCh")
 	// Stop service loop
-
 	ve.stopCh <- struct{}{}
 	<-ve.stoppedCh
 }
 
 // Close closes the underlying net.Conn.
 func (ve *SignerListenerEndpoint) Close() error {
-	ve.extMtx.Lock()
-	defer ve.extMtx.Unlock()
+	ve.mtx.Lock()
+	defer ve.mtx.Unlock()
 	ve.Logger.Debug("SignerListenerEndpoint: Close")
 
 	ve.dropConnection()
-
-	ve.Logger.Debug("SignerListenerEndpoint: Closed")
 	return nil
 }
 
 // IsConnected indicates if there is an active connection
 func (ve *SignerListenerEndpoint) IsConnected() bool {
-	ve.extMtx.Lock()
-	defer ve.extMtx.Unlock()
+	ve.mtx.Lock()
+	defer ve.mtx.Unlock()
 	return ve.isConnected()
 }
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
 func (ve *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error {
-	ve.extMtx.Lock()
-	defer ve.extMtx.Unlock()
+	ve.mtx.Lock()
+	defer ve.mtx.Unlock()
 	return ve.ensureConnection(maxWait)
 }
 
 // SendRequest sends a request and waits for a response
 func (ve *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSignerMsg, error) {
-	ve.extMtx.Lock()
-	defer ve.extMtx.Unlock()
+	ve.mtx.Lock()
+	defer ve.mtx.Unlock()
 
 	// TODO: Add retries.. that include dropping the connection and
 
@@ -237,19 +233,16 @@ func (ve *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 
 // dropConnection closes the current connection but does not touch the listening socket
 func (ve *SignerListenerEndpoint) dropConnection() {
-	ve.Logger.Debug("SignerListenerEndpoint: dropConnection")
 	if ve.conn != nil {
 		if err := ve.conn.Close(); err != nil {
 			ve.Logger.Error("SignerListenerEndpoint::dropConnection", "err", err)
 		}
 		ve.conn = nil
 	}
-	ve.Logger.Debug("SignerListenerEndpoint: dropConnection DONE")
 }
 
 func (ve *SignerListenerEndpoint) serviceLoop() {
 	defer close(ve.stoppedCh)
-	defer ve.Logger.Debug("SignerListenerEndpoint::serviceLoop EXIT")
 	ve.Logger.Debug("SignerListenerEndpoint::serviceLoop")
 
 	for {
@@ -261,8 +254,18 @@ func (ve *SignerListenerEndpoint) serviceLoop() {
 					conn, err := ve.acceptNewConnection()
 					if err == nil {
 						ve.Logger.Info("Connected")
-						ve.connectedCh <- conn
-						break
+
+						select {
+						case ve.connectedCh <- conn:
+							{
+								ve.Logger.Debug("SignerListenerEndpoint: connection relayed")
+							}
+						case <-ve.stopCh:
+							{
+								ve.Logger.Debug("SignerListenerEndpoint: stopping")
+								return
+							}
+						}
 					}
 				}
 			}

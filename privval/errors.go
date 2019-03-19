@@ -17,6 +17,8 @@ var (
 	ErrListenerTimeout      = ListenerTimeoutError{}
 	ErrListenerNoConnection = fmt.Errorf("signer listening endpoint is not connected")
 	ErrDialerTimeout        = fmt.Errorf("signer dialer endpoint timed out")
+	ErrDialerReadTimeout    = fmt.Errorf("signer dialer endpoint read timed out")
+	ErrDialerWriteTimeout   = fmt.Errorf("signer dialer endpoint write timed out")
 )
 
 // RemoteSignerError allows (remote) validators to include meaningful error descriptions in their reply.

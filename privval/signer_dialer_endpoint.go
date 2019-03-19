@@ -13,26 +13,23 @@ import (
 )
 
 const (
-	defaultMaxDialRetries = 10
+	defaultMaxDialRetries        = 10
+	defaultRetryWaitMilliseconds = 100
 )
 
 // SignerServiceEndpointOption sets an optional parameter on the SignerDialerEndpoint.
 type SignerServiceEndpointOption func(*SignerDialerEndpoint)
 
-// SignerServiceEndpointTimeoutReadWrite sets the read and write timeout for connections
+// SignerDialerEndpointTimeoutReadWrite sets the read and write timeout for connections
 // from external signing processes.
-func SignerServiceEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceEndpointOption {
+func SignerDialerEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.timeoutReadWrite = timeout }
 }
 
-// SignerServiceEndpointConnRetries sets the amount of attempted retries to AcceptNewConnection.
-func SignerServiceEndpointConnRetries(retries int) SignerServiceEndpointOption {
+// SignerDialerEndpointConnRetries sets the amount of attempted retries to AcceptNewConnection.
+func SignerDialerEndpointConnRetries(retries int) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.maxConnRetries = retries }
 }
-
-// TODO(jleni): Create a common type for a signerEndpoint (common for both listener/dialer)
-// read
-// write
 
 // SignerDialerEndpoint dials using its dialer and responds to any
 // signature requests using its privVal.
@@ -44,6 +41,7 @@ type SignerDialerEndpoint struct {
 	conn   net.Conn
 
 	timeoutReadWrite time.Duration
+	retryWait        time.Duration
 	maxConnRetries   int
 
 	chainID string
@@ -66,6 +64,7 @@ func NewSignerDialerEndpoint(
 	se := &SignerDialerEndpoint{
 		dialer:           dialer,
 		timeoutReadWrite: defaultTimeoutReadWriteSeconds * time.Second,
+		retryWait:        defaultRetryWaitMilliseconds * time.Millisecond,
 		maxConnRetries:   defaultMaxDialRetries,
 
 		chainID: chainID,
@@ -91,11 +90,12 @@ func (ss *SignerDialerEndpoint) OnStart() error {
 // OnStop implements cmn.Service.
 func (ss *SignerDialerEndpoint) OnStop() {
 	ss.Logger.Debug("SignerDialerEndpoint: OnStop calling Close")
-	_ = ss.Close()
 
 	// Stop service loop
 	close(ss.stopCh)
 	<-ss.stoppedCh
+
+	_ = ss.Close()
 }
 
 // Close closes the underlying net.Conn.
@@ -142,7 +142,7 @@ func (ss *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	const maxRemoteSignerMsgSize = 1024 * 10
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(ss.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrDialerTimeout, err.Error())
+		err = cmn.ErrorWrap(ErrDialerReadTimeout, err.Error())
 	}
 
 	return
@@ -165,7 +165,7 @@ func (ss *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, msg)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrDialerTimeout, err.Error())
+		err = cmn.ErrorWrap(ErrDialerWriteTimeout, err.Error())
 	}
 
 	return
@@ -224,10 +224,13 @@ func (ss *SignerDialerEndpoint) serviceLoop() {
 
 				if ss.conn == nil {
 					ss.conn, err = ss.dialer()
-
 					if err != nil {
+						ss.Logger.Info("Try connect", "err", err)
 						ss.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
 						retries++
+
+						// Wait between retries
+						time.Sleep(ss.retryWait)
 						continue
 					}
 				}

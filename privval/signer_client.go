@@ -54,6 +54,7 @@ func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
 func (sc *SignerClient) GetPubKey() crypto.PubKey {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
+		sc.endpoint.Logger.Error("error sending request", "err", err)
 		return nil
 	}
 

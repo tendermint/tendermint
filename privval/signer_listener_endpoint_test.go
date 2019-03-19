@@ -66,8 +66,8 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	)
 	defer serviceEndpoint.Stop()
 
-	SignerServiceEndpointTimeoutReadWrite(time.Millisecond)(serviceEndpoint)
-	SignerServiceEndpointConnRetries(retries)(serviceEndpoint)
+	SignerDialerEndpointTimeoutReadWrite(time.Millisecond)(serviceEndpoint)
+	SignerDialerEndpointConnRetries(retries)(serviceEndpoint)
 
 	err = serviceEndpoint.Start()
 	assert.NoError(t, err)
@@ -75,7 +75,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	select {
 	case attempts := <-attemptCh:
 		assert.Equal(t, retries, attempts)
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(1500 * time.Millisecond):
 		t.Error("expected remote to observe connection attempts")
 	}
 }
@@ -98,8 +98,8 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 				validatorEndpoint = newSignerValidatorEndpoint(logger, tc.addr, thisConnTimeout)
 			)
 
-			SignerServiceEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
-			SignerServiceEndpointConnRetries(10)(serviceEndpoint)
+			SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
+			SignerDialerEndpointConnRetries(10)(serviceEndpoint)
 
 			getStartEndpoint(t, readyCh, validatorEndpoint)
 			defer validatorEndpoint.Stop()
@@ -188,8 +188,8 @@ func getMockEndpoints(
 		validatorEndpoint = newSignerValidatorEndpoint(logger, addr, testTimeoutReadWrite)
 	)
 
-	SignerServiceEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
-	SignerServiceEndpointConnRetries(1e6)(serviceEndpoint)
+	SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
+	SignerDialerEndpointConnRetries(1e6)(serviceEndpoint)
 
 	getStartEndpoint(t, readyCh, validatorEndpoint)
 
