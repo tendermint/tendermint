@@ -1,6 +1,7 @@
 package rpctypes
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -243,6 +244,8 @@ type WSRPCConnection interface {
 	TryWriteRPCResponse(resp RPCResponse) bool
 	// Codec returns an Amino codec used.
 	Codec() *amino.Codec
+	// Context returns the connection's context.
+	Context() context.Context
 }
 
 // Context is the first parameter for all functions. It carries a json-rpc
@@ -260,8 +263,12 @@ type Context struct {
 	HTTPReq *http.Request
 }
 
-// RemoteAddr returns either HTTPReq#RemoteAddr or result of the
-// WSConn#GetRemoteAddr().
+// RemoteAddr returns the remote address (usually a string "IP:port").
+// If neither HTTPReq nor WSConn is set, an empty string is returned.
+// HTTP:
+//		http.Request#RemoteAddr
+// WS:
+//		result of GetRemoteAddr
 func (ctx *Context) RemoteAddr() string {
 	if ctx.HTTPReq != nil {
 		return ctx.HTTPReq.RemoteAddr
@@ -269,6 +276,22 @@ func (ctx *Context) RemoteAddr() string {
 		return ctx.WSConn.GetRemoteAddr()
 	}
 	return ""
+}
+
+// Context returns the request's context.
+// The returned context is always non-nil; it defaults to the background context.
+// HTTP:
+//		The context is canceled when the client's connection closes, the request
+//		is canceled (with HTTP/2), or when the ServeHTTP method returns.
+// WS:
+//		The context is canceled when the client's connections closes.
+func (ctx *Context) Context() context.Context {
+	if ctx.HTTPReq != nil {
+		return ctx.HTTPReq.Context()
+	} else if ctx.WSConn != nil {
+		return ctx.WSConn.Context()
+	}
+	return context.Background()
 }
 
 //----------------------------------------
