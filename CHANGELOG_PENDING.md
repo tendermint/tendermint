@@ -29,7 +29,7 @@ Special thanks to external contributors on this release:
 - [genesis] \#2920 Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
 - [genesis] \#2920 Rename `consensus_params.block_size` to `consensus_params.block`
 - [lite] add `/unsubscribe_all` endpoint, which allows you to unsubscribe from all events
-- [rpc] StartHTTPServer / StartHTTPAndTLSServer now require a Config (use rpcserver.DefaultConfig)
+- [rpc] `StartHTTPServer` / `StartHTTPAndTLSServer` now require a Config (use `rpcserver.DefaultConfig`)
 
 ### IMPROVEMENTS:
 - [libs/common] \#3238 exit with zero (0) code upon receiving SIGTERM/SIGINT
