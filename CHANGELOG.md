@@ -88,7 +88,6 @@ program](https://hackerone.com/tendermint).
 - [p2p/conn] [\#3347](https://github.com/tendermint/tendermint/issues/3347) Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
 - [p2p] [\#3369](https://github.com/tendermint/tendermint/issues/3369) Do not panic when filter times out
 - [p2p] [\#3359](https://github.com/tendermint/tendermint/pull/3359) Fix reconnecting report duplicate ID error due to race condition between adding peer to peerSet and starting it (@guagualvcha)
-- [test] [\#3421](https://github.com/tendermint/tendermint/issues/3421) Fix logfile names created by localnet via docker-compose.yml
 
 ## v0.30.2
 
