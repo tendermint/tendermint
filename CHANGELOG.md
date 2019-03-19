@@ -81,13 +81,14 @@ program](https://hackerone.com/tendermint).
 ### BUG FIXES:
 - [blockchain] [\#3358](https://github.com/tendermint/tendermint/pull/3358) Fix timer leak in `BlockPool` (@guagualvcha)
 - [cmd] [\#3408](https://github.com/tendermint/tendermint/issues/3408) Fix `testnet` command's panic when creating non-validator configs (using `--n` flag) (@srmo)
+- [libs/db/remotedb/grpcdb] [\#3402](https://github.com/tendermint/tendermint/issues/3402) Close Iterator/ReverseIterator after use
 - [libs/pubsub] [\#951](https://github.com/tendermint/tendermint/issues/951), [\#1880](https://github.com/tendermint/tendermint/issues/1880) Use non-blocking send when dispatching messages [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
 - [lite] [\#3364](https://github.com/tendermint/tendermint/issues/3364) Fix `/validators` and `/abci_query` proxy endpoints
   (@guagualvcha)
 - [p2p/conn] [\#3347](https://github.com/tendermint/tendermint/issues/3347) Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
 - [p2p] [\#3369](https://github.com/tendermint/tendermint/issues/3369) Do not panic when filter times out
 - [p2p] [\#3359](https://github.com/tendermint/tendermint/pull/3359) Fix reconnecting report duplicate ID error due to race condition between adding peer to peerSet and starting it (@guagualvcha)
-- [libs/db/remotedb/grpcdb] [\#3402](https://github.com/tendermint/tendermint/issues/3402) Close Iterator/ReverseIterator after use
+- [test] [\#3421](https://github.com/tendermint/tendermint/issues/3421) Fix logfile names created by localnet via docker-compose.yml
 
 ## v0.30.2
 
