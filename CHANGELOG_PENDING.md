@@ -42,7 +42,7 @@ Special thanks to external contributors on this release:
   - leveldb.openedtables
   - leveldb.alivesnaps
   - leveldb.aliveiters
-- [rpc] \#3435 setting TimeoutBroadcastTxCommit may increase the HTTP global write timeout
+- [rpc] \#3435 setting `TimeoutBroadcastTxCommit` may increase the HTTP global write timeout
 
 ### BUG FIXES:
 - [p2p/conn] \#3347 Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
