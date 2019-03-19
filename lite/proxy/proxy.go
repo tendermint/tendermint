@@ -45,11 +45,13 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger, maxOpe
 	core.SetLogger(logger)
 	mux.HandleFunc(wsEndpoint, wm.WebsocketHandler)
 
-	l, err := rpcserver.Listen(listenAddr, rpcserver.Config{MaxOpenConnections: maxOpenConnections})
+	config := rpcserver.DefaultConfig()
+	config.MaxOpenConnections = maxOpenConnections
+	l, err := rpcserver.Listen(listenAddr, config)
 	if err != nil {
 		return err
 	}
-	return rpcserver.StartHTTPServer(l, mux, logger)
+	return rpcserver.StartHTTPServer(l, mux, logger, config)
 }
 
 // RPCRoutes just routes everything to the given client, as if it were

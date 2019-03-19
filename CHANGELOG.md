@@ -11,8 +11,8 @@ This release is primarily about the new pubsub implementation, dubbed `pubsub 2.
 like configurable limits on the number of active RPC subscriptions at a time (`max_subscription_clients`).
 Pubsub 2.0 is an improved version of the older pubsub that is non-blocking and has a nicer API.
 Note the improved pubsub API also resulted in some improvements to the HTTPClient interface and the API for WebSocket subscriptions.
-This release also adds a configurable limit to the mempool size, `max_txs_bytes`, with
-default 1GB, and includes many smaller improvements and bug-fixes.
+This release also adds a configurable limit to the mempool size (`max_txs_bytes`, default 1GB)
+and a configurable timeout for the `/broadcast_tx_commit` endpoint.
 
 See the [v0.31.0
 Milestone](https://github.com/tendermint/tendermint/milestone/19?closed=1) for
@@ -30,6 +30,7 @@ program](https://hackerone.com/tendermint).
     the subscription.
   - [rpc] [\#3269](https://github.com/tendermint/tendermint/issues/2826) Limit number of unique clientIDs with open subscriptions. Configurable via `rpc.max_subscription_clients`
   - [rpc] [\#3269](https://github.com/tendermint/tendermint/issues/2826) Limit number of unique queries a given client can subscribe to at once. Configurable via `rpc.max_subscriptions_per_client`.
+  - [rpc] [\#3435](https://github.com/tendermint/tendermint/issues/3435) Default ReadTimeout and WriteTimeout changed to 10s. WriteTimeout can increased by setting `rpc.timeout_broadcast_tx_commit` in the config.
   - [rpc/client] [\#3269](https://github.com/tendermint/tendermint/issues/3269) Update `EventsClient` interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md). This includes `Subscribe`, `Unsubscribe`, and `UnsubscribeAll` methods.
 
 * Apps
@@ -43,6 +44,7 @@ program](https://hackerone.com/tendermint).
     * TrapSignal should not be responsible for blocking thread of execution
   - [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)
   - [types] [\#3354](https://github.com/tendermint/tendermint/issues/3354) Remove RoundState from EventDataRoundState
+  - [rpc] [\#3435](https://github.com/tendermint/tendermint/issues/3435) `StartHTTPServer` / `StartHTTPAndTLSServer` now require a Config (use `rpcserver.DefaultConfig`)
 
 * Blockchain Protocol
 
