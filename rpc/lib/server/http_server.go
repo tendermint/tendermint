@@ -32,8 +32,8 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		MaxOpenConnections: 0, // unlimited
-		ReadTimeout:        3 * time.Second,
-		WriteTimeout:       3 * time.Second,
+		ReadTimeout:        12 * time.Second,
+		WriteTimeout:       10 * time.Second,
 	}
 }
 
