@@ -10,7 +10,7 @@ import (
 )
 
 // SignerClient implements PrivValidator.
-// It uses a validator endpoint to request signatures from an external process.
+// Handles remote validator connections that provide signing services
 type SignerClient struct {
 	endpoint *SignerListenerEndpoint
 }
@@ -29,17 +29,17 @@ func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
 	return &SignerClient{endpoint: endpoint}, nil
 }
 
-// Close calls Close on the underlying net.Conn.
+// Close closes the underlying connection
 func (sc *SignerClient) Close() error {
 	return sc.endpoint.Close()
 }
 
-// Close calls Close on the underlying net.Conn.
+// IsConnected indicates with the signer is connected to a remote signing service
 func (sc *SignerClient) IsConnected() bool {
 	return sc.endpoint.IsConnected()
 }
 
-// Close calls Close on the underlying net.Conn.
+// WaitForConnection waits maxWait for a connection or returns a timeout error
 func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
 	if sc.endpoint == nil {
 		return fmt.Errorf("endpoint has not been defined")
@@ -50,7 +50,7 @@ func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
 //--------------------------------------------------------
 // Implement PrivValidator
 
-// GetPubKey implements PrivValidator.
+// GetPubKey retrieves a public key from a remote signer
 func (sc *SignerClient) GetPubKey() crypto.PubKey {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
@@ -72,7 +72,7 @@ func (sc *SignerClient) GetPubKey() crypto.PubKey {
 	return pubKeyResp.PubKey
 }
 
-// SignVote implements PrivValidator.
+// SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 	sc.endpoint.Logger.Debug("SignerClient::SignVote")
 
@@ -95,7 +95,7 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 	return nil
 }
 
-// SignProposal implements PrivValidator.
+// SignProposal requests a remote signer to sign a proposal
 func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
 	response, err := sc.endpoint.SendRequest(&SignProposalRequest{Proposal: proposal})
 	if err != nil {

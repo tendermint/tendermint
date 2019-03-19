@@ -22,6 +22,7 @@ type SignerListenerEndpoint struct {
 	listener net.Listener
 	conn     net.Conn
 
+	timeoutAccept    time.Duration
 	timeoutReadWrite time.Duration
 
 	stopCh, stoppedCh chan struct{}
@@ -34,6 +35,7 @@ func NewSignerListenerEndpoint(logger log.Logger, listener net.Listener) *Signer
 
 	sc := &SignerListenerEndpoint{
 		listener:         listener,
+		timeoutAccept:    defaultTimeoutAcceptSeconds * time.Second,
 		timeoutReadWrite: defaultTimeoutReadWriteSeconds * time.Second,
 	}
 
@@ -76,7 +78,7 @@ func (sl *SignerListenerEndpoint) OnStop() {
 	<-sl.stoppedCh
 }
 
-// Close closes the underlying net.Conn.
+// Close closes the connection
 func (sl *SignerListenerEndpoint) Close() error {
 	sl.mtx.Lock()
 	defer sl.mtx.Unlock()
@@ -100,28 +102,24 @@ func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error
 	return sl.ensureConnection(maxWait)
 }
 
-// SendRequest sends a request and waits for a response
+// SendRequest ensures there is a connection, sends a request and waits for a response
 func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSignerMsg, error) {
 	sl.mtx.Lock()
 	defer sl.mtx.Unlock()
 
-	// TODO: Add retries.. that include dropping the connection and
-
 	sl.Logger.Debug("SignerListenerEndpoint: Send request", "connected", sl.isConnected())
-	err := sl.ensureConnection(sl.timeoutReadWrite)
+	err := sl.ensureConnection(sl.timeoutAccept)
 	if err != nil {
 		return nil, err
 	}
 
 	sl.Logger.Debug("Send request. Write")
-
 	err = sl.writeMessage(request)
 	if err != nil {
 		return nil, err
 	}
 
 	sl.Logger.Debug("Send request. Read")
-
 	res, err := sl.readMessage()
 	if err != nil {
 		sl.Logger.Debug("Read Error", "err", err)
@@ -131,7 +129,6 @@ func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 	return res, nil
 }
 
-// IsConnected indicates if there is an active connection
 func (sl *SignerListenerEndpoint) isConnected() bool {
 	return sl.IsRunning() && sl.conn != nil
 }
@@ -231,7 +228,6 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 	return nil
 }
 
-// dropConnection closes the current connection but does not touch the listening socket
 func (sl *SignerListenerEndpoint) dropConnection() {
 	if sl.conn != nil {
 		if err := sl.conn.Close(); err != nil {

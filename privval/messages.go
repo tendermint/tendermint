@@ -24,29 +24,29 @@ func RegisterRemoteSignerMsg(cdc *amino.Codec) {
 // PubKeyRequest requests the consensus public key from the remote signer.
 type PubKeyRequest struct{}
 
-// PubKeyResponse is a PrivValidatorSocket message containing the public key.
+// PubKeyResponse is a response message containing the public key.
 type PubKeyResponse struct {
 	PubKey crypto.PubKey
 	Error  *RemoteSignerError
 }
 
-// SignVoteRequest is a PrivValidatorSocket message containing a vote.
+// SignVoteRequest is a request to sign a vote
 type SignVoteRequest struct {
 	Vote *types.Vote
 }
 
-// SignedVoteResponse is a PrivValidatorSocket message containing a signed vote along with a potenial error message.
+// SignedVoteResponse is a response containing a signed vote or an error
 type SignedVoteResponse struct {
 	Vote  *types.Vote
 	Error *RemoteSignerError
 }
 
-// SignProposalRequest is a PrivValidatorSocket message containing a Proposal.
+// SignProposalRequest is a request to sign a proposal
 type SignProposalRequest struct {
 	Proposal *types.Proposal
 }
 
-// SignedProposalResponse is a PrivValidatorSocket message containing a proposal response
+// SignedProposalResponse is response containing a signed proposal or an error
 type SignedProposalResponse struct {
 	Proposal *types.Proposal
 	Error    *RemoteSignerError
