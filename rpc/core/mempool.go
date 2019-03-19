@@ -197,7 +197,9 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	}
 
 	// Subscribe to tx being committed in block.
-	subCtx := context.TODO()
+	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
+	subCtx, cancel := context.WithTimeout(ctx.Context(), 5*time.Second)
+	defer cancel()
 	q := types.EventQueryTxFor(tx)
 	deliverTxSub, err := eventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
