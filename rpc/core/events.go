@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -106,8 +105,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse query")
 	}
-	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
-	subCtx, cancel := context.WithTimeout(ctx.Context(), 5*time.Second)
+	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 	sub, err := eventBus.Subscribe(subCtx, addr, q)
 	if err != nil {
