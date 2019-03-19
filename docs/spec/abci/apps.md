@@ -103,7 +103,7 @@ the difference credited back. Tendermint adopts a similar abstraction,
 though uses it only optionally and weakly, allowing applications to define
 their own sense of the cost of execution.
 
-In Tendermint, the `ConsensusParams.BlockSize.MaxGas` limits the amount of `gas` that can be used in a block.
+In Tendermint, the `ConsensusParams.Block.MaxGas` limits the amount of `gas` that can be used in a block.
 The default value is `-1`, meaning no limit, or that the concept of gas is
 meaningless.
 
@@ -225,7 +225,7 @@ ConsensusParams enforce certain limits in the blockchain, like the maximum size
 of blocks, amount of gas used in a block, and the maximum acceptable age of
 evidence. They can be set in InitChain and updated in EndBlock.
 
-### BlockSize.MaxBytes
+### Block.MaxBytes
 
 The maximum size of a complete Amino encoded block.
 This is enforced by Tendermint consensus.
@@ -235,7 +235,7 @@ the header, the validator set, and any included evidence in the block.
 
 Must have `0 < MaxBytes < 100 MB`.
 
-### BlockSize.MaxGas
+### Block.MaxGas
 
 The maximum of the sum of `GasWanted` in a proposed block.
 This is *not* enforced by Tendermint consensus.
@@ -245,6 +245,13 @@ txs included in a proposed block.
 
 Must have `MaxGas >= -1`.
 If `MaxGas == -1`, no limit is enforced.
+
+### Block.TimeIotaMs
+
+The minimum time between consecutive blocks (in milliseconds).
+This is enforced by Tendermint consensus.
+
+Must have `TimeIotaMs > 0` to ensure time monotonicity.
 
 ### EvidenceParams.MaxAge
 
@@ -260,8 +267,8 @@ Must have `0 < MaxAge`.
 The application may set the ConsensusParams during InitChain, and update them during
 EndBlock. If the ConsensusParams is empty, it will be ignored. Each field
 that is not empty will be applied in full. For instance, if updating the
-BlockSize.MaxBytes, applications must also set the other BlockSize fields (like
-BlockSize.MaxGas), even if they are unchanged, as they will otherwise cause the
+Block.MaxBytes, applications must also set the other Block fields (like
+Block.MaxGas), even if they are unchanged, as they will otherwise cause the
 value to be updated to 0.
 
 #### InitChain

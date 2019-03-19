@@ -63,23 +63,23 @@ var Routes = map[string]*server.RPCFunc{
 // Amino codec required to encode/decode everything above.
 var RoutesCdc = amino.NewCodec()
 
-func EchoResult(v string) (*ResultEcho, error) {
+func EchoResult(ctx *types.Context, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoWSResult(wsCtx types.WSRPCContext, v string) (*ResultEcho, error) {
+func EchoWSResult(ctx *types.Context, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoIntResult(v int) (*ResultEchoInt, error) {
+func EchoIntResult(ctx *types.Context, v int) (*ResultEchoInt, error) {
 	return &ResultEchoInt{v}, nil
 }
 
-func EchoBytesResult(v []byte) (*ResultEchoBytes, error) {
+func EchoBytesResult(ctx *types.Context, v []byte) (*ResultEchoBytes, error) {
 	return &ResultEchoBytes{v}, nil
 }
 
-func EchoDataBytesResult(v cmn.HexBytes) (*ResultEchoDataBytes, error) {
+func EchoDataBytesResult(ctx *types.Context, v cmn.HexBytes) (*ResultEchoDataBytes, error) {
 	return &ResultEchoDataBytes{v}, nil
 }
 
@@ -121,11 +121,12 @@ func setup() {
 	wm := server.NewWebsocketManager(Routes, RoutesCdc, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
 	wm.SetLogger(tcpLogger)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
-	listener1, err := server.Listen(tcpAddr, server.Config{})
+	config := server.DefaultConfig()
+	listener1, err := server.Listen(tcpAddr, config)
 	if err != nil {
 		panic(err)
 	}
-	go server.StartHTTPServer(listener1, mux, tcpLogger)
+	go server.StartHTTPServer(listener1, mux, tcpLogger, config)
 
 	unixLogger := logger.With("socket", "unix")
 	mux2 := http.NewServeMux()
@@ -133,11 +134,11 @@ func setup() {
 	wm = server.NewWebsocketManager(Routes, RoutesCdc)
 	wm.SetLogger(unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
-	listener2, err := server.Listen(unixAddr, server.Config{})
+	listener2, err := server.Listen(unixAddr, config)
 	if err != nil {
 		panic(err)
 	}
-	go server.StartHTTPServer(listener2, mux2, unixLogger)
+	go server.StartHTTPServer(listener2, mux2, unixLogger, config)
 
 	// wait for servers to start
 	time.Sleep(time.Second * 2)

@@ -21,6 +21,9 @@ import (
 const (
 	// must be greater than types.BlockPartSizeBytes + a few bytes
 	maxMsgSizeBytes = 1024 * 1024 // 1MB
+
+	// how often the WAL should be sync'd during period sync'ing
+	walDefaultFlushInterval = 2 * time.Second
 )
 
 //--------------------------------------------------------
@@ -54,26 +57,36 @@ func RegisterWALMessages(cdc *amino.Codec) {
 type WAL interface {
 	Write(WALMessage)
 	WriteSync(WALMessage)
-	Group() *auto.Group
-	SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error)
+	FlushAndSync() error
 
+	SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error)
+
+	// service methods
 	Start() error
 	Stop() error
 	Wait()
 }
 
 // Write ahead logger writes msgs to disk before they are processed.
-// Can be used for crash-recovery and deterministic replay
-// TODO: currently the wal is overwritten during replay catchup
-//   give it a mode so it's either reading or appending - must read to end to start appending again
+// Can be used for crash-recovery and deterministic replay.
+// TODO: currently the wal is overwritten during replay catchup, give it a mode
+// so it's either reading or appending - must read to end to start appending
+// again.
 type baseWAL struct {
 	cmn.BaseService
 
 	group *auto.Group
 
 	enc *WALEncoder
+
+	flushTicker   *time.Ticker
+	flushInterval time.Duration
 }
 
+var _ WAL = &baseWAL{}
+
+// NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
+// WAL. It's flushed and synced to disk every 2s and once when stopped.
 func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error) {
 	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
@@ -85,11 +98,17 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*baseWAL, error)
 		return nil, err
 	}
 	wal := &baseWAL{
-		group: group,
-		enc:   NewWALEncoder(group),
+		group:         group,
+		enc:           NewWALEncoder(group),
+		flushInterval: walDefaultFlushInterval,
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
+}
+
+// SetFlushInterval allows us to override the periodic flush interval for the WAL.
+func (wal *baseWAL) SetFlushInterval(i time.Duration) {
+	wal.flushInterval = i
 }
 
 func (wal *baseWAL) Group() *auto.Group {
@@ -109,14 +128,39 @@ func (wal *baseWAL) OnStart() error {
 		wal.WriteSync(EndHeightMessage{0})
 	}
 	err = wal.group.Start()
-	return err
+	if err != nil {
+		return err
+	}
+	wal.flushTicker = time.NewTicker(wal.flushInterval)
+	go wal.processFlushTicks()
+	return nil
+}
+
+func (wal *baseWAL) processFlushTicks() {
+	for {
+		select {
+		case <-wal.flushTicker.C:
+			if err := wal.FlushAndSync(); err != nil {
+				wal.Logger.Error("Periodic WAL flush failed", "err", err)
+			}
+		case <-wal.Quit():
+			return
+		}
+	}
+}
+
+// FlushAndSync flushes and fsync's the underlying group's data to disk.
+// See auto#FlushAndSync
+func (wal *baseWAL) FlushAndSync() error {
+	return wal.group.FlushAndSync()
 }
 
 // Stop the underlying autofile group.
 // Use Wait() to ensure it's finished shutting down
 // before cleaning up files.
 func (wal *baseWAL) OnStop() {
-	wal.group.Flush()
+	wal.flushTicker.Stop()
+	wal.FlushAndSync()
 	wal.group.Stop()
 	wal.group.Close()
 }
@@ -150,7 +194,7 @@ func (wal *baseWAL) WriteSync(msg WALMessage) {
 	}
 
 	wal.Write(msg)
-	if err := wal.group.Flush(); err != nil {
+	if err := wal.FlushAndSync(); err != nil {
 		panic(fmt.Sprintf("Error flushing consensus wal buf to file. Error: %v \n", err))
 	}
 }
@@ -166,8 +210,11 @@ type WALSearchOptions struct {
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
-func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
-	var msg *TimedWALMessage
+func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+	var (
+		msg *TimedWALMessage
+		gr  *auto.GroupReader
+	)
 	lastHeightFound := int64(-1)
 
 	// NOTE: starting from the last file in the group because we're usually
@@ -334,10 +381,12 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 
 type nilWAL struct{}
 
+var _ WAL = nilWAL{}
+
 func (nilWAL) Write(m WALMessage)     {}
 func (nilWAL) WriteSync(m WALMessage) {}
-func (nilWAL) Group() *auto.Group     { return nil }
-func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
+func (nilWAL) FlushAndSync() error    { return nil }
+func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 func (nilWAL) Start() error { return nil }

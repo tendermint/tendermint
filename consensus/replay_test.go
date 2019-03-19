@@ -19,7 +19,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	auto "github.com/tendermint/tendermint/libs/autofile"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
@@ -78,13 +77,14 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *
 	// in the WAL itself. Assuming the consensus state is running, replay of any
 	// WAL, including the empty one, should eventually be followed by a new
 	// block, or else something is wrong.
-	newBlockCh := make(chan interface{}, 1)
-	err = cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, newBlockCh)
+	newBlockSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 	require.NoError(t, err)
 	select {
-	case <-newBlockCh:
-	case <-time.After(60 * time.Second):
-		t.Fatalf("Timed out waiting for new block (see trace above)")
+	case <-newBlockSub.Out():
+	case <-newBlockSub.Cancelled():
+		t.Fatal("newBlockSub was cancelled")
+	case <-time.After(120 * time.Second):
+		t.Fatal("Timed out waiting for new block (see trace above)")
 	}
 }
 
@@ -128,8 +128,8 @@ func TestWALCrash(t *testing.T) {
 
 func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
 	initFn func(dbm.DB, *ConsensusState, context.Context), heightToStop int64) {
-	walPaniced := make(chan error)
-	crashingWal := &crashingWAL{panicCh: walPaniced, heightToStop: heightToStop}
+	walPanicked := make(chan error)
+	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
 
 	i := 1
 LOOP:
@@ -168,8 +168,8 @@ LOOP:
 		i++
 
 		select {
-		case err := <-walPaniced:
-			t.Logf("WAL paniced: %v", err)
+		case err := <-walPanicked:
+			t.Logf("WAL panicked: %v", err)
 
 			// make sure we can make blocks after a crash
 			startNewConsensusStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateDB)
@@ -190,15 +190,17 @@ LOOP:
 
 // crashingWAL is a WAL which crashes or rather simulates a crash during Save
 // (before and after). It remembers a message for which we last panicked
-// (lastPanicedForMsgIndex), so we don't panic for it in subsequent iterations.
+// (lastPanickedForMsgIndex), so we don't panic for it in subsequent iterations.
 type crashingWAL struct {
 	next         WAL
 	panicCh      chan error
 	heightToStop int64
 
-	msgIndex               int // current message index
-	lastPanicedForMsgIndex int // last message for which we panicked
+	msgIndex                int // current message index
+	lastPanickedForMsgIndex int // last message for which we panicked
 }
+
+var _ WAL = &crashingWAL{}
 
 // WALWriteError indicates a WAL crash.
 type WALWriteError struct {
@@ -232,8 +234,8 @@ func (w *crashingWAL) Write(m WALMessage) {
 		return
 	}
 
-	if w.msgIndex > w.lastPanicedForMsgIndex {
-		w.lastPanicedForMsgIndex = w.msgIndex
+	if w.msgIndex > w.lastPanickedForMsgIndex {
+		w.lastPanickedForMsgIndex = w.msgIndex
 		_, file, line, _ := runtime.Caller(1)
 		w.panicCh <- WALWriteError{fmt.Sprintf("failed to write %T to WAL (fileline: %s:%d)", m, file, line)}
 		runtime.Goexit()
@@ -247,8 +249,9 @@ func (w *crashingWAL) WriteSync(m WALMessage) {
 	w.Write(m)
 }
 
-func (w *crashingWAL) Group() *auto.Group { return w.next.Group() }
-func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
+func (w *crashingWAL) FlushAndSync() error { return w.next.FlushAndSync() }
+
+func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return w.next.SearchForEndHeight(height, options)
 }
 

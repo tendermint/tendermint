@@ -1,8 +1,6 @@
-## v0.31.0
+## v0.32.0
 
 **
-
-Special thanks to external contributors on this release:
 
 ### BREAKING CHANGES:
 

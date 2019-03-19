@@ -46,7 +46,7 @@ func TestByzantine(t *testing.T) {
 		switches[i].SetLogger(p2pLogger.With("validator", i))
 	}
 
-	eventChans := make([]chan interface{}, N)
+	blocksSubs := make([]types.Subscription, N)
 	reactors := make([]p2p.Reactor, N)
 	for i := 0; i < N; i++ {
 		// make first val byzantine
@@ -65,8 +65,8 @@ func TestByzantine(t *testing.T) {
 		eventBus := css[i].eventBus
 		eventBus.SetLogger(logger.With("module", "events", "validator", i))
 
-		eventChans[i] = make(chan interface{}, 1)
-		err := eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
+		var err error
+		blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
@@ -131,7 +131,7 @@ func TestByzantine(t *testing.T) {
 	p2p.Connect2Switches(switches, ind1, ind2)
 
 	// wait for someone in the big partition (B) to make a block
-	<-eventChans[ind2]
+	<-blocksSubs[ind2].Out()
 
 	t.Log("A block has been committed. Healing partition")
 	p2p.Connect2Switches(switches, ind0, ind1)
@@ -143,7 +143,7 @@ func TestByzantine(t *testing.T) {
 	wg.Add(2)
 	for i := 1; i < N-1; i++ {
 		go func(j int) {
-			<-eventChans[j]
+			<-blocksSubs[j].Out()
 			wg.Done()
 		}(i)
 	}

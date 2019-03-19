@@ -2,11 +2,14 @@ package client
 
 import (
 	"context"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -15,13 +18,18 @@ import (
 )
 
 /*
-HTTP is a Client implementation that communicates
-with a tendermint node over json rpc and websockets.
+HTTP is a Client implementation that communicates with a tendermint node over
+json rpc and websockets.
 
-This is the main implementation you probably want to use in
-production code.  There are other implementations when calling
-the tendermint node in-process (local), or when you want to mock
-out the server for test code (mock).
+This is the main implementation you probably want to use in production code.
+There are other implementations when calling the tendermint node in-process
+(Local), or when you want to mock out the server for test code (mock).
+
+You can subscribe for any event published by Tendermint using Subscribe method.
+Note delivery is best-effort. If you don't read events fast enough or network
+is slow, Tendermint might cancel the subscription. The client will attempt to
+resubscribe (you don't need to do anything). It will keep trying every second
+indefinitely until successful.
 */
 type HTTP struct {
 	remote string
@@ -256,8 +264,9 @@ type WSEvents struct {
 	endpoint string
 	ws       *rpcclient.WSClient
 
-	mtx           sync.RWMutex
-	subscriptions map[string]chan<- interface{}
+	mtx sync.RWMutex
+	// query -> chan
+	subscriptions map[string]chan ctypes.ResultEvent
 }
 
 func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
@@ -265,16 +274,18 @@ func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 		cdc:           cdc,
 		endpoint:      endpoint,
 		remote:        remote,
-		subscriptions: make(map[string]chan<- interface{}),
+		subscriptions: make(map[string]chan ctypes.ResultEvent),
 	}
 
 	wsEvents.BaseService = *cmn.NewBaseService(nil, "WSEvents", wsEvents)
 	return wsEvents
 }
 
+// OnStart implements cmn.Service by starting WSClient and event loop.
 func (w *WSEvents) OnStart() error {
 	w.ws = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
-		w.redoSubscriptions()
+		// resubscribe immediately
+		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
 	w.ws.SetCodec(w.cdc)
 
@@ -287,61 +298,63 @@ func (w *WSEvents) OnStart() error {
 	return nil
 }
 
-// Stop wraps the BaseService/eventSwitch actions as Start does
+// OnStop implements cmn.Service by stopping WSClient.
 func (w *WSEvents) OnStop() {
-	err := w.ws.Stop()
-	if err != nil {
-		w.Logger.Error("failed to stop WSClient", "err", err)
-	}
+	_ = w.ws.Stop()
 }
 
-func (w *WSEvents) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
-	q := query.String()
+// Subscribe implements EventsClient by using WSClient to subscribe given
+// subscriber to query. By default, returns a channel with cap=1. Error is
+// returned if it fails to subscribe.
+// Channel is never closed to prevent clients from seeing an erroneus event.
+func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
+	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 
-	err := w.ws.Subscribe(ctx, q)
-	if err != nil {
-		return err
+	if err := w.ws.Subscribe(ctx, query); err != nil {
+		return nil, err
 	}
 
+	outCap := 1
+	if len(outCapacity) > 0 {
+		outCap = outCapacity[0]
+	}
+
+	outc := make(chan ctypes.ResultEvent, outCap)
 	w.mtx.Lock()
 	// subscriber param is ignored because Tendermint will override it with
 	// remote IP anyway.
-	w.subscriptions[q] = out
+	w.subscriptions[query] = outc
 	w.mtx.Unlock()
 
-	return nil
+	return outc, nil
 }
 
-func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
-	q := query.String()
-
-	err := w.ws.Unsubscribe(ctx, q)
-	if err != nil {
+// Unsubscribe implements EventsClient by using WSClient to unsubscribe given
+// subscriber from query.
+func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber, query string) error {
+	if err := w.ws.Unsubscribe(ctx, query); err != nil {
 		return err
 	}
 
 	w.mtx.Lock()
-	ch, ok := w.subscriptions[q]
+	_, ok := w.subscriptions[query]
 	if ok {
-		close(ch)
-		delete(w.subscriptions, q)
+		delete(w.subscriptions, query)
 	}
 	w.mtx.Unlock()
 
 	return nil
 }
 
+// UnsubscribeAll implements EventsClient by using WSClient to unsubscribe
+// given subscriber from all the queries.
 func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error {
-	err := w.ws.UnsubscribeAll(ctx)
-	if err != nil {
+	if err := w.ws.UnsubscribeAll(ctx); err != nil {
 		return err
 	}
 
 	w.mtx.Lock()
-	for _, ch := range w.subscriptions {
-		close(ch)
-	}
-	w.subscriptions = make(map[string]chan<- interface{})
+	w.subscriptions = make(map[string]chan ctypes.ResultEvent)
 	w.mtx.Unlock()
 
 	return nil
@@ -349,18 +362,21 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 
 // After being reconnected, it is necessary to redo subscription to server
 // otherwise no data will be automatically received.
-func (w *WSEvents) redoSubscriptions() {
+func (w *WSEvents) redoSubscriptionsAfter(d time.Duration) {
+	time.Sleep(d)
+
 	for q := range w.subscriptions {
-		// NOTE: no timeout for resubscribing
-		// FIXME: better logging/handling of errors??
-		w.ws.Subscribe(context.Background(), q)
+		err := w.ws.Subscribe(context.Background(), q)
+		if err != nil {
+			w.Logger.Error("Failed to resubscribe", "err", err)
+		}
 	}
 }
 
-// eventListener is an infinite loop pulling all websocket events
-// and pushing them to the EventSwitch.
-//
-// the goroutine only stops by closing quit
+func isErrAlreadySubscribed(err error) bool {
+	return strings.Contains(err.Error(), tmpubsub.ErrAlreadySubscribed.Error())
+}
+
 func (w *WSEvents) eventListener() {
 	for {
 		select {
@@ -368,21 +384,39 @@ func (w *WSEvents) eventListener() {
 			if !ok {
 				return
 			}
+
 			if resp.Error != nil {
 				w.Logger.Error("WS error", "err", resp.Error.Error())
+				// Error can be ErrAlreadySubscribed or max client (subscriptions per
+				// client) reached or Tendermint exited.
+				// We can ignore ErrAlreadySubscribed, but need to retry in other
+				// cases.
+				if !isErrAlreadySubscribed(resp.Error) {
+					// Resubscribe after 1 second to give Tendermint time to restart (if
+					// crashed).
+					w.redoSubscriptionsAfter(1 * time.Second)
+				}
 				continue
 			}
+
 			result := new(ctypes.ResultEvent)
 			err := w.cdc.UnmarshalJSON(resp.Result, result)
 			if err != nil {
 				w.Logger.Error("failed to unmarshal response", "err", err)
 				continue
 			}
-			// NOTE: writing also happens inside mutex so we can't close a channel in
-			// Unsubscribe/UnsubscribeAll.
+
 			w.mtx.RLock()
-			if ch, ok := w.subscriptions[result.Query]; ok {
-				ch <- result.Data
+			if out, ok := w.subscriptions[result.Query]; ok {
+				if cap(out) == 0 {
+					out <- *result
+				} else {
+					select {
+					case out <- *result:
+					default:
+						w.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
+					}
+				}
 			}
 			w.mtx.RUnlock()
 		case <-w.Quit():
