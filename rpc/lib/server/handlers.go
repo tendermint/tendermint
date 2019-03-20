@@ -2,6 +2,7 @@ package rpcserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -439,6 +440,9 @@ type wsConnection struct {
 
 	// callback which is called upon disconnect
 	onDisconnect func(remoteAddr string)
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewWSConnection wraps websocket.Conn.
@@ -532,6 +536,10 @@ func (wsc *wsConnection) OnStop() {
 	if wsc.onDisconnect != nil {
 		wsc.onDisconnect(wsc.remoteAddr)
 	}
+
+	if wsc.ctx != nil {
+		wsc.cancel()
+	}
 }
 
 // GetRemoteAddr returns the remote address of the underlying connection.
@@ -567,6 +575,16 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 // It implements WSRPCConnection.
 func (wsc *wsConnection) Codec() *amino.Codec {
 	return wsc.cdc
+}
+
+// Context returns the connection's context.
+// The context is canceled when the client's connection closes.
+func (wsc *wsConnection) Context() context.Context {
+	if wsc.ctx != nil {
+		return wsc.ctx
+	}
+	wsc.ctx, wsc.cancel = context.WithCancel(context.Background())
+	return wsc.ctx
 }
 
 // Read from the socket and subscribe to or unsubscribe from events
