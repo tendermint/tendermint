@@ -20,3 +20,5 @@
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+- [blockchain] \#2699 update the maxHeight when a peer is removed
