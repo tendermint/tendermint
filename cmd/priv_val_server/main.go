@@ -35,7 +35,7 @@ func main() {
 
 	pv := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
 
-	var dialer privval.Dialer
+	var dialer privval.SocketDialer
 	protocol, address := cmn.ProtocolAndAddress(*addr)
 	switch protocol {
 	case "unix":
@@ -48,7 +48,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	rs := privval.NewRemoteSigner(logger, *chainID, pv, dialer)
+	rs := privval.NewSignerServiceEndpoint(logger, *chainID, pv, dialer)
 	err := rs.Start()
 	if err != nil {
 		panic(err)

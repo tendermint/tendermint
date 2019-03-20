@@ -358,8 +358,8 @@ func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, 
 	return
 }
 
-// computeDHSecret computes a shared secret Diffie-Hellman secret
-// from a the own local private key and the others public key.
+// computeDHSecret computes a Diffie-Hellman shared secret key
+// from our own local private key and the other's public key.
 //
 // It returns an error if the computed shared secret is all zeroes.
 func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte, err error) {

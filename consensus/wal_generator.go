@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
-	auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -193,14 +192,12 @@ func (w *byteBufferWAL) WriteSync(m WALMessage) {
 	w.Write(m)
 }
 
-func (w *byteBufferWAL) Group() *auto.Group {
-	panic("not implemented")
-}
-func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
+func (w *byteBufferWAL) FlushAndSync() error { return nil }
+
+func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 
 func (w *byteBufferWAL) Start() error { return nil }
 func (w *byteBufferWAL) Stop() error  { return nil }
 func (w *byteBufferWAL) Wait()        {}
-func (w *byteBufferWAL) Flush() error { return nil }

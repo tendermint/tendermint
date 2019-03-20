@@ -2,6 +2,7 @@ package core
 
 import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 // Get node health. Returns empty result (200 OK) on success, no response - in
@@ -31,6 +32,6 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Health() (*ctypes.ResultHealth, error) {
+func Health(ctx *rpctypes.Context) (*ctypes.ResultHealth, error) {
 	return &ctypes.ResultHealth{}, nil
 }
