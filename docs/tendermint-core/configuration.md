@@ -111,6 +111,22 @@ unsafe = false
 # 1024 - 40 - 10 - 50 = 924 = ~900
 max_open_connections = 900
 
+# Maximum number of unique clientIDs that can /subscribe
+# If you're using /broadcast_tx_commit, set to the estimated maximum number
+# of broadcast_tx_commit calls per block.
+max_subscription_clients = 100
+
+# Maximum number of unique queries a given client can /subscribe to
+# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
+# the estimated # maximum number of broadcast_tx_commit calls per block.
+max_subscriptions_per_client = 5
+
+# How long to wait for a tx to be committed during /broadcast_tx_commit.
+# WARNING: Using a value larger than 10s will result in increasing the
+# global HTTP write timeout, which applies to all connections and endpoints.
+# See https://github.com/tendermint/tendermint/issues/3435
+timeout_broadcast_tx_commit = "10s"
+
 ##### peer to peer configuration options #####
 [p2p]
 

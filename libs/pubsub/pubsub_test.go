@@ -29,6 +29,10 @@ func TestSubscribe(t *testing.T) {
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
 	require.NoError(t, err)
+
+	assert.Equal(t, 1, s.NumClients())
+	assert.Equal(t, 1, s.NumClientSubscriptions(clientID))
+
 	err = s.Publish(ctx, "Ka-Zar")
 	require.NoError(t, err)
 	assertReceive(t, "Ka-Zar", subscription.Out())

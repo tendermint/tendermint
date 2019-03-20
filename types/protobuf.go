@@ -126,9 +126,8 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
 		Block: &abci.BlockParams{
-			MaxBytes:   params.Block.MaxBytes,
-			MaxGas:     params.Block.MaxGas,
-			TimeIotaMs: params.Block.TimeIotaMs,
+			MaxBytes: params.Block.MaxBytes,
+			MaxGas:   params.Block.MaxGas,
 		},
 		Evidence: &abci.EvidenceParams{
 			MaxAge: params.Evidence.MaxAge,
@@ -222,15 +221,21 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 	return tmVals, nil
 }
 
-func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
-	params := ConsensusParams{}
+// BlockParams.TimeIotaMs is not exposed to the application. Therefore a caller
+// must provide it.
+func (pb2tm) ConsensusParams(csp *abci.ConsensusParams, blockTimeIotaMs int64) ConsensusParams {
+	params := ConsensusParams{
+		Block:     BlockParams{},
+		Evidence:  EvidenceParams{},
+		Validator: ValidatorParams{},
+	}
 
 	// we must defensively consider any structs may be nil
 	if csp.Block != nil {
 		params.Block = BlockParams{
 			MaxBytes:   csp.Block.MaxBytes,
 			MaxGas:     csp.Block.MaxGas,
-			TimeIotaMs: csp.Block.TimeIotaMs,
+			TimeIotaMs: blockTimeIotaMs,
 		}
 	}
 

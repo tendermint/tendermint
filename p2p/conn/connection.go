@@ -95,13 +95,13 @@ type MConnection struct {
 	stopMtx sync.Mutex
 
 	flushTimer *cmn.ThrottleTimer // flush writes as necessary but throttled.
-	pingTimer  *cmn.RepeatTimer   // send pings periodically
+	pingTimer  *time.Ticker       // send pings periodically
 
 	// close conn if pong is not received in pongTimeout
 	pongTimer     *time.Timer
 	pongTimeoutCh chan bool // true - timeout, false - peer sent pong
 
-	chStatsTimer *cmn.RepeatTimer // update channel stats periodically
+	chStatsTimer *time.Ticker // update channel stats periodically
 
 	created time.Time // time of creation
 
@@ -201,9 +201,9 @@ func (c *MConnection) OnStart() error {
 		return err
 	}
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.FlushThrottle)
-	c.pingTimer = cmn.NewRepeatTimer("ping", c.config.PingInterval)
+	c.pingTimer = time.NewTicker(c.config.PingInterval)
 	c.pongTimeoutCh = make(chan bool, 1)
-	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateStats)
+	c.chStatsTimer = time.NewTicker(updateStats)
 	c.quitSendRoutine = make(chan struct{})
 	c.doneSendRoutine = make(chan struct{})
 	go c.sendRoutine()
@@ -401,11 +401,11 @@ FOR_LOOP:
 			// NOTE: flushTimer.Set() must be called every time
 			// something is written to .bufConnWriter.
 			c.flush()
-		case <-c.chStatsTimer.Chan():
+		case <-c.chStatsTimer.C:
 			for _, channel := range c.channels {
 				channel.updateStats()
 			}
-		case <-c.pingTimer.Chan():
+		case <-c.pingTimer.C:
 			c.Logger.Debug("Send Ping")
 			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPing{})
 			if err != nil {

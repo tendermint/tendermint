@@ -234,21 +234,26 @@ func (sw *Switch) OnStop() {
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
-	successChan := make(chan bool, len(sw.peers.List()))
 	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+
+	peers := sw.peers.List()
 	var wg sync.WaitGroup
-	for _, peer := range sw.peers.List() {
-		wg.Add(1)
-		go func(peer Peer) {
+	wg.Add(len(peers))
+	successChan := make(chan bool, len(peers))
+
+	for _, peer := range peers {
+		go func(p Peer) {
 			defer wg.Done()
-			success := peer.Send(chID, msgBytes)
+			success := p.Send(chID, msgBytes)
 			successChan <- success
 		}(peer)
 	}
+
 	go func() {
 		wg.Wait()
 		close(successChan)
 	}()
+
 	return successChan
 }
 
@@ -497,7 +502,14 @@ func (sw *Switch) acceptRoutine() {
 				)
 
 				continue
-			case *ErrTransportClosed:
+			case ErrFilterTimeout:
+				sw.Logger.Error(
+					"Peer filter timed out",
+					"err", err,
+				)
+
+				continue
+			case ErrTransportClosed:
 				sw.Logger.Error(
 					"Stopped accept routine, as transport is closed",
 					"numPeers", sw.peers.Size(),
