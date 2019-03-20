@@ -36,9 +36,10 @@ func main() {
 	cmn.TrapSignal(logger, func() {})
 
 	rpcserver.RegisterRPCFuncs(mux, routes, cdc, logger)
-	listener, err := rpcserver.Listen("0.0.0.0:8008", rpcserver.Config{})
+	config := rpcserver.DefaultConfig()
+	listener, err := rpcserver.Listen("0.0.0.0:8008", config)
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
-	rpcserver.StartHTTPServer(listener, mux, logger)
+	rpcserver.StartHTTPServer(listener, mux, logger, config)
 }

@@ -105,8 +105,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse query")
 	}
-
-	subCtx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
+	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 	sub, err := eventBus.Subscribe(subCtx, addr, q)
 	if err != nil {

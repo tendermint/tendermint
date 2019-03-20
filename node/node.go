@@ -802,9 +802,18 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
 
+		config := rpcserver.DefaultConfig()
+		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+		// If necessary adjust global WriteTimeout to ensure it's greater than
+		// TimeoutBroadcastTxCommit.
+		// See https://github.com/tendermint/tendermint/issues/3435
+		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+		}
+
 		listener, err := rpcserver.Listen(
 			listenAddr,
-			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
+			config,
 		)
 		if err != nil {
 			return nil, err
@@ -824,6 +833,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			listener,
 			rootHandler,
 			rpcLogger,
+			config,
 		)
 		listeners[i] = listener
 	}
@@ -831,8 +841,9 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
-		listener, err := rpcserver.Listen(
-			grpcListenAddr, rpcserver.Config{MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections})
+		config := rpcserver.DefaultConfig()
+		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+		listener, err := rpcserver.Listen(grpcListenAddr, config)
 		if err != nil {
 			return nil, err
 		}
