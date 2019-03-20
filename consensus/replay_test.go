@@ -288,7 +288,7 @@ var (
 // 2 - save block and committed but state is behind
 var modes = []uint{0, 1, 2}
 
-// This actually is not a test, it's for storing validator change tx data for testHandshakeReplay
+// This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func TestSimulateValidatorsChange(t *testing.T) {
 	nPeers := 7
 	nVals := 4
