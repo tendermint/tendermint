@@ -18,8 +18,10 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/blockchain"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/evidence"
@@ -170,73 +172,64 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
-// NewNode returns a new, ready to go, Tendermint Node.
-func NewNode(config *cfg.Config,
-	privValidator types.PrivValidator,
-	nodeKey *p2p.NodeKey,
-	clientCreator proxy.ClientCreator,
-	genesisDocProvider GenesisDocProvider,
-	dbProvider DBProvider,
-	metricsProvider MetricsProvider,
-	logger log.Logger) (*Node, error) {
-
-	// Get BlockStore
+func getStoresForNewNode(config *cfg.Config, dbProvider DBProvider) (*bc.BlockStore, dbm.DB, error) {
 	blockStoreDB, err := dbProvider(&DBContext{"blockstore", config})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	blockStore := bc.NewBlockStore(blockStoreDB)
-
-	// Get State
 	stateDB, err := dbProvider(&DBContext{"state", config})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	return blockStore, stateDB, nil
+}
 
+func loadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (sm.State, *types.GenesisDoc, error) {
 	// Get genesis doc
 	// TODO: move to state package?
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {
 		genDoc, err = genesisDocProvider()
 		if err != nil {
-			return nil, err
+			return sm.State{}, nil, err
 		}
 		// save genesis doc to prevent a certain class of user errors (e.g. when it
 		// was changed, accidentally or not). Also good for audit trail.
 		saveGenesisDoc(stateDB, genDoc)
 	}
-
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		return nil, err
+		return sm.State{}, nil, err
 	}
+	return state, genDoc, nil
+}
 
-	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
+func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.Logger) (proxy.AppConns, error) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
+	return proxyApp, nil
+}
 
-	// EventBus and IndexerService must be started before the handshake because
-	// we might need to index the txs of the replayed block as this might not have happened
-	// when the node stopped last time (i.e. the node stopped after it saved the block
-	// but before it indexed the txs, or, endblocker panicked)
+func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
-
-	err = eventBus.Start()
-	if err != nil {
+	if err := eventBus.Start(); err != nil {
 		return nil, err
 	}
+	return eventBus, nil
+}
 
-	// Transaction indexing
+func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider, eventBus *types.EventBus, logger log.Logger) (*txindex.IndexerService, txindex.TxIndexer, error) {
 	var txIndexer txindex.TxIndexer
 	switch config.TxIndex.Indexer {
 	case "kv":
 		store, err := dbProvider(&DBContext{"tx_index", config})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if config.TxIndex.IndexTags != "" {
 			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
@@ -251,27 +244,23 @@ func NewNode(config *cfg.Config,
 
 	indexerService := txindex.NewIndexerService(txIndexer, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
-
-	err = indexerService.Start()
-	if err != nil {
-		return nil, err
+	if err := indexerService.Start(); err != nil {
+		return nil, nil, err
 	}
+	return indexerService, txIndexer, nil
+}
 
-	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
-	// and replays any blocks as necessary to sync tendermint with the app.
-	consensusLogger := logger.With("module", "consensus")
+func doHandshakeForNewNode(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore, genDoc *types.GenesisDoc, eventBus *types.EventBus, proxyApp proxy.AppConns, logger log.Logger) error {
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
+	handshaker.SetLogger(logger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
-		return nil, fmt.Errorf("Error during handshake: %v", err)
+		return fmt.Errorf("Error during handshake: %v", err)
 	}
+	return nil
+}
 
-	// Reload the state. It will have the Version.Consensus.App set by the
-	// Handshake, and may have other modifications as well (ie. depending on
-	// what happened during block replay).
-	state = sm.LoadState(stateDB)
-
+func logNewNodeInfo(state sm.State, privValidator types.PrivValidator, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -287,27 +276,6 @@ func NewNode(config *cfg.Config,
 		)
 	}
 
-	if config.PrivValidatorListenAddr != "" {
-		// If an address is provided, listen on the socket for a connection from an
-		// external signing process.
-		// FIXME: we should start services inside OnStart
-		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error with private validator socket client")
-		}
-	}
-
-	// Decide whether to fast-sync or not
-	// We don't fast-sync when the only validator is us.
-	fastSync := config.FastSync
-	if state.Validators.Size() == 1 {
-		addr, _ := state.Validators.GetByIndex(0)
-		privValAddr := privValidator.GetPubKey().Address()
-		if bytes.Equal(privValAddr, addr) {
-			fastSync = false
-		}
-	}
-
 	pubKey := privValidator.GetPubKey()
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
@@ -316,10 +284,33 @@ func NewNode(config *cfg.Config,
 	} else {
 		consensusLogger.Info("This node is not a validator", "addr", addr, "pubKey", pubKey)
 	}
+}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+func optionallyCreateAndStartPrivValidator(config *cfg.Config, privValidator types.PrivValidator, logger log.Logger) (types.PrivValidator, error) {
+	if config.PrivValidatorListenAddr != "" {
+		// FIXME: we should start services inside OnStart
+		var err error
+		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error with private validator socket client")
+		}
+	}
+	return privValidator, nil
+}
 
-	// Make MempoolReactor
+func optionallyFastSync(config *cfg.Config, state sm.State, privValidator types.PrivValidator) bool {
+	fastSync := config.FastSync
+	if state.Validators.Size() == 1 {
+		addr, _ := state.Validators.GetByIndex(0)
+		privValAddr := privValidator.GetPubKey().Address()
+		if bytes.Equal(privValAddr, addr) {
+			fastSync = false
+		}
+	}
+	return fastSync
+}
+
+func buildNewNodeMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns, state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
@@ -339,34 +330,34 @@ func NewNode(config *cfg.Config,
 	if config.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
+	return mempoolReactor, mempool
+}
 
-	// Make Evidence Reactor
+func buildNewNodeEvidenceReactor(config *cfg.Config, dbProvider DBProvider, stateDB dbm.DB, logger log.Logger) (*evidence.EvidenceReactor, *evidence.EvidencePool, error) {
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
 	evidencePool := evidence.NewEvidencePool(stateDB, evidenceDB)
 	evidencePool.SetLogger(evidenceLogger)
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
+	return evidenceReactor, evidencePool, nil
+}
 
-	blockExecLogger := logger.With("module", "state")
-	// make block executor for consensus and blockchain reactors to execute blocks
-	blockExec := sm.NewBlockExecutor(
-		stateDB,
-		blockExecLogger,
-		proxyApp.Consensus(),
-		mempool,
-		evidencePool,
-		sm.BlockExecutorWithMetrics(smMetrics),
-	)
+func buildNewNodeConsensusReactor(config *cfg.Config,
+	state sm.State,
+	blockExec *sm.BlockExecutor,
+	blockStore sm.BlockStore,
+	mempool *mempl.Mempool,
+	evidencePool *evidence.EvidencePool,
+	privValidator types.PrivValidator,
+	csMetrics *cs.Metrics,
+	fastSync bool,
+	eventBus *types.EventBus,
+	logger log.Logger) (*consensus.ConsensusReactor, *consensus.ConsensusState) {
 
-	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
-
-	// Make ConsensusReactor
 	consensusState := cs.NewConsensusState(
 		config.Consensus,
 		state.Copy(),
@@ -376,34 +367,19 @@ func NewNode(config *cfg.Config,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
 	)
-	consensusState.SetLogger(consensusLogger)
+	consensusState.SetLogger(logger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
 	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
-	consensusReactor.SetLogger(consensusLogger)
-
+	consensusReactor.SetLogger(logger)
 	// services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor
 	consensusReactor.SetEventBus(eventBus)
+	return consensusReactor, consensusState
+}
 
-	p2pLogger := logger.With("module", "p2p")
-	nodeInfo, err := makeNodeInfo(
-		config,
-		nodeKey.ID(),
-		txIndexer,
-		genDoc.ChainID,
-		p2p.NewProtocolVersion(
-			version.P2PProtocol, // global
-			state.Version.Consensus.Block,
-			state.Version.Consensus.App,
-		),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Setup Transport.
+func setupNewNodeTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p2p.NodeKey, proxyApp proxy.AppConns) (*p2p.MultiplexTransport, []p2p.PeerFilterFunc) {
 	var (
 		mConnConfig = p2p.MConnConfig(config.P2P)
 		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
@@ -456,15 +432,28 @@ func NewNode(config *cfg.Config,
 	}
 
 	p2p.MultiplexTransportConnFilters(connFilters...)(transport)
+	return transport, peerFilters
+}
 
-	// Setup Switch.
+func buildNewNodeSwitch(config *cfg.Config,
+	transport *p2p.MultiplexTransport,
+	p2pMetrics *p2p.Metrics,
+	peerFilters []p2p.PeerFilterFunc,
+	mempoolReactor *mempl.MempoolReactor,
+	bcReactor *blockchain.BlockchainReactor,
+	consensusReactor *consensus.ConsensusReactor,
+	evidenceReactor *evidence.EvidenceReactor,
+	nodeInfo p2p.NodeInfo,
+	nodeKey *p2p.NodeKey,
+	logger log.Logger) *p2p.Switch {
+
 	sw := p2p.NewSwitch(
 		config.P2P,
 		transport,
 		p2p.WithMetrics(p2pMetrics),
 		p2p.SwitchPeerFilters(peerFilters...),
 	)
-	sw.SetLogger(p2pLogger)
+	sw.SetLogger(logger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -472,20 +461,11 @@ func NewNode(config *cfg.Config,
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
-	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
+	logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
+	return sw
+}
 
-	// Optionally, start the pex reactor
-	//
-	// TODO:
-	//
-	// We need to set Seeds and PersistentPeers on the switch,
-	// since it needs to be able to use these (and their DNS names)
-	// even if the PEX is off. We can include the DNS name in the NetAddress,
-	// but it would still be nice to have a clear list of the current "PersistentPeers"
-	// somewhere that we can return with net_info.
-	//
-	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
-	// Note we currently use the addrBook regardless at least for AddOurAddress
+func buildNewNodeAddrBook(config *cfg.Config, nodeInfo p2p.NodeInfo, sw *p2p.Switch, logger, p2pLogger log.Logger) pex.AddrBook {
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 
 	// Add ourselves to addrbook to prevent dialing ourselves
@@ -504,14 +484,147 @@ func NewNode(config *cfg.Config,
 	}
 
 	sw.SetAddrBook(addrBook)
+	return addrBook
+}
 
-	// run the profile server
+func runProfileServer(config *cfg.Config, logger log.Logger) {
 	profileHost := config.ProfListenAddress
 	if profileHost != "" {
 		go func() {
 			logger.Error("Profile server", "err", http.ListenAndServe(profileHost, nil))
 		}()
 	}
+}
+
+// NewNode returns a new, ready to go, Tendermint Node.
+func NewNode(config *cfg.Config,
+	privValidator types.PrivValidator,
+	nodeKey *p2p.NodeKey,
+	clientCreator proxy.ClientCreator,
+	genesisDocProvider GenesisDocProvider,
+	dbProvider DBProvider,
+	metricsProvider MetricsProvider,
+	logger log.Logger) (*Node, error) {
+
+	blockStore, stateDB, err := getStoresForNewNode(config, dbProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	state, genDoc, err := loadStateFromDBOrGenesisDoc(stateDB, genesisDocProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
+	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// EventBus and IndexerService must be started before the handshake because
+	// we might need to index the txs of the replayed block as this might not have happened
+	// when the node stopped last time (i.e. the node stopped after it saved the block
+	// but before it indexed the txs, or, endblocker panicked)
+	eventBus, err := createAndStartEventBus(logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// Transaction indexing
+	indexerService, txIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
+	// and replays any blocks as necessary to sync tendermint with the app.
+	consensusLogger := logger.With("module", "consensus")
+	if err := doHandshakeForNewNode(stateDB, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
+		return nil, err
+	}
+
+	// Reload the state. It will have the Version.Consensus.App set by the
+	// Handshake, and may have other modifications as well (ie. depending on
+	// what happened during block replay).
+	state = sm.LoadState(stateDB)
+
+	// If an address is provided, listen on the socket for a connection from an
+	// external signing process.
+	privValidator, err = optionallyCreateAndStartPrivValidator(config, privValidator, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	logNewNodeInfo(state, privValidator, logger, consensusLogger)
+
+	// Decide whether to fast-sync or not
+	// We don't fast-sync when the only validator is us.
+	fastSync := optionallyFastSync(config, state, privValidator)
+
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+
+	// Make MempoolReactor
+	mempoolReactor, mempool := buildNewNodeMempoolReactor(config, proxyApp, state, memplMetrics, logger)
+
+	// Make Evidence Reactor
+	evidenceReactor, evidencePool, err := buildNewNodeEvidenceReactor(config, dbProvider, stateDB, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	blockExecLogger := logger.With("module", "state")
+	// make block executor for consensus and blockchain reactors to execute blocks
+	blockExec := sm.NewBlockExecutor(
+		stateDB,
+		blockExecLogger,
+		proxyApp.Consensus(),
+		mempool,
+		evidencePool,
+		sm.BlockExecutorWithMetrics(smMetrics),
+	)
+
+	// Make BlockchainReactor
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor.SetLogger(logger.With("module", "blockchain"))
+
+	// Make ConsensusReactor
+	consensusReactor, consensusState := buildNewNodeConsensusReactor(
+		config, state, blockExec, blockStore, mempool, evidencePool,
+		privValidator, csMetrics, fastSync, eventBus, consensusLogger,
+	)
+
+	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
+	if err != nil {
+		return nil, err
+	}
+
+	// Setup Transport.
+	transport, peerFilters := setupNewNodeTransport(config, nodeInfo, nodeKey, proxyApp)
+
+	// Setup Switch.
+	p2pLogger := logger.With("module", "p2p")
+	sw := buildNewNodeSwitch(
+		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
+		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+	)
+
+	// Optionally, start the pex reactor
+	//
+	// TODO:
+	//
+	// We need to set Seeds and PersistentPeers on the switch,
+	// since it needs to be able to use these (and their DNS names)
+	// even if the PEX is off. We can include the DNS name in the NetAddress,
+	// but it would still be nice to have a clear list of the current "PersistentPeers"
+	// somewhere that we can return with net_info.
+	//
+	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
+	// Note we currently use the addrBook regardless at least for AddOurAddress
+	addrBook := buildNewNodeAddrBook(config, nodeInfo, sw, logger, p2pLogger)
+
+	// run the profile server
+	runProfileServer(config, logger)
 
 	node := &Node{
 		config:        config,
@@ -826,20 +939,24 @@ func (n *Node) NodeInfo() p2p.NodeInfo {
 
 func makeNodeInfo(
 	config *cfg.Config,
-	nodeID p2p.ID,
+	nodeKey *p2p.NodeKey,
 	txIndexer txindex.TxIndexer,
-	chainID string,
-	protocolVersion p2p.ProtocolVersion,
+	genDoc *types.GenesisDoc,
+	state sm.State,
 ) (p2p.NodeInfo, error) {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.DefaultNodeInfo{
-		ProtocolVersion: protocolVersion,
-		ID_:             nodeID,
-		Network:         chainID,
-		Version:         version.TMCoreSemVer,
+		ProtocolVersion: p2p.NewProtocolVersion(
+			version.P2PProtocol, // global
+			state.Version.Consensus.Block,
+			state.Version.Consensus.App,
+		),
+		ID_:     nodeKey.ID(),
+		Network: genDoc.ChainID,
+		Version: version.TMCoreSemVer,
 		Channels: []byte{
 			bc.BlockchainChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
