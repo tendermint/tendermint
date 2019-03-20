@@ -9,6 +9,7 @@
 * Apps
 
 * Go API
+- [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
 
 * Blockchain Protocol
 
