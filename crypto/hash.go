@@ -1,11 +1,9 @@
 package crypto
 
-import (
-	"crypto/sha256"
-)
+import "golang.org/x/crypto/sha3"
 
 func Sha256(bytes []byte) []byte {
-	hasher := sha256.New()
+	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write(bytes)
 	return hasher.Sum(nil)
 }
