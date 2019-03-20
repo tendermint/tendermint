@@ -88,6 +88,8 @@ type Server struct {
 	cmds    chan cmd
 	cmdsCap int
 
+	// check if we have subscription before
+	// subscribing or unsubscribing
 	mtx           sync.RWMutex
 	subscriptions map[string]map[string]struct{} // subscriber -> query (string) -> empty struct
 }
@@ -237,6 +239,20 @@ func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
 	case <-s.Quit():
 		return nil
 	}
+}
+
+// NumClients returns the number of clients.
+func (s *Server) NumClients() int {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	return len(s.subscriptions)
+}
+
+// NumClientSubscriptions returns the number of subscriptions the client has.
+func (s *Server) NumClientSubscriptions(clientID string) int {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	return len(s.subscriptions[clientID])
 }
 
 // Publish publishes the given message. An error will be returned to the caller

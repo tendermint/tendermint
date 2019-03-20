@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -273,6 +274,8 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 
 func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw.Start()
+	defer sw.Stop()
 
 	// simulate remote peer
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -293,12 +296,12 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	}
 
 	err = sw.addPeer(p)
-	if err, ok := err.(ErrRejected); ok {
-		if !err.IsDuplicate() {
-			t.Errorf("expected peer to be duplicate")
+	if errRej, ok := err.(ErrRejected); ok {
+		if !errRej.IsDuplicate() {
+			t.Errorf("expected peer to be duplicate. got %v", errRej)
 		}
 	} else {
-		t.Errorf("expected ErrRejected")
+		t.Errorf("expected ErrRejected, got %v", err)
 	}
 }
 
@@ -528,6 +531,44 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	for _, rp := range remotePeers {
 		rp.Stop()
 	}
+}
+
+type errorTransport struct {
+	acceptErr error
+}
+
+func (et errorTransport) Accept(c peerConfig) (Peer, error) {
+	return nil, et.acceptErr
+}
+func (errorTransport) Dial(NetAddress, peerConfig) (Peer, error) {
+	panic("not implemented")
+}
+func (errorTransport) Cleanup(Peer) {
+	panic("not implemented")
+}
+
+func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
+	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
+
+	sw = NewSwitch(cfg, errorTransport{ErrRejected{conn: nil, err: errors.New("filtered"), isFiltered: true}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
+	// TODO(melekes) check we remove our address from addrBook
+
+	sw = NewSwitch(cfg, errorTransport{ErrTransportClosed{}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
 }
 
 func BenchmarkSwitchBroadcast(b *testing.B) {

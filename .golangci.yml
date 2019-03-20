@@ -9,8 +9,6 @@ linters:
     - maligned
     - errcheck
     - staticcheck
-    - dupl
-    - ineffassign
     - interfacer
     - unconvert
     - goconst

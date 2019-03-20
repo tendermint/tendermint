@@ -16,7 +16,7 @@
 set BRANCH=master
 set REPO=github.com/tendermint/tendermint
 
-set GO_VERSION=1.11.4
+set GO_VERSION=1.12
 
 sudo pkg update
 

@@ -310,6 +310,10 @@ func (pool *BlockPool) removePeer(peerID p2p.ID) {
 
 	peer, ok := pool.peers[peerID]
 	if ok {
+		if peer.timeout != nil {
+			peer.timeout.Stop()
+		}
+
 		delete(pool.peers, peerID)
 
 		// Find a new peer with the biggest height and update maxPeerHeight if the
