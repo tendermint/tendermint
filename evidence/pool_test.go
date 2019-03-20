@@ -13,8 +13,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-var mockState = sm.State{}
-
 func TestMain(m *testing.M) {
 	types.RegisterMockEvidences(cdc)
 
@@ -35,7 +33,7 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		LastBlockHeight:             0,
 		LastBlockTime:               tmtime.Now(),
 		Validators:                  valSet,
-		NextValidators:              valSet.CopyIncrementAccum(1),
+		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
 			Evidence: types.EvidenceParams{
@@ -58,8 +56,8 @@ func TestEvidencePool(t *testing.T) {
 	valAddr := []byte("val1")
 	height := int64(5)
 	stateDB := initializeValidatorState(valAddr, height)
-	store := NewEvidenceStore(dbm.NewMemDB())
-	pool := NewEvidencePool(stateDB, store)
+	evidenceDB := dbm.NewMemDB()
+	pool := NewEvidencePool(stateDB, evidenceDB)
 
 	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
 	badEvidence := types.MockBadEvidence{goodEvidence}
@@ -85,4 +83,25 @@ func TestEvidencePool(t *testing.T) {
 	err = pool.AddEvidence(goodEvidence)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, pool.evidenceList.Len())
+}
+
+func TestEvidencePoolIsCommitted(t *testing.T) {
+	// Initialization:
+	valAddr := []byte("validator_address")
+	height := int64(42)
+	stateDB := initializeValidatorState(valAddr, height)
+	evidenceDB := dbm.NewMemDB()
+	pool := NewEvidencePool(stateDB, evidenceDB)
+
+	// evidence not seen yet:
+	evidence := types.NewMockGoodEvidence(height, 0, valAddr)
+	assert.False(t, pool.IsCommitted(evidence))
+
+	// evidence seen but not yet committed:
+	assert.NoError(t, pool.AddEvidence(evidence))
+	assert.False(t, pool.IsCommitted(evidence))
+
+	// evidence seen and committed:
+	pool.MarkEvidenceAsCommitted(height, []types.Evidence{evidence})
+	assert.True(t, pool.IsCommitted(evidence))
 }

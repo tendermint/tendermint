@@ -78,6 +78,7 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 // AddBatch indexes a batch of transactions using the given list of tags.
 func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
+	defer storeBatch.Close()
 
 	for _, result := range b.Ops {
 		hash := result.Tx.Hash()
@@ -109,6 +110,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 // Index indexes a single transaction using the given list of tags.
 func (txi *TxIndex) Index(result *types.TxResult) error {
 	b := txi.store.NewBatch()
+	defer b.Close()
 
 	hash := result.Tx.Hash()
 
@@ -172,10 +174,10 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 		for _, r := range ranges {
 			if !hashesInitialized {
-				hashes = txi.matchRange(r, []byte(r.key))
+				hashes = txi.matchRange(r, startKey(r.key))
 				hashesInitialized = true
 			} else {
-				hashes = intersect(hashes, txi.matchRange(r, []byte(r.key)))
+				hashes = intersect(hashes, txi.matchRange(r, startKey(r.key)))
 			}
 		}
 	}
@@ -190,10 +192,10 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		}
 
 		if !hashesInitialized {
-			hashes = txi.match(c, startKey(c, height))
+			hashes = txi.match(c, startKeyForCondition(c, height))
 			hashesInitialized = true
 		} else {
-			hashes = intersect(hashes, txi.match(c, startKey(c, height)))
+			hashes = intersect(hashes, txi.match(c, startKeyForCondition(c, height)))
 		}
 	}
 
@@ -332,18 +334,18 @@ func isRangeOperation(op query.Operator) bool {
 	}
 }
 
-func (txi *TxIndex) match(c query.Condition, startKey []byte) (hashes [][]byte) {
+func (txi *TxIndex) match(c query.Condition, startKeyBz []byte) (hashes [][]byte) {
 	if c.Op == query.OpEqual {
-		it := dbm.IteratePrefix(txi.store, startKey)
+		it := dbm.IteratePrefix(txi.store, startKeyBz)
 		defer it.Close()
 		for ; it.Valid(); it.Next() {
 			hashes = append(hashes, it.Value())
 		}
 	} else if c.Op == query.OpContains {
-		// XXX: doing full scan because startKey does not apply here
-		// For example, if startKey = "account.owner=an" and search query = "accoutn.owner CONSISTS an"
-		// we can't iterate with prefix "account.owner=an" because we might miss keys like "account.owner=Ulan"
-		it := txi.store.Iterator(nil, nil)
+		// XXX: startKey does not apply here.
+		// For example, if startKey = "account.owner/an/" and search query = "accoutn.owner CONTAINS an"
+		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
+		it := dbm.IteratePrefix(txi.store, startKey(c.Tag))
 		defer it.Close()
 		for ; it.Valid(); it.Next() {
 			if !isTagKey(it.Key()) {
@@ -359,14 +361,14 @@ func (txi *TxIndex) match(c query.Condition, startKey []byte) (hashes [][]byte) 
 	return
 }
 
-func (txi *TxIndex) matchRange(r queryRange, prefix []byte) (hashes [][]byte) {
+func (txi *TxIndex) matchRange(r queryRange, startKey []byte) (hashes [][]byte) {
 	// create a map to prevent duplicates
 	hashesMap := make(map[string][]byte)
 
 	lowerBound := r.lowerBoundValue()
 	upperBound := r.upperBoundValue()
 
-	it := dbm.IteratePrefix(txi.store, prefix)
+	it := dbm.IteratePrefix(txi.store, startKey)
 	defer it.Close()
 LOOP:
 	for ; it.Valid(); it.Next() {
@@ -409,16 +411,6 @@ LOOP:
 ///////////////////////////////////////////////////////////////////////////////
 // Keys
 
-func startKey(c query.Condition, height int64) []byte {
-	var key string
-	if height > 0 {
-		key = fmt.Sprintf("%s/%v/%d/", c.Tag, c.Operand, height)
-	} else {
-		key = fmt.Sprintf("%s/%v/", c.Tag, c.Operand)
-	}
-	return []byte(key)
-}
-
 func isTagKey(key []byte) bool {
 	return strings.Count(string(key), tagKeySeparator) == 3
 }
@@ -429,11 +421,36 @@ func extractValueFromKey(key []byte) string {
 }
 
 func keyForTag(tag cmn.KVPair, result *types.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%s/%d/%d", tag.Key, tag.Value, result.Height, result.Index))
+	return []byte(fmt.Sprintf("%s/%s/%d/%d",
+		tag.Key,
+		tag.Value,
+		result.Height,
+		result.Index,
+	))
 }
 
 func keyForHeight(result *types.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%d/%d", types.TxHeightKey, result.Height, result.Height, result.Index))
+	return []byte(fmt.Sprintf("%s/%d/%d/%d",
+		types.TxHeightKey,
+		result.Height,
+		result.Height,
+		result.Index,
+	))
+}
+
+func startKeyForCondition(c query.Condition, height int64) []byte {
+	if height > 0 {
+		return startKey(c.Tag, c.Operand, height)
+	}
+	return startKey(c.Tag, c.Operand)
+}
+
+func startKey(fields ...interface{}) []byte {
+	var b bytes.Buffer
+	for _, f := range fields {
+		b.Write([]byte(fmt.Sprintf("%v", f) + tagKeySeparator))
+	}
+	return b.Bytes()
 }
 
 ///////////////////////////////////////////////////////////////////////////////

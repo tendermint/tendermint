@@ -237,7 +237,7 @@ func (itr *memDBIterator) assertIsValid() {
 func (db *MemDB) getSortedKeys(start, end []byte, reverse bool) []string {
 	keys := []string{}
 	for key := range db.db {
-		inDomain := IsKeyInDomain([]byte(key), start, end, reverse)
+		inDomain := IsKeyInDomain([]byte(key), start, end)
 		if inDomain {
 			keys = append(keys, key)
 		}

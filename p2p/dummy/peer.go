@@ -55,6 +55,16 @@ func (p *peer) RemoteIP() net.IP {
 	return net.ParseIP("127.0.0.1")
 }
 
+// Addr always returns tcp://localhost:8800.
+func (p *peer) RemoteAddr() net.Addr {
+	return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8800}
+}
+
+// CloseConn always returns nil.
+func (p *peer) CloseConn() error {
+	return nil
+}
+
 // Status always returns empry connection status.
 func (p *peer) Status() tmconn.ConnectionStatus {
 	return tmconn.ConnectionStatus{}

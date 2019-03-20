@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -28,7 +28,7 @@ func TestGenerateTxUpdateTxConsistentency(t *testing.T) {
 	}
 
 	for tcIndex, tc := range cases {
-		hostnameHash := md5.Sum([]byte(tc.hostname))
+		hostnameHash := sha256.Sum256([]byte(tc.hostname))
 		// Tx generated from update tx. This is defined outside of the loop, since we have
 		// to a have something initially to update
 		updatedTx := generateTx(tc.connIndex, tc.startingTxNumber, tc.txSize, hostnameHash)
@@ -69,7 +69,7 @@ func BenchmarkIterationOfSendLoop(b *testing.B) {
 	// something too far away to matter
 	endTime := now.Add(time.Hour)
 	txNumber := 0
-	hostnameHash := md5.Sum([]byte{0})
+	hostnameHash := sha256.Sum256([]byte{0})
 	tx := generateTx(connIndex, txNumber, txSize, hostnameHash)
 	txHex := make([]byte, len(tx)*2)
 	hex.Encode(txHex, tx)

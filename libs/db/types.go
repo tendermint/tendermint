@@ -34,9 +34,9 @@ type DB interface {
 	Iterator(start, end []byte) Iterator
 
 	// Iterate over a domain of keys in descending order. End is exclusive.
-	// Start must be greater than end, or the Iterator is invalid.
-	// If start is nil, iterates from the last/greatest item (inclusive).
-	// If end is nil, iterates up to the first/least item (inclusive).
+	// Start must be less than end, or the Iterator is invalid.
+	// If start is nil, iterates up to the first/least item (inclusive).
+	// If end is nil, iterates from the last/greatest item (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	// CONTRACT: start, end readonly []byte
 	ReverseIterator(start, end []byte) Iterator
@@ -57,10 +57,12 @@ type DB interface {
 //----------------------------------------
 // Batch
 
+// Batch Close must be called when the program no longer needs the object.
 type Batch interface {
 	SetDeleter
 	Write()
 	WriteSync()
+	Close()
 }
 
 type SetDeleter interface {

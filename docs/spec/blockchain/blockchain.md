@@ -51,7 +51,7 @@ type Header struct {
 
 	// hashes of block data
 	LastCommitHash []byte // commit from validators from the last block
-	DataHash       []byte // Merkle root of transactions
+	DataHash       []byte // MerkleRoot of transaction hashes
 
 	// hashes from the app output from the prev block
 	ValidatorsHash     []byte // validators for the current block
@@ -83,35 +83,33 @@ type Version struct {
 ## BlockID
 
 The `BlockID` contains two distinct Merkle roots of the block.
-The first, used as the block's main hash, is the Merkle root
-of all the fields in the header. The second, used for secure gossipping of
-the block during consensus, is the Merkle root of the complete serialized block
-cut into parts. The `BlockID` includes these two hashes, as well as the number of
-parts.
+The first, used as the block's main hash, is the MerkleRoot
+of all the fields in the header (ie. `MerkleRoot(header)`.
+The second, used for secure gossipping of the block during consensus,
+is the MerkleRoot of the complete serialized block
+cut into parts (ie. `MerkleRoot(MakeParts(block))`).
+The `BlockID` includes these two hashes, as well as the number of
+parts (ie. `len(MakeParts(block))`)
 
 ```go
 type BlockID struct {
     Hash []byte
-    Parts PartsHeader
+    PartsHeader PartSetHeader
 }
 
-type PartsHeader struct {
-    Hash []byte
+type PartSetHeader struct {
     Total int32
+    Hash []byte
 }
 ```
 
-TODO: link to details of merkle sums.
+See [MerkleRoot](/docs/spec/blockchain/encoding.md#MerkleRoot) for details.
 
 ## Time
 
 Tendermint uses the
 [Google.Protobuf.WellKnownTypes.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/timestamp)
 format, which uses two integers, one for Seconds and for Nanoseconds.
-
-NOTE: there is currently a small divergence between Tendermint and the
-Google.Protobuf.WellKnownTypes.Timestamp that should be resolved. See [this
-issue](https://github.com/tendermint/go-amino/issues/223) for details.
 
 ## Data
 
@@ -146,12 +144,12 @@ The vote includes information about the validator signing it.
 
 ```go
 type Vote struct {
-	Type             SignedMsgType  // byte
+	Type             byte
 	Height           int64
 	Round            int
-	Timestamp        time.Time
 	BlockID          BlockID
-	ValidatorAddress Address
+	Timestamp        Time
+	ValidatorAddress []byte
 	ValidatorIndex   int
 	Signature        []byte
 }
@@ -164,8 +162,8 @@ a _precommit_ has `vote.Type == 2`.
 ## Signature
 
 Signatures in Tendermint are raw bytes representing the underlying signature.
-The only signature scheme currently supported for Tendermint validators is
-ED25519. The signature is the raw 64-byte ED25519 signature.
+
+See the [signature spec](/docs/spec/blockchain/encoding.md#key-types) for more.
 
 ## EvidenceData
 
@@ -192,6 +190,8 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
+See the [pubkey spec](/docs/spec/blockchain/encoding.md#key-types) for more.
+
 ## Validation
 
 Here we describe the validation rules for every element in a block.
@@ -209,7 +209,7 @@ the current version of the `state` corresponds to the state
 after executing transactions from the `prevBlock`.
 Elements of an object are accessed as expected,
 ie. `block.Header`.
-See [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/state.md) for the definition of `state`.
+See the [definition of `State`](/docs/spec/blockchain/state.md).
 
 ### Header
 
@@ -230,7 +230,7 @@ The block version must match the state version.
 len(block.ChainID) < 50
 ```
 
-ChainID must be maximum 50 UTF-8 symbols.
+ChainID must be less than 50 bytes.
 
 ### Height
 
@@ -288,28 +288,25 @@ The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 LastBlockID is the previous block's BlockID:
 
 ```go
-prevBlockParts := MakeParts(prevBlock, state.LastConsensusParams.BlockGossip.BlockPartSize)
+prevBlockParts := MakeParts(prevBlock)
 block.Header.LastBlockID == BlockID {
-    Hash: SimpleMerkleRoot(prevBlock.Header),
+    Hash: MerkleRoot(prevBlock.Header),
     PartsHeader{
-        Hash: SimpleMerkleRoot(prevBlockParts),
+        Hash: MerkleRoot(prevBlockParts),
         Total: len(prevBlockParts),
     },
 }
 ```
-
-Note: it depends on the ConsensusParams,
-which are held in the `state` and may be updated by the application.
 
 The first block has `block.Header.LastBlockID == BlockID{}`.
 
 ### LastCommitHash
 
 ```go
-block.Header.LastCommitHash == SimpleMerkleRoot(block.LastCommit)
+block.Header.LastCommitHash == MerkleRoot(block.LastCommit.Precommits)
 ```
 
-Simple Merkle root of the votes included in the block.
+MerkleRoot of the votes included in the block.
 These are the votes that committed the previous block.
 
 The first block has `block.Header.LastCommitHash == []byte{}`
@@ -317,37 +314,42 @@ The first block has `block.Header.LastCommitHash == []byte{}`
 ### DataHash
 
 ```go
-block.Header.DataHash == SimpleMerkleRoot(block.Txs.Txs)
+block.Header.DataHash == MerkleRoot(Hashes(block.Txs.Txs))
 ```
 
-Simple Merkle root of the transactions included in the block.
+MerkleRoot of the hashes of transactions included in the block.
+
+Note the transactions are hashed before being included in the Merkle tree,
+so the leaves of the Merkle tree are the hashes, not the transactions
+themselves. This is because transaction hashes are regularly used as identifiers for
+transactions.
 
 ### ValidatorsHash
 
 ```go
-block.ValidatorsHash == SimpleMerkleRoot(state.Validators)
+block.ValidatorsHash == MerkleRoot(state.Validators)
 ```
 
-Simple Merkle root of the current validator set that is committing the block.
+MerkleRoot of the current validator set that is committing the block.
 This can be used to validate the `LastCommit` included in the next block.
 
 ### NextValidatorsHash
 
 ```go
-block.NextValidatorsHash == SimpleMerkleRoot(state.NextValidators)
+block.NextValidatorsHash == MerkleRoot(state.NextValidators)
 ```
 
-Simple Merkle root of the next validator set that will be the validator set that commits the next block.
+MerkleRoot of the next validator set that will be the validator set that commits the next block.
 This is included so that the current validator set gets a chance to sign the
 next validator sets Merkle root.
 
-### ConsensusParamsHash
+### ConsensusHash
 
 ```go
-block.ConsensusParamsHash == TMHASH(amino(state.ConsensusParams))
+block.ConsensusHash == state.ConsensusParams.Hash()
 ```
 
-Hash of the amino-encoded consensus parameters.
+Hash of the amino-encoding of a subset of the consensus parameters.
 
 ### AppHash
 
@@ -362,20 +364,20 @@ The first block has `block.Header.AppHash == []byte{}`.
 ### LastResultsHash
 
 ```go
-block.ResultsHash == SimpleMerkleRoot(state.LastResults)
+block.ResultsHash == MerkleRoot(state.LastResults)
 ```
 
-Simple Merkle root of the results of the transactions in the previous block.
+MerkleRoot of the results of the transactions in the previous block.
 
 The first block has `block.Header.ResultsHash == []byte{}`.
 
 ## EvidenceHash
 
 ```go
-block.EvidenceHash == SimpleMerkleRoot(block.Evidence)
+block.EvidenceHash == MerkleRoot(block.Evidence)
 ```
 
-Simple Merkle root of the evidence of Byzantine behaviour included in this block.
+MerkleRoot of the evidence of Byzantine behaviour included in this block.
 
 ### ProposerAddress
 

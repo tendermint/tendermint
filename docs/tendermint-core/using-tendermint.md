@@ -113,7 +113,7 @@ blocks are produced regularly, even if there are no transactions. See
 _No Empty Blocks_, below, to modify this setting.
 
 Tendermint supports in-process versions of the `counter`, `kvstore` and
-`nil` apps that ship as examples with `abci-cli`. It's easy to compile
+`noop` apps that ship as examples with `abci-cli`. It's easy to compile
 your own app in-process with Tendermint if it's written in Go. If your
 app is not written in Go, simply run it in another process, and use the
 `--proxy_app` flag to specify the address of the socket it is listening
@@ -519,18 +519,16 @@ developers guide](../app-dev/app-development.md) for more details.
 
 ### Local Network
 
-To run a network locally, say on a single machine, you must change the
-`_laddr` fields in the `config.toml` (or using the flags) so that the
-listening addresses of the various sockets don't conflict. Additionally,
-you must set `addr_book_strict=false` in the `config.toml`, otherwise
-Tendermint's p2p library will deny making connections to peers with the
-same IP address.
+To run a network locally, say on a single machine, you must change the `_laddr`
+fields in the `config.toml` (or using the flags) so that the listening
+addresses of the various sockets don't conflict. Additionally, you must set
+`addr_book_strict=false` in the `config.toml`, otherwise Tendermint's p2p
+library will deny making connections to peers with the same IP address.
 
 ### Upgrading
 
-The Tendermint development cycle currently includes a lot of breaking changes.
-Upgrading from an old version to a new version usually means throwing
-away the chain data. Try out the
-[tm-migrate](https://github.com/hxzqlh/tm-tools) tool written by
-[@hxzqlh](https://github.com/hxzqlh) if you are keen to preserve the
-state of your chain when upgrading to newer versions.
+See the
+[UPGRADING.md](https://github.com/tendermint/tendermint/blob/master/UPGRADING.md)
+guide. You may need to reset your chain between major breaking releases.
+Although, we expect Tendermint to have fewer breaking releases in the future
+(especially after 1.0 release).

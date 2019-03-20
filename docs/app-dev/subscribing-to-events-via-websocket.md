@@ -54,7 +54,7 @@ Response:
                     "value": "ww0z4WaZ0Xg+YI10w43wTWbBmM3dpVza4mmSQYsd0ck="
                   },
                   "voting_power": "10",
-                  "accum": "0"
+                  "proposer_priority": "0"
                 }
               ]
             }

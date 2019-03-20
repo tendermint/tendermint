@@ -11,22 +11,30 @@ import (
 
 // Reserved event types (alphabetically sorted).
 const (
-	EventCompleteProposal    = "CompleteProposal"
-	EventLock                = "Lock"
+	// Block level events for mass consumption by users.
+	// These events are triggered from the state package,
+	// after a block has been committed.
+	// These are also used by the tx indexer for async indexing.
+	// All of this data can be fetched through the rpc.
 	EventNewBlock            = "NewBlock"
 	EventNewBlockHeader      = "NewBlockHeader"
-	EventNewRound            = "NewRound"
-	EventNewRoundStep        = "NewRoundStep"
-	EventPolka               = "Polka"
-	EventProposalHeartbeat   = "ProposalHeartbeat"
-	EventRelock              = "Relock"
-	EventTimeoutPropose      = "TimeoutPropose"
-	EventTimeoutWait         = "TimeoutWait"
 	EventTx                  = "Tx"
-	EventUnlock              = "Unlock"
-	EventValidBlock          = "ValidBlock"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
-	EventVote                = "Vote"
+
+	// Internal consensus events.
+	// These are used for testing the consensus state machine.
+	// They can also be used to build real-time consensus visualizers.
+	EventCompleteProposal = "CompleteProposal"
+	EventLock             = "Lock"
+	EventNewRound         = "NewRound"
+	EventNewRoundStep     = "NewRoundStep"
+	EventPolka            = "Polka"
+	EventRelock           = "Relock"
+	EventTimeoutPropose   = "TimeoutPropose"
+	EventTimeoutWait      = "TimeoutWait"
+	EventUnlock           = "Unlock"
+	EventValidBlock       = "ValidBlock"
+	EventVote             = "Vote"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -47,7 +55,6 @@ func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterConcrete(EventDataNewRound{}, "tendermint/event/NewRound", nil)
 	cdc.RegisterConcrete(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal", nil)
 	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
-	cdc.RegisterConcrete(EventDataProposalHeartbeat{}, "tendermint/event/ProposalHeartbeat", nil)
 	cdc.RegisterConcrete(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates", nil)
 	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
 }
@@ -75,18 +82,11 @@ type EventDataTx struct {
 	TxResult
 }
 
-type EventDataProposalHeartbeat struct {
-	Heartbeat *Heartbeat
-}
-
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
 	Height int64  `json:"height"`
 	Round  int    `json:"round"`
 	Step   string `json:"step"`
-
-	// private, not exposed to websockets
-	RoundState interface{} `json:"-"`
 }
 
 type ValidatorInfo struct {
@@ -143,7 +143,6 @@ var (
 	EventQueryNewRound            = QueryForEvent(EventNewRound)
 	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)
 	EventQueryPolka               = QueryForEvent(EventPolka)
-	EventQueryProposalHeartbeat   = QueryForEvent(EventProposalHeartbeat)
 	EventQueryRelock              = QueryForEvent(EventRelock)
 	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutPropose)
 	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWait)

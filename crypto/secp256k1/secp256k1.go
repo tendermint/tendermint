@@ -7,17 +7,19 @@ import (
 	"fmt"
 	"io"
 
-	secp256k1 "github.com/tendermint/btcd/btcec"
+	"golang.org/x/crypto/ripemd160"
+
+	secp256k1 "github.com/btcsuite/btcd/btcec"
+
 	amino "github.com/tendermint/go-amino"
-	"golang.org/x/crypto/ripemd160" // forked to github.com/tendermint/crypto
 
 	"github.com/tendermint/tendermint/crypto"
 )
 
 //-------------------------------------
 const (
-	PrivKeyAminoRoute = "tendermint/PrivKeySecp256k1"
-	PubKeyAminoRoute  = "tendermint/PubKeySecp256k1"
+	PrivKeyAminoName = "tendermint/PrivKeySecp256k1"
+	PubKeyAminoName  = "tendermint/PubKeySecp256k1"
 )
 
 var cdc = amino.NewCodec()
@@ -25,11 +27,11 @@ var cdc = amino.NewCodec()
 func init() {
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
 	cdc.RegisterConcrete(PubKeySecp256k1{},
-		PubKeyAminoRoute, nil)
+		PubKeyAminoName, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKeySecp256k1{},
-		PrivKeyAminoRoute, nil)
+		PrivKeyAminoName, nil)
 }
 
 //-------------------------------------
@@ -42,16 +44,6 @@ type PrivKeySecp256k1 [32]byte
 // Bytes marshalls the private key using amino encoding.
 func (privKey PrivKeySecp256k1) Bytes() []byte {
 	return cdc.MustMarshalBinaryBare(privKey)
-}
-
-// Sign creates an ECDSA signature on curve Secp256k1, using SHA256 on the msg.
-func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
-	priv, _ := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey[:])
-	sig, err := priv.Sign(crypto.Sha256(msg))
-	if err != nil {
-		return nil, err
-	}
-	return sig.Serialize(), nil
 }
 
 // PubKey performs the point-scalar multiplication from the privKey on the
@@ -135,20 +127,6 @@ func (pubKey PubKeySecp256k1) Bytes() []byte {
 		panic(err)
 	}
 	return bz
-}
-
-func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sig []byte) bool {
-	pub, err := secp256k1.ParsePubKey(pubKey[:], secp256k1.S256())
-	if err != nil {
-		return false
-	}
-	parsedSig, err := secp256k1.ParseSignature(sig[:], secp256k1.S256())
-	if err != nil {
-		return false
-	}
-	// Underlying library ensures that this signature is in canonical form, to
-	// prevent Secp256k1 malleability from altering the sign of the s term.
-	return parsedSig.Verify(crypto.Sha256(msg), pub)
 }
 
 func (pubKey PubKeySecp256k1) String() string {
