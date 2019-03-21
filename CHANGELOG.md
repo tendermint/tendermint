@@ -1,5 +1,407 @@
 # Changelog
 
+## v0.31.0
+
+*March 16th, 2019*
+
+Special thanks to external contributors on this release:
+@danil-lashin, @guagualvcha, @siburu, @silasdavis, @srmo, @Stumble, @svenstaro
+
+This release is primarily about the new pubsub implementation, dubbed `pubsub 2.0`, and related changes,
+like configurable limits on the number of active RPC subscriptions at a time (`max_subscription_clients`).
+Pubsub 2.0 is an improved version of the older pubsub that is non-blocking and has a nicer API.
+Note the improved pubsub API also resulted in some improvements to the HTTPClient interface and the API for WebSocket subscriptions.
+This release also adds a configurable limit to the mempool size (`max_txs_bytes`, default 1GB)
+and a configurable timeout for the `/broadcast_tx_commit` endpoint.
+
+See the [v0.31.0
+Milestone](https://github.com/tendermint/tendermint/milestone/19?closed=1) for
+more details.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+* CLI/RPC/Config
+  - [config] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Remove `consensus.blocktime_iota` parameter
+  - [rpc] [\#3227](https://github.com/tendermint/tendermint/issues/3227) New PubSub design does not block on clients when publishing
+    messages. Slow clients may miss messages and receive an error, terminating
+    the subscription.
+  - [rpc] [\#3269](https://github.com/tendermint/tendermint/issues/2826) Limit number of unique clientIDs with open subscriptions. Configurable via `rpc.max_subscription_clients`
+  - [rpc] [\#3269](https://github.com/tendermint/tendermint/issues/2826) Limit number of unique queries a given client can subscribe to at once. Configurable via `rpc.max_subscriptions_per_client`.
+  - [rpc] [\#3435](https://github.com/tendermint/tendermint/issues/3435) Default ReadTimeout and WriteTimeout changed to 10s. WriteTimeout can increased by setting `rpc.timeout_broadcast_tx_commit` in the config.
+  - [rpc/client] [\#3269](https://github.com/tendermint/tendermint/issues/3269) Update `EventsClient` interface to reflect new pubsub/eventBus API [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md). This includes `Subscribe`, `Unsubscribe`, and `UnsubscribeAll` methods.
+
+* Apps
+  - [abci] [\#3403](https://github.com/tendermint/tendermint/issues/3403) Remove `time_iota_ms` from BlockParams. This is a
+    ConsensusParam but need not be exposed to the app for now.
+  - [abci] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Rename `consensus_params.block_size` to `consensus_params.block` in ABCI ConsensusParams
+
+* Go API
+  - [libs/common] TrapSignal accepts logger as a first parameter and does not block anymore
+    * previously it was dumping "captured ..." msg to os.Stdout
+    * TrapSignal should not be responsible for blocking thread of execution
+  - [libs/db] [\#3397](https://github.com/tendermint/tendermint/pull/3397) Add possibility to `Close()` `Batch` to prevent memory leak when using ClevelDB. (@Stumble)
+  - [types] [\#3354](https://github.com/tendermint/tendermint/issues/3354) Remove RoundState from EventDataRoundState
+  - [rpc] [\#3435](https://github.com/tendermint/tendermint/issues/3435) `StartHTTPServer` / `StartHTTPAndTLSServer` now require a Config (use `rpcserver.DefaultConfig`)
+
+* Blockchain Protocol
+
+* P2P Protocol
+
+### FEATURES:
+- [config] [\#3269](https://github.com/tendermint/tendermint/issues/2826) New configuration values for controlling RPC subscriptions:
+    - `rpc.max_subscription_clients` sets the maximum number of unique clients
+      with open subscriptions
+    - `rpc.max_subscriptions_per_client`sets the maximum number of unique
+      subscriptions from a given client
+    - `rpc.timeout_broadcast_tx_commit` sets the time to wait for a tx to be committed during `/broadcast_tx_commit`
+- [types] [\#2920](https://github.com/tendermint/tendermint/issues/2920) Add `time_iota_ms` to block's consensus parameters (not exposed to the application)
+- [lite] [\#3269](https://github.com/tendermint/tendermint/issues/3269) Add `/unsubscribe_all` endpoint to unsubscribe from all events
+- [mempool] [\#3079](https://github.com/tendermint/tendermint/issues/3079) Bound mempool memory usage via the `mempool.max_txs_bytes` configuration value. Set to 1GB by default. The mempool's current `txs_total_bytes` is exposed via `total_bytes` field in
+  `/num_unconfirmed_txs` and `/unconfirmed_txs` RPC endpoints.
+
+### IMPROVEMENTS:
+- [all] [\#3385](https://github.com/tendermint/tendermint/issues/3385), [\#3386](https://github.com/tendermint/tendermint/issues/3386) Various linting improvements
+- [crypto] [\#3371](https://github.com/tendermint/tendermint/issues/3371) Copy in secp256k1 package from go-ethereum instead of importing
+  go-ethereum (@silasdavis)
+- [deps] [\#3382](https://github.com/tendermint/tendermint/issues/3382) Don't pin repos without releases
+- [deps] [\#3357](https://github.com/tendermint/tendermint/issues/3357), [\#3389](https://github.com/tendermint/tendermint/issues/3389), [\#3392](https://github.com/tendermint/tendermint/issues/3392) Update gogo/protobuf, golang/protobuf, levigo, golang.org/x/crypto
+- [libs/common] [\#3238](https://github.com/tendermint/tendermint/issues/3238) exit with zero (0) code upon receiving SIGTERM/SIGINT
+- [libs/db] [\#3378](https://github.com/tendermint/tendermint/issues/3378) CLevelDB#Stats now returns the following properties:
+  - leveldb.num-files-at-level{n}
+  - leveldb.stats
+  - leveldb.sstables
+  - leveldb.blockpool
+  - leveldb.cachedblock
+  - leveldb.openedtables
+  - leveldb.alivesnaps
+  - leveldb.aliveiters
+- [privval] [\#3351](https://github.com/tendermint/tendermint/pull/3351) First part of larger refactoring that clarifies and separates concerns in the privval package.
+
+### BUG FIXES:
+- [blockchain] [\#3358](https://github.com/tendermint/tendermint/pull/3358) Fix timer leak in `BlockPool` (@guagualvcha)
+- [cmd] [\#3408](https://github.com/tendermint/tendermint/issues/3408) Fix `testnet` command's panic when creating non-validator configs (using `--n` flag) (@srmo)
+- [libs/db/remotedb/grpcdb] [\#3402](https://github.com/tendermint/tendermint/issues/3402) Close Iterator/ReverseIterator after use
+- [libs/pubsub] [\#951](https://github.com/tendermint/tendermint/issues/951), [\#1880](https://github.com/tendermint/tendermint/issues/1880) Use non-blocking send when dispatching messages [ADR-33](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-033-pubsub.md)
+- [lite] [\#3364](https://github.com/tendermint/tendermint/issues/3364) Fix `/validators` and `/abci_query` proxy endpoints
+  (@guagualvcha)
+- [p2p/conn] [\#3347](https://github.com/tendermint/tendermint/issues/3347) Reject all-zero shared secrets in the Diffie-Hellman step of secret-connection
+- [p2p] [\#3369](https://github.com/tendermint/tendermint/issues/3369) Do not panic when filter times out
+- [p2p] [\#3359](https://github.com/tendermint/tendermint/pull/3359) Fix reconnecting report duplicate ID error due to race condition between adding peer to peerSet and starting it (@guagualvcha)
+
+## v0.30.2
+
+*March 10th, 2019*
+
+This release fixes a CLevelDB memory leak. It was happening because we were not
+closing the WriteBatch object after use. See [levigo's
+godoc](https://godoc.org/github.com/jmhodges/levigo#WriteBatch.Close) for the
+Close method. Special thanks goes to @Stumble who both reported an issue in
+[cosmos-sdk](https://github.com/cosmos/cosmos-sdk/issues/3842) and provided a
+fix here.
+
+### BREAKING CHANGES:
+
+* Go API
+  - [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Add Close() method to Batch interface (@Stumble)
+
+### BUG FIXES:
+- [libs/db] [\#3842](https://github.com/cosmos/cosmos-sdk/issues/3842) Fix CLevelDB memory leak (@Stumble)
+
+## v0.30.1
+
+*February 20th, 2019*
+
+This release fixes a consensus halt and a DataCorruptionError after restart
+discovered in `game_of_stakes_6`. It also fixes a security issue in the p2p
+handshake by authenticating the NetAddress.ID of the peer we're dialing.
+
+### IMPROVEMENTS:
+
+* [config] [\#3291](https://github.com/tendermint/tendermint/issues/3291) Make
+  config.ResetTestRootWithChainID() create concurrency-safe test directories.
+
+### BUG FIXES:
+
+* [consensus] [\#3295](https://github.com/tendermint/tendermint/issues/3295)
+  Flush WAL on stop to prevent data corruption during graceful shutdown.
+* [consensus] [\#3302](https://github.com/tendermint/tendermint/issues/3302)
+  Fix possible halt by resetting TriggeredTimeoutPrecommit before starting next height.
+* [rpc] [\#3251](https://github.com/tendermint/tendermint/issues/3251) Fix
+  `/net_info#peers#remote_ip` format. New format spec:
+  * dotted decimal ("192.0.2.1"), if ip is an IPv4 or IP4-mapped IPv6 address
+  * IPv6 ("2001:db8::1"), if ip is a valid IPv6 address
+* [cmd] [\#3314](https://github.com/tendermint/tendermint/issues/3314) Return
+  an error on `show_validator` when the private validator file does not exist.
+* [p2p] [\#3010](https://github.com/tendermint/tendermint/issues/3010#issuecomment-464287627)
+  Authenticate a peer against its NetAddress.ID when dialing.
+
+## v0.30.0
+
+*February 8th, 2019*
+
+This release fixes yet another issue with the proposer selection algorithm.
+We hope it's the last one, but we won't be surprised if it's not.
+We plan to one day expose the selection algorithm more directly to
+the application ([\#3285](https://github.com/tendermint/tendermint/issues/3285)), and even to support randomness ([\#763](https://github.com/tendermint/tendermint/issues/763)).
+For more, see issues marked
+[proposer-selection](https://github.com/tendermint/tendermint/labels/proposer-selection).
+
+This release also includes a fix to prevent Tendermint from including the same
+piece of evidence in more than one block. This issue was reported by @chengwenxi in our
+[bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+* Apps
+  - [state] [\#3222](https://github.com/tendermint/tendermint/issues/3222)
+    Duplicate updates for the same validator are forbidden. Apps must ensure
+    that a given `ResponseEndBlock.ValidatorUpdates` contains only one entry per pubkey.
+
+* Go API
+  - [types] [\#3222](https://github.com/tendermint/tendermint/issues/3222)
+    Remove `Add` and `Update` methods from `ValidatorSet` in favor of new
+    `UpdateWithChangeSet`. This allows updates to be applied as a set, instead of
+    one at a time.
+
+* Block Protocol
+  - [state] [\#3286](https://github.com/tendermint/tendermint/issues/3286) Blocks that include already committed evidence are invalid.
+
+* P2P Protocol
+  - [consensus] [\#3222](https://github.com/tendermint/tendermint/issues/3222)
+    Validator updates are applied as a set, instead of one at a time, thus
+    impacting the proposer priority calculation. This ensures that the proposer
+    selection algorithm does not depend on the order of updates in
+    `ResponseEndBlock.ValidatorUpdates`.
+
+### IMPROVEMENTS:
+- [crypto] [\#3279](https://github.com/tendermint/tendermint/issues/3279) Use `btcec.S256().N` directly instead of hard coding a copy.
+
+### BUG FIXES:
+- [state] [\#3222](https://github.com/tendermint/tendermint/issues/3222) Fix validator set updates so they are applied as a set, rather
+  than one at a time. This makes the proposer selection algorithm independent of
+  the order of updates in `ResponseEndBlock.ValidatorUpdates`.
+- [evidence] [\#3286](https://github.com/tendermint/tendermint/issues/3286) Don't add committed evidence to evidence pool.
+
+## v0.29.2
+
+*February 7th, 2019*
+
+Special thanks to external contributors on this release:
+@ackratos, @rickyyangz
+
+**Note**: This release contains security sensitive patches in the `p2p` and
+`crypto` packages:
+- p2p:
+  - Partial fix for MITM attacks on the p2p connection. MITM conditions may
+    still exist. See [\#3010](https://github.com/tendermint/tendermint/issues/3010).
+- crypto:
+  - Eliminate our fork of `btcd` and use the `btcd/btcec` library directly for
+    native secp256k1 signing. Note we still modify the signature encoding to
+    prevent malleability.
+  - Support the libsecp256k1 library via CGo through the `go-ethereum/crypto/secp256k1` package.
+  - Eliminate MixEntropy functions
+
+### BREAKING CHANGES:
+
+* Go API
+  - [crypto] [\#3278](https://github.com/tendermint/tendermint/issues/3278) Remove
+    MixEntropy functions
+  - [types] [\#3245](https://github.com/tendermint/tendermint/issues/3245) Commit uses `type CommitSig Vote` instead of `Vote` directly.
+    In preparation for removing redundant fields from the commit [\#1648](https://github.com/tendermint/tendermint/issues/1648)
+
+### IMPROVEMENTS:
+- [consensus] [\#3246](https://github.com/tendermint/tendermint/issues/3246) Better logging and notes on recovery for corrupted WAL file
+- [crypto] [\#3163](https://github.com/tendermint/tendermint/issues/3163) Use ethereum's libsecp256k1 go-wrapper for signatures when cgo is available
+- [crypto] [\#3162](https://github.com/tendermint/tendermint/issues/3162) Wrap btcd instead of forking it to keep up with fixes (used if cgo is not available)
+- [makefile] [\#3233](https://github.com/tendermint/tendermint/issues/3233) Use golangci-lint instead of go-metalinter
+- [tools] [\#3218](https://github.com/tendermint/tendermint/issues/3218) Add go-deadlock tool to help detect deadlocks
+- [tools] [\#3106](https://github.com/tendermint/tendermint/issues/3106) Add tm-signer-harness test harness for remote signers
+- [tests] [\#3258](https://github.com/tendermint/tendermint/issues/3258) Fixed a bunch of non-deterministic test failures
+
+### BUG FIXES:
+- [node] [\#3186](https://github.com/tendermint/tendermint/issues/3186) EventBus and indexerService should be started before first block (for replay last block on handshake) execution (@ackratos)
+- [p2p] [\#3232](https://github.com/tendermint/tendermint/issues/3232) Fix infinite loop leading to addrbook deadlock for seed nodes
+- [p2p] [\#3247](https://github.com/tendermint/tendermint/issues/3247) Fix panic in SeedMode when calling FlushStop and OnStop
+  concurrently
+- [p2p] [\#3040](https://github.com/tendermint/tendermint/issues/3040) Fix MITM on secret connection by checking low-order points
+- [privval] [\#3258](https://github.com/tendermint/tendermint/issues/3258) Fix race between sign requests and ping requests in socket that was causing messages to be corrupted
+
+## v0.29.1
+
+*January 24, 2019*
+
+Special thanks to external contributors on this release:
+@infinytum, @gauthamzz
+
+This release contains two important fixes: one for p2p layer where we sometimes
+were not closing connections and one for consensus layer where consensus with
+no empty blocks (`create_empty_blocks = false`) could halt.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS:
+- [pex] [\#3037](https://github.com/tendermint/tendermint/issues/3037) Only log "Reached max attempts to dial" once
+- [rpc] [\#3159](https://github.com/tendermint/tendermint/issues/3159) Expose
+  `triggered_timeout_commit` in the `/dump_consensus_state`
+
+### BUG FIXES:
+- [consensus] [\#3199](https://github.com/tendermint/tendermint/issues/3199) Fix consensus halt with no empty blocks from not resetting triggeredTimeoutCommit
+- [p2p] [\#2967](https://github.com/tendermint/tendermint/issues/2967) Fix file descriptor leak
+
+## v0.29.0
+
+*January 21, 2019*
+
+Special thanks to external contributors on this release:
+@bradyjoestar, @kunaldhariwal, @gauthamzz, @hrharder
+
+This release is primarily about making some breaking changes to
+the Block protocol version before Cosmos launch, and to fixing more issues
+in the proposer selection algorithm discovered on Cosmos testnets.
+
+The Block protocol changes include using a standard Merkle tree format (RFC 6962),
+fixing some inconsistencies between field orders in Vote and Proposal structs,
+and constraining the hash of the ConsensusParams to include only a few fields.
+
+The proposer selection algorithm saw significant progress,
+including a [formal proof by @cwgoes for the base-case in Idris](https://github.com/cwgoes/tm-proposer-idris)
+and a [much more detailed specification (still in progress) by
+@ancazamfir](https://github.com/tendermint/tendermint/pull/3140).
+
+Fixes to the proposer selection algorithm include normalizing the proposer
+priorities to mitigate the effects of large changes to the validator set.
+That said, we just discovered [another bug](https://github.com/tendermint/tendermint/issues/3181),
+which will be fixed in the next breaking release.
+
+While we are trying to stabilize the Block protocol to preserve compatibility
+with old chains, there may be some final changes yet to come before Cosmos
+launch as we continue to audit and test the software.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+* CLI/RPC/Config
+
+* Apps
+  - [state] [\#3049](https://github.com/tendermint/tendermint/issues/3049) Total voting power of the validator set is upper bounded by
+    `MaxInt64 / 8`. Apps must ensure they do not return changes to the validator
+    set that cause this maximum to be exceeded.
+
+* Go API
+  - [node] [\#3082](https://github.com/tendermint/tendermint/issues/3082) MetricsProvider now requires you to pass a chain ID
+  - [types] [\#2713](https://github.com/tendermint/tendermint/issues/2713) Rename `TxProof.LeafHash` to `TxProof.Leaf`
+  - [crypto/merkle] [\#2713](https://github.com/tendermint/tendermint/issues/2713) `SimpleProof.Verify` takes a `leaf` instead of a
+    `leafHash` and performs the hashing itself
+
+* Blockchain Protocol
+  * [crypto/merkle] [\#2713](https://github.com/tendermint/tendermint/issues/2713) Merkle trees now match the RFC 6962 specification
+  * [types] [\#3078](https://github.com/tendermint/tendermint/issues/3078) Re-order Timestamp and BlockID in CanonicalVote so it's
+    consistent with CanonicalProposal (BlockID comes
+    first)
+  * [types] [\#3165](https://github.com/tendermint/tendermint/issues/3165) Hash of ConsensusParams only includes BlockSize.MaxBytes and
+    BlockSize.MaxGas
+
+* P2P Protocol
+  - [consensus] [\#3049](https://github.com/tendermint/tendermint/issues/3049) Normalize priorities to not exceed `2*TotalVotingPower` to mitigate unfair proposer selection
+    heavily preferring earlier joined validators in the case of an early bonded large validator unbonding
+
+### FEATURES:
+
+### IMPROVEMENTS:
+- [rpc] [\#3065](https://github.com/tendermint/tendermint/issues/3065) Return maxPerPage (100), not defaultPerPage (30) if `per_page` is greater than the max 100.
+- [instrumentation] [\#3082](https://github.com/tendermint/tendermint/issues/3082) Add `chain_id` label for all metrics
+
+### BUG FIXES:
+- [crypto] [\#3164](https://github.com/tendermint/tendermint/issues/3164) Update `btcd` fork for rare signRFC6979 bug
+- [lite] [\#3171](https://github.com/tendermint/tendermint/issues/3171) Fix verifying large validator set changes
+- [log] [\#3125](https://github.com/tendermint/tendermint/issues/3125) Fix year format
+- [mempool] [\#3168](https://github.com/tendermint/tendermint/issues/3168) Limit tx size to fit in the max reactor msg size
+- [scripts] [\#3147](https://github.com/tendermint/tendermint/issues/3147) Fix json2wal for large block parts (@bradyjoestar)
+
+## v0.28.1
+
+*January 18th, 2019*
+
+Special thanks to external contributors on this release:
+@HaoyangLiu
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BUG FIXES:
+- [consensus] Fix consensus halt from proposing blocks with too much evidence
+
+## v0.28.0
+
+*January 16th, 2019*
+
+Special thanks to external contributors on this release:
+@fmauricios, @gianfelipe93, @husio, @needkane, @srmo, @yutianwu
+
+This release is primarily about upgrades to the `privval` system -
+separating the `priv_validator.json` into distinct config and data files, and
+refactoring the socket validator to support reconnections.
+
+**Note:** Please backup your existing `priv_validator.json` before using this
+version.
+
+See [UPGRADING.md](UPGRADING.md) for more details.
+
+### BREAKING CHANGES:
+
+* CLI/RPC/Config
+  - [cli] Removed `--proxy_app=dummy` option. Use `kvstore` (`persistent_kvstore`) instead.
+  - [cli] Renamed `--proxy_app=nilapp` to `--proxy_app=noop`.
+  - [config] [\#2992](https://github.com/tendermint/tendermint/issues/2992) `allow_duplicate_ip` is now set to false
+  - [privval] [\#1181](https://github.com/tendermint/tendermint/issues/1181) Split `priv_validator.json` into immutable (`config/priv_validator_key.json`) and mutable (`data/priv_validator_state.json`) parts (@yutianwu)
+  - [privval] [\#2926](https://github.com/tendermint/tendermint/issues/2926) Split up `PubKeyMsg` into `PubKeyRequest` and `PubKeyResponse` to be consistent with other message types
+  - [privval] [\#2923](https://github.com/tendermint/tendermint/issues/2923) Listen for unix socket connections instead of dialing them
+
+* Apps
+
+* Go API
+  - [types] [\#2981](https://github.com/tendermint/tendermint/issues/2981) Remove `PrivValidator.GetAddress()`
+
+* Blockchain Protocol
+
+* P2P Protocol
+
+### FEATURES:
+- [rpc] [\#3052](https://github.com/tendermint/tendermint/issues/3052) Include peer's remote IP in `/net_info`
+
+### IMPROVEMENTS:
+- [consensus] [\#3086](https://github.com/tendermint/tendermint/issues/3086) Log peerID on ignored votes (@srmo)
+- [docs] [\#3061](https://github.com/tendermint/tendermint/issues/3061) Added specification for signing consensus msgs at
+  ./docs/spec/consensus/signing.md
+- [privval] [\#2948](https://github.com/tendermint/tendermint/issues/2948) Memoize pubkey so it's only requested once on startup
+- [privval] [\#2923](https://github.com/tendermint/tendermint/issues/2923) Retry RemoteSigner connections on error
+
+### BUG FIXES:
+
+- [build] [\#3085](https://github.com/tendermint/tendermint/issues/3085) Fix `Version` field in build scripts (@husio)
+- [crypto/multisig] [\#3102](https://github.com/tendermint/tendermint/issues/3102) Fix multisig keys address length
+- [crypto/encoding] [\#3101](https://github.com/tendermint/tendermint/issues/3101) Fix `PubKeyMultisigThreshold` unmarshalling into `crypto.PubKey` interface
+- [p2p/conn] [\#3111](https://github.com/tendermint/tendermint/issues/3111) Make SecretConnection thread safe
+- [rpc] [\#3053](https://github.com/tendermint/tendermint/issues/3053) Fix internal error in `/tx_search` when results are empty
+  (@gianfelipe93)
+- [types] [\#2926](https://github.com/tendermint/tendermint/issues/2926) Do not panic if retrieving the privval's public key fails
+
+## v0.27.4
+
+*December 21st, 2018*
+
+### BUG FIXES:
+
+- [mempool] [\#3036](https://github.com/tendermint/tendermint/issues/3036) Fix
+  LRU cache by popping the least recently used item when the cache is full,
+  not the most recently used one!
+
 ## v0.27.3
 
 *December 16th, 2018*
@@ -7,9 +409,8 @@
 ### BREAKING CHANGES:
 
 * Go API
-
-- [dep] [\#3027](https://github.com/tendermint/tendermint/issues/3027) Revert to mainline Go crypto library, eliminating the modified
-  `bcrypt.GenerateFromPassword`
+  - [dep] [\#3027](https://github.com/tendermint/tendermint/issues/3027) Revert to mainline Go crypto library, eliminating the modified
+    `bcrypt.GenerateFromPassword`
 
 ## v0.27.2
 

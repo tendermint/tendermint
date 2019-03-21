@@ -1,24 +1,19 @@
-## v0.27.4
+## v0.32.0
 
-*TBD*
-
-Special thanks to external contributors on this release:
+**
 
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-- [cli] Removed `node` `--proxy_app=dummy` option. Use `kvstore` (`persistent_kvstore`) instead.
-- [cli] Renamed `node` `--proxy_app=nilapp` to `--proxy_app=noop`.
-- [config] \#2992 `allow_duplicate_ip` is now set to false
 
 * Apps
 
 * Go API
+- [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
 
 * Blockchain Protocol
 
 * P2P Protocol
-- multiple connections from the same IP are now disabled by default (see `allow_duplicate_ip` config option)
 
 ### FEATURES:
 
@@ -26,3 +21,4 @@ Special thanks to external contributors on this release:
 
 ### BUG FIXES:
 
+- [blockchain] \#2699 update the maxHeight when a peer is removed

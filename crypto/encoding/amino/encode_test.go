@@ -25,9 +25,8 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 		assert.Equal(t, byterSrc.Bytes(), bz, "Amino binary vs Bytes() mismatch")
 	}
 	// Make sure we have the expected length.
-	if size != -1 {
-		assert.Equal(t, size, len(bz), "Amino binary size mismatch")
-	}
+	assert.Equal(t, size, len(bz), "Amino binary size mismatch")
+
 	// Unmarshal.
 	err = cdc.UnmarshalBinaryBare(bz, dst)
 	require.Nil(t, err, "%+v", err)
@@ -48,6 +47,8 @@ func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) 
 	require.Nil(t, err, "%+v", err)
 }
 
+// ExamplePrintRegisteredTypes refers to unknown identifier: PrintRegisteredTypes
+//nolint:govet
 func ExamplePrintRegisteredTypes() {
 	cdc.PrintTypes(os.Stdout)
 	// Output: | Type | Name | Prefix | Length | Notes |
@@ -128,18 +129,18 @@ func TestPubKeyInvalidDataProperReturnsEmpty(t *testing.T) {
 	require.Nil(t, pk)
 }
 
-func TestPubkeyAminoRoute(t *testing.T) {
+func TestPubkeyAminoName(t *testing.T) {
 	tests := []struct {
 		key   crypto.PubKey
 		want  string
 		found bool
 	}{
-		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoRoute, true},
-		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoRoute, true},
-		{&multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
+		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoName, true},
+		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoName, true},
+		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
 	}
 	for i, tc := range tests {
-		got, found := PubkeyAminoRoute(cdc, tc.key)
+		got, found := PubkeyAminoName(cdc, tc.key)
 		require.Equal(t, tc.found, found, "not equal on tc %d", i)
 		if tc.found {
 			require.Equal(t, tc.want, got, "not equal on tc %d", i)

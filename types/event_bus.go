@@ -12,9 +12,18 @@ import (
 const defaultCapacity = 0
 
 type EventBusSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
+	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error)
 	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
+
+	NumClients() int
+	NumClientSubscriptions(clientID string) int
+}
+
+type Subscription interface {
+	Out() <-chan tmpubsub.Message
+	Cancelled() <-chan struct{}
+	Err() error
 }
 
 // EventBus is a common bus for all events going through the system. All calls
@@ -52,8 +61,22 @@ func (b *EventBus) OnStop() {
 	b.pubsub.Stop()
 }
 
-func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
-	return b.pubsub.Subscribe(ctx, subscriber, query, out)
+func (b *EventBus) NumClients() int {
+	return b.pubsub.NumClients()
+}
+
+func (b *EventBus) NumClientSubscriptions(clientID string) int {
+	return b.pubsub.NumClientSubscriptions(clientID)
+}
+
+func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error) {
+	return b.pubsub.Subscribe(ctx, subscriber, query, outCapacity...)
+}
+
+// This method can be used for a local consensus explorer and synchronous
+// testing. Do not use for for public facing / untrusted subscriptions!
+func (b *EventBus) SubscribeUnbuffered(ctx context.Context, subscriber string, query tmpubsub.Query) (Subscription, error) {
+	return b.pubsub.SubscribeUnbuffered(ctx, subscriber, query)
 }
 
 func (b *EventBus) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
@@ -67,7 +90,7 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	b.pubsub.PublishWithTags(ctx, eventData, tmpubsub.NewTagMap(map[string]string{EventTypeKey: eventType}))
+	b.pubsub.PublishWithTags(ctx, eventData, map[string]string{EventTypeKey: eventType})
 	return nil
 }
 
@@ -95,7 +118,7 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	logIfTagExists(EventTypeKey, tags, b.Logger)
 	tags[EventTypeKey] = EventNewBlock
 
-	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	b.pubsub.PublishWithTags(ctx, data, tags)
 	return nil
 }
 
@@ -111,7 +134,7 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	logIfTagExists(EventTypeKey, tags, b.Logger)
 	tags[EventTypeKey] = EventNewBlockHeader
 
-	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	b.pubsub.PublishWithTags(ctx, data, tags)
 	return nil
 }
 
@@ -142,7 +165,7 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	logIfTagExists(TxHeightKey, tags, b.Logger)
 	tags[TxHeightKey] = fmt.Sprintf("%d", data.Height)
 
-	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	b.pubsub.PublishWithTags(ctx, data, tags)
 	return nil
 }
 

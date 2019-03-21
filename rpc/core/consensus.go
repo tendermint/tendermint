@@ -3,12 +3,15 @@ package core
 import (
 	cm "github.com/tendermint/tendermint/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Get the validator set at the given block height.
 // If no height is provided, it will fetch the current validator set.
+// Note the validators are sorted by their address - this is the canonical
+// order for the validators in the set as used in computing their Merkle root.
 //
 // ```shell
 // curl 'localhost:26657/validators'
@@ -47,7 +50,7 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
+func Validators(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the
 	// NextValidator of the last block.
 	height := consensusState.GetState().LastBlockHeight + 1
@@ -60,7 +63,9 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultValidators{height, validators.Validators}, nil
+	return &ctypes.ResultValidators{
+		BlockHeight: height,
+		Validators:  validators.Validators}, nil
 }
 
 // DumpConsensusState dumps consensus state.
@@ -198,7 +203,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //   }
 // }
 // ```
-func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
+func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
 	peers := p2pPeers.Peers().List()
 	peerStates := make([]ctypes.PeerStateInfo, len(peers))
@@ -223,7 +228,9 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultDumpConsensusState{roundState, peerStates}, nil
+	return &ctypes.ResultDumpConsensusState{
+		RoundState: roundState,
+		Peers:      peerStates}, nil
 }
 
 // ConsensusState returns a concise summary of the consensus state.
@@ -273,10 +280,10 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 //  }
 //}
 //```
-func ConsensusState() (*ctypes.ResultConsensusState, error) {
+func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
 	// Get self round state.
 	bz, err := consensusState.GetRoundStateSimpleJSON()
-	return &ctypes.ResultConsensusState{bz}, err
+	return &ctypes.ResultConsensusState{RoundState: bz}, err
 }
 
 // Get the consensus parameters  at the given block height.
@@ -316,7 +323,7 @@ func ConsensusState() (*ctypes.ResultConsensusState, error) {
 //   }
 // }
 // ```
-func ConsensusParams(heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
+func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
 	height := consensusState.GetState().LastBlockHeight + 1
 	height, err := getHeight(height, heightPtr)
 	if err != nil {
@@ -327,5 +334,7 @@ func ConsensusParams(heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultConsensusParams{BlockHeight: height, ConsensusParams: consensusparams}, nil
+	return &ctypes.ResultConsensusParams{
+		BlockHeight:     height,
+		ConsensusParams: consensusparams}, nil
 }

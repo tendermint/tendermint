@@ -21,7 +21,7 @@ module.exports = {
     },
     nav: [
       { text: "Back to Tendermint", link: "https://tendermint.com" },
-      { text: "RPC", link: "../rpc/" }
+      { text: "RPC", link: "https://tendermint.com/rpc/" }
     ],
     sidebar: [
       {
@@ -63,7 +63,8 @@ module.exports = {
           "/tendermint-core/light-client-protocol",
           "/tendermint-core/metrics",
           "/tendermint-core/secure-p2p",
-          "/tendermint-core/validators"
+          "/tendermint-core/validators",
+          "/tendermint-core/mempool"
         ]
       },
       {
@@ -79,10 +80,11 @@ module.exports = {
         title: "Tools",
         collapsable: false,
         children:  [
-	  "/tools/",
-	  "/tools/benchmarking",
-	  "/tools/monitoring"
-	]
+          "/tools/",
+          "/tools/benchmarking",
+          "/tools/monitoring",
+          "/tools/remote-signer-validation"
+        ]
       },
       {
         title: "Tendermint Spec",

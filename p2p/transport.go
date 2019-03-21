@@ -52,6 +52,9 @@ type Transport interface {
 
 	// Dial connects to the Peer for the address.
 	Dial(NetAddress, peerConfig) (Peer, error)
+
+	// Cleanup any resources associated with Peer.
+	Cleanup(Peer)
 }
 
 // transportLifecycle bundles the methods for callers to control start and stop
@@ -172,7 +175,7 @@ func (mt *MultiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 
 		return mt.wrapPeer(a.conn, a.nodeInfo, cfg, nil), nil
 	case <-mt.closec:
-		return nil, &ErrTransportClosed{}
+		return nil, ErrTransportClosed{}
 	}
 }
 
@@ -191,7 +194,7 @@ func (mt *MultiplexTransport) Dial(
 		return nil, err
 	}
 
-	secretConn, nodeInfo, err := mt.upgrade(c)
+	secretConn, nodeInfo, err := mt.upgrade(c, &addr)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +262,7 @@ func (mt *MultiplexTransport) acceptPeers() {
 
 			err := mt.filterConn(c)
 			if err == nil {
-				secretConn, nodeInfo, err = mt.upgrade(c)
+				secretConn, nodeInfo, err = mt.upgrade(c, nil)
 			}
 
 			select {
@@ -272,6 +275,13 @@ func (mt *MultiplexTransport) acceptPeers() {
 			}
 		}(c)
 	}
+}
+
+// Cleanup removes the given address from the connections set and
+// closes the connection.
+func (mt *MultiplexTransport) Cleanup(p Peer) {
+	mt.conns.RemoveAddr(p.RemoteAddr())
+	_ = p.CloseConn()
 }
 
 func (mt *MultiplexTransport) cleanup(c net.Conn) error {
@@ -325,6 +335,7 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 
 func (mt *MultiplexTransport) upgrade(
 	c net.Conn,
+	dialedAddr *NetAddress,
 ) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error) {
 	defer func() {
 		if err != nil {
@@ -338,6 +349,23 @@ func (mt *MultiplexTransport) upgrade(
 			conn:          c,
 			err:           fmt.Errorf("secrect conn failed: %v", err),
 			isAuthFailure: true,
+		}
+	}
+
+	// For outgoing conns, ensure connection key matches dialed key.
+	connID := PubKeyToID(secretConn.RemotePubKey())
+	if dialedAddr != nil {
+		if dialedID := dialedAddr.ID; connID != dialedID {
+			return nil, nil, ErrRejected{
+				conn: c,
+				id:   connID,
+				err: fmt.Errorf(
+					"conn.ID (%v) dialed ID (%v) missmatch",
+					connID,
+					dialedID,
+				),
+				isAuthFailure: true,
+			}
 		}
 	}
 
@@ -359,7 +387,7 @@ func (mt *MultiplexTransport) upgrade(
 	}
 
 	// Ensure connection key matches self reported key.
-	if connID := PubKeyToID(secretConn.RemotePubKey()); connID != nodeInfo.ID() {
+	if connID != nodeInfo.ID() {
 		return nil, nil, ErrRejected{
 			conn: c,
 			id:   connID,
@@ -417,12 +445,6 @@ func (mt *MultiplexTransport) wrapPeer(
 		cfg.onPeerError,
 		PeerMetrics(cfg.metrics),
 	)
-
-	// Wait for Peer to Stop so we can cleanup.
-	go func(c net.Conn) {
-		<-p.Quit()
-		_ = mt.cleanup(c)
-	}(c)
 
 	return p
 }

@@ -1,8 +1,8 @@
 package mempool
 
 import (
-	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -14,18 +14,26 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
-func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
-	config := cfg.ResetTestRoot("mempool_test")
+// A cleanupFunc cleans up any config / test files created for a particular
+// test.
+type cleanupFunc func()
 
+func newMempoolWithApp(cc proxy.ClientCreator) (*Mempool, cleanupFunc) {
+	return newMempoolWithAppAndConfig(cc, cfg.ResetTestRoot("mempool_test"))
+}
+
+func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) (*Mempool, cleanupFunc) {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
@@ -34,7 +42,7 @@ func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
 	}
 	mempool := NewMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger())
-	return mempool
+	return mempool, func() { os.RemoveAll(config.RootDir) }
 }
 
 func ensureNoFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
@@ -80,7 +88,8 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 func TestReapMaxBytesMaxGas(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 
 	// Ensure gas calculation behaves as expected
 	checkTxs(t, mempool, 1)
@@ -128,7 +137,8 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 func TestMempoolFilters(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 	emptyTxArr := []types.Tx{[]byte{}}
 
 	nopPreFilter := func(tx types.Tx) error { return nil }
@@ -166,7 +176,8 @@ func TestMempoolFilters(t *testing.T) {
 func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
 	err := mempool.CheckTx([]byte{0x01}, nil)
 	if assert.Error(t, err) {
@@ -177,7 +188,8 @@ func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
 	mempool.EnableTxsAvailable()
 
 	timeoutMS := 500
@@ -222,7 +234,9 @@ func TestSerialReap(t *testing.T) {
 	app.SetOption(abci.RequestSetOption{Key: "serial", Value: "on"})
 	cc := proxy.NewLocalClientCreator(app)
 
-	mempool := newMempoolWithApp(cc)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
+
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
 	err := appConnCon.Start()
@@ -362,6 +376,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// 3. Create the mempool
 	wcfg := cfg.DefaultMempoolConfig()
 	wcfg.RootDir = rootDir
+	defer os.RemoveAll(wcfg.RootDir)
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
@@ -394,8 +409,129 @@ func TestMempoolCloseWAL(t *testing.T) {
 	require.Equal(t, 1, len(m3), "expecting the wal match in")
 }
 
+// Size of the amino encoded TxMessage is the length of the
+// encoded byte array, plus 1 for the struct field, plus 4
+// for the amino prefix.
+func txMessageSize(tx types.Tx) int {
+	return amino.ByteSliceSize(tx) + 1 + 4
+}
+
+func TestMempoolMaxMsgSize(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempl, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
+
+	testCases := []struct {
+		len int
+		err bool
+	}{
+		// check small txs. no error
+		{10, false},
+		{1000, false},
+		{1000000, false},
+
+		// check around maxTxSize
+		// changes from no error to error
+		{maxTxSize - 2, false},
+		{maxTxSize - 1, false},
+		{maxTxSize, false},
+		{maxTxSize + 1, true},
+		{maxTxSize + 2, true},
+
+		// check around maxMsgSize. all error
+		{maxMsgSize - 1, true},
+		{maxMsgSize, true},
+		{maxMsgSize + 1, true},
+	}
+
+	for i, testCase := range testCases {
+		caseString := fmt.Sprintf("case %d, len %d", i, testCase.len)
+
+		tx := cmn.RandBytes(testCase.len)
+		err := mempl.CheckTx(tx, nil)
+		msg := &TxMessage{tx}
+		encoded := cdc.MustMarshalBinaryBare(msg)
+		require.Equal(t, len(encoded), txMessageSize(tx), caseString)
+		if !testCase.err {
+			require.True(t, len(encoded) <= maxMsgSize, caseString)
+			require.NoError(t, err, caseString)
+		} else {
+			require.True(t, len(encoded) > maxMsgSize, caseString)
+			require.Equal(t, err, ErrTxTooLarge, caseString)
+		}
+	}
+
+}
+
+func TestMempoolTxsBytes(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	config := cfg.ResetTestRoot("mempool_test")
+	config.Mempool.MaxTxsBytes = 10
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
+	defer cleanup()
+
+	// 1. zero by default
+	assert.EqualValues(t, 0, mempool.TxsBytes())
+
+	// 2. len(tx) after CheckTx
+	err := mempool.CheckTx([]byte{0x01}, nil)
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, mempool.TxsBytes())
+
+	// 3. zero again after tx is removed by Update
+	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
+	assert.EqualValues(t, 0, mempool.TxsBytes())
+
+	// 4. zero after Flush
+	err = mempool.CheckTx([]byte{0x02, 0x03}, nil)
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, mempool.TxsBytes())
+
+	mempool.Flush()
+	assert.EqualValues(t, 0, mempool.TxsBytes())
+
+	// 5. ErrMempoolIsFull is returned when/if MaxTxsBytes limit is reached.
+	err = mempool.CheckTx([]byte{0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04}, nil)
+	require.NoError(t, err)
+	err = mempool.CheckTx([]byte{0x05}, nil)
+	if assert.Error(t, err) {
+		assert.IsType(t, ErrMempoolIsFull{}, err)
+	}
+
+	// 6. zero after tx is rechecked and removed due to not being valid anymore
+	app2 := counter.NewCounterApplication(true)
+	cc = proxy.NewLocalClientCreator(app2)
+	mempool, cleanup = newMempoolWithApp(cc)
+	defer cleanup()
+
+	txBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(txBytes, uint64(0))
+
+	err = mempool.CheckTx(txBytes, nil)
+	require.NoError(t, err)
+	assert.EqualValues(t, 8, mempool.TxsBytes())
+
+	appConnCon, _ := cc.NewABCIClient()
+	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
+	err = appConnCon.Start()
+	require.Nil(t, err)
+	defer appConnCon.Stop()
+	res, err := appConnCon.DeliverTxSync(txBytes)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Code)
+	res2, err := appConnCon.CommitSync()
+	require.NoError(t, err)
+	require.NotEmpty(t, res2.Data)
+
+	// Pretend like we committed nothing so txBytes gets rechecked and removed.
+	mempool.Update(1, []types.Tx{}, nil, nil)
+	assert.EqualValues(t, 0, mempool.TxsBytes())
+}
+
 func checksumIt(data []byte) string {
-	h := md5.New()
+	h := sha256.New()
 	h.Write(data)
 	return fmt.Sprintf("%x", h.Sum(nil))
 }

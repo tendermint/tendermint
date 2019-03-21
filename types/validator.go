@@ -3,8 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -70,10 +69,14 @@ func (v *Validator) String() string {
 		v.ProposerPriority)
 }
 
-// Hash computes the unique ID of a validator with a given voting power.
-// It excludes the ProposerPriority value, which changes with every round.
-func (v *Validator) Hash() []byte {
-	return tmhash.Sum(v.Bytes())
+// ValidatorListString returns a prettified validator list for logging purposes.
+func ValidatorListString(vals []*Validator) string {
+	chunks := make([]string, len(vals))
+	for i, val := range vals {
+		chunks[i] = fmt.Sprintf("%s:%d", val.Address, val.VotingPower)
+	}
+
+	return strings.Join(chunks, ",")
 }
 
 // Bytes computes the unique encoding of a validator with a given voting power.
@@ -101,6 +104,7 @@ func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
 	if randPower {
 		votePower += int64(cmn.RandUint32())
 	}
-	val := NewValidator(privVal.GetPubKey(), votePower)
+	pubKey := privVal.GetPubKey()
+	val := NewValidator(pubKey, votePower)
 	return val, privVal
 }

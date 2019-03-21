@@ -2,8 +2,11 @@ package p2p
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -13,7 +16,6 @@ import (
 	"time"
 
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -272,6 +274,8 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 
 func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw.Start()
+	defer sw.Stop()
 
 	// simulate remote peer
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -292,12 +296,12 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	}
 
 	err = sw.addPeer(p)
-	if err, ok := err.(ErrRejected); ok {
-		if !err.IsDuplicate() {
-			t.Errorf("expected peer to be duplicate")
+	if errRej, ok := err.(ErrRejected); ok {
+		if !errRej.IsDuplicate() {
+			t.Errorf("expected peer to be duplicate. got %v", errRej)
 		}
 	} else {
-		t.Errorf("expected ErrRejected")
+		t.Errorf("expected ErrRejected, got %v", err)
 	}
 }
 
@@ -475,6 +479,96 @@ func TestSwitchFullConnectivity(t *testing.T) {
 			t.Fatalf("Expected each switch to be connected to 2 other, but %d switch only connected to %d", sw.Peers().Size(), i)
 		}
 	}
+}
+
+func TestSwitchAcceptRoutine(t *testing.T) {
+	cfg.MaxNumInboundPeers = 5
+
+	// make switch
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	err := sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	remotePeers := make([]*remotePeer, 0)
+	assert.Equal(t, 0, sw.Peers().Size())
+
+	// 1. check we connect up to MaxNumInboundPeers
+	for i := 0; i < cfg.MaxNumInboundPeers; i++ {
+		rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+		remotePeers = append(remotePeers, rp)
+		rp.Start()
+		c, err := rp.Dial(sw.NodeInfo().NetAddress())
+		require.NoError(t, err)
+		// spawn a reading routine to prevent connection from closing
+		go func(c net.Conn) {
+			for {
+				one := make([]byte, 1)
+				_, err := c.Read(one)
+				if err != nil {
+					return
+				}
+			}
+		}(c)
+	}
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
+
+	// 2. check we close new connections if we already have MaxNumInboundPeers peers
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	conn, err := rp.Dial(sw.NodeInfo().NetAddress())
+	require.NoError(t, err)
+	// check conn is closed
+	one := make([]byte, 1)
+	conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	_, err = conn.Read(one)
+	assert.Equal(t, io.EOF, err)
+	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
+	rp.Stop()
+
+	// stop remote peers
+	for _, rp := range remotePeers {
+		rp.Stop()
+	}
+}
+
+type errorTransport struct {
+	acceptErr error
+}
+
+func (et errorTransport) Accept(c peerConfig) (Peer, error) {
+	return nil, et.acceptErr
+}
+func (errorTransport) Dial(NetAddress, peerConfig) (Peer, error) {
+	panic("not implemented")
+}
+func (errorTransport) Cleanup(Peer) {
+	panic("not implemented")
+}
+
+func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
+	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
+
+	sw = NewSwitch(cfg, errorTransport{ErrRejected{conn: nil, err: errors.New("filtered"), isFiltered: true}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
+	// TODO(melekes) check we remove our address from addrBook
+
+	sw = NewSwitch(cfg, errorTransport{ErrTransportClosed{}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
 }
 
 func BenchmarkSwitchBroadcast(b *testing.B) {

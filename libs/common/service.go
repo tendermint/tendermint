@@ -209,7 +209,7 @@ func (bs *BaseService) Wait() {
 	<-bs.quit
 }
 
-// String implements Servce by returning a string representation of the service.
+// String implements Service by returning a string representation of the service.
 func (bs *BaseService) String() string {
 	return bs.name
 }

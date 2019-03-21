@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/types"
 )
 
