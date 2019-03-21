@@ -37,11 +37,6 @@ const (
 
 	// Seed/Crawler constants
 
-	// DefaultSeedDisconnectWaitPeriod is a default for SeedDisconnectWaitPeriod
-	// see consensus/reactor.go: blocksToContributeToBecomeGoodPeer
-	// 10000 blocks assuming 1s blocks ~ 2.7 hours.
-	DefaultSeedDisconnectWaitPeriod = 3 * time.Hour
-
 	// minTimeBetweenCrawls is a minimum time between attempts to crawl a peer.
 	minTimeBetweenCrawls = 2 * time.Minute
 
