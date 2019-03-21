@@ -228,22 +228,23 @@ func (bcR *BlockchainReactor) poolRoutine() {
 
 	didProcessCh := make(chan struct{}, 1)
 
-FOR_LOOP:
-	for {
-		select {
-		case request := <-bcR.requestsCh:
+	go func() {
+		for request := range bcR.requestsCh {
 			peer := bcR.Switch.Peers().Get(request.PeerID)
 			if peer == nil {
-				continue FOR_LOOP // Peer has since been disconnected.
+				continue
 			}
 			msgBytes := cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{request.Height})
 			queued := peer.TrySend(BlockchainChannel, msgBytes)
 			if !queued {
-				// We couldn't make the request, send-queue full.
-				// The pool handles timeouts, just let it go.
-				continue FOR_LOOP
+				bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 			}
+		}
+	}()
 
+FOR_LOOP:
+	for {
+		select {
 		case err := <-bcR.errorsCh:
 			peer := bcR.Switch.Peers().Get(err.peerID)
 			if peer != nil {
