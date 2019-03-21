@@ -696,11 +696,11 @@ func (r *PEXReactor) loadCrawlPeerInfos() error {
 
 func (r *PEXReactor) cleanupCrawlPeerInfos() {
 	for id, info := range r.crawlPeerInfos {
-		// If we did not crawl a peer for 2 hour, it means the peer was removed
+		// If we did not crawl a peer for 24 hours, it means the peer was removed
 		// from the addrbook => remove
 		//
 		// 10000 addresses / maxGetSelection = 40 cycles to get all addresses in
-		// the ideal case
+		// the ideal case,
 		// 40 * crawlPeerPeriod ~ 20 minutes
 		if time.Since(info.LastCrawled) > 24*time.Hour {
 			delete(r.crawlPeerInfos, id)
