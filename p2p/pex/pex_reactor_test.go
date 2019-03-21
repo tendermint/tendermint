@@ -307,19 +307,19 @@ func TestPEXReactorSeedMode(t *testing.T) {
 	require.Nil(t, peer.Start())
 	defer peer.Stop()
 
-	// 1. Test CrawlPeers dials the peer
-	pexR.CrawlPeers([]*p2p.NetAddress{peer.NodeInfo().NetAddress()})
+	// 1. Test crawlPeers dials the peer
+	pexR.crawlPeers([]*p2p.NetAddress{peer.NodeInfo().NetAddress()})
 	assert.Equal(t, 1, sw.Peers().Size())
 	assert.True(t, sw.Peers().Has(peer.NodeInfo().ID()))
 
-	// 2. AttemptDisconnects should not disconnect because of wait period
-	pexR.AttemptDisconnects()
+	// 2. attemptDisconnects should not disconnect because of wait period
+	pexR.attemptDisconnects()
 	assert.Equal(t, 1, sw.Peers().Size())
 
 	time.Sleep(100 * time.Millisecond)
 
-	// 3. AttemptDisconnects should disconnect after wait period
-	pexR.AttemptDisconnects()
+	// 3. attemptDisconnects should disconnect after wait period
+	pexR.attemptDisconnects()
 	assert.Equal(t, 0, sw.Peers().Size())
 }
 

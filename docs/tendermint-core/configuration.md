@@ -182,6 +182,10 @@ pex = true
 # Does not work if the peer-exchange reactor is disabled.
 seed_mode = false
 
+# SeedCrawlDataFilename is the name of a file where seed will store crawl
+# data. If "", no data is saved.
+seed_crawl_data_filename = "data/seed_crawl_data.json"
+
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private_peer_ids = ""
 

@@ -498,6 +498,7 @@ func NewNode(config *cfg.Config,
 			&pex.PEXReactorConfig{
 				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
+				SeedCrawlDataFilename: config.P2P.SeedCrawlDataFile(),
 				SeedDisconnectWaitPeriod: pex.DefaultSeedDisconnectWaitPeriod,
 			})
 		pexReactor.SetLogger(logger.With("module", "pex"))

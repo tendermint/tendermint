@@ -1,7 +1,10 @@
 package pex
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"sync"
 	"time"
@@ -39,9 +42,11 @@ const (
 	// 10000 blocks assuming 1s blocks ~ 2.7 hours.
 	DefaultSeedDisconnectWaitPeriod = 3 * time.Hour
 
-	defaultCrawlPeerInterval = 2 * time.Minute // don't redial for this. TODO: back-off. what for?
+	// minTimeBetweenCrawls is a minimum time between attempts to crawl a peer.
+	minTimeBetweenCrawls = 2 * time.Minute
 
-	defaultCrawlPeersPeriod = 30 * time.Second // check some peers every this
+	// check some peers every this
+	crawlPeerPeriod = 30 * time.Second
 
 	maxAttemptsToDial = 16 // ~ 35h in total (last attempt - 18h)
 
@@ -94,6 +99,10 @@ type PEXReactorConfig struct {
 	// least as long as we expect it to take for a peer to become good before
 	// disconnecting.
 	SeedDisconnectWaitPeriod time.Duration
+
+	// SeedCrawlDataFilename is the name of a file where seed will store crawl
+	// data. If "", no data is saved.
+	SeedCrawlDataFilename string
 
 	// Seeds is a list of addresses reactor may use
 	// if it can't connect to peers in the addrbook.
@@ -574,17 +583,25 @@ func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
 // Seed/Crawler Mode causes this node to quickly disconnect
 // from peers, except other seed nodes.
 func (r *PEXReactor) crawlPeersRoutine() {
+	if r.config.SeedCrawlDataFilename != "" {
+		if err := r.loadCrawlPeerInfos(); err != nil {
+			r.Logger.Error(fmt.Sprintf("Failed to load crawling info (seed can crawl a peer sooner than %v)",
+				minTimeBetweenCrawls))
+		}
+	}
+
 	// Do an initial crawl
-	r.CrawlPeers(r.book.GetSelection())
+	r.crawlPeers(r.book.GetSelection())
 
 	// Fire periodically
-	ticker := time.NewTicker(defaultCrawlPeersPeriod)
+	ticker := time.NewTicker(crawlPeerPeriod)
 
 	for {
 		select {
 		case <-ticker.C:
-			r.AttemptDisconnects()
-			r.CrawlPeers(r.book.GetSelection())
+			r.attemptDisconnects()
+			r.crawlPeers(r.book.GetSelection())
+			r.cleanupCrawlPeerInfos()
 		case <-r.Quit():
 			return
 		}
@@ -602,35 +619,33 @@ func (r *PEXReactor) hasPotentialPeers() bool {
 // crawlPeerInfo handles temporary data needed for the network crawling
 // performed during seed/crawler mode.
 type crawlPeerInfo struct {
-	Addr *p2p.NetAddress
+	Addr *p2p.NetAddress `json:"addr"`
 	// The last time we crawled the peer or attempted to do so.
-	LastCrawled time.Time
+	LastCrawled time.Time `json:"last_crawled"`
 }
 
-// CrawlPeers will crawl the network looking for new peer addresses.
-// Exposed for testing.
-func (r *PEXReactor) CrawlPeers(addrs []*p2p.NetAddress) {
+// crawlPeers will crawl the network looking for new peer addresses.
+func (r *PEXReactor) crawlPeers(addrs []*p2p.NetAddress) {
 	now := time.Now()
 
 	for _, addr := range addrs {
 		peerInfo, ok := r.crawlPeerInfos[addr.ID]
 		if !ok {
 			peerInfo = &crawlPeerInfo{
-				Addr:        addr,
-				LastCrawled: now.Add(-defaultCrawlPeerInterval).Add(-1 * time.Second),
+				Addr: addr,
+				// subtract 1s to ensure we'll crawl the peer first time
+				LastCrawled: now.Add(-minTimeBetweenCrawls).Add(-1 * time.Second),
 			}
 			r.crawlPeerInfos[addr.ID] = peerInfo
 		}
 
 		// Do not attempt to connect with peers we recently crawled.
-		if now.Sub(peerInfo.LastCrawled) < defaultCrawlPeerInterval {
+		if now.Sub(peerInfo.LastCrawled) < minTimeBetweenCrawls {
 			continue
 		}
 
 		// Record crawling attempt.
 		peerInfo.LastCrawled = now
-		// XXX: - grows linearly with a number of peers crawled
-		//      - does not get persisted
 		r.crawlPeerInfos[addr.ID] = peerInfo
 
 		err := r.Switch.DialPeerWithAddress(addr, false)
@@ -648,11 +663,58 @@ func (r *PEXReactor) CrawlPeers(addrs []*p2p.NetAddress) {
 			r.RequestAddrs(peer)
 		}
 	}
+
+	if r.config.SeedCrawlDataFilename != "" {
+		if err := r.saveCrawlPeerInfos(); err != nil {
+			r.Logger.Error(fmt.Sprintf("Failed to save crawling info (if restarted, seed can crawl a peer sooner than %v)",
+				minTimeBetweenCrawls))
+		}
+	}
 }
 
-// AttemptDisconnects checks if we've been with each peer long enough to disconnect
-// Exposed for testing.
-func (r *PEXReactor) AttemptDisconnects() {
+func (r *PEXReactor) saveCrawlPeerInfos() error {
+	bz, err := json.Marshal(r.crawlPeerInfos)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal data")
+	}
+	err = ioutil.WriteFile(r.config.SeedCrawlDataFilename, bz, 0644)
+	if err != nil {
+		return errors.Wrap(err, "failed to write data to file")
+	}
+	return nil
+}
+
+func (r *PEXReactor) loadCrawlPeerInfos() error {
+	bz, err := ioutil.ReadFile(r.config.SeedCrawlDataFilename)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return errors.Wrap(err, "failed to load data from file")
+	}
+	err = json.Unmarshal(bz, &r.crawlPeerInfos)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal data")
+	}
+	return nil
+}
+
+func (r *PEXReactor) cleanupCrawlPeerInfos() {
+	for id, info := range r.crawlPeerInfos {
+		// If we did not crawl a peer for 2 hour, it means the peer was removed
+		// from the addrbook => remove
+		//
+		// 10000 addresses / maxGetSelection = 40 cycles to get all addresses in
+		// the ideal case
+		// 40 * crawlPeerPeriod ~ 20 minutes
+		if time.Now().Sub(info.LastCrawled) > 24*time.Hour {
+			delete(r.crawlPeerInfos, id)
+		}
+	}
+}
+
+// attemptDisconnects checks if we've been with each peer long enough to disconnect
+func (r *PEXReactor) attemptDisconnects() {
 	for _, peer := range r.Switch.Peers().List() {
 		if peer.Status().Duration < r.config.SeedDisconnectWaitPeriod {
 			continue

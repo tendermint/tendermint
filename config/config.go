@@ -452,6 +452,10 @@ type P2PConfig struct {
 	// Does not work if the peer-exchange reactor is disabled.
 	SeedMode bool `mapstructure:"seed_mode"`
 
+	// SeedCrawlDataFilename is the name of a file where seed will store crawl
+	// data. If "", no data is saved.
+	SeedCrawlDataFilename string `mapstructure:"seed_crawl_data_filename"`
+
 	// Comma separated list of peer IDs to keep private (will not be gossiped to
 	// other peers)
 	PrivatePeerIDs string `mapstructure:"private_peer_ids"`
@@ -487,6 +491,7 @@ func DefaultP2PConfig() *P2PConfig {
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
 		SeedMode:                false,
+		SeedCrawlDataFilename:   filepath.Join(defaultDataDir, "seed_crawl_data.json"),
 		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
@@ -508,6 +513,11 @@ func TestP2PConfig() *P2PConfig {
 // AddrBookFile returns the full path to the address book
 func (cfg *P2PConfig) AddrBookFile() string {
 	return rootify(cfg.AddrBook, cfg.RootDir)
+}
+
+// SeedCrawlDataFile returns the full path to the seed crawl data file.
+func (cfg *P2PConfig) SeedCrawlDataFile() string {
+	return rootify(cfg.SeedCrawlDataFilename, cfg.RootDir)
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
