@@ -220,36 +220,3 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 	}
 	return tmVals, nil
 }
-
-// BlockParams.TimeIotaMs is not exposed to the application. Therefore a caller
-// must provide it.
-func (pb2tm) ConsensusParams(csp *abci.ConsensusParams, blockTimeIotaMs int64) ConsensusParams {
-	params := ConsensusParams{
-		Block:     BlockParams{},
-		Evidence:  EvidenceParams{},
-		Validator: ValidatorParams{},
-	}
-
-	// we must defensively consider any structs may be nil
-	if csp.Block != nil {
-		params.Block = BlockParams{
-			MaxBytes:   csp.Block.MaxBytes,
-			MaxGas:     csp.Block.MaxGas,
-			TimeIotaMs: blockTimeIotaMs,
-		}
-	}
-
-	if csp.Evidence != nil {
-		params.Evidence = EvidenceParams{
-			MaxAge: csp.Evidence.MaxAge,
-		}
-	}
-
-	if csp.Validator != nil {
-		params.Validator = ValidatorParams{
-			PubKeyTypes: csp.Validator.PubKeyTypes,
-		}
-	}
-
-	return params
-}
