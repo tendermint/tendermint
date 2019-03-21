@@ -300,6 +300,9 @@ func TestPEXReactorSeedMode(t *testing.T) {
 
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
+	err = sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
 
 	assert.Equal(t, 0, sw.Peers().Size())
 
