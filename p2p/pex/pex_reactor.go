@@ -702,7 +702,7 @@ func (r *PEXReactor) cleanupCrawlPeerInfos() {
 		// 10000 addresses / maxGetSelection = 40 cycles to get all addresses in
 		// the ideal case
 		// 40 * crawlPeerPeriod ~ 20 minutes
-		if time.Now().Sub(info.LastCrawled) > 24*time.Hour {
+		if time.Since(info.LastCrawled) > 24*time.Hour {
 			delete(r.crawlPeerInfos, id)
 		}
 	}
