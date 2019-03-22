@@ -340,13 +340,19 @@ type RPCConfig struct {
 	// See https://github.com/tendermint/tendermint/issues/3435
 	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 
-	// The name of cert file that used to serve RPC based on Tls.
-	// NOTE: useful when tls_key_file is present
-	TlsCertFile string `mapstructure:"tls_cert_file"`
+	// The name of a file containing certificate that is used to create the HTTPS server.
+	//
+	// If the certificate is signed by a certificate authority,
+	// the certFile should be the concatenation of the server's certificate, any intermediates,
+	// and the CA's certificate.
+	//
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	TLSCertFile string `mapstructure:"tls_cert_file"`
 
-	// The name of private key file that used to serve RPC based on Tls.
-	// NOTE: useful when tls_cert_file is present
-	TlsKeyFile string `mapstructure:"tls_key_file"`
+	// The name of a file containing matching private key that is used to create the HTTPS server.
+	//
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	TLSKeyFile string `mapstructure:"tls_key_file"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -366,8 +372,8 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxSubscriptionsPerClient: 5,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
 
-		TlsCertFile: "",
-		TlsKeyFile:  "",
+		TLSCertFile: "",
+		TLSKeyFile:  "",
 	}
 }
 
@@ -407,15 +413,15 @@ func (cfg *RPCConfig) IsCorsEnabled() bool {
 }
 
 func (cfg RPCConfig) KeyFile() string {
-	return rootify(filepath.Join(defaultConfigDir, cfg.TlsKeyFile), cfg.RootDir)
+	return rootify(filepath.Join(defaultConfigDir, cfg.TLSKeyFile), cfg.RootDir)
 }
 
 func (cfg RPCConfig) CertFile() string {
-	return rootify(filepath.Join(defaultConfigDir, cfg.TlsCertFile), cfg.RootDir)
+	return rootify(filepath.Join(defaultConfigDir, cfg.TLSCertFile), cfg.RootDir)
 }
 
 func (cfg RPCConfig) IsTlsEnabled() bool {
-	return cfg.TlsCertFile != "" && cfg.TlsKeyFile != ""
+	return cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
 }
 
 //-----------------------------------------------------------------------------

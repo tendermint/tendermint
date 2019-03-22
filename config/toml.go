@@ -181,13 +181,16 @@ max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
 # See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "{{ .RPC.TimeoutBroadcastTxCommit }}"
 
-# The name of cert file that used to serve RPC based on Tls.
-# NOTE: useful when tls_key_file is present
-tls_cert_file = "{{ .RPC.TlsCertFile }}"
+# The name of a file containing certificate that is used to create the HTTPS server.
+# If the certificate is signed by a certificate authority,
+# the certFile should be the concatenation of the server's certificate, any intermediates,
+# and the CA's certificate.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+tls_cert_file = "{{ .RPC.TLSCertFile }}"
 
-# The name of private key file that used to serve RPC based on Tls.
-# NOTE: useful when tls_cert_file is present
-tls_key_file = "{{ .RPC.TlsKeyFile }}"
+# The name of a file containing matching private key that is used to create the HTTPS server.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
 ##### peer to peer configuration options #####
 [p2p]
