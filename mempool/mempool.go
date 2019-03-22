@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	"github.com/muesli/cache2go"
 )
 
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
@@ -173,6 +174,9 @@ type Mempool struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	//tx result cache it's different from tx cache
+	resCache *cache2go.CacheTable
 }
 
 // MempoolOption sets an optional parameter on the Mempool.
@@ -195,6 +199,7 @@ func NewMempool(
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
 		metrics:       NopMetrics(),
+		resCache:      cache2go.Cache("TxResult"),
 	}
 	if config.CacheSize > 0 {
 		mempool.cache = newMapTxCache(config.CacheSize)
@@ -318,6 +323,27 @@ func (mem *Mempool) TxsFront() *clist.CElement {
 // element)
 func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 	return mem.txs.WaitChan()
+}
+//Tx cache for result search
+func (mem *Mempool) TxSearch(tx cmn.HexBytes) (*abci.ResponseCheckTx,error) {
+
+	key := tx.String()
+	res,err := mem.resCache.Value(key)
+	if err != nil {
+		mem.logger.Error("Error read GiCache","err",err)
+		return nil,err
+	}
+	return res.Data().(*abci.ResponseCheckTx),nil
+}
+//Tx cache,which is different from cache of checkTx
+//It is for cache results about all kinds of checkTx and deliverTx
+func (mem *Mempool) TxCache(tx cmn.HexBytes, a interface {})  {
+	if a == nil {
+		if mem.resCache.Exists(tx.String()) {
+			return
+		}
+	}
+	mem.resCache.Add(tx.String(),time.Duration(mem.config.ResCacheTime) * time.Second,a)
 }
 
 // CheckTx executes a new transaction against the application to determine its validity

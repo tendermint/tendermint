@@ -2047,6 +2047,8 @@ type ResponseCheckTx struct {
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
+	TxHash               common.HexBytes `protobuf:"bytes,9,opt,name=tx_hash,json=txHash,proto3" json:"tx_hash,omitempty"`
+	Height               int64           `protobuf:"varint,10,opt,name=height,proto3" json:"height,omitempty"`
 }
 
 func (m *ResponseCheckTx) Reset()         { *m = ResponseCheckTx{} }
@@ -2150,6 +2152,8 @@ type ResponseDeliverTx struct {
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
+	TxHash               common.HexBytes `protobuf:"bytes,9,opt,name=tx_hash,json=txHash,proto3" json:"tx_hash,omitempty"`
+	Height               int64           `protobuf:"varint,10,opt,name=height,proto3" json:"height,omitempty"`
 }
 
 func (m *ResponseDeliverTx) Reset()         { *m = ResponseDeliverTx{} }

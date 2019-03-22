@@ -10,6 +10,9 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	sm "github.com/tendermint/tendermint/state"
+	abci"github.com/tendermint/abci/types"
+
 )
 
 // Tx allows you to query the transaction results. `nil` could mean the
@@ -78,38 +81,63 @@ import (
 // - `index`: `int` - index of the transaction
 // - `height`: `int` - height of the block where this transaction was in
 // - `hash`: `[]byte` - hash of the transaction
-func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
-	// if index is disabled, return error
-	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("Transaction indexing is disabled")
+// statecode 1 under checkTxing,2 finished checkTx but don't do deliverTx
+// 3/5 finished deliverTx
+/
+func Tx(ctx *rpctypes.Context, hash cmn.HexBytes, prove bool) (*ctypes.ResultTx, error) {
+
+	var stateCode uint32
+	var height int64
+	check := true
+	dResult, err := sm.LoadABCITxResponses(stateDB,cmn.HexBytes(hash))
+
+	if err == nil {
+		height = dResult.Height
+	}
+	var checkResult abci.ResponseCheckTx
+	checkRes,errCheck := mempool.TxSearch(hash)
+	if errCheck == nil {
+		if checkRes != nil {
+			checkResult = *checkRes
+			height = checkResult.Height
+		}
+	} else {
+		check = false
 	}
 
-	r, err := txIndexer.Get(hash)
-	if err != nil {
-		return nil, err
-	}
+	if dResult.Height == 0 {
+		if checkRes == nil {
+			if !check {
+				return nil,errCheck //can't find tx maybe checkTx failed and resCache timeout
+			} else {
+				stateCode = 1 //checking return ResponseCheckTx is null
+				checkResult = abci.ResponseCheckTx{}
+			}
+		} else {
+			stateCode = 2  //finished checkTx just now return ResponseCheckTx
+		}
+	} else {
+		if checkRes == nil {
+			if !check {
+				stateCode = 3 // deliverTx successfully return ResponseDeliverTx but don't return ResponseCheckTx 'cause rescache timeout
+				checkResult = abci.ResponseCheckTx{}
+			} else {
+				stateCode = 4 //it should be a bug,lol
+			}
+		} else {
+			stateCode = 5  //both checkTx and deliverTx successfully and return ResponseDeliverTx and ResponseCheckTx
+		}
 
-	if r == nil {
-		return nil, fmt.Errorf("Tx (%X) not found", hash)
-	}
-
-	height := r.Height
-	index := r.Index
-
-	var proof types.TxProof
-	if prove {
-		block := blockStore.LoadBlock(height)
-		proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
 	}
 
 	return &ctypes.ResultTx{
-		Hash:     hash,
+		Hash:     cmn.HexBytes(hash),
 		Height:   height,
-		Index:    uint32(index),
-		TxResult: r.Result,
-		Tx:       r.Tx,
-		Proof:    proof,
+		//Index:    uint32(index),
+		DeliverResult: dResult,
+		CheckResult: checkResult,
+		StateCode:       stateCode,
 	}, nil
 }
 

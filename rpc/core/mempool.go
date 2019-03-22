@@ -11,6 +11,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //-----------------------------------------------------------------------------
@@ -60,9 +61,21 @@ import (
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	err := mempool.CheckTx(tx, nil)
+	//cache tx default 10mins
+	txHash := cmn.HexBytes(tx)
+	mempool.TxCache(txHash,nil)
+	time.Sleep(2*time.Second)
+	err := mempool.CheckTx(tx, func(res *abci.Response) {
+		go func(interface {}){
+			resCh := make(chan *abci.Response, 1)
+			resCh <- res
+			checkRes := <-resCh
+			//cache tx's result default 10mins
+			mempool.TxCache(txHash,checkRes.GetCheckTx())
+		}(res)
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
 	}
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
@@ -109,6 +122,9 @@ func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadca
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+	//cache tx default 10mins
+	txHash := cmn.HexBytes(tx)
+	mempool.TxCache(txHash,nil)
 	resCh := make(chan *abci.Response, 1)
 	err := mempool.CheckTx(tx, func(res *abci.Response) {
 		resCh <- res
@@ -118,6 +134,8 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 	}
 	res := <-resCh
 	r := res.GetCheckTx()
+	//cache tx's check result
+	mempool.TxCache(txHash,res.GetCheckTx())
 	return &ctypes.ResultBroadcastTx{
 		Code: r.Code,
 		Data: r.Data,
@@ -188,6 +206,9 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+	//cache tx default 10mins
+	txHash := cmn.HexBytes(tx)
+	mempool.TxCache(txHash,nil)
 	subscriber := ctx.RemoteAddr()
 
 	if eventBus.NumClients() >= config.MaxSubscriptionClients {
@@ -219,6 +240,8 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	}
 	checkTxResMsg := <-checkTxResCh
 	checkTxRes := checkTxResMsg.GetCheckTx()
+	//cache tx's check result default 10mins
+	mempool.TxCache(txHash,checkTxRes)
 	if checkTxRes.Code != abci.CodeTypeOK {
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,

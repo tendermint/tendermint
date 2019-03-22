@@ -4,6 +4,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //------------------------------------------------------
@@ -30,6 +31,8 @@ type Mempool interface {
 
 	TxsAvailable() <-chan struct{}
 	EnableTxsAvailable()
+	TxSearch(cmn.HexBytes) (*abci.ResponseCheckTx,error)
+	TxCache(cmn.HexBytes,interface {})
 }
 
 // MockMempool is an empty implementation of a Mempool, useful for testing.
@@ -54,6 +57,8 @@ func (MockMempool) Flush()                        {}
 func (MockMempool) FlushAppConn() error           { return nil }
 func (MockMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
 func (MockMempool) EnableTxsAvailable()           {}
+func (m MockMempool) TxSearch(tx cmn.HexBytes)(*abci.ResponseCheckTx,error)          {return nil,nil}
+func (m MockMempool) TxCache(tx cmn.HexBytes,a interface {}){}
 
 //------------------------------------------------------
 // blockstore

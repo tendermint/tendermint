@@ -162,12 +162,15 @@ type ResultBroadcastTxCommit struct {
 
 // Result of querying for a tx
 type ResultTx struct {
-	Hash     cmn.HexBytes           `json:"hash"`
-	Height   int64                  `json:"height"`
-	Index    uint32                 `json:"index"`
-	TxResult abci.ResponseDeliverTx `json:"tx_result"`
-	Tx       types.Tx               `json:"tx"`
-	Proof    types.TxProof          `json:"proof,omitempty"`
+	Hash          cmn.HexBytes           `json:"hash"`
+	Height        int64                  `json:"height"`
+	Index         uint32                 `json:"index"`
+	TxResult      abci.ResponseDeliverTx `json:"tx_result"`
+	Tx            types.Tx               `json:"tx"`
+	Proof         types.TxProof          `json:"proof,omitempty"`
+	DeliverResult abci.ResponseDeliverTx `json:"tx_deliver"`
+	CheckResult   abci.ResponseCheckTx   `json:"tx_check"`
+	StateCode     uint32                 `json:"state_code"`
 }
 
 // Result of searching for txs

@@ -133,6 +133,23 @@ func (arz *ABCIResponses) ResultsHash() []byte {
 	results := types.NewResults(arz.DeliverTx)
 	return results.Hash()
 }
+// LoadABCITxResponses loads the deliverTx response for each tx hash
+func LoadABCITxResponses(db dbm.DB, tx cmn.HexBytes) (abci.ResponseDeliverTx, error) {
+	var res = abci.ResponseDeliverTx{}
+	buf := db.Get(tx)
+	if len(buf) == 0 {
+		return res, ErrNoABCITxResponseForTxHash{tx}
+	}
+	err := cdc.UnmarshalBinaryBare(buf, &res)
+	if err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.Exit(fmt.Sprintf(`LoadABCITxResponses: Data has been corrupted or its spec has
+                changed: %v\n`, err))
+	}
+	// TODO: ensure that buf is completely read.
+
+	return res, nil
+}
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the database.
 // This is useful for recovering from crashes where we called app.Commit and before we called
@@ -160,6 +177,11 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 // Responses are indexed by height so they can also be loaded later to produce Merkle proofs.
 func saveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
 	db.SetSync(calcABCIResponsesKey(height), abciResponses.Bytes())
+	//save each tx's result
+	for _,e := range abciResponses.DeliverTx {
+		e.Height = height
+		db.SetSync(e.TxHash,cdc.MustMarshalBinaryBare(e))
+	}
 }
 
 //-----------------------------------------------------------------------------
