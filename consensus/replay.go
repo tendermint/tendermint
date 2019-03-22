@@ -421,6 +421,14 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 		if err != nil {
 			return nil, err
 		}
+		//check each block's apphash when replay
+		nextBlock := h.store.LoadBlock(i + 1)
+		if nextBlock != nil {
+			err = checkBlockAppHash(appHash, nextBlock.AppHash, i)
+			if err != nil {
+				return nil, err
+			}
+		}
 
 		h.nBlocks++
 	}
@@ -454,6 +462,14 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	h.nBlocks++
 
 	return state, nil
+}
+
+func checkBlockAppHash(appHash, blockAppHash []byte, height int64) error {
+
+	if !bytes.Equal(blockAppHash, appHash) {
+		panic(fmt.Errorf(" Replay block  AppHash does not match Tendermint next block.AppHash  after replay. Got %X, expected %X, height %X", appHash, blockAppHash, height).Error())
+	}
+	return nil
 }
 
 func checkAppHash(state sm.State, appHash []byte) error {
