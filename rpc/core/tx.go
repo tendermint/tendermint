@@ -84,7 +84,7 @@ import (
 
 // statecode 1 under checkTxing,2 finished checkTx but don't do deliverTx
 // 3/5 finished deliverTx
-/
+
 func Tx(ctx *rpctypes.Context, hash cmn.HexBytes, prove bool) (*ctypes.ResultTx, error) {
 
 	var stateCode uint32
