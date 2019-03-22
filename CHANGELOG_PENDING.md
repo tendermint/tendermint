@@ -5,6 +5,7 @@
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
+- [rpc/client] \#3458 Include NetworkClient interface into Client interface
 
 * Apps
 
