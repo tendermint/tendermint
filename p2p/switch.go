@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -390,6 +392,15 @@ func (sw *Switch) MarkPeerAsGood(peer Peer) {
 //---------------------------------------------------------------------
 // Dialing
 
+type privateAddr interface {
+	PrivateAddr() bool
+}
+
+func isPrivateAddr(err error) bool {
+	te, ok := errors.Cause(err).(privateAddr)
+	return ok && te.PrivateAddr()
+}
+
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
 // Used to dial peers from config on startup or from unsafe-RPC (trusted sources).
 // TODO: remove addrBook arg since it's now set on the switch
@@ -412,7 +423,11 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			// do not add our address or ID
 			if !netAddr.Same(ourAddr) {
 				if err := addrBook.AddAddress(netAddr, ourAddr); err != nil {
-					sw.Logger.Error("Can't add peer's address to addrbook", "err", err)
+					if isPrivateAddr(err) {
+						sw.Logger.Debug("Won't add peer's address to addrbook", "err", err)
+					} else {
+						sw.Logger.Error("Can't add peer's address to addrbook", "err", err)
+					}
 				}
 			}
 		}
