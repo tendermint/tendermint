@@ -11,7 +11,7 @@ type ErrAddrBookNonRoutable struct {
 }
 
 func (err ErrAddrBookNonRoutable) Error() string {
-	return fmt.Sprintf("Cannot add non-routable address %v", err.Addr)
+	return fmt.Sprintf("Cannot add non-routable address %v (if it's a private network, set addr_book_strict to false in the config)", err.Addr)
 }
 
 type ErrAddrBookSelf struct {
