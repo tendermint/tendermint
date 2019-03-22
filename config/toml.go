@@ -181,6 +181,14 @@ max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
 # See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "{{ .RPC.TimeoutBroadcastTxCommit }}"
 
+# The name of cert file that used to serve RPC based on Tls.
+# NOTE: useful when tls_key_file is present
+tls_cert_file = "{{ .RPC.TlsCertFile }}"
+
+# The name of private key file that used to serve RPC based on Tls.
+# NOTE: useful when tls_cert_file is present
+tls_key_file = "{{ .RPC.TlsKeyFile }}"
+
 ##### peer to peer configuration options #####
 [p2p]
 
