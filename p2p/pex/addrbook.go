@@ -537,7 +537,7 @@ func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 	case bucketTypeOld:
 		return a.bucketsOld[bucketIdx]
 	default:
-		panic("Should not happen")
+		panic("Invalid bucket type")
 	}
 }
 

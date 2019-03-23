@@ -304,10 +304,10 @@ func TestPEXReactorSeedMode(t *testing.T) {
 	require.NoError(t, err)
 	defer sw.Stop()
 
-	assert.Equal(t, 0, sw.Peers().Size())
+	assert.Zero(t, sw.Peers().Size())
 
 	peer := testCreateDefaultPeer(dir, 1)
-	require.Nil(t, peer.Start())
+	require.NoError(t, peer.Start())
 	defer peer.Stop()
 
 	// 1. Test crawlPeers dials the peer
