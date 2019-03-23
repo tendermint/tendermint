@@ -428,7 +428,6 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 			if err != nil {
 				return nil, err
 			}
-
 		}
 
 		h.nBlocks++
