@@ -502,7 +502,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 	}
 
 	err := r.Switch.DialPeerWithAddress(addr, false)
-	if _, ok := err.(p2p.ErrDialingOrExistingAddress); ok {
+	if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 		return
 	}
 	if err != nil {
@@ -644,7 +644,7 @@ func (r *PEXReactor) crawlPeers(addrs []*p2p.NetAddress) {
 		r.crawlPeerInfos[addr.ID] = peerInfo
 
 		err := r.Switch.DialPeerWithAddress(addr, false)
-		if _, ok := err.(p2p.ErrDialingOrExistingAddress); ok {
+		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			continue
 		}
 		if err != nil {

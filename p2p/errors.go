@@ -173,12 +173,12 @@ func (e ErrNetAddressLookup) Error() string {
 	return fmt.Sprintf("Error looking up host (%s): %v", e.Addr, e.Err)
 }
 
-// ErrDialingOrExistingAddress indicates that we're currently
+// ErrCurrentlyDialingOrExistingAddress indicates that we're currently
 // dialing this address or it belongs to an existing peer.
-type ErrDialingOrExistingAddress struct {
+type ErrCurrentlyDialingOrExistingAddress struct {
 	Addr string
 }
 
-func (e ErrDialingOrExistingAddress) Error() string {
+func (e ErrCurrentlyDialingOrExistingAddress) Error() string {
 	return fmt.Sprintf("Connection with %s has been established or dialed", e.Addr)
 }

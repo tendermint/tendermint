@@ -343,7 +343,7 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 		if err == nil {
 			return // success
 		}
-		if _, ok := err.(ErrDialingOrExistingAddress); ok {
+		if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
 			return
 		}
 
@@ -368,7 +368,7 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 		if err == nil {
 			return // success
 		}
-		if _, ok := err.(ErrDialingOrExistingAddress); ok {
+		if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
 			return
 		}
 		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
@@ -440,7 +440,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
 				switch err.(type) {
-				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeerID, ErrDialingOrExistingAddress:
+				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeerID, ErrCurrentlyDialingOrExistingAddress:
 					sw.Logger.Debug("Error dialing peer", "err", err)
 				default:
 					sw.Logger.Error("Error dialing peer", "err", err)
@@ -456,10 +456,10 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 // If `persistent == true`, the switch will always try to reconnect to this
 // peer if the connection ever fails.
 // If we're currently dialing this address or it belongs to an existing peer,
-// ErrDialingOrExistingAddress is returned.
+// ErrCurrentlyDialingOrExistingAddress is returned.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
 	if sw.IsDialingOrExistingAddress(addr) {
-		return ErrDialingOrExistingAddress{addr.String()}
+		return ErrCurrentlyDialingOrExistingAddress{addr.String()}
 	}
 
 	sw.dialing.Set(string(addr.ID), addr)
