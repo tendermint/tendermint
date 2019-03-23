@@ -16,6 +16,7 @@
 * P2P Protocol
 
 ### FEATURES:
+- [rpc] \#3419 Start HTTPS server if `rpc.tls_cert_file` and `rpc.tls_key_file` are provided in the config (@guagualvcha)
 
 ### IMPROVEMENTS:
 
