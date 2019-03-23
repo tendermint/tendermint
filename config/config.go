@@ -420,7 +420,7 @@ func (cfg RPCConfig) CertFile() string {
 	return rootify(filepath.Join(defaultConfigDir, cfg.TLSCertFile), cfg.RootDir)
 }
 
-func (cfg RPCConfig) IsTlsEnabled() bool {
+func (cfg RPCConfig) IsTLSEnabled() bool {
 	return cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
 }
 

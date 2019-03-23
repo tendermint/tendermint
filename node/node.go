@@ -715,7 +715,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			})
 			rootHandler = corsMiddleware.Handler(mux)
 		}
-		if n.config.RPC.IsTlsEnabled() {
+		if n.config.RPC.IsTLSEnabled() {
 			go rpcserver.StartHTTPAndTLSServer(
 				listener,
 				rootHandler,
