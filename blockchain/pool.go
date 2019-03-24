@@ -103,10 +103,6 @@ func (pool *BlockPool) OnStart() error {
 	return nil
 }
 
-func (pool *BlockPool) OnStop() {
-	close(pool.requestsCh)
-}
-
 // spawns requesters as needed
 func (pool *BlockPool) makeRequestersRoutine() {
 	for {

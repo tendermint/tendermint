@@ -229,15 +229,32 @@ func (bcR *BlockchainReactor) poolRoutine() {
 	didProcessCh := make(chan struct{}, 1)
 
 	go func() {
-		for request := range bcR.requestsCh {
-			peer := bcR.Switch.Peers().Get(request.PeerID)
-			if peer == nil {
-				continue
-			}
-			msgBytes := cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{request.Height})
-			queued := peer.TrySend(BlockchainChannel, msgBytes)
-			if !queued {
-				bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
+		for {
+			select {
+			case <-bcR.Quit():
+				return
+			case <-bcR.pool.Quit():
+				return
+			case request := <-bcR.requestsCh:
+				peer := bcR.Switch.Peers().Get(request.PeerID)
+				if peer == nil {
+					continue
+				}
+				msgBytes := cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{request.Height})
+				queued := peer.TrySend(BlockchainChannel, msgBytes)
+				if !queued {
+					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
+				}
+			case err := <-bcR.errorsCh:
+				peer := bcR.Switch.Peers().Get(err.peerID)
+				if peer != nil {
+					bcR.Switch.StopPeerForError(peer, err)
+				}
+
+			case <-statusUpdateTicker.C:
+				// ask for status updates
+				go bcR.BroadcastStatusRequest() // nolint: errcheck
+
 			}
 		}
 	}()
@@ -245,16 +262,6 @@ func (bcR *BlockchainReactor) poolRoutine() {
 FOR_LOOP:
 	for {
 		select {
-		case err := <-bcR.errorsCh:
-			peer := bcR.Switch.Peers().Get(err.peerID)
-			if peer != nil {
-				bcR.Switch.StopPeerForError(peer, err)
-			}
-
-		case <-statusUpdateTicker.C:
-			// ask for status updates
-			go bcR.BroadcastStatusRequest() // nolint: errcheck
-
 		case <-switchToConsensusTicker.C:
 			height, numPending, lenRequesters := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
@@ -263,7 +270,6 @@ FOR_LOOP:
 			if bcR.pool.IsCaughtUp() {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
-
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced)
