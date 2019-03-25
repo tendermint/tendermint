@@ -422,11 +422,13 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 			return nil, err
 		}
 		//check each block's apphash when replay
-		nextBlock := h.store.LoadBlock(i + 1)
-		if nextBlock != nil {
-			err = checkBlockAppHash(appHash, nextBlock.AppHash, i)
-			if err != nil {
-				return nil, err
+		if !mutateState {
+			nextBlock := h.store.LoadBlock(i + 1)
+			if nextBlock != nil {
+				err = checkBlockAppHash(appHash, nextBlock.AppHash, i)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 
@@ -463,6 +465,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 
 	return state, nil
 }
+
 //which height of block's apphash should be known
 func checkBlockAppHash(appHash, blockAppHash []byte, height int64) error {
 
