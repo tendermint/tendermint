@@ -148,14 +148,10 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
-	// copy the RoundState.
-	// TODO: if we want to avoid this, we may need synchronous events after all
-	rsCopy := *rs
 	return types.EventDataRoundState{
-		Height:     rs.Height,
-		Round:      rs.Round,
-		Step:       rs.Step.String(),
-		RoundState: &rsCopy,
+		Height: rs.Height,
+		Round:  rs.Round,
+		Step:   rs.Step.String(),
 	}
 }
 

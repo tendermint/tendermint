@@ -175,7 +175,7 @@ func (mt *MultiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 
 		return mt.wrapPeer(a.conn, a.nodeInfo, cfg, nil), nil
 	case <-mt.closec:
-		return nil, &ErrTransportClosed{}
+		return nil, ErrTransportClosed{}
 	}
 }
 
