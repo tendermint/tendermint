@@ -454,7 +454,7 @@ func (mem *Mempool) reqResCb(tx []byte, peerID uint16) func(res *abci.Response) 
 			return
 		}
 
-		mem.resCbNormal(tx, peerID, res)
+		mem.resCbFirstTime(tx, peerID, res)
 
 		// update metrics
 		mem.metrics.Size.Set(float64(mem.Size()))
@@ -483,7 +483,7 @@ func (mem *Mempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache 
 //
 // The case where the app checks the tx for the second and subsequent times is
 // handled by the resCbRecheck callback.
-func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
+func (mem *Mempool) resCbFirstTime(tx []byte, peerID uint16, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
 		var postCheckErr error
@@ -520,7 +520,7 @@ func (mem *Mempool) resCbNormal(tx []byte, peerID uint16, res *abci.Response) {
 // callback, which is called after the app rechecked the tx.
 //
 // The case where the app checks the tx for the first time is handled by the
-// resCbNormal callback.
+// resCbFirstTime callback.
 func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
