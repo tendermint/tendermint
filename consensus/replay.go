@@ -430,7 +430,7 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 					return nil, err
 				}
 			} else {
-				panic(fmt.Errorf(" Replay block can't find stored block,height %X",  i+1).Error())
+				panic(fmt.Errorf(" Replay block can't find stored block,height %X", i+1).Error())
 			}
 		}
 
