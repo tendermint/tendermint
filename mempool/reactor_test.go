@@ -102,9 +102,8 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 
 // ensure no txs on reactor after some timeout
 func ensureNoTxs(t *testing.T, reactor *MempoolReactor, timeout time.Duration) {
-	// wait for the txs in all mempools
-	time.Sleep(timeout)
-	assert.Equal(t, 0, reactor.Mempool.Size(), "mempool had non-zero size")
+	time.Sleep(timeout) // wait for the txs in all mempools
+	assert.Zero(t, reactor.Mempool.Size())
 }
 
 const (
