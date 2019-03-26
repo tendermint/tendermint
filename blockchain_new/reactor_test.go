@@ -248,7 +248,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}()
 
 	for {
-		if reactorPairs[3].reactor.fsm.IsFinished() {
+		if reactorPairs[3].reactor.fsm.IsFinished() || reactorPairs[3].reactor.Switch.Peers().Size() == 0 {
 			break
 		}
 
@@ -344,7 +344,7 @@ func TestFastSyncMultiNode(t *testing.T) {
 	}()
 
 	for {
-		if reactorPairs[numNodes-1].reactor.fsm.IsFinished() || reactorPairs[3].reactor.Switch.Peers().Size() == 0 {
+		if reactorPairs[numNodes-1].reactor.fsm.IsFinished() || reactorPairs[numNodes-1].reactor.Switch.Peers().Size() == 0 {
 			break
 		}
 

@@ -637,6 +637,9 @@ func (fsm *bReactorFSM) removePeer(peerID p2p.ID, err error) {
 	// remove all data for blocks waiting for the peer or not processed yet
 	for h, bData := range fsm.blocks {
 		if bData.peerId == peerID {
+			if h == fsm.height {
+				fsm.processSignalActive = false
+			}
 			delete(fsm.blocks, h)
 		}
 	}

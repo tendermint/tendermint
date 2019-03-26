@@ -16,9 +16,6 @@ import (
 var (
 	numErrFuncCalls int
 	lastErr         error
-
-	testLog = log.TestingLogger()
-	mtx     sync.Mutex
 )
 
 func resetErrors() {
@@ -50,7 +47,7 @@ func TestPeerResetMonitor(t *testing.T) {
 	peer := &bpPeer{
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
-		logger:  testLog,
+		logger:  log.TestingLogger(),
 		errFunc: errFunc,
 	}
 	peer.resetMonitor()
@@ -63,7 +60,7 @@ func TestPeerTimer(t *testing.T) {
 	peer := &bpPeer{
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
-		logger:  testLog,
+		logger:  log.TestingLogger(),
 		errFunc: errFunc,
 	}
 	assert.Nil(t, peer.timeout)
@@ -102,7 +99,7 @@ func TestIncrPending(t *testing.T) {
 	peer := &bpPeer{
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
-		logger:  testLog,
+		logger:  log.TestingLogger(),
 		errFunc: errFunc,
 	}
 
@@ -123,7 +120,7 @@ func TestDecrPending(t *testing.T) {
 	peer := &bpPeer{
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
-		logger:  testLog,
+		logger:  log.TestingLogger(),
 		errFunc: errFunc,
 	}
 
@@ -153,7 +150,7 @@ func TestCanBeRemovedDueToExpiration(t *testing.T) {
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
 		errFunc: errFunc,
-		logger:  testLog,
+		logger:  log.TestingLogger(),
 	}
 
 	peerTimeout = time.Millisecond
@@ -170,7 +167,7 @@ func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
 		errFunc: errFunc,
-		logger:  testLog,
+		logger:  log.TestingLogger(),
 	}
 
 	peerTimeout = time.Second
@@ -202,10 +199,11 @@ func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
 
 func TestCleanupPeer(t *testing.T) {
 
+	var mtx sync.Mutex
 	peer := &bpPeer{
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
-		logger:  testLog,
+		logger:  log.TestingLogger(),
 		errFunc: errFunc,
 	}
 	peerTimeout = 2 * time.Millisecond

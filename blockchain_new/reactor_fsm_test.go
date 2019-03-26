@@ -65,12 +65,11 @@ type fsmStepTestValues struct {
 }
 
 func newTestReactor() *testReactor {
-	logger := log.TestingLogger()
 	blockDB := dbm.NewMemDB()
 	store := NewBlockStore(blockDB)
-	testBcR := &testReactor{logger: logger}
+	testBcR := &testReactor{logger: log.TestingLogger()}
 	testBcR.fsm = NewFSM(store, testBcR)
-	testBcR.fsm.setLogger(logger)
+	testBcR.fsm.setLogger(testBcR.logger)
 	return testBcR
 }
 
