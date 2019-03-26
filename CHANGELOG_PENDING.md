@@ -10,6 +10,7 @@
 
 * Go API
 - [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
+- [rpc/client] \#3458 Include NetworkClient interface into Client interface
 
 * Blockchain Protocol
 
