@@ -89,12 +89,14 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
         return err
     }
 
-    // Wait forever
-    cmn.TrapSignal(func() {
+    // Stop upon receiving SIGTERM or CTRL-C.
+    cmn.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
-    return nil
+
+    // Run forever.
+    select {}
 }
 ```
 
@@ -238,12 +240,14 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
         return err
     }
 
-    // Wait forever
-    cmn.TrapSignal(func() {
+    // Stop upon receiving SIGTERM or CTRL-C.
+    cmn.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
-    return nil
+
+    // Run forever.
+    select {}
 }
 ```
 

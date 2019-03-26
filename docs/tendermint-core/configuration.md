@@ -111,6 +111,33 @@ unsafe = false
 # 1024 - 40 - 10 - 50 = 924 = ~900
 max_open_connections = 900
 
+# Maximum number of unique clientIDs that can /subscribe
+# If you're using /broadcast_tx_commit, set to the estimated maximum number
+# of broadcast_tx_commit calls per block.
+max_subscription_clients = 100
+
+# Maximum number of unique queries a given client can /subscribe to
+# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
+# the estimated # maximum number of broadcast_tx_commit calls per block.
+max_subscriptions_per_client = 5
+
+# How long to wait for a tx to be committed during /broadcast_tx_commit.
+# WARNING: Using a value larger than 10s will result in increasing the
+# global HTTP write timeout, which applies to all connections and endpoints.
+# See https://github.com/tendermint/tendermint/issues/3435
+timeout_broadcast_tx_commit = "10s"
+
+# The name of a file containing certificate that is used to create the HTTPS server.
+# If the certificate is signed by a certificate authority,
+# the certFile should be the concatenation of the server's certificate, any intermediates,
+# and the CA's certificate.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+tls_cert_file = ""
+
+# The name of a file containing matching private key that is used to create the HTTPS server.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+tls_key_file = ""
+
 ##### peer to peer configuration options #####
 [p2p]
 
@@ -183,10 +210,15 @@ recheck = true
 broadcast = true
 wal_dir = ""
 
-# size of the mempool
+# Maximum number of transactions in the mempool
 size = 5000
 
-# size of the cache (used to filter transactions we saw earlier)
+# Limit the total size of all txs in the mempool.
+# This only accounts for raw transactions (e.g. given 1MB transactions and
+# max_txs_bytes=5MB, mempool will only accept 5 transactions).
+max_txs_bytes = 1073741824
+
+# Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = 10000
 
 ##### consensus configuration options #####
@@ -263,3 +295,74 @@ max_open_connections = 3
 # Instrumentation namespace
 namespace = "tendermint"
 ```
+
+## Empty blocks VS no empty blocks
+
+**create_empty_blocks = true**
+
+If `create_empty_blocks` is set to `true` in your config, blocks will be
+created ~ every second (with default consensus parameters). You can regulate
+the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit
+= "10s"` should result in ~ 10 second blocks.
+
+**create_empty_blocks = false**
+
+In this setting, blocks are created when transactions received.
+
+Note after the block H, Tendermint creates something we call a "proof block"
+(only if the application hash changed) H+1. The reason for this is to support
+proofs. If you have a transaction in block H that changes the state to X, the
+new application hash will only be included in block H+1. If after your
+transaction is committed, you want to get a lite-client proof for the new state
+(X), you need the new block to be committed in order to do that because the new
+block has the new application hash for the state X. That's why we make a new
+(empty) block if the application hash changes. Otherwise, you won't be able to
+make a proof for the new state.
+
+Plus, if you set `create_empty_blocks_interval` to something other than the
+default (`0`), Tendermint will be creating empty blocks even in the absence of
+transactions every `create_empty_blocks_interval`. For instance, with
+`create_empty_blocks = false` and `create_empty_blocks_interval = "30s"`,
+Tendermint will only create blocks if there are transactions, or after waiting
+30 seconds without receiving any transactions.
+
+## Consensus timeouts explained
+
+There's a variety of information about timeouts in [Running in
+production](./running-in-production.html)
+
+You can also find more detailed technical explanation in the spec: [The latest
+gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
+
+```
+[consensus]
+...
+
+timeout_propose = "3s"
+timeout_propose_delta = "500ms"
+timeout_prevote = "1s"
+timeout_prevote_delta = "500ms"
+timeout_precommit = "1s"
+timeout_precommit_delta = "500ms"
+timeout_commit = "1s"
+```
+
+Note that in a successful round, the only timeout that we absolutely wait no
+matter what is `timeout_commit`.
+
+Here's a brief summary of the timeouts:
+
+- `timeout_propose` = how long we wait for a proposal block before prevoting
+  nil
+- `timeout_propose_delta` = how much timeout_propose increases with each round
+- `timeout_prevote` = how long we wait after receiving +2/3 prevotes for
+  anything (ie. not a single block or nil)
+- `timeout_prevote_delta` = how much the timeout_prevote increases with each
+  round
+- `timeout_precommit` = how long we wait after receiving +2/3 precommits for
+  anything (ie. not a single block or nil)
+- `timeout_precommit_delta` = how much the timeout_precommit increases with
+  each round
+- `timeout_commit` = how long we wait after committing a block, before starting
+  on the new height (this gives us a chance to receive some more precommits,
+  even though we already have +2/3)

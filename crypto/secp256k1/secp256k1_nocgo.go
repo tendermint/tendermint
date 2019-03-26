@@ -52,8 +52,8 @@ func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sigStr []byte) bool {
 // that len(sigStr) == 64.
 func signatureFromBytes(sigStr []byte) *secp256k1.Signature {
 	return &secp256k1.Signature{
-		new(big.Int).SetBytes(sigStr[:32]),
-		new(big.Int).SetBytes(sigStr[32:64]),
+		R: new(big.Int).SetBytes(sigStr[:32]),
+		S: new(big.Int).SetBytes(sigStr[32:64]),
 	}
 }
 

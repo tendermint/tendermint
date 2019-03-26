@@ -175,7 +175,7 @@ func (mt *MultiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 
 		return mt.wrapPeer(a.conn, a.nodeInfo, cfg, nil), nil
 	case <-mt.closec:
-		return nil, &ErrTransportClosed{}
+		return nil, ErrTransportClosed{}
 	}
 }
 
@@ -194,7 +194,7 @@ func (mt *MultiplexTransport) Dial(
 		return nil, err
 	}
 
-	secretConn, nodeInfo, err := mt.upgrade(c)
+	secretConn, nodeInfo, err := mt.upgrade(c, &addr)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +262,7 @@ func (mt *MultiplexTransport) acceptPeers() {
 
 			err := mt.filterConn(c)
 			if err == nil {
-				secretConn, nodeInfo, err = mt.upgrade(c)
+				secretConn, nodeInfo, err = mt.upgrade(c, nil)
 			}
 
 			select {
@@ -279,9 +279,9 @@ func (mt *MultiplexTransport) acceptPeers() {
 
 // Cleanup removes the given address from the connections set and
 // closes the connection.
-func (mt *MultiplexTransport) Cleanup(peer Peer) {
-	mt.conns.RemoveAddr(peer.RemoteAddr())
-	_ = peer.CloseConn()
+func (mt *MultiplexTransport) Cleanup(p Peer) {
+	mt.conns.RemoveAddr(p.RemoteAddr())
+	_ = p.CloseConn()
 }
 
 func (mt *MultiplexTransport) cleanup(c net.Conn) error {
@@ -335,6 +335,7 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 
 func (mt *MultiplexTransport) upgrade(
 	c net.Conn,
+	dialedAddr *NetAddress,
 ) (secretConn *conn.SecretConnection, nodeInfo NodeInfo, err error) {
 	defer func() {
 		if err != nil {
@@ -348,6 +349,23 @@ func (mt *MultiplexTransport) upgrade(
 			conn:          c,
 			err:           fmt.Errorf("secrect conn failed: %v", err),
 			isAuthFailure: true,
+		}
+	}
+
+	// For outgoing conns, ensure connection key matches dialed key.
+	connID := PubKeyToID(secretConn.RemotePubKey())
+	if dialedAddr != nil {
+		if dialedID := dialedAddr.ID; connID != dialedID {
+			return nil, nil, ErrRejected{
+				conn: c,
+				id:   connID,
+				err: fmt.Errorf(
+					"conn.ID (%v) dialed ID (%v) missmatch",
+					connID,
+					dialedID,
+				),
+				isAuthFailure: true,
+			}
 		}
 	}
 
@@ -369,7 +387,7 @@ func (mt *MultiplexTransport) upgrade(
 	}
 
 	// Ensure connection key matches self reported key.
-	if connID := PubKeyToID(secretConn.RemotePubKey()); connID != nodeInfo.ID() {
+	if connID != nodeInfo.ID() {
 		return nil, nil, ErrRejected{
 			conn: c,
 			id:   connID,

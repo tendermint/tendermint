@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestGoPath(t *testing.T) {
+func TestOSGoPath(t *testing.T) {
 	// restore original gopath upon exit
 	path := os.Getenv("GOPATH")
 	defer func() {
@@ -28,7 +28,7 @@ func TestGoPath(t *testing.T) {
 	}
 }
 
-func TestGoPathWithoutEnvVar(t *testing.T) {
+func TestOSGoPathWithoutEnvVar(t *testing.T) {
 	// restore original gopath upon exit
 	path := os.Getenv("GOPATH")
 	defer func() {

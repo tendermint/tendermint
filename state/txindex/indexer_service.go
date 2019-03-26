@@ -31,35 +31,40 @@ func NewIndexerService(idr TxIndexer, eventBus *types.EventBus) *IndexerService 
 // OnStart implements cmn.Service by subscribing for all transactions
 // and indexing them by tags.
 func (is *IndexerService) OnStart() error {
-	blockHeadersCh := make(chan interface{})
-	if err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryNewBlockHeader, blockHeadersCh); err != nil {
+	// Use SubscribeUnbuffered here to ensure both subscriptions does not get
+	// cancelled due to not pulling messages fast enough. Cause this might
+	// sometimes happen when there are no other subscribers.
+
+	blockHeadersSub, err := is.eventBus.SubscribeUnbuffered(context.Background(), subscriber, types.EventQueryNewBlockHeader)
+	if err != nil {
 		return err
 	}
 
-	txsCh := make(chan interface{})
-	if err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryTx, txsCh); err != nil {
+	txsSub, err := is.eventBus.SubscribeUnbuffered(context.Background(), subscriber, types.EventQueryTx)
+	if err != nil {
 		return err
 	}
 
 	go func() {
 		for {
-			e, ok := <-blockHeadersCh
-			if !ok {
-				return
-			}
-			header := e.(types.EventDataNewBlockHeader).Header
+			msg := <-blockHeadersSub.Out()
+			header := msg.Data().(types.EventDataNewBlockHeader).Header
 			batch := NewBatch(header.NumTxs)
 			for i := int64(0); i < header.NumTxs; i++ {
-				e, ok := <-txsCh
-				if !ok {
-					is.Logger.Error("Failed to index all transactions due to closed transactions channel", "height", header.Height, "numTxs", header.NumTxs, "numProcessed", i)
-					return
+				msg2 := <-txsSub.Out()
+				txResult := msg2.Data().(types.EventDataTx).TxResult
+				if err = batch.Add(&txResult); err != nil {
+					is.Logger.Error("Can't add tx to batch",
+						"height", header.Height,
+						"index", txResult.Index,
+						"err", err)
 				}
-				txResult := e.(types.EventDataTx).TxResult
-				batch.Add(&txResult)
 			}
-			is.idr.AddBatch(batch)
-			is.Logger.Info("Indexed block", "height", header.Height)
+			if err = is.idr.AddBatch(batch); err != nil {
+				is.Logger.Error("Failed to index block", "height", header.Height, "err", err)
+			} else {
+				is.Logger.Info("Indexed block", "height", header.Height)
+			}
 		}
 	}()
 	return nil

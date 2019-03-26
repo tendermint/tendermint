@@ -5,6 +5,7 @@ import (
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -68,7 +69,7 @@ import (
 // ```
 //
 // <aside class="notice">Returns at most 20 items.</aside>
-func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 
 	// maximum 20 block metas
 	const limit int64 = 20
@@ -85,7 +86,9 @@ func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, e
 		blockMetas = append(blockMetas, blockMeta)
 	}
 
-	return &ctypes.ResultBlockchainInfo{blockStore.Height(), blockMetas}, nil
+	return &ctypes.ResultBlockchainInfo{
+		LastHeight: blockStore.Height(),
+		BlockMetas: blockMetas}, nil
 }
 
 // error if either min or max are negative or min < max
@@ -224,7 +227,7 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 //   "jsonrpc": "2.0"
 // }
 // ```
-func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
+func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
 	if err != nil {
@@ -233,7 +236,7 @@ func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
 
 	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
-	return &ctypes.ResultBlock{blockMeta, block}, nil
+	return &ctypes.ResultBlock{BlockMeta: blockMeta, Block: block}, nil
 }
 
 // Get block commit at a given height.
@@ -311,7 +314,7 @@ func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
 //   "jsonrpc": "2.0"
 // }
 // ```
-func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
+func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
 	if err != nil {
@@ -370,7 +373,7 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 //  ]
 // }
 // ```
-func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
+func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
 	if err != nil {

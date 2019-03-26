@@ -57,10 +57,12 @@ type DB interface {
 //----------------------------------------
 // Batch
 
+// Batch Close must be called when the program no longer needs the object.
 type Batch interface {
 	SetDeleter
 	Write()
 	WriteSync()
+	Close()
 }
 
 type SetDeleter interface {

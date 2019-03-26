@@ -69,7 +69,7 @@ type BlockPool struct {
 	height     int64 // the lowest key in requesters.
 	// peers
 	peers         map[p2p.ID]*bpPeer
-	maxPeerHeight int64
+	maxPeerHeight int64 // the biggest reported height
 
 	// atomic
 	numPending int32 // number of requests pending assignment or block response
@@ -78,6 +78,8 @@ type BlockPool struct {
 	errorsCh   chan<- peerError
 }
 
+// NewBlockPool returns a new BlockPool with the height equal to start. Block
+// requests and errors will be sent to requestsCh and errorsCh accordingly.
 func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- peerError) *BlockPool {
 	bp := &BlockPool{
 		peers: make(map[p2p.ID]*bpPeer),
@@ -93,15 +95,15 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 	return bp
 }
 
+// OnStart implements cmn.Service by spawning requesters routine and recording
+// pool's start time.
 func (pool *BlockPool) OnStart() error {
 	go pool.makeRequestersRoutine()
 	pool.startTime = time.Now()
 	return nil
 }
 
-func (pool *BlockPool) OnStop() {}
-
-// Run spawns requesters as needed.
+// spawns requesters as needed
 func (pool *BlockPool) makeRequestersRoutine() {
 	for {
 		if !pool.IsRunning() {
@@ -150,6 +152,8 @@ func (pool *BlockPool) removeTimedoutPeers() {
 	}
 }
 
+// GetStatus returns pool's height, numPending requests and the number of
+// requesters.
 func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequesters int) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
@@ -157,6 +161,7 @@ func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequester
 	return pool.height, atomic.LoadInt32(&pool.numPending), len(pool.requesters)
 }
 
+// IsCaughtUp returns true if this node is caught up, false - otherwise.
 // TODO: relax conditions, prevent abuse.
 func (pool *BlockPool) IsCaughtUp() bool {
 	pool.mtx.Lock()
@@ -170,8 +175,9 @@ func (pool *BlockPool) IsCaughtUp() bool {
 
 	// Some conditions to determine if we're caught up.
 	// Ensures we've either received a block or waited some amount of time,
-	// and that we're synced to the highest known height. Note we use maxPeerHeight - 1
-	// because to sync block H requires block H+1 to verify the LastCommit.
+	// and that we're synced to the highest known height.
+	// Note we use maxPeerHeight - 1 because to sync block H requires block H+1
+	// to verify the LastCommit.
 	receivedBlockOrTimedOut := pool.height > 0 || time.Since(pool.startTime) > 5*time.Second
 	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
@@ -260,14 +266,14 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 	}
 }
 
-// MaxPeerHeight returns the highest height reported by a peer.
+// MaxPeerHeight returns the highest reported height.
 func (pool *BlockPool) MaxPeerHeight() int64 {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 	return pool.maxPeerHeight
 }
 
-// Sets the peer's alleged blockchain height.
+// SetPeerHeight sets the peer's alleged blockchain height.
 func (pool *BlockPool) SetPeerHeight(peerID p2p.ID, height int64) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
@@ -286,6 +292,8 @@ func (pool *BlockPool) SetPeerHeight(peerID p2p.ID, height int64) {
 	}
 }
 
+// RemovePeer removes the peer with peerID from the pool. If there's no peer
+// with peerID, function is a no-op.
 func (pool *BlockPool) RemovePeer(peerID p2p.ID) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
@@ -299,7 +307,32 @@ func (pool *BlockPool) removePeer(peerID p2p.ID) {
 			requester.redo(peerID)
 		}
 	}
-	delete(pool.peers, peerID)
+
+	peer, ok := pool.peers[peerID]
+	if ok {
+		if peer.timeout != nil {
+			peer.timeout.Stop()
+		}
+
+		delete(pool.peers, peerID)
+
+		// Find a new peer with the biggest height and update maxPeerHeight if the
+		// peer's height was the biggest.
+		if peer.height == pool.maxPeerHeight {
+			pool.updateMaxPeerHeight()
+		}
+	}
+}
+
+// If no peers are left, maxPeerHeight is set to 0.
+func (pool *BlockPool) updateMaxPeerHeight() {
+	var max int64
+	for _, peer := range pool.peers {
+		if peer.height > max {
+			max = peer.height
+		}
+	}
+	pool.maxPeerHeight = max
 }
 
 // Pick an available peer with at least the given minHeight.

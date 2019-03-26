@@ -7,14 +7,6 @@ import (
 	protodb "github.com/tendermint/tendermint/libs/db/remotedb/proto"
 )
 
-// Security defines how the client will talk to the gRPC server.
-type Security uint
-
-const (
-	Insecure Security = iota
-	Secure
-)
-
 // NewClient creates a gRPC client connected to the bound gRPC server at serverAddr.
 // Use kind to set the level of security to either Secure or Insecure.
 func NewClient(serverAddr, serverCert string) (protodb.DBClient, error) {

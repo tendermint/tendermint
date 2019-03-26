@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
@@ -53,9 +52,9 @@ func TestMatches(t *testing.T) {
 		}
 
 		if tc.matches {
-			assert.True(t, q.Matches(pubsub.NewTagMap(tc.tags)), "Query '%s' should match %v", tc.s, tc.tags)
+			assert.True(t, q.Matches(tc.tags), "Query '%s' should match %v", tc.s, tc.tags)
 		} else {
-			assert.False(t, q.Matches(pubsub.NewTagMap(tc.tags)), "Query '%s' should not match %v", tc.s, tc.tags)
+			assert.False(t, q.Matches(tc.tags), "Query '%s' should not match %v", tc.s, tc.tags)
 		}
 	}
 }
