@@ -415,7 +415,7 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 			tmquery.MustParse(fmt.Sprintf("%s = %d", types.TxHeightKey, height)),
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "Failed to search indexer for txs")
+			return nil, errors.Wrap(err, "failed to search indexer for txs")
 		}
 		deliverTxs = make([]*abci.ResponseDeliverTx, len(results))
 		for i, r := range results {
@@ -429,7 +429,7 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 			for i, tx := range block.Data.Txs {
 				r, err := txIndexer.Get(tx.Hash())
 				if err != nil {
-					return nil, errors.Wrapf(err, "Failed to get Tx (%X) from indexer", tx.Hash())
+					return nil, errors.Wrapf(err, "failed to get Tx (%X) from indexer", tx.Hash())
 				}
 				if r == nil {
 					return nil, fmt.Errorf("Tx (%X) not found", tx.Hash())

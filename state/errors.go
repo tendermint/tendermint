@@ -45,7 +45,7 @@ type (
 )
 
 var (
-	ErrNoABCIResponses = errors.New("Could not find results")
+	ErrNoABCIResponses = errors.New("could not find results")
 )
 
 func (e ErrUnknownBlock) Error() string {
