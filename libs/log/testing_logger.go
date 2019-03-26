@@ -30,6 +30,10 @@ func TestingLogger() Logger {
 // inside a test (not in the init func) because
 // verbose flag only set at the time of testing.
 func TestingLoggerWithOutput(w io.Writer) Logger {
+	if _testingLogger != nil {
+		return _testingLogger
+	}
+
 	if testing.Verbose() {
 		_testingLogger = NewTMLogger(NewSyncWriter(w))
 	} else {
