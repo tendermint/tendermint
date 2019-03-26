@@ -404,7 +404,7 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 	// for other heights, use indexer
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("Transaction indexing is disabled")
+		return nil, fmt.Errorf("transaction indexing is disabled")
 	}
 
 	var deliverTxs []*abci.ResponseDeliverTx
