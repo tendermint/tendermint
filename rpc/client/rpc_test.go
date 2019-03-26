@@ -480,7 +480,7 @@ func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *typ
 
 func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.DuplicateVoteEvidence, fakes []types.DuplicateVoteEvidence) {
 	vote := &types.Vote{
-		ValidatorAddress: val.Address,
+		ValidatorAddress: val.Key.Address,
 		ValidatorIndex:   0,
 		Height:           1,
 		Round:            0,
@@ -539,7 +539,9 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 func TestBroadcastDuplicateVote(t *testing.T) {
 	config := rpctest.GetConfig()
 	chainID := config.ChainID()
-	pv := privval.LoadOrGenFilePV(config.PrivValidatorFile())
+	pvKeyFile := config.PrivValidatorKeyFile()
+	pvKeyStateFile := config.PrivValidatorStateFile()
+	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
 
 	ev, fakes := makeEvidences(t, pv, chainID)
 

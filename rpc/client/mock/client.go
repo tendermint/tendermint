@@ -17,6 +17,7 @@ want to directly call a tendermint node in process, you can use the
 import (
 	"reflect"
 
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"

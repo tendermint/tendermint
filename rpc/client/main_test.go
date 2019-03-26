@@ -1,7 +1,6 @@
 package client_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"

@@ -254,7 +254,12 @@ func (c *HTTP) Validators(height *int64) (*ctypes.ResultValidators, error) {
 
 func (c *HTTP) BroadcastDuplicateVote(pubkey crypto.PubKey, vote1 types.Vote, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error) {
 	result := new(ctypes.ResultBroadcastDuplicateVote)
-	_, err := c.rpc.Call("broadcast_duplicate_vote", map[string]interface{}{"pubkey": pubkey, "vote1": vote1, "vote2": vote2}, result)
+	_, err := c.rpc.Call("broadcast_duplicate_vote",
+		map[string]interface{}{
+			"pubkey": pubkey,
+			"vote1":  vote1,
+			"vote2":  vote2},
+		result)
 	if err != nil {
 		return nil, errors.Wrap(err, "BroadcastDuplicateVote")
 	}
