@@ -468,11 +468,11 @@ func deepcpVote(vote *types.Vote) (res *types.Vote) {
 func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *types.Vote, chainID string) types.DuplicateVoteEvidence {
 	var err error
 	vote2_ := deepcpVote(vote2)
-	vote2_.Signature, err = val.PrivKey.Sign(vote2_.SignBytes(chainID))
+	vote2_.Signature, err = val.Key.PrivKey.Sign(vote2_.SignBytes(chainID))
 	require.NoError(t, err)
 
 	return types.DuplicateVoteEvidence{
-		PubKey: val.PubKey,
+		PubKey: val.Key.PubKey,
 		VoteA:  vote,
 		VoteB:  vote2_,
 	}
@@ -484,7 +484,7 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 		ValidatorIndex:   0,
 		Height:           1,
 		Round:            0,
-		Type:             types.VoteTypePrevote,
+		Type:             types.PrevoteType,
 		BlockID: types.BlockID{
 			Hash:        []byte{0x00},
 			PartsHeader: types.PartSetHeader{},
@@ -492,7 +492,7 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 	}
 
 	var err error
-	vote.Signature, err = val.PrivKey.Sign(vote.SignBytes(chainID))
+	vote.Signature, err = val.Key.PrivKey.Sign(vote.SignBytes(chainID))
 	require.NoError(t, err)
 
 	vote2 := deepcpVote(vote)
@@ -528,7 +528,7 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 	}
 	// different type
 	vote2 = deepcpVote(vote)
-	vote2.Type = types.VoteTypePrecommit
+	vote2.Type = types.PrecommitType
 	fakes[40] = newEvidence(t, val, vote, vote2, chainID)
 	// exactly same vote
 	vote2 = deepcpVote(vote)
@@ -551,7 +551,7 @@ func TestBroadcastDuplicateVote(t *testing.T) {
 		t.Logf("client %d", i)
 
 		result, err := c.BroadcastDuplicateVote(ev.PubKey, *ev.VoteA, *ev.VoteB)
-		require.Nil(t, err, "Error broadcasting evidence")
+		require.Nil(t, err)
 
 		info, err := c.BlockchainInfo(0, 0)
 		require.NoError(t, err)
