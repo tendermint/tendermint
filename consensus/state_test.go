@@ -1633,3 +1633,19 @@ func subscribeMany(eventBus *types.EventBus, qs []tmpubsub.Query) <-chan interfa
 
 	return out
 }
+
+// subscribeMany subscribes test client to the given queries and returns a channel with cap = 1.
+// it is important to keep all events on the same channel for the backpressure to pause consensus
+//	 (Note that the default eventBus channel limit is 0)
+func subscribeMany(eventBus *types.EventBus, qs []tmpubsub.Query) <-chan interface{} {
+	out := make(chan interface{}, 1)
+
+	for _, q := range qs {
+		err := eventBus.Subscribe(context.Background(), testSubscriber, q, out)
+		if err != nil {
+			panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
+		}
+	}
+
+	return out
+}
