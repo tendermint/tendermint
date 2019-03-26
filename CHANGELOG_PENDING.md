@@ -20,6 +20,8 @@
 
 ### IMPROVEMENTS:
 
+- [mempool] \#2778 No longer send txs back to peers who sent it to you
+
 ### BUG FIXES:
 
 - [blockchain] \#2699 update the maxHeight when a peer is removed
