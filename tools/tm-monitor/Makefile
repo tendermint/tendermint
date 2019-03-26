@@ -1,5 +1,5 @@
 DIST_DIRS := find * -type d -exec
-VERSION := $(shell perl -ne '/^var version.*"([^"]+)".*$$/ && print "v$$1\n"' main.go)
+VERSION := $(shell perl -ne '/^TMCoreSemVer = "([^"]+)"$$/ && print "v$$1\n"' ../../version/version.go)
 
 all: build test install
 
@@ -36,7 +36,7 @@ dist: build-all
 
 build-docker:
 	rm -f ./tm-monitor
-	docker run -it --rm -v "$(PWD):/go/src/github.com/tendermint/tools/tm-monitor" -w "/go/src/github.com/tendermint/tools/tm-monitor" -e "CGO_ENABLED=0" golang:alpine go build -ldflags "-s -w" -o tm-monitor
+	docker run -it --rm -v "$(PWD)/../../:/go/src/github.com/tendermint/tendermint" -w "/go/src/github.com/tendermint/tendermint/tools/tm-monitor" -e "CGO_ENABLED=0" golang:alpine go build -ldflags "-s -w" -o tm-monitor
 	docker build -t "tendermint/monitor" .
 
 clean:

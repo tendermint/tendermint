@@ -9,16 +9,16 @@ import (
 //-----------------------------------------------------------------------------
 
 // ABCIResult is the deterministic component of a ResponseDeliverTx.
-// TODO: add Tags
+// TODO: add tags and other fields
+// https://github.com/tendermint/tendermint/issues/1007
 type ABCIResult struct {
 	Code uint32       `json:"code"`
 	Data cmn.HexBytes `json:"data"`
 }
 
-// Hash returns the canonical hash of the ABCIResult
-func (a ABCIResult) Hash() []byte {
-	bz := aminoHash(a)
-	return bz
+// Bytes returns the amino encoded ABCIResult
+func (a ABCIResult) Bytes() []byte {
+	return cdcEncode(a)
 }
 
 // ABCIResults wraps the deliver tx results to return a proof
@@ -43,7 +43,7 @@ func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
 
 // Bytes serializes the ABCIResponse using wire
 func (a ABCIResults) Bytes() []byte {
-	bz, err := cdc.MarshalBinary(a)
+	bz, err := cdc.MarshalBinaryLengthPrefixed(a)
 	if err != nil {
 		panic(err)
 	}
@@ -54,20 +54,20 @@ func (a ABCIResults) Bytes() []byte {
 func (a ABCIResults) Hash() []byte {
 	// NOTE: we copy the impl of the merkle tree for txs -
 	// we should be consistent and either do it for both or not.
-	return merkle.SimpleHashFromHashers(a.toHashers())
+	return merkle.SimpleHashFromByteSlices(a.toByteSlices())
 }
 
 // ProveResult returns a merkle proof of one result from the set
 func (a ABCIResults) ProveResult(i int) merkle.SimpleProof {
-	_, proofs := merkle.SimpleProofsFromHashers(a.toHashers())
+	_, proofs := merkle.SimpleProofsFromByteSlices(a.toByteSlices())
 	return *proofs[i]
 }
 
-func (a ABCIResults) toHashers() []merkle.Hasher {
+func (a ABCIResults) toByteSlices() [][]byte {
 	l := len(a)
-	hashers := make([]merkle.Hasher, l)
+	bzs := make([][]byte, l)
 	for i := 0; i < l; i++ {
-		hashers[i] = a[i]
+		bzs[i] = a[i].Bytes()
 	}
-	return hashers
+	return bzs
 }

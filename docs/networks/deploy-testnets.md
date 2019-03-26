@@ -66,7 +66,17 @@ make localnet-start
 ```
 
 from the root of the tendermint repository. This will spin up a 4-node
-local testnet. Review the target in the Makefile to debug any problems.
+local testnet. Note that this command expects a linux binary in the build directory. 
+If you built the binary using a non-linux OS, you may see 
+the error `Binary needs to be OS linux, ARCH amd64`, in which case you can
+run:
+
+```
+make build-linux
+make localnet-start
+```
+
+Review the target in the Makefile to debug any problems.
 
 ### Cloud
 

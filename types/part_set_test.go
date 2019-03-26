@@ -83,3 +83,46 @@ func TestWrongProof(t *testing.T) {
 		t.Errorf("Expected to fail adding a part with bad bytes.")
 	}
 }
+
+func TestPartSetHeaderValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName              string
+		malleatePartSetHeader func(*PartSetHeader)
+		expectErr             bool
+	}{
+		{"Good PartSet", func(psHeader *PartSetHeader) {}, false},
+		{"Negative Total", func(psHeader *PartSetHeader) { psHeader.Total = -2 }, true},
+		{"Invalid Hash", func(psHeader *PartSetHeader) { psHeader.Hash = make([]byte, 1) }, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			data := cmn.RandBytes(testPartSize * 100)
+			ps := NewPartSetFromData(data, testPartSize)
+			psHeader := ps.Header()
+			tc.malleatePartSetHeader(&psHeader)
+			assert.Equal(t, tc.expectErr, psHeader.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestPartValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName     string
+		malleatePart func(*Part)
+		expectErr    bool
+	}{
+		{"Good Part", func(pt *Part) {}, false},
+		{"Negative index", func(pt *Part) { pt.Index = -1 }, true},
+		{"Too big part", func(pt *Part) { pt.Bytes = make([]byte, BlockPartSizeBytes+1) }, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			data := cmn.RandBytes(testPartSize * 100)
+			ps := NewPartSetFromData(data, testPartSize)
+			part := ps.GetPart(0)
+			tc.malleatePart(part)
+			assert.Equal(t, tc.expectErr, part.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}

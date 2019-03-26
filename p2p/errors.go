@@ -40,13 +40,12 @@ func (e ErrRejected) Error() string {
 	if e.isDuplicate {
 		if e.conn != nil {
 			return fmt.Sprintf(
-				"duplicate CONN<%s>: %s",
+				"duplicate CONN<%s>",
 				e.conn.RemoteAddr().String(),
-				e.err,
 			)
 		}
 		if e.id != "" {
-			return fmt.Sprintf("duplicate ID<%v>: %s", e.id, e.err)
+			return fmt.Sprintf("duplicate ID<%v>", e.id)
 		}
 	}
 

@@ -26,12 +26,12 @@ just with added trust and running locally.`,
 }
 
 var (
-	listenAddr            string
-	nodeAddr              string
-	chainID               string
-	home                  string
-	maxOpenConnections    int
-	cacheSize  int
+	listenAddr         string
+	nodeAddr           string
+	chainID            string
+	home               string
+	maxOpenConnections int
+	cacheSize          int
 )
 
 func init() {
@@ -39,11 +39,11 @@ func init() {
 	LiteCmd.Flags().StringVar(&nodeAddr, "node", "tcp://localhost:26657", "Connect to a Tendermint node at this address")
 	LiteCmd.Flags().StringVar(&chainID, "chain-id", "tendermint", "Specify the Tendermint chain ID")
 	LiteCmd.Flags().StringVar(&home, "home-dir", ".tendermint-lite", "Specify the home directory")
-	LiteCmd.Flags().IntVar(&maxOpenConnections,"max-open-connections",900,"Maximum number of simultaneous connections (including WebSocket).")
+	LiteCmd.Flags().IntVar(&maxOpenConnections, "max-open-connections", 900, "Maximum number of simultaneous connections (including WebSocket).")
 	LiteCmd.Flags().IntVar(&cacheSize, "cache-size", 10, "Specify the memory trust store cache size")
 }
 
-func ensureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
+func EnsureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return "", err
@@ -59,11 +59,16 @@ func ensureAddrHasSchemeOrDefaultToTCP(addr string) (string, error) {
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	nodeAddr, err := ensureAddrHasSchemeOrDefaultToTCP(nodeAddr)
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
+		// TODO: close up shop
+	})
+
+	nodeAddr, err := EnsureAddrHasSchemeOrDefaultToTCP(nodeAddr)
 	if err != nil {
 		return err
 	}
-	listenAddr, err := ensureAddrHasSchemeOrDefaultToTCP(listenAddr)
+	listenAddr, err := EnsureAddrHasSchemeOrDefaultToTCP(listenAddr)
 	if err != nil {
 		return err
 	}
@@ -86,9 +91,6 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return cmn.ErrorWrap(err, "starting proxy")
 	}
 
-	cmn.TrapSignal(func() {
-		// TODO: close up shop
-	})
-
-	return nil
+	// Run forever
+	select {}
 }

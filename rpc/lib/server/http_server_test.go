@@ -30,11 +30,12 @@ func TestMaxOpenConnections(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		fmt.Fprint(w, "some body")
 	})
-	l, err := StartHTTPServer("tcp://127.0.0.1:0", mux, log.TestingLogger(), Config{MaxOpenConnections: max})
-	if err != nil {
-		t.Fatal(err)
-	}
+	config := DefaultConfig()
+	config.MaxOpenConnections = max
+	l, err := Listen("tcp://127.0.0.1:0", config)
+	require.NoError(t, err)
 	defer l.Close()
+	go StartHTTPServer(l, mux, log.TestingLogger(), config)
 
 	// Make N GET calls to the server.
 	attempts := max * 2
@@ -65,13 +66,18 @@ func TestMaxOpenConnections(t *testing.T) {
 }
 
 func TestStartHTTPAndTLSServer(t *testing.T) {
+	config := DefaultConfig()
+	config.MaxOpenConnections = 1
 	// set up fixtures
 	listenerAddr := "tcp://0.0.0.0:0"
+	listener, err := Listen(listenerAddr, config)
+	require.NoError(t, err)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
 
 	// test failure
-	gotListener, err := StartHTTPAndTLSServer(listenerAddr, mux, "", "", log.TestingLogger(), Config{MaxOpenConnections: 1})
-	require.Nil(t, gotListener)
+	err = StartHTTPAndTLSServer(listener, mux, "", "", log.TestingLogger(), config)
 	require.IsType(t, (*os.PathError)(nil), err)
+
+	// TODO: test that starting the server can actually work
 }

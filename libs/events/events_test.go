@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -14,12 +16,14 @@ import (
 func TestAddListenerForEventFireOnce(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
-	if err != nil {
-		t.Errorf("Failed to start EventSwitch, error: %v", err)
-	}
+	require.NoError(t, err)
+	defer evsw.Stop()
+
 	messages := make(chan EventData)
 	evsw.AddListenerForEvent("listener", "event",
 		func(data EventData) {
+			// test there's no deadlock if we remove the listener inside a callback
+			evsw.RemoveListener("listener")
 			messages <- data
 		})
 	go evsw.FireEvent("event", "data")
@@ -34,9 +38,9 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 func TestAddListenerForEventFireMany(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
-	if err != nil {
-		t.Errorf("Failed to start EventSwitch, error: %v", err)
-	}
+	require.NoError(t, err)
+	defer evsw.Stop()
+
 	doneSum := make(chan uint64)
 	doneSending := make(chan uint64)
 	numbers := make(chan uint64, 4)
@@ -63,9 +67,9 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 func TestAddListenerForDifferentEvents(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
-	if err != nil {
-		t.Errorf("Failed to start EventSwitch, error: %v", err)
-	}
+	require.NoError(t, err)
+	defer evsw.Stop()
+
 	doneSum := make(chan uint64)
 	doneSending1 := make(chan uint64)
 	doneSending2 := make(chan uint64)
@@ -108,9 +112,9 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
-	if err != nil {
-		t.Errorf("Failed to start EventSwitch, error: %v", err)
-	}
+	require.NoError(t, err)
+	defer evsw.Stop()
+
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -162,15 +166,61 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	}
 }
 
+func TestAddAndRemoveListenerConcurrency(t *testing.T) {
+	var (
+		stopInputEvent = false
+		roundCount     = 2000
+	)
+
+	evsw := NewEventSwitch()
+	err := evsw.Start()
+	require.NoError(t, err)
+	defer evsw.Stop()
+
+	done1 := make(chan struct{})
+	done2 := make(chan struct{})
+
+	// Must be executed concurrently to uncover the data race.
+	// 1. RemoveListener
+	go func() {
+		for i := 0; i < roundCount; i++ {
+			evsw.RemoveListener("listener")
+		}
+		close(done1)
+	}()
+
+	// 2. AddListenerForEvent
+	go func() {
+		for i := 0; i < roundCount; i++ {
+			index := i
+			evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
+				func(data EventData) {
+					t.Errorf("should not run callback for %d.\n", index)
+					stopInputEvent = true
+				})
+		}
+		close(done2)
+	}()
+
+	<-done1
+	<-done2
+
+	evsw.RemoveListener("listener") // remove the last listener
+
+	for i := 0; i < roundCount && !stopInputEvent; i++ {
+		evsw.FireEvent(fmt.Sprintf("event%d", i), uint64(1001))
+	}
+}
+
 // TestAddAndRemoveListener sets up an EventSwitch, subscribes a listener to
 // two events, fires a thousand integers for the first event, then unsubscribes
 // the listener and fires a thousand integers for the second event.
 func TestAddAndRemoveListener(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
-	if err != nil {
-		t.Errorf("Failed to start EventSwitch, error: %v", err)
-	}
+	require.NoError(t, err)
+	defer evsw.Stop()
+
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -213,9 +263,9 @@ func TestAddAndRemoveListener(t *testing.T) {
 func TestRemoveListener(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
-	if err != nil {
-		t.Errorf("Failed to start EventSwitch, error: %v", err)
-	}
+	require.NoError(t, err)
+	defer evsw.Stop()
+
 	count := 10
 	sum1, sum2 := 0, 0
 	// add some listeners and make sure they work
@@ -266,9 +316,9 @@ func TestRemoveListener(t *testing.T) {
 func TestRemoveListenersAsync(t *testing.T) {
 	evsw := NewEventSwitch()
 	err := evsw.Start()
-	if err != nil {
-		t.Errorf("Failed to start EventSwitch, error: %v", err)
-	}
+	require.NoError(t, err)
+	defer evsw.Stop()
+
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -351,7 +401,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 // until the receiving channel `numbers` is closed; it then sends the sum
 // on `doneSum` and closes that channel.  Expected to be run in a go-routine.
 func sumReceivedNumbers(numbers, doneSum chan uint64) {
-	var sum uint64 = 0
+	var sum uint64
 	for {
 		j, more := <-numbers
 		sum += j
@@ -370,7 +420,7 @@ func sumReceivedNumbers(numbers, doneSum chan uint64) {
 // the test to assert all events have also been received.
 func fireEvents(evsw EventSwitch, event string, doneChan chan uint64,
 	offset uint64) {
-	var sentSum uint64 = 0
+	var sentSum uint64
 	for i := offset; i <= offset+uint64(999); i++ {
 		sentSum += i
 		evsw.FireEvent(event, i)

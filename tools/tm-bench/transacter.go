@@ -1,11 +1,14 @@
 package main
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
+	// it is ok to use math/rand here: we do not need a cryptographically secure random
+	// number generator here and we can run the tests a bit faster
 	"math/rand"
 	"net"
 	"net/http"
@@ -154,12 +157,12 @@ func (t *transacter) sendLoop(connIndex int) {
 	}()
 
 	// hash of the host name is a part of each tx
-	var hostnameHash [md5.Size]byte
+	var hostnameHash [sha256.Size]byte
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "127.0.0.1"
 	}
-	hostnameHash = md5.Sum([]byte(hostname))
+	hostnameHash = sha256.Sum256([]byte(hostname))
 	// each transaction embeds connection index, tx number and hash of the hostname
 	// we update the tx number between successive txs
 	tx := generateTx(connIndex, txNumber, t.Size, hostnameHash)
@@ -191,7 +194,7 @@ func (t *transacter) sendLoop(connIndex int) {
 				c.SetWriteDeadline(now.Add(sendTimeout))
 				err = c.WriteJSON(rpctypes.RPCRequest{
 					JSONRPC: "2.0",
-					ID:      "tm-bench",
+					ID:      rpctypes.JSONRPCStringID("tm-bench"),
 					Method:  t.BroadcastTxMethod,
 					Params:  rawParamsJSON,
 				})
@@ -257,7 +260,7 @@ func connect(host string) (*websocket.Conn, *http.Response, error) {
 	return websocket.DefaultDialer.Dial(u.String(), nil)
 }
 
-func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [md5.Size]byte) []byte {
+func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Size]byte) []byte {
 	tx := make([]byte, txSize)
 
 	binary.PutUvarint(tx[:8], uint64(connIndex))
@@ -266,7 +269,7 @@ func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [md5.Size]
 	binary.PutUvarint(tx[32:40], uint64(time.Now().Unix()))
 
 	// 40-* random data
-	if _, err := rand.Read(tx[40:]); err != nil {
+	if _, err := rand.Read(tx[40:]); err != nil { //nolint: gosec
 		panic(errors.Wrap(err, "failed to read random bytes"))
 	}
 

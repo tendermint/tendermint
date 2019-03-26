@@ -5,7 +5,9 @@ import (
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -19,6 +21,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.Status()
 // ```
 //
@@ -30,6 +37,11 @@ import (
 // "id": "",
 // "result": {
 //   "node_info": {
+//   		"protocol_version": {
+//   			"p2p": "4",
+//   			"block": "7",
+//   			"app": "0"
+//   		},
 //   		"id": "53729852020041b956e86685e24394e0bee4373f",
 //   		"listen_addr": "10.0.2.15:26656",
 //   		"network": "test-chain-Y1OHx6",
@@ -37,10 +49,6 @@ import (
 //   		"channels": "4020212223303800",
 //   		"moniker": "ubuntu-xenial",
 //   		"other": {
-//   			"amino_version": "0.12.0",
-//   			"p2p_version": "0.5.0",
-//   			"consensus_version": "v1/0.2.2",
-//   			"rpc_version": "0.7.0/3",
 //   			"tx_index": "on",
 //   			"rpc_addr": "tcp://0.0.0.0:26657"
 //   		}
@@ -63,8 +71,8 @@ import (
 //   }
 // }
 // ```
-func Status() (*ctypes.ResultStatus, error) {
-	var latestHeight int64 = -1
+func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
+	var latestHeight int64
 	if consensusReactor.FastSync() {
 		latestHeight = blockStore.Height()
 	} else {
@@ -91,7 +99,7 @@ func Status() (*ctypes.ResultStatus, error) {
 	}
 
 	result := &ctypes.ResultStatus{
-		NodeInfo: p2pTransport.NodeInfo(),
+		NodeInfo: p2pTransport.NodeInfo().(p2p.DefaultNodeInfo),
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   latestBlockHash,
 			LatestAppHash:     latestAppHash,

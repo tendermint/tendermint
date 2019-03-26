@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
 )
@@ -51,8 +52,7 @@ Examples:
 
 	if verbose {
 		if outputFormat == "json" {
-			fmt.Fprintln(os.Stderr, "Verbose mode not supported with json output.")
-			os.Exit(1)
+			printErrorAndExit("Verbose mode not supported with json output.")
 		}
 		// Color errors red
 		colorFn := func(keyvals ...interface{}) term.FgBgColor {
@@ -69,21 +69,13 @@ Examples:
 	}
 
 	if txSize < 40 {
-		fmt.Fprintln(
-			os.Stderr,
-			"The size of a transaction must be greater than or equal to 40.",
-		)
-		os.Exit(1)
+		printErrorAndExit("The size of a transaction must be greater than or equal to 40.")
 	}
 
 	if broadcastTxMethod != "async" &&
 		broadcastTxMethod != "sync" &&
 		broadcastTxMethod != "commit" {
-		fmt.Fprintln(
-			os.Stderr,
-			"broadcast-tx-method should be either 'sync', 'async' or 'commit'.",
-		)
-		os.Exit(1)
+		printErrorAndExit("broadcast-tx-method should be either 'sync', 'async' or 'commit'.")
 	}
 
 	var (
@@ -101,7 +93,14 @@ Examples:
 		"broadcast_tx_"+broadcastTxMethod,
 	)
 
-	// Wait until transacters have begun until we get the start time
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
+		for _, t := range transacters {
+			t.Stop()
+		}
+	})
+
+	// Wait until transacters have begun until we get the start time.
 	timeStart := time.Now()
 	logger.Info("Time last transacter started", "t", timeStart)
 
@@ -128,8 +127,7 @@ Examples:
 		durationInt,
 	)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		printErrorAndExit(err.Error())
 	}
 
 	printStatistics(stats, outputFormat)
@@ -180,4 +178,9 @@ func startTransacters(
 	wg.Wait()
 
 	return transacters
+}
+
+func printErrorAndExit(err string) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }

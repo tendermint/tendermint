@@ -131,27 +131,13 @@ func (pdb *prefixDB) ReverseIterator(start, end []byte) Iterator {
 	defer pdb.mtx.Unlock()
 
 	var pstart, pend []byte
-	if start == nil {
-		// This may cause the underlying iterator to start with
-		// an item which doesn't start with prefix.  We will skip
-		// that item later in this function. See 'skipOne'.
-		pstart = cpIncr(pdb.prefix)
-	} else {
-		pstart = append(cp(pdb.prefix), start...)
-	}
+	pstart = append(cp(pdb.prefix), start...)
 	if end == nil {
-		// This may cause the underlying iterator to end with an
-		// item which doesn't start with prefix.  The
-		// prefixIterator will terminate iteration
-		// automatically upon detecting this.
-		pend = cpDecr(pdb.prefix)
+		pend = cpIncr(pdb.prefix)
 	} else {
 		pend = append(cp(pdb.prefix), end...)
 	}
 	ritr := pdb.db.ReverseIterator(pstart, pend)
-	if start == nil {
-		skipOne(ritr, cpIncr(pdb.prefix))
-	}
 	return newPrefixIterator(
 		pdb.prefix,
 		start,
@@ -262,8 +248,14 @@ func (pb prefixBatch) WriteSync() {
 	pb.source.WriteSync()
 }
 
+func (pb prefixBatch) Close() {
+	pb.source.Close()
+}
+
 //----------------------------------------
 // prefixIterator
+
+var _ Iterator = (*prefixIterator)(nil)
 
 // Strips prefix while iterating from Iterator.
 type prefixIterator struct {
@@ -274,9 +266,9 @@ type prefixIterator struct {
 	valid  bool
 }
 
-func newPrefixIterator(prefix, start, end []byte, source Iterator) prefixIterator {
+func newPrefixIterator(prefix, start, end []byte, source Iterator) *prefixIterator {
 	if !source.Valid() || !bytes.HasPrefix(source.Key(), prefix) {
-		return prefixIterator{
+		return &prefixIterator{
 			prefix: prefix,
 			start:  start,
 			end:    end,
@@ -284,7 +276,7 @@ func newPrefixIterator(prefix, start, end []byte, source Iterator) prefixIterato
 			valid:  false,
 		}
 	} else {
-		return prefixIterator{
+		return &prefixIterator{
 			prefix: prefix,
 			start:  start,
 			end:    end,
@@ -294,41 +286,40 @@ func newPrefixIterator(prefix, start, end []byte, source Iterator) prefixIterato
 	}
 }
 
-func (itr prefixIterator) Domain() (start []byte, end []byte) {
+func (itr *prefixIterator) Domain() (start []byte, end []byte) {
 	return itr.start, itr.end
 }
 
-func (itr prefixIterator) Valid() bool {
+func (itr *prefixIterator) Valid() bool {
 	return itr.valid && itr.source.Valid()
 }
 
-func (itr prefixIterator) Next() {
+func (itr *prefixIterator) Next() {
 	if !itr.valid {
 		panic("prefixIterator invalid, cannot call Next()")
 	}
 	itr.source.Next()
 	if !itr.source.Valid() || !bytes.HasPrefix(itr.source.Key(), itr.prefix) {
-		itr.source.Close()
 		itr.valid = false
 		return
 	}
 }
 
-func (itr prefixIterator) Key() (key []byte) {
+func (itr *prefixIterator) Key() (key []byte) {
 	if !itr.valid {
 		panic("prefixIterator invalid, cannot call Key()")
 	}
 	return stripPrefix(itr.source.Key(), itr.prefix)
 }
 
-func (itr prefixIterator) Value() (value []byte) {
+func (itr *prefixIterator) Value() (value []byte) {
 	if !itr.valid {
 		panic("prefixIterator invalid, cannot call Value()")
 	}
 	return itr.source.Value()
 }
 
-func (itr prefixIterator) Close() {
+func (itr *prefixIterator) Close() {
 	itr.source.Close()
 }
 
@@ -342,14 +333,4 @@ func stripPrefix(key []byte, prefix []byte) (stripped []byte) {
 		panic("should not happne")
 	}
 	return key[len(prefix):]
-}
-
-// If the first iterator item is skipKey, then
-// skip it.
-func skipOne(itr Iterator, skipKey []byte) {
-	if itr.Valid() {
-		if bytes.Equal(itr.Key(), skipKey) {
-			itr.Next()
-		}
-	}
 }

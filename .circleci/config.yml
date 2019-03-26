@@ -3,9 +3,16 @@ version: 2
 defaults: &defaults
   working_directory: /go/src/github.com/tendermint/tendermint
   docker:
-    - image: circleci/golang:1.10.3
+    - image: circleci/golang:1.12.0
   environment:
     GOBIN: /tmp/workspace/bin
+
+docs_update_config: &docs_update_config
+  working_directory: ~/repo
+  docker:
+    - image: tendermintdev/jq_curl
+  environment:
+    AWS_REGION: us-east-1
 
 jobs:
   setup_dependencies:
@@ -41,10 +48,10 @@ jobs:
           key: v3-pkg-cache
           paths:
             - /go/pkg
-      # - save_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      #     paths:
-      #       - /go/src/github.com/tendermint/tendermint
+      - save_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - /go/src/github.com/tendermint/tendermint
 
   build_slate:
     <<: *defaults
@@ -53,23 +60,8 @@ jobs:
           at: /tmp/workspace
       - restore_cache:
           key: v3-pkg-cache
-      # https://discuss.circleci.com/t/saving-cache-stopped-working-warning-skipping-this-step-disabled-in-configuration/24423/2
-      # - restore_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run:
-          name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: slate docs
           command: |
@@ -84,28 +76,14 @@ jobs:
           at: /tmp/workspace
       - restore_cache:
           key: v3-pkg-cache
-      # - restore_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run:
-          name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: metalinter
           command: |
             set -ex
             export PATH="$GOBIN:$PATH"
-            make metalinter
+            make lint
       - run:
           name: check_dep
           command: |
@@ -120,22 +98,8 @@ jobs:
           at: /tmp/workspace
       - restore_cache:
           key: v3-pkg-cache
-      # - restore_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run:
-          name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run abci apps tests
           command: |
@@ -151,22 +115,8 @@ jobs:
           at: /tmp/workspace
       - restore_cache:
           key: v3-pkg-cache
-      # - restore_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run:
-          name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run abci-cli tests
           command: |
@@ -180,22 +130,8 @@ jobs:
           at: /tmp/workspace
       - restore_cache:
           key: v3-pkg-cache
-      # - restore_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run:
-          name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
       - run:
           name: Run tests
@@ -209,22 +145,8 @@ jobs:
           at: /tmp/workspace
       - restore_cache:
           key: v3-pkg-cache
-      # - restore_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run:
-          name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: mkdir -p /tmp/logs
       - run:
           name: Run tests
@@ -232,7 +154,7 @@ jobs:
             for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
 
-              GOCACHE=off go test -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+              go test -v -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
@@ -248,22 +170,8 @@ jobs:
           at: /tmp/workspace
       - restore_cache:
           key: v3-pkg-cache
-      # - restore_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run:
-          name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
           command: bash test/persist/test_failure_indices.sh
@@ -284,9 +192,7 @@ jobs:
             name: run localnet and exit on failure
             command: |
               set -x
-              make get_tools
-              make get_vendor_deps
-              make build-linux
+              docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang:1.11.4 make build-linux
               make localnet-start &
               ./scripts/localnet-blocks-test.sh 40 5 10 localhost
 
@@ -301,28 +207,18 @@ jobs:
       - run: mkdir -p $GOPATH/src/github.com/tendermint
       - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
       - run: bash test/p2p/circleci.sh
+      - store_artifacts:
+          path: /home/circleci/project/test/p2p/logs
 
   upload_coverage:
     <<: *defaults
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      # - restore_cache:
-      #     key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run:
-          name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-
+      - restore_cache:
+          key: v3-pkg-cache
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: gather
           command: |
@@ -336,10 +232,40 @@ jobs:
           name: upload
           command: bash .circleci/codecov.sh -f coverage.txt
 
+  deploy_docs:
+    <<: *docs_update_config
+    steps:
+      - checkout
+      - run:
+          name: Trigger website build
+          command: |
+            curl --silent \
+                 --show-error \
+                 -X POST \
+                 --header "Content-Type: application/json" \
+                 -d "{\"branch\": \"$CIRCLE_BRANCH\"}" \
+                 "https://circleci.com/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$WEBSITE_REPO_NAME/build?circle-token=$TENDERBOT_API_TOKEN" > response.json
+
+            RESULT=`jq -r '.status' response.json`
+            MESSAGE=`jq -r '.message' response.json`
+
+            if [[ ${RESULT} == "null" ]] || [[ ${RESULT} -ne "200" ]]; then
+                echo "CircleCI API call failed: $MESSAGE"
+                exit 1
+            else
+                echo "Website build started"
+            fi
+
 workflows:
   version: 2
   test-suite:
     jobs:
+      - deploy_docs:
+          filters:
+            branches:
+              only:
+                - master
+                - develop
       - setup_dependencies
       - lint:
           requires:

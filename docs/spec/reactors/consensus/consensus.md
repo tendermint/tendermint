@@ -26,7 +26,7 @@ only to a subset of processes called peers. By the gossiping protocol, a validat
 all needed information (`ProposalMessage`, `VoteMessage` and `BlockPartMessage`) so they can
 reach agreement on some block, and also obtain the content of the chosen block (block parts). As
 part of the gossiping protocol, processes also send auxiliary messages that inform peers about the
-executed steps of the core consensus algorithm (`NewRoundStepMessage` and `CommitStepMessage`), and
+executed steps of the core consensus algorithm (`NewRoundStepMessage` and `NewValidBlockMessage`), and
 also messages that inform peers what votes the process has seen (`HasVoteMessage`,
 `VoteSetMaj23Message` and `VoteSetBitsMessage`). These messages are then used in the gossiping
 protocol to determine what messages a process should send to its peers.
@@ -47,24 +47,20 @@ type ProposalMessage struct {
 ### Proposal
 
 Proposal contains height and round for which this proposal is made, BlockID as a unique identifier
-of proposed block, timestamp, and two fields (POLRound and POLBlockID) that are needed for
-termination of the consensus. The message is signed by the validator private key.
+of proposed block, timestamp, and POLRound (a so-called Proof-of-Lock (POL) round) that is needed for
+termination of the consensus. If POLRound >= 0, then BlockID corresponds to the block that 
+is locked in POLRound. The message is signed by the validator private key.
 
 ```go
 type Proposal struct {
     Height           int64
     Round            int
-    Timestamp        Time
-    BlockID          BlockID
     POLRound         int
-    POLBlockID       BlockID
+    BlockID          BlockID
+    Timestamp        Time
     Signature        Signature
 }
 ```
-
-NOTE: In the current version of the Tendermint, the consensus value in proposal is represented with
-PartSetHeader, and with BlockID in vote message. It should be aligned as suggested in this spec as
-BlockID contains PartSetHeader.
 
 ## VoteMessage
 
@@ -93,33 +89,6 @@ type BlockPartMessage struct {
 }
 ```
 
-## ProposalHeartbeatMessage
-
-ProposalHeartbeatMessage is sent to signal that a node is alive and waiting for transactions
-to be able to create a next block proposal.
-
-```go
-type ProposalHeartbeatMessage struct {
-    Heartbeat Heartbeat
-}
-```
-
-### Heartbeat
-
-Heartbeat contains validator information (address and index),
-height, round and sequence number. It is signed by the private key of the validator.
-
-```go
-type Heartbeat struct {
-    ValidatorAddress []byte
-    ValidatorIndex   int
-    Height           int64
-    Round            int
-    Sequence         int
-    Signature        Signature
-}
-```
-
 ## NewRoundStepMessage
 
 NewRoundStepMessage is sent for every step transition during the core consensus algorithm execution.
@@ -136,22 +105,25 @@ type NewRoundStepMessage struct {
 }
 ```
 
-## CommitStepMessage
+## NewValidBlockMessage
 
-CommitStepMessage is sent when an agreement on some block is reached. It contains height for which
-agreement is reached, block parts header that describes the decided block and is used to obtain all
+NewValidBlockMessage is sent when a validator observes a valid block B in some round r, 
+i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
+It contains height and round in which valid block is observed, block parts header that describes 
+the valid block and is used to obtain all
 block parts, and a bit array of the block parts a process currently has, so its peers can know what
 parts it is missing so they can send them.
+In case the block is also committed, then IsCommit flag is set to true.
 
 ```go
-type CommitStepMessage struct {
+type NewValidBlockMessage struct {
     Height           int64
-    BlockID          BlockID
+    Round            int    
+    BlockPartsHeader PartSetHeader
     BlockParts       BitArray
+    IsCommit         bool
 }
 ```
-
-TODO: We use BlockID instead of BlockPartsHeader (in current implementation) for symmetry.
 
 ## ProposalPOLMessage
 

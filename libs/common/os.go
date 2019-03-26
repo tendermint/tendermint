@@ -34,21 +34,24 @@ func GoPath() string {
 	return path
 }
 
-// TrapSignal catches the SIGTERM and executes cb function. After that it exits
-// with code 1.
-func TrapSignal(cb func()) {
+type logger interface {
+	Info(msg string, keyvals ...interface{})
+}
+
+// TrapSignal catches the SIGTERM/SIGINT and executes cb function. After that it exits
+// with code 0.
+func TrapSignal(logger logger, cb func()) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		for sig := range c {
-			fmt.Printf("captured %v, exiting...\n", sig)
+			logger.Info(fmt.Sprintf("captured %v, exiting...", sig))
 			if cb != nil {
 				cb()
 			}
-			os.Exit(1)
+			os.Exit(0)
 		}
 	}()
-	select {}
 }
 
 // Kill the running process by sending itself SIGTERM.

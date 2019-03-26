@@ -1,7 +1,8 @@
 # Security
 
 As part of our [Coordinated Vulnerability Disclosure
-Policy](https://tendermint.com/security), we operate a bug bounty.
+Policy](https://tendermint.com/security), we operate a [bug
+bounty](https://hackerone.com/tendermint).
 See the policy for more details on submissions and rewards.
 
 Here is a list of examples of the kinds of bugs we're most interested in:

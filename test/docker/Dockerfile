@@ -14,6 +14,7 @@ ENV GOBIN $GOPATH/bin
 WORKDIR $REPO
 
 # Copy in the code
+# TODO: rewrite to only copy Makefile & other files?
 COPY . $REPO
 
 # Install the vendored dependencies
@@ -21,15 +22,17 @@ COPY . $REPO
 RUN make get_tools
 RUN make get_vendor_deps
 
-# Now copy in the code
-# NOTE: this will overwrite whatever is in vendor/
-COPY . $REPO
-
 # install ABCI CLI
 RUN make install_abci
 
 # install Tendermint
 RUN make install
+
+RUN tendermint testnet --node-dir-prefix="mach" --v=4 --populate-persistent-peers=false --o=$REPO/test/p2p/data
+
+# Now copy in the code
+# NOTE: this will overwrite whatever is in vendor/
+COPY . $REPO
 
 # expose the volume for debugging
 VOLUME $REPO

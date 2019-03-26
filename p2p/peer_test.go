@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -18,8 +18,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
-
-const testCh = 0x01
 
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -41,7 +39,7 @@ func TestPeerBasic(t *testing.T) {
 	assert.False(p.IsPersistent())
 	p.persistent = true
 	assert.True(p.IsPersistent())
-	assert.Equal(rp.Addr().DialString(), p.Addr().String())
+	assert.Equal(rp.Addr().DialString(), p.RemoteAddr().String())
 	assert.Equal(rp.ID(), p.ID())
 }
 
@@ -81,18 +79,14 @@ func createOutboundPeerAndPerformHandshake(
 	if err != nil {
 		return nil, err
 	}
-	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		ID:       addr.ID,
-		Moniker:  "host_peer",
-		Network:  "testing",
-		Version:  "123.123.123",
-		Channels: []byte{testCh},
-	}, 1*time.Second)
+	timeout := 1 * time.Second
+	ourNodeInfo := testNodeInfo(addr.ID, "host_peer")
+	peerNodeInfo, err := handshake(pc.conn, timeout, ourNodeInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newPeer(pc, mConfig, nodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
+	p := newPeer(pc, mConfig, peerNodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }
@@ -143,9 +137,9 @@ type remotePeer struct {
 	PrivKey    crypto.PrivKey
 	Config     *config.P2PConfig
 	addr       *NetAddress
-	quit       chan struct{}
 	channels   cmn.HexBytes
 	listenAddr string
+	listener   net.Listener
 }
 
 func (rp *remotePeer) Addr() *NetAddress {
@@ -165,25 +159,45 @@ func (rp *remotePeer) Start() {
 	if e != nil {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
+	rp.listener = l
 	rp.addr = NewNetAddress(PubKeyToID(rp.PrivKey.PubKey()), l.Addr())
-	rp.quit = make(chan struct{})
 	if rp.channels == nil {
 		rp.channels = []byte{testCh}
 	}
-	go rp.accept(l)
+	go rp.accept()
 }
 
 func (rp *remotePeer) Stop() {
-	close(rp.quit)
+	rp.listener.Close()
 }
 
-func (rp *remotePeer) accept(l net.Listener) {
+func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
+	conn, err := addr.DialTimeout(1 * time.Second)
+	if err != nil {
+		return nil, err
+	}
+	pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+	_, err = handshake(pc.conn, time.Second, rp.nodeInfo())
+	if err != nil {
+		return nil, err
+	}
+	return conn, err
+}
+
+func (rp *remotePeer) accept() {
 	conns := []net.Conn{}
 
 	for {
-		conn, err := l.Accept()
+		conn, err := rp.listener.Accept()
 		if err != nil {
-			golog.Fatalf("Failed to accept conn: %+v", err)
+			golog.Printf("Failed to accept conn: %+v", err)
+			for _, conn := range conns {
+				_ = conn.Close()
+			}
+			return
 		}
 
 		pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
@@ -191,29 +205,23 @@ func (rp *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 
-		_, err = handshake(pc.conn, time.Second, NodeInfo{
-			ID:         rp.Addr().ID,
-			Moniker:    "remote_peer",
-			Network:    "testing",
-			Version:    "123.123.123",
-			ListenAddr: l.Addr().String(),
-			Channels:   rp.channels,
-		})
+		_, err = handshake(pc.conn, time.Second, rp.nodeInfo())
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}
 
 		conns = append(conns, conn)
+	}
+}
 
-		select {
-		case <-rp.quit:
-			for _, conn := range conns {
-				if err := conn.Close(); err != nil {
-					golog.Fatal(err)
-				}
-			}
-			return
-		default:
-		}
+func (rp *remotePeer) nodeInfo() NodeInfo {
+	return DefaultNodeInfo{
+		ProtocolVersion: defaultProtocolVersion,
+		ID_:             rp.Addr().ID,
+		ListenAddr:      rp.listener.Addr().String(),
+		Network:         "testing",
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        rp.channels,
+		Moniker:         "remote_peer",
 	}
 }

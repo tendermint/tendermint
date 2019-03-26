@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/multisig"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
@@ -24,9 +25,8 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 		assert.Equal(t, byterSrc.Bytes(), bz, "Amino binary vs Bytes() mismatch")
 	}
 	// Make sure we have the expected length.
-	if size != -1 {
-		assert.Equal(t, size, len(bz), "Amino binary size mismatch")
-	}
+	assert.Equal(t, size, len(bz), "Amino binary size mismatch")
+
 	// Unmarshal.
 	err = cdc.UnmarshalBinaryBare(bz, dst)
 	require.Nil(t, err, "%+v", err)
@@ -47,6 +47,8 @@ func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) 
 	require.Nil(t, err, "%+v", err)
 }
 
+// ExamplePrintRegisteredTypes refers to unknown identifier: PrintRegisteredTypes
+//nolint:govet
 func ExamplePrintRegisteredTypes() {
 	cdc.PrintTypes(os.Stdout)
 	// Output: | Type | Name | Prefix | Length | Notes |
@@ -119,11 +121,29 @@ func TestNilEncodings(t *testing.T) {
 	var e, f crypto.PrivKey
 	checkAminoJSON(t, &e, &f, true)
 	assert.EqualValues(t, e, f)
-
 }
 
 func TestPubKeyInvalidDataProperReturnsEmpty(t *testing.T) {
 	pk, err := PubKeyFromBytes([]byte("foo"))
-	require.NotNil(t, err, "expecting a non-nil error")
-	require.Nil(t, pk, "expecting an empty public key on error")
+	require.NotNil(t, err)
+	require.Nil(t, pk)
+}
+
+func TestPubkeyAminoName(t *testing.T) {
+	tests := []struct {
+		key   crypto.PubKey
+		want  string
+		found bool
+	}{
+		{ed25519.PubKeyEd25519{}, ed25519.PubKeyAminoName, true},
+		{secp256k1.PubKeySecp256k1{}, secp256k1.PubKeyAminoName, true},
+		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
+	}
+	for i, tc := range tests {
+		got, found := PubkeyAminoName(cdc, tc.key)
+		require.Equal(t, tc.found, found, "not equal on tc %d", i)
+		if tc.found {
+			require.Equal(t, tc.want, got, "not equal on tc %d", i)
+		}
+	}
 }

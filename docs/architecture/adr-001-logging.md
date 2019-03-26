@@ -52,13 +52,13 @@ On top of this interface, we will need to implement a stdout logger, which will 
 Many people say that they like the current output, so let's stick with it.
 
 ```
-NOTE[04-25|14:45:08] ABCI Replay Blocks                       module=consensus appHeight=0 storeHeight=0 stateHeight=0
+NOTE[2017-04-25|14:45:08] ABCI Replay Blocks                       module=consensus appHeight=0 storeHeight=0 stateHeight=0
 ```
 
 Couple of minor changes:
 
 ```
-I[04-25|14:45:08.322] ABCI Replay Blocks            module=consensus appHeight=0 storeHeight=0 stateHeight=0
+I[2017-04-25|14:45:08.322] ABCI Replay Blocks            module=consensus appHeight=0 storeHeight=0 stateHeight=0
 ```
 
 Notice the level is encoded using only one char plus milliseconds.
@@ -155,14 +155,14 @@ Important keyvals should go first. Example:
 
 ```
 correct
-I[04-25|14:45:08.322] ABCI Replay Blocks                       module=consensus instance=1 appHeight=0 storeHeight=0 stateHeight=0
+I[2017-04-25|14:45:08.322] ABCI Replay Blocks                       module=consensus instance=1 appHeight=0 storeHeight=0 stateHeight=0
 ```
 
 not
 
 ```
 wrong
-I[04-25|14:45:08.322] ABCI Replay Blocks                       module=consensus appHeight=0 storeHeight=0 stateHeight=0 instance=1
+I[2017-04-25|14:45:08.322] ABCI Replay Blocks                       module=consensus appHeight=0 storeHeight=0 stateHeight=0 instance=1
 ```
 
 for that in most cases you'll need to add `instance` field to a logger upon creating, not when u log a particular message:

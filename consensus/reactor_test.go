@@ -11,7 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/abci/client"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -22,21 +25,18 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	config = ResetConfig("consensus_reactor_test")
-}
 
 //----------------------------------------------
 // in-process testnets
 
-func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*ConsensusReactor, []chan interface{}, []*types.EventBus) {
+func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
+	[]*ConsensusReactor,
+	[]types.Subscription,
+	[]*types.EventBus,
+) {
 	reactors := make([]*ConsensusReactor, N)
-	eventChans := make([]chan interface{}, N)
+	blocksSubs := make([]types.Subscription, 0)
 	eventBuses := make([]*types.EventBus, N)
 	for i := 0; i < N; i++ {
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
@@ -48,9 +48,9 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 		eventBuses[i] = css[i].eventBus
 		reactors[i].SetEventBus(eventBuses[i])
 
-		eventChans[i] = make(chan interface{}, 1)
-		err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
+		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
+		blocksSubs = append(blocksSubs, blocksSub)
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
@@ -67,7 +67,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 		s := reactors[i].conS.GetState()
 		reactors[i].SwitchToConsensus(s, 0)
 	}
-	return reactors, eventChans, eventBuses
+	return reactors, blocksSubs, eventBuses
 }
 
 func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuses []*types.EventBus) {
@@ -86,17 +86,21 @@ func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuse
 // Ensure a testnet makes blocks
 func TestReactorBasic(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	defer cleanup()
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N, func(j int) {
-		<-eventChans[j]
+		<-blocksSubs[j].Out()
 	}, css)
 }
 
 // Ensure we can process blocks with evidence
 func TestReactorWithEvidence(t *testing.T) {
+	types.RegisterMockEvidences(cdc)
+	types.RegisterMockEvidences(types.GetCodec())
+
 	nValidators := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
@@ -113,6 +117,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		defer os.RemoveAll(thisConfig.RootDir)
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
@@ -140,7 +145,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		evpool := newMockEvidencePool(privVals[vIdx].GetAddress())
+		addr := privVals[vIdx].GetPubKey().Address()
+		evpool := newMockEvidencePool(addr)
 
 		// Make ConsensusState
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -159,20 +165,20 @@ func TestReactorWithEvidence(t *testing.T) {
 		css[i] = cs
 	}
 
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, nValidators)
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// wait till everyone makes the first new block with no evidence
 	timeoutWaitGroup(t, nValidators, func(j int) {
-		blockI := <-eventChans[j]
-		block := blockI.(types.EventDataNewBlock).Block
+		msg := <-blocksSubs[j].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
 		assert.True(t, len(block.Evidence.Evidence) == 0)
 	}, css)
 
 	// second block should have evidence
 	timeoutWaitGroup(t, nValidators, func(j int) {
-		blockI := <-eventChans[j]
-		block := blockI.(types.EventDataNewBlock).Block
+		msg := <-blocksSubs[j].Out()
+		block := msg.Data().(types.EventDataNewBlock).Block
 		assert.True(t, len(block.Evidence.Evidence) > 0)
 	}, css)
 }
@@ -207,51 +213,43 @@ func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
 	}
 	m.height++
 }
+func (m *mockEvidencePool) IsCommitted(types.Evidence) bool { return false }
 
 //------------------------------------
 
-// Ensure a testnet sends proposal heartbeats and makes blocks when there are txs
-func TestReactorProposalHeartbeats(t *testing.T) {
+// Ensure a testnet makes blocks when there are txs
+func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
 		func(c *cfg.Config) {
 			c.Consensus.CreateEmptyBlocks = false
 		})
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
+	defer cleanup()
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-	heartbeatChans := make([]chan interface{}, N)
-	var err error
-	for i := 0; i < N; i++ {
-		heartbeatChans[i] = make(chan interface{}, 1)
-		err = eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryProposalHeartbeat, heartbeatChans[i])
-		require.NoError(t, err)
-	}
-	// wait till everyone sends a proposal heartbeat
-	timeoutWaitGroup(t, N, func(j int) {
-		<-heartbeatChans[j]
-	}, css)
 
 	// send a tx
-	if err := css[3].mempool.CheckTx([]byte{1, 2, 3}, nil); err != nil {
+	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil); err != nil {
 		//t.Fatal(err)
 	}
 
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N, func(j int) {
-		<-eventChans[j]
+		<-blocksSubs[j].Out()
 	}, css)
 }
 
 // Test we record stats about votes and block parts from other peers.
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	defer cleanup()
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N, func(j int) {
-		<-eventChans[j]
+		<-blocksSubs[j].Out()
 	}, css)
 
 	// Get peer
@@ -269,19 +267,21 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 func TestReactorVotingPowerChange(t *testing.T) {
 	nVals := 4
 	logger := log.TestingLogger()
-	css := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentKVStore)
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, nVals)
+	css, cleanup := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	defer cleanup()
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nVals)
 	defer stopConsensusNet(logger, reactors, eventBuses)
 
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		activeVals[string(css[i].privValidator.GetAddress())] = struct{}{}
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
 	timeoutWaitGroup(t, nVals, func(j int) {
-		<-eventChans[j]
+		<-blocksSubs[j].Out()
 	}, css)
 
 	//---------------------------------------------------------------------------
@@ -292,10 +292,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
 	previousTotalVotingPower := css[0].GetRoundState().LastValidators.TotalVotingPower()
 
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
-	waitForAndValidateBlockWithTx(t, nVals, activeVals, eventChans, css, updateValidatorTx)
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
+	waitForAndValidateBlockWithTx(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
 		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
@@ -304,10 +304,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
 
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
-	waitForAndValidateBlockWithTx(t, nVals, activeVals, eventChans, css, updateValidatorTx)
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
+	waitForAndValidateBlockWithTx(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
 		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
@@ -316,10 +316,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
 
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
-	waitForAndValidateBlockWithTx(t, nVals, activeVals, eventChans, css, updateValidatorTx)
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
-	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
+	waitForAndValidateBlockWithTx(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
+	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
 		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
@@ -329,22 +329,23 @@ func TestReactorVotingPowerChange(t *testing.T) {
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
-
+	css, cleanup := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	defer cleanup()
 	logger := log.TestingLogger()
 
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, nPeers)
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nPeers)
 	defer stopConsensusNet(logger, reactors, eventBuses)
 
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		activeVals[string(css[i].privValidator.GetAddress())] = struct{}{}
+		addr := css[i].privValidator.GetPubKey().Address()
+		activeVals[string(addr)] = struct{}{}
 	}
 
 	// wait till everyone makes block 1
 	timeoutWaitGroup(t, nPeers, func(j int) {
-		<-eventChans[j]
+		<-blocksSubs[j].Out()
 	}, css)
 
 	//---------------------------------------------------------------------------
@@ -357,22 +358,22 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
 	// send newValTx to change vals in block 3
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx1)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx1)
 
 	// wait till everyone makes block 3.
 	// it includes the commit for block 2, which is by the original validator set
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, newValidatorTx1)
+	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, newValidatorTx1)
 
 	// wait till everyone makes block 4.
 	// it includes the commit for block 3, which is by the original validator set
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
 
 	// the commits for block 4 should be with the updated validator set
 	activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
 
 	// wait till everyone makes block 5
 	// it includes the commit for block 4, which should have the updated validator set
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing changing the voting power of one validator")
@@ -382,10 +383,10 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
 
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateValidatorTx1)
+	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, updateValidatorTx1)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 
 	if css[nVals].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
 		t.Errorf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[nVals].GetRoundState().LastValidators.TotalVotingPower())
@@ -402,12 +403,12 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx2, newValidatorTx3)
+	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, newValidatorTx2, newValidatorTx3)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
 	activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
 	activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing removing two validators at once")
@@ -415,61 +416,70 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
 
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, removeValidatorTx2, removeValidatorTx3)
+	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, removeValidatorTx2, removeValidatorTx3)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
 	delete(activeVals, string(newValidatorPubKey2.Address()))
 	delete(activeVals, string(newValidatorPubKey3.Address()))
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 }
 
 // Check we can make blocks with skip_timeout_commit=false
 func TestReactorWithTimeoutCommit(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newCounter)
+	css, cleanup := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newCounter)
+	defer cleanup()
 	// override default SkipTimeoutCommit == true for tests
 	for i := 0; i < N; i++ {
 		css[i].config.SkipTimeoutCommit = false
 	}
 
-	reactors, eventChans, eventBuses := startConsensusNet(t, css, N-1)
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N-1)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N-1, func(j int) {
-		<-eventChans[j]
+		<-blocksSubs[j].Out()
 	}, css)
 }
 
-func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
+func waitForAndValidateBlock(
+	t *testing.T,
+	n int,
+	activeVals map[string]struct{},
+	blocksSubs []types.Subscription,
+	css []*ConsensusState,
+	txs ...[]byte,
+) {
 	timeoutWaitGroup(t, n, func(j int) {
 		css[j].Logger.Debug("waitForAndValidateBlock")
-		newBlockI, ok := <-eventChans[j]
-		if !ok {
-			return
-		}
-		newBlock := newBlockI.(types.EventDataNewBlock).Block
+		msg := <-blocksSubs[j].Out()
+		newBlock := msg.Data().(types.EventDataNewBlock).Block
 		css[j].Logger.Debug("waitForAndValidateBlock: Got block", "height", newBlock.Height)
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
 		for _, tx := range txs {
-			err := css[j].mempool.CheckTx(tx, nil)
+			err := assertMempool(css[j].txNotifier).CheckTx(tx, nil)
 			assert.Nil(t, err)
 		}
 	}, css)
 }
 
-func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
+func waitForAndValidateBlockWithTx(
+	t *testing.T,
+	n int,
+	activeVals map[string]struct{},
+	blocksSubs []types.Subscription,
+	css []*ConsensusState,
+	txs ...[]byte,
+) {
 	timeoutWaitGroup(t, n, func(j int) {
 		ntxs := 0
 	BLOCK_TX_LOOP:
 		for {
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx", "ntxs", ntxs)
-			newBlockI, ok := <-eventChans[j]
-			if !ok {
-				return
-			}
-			newBlock := newBlockI.(types.EventDataNewBlock).Block
+			msg := <-blocksSubs[j].Out()
+			newBlock := msg.Data().(types.EventDataNewBlock).Block
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx: Got block", "height", newBlock.Height)
 			err := validateBlock(newBlock, activeVals)
 			assert.Nil(t, err)
@@ -490,18 +500,21 @@ func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]st
 	}, css)
 }
 
-func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState) {
+func waitForBlockWithUpdatedValsAndValidateIt(
+	t *testing.T,
+	n int,
+	updatedVals map[string]struct{},
+	blocksSubs []types.Subscription,
+	css []*ConsensusState,
+) {
 	timeoutWaitGroup(t, n, func(j int) {
 
 		var newBlock *types.Block
 	LOOP:
 		for {
 			css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt")
-			newBlockI, ok := <-eventChans[j]
-			if !ok {
-				return
-			}
-			newBlock = newBlockI.(types.EventDataNewBlock).Block
+			msg := <-blocksSubs[j].Out()
+			newBlock = msg.Data().(types.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP

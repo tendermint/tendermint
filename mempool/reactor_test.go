@@ -7,19 +7,25 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/go-kit/kit/log/term"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/go-kit/kit/log/term"
-
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	"github.com/tendermint/tendermint/libs/log"
-
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
+
+type peerState struct {
+	height int64
+}
+
+func (ps peerState) GetHeight() int64 {
+	return ps.height
+}
 
 // mempoolLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
@@ -41,7 +47,8 @@ func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor 
 	for i := 0; i < N; i++ {
 		app := kvstore.NewKVStoreApplication()
 		cc := proxy.NewLocalClientCreator(app)
-		mempool := newMempoolWithApp(cc)
+		mempool, cleanup := newMempoolWithApp(cc)
+		defer cleanup()
 
 		reactors[i] = NewMempoolReactor(config.Mempool, mempool) // so we dont start the consensus states
 		reactors[i].SetLogger(logger.With("validator", i))
@@ -93,6 +100,12 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 	wg.Done()
 }
 
+// ensure no txs on reactor after some timeout
+func ensureNoTxs(t *testing.T, reactor *MempoolReactor, timeout time.Duration) {
+	time.Sleep(timeout) // wait for the txs in all mempools
+	assert.Zero(t, reactor.Mempool.Size())
+}
+
 const (
 	NUM_TXS = 1000
 	TIMEOUT = 120 * time.Second // ridiculously high because CircleCI is slow
@@ -107,11 +120,32 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 			r.Stop()
 		}
 	}()
+	for _, r := range reactors {
+		for _, peer := range r.Switch.Peers().List() {
+			peer.Set(types.PeerStateKey, peerState{1})
+		}
+	}
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
-	txs := checkTxs(t, reactors[0].Mempool, NUM_TXS)
+	txs := checkTxs(t, reactors[0].Mempool, NUM_TXS, UnknownPeerID)
 	waitForTxs(t, txs, reactors)
+}
+
+func TestReactorNoBroadcastToSender(t *testing.T) {
+	config := cfg.TestConfig()
+	const N = 2
+	reactors := makeAndConnectMempoolReactors(config, N)
+	defer func() {
+		for _, r := range reactors {
+			r.Stop()
+		}
+	}()
+
+	// send a bunch of txs to the first reactor's mempool, claiming it came from peer
+	// ensure peer gets no txs
+	checkTxs(t, reactors[0].Mempool, NUM_TXS, 1)
+	ensureNoTxs(t, reactors[1], 100*time.Millisecond)
 }
 
 func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {

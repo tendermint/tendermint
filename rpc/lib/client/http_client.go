@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -74,7 +74,9 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 	protocol, address, dialer := makeHTTPDialer(remoteAddr)
 	return protocol + "://" + address, &http.Client{
 		Transport: &http.Transport{
-			Dial: dialer,
+			// Set to true to prevent GZIP-bomb DoS attacks
+			DisableCompression: true,
+			Dial:               dialer,
 		},
 	}
 }
@@ -99,7 +101,7 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 }
 
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	request, err := types.MapToRequest(c.cdc, "jsonrpc-client", method, params)
+	request, err := types.MapToRequest(c.cdc, types.JSONRPCStringID("jsonrpc-client"), method, params)
 	if err != nil {
 		return nil, err
 	}

@@ -47,7 +47,6 @@ func TestPaginationPage(t *testing.T) {
 }
 
 func TestPaginationPerPage(t *testing.T) {
-
 	cases := []struct {
 		totalCount int
 		perPage    int
@@ -59,7 +58,7 @@ func TestPaginationPerPage(t *testing.T) {
 		{5, defaultPerPage, defaultPerPage},
 		{5, maxPerPage - 1, maxPerPage - 1},
 		{5, maxPerPage, maxPerPage},
-		{5, maxPerPage + 1, defaultPerPage},
+		{5, maxPerPage + 1, maxPerPage},
 	}
 
 	for _, c := range cases {

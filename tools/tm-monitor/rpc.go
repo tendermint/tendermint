@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"net"
 	"net/http"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -9,16 +10,20 @@ import (
 	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
 )
 
-func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) {
+func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) net.Listener {
 	routes := routes(m)
 
 	mux := http.NewServeMux()
 	wm := rpc.NewWebsocketManager(routes, nil)
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 	rpc.RegisterRPCFuncs(mux, routes, cdc, logger)
-	if _, err := rpc.StartHTTPServer(listenAddr, mux, logger, rpc.Config{}); err != nil {
+	config := rpc.DefaultConfig()
+	listener, err := rpc.Listen(listenAddr, config)
+	if err != nil {
 		panic(err)
 	}
+	go rpc.StartHTTPServer(listener, mux, logger, config)
+	return listener
 }
 
 func routes(m *monitor.Monitor) map[string]*rpc.RPCFunc {

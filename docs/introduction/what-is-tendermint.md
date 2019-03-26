@@ -70,10 +70,6 @@ Tendermint is in essence similar software, but with two key differences:
   the application logic that's right for them, from key-value store to
   cryptocurrency to e-voting platform and beyond.
 
-The layout of this Tendermint website content is also ripped directly
-and without shame from [consul.io](https://www.consul.io/) and the other
-[Hashicorp sites](https://www.hashicorp.com/#tools).
-
 ### Bitcoin, Ethereum, etc.
 
 Tendermint emerged in the tradition of cryptocurrencies like Bitcoin,

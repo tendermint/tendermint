@@ -45,7 +45,9 @@ include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
 something about what happened during the methods execution.
 
 Tags can be used to index transactions and blocks according to what happened
-during their execution.
+during their execution. Note that the set of tags returned for a block from
+`BeginBlock` and `EndBlock` are merged. In case both methods return the same
+tag, only the value defined in `EndBlock` is used.
 
 Keys and values in tags must be UTF-8 encoded strings (e.g.
 "account.owner": "Bob", "balance": "100.0",
@@ -134,10 +136,13 @@ Commit are included in the header of the next block.
 ### Info
 
 - **Request**:
-  - `Version (string)`: The Tendermint version
+  - `Version (string)`: The Tendermint software semantic version
+  - `BlockVersion (uint64)`: The Tendermint Block Protocol version
+  - `P2PVersion (uint64)`: The Tendermint P2P Protocol version
 - **Response**:
   - `Data (string)`: Some arbitrary information
-  - `Version (Version)`: Version information
+  - `Version (string)`: The application software semantic version
+  - `AppVersion (uint64)`: The application protocol version
   - `LastBlockHeight (int64)`: Latest block for which the app has
     called Commit
   - `LastBlockAppHash ([]byte)`: Latest result of Commit
@@ -145,6 +150,7 @@ Commit are included in the header of the next block.
   - Return information about the application state.
   - Used to sync Tendermint with the application during a handshake
     that happens on startup.
+  - The returned `AppVersion` will be included in the Header of every block.
   - Tendermint expects `LastBlockAppHash` and `LastBlockHeight` to
     be updated during `Commit`, ensuring that `Commit` is never
     called twice for the same block height.
@@ -338,6 +344,7 @@ Commit are included in the header of the next block.
 ### Header
 
 - **Fields**:
+  - `Version (Version)`: Version of the blockchain and the application
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
   - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
@@ -362,6 +369,15 @@ Commit are included in the header of the next block.
     especially height and time.
   - Provides the proposer of the current block, for use in proposer-based
     reward mechanisms.
+
+### Version
+
+- **Fields**:
+  - `Block (uint64)`: Protocol version of the blockchain data structures.
+  - `App (uint64)`: Protocol version of the application.
+- **Usage**:
+  - Block version should be static in the life of a blockchain.
+  - App version may be updated over time by the application.
 
 ### Validator
 
@@ -427,11 +443,12 @@ Commit are included in the header of the next block.
 ###  ConsensusParams
 
 - **Fields**:
-  - `BlockSize (BlockSize)`: Parameters limiting the size of a block.
-  - `EvidenceParams (EvidenceParams)`: Parameters limiting the validity of
+  - `Block (BlockParams)`: Parameters limiting the size of a block and time between consecutive blocks.
+  - `Evidence (EvidenceParams)`: Parameters limiting the validity of
     evidence of byzantine behaviour.
+  - `Validator (ValidatorParams)`: Parameters limitng the types of pubkeys validators can use.
 
-### BlockSize
+### BlockParams
 
 - **Fields**:
   - `MaxBytes (int64)`: Max size of a block, in bytes.
@@ -448,6 +465,12 @@ Commit are included in the header of the next block.
         - This should correspond with an app's "unbonding period" or other
           similar mechanism for handling Nothing-At-Stake attacks.
         - NOTE: this should change to time (instead of blocks)!
+
+### ValidatorParams
+
+- **Fields**:
+  - `PubKeyTypes ([]string)`: List of accepted pubkey types. Uses same
+    naming as `PubKey.Type`.
 
 ### Proof
 

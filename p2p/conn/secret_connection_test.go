@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -98,6 +100,112 @@ func TestSecretConnectionHandshake(t *testing.T) {
 	}
 }
 
+// Test that shareEphPubKey rejects lower order public keys based on an
+// (incomplete) blacklist.
+func TestShareLowOrderPubkey(t *testing.T) {
+	var fooConn, barConn = makeKVStoreConnPair()
+	defer fooConn.Close()
+	defer barConn.Close()
+	locEphPub, _ := genEphKeys()
+
+	// all blacklisted low order points:
+	for _, remLowOrderPubKey := range blacklist {
+		_, _ = cmn.Parallel(
+			func(_ int) (val interface{}, err error, abort bool) {
+				_, err = shareEphPubKey(fooConn, locEphPub)
+
+				require.Error(t, err)
+				require.Equal(t, err, ErrSmallOrderRemotePubKey)
+
+				return nil, nil, false
+			},
+			func(_ int) (val interface{}, err error, abort bool) {
+				readRemKey, err := shareEphPubKey(barConn, &remLowOrderPubKey)
+
+				require.NoError(t, err)
+				require.Equal(t, locEphPub, readRemKey)
+
+				return nil, nil, false
+			})
+	}
+}
+
+// Test that additionally that the Diffie-Hellman shared secret is non-zero.
+// The shared secret would be zero for lower order pub-keys (but tested against the blacklist only).
+func TestComputeDHFailsOnLowOrder(t *testing.T) {
+	_, locPrivKey := genEphKeys()
+	for _, remLowOrderPubKey := range blacklist {
+		shared, err := computeDHSecret(&remLowOrderPubKey, locPrivKey)
+		assert.Error(t, err)
+
+		assert.Equal(t, err, ErrSharedSecretIsZero)
+		assert.Empty(t, shared)
+	}
+}
+
+func TestConcurrentWrite(t *testing.T) {
+	fooSecConn, barSecConn := makeSecretConnPair(t)
+	fooWriteText := cmn.RandStr(dataMaxSize)
+
+	// write from two routines.
+	// should be safe from race according to net.Conn:
+	// https://golang.org/pkg/net/#Conn
+	n := 100
+	wg := new(sync.WaitGroup)
+	wg.Add(3)
+	go writeLots(t, wg, fooSecConn, fooWriteText, n)
+	go writeLots(t, wg, fooSecConn, fooWriteText, n)
+
+	// Consume reads from bar's reader
+	readLots(t, wg, barSecConn, n*2)
+	wg.Wait()
+
+	if err := fooSecConn.Close(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestConcurrentRead(t *testing.T) {
+	fooSecConn, barSecConn := makeSecretConnPair(t)
+	fooWriteText := cmn.RandStr(dataMaxSize)
+	n := 100
+
+	// read from two routines.
+	// should be safe from race according to net.Conn:
+	// https://golang.org/pkg/net/#Conn
+	wg := new(sync.WaitGroup)
+	wg.Add(3)
+	go readLots(t, wg, fooSecConn, n/2)
+	go readLots(t, wg, fooSecConn, n/2)
+
+	// write to bar
+	writeLots(t, wg, barSecConn, fooWriteText, n)
+	wg.Wait()
+
+	if err := fooSecConn.Close(); err != nil {
+		t.Error(err)
+	}
+}
+
+func writeLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, txt string, n int) {
+	defer wg.Done()
+	for i := 0; i < n; i++ {
+		_, err := conn.Write([]byte(txt))
+		if err != nil {
+			t.Fatalf("Failed to write to fooSecConn: %v", err)
+		}
+	}
+}
+
+func readLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, n int) {
+	readBuffer := make([]byte, dataMaxSize)
+	for i := 0; i < n; i++ {
+		_, err := conn.Read(readBuffer)
+		assert.NoError(t, err)
+	}
+	wg.Done()
+}
+
 func TestSecretConnectionReadWrite(t *testing.T) {
 	fooConn, barConn := makeKVStoreConnPair()
 	fooWrites, barWrites := []string{}, []string{}
@@ -147,6 +255,10 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 					for {
 						n, err := nodeSecretConn.Read(readBuffer)
 						if err == io.EOF {
+							if err := nodeConn.PipeReader.Close(); err != nil {
+								t.Error(err)
+								return nil, err, true
+							}
 							return nil, nil, false
 						} else if err != nil {
 							t.Errorf("Failed to read from nodeSecretConn: %v", err)
@@ -154,11 +266,6 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
 					}
-					if err := nodeConn.PipeReader.Close(); err != nil {
-						t.Error(err)
-						return nil, err, true
-					}
-					return nil, nil, false
 				},
 			)
 			assert.True(t, ok, "Unexpected task abortion")
@@ -306,13 +413,4 @@ func BenchmarkSecretConnection(b *testing.B) {
 		b.Error(err)
 	}
 	//barSecConn.Close() race condition
-}
-
-func fingerprint(bz []byte) []byte {
-	const fbsize = 40
-	if len(bz) < fbsize {
-		return bz
-	} else {
-		return bz[:fbsize]
-	}
 }

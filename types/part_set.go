@@ -2,13 +2,13 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"sync"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -21,19 +21,17 @@ type Part struct {
 	Index int                `json:"index"`
 	Bytes cmn.HexBytes       `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
-
-	// Cache
-	hash []byte
 }
 
-func (part *Part) Hash() []byte {
-	if part.hash != nil {
-		return part.hash
+// ValidateBasic performs basic validation.
+func (part *Part) ValidateBasic() error {
+	if part.Index < 0 {
+		return errors.New("Negative Index")
 	}
-	hasher := tmhash.New()
-	hasher.Write(part.Bytes) // nolint: errcheck, gas
-	part.hash = hasher.Sum(nil)
-	return part.hash
+	if len(part.Bytes) > BlockPartSizeBytes {
+		return fmt.Errorf("Too big (max: %d)", BlockPartSizeBytes)
+	}
+	return nil
 }
 
 func (part *Part) String() string {
@@ -63,11 +61,23 @@ func (psh PartSetHeader) String() string {
 }
 
 func (psh PartSetHeader) IsZero() bool {
-	return psh.Total == 0
+	return psh.Total == 0 && len(psh.Hash) == 0
 }
 
 func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 	return psh.Total == other.Total && bytes.Equal(psh.Hash, other.Hash)
+}
+
+// ValidateBasic performs basic validation.
+func (psh PartSetHeader) ValidateBasic() error {
+	if psh.Total < 0 {
+		return errors.New("Negative Total")
+	}
+	// Hash can be empty in case of POLBlockID.PartsHeader in Proposal.
+	if err := ValidateHash(psh.Hash); err != nil {
+		return errors.Wrap(err, "Wrong Hash")
+	}
+	return nil
 }
 
 //-------------------------------------
@@ -88,7 +98,7 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	// divide data into 4kb parts.
 	total := (len(data) + partSize - 1) / partSize
 	parts := make([]*Part, total)
-	parts_ := make([]merkle.Hasher, total)
+	partsBytes := make([][]byte, total)
 	partsBitArray := cmn.NewBitArray(total)
 	for i := 0; i < total; i++ {
 		part := &Part{
@@ -96,11 +106,11 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 			Bytes: data[i*partSize : cmn.MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
-		parts_[i] = part
+		partsBytes[i] = part.Bytes
 		partsBitArray.SetIndex(i, true)
 	}
 	// Compute merkle proofs
-	root, proofs := merkle.SimpleProofsFromHashers(parts_)
+	root, proofs := merkle.SimpleProofsFromByteSlices(partsBytes)
 	for i := 0; i < total; i++ {
 		parts[i].Proof = *proofs[i]
 	}
@@ -176,6 +186,9 @@ func (ps *PartSet) Total() int {
 }
 
 func (ps *PartSet) AddPart(part *Part) (bool, error) {
+	if ps == nil {
+		return false, nil
+	}
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -190,7 +203,7 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	}
 
 	// Check hash proof
-	if part.Proof.Verify(ps.Hash(), part.Hash()) != nil {
+	if part.Proof.Verify(ps.Hash(), part.Bytes) != nil {
 		return false, ErrPartSetInvalidProof
 	}
 

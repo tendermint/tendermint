@@ -6,13 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/tendermint/tendermint/crypto"
 )
 
 func TestSimple(t *testing.T) {
-
-	crypto.MixEntropy([]byte("someentropy"))
 
 	plaintext := []byte("sometext")
 	secret := []byte("somesecretoflengththirtytwo===32")
@@ -24,8 +23,6 @@ func TestSimple(t *testing.T) {
 }
 
 func TestSimpleWithKDF(t *testing.T) {
-
-	crypto.MixEntropy([]byte("someentropy"))
 
 	plaintext := []byte("sometext")
 	secretPass := []byte("somesecret")

@@ -42,7 +42,7 @@ func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
 		return nil, cmn.NewError("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpSimpleValue)
 	}
 	var op SimpleValueOp // a bit strange as we'll discard this, but it works.
-	err := cdc.UnmarshalBinary(pop.Data, &op)
+	err := cdc.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
 	if err != nil {
 		return nil, cmn.ErrorWrap(err, "decoding ProofOp.Data into SimpleValueOp")
 	}
@@ -50,7 +50,7 @@ func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
 }
 
 func (op SimpleValueOp) ProofOp() ProofOp {
-	bz := cdc.MustMarshalBinary(op)
+	bz := cdc.MustMarshalBinaryLengthPrefixed(op)
 	return ProofOp{
 		Type: ProofOpSimpleValue,
 		Key:  op.key,
@@ -71,11 +71,11 @@ func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 	hasher.Write(value) // does not error
 	vhash := hasher.Sum(nil)
 
+	bz := new(bytes.Buffer)
 	// Wrap <op.Key, vhash> to hash the KVPair.
-	hasher = tmhash.New()
-	encodeByteSlice(hasher, []byte(op.key)) // does not error
-	encodeByteSlice(hasher, []byte(vhash))  // does not error
-	kvhash := hasher.Sum(nil)
+	encodeByteSlice(bz, []byte(op.key)) // does not error
+	encodeByteSlice(bz, []byte(vhash))  // does not error
+	kvhash := leafHash(bz.Bytes())
 
 	if !bytes.Equal(kvhash, op.Proof.LeafHash) {
 		return nil, cmn.NewError("leaf hash mismatch: want %X got %X", op.Proof.LeafHash, kvhash)

@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -13,6 +13,19 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
+
+const testCh = 0x01
+
+//------------------------------------------------
+
+type mockNodeInfo struct {
+	addr *NetAddress
+}
+
+func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
+func (ni mockNodeInfo) NetAddress() *NetAddress             { return ni.addr }
+func (ni mockNodeInfo) Validate() error                     { return nil }
+func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
 func AddPeerToSwitch(sw *Switch, peer Peer) {
 	sw.peers.Add(peer)
@@ -24,12 +37,9 @@ func CreateRandomPeer(outbound bool) *peer {
 		peerConn: peerConn{
 			outbound: outbound,
 		},
-		nodeInfo: NodeInfo{
-			ID:         netAddr.ID,
-			ListenAddr: netAddr.DialString(),
-		},
-		mconn:   &conn.MConnection{},
-		metrics: NopMetrics(),
+		nodeInfo: mockNodeInfo{netAddr},
+		mconn:    &conn.MConnection{},
+		metrics:  NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
@@ -115,7 +125,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		return err
 	}
 
-	ni, err := handshake(conn, 50*time.Millisecond, sw.nodeInfo)
+	ni, err := handshake(conn, time.Second, sw.nodeInfo)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)
@@ -125,7 +135,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 
 	p := newPeer(
 		pc,
-		sw.mConfig,
+		MConnConfig(sw.config),
 		ni,
 		sw.reactorsByCh,
 		sw.chDescs,
@@ -159,53 +169,34 @@ func MakeSwitch(
 	initSwitch func(int, *Switch) *Switch,
 	opts ...SwitchOption,
 ) *Switch {
-	var (
-		nodeKey = NodeKey{
-			PrivKey: ed25519.GenPrivKey(),
-		}
-		ni = NodeInfo{
-			ID:         nodeKey.ID(),
-			Moniker:    fmt.Sprintf("switch%d", i),
-			Network:    network,
-			Version:    version,
-			ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-			Other: NodeInfoOther{
-				AminoVersion:     "1.0",
-				P2PVersion:       "1.0",
-				ConsensusVersion: "1.0",
-				RPCVersion:       "1.0",
-				TxIndex:          "off",
-				RPCAddress:       fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-			},
-		}
-	)
 
-	addr, err := NewNetAddressStringWithOptionalID(
-		IDAddressString(nodeKey.ID(), ni.ListenAddr),
-	)
-	if err != nil {
-		panic(err)
+	nodeKey := NodeKey{
+		PrivKey: ed25519.GenPrivKey(),
 	}
+	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
 
-	t := NewMultiplexTransport(ni, nodeKey)
+	t := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
 
+	addr := nodeInfo.NetAddress()
 	if err := t.Listen(*addr); err != nil {
 		panic(err)
 	}
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
-	sw.SetLogger(log.TestingLogger())
+	sw.SetLogger(log.TestingLogger().With("switch", i))
 	sw.SetNodeKey(&nodeKey)
 
+	ni := nodeInfo.(DefaultNodeInfo)
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
 	}
+	nodeInfo = ni
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = ni
-	sw.SetNodeInfo(ni)
+	t.nodeInfo = nodeInfo
+	sw.SetNodeInfo(nodeInfo)
 
 	return sw
 }
@@ -241,10 +232,40 @@ func testPeerConn(
 
 	// Only the information we already have
 	return peerConn{
-		config:       cfg,
 		outbound:     outbound,
 		persistent:   persistent,
 		conn:         conn,
 		originalAddr: originalAddr,
 	}, nil
+}
+
+//----------------------------------------------------------------
+// rand node info
+
+func testNodeInfo(id ID, name string) NodeInfo {
+	return testNodeInfoWithNetwork(id, name, "testing")
+}
+
+func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
+	return DefaultNodeInfo{
+		ProtocolVersion: defaultProtocolVersion,
+		ID_:             id,
+		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
+		Network:         network,
+		Version:         "1.2.3-rc0-deadbeef",
+		Channels:        []byte{testCh},
+		Moniker:         name,
+		Other: DefaultNodeInfoOther{
+			TxIndex:    "on",
+			RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
+		},
+	}
+}
+
+func getFreePort() int {
+	port, err := cmn.GetFreePort()
+	if err != nil {
+		panic(err)
+	}
+	return port
 }

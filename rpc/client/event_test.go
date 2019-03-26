@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -78,7 +80,10 @@ func TestBlockEvents(t *testing.T) {
 	}
 }
 
-func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
+func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) { testTxEventsSent(t, "async") }
+func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "sync") }
+
+func testTxEventsSent(t *testing.T, broadcastMethod string) {
 	for i, c := range GetClients() {
 		i, c := i, c // capture params
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
@@ -95,10 +100,22 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 			_, _, tx := MakeTxKV()
 			evtTyp := types.EventTx
 
-			// send async
-			txres, err := c.BroadcastTxAsync(tx)
-			require.Nil(t, err, "%+v", err)
-			require.Equal(t, txres.Code, abci.CodeTypeOK) // FIXME
+			// send
+			var (
+				txres *ctypes.ResultBroadcastTx
+				err   error
+			)
+			switch broadcastMethod {
+			case "async":
+				txres, err = c.BroadcastTxAsync(tx)
+			case "sync":
+				txres, err = c.BroadcastTxSync(tx)
+			default:
+				panic(fmt.Sprintf("Unknown broadcastMethod %s", broadcastMethod))
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, txres.Code, abci.CodeTypeOK)
 
 			// and wait for confirmation
 			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
@@ -113,37 +130,8 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 	}
 }
 
-func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
-	for i, c := range GetClients() {
-		i, c := i, c // capture params
-		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
-
-			// start for this test it if it wasn't already running
-			if !c.IsRunning() {
-				// if so, then we start it, listen, and stop it.
-				err := c.Start()
-				require.Nil(t, err, "%d: %+v", i, err)
-				defer c.Stop()
-			}
-
-			// make the tx
-			_, _, tx := MakeTxKV()
-			evtTyp := types.EventTx
-
-			// send sync
-			txres, err := c.BroadcastTxSync(tx)
-			require.Nil(t, err, "%+v", err)
-			require.Equal(t, txres.Code, abci.CodeTypeOK) // FIXME
-
-			// and wait for confirmation
-			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
-			require.Nil(t, err, "%d: %+v", i, err)
-			// and make sure it has the proper info
-			txe, ok := evt.(types.EventDataTx)
-			require.True(t, ok, "%d: %#v", i, evt)
-			// make sure this is the proper tx
-			require.EqualValues(t, tx, txe.Tx)
-			require.True(t, txe.Result.IsOK())
-		})
-	}
+// Test HTTPClient resubscribes upon disconnect && subscription error.
+// Test Local client resubscribes upon subscription error.
+func TestClientsResubscribe(t *testing.T) {
+	// TODO(melekes)
 }

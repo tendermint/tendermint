@@ -51,7 +51,7 @@ func TestParseLogLevel(t *testing.T) {
 
 		buf.Reset()
 
-		logger.With("module", "wire").Debug("Kingpin")
+		logger.With("module", "mempool").With("module", "wire").Debug("Kingpin")
 		if have := strings.TrimSpace(buf.String()); c.expectedLogLines[0] != have {
 			t.Errorf("\nwant '%s'\nhave '%s'\nlevel '%s'", c.expectedLogLines[0], have, c.lvl)
 		}

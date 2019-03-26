@@ -60,42 +60,34 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 ```
 {
-  "genesis_time": "2018-07-09T22:43:06.255718641Z",
-  "chain_id": "chain-IAkWsK",
+  "genesis_time": "2018-11-13T18:11:50.277637Z",
+  "chain_id": "test-chain-s4ui7D",
+  "consensus_params": {
+    "block_size": {
+      "max_bytes": "22020096",
+      "max_gas": "-1"
+    },
+    "evidence": {
+      "max_age": "100000"
+    },
+    "validator": {
+      "pub_key_types": [
+        "ed25519"
+      ]
+    }
+  },
   "validators": [
     {
+      "address": "39C04A480B54AB258A45355A5E48ADDED9956C65",
       "pub_key": {
         "type": "tendermint/PubKeyEd25519",
-        "value": "oX8HhKsErMluxI0QWNSR8djQMSupDvHdAYrHwP7n73k="
+        "value": "DMEMMj1+thrkUCGocbvvKzXeaAtRslvX9MWtB+smuIA="
       },
-      "power": "1",
-      "name": "node0"
-    },
-    {
-      "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value": "UZNSJA9zmeFQj36Rs296lY+WFQ4Rt6s7snPpuKypl5I="
-      },
-      "power": "1",
-      "name": "node1"
-    },
-    {
-      "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value": "i9GrM6/MHB4zjCelMZBUYHNXYIzl4n0RkDCVmmLhS/o="
-      },
-      "power": "1",
-      "name": "node2"
-    },
-    {
-      "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value": "0qq7954l87trEqbQV9c7d1gurnjTGMxreXc848ZZ5aw="
-      },
-      "power": "1",
-      "name": "node3"
+      "power": "10",
+      "name": ""
     }
-  ]
+  ],
+  "app_hash": ""
 }
 ```
 
@@ -121,7 +113,7 @@ blocks are produced regularly, even if there are no transactions. See
 _No Empty Blocks_, below, to modify this setting.
 
 Tendermint supports in-process versions of the `counter`, `kvstore` and
-`nil` apps that ship as examples with `abci-cli`. It's easy to compile
+`noop` apps that ship as examples with `abci-cli`. It's easy to compile
 your own app in-process with Tendermint if it's written in Go. If your
 app is not written in Go, simply run it in another process, and use the
 `--proxy_app` flag to specify the address of the socket it is listening
@@ -527,18 +519,16 @@ developers guide](../app-dev/app-development.md) for more details.
 
 ### Local Network
 
-To run a network locally, say on a single machine, you must change the
-`_laddr` fields in the `config.toml` (or using the flags) so that the
-listening addresses of the various sockets don't conflict. Additionally,
-you must set `addr_book_strict=false` in the `config.toml`, otherwise
-Tendermint's p2p library will deny making connections to peers with the
-same IP address.
+To run a network locally, say on a single machine, you must change the `_laddr`
+fields in the `config.toml` (or using the flags) so that the listening
+addresses of the various sockets don't conflict. Additionally, you must set
+`addr_book_strict=false` in the `config.toml`, otherwise Tendermint's p2p
+library will deny making connections to peers with the same IP address.
 
 ### Upgrading
 
-The Tendermint development cycle currently includes a lot of breaking changes.
-Upgrading from an old version to a new version usually means throwing
-away the chain data. Try out the
-[tm-migrate](https://github.com/hxzqlh/tm-tools) tool written by
-[@hxzqlh](https://github.com/hxzqlh) if you are keen to preserve the
-state of your chain when upgrading to newer versions.
+See the
+[UPGRADING.md](https://github.com/tendermint/tendermint/blob/master/UPGRADING.md)
+guide. You may need to reset your chain between major breaking releases.
+Although, we expect Tendermint to have fewer breaking releases in the future
+(especially after 1.0 release).
