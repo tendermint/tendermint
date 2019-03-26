@@ -20,6 +20,17 @@ type blockData struct {
 	peerId p2p.ID
 }
 
+func (bd *blockData) String() string {
+	if bd == nil {
+		return fmt.Sprintf("blockData nil")
+	}
+	if bd.block == nil {
+		return fmt.Sprintf("block: nil peer: %v", bd.peerId)
+	}
+	return fmt.Sprintf("block: %v peer: %v", bd.block.Height, bd.peerId)
+
+}
+
 // Blockchain Reactor State
 type bReactorFSMState struct {
 	name string
@@ -44,9 +55,8 @@ type bReactorFSM struct {
 
 	state *bReactorFSMState
 
-	blocks            map[int64]*blockData
-	height            int64 // processing height
-	lastRequestHeight int64
+	blocks map[int64]*blockData
+	height int64 // processing height
 
 	peers         map[p2p.ID]*bpPeer
 	maxPeerHeight int64
@@ -54,7 +64,8 @@ type bReactorFSM struct {
 	store *BlockStore
 
 	// channel to receive messages
-	messageCh chan bReactorMessageData
+	messageCh           chan bReactorMessageData
+	processSignalActive bool
 
 	// interface used to send StatusRequest, BlockRequest, errors
 	bcr sendMessage
@@ -266,7 +277,7 @@ func init() {
 
 			case blockResponseEv:
 				// add block to fsm.blocks
-				fsm.logger.Info("blockResponseEv", "H", data.block.Height)
+				fsm.logger.Debug("blockResponseEv", "H", data.block.Height)
 				err := fsm.addBlock(data.peerId, data.block, data.length)
 				if err != nil {
 					// unsolicited, from different peer, already have it..
@@ -275,17 +286,15 @@ func init() {
 					return waitForBlock, err
 				}
 
-				if fsm.shouldTryProcessBlock() {
-					fsm.logger.Info("shouldTryProcessBlock", "first", fsm.height, "second", fsm.height+1)
-					// try to process block at fsm.height with the help of block at fsm.height+1
-					fsm.sendSignalToProcessBlock()
-				}
+				fsm.sendSignalToProcessBlock()
+
 				if fsm.state.timer != nil {
 					fsm.state.timer.Stop()
 				}
 				return waitForBlock, nil
 
 			case tryProcessBlockEv:
+				fsm.logger.Debug("FSM blocks", "blocks", fsm.blocks, "fsm_height", fsm.height)
 				if err := fsm.processBlock(); err != nil {
 					if err == errMissingBlocks {
 						// continue so we ask for more blocks
@@ -300,6 +309,7 @@ func init() {
 				} else {
 					delete(fsm.blocks, fsm.height)
 					fsm.height++
+					fsm.processSignalActive = false
 					fsm.removeShortPeers()
 
 					// processed block, check if we are done
@@ -316,11 +326,7 @@ func init() {
 					// wait for more peers or state timeout
 				}
 
-				if fsm.shouldTryProcessBlock() {
-					fsm.logger.Info("shouldTryProcessBlock", "first", fsm.height, "second", fsm.height+1)
-					// try to process block at fsm.height with the help of block at fsm.height+1
-					fsm.sendSignalToProcessBlock()
-				}
+				fsm.sendSignalToProcessBlock()
 
 				if fsm.state.timer != nil {
 					fsm.state.timer.Stop()
@@ -378,7 +384,7 @@ func NewFSM(store *BlockStore, bcr sendMessage) *bReactorFSM {
 }
 
 func sendMessageToFSM(fsm *bReactorFSM, msg bReactorMessageData) {
-	fsm.logger.Info("send message to FSM", "msg", msg.String())
+	fsm.logger.Debug("send message to FSM", "msg", msg.String())
 	fsm.messageCh <- msg
 }
 
@@ -409,7 +415,7 @@ forLoop:
 	for {
 		select {
 		case msg := <-fsm.messageCh:
-			fsm.logger.Info("FSM Received message", "msg", msg.String())
+			fsm.logger.Debug("FSM Received message", "msg", msg.String())
 			_ = fsm.handle(&msg)
 			if msg.event == stopFSMEv {
 				break forLoop
@@ -423,18 +429,21 @@ forLoop:
 
 // handle processes messages and events sent to the FSM.
 func (fsm *bReactorFSM) handle(msg *bReactorMessageData) error {
-	fsm.logger.Info("Blockchain reactor FSM received event", "event", msg.event, "state", fsm.state.name)
+	fsm.logger.Debug("FSM received event", "event", msg.event, "state", fsm.state.name)
 
 	if fsm.state == nil {
 		fsm.state = unknown
 	}
 	next, err := fsm.state.handle(fsm, msg.event, msg.data)
 	if err != nil {
-		fsm.logger.Error("Blockchain reactor event handler returned", "err", err)
+		fsm.logger.Error("FSM event handler returned", "err", err, "state", fsm.state.name, "event", msg.event)
 	}
 
+	oldState := fsm.state.name
 	fsm.transition(next)
-	fsm.logger.Info("FSM new state", "state", fsm.state.name)
+	if oldState != fsm.state.name {
+		fsm.logger.Info("FSM changed state", "old_state", oldState, "event", msg.event, "new_state", fsm.state.name)
+	}
 	return err
 }
 
@@ -442,7 +451,7 @@ func (fsm *bReactorFSM) transition(next *bReactorFSMState) {
 	if next == nil {
 		return
 	}
-	fsm.logger.Info("Blockchain reactor FSM changes state: ", "old", fsm.state.name, "new", next.name)
+	fsm.logger.Debug("changes state: ", "old", fsm.state.name, "new", next.name)
 
 	if fsm.state != next {
 		fsm.state = next
@@ -490,7 +499,7 @@ func (fsm *bReactorFSM) resetStateTimer(state *bReactorFSMState) {
 func (fsm *bReactorFSM) sendRequestBatch() error {
 	// remove slow and timed out peers
 	for _, peer := range fsm.peers {
-		if err := peer.isPeerGood(); err != nil {
+		if err := peer.isGood(); err != nil {
 			fsm.logger.Info("Removing bad peer", "peer", peer.id, "err", err)
 			fsm.removePeer(peer.id, err)
 		}
@@ -502,6 +511,7 @@ func (fsm *bReactorFSM) sendRequestBatch() error {
 		// request height
 		height := fsm.height + int64(i)
 		if height > fsm.maxPeerHeight {
+			fsm.logger.Debug("Will not send request for", "height", height)
 			return err
 		}
 		req := fsm.blocks[height]
@@ -520,20 +530,27 @@ func (fsm *bReactorFSM) sendRequestBatch() error {
 func (fsm *bReactorFSM) sendRequest(height int64) error {
 	// make requests
 	// TODO - sort peers in order of goodness
+	fsm.logger.Debug("try to send request for", "height", height)
 	for _, peer := range fsm.peers {
 		// Send Block Request message to peer
-		fsm.logger.Info("Try to send request to peer", "peer", peer.id, "height", height)
+		if peer.height < height {
+			continue
+		}
+		fsm.logger.Debug("Try to send request to peer", "peer", peer.id, "height", height)
 		err := fsm.bcr.sendBlockRequest(peer.id, height)
 		if err == errSendQueueFull {
-			fsm.logger.Info("cannot send request, queue full", "peer", peer.id, "height", height)
+			fsm.logger.Error("cannot send request, queue full", "peer", peer.id, "height", height)
 			continue
 		}
 		if err == errNilPeerForBlockRequest {
 			// this peer does not exist in the switch, delete locally
-			fsm.logger.Info("Peer doesn't exist in the switch", "peer", peer.id)
+			fsm.logger.Error("peer doesn't exist in the switch", "peer", peer.id)
 			fsm.deletePeer(peer.id)
 			continue
 		}
+
+		fsm.logger.Debug("Sent request to peer", "peer", peer.id, "height", height)
+
 		// reserve space for block
 		fsm.blocks[height] = &blockData{peerId: peer.id, block: nil}
 		fsm.peers[peer.id].incrPending()
@@ -616,7 +633,7 @@ func (fsm *bReactorFSM) removeShortPeers() {
 
 // removes any blocks and requests associated with the peer, deletes the peer and informs the switch if needed.
 func (fsm *bReactorFSM) removePeer(peerID p2p.ID, err error) {
-	fsm.logger.Info("removePeer", "peer", peerID, "err", err)
+	fsm.logger.Debug("removePeer", "peer", peerID, "err", err)
 	// remove all data for blocks waiting for the peer or not processed yet
 	for h, bData := range fsm.blocks {
 		if bData.peerId == peerID {
@@ -664,7 +681,7 @@ func (fsm *bReactorFSM) addBlock(peerID p2p.ID, block *types.Block, blockSize in
 		return errBadDataFromPeer
 	}
 	if blockData.block != nil {
-		fsm.logger.Error("already have a block for height")
+		fsm.logger.Error("already have a block for height", "height", block.Height)
 		return errBadDataFromPeer
 	}
 
@@ -676,25 +693,27 @@ func (fsm *bReactorFSM) addBlock(peerID p2p.ID, block *types.Block, blockSize in
 	return nil
 }
 
-func (fsm *bReactorFSM) shouldTryProcessBlock() bool {
+func (fsm *bReactorFSM) sendSignalToProcessBlock() {
 	first := fsm.blocks[fsm.height]
 	second := fsm.blocks[fsm.height+1]
 	if first == nil || first.block == nil || second == nil || second.block == nil {
 		// We need both to sync the first block.
-		return false
+		fsm.logger.Debug("No need to send signal to process, blocks missing")
+		return
 	}
-	return true
-}
 
-func (fsm *bReactorFSM) sendSignalToProcessBlock() {
-	// TODO - add check that this was sent before, currently there are extraneous tryProcessBlockEv
-	fsm.logger.Info("Send signal to process", "first", fsm.height, "second", fsm.height+1)
+	fsm.logger.Debug("Send signal to process", "first", fsm.height, "second", fsm.height+1)
+	if fsm.processSignalActive {
+		fsm.logger.Debug("..already sent")
+		return
+	}
 
 	msgData := bReactorMessageData{
 		event: tryProcessBlockEv,
 		data:  bReactorEventData{},
 	}
 	sendMessageToFSM(fsm, msgData)
+	fsm.processSignalActive = true
 }
 
 // Processes block at height H = fsm.height. Expects both H and H+1 to be available
@@ -703,13 +722,14 @@ func (fsm *bReactorFSM) processBlock() error {
 	second := fsm.blocks[fsm.height+1]
 	if first == nil || first.block == nil || second == nil || second.block == nil {
 		// We need both to sync the first block.
+		fsm.logger.Debug("process blocks doesn't have the blocks", "first", first, "second", second)
 		return errMissingBlocks
 	}
-	fsm.logger.Info("process blocks", "first", first.block.Height, "second", second.block.Height)
-	fsm.logger.Info("FSM blocks", "blocks", fsm.blocks)
+	fsm.logger.Debug("process blocks", "first", first.block.Height, "second", second.block.Height)
+	fsm.logger.Debug("FSM blocks", "blocks", fsm.blocks)
 
 	if err := fsm.bcr.processBlocks(first.block, second.block); err != nil {
-		fsm.logger.Error("Process blocks returned error", "err", err, "first", first.block.Height, "second", second.block.Height)
+		fsm.logger.Error("process blocks returned error", "err", err, "first", first.block.Height, "second", second.block.Height)
 		fsm.logger.Error("FSM blocks", "blocks", fsm.blocks)
 		return err
 	}

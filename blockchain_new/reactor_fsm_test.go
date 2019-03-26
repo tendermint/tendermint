@@ -64,6 +64,16 @@ type fsmStepTestValues struct {
 	expectedLastBlockReq *lastBlockRequestT
 }
 
+func newTestReactor() *testReactor {
+	logger := log.TestingLogger()
+	blockDB := dbm.NewMemDB()
+	store := NewBlockStore(blockDB)
+	testBcR := &testReactor{logger: logger}
+	testBcR.fsm = NewFSM(store, testBcR)
+	testBcR.fsm.setLogger(logger)
+	return testBcR
+}
+
 // WIP
 func TestFSMTransitionSequences(t *testing.T) {
 	maxRequestBatchSize = 2
@@ -79,27 +89,19 @@ func TestFSMTransitionSequences(t *testing.T) {
 	}
 
 	for _, tt := range fsmTransitionSequenceTests {
-		// Create and start the FSM
-		testBcR := &testReactor{logger: log.TestingLogger()}
-		blockDB := dbm.NewMemDB()
-		store := NewBlockStore(blockDB)
-		fsm := NewFSM(store, testBcR)
-		fsm.setLogger(log.TestingLogger())
+		// Create test reactor
+		testBcR := newTestReactor()
 		resetTestValues()
 
-		// always start from unknown
-		fsm.resetStateTimer(unknown)
-		assert.Equal(t, 1, stateTimerStarts[unknown.name])
-
 		for _, step := range tt {
-			assert.Equal(t, step.currentState, fsm.state.name)
+			assert.Equal(t, step.currentState, testBcR.fsm.state.name)
 			failSendStatusRequest = step.failStatusReq
 			failSendBlockRequest = step.failBlockReq
 
 			oldNumStatusRequests := numStatusRequests
 			oldNumBlockRequests := numBlockRequests
 
-			_ = sendEventToFSM(fsm, step.event, step.data)
+			_ = sendEventToFSM(testBcR.fsm, step.event, step.data)
 			if step.shouldSendStatusReq {
 				assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
 			} else {
@@ -112,7 +114,7 @@ func TestFSMTransitionSequences(t *testing.T) {
 				assert.Equal(t, oldNumBlockRequests, numBlockRequests)
 			}
 
-			assert.Equal(t, step.expectedState, fsm.state.name)
+			assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
 		}
 	}
 }
@@ -120,13 +122,10 @@ func TestFSMTransitionSequences(t *testing.T) {
 func TestReactorFSMBasic(t *testing.T) {
 	maxRequestBatchSize = 2
 
+	// Create test reactor
+	testBcR := newTestReactor()
 	resetTestValues()
-	// Create and start the FSM
-	testBcR := &testReactor{logger: log.TestingLogger()}
-	blockDB := dbm.NewMemDB()
-	store := NewBlockStore(blockDB)
-	fsm := NewFSM(store, testBcR)
-	fsm.setLogger(log.TestingLogger())
+	fsm := testBcR.fsm
 
 	if err := fsm.handle(&bReactorMessageData{event: startFSMEv}); err != nil {
 	}
@@ -151,11 +150,8 @@ func TestReactorFSMPeerTimeout(t *testing.T) {
 	resetTestValues()
 	peerTimeout = 20 * time.Millisecond
 	// Create and start the FSM
-	testBcR := &testReactor{logger: log.TestingLogger()}
-	blockDB := dbm.NewMemDB()
-	store := NewBlockStore(blockDB)
-	fsm := NewFSM(store, testBcR)
-	fsm.setLogger(log.TestingLogger())
+	testBcR := newTestReactor()
+	fsm := testBcR.fsm
 	fsm.start()
 
 	// Check that FSM sends a status request message

@@ -160,7 +160,7 @@ func TestCanBeRemovedDueToExpiration(t *testing.T) {
 	peer.incrPending()
 	time.Sleep(2 * time.Millisecond)
 	// timer expired, should be able to remove peer
-	assert.Equal(t, errNoPeerResponse, peer.isPeerGood())
+	assert.Equal(t, errNoPeerResponse, peer.isGood())
 }
 
 func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
@@ -187,7 +187,7 @@ func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		peer.decrPending(11)
 		time.Sleep(100 * time.Millisecond)
-		require.Nil(t, peer.isPeerGood())
+		require.Nil(t, peer.isGood())
 	}
 
 	// slow peer - send a bit less than 10 byes/100msec
@@ -196,7 +196,7 @@ func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	// check peer is considered slow
-	assert.Equal(t, errSlowPeer, peer.isPeerGood())
+	assert.Equal(t, errSlowPeer, peer.isGood())
 
 }
 

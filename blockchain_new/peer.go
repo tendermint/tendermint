@@ -99,7 +99,7 @@ func (peer *bpPeer) onTimeout() {
 	peer.didTimeout = true
 }
 
-func (peer *bpPeer) isPeerGood() error {
+func (peer *bpPeer) isGood() error {
 	if peer.didTimeout {
 		return errNoPeerResponse
 	}

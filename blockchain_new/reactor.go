@@ -3,13 +3,14 @@ package blockchain_new
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"reflect"
-	"time"
 )
 
 const (
@@ -157,7 +158,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 		return src.TrySend(BlockchainChannel, msgBytes)
 	}
 
-	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
+	bcR.Logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
 
 	msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Height})
 	return src.TrySend(BlockchainChannel, msgBytes)
@@ -167,13 +168,13 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := decodeMsg(msgBytes)
 	if err != nil {
-		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		bcR.Logger.Error("error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		bcR.Switch.StopPeerForError(src, err)
 		return
 	}
 
 	if err = msg.ValidateBasic(); err != nil {
-		bcR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+		bcR.Logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
 		bcR.Switch.StopPeerForError(src, err)
 		return
 	}
@@ -216,7 +217,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		sendMessageToFSM(bcR.fsm, msgData)
 
 	default:
-		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
+		bcR.Logger.Error(fmt.Sprintf("unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 
@@ -235,7 +236,7 @@ func (bcR *BlockchainReactor) processBlocks(first *types.Block, second *types.Bl
 		chainID, firstID, first.Height, second.LastCommit)
 
 	if err != nil {
-		bcR.Logger.Error("Error in validation", "err", err, first.Height, second.Height)
+		bcR.Logger.Error("error in validation", "err", err, first.Height, second.Height)
 		peerID := bcR.fsm.blocks[first.Height].peerId
 		peer := bcR.Switch.Peers().Get(peerID)
 		if peer != nil {
@@ -255,7 +256,7 @@ func (bcR *BlockchainReactor) processBlocks(first *types.Block, second *types.Bl
 	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
 	if err != nil {
 		// TODO This is bad, are we zombie?
-		panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
 	bcR.blocksSynced++
 

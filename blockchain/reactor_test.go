@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"fmt"
 	"os"
 	"sort"
 	"testing"
@@ -253,6 +254,95 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
+}
+
+func setupReactors(
+	numReactors int, maxBlockHeight int64,
+	genDoc *types.GenesisDoc, privVals []types.PrivValidator) ([]BlockchainReactorPair, []*p2p.Switch) {
+
+	defer os.RemoveAll(config.RootDir)
+
+	reactorPairs := make([]BlockchainReactorPair, numReactors)
+
+	var logger = make([]log.Logger, numReactors)
+
+	for i := 0; i < numReactors; i++ {
+		logger[i] = log.TestingLogger()
+		height := int64(0)
+		if i == 0 {
+			height = maxBlockHeight
+		}
+		reactorPairs[i] = newBlockchainReactor(logger[i], genDoc, privVals, height)
+	}
+
+	switches := p2p.MakeConnectedSwitches(config.P2P, numReactors, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		return s
+
+	}, p2p.Connect2Switches)
+
+	for i := 0; i < numReactors; i++ {
+		addr := reactorPairs[i].reactor.Switch.NodeInfo().ID()
+		moduleName := fmt.Sprintf("blockchain-%v", addr)
+		reactorPairs[i].reactor.SetLogger(logger[i].With("module", moduleName[:19]))
+	}
+
+	return reactorPairs, switches
+}
+
+func TestFastSyncMultiNode(t *testing.T) {
+
+	numNodes := 8
+	maxHeight := int64(1000)
+	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	genDoc, privVals := randGenesisDoc(1, false, 30)
+
+	reactorPairs, switches := setupReactors(numNodes, maxHeight, genDoc, privVals)
+
+	defer func() {
+		for _, r := range reactorPairs {
+			_ = r.reactor.Stop()
+			_ = r.app.Stop()
+		}
+	}()
+
+	for {
+		if reactorPairs[numNodes-1].reactor.pool.IsCaughtUp() || reactorPairs[numNodes-1].reactor.Switch.Peers().Size() == 0 {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	//at this time, reactors[0-3] are the newest
+	assert.Equal(t, numNodes-1, reactorPairs[1].reactor.Switch.Peers().Size())
+
+	lastLogger := log.TestingLogger()
+	lastReactorPair := newBlockchainReactor(lastLogger, genDoc, privVals, 0)
+	reactorPairs = append(reactorPairs, lastReactorPair)
+
+	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
+		return s
+
+	}, p2p.Connect2Switches)...)
+
+	addr := lastReactorPair.reactor.Switch.NodeInfo().ID()
+	moduleName := fmt.Sprintf("blockchain-%v", addr)
+	lastReactorPair.reactor.SetLogger(lastLogger.With("module", moduleName[:19]))
+
+	for i := 0; i < len(reactorPairs)-1; i++ {
+		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
+	}
+
+	for {
+		if lastReactorPair.reactor.pool.IsCaughtUp() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs))
 }
 
 //----------------------------------------------
