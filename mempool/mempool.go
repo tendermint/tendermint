@@ -31,6 +31,14 @@ type PreCheckFunc func(types.Tx) error
 // transaction doesn't require more gas than available for the block.
 type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
 
+// TxInfo are parameters that get passed when attempting to add a tx to the
+// mempool.
+type TxInfo struct {
+	// We don't use p2p.ID here because it's too big. The gain is to store max 2
+	// bytes with each tx to identify the sender rather than 20 bytes.
+	PeerID uint16
+}
+
 /*
 
 The mempool pushes new txs onto the proxyAppConn.
@@ -148,9 +156,12 @@ func TxID(tx []byte) string {
 type Mempool struct {
 	config *cfg.MempoolConfig
 
-	proxyMtx             sync.Mutex
-	proxyAppConn         proxy.AppConnMempool
-	txs                  *clist.CList    // concurrent linked-list of good txs
+	proxyMtx     sync.Mutex
+	proxyAppConn proxy.AppConnMempool
+	txs          *clist.CList // concurrent linked-list of good txs
+	// map for quick access to txs
+	// Used in CheckTx to record the tx sender.
+	txsMap               map[[sha256.Size]byte]*clist.CElement
 	height               int64           // the last block Update()'d to
 	rechecking           int32           // for re-checking filtered txs on Update()
 	recheckCursor        *clist.CElement // next expected response
@@ -161,7 +172,10 @@ type Mempool struct {
 	postCheck            PostCheckFunc
 
 	// Atomic integers
-	txsBytes int64 // see TxsBytes
+
+	// Used to check if the mempool size is bigger than the allowed limit.
+	// See TxsBytes
+	txsBytes int64
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -189,6 +203,7 @@ func NewMempool(
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
+		txsMap:        make(map[[sha256.Size]byte]*clist.CElement),
 		height:        height,
 		rechecking:    0,
 		recheckCursor: nil,
@@ -286,8 +301,8 @@ func (mem *Mempool) TxsBytes() int64 {
 	return atomic.LoadInt64(&mem.txsBytes)
 }
 
-// FlushAppConn flushes the mempool connection to ensure async resCb calls are
-// done e.g. from CheckTx.
+// FlushAppConn flushes the mempool connection to ensure async reqResCb calls are
+// done. E.g. from CheckTx.
 func (mem *Mempool) FlushAppConn() error {
 	return mem.proxyAppConn.FlushSync()
 }
@@ -304,6 +319,7 @@ func (mem *Mempool) Flush() {
 		e.DetachPrev()
 	}
 
+	mem.txsMap = make(map[[sha256.Size]byte]*clist.CElement)
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 }
 
@@ -327,6 +343,13 @@ func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
+	return mem.CheckTxWithInfo(tx, cb, TxInfo{PeerID: UnknownPeerID})
+}
+
+// CheckTxWithInfo performs the same operation as CheckTx, but with extra meta data about the tx.
+// Currently this metadata is the peer who sent it,
+// used to prevent the tx from being gossiped back to them.
+func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) (err error) {
 	mem.proxyMtx.Lock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
@@ -357,6 +380,17 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	// CACHE
 	if !mem.cache.Push(tx) {
+		// record the sender
+		e, ok := mem.txsMap[sha256.Sum256(tx)]
+		if ok { // tx may be in cache, but not in the mempool
+			memTx := e.Value.(*mempoolTx)
+			if _, loaded := memTx.senders.LoadOrStore(txInfo.PeerID, true); loaded {
+				// TODO: consider punishing peer for dups,
+				// its non-trivial since invalid txs can become valid,
+				// but they can spam the same tx with little cost to them atm.
+			}
+		}
+
 		return ErrTxInCache
 	}
 	// END CACHE
@@ -381,27 +415,77 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	}
 	reqRes := mem.proxyAppConn.CheckTxAsync(tx)
 	if cb != nil {
-		reqRes.SetCallback(cb)
+		composedCallback := func(res *abci.Response) {
+			mem.reqResCb(tx, txInfo.PeerID)(res)
+			cb(res)
+		}
+		reqRes.SetCallback(composedCallback)
+	} else {
+		reqRes.SetCallback(mem.reqResCb(tx, txInfo.PeerID))
 	}
 
 	return nil
 }
 
-// ABCI callback function
+// Global callback, which is called in the absence of the specific callback.
+//
+// In recheckTxs because no reqResCb (specific) callback is set, this callback
+// will be called.
 func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
 	if mem.recheckCursor == nil {
-		mem.resCbNormal(req, res)
-	} else {
-		mem.metrics.RecheckTimes.Add(1)
-		mem.resCbRecheck(req, res)
+		return
 	}
+
+	mem.metrics.RecheckTimes.Add(1)
+	mem.resCbRecheck(req, res)
+
+	// update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
-func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
+// Specific callback, which allows us to incorporate local information, like
+// the peer that sent us this tx, so we can avoid sending it back to the same
+// peer.
+//
+// Used in CheckTxWithInfo to record PeerID who sent us the tx.
+func (mem *Mempool) reqResCb(tx []byte, peerID uint16) func(res *abci.Response) {
+	return func(res *abci.Response) {
+		if mem.recheckCursor != nil {
+			return
+		}
+
+		mem.resCbFirstTime(tx, peerID, res)
+
+		// update metrics
+		mem.metrics.Size.Set(float64(mem.Size()))
+	}
+}
+
+func (mem *Mempool) addTx(memTx *mempoolTx) {
+	e := mem.txs.PushBack(memTx)
+	mem.txsMap[sha256.Sum256(memTx.tx)] = e
+	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
+	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
+}
+
+func (mem *Mempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
+	mem.txs.Remove(elem)
+	elem.DetachPrev()
+	delete(mem.txsMap, sha256.Sum256(tx))
+	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
+
+	if removeFromCache {
+		mem.cache.Remove(tx)
+	}
+}
+
+// callback, which is called after the app checked the tx for the first time.
+//
+// The case where the app checks the tx for the second and subsequent times is
+// handled by the resCbRecheck callback.
+func (mem *Mempool) resCbFirstTime(tx []byte, peerID uint16, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
-		tx := req.GetCheckTx().Tx
 		var postCheckErr error
 		if mem.postCheck != nil {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)
@@ -412,15 +496,14 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				gasWanted: r.CheckTx.GasWanted,
 				tx:        tx,
 			}
-			mem.txs.PushBack(memTx)
-			atomic.AddInt64(&mem.txsBytes, int64(len(tx)))
+			memTx.senders.Store(peerID, true)
+			mem.addTx(memTx)
 			mem.logger.Info("Added good transaction",
 				"tx", TxID(tx),
 				"res", r,
 				"height", memTx.height,
 				"total", mem.Size(),
 			)
-			mem.metrics.TxSizeBytes.Observe(float64(len(tx)))
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
@@ -434,6 +517,10 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	}
 }
 
+// callback, which is called after the app rechecked the tx.
+//
+// The case where the app checks the tx for the first time is handled by the
+// resCbFirstTime callback.
 func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
@@ -454,12 +541,8 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		} else {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", TxID(tx), "res", r, "err", postCheckErr)
-			mem.txs.Remove(mem.recheckCursor)
-			atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
-			mem.recheckCursor.DetachPrev()
-
-			// remove from cache (it might be good later)
-			mem.cache.Remove(tx)
+			// NOTE: we remove tx from the cache because it might be good later
+			mem.removeTx(tx, mem.recheckCursor, true)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -627,12 +710,9 @@ func (mem *Mempool) removeTxs(txs types.Txs) []types.Tx {
 		memTx := e.Value.(*mempoolTx)
 		// Remove the tx if it's already in a block.
 		if _, ok := txsMap[string(memTx.tx)]; ok {
-			// remove from clist
-			mem.txs.Remove(e)
-			atomic.AddInt64(&mem.txsBytes, int64(-len(memTx.tx)))
-			e.DetachPrev()
-
 			// NOTE: we don't remove committed txs from the cache.
+			mem.removeTx(memTx.tx, e, false)
+
 			continue
 		}
 		txsLeft = append(txsLeft, memTx.tx)
@@ -650,7 +730,7 @@ func (mem *Mempool) recheckTxs(txs []types.Tx) {
 	mem.recheckEnd = mem.txs.Back()
 
 	// Push txs to proxyAppConn
-	// NOTE: resCb() may be called concurrently.
+	// NOTE: reqResCb may be called concurrently.
 	for _, tx := range txs {
 		mem.proxyAppConn.CheckTxAsync(tx)
 	}
@@ -663,6 +743,7 @@ func (mem *Mempool) recheckTxs(txs []types.Tx) {
 type mempoolTx struct {
 	height    int64    // height that this tx had been validated in
 	gasWanted int64    // amount of gas this tx states it will require
+	senders   sync.Map // ids of peers who've sent us this tx (as a map for quick lookups)
 	tx        types.Tx //
 }
 
@@ -679,13 +760,13 @@ type txCache interface {
 	Remove(tx types.Tx)
 }
 
-// mapTxCache maintains a cache of transactions. This only stores
-// the hash of the tx, due to memory concerns.
+// mapTxCache maintains a LRU cache of transactions. This only stores the hash
+// of the tx, due to memory concerns.
 type mapTxCache struct {
 	mtx  sync.Mutex
 	size int
 	map_ map[[sha256.Size]byte]*list.Element
-	list *list.List // to remove oldest tx when cache gets too big
+	list *list.List
 }
 
 var _ txCache = (*mapTxCache)(nil)
@@ -707,8 +788,8 @@ func (cache *mapTxCache) Reset() {
 	cache.mtx.Unlock()
 }
 
-// Push adds the given tx to the cache and returns true. It returns false if tx
-// is already in the cache.
+// Push adds the given tx to the cache and returns true. It returns
+// false if tx is already in the cache.
 func (cache *mapTxCache) Push(tx types.Tx) bool {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
@@ -728,8 +809,8 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 			cache.list.Remove(popped)
 		}
 	}
-	cache.list.PushBack(txHash)
-	cache.map_[txHash] = cache.list.Back()
+	e := cache.list.PushBack(txHash)
+	cache.map_[txHash] = e
 	return true
 }
 

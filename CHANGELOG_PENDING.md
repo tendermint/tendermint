@@ -10,6 +10,7 @@
 
 * Go API
 - [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
+- [rpc/client] \#3458 Include NetworkClient interface into Client interface
 
 * Blockchain Protocol
 
@@ -20,8 +21,11 @@
   in seed mode for storing crawling data. Set to `data/seed_crawl_data.json` by
   default. If  `p2p.seed_crawl_data_filename` is empty, no data will be saved (this may lead to seed crawling a peer
   too soon if restarted; not critical).
+- [rpc] \#3419 Start HTTPS server if `rpc.tls_cert_file` and `rpc.tls_key_file` are provided in the config (@guagualvcha)
 
 ### IMPROVEMENTS:
+
+- [mempool] \#2778 No longer send txs back to peers who sent it to you
 
 ### BUG FIXES:
 

@@ -339,6 +339,20 @@ type RPCConfig struct {
 	// global HTTP write timeout, which applies to all connections and endpoints.
 	// See https://github.com/tendermint/tendermint/issues/3435
 	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
+
+	// The name of a file containing certificate that is used to create the HTTPS server.
+	//
+	// If the certificate is signed by a certificate authority,
+	// the certFile should be the concatenation of the server's certificate, any intermediates,
+	// and the CA's certificate.
+	//
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	TLSCertFile string `mapstructure:"tls_cert_file"`
+
+	// The name of a file containing matching private key that is used to create the HTTPS server.
+	//
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	TLSKeyFile string `mapstructure:"tls_key_file"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -357,6 +371,9 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxSubscriptionClients:    100,
 		MaxSubscriptionsPerClient: 5,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
+
+		TLSCertFile: "",
+		TLSKeyFile:  "",
 	}
 }
 
@@ -393,6 +410,18 @@ func (cfg *RPCConfig) ValidateBasic() error {
 // IsCorsEnabled returns true if cross-origin resource sharing is enabled.
 func (cfg *RPCConfig) IsCorsEnabled() bool {
 	return len(cfg.CORSAllowedOrigins) != 0
+}
+
+func (cfg RPCConfig) KeyFile() string {
+	return rootify(filepath.Join(defaultConfigDir, cfg.TLSKeyFile), cfg.RootDir)
+}
+
+func (cfg RPCConfig) CertFile() string {
+	return rootify(filepath.Join(defaultConfigDir, cfg.TLSCertFile), cfg.RootDir)
+}
+
+func (cfg RPCConfig) IsTLSEnabled() bool {
+	return cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
 }
 
 //-----------------------------------------------------------------------------

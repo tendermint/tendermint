@@ -108,6 +108,18 @@ func (c Client) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo(&rpctypes.Context{})
 }
 
+func (c Client) ConsensusState() (*ctypes.ResultConsensusState, error) {
+	return core.ConsensusState(&rpctypes.Context{})
+}
+
+func (c Client) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
+	return core.DumpConsensusState(&rpctypes.Context{})
+}
+
+func (c Client) Health() (*ctypes.ResultHealth, error) {
+	return core.Health(&rpctypes.Context{})
+}
+
 func (c Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(&rpctypes.Context{}, seeds)
 }

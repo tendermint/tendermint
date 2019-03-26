@@ -72,17 +72,15 @@ type StatusClient interface {
 type Client interface {
 	cmn.Service
 	ABCIClient
-	SignClient
-	HistoryClient
-	StatusClient
 	EventsClient
+	HistoryClient
+	NetworkClient
+	SignClient
+	StatusClient
 }
 
 // NetworkClient is general info about the network state.  May not
 // be needed usually.
-//
-// Not included in the Client interface, but generally implemented
-// by concrete implementations.
 type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
