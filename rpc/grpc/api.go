@@ -5,6 +5,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	core "github.com/tendermint/tendermint/rpc/core"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 type broadcastAPI struct {
@@ -16,12 +17,14 @@ func (bapi *broadcastAPI) Ping(ctx context.Context, req *RequestPing) (*Response
 }
 
 func (bapi *broadcastAPI) BroadcastTx(ctx context.Context, req *RequestBroadcastTx) (*ResponseBroadcastTx, error) {
-	res, err := core.BroadcastTxCommit(req.Tx)
+	// NOTE: there's no way to get client's remote address
+	// see https://stackoverflow.com/questions/33684570/session-and-remote-ip-address-in-grpc-go
+	res, err := core.BroadcastTxCommit(&rpctypes.Context{}, req.Tx)
 	if err != nil {
 		return nil, err
 	}
-	return &ResponseBroadcastTx{
 
+	return &ResponseBroadcastTx{
 		CheckTx: &abci.ResponseCheckTx{
 			Code: res.CheckTx.Code,
 			Data: res.CheckTx.Data,

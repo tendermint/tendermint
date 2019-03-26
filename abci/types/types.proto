@@ -218,8 +218,6 @@ message BlockParams {
   int64 max_bytes = 1;
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-  // Note: must be greater than 0
-  int64 time_iota_ms = 3;
 }
 
 // EvidenceParams contains limits on the evidence.

@@ -154,11 +154,12 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:39b27d1381a30421f9813967a5866fba35dc1d4df43a6eefe3b7a5444cb07214"
+  digest = "1:a74b5a8e34ee5843cd6e65f698f3e75614f812ff170c2243425d75bc091e9af2"
   name = "github.com/jmhodges/levigo"
   packages = ["."]
   pruneopts = "UT"
-  revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
+  revision = "853d788c5c416eaaee5b044570784a96c7a26975"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -368,7 +369,8 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:00d2b3e64cdc3fa69aa250dfbe4cc38c4837d4f37e62279be2ae52107ffbbb44"
+  branch = "master"
+  digest = "1:f4edb30d5ff238e2abba10457010f74cd55ae20bbda8c54db1a07155fa020490"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -389,7 +391,7 @@
     "salsa20/salsa",
   ]
   pruneopts = "UT"
-  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
+  revision = "8dd112bcdc25174059e45e07517d9fc663123347"
 
 [[projects]]
   digest = "1:d36f55a999540d29b6ea3c2ea29d71c76b1d9853fdcd3e5c5cb4836f2ba118f1"

@@ -187,6 +187,11 @@ func (mBatch *cLevelDBBatch) WriteSync() {
 	}
 }
 
+// Implements Batch.
+func (mBatch *cLevelDBBatch) Close() {
+	mBatch.batch.Close()
+}
+
 //----------------------------------------
 // Iterator
 // NOTE This is almost identical to db/go_level_db.Iterator

@@ -214,11 +214,11 @@ vagrant_test:
 ### go tests
 test:
 	@echo "--> Running go test"
-	go test -p 1 $(PACKAGES)
+	@go test -p 1 $(PACKAGES)
 
 test_race:
 	@echo "--> Running go test --race"
-	go test -p 1 -v -race $(PACKAGES)
+	@go test -p 1 -v -race $(PACKAGES)
 
 # uses https://github.com/sasha-s/go-deadlock/ to detect potential deadlocks
 test_with_deadlock:

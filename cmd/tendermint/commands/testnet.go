@@ -115,6 +115,12 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		err = os.MkdirAll(filepath.Join(nodeDir, "data"), nodeDirPerm)
+		if err != nil {
+			_ = os.RemoveAll(outputDir)
+			return err
+		}
+
 		initFilesWithConfig(config)
 	}
 

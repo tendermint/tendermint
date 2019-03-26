@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -530,6 +531,44 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	for _, rp := range remotePeers {
 		rp.Stop()
 	}
+}
+
+type errorTransport struct {
+	acceptErr error
+}
+
+func (et errorTransport) Accept(c peerConfig) (Peer, error) {
+	return nil, et.acceptErr
+}
+func (errorTransport) Dial(NetAddress, peerConfig) (Peer, error) {
+	panic("not implemented")
+}
+func (errorTransport) Cleanup(Peer) {
+	panic("not implemented")
+}
+
+func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
+	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
+
+	sw = NewSwitch(cfg, errorTransport{ErrRejected{conn: nil, err: errors.New("filtered"), isFiltered: true}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
+	// TODO(melekes) check we remove our address from addrBook
+
+	sw = NewSwitch(cfg, errorTransport{ErrTransportClosed{}})
+	assert.NotPanics(t, func() {
+		err := sw.Start()
+		assert.NoError(t, err)
+		sw.Stop()
+	})
 }
 
 func BenchmarkSwitchBroadcast(b *testing.B) {

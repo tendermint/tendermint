@@ -61,7 +61,7 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	defer cancel()
 
 	// register for the next event of this type
-	sub, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(evtTyp))
+	eventCh, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(evtTyp).String())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to subscribe")
 	}
@@ -69,10 +69,8 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	defer c.UnsubscribeAll(ctx, subscriber)
 
 	select {
-	case msg := <-sub.Out():
-		return msg.Data().(types.TMEventData), nil
-	case <-sub.Cancelled():
-		return nil, errors.New("subscription was cancelled")
+	case event := <-eventCh:
+		return event.Data.(types.TMEventData), nil
 	case <-ctx.Done():
 		return nil, errors.New("timed out waiting for event")
 	}

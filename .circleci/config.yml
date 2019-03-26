@@ -10,7 +10,7 @@ defaults: &defaults
 docs_update_config: &docs_update_config
   working_directory: ~/repo
   docker:
-    - image: tendermint/docs_deployment
+    - image: tendermintdev/jq_curl
   environment:
     AWS_REGION: us-east-1
 
@@ -239,7 +239,22 @@ jobs:
       - run:
           name: Trigger website build
           command: |
-            chamber exec tendermint -- start_website_build
+            curl --silent \
+                 --show-error \
+                 -X POST \
+                 --header "Content-Type: application/json" \
+                 -d "{\"branch\": \"$CIRCLE_BRANCH\"}" \
+                 "https://circleci.com/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$WEBSITE_REPO_NAME/build?circle-token=$TENDERBOT_API_TOKEN" > response.json
+
+            RESULT=`jq -r '.status' response.json`
+            MESSAGE=`jq -r '.message' response.json`
+
+            if [[ ${RESULT} == "null" ]] || [[ ${RESULT} -ne "200" ]]; then
+                echo "CircleCI API call failed: $MESSAGE"
+                exit 1
+            else
+                echo "Website build started"
+            fi
 
 workflows:
   version: 2

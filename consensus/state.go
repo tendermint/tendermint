@@ -670,7 +670,10 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
-	var err error
+	var (
+		added bool
+		err   error
+	)
 	msg, peerID := mi.Msg, mi.PeerID
 	switch msg := msg.(type) {
 	case *ProposalMessage:
@@ -679,7 +682,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		added, err := cs.addProposalBlockPart(msg, peerID)
+		added, err = cs.addProposalBlockPart(msg, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
@@ -691,7 +694,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		added, err := cs.tryAddVote(msg.Vote, peerID)
+		added, err = cs.tryAddVote(msg.Vote, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
@@ -711,10 +714,15 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
 	default:
-		cs.Logger.Error("Unknown msg type", reflect.TypeOf(msg))
+		cs.Logger.Error("Unknown msg type", "type", reflect.TypeOf(msg))
+		return
 	}
+
 	if err != nil {
-		cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round, "type", reflect.TypeOf(msg), "peer", peerID, "err", err, "msg", msg)
+		// Causes TestReactorValidatorSetChanges to timeout
+		// https://github.com/tendermint/tendermint/issues/3406
+		// cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
+		// 	"peer", peerID, "err", err, "msg", msg)
 	}
 }
 

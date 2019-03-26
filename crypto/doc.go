@@ -37,9 +37,6 @@
 //     sum := crypto.Sha256([]byte("This is Tendermint"))
 //     fmt.Printf("%x\n", sum)
 
-// Ripemd160
-//     sum := crypto.Ripemd160([]byte("This is consensus"))
-//     fmt.Printf("%x\n", sum)
 package crypto
 
 // TODO: Add more docs in here

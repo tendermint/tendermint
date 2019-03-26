@@ -198,8 +198,8 @@ func (th *TestHarness) TestSignProposal() error {
 	hash := tmhash.Sum([]byte("hash"))
 	prop := &types.Proposal{
 		Type:     types.ProposalType,
-		Height:   12345,
-		Round:    23456,
+		Height:   100,
+		Round:    0,
 		POLRound: -1,
 		BlockID: types.BlockID{
 			Hash: hash,
@@ -240,8 +240,8 @@ func (th *TestHarness) TestSignVote() error {
 		hash := tmhash.Sum([]byte("hash"))
 		vote := &types.Vote{
 			Type:   voteType,
-			Height: 12345,
-			Round:  23456,
+			Height: 101,
+			Round:  0,
 			BlockID: types.BlockID{
 				Hash: hash,
 				PartsHeader: types.PartSetHeader{

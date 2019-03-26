@@ -21,6 +21,8 @@ implementation.
 */
 
 import (
+	"context"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -70,17 +72,15 @@ type StatusClient interface {
 type Client interface {
 	cmn.Service
 	ABCIClient
-	SignClient
-	HistoryClient
-	StatusClient
 	EventsClient
+	HistoryClient
+	NetworkClient
+	SignClient
+	StatusClient
 }
 
 // NetworkClient is general info about the network state.  May not
 // be needed usually.
-//
-// Not included in the Client interface, but generally implemented
-// by concrete implementations.
 type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
@@ -91,7 +91,18 @@ type NetworkClient interface {
 // EventsClient is reactive, you can subscribe to any message, given the proper
 // string. see tendermint/types/events.go
 type EventsClient interface {
-	types.EventBusSubscriber
+	// Subscribe subscribes given subscriber to query. Returns a channel with
+	// cap=1 onto which events are published. An error is returned if it fails to
+	// subscribe. outCapacity can be used optionally to set capacity for the
+	// channel. Channel is never closed to prevent accidental reads.
+	//
+	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
+	// or UnsubscribeAll.
+	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error)
+	// Unsubscribe unsubscribes given subscriber from query.
+	Unsubscribe(ctx context.Context, subscriber, query string) error
+	// UnsubscribeAll unsubscribes given subscriber from all the queries.
+	UnsubscribeAll(ctx context.Context, subscriber string) error
 }
 
 // MempoolClient shows us data about current mempool state.
