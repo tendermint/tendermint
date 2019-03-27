@@ -41,11 +41,29 @@ func newBlockPool(height int64) *blockPool {
 	}
 }
 
+func (pool *blockPool) String() string {
+	peerStr := fmt.Sprintf("Pool Peers:")
+	for _, p := range pool.peers {
+		peerStr += fmt.Sprintf("%v,", p)
+	}
+	return peerStr
+}
+
 func (pool *blockPool) setLogger(l log.Logger) {
 	pool.logger = l
 }
 
-// Sets the peer's blockchain height.
+func (pool blockPool) getMaxPeerHeight() int64 {
+	return pool.maxPeerHeight
+}
+
+func (pool *blockPool) reachedMaxHeight() bool {
+	return pool.height >= pool.maxPeerHeight
+}
+
+// Adds a new peer or updates an existing peer with a new height.
+// If the peer is too short it is removed
+// Should change function name??
 func (pool *blockPool) updatePeer(peerID p2p.ID, height int64, errFunc func(err error, peerID p2p.ID)) error {
 
 	peer := pool.peers[peerID]
@@ -74,52 +92,54 @@ func (pool *blockPool) updatePeer(peerID p2p.ID, height int64, errFunc func(err 
 		}
 	}
 
+	oldH := peer.height
+	pool.logger.Info("setting peer height to", "peer", peerID, "height", height)
+
 	peer.height = height
-	if height > pool.maxPeerHeight {
-		pool.maxPeerHeight = height
+
+	if oldH == pool.maxPeerHeight && height < pool.maxPeerHeight {
+		// peer was at max height, update max if not other high peers
+		pool.updateMaxPeerHeight()
 	}
+
+	if height > pool.maxPeerHeight {
+		// peer increased height over maxPeerHeight
+		pool.maxPeerHeight = height
+		pool.logger.Info("setting maxPeerHeight", "max", pool.maxPeerHeight)
+	}
+
 	return nil
 }
 
-func (pool blockPool) getMaxPeerHeight() int64 {
-	return pool.maxPeerHeight
-}
-
-// called from:
-// - the switch from its go routing
-// - when peer times out from the timer go routine.
-// Send message to FSM
-func (fsm *bReactorFSM) processPeerError(err error, peerID p2p.ID) {
-	msgData := bReactorMessageData{
-		event: peerErrEv,
-		data: bReactorEventData{
-			err:    err,
-			peerId: peerID,
-		},
-	}
-	sendMessageToFSM(fsm, msgData)
-}
-
-func (pool *blockPool) reachedMaxHeight() bool {
-	return pool.height >= pool.maxPeerHeight
-}
-
-// called every time FSM advances its height
-func (pool *blockPool) removeShortPeers() {
+// If no peers are left, maxPeerHeight is set to 0.
+func (pool *blockPool) updateMaxPeerHeight() {
+	var max int64
 	for _, peer := range pool.peers {
-		if peer.height < pool.height {
-			pool.logger.Info("removeShortPeers", "peer", peer.id)
-			pool.removePeer(peer.id, nil)
+		if peer.height > max {
+			max = peer.height
 		}
 	}
+	pool.maxPeerHeight = max
 }
 
-// stops the peer timer and deletes the peer
+// Stops the peer timer and deletes the peer. Recomputes the max peer height
 func (pool *blockPool) deletePeer(peerID p2p.ID) {
-	if p, exist := pool.peers[peerID]; exist && p.timeout != nil {
+	p, exist := pool.peers[peerID]
+
+	if !exist {
+		return
+	}
+
+	if p.timeout != nil {
 		p.timeout.Stop()
 	}
+
 	delete(pool.peers, peerID)
+
+	if p.height == pool.maxPeerHeight {
+		pool.updateMaxPeerHeight()
+	}
+
 }
 
 // removes any blocks and requests associated with the peer, deletes the peer and informs the switch if needed.
@@ -135,12 +155,14 @@ func (pool *blockPool) removePeer(peerID p2p.ID, err error) {
 	}
 	// delete peer
 	pool.deletePeer(peerID)
+}
 
-	// recompute maxPeerHeight
-	pool.maxPeerHeight = 0
+// called every time FSM advances its height
+func (pool *blockPool) removeShortPeers() {
 	for _, peer := range pool.peers {
-		if peer.height > pool.maxPeerHeight {
-			pool.maxPeerHeight = peer.height
+		if peer.height < pool.height {
+			pool.logger.Info("removeShortPeers", "peer", peer.id)
+			pool.removePeer(peer.id, nil)
 		}
 	}
 }
@@ -230,7 +252,7 @@ func (pool *blockPool) sendRequestBatch(sendFunc func(peerID p2p.ID, height int6
 		// request height
 		height := pool.height + int64(i)
 		if height > pool.maxPeerHeight {
-			pool.logger.Debug("Will not send request for", "height", height)
+			pool.logger.Debug("Will not send request for", "height", height, "max", pool.maxPeerHeight)
 			return err
 		}
 		req := pool.blocks[height]
@@ -241,7 +263,21 @@ func (pool *blockPool) sendRequestBatch(sendFunc func(peerID p2p.ID, height int6
 				// couldn't find a good peer or couldn't communicate with it
 				continue
 			}
-			_ = sendFunc(peerId, height)
+
+			pool.logger.Debug("Try to send request to peer", "peer", peerId, "height", height)
+			err = sendFunc(peerId, height)
+			if err == errSendQueueFull {
+				pool.logger.Error("cannot send request, queue full", "peer", peerId, "height", height)
+				continue
+			}
+			if err == errNilPeerForBlockRequest {
+				// this peer does not exist in the switch, delete locally
+				pool.logger.Error("peer doesn't exist in the switch", "peer", peerId)
+				pool.removePeer(peerId, errNilPeerForBlockRequest)
+				continue
+			}
+
+			pool.logger.Debug("Sent request to peer", "peer", peerId, "height", height)
 		}
 	}
 	return nil
@@ -250,31 +286,21 @@ func (pool *blockPool) sendRequestBatch(sendFunc func(peerID p2p.ID, height int6
 func (pool *blockPool) getBestPeer(height int64) (peerId p2p.ID, err error) {
 	// make requests
 	// TODO - sort peers in order of goodness
-	pool.logger.Debug("try to send request for", "height", height)
+	pool.logger.Debug("try to find peer for", "height", height)
 	for _, peer := range pool.peers {
 		// Send Block Request message to peer
 		if peer.height < height {
 			continue
 		}
-		pool.logger.Debug("Try to send request to peer", "peer", peer.id, "height", height)
-		if err == errSendQueueFull {
-			pool.logger.Error("cannot send request, queue full", "peer", peer.id, "height", height)
+		if peer.numPending > int32(maxRequestBatchSize/len(pool.peers)) {
 			continue
 		}
-		if err == errNilPeerForBlockRequest {
-			// this peer does not exist in the switch, delete locally
-			pool.logger.Error("peer doesn't exist in the switch", "peer", peer.id)
-			pool.deletePeer(peer.id)
-			continue
-		}
-
-		pool.logger.Debug("Sent request to peer", "peer", peer.id, "height", height)
-
 		// reserve space for block
 		pool.blocks[height] = &blockData{peerId: peer.id, block: nil}
 		pool.peers[peer.id].incrPending()
 		return peer.id, nil
 	}
 
+	pool.logger.Debug("List of peers", "peers", pool.peers)
 	return "", errNoPeerFoundForRequest
 }

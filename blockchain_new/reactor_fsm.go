@@ -244,13 +244,20 @@ func init() {
 				// no blockResponse
 				// Should we send status request again? Switch to consensus?
 				// Note that any unresponsive peers have been already removed by their timer expiry handler.
-				if fsm.state.timer != nil {
-					fsm.state.timer.Stop()
-				}
 				return finished, errNoPeerResponse
 
 			case statusResponseEv:
 				err := fsm.pool.updatePeer(data.peerId, data.height, fsm.processPeerError)
+				if len(fsm.pool.peers) == 0 {
+					_ = fsm.bcr.sendStatusRequest()
+					if fsm.state.timer != nil {
+						fsm.state.timer.Stop()
+					}
+					return waitForPeer, err
+				}
+				if fsm.state.timer != nil {
+					fsm.state.timer.Stop()
+				}
 				return waitForBlock, err
 
 			case blockResponseEv:
@@ -265,6 +272,9 @@ func init() {
 						fsm.bcr.sendPeerError(err, data.peerId)
 					}
 					fsm.processSignalActive = false
+					if fsm.state.timer != nil {
+						fsm.state.timer.Stop()
+					}
 					return waitForBlock, err
 				}
 
@@ -283,6 +293,7 @@ func init() {
 				// processed block, check if we are done
 				if fsm.pool.reachedMaxHeight() {
 					// TODO should we wait for more status responses in case a high peer is slow?
+					fsm.logger.Info("Switching to consensus!!!!")
 					fsm.bcr.switchToConsensus()
 					return finished, nil
 				}
@@ -517,4 +528,19 @@ func (fsm *bReactorFSM) processBlock() {
 
 func (fsm *bReactorFSM) IsFinished() bool {
 	return fsm.state == finished
+}
+
+// called from:
+// - the switch from its go routing
+// - when peer times out from the timer go routine.
+// Send message to FSM
+func (fsm *bReactorFSM) processPeerError(err error, peerID p2p.ID) {
+	msgData := bReactorMessageData{
+		event: peerErrEv,
+		data: bReactorEventData{
+			err:    err,
+			peerId: peerID,
+		},
+	}
+	sendMessageToFSM(fsm, msgData)
 }

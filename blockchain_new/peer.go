@@ -127,3 +127,7 @@ func (peer *bpPeer) cleanup() {
 		peer.timeout.Stop()
 	}
 }
+
+func (peer *bpPeer) String() string {
+	return fmt.Sprintf("peer: %v height: %v pending: %v", peer.id, peer.height, peer.numPending)
+}

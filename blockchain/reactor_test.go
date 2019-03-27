@@ -190,7 +190,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	maxBlockHeight := int64(148)
+	maxBlockHeight := int64(500)
 
 	otherChain := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
@@ -293,7 +293,7 @@ func setupReactors(
 func TestFastSyncMultiNode(t *testing.T) {
 
 	numNodes := 8
-	maxHeight := int64(2000)
+	maxHeight := int64(1000)
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
