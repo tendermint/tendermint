@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"fmt"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -188,4 +190,36 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 	// check that we are not leaking any go-routines
 	// i.e. broadcastTxRoutine finishes when reactor is stopped
 	leaktest.CheckTimeout(t, 10*time.Second)()
+}
+
+func TestMempoolIDsBasic(t *testing.T) {
+	ids := newMempoolIDs()
+
+	peer := mock.NewPeer(net.IP{127, 0, 0, 1})
+
+	assert.EqualValues(t, 1, ids.ReserveForPeer(peer))
+	assert.EqualValues(t, 1, ids.GetForPeer(peer))
+	ids.Reclaim(peer)
+
+	assert.EqualValues(t, 2, ids.ReserveForPeer(peer))
+	assert.EqualValues(t, 2, ids.GetForPeer(peer))
+	ids.Reclaim(peer)
+}
+
+func TestMempoolIDsPanicsIfNodeHasOver65535Ids(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
+	ids := newMempoolIDs()
+
+	for i := 0; i < maxActiveIDs-1; i++ {
+		peer := mock.NewPeer(net.IP{127, 0, 0, 1})
+		ids.ReserveForPeer(peer)
+	}
+
+	assert.Panics(t, func() {
+		peer := mock.NewPeer(net.IP{127, 0, 0, 1})
+		ids.ReserveForPeer(peer)
+	})
 }

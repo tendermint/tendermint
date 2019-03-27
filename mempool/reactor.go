@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"sync"
 	"time"
@@ -26,6 +27,8 @@ const (
 	// UnknownPeerID is the peer ID to use when running CheckTx when there is
 	// no peer (e.g. RPC)
 	UnknownPeerID uint16 = 0
+
+	maxActiveIDs = math.MaxUint16
 )
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
@@ -45,19 +48,25 @@ type mempoolIDs struct {
 	activeIDs map[uint16]struct{} // used to check if a given peerID key is used, the value doesn't matter
 }
 
-// Reserve searches for the next unused ID and assignes it to the peer.
-func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) {
+// Reserve searches for the next unused ID and assignes it to the
+// peer. It returns the ID assigned.
+func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) uint16 {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
 	curID := ids.nextPeerID()
 	ids.peerMap[peer.ID()] = curID
 	ids.activeIDs[curID] = struct{}{}
+	return curID
 }
 
 // nextPeerID returns the next unused peer ID to use.
 // This assumes that ids's mutex is already locked.
 func (ids *mempoolIDs) nextPeerID() uint16 {
+	if len(ids.activeIDs) == maxActiveIDs {
+		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", maxActiveIDs))
+	}
+
 	_, idExists := ids.activeIDs[ids.nextID]
 	for idExists {
 		ids.nextID++
@@ -88,16 +97,20 @@ func (ids *mempoolIDs) GetForPeer(peer p2p.Peer) uint16 {
 	return ids.peerMap[peer.ID()]
 }
 
+func newMempoolIDs() *mempoolIDs {
+	return &mempoolIDs{
+		peerMap:   make(map[p2p.ID]uint16),
+		activeIDs: map[uint16]struct{}{0: {}},
+		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
+	}
+}
+
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
 func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReactor {
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
-		ids: &mempoolIDs{
-			peerMap:   make(map[p2p.ID]uint16),
-			activeIDs: map[uint16]struct{}{0: {}},
-			nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
-		},
+		ids:     newMempoolIDs(),
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
@@ -131,13 +144,26 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
-	memR.ids.ReserveForPeer(peer)
+	_ = memR.ids.ReserveForPeer(peer)
 	go memR.broadcastTxRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	memR.ids.Reclaim(peer)
+
+	// XXX (melekes): commented out for performance reasons
+	//
+	// Remove the sender if present to avoid a new node joining and not receiving
+	// a tx because we think it already has it. For that two things should happen:
+	//   1) node has to connect to over 65536 peers during its lifetime
+	//   2) tx must reside in the mempool for the above duration
+	//
+	// for e := memR.Mempool.txs.Front(); e != nil; e = e.Next() {
+	// 	memTx := e.Value.(*mempoolTx)
+	// 	memTx.senders.Delete(id)
+	// }
+
 	// broadcast routine checks if peer is gone and returns
 }
 
