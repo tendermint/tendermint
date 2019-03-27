@@ -285,7 +285,7 @@ jobs:
           command: |
             make get_tools get_vendor_deps
       - save_cache:
-          key: v1-release-deps-{{ .Branch }}-{{ .Revision }}-{{ .Environment.CIRCLE_TAG }}
+          key: v1-release-deps-{{ .Branch }}-{{ .Revision }}
           paths:
             - "vendor"
 
@@ -296,7 +296,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-release-deps-{{ .Branch }}-{{ .Revision }}-{{ .Environment.CIRCLE_TAG }}
+            - v1-release-deps-{{ .Branch }}-{{ .Revision }}
       - attach_workspace:
           at: /tmp/workspace
       - run:
@@ -416,21 +416,21 @@ workflows:
             branches:
               only:
                 - /v[0-9]+\.[0-9]+/
-#      - release_artifacts:
-#          requires:
-#            - get_release_number
-#            - prepare_for_release
-#            - build_artifacts
-#          filters:
-#            branches:
-#              only:
-#                - /v[0-9]+\.[0-9]+/
-#      - release_docker:
-#          requires:
-#            - get_release_number
-#            - prepare_for_release
-#            - build_artifacts
-#          filters:
-#            branches:
-#              only:
-#                - /v[0-9]+\.[0-9]+/
+      - release_artifacts:
+          requires:
+            - get_release_number
+            - prepare_for_release
+            - build_artifacts
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
+      - release_docker:
+          requires:
+            - get_release_number
+            - prepare_for_release
+            - build_artifacts
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
