@@ -119,11 +119,6 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	}
 
 	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	/*
-		addr := bcReactor.Switch.NodeInfo().ID()
-		moduleName := fmt.Sprintf("blockchain-%v", addr)
-		bcReactor.SetLogger(logger.With("module", moduleName))
-	*/
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	return BlockchainReactorPair{bcReactor, proxyApp}
@@ -131,13 +126,13 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 func TestNoBlockResponse(t *testing.T) {
 	peerTimeout = 15 * time.Second
-	maxRequestBatchSize = 40
+	maxRequestBatchSize = 200
 
 	config = cfg.ResetTestRoot("blockchain_new_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	maxBlockHeight := int64(65)
+	maxBlockHeight := int64(500)
 
 	reactorPairs := make([]BlockchainReactorPair, 2)
 
@@ -173,7 +168,8 @@ func TestNoBlockResponse(t *testing.T) {
 		{maxBlockHeight + 2, false},
 		{10, true},
 		{1, true},
-		{100, false}}
+		{maxBlockHeight + 100, false},
+	}
 
 	for {
 		if reactorPairs[1].reactor.fsm.IsFinished() {
@@ -183,10 +179,10 @@ func TestNoBlockResponse(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	assert.Equal(t, maxBlockHeight, reactorPairs[0].reactor.fsm.store.Height())
+	assert.Equal(t, maxBlockHeight, reactorPairs[0].reactor.store.Height())
 
 	for _, tt := range tests {
-		block := reactorPairs[1].reactor.fsm.store.LoadBlock(tt.height)
+		block := reactorPairs[1].reactor.store.LoadBlock(tt.height)
 		if tt.existent {
 			assert.True(t, block != nil)
 		} else {
@@ -202,7 +198,7 @@ func TestNoBlockResponse(t *testing.T) {
 // that seems extreme.
 func TestBadBlockStopsPeer(t *testing.T) {
 	peerTimeout = 15 * time.Second
-	maxRequestBatchSize = 40
+	maxRequestBatchSize = 32
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
@@ -259,7 +255,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	assert.Equal(t, 3, reactorPairs[1].reactor.Switch.Peers().Size())
 
 	//mark reactorPairs[3] is an invalid peer
-	reactorPairs[3].reactor.fsm.store = otherChain.reactor.fsm.store
+	reactorPairs[3].reactor.store = otherChain.reactor.store
 
 	lastLogger := log.TestingLogger()
 	lastReactorPair := newBlockchainReactor(lastLogger, genDoc, privVals, 0)
@@ -327,9 +323,9 @@ func setupReactors(
 func TestFastSyncMultiNode(t *testing.T) {
 
 	numNodes := 8
-	maxHeight := int64(1000)
+	maxHeight := int64(2000)
 	peerTimeout = 15 * time.Second
-	maxRequestBatchSize = 40
+	maxRequestBatchSize = 128
 
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	genDoc, privVals := randGenesisDoc(1, false, 30)
@@ -368,6 +364,8 @@ func TestFastSyncMultiNode(t *testing.T) {
 	moduleName := fmt.Sprintf("blockchain-%v", addr)
 	lastReactorPair.reactor.SetLogger(lastLogger.With("module", moduleName[:19]))
 
+	start := time.Now()
+
 	for i := 0; i < len(reactorPairs)-1; i++ {
 		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
 	}
@@ -380,8 +378,9 @@ func TestFastSyncMultiNode(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
+	fmt.Println(time.Since(start))
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs))
-	assert.Equal(t, lastReactorPair.reactor.fsm.maxPeerHeight, lastReactorPair.reactor.fsm.height)
+	assert.Equal(t, lastReactorPair.reactor.fsm.pool.maxPeerHeight, lastReactorPair.reactor.fsm.pool.height)
 }
 
 //----------------------------------------------

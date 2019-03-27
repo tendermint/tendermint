@@ -15,22 +15,6 @@ var (
 	maxRequestBatchSize = 40
 )
 
-type blockData struct {
-	block  *types.Block
-	peerId p2p.ID
-}
-
-func (bd *blockData) String() string {
-	if bd == nil {
-		return fmt.Sprintf("blockData nil")
-	}
-	if bd.block == nil {
-		return fmt.Sprintf("block: nil peer: %v", bd.peerId)
-	}
-	return fmt.Sprintf("block: %v peer: %v", bd.block.Height, bd.peerId)
-
-}
-
 // Blockchain Reactor State
 type bReactorFSMState struct {
 	name string
@@ -55,13 +39,7 @@ type bReactorFSM struct {
 
 	state *bReactorFSMState
 
-	blocks map[int64]*blockData
-	height int64 // processing height
-
-	peers         map[p2p.ID]*bpPeer
-	maxPeerHeight int64
-
-	store *BlockStore
+	pool *blockPool
 
 	// channel to receive messages
 	messageCh           chan bReactorMessageData
@@ -226,14 +204,14 @@ func init() {
 
 			case statusResponseEv:
 				// update peer
-				if err := fsm.setPeerHeight(data.peerId, data.height); err != nil {
-					if len(fsm.peers) == 0 {
+				if err := fsm.pool.updatePeer(data.peerId, data.height, fsm.processPeerError); err != nil {
+					if len(fsm.pool.peers) == 0 {
 						return waitForPeer, err
 					}
 				}
 
 				// send first block requests
-				err := fsm.sendRequestBatch()
+				err := fsm.pool.sendRequestBatch(fsm.bcr.sendBlockRequest)
 				if err != nil {
 					// wait for more peers or state timeout
 					return waitForPeer, err
@@ -272,17 +250,21 @@ func init() {
 				return finished, errNoPeerResponse
 
 			case statusResponseEv:
-				err := fsm.setPeerHeight(data.peerId, data.height)
+				err := fsm.pool.updatePeer(data.peerId, data.height, fsm.processPeerError)
 				return waitForBlock, err
 
 			case blockResponseEv:
-				// add block to fsm.blocks
 				fsm.logger.Debug("blockResponseEv", "H", data.block.Height)
-				err := fsm.addBlock(data.peerId, data.block, data.length)
+				err := fsm.pool.addBlock(data.peerId, data.block, data.length)
 				if err != nil {
 					// unsolicited, from different peer, already have it..
-					fsm.removePeer(data.peerId, err)
+					fsm.pool.removePeer(data.peerId, err)
 					// ignore block
+					// send error to switch
+					if err != nil {
+						fsm.bcr.sendPeerError(err, data.peerId)
+					}
+					fsm.processSignalActive = false
 					return waitForBlock, err
 				}
 
@@ -294,38 +276,23 @@ func init() {
 				return waitForBlock, nil
 
 			case tryProcessBlockEv:
-				fsm.logger.Debug("FSM blocks", "blocks", fsm.blocks, "fsm_height", fsm.height)
-				if err := fsm.processBlock(); err != nil {
-					if err == errMissingBlocks {
-						// continue so we ask for more blocks
-					}
-					if err == errBlockVerificationFailure {
-						// remove peers that sent us those blocks, blocks will also be removed
-						first := fsm.blocks[fsm.height].peerId
-						fsm.removePeer(first, err)
-						second := fsm.blocks[fsm.height+1].peerId
-						fsm.removePeer(second, err)
-					}
-				} else {
-					delete(fsm.blocks, fsm.height)
-					fsm.height++
-					fsm.processSignalActive = false
-					fsm.removeShortPeers()
+				fsm.logger.Debug("FSM blocks", "blocks", fsm.pool.blocks, "fsm_height", fsm.pool.height)
+				// process block, it detects errors and deals with them
+				fsm.processBlock()
 
-					// processed block, check if we are done
-					if fsm.height >= fsm.maxPeerHeight {
-						// TODO should we wait for more status responses in case a high peer is slow?
-						fsm.bcr.switchToConsensus()
-						return finished, nil
-					}
+				// processed block, check if we are done
+				if fsm.pool.reachedMaxHeight() {
+					// TODO should we wait for more status responses in case a high peer is slow?
+					fsm.bcr.switchToConsensus()
+					return finished, nil
 				}
+
 				// get other block(s)
-				err := fsm.sendRequestBatch()
+				err := fsm.pool.sendRequestBatch(fsm.bcr.sendBlockRequest)
 				if err != nil {
 					// TBD on what to do here...
 					// wait for more peers or state timeout
 				}
-
 				fsm.sendSignalToProcessBlock()
 
 				if fsm.state.timer != nil {
@@ -334,8 +301,15 @@ func init() {
 				return waitForBlock, err
 
 			case peerErrEv:
-				fsm.removePeer(data.peerId, data.err)
-				err := fsm.sendRequestBatch()
+				// This event is sent by:
+				// - the switch to report disconnected and errored peers
+				// - when the FSM pool peer times out
+				fsm.pool.removePeer(data.peerId, data.err)
+				if data.err != nil && data.err != errSwitchPeerErr {
+					// not sent by the switch so report it
+					fsm.bcr.sendPeerError(data.err, data.peerId)
+				}
+				err := fsm.pool.sendRequestBatch(fsm.bcr.sendBlockRequest)
 				if err != nil {
 					// TBD on what to do here...
 					// wait for more peers or state timeout
@@ -367,17 +341,12 @@ func init() {
 
 }
 
-func NewFSM(store *BlockStore, bcr sendMessage) *bReactorFSM {
+func NewFSM(height int64, bcr sendMessage) *bReactorFSM {
 	messageCh := make(chan bReactorMessageData, maxTotalMessages)
 
 	return &bReactorFSM{
-		state: unknown,
-		store: store,
-
-		blocks: make(map[int64]*blockData),
-
-		peers:     make(map[p2p.ID]*bpPeer),
-		height:    store.Height() + 1,
+		state:     unknown,
+		pool:      newBlockPool(height),
 		bcr:       bcr,
 		messageCh: messageCh,
 	}
@@ -390,6 +359,7 @@ func sendMessageToFSM(fsm *bReactorFSM, msg bReactorMessageData) {
 
 func (fsm *bReactorFSM) setLogger(l log.Logger) {
 	fsm.logger = l
+	fsm.pool.setLogger(l)
 }
 
 // starts the FSM go routine
@@ -494,218 +464,20 @@ func (fsm *bReactorFSM) resetStateTimer(state *bReactorFSMState) {
 	})
 }
 
-// WIP
-// TODO - pace the requests to peers
-func (fsm *bReactorFSM) sendRequestBatch() error {
-	// remove slow and timed out peers
-	for _, peer := range fsm.peers {
-		if err := peer.isGood(); err != nil {
-			fsm.logger.Info("Removing bad peer", "peer", peer.id, "err", err)
-			fsm.removePeer(peer.id, err)
-		}
-	}
-
-	var err error
-	// make requests
-	for i := 0; i < maxRequestBatchSize; i++ {
-		// request height
-		height := fsm.height + int64(i)
-		if height > fsm.maxPeerHeight {
-			fsm.logger.Debug("Will not send request for", "height", height)
-			return err
-		}
-		req := fsm.blocks[height]
-		if req == nil {
-			// make new request
-			err = fsm.sendRequest(height)
-			if err != nil {
-				// couldn't find a good peer or couldn't communicate with it
-			}
-		}
-	}
-
-	return nil
-}
-
-func (fsm *bReactorFSM) sendRequest(height int64) error {
-	// make requests
-	// TODO - sort peers in order of goodness
-	fsm.logger.Debug("try to send request for", "height", height)
-	for _, peer := range fsm.peers {
-		// Send Block Request message to peer
-		if peer.height < height {
-			continue
-		}
-		fsm.logger.Debug("Try to send request to peer", "peer", peer.id, "height", height)
-		err := fsm.bcr.sendBlockRequest(peer.id, height)
-		if err == errSendQueueFull {
-			fsm.logger.Error("cannot send request, queue full", "peer", peer.id, "height", height)
-			continue
-		}
-		if err == errNilPeerForBlockRequest {
-			// this peer does not exist in the switch, delete locally
-			fsm.logger.Error("peer doesn't exist in the switch", "peer", peer.id)
-			fsm.deletePeer(peer.id)
-			continue
-		}
-
-		fsm.logger.Debug("Sent request to peer", "peer", peer.id, "height", height)
-
-		// reserve space for block
-		fsm.blocks[height] = &blockData{peerId: peer.id, block: nil}
-		fsm.peers[peer.id].incrPending()
-		return nil
-	}
-
-	return errNoPeerFoundForRequest
-}
-
-// Sets the peer's blockchain height.
-func (fsm *bReactorFSM) setPeerHeight(peerID p2p.ID, height int64) error {
-
-	peer := fsm.peers[peerID]
-
-	if height < fsm.height {
-		fsm.logger.Info("Peer height too small", "peer", peerID, "height", height, "fsm_height", fsm.height)
-
-		// Don't add or update a peer that is not useful.
-		if peer != nil {
-			fsm.logger.Info("remove short peer", "peer", peerID, "height", height, "fsm_height", fsm.height)
-			fsm.removePeer(peerID, errPeerTooShort)
-		}
-		return errPeerTooShort
-	}
-
-	if peer == nil {
-		peer = newBPPeer(peerID, height, fsm.processPeerError)
-		peer.setLogger(fsm.logger.With("peer", peerID))
-		fsm.peers[peerID] = peer
-	} else {
-		// remove any requests made for heights in (height, peer.height]
-		for blockHeight, bData := range fsm.blocks {
-			if bData.peerId == peerID && blockHeight > height {
-				delete(fsm.blocks, blockHeight)
-			}
-		}
-	}
-
-	peer.height = height
-	if height > fsm.maxPeerHeight {
-		fsm.maxPeerHeight = height
-	}
-	return nil
-}
-
-func (fsm *bReactorFSM) getMaxPeerHeight() int64 {
-	return fsm.maxPeerHeight
-}
-
-// called from:
-// - the switch from its go routing
-// - when peer times out from the timer go routine.
-// Send message to FSM
-func (fsm *bReactorFSM) processPeerError(err error, peerID p2p.ID) {
-	msgData := bReactorMessageData{
-		event: peerErrEv,
-		data: bReactorEventData{
-			err:    err,
-			peerId: peerID,
-		},
-	}
-	sendMessageToFSM(fsm, msgData)
-}
-
 // called by the switch on peer error
 func (fsm *bReactorFSM) RemovePeer(peerID p2p.ID) {
-	fsm.logger.Info("Switch removes peer", "peer", peerID, "fsm_height", fsm.height)
+	fsm.logger.Info("Switch removes peer", "peer", peerID, "fsm_height", fsm.pool.height)
 	fsm.processPeerError(errSwitchPeerErr, peerID)
 }
 
-// called every time FSM advances its height
-func (fsm *bReactorFSM) removeShortPeers() {
-	for _, peer := range fsm.peers {
-		if peer.height < fsm.height {
-			fsm.logger.Info("removeShortPeers", "peer", peer.id)
-			fsm.removePeer(peer.id, nil)
-		}
-	}
-}
-
-// removes any blocks and requests associated with the peer, deletes the peer and informs the switch if needed.
-func (fsm *bReactorFSM) removePeer(peerID p2p.ID, err error) {
-	fsm.logger.Debug("removePeer", "peer", peerID, "err", err)
-	// remove all data for blocks waiting for the peer or not processed yet
-	for h, bData := range fsm.blocks {
-		if bData.peerId == peerID {
-			if h == fsm.height {
-				fsm.processSignalActive = false
-			}
-			delete(fsm.blocks, h)
-		}
-	}
-
-	// delete peer
-	fsm.deletePeer(peerID)
-
-	// recompute maxPeerHeight
-	fsm.maxPeerHeight = 0
-	for _, peer := range fsm.peers {
-		if peer.height > fsm.maxPeerHeight {
-			fsm.maxPeerHeight = peer.height
-		}
-	}
-
-	// send error to switch if not coming from it
-	if err != nil && err != errSwitchPeerErr {
-		fsm.bcr.sendPeerError(err, peerID)
-	}
-}
-
-// stops the peer timer and deletes the peer
-func (fsm *bReactorFSM) deletePeer(peerID p2p.ID) {
-	if p, exist := fsm.peers[peerID]; exist && p.timeout != nil {
-		p.timeout.Stop()
-	}
-	delete(fsm.peers, peerID)
-}
-
-// Validates that the block comes from the peer it was expected from and stores it in the 'blocks' map.
-func (fsm *bReactorFSM) addBlock(peerID p2p.ID, block *types.Block, blockSize int) error {
-
-	blockData := fsm.blocks[block.Height]
-
-	if blockData == nil {
-		fsm.logger.Error("peer sent us a block we didn't expect", "peer", peerID, "curHeight", fsm.height, "blockHeight", block.Height)
-		return errBadDataFromPeer
-	}
-
-	if blockData.peerId != peerID {
-		fsm.logger.Error("invalid peer", "peer", peerID, "blockHeight", block.Height)
-		return errBadDataFromPeer
-	}
-	if blockData.block != nil {
-		fsm.logger.Error("already have a block for height", "height", block.Height)
-		return errBadDataFromPeer
-	}
-
-	fsm.blocks[block.Height].block = block
-	peer := fsm.peers[peerID]
-	if peer != nil {
-		peer.decrPending(blockSize)
-	}
-	return nil
-}
-
 func (fsm *bReactorFSM) sendSignalToProcessBlock() {
-	first := fsm.blocks[fsm.height]
-	second := fsm.blocks[fsm.height+1]
-	if first == nil || first.block == nil || second == nil || second.block == nil {
-		// We need both to sync the first block.
-		fsm.logger.Debug("No need to send signal to process, blocks missing")
+	_, _, err := fsm.pool.getNextTwoBlocks()
+	if err != nil {
+		fsm.logger.Debug("No need to send signal, blocks missing")
 		return
 	}
 
-	fsm.logger.Debug("Send signal to process", "first", fsm.height, "second", fsm.height+1)
+	fsm.logger.Debug("Send signal to process blocks")
 	if fsm.processSignalActive {
 		fsm.logger.Debug("..already sent")
 		return
@@ -720,23 +492,27 @@ func (fsm *bReactorFSM) sendSignalToProcessBlock() {
 }
 
 // Processes block at height H = fsm.height. Expects both H and H+1 to be available
-func (fsm *bReactorFSM) processBlock() error {
-	first := fsm.blocks[fsm.height]
-	second := fsm.blocks[fsm.height+1]
-	if first == nil || first.block == nil || second == nil || second.block == nil {
-		// We need both to sync the first block.
-		fsm.logger.Debug("process blocks doesn't have the blocks", "first", first, "second", second)
-		return errMissingBlocks
+func (fsm *bReactorFSM) processBlock() {
+	first, second, err := fsm.pool.getNextTwoBlocks()
+	if err != nil {
+		fsm.processSignalActive = false
+		return
 	}
 	fsm.logger.Debug("process blocks", "first", first.block.Height, "second", second.block.Height)
-	fsm.logger.Debug("FSM blocks", "blocks", fsm.blocks)
+	fsm.logger.Debug("FSM blocks", "blocks", fsm.pool.blocks)
 
-	if err := fsm.bcr.processBlocks(first.block, second.block); err != nil {
+	if err = fsm.bcr.processBlocks(first.block, second.block); err != nil {
 		fsm.logger.Error("process blocks returned error", "err", err, "first", first.block.Height, "second", second.block.Height)
-		fsm.logger.Error("FSM blocks", "blocks", fsm.blocks)
-		return err
+		fsm.logger.Error("FSM blocks", "blocks", fsm.pool.blocks)
+		fsm.pool.invalidateFirstTwoBlocks(err)
+		fsm.bcr.sendPeerError(err, first.peerId)
+		fsm.bcr.sendPeerError(err, second.peerId)
+
+	} else {
+		fsm.pool.processedCurrentHeightBlock()
 	}
-	return nil
+
+	fsm.processSignalActive = false
 }
 
 func (fsm *bReactorFSM) IsFinished() bool {

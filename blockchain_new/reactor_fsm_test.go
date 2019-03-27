@@ -3,7 +3,6 @@ package blockchain_new
 import (
 	"github.com/stretchr/testify/assert"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -65,10 +64,8 @@ type fsmStepTestValues struct {
 }
 
 func newTestReactor() *testReactor {
-	blockDB := dbm.NewMemDB()
-	store := NewBlockStore(blockDB)
 	testBcR := &testReactor{logger: log.TestingLogger()}
-	testBcR.fsm = NewFSM(store, testBcR)
+	testBcR.fsm = NewFSM(1, testBcR)
 	testBcR.fsm.setLogger(testBcR.logger)
 	return testBcR
 }

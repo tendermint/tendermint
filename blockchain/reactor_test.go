@@ -130,7 +130,7 @@ func TestNoBlockResponse(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	maxBlockHeight := int64(65)
+	maxBlockHeight := int64(500)
 
 	reactorPairs := make([]BlockchainReactorPair, 2)
 
@@ -157,7 +157,7 @@ func TestNoBlockResponse(t *testing.T) {
 		{maxBlockHeight + 2, false},
 		{10, true},
 		{1, true},
-		{100, false},
+		{maxBlockHeight + 100, false},
 	}
 
 	for {
@@ -293,7 +293,7 @@ func setupReactors(
 func TestFastSyncMultiNode(t *testing.T) {
 
 	numNodes := 8
-	maxHeight := int64(1000)
+	maxHeight := int64(2000)
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
@@ -321,6 +321,8 @@ func TestFastSyncMultiNode(t *testing.T) {
 	lastReactorPair := newBlockchainReactor(lastLogger, genDoc, privVals, 0)
 	reactorPairs = append(reactorPairs, lastReactorPair)
 
+	start := time.Now()
+
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
 		return s
@@ -342,6 +344,8 @@ func TestFastSyncMultiNode(t *testing.T) {
 
 		time.Sleep(1 * time.Second)
 	}
+	fmt.Println(time.Since(start))
+
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs))
 }
 

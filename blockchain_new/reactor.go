@@ -66,7 +66,9 @@ type BlockchainReactor struct {
 	state        sm.State
 
 	blockExec *sm.BlockExecutor
-	fastSync  bool
+	store     *BlockStore
+
+	fastSync bool
 
 	fsm          *bReactorFSM
 	blocksSynced int
@@ -90,8 +92,9 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 		state:        state,
 		blockExec:    blockExec,
 		fastSync:     fastSync,
+		store:        store,
 	}
-	fsm := NewFSM(store, bcR)
+	fsm := NewFSM(store.Height()+1, bcR)
 	bcR.fsm = fsm
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
 	return bcR
@@ -132,7 +135,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.fsm.store.Height()})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
 	if !peer.Send(BlockchainChannel, msgBytes) {
 		// doing nothing, will try later in `poolRoutine`
 	}
@@ -152,7 +155,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 	src p2p.Peer) (queued bool) {
 
-	block := bcR.fsm.store.LoadBlock(msg.Height)
+	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block})
 		return src.TrySend(BlockchainChannel, msgBytes)
@@ -199,7 +202,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	case *bcStatusRequestMessage:
 		// Send peer our state.
-		msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.fsm.store.Height()})
+		msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
 		queued := src.TrySend(BlockchainChannel, msgBytes)
 		if !queued {
 			// sorry
@@ -237,20 +240,10 @@ func (bcR *BlockchainReactor) processBlocks(first *types.Block, second *types.Bl
 
 	if err != nil {
 		bcR.Logger.Error("error in validation", "err", err, first.Height, second.Height)
-		peerID := bcR.fsm.blocks[first.Height].peerId
-		peer := bcR.Switch.Peers().Get(peerID)
-		if peer != nil {
-			bcR.Switch.StopPeerForError(peer, fmt.Errorf("BlockchainReactor validation error: %v", err))
-		}
-		peerID = bcR.fsm.blocks[second.Height].peerId
-		peer = bcR.Switch.Peers().Get(peerID)
-		if peer != nil {
-			bcR.Switch.StopPeerForError(peer, fmt.Errorf("BlockchainReactor validation error: %v", err))
-		}
 		return errBlockVerificationFailure
 	}
 
-	bcR.fsm.store.SaveBlock(first, firstParts, second.LastCommit)
+	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
 	// get the hash without persisting the state
 	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
@@ -262,8 +255,8 @@ func (bcR *BlockchainReactor) processBlocks(first *types.Block, second *types.Bl
 
 	if bcR.blocksSynced%100 == 0 {
 		bcR.lastRate = 0.9*bcR.lastRate + 0.1*(100/time.Since(bcR.lastHundred).Seconds())
-		bcR.Logger.Info("Fast Sync Rate", "height", bcR.fsm.height,
-			"max_peer_height", bcR.fsm.getMaxPeerHeight(), "blocks/s", bcR.lastRate)
+		bcR.Logger.Info("Fast Sync Rate", "height", bcR.fsm.pool.height,
+			"max_peer_height", bcR.fsm.pool.getMaxPeerHeight(), "blocks/s", bcR.lastRate)
 		bcR.lastHundred = time.Now()
 	}
 	return nil
@@ -282,11 +275,13 @@ func (bcR *BlockchainReactor) poolRoutine() {
 				if peer != nil {
 					bcR.Switch.StopPeerForError(peer, fromFSM.error.err)
 				}
+			default:
 			}
 		}
 	}
 }
 
+// TODO - send the error on msgFromFSMCh to process it above
 func (bcR *BlockchainReactor) sendPeerError(err error, peerID p2p.ID) {
 	peer := bcR.Switch.Peers().Get(peerID)
 	if peer != nil {
@@ -304,7 +299,7 @@ func (bcR *BlockchainReactor) resetStateTimer(name string, timer *time.Timer, ti
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() error {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.fsm.store.Height()})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.store.Height()})
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 	return nil
 }
