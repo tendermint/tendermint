@@ -4,6 +4,10 @@
 
 *March 27th, 2019*
 
+This release contains a major improvement for the mempool that reduce the amount of sent data by about 30% 
+(see some numbers below).
+It also fixes a memory leak in the mempool and gives you the ability to run HTTPS RPC servers (over TLS) by providing a certificate and key in the config.  
+
 Special thanks to external contributors on this release:
 @guagualvcha, @HaoyangLiu, @needkane
 
@@ -15,7 +19,7 @@ Special thanks to external contributors on this release:
 
 * Go API
   - [crypto] [\#3426](https://github.com/tendermint/tendermint/pull/3426) Remove `Ripemd160` helper method (@needkane)
-  - [libs/common] Remove `RepeatTimer` (also `TimerMaker` and `Ticker` interface)
+  - [libs/common] [\#3429](https://github.com/tendermint/tendermint/pull/3429) Remove `RepeatTimer` (also `TimerMaker` and `Ticker` interface)
   - [rpc/client] [\#3458](https://github.com/tendermint/tendermint/issues/3458) Include `NetworkClient` interface into `Client` interface
   - [types] [\#3448](https://github.com/tendermint/tendermint/issues/3448) Remove method `PB2TM.ConsensusParams`
 
@@ -30,7 +34,8 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 - [docs] [\#3140](https://github.com/tendermint/tendermint/issues/3140) Formalize proposer election algorithm properties
-- [mempool] [\#2778](https://github.com/tendermint/tendermint/issues/2778) No longer send txs back to peers who sent it to you and limit to 65536 active peers.
+- [mempool] [\#2778](https://github.com/tendermint/tendermint/issues/2778) No longer send txs back to peers who sent it to you. 
+Also, limit to 65536 active peers.
 This vastly improves the the b bandwidth consumption of nodes. 
 E.g. 250bytes txs for 120 sec. at 500 txs/sec. rate, so total 15MB:
   - total bytes received from 1st node in 4 node localnet
@@ -39,7 +44,7 @@ E.g. 250bytes txs for 120 sec. at 500 txs/sec. rate, so total 15MB:
   - total bytes sent to 1st node in 4 node localnet
      - before: 30569339 (30MB)
      - after: 19304964 (19MB)  
-- [p2p] [\#3475](https://github.com/tendermint/tendermint/issues/3475) Simplify `GetSelectionWithBias` for addressbook
+- [p2p] [\#3475](https://github.com/tendermint/tendermint/issues/3475) Simplify `GetSelectionWithBias` for addressbook (@guagualvcha)
 - [rpc/lib/client] [\#3430](https://github.com/tendermint/tendermint/issues/3430) Disable compression for HTTP client to prevent GZIP-bomb DoS attacks (@guagualvcha)
 
 ### BUG FIXES:
