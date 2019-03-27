@@ -1,1 +1,1 @@
-[Moved](/spec/software/wal.md)
+[Moved](../software/wal.md)

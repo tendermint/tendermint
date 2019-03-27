@@ -1,1 +1,1 @@
-[Moved](/spec/software/abci.md)
+[Moved](../software/abci.md)

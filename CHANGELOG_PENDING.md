@@ -26,4 +26,4 @@
 ### BUG FIXES:
 
 - [blockchain] \#2699 update the maxHeight when a peer is removed
-- [docs] \#3482 fix broken links
+- [docs] \#3482 fix broken links (@brapse)
