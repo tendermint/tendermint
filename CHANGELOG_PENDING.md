@@ -22,6 +22,7 @@
 ### IMPROVEMENTS:
 
 - [mempool] \#2778 No longer send txs back to peers who sent it to you
+- [CircleCI] \#3497 Move release management to CircleCI
 
 ### BUG FIXES:
 
