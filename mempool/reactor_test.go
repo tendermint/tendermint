@@ -206,11 +206,12 @@ func TestMempoolIDsBasic(t *testing.T) {
 	ids.Reclaim(peer)
 }
 
-func TestMempoolIDsPanicsIfNodeHasOver65535Ids(t *testing.T) {
+func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	if testing.Short() {
 		return
 	}
 
+	// 0 is already reserved for UnknownPeerID
 	ids := newMempoolIDs()
 
 	for i := 0; i < maxActiveIDs-1; i++ {
