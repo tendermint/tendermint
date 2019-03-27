@@ -3,7 +3,6 @@ package mock
 import (
 	"net"
 
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
@@ -15,8 +14,8 @@ type Peer struct {
 	ip                   net.IP
 	id                   p2p.ID
 	addr                 *p2p.NetAddress
-	pubKey               crypto.PubKey
-	outbound, persistent bool
+	kv                   map[string]interface{}
+	Outbound, Persistent bool
 }
 
 // NewPeer creates and starts a new mock peer. If the ip
@@ -34,6 +33,7 @@ func NewPeer(ip net.IP) *Peer {
 		ip:   ip,
 		id:   nodeKey.ID(),
 		addr: netAddr,
+		kv:   make(map[string]interface{}),
 	}
 	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
 	mp.Start()
@@ -51,11 +51,18 @@ func (mp *Peer) NodeInfo() p2p.NodeInfo {
 }
 func (mp *Peer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
 func (mp *Peer) ID() p2p.ID                    { return mp.id }
-func (mp *Peer) IsOutbound() bool              { return false }
-func (mp *Peer) IsPersistent() bool            { return true }
-func (mp *Peer) Get(s string) interface{}      { return nil }
-func (mp *Peer) Set(string, interface{})       {}
+func (mp *Peer) IsOutbound() bool              { return mp.Outbound }
+func (mp *Peer) IsPersistent() bool            { return mp.Persistent }
+func (mp *Peer) Get(key string) interface{} {
+	if value, ok := mp.kv[key]; ok {
+		return value
+	}
+	return nil
+}
+func (mp *Peer) Set(key string, value interface{}) {
+	mp.kv[key] = value
+}
 func (mp *Peer) RemoteIP() net.IP              { return mp.ip }
-func (mp *Peer) OriginalAddr() *p2p.NetAddress { return nil }
+func (mp *Peer) OriginalAddr() *p2p.NetAddress { return mp.addr }
 func (mp *Peer) RemoteAddr() net.Addr          { return &net.TCPAddr{IP: mp.ip, Port: 8800} }
 func (mp *Peer) CloseConn() error              { return nil }

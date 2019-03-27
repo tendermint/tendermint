@@ -49,15 +49,14 @@ type mempoolIDs struct {
 }
 
 // Reserve searches for the next unused ID and assignes it to the
-// peer. It returns the ID assigned.
-func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) uint16 {
+// peer.
+func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
 	curID := ids.nextPeerID()
 	ids.peerMap[peer.ID()] = curID
 	ids.activeIDs[curID] = struct{}{}
-	return curID
 }
 
 // nextPeerID returns the next unused peer ID to use.
@@ -144,26 +143,13 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
-	_ = memR.ids.ReserveForPeer(peer)
+	memR.ids.ReserveForPeer(peer)
 	go memR.broadcastTxRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	memR.ids.Reclaim(peer)
-
-	// XXX (melekes): commented out for performance reasons
-	//
-	// Remove the sender if present to avoid a new node joining and not receiving
-	// a tx because we think it already has it. For that two things should happen:
-	//   1) node has to connect to over 65536 peers during its lifetime
-	//   2) tx must reside in the mempool for the above duration
-	//
-	// for e := memR.Mempool.txs.Front(); e != nil; e = e.Next() {
-	// 	memTx := e.Value.(*mempoolTx)
-	// 	memTx.senders.Delete(id)
-	// }
-
 	// broadcast routine checks if peer is gone and returns
 }
 

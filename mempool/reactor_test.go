@@ -197,11 +197,11 @@ func TestMempoolIDsBasic(t *testing.T) {
 
 	peer := mock.NewPeer(net.IP{127, 0, 0, 1})
 
-	assert.EqualValues(t, 1, ids.ReserveForPeer(peer))
+	ids.ReserveForPeer(peer)
 	assert.EqualValues(t, 1, ids.GetForPeer(peer))
 	ids.Reclaim(peer)
 
-	assert.EqualValues(t, 2, ids.ReserveForPeer(peer))
+	ids.ReserveForPeer(peer)
 	assert.EqualValues(t, 2, ids.GetForPeer(peer))
 	ids.Reclaim(peer)
 }
