@@ -103,7 +103,7 @@ type PartSetHeader struct {
 }
 ```
 
-See [MerkleRoot](/docs/spec/blockchain/encoding.md#MerkleRoot) for details.
+See [MerkleRoot](/spec/blockchain/encoding.md#MerkleRoot) for details.
 
 ## Time
 
@@ -163,7 +163,7 @@ a _precommit_ has `vote.Type == 2`.
 
 Signatures in Tendermint are raw bytes representing the underlying signature.
 
-See the [signature spec](/docs/spec/blockchain/encoding.md#key-types) for more.
+See the [signature spec](/spec/blockchain/encoding.md#key-types) for more.
 
 ## EvidenceData
 
@@ -190,7 +190,7 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
-See the [pubkey spec](/docs/spec/blockchain/encoding.md#key-types) for more.
+See the [pubkey spec](/spec/blockchain/encoding.md#key-types) for more.
 
 ## Validation
 
@@ -209,7 +209,7 @@ the current version of the `state` corresponds to the state
 after executing transactions from the `prevBlock`.
 Elements of an object are accessed as expected,
 ie. `block.Header`.
-See the [definition of `State`](/docs/spec/blockchain/state.md).
+See the [definition of `State`](/spec/blockchain/state.md).
 
 ### Header
 
