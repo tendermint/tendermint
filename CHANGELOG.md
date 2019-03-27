@@ -9,7 +9,7 @@ This release contains a major improvement for the mempool that reduce the amount
 It also fixes a memory leak in the mempool and gives you the ability to run HTTPS RPC servers (over TLS) by providing a certificate and key in the config.  
 
 Special thanks to external contributors on this release:
-@guagualvcha, @HaoyangLiu, @needkane
+@brapse, @guagualvcha, @HaoyangLiu, @needkane, @TraceBundy
 
 ### BREAKING CHANGES:
 
@@ -34,6 +34,7 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS:
 
 - [docs] [\#3140](https://github.com/tendermint/tendermint/issues/3140) Formalize proposer election algorithm properties
+- [docs] [\#3482](https://github.com/tendermint/tendermint/issues/3482) fix broken links (@brapse)
 - [mempool] [\#2778](https://github.com/tendermint/tendermint/issues/2778) No longer send txs back to peers who sent it to you. 
 Also, limit to 65536 active peers.
 This vastly improves the the b bandwidth consumption of nodes. 
