@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -79,7 +78,7 @@ func (pool *StatePool) AddStateChunk(peerID p2p.ID, msg *bcStateResponseMessage)
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	pool.Logger.Info("peer sent us a start index", "peer", peerID, "startIndex", msg.StartIdxInc)
+	pool.Logger.Info("peer sent us a start index", "peer", peerID, "startIndex", msg.StartIdxInc, "endIndex", msg.EndIdxExc)
 
 	requestKey := requestKey(peerID, msg.StartIdxInc)
 	if request, ok := pool.requests[requestKey]; ok && request.StartIndex == msg.StartIdxInc && request.EndIndex == msg.EndIdxExc {
@@ -93,7 +92,7 @@ func (pool *StatePool) AddStateChunk(peerID p2p.ID, msg *bcStateResponseMessage)
 		}
 		delete(pool.requests, requestKey)
 	} else if ok {
-		pool.Logger.Error("peer send us an unexpected index", "peer", peerID, "expected", request.StartIndex)
+		pool.Logger.Error("peer send us an unexpected index", "peer", peerID, "expectedStart", request.StartIndex, "expectedEnd", request.EndIndex)
 	} else {
 		pool.Logger.Error("peer send us an unexpected index", "peer", peerID)
 	}
@@ -147,7 +146,8 @@ func (pool *StatePool) pickAvailablePeers() (peers []*spPeer) {
 		if peer.numPending >= 1 {
 			continue
 		}
-		if math.Abs(float64(peer.height) - float64(pool.height)) > peerStateHeightThreshold {
+		if peer.height != pool.height {
+			pool.Logger.Info("peer height is not equals to pool height, skip sync from it", "peer", peer.id, "peerH", peer.height, "poolH", pool.height)
 			continue
 		}
 		peer.incrPending()
@@ -212,6 +212,10 @@ func (pool *StatePool) init(msg *bcStateStatusResponseMessage) {
 	defer pool.mtx.Unlock()
 
 
+	// pool has already inited by a state status message
+	if pool.height != 0 {
+		return
+	}
 	pool.height = msg.Height
 	pool.numKeys = msg.NumKeys
 	pool.totalKeys = 0
@@ -224,7 +228,7 @@ func (pool *StatePool) init(msg *bcStateStatusResponseMessage) {
 
 func (pool *StatePool) reset() {
 	pool.mtx.Lock()
-	pool.mtx.Unlock()
+	defer pool.mtx.Unlock()
 
 	if pool.isComplete() {
 		// we might already complete, possible routine:
@@ -244,6 +248,13 @@ func (pool *StatePool) reset() {
 		pool.state = nil
 		pool.requests = make(map[string]*StateRequest)
 	}
+}
+
+func (pool *StatePool) getHeight() int64 {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	return pool.height
 }
 
 //-------------------------------------
@@ -290,16 +301,6 @@ func (peer *spPeer) incrPending() {
 
 func (peer *spPeer) decrPending() {
 	peer.numPending--
-}
-
-func (peer *spPeer) onTimeout() {
-	peer.pool.mtx.Lock()
-	defer peer.pool.mtx.Unlock()
-
-	err := errors.New("peer did not send us anything")
-	peer.pool.sendError(err, peer.id)
-	peer.logger.Error("SendTimeout", "reason", err, "timeout", peerTimeout)
-	peer.didTimeout = true
 }
 
 func requestKey(peerId p2p.ID, startIdx int64) string {

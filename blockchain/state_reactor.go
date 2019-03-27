@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/proxy"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/tendermint/go-amino"
+	"github.com/tendermint/tendermint/proxy"
 	cfg "github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -32,17 +32,15 @@ const (
 	// how long should we start to request state (we need collect enough peers and their height but shouldn't make their app state pruned)
 	startRequestStateSeconds = 10
 
-	// if peers are lagged or beyond peerStateHeightThreshold, the app state might already pruned, we skip it (not syncing from it).
-	peerStateHeightThreshold = 20
-
 	// NOTE: keep up to date with bcStateResponseMessage
 	// TODO: REVIEW before final merge
 	bcStateResponseMessagePrefixSize   = 8
 	bcStateResponseMessageFieldKeySize = 2
-	keysPerRequest                     = 5000 // should be around 500K
+	keysPerRequest                     = 5000 // response should be around 500KB per request
 	maxStateMsgSize                    = types.MaxStateSizeBytes +
 		bcStateResponseMessagePrefixSize +
 		bcStateResponseMessageFieldKeySize
+	maxInFlightRequesters        	   = 600
 
 	// Currently we only allow user state sync at first time when they connecting to network
 	// otherwise there will be "holes" on their blockstore which might cause other new peers retry block sync
@@ -67,7 +65,7 @@ type StateReactor struct {
 
 // NewStateReactor returns new reactor instance.
 func NewStateReactor(stateDB dbm.DB, app proxy.AppConnState, config *cfg.Config) *StateReactor {
-	requestsCh := make(chan StateRequest, maxTotalRequesters)
+	requestsCh := make(chan StateRequest, maxInFlightRequesters)
 
 	const capacity = 1000                      // must be bigger than peers count
 	errorsCh := make(chan peerError, capacity) // so we don't block in #Receive#pool.AddBlock
@@ -168,26 +166,14 @@ func (bcSR *StateReactor) respondToPeer(msg *bcStateRequestMessage,
 	if msg.StartIndex == 0 {
 		if state = sm.LoadStateForHeight(bcSR.stateDB, msg.Height); state == nil {
 			bcSR.Logger.Info("Peer asking for a state we don't have", "src", src, "height", msg.Height)
-
-			msgBytes := cdc.MustMarshalBinaryBare(&bcNoStateResponseMessage{Height: msg.Height, StartIndex: msg.StartIndex, EndIndex: msg.EndIndex})
-			if msg, err := bcSR.compress(msgBytes); err == nil {
-				return src.TrySend(StateChannel, msg)
-			} else {
-				bcSR.Logger.Error("failed to compress bcNoStateResponseMessage", "err", err)
-			}
+			return bcSR.respondNoStateToPeer(msg, src)
 		}
 	}
 
 	chunk, err := bcSR.app.ReadSnapshotChunk(msg.Height, msg.StartIndex, msg.EndIndex)
 	if err != nil {
 		bcSR.Logger.Info("Peer asking for an application state we don't have", "src", src, "height", msg.Height, "err", err)
-
-		msgBytes := cdc.MustMarshalBinaryBare(&bcNoStateResponseMessage{Height: msg.Height, StartIndex: msg.StartIndex, EndIndex: msg.EndIndex})
-		if msg, err := bcSR.compress(msgBytes); err == nil {
-			return src.TrySend(StateChannel, msg)
-		} else {
-			bcSR.Logger.Error("failed to compressed bcNoStateResponseMessage", "err", err)
-		}
+		return bcSR.respondNoStateToPeer(msg, src)
 	}
 
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStateResponseMessage{State: state, StartIdxInc: msg.StartIndex, EndIdxExc: msg.EndIndex, Chunks: chunk})
@@ -195,6 +181,16 @@ func (bcSR *StateReactor) respondToPeer(msg *bcStateRequestMessage,
 		return src.TrySend(StateChannel, msg)
 	} else {
 		bcSR.Logger.Error("failed to compress bcStateResponseMessage", "err", err)
+		return false
+	}
+}
+
+func (bcSR *StateReactor) respondNoStateToPeer(msg *bcStateRequestMessage, src p2p.Peer) (queued bool) {
+	msgBytes := cdc.MustMarshalBinaryBare(&bcNoStateResponseMessage{Height: msg.Height, StartIndex: msg.StartIndex, EndIndex: msg.EndIndex})
+	if msg, err := bcSR.compress(msgBytes); err == nil {
+		return src.TrySend(StateChannel, msg)
+	} else {
+		bcSR.Logger.Error("failed to compressed bcNoStateResponseMessage", "err", err)
 		return false
 	}
 }
@@ -216,39 +212,47 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			// Unfortunately not queued since the queue is full.
 		}
 	case *bcStateResponseMessage:
-		if msg.StartIdxInc == 0 {
-			// first part should return state
-			bcSR.pool.state = msg.State
-			sm.SaveState(bcSR.stateDB, *msg.State)
-		}
-		bcSR.pool.AddStateChunk(src.ID(), msg)
+		select {
+		case <-bcSR.quitCh:
+			// we have already finished state sync, deliberately do nothing
+		default:
+			if msg.StartIdxInc == 0 {
+				// first part should return state
+				bcSR.pool.state = msg.State
+				sm.SaveState(bcSR.stateDB, *msg.State)
+			}
+			bcSR.pool.AddStateChunk(src.ID(), msg)
 
-		// received all chunks!
-		if bcSR.pool.isComplete() {
-			bcSR.quitCh <- struct{}{}
+			// received all chunks!
+			if bcSR.pool.isComplete() {
+				bcSR.quitCh <- struct{}{}
 
-			chunksToWrite := make([][]byte, 0, bcSR.pool.totalKeys)
-			for startIdx := int64(0); startIdx < bcSR.pool.totalKeys; startIdx += keysPerRequest {
-				if chunks, ok := bcSR.pool.chunks[startIdx]; ok {
-					for _, chunk := range chunks {
-						chunksToWrite = append(chunksToWrite, chunk)
+				chunksToWrite := make([][]byte, 0, bcSR.pool.totalKeys)
+				for startIdx := int64(0); startIdx < bcSR.pool.totalKeys; startIdx += keysPerRequest {
+					if chunks, ok := bcSR.pool.chunks[startIdx]; ok {
+						for _, chunk := range chunks {
+							chunksToWrite = append(chunksToWrite, chunk)
+						}
+					} else {
+						bcSR.Logger.Error("failed to locate state sync chunk", "startIdx", startIdx)
 					}
-				} else {
-					bcSR.Logger.Error("failed to locate state sync chunk", "startIdx", startIdx)
 				}
+				err := bcSR.app.WriteRecoveryChunk(chunksToWrite)
+				if err != nil {
+					bcSR.Logger.Error("Failed to recover application state", "err", err)
+				}
+
+				bcSR.app.EndRecovery(bcSR.pool.state.LastBlockHeight)
+
+				bcSR.Logger.Info("Time to switch to blockchain reactor!", "height", bcSR.pool.state.LastBlockHeight+1)
+
+				bcR := bcSR.Switch.Reactor("BLOCKCHAIN").(*BlockchainReactor)
+				bcR.SwitchToBlockchain(bcSR.pool.state)
 			}
-			err := bcSR.app.WriteRecoveryChunk(chunksToWrite)
-			if err != nil {
-				bcSR.Logger.Error("Failed to recover application state", "err", err)
-			}
-
-			bcSR.app.EndRecovery(bcSR.pool.state.LastBlockHeight)
-
-			bcSR.Logger.Info("Time to switch to blockchain reactor!", "height", bcSR.pool.state.LastBlockHeight+1)
-
-			bcR := bcSR.Switch.Reactor("BLOCKCHAIN").(*BlockchainReactor)
-			bcR.SwitchToBlockchain(bcSR.pool.state)
 		}
+
+	case *bcNoStateResponseMessage:
+		bcSR.Logger.Info("peer doesn't have state we requested", "peer", src.ID(), "startIdx", msg.StartIndex, "endIdx", msg.EndIndex)
 
 	case *bcStateStatusRequestMessage:
 		// Send peer our state.
@@ -267,18 +271,24 @@ func (bcSR *StateReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case *bcStateStatusResponseMessage:
-		if msg.Height == 0 {
-			bcR := bcSR.Switch.Reactor("BLOCKCHAIN").(*BlockchainReactor)
-			bcSR.quitCh <- struct{}{}
-			bcR.SwitchToBlockchain(nil)
-		} else {
-			// if pool is not initialized yet (this is first state status response), we init it
-			if bcSR.pool.height == 0 {
-				bcSR.app.StartRecovery(msg.Height, msg.NumKeys)
-				bcSR.pool.init(msg)
+		select {
+		case <- bcSR.quitCh:
+			// we have already finished state sync, deliberately do nothing
+		default:
+			if msg.Height == 0 {
+				bcR := bcSR.Switch.Reactor("BLOCKCHAIN").(*BlockchainReactor)
+				bcSR.quitCh <- struct{}{}
+				bcR.SwitchToBlockchain(nil)
+			} else {
+				// if pool is not initialized yet (this is first state status response), we init it
+				if bcSR.pool.getHeight() == 0 {
+					bcSR.app.StartRecovery(msg.Height, msg.NumKeys)
+					bcSR.pool.init(msg)
+				}
+				bcSR.pool.SetPeerHeight(src.ID(), msg.Height)
 			}
-			bcSR.pool.SetPeerHeight(src.ID(), msg.Height)
 		}
+
 	default:
 		bcSR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -294,26 +304,40 @@ func (bcSR *StateReactor) poolRoutine() {
 	defer retryTicker.Stop()
 	defer timeoutTicker.Stop()
 	defer startRequestStateTicker.Stop()
+
+	go func() {
+		for {
+			select {
+			case <- bcSR.quitCh:
+				return
+
+			case <-bcSR.Quit():
+				return
+
+			case request := <-bcSR.requestsCh:
+				peer := bcSR.Switch.Peers().Get(request.PeerID)
+				if peer == nil {
+					continue // Peer has since been disconnected.
+				}
+				msgBytes := cdc.MustMarshalBinaryBare(&bcStateRequestMessage{request.Height, request.StartIndex, request.EndIndex})
+				bcSR.Logger.Info("try to request state", "peer", peer.ID(), "startIdx", request.StartIndex, "endIdx", request.EndIndex)
+				if msg, err := bcSR.compress(msgBytes); err == nil {
+					queued := peer.TrySend(StateChannel, msg)
+					if !queued {
+						// We couldn't make the request, send-queue full.
+						// The pool handles timeouts, just let it go.
+						continue
+					}
+				} else {
+					bcSR.Logger.Error("failed to compress bcStateRequestMessage", "err", err)
+				}
+			}
+		}
+	}()
+
 FOR_LOOP:
 	for {
 		select {
-		case request := <-bcSR.requestsCh:
-			peer := bcSR.Switch.Peers().Get(request.PeerID)
-			if peer == nil {
-				continue FOR_LOOP // Peer has since been disconnected.
-			}
-			msgBytes := cdc.MustMarshalBinaryBare(&bcStateRequestMessage{request.Height, request.StartIndex, request.EndIndex})
-			bcSR.Logger.Info("try to request state", "peer", peer.ID(), "startIdx", request.StartIndex, "endIdx", request.EndIndex)
-			if msg, err := bcSR.compress(msgBytes); err == nil {
-				queued := peer.TrySend(StateChannel, msg)
-				if !queued {
-					// We couldn't make the request, send-queue full.
-					// The pool handles timeouts, just let it go.
-					continue FOR_LOOP
-				}
-			} else {
-				bcSR.Logger.Error("failed to compress bcStateRequestMessage", "err", err)
-			}
 		case err := <-bcSR.errorsCh:
 			peer := bcSR.Switch.Peers().Get(err.peerID)
 			if peer != nil {
