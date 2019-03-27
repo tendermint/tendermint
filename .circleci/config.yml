@@ -337,6 +337,7 @@ jobs:
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
 
   release_docker:
+    <<: *release_management
     steps:
       - checkout
       - attach_workspace:
