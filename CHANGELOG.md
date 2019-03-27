@@ -4,6 +4,8 @@
 
 *March 27th, 2019*
 
+Special thanks to external contributors on this release:
+
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
@@ -11,23 +13,30 @@
 * Apps
 
 * Go API
-- [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
-- [rpc/client] \#3458 Include NetworkClient interface into Client interface
+  - [crypto] [\#3426](https://github.com/tendermint/tendermint/pull/3426) Remove `Ripemd160` helper method (@needkane)
+  - [libs/common] Remove `RepeatTimer` (also `TimerMaker` and `Ticker` interface)
+  - [rpc/client] [\#3458](https://github.com/tendermint/tendermint/issues/3458) Include `NetworkClient` interface into `Client` interface
+  - [types] [\#3448](https://github.com/tendermint/tendermint/issues/3448) Remove method `PB2TM.ConsensusParams`
 
 * Blockchain Protocol
 
 * P2P Protocol
 
 ### FEATURES:
-- [rpc] \#3419 Start HTTPS server if `rpc.tls_cert_file` and `rpc.tls_key_file` are provided in the config (@guagualvcha)
+
+ - [rpc] [\#3419](https://github.com/tendermint/tendermint/issues/3419) Start HTTPS server if `rpc.tls_cert_file` and `rpc.tls_key_file` are provided in the config (@guagualvcha)
 
 ### IMPROVEMENTS:
 
-- [mempool] \#2778 No longer send txs back to peers who sent it to you
+- [docs] [\#3140](https://github.com/tendermint/tendermint/issues/3140) Formalize proposer election algorithm properties
+- [mempool] [\#2778](https://github.com/tendermint/tendermint/issues/2778) No longer send txs back to peers who sent it to you
+- [p2p] [\#3475](https://github.com/tendermint/tendermint/issues/3475) Simplify `GetSelectionWithBias` for addressbook
+- [rpc/lib/client] [\#3430](https://github.com/tendermint/tendermint/issues/3430) Disable compression for HTTP client to prevent GZIP-bomb DoS attacks (@guagualvcha)
 
 ### BUG FIXES:
 
-- [blockchain] \#2699 update the maxHeight when a peer is removed
+- [blockchain] [\#2699](https://github.com/tendermint/tendermint/issues/2699) update the maxHeight when a peer is removed
+- [mempool] [\#3478](https://github.com/tendermint/tendermint/issues/3478) Fix memory-leak related to `broadcastTxRoutine` (@HaoyangLiu)
 
 
 ## v0.31.0
