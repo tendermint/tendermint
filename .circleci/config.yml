@@ -19,6 +19,10 @@ release_management: &release_management
   docker:
     - image: circleci/golang
 
+release_management_docker: &release_management_docker
+  working_directory: /go/src/github.com/tendermint/tendermint
+  machine: true
+
 jobs:
   setup_dependencies:
     <<: *defaults
@@ -337,7 +341,7 @@ jobs:
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
 
   release_docker:
-    <<: *release_management
+    <<: *release_management_docker
     steps:
       - checkout
       - attach_workspace:
