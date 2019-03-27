@@ -19,12 +19,6 @@ release_management: &release_management
   docker:
     - image: circleci/golang
 
-# Todo: See what image I can get that has docker and expect installed
-release_management_docker: &release_management_docker
-  working_directory: /go/src/github.com/tendermint/tendermint
-  docker:
-    - image: circleci/expect
-
 jobs:
   setup_dependencies:
     <<: *defaults
@@ -334,15 +328,15 @@ jobs:
             echo "---"
             export RELEASE_ID="`python -u scripts/release_management/github-draft.py`"
             echo "Release ID: ${RELEASE_ID}"
-            #Todo: Parallelize upload - but make sure publish only runs once and only after all uploads finished
+            #Todo: Parallelize uploads only
             export GOOS=linux GOARCH=amd64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             export GOOS=darwin GOARCH=amd64  && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             export GOOS=windows GOARCH=amd64 && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             export GOOS=linux GOARCH=arm     && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            python -u scripts/release_management/github-upload.py --file "/tmp/workspace/SHA256SUMS" --id "${RELEASE_ID}"
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
 
   release_docker:
-    <<: *release_management_docker
     steps:
       - checkout
       - attach_workspace:
