@@ -5,6 +5,7 @@
 *March 27th, 2019*
 
 Special thanks to external contributors on this release:
+@guagualvcha, @HaoyangLiu, @needkane
 
 ### BREAKING CHANGES:
 
