@@ -160,8 +160,7 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 					},
 				)
 			)
-
-			addr, err := NewNetAddressStringWithOptionalID(mt.listener.Addr().String())
+			addr, err := NewNetAddressStringWithOptionalID(IDAddressString(mt.nodeKey.ID(), mt.listener.Addr().String()))
 			if err != nil {
 				errc <- err
 				return
@@ -230,7 +229,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 
 	// Simulate slow Peer.
 	go func() {
-		addr, err := NewNetAddressStringWithOptionalID(mt.listener.Addr().String())
+		addr, err := NewNetAddressStringWithOptionalID(IDAddressString(mt.nodeKey.ID(), mt.listener.Addr().String()))
 		if err != nil {
 			errc <- err
 			return
@@ -281,8 +280,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 				},
 			)
 		)
-
-		addr, err := NewNetAddressStringWithOptionalID(mt.listener.Addr().String())
+		addr, err := NewNetAddressStringWithOptionalID(IDAddressString(mt.nodeKey.ID(), mt.listener.Addr().String()))
 		if err != nil {
 			errc <- err
 			return
@@ -328,7 +326,7 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 			)
 		)
 
-		addr, err := NewNetAddressStringWithOptionalID(mt.listener.Addr().String())
+		addr, err := NewNetAddressStringWithOptionalID(IDAddressString(mt.nodeKey.ID(), mt.listener.Addr().String()))
 		if err != nil {
 			errc <- err
 			return
@@ -371,8 +369,7 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 				PrivKey: ed25519.GenPrivKey(),
 			},
 		)
-
-		addr, err := NewNetAddressStringWithOptionalID(mt.listener.Addr().String())
+		addr, err := NewNetAddressStringWithOptionalID(IDAddressString(mt.nodeKey.ID(), mt.listener.Addr().String()))
 		if err != nil {
 			errc <- err
 			return
@@ -401,6 +398,38 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	}
 }
 
+func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
+	mt := testSetupMultiplexTransport(t)
+
+	var (
+		pv     = ed25519.GenPrivKey()
+		dialer = newMultiplexTransport(
+			testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
+			NodeKey{
+				PrivKey: pv,
+			},
+		)
+	)
+
+	wrongID := PubKeyToID(ed25519.GenPrivKey().PubKey())
+	addr, err := NewNetAddressStringWithOptionalID(IDAddressString(wrongID, mt.listener.Addr().String()))
+	if err != nil {
+		t.Fatalf("invalid address with ID: %v", err)
+	}
+
+	_, err = dialer.Dial(*addr, peerConfig{})
+	if err != nil {
+		t.Logf("connection failed: %v", err)
+		if err, ok := err.(ErrRejected); ok {
+			if !err.IsAuthFailure() {
+				t.Errorf("expected auth failure")
+			}
+		} else {
+			t.Errorf("expected ErrRejected")
+		}
+	}
+}
+
 func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 	mt := testSetupMultiplexTransport(t)
 
@@ -416,8 +445,7 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 				},
 			)
 		)
-
-		addr, err := NewNetAddressStringWithOptionalID(mt.listener.Addr().String())
+		addr, err := NewNetAddressStringWithOptionalID(IDAddressString(mt.nodeKey.ID(), mt.listener.Addr().String()))
 		if err != nil {
 			errc <- err
 			return
@@ -448,7 +476,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	errc := make(chan error)
 
 	go func() {
-		addr, err := NewNetAddressStringWithOptionalID(mt.listener.Addr().String())
+		addr, err := NewNetAddressStringWithOptionalID(IDAddressString(mt.nodeKey.ID(), mt.listener.Addr().String()))
 		if err != nil {
 			errc <- err
 			return
@@ -466,7 +494,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	if err := <-errc; err != nil {
 		if err, ok := err.(ErrRejected); ok {
 			if !err.IsSelf() {
-				t.Errorf("expected to reject self")
+				t.Errorf("expected to reject self, got: %v", err)
 			}
 		} else {
 			t.Errorf("expected ErrRejected")
@@ -478,7 +506,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	_, err := mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsSelf() {
-			t.Errorf("expected to reject self")
+			t.Errorf("expected to reject self, got: %v", err)
 		}
 	} else {
 		t.Errorf("expected ErrRejected")
@@ -498,13 +526,13 @@ func TestTransportConnDuplicateIPFilter(t *testing.T) {
 	)
 
 	cs.Set(c, []net.IP{
-		net.IP{10, 0, 10, 1},
-		net.IP{10, 0, 10, 2},
-		net.IP{10, 0, 10, 3},
+		{10, 0, 10, 1},
+		{10, 0, 10, 2},
+		{10, 0, 10, 3},
 	})
 
 	if err := filter(cs, c, []net.IP{
-		net.IP{10, 0, 10, 2},
+		{10, 0, 10, 2},
 	}); err == nil {
 		t.Errorf("expected Peer to be rejected as duplicate")
 	}
@@ -566,9 +594,10 @@ func TestTransportHandshake(t *testing.T) {
 func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 	var (
 		pv = ed25519.GenPrivKey()
+		id = PubKeyToID(pv.PubKey())
 		mt = newMultiplexTransport(
 			testNodeInfo(
-				PubKeyToID(pv.PubKey()), "transport",
+				id, "transport",
 			),
 			NodeKey{
 				PrivKey: pv,
@@ -576,7 +605,7 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 		)
 	)
 
-	addr, err := NewNetAddressStringWithOptionalID("127.0.0.1:0")
+	addr, err := NewNetAddressStringWithOptionalID(IDAddressString(id, "127.0.0.1:0"))
 	if err != nil {
 		t.Fatal(err)
 	}

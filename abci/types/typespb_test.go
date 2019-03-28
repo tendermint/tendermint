@@ -1591,15 +1591,15 @@ func TestConsensusParamsMarshalTo(t *testing.T) {
 	}
 }
 
-func TestBlockSizeParamsProto(t *testing.T) {
+func TestBlockParamsProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedBlockSizeParams(popr, false)
+	p := NewPopulatedBlockParams(popr, false)
 	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	msg := &BlockSizeParams{}
+	msg := &BlockParams{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1622,10 +1622,10 @@ func TestBlockSizeParamsProto(t *testing.T) {
 	}
 }
 
-func TestBlockSizeParamsMarshalTo(t *testing.T) {
+func TestBlockParamsMarshalTo(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedBlockSizeParams(popr, false)
+	p := NewPopulatedBlockParams(popr, false)
 	size := p.Size()
 	dAtA := make([]byte, size)
 	for i := range dAtA {
@@ -1635,7 +1635,7 @@ func TestBlockSizeParamsMarshalTo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	msg := &BlockSizeParams{}
+	msg := &BlockParams{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2823,16 +2823,16 @@ func TestConsensusParamsJSON(t *testing.T) {
 		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
 	}
 }
-func TestBlockSizeParamsJSON(t *testing.T) {
+func TestBlockParamsJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedBlockSizeParams(popr, true)
+	p := NewPopulatedBlockParams(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	msg := &BlockSizeParams{}
+	msg := &BlockParams{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
@@ -3841,12 +3841,12 @@ func TestConsensusParamsProtoCompactText(t *testing.T) {
 	}
 }
 
-func TestBlockSizeParamsProtoText(t *testing.T) {
+func TestBlockParamsProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedBlockSizeParams(popr, true)
+	p := NewPopulatedBlockParams(popr, true)
 	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &BlockSizeParams{}
+	msg := &BlockParams{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -3855,12 +3855,12 @@ func TestBlockSizeParamsProtoText(t *testing.T) {
 	}
 }
 
-func TestBlockSizeParamsProtoCompactText(t *testing.T) {
+func TestBlockParamsProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedBlockSizeParams(popr, true)
+	p := NewPopulatedBlockParams(popr, true)
 	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &BlockSizeParams{}
+	msg := &BlockParams{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -4821,10 +4821,10 @@ func TestConsensusParamsSize(t *testing.T) {
 	}
 }
 
-func TestBlockSizeParamsSize(t *testing.T) {
+func TestBlockParamsSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
-	p := NewPopulatedBlockSizeParams(popr, true)
+	p := NewPopulatedBlockParams(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {

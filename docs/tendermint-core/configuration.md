@@ -36,22 +36,26 @@ db_backend = "leveldb"
 # Database directory
 db_dir = "data"
 
-# Output level for logging
-log_level = "state:info,*:error"
+# Output level for logging, including package level options
+log_level = "main:info,state:info,*:error"
 
 # Output format: 'plain' (colored text) or 'json'
 log_format = "plain"
 
 ##### additional base config options #####
 
-# The ID of the chain to join (should be signed with every transaction and vote)
-chain_id = ""
-
 # Path to the JSON file containing the initial validator set and other meta data
-genesis_file = "genesis.json"
+genesis_file = "config/genesis.json"
 
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv_validator_file = "priv_validator.json"
+priv_validator_file = "config/priv_validator.json"
+
+# TCP or UNIX socket address for Tendermint to listen on for
+# connections from an external PrivValidator process
+priv_validator_laddr = ""
+
+# Path to the JSON file containing the private key to use for node authentication in the p2p protocol
+node_key_file = "config/node_key.json"
 
 # Mechanism to connect to the ABCI application: socket | grpc
 abci = "socket"
@@ -74,13 +78,13 @@ laddr = "tcp://0.0.0.0:26657"
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
 # Use '["*"]' to allow any origin
-cors_allowed_origins = "[]"
+cors_allowed_origins = []
 
 # A list of methods the client is allowed to use with cross-domain requests
-cors_allowed_methods = "[HEAD GET POST]"
+cors_allowed_methods = ["HEAD", "GET", "POST"]
 
 # A list of non simple headers the client is allowed to use with cross-domain requests
-cors_allowed_headers = "[Origin Accept Content-Type X-Requested-With X-Server-Time]"
+cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"]
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
@@ -88,7 +92,7 @@ grpc_laddr = ""
 
 # Maximum number of simultaneous connections.
 # Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
@@ -100,18 +104,40 @@ unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).
 # Does not include gRPC connections. See grpc_max_open_connections
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 # 1024 - 40 - 10 - 50 = 924 = ~900
 max_open_connections = 900
 
+# Maximum number of unique clientIDs that can /subscribe
+# If you're using /broadcast_tx_commit, set to the estimated maximum number
+# of broadcast_tx_commit calls per block.
+max_subscription_clients = 100
+
+# Maximum number of unique queries a given client can /subscribe to
+# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
+# the estimated # maximum number of broadcast_tx_commit calls per block.
+max_subscriptions_per_client = 5
+
+# How long to wait for a tx to be committed during /broadcast_tx_commit.
+# WARNING: Using a value larger than 10s will result in increasing the
+# global HTTP write timeout, which applies to all connections and endpoints.
+# See https://github.com/tendermint/tendermint/issues/3435
+timeout_broadcast_tx_commit = "10s"
+
 ##### peer to peer configuration options #####
 [p2p]
 
 # Address to listen for incoming connections
 laddr = "tcp://0.0.0.0:26656"
+
+# Address to advertise to peers for them to dial
+# If empty, will use the same port as the laddr,
+# and will introspect on the listener or use UPnP
+# to figure out the address.
+external_address = ""
 
 # Comma separated list of seed nodes to connect to
 seeds = ""
@@ -123,7 +149,7 @@ persistent_peers = ""
 upnp = false
 
 # Path to address book
-addr_book_file = "addrbook.json"
+addr_book_file = "config/addrbook.json"
 
 # Set true for strict address routability rules
 # Set false for private or local networks
@@ -160,7 +186,7 @@ seed_mode = false
 private_peer_ids = ""
 
 # Toggle to disable guard against peers connecting from the same ip.
-allow_duplicate_ip = true
+allow_duplicate_ip = false
 
 # Peer connection configuration.
 handshake_timeout = "20s"
@@ -171,26 +197,31 @@ dial_timeout = "3s"
 
 recheck = true
 broadcast = true
-wal_dir = "data/mempool.wal"
+wal_dir = ""
 
-# size of the mempool
-size = 100000
+# Maximum number of transactions in the mempool
+size = 5000
 
-# size of the cache (used to filter transactions we saw earlier)
-cache_size = 100000
+# Limit the total size of all txs in the mempool.
+# This only accounts for raw transactions (e.g. given 1MB transactions and
+# max_txs_bytes=5MB, mempool will only accept 5 transactions).
+max_txs_bytes = 1073741824
+
+# Size of the cache (used to filter transactions we saw earlier) in transactions
+cache_size = 10000
 
 ##### consensus configuration options #####
 [consensus]
 
 wal_file = "data/cs.wal/wal"
 
-timeout_propose = "3000ms"
+timeout_propose = "3s"
 timeout_propose_delta = "500ms"
-timeout_prevote = "1000ms"
+timeout_prevote = "1s"
 timeout_prevote_delta = "500ms"
-timeout_precommit = "1000ms"
+timeout_precommit = "1s"
 timeout_precommit_delta = "500ms"
-timeout_commit = "1000ms"
+timeout_commit = "1s"
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = false
@@ -201,10 +232,10 @@ create_empty_blocks_interval = "0s"
 
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "100ms"
-peer_query_maj23_sleep_duration = "2000ms"
+peer_query_maj23_sleep_duration = "2s"
 
 # Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
-blocktime_iota = "1000ms"
+blocktime_iota = "1s"
 
 ##### transactions indexer configuration options #####
 [tx_index]
@@ -245,7 +276,7 @@ prometheus = false
 prometheus_listen_addr = ":26660"
 
 # Maximum number of simultaneous connections.
-# If you want to accept a more significant number than the default, make sure
+# If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 max_open_connections = 3
@@ -253,3 +284,74 @@ max_open_connections = 3
 # Instrumentation namespace
 namespace = "tendermint"
 ```
+
+## Empty blocks VS no empty blocks
+
+**create_empty_blocks = true**
+
+If `create_empty_blocks` is set to `true` in your config, blocks will be
+created ~ every second (with default consensus parameters). You can regulate
+the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit
+= "10s"` should result in ~ 10 second blocks.
+
+**create_empty_blocks = false**
+
+In this setting, blocks are created when transactions received.
+
+Note after the block H, Tendermint creates something we call a "proof block"
+(only if the application hash changed) H+1. The reason for this is to support
+proofs. If you have a transaction in block H that changes the state to X, the
+new application hash will only be included in block H+1. If after your
+transaction is committed, you want to get a lite-client proof for the new state
+(X), you need the new block to be committed in order to do that because the new
+block has the new application hash for the state X. That's why we make a new
+(empty) block if the application hash changes. Otherwise, you won't be able to
+make a proof for the new state.
+
+Plus, if you set `create_empty_blocks_interval` to something other than the
+default (`0`), Tendermint will be creating empty blocks even in the absence of
+transactions every `create_empty_blocks_interval`. For instance, with
+`create_empty_blocks = false` and `create_empty_blocks_interval = "30s"`,
+Tendermint will only create blocks if there are transactions, or after waiting
+30 seconds without receiving any transactions.
+
+## Consensus timeouts explained
+
+There's a variety of information about timeouts in [Running in
+production](./running-in-production.html)
+
+You can also find more detailed technical explanation in the spec: [The latest
+gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
+
+```
+[consensus]
+...
+
+timeout_propose = "3s"
+timeout_propose_delta = "500ms"
+timeout_prevote = "1s"
+timeout_prevote_delta = "500ms"
+timeout_precommit = "1s"
+timeout_precommit_delta = "500ms"
+timeout_commit = "1s"
+```
+
+Note that in a successful round, the only timeout that we absolutely wait no
+matter what is `timeout_commit`.
+
+Here's a brief summary of the timeouts:
+
+- `timeout_propose` = how long we wait for a proposal block before prevoting
+  nil
+- `timeout_propose_delta` = how much timeout_propose increases with each round
+- `timeout_prevote` = how long we wait after receiving +2/3 prevotes for
+  anything (ie. not a single block or nil)
+- `timeout_prevote_delta` = how much the timeout_prevote increases with each
+  round
+- `timeout_precommit` = how long we wait after receiving +2/3 precommits for
+  anything (ie. not a single block or nil)
+- `timeout_precommit_delta` = how much the timeout_precommit increases with
+  each round
+- `timeout_commit` = how long we wait after committing a block, before starting
+  on the new height (this gives us a chance to receive some more precommits,
+  even though we already have +2/3)

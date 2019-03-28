@@ -2,7 +2,7 @@
 set -e
 
 # run the linter
-# make metalinter_test
+# make lint
 
 # setup certs
 make gen_certs

@@ -8,8 +8,21 @@ module.exports = {
     lineNumbers: true
   },
   themeConfig: {
-    lastUpdated: "Last Updated",
-    nav: [{ text: "Back to Tendermint", link: "https://tendermint.com" }],
+    repo: "tendermint/tendermint",
+    editLinks: true,
+    docsDir: "docs",
+    docsBranch: "develop",
+    editLinkText: 'Edit this page on Github',
+    lastUpdated: true,
+    algolia: {
+      apiKey: '59f0e2deb984aa9cdf2b3a5fd24ac501',
+      indexName: 'tendermint',
+      debug: false
+    },
+    nav: [
+      { text: "Back to Tendermint", link: "https://tendermint.com" },
+      { text: "RPC", link: "https://tendermint.com/rpc/" }
+    ],
     sidebar: [
       {
         title: "Introduction",
@@ -19,6 +32,20 @@ module.exports = {
           "/introduction/quick-start",
           "/introduction/install",
           "/introduction/what-is-tendermint"
+        ]
+      },
+      {
+        title: "Apps",
+        collapsable: false,
+        children: [
+          "/app-dev/getting-started",
+          "/app-dev/abci-cli",
+          "/app-dev/app-architecture",
+          "/app-dev/app-development",
+          "/app-dev/subscribing-to-events-via-websocket",
+          "/app-dev/indexing-transactions",
+          "/app-dev/abci-spec",
+          "/app-dev/ecosystem"
         ]
       },
       {
@@ -36,17 +63,9 @@ module.exports = {
           "/tendermint-core/light-client-protocol",
           "/tendermint-core/metrics",
           "/tendermint-core/secure-p2p",
-          "/tendermint-core/validators"
+          "/tendermint-core/validators",
+          "/tendermint-core/mempool"
         ]
-      },
-      {
-        title: "Tools",
-        collapsable: false,
-        children:  [
-	  "/tools/",
-	  "/tools/benchmarking",
-	  "/tools/monitoring"
-	]
       },
       {
         title: "Networks",
@@ -58,17 +77,13 @@ module.exports = {
         ]
       },
       {
-        title: "Apps",
+        title: "Tools",
         collapsable: false,
-        children: [
-          "/app-dev/getting-started",
-          "/app-dev/abci-cli",
-          "/app-dev/app-architecture",
-          "/app-dev/app-development",
-          "/app-dev/subscribing-to-events-via-websocket",
-          "/app-dev/indexing-transactions",
-          "/app-dev/abci-spec",
-          "/app-dev/ecosystem"
+        children:  [
+          "/tools/",
+          "/tools/benchmarking",
+          "/tools/monitoring",
+          "/tools/remote-signer-validation"
         ]
       },
       {

@@ -64,6 +64,13 @@
       "description": "Public service reporting and tracking"
     },
     {
+      "name": "ParadigmCore",
+      "url": "https://github.com/ParadigmFoundation/ParadigmCore",
+      "language": "TypeScript",
+      "author": "Paradigm Labs",
+      "description": "Reference implementation of the Paradigm Protocol, and OrderStream network client."
+    },
+    {
       "name": "Passchain",
       "url": "https://github.com/trusch/passchain",
       "language": "Go",
@@ -122,7 +129,7 @@
   ],
   "abciServers": [
     {
-      "name": "abci",
+      "name": "go-abci",
       "url": "https://github.com/tendermint/tendermint/tree/master/abci",
       "language": "Go",
       "author": "Tendermint"
@@ -131,6 +138,12 @@
       "name": "js-abci",
       "url": "https://github.com/tendermint/js-abci",
       "language": "Javascript",
+      "author": "Tendermint"
+    },
+    {
+      "name": "rust-tsp",
+      "url": "https://github.com/tendermint/rust-tsp",
+      "language": "Rust",
       "author": "Tendermint"
     },
     {
@@ -164,7 +177,7 @@
       "author": "Dave Bryson"
     },
     {
-      "name": "tm-abci",
+      "name": "tm-abci (fork of py-abci with async IO)",
       "url": "https://github.com/SoftblocksCo/tm-abci",
       "language": "Python",
       "author": "Softblocks"
@@ -174,6 +187,14 @@
       "url": "https://github.com/dennismckinnon/spearmint",
       "language": "Javascript",
       "author": "Dennis McKinnon"
+    }
+  ],
+  "aminoLibraries": [
+    {
+      "name": "JS-Amino",
+      "url": "https://github.com/TanNgocDo/Js-Amino",
+      "language": "Javascript",
+      "author": "TanNgocDo"
     }
   ]
 }

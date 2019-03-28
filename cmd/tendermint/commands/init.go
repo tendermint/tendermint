@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
@@ -26,15 +25,18 @@ func initFiles(cmd *cobra.Command, args []string) error {
 
 func initFilesWithConfig(config *cfg.Config) error {
 	// private validator
-	privValFile := config.PrivValidatorFile()
+	privValKeyFile := config.PrivValidatorKeyFile()
+	privValStateFile := config.PrivValidatorStateFile()
 	var pv *privval.FilePV
-	if cmn.FileExists(privValFile) {
-		pv = privval.LoadFilePV(privValFile)
-		logger.Info("Found private validator", "path", privValFile)
+	if cmn.FileExists(privValKeyFile) {
+		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
+		logger.Info("Found private validator", "keyFile", privValKeyFile,
+			"stateFile", privValStateFile)
 	} else {
-		pv = privval.GenFilePV(privValFile)
+		pv = privval.GenFilePV(privValKeyFile, privValStateFile)
 		pv.Save()
-		logger.Info("Generated private validator", "path", privValFile)
+		logger.Info("Generated private validator", "keyFile", privValKeyFile,
+			"stateFile", privValStateFile)
 	}
 
 	nodeKeyFile := config.NodeKeyFile()
@@ -57,9 +59,10 @@ func initFilesWithConfig(config *cfg.Config) error {
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
+		key := pv.GetPubKey()
 		genDoc.Validators = []types.GenesisValidator{{
-			Address: pv.GetPubKey().Address(),
-			PubKey:  pv.GetPubKey(),
+			Address: key.Address(),
+			PubKey:  key,
 			Power:   10,
 		}}
 

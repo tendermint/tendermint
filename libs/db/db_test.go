@@ -121,86 +121,75 @@ func TestDBIteratorNonemptyBeginAfter(t *testing.T) {
 	}
 }
 
-func TestDBBatchWrite1(t *testing.T) {
-	mdb := newMockDB()
-	ddb := NewDebugDB(t.Name(), mdb)
-	batch := ddb.NewBatch()
+func TestDBBatchWrite(t *testing.T) {
+	testCases := []struct {
+		modify func(batch Batch)
+		calls  map[string]int
+	}{
+		0: {
+			func(batch Batch) {
+				batch.Set(bz("1"), bz("1"))
+				batch.Set(bz("2"), bz("2"))
+				batch.Delete(bz("3"))
+				batch.Set(bz("4"), bz("4"))
+				batch.Write()
+			},
+			map[string]int{
+				"Set": 0, "SetSync": 0, "SetNoLock": 3, "SetNoLockSync": 0,
+				"Delete": 0, "DeleteSync": 0, "DeleteNoLock": 1, "DeleteNoLockSync": 0,
+			},
+		},
+		1: {
+			func(batch Batch) {
+				batch.Set(bz("1"), bz("1"))
+				batch.Set(bz("2"), bz("2"))
+				batch.Set(bz("4"), bz("4"))
+				batch.Delete(bz("3"))
+				batch.Write()
+			},
+			map[string]int{
+				"Set": 0, "SetSync": 0, "SetNoLock": 3, "SetNoLockSync": 0,
+				"Delete": 0, "DeleteSync": 0, "DeleteNoLock": 1, "DeleteNoLockSync": 0,
+			},
+		},
+		2: {
+			func(batch Batch) {
+				batch.Set(bz("1"), bz("1"))
+				batch.Set(bz("2"), bz("2"))
+				batch.Delete(bz("3"))
+				batch.Set(bz("4"), bz("4"))
+				batch.WriteSync()
+			},
+			map[string]int{
+				"Set": 0, "SetSync": 0, "SetNoLock": 2, "SetNoLockSync": 1,
+				"Delete": 0, "DeleteSync": 0, "DeleteNoLock": 1, "DeleteNoLockSync": 0,
+			},
+		},
+		3: {
+			func(batch Batch) {
+				batch.Set(bz("1"), bz("1"))
+				batch.Set(bz("2"), bz("2"))
+				batch.Set(bz("4"), bz("4"))
+				batch.Delete(bz("3"))
+				batch.WriteSync()
+			},
+			map[string]int{
+				"Set": 0, "SetSync": 0, "SetNoLock": 3, "SetNoLockSync": 0,
+				"Delete": 0, "DeleteSync": 0, "DeleteNoLock": 0, "DeleteNoLockSync": 1,
+			},
+		},
+	}
 
-	batch.Set(bz("1"), bz("1"))
-	batch.Set(bz("2"), bz("2"))
-	batch.Delete(bz("3"))
-	batch.Set(bz("4"), bz("4"))
-	batch.Write()
+	for i, tc := range testCases {
+		mdb := newMockDB()
+		ddb := NewDebugDB(t.Name(), mdb)
+		batch := ddb.NewBatch()
 
-	assert.Equal(t, 0, mdb.calls["Set"])
-	assert.Equal(t, 0, mdb.calls["SetSync"])
-	assert.Equal(t, 3, mdb.calls["SetNoLock"])
-	assert.Equal(t, 0, mdb.calls["SetNoLockSync"])
-	assert.Equal(t, 0, mdb.calls["Delete"])
-	assert.Equal(t, 0, mdb.calls["DeleteSync"])
-	assert.Equal(t, 1, mdb.calls["DeleteNoLock"])
-	assert.Equal(t, 0, mdb.calls["DeleteNoLockSync"])
-}
+		tc.modify(batch)
 
-func TestDBBatchWrite2(t *testing.T) {
-	mdb := newMockDB()
-	ddb := NewDebugDB(t.Name(), mdb)
-	batch := ddb.NewBatch()
-
-	batch.Set(bz("1"), bz("1"))
-	batch.Set(bz("2"), bz("2"))
-	batch.Set(bz("4"), bz("4"))
-	batch.Delete(bz("3"))
-	batch.Write()
-
-	assert.Equal(t, 0, mdb.calls["Set"])
-	assert.Equal(t, 0, mdb.calls["SetSync"])
-	assert.Equal(t, 3, mdb.calls["SetNoLock"])
-	assert.Equal(t, 0, mdb.calls["SetNoLockSync"])
-	assert.Equal(t, 0, mdb.calls["Delete"])
-	assert.Equal(t, 0, mdb.calls["DeleteSync"])
-	assert.Equal(t, 1, mdb.calls["DeleteNoLock"])
-	assert.Equal(t, 0, mdb.calls["DeleteNoLockSync"])
-}
-
-func TestDBBatchWriteSync1(t *testing.T) {
-	mdb := newMockDB()
-	ddb := NewDebugDB(t.Name(), mdb)
-	batch := ddb.NewBatch()
-
-	batch.Set(bz("1"), bz("1"))
-	batch.Set(bz("2"), bz("2"))
-	batch.Delete(bz("3"))
-	batch.Set(bz("4"), bz("4"))
-	batch.WriteSync()
-
-	assert.Equal(t, 0, mdb.calls["Set"])
-	assert.Equal(t, 0, mdb.calls["SetSync"])
-	assert.Equal(t, 2, mdb.calls["SetNoLock"])
-	assert.Equal(t, 1, mdb.calls["SetNoLockSync"])
-	assert.Equal(t, 0, mdb.calls["Delete"])
-	assert.Equal(t, 0, mdb.calls["DeleteSync"])
-	assert.Equal(t, 1, mdb.calls["DeleteNoLock"])
-	assert.Equal(t, 0, mdb.calls["DeleteNoLockSync"])
-}
-
-func TestDBBatchWriteSync2(t *testing.T) {
-	mdb := newMockDB()
-	ddb := NewDebugDB(t.Name(), mdb)
-	batch := ddb.NewBatch()
-
-	batch.Set(bz("1"), bz("1"))
-	batch.Set(bz("2"), bz("2"))
-	batch.Set(bz("4"), bz("4"))
-	batch.Delete(bz("3"))
-	batch.WriteSync()
-
-	assert.Equal(t, 0, mdb.calls["Set"])
-	assert.Equal(t, 0, mdb.calls["SetSync"])
-	assert.Equal(t, 3, mdb.calls["SetNoLock"])
-	assert.Equal(t, 0, mdb.calls["SetNoLockSync"])
-	assert.Equal(t, 0, mdb.calls["Delete"])
-	assert.Equal(t, 0, mdb.calls["DeleteSync"])
-	assert.Equal(t, 0, mdb.calls["DeleteNoLock"])
-	assert.Equal(t, 1, mdb.calls["DeleteNoLockSync"])
+		for call, exp := range tc.calls {
+			got := mdb.calls[call]
+			assert.Equal(t, exp, got, "#%v - key: %s", i, call)
+		}
+	}
 }

@@ -12,7 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/test"
+	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -42,9 +42,9 @@ func TestCorsEnabled(t *testing.T) {
 	req.Header.Set("Origin", origin)
 	c := &http.Client{}
 	resp, err := c.Do(req)
+	require.Nil(t, err, "%+v", err)
 	defer resp.Body.Close()
 
-	require.Nil(t, err, "%+v", err)
 	assert.Equal(t, resp.Header.Get("Access-Control-Allow-Origin"), origin)
 }
 
@@ -281,6 +281,48 @@ func TestBroadcastTxCommit(t *testing.T) {
 	}
 }
 
+func TestUnconfirmedTxs(t *testing.T) {
+	_, _, tx := MakeTxKV()
+
+	mempool := node.MempoolReactor().Mempool
+	_ = mempool.CheckTx(tx, nil)
+
+	for i, c := range GetClients() {
+		mc, ok := c.(client.MempoolClient)
+		require.True(t, ok, "%d", i)
+		res, err := mc.UnconfirmedTxs(1)
+		require.Nil(t, err, "%d: %+v", i, err)
+
+		assert.Equal(t, 1, res.Count)
+		assert.Equal(t, 1, res.Total)
+		assert.Equal(t, mempool.TxsBytes(), res.TotalBytes)
+		assert.Exactly(t, types.Txs{tx}, types.Txs(res.Txs))
+	}
+
+	mempool.Flush()
+}
+
+func TestNumUnconfirmedTxs(t *testing.T) {
+	_, _, tx := MakeTxKV()
+
+	mempool := node.MempoolReactor().Mempool
+	_ = mempool.CheckTx(tx, nil)
+	mempoolSize := mempool.Size()
+
+	for i, c := range GetClients() {
+		mc, ok := c.(client.MempoolClient)
+		require.True(t, ok, "%d", i)
+		res, err := mc.NumUnconfirmedTxs()
+		require.Nil(t, err, "%d: %+v", i, err)
+
+		assert.Equal(t, mempoolSize, res.Count)
+		assert.Equal(t, mempoolSize, res.Total)
+		assert.Equal(t, mempool.TxsBytes(), res.TotalBytes)
+	}
+
+	mempool.Flush()
+}
+
 func TestTx(t *testing.T) {
 	// first we broadcast a tx
 	c := getHTTPClient()
@@ -392,5 +434,10 @@ func TestTxSearch(t *testing.T) {
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
+
+		// query a non existing tx with page 1 and txsPerPage 1
+		result, err = c.TxSearch("app.creator='Cosmoshi Neetowoko'", true, 1, 1)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, result.Txs, 0)
 	}
 }

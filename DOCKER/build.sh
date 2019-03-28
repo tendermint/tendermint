@@ -3,7 +3,7 @@ set -e
 
 # Get the tag from the version, or try to figure it out.
 if [ -z "$TAG" ]; then
-	TAG=$(awk -F\" '/Version =/ { print $2; exit }' < ../version/version.go)
+	TAG=$(awk -F\" '/TMCoreSemVer =/ { print $2; exit }' < ../version/version.go)
 fi
 if [ -z "$TAG" ]; then
 		echo "Please specify a tag."

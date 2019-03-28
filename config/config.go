@@ -35,15 +35,24 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
-	defaultPrivValName  = "priv_validator.json"
+	defaultPrivValKeyName   = "priv_validator_key.json"
+	defaultPrivValStateName = "priv_validator_state.json"
+
 	defaultNodeKeyName  = "node_key.json"
 	defaultAddrBookName = "addrbook.json"
 
-	defaultConfigFilePath  = filepath.Join(defaultConfigDir, defaultConfigFileName)
-	defaultGenesisJSONPath = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
-	defaultPrivValPath     = filepath.Join(defaultConfigDir, defaultPrivValName)
-	defaultNodeKeyPath     = filepath.Join(defaultConfigDir, defaultNodeKeyName)
-	defaultAddrBookPath    = filepath.Join(defaultConfigDir, defaultAddrBookName)
+	defaultConfigFilePath   = filepath.Join(defaultConfigDir, defaultConfigFileName)
+	defaultGenesisJSONPath  = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
+	defaultPrivValKeyPath   = filepath.Join(defaultConfigDir, defaultPrivValKeyName)
+	defaultPrivValStatePath = filepath.Join(defaultDataDir, defaultPrivValStateName)
+
+	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
+	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+)
+
+var (
+	oldPrivVal     = "priv_validator.json"
+	oldPrivValPath = filepath.Join(defaultConfigDir, oldPrivVal)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -160,7 +169,10 @@ type BaseConfig struct {
 	Genesis string `mapstructure:"genesis_file"`
 
 	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
-	PrivValidator string `mapstructure:"priv_validator_file"`
+	PrivValidatorKey string `mapstructure:"priv_validator_key_file"`
+
+	// Path to the JSON file containing the last sign state of a validator
+	PrivValidatorState string `mapstructure:"priv_validator_state_file"`
 
 	// TCP or UNIX socket address for Tendermint to listen on for
 	// connections from an external PrivValidator process
@@ -183,19 +195,20 @@ type BaseConfig struct {
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:           defaultGenesisJSONPath,
-		PrivValidator:     defaultPrivValPath,
-		NodeKey:           defaultNodeKeyPath,
-		Moniker:           defaultMoniker,
-		ProxyApp:          "tcp://127.0.0.1:26658",
-		ABCI:              "socket",
-		LogLevel:          DefaultPackageLogLevels(),
-		LogFormat:         LogFormatPlain,
-		ProfListenAddress: "",
-		FastSync:          true,
-		FilterPeers:       false,
-		DBBackend:         "leveldb",
-		DBPath:            "data",
+		Genesis:            defaultGenesisJSONPath,
+		PrivValidatorKey:   defaultPrivValKeyPath,
+		PrivValidatorState: defaultPrivValStatePath,
+		NodeKey:            defaultNodeKeyPath,
+		Moniker:            defaultMoniker,
+		ProxyApp:           "tcp://127.0.0.1:26658",
+		ABCI:               "socket",
+		LogLevel:           DefaultPackageLogLevels(),
+		LogFormat:          LogFormatPlain,
+		ProfListenAddress:  "",
+		FastSync:           true,
+		FilterPeers:        false,
+		DBBackend:          "leveldb",
+		DBPath:             "data",
 	}
 }
 
@@ -218,9 +231,20 @@ func (cfg BaseConfig) GenesisFile() string {
 	return rootify(cfg.Genesis, cfg.RootDir)
 }
 
-// PrivValidatorFile returns the full path to the priv_validator.json file
-func (cfg BaseConfig) PrivValidatorFile() string {
-	return rootify(cfg.PrivValidator, cfg.RootDir)
+// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+func (cfg BaseConfig) PrivValidatorKeyFile() string {
+	return rootify(cfg.PrivValidatorKey, cfg.RootDir)
+}
+
+// PrivValidatorFile returns the full path to the priv_validator_state.json file
+func (cfg BaseConfig) PrivValidatorStateFile() string {
+	return rootify(cfg.PrivValidatorState, cfg.RootDir)
+}
+
+// OldPrivValidatorFile returns the full path of the priv_validator.json from pre v0.28.0.
+// TODO: eventually remove.
+func (cfg BaseConfig) OldPrivValidatorFile() string {
+	return rootify(oldPrivValPath, cfg.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
@@ -283,7 +307,7 @@ type RPCConfig struct {
 
 	// Maximum number of simultaneous connections.
 	// Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	GRPCMaxOpenConnections int `mapstructure:"grpc_max_open_connections"`
@@ -293,12 +317,28 @@ type RPCConfig struct {
 
 	// Maximum number of simultaneous connections (including WebSocket).
 	// Does not include gRPC connections. See grpc_max_open_connections
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	// Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 	// 1024 - 40 - 10 - 50 = 924 = ~900
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
+
+	// Maximum number of unique clientIDs that can /subscribe
+	// If you're using /broadcast_tx_commit, set to the estimated maximum number
+	// of broadcast_tx_commit calls per block.
+	MaxSubscriptionClients int `mapstructure:"max_subscription_clients"`
+
+	// Maximum number of unique queries a given client can /subscribe to
+	// If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set
+	// to the estimated maximum number of broadcast_tx_commit calls per block.
+	MaxSubscriptionsPerClient int `mapstructure:"max_subscriptions_per_client"`
+
+	// How long to wait for a tx to be committed during /broadcast_tx_commit
+	// WARNING: Using a value larger than 10s will result in increasing the
+	// global HTTP write timeout, which applies to all connections and endpoints.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -313,6 +353,10 @@ func DefaultRPCConfig() *RPCConfig {
 
 		Unsafe:             false,
 		MaxOpenConnections: 900,
+
+		MaxSubscriptionClients:    100,
+		MaxSubscriptionsPerClient: 5,
+		TimeoutBroadcastTxCommit:  10 * time.Second,
 	}
 }
 
@@ -333,6 +377,15 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.MaxOpenConnections < 0 {
 		return errors.New("max_open_connections can't be negative")
+	}
+	if cfg.MaxSubscriptionClients < 0 {
+		return errors.New("max_subscription_clients can't be negative")
+	}
+	if cfg.MaxSubscriptionsPerClient < 0 {
+		return errors.New("max_subscriptions_per_client can't be negative")
+	}
+	if cfg.TimeoutBroadcastTxCommit < 0 {
+		return errors.New("timeout_broadcast_tx_commit can't be negative")
 	}
 	return nil
 }
@@ -434,7 +487,7 @@ func DefaultP2PConfig() *P2PConfig {
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
 		SeedMode:                false,
-		AllowDuplicateIP:        true, // so non-breaking yet
+		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
 		TestDialFail:            false,
@@ -506,12 +559,13 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
-	RootDir   string `mapstructure:"home"`
-	Recheck   bool   `mapstructure:"recheck"`
-	Broadcast bool   `mapstructure:"broadcast"`
-	WalPath   string `mapstructure:"wal_dir"`
-	Size      int    `mapstructure:"size"`
-	CacheSize int    `mapstructure:"cache_size"`
+	RootDir     string `mapstructure:"home"`
+	Recheck     bool   `mapstructure:"recheck"`
+	Broadcast   bool   `mapstructure:"broadcast"`
+	WalPath     string `mapstructure:"wal_dir"`
+	Size        int    `mapstructure:"size"`
+	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
+	CacheSize   int    `mapstructure:"cache_size"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -520,10 +574,11 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Recheck:   true,
 		Broadcast: true,
 		WalPath:   "",
-		// Each signature verification takes .5ms, size reduced until we implement
+		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:      5000,
-		CacheSize: 10000,
+		Size:        5000,
+		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
+		CacheSize:   10000,
 	}
 }
 
@@ -549,6 +604,9 @@ func (cfg *MempoolConfig) WalEnabled() bool {
 func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.Size < 0 {
 		return errors.New("size can't be negative")
+	}
+	if cfg.MaxTxsBytes < 0 {
+		return errors.New("max_txs_bytes can't be negative")
 	}
 	if cfg.CacheSize < 0 {
 		return errors.New("cache_size can't be negative")
@@ -585,9 +643,6 @@ type ConsensusConfig struct {
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
 
-	// Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
-	BlockTimeIota time.Duration `mapstructure:"blocktime_iota"`
-
 	Readonly bool `mapstructure:"readonly"`
 }
 
@@ -607,7 +662,6 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
-		BlockTimeIota:               1000 * time.Millisecond,
 		Readonly:										 false,
 	}
 }
@@ -625,14 +679,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
-	cfg.BlockTimeIota = 10 * time.Millisecond
 	return cfg
-}
-
-// MinValidVoteTime returns the minimum acceptable block time.
-// See the [BFT time spec](https://godoc.org/github.com/tendermint/tendermint/docs/spec/consensus/bft-time.md).
-func (cfg *ConsensusConfig) MinValidVoteTime(lastBlockTime time.Time) time.Time {
-	return lastBlockTime.Add(cfg.BlockTimeIota)
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
@@ -712,9 +759,6 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	if cfg.PeerQueryMaj23SleepDuration < 0 {
 		return errors.New("peer_query_maj23_sleep_duration can't be negative")
 	}
-	if cfg.BlockTimeIota < 0 {
-		return errors.New("blocktime_iota can't be negative")
-	}
 	return nil
 }
 
@@ -777,12 +821,12 @@ type InstrumentationConfig struct {
 	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
 
 	// Maximum number of simultaneous connections.
-	// If you want to accept more significant number than the default, make sure
+	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
 
-	// Tendermint instrumentation namespace.
+	// Instrumentation namespace.
 	Namespace string `mapstructure:"namespace"`
 }
 

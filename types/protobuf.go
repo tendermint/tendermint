@@ -25,9 +25,9 @@ const (
 )
 
 // TODO: Make non-global by allowing for registration of more pubkey types
-var ABCIPubKeyTypesToAminoRoutes = map[string]string{
-	ABCIPubKeyTypeEd25519:   ed25519.PubKeyAminoRoute,
-	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyAminoRoute,
+var ABCIPubKeyTypesToAminoNames = map[string]string{
+	ABCIPubKeyTypeEd25519:   ed25519.PubKeyAminoName,
+	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyAminoName,
 }
 
 //-------------------------------------------------------
@@ -125,9 +125,9 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
-		BlockSize: &abci.BlockSizeParams{
-			MaxBytes: params.BlockSize.MaxBytes,
-			MaxGas:   params.BlockSize.MaxGas,
+		Block: &abci.BlockParams{
+			MaxBytes: params.Block.MaxBytes,
+			MaxGas:   params.Block.MaxGas,
 		},
 		Evidence: &abci.EvidenceParams{
 			MaxAge: params.Evidence.MaxAge,
@@ -187,20 +187,19 @@ var PB2TM = pb2tm{}
 type pb2tm struct{}
 
 func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
-	// TODO: define these in crypto and use them
-	sizeEd := 32
-	sizeSecp := 33
 	switch pubKey.Type {
 	case ABCIPubKeyTypeEd25519:
-		if len(pubKey.Data) != sizeEd {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeEd)
+		if len(pubKey.Data) != ed25519.PubKeyEd25519Size {
+			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d",
+				len(pubKey.Data), ed25519.PubKeyEd25519Size)
 		}
 		var pk ed25519.PubKeyEd25519
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:
-		if len(pubKey.Data) != sizeSecp {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeSecp)
+		if len(pubKey.Data) != secp256k1.PubKeySecp256k1Size {
+			return nil, fmt.Errorf("Invalid size for PubKeySecp256k1. Got %d, expected %d",
+				len(pubKey.Data), secp256k1.PubKeySecp256k1Size)
 		}
 		var pk secp256k1.PubKeySecp256k1
 		copy(pk[:], pubKey.Data)
@@ -222,17 +221,35 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 	return tmVals, nil
 }
 
-func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
-	return ConsensusParams{
-		BlockSize: BlockSizeParams{
-			MaxBytes: csp.BlockSize.MaxBytes,
-			MaxGas:   csp.BlockSize.MaxGas,
-		},
-		Evidence: EvidenceParams{
-			MaxAge: csp.Evidence.MaxAge,
-		},
-		Validator: ValidatorParams{
-			PubKeyTypes: csp.Validator.PubKeyTypes,
-		},
+// BlockParams.TimeIotaMs is not exposed to the application. Therefore a caller
+// must provide it.
+func (pb2tm) ConsensusParams(csp *abci.ConsensusParams, blockTimeIotaMs int64) ConsensusParams {
+	params := ConsensusParams{
+		Block:     BlockParams{},
+		Evidence:  EvidenceParams{},
+		Validator: ValidatorParams{},
 	}
+
+	// we must defensively consider any structs may be nil
+	if csp.Block != nil {
+		params.Block = BlockParams{
+			MaxBytes:   csp.Block.MaxBytes,
+			MaxGas:     csp.Block.MaxGas,
+			TimeIotaMs: blockTimeIotaMs,
+		}
+	}
+
+	if csp.Evidence != nil {
+		params.Evidence = EvidenceParams{
+			MaxAge: csp.Evidence.MaxAge,
+		}
+	}
+
+	if csp.Validator != nil {
+		params.Validator = ValidatorParams{
+			PubKeyTypes: csp.Validator.PubKeyTypes,
+		}
+	}
+
+	return params
 }

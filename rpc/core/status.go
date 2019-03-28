@@ -8,6 +8,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -21,6 +22,11 @@ import (
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
+// err := client.Start()
+// if err != nil {
+//   // handle error
+// }
+// defer client.Stop()
 // result, err := client.Status()
 // ```
 //
@@ -66,8 +72,8 @@ import (
 //   }
 // }
 // ```
-func Status() (*ctypes.ResultStatus, error) {
-	var latestHeight int64 = -1
+func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
+	var latestHeight int64
 	if consensusReactor.FastSync() {
 		latestHeight = blockStore.Height()
 	} else {
@@ -139,8 +145,8 @@ func validatorAtHeight(h int64) *types.Validator {
 	return nil
 }
 
-func SetReadonly(readonly bool) (*ctypes.ResultSetReadonly, error) {
+func SetReadonly(ctx *rpctypes.Context, readonly bool) (*ctypes.ResultSetReadonly, error) {
 	consensusState.SetReadonly(readonly)
 
-	return &ctypes.ResultSetReadonly{"Set validator as readonly: " + strconv.FormatBool(readonly)}, nil
+	return &ctypes.ResultSetReadonly{Log: "Set validator as readonly: " + strconv.FormatBool(readonly)}, nil
 }
