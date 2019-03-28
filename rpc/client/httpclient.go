@@ -52,11 +52,7 @@ func NewHTTP(remote, wsEndpoint string) *HTTP {
 	}
 }
 
-var (
-	_ Client        = (*HTTP)(nil)
-	_ NetworkClient = (*HTTP)(nil)
-	_ EventsClient  = (*HTTP)(nil)
-)
+var _ Client = (*HTTP)(nil)
 
 func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
 	result := new(ctypes.ResultStatus)

@@ -14,7 +14,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	p2pdummy "github.com/tendermint/tendermint/p2p/dummy"
+	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -1548,7 +1548,7 @@ func TestStateHalt1(t *testing.T) {
 func TestStateOutputsBlockPartsStats(t *testing.T) {
 	// create dummy peer
 	cs, _ := randConsensusState(1)
-	peer := p2pdummy.NewPeer()
+	peer := p2pmock.NewPeer(nil)
 
 	// 1) new block part
 	parts := types.NewPartSetFromData(cmn.RandBytes(100), 10)
@@ -1591,7 +1591,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 func TestStateOutputVoteStats(t *testing.T) {
 	cs, vss := randConsensusState(2)
 	// create dummy peer
-	peer := p2pdummy.NewPeer()
+	peer := p2pmock.NewPeer(nil)
 
 	vote := signVote(vss[1], types.PrecommitType, []byte("test"), types.PartSetHeader{})
 

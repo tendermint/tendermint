@@ -103,7 +103,7 @@ type PartSetHeader struct {
 }
 ```
 
-See [MerkleRoot](/docs/spec/blockchain/encoding.md#MerkleRoot) for details.
+See [MerkleRoot](./encoding.md#MerkleRoot) for details.
 
 ## Time
 
@@ -163,7 +163,7 @@ a _precommit_ has `vote.Type == 2`.
 
 Signatures in Tendermint are raw bytes representing the underlying signature.
 
-See the [signature spec](/docs/spec/blockchain/encoding.md#key-types) for more.
+See the [signature spec](./encoding.md#key-types) for more.
 
 ## EvidenceData
 
@@ -190,7 +190,7 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
-See the [pubkey spec](/docs/spec/blockchain/encoding.md#key-types) for more.
+See the [pubkey spec](./encoding.md#key-types) for more.
 
 ## Validation
 
@@ -209,7 +209,7 @@ the current version of the `state` corresponds to the state
 after executing transactions from the `prevBlock`.
 Elements of an object are accessed as expected,
 ie. `block.Header`.
-See the [definition of `State`](/docs/spec/blockchain/state.md).
+See the [definition of `State`](./state.md).
 
 ### Header
 
@@ -332,6 +332,7 @@ block.ValidatorsHash == MerkleRoot(state.Validators)
 
 MerkleRoot of the current validator set that is committing the block.
 This can be used to validate the `LastCommit` included in the next block.
+Note the validators are sorted by their address before computing the MerkleRoot.
 
 ### NextValidatorsHash
 
@@ -342,6 +343,7 @@ block.NextValidatorsHash == MerkleRoot(state.NextValidators)
 MerkleRoot of the next validator set that will be the validator set that commits the next block.
 This is included so that the current validator set gets a chance to sign the
 next validator sets Merkle root.
+Note the validators are sorted by their address before computing the MerkleRoot.
 
 ### ConsensusHash
 
