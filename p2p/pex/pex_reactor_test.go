@@ -398,7 +398,7 @@ func TestPEXReactorSeedModeFlushStop(t *testing.T) {
 	reactor := switches[0].Reactors()["pex"].(*PEXReactor)
 	peerID := switches[1].NodeInfo().ID()
 
-	err = switches[1].DialPeerWithAddress(switches[0].NetAddress(), false)
+	err = switches[1].DialPeerWithAddress(switches[0].NetAddress())
 	assert.NoError(t, err)
 
 	// sleep up to a second while waiting for the peer to send us a message.

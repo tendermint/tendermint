@@ -471,6 +471,11 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
+	errs := sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+	if len(errs) > 0 {
+		// do not bother with returning all errors at once
+		return nil, errors.Wrap(errs[0], "error in persistent_peers")
+	}
 
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
 
@@ -591,12 +596,8 @@ func (n *Node) OnStart() error {
 	}
 
 	// Always connect to persistent peers
-	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "), true)
-		if err != nil {
-			return err
-		}
-	}
+	// parsing errors are handled above by AddPersistentPeers
+	_ = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 
 	return nil
 }

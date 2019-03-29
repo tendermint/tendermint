@@ -167,7 +167,7 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	rp.Start()
 
 	// addr should be rejected in addPeer based on the same ID
-	err := s1.DialPeerWithAddress(rp.Addr(), false)
+	err := s1.DialPeerWithAddress(rp.Addr())
 	if assert.Error(t, err) {
 		if err, ok := err.(ErrRejected); ok {
 			if !err.IsSelf() {
@@ -212,6 +212,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -256,6 +257,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -281,6 +283,7 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -326,6 +329,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 	})
 	require.Nil(err)
@@ -408,7 +412,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		persistent:   true,
+		isPersistent: func(*NetAddress) bool { return true },
 		reactorsByCh: sw.reactorsByCh,
 	})
 	require.Nil(err)
@@ -446,7 +450,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	// simulate first time dial failure
 	conf := config.DefaultP2PConfig()
 	conf.TestDialFail = true
-	err = sw.addOutboundPeerWithConfig(rp.Addr(), conf, true)
+	err = sw.addOutboundPeerWithConfig(rp.Addr(), conf)
 	require.NotNil(err)
 
 	// DialPeerWithAddres - sw.peerConfig resets the dialer

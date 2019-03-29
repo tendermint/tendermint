@@ -37,11 +37,12 @@ type accept struct {
 // events.
 // TODO(xla): Refactor out with more static Reactor setup and PeerBehaviour.
 type peerConfig struct {
-	chDescs              []*conn.ChannelDescriptor
-	onPeerError          func(Peer, interface{})
-	outbound, persistent bool
-	reactorsByCh         map[byte]Reactor
-	metrics              *Metrics
+	chDescs      []*conn.ChannelDescriptor
+	onPeerError  func(Peer, interface{})
+	outbound     bool
+	isPersistent func(*NetAddress) bool
+	reactorsByCh map[byte]Reactor
+	metrics      *Metrics
 }
 
 // Transport emits and connects to Peers. The implementation of Peer is left to
@@ -445,10 +446,15 @@ func (mt *MultiplexTransport) wrapPeer(
 	cfg peerConfig,
 	socketAddr *NetAddress,
 ) Peer {
+	persistent := false
+	if cfg.isPersistent != nil {
+		// NOTE: do not use ni.NetAddress because it uses self-reported address
+		persistent = cfg.isPersistent(NewNetAddress(ni.ID(), c.RemoteAddr()))
+	}
 
 	peerConn := newPeerConn(
 		cfg.outbound,
-		cfg.persistent,
+		persistent,
 		c,
 		socketAddr,
 	)
