@@ -9,6 +9,7 @@
 * Apps
 
 * Go API
+- [libs/autofile] Remove useless code in autofile package
 
 * Blockchain Protocol
 
