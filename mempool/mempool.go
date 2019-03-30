@@ -216,7 +216,7 @@ func NewMempool(
 	} else {
 		mempool.cache = nopTxCache{}
 	}
-	proxyAppConn.SetResponseCallback(mempool.resCb)
+	proxyAppConn.SetResponseCallback(mempool.globalCb)
 	for _, option := range options {
 		option(mempool)
 	}
@@ -430,11 +430,14 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	return nil
 }
 
-// Global callback, which is called in the absence of the specific callback.
-//
-// In recheckTxs because no reqResCb (specific) callback is set, this callback
-// will be called.
-func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
+// Global callback that will be called after every ABCI response.
+// Having a single global callback avoids needing to set a callback for each request.
+// However, processing the checkTx response requires the peerID (so we can track which txs we heard from who),
+// and peerID is not included in the ABCI request, so we have to set request-specific callbacks that
+// include this information. If we're not in the midst of a recheck, this function will just return,
+// so the request specific callback can do the work.
+// When rechecking, we don't need the peerID, so the recheck callback happens here.
+func (mem *Mempool) globalCb(req *abci.Request, res *abci.Response) {
 	if mem.recheckCursor == nil {
 		return
 	}
