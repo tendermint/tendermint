@@ -149,6 +149,11 @@ func TxID(tx []byte) string {
 	return fmt.Sprintf("%X", types.Tx(tx).Hash())
 }
 
+// txKey is the fixed length array sha256 hash used as the key in maps.
+func txKey(tx types.Tx) [sha256.Size]byte {
+	return sha256.Sum256(tx)
+}
+
 // Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
 // round. Transaction validity is checked using the CheckTx abci message before the transaction is
 // added to the pool. The Mempool uses a concurrent list structure for storing transactions that
@@ -388,7 +393,7 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 		// Note it's possible a tx is still in the cache but no longer in the mempool
 		// (eg. after committing a block, txs are removed from mempool but not cache),
 		// so we only record the sender for txs still in the mempool.
-		if e, ok := mem.txsMap[sha256.Sum256(tx)]; ok {
+		if e, ok := mem.txsMap[txKey(tx)]; ok {
 			memTx := e.Value.(*mempoolTx)
 			if _, loaded := memTx.senders.LoadOrStore(txInfo.PeerID, true); loaded {
 				// TODO: consider punishing peer for dups,
@@ -480,7 +485,7 @@ func (mem *Mempool) reqResCb(tx []byte, peerID uint16, externalCb func(*abci.Res
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *Mempool) addTx(memTx *mempoolTx) {
 	e := mem.txs.PushBack(memTx)
-	mem.txsMap[sha256.Sum256(memTx.tx)] = e
+	mem.txsMap[txKey(memTx.tx)] = e
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
 }
@@ -491,7 +496,7 @@ func (mem *Mempool) addTx(memTx *mempoolTx) {
 func (mem *Mempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
-	delete(mem.txsMap, sha256.Sum256(tx))
+	delete(mem.txsMap, txKey(tx))
 	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 
 	if removeFromCache {
@@ -815,7 +820,7 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	defer cache.mtx.Unlock()
 
 	// Use the tx hash in the cache
-	txHash := sha256.Sum256(tx)
+	txHash := txKey(tx)
 	if moved, exists := cache.map_[txHash]; exists {
 		cache.list.MoveToBack(moved)
 		return false
@@ -837,7 +842,7 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 // Remove removes the given tx from the cache.
 func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
-	txHash := sha256.Sum256(tx)
+	txHash := txKey(tx)
 	popped := cache.map_[txHash]
 	delete(cache.map_, txHash)
 	if popped != nil {
