@@ -416,16 +416,9 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 	if err = mem.proxyAppConn.Error(); err != nil {
 		return err
 	}
+
 	reqRes := mem.proxyAppConn.CheckTxAsync(tx)
-	if cb != nil {
-		composedCallback := func(res *abci.Response) {
-			mem.reqResCb(tx, txInfo.PeerID)(res)
-			cb(res)
-		}
-		reqRes.SetCallback(composedCallback)
-	} else {
-		reqRes.SetCallback(mem.reqResCb(tx, txInfo.PeerID))
-	}
+	reqRes.SetCallback(mem.reqResCb(tx, txInfo.PeerID, cb))
 
 	return nil
 }
@@ -449,12 +442,14 @@ func (mem *Mempool) globalCb(req *abci.Request, res *abci.Response) {
 	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
-// Specific callback, which allows us to incorporate local information, like
-// the peer that sent us this tx, so we can avoid sending it back to the same
-// peer.
+// Request specific callback that should be set on individual reqRes objects to incorporate local information
+// when processing the response. This allows us to track the peer
+// that sent us this tx, so we can avoid sending it back to them.
+// NOTE: we could avoid the need for request-specific callbacks if we included the information
+// in the ABCI request!
 //
 // Used in CheckTxWithInfo to record PeerID who sent us the tx.
-func (mem *Mempool) reqResCb(tx []byte, peerID uint16) func(res *abci.Response) {
+func (mem *Mempool) reqResCb(tx []byte, peerID uint16, externalCb func(*abci.Response)) func(res *abci.Response) {
 	return func(res *abci.Response) {
 		if mem.recheckCursor != nil {
 			return
@@ -464,6 +459,11 @@ func (mem *Mempool) reqResCb(tx []byte, peerID uint16) func(res *abci.Response) 
 
 		// update metrics
 		mem.metrics.Size.Set(float64(mem.Size()))
+
+		// passed in by the caller of CheckTx, eg. the RPC
+		if externalCb != nil {
+			externalCb(res)
+		}
 	}
 }
 
