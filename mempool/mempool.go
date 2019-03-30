@@ -461,11 +461,8 @@ func (mem *Mempool) globalCb(req *abci.Request, res *abci.Response) {
 func (mem *Mempool) reqResCb(tx []byte, peerID uint16, externalCb func(*abci.Response)) func(res *abci.Response) {
 	return func(res *abci.Response) {
 		if mem.recheckCursor != nil {
-			// this should not be possible.
-			// rechecks should only happen during Update
-			// after all checktxs were flushed and before
-			// any new ones happened.
-			return
+			// this should never happen
+			panic("recheck cursor is not nil in reqResCb")
 		}
 
 		mem.resCbFirstTime(tx, peerID, res)
