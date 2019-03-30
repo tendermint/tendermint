@@ -442,11 +442,13 @@ func (mem *Mempool) globalCb(req *abci.Request, res *abci.Response) {
 	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
-// Request specific callback that should be set on individual reqRes objects to incorporate local information
-// when processing the response. This allows us to track the peer
-// that sent us this tx, so we can avoid sending it back to them.
-// NOTE: we could avoid the need for request-specific callbacks if we included the information
-// in the ABCI request!
+// Request specific callback that should be set on individual reqRes objects
+// to incorporate local information when processing the response.
+// This allows us to track the peer that sent us this tx, so we can avoid sending it back to them.
+// NOTE: alternatively, we could include this information in the ABCI request itself.
+//
+// External callers of CheckTx, like the RPC, can also pass an externalCb through here that is called
+// when all other response processing is complete.
 //
 // Used in CheckTxWithInfo to record PeerID who sent us the tx.
 func (mem *Mempool) reqResCb(tx []byte, peerID uint16, externalCb func(*abci.Response)) func(res *abci.Response) {
@@ -467,6 +469,8 @@ func (mem *Mempool) reqResCb(tx []byte, peerID uint16, externalCb func(*abci.Res
 	}
 }
 
+// Called from:
+//  - resCbFirstTime (lock not held) if tx is valid
 func (mem *Mempool) addTx(memTx *mempoolTx) {
 	e := mem.txs.PushBack(memTx)
 	mem.txsMap[sha256.Sum256(memTx.tx)] = e
@@ -474,6 +478,9 @@ func (mem *Mempool) addTx(memTx *mempoolTx) {
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
 }
 
+// Called from:
+//  - Update (lock held) if tx was committed
+// 	- resCbRecheck (lock not held) if tx was invalidated
 func (mem *Mempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
