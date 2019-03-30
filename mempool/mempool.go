@@ -167,8 +167,8 @@ type Mempool struct {
 	preCheck     PreCheckFunc
 	postCheck    PostCheckFunc
 
-	// track whether we're rechecking txs.
-	// these are not protected by a mutex and are expected to be mutated
+	// Track whether we're rechecking txs.
+	// These are not protected by a mutex and are expected to be mutated
 	// in serial (ie. by abci responses which are called in serial).
 	recheckCursor *clist.CElement // next expected response
 	recheckEnd    *clist.CElement // re-checking stops here
@@ -177,7 +177,7 @@ type Mempool struct {
 	notifiedTxsAvailable bool
 	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
 
-	// map for quick access to txs to record sender in CheckTx.
+	// Map for quick access to txs to record sender in CheckTx.
 	// txsMap: txKey -> CElement
 	txsMap sync.Map
 

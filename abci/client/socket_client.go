@@ -210,7 +210,7 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	cli.reqSent.Remove(next) // Pop first item from linked list
 
 	// Notify reqRes listener if set (request specific callback).
-	// NOTE: it is possible this callback isn't set on the reqres object
+	// NOTE: it is possible this callback isn't set on the reqres object.
 	// at this point, in which case it will be called after, when it is set.
 	// TODO: should we move this after the resCb call so the order is always consistent?
 	if cb := reqres.GetCallback(); cb != nil {
