@@ -34,7 +34,7 @@ def create_draft(org,repo,branch,version):
     'tag_name': version,
     'target_commitish': '{0}'.format(branch),
     'name': '{0} (WARNING: ALPHA SOFTWARE)'.format(version),
-    'body': '<a href=https://github.com/{0}/{1}/blob/master/CHANGELOG.md#{2}>https://github.com/{0}/{1}/blob/master/CHANGELOG.md#{2}</a>'.format(org,repo,version.replace('v','').replace('.','')),
+    'body': '<a href=https://github.com/{0}/{1}/blob/{2}/CHANGELOG.md#{3}>https://github.com/{0}/{1}/blob/{2}/CHANGELOG.md#{3}</a>'.format(org,repo,branch,version.replace('.','')),
     'draft': True,
     'prerelease': False
   }
