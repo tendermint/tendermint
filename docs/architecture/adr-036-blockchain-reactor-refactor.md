@@ -43,7 +43,7 @@ We assume the following system model for "fast sync" protocol:
   faulty nodes, i.e., it is possible that all nodes in some peer set are faulty. 
 * we assume that communication between correct nodes is synchronous, i.e., if a correct node `p` sends a message `m` to a correct node `q` at time `t`, then `q` will receive
   message the latest at time `t+Delta` where `Delta` is a system parameter that is known. `Delta` is normally order of magnitude higher than the real communication delay 
-  (maximum) between correct nodes. Therefore if a correct node `p` sends a request message to a correct node `p` at time `t` and there is no the corresponding reply at time
+  (maximum) between correct nodes. Therefore if a correct node `p` sends a request message to a correct node `q` at time `t` and there is no the corresponding reply at time
   `t + 2*Delta`, then `p` can assume that `q` is faulty. Note that the network assumptions for the consensus reactor are different 
   (we assume partially synchronous model there). 
 
