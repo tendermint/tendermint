@@ -23,14 +23,8 @@ func MaxNodeInfoSize() int {
 // NodeInfo exposes basic info of a node
 // and determines if we're compatible.
 type NodeInfo interface {
-	nodeInfoAddress
-	nodeInfoTransport
-}
-
-// nodeInfoAddress exposes just the core info of a node.
-type nodeInfoAddress interface {
 	ID() ID
-	NetAddress() *NetAddress
+	nodeInfoTransport
 }
 
 // nodeInfoTransport validates a nodeInfo and checks
@@ -221,7 +215,7 @@ func (info DefaultNodeInfo) NetAddress() *NetAddress {
 	if err != nil {
 		switch err.(type) {
 		case ErrNetAddressLookup:
-			// XXX If the peer provided a host name  and the lookup fails here
+			// XXX If the peer provided a host name and the lookup fails here
 			// we're out of luck.
 			// TODO: use a NetAddress in DefaultNodeInfo
 		default:
