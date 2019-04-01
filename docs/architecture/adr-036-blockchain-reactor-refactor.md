@@ -151,17 +151,17 @@ assume that "fast sync" mode terminates once the Controller switch to
 `ConsensusMode`.  
 
 ``` go
-type State int
+type Mode int
 
 const (
-	StateUnknown State = iota
-	StateFastSyncMode
-	StateConsensusMode
+	ModeUnknown Mode = iota
+	ModeFastSync
+	ModeConsensus
 )
 
 type ControllerState struct {
 	Height             int64            // the first block that is not committed
-	State              State            // mode of operation of the state machine
+	Mode               Mode             // mode of operation of the state machine
 	PeerMap            map[ID]PeerStats // map of peer IDs to peer statistics
 	MaxRequestPending  int64            // maximum height of the pending requests
 	FailedRequests     []int64          // list of failed block requests
@@ -185,30 +185,34 @@ type BlockInfo struct {
 The `Controller` is initialized by providing initial height (`startHeight`) from which it will start downloading blocks from peers.
 
 ``` go
-func ControllerInit(state ControllerState, startHeight int64) ControllerState {
-	state.Height = startHeight
-	state.State = FastSyncMode
+func NewControllerState(startHeight int64, executor BlockExecutor) ControllerState {
+	state = ControllerState {}
+    state.Height = startHeight
+	state.Mode = ModeFastSync
 	state.MaxRequestPending = startHeight - 1
-	state.PendingRequestsNum = 0
+    state.PendingRequestsNum = 0
+    state.Executor = executor
+    initialize state.PeerMap, state.FailedRequests and state.Store to empty data structures
+    return state
 }
 
-func ControllerHandle(event Event, state ControllerState) (ControllerState, Message, TimeoutTrigger, Error) {
+func handleEvent(state ControllerState, event Event) (ControllerState, Message, TimeoutTrigger, Error) {
 	msg = nil
 	timeout = nil
 	error = nil
 
-	switch state.State {
-	case StateConsensusMode:
+	switch state.Mode {
+	case ModeConsensus:
 		switch event := event.(type) {
 		case EventBlockRequest:
 			msg = createBlockResponseMessage(state, event)
 			return state, msg, timeout, error
 		default:
-			error = "Only respond to BlockRequests while in ConsensusMode!"
+			error = "Only respond to BlockRequests while in ModeConsensus!"
 			return state, msg, timeout, error
 		}
 
-	case StateFastSyncMode:
+	case ModeFastSync:
 		switch event := event.(type) {
 		case EventBlockRequest:
 			msg = createBlockResponseMessage(state, event)
@@ -224,14 +228,21 @@ func ControllerHandle(event Event, state ControllerState) (ControllerState, Mess
 			if event.Height > peerStats.Height {
 				peerStats.Height = event.Height
 			}
-			if peerStats.PendingRequest == -1 {
+            // if there are no pending requests for this peer, try to send him a request for block
+            if peerStats.PendingRequest == -1 {
 				msg = createBlockRequestMessage(state, event.PeerID, peerStats.Height)
-				if msg != nil {
+                // msg == nil if no request for block can be made to a peer at this point in time
+                if msg != nil {
 					peerStats.PendingRequest = msg.Height
-					state.PendingRequestsNum++
-					timeout = ResponseTimeoutTrigger{msg.PeerID, msg.Height, PeerTimeout}
+                    state.PendingRequestsNum++
+                    // when a request for a block is sent to a peer, a response timeout is triggered. If no corresponding block is sent by the peer 
+                    // during response timeout period, then the peer is considered faulty and is removed from the peer set.
+					timeout = ResponseTimeoutTrigger{ msg.PeerID, msg.Height, PeerTimeout }
 				} else if state.PendingRequestsNum == 0 {
-					timeout = TerminationTimeoutTrigger{state.Height, TerminationTimeout}
+                    // if there are no pending requests and no new request can be placed to the peer, termination timeout is triggered.
+                    // If termination timeout expires and we are still at the same height and there are no pending requests, the "fast-sync"
+                    // mode is finished and we switch to `ModeConsensus`.
+                    timeout = TerminationTimeoutTrigger{ state.Height, TerminationTimeout }
 				}
 			}
 			state.PeerMap[event.PeerID] = peerStats
@@ -240,12 +251,15 @@ func ControllerHandle(event Event, state ControllerState) (ControllerState, Mess
 		case EventRemovePeer:
 			if _, ok := state.PeerMap[event.PeerID]; ok {
 				pendingRequest = state.PeerMap[event.PeerID].PendingRequest
-				if pendingRequest != -1 {
+                // if a peer is removed from the peer set, its pending request is declared failed and added to the `FailedRequests` list 
+                // so it can be retried. 
+                if pendingRequest != -1 {
 					add(state.FailedRequests, pendingRequest)
 				}
 				state.PendingRequestsNum--
 				delete(state.PeerMap, event.PeerID)
-				if state.PeerMap.isEmpty() || state.PendingRequestsNum == 0 {
+                // if the peer set is empty after removal of this peer then termination timeout is triggered.
+                if state.PeerMap.isEmpty() {
 					timeout = TerminationTimeoutTrigger{state.Height, TerminationTimeout}
 				}
 			} else {
@@ -256,23 +270,30 @@ func ControllerHandle(event Event, state ControllerState) (ControllerState, Mess
 		case EventNewBlock:
 			if state.PeerMap[event.PeerID] {
 				peerStats = state.PeerMap[event.PeerID]
-				if peerStats.PendingRequest == event.Height {
+                // when expected block arrives from a peer, it is added to the store so it can be verified and if correct executed after.
+                if peerStats.PendingRequest == event.Height {
 					peerStats.PendingRequest = -1
 					state.PendingRequestsNum--
 					if event.CurrentHeight > peerStats.Height {
 						peerStats.Height = event.CurrentHeight
 					}
 					state.Store[event.Height] = BlockInfo{event.Block, event.Commit, event.PeerID}
-					state = verifyBlocks(state) // it can lead to event.PeerID being removed from peer list
+                    // blocks are verified sequentially so adding a block to the store does not mean that it will be immediately verified
+                    // as some of the previous blocks might be missing.
+                    state = verifyBlocks(state) // it can lead to event.PeerID being removed from peer list
 
 					if _, ok := state.PeerMap[event.PeerID]; ok {
-						msg = createBlockRequestMessage(state, event.PeerID, peerStats.Height)
-						if msg != nil {
+						// we try to identify new request for a block that can be asked to the peer
+                        msg = createBlockRequestMessage(state, event.PeerID, peerStats.Height)
+                        if msg != nil {
 							peerStats.PendingRequests = msg.Height
 							state.PendingRequestsNum++
-							timeout = ResponseTimeoutTrigger{msg.PeerID, msg.Height, PeerTimeout}
-						} else if state.PendingRequestsNum == 0 {
-							timeout = TerminationTimeoutTrigger{state.Height, TerminationTimeout}
+							// if request for block is made, response timeout is triggered
+                            timeout = ResponseTimeoutTrigger{ msg.PeerID, msg.Height, PeerTimeout }
+						} else if state.PeerMap.isEmpty() || state.PendingRequestsNum == 0 {
+                            // if the peer map is empty (the peer can be removed as block verification failed) or there are no pending requests
+                            // termination timeout is triggered.
+                            timeout = TerminationTimeoutTrigger{ state.Height, TerminationTimeout }
 						}
 					}
 				} else {
@@ -288,12 +309,15 @@ func ControllerHandle(event Event, state ControllerState) (ControllerState, Mess
 		case EventResponseTimeout:
 			if _, ok := state.PeerMap[event.PeerID]; ok {
 				peerStats = state.PeerMap[event.PeerID]
-				if peerStats.PendingRequest == event.Height {
+                // if a response timeout expires and the peer hasn't delivered the block, the peer is removed from the peer list and
+                // the request is added to the `FailedRequests` so the block can be downloaded from other peer 
+                if peerStats.PendingRequest == event.Height {
 					add(state.FailedRequests, pendingRequest)
 					delete(state.PeerMap, event.PeerID)
 					state.PendingRequestsNum--
-					if state.PeerMap.isEmpty() || state.PendingRequestsNum == 0 {
-						timeout = TimeoutTrigger{state.Height, TerminationTimeout}
+                    // if peer set is empty, then termination timeout is triggered
+                    if state.PeerMap.isEmpty() {
+						timeout = TimeoutTrigger{ state.Height, TerminationTimeout }
 					}
 				}
 			}
@@ -301,7 +325,11 @@ func ControllerHandle(event Event, state ControllerState) (ControllerState, Mess
 			return state, msg, timeout, error
 
 		case EventTerminationTimeout:
-			if state.Height == event.Height && state.PendingRequestsNum == 0 {
+            // Termination timeout is triggered in case of empty peer set and in case there are no pending requests.
+            // If this timeout expires and in the meantime no new peers are added or new pending requests are made
+            // then "fast-sync" mode terminates by switching to `ModeConsensus`.
+            // Note that termination timeout should be higher than the response timeout. 
+            if state.Height == event.Height && state.PendingRequestsNum == 0 {
 				state.State = ConsensusMode
 			}
 			return state, msg, timeout, error
@@ -335,19 +363,21 @@ func createBlockResponseMessage(state ControllerState, event BlockRequest) Block
 
 func createBlockRequestMessage(state ControllerState, peerID ID, peerHeight int64) BlockRequestMessage {
 	msg = nil
-	blockNumber = -1
+	blockHeight = -1
 
-	// exist request r in state.FailedRequests such that r <= peerHeight
-	if true {
+    r = find request in state.FailedRequests such that r <= peerHeight // returns `nil` if there are no such request
+    // if there is a height in failed requests that can be downloaded from the peer send request to it
+    if r != nil {
 		blockNumber = r
 		delete(state.FailedRequests, r)
-	} else if state.MaxRequestPending < peerHeight {
-		state.MaxRequestPending++
-		blockNumber = state.MaxRequestPending // increment state.MaxRequestPending and then return the new value
+	} else if state.MaxRequestPending < peerHeight {    
+        // if height of the maximum pending request is smaller than peer height, then ask peer for next block
+        state.MaxRequestPending++
+		blockHeight = state.MaxRequestPending // increment state.MaxRequestPending and then return the new value
 	}
 
-	if blockNumber > -1 {
-		msg = BlockRequestMessage{blockNumber, peerID}
+	if blockHeight > -1 {
+		msg = BlockRequestMessage{ blockHeight, peerID }
 	}
 	return msg
 }
@@ -358,22 +388,24 @@ func verifyBlocks(state State) State {
 		block = state.Store[height]
 
 		if block != nil {
-			// TODO: verify block.Block using block.Commit
-			verified = true
+			verified = verify block.Block using block.Commit // return `true` is verification succeed, 'false` otherwise
 
 			if verified {
-				block.Execute()
+				block.Execute()   // executing block is costly operation so it might make sense executing asynchronously
 				state.Height++
 			} else {
-				add(state.FailedRequests, height)
+				// if block verification failed, then it is added to `FailedRequests` and the peer is removed from the peer set 
+                add(state.FailedRequests, height)
+                state.Store[height] = nil
 				if _, ok := state.PeerMap[block.PeerID]; ok {
 					pendingRequest = state.PeerMap[block.PeerID].PendingRequest
-					if pendingRequest != -1 {
-						add(state.FailedRequests, pendingRequest)
+                    // if there is a pending request sent to the peer that is just to be removed from the peer set, add it to `FailedRequests`
+                    if pendingRequest != -1 {
+                        add(state.FailedRequests, pendingRequest)
+                        state.MaxRequestPending--
 					}
 					delete(state.PeerMap, event.PeerID)
 				}
-
 				done = true
 			}
 		} else {
