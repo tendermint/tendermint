@@ -9,6 +9,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	ValidatorSetStoreInterval = 1 << 10
+)
+
 //------------------------------------------------------------------------
 
 func calcValidatorsKey(height int64) []byte {
@@ -182,19 +186,22 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 	if valInfo == nil {
 		return nil, ErrNoValSetForHeight{height}
 	}
-
 	if valInfo.ValidatorSet == nil {
-		valInfo2 := loadValidatorsInfo(db, valInfo.LastHeightChanged)
+		queryHeight := valInfo.LastHeightChanged
+		if valInfo.LastHeightChanged < (height - height%ValidatorSetStoreInterval) {
+			queryHeight = height - height%ValidatorSetStoreInterval
+		}
+		valInfo2 := loadValidatorsInfo(db, queryHeight)
 		if valInfo2 == nil {
 			panic(
 				fmt.Sprintf(
 					"Couldn't find validators at height %d as last changed from height %d",
-					valInfo.LastHeightChanged,
+					queryHeight,
 					height,
 				),
 			)
 		}
-		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - valInfo.LastHeightChanged)) // mutate
+		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - queryHeight)) // mutate
 		valInfo = valInfo2
 	}
 
@@ -232,7 +239,7 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 	valInfo := &ValidatorsInfo{
 		LastHeightChanged: lastHeightChanged,
 	}
-	if lastHeightChanged == height {
+	if lastHeightChanged == height || height%ValidatorSetStoreInterval == 0 {
 		valInfo.ValidatorSet = valSet
 	}
 	db.Set(calcValidatorsKey(height), valInfo.Bytes())
