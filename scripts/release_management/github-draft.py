@@ -55,7 +55,7 @@ if __name__ == "__main__":
   if not os.environ.has_key('GITHUB_TOKEN'):
     raise parser.error('environment variable GITHUB_TOKEN is required')
 
-  release = create_draft(args.org,args.repo,args.version)
+  release = create_draft(args.org,args.repo,args.branch,args.version)
 
   print(release["id"])
 
