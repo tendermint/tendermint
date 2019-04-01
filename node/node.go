@@ -496,9 +496,8 @@ func NewNode(config *cfg.Config,
 		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:                 splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
-				SeedMode:              config.P2P.SeedMode,
-				SeedCrawlDataFilename: config.P2P.SeedCrawlDataFile(),
+				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
+				SeedMode: config.P2P.SeedMode,
 				// see consensus/reactor.go: blocksToContributeToBecomeGoodPeer
 				// 10000 blocks assuming 1s blocks ~ 2.7 hours.
 				SeedDisconnectWaitPeriod: 3 * time.Hour,

@@ -247,10 +247,6 @@ pex = {{ .P2P.PexReactor }}
 # Does not work if the peer-exchange reactor is disabled.
 seed_mode = {{ .P2P.SeedMode }}
 
-# SeedCrawlDataFilename is the name of a file where seed will store crawl
-# data. If "", no data is saved.
-seed_crawl_data_filename = "{{ .P2P.SeedCrawlDataFilename }}"
-
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private_peer_ids = "{{ .P2P.PrivatePeerIDs }}"
 

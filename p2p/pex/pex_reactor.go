@@ -1,10 +1,7 @@
 package pex
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"reflect"
 	"sync"
 	"time"
@@ -94,10 +91,6 @@ type PEXReactorConfig struct {
 	// least as long as we expect it to take for a peer to become good before
 	// disconnecting.
 	SeedDisconnectWaitPeriod time.Duration
-
-	// SeedCrawlDataFilename is the name of a file where seed will store crawl
-	// data. If "", no data is saved.
-	SeedCrawlDataFilename string
 
 	// Seeds is a list of addresses reactor may use
 	// if it can't connect to peers in the addrbook.
@@ -578,13 +571,6 @@ func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
 // Seed/Crawler Mode causes this node to quickly disconnect
 // from peers, except other seed nodes.
 func (r *PEXReactor) crawlPeersRoutine() {
-	if r.config.SeedCrawlDataFilename != "" {
-		if err := r.loadCrawlPeerInfos(); err != nil {
-			r.Logger.Error(fmt.Sprintf("Failed to load crawling info (seed can crawl a peer sooner than %v)",
-				minTimeBetweenCrawls))
-		}
-	}
-
 	// Do an initial crawl
 	r.crawlPeers(r.book.GetSelection())
 
@@ -658,40 +644,6 @@ func (r *PEXReactor) crawlPeers(addrs []*p2p.NetAddress) {
 			r.RequestAddrs(peer)
 		}
 	}
-
-	if r.config.SeedCrawlDataFilename != "" {
-		if err := r.saveCrawlPeerInfos(); err != nil {
-			r.Logger.Error(fmt.Sprintf("Failed to save crawling info (if restarted, seed can crawl a peer sooner than %v)",
-				minTimeBetweenCrawls))
-		}
-	}
-}
-
-func (r *PEXReactor) saveCrawlPeerInfos() error {
-	bz, err := json.Marshal(r.crawlPeerInfos)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal data")
-	}
-	err = ioutil.WriteFile(r.config.SeedCrawlDataFilename, bz, 0644)
-	if err != nil {
-		return errors.Wrap(err, "failed to write data to file")
-	}
-	return nil
-}
-
-func (r *PEXReactor) loadCrawlPeerInfos() error {
-	bz, err := ioutil.ReadFile(r.config.SeedCrawlDataFilename)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return errors.Wrap(err, "failed to load data from file")
-	}
-	err = json.Unmarshal(bz, &r.crawlPeerInfos)
-	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal data")
-	}
-	return nil
 }
 
 func (r *PEXReactor) cleanupCrawlPeerInfos() {
