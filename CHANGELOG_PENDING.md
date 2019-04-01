@@ -1,6 +1,9 @@
-## v0.32.0
+## v0.31.2
 
-**
+*March 30th, 2019*
+
+This release fixes a regression from v0.31.1 where Tendermint panics under
+mempool load for external ABCI apps.
 
 ### BREAKING CHANGES:
 
@@ -9,8 +12,7 @@
 * Apps
 
 * Go API
-- [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
-- [rpc/client] \#3458 Include NetworkClient interface into Client interface
+- [libs/autofile] \#3504 Remove unused code in autofile package. Deleted functions: `Group.Search`, `Group.FindLast`, `GroupReader.ReadLine`, `GroupReader.PushLine`, `MakeSimpleSearchFunc` (@guagualvcha)
 
 * Blockchain Protocol
 
@@ -21,12 +23,11 @@
   in seed mode for storing crawling data. Set to `data/seed_crawl_data.json` by
   default. If  `p2p.seed_crawl_data_filename` is empty, no data will be saved (this may lead to seed crawling a peer
   too soon if restarted; not critical).
-- [rpc] \#3419 Start HTTPS server if `rpc.tls_cert_file` and `rpc.tls_key_file` are provided in the config (@guagualvcha)
 
 ### IMPROVEMENTS:
 
-- [mempool] \#2778 No longer send txs back to peers who sent it to you
+- [circle] \#3497 Move release management to CircleCI
 
 ### BUG FIXES:
 
-- [blockchain] \#2699 update the maxHeight when a peer is removed
+- [mempool] \#3512 Fix panic from concurrent access to txsMap, a regression for external ABCI apps introduced in v0.31.1

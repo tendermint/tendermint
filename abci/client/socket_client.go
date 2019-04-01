@@ -26,16 +26,17 @@ var _ Client = (*socketClient)(nil)
 type socketClient struct {
 	cmn.BaseService
 
-	reqQueue    chan *ReqRes
-	flushTimer  *cmn.ThrottleTimer
+	addr        string
 	mustConnect bool
+	conn        net.Conn
+
+	reqQueue   chan *ReqRes
+	flushTimer *cmn.ThrottleTimer
 
 	mtx     sync.Mutex
-	addr    string
-	conn    net.Conn
 	err     error
-	reqSent *list.List
-	resCb   func(*types.Request, *types.Response) // listens to all callbacks
+	reqSent *list.List                            // list of requests sent, waiting for response
+	resCb   func(*types.Request, *types.Response) // called on all requests, if set.
 
 }
 
@@ -86,6 +87,7 @@ func (cli *socketClient) OnStop() {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 	if cli.conn != nil {
+		// does this really need a mutex?
 		cli.conn.Close()
 	}
 
@@ -207,12 +209,15 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	reqres.Done()            // Release waiters
 	cli.reqSent.Remove(next) // Pop first item from linked list
 
-	// Notify reqRes listener if set
+	// Notify reqRes listener if set (request specific callback).
+	// NOTE: it is possible this callback isn't set on the reqres object.
+	// at this point, in which case it will be called after, when it is set.
+	// TODO: should we move this after the resCb call so the order is always consistent?
 	if cb := reqres.GetCallback(); cb != nil {
 		cb(res)
 	}
 
-	// Notify client listener if set
+	// Notify client listener if set (global callback).
 	if cli.resCb != nil {
 		cli.resCb(reqres.Request, res)
 	}

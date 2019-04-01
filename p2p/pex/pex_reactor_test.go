@@ -3,7 +3,6 @@ package pex
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,14 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/conn"
+	"github.com/tendermint/tendermint/p2p/mock"
 )
 
 var (
@@ -148,7 +143,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	sw := createSwitchAndAddReactors(r)
 	sw.SetAddrBook(book)
 
-	peer := newMockPeer()
+	peer := mock.NewPeer(nil)
 	p2p.AddPeerToSwitch(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
@@ -178,7 +173,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	sw := createSwitchAndAddReactors(r)
 	sw.SetAddrBook(book)
 
-	peer := newMockPeer()
+	peer := mock.NewPeer(nil)
 	p2p.AddPeerToSwitch(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
@@ -428,7 +423,7 @@ func TestPEXReactorDialPeer(t *testing.T) {
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
 
-	peer := newMockPeer()
+	peer := mock.NewPeer(nil)
 	addr := peer.NodeInfo().NetAddress()
 
 	assert.Equal(t, 0, pexR.AttemptsToDial(addr))
@@ -453,44 +448,6 @@ func TestPEXReactorDialPeer(t *testing.T) {
 		assert.Equal(t, 2, pexR.AttemptsToDial(addr))
 	}
 }
-
-type mockPeer struct {
-	*cmn.BaseService
-	pubKey               crypto.PubKey
-	addr                 *p2p.NetAddress
-	outbound, persistent bool
-}
-
-func newMockPeer() mockPeer {
-	_, netAddr := p2p.CreateRoutableAddr()
-	mp := mockPeer{
-		addr:   netAddr,
-		pubKey: ed25519.GenPrivKey().PubKey(),
-	}
-	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
-	mp.Start()
-	return mp
-}
-
-func (mp mockPeer) FlushStop()         { mp.Stop() }
-func (mp mockPeer) ID() p2p.ID         { return mp.addr.ID }
-func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
-func (mp mockPeer) IsPersistent() bool { return mp.persistent }
-func (mp mockPeer) NodeInfo() p2p.NodeInfo {
-	return p2p.DefaultNodeInfo{
-		ID_:        mp.addr.ID,
-		ListenAddr: mp.addr.DialString(),
-	}
-}
-func (mockPeer) RemoteIP() net.IP              { return net.ParseIP("127.0.0.1") }
-func (mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
-func (mockPeer) Send(byte, []byte) bool        { return false }
-func (mockPeer) TrySend(byte, []byte) bool     { return false }
-func (mockPeer) Set(string, interface{})       {}
-func (mockPeer) Get(string) interface{}        { return nil }
-func (mockPeer) OriginalAddr() *p2p.NetAddress { return nil }
-func (mockPeer) RemoteAddr() net.Addr          { return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8800} }
-func (mockPeer) CloseConn() error              { return nil }
 
 func assertPeersWithTimeout(
 	t *testing.T,
