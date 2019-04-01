@@ -29,10 +29,10 @@ def request(org, repo, data):
   return json.loads(responsedata)
 
 
-def create_draft(org,repo,version):
+def create_draft(org,repo,branch,version):
   draft = {
     'tag_name': version,
-    'target_commitish': 'master',
+    'target_commitish': '{0}'.format(branch),
     'name': '{0} (WARNING: ALPHA SOFTWARE)'.format(version),
     'body': '<a href=https://github.com/{0}/{1}/blob/master/CHANGELOG.md#{2}>https://github.com/{0}/{1}/blob/master/CHANGELOG.md#{2}</a>'.format(org,repo,version.replace('v','').replace('.','')),
     'draft': True,
@@ -45,6 +45,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--org", default="tendermint", help="GitHub organization")
   parser.add_argument("--repo", default="tendermint", help="GitHub repository")
+  parser.add_argument("--branch", default=os.environ.get('CIRCLE_BRANCH'), help="Branch to build from, e.g.: v1.0")
   parser.add_argument("--version", default=os.environ.get('CIRCLE_TAG'), help="Version number for binary, e.g.: v1.0.0")
   args = parser.parse_args()
 
