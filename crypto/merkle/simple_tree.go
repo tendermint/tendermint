@@ -20,6 +20,38 @@ func SimpleHashFromByteSlices(items [][]byte) []byte {
 	}
 }
 
+func SimpleHashFromByteSlicesIterative(input [][]byte) []byte {
+	items := make([][]byte, len(input))
+
+	for i, leaf := range input {
+		items[i] = leafHash(leaf)
+	}
+
+	size := len(items)
+	for {
+		switch size {
+		case 0:
+			return nil
+		case 1:
+			return items[0]
+		default:
+			rp := 0 // read position
+			wp := 0 // write position
+			for rp < size {
+				if rp+1 < size {
+					_ = innerHash(items[rp], items[rp+1])
+					rp += 2
+				} else {
+					items[wp] = items[rp]
+					rp += 1
+				}
+				wp += 1
+			}
+			size = wp
+		}
+	}
+}
+
 // SimpleHashFromMap computes a Merkle tree from sorted map.
 // Like calling SimpleHashFromHashers with
 // `item = []byte(Hash(key) | Hash(value))`,
