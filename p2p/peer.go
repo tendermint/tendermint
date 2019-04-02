@@ -29,7 +29,7 @@ type Peer interface {
 
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
-	OriginalAddr() *NetAddress // original address for outbound peers
+	SocketAddr() *NetAddress // actual address of the socket
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -46,7 +46,7 @@ type peerConn struct {
 	persistent bool
 	conn       net.Conn // source connection
 
-	originalAddr *NetAddress // nil for inbound connections
+	socketAddr *NetAddress
 
 	// cached RemoteIP()
 	ip net.IP
@@ -55,14 +55,14 @@ type peerConn struct {
 func newPeerConn(
 	outbound, persistent bool,
 	conn net.Conn,
-	originalAddr *NetAddress,
+	socketAddr *NetAddress,
 ) peerConn {
 
 	return peerConn{
-		outbound:     outbound,
-		persistent:   persistent,
-		conn:         conn,
-		originalAddr: originalAddr,
+		outbound:   outbound,
+		persistent: persistent,
+		conn:       conn,
+		socketAddr: socketAddr,
 	}
 }
 
@@ -223,13 +223,12 @@ func (p *peer) NodeInfo() NodeInfo {
 	return p.nodeInfo
 }
 
-// OriginalAddr returns the original address, which was used to connect with
-// the peer. Returns nil for inbound peers.
-func (p *peer) OriginalAddr() *NetAddress {
-	if p.peerConn.outbound {
-		return p.peerConn.originalAddr
-	}
-	return nil
+// SocketAddr returns the address of the socket.
+// For outbound peers, it's the address dialed (after DNS resolution).
+// For inbound peers, it's the address returned by the underlying connection
+// (not what's reported in the peer's NodeInfo).
+func (p *peer) SocketAddr() *NetAddress {
+	return p.peerConn.socketAddr
 }
 
 // Status returns the peer's ConnectionStatus.

@@ -20,4 +20,6 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS:
 
+- [CircleCI] \#3497 Move release management to CircleCI
+
 ### BUG FIXES:

@@ -215,7 +215,7 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 		}
 		peerStates[i] = ctypes.PeerStateInfo{
 			// Peer basic info.
-			NodeAddress: peer.NodeInfo().NetAddress().String(),
+			NodeAddress: peer.SocketAddr().String(),
 			// Peer consensus state.
 			PeerState: peerStateJSON,
 		}
