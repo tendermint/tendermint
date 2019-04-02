@@ -62,7 +62,7 @@ func (mp *Peer) Get(key string) interface{} {
 func (mp *Peer) Set(key string, value interface{}) {
 	mp.kv[key] = value
 }
-func (mp *Peer) RemoteIP() net.IP              { return mp.ip }
-func (mp *Peer) OriginalAddr() *p2p.NetAddress { return mp.addr }
-func (mp *Peer) RemoteAddr() net.Addr          { return &net.TCPAddr{IP: mp.ip, Port: 8800} }
-func (mp *Peer) CloseConn() error              { return nil }
+func (mp *Peer) RemoteIP() net.IP            { return mp.ip }
+func (mp *Peer) SocketAddr() *p2p.NetAddress { return mp.addr }
+func (mp *Peer) RemoteAddr() net.Addr        { return &net.TCPAddr{IP: mp.ip, Port: 8800} }
+func (mp *Peer) CloseConn() error            { return nil }

@@ -2,6 +2,7 @@ package secp256k1_test
 
 import (
 	"encoding/hex"
+	"math/big"
 	"testing"
 
 	"github.com/btcsuite/btcutil/base58"
@@ -82,5 +83,30 @@ func TestSecp256k1LoadPrivkeyAndSerializeIsIdentity(t *testing.T) {
 		// always returning true.
 		serializedBytes := priv.Serialize()
 		require.Equal(t, privKeyBytes[:], serializedBytes)
+	}
+}
+
+func TestGenPrivKeySecp256k1(t *testing.T) {
+	// curve oder N
+	N := underlyingSecp256k1.S256().N
+	tests := []struct {
+		name   string
+		secret []byte
+	}{
+		{"empty secret", []byte{}},
+		{"some long secret", []byte("We live in a society exquisitely dependent on science and technology, in which hardly anyone knows anything about science and technology.")},
+		{"another seed used in cosmos tests #1", []byte{0}},
+		{"another seed used in cosmos tests #2", []byte("mySecret")},
+		{"another seed used in cosmos tests #3", []byte("")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotPrivKey := secp256k1.GenPrivKeySecp256k1(tt.secret)
+			require.NotNil(t, gotPrivKey)
+			// interpret as a big.Int and make sure it is a valid field element:
+			fe := new(big.Int).SetBytes(gotPrivKey[:])
+			require.True(t, fe.Cmp(N) < 0)
+			require.True(t, fe.Sign() > 0)
+		})
 	}
 }
