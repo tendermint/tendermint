@@ -498,9 +498,12 @@ func NewNode(config *cfg.Config,
 			&pex.PEXReactorConfig{
 				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
-				// see consensus/reactor.go: blocksToContributeToBecomeGoodPeer
-				// 10000 blocks assuming 1s blocks ~ 2.7 hours.
-				SeedDisconnectWaitPeriod: 3 * time.Hour,
+				// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
+				// blocks assuming 10s blocks ~ 28 hours.
+				// TODO (melekes): make it dynamic based on the actual block latencies
+				// from the live network.
+				// https://github.com/tendermint/tendermint/issues/3523
+				SeedDisconnectWaitPeriod: 28 * time.Hour,
 			})
 		pexReactor.SetLogger(logger.With("module", "pex"))
 		sw.AddReactor("PEX", pexReactor)

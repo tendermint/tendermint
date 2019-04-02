@@ -342,8 +342,7 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 		err := sw.DialPeerWithAddress(addr, true)
 		if err == nil {
 			return // success
-		}
-		if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
+		} else if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
 			return
 		}
 
@@ -367,8 +366,7 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 		err := sw.DialPeerWithAddress(addr, true)
 		if err == nil {
 			return // success
-		}
-		if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
+		} else if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
 			return
 		}
 		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)

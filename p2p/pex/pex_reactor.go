@@ -73,7 +73,7 @@ type PEXReactor struct {
 	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
 
 	// seed/crawled mode fields
-	crawlPeerInfos map[p2p.ID]*crawlPeerInfo
+	crawlPeerInfos map[p2p.ID]crawlPeerInfo
 }
 
 func (r *PEXReactor) minReceiveRequestInterval() time.Duration {
@@ -110,7 +110,7 @@ func NewPEXReactor(b AddrBook, config *PEXReactorConfig) *PEXReactor {
 		ensurePeersPeriod:    defaultEnsurePeersPeriod,
 		requestsSent:         cmn.NewCMap(),
 		lastReceivedRequests: cmn.NewCMap(),
-		crawlPeerInfos:       make(map[p2p.ID]*crawlPeerInfo),
+		crawlPeerInfos:       make(map[p2p.ID]crawlPeerInfo),
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("PEXReactor", r)
 	return r
@@ -495,10 +495,11 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 	}
 
 	err := r.Switch.DialPeerWithAddress(addr, false)
-	if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
-		return
-	}
 	if err != nil {
+		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
+			return
+		}
+
 		r.Logger.Error("Dialing failed", "addr", addr, "err", err, "attempts", attempts)
 		markAddrInBookBasedOnErr(addr, r.book, err)
 		if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
@@ -510,10 +511,11 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 			// record attempt
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
-	} else {
-		// cleanup any history
-		r.attemptsToDial.Delete(addr.DialString())
+		return
 	}
+
+	// cleanup any history
+	r.attemptsToDial.Delete(addr.DialString())
 }
 
 // checkSeeds checks that addresses are well formed.
@@ -593,7 +595,6 @@ func (r *PEXReactor) crawlPeersRoutine() {
 // consulting the Switch as well as the AddrBook.
 func (r *PEXReactor) hasPotentialPeers() bool {
 	out, in, dial := r.Switch.NumPeers()
-
 	return out+in+dial > 0 && r.book.Size() > 0
 }
 
@@ -611,29 +612,24 @@ func (r *PEXReactor) crawlPeers(addrs []*p2p.NetAddress) {
 
 	for _, addr := range addrs {
 		peerInfo, ok := r.crawlPeerInfos[addr.ID]
-		if !ok {
-			peerInfo = &crawlPeerInfo{
-				Addr: addr,
-				// subtract 1s to ensure we'll crawl the peer first time
-				LastCrawled: now.Add(-minTimeBetweenCrawls).Add(-1 * time.Second),
-			}
-			r.crawlPeerInfos[addr.ID] = peerInfo
-		}
 
 		// Do not attempt to connect with peers we recently crawled.
-		if now.Sub(peerInfo.LastCrawled) < minTimeBetweenCrawls {
+		if ok && now.Sub(peerInfo.LastCrawled) < minTimeBetweenCrawls {
 			continue
 		}
 
 		// Record crawling attempt.
-		peerInfo.LastCrawled = now
-		r.crawlPeerInfos[addr.ID] = peerInfo
+		r.crawlPeerInfos[addr.ID] = crawlPeerInfo{
+			Addr:        addr,
+			LastCrawled: now,
+		}
 
 		err := r.Switch.DialPeerWithAddress(addr, false)
-		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
-			continue
-		}
 		if err != nil {
+			if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
+				continue
+			}
+
 			r.Logger.Error("Dialing failed", "addr", addr, "err", err)
 			markAddrInBookBasedOnErr(addr, r.book, err)
 			continue
@@ -675,9 +671,10 @@ func (r *PEXReactor) attemptDisconnects() {
 
 func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 	// TODO: detect more "bad peer" scenarios
-	if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
+	switch err.(type) {
+	case p2p.ErrSwitchAuthenticationFailure:
 		book.MarkBad(addr)
-	} else {
+	default:
 		book.MarkAttempt(addr)
 	}
 }
