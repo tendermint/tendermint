@@ -68,6 +68,8 @@ type CListMempool struct {
 	metrics *Metrics
 }
 
+var _ Mempool = &CListMempool{}
+
 // Option sets an optional parameter on the mempool.
 type Option func(*CListMempool)
 
