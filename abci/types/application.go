@@ -1,7 +1,7 @@
 package types // nolint: goimports
 
 import (
-	context "golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 // Application is an interface that enables any finite, deterministic state machine
@@ -23,6 +23,10 @@ type Application interface {
 	DeliverTx(tx []byte) ResponseDeliverTx           // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+
+	// State Connection
+	StartRecovery(manifest *Manifest) error
+	WriteRecoveryChunk(hash SHA256Sum, chunk *AppStateChunk, isComplete bool) error
 }
 
 //-------------------------------------------------------
@@ -71,6 +75,14 @@ func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
 
 func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
+}
+
+func (BaseApplication) StartRecovery(manifest *Manifest) error {
+	return nil
+}
+
+func (BaseApplication) WriteRecoveryChunk(hash SHA256Sum, chunk *AppStateChunk, isComplete bool) error {
+	return nil
 }
 
 //-------------------------------------------------------

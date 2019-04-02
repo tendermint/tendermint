@@ -299,3 +299,11 @@ func (cli *grpcClient) EndBlockSync(params types.RequestEndBlock) (*types.Respon
 	reqres := cli.EndBlockAsync(params)
 	return reqres.Response.GetEndBlock(), cli.Error()
 }
+
+func (cli *grpcClient) StartRecovery(manifest *types.Manifest) error {
+	return nil
+}
+
+func (cli *grpcClient) WriteRecoveryChunk(hash types.SHA256Sum, chunk *types.AppStateChunk, isComplete bool) error {
+	return nil
+}

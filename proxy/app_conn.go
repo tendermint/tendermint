@@ -30,6 +30,14 @@ type AppConnMempool interface {
 	FlushSync() error
 }
 
+type AppConnState interface {
+	SetResponseCallback(abcicli.Callback)
+	Error() error
+
+	StartRecovery(manifest *types.Manifest) error
+	WriteRecoveryChunk(hash types.SHA256Sum, chunk *types.AppStateChunk, isComplete bool) error
+}
+
 type AppConnQuery interface {
 	Error() error
 
@@ -38,6 +46,35 @@ type AppConnQuery interface {
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 
 	//	SetOptionSync(key string, value string) (res types.Result)
+}
+
+//-----------------------------------------------------------------------------------------
+// Implements AppConnConsensus (subset of abcicli.Client)
+
+type appConnState struct {
+	appConn abcicli.Client
+}
+
+func NewAppConnState(appConn abcicli.Client) *appConnState {
+	return &appConnState{
+		appConn: appConn,
+	}
+}
+
+func (app *appConnState) SetResponseCallback(cb abcicli.Callback) {
+	app.appConn.SetResponseCallback(cb)
+}
+
+func (app *appConnState) Error() error {
+	return app.appConn.Error()
+}
+
+func (app *appConnState) StartRecovery(manifest *types.Manifest) error {
+	return app.appConn.StartRecovery(manifest)
+}
+
+func (app *appConnState) WriteRecoveryChunk(hash types.SHA256Sum, chunk *types.AppStateChunk, isComplete bool) error {
+	return app.appConn.WriteRecoveryChunk(hash, chunk, isComplete)
 }
 
 //-----------------------------------------------------------------------------------------

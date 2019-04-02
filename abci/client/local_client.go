@@ -158,6 +158,20 @@ func (app *localClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	)
 }
 
+func (app *localClient) StartRecovery(manifest *types.Manifest) error {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	return app.Application.StartRecovery(manifest)
+}
+
+func (app *localClient) WriteRecoveryChunk(hash types.SHA256Sum, chunk *types.AppStateChunk, isComplete bool) error {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	return app.Application.WriteRecoveryChunk(hash, chunk, isComplete)
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync() error {

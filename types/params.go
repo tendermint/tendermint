@@ -12,6 +12,17 @@ const (
 
 	// BlockPartSizeBytes is the size of one block part.
 	BlockPartSizeBytes = 65536 // 64kB
+
+	// MaxStateSizeBytes is the maximum permitted size of the snapshot chunk
+	// snapshot chunks:
+	// 	app chunk: 4M
+	//  state: less than 4M
+	//  block: usually on empty 2-4KB (max 100M)
+	//	manifest: each hash would be 32 bytes, 100M would include 3 million chunks (at most 12T chunks..)
+	// TODO: need to see how large a 100M block would be after snappy compression
+	MaxStateSizeBytes = 104857600 // 100MB
+
+	MonitorWindowInSeconds = 40
 )
 
 // ConsensusParams contains consensus critical parameters that determine the

@@ -110,6 +110,14 @@ func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) typ
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 
+func (app *PersistentKVStoreApplication) StartRecovery(manifest *types.Manifest) error {
+	return nil
+}
+
+func (app *PersistentKVStoreApplication) WriteRecoveryChunk(hash types.SHA256Sum, chunk *types.AppStateChunk, isComplete bool) error {
+	return nil
+}
+
 //---------------------------------------------
 // update validators
 

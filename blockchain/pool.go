@@ -66,6 +66,7 @@ type BlockPool struct {
 	mtx sync.Mutex
 	// block requests
 	requesters map[int64]*bpRequester
+	initHeight int64
 	height     int64 // the lowest key in requesters.
 	// peers
 	peers         map[p2p.ID]*bpPeer
@@ -85,6 +86,7 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 		peers: make(map[p2p.ID]*bpPeer),
 
 		requesters: make(map[int64]*bpRequester),
+		initHeight: start,
 		height:     start,
 		numPending: 0,
 

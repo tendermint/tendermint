@@ -1,4 +1,4 @@
-package blockchain
+package snapshot
 
 import (
 	"github.com/tendermint/go-amino"
@@ -8,6 +8,6 @@ import (
 var cdc = amino.NewCodec()
 
 func init() {
-	RegisterBlockchainMessages(cdc)
+	RegisterSnapshotMessages(cdc)
 	types.RegisterBlockAmino(cdc)
 }

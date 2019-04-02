@@ -124,6 +124,26 @@ func (bcR *BlockchainReactor) OnStop() {
 	bcR.pool.Stop()
 }
 
+// SwitchToBlockchain switches from fastest_sync mode to blockchain mode.
+// It resets the state, turns off fastest_sync, and starts the blockchain state-machine
+func (bcR *BlockchainReactor) SwitchToBlockchain(state *sm.State) {
+	bcR.Logger.Info("SwitchToBlockchain")
+	if state != nil {
+		bcR.initialState = *state
+		bcR.pool.height = state.LastBlockHeight + 1
+		bcR.store.SetHeight(state.LastBlockHeight)
+		bcR.Logger.Debug("SwitchToBlockchain", "lastheight", state.LastBlockHeight, "apphash", state.AppHash)
+	}
+
+	bcR.fastSync = true
+	err := bcR.pool.Start()
+	if err != nil {
+		bcR.Logger.Error("Error starting blockchainReactor", "err", err)
+		return
+	}
+	go bcR.poolRoutine()
+}
+
 // GetChannels implements Reactor
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
@@ -266,8 +286,13 @@ FOR_LOOP:
 			height, numPending, lenRequesters := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
 			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "total", lenRequesters,
-				"outbound", outbound, "inbound", inbound)
-			if bcR.pool.IsCaughtUp() {
+				"outbound", outbound, "inbound", inbound, "height", height, "blocksSynced", blocksSynced, "poolstarttime", bcR.pool.startTime, "poolMaxPeerHeight", bcR.pool.maxPeerHeight)
+			// height == 1 is for initial nodes start
+			// blocksSynced > 0 is for the pool.height might greater than pool.MaxPeerHeight after state sync
+			// numPending=0 total=0 outbound=1 inbound=0 height=6601 blocksSynced=0 poolHeight=6601 poolstarttime=2019-02-22T09:02:07.881888662Z poolMaxPeerHeight=6437 poolHeight=6601
+			// we need make sure blockstore has a block because when switch to consensus, it will verify the commit between block and state
+			// refer to `cs.blockStore.LoadSeenCommit(state.LastBlockHeight)`
+			if bcR.pool.IsCaughtUp() && (height == bcR.pool.initHeight || blocksSynced > 0) {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)

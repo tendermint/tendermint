@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -37,6 +37,7 @@ import (
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/snapshot"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
@@ -232,9 +233,11 @@ func NewNode(config *cfg.Config,
 
 	// Transaction indexing
 	var txIndexer txindex.TxIndexer
+	var txDB dbm.DB	// TODO: remove by refactor defaultdbprovider to cache the created db instaces
 	switch config.TxIndex.Indexer {
 	case "kv":
 		store, err := dbProvider(&DBContext{"tx_index", config})
+		txDB = store
 		if err != nil {
 			return nil, err
 		}
@@ -351,6 +354,26 @@ func NewNode(config *cfg.Config,
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 
+	if state.Validators.Size() == 1 {
+		addr, _ := state.Validators.GetByIndex(0)
+		if bytes.Equal(privValidator.GetPubKey().Address(), addr) {
+			config.StateSync = false
+		}
+	}
+
+	var stateReactor *snapshot.StateReactor
+	if config.StateSyncReactor {
+		stateSyncLogger := logger.With("module", "statesync")
+		snapshot.InitSnapshotManager(stateDB, txDB, blockStore, config.DBDir(), stateSyncLogger)
+
+		// !!!This method may change config.StateSync!!!
+		// so the later reactor need read config.StateSync rather than a copied variable
+		stateReactor = snapshot.NewStateReactor(stateDB, proxyApp.State(), config)
+		stateReactor.SetLogger(stateSyncLogger)
+	} else {
+		config.StateSync = false
+	}
+
 	blockExecLogger := logger.With("module", "state")
 	// make block executor for consensus and blockchain reactors to execute blocks
 	blockExec := sm.NewBlockExecutor(
@@ -363,7 +386,7 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync && !config.StateSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make ConsensusReactor
@@ -380,7 +403,7 @@ func NewNode(config *cfg.Config,
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
+	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync || config.StateSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 
 	// services which will be publishing and/or subscribing for messages (events)
@@ -466,6 +489,9 @@ func NewNode(config *cfg.Config,
 	)
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
+	if config.StateSyncReactor {
+		sw.AddReactor("STATE", stateReactor)
+	}
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
@@ -869,6 +895,7 @@ func makeNodeInfo(
 		Network:         chainID,
 		Version:         version.TMCoreSemVer,
 		Channels: []byte{
+			snapshot.StateSyncChannel,
 			bc.BlockchainChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
 			mempl.MempoolChannel,

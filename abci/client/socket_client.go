@@ -344,6 +344,15 @@ func (cli *socketClient) EndBlockSync(req types.RequestEndBlock) (*types.Respons
 
 //----------------------------------------
 
+func (cli *socketClient) StartRecovery(manifest *types.Manifest) error {
+	return nil
+}
+func (cli *socketClient) WriteRecoveryChunk(hash types.SHA256Sum, chunk *types.AppStateChunk, isComplete bool) error {
+	return nil
+}
+
+//----------------------------------------
+
 func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
 	reqres := NewReqRes(req)
 

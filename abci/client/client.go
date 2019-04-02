@@ -47,6 +47,9 @@ type Client interface {
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
+
+	StartRecovery(manifest *types.Manifest) error
+	WriteRecoveryChunk(hash types.SHA256Sum, chunk *types.AppStateChunk, isComplete bool) error
 }
 
 //----------------------------------------

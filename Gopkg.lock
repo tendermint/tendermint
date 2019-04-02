@@ -10,21 +10,46 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
-  digest = "1:093bf93a65962e8191e3e8cd8fc6c363f83d43caca9739c906531ba7210a9904"
+  digest = "1:a85bda3a9a0cb7eb6ab6120f279e272675d9775a6f1e289772a3c6319eb50ef2"
   name = "github.com/btcsuite/btcd"
-  packages = ["btcec"]
+  packages = [
+    "blockchain",
+    "btcec",
+    "chaincfg",
+    "chaincfg/chainhash",
+    "database",
+    "txscript",
+    "wire",
+  ]
   pruneopts = "UT"
   revision = "ed77733ec07dfc8a513741138419b8d9d3de9d2d"
 
 [[projects]]
-  digest = "1:1d8e1cb71c33a9470bbbae09bfec09db43c6bf358dfcae13cd8807c4e2a9a2bf"
+  branch = "master"
+  digest = "1:30d4a548e09bca4a0c77317c58e7407e2a65c15325e944f9c08a7b7992f8a59e"
+  name = "github.com/btcsuite/btclog"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "84c8d2346e9fc8c7b947e243b9c24e6df9fd206a"
+
+[[projects]]
+  digest = "1:d0a31b77988b04afbfa2c5ee38567a7a35d5a95de2266a644a7bc8d5c898e68d"
   name = "github.com/btcsuite/btcutil"
   packages = [
+    ".",
     "base58",
     "bech32",
   ]
   pruneopts = "UT"
   revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
+
+[[projects]]
+  branch = "master"
+  digest = "1:1e6b2f7aa98b082c30a1303c29a702c369b2ec6d86b74a599bc8bbe2333db299"
+  name = "github.com/btcsuite/go-socks"
+  packages = ["socks"]
+  pruneopts = "UT"
+  revision = "4720035b7bfd2a9bb130b1c184f8bbe41b6f0d0f"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -361,6 +386,14 @@
   revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
 
 [[projects]]
+  digest = "1:7a7e76f7799987cb1270d93218c3a04195be9e543559634c0b80ff3aa7f50d8d"
+  name = "github.com/tendermint/btcd"
+  packages = ["peer"]
+  pruneopts = "UT"
+  revision = "80daadac05d1cd29571fccf27002d79667a88b58"
+  version = "v0.1.1"
+
+[[projects]]
   digest = "1:ad9c4c1a4e7875330b1f62906f2830f043a23edb5db997e3a5ac5d3e6eadf80a"
   name = "github.com/tendermint/go-amino"
   packages = ["."]
@@ -514,6 +547,7 @@
     "github.com/gogo/protobuf/types",
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/golang/snappy",
     "github.com/gorilla/websocket",
     "github.com/jmhodges/levigo",
     "github.com/pkg/errors",
@@ -529,6 +563,7 @@
     "github.com/syndtr/goleveldb/leveldb/errors",
     "github.com/syndtr/goleveldb/leveldb/iterator",
     "github.com/syndtr/goleveldb/leveldb/opt",
+    "github.com/tendermint/btcd/peer",
     "github.com/tendermint/go-amino",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/chacha20poly1305",
