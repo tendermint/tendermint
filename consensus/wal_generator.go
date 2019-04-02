@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	memplmock "github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -66,7 +68,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 		return errors.Wrap(err, "failed to start event bus")
 	}
 	defer eventBus.Stop()
-	mempool := sm.MockMempool{}
+	mempool := memplmock.Mempool{}
 	evpool := sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)

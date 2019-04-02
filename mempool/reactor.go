@@ -31,13 +31,25 @@ const (
 	maxActiveIDs = math.MaxUint16
 )
 
+// MempoolWithWait extends the standard Mempool interface to allow reactor to
+// wait for transactions and iterate on them once there are any. Also it
+// includes ReapMaxTxs function, which is useful for testing.
+//
+// UNSTABLE
+type MempoolWithWait interface {
+	Mempool
+	TxsFront() *clist.CElement
+	TxsWaitChan() <-chan struct{}
+	ReapMaxTxs(n int) types.Txs
+}
+
 // MempoolReactor handles mempool tx broadcasting amongst peers.
 // It maintains a map from peer ID to counter, to prevent gossiping txs to the
 // peers you received it from.
 type MempoolReactor struct {
 	p2p.BaseReactor
 	config  *cfg.MempoolConfig
-	Mempool *Mempool
+	Mempool MempoolWithWait
 	ids     *mempoolIDs
 }
 
@@ -105,7 +117,7 @@ func newMempoolIDs() *mempoolIDs {
 }
 
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
-func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config *cfg.MempoolConfig, mempool MempoolWithWait) *MempoolReactor {
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
@@ -115,10 +127,18 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 	return memR
 }
 
+type mempoolWithLogger interface {
+	SetLogger(log.Logger)
+}
+
 // SetLogger sets the Logger on the reactor and the underlying Mempool.
 func (memR *MempoolReactor) SetLogger(l log.Logger) {
 	memR.Logger = l
-	memR.Mempool.SetLogger(l)
+
+	// set mempoolWithLogger if mempool supports it
+	if mem, ok := memR.Mempool.(mempoolWithLogger); ok {
+		mem.SetLogger(l)
+	}
 }
 
 // OnStart implements p2p.BaseReactor.
@@ -169,7 +189,7 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		peerID := memR.ids.GetForPeer(src)
 		err := memR.Mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{PeerID: peerID})
 		if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", TxID(msg.Tx), "err", err)
+			memR.Logger.Info("Could not check tx", "tx", txID(msg.Tx), "err", err)
 		}
 		// broadcasting happens from go routines per peer
 	default:

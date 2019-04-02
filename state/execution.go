@@ -8,6 +8,7 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -30,7 +31,7 @@ type BlockExecutor struct {
 
 	// manage the mempool lock during commit
 	// and update both with block results after commit.
-	mempool Mempool
+	mempool mempl.Mempool
 	evpool  EvidencePool
 
 	logger log.Logger
@@ -48,7 +49,7 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
-func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus, mempool Mempool, evpool EvidencePool, options ...BlockExecutorOption) *BlockExecutor {
+func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus, mempool mempl.Mempool, evpool EvidencePool, options ...BlockExecutorOption) *BlockExecutor {
 	res := &BlockExecutor{
 		db:       db,
 		proxyApp: proxyApp,

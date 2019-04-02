@@ -157,9 +157,10 @@ type Node struct {
 	// services
 	eventBus         *types.EventBus // pub/sub for services
 	stateDB          dbm.DB
-	blockStore       *bc.BlockStore         // store the blockchain to disk
-	bcReactor        *bc.BlockchainReactor  // for fast-syncing
-	mempoolReactor   *mempl.MempoolReactor  // for gossipping transactions
+	blockStore       *bc.BlockStore        // store the blockchain to disk
+	bcReactor        *bc.BlockchainReactor // for fast-syncing
+	mempoolReactor   *mempl.MempoolReactor // for gossipping transactions
+	mempool          *mempl.CListMempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
 	evidencePool     *evidence.EvidencePool // tracking evidence
@@ -320,7 +321,7 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
 	// Make MempoolReactor
-	mempool := mempl.NewMempool(
+	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
@@ -329,7 +330,6 @@ func NewNode(config *cfg.Config,
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
 	mempoolLogger := logger.With("module", "mempool")
-	mempool.SetLogger(mempoolLogger)
 	if config.Mempool.WalEnabled() {
 		mempool.InitWAL() // no need to have the mempool wal during tests
 	}
@@ -534,6 +534,7 @@ func NewNode(config *cfg.Config,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
+		mempool:          mempool,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		evidencePool:     evidencePool,
@@ -617,7 +618,7 @@ func (n *Node) OnStop() {
 
 	// stop mempool WAL
 	if n.config.Mempool.WalEnabled() {
-		n.mempoolReactor.Mempool.CloseWAL()
+		n.mempool.CloseWAL()
 	}
 
 	if err := n.transport.Close(); err != nil {
@@ -652,7 +653,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetStateDB(n.stateDB)
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
-	rpccore.SetMempool(n.mempoolReactor.Mempool)
+	rpccore.SetMempool(n.mempool)
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetP2PPeers(n.sw)
 	rpccore.SetP2PTransport(n)
@@ -802,6 +803,11 @@ func (n *Node) ConsensusReactor() *cs.ConsensusReactor {
 // MempoolReactor returns the Node's MempoolReactor.
 func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
+}
+
+// Mempool returns the Node's Mempool.
+func (n *Node) Mempool() *mempl.CListMempool {
+	return n.mempool
 }
 
 // EvidencePool returns the Node's EvidencePool.

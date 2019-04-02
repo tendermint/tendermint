@@ -13,6 +13,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	memplmock "github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -92,7 +93,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	// pool.height is determined from the store.
 	fastSync := true
 	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), proxyApp.Consensus(),
-		sm.MockMempool{}, sm.MockEvidencePool{})
+		memplmock.Mempool{}, sm.MockEvidencePool{})
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {

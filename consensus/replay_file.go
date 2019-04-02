@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	memplmock "github.com/tendermint/tendermint/mempool/mock"
 )
 
 const (
@@ -312,7 +313,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		cmn.Exit(fmt.Sprintf("Error on handshake: %v", err))
 	}
 
-	mempool, evpool := sm.MockMempool{}, sm.MockEvidencePool{}
+	mempool, evpool := memplmock.Mempool{}, sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,

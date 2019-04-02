@@ -16,11 +16,11 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+	memplmock "github.com/tendermint/tendermint/mempool/mock"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -442,7 +442,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, sm.MockMempool{}, sm.MockEvidencePool{})
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, memplmock.Mempool{}, sm.MockEvidencePool{})
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error

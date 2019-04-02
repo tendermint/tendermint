@@ -32,18 +32,18 @@ import (
 // test.
 type cleanupFunc func()
 
-func newMempoolWithApp(cc proxy.ClientCreator) (*Mempool, cleanupFunc) {
+func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc) {
 	return newMempoolWithAppAndConfig(cc, cfg.ResetTestRoot("mempool_test"))
 }
 
-func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) (*Mempool, cleanupFunc) {
+func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) (*CListMempool, cleanupFunc) {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
 	if err != nil {
 		panic(err)
 	}
-	mempool := NewMempool(config.Mempool, appConnMem, 0)
+	mempool := NewCListMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger())
 	return mempool, func() { os.RemoveAll(config.RootDir) }
 }
@@ -66,7 +66,7 @@ func ensureFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	}
 }
 
-func checkTxs(t *testing.T, mempool *Mempool, count int, peerID uint16) types.Txs {
+func checkTxs(t *testing.T, mempool Mempool, count int, peerID uint16) types.Txs {
 	txs := make(types.Txs, count)
 	txInfo := TxInfo{PeerID: peerID}
 	for i := 0; i < count; i++ {
@@ -348,7 +348,6 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// 1. Create the temporary directory for mempool and WAL testing.
 	rootDir, err := ioutil.TempDir("", "mempool-test")
 	require.Nil(t, err, "expecting successful tmpdir creation")
-	defer os.RemoveAll(rootDir)
 
 	// 2. Ensure that it doesn't contain any elements -- Sanity check
 	m1, err := filepath.Glob(filepath.Join(rootDir, "*"))
@@ -356,13 +355,13 @@ func TestMempoolCloseWAL(t *testing.T) {
 	require.Equal(t, 0, len(m1), "no matches yet")
 
 	// 3. Create the mempool
-	wcfg := cfg.DefaultMempoolConfig()
-	wcfg.RootDir = rootDir
-	defer os.RemoveAll(wcfg.RootDir)
+	wcfg := cfg.DefaultConfig()
+	wcfg.Mempool.RootDir = rootDir
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	appConnMem, _ := cc.NewABCIClient()
-	mempool := NewMempool(wcfg, appConnMem, 10)
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, wcfg)
+	defer cleanup()
+	mempool.height = 10
 	mempool.InitWAL()
 
 	// 4. Ensure that the directory contains the WAL file

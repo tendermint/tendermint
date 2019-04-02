@@ -11,13 +11,13 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
-	sm "github.com/tendermint/tendermint/state"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 
 // for testing
-func assertMempool(txn txNotifier) sm.Mempool {
-	return txn.(sm.Mempool)
+func assertMempool(txn txNotifier) mempl.Mempool {
+	return txn.(mempl.Mempool)
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
