@@ -264,27 +264,30 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 		select {
 		case <-sl.connectCh:
 			{
-				for {
-					sl.Logger.Info("Listening for new connection")
-					conn, err := sl.acceptNewConnection()
-					if err == nil {
-						sl.Logger.Info("Connected")
+				sl.Logger.Info("Listening for new connection")
+				conn, err := sl.acceptNewConnection()
+				if err == nil {
+					sl.Logger.Info("Connected")
 
-						select {
-						case sl.connectedCh <- conn:
-							{
-								sl.Logger.Debug("SignerListenerEndpoint: connection relayed")
-							}
-						case <-sl.stopCh:
-							{
-								sl.Logger.Debug("SignerListenerEndpoint: stopping")
-								return
-							}
+					// We have a good connection, wait for someone that needs one or cancellation
+					select {
+					case sl.connectedCh <- conn:
+						{
+							sl.Logger.Debug("SignerListenerEndpoint: connection relayed")
+						}
+					case <-sl.stopCh:
+						{
+							sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
+							return
 						}
 					}
 				}
-			}
 
+				select {
+				case sl.connectCh <- struct{}{}:
+				default:
+				}
+			}
 		case <-sl.stopCh:
 			{
 				sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
