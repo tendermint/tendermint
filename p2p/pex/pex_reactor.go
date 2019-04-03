@@ -170,7 +170,7 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		}
 	} else {
 		// inbound peer is its own source
-		addr := p.NodeInfo().NetAddress()
+		addr := p.SocketAddr()
 		src := addr
 
 		// add to book. dont RequestAddrs right away because
@@ -312,7 +312,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	}
 	r.requestsSent.Delete(id)
 
-	srcAddr := src.NodeInfo().NetAddress()
+	srcAddr := src.SocketAddr()
 	for _, netAddr := range addrs {
 		// Validate netAddr. Disconnect from a peer if it sends us invalid data.
 		if netAddr == nil {
