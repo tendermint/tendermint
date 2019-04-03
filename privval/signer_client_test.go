@@ -44,13 +44,11 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 
 func TestSignerClose(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			err := tc.signer.Close()
-			assert.NoError(t, err)
+		err := tc.signer.Close()
+		assert.NoError(t, err)
 
-			err = tc.signerService.Stop()
-			assert.NoError(t, err)
-		}()
+		err = tc.signerService.Stop()
+		assert.NoError(t, err)
 	}
 }
 
@@ -171,16 +169,16 @@ func TestSignerSignProposalErrors(t *testing.T) {
 			defer tc.signerService.OnStop()
 			defer tc.signer.Close()
 
-			//ts := time.Now()
-			//proposal := &types.Proposal{Timestamp: ts}
-			//err := tc.signer.SignProposal(tc.chainID, proposal)
-			//require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
-			//
-			//err = tc.mockPV.SignProposal(tc.chainID, proposal)
-			//require.Error(t, err)
-			//
-			//err = tc.signer.SignProposal(tc.chainID, proposal)
-			//require.Error(t, err)
+			ts := time.Now()
+			proposal := &types.Proposal{Timestamp: ts}
+			err := tc.signer.SignProposal(tc.chainID, proposal)
+			require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
+
+			err = tc.mockPV.SignProposal(tc.chainID, proposal)
+			require.Error(t, err)
+
+			err = tc.signer.SignProposal(tc.chainID, proposal)
+			require.Error(t, err)
 		}()
 	}
 }
