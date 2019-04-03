@@ -14,10 +14,7 @@ func HandleValidatorRequest(req RemoteSignerMsg, chainID string, privVal types.P
 	switch r := req.(type) {
 	case *PubKeyRequest:
 		var p crypto.PubKey
-		p, err = privVal.GetPubKey()
-		if err != nil {
-			return nil, err
-		}
+		p = privVal.GetPubKey()
 		res = &PubKeyResponse{p, nil}
 
 	case *SignVoteRequest:

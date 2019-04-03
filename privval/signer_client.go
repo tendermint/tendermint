@@ -53,25 +53,25 @@ func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
 // Implement PrivValidator
 
 // GetPubKey retrieves a public key from a remote signer
-func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
+func (sc *SignerClient) GetPubKey() crypto.PubKey {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
 		sc.endpoint.Logger.Error("error sending request", "err", err)
-		return nil, err
+		return nil
 	}
 
 	pubKeyResp, ok := response.(*PubKeyResponse)
 	if !ok {
 		sc.endpoint.Logger.Error("response is not PubKeyResponse")
-		return nil, err
+		return nil
 	}
 
 	if pubKeyResp.Error != nil {
 		sc.endpoint.Logger.Error("failed to get private validator's public key", "err", pubKeyResp.Error)
-		return nil, err
+		return nil
 	}
 
-	return pubKeyResp.PubKey, nil
+	return pubKeyResp.PubKey
 }
 
 // SignVote requests a remote signer to sign a vote

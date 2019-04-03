@@ -98,18 +98,13 @@ func (v *Validator) Bytes() []byte {
 
 // RandValidator returns a randomized validator, useful for testing.
 // UNSTABLE
-func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator, error) {
+func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
 	privVal := NewMockPV()
 	votePower := minPower
 	if randPower {
 		votePower += int64(cmn.RandUint32())
 	}
-
-	pubKey, err := privVal.GetPubKey()
-	if err != nil {
-		return nil, nil, err
-	}
-
+	pubKey := privVal.GetPubKey()
 	val := NewValidator(pubKey, votePower)
-	return val, privVal, nil
+	return val, privVal
 }
