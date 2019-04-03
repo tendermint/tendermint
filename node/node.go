@@ -298,7 +298,7 @@ func NewNode(config *cfg.Config,
 
 	pubKey := privValidator.GetPubKey()
 	if pubKey == nil {
-		return nil, fmt.Errorf("could not retrieve pubkey")
+		return nil, fmt.Errorf("could not retrieve pubkey from private validator")
 	}
 
 	// Decide whether to fast-sync or not
