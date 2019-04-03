@@ -3,19 +3,18 @@ package internal
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -159,7 +158,7 @@ func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.SignerDial
 
 func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConfig {
 	return TestHarnessConfig{
-		BindAddr:         testFreeTCPAddr(t),
+		BindAddr:         privval.GetFreeLocalhostAddrPort(),
 		KeyFile:          makeTempFile("tm-testharness-keyfile", keyFileContents),
 		StateFile:        makeTempFile("tm-testharness-statefile", stateFileContents),
 		GenesisFile:      makeTempFile("tm-testharness-genesisfile", genesisFileContents),
@@ -190,13 +189,4 @@ func makeTempFile(name, content string) string {
 		panic(err)
 	}
 	return tempFile.Name()
-}
-
-// testFreeTCPAddr claims a free port so we don't block on listener being ready.
-func testFreeTCPAddr(t *testing.T) string {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer ln.Close()
-
-	return fmt.Sprintf("127.0.0.1:%d", ln.Addr().(*net.TCPAddr).Port)
 }
