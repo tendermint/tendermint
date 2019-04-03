@@ -37,7 +37,6 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 		}
 
 		testCases = append(testCases, tc)
-		break
 	}
 
 	return testCases
