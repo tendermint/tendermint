@@ -149,9 +149,9 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 
 			// Check that even if the client does not request a
 			// signature for a long time. The service is will available
-			tc.signerService.Logger.Info("TEST. Forced Wait")
+			t.Log("TEST. Forced Wait")
 			time.Sleep(testTimeoutReadWrite * 2)
-			tc.signerService.Logger.Info("TEST. Forced Wait - DONE")
+			t.Log("TEST. Forced Wait - DONE")
 
 			require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
 			require.NoError(t, tc.signer.SignVote(tc.chainID, have))
