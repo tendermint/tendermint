@@ -6,18 +6,29 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
+
 	"github.com/tendermint/tendermint/types"
 )
 
 const (
 	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
 	BlockchainChannel = byte(0x40)
+	trySyncIntervalMS = 10
+	trySendIntervalMS = 10
 
-	maxTotalMessages = 1000
+	// stop syncing when last block's time is
+	// within this much of the system time.
+	// stopSyncingDurationMinutes = 10
+
+	// ask for best height every 10s
+	statusUpdateIntervalSeconds = 10
+	// check if we should switch to consensus reactor
+	switchToConsensusIntervalSeconds = 1
 
 	// NOTE: keep up to date with bcBlockResponseMessage
 	bcBlockResponseMessagePrefixSize   = 4
@@ -25,6 +36,11 @@ const (
 	maxMsgSize                         = types.MaxBlockSizeBytes +
 		bcBlockResponseMessagePrefixSize +
 		bcBlockResponseMessageFieldKeySize
+)
+
+var (
+	maxRequestsPerPeer    int32 = 20
+	maxNumPendingRequests int32 = 600
 )
 
 type consensusReactor interface {
@@ -42,21 +58,6 @@ func (e peerError) Error() string {
 	return fmt.Sprintf("error with peer %v: %s", e.peerID, e.err.Error())
 }
 
-type bReactorMsgFromFSM uint
-
-// message types
-const (
-	// message type events
-	errorMsg = iota + 1
-	//blockRequestMsg
-	//statusRequestMsg
-)
-
-type msgFromFSM struct {
-	msgType bReactorMsgFromFSM
-	error   peerError
-}
-
 // BlockchainReactor handles long-term catchup syncing.
 type BlockchainReactor struct {
 	p2p.BaseReactor
@@ -72,10 +73,20 @@ type BlockchainReactor struct {
 
 	fsm          *bReactorFSM
 	blocksSynced int
-	lastHundred  time.Time
-	lastRate     float64
 
-	msgFromFSMCh chan msgFromFSM
+	errorsCh        chan peerError
+	messageForFSMCh chan bReactorMessageData // received in poolRoutine from Receive routine
+}
+
+type BlockRequest struct {
+	Height int64
+	PeerID p2p.ID
+}
+
+// bReactorMessageData structure is used by the reactor when sending messages to the FSM.
+type bReactorMessageData struct {
+	event bReactorEvent
+	data  bReactorEventData
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -87,12 +98,18 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 			store.Height()))
 	}
 
+	const capacity = 1000                                       // must be bigger than peers count
+	errorsCh := make(chan peerError, capacity)                  // so we don't block in #Receive#pool.AddBlock
+	messageForFSMCh := make(chan bReactorMessageData, capacity) // so we don't block in #Receive#pool.AddBlock
+
 	bcR := &BlockchainReactor{
-		initialState: state,
-		state:        state,
-		blockExec:    blockExec,
-		fastSync:     fastSync,
-		store:        store,
+		initialState:    state,
+		state:           state,
+		blockExec:       blockExec,
+		fastSync:        fastSync,
+		store:           store,
+		errorsCh:        errorsCh,
+		messageForFSMCh: messageForFSMCh,
 	}
 	fsm := NewFSM(store.Height()+1, bcR)
 	bcR.fsm = fsm
@@ -109,7 +126,6 @@ func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 // OnStart implements cmn.Service.
 func (bcR *BlockchainReactor) OnStart() error {
 	if bcR.fastSync {
-		bcR.fsm.start()
 		go bcR.poolRoutine()
 	}
 	return nil
@@ -117,7 +133,7 @@ func (bcR *BlockchainReactor) OnStart() error {
 
 // OnStop implements cmn.Service.
 func (bcR *BlockchainReactor) OnStop() {
-	bcR.fsm.stop()
+	bcR.Stop()
 }
 
 // GetChannels implements Reactor
@@ -143,16 +159,11 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
 }
 
-// RemovePeer implements Reactor by removing peer from the pool.
-func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	bcR.fsm.RemovePeer(peer.ID())
-}
-
 // respondToPeer loads a block and sends it to the requesting peer,
 // if we have it. Otherwise, we'll respond saying we don't have it.
 // According to the Tendermint spec, if all nodes are honest,
 // no node should be requesting for a block that's non-existent.
-func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
+func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcBlockRequestMessage,
 	src p2p.Peer) (queued bool) {
 
 	block := bcR.store.LoadBlock(msg.Height)
@@ -165,6 +176,31 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 
 	msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Height})
 	return src.TrySend(BlockchainChannel, msgBytes)
+}
+
+func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcStatusRequestMessage, src p2p.Peer) (queued bool) {
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
+	return src.TrySend(BlockchainChannel, msgBytes)
+}
+
+func (bcR *BlockchainReactor) sendMessageToFSMAsync(msg bReactorMessageData) {
+	bcR.Logger.Error("send message to FSM for processing", "msg", msg.String())
+	bcR.messageForFSMCh <- msg
+}
+
+func (bcR *BlockchainReactor) sendRemovePeerToFSM(peerID p2p.ID) {
+	msgData := bReactorMessageData{
+		event: peerRemoveEv,
+		data: bReactorEventData{
+			peerId: peerID,
+		},
+	}
+	bcR.sendMessageToFSMAsync(msgData)
+}
+
+// RemovePeer implements Reactor by removing peer from the pool.
+func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	bcR.sendRemovePeerToFSM(peer.ID())
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
@@ -186,9 +222,18 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
-		if queued := bcR.respondToPeer(msg, src); !queued {
+		if queued := bcR.sendBlockToPeer(msg, src); !queued {
 			// Unfortunately not queued since the queue is full.
+			bcR.Logger.Error("Could not send block message to peer", "src", src, "height", msg.Height)
 		}
+
+	case *bcStatusRequestMessage:
+		// Send peer our state.
+		if queued := bcR.sendStatusResponseToPeer(msg, src); !queued {
+			// Unfortunately not queued since the queue is full.
+			bcR.Logger.Error("Could not send status message to peer", "src", src)
+		}
+
 	case *bcBlockResponseMessage:
 		msgData := bReactorMessageData{
 			event: blockResponseEv,
@@ -198,15 +243,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				length: len(msgBytes),
 			},
 		}
-		sendMessageToFSM(bcR.fsm, msgData)
+		bcR.sendMessageToFSMAsync(msgData)
 
-	case *bcStatusRequestMessage:
-		// Send peer our state.
-		msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
-		queued := src.TrySend(BlockchainChannel, msgBytes)
-		if !queued {
-			// sorry
-		}
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
 		msgData := bReactorMessageData{
@@ -217,14 +255,141 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				length: len(msgBytes),
 			},
 		}
-		sendMessageToFSM(bcR.fsm, msgData)
+		bcR.sendMessageToFSMAsync(msgData)
 
 	default:
 		bcR.Logger.Error(fmt.Sprintf("unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 
-func (bcR *BlockchainReactor) processBlocks(first *types.Block, second *types.Block) error {
+// Handle messages from the poolReactor telling the reactor what to do.
+// NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
+func (bcR *BlockchainReactor) poolRoutine() {
+
+	bcR.fsm.start()
+
+	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
+	trySendTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
+
+	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
+	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
+
+	lastHundred := time.Now()
+	lastRate := 0.0
+
+	doProcessCh := make(chan struct{}, 1)
+	doSendCh := make(chan struct{}, 1)
+
+FOR_LOOP:
+	for {
+		select {
+
+		case <-trySendTicker.C: // chan time
+			select {
+			case doSendCh <- struct{}{}:
+			default:
+			}
+			continue FOR_LOOP
+
+		case <-doSendCh:
+			msgData := bReactorMessageData{
+				event: makeRequestsEv,
+				data: bReactorEventData{
+					maxNumRequests: maxNumPendingRequests,
+				},
+			}
+			_ = sendMessageToFSMSync(bcR.fsm, msgData)
+
+		case err := <-bcR.errorsCh:
+			bcR.reportPeerErrorToSwitch(err.err, err.peerID)
+
+		case <-statusUpdateTicker.C:
+			// Ask for status updates.
+			go bcR.sendStatusRequest()
+
+		case <-switchToConsensusTicker.C:
+			height, numPending, maxPeerHeight := bcR.fsm.pool.getStatus()
+			outbound, inbound, _ := bcR.Switch.NumPeers()
+			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "maxPeerHeight", maxPeerHeight,
+				"outbound", outbound, "inbound", inbound)
+			if bcR.fsm.isCaughtUp() {
+				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
+				bcR.fsm.stop()
+				bcR.switchToConsensus()
+				break FOR_LOOP
+			}
+
+		case <-trySyncTicker.C: // chan time
+			select {
+			case doProcessCh <- struct{}{}:
+			default:
+			}
+			//continue FOR_LOOP
+
+		case <-doProcessCh:
+			err := bcR.processBlocksFromPoolRoutine()
+			if err == errMissingBlocks {
+				continue FOR_LOOP
+			}
+
+			// Notify FSM of block processing result.
+			msgData := bReactorMessageData{
+				event: processedBlockEv,
+				data: bReactorEventData{
+					err: err,
+				},
+			}
+			_ = sendMessageToFSMSync(bcR.fsm, msgData)
+
+			if err == errBlockVerificationFailure {
+				continue FOR_LOOP
+			}
+
+			doProcessCh <- struct{}{}
+
+			bcR.blocksSynced++
+			if bcR.blocksSynced%100 == 0 {
+				lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
+				bcR.Logger.Info("Fast Sync Rate", "height", bcR.fsm.pool.height,
+					"max_peer_height", bcR.fsm.pool.getMaxPeerHeight(), "blocks/s", lastRate)
+				lastHundred = time.Now()
+			}
+			continue FOR_LOOP
+
+		case msg := <-bcR.messageForFSMCh:
+			_ = sendMessageToFSMSync(bcR.fsm, msg)
+
+		case <-bcR.Quit():
+			break FOR_LOOP
+		}
+	}
+}
+
+func (bcR *BlockchainReactor) reportPeerErrorToSwitch(err error, peerID p2p.ID) {
+	peer := bcR.Switch.Peers().Get(peerID)
+	if peer != nil {
+		bcR.Switch.StopPeerForError(peer, err)
+	}
+}
+
+// Called by FSM and pool:
+// - pool calls when it detects slow peer or when peer times out
+// - FSM calls when:
+//    - processing a block (addBlock) fails
+//    - BCR process of block reports failure to FSM, FSM sends back the peers of first and second
+func (bcR *BlockchainReactor) sendPeerError(err error, peerID p2p.ID) {
+	bcR.errorsCh <- peerError{err, peerID}
+}
+
+func (bcR *BlockchainReactor) processBlocksFromPoolRoutine() error {
+	firstBP, secondBP, err := bcR.fsm.pool.getNextTwoBlocks()
+	if err != nil {
+		// We need both to sync the first block.
+		return err
+	}
+
+	first := firstBP.block
+	second := secondBP.block
 
 	chainID := bcR.initialState.ChainID
 
@@ -235,7 +400,7 @@ func (bcR *BlockchainReactor) processBlocks(first *types.Block, second *types.Bl
 	// NOTE: we can probably make this more efficient, but note that calling
 	// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 	// currently necessary.
-	err := bcR.state.Validators.VerifyCommit(
+	err = bcR.state.Validators.VerifyCommit(
 		chainID, firstID, first.Height, second.LastCommit)
 
 	if err != nil {
@@ -245,48 +410,13 @@ func (bcR *BlockchainReactor) processBlocks(first *types.Block, second *types.Bl
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	// get the hash without persisting the state
+	// Get the hash without persisting the state.
 	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
 	if err != nil {
 		// TODO This is bad, are we zombie?
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
-	bcR.blocksSynced++
-
-	if bcR.blocksSynced%100 == 0 {
-		bcR.lastRate = 0.9*bcR.lastRate + 0.1*(100/time.Since(bcR.lastHundred).Seconds())
-		bcR.Logger.Info("Fast Sync Rate", "height", bcR.fsm.pool.height,
-			"max_peer_height", bcR.fsm.pool.getMaxPeerHeight(), "blocks/s", bcR.lastRate)
-		bcR.lastHundred = time.Now()
-	}
 	return nil
-}
-
-// Handle messages from the poolReactor telling the reactor what to do.
-// NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
-func (bcR *BlockchainReactor) poolRoutine() {
-
-	for {
-		select {
-		case fromFSM := <-bcR.msgFromFSMCh:
-			switch fromFSM.msgType {
-			case errorMsg:
-				peer := bcR.Switch.Peers().Get(fromFSM.error.peerID)
-				if peer != nil {
-					bcR.Switch.StopPeerForError(peer, fromFSM.error.err)
-				}
-			default:
-			}
-		}
-	}
-}
-
-// TODO - send the error on msgFromFSMCh to process it above
-func (bcR *BlockchainReactor) sendPeerError(err error, peerID p2p.ID) {
-	peer := bcR.Switch.Peers().Get(peerID)
-	if peer != nil {
-		bcR.Switch.StopPeerForError(peer, err)
-	}
 }
 
 func (bcR *BlockchainReactor) resetStateTimer(name string, timer *time.Timer, timeout time.Duration, f func()) {
@@ -298,10 +428,9 @@ func (bcR *BlockchainReactor) resetStateTimer(name string, timer *time.Timer, ti
 }
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
-func (bcR *BlockchainReactor) sendStatusRequest() error {
+func (bcR *BlockchainReactor) sendStatusRequest() {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.store.Height()})
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
-	return nil
 }
 
 // BlockRequest sends `BlockRequest` height.
@@ -326,7 +455,7 @@ func (bcR *BlockchainReactor) switchToConsensus() {
 	if ok {
 		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced)
 	} else {
-		// should only happen during testing
+		// Should only happen during testing.
 	}
 }
 

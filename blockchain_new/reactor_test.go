@@ -124,9 +124,10 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	return BlockchainReactorPair{bcReactor, proxyApp}
 }
 
-func TestNoBlockResponse(t *testing.T) {
+func TestFastSyncNoBlockResponse(t *testing.T) {
 	peerTimeout = 15 * time.Second
-	maxRequestBatchSize = 40
+	maxRequestsPerPeer = 20
+	maxNumPendingRequests = 100
 
 	config = cfg.ResetTestRoot("blockchain_new_reactor_test")
 	defer os.RemoveAll(config.RootDir)
@@ -136,23 +137,18 @@ func TestNoBlockResponse(t *testing.T) {
 
 	reactorPairs := make([]BlockchainReactorPair, 2)
 
-	logger1 := log.TestingLogger()
-	reactorPairs[0] = newBlockchainReactor(logger1, genDoc, privVals, maxBlockHeight)
-	logger2 := log.TestingLogger()
-	reactorPairs[1] = newBlockchainReactor(logger2, genDoc, privVals, 0)
+	logger := log.TestingLogger()
+	reactorPairs[0] = newBlockchainReactor(logger, genDoc, privVals, maxBlockHeight)
+	reactorPairs[1] = newBlockchainReactor(logger, genDoc, privVals, 0)
 
 	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		moduleName := fmt.Sprintf("blockchain-%v", i)
+		reactorPairs[i].reactor.SetLogger(logger.With("module", moduleName))
+
 		return s
 
 	}, p2p.Connect2Switches)
-
-	addr0 := reactorPairs[0].reactor.Switch.NodeInfo().ID()
-	moduleName := fmt.Sprintf("blockchain-%v", addr0)
-	reactorPairs[0].reactor.SetLogger(logger1.With("module", moduleName[:19]))
-	addr1 := reactorPairs[1].reactor.Switch.NodeInfo().ID()
-	moduleName = fmt.Sprintf("blockchain-%v", addr1)
-	reactorPairs[1].reactor.SetLogger(logger1.With("module", moduleName[:19]))
 
 	defer func() {
 		for _, r := range reactorPairs {
@@ -172,11 +168,10 @@ func TestNoBlockResponse(t *testing.T) {
 	}
 
 	for {
-		if reactorPairs[1].reactor.fsm.IsFinished() {
+		time.Sleep(1 * time.Second)
+		if reactorPairs[1].reactor.fsm.isCaughtUp() {
 			break
 		}
-
-		time.Sleep(10 * time.Millisecond)
 	}
 
 	assert.Equal(t, maxBlockHeight, reactorPairs[0].reactor.store.Height())
@@ -196,14 +191,17 @@ func TestNoBlockResponse(t *testing.T) {
 // or without significant refactoring of the module.
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
-func TestBadBlockStopsPeer(t *testing.T) {
+func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 	peerTimeout = 15 * time.Second
-	maxRequestBatchSize = 40
+
+	maxRequestsPerPeer = 20
+	maxNumPendingRequests = 20
+
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	maxBlockHeight := int64(500)
+	maxBlockHeight := int64(148)
 
 	otherChain := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
@@ -226,15 +224,11 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		moduleName := fmt.Sprintf("blockchain-%v", i)
+		reactorPairs[i].reactor.SetLogger(logger[i].With("module", moduleName))
 		return s
 
 	}, p2p.Connect2Switches)
-
-	for i := 0; i < 4; i++ {
-		addr := reactorPairs[i].reactor.Switch.NodeInfo().ID()
-		moduleName := fmt.Sprintf("blockchain-%v", addr)
-		reactorPairs[i].reactor.SetLogger(logger[i].With("module", moduleName[:19]))
-	}
 
 	defer func() {
 		for _, r := range reactorPairs {
@@ -244,11 +238,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}()
 
 	for {
-		if reactorPairs[3].reactor.fsm.IsFinished() || reactorPairs[3].reactor.Switch.Peers().Size() == 0 {
+		time.Sleep(1 * time.Second)
+		if reactorPairs[3].reactor.fsm.isCaughtUp() || reactorPairs[3].reactor.Switch.Peers().Size() == 0 {
 			break
 		}
-
-		time.Sleep(1 * time.Second)
 	}
 
 	//at this time, reactors[0-3] is the newest
@@ -263,24 +256,21 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
+		moduleName := fmt.Sprintf("blockchain-%v", len(reactorPairs)-1)
+		reactorPairs[len(reactorPairs)-1].reactor.SetLogger(lastLogger.With("module", moduleName))
 		return s
 
 	}, p2p.Connect2Switches)...)
-
-	addr := lastReactorPair.reactor.Switch.NodeInfo().ID()
-	moduleName := fmt.Sprintf("blockchain-%v", addr)
-	lastReactorPair.reactor.SetLogger(lastLogger.With("module", moduleName[:19]))
 
 	for i := 0; i < len(reactorPairs)-1; i++ {
 		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
 	}
 
 	for {
-		if lastReactorPair.reactor.fsm.IsFinished() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {
+		time.Sleep(1 * time.Second)
+		if lastReactorPair.reactor.fsm.isCaughtUp() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {
 			break
 		}
-
-		time.Sleep(1 * time.Second)
 	}
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
@@ -307,28 +297,31 @@ func setupReactors(
 
 	switches := p2p.MakeConnectedSwitches(config.P2P, numReactors, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		moduleName := fmt.Sprintf("blockchain-%v", i)
+		reactorPairs[i].reactor.SetLogger(logger[i].With("module", moduleName))
 		return s
 
 	}, p2p.Connect2Switches)
 
-	for i := 0; i < numReactors; i++ {
-		addr := reactorPairs[i].reactor.Switch.NodeInfo().ID()
-		moduleName := fmt.Sprintf("blockchain-%v", addr)
-		reactorPairs[i].reactor.SetLogger(logger[i].With("module", moduleName[:19]))
-	}
-
 	return reactorPairs, switches
 }
 
+// WIP - used for some scale testing, will remove
 func TestFastSyncMultiNode(t *testing.T) {
+	peerTimeout = 15 * time.Second
 
 	numNodes := 8
 	maxHeight := int64(1000)
-	peerTimeout = 15 * time.Second
-	maxRequestBatchSize = 80
+	//numNodes := 20
+	//maxHeight := int64(10000)
+
+	maxRequestsPerPeer = 40
+	maxNumPendingRequests = 500
 
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	genDoc, privVals := randGenesisDoc(1, false, 30)
+
+	start := time.Now()
 
 	reactorPairs, switches := setupReactors(numNodes, maxHeight, genDoc, privVals)
 
@@ -339,16 +332,25 @@ func TestFastSyncMultiNode(t *testing.T) {
 		}
 	}()
 
+outerFor:
 	for {
-		if reactorPairs[numNodes-1].reactor.fsm.IsFinished() || reactorPairs[numNodes-1].reactor.Switch.Peers().Size() == 0 {
-			break
+		i := 0
+		for i < numNodes {
+			if !reactorPairs[i].reactor.fsm.isCaughtUp() {
+				break
+			}
+			i++
 		}
-
-		time.Sleep(1 * time.Second)
+		if i == numNodes {
+			fmt.Println("SETUP FAST SYNC Duration", time.Since(start))
+			break outerFor
+		} else {
+			time.Sleep(1 * time.Second)
+		}
 	}
 
 	//at this time, reactors[0-3] are the newest
-	assert.Equal(t, numNodes-1, reactorPairs[1].reactor.Switch.Peers().Size())
+	assert.Equal(t, numNodes-1, reactorPairs[0].reactor.Switch.Peers().Size())
 
 	lastLogger := log.TestingLogger()
 	lastReactorPair := newBlockchainReactor(lastLogger, genDoc, privVals, 0)
@@ -356,29 +358,26 @@ func TestFastSyncMultiNode(t *testing.T) {
 
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
+		moduleName := fmt.Sprintf("blockchainTEST-%d", len(reactorPairs)-1)
+		reactorPairs[len(reactorPairs)-1].reactor.SetLogger(lastLogger.With("module", moduleName))
 		return s
 
 	}, p2p.Connect2Switches)...)
 
-	addr := lastReactorPair.reactor.Switch.NodeInfo().ID()
-	moduleName := fmt.Sprintf("blockchain-%v", addr)
-	lastReactorPair.reactor.SetLogger(lastLogger.With("module", moduleName[:19]))
-
-	start := time.Now()
+	start = time.Now()
 
 	for i := 0; i < len(reactorPairs)-1; i++ {
 		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
 	}
 
 	for {
-		if lastReactorPair.reactor.fsm.IsFinished() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {
+		time.Sleep(1 * time.Second)
+		if lastReactorPair.reactor.fsm.isCaughtUp() {
+			fmt.Println("FAST SYNC Duration", time.Since(start))
 			break
 		}
-
-		time.Sleep(1 * time.Second)
 	}
 
-	fmt.Println(time.Since(start))
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs))
 	assert.Equal(t, lastReactorPair.reactor.fsm.pool.getMaxPeerHeight(), lastReactorPair.reactor.fsm.pool.height)
 }

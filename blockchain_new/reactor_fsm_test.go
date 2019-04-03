@@ -1,21 +1,20 @@
 package blockchain_new
 
 import (
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/types"
-
-	"testing"
-	"time"
 )
 
 var (
 	failSendStatusRequest bool
 	failSendBlockRequest  bool
 	numStatusRequests     int
-	numBlockRequests      int
+	numBlockRequests      int32
 )
 
 type lastBlockRequestT struct {
@@ -72,13 +71,16 @@ func newTestReactor() *testReactor {
 
 // WIP
 func TestFSMTransitionSequences(t *testing.T) {
-	maxRequestBatchSize = 2
+	maxRequestsPerPeer = 2
 	fsmTransitionSequenceTests := [][]fsmStepTestValues{
 		{
 			{currentState: "unknown", event: startFSMEv, shouldSendStatusReq: true,
 				expectedState: "waitForPeer"},
 			{currentState: "waitForPeer", event: statusResponseEv,
-				data:              bReactorEventData{peerId: "P1", height: 10},
+				data:          bReactorEventData{peerId: "P1", height: 10},
+				expectedState: "waitForBlock"},
+			{currentState: "waitForBlock", event: makeRequestsEv,
+				data:              bReactorEventData{maxNumRequests: maxNumPendingRequests},
 				blockReqIncreased: true,
 				expectedState:     "waitForBlock"},
 		},
@@ -98,6 +100,7 @@ func TestFSMTransitionSequences(t *testing.T) {
 			oldNumBlockRequests := numBlockRequests
 
 			_ = sendEventToFSM(testBcR.fsm, step.event, step.data)
+
 			if step.shouldSendStatusReq {
 				assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
 			} else {
@@ -105,7 +108,7 @@ func TestFSMTransitionSequences(t *testing.T) {
 			}
 
 			if step.blockReqIncreased {
-				assert.Equal(t, oldNumBlockRequests+maxRequestBatchSize, numBlockRequests)
+				assert.Equal(t, oldNumBlockRequests+maxRequestsPerPeer, numBlockRequests)
 			} else {
 				assert.Equal(t, oldNumBlockRequests, numBlockRequests)
 			}
@@ -116,7 +119,7 @@ func TestFSMTransitionSequences(t *testing.T) {
 }
 
 func TestReactorFSMBasic(t *testing.T) {
-	maxRequestBatchSize = 2
+	maxRequestsPerPeer = 2
 
 	// Create test reactor
 	testBcR := newTestReactor()
@@ -134,15 +137,19 @@ func TestReactorFSMBasic(t *testing.T) {
 	peerID := p2p.ID(cmn.RandStr(12))
 	sendStatusResponse2(fsm, peerID, 10)
 
+	if err := fsm.handle(&bReactorMessageData{
+		event: makeRequestsEv,
+		data:  bReactorEventData{maxNumRequests: maxNumPendingRequests}}); err != nil {
+	}
 	// Check that FSM sends a block request message and...
-	assert.Equal(t, maxRequestBatchSize, numBlockRequests)
+	assert.Equal(t, maxRequestsPerPeer, numBlockRequests)
 	// ... the block request has the expected height
-	assert.Equal(t, int64(maxRequestBatchSize), lastBlockRequest.height)
+	assert.Equal(t, maxRequestsPerPeer, int32(len(fsm.pool.peers[peerID].blocks)))
 	assert.Equal(t, waitForBlock.name, fsm.state.name)
 }
 
 func TestReactorFSMPeerTimeout(t *testing.T) {
-	maxRequestBatchSize = 2
+	maxRequestsPerPeer = 2
 	resetTestValues()
 	peerTimeout = 20 * time.Millisecond
 	// Create and start the FSM
@@ -159,10 +166,14 @@ func TestReactorFSMPeerTimeout(t *testing.T) {
 	sendStatusResponse(fsm, peerID, 10)
 	time.Sleep(5 * time.Millisecond)
 
+	if err := fsm.handle(&bReactorMessageData{
+		event: makeRequestsEv,
+		data:  bReactorEventData{maxNumRequests: maxNumPendingRequests}}); err != nil {
+	}
 	// Check that FSM sends a block request message and...
-	assert.Equal(t, maxRequestBatchSize, numBlockRequests)
+	assert.Equal(t, maxRequestsPerPeer, numBlockRequests)
 	// ... the block request has the expected height and peer
-	assert.Equal(t, int64(maxRequestBatchSize), lastBlockRequest.height)
+	assert.Equal(t, maxRequestsPerPeer, int32(len(fsm.pool.peers[peerID].blocks)))
 	assert.Equal(t, peerID, lastBlockRequest.peerID)
 
 	// let FSM timeout on the block response message
@@ -190,13 +201,9 @@ func (testR *testReactor) sendPeerError(err error, peerID p2p.ID) {
 	lastPeerError.err = err
 }
 
-func (testR *testReactor) sendStatusRequest() error {
+func (testR *testReactor) sendStatusRequest() {
 	testR.logger.Info("Reactor received sendStatusRequest call from FSM")
 	numStatusRequests++
-	if failSendStatusRequest {
-		return errSendQueueFull
-	}
-	return nil
 }
 
 func (testR *testReactor) sendBlockRequest(peerID p2p.ID, height int64) error {
@@ -214,11 +221,6 @@ func (testR *testReactor) resetStateTimer(name string, timer *time.Timer, timeou
 	} else {
 		stateTimerStarts[name]++
 	}
-}
-
-func (testR *testReactor) processBlocks(first *types.Block, second *types.Block) error {
-	testR.logger.Info("Reactor received processBlocks call from FSM", "first", first.Height, "second", second.Height)
-	return nil
 }
 
 func (testR *testReactor) switchToConsensus() {
@@ -241,7 +243,7 @@ func sendStatusResponse(fsm *bReactorFSM, peerID p2p.ID, height int64) {
 		},
 	}
 
-	sendMessageToFSM(fsm, msgData)
+	_ = sendMessageToFSMSync(fsm, msgData)
 }
 
 func sendStatusResponse2(fsm *bReactorFSM, peerID p2p.ID, height int64) {

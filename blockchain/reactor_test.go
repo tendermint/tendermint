@@ -125,7 +125,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	return BlockchainReactorPair{bcReactor, proxyApp}
 }
 
-func TestNoBlockResponse(t *testing.T) {
+func TestFastSyncNoBlockResponse(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
@@ -185,12 +185,12 @@ func TestNoBlockResponse(t *testing.T) {
 // or without significant refactoring of the module.
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
-func TestBadBlockStopsPeer(t *testing.T) {
+func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	maxBlockHeight := int64(500)
+	maxBlockHeight := int64(148)
 
 	otherChain := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
@@ -254,6 +254,8 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
+	assert.Equal(t, lastReactorPair.reactor.pool.maxPeerHeight, lastReactorPair.reactor.pool.height)
+
 }
 
 func setupReactors(
@@ -294,8 +296,13 @@ func TestFastSyncMultiNode(t *testing.T) {
 
 	numNodes := 8
 	maxHeight := int64(1000)
+	//numNodes := 20
+	//maxHeight := int64(10000)
+
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	genDoc, privVals := randGenesisDoc(1, false, 30)
+
+	start := time.Now()
 
 	reactorPairs, switches := setupReactors(numNodes, maxHeight, genDoc, privVals)
 
@@ -306,22 +313,29 @@ func TestFastSyncMultiNode(t *testing.T) {
 		}
 	}()
 
+outerFor:
 	for {
-		if reactorPairs[numNodes-1].reactor.pool.IsCaughtUp() || reactorPairs[numNodes-1].reactor.Switch.Peers().Size() == 0 {
-			break
+		i := 0
+		for i < numNodes {
+			if !reactorPairs[i].reactor.pool.IsCaughtUp() {
+				break
+			}
+			i++
 		}
-
-		time.Sleep(1 * time.Second)
+		if i == numNodes {
+			fmt.Println("SETUP FAST SYNC Duration", time.Since(start))
+			break outerFor
+		} else {
+			time.Sleep(1 * time.Second)
+		}
 	}
 
 	//at this time, reactors[0-3] are the newest
-	assert.Equal(t, numNodes-1, reactorPairs[1].reactor.Switch.Peers().Size())
+	assert.Equal(t, numNodes-1, reactorPairs[0].reactor.Switch.Peers().Size())
 
 	lastLogger := log.TestingLogger()
 	lastReactorPair := newBlockchainReactor(lastLogger, genDoc, privVals, 0)
 	reactorPairs = append(reactorPairs, lastReactorPair)
-
-	start := time.Now()
 
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
@@ -333,20 +347,23 @@ func TestFastSyncMultiNode(t *testing.T) {
 	moduleName := fmt.Sprintf("blockchain-%v", addr)
 	lastReactorPair.reactor.SetLogger(lastLogger.With("module", moduleName[:19]))
 
+	start = time.Now()
+
 	for i := 0; i < len(reactorPairs)-1; i++ {
 		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
 	}
 
 	for {
-		if lastReactorPair.reactor.pool.IsCaughtUp() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {
+		time.Sleep(1 * time.Second)
+		if lastReactorPair.reactor.pool.IsCaughtUp() {
+			fmt.Println("FAST SYNC Duration", time.Since(start))
 			break
 		}
-
-		time.Sleep(1 * time.Second)
 	}
-	fmt.Println(time.Since(start))
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs))
+	assert.Equal(t, lastReactorPair.reactor.pool.maxPeerHeight, lastReactorPair.reactor.pool.height)
+
 }
 
 //----------------------------------------------

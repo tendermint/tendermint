@@ -8,6 +8,7 @@ import (
 	flow "github.com/tendermint/tendermint/libs/flowrate"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 //--------
@@ -32,8 +33,9 @@ type bpPeer struct {
 	id          p2p.ID
 	recvMonitor *flow.Monitor
 
-	height     int64
-	numPending int32
+	height     int64                  // the peer reported height
+	numPending int32                  // number of requests pending assignment or block response
+	blocks     map[int64]*types.Block // blocks received or waiting to be received from this peer
 	timeout    *time.Timer
 	didTimeout bool
 
@@ -46,6 +48,7 @@ func newBPPeer(
 	peer := &bpPeer{
 		id:         peerID,
 		height:     height,
+		blocks:     make(map[int64]*types.Block, maxRequestsPerPeer),
 		numPending: 0,
 		logger:     log.NewNopLogger(),
 		errFunc:    errFunc,

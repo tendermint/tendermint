@@ -43,7 +43,6 @@ func checkByStoppingPeerTimer(t *testing.T, peer *bpPeer, running bool) {
 }
 
 func TestPeerResetMonitor(t *testing.T) {
-
 	peer := &bpPeer{
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
@@ -198,7 +197,6 @@ func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
 }
 
 func TestCleanupPeer(t *testing.T) {
-
 	var mtx sync.Mutex
 	peer := &bpPeer{
 		id:      p2p.ID(cmn.RandStr(12)),
