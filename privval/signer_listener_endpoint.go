@@ -74,7 +74,7 @@ func (sl *SignerListenerEndpoint) OnStop() {
 	}
 
 	// Stop service loop
-	sl.stopCh <- struct{}{}
+	close(sl.stopCh)
 	<-sl.stoppedCh
 }
 
