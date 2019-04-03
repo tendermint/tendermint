@@ -366,9 +366,9 @@ func (r *PEXReactor) ensurePeersRoutine() {
 	)
 
 	// Randomize first round of communication to avoid thundering herd.
-	// If no potential peers are present directly start connecting so we guarantee
-	// swift setup with the help of configured seeds.
-	if r.hasPotentialPeers() {
+	// If no peers are present directly start connecting so we guarantee swift
+	// setup with the help of configured seeds.
+	if r.nodeHasSomePeersOrDialingAny() {
 		time.Sleep(time.Duration(jitter))
 	}
 
@@ -591,11 +591,11 @@ func (r *PEXReactor) crawlPeersRoutine() {
 	}
 }
 
-// hasPotentialPeers indicates if there is a potential peer to connect to, by
-// consulting the Switch as well as the AddrBook.
-func (r *PEXReactor) hasPotentialPeers() bool {
+// nodeHasSomePeersOrDialingAny returns true if the node is connected to some
+// peers or dialing them currently.
+func (r *PEXReactor) nodeHasSomePeersOrDialingAny() bool {
 	out, in, dial := r.Switch.NumPeers()
-	return out+in+dial > 0 && r.book.Size() > 0
+	return out+in+dial > 0
 }
 
 // crawlPeerInfo handles temporary data needed for the network crawling
