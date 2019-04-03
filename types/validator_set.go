@@ -793,17 +793,23 @@ func (valz ValidatorsByAddress) Swap(i, j int) {
 // RandValidatorSet returns a randomized validator set, useful for testing.
 // NOTE: PrivValidator are in order.
 // UNSTABLE
-func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {
+func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator, error) {
 	valz := make([]*Validator, numValidators)
 	privValidators := make([]PrivValidator, numValidators)
+
 	for i := 0; i < numValidators; i++ {
-		val, privValidator := RandValidator(false, votingPower)
+		val, privValidator, err := RandValidator(false, votingPower)
+		if err != nil {
+			return nil, nil, err
+		}
 		valz[i] = val
 		privValidators[i] = privValidator
 	}
+
 	vals := NewValidatorSet(valz)
 	sort.Sort(PrivValidatorsByAddress(privValidators))
-	return vals, privValidators
+
+	return vals, privValidators, nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////

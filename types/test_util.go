@@ -10,7 +10,12 @@ func MakeCommit(blockID BlockID, height int64, round int,
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
-		addr := validators[i].GetPubKey().Address()
+		pk, err := validators[i].GetPubKey()
+		if err != nil {
+			return nil, err
+		}
+
+		addr := pk.Address()
 		vote := &Vote{
 			ValidatorAddress: addr,
 			ValidatorIndex:   i,
@@ -21,7 +26,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 			Timestamp:        tmtime.Now(),
 		}
 
-		_, err := signAddVote(validators[i], vote, voteSet)
+		_, err = signAddVote(validators[i], vote, voteSet)
 		if err != nil {
 			return nil, err
 		}
