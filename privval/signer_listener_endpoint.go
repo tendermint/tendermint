@@ -229,6 +229,24 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 	return nil
 }
 
+func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
+	sl.Logger.Debug("SignerListenerEndpoint: AcceptNewConnection")
+
+	if !sl.IsRunning() || sl.listener == nil {
+		return nil, fmt.Errorf("endpoint is closing")
+	}
+
+	// wait for a new conn
+	conn, err := sl.listener.Accept()
+	if err != nil {
+		sl.Logger.Debug("listener accept failed", "err", err)
+		return nil, err
+	}
+
+	sl.Logger.Info("SignerListenerEndpoint: New connection")
+	return conn, nil
+}
+
 func (sl *SignerListenerEndpoint) dropConnection() {
 	if sl.conn != nil {
 		if err := sl.conn.Close(); err != nil {
@@ -274,22 +292,4 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 			}
 		}
 	}
-}
-
-func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
-	sl.Logger.Debug("SignerListenerEndpoint: AcceptNewConnection")
-
-	if !sl.IsRunning() || sl.listener == nil {
-		return nil, fmt.Errorf("endpoint is closing")
-	}
-
-	// wait for a new conn
-	conn, err := sl.listener.Accept()
-	if err != nil {
-		sl.Logger.Debug("listener accept failed", "err", err)
-		return nil, err
-	}
-
-	sl.Logger.Info("SignerListenerEndpoint: New connection")
-	return conn, nil
 }
