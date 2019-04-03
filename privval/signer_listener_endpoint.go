@@ -180,6 +180,7 @@ func (sl *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(sl.conn, msg)
 	if _, ok := err.(timeoutError); ok {
 		err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
+		sl.dropConnection()
 	}
 
 	return
