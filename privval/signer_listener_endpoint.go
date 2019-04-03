@@ -265,6 +265,7 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 		case <-sl.connectCh:
 			{
 				sl.Logger.Info("Listening for new connection")
+
 				conn, err := sl.acceptNewConnection()
 				if err == nil {
 					sl.Logger.Info("Connected")
@@ -272,14 +273,11 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 					// We have a good connection, wait for someone that needs one or cancellation
 					select {
 					case sl.connectedCh <- conn:
-						{
-							sl.Logger.Debug("SignerListenerEndpoint: connection relayed")
-						}
+						sl.Logger.Debug("SignerListenerEndpoint: connection relayed")
+						break
 					case <-sl.stopCh:
-						{
-							sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
-							return
-						}
+						sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
+						return
 					}
 				}
 
@@ -289,10 +287,8 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 				}
 			}
 		case <-sl.stopCh:
-			{
-				sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
-				return
-			}
+			sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
+			return
 		}
 	}
 }
