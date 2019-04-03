@@ -20,3 +20,4 @@
 
 ### BUG FIXES:
 - [p2p] \#2716 Check if we're already connected to peer right before dialing it (@melekes)
+- [docs] \#3514 Fix block.Header.Time description (@melekes)
