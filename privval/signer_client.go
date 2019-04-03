@@ -21,6 +21,10 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
+	if endpoint == nil {
+		return nil, fmt.Errorf("endpoint cannot be nil")
+	}
+
 	if !endpoint.IsRunning() {
 		if err := endpoint.Start(); err != nil {
 			return nil, errors.Wrap(err, "failed to start private validator")
@@ -42,9 +46,6 @@ func (sc *SignerClient) IsConnected() bool {
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
 func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
-	if sc.endpoint == nil {
-		return fmt.Errorf("endpoint has not been defined")
-	}
 	return sc.endpoint.WaitForConnection(maxWait)
 }
 
