@@ -16,7 +16,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-	memplmock "github.com/tendermint/tendermint/mempool/mock"
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -38,7 +38,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB := state(1, 1)
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		memplmock.Mempool{}, MockEvidencePool{})
+		mock.Mempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
@@ -310,7 +310,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB := state(1, 1)
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), memplmock.Mempool{}, MockEvidencePool{})
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 
 	eventBus := types.NewEventBus()
 	err = eventBus.Start()
@@ -367,7 +367,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer proxyApp.Stop()
 
 	state, stateDB := state(1, 1)
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), memplmock.Mempool{}, MockEvidencePool{})
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
