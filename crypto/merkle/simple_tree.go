@@ -39,7 +39,7 @@ func SimpleHashFromByteSlicesIterative(input [][]byte) []byte {
 			wp := 0 // write position
 			for rp < size {
 				if rp+1 < size {
-					_ = innerHash(items[rp], items[rp+1])
+					items[wp] = innerHash(items[rp], items[rp+1])
 					rp += 2
 				} else {
 					items[wp] = items[rp]
