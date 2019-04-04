@@ -806,7 +806,7 @@ func (n *Node) MempoolReactor() *mempl.Reactor {
 }
 
 // Mempool returns the Node's mempool.
-func (n *Node) Mempool() *mempl.CListMempool {
+func (n *Node) Mempool() mempl.Mempool {
 	return n.mempool
 }
 

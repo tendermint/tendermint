@@ -3,14 +3,14 @@ package mock
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/clist"
-	"github.com/tendermint/tendermint/mempool"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Mempool is an empty implementation of a Mempool, useful for testing.
 type Mempool struct{}
 
-var _ mempool.Mempool = Mempool{}
+var _ mempl.Mempool = Mempool{}
 
 func (Mempool) Lock()     {}
 func (Mempool) Unlock()   {}
@@ -19,7 +19,7 @@ func (Mempool) CheckTx(_ types.Tx, _ func(*abci.Response)) error {
 	return nil
 }
 func (Mempool) CheckTxWithInfo(_ types.Tx, _ func(*abci.Response),
-	_ mempool.TxInfo) error {
+	_ mempl.TxInfo) error {
 	return nil
 }
 func (Mempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
@@ -27,8 +27,8 @@ func (Mempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
 func (Mempool) Update(
 	_ int64,
 	_ types.Txs,
-	_ mempool.PreCheckFunc,
-	_ mempool.PostCheckFunc,
+	_ mempl.PreCheckFunc,
+	_ mempl.PostCheckFunc,
 ) error {
 	return nil
 }
