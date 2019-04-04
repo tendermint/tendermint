@@ -159,7 +159,7 @@ type Node struct {
 	stateDB          dbm.DB
 	blockStore       *bc.BlockStore        // store the blockchain to disk
 	bcReactor        *bc.BlockchainReactor // for fast-syncing
-	mempoolReactor   *mempl.MempoolReactor // for gossipping transactions
+	mempoolReactor   *mempl.Reactor        // for gossipping transactions
 	mempool          *mempl.CListMempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
@@ -320,7 +320,7 @@ func NewNode(config *cfg.Config,
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
-	// Make MempoolReactor
+	// Make Mempool Reactor
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
@@ -333,7 +333,7 @@ func NewNode(config *cfg.Config,
 	if config.Mempool.WalEnabled() {
 		mempool.InitWAL() // no need to have the mempool wal during tests
 	}
-	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
+	mempoolReactor := mempl.NewReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
 	if config.Consensus.WaitForTxs() {
@@ -800,12 +800,12 @@ func (n *Node) ConsensusReactor() *cs.ConsensusReactor {
 	return n.consensusReactor
 }
 
-// MempoolReactor returns the Node's MempoolReactor.
-func (n *Node) MempoolReactor() *mempl.MempoolReactor {
+// MempoolReactor returns the Node's mempool reactor.
+func (n *Node) MempoolReactor() *mempl.Reactor {
 	return n.mempoolReactor
 }
 
-// Mempool returns the Node's Mempool.
+// Mempool returns the Node's mempool.
 func (n *Node) Mempool() *mempl.CListMempool {
 	return n.mempool
 }

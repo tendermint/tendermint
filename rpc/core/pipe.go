@@ -49,14 +49,6 @@ type peers interface {
 	Peers() p2p.IPeerSet
 }
 
-// Mempool extends the standard Mempool interface to allow getting
-// total txs size. ReapMaxTxs is used by UnconfirmedTxs to reap N transactions.
-type Mempool interface {
-	mempl.Mempool
-	ReapMaxTxs(n int) types.Txs
-	TxsBytes() int64
-}
-
 //----------------------------------------------
 // These package level globals come with setters
 // that are expected to be called only once, on startup
@@ -80,7 +72,7 @@ var (
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
-	mempool          Mempool
+	mempool          mempl.Mempool
 
 	logger log.Logger
 
@@ -95,7 +87,7 @@ func SetBlockStore(bs sm.BlockStore) {
 	blockStore = bs
 }
 
-func SetMempool(mem Mempool) {
+func SetMempool(mem mempl.Mempool) {
 	mempool = mem
 }
 

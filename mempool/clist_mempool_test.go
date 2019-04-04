@@ -68,7 +68,7 @@ func ensureFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 
 func checkTxs(t *testing.T, mempool Mempool, count int, peerID uint16) types.Txs {
 	txs := make(types.Txs, count)
-	txInfo := TxInfo{PeerID: peerID}
+	txInfo := TxInfo{SenderID: peerID}
 	for i := 0; i < count; i++ {
 		txBytes := make([]byte, 20)
 		txs[i] = txBytes
@@ -541,7 +541,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 		tx := txs[int(txNum)]
 
 		// this will err with ErrTxInCache many times ...
-		mempool.CheckTxWithInfo(tx, nil, TxInfo{PeerID: uint16(peerID)})
+		mempool.CheckTxWithInfo(tx, nil, TxInfo{SenderID: uint16(peerID)})
 	}
 	err := mempool.FlushAppConn()
 	require.NoError(t, err)

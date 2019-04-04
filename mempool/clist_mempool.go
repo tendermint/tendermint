@@ -103,8 +103,6 @@ func NewCListMempool(
 	return mempool
 }
 
-// EnableTxsAvailable initializes the TxsAvailable channel,
-// ensuring it will trigger once every height when transactions are available.
 // NOTE: not thread safe - should only be called once, on startup
 func (mem *CListMempool) EnableTxsAvailable() {
 	mem.txsAvailable = make(chan struct{}, 1)
@@ -161,33 +159,26 @@ func (mem *CListMempool) CloseWAL() {
 	mem.wal = nil
 }
 
-// Lock locks the mempool. The consensus must be able to hold lock to safely update.
 func (mem *CListMempool) Lock() {
 	mem.proxyMtx.Lock()
 }
 
-// Unlock unlocks the mempool.
 func (mem *CListMempool) Unlock() {
 	mem.proxyMtx.Unlock()
 }
 
-// Size returns the number of transactions in the mempool.
 func (mem *CListMempool) Size() int {
 	return mem.txs.Len()
 }
 
-// TxsBytes returns the total size of all txs in the mempool.
 func (mem *CListMempool) TxsBytes() int64 {
 	return atomic.LoadInt64(&mem.txsBytes)
 }
 
-// FlushAppConn flushes the mempool connection to ensure async reqResCb calls are
-// done. E.g. from CheckTx.
 func (mem *CListMempool) FlushAppConn() error {
 	return mem.proxyAppConn.FlushSync()
 }
 
-// Flush removes all transactions from the mempool and cache
 func (mem *CListMempool) Flush() {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
@@ -216,19 +207,14 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 	return mem.txs.WaitChan()
 }
 
-// CheckTx executes a new transaction against the application to determine its validity
-// and whether it should be added to the mempool.
 // It blocks if we're waiting on Update() or Reap().
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
-	return mem.CheckTxWithInfo(tx, cb, TxInfo{PeerID: UnknownPeerID})
+	return mem.CheckTxWithInfo(tx, cb, TxInfo{SenderID: UnknownPeerID})
 }
 
-// CheckTxWithInfo performs the same operation as CheckTx, but with extra meta data about the tx.
-// Currently this metadata is the peer who sent it,
-// used to prevent the tx from being gossiped back to them.
 func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) (err error) {
 	mem.proxyMtx.Lock()
 	// use defer to unlock mutex because application (*local client*) might panic
@@ -266,7 +252,7 @@ func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), t
 		// so we only record the sender for txs still in the mempool.
 		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
 			memTx := e.(*clist.CElement).Value.(*mempoolTx)
-			if _, loaded := memTx.senders.LoadOrStore(txInfo.PeerID, true); loaded {
+			if _, loaded := memTx.senders.LoadOrStore(txInfo.SenderID, true); loaded {
 				// TODO: consider punishing peer for dups,
 				// its non-trivial since invalid txs can become valid,
 				// but they can spam the same tx with little cost to them atm.
@@ -297,7 +283,7 @@ func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), t
 	}
 
 	reqRes := mem.proxyAppConn.CheckTxAsync(tx)
-	reqRes.SetCallback(mem.reqResCb(tx, txInfo.PeerID, cb))
+	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, cb))
 
 	return nil
 }
@@ -457,9 +443,6 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	}
 }
 
-// TxsAvailable returns a channel which fires once for every height,
-// and only when transactions are available in the mempool.
-// NOTE: the returned channel may be nil if EnableTxsAvailable was not called.
 func (mem *CListMempool) TxsAvailable() <-chan struct{} {
 	return mem.txsAvailable
 }
@@ -478,10 +461,6 @@ func (mem *CListMempool) notifyTxsAvailable() {
 	}
 }
 
-// ReapMaxBytesMaxGas reaps transactions from the mempool up to maxBytes bytes total
-// with the condition that the total gasWanted must be less than maxGas.
-// If both maxes are negative, there is no cap on the size of all returned
-// transactions (~ all available transactions).
 func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
@@ -519,9 +498,6 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	return txs
 }
 
-// ReapMaxTxs reaps up to max transactions from the mempool.
-// If max is negative, there is no cap on the size of all returned
-// transactions (~ all available transactions).
 func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
@@ -543,9 +519,6 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 	return txs
 }
 
-// Update informs the mempool that the given txs were committed and can be discarded.
-// NOTE: this should be called *after* block is committed by consensus.
-// NOTE: unsafe; Lock/Unlock must be managed by caller
 func (mem *CListMempool) Update(
 	height int64,
 	txs types.Txs,

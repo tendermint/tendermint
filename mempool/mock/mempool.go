@@ -2,6 +2,7 @@ package mock
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
 )
@@ -22,6 +23,7 @@ func (Mempool) CheckTxWithInfo(_ types.Tx, _ func(*abci.Response),
 	return nil
 }
 func (Mempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
+func (Mempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
 func (Mempool) Update(
 	_ int64,
 	_ types.Txs,
@@ -34,3 +36,7 @@ func (Mempool) Flush()                        {}
 func (Mempool) FlushAppConn() error           { return nil }
 func (Mempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
 func (Mempool) EnableTxsAvailable()           {}
+func (Mempool) TxsBytes() int64               { return 0 }
+
+func (Mempool) TxsFront() *clist.CElement    { return nil }
+func (Mempool) TxsWaitChan() <-chan struct{} { return nil }
