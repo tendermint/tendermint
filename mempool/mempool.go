@@ -35,8 +35,14 @@ type Mempool interface {
 	// transactions (~ all available transactions).
 	ReapMaxTxs(max int) types.Txs
 
-	// UNSAFE
+	// TxsWaitChan returns a channel to wait on transactions. It will be closed
+	// once the mempool is not empty (ie. the internal `mem.txs` has at least one
+	// element)
 	TxsWaitChan() <-chan struct{}
+
+	// TxsFront returns the first transaction in the ordered list for peer
+	// goroutines to call .NextWait() on.
+	// FIXME: leaking implementation details!
 	TxsFront() *clist.CElement
 
 	// Lock locks the mempool. The consensus must be able to hold lock to safely update.
