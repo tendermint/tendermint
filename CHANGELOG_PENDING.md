@@ -17,6 +17,7 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [kms] \#3370 Refactored validator/kms connection (@jleni)
 
 ### BUG FIXES:
 - [p2p] \#2716 Check if we're already connected to peer right before dialing it (@melekes)
