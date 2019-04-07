@@ -434,84 +434,151 @@ func TestBlockPoolAddBlock(t *testing.T) {
 }
 
 func TestBlockPoolGetNextTwoBlocks(t *testing.T) {
+	testBcR := newTestBcR()
 
 	tests := []struct {
-		name       string
-		fields     fields
-		wantFirst  *blockData
-		wantSecond *blockData
-		wantErr    bool
+		name         string
+		pool         *blockPool
+		firstWanted  int64
+		secondWanted int64
+		wantErr      bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "both blocks missing",
+			pool: makeBlockPool(testBcR, 10,
+				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
+				map[int64]tPBlocks{15: {"P1", true}, 16: {"P2", true}}),
+			firstWanted:  0,
+			secondWanted: 0,
+			wantErr:      true,
+		},
+		{
+			name: "second block missing",
+			pool: makeBlockPool(testBcR, 15,
+				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
+				map[int64]tPBlocks{15: {"P1", true}, 18: {"P2", true}}),
+			firstWanted:  15,
+			secondWanted: 0,
+			wantErr:      true,
+		},
+		{
+			name: "first block missing",
+			pool: makeBlockPool(testBcR, 15,
+				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
+				map[int64]tPBlocks{18: {"P1", true}, 16: {"P2", true}}),
+			firstWanted:  0,
+			secondWanted: 16,
+			wantErr:      true,
+		},
+		{
+			name: "both blocks present",
+			pool: makeBlockPool(testBcR, 10,
+				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
+				map[int64]tPBlocks{10: {"P1", true}, 11: {"P2", true}}),
+			firstWanted:  10,
+			secondWanted: 11,
+			wantErr:      false,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pool := &blockPool{
-				logger:        tt.fields.logger,
-				peers:         tt.fields.peers,
-				blocks:        tt.fields.blocks,
-				height:        tt.fields.height,
-				maxPeerHeight: tt.fields.maxPeerHeight,
-			}
+			pool := tt.pool
 			gotFirst, gotSecond, err := pool.getNextTwoBlocks()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("blockPool.getNextTwoBlocks() error = %v, wantErr %v", err, tt.wantErr)
-				return
 			}
-			if !reflect.DeepEqual(gotFirst, tt.wantFirst) {
-				t.Errorf("blockPool.getNextTwoBlocks() gotFirst = %v, want %v", gotFirst, tt.wantFirst)
+			if tt.firstWanted != 0 {
+				peer := pool.blocks[tt.firstWanted]
+				block := pool.peers[peer].blocks[tt.firstWanted]
+				if !reflect.DeepEqual(gotFirst.block, block) {
+					t.Errorf("blockPool.getNextTwoBlocks() gotFirst = %v, want %v", gotFirst.block.Height, tt.firstWanted)
+				}
 			}
-			if !reflect.DeepEqual(gotSecond, tt.wantSecond) {
-				t.Errorf("blockPool.getNextTwoBlocks() gotSecond = %v, want %v", gotSecond, tt.wantSecond)
+			if tt.secondWanted != 0 {
+				peer := pool.blocks[tt.secondWanted]
+				block := pool.peers[peer].blocks[tt.secondWanted]
+				if !reflect.DeepEqual(gotSecond.block, block) {
+					t.Errorf("blockPool.getNextTwoBlocks() gotFirst = %v, want %v", gotSecond.block.Height, tt.secondWanted)
+				}
 			}
 		})
 	}
 }
 
 func TestBlockPoolInvalidateFirstTwoBlocks(t *testing.T) {
-
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			pool := &blockPool{
-				logger:        tt.fields.logger,
-				peers:         tt.fields.peers,
-				blocks:        tt.fields.blocks,
-				height:        tt.fields.height,
-				maxPeerHeight: tt.fields.maxPeerHeight,
-			}
-			pool.invalidateFirstTwoBlocks(tt.args.err)
-		})
-	}
-}
-
-func TestBlockPoolProcessedCurrentHeightBlock(t *testing.T) {
+	testBcR := newTestBcR()
 
 	tests := []struct {
-		name   string
-		fields fields
+		name         string
+		pool         *blockPool
+		firstWanted  int64
+		secondWanted int64
+		wantChange   bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "both blocks missing",
+			pool: makeBlockPool(testBcR, 10,
+				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
+				map[int64]tPBlocks{15: {"P1", true}, 16: {"P2", true}}),
+			firstWanted:  0,
+			secondWanted: 0,
+			wantChange:   false,
+		},
+		{
+			name: "second block missing",
+			pool: makeBlockPool(testBcR, 15,
+				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
+				map[int64]tPBlocks{15: {"P1", true}, 18: {"P2", true}}),
+			firstWanted:  15,
+			secondWanted: 0,
+			wantChange:   true,
+		},
+		{
+			name: "first block missing",
+			pool: makeBlockPool(testBcR, 15,
+				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
+				map[int64]tPBlocks{18: {"P1", true}, 16: {"P2", true}}),
+			firstWanted:  0,
+			secondWanted: 16,
+			wantChange:   true,
+		},
+		{
+			name: "both blocks present",
+			pool: makeBlockPool(testBcR, 10,
+				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
+				map[int64]tPBlocks{10: {"P1", true}, 11: {"P2", true}}),
+			firstWanted:  10,
+			secondWanted: 11,
+			wantChange:   true,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pool := &blockPool{
-				logger:        tt.fields.logger,
-				peers:         tt.fields.peers,
-				blocks:        tt.fields.blocks,
-				height:        tt.fields.height,
-				maxPeerHeight: tt.fields.maxPeerHeight,
+			pool := tt.pool
+			gotFirst, gotSecond, _ := pool.getNextTwoBlocks()
+
+			beforePool := poolCopy(pool)
+			pool.invalidateFirstTwoBlocks(errNoPeerResponse)
+			if !tt.wantChange {
+				assert.Equal(t, len(beforePool.peers), len(pool.peers))
+				return
 			}
-			pool.processedCurrentHeightBlock()
+			if tt.firstWanted != 0 {
+				_, ok := pool.peers[gotFirst.peer.id]
+				assert.False(t, ok)
+				_, ok = pool.blocks[tt.firstWanted]
+				assert.False(t, ok)
+				assert.True(t, pool.requests[tt.firstWanted])
+			}
+			if tt.secondWanted != 0 {
+				_, ok := pool.peers[gotSecond.peer.id]
+				assert.False(t, ok)
+				_, ok = pool.blocks[tt.secondWanted]
+				assert.False(t, ok)
+				assert.True(t, pool.requests[tt.secondWanted])
+			}
 		})
 	}
 }
