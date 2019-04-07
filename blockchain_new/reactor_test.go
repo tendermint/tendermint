@@ -195,7 +195,8 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 	peerTimeout = 15 * time.Second
 
 	maxRequestsPerPeer = 20
-	maxNumPendingRequests = 20
+	maxNumPendingRequests = 400
+	numNodes := 4
 
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
@@ -209,11 +210,11 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 		_ = otherChain.app.Stop()
 	}()
 
-	reactorPairs := make([]BlockchainReactorPair, 4)
+	reactorPairs := make([]BlockchainReactorPair, numNodes)
 
-	var logger = make([]log.Logger, 4)
+	var logger = make([]log.Logger, numNodes)
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < numNodes; i++ {
 		logger[i] = log.TestingLogger()
 		height := int64(0)
 		if i == 0 {
@@ -222,7 +223,7 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 		reactorPairs[i] = newBlockchainReactor(logger[i], genDoc, privVals, height)
 	}
 
-	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
+	switches := p2p.MakeConnectedSwitches(config.P2P, numNodes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
 		moduleName := fmt.Sprintf("blockchain-%v", i)
 		reactorPairs[i].reactor.SetLogger(logger[i].With("module", moduleName))
@@ -239,16 +240,16 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 
 	for {
 		time.Sleep(1 * time.Second)
-		if reactorPairs[3].reactor.fsm.isCaughtUp() || reactorPairs[3].reactor.Switch.Peers().Size() == 0 {
+		if reactorPairs[numNodes-1].reactor.fsm.isCaughtUp() || reactorPairs[numNodes-1].reactor.Switch.Peers().Size() == 0 {
 			break
 		}
 	}
 
 	//at this time, reactors[0-3] is the newest
-	assert.Equal(t, 3, reactorPairs[1].reactor.Switch.Peers().Size())
+	assert.Equal(t, numNodes-1, reactorPairs[1].reactor.Switch.Peers().Size())
 
 	//mark reactorPairs[3] is an invalid peer
-	reactorPairs[3].reactor.store = otherChain.reactor.store
+	reactorPairs[numNodes-1].reactor.store = otherChain.reactor.store
 
 	lastLogger := log.TestingLogger()
 	lastReactorPair := newBlockchainReactor(lastLogger, genDoc, privVals, 0)
