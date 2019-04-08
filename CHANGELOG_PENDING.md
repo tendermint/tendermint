@@ -17,7 +17,7 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [rpc] \#3280 Add support for batched requests/responses in JSON RPC
+- [rpc] \#3534 Add support for batched requests/responses in JSON RPC
 
 ### BUG FIXES:
 - [p2p] \#2716 Check if we're already connected to peer right before dialing it (@melekes)
