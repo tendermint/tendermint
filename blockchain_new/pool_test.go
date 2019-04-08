@@ -12,14 +12,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type fields struct {
-	logger        log.Logger
-	peers         map[p2p.ID]*bpPeer
-	blocks        map[int64]p2p.ID
-	height        int64
-	maxPeerHeight int64
-}
-
 type testPeer struct {
 	id     p2p.ID
 	height int64
