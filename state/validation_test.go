@@ -108,7 +108,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	// A block with too much evidence fails.
-	maxBlockSize := state.ConsensusParams.BlockSize.MaxBytes
+	maxBlockSize := state.ConsensusParams.Block.MaxBytes
 	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
 	require.True(t, maxNumEvidence > 2)
 	for i := int64(0); i < maxNumEvidence; i++ {
@@ -119,6 +119,31 @@ func TestValidateBlockEvidence(t *testing.T) {
 	require.Error(t, err)
 	_, ok := err.(*types.ErrEvidenceOverflow)
 	require.True(t, ok)
+}
+
+// always returns true if asked if any evidence was already committed.
+type mockEvPoolAlwaysCommitted struct{}
+
+func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
+func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
+func (m mockEvPoolAlwaysCommitted) Update(*types.Block, State)             {}
+func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
+
+func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
+	var height int64 = 1
+	state, stateDB := state(1, int(height))
+
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, mockEvPoolAlwaysCommitted{})
+	// A block with a couple pieces of evidence passes.
+	block := makeBlock(state, height)
+	addr, _ := state.Validators.GetByIndex(0)
+	alreadyCommittedEvidence := types.NewMockGoodEvidence(height, 0, addr)
+	block.Evidence.Evidence = []types.Evidence{alreadyCommittedEvidence}
+	block.EvidenceHash = block.Evidence.Hash()
+	err := blockExec.ValidateBlock(state, block)
+
+	require.Error(t, err)
+	require.IsType(t, err, &types.ErrEvidenceInvalid{})
 }
 
 /*

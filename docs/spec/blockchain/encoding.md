@@ -175,7 +175,7 @@ The differences between RFC 6962 and the simplest form a merkle tree are that:
    The leaf nodes are `SHA256(0x00 || leaf_data)`, and inner nodes are `SHA256(0x01 || left_hash || right_hash)`.
 
 2) When the number of items isn't a power of two, the left half of the tree is as big as it could be.
-   (The smallest power of two less than the number of items) This allows new leaves to be added with less
+   (The largest power of two less than the number of items) This allows new leaves to be added with less
    recomputation. For example:
 
 ```
@@ -339,6 +339,6 @@ type CanonicalVote struct {
 
 The field ordering and the fixed sized encoding for the first three fields is optimized to ease parsing of SignBytes
 in HSMs. It creates fixed offsets for relevant fields that need to be read in this context.
-For more details, see the [signing spec](/docs/spec/consensus/signing.md).
+For more details, see the [signing spec](../consensus/signing.md).
 Also, see the motivating discussion in
 [#1622](https://github.com/tendermint/tendermint/issues/1622).

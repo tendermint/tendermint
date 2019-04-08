@@ -1,4 +1,4 @@
-// +build !cgo
+// +build !libsecp256k1
 
 package secp256k1
 
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
-
 	"github.com/stretchr/testify/require"
 )
 

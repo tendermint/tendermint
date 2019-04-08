@@ -74,7 +74,9 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 	protocol, address, dialer := makeHTTPDialer(remoteAddr)
 	return protocol + "://" + address, &http.Client{
 		Transport: &http.Transport{
-			Dial: dialer,
+			// Set to true to prevent GZIP-bomb DoS attacks
+			DisableCompression: true,
+			Dial:               dialer,
 		},
 	}
 }

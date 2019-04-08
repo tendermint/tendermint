@@ -1,12 +1,15 @@
 package blockchain
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -39,7 +42,9 @@ func (p testPeer) runInputRoutine() {
 func (p testPeer) simulateInput(input inputData) {
 	block := &types.Block{Header: types.Header{Height: input.request.Height}}
 	input.pool.AddBlock(input.request.PeerID, block, 123)
-	input.t.Logf("Added block from peer %v (height: %v)", input.request.PeerID, input.request.Height)
+	// TODO: uncommenting this creates a race which is detected by: https://github.com/golang/go/blob/2bd767b1022dd3254bcec469f0ee164024726486/src/testing/testing.go#L854-L856
+	// see: https://github.com/tendermint/tendermint/issues/3390#issue-418379890
+	// input.t.Logf("Added block from peer %v (height: %v)", input.request.PeerID, input.request.Height)
 }
 
 type testPeers map[p2p.ID]testPeer
@@ -66,7 +71,7 @@ func makePeers(numPeers int, minHeight, maxHeight int64) testPeers {
 	return peers
 }
 
-func TestBasic(t *testing.T) {
+func TestBlockPoolBasic(t *testing.T) {
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
 	errorsCh := make(chan peerError, 1000)
@@ -122,7 +127,7 @@ func TestBasic(t *testing.T) {
 	}
 }
 
-func TestTimeout(t *testing.T) {
+func TestBlockPoolTimeout(t *testing.T) {
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
 	errorsCh := make(chan peerError, 1000)
@@ -179,4 +184,41 @@ func TestTimeout(t *testing.T) {
 			t.Logf("Pulled new BlockRequest %+v", request)
 		}
 	}
+}
+
+func TestBlockPoolRemovePeer(t *testing.T) {
+	peers := make(testPeers, 10)
+	for i := 0; i < 10; i++ {
+		peerID := p2p.ID(fmt.Sprintf("%d", i+1))
+		height := int64(i + 1)
+		peers[peerID] = testPeer{peerID, height, make(chan inputData)}
+	}
+	requestsCh := make(chan BlockRequest)
+	errorsCh := make(chan peerError)
+
+	pool := NewBlockPool(1, requestsCh, errorsCh)
+	pool.SetLogger(log.TestingLogger())
+	err := pool.Start()
+	require.NoError(t, err)
+	defer pool.Stop()
+
+	// add peers
+	for peerID, peer := range peers {
+		pool.SetPeerHeight(peerID, peer.height)
+	}
+	assert.EqualValues(t, 10, pool.MaxPeerHeight())
+
+	// remove not-existing peer
+	assert.NotPanics(t, func() { pool.RemovePeer(p2p.ID("Superman")) })
+
+	// remove peer with biggest height
+	pool.RemovePeer(p2p.ID("10"))
+	assert.EqualValues(t, 9, pool.MaxPeerHeight())
+
+	// remove all peers
+	for peerID := range peers {
+		pool.RemovePeer(peerID)
+	}
+
+	assert.EqualValues(t, 0, pool.MaxPeerHeight())
 }

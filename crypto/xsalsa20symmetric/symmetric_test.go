@@ -13,8 +13,6 @@ import (
 
 func TestSimple(t *testing.T) {
 
-	crypto.MixEntropy([]byte("someentropy"))
-
 	plaintext := []byte("sometext")
 	secret := []byte("somesecretoflengththirtytwo===32")
 	ciphertext := EncryptSymmetric(plaintext, secret)
@@ -25,8 +23,6 @@ func TestSimple(t *testing.T) {
 }
 
 func TestSimpleWithKDF(t *testing.T) {
-
-	crypto.MixEntropy([]byte("someentropy"))
 
 	plaintext := []byte("sometext")
 	secretPass := []byte("somesecret")

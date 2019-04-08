@@ -100,8 +100,12 @@ func TestSecretConnectionHandshake(t *testing.T) {
 	}
 }
 
+// Test that shareEphPubKey rejects lower order public keys based on an
+// (incomplete) blacklist.
 func TestShareLowOrderPubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
+	defer fooConn.Close()
+	defer barConn.Close()
 	locEphPub, _ := genEphKeys()
 
 	// all blacklisted low order points:
@@ -123,6 +127,19 @@ func TestShareLowOrderPubkey(t *testing.T) {
 
 				return nil, nil, false
 			})
+	}
+}
+
+// Test that additionally that the Diffie-Hellman shared secret is non-zero.
+// The shared secret would be zero for lower order pub-keys (but tested against the blacklist only).
+func TestComputeDHFailsOnLowOrder(t *testing.T) {
+	_, locPrivKey := genEphKeys()
+	for _, remLowOrderPubKey := range blacklist {
+		shared, err := computeDHSecret(&remLowOrderPubKey, locPrivKey)
+		assert.Error(t, err)
+
+		assert.Equal(t, err, ErrSharedSecretIsZero)
+		assert.Empty(t, shared)
 	}
 }
 
@@ -238,6 +255,10 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 					for {
 						n, err := nodeSecretConn.Read(readBuffer)
 						if err == io.EOF {
+							if err := nodeConn.PipeReader.Close(); err != nil {
+								t.Error(err)
+								return nil, err, true
+							}
 							return nil, nil, false
 						} else if err != nil {
 							t.Errorf("Failed to read from nodeSecretConn: %v", err)
@@ -245,11 +266,6 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
 					}
-					if err := nodeConn.PipeReader.Close(); err != nil {
-						t.Error(err)
-						return nil, err, true
-					}
-					return nil, nil, false
 				},
 			)
 			assert.True(t, ok, "Unexpected task abortion")

@@ -3,6 +3,70 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.31.0
+
+This release contains a breaking change to the behaviour of the pubsub system.
+It also contains some minor breaking changes in the Go API and ABCI.
+There are no changes to the block or p2p protocols, so v0.31.0 should work fine
+with blockchains created from the v0.30 series.
+
+### RPC
+
+The pubsub no longer blocks on publishing. This may cause some WebSocket (WS) clients to stop working as expected.
+If your WS client is not consuming events fast enough, Tendermint can terminate the subscription.
+In this case, the WS client will receive an error with description:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "{ID}#event",
+  "error": {
+    "code": -32000,
+    "msg": "Server error",
+    "data": "subscription was cancelled (reason: client is not pulling messages fast enough)" // or "subscription was cancelled (reason: Tendermint exited)"
+  }
+}
+
+Additionally, there are now limits on the number of subscribers and
+subscriptions that can be active at once. See the new
+`rpc.max_subscription_clients` and `rpc.max_subscriptions_per_client` values to
+configure this.
+```
+
+### Applications
+
+Simple rename of `ConsensusParams.BlockSize` to `ConsensusParams.Block`.
+
+The `ConsensusParams.Block.TimeIotaMS` field was also removed. It's configured
+in the ConsensusParsm in genesis.
+
+### Go API
+
+See the [CHANGELOG](CHANGELOG.md). These are relatively straight forward.
+
+## v0.30.0
+
+This release contains a breaking change to both the block and p2p protocols,
+however it may be compatible with blockchains created with v0.29.0 depending on
+the chain history. If your blockchain has not included any pieces of evidence,
+or no piece of evidence has been included in more than one block,
+and if your application has never returned multiple updates
+for the same validator in a single block, then v0.30.0 will work fine with
+blockchains created with v0.29.0.
+
+The p2p protocol change is to fix the proposer selection algorithm again.
+Note that proposer selection is purely a p2p concern right
+now since the algorithm is only relevant during real time consensus.
+This change is thus compatible with v0.29.0, but
+all nodes must be upgraded to avoid disagreements on the proposer.
+
+### Applications
+
+Applications must ensure they do not return duplicates in
+`ResponseEndBlock.ValidatorUpdates`. A pubkey must only appear once per set of
+updates. Duplicates will cause irrecoverable failure. If you have a very good
+reason why we shouldn't do this, please open an issue.
+
 ## v0.29.0
 
 This release contains some breaking changes to the block and p2p protocols,

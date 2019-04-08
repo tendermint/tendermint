@@ -138,6 +138,7 @@ func (s *server) SetSync(ctx context.Context, in *protodb.Entity) (*protodb.Noth
 
 func (s *server) Iterator(query *protodb.Entity, dis protodb.DB_IteratorServer) error {
 	it := s.db.Iterator(query.Start, query.End)
+	defer it.Close()
 	return s.handleIterator(it, dis.Send)
 }
 
@@ -162,6 +163,7 @@ func (s *server) handleIterator(it db.Iterator, sendFunc func(*protodb.Iterator)
 
 func (s *server) ReverseIterator(query *protodb.Entity, dis protodb.DB_ReverseIteratorServer) error {
 	it := s.db.ReverseIterator(query.Start, query.End)
+	defer it.Close()
 	return s.handleIterator(it, dis.Send)
 }
 
@@ -180,6 +182,7 @@ func (s *server) BatchWriteSync(c context.Context, b *protodb.Batch) (*protodb.N
 
 func (s *server) batchWrite(c context.Context, b *protodb.Batch, sync bool) (*protodb.Nothing, error) {
 	bat := s.db.NewBatch()
+	defer bat.Close()
 	for _, op := range b.Ops {
 		switch op.Type {
 		case protodb.Operation_SET:

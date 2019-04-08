@@ -43,6 +43,7 @@ func TestApplyBlock(t *testing.T) {
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
+	//nolint:ineffassign
 	state, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
 
@@ -79,7 +80,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
+		lastCommit := types.NewCommit(prevBlockID, tc.lastCommitPrecommits)
 
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
@@ -139,7 +140,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
 	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
 	commitSigs := []*types.CommitSig{commitSig0, commitSig1}
-	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: commitSigs}
+	lastCommit := types.NewCommit(prevBlockID, commitSigs)
 	for _, tc := range testCases {
 
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
@@ -280,7 +281,7 @@ func TestUpdateValidators(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			updates, err := types.PB2TM.ValidatorUpdates(tc.abciUpdates)
 			assert.NoError(t, err)
-			err = updateValidators(tc.currentSet, updates)
+			err = tc.currentSet.UpdateWithChangeSet(updates)
 			if tc.shouldErr {
 				assert.Error(t, err)
 			} else {
@@ -317,8 +318,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer eventBus.Stop()
 	blockExec.SetEventBus(eventBus)
 
-	updatesCh := make(chan interface{}, 1)
-	err = eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates, updatesCh)
+	updatesSub, err := eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates)
 	require.NoError(t, err)
 
 	block := makeBlock(state, 1)
@@ -342,16 +342,45 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	// test we threw an event
 	select {
-	case e := <-updatesCh:
-		event, ok := e.(types.EventDataValidatorSetUpdates)
-		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", e)
+	case msg := <-updatesSub.Out():
+		event, ok := msg.Data().(types.EventDataValidatorSetUpdates)
+		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", msg.Data())
 		if assert.NotEmpty(t, event.ValidatorUpdates) {
 			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
 			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
 		}
+	case <-updatesSub.Cancelled():
+		t.Fatalf("updatesSub was cancelled (reason: %v)", updatesSub.Err())
 	case <-time.After(1 * time.Second):
 		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
 	}
+}
+
+// TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
+// would result in empty set causes no panic, an error is raised and NextValidators is not updated
+func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	state, stateDB := state(1, 1)
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), MockMempool{}, MockEvidencePool{})
+
+	block := makeBlock(state, 1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+
+	// Remove the only validator
+	app.ValidatorUpdates = []abci.ValidatorUpdate{
+		{PubKey: types.TM2PB.PubKey(state.Validators.Validators[0].PubKey), Power: 0},
+	}
+
+	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
+	assert.NotNil(t, err)
+	assert.NotEmpty(t, state.NextValidators.Validators)
+
 }
 
 //----------------------------------------------------------------------------

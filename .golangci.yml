@@ -9,8 +9,6 @@ linters:
     - maligned
     - errcheck
     - staticcheck
-    - dupl
-    - ineffassign
     - interfacer
     - unconvert
     - goconst
@@ -18,9 +16,7 @@ linters:
     - nakedret
     - lll
     - gochecknoglobals
-    - govet
     - gocritic
-    - gosec
     - gochecknoinits
     - scopelint
     - stylecheck
