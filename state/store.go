@@ -10,7 +10,11 @@ import (
 )
 
 const (
-	ValidatorSetStoreInterval = 1 << 10
+	// persist validators every valSetStoreInterval blocks to avoid
+	// LoadValidators taking too much time.
+	// https://github.com/tendermint/tendermint/pull/3438
+	// 100000 results in ~ 100ms to get 100 validators (see BenchmarkLoadValidators)
+	valSetStoreInterval = 100000
 )
 
 //------------------------------------------------------------------------
@@ -188,8 +192,10 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 	}
 	if valInfo.ValidatorSet == nil {
 		queryHeight := valInfo.LastHeightChanged
-		if valInfo.LastHeightChanged < (height - height%ValidatorSetStoreInterval) {
-			queryHeight = height - height%ValidatorSetStoreInterval
+		// if we have validators saved at the higher height, load them
+		lastStoreHeight := height - height%valSetStoreInterval
+		if lastStoreHeight > valInfo.LastHeightChanged {
+			queryHeight = lastStoreHeight
 		}
 		valInfo2 := loadValidatorsInfo(db, queryHeight)
 		if valInfo2 == nil {
@@ -239,7 +245,7 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 	valInfo := &ValidatorsInfo{
 		LastHeightChanged: lastHeightChanged,
 	}
-	if lastHeightChanged == height || height%ValidatorSetStoreInterval == 0 {
+	if lastHeightChanged == height || height%valSetStoreInterval == 0 {
 		valInfo.ValidatorSet = valSet
 	}
 	db.Set(calcValidatorsKey(height), valInfo.Bytes())
