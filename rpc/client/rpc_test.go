@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -446,17 +447,23 @@ func TestTxSearch(t *testing.T) {
 
 func TestBatchedJSONRPCCalls(t *testing.T) {
 	c := getHTTPClient()
+	testBatchedJSONRPCCalls(t, c)
+}
+
+func testBatchedJSONRPCCalls(t *testing.T, c *client.HTTP) {
 	k1, v1, tx1 := MakeTxKV()
 	k2, v2, tx2 := MakeTxKV()
 
-	c.StartBatch()
-	r1, err := c.BroadcastTxCommit(tx1)
+	batch := c.NewBatch()
+	r1, err := batch.BroadcastTxCommit(tx1)
 	require.NoError(t, err)
-	r2, err := c.BroadcastTxCommit(tx2)
+	r2, err := batch.BroadcastTxCommit(tx2)
 	require.NoError(t, err)
-	bresults, err := c.SendBatch()
+	require.Equal(t, 2, batch.Count())
+	bresults, err := batch.Send()
 	require.NoError(t, err)
 	require.Len(t, bresults, 2)
+	require.Equal(t, 0, batch.Count())
 
 	bresult1, ok := bresults[0].(*ctypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
@@ -468,14 +475,15 @@ func TestBatchedJSONRPCCalls(t *testing.T) {
 
 	client.WaitForHeight(c, apph, nil)
 
-	c.StartBatch()
-	q1, err := c.ABCIQuery("/key", k1)
+	q1, err := batch.ABCIQuery("/key", k1)
 	require.NoError(t, err)
-	q2, err := c.ABCIQuery("/key", k2)
+	q2, err := batch.ABCIQuery("/key", k2)
 	require.NoError(t, err)
-	qresults, err := c.SendBatch()
+	require.Equal(t, 2, batch.Count())
+	qresults, err := batch.Send()
 	require.NoError(t, err)
 	require.Len(t, qresults, 2)
+	require.Equal(t, 0, batch.Count())
 
 	qresult1, ok := qresults[0].(*ctypes.ResultABCIQuery)
 	require.True(t, ok)
@@ -495,13 +503,41 @@ func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
 	_, _, tx1 := MakeTxKV()
 	_, _, tx2 := MakeTxKV()
 
-	c.StartBatch()
-	require.True(t, c.IsBatching())
-	_, err := c.BroadcastTxCommit(tx1)
+	batch := c.NewBatch()
+	_, err := batch.BroadcastTxCommit(tx1)
 	require.NoError(t, err)
-	_, err = c.BroadcastTxCommit(tx2)
+	_, err = batch.BroadcastTxCommit(tx2)
 	require.NoError(t, err)
+	// we should have 2 requests waiting
+	require.Equal(t, 2, batch.Count())
 	// we want to make sure we cleared 2 pending requests
-	require.Equal(t, 2, c.CancelBatch())
-	require.False(t, c.IsBatching())
+	require.Equal(t, 2, batch.Clear())
+	// now there should be no batched requests
+	require.Equal(t, 0, batch.Count())
+}
+
+func TestSendingEmptyJSONRPCRequestBatch(t *testing.T) {
+	c := getHTTPClient()
+	batch := c.NewBatch()
+	_, err := batch.Send()
+	require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
+}
+
+func TestClearingEmptyJSONRPCRequestBatch(t *testing.T) {
+	c := getHTTPClient()
+	batch := c.NewBatch()
+	require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")
+}
+
+func TestConcurrentJSONRPCBatching(t *testing.T) {
+	c := getHTTPClient()
+	doneg := &sync.WaitGroup{}
+	for i := 0; i < 50; i++ {
+		doneg.Add(1)
+		go func(_i int) {
+			testBatchedJSONRPCCalls(t, c)
+			doneg.Done()
+		}(i)
+	}
+	doneg.Wait()
 }

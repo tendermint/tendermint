@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	amino "github.com/tendermint/go-amino"
@@ -83,20 +84,38 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 
 //------------------------------------------------------------------------------------
 
-// jsonRPCBufferedRequest allows us to track buffered requests, as well as their
-// anticipated response structures.
-type jsonRPCBufferedRequest struct {
-	request types.RPCRequest
-	result  interface{}
+// JSONRPCBufferedRequest encapsulates a single buffered request, as well as its
+// anticipated response structure.
+type JSONRPCBufferedRequest struct {
+	Request types.RPCRequest
+	Result  interface{} // The result will be deserialized into this object.
+}
+
+// JSONRPCRequestBatch allows us to buffer multiple request/response structures
+// into a single batch request. Note that this batch acts like a FIFO queue, and
+// is thread-safe.
+type JSONRPCRequestBatch struct {
+	requests []*JSONRPCBufferedRequest
+	client   *JSONRPCClient
+	mtx      *sync.Mutex
 }
 
 // JSONRPCClient takes params as a slice
 type JSONRPCClient struct {
-	address  string
-	client   *http.Client
-	cdc      *amino.Codec
-	reqBatch []jsonRPCBufferedRequest
+	address string
+	client  *http.Client
+	cdc     *amino.Codec
 }
+
+// JSONRPCCaller implementers can facilitate calling the JSON RPC endpoint.
+type JSONRPCCaller interface {
+	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
+}
+
+// Both JSONRPCClient and JSONRPCRequestBatch can facilitate calls to the JSON
+// RPC endpoint.
+var _ JSONRPCCaller = (*JSONRPCClient)(nil)
+var _ JSONRPCCaller = (*JSONRPCRequestBatch)(nil)
 
 // NewJSONRPCClient returns a JSONRPCClient pointed at the given address.
 func NewJSONRPCClient(remote string) *JSONRPCClient {
@@ -108,6 +127,8 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 	}
 }
 
+// Call will send the request for the given method through to the RPC endpoint
+// immediately, without buffering of requests.
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	request, err := types.MapToRequest(c.cdc, types.JSONRPCStringID("jsonrpc-client"), method, params)
 	if err != nil {
@@ -131,29 +152,22 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	return unmarshalResponseBytes(c.cdc, responseBytes, result)
 }
 
-// EnqueueCall will add a single RPC request to the batch of requests we are
-// buffering to be able to send later through SendEnqueued().
-func (c *JSONRPCClient) EnqueueCall(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	request, err := types.MapToRequest(c.cdc, types.JSONRPCStringID("jsonrpc-client"), method, params)
-	if err != nil {
-		return nil, err
+// NewRequestBatch starts a batch of requests for this client.
+func (c *JSONRPCClient) NewRequestBatch() *JSONRPCRequestBatch {
+	return &JSONRPCRequestBatch{
+		requests: make([]*JSONRPCBufferedRequest, 0),
+		client:   c,
+		mtx:      &sync.Mutex{},
 	}
-	c.reqBatch = append(c.reqBatch, jsonRPCBufferedRequest{request: request, result: result})
-	return result, nil
 }
 
-// SendEnqueued will send all buffered requests as a single batch. If there are
-// no buffered requests, it will return an error.
-func (c *JSONRPCClient) SendEnqueued() ([]interface{}, error) {
-	if len(c.reqBatch) == 0 {
-		return nil, errors.Errorf("No requests enqueued to be sent")
-	}
-	defer c.ClearEnqueued()
-	reqs := make([]types.RPCRequest, len(c.reqBatch))
-	results := make([]interface{}, len(c.reqBatch))
-	for i := 0; i < len(c.reqBatch); i++ {
-		reqs[i] = c.reqBatch[i].request
-		results[i] = c.reqBatch[i].result
+func (c *JSONRPCClient) sendBatch(requests []*JSONRPCBufferedRequest) ([]interface{}, error) {
+	reqCount := len(requests)
+	reqs := make([]types.RPCRequest, reqCount)
+	results := make([]interface{}, reqCount)
+	for i := 0; i < reqCount; i++ {
+		reqs[i] = requests[i].Request
+		results[i] = requests[i].Result
 	}
 	// serialize the array of requests into a single JSON object
 	requestBytes, err := json.Marshal(reqs)
@@ -173,20 +187,63 @@ func (c *JSONRPCClient) SendEnqueued() ([]interface{}, error) {
 	return unmarshalResponseBytesArray(c.cdc, responseBytes, results)
 }
 
-// ClearEnqueued will clear out all buffered RPC requests without sending them.
-// It will return the number of buffered requests that were cleared.
-func (c *JSONRPCClient) ClearEnqueued() int {
-	count := len(c.reqBatch)
-	c.reqBatch = []jsonRPCBufferedRequest{}
-	return count
-}
-
 func (c *JSONRPCClient) Codec() *amino.Codec {
 	return c.cdc
 }
 
 func (c *JSONRPCClient) SetCodec(cdc *amino.Codec) {
 	c.cdc = cdc
+}
+
+//-------------------------------------------------------------
+
+// Count returns the number of enqueued requests waiting to be sent.
+func (b *JSONRPCRequestBatch) Count() int {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
+	return len(b.requests)
+}
+
+func (b *JSONRPCRequestBatch) enqueue(req *JSONRPCBufferedRequest) {
+	b.mtx.Lock()
+	b.requests = append(b.requests, req)
+	b.mtx.Unlock()
+}
+
+// Clear empties out the request batch.
+func (b *JSONRPCRequestBatch) Clear() int {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
+	return b.clear()
+}
+
+func (b *JSONRPCRequestBatch) clear() int {
+	count := len(b.requests)
+	b.requests = make([]*JSONRPCBufferedRequest, 0)
+	return count
+}
+
+// Send will attempt to send the current batch of enqueued requests, and then
+// will clear out the requests once done. On success, this returns the
+// deserialized list of results from each of the enqueued requests.
+func (b *JSONRPCRequestBatch) Send() ([]interface{}, error) {
+	b.mtx.Lock()
+	defer func() {
+		b.clear()
+		b.mtx.Unlock()
+	}()
+	return b.client.sendBatch(b.requests)
+}
+
+// Call enqueues a request to call the given RPC method with the specified
+// parameters, in the same way that the `JSONRPCClient.Call` function would.
+func (b *JSONRPCRequestBatch) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+	request, err := types.MapToRequest(b.client.cdc, types.JSONRPCStringID("jsonrpc-client"), method, params)
+	if err != nil {
+		return nil, err
+	}
+	b.enqueue(&JSONRPCBufferedRequest{Request: request, Result: result})
+	return result, nil
 }
 
 //-------------------------------------------------------------
