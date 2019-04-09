@@ -80,7 +80,7 @@ func (c *HTTP) CancelBatch() int {
 
 func (c *HTTP) SendBatch() ([]interface{}, error) {
 	if !c.batching {
-		return nil, errors.Errorf("Not currently in batch mode: use StartBatch() to start enqueuing requests")
+		return nil, errors.Errorf("currently not in batch mode: use StartBatch() to start enqueuing requests")
 	}
 	c.batching = false
 	return c.rpc.SendEnqueued()
