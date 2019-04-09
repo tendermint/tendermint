@@ -31,8 +31,13 @@ states to the latest committed state at once.
 
 When `Commit` completes, it unlocks the mempool.
 
-Note that it is not possible to send transactions to Tendermint during `Commit` - if your app
-tries to send a `/broadcast_tx` to Tendermint during Commit, it will deadlock.
+WARNING: if the ABCI app logic processing the `Commit` message sends a
+`/broadcast_tx_sync` or `/broadcast_tx_commit` and waits for the response
+before proceeding, it will deadlock. Executing those `broadcast_tx` calls
+involves acquiring a lock that is held during the `Commit` call, so it's not
+possible. If you make the call to the `broadcast_tx` endpoints concurrently,
+that's no problem, it just can't be part of the sequential logic of the
+`Commit` function.
 
 ### Consensus Connection
 
