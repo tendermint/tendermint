@@ -194,8 +194,12 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 		lastStoreHeight := lastStoreHeightFor(height, valInfo.LastHeightChanged)
 		valInfo2 := loadValidatorsInfo(db, lastStoreHeight)
 		if valInfo2 == nil {
-			// TODO (melekes): remove in the 0.33 major release
+			// TODO (melekes): remove the below if condition in the 0.33 major
+			// release and just panic. Old chains might panic otherwise if they
+			// haven't saved validators at intermediate (%valSetStoreInterval) height
+			// yet.
 			valInfo2 = loadValidatorsInfo(db, valInfo.LastHeightChanged)
+			lastStoreHeight = valInfo.LastHeightChanged
 			if valInfo2 == nil {
 				panic(
 					fmt.Sprintf("Couldn't find validators at height %d as last changed from height %d",
