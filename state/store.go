@@ -191,27 +191,33 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 		return nil, ErrNoValSetForHeight{height}
 	}
 	if valInfo.ValidatorSet == nil {
-		queryHeight := valInfo.LastHeightChanged
-		// if we have validators saved at the higher height, load them
-		lastStoreHeight := height - height%valSetStoreInterval
-		if lastStoreHeight > valInfo.LastHeightChanged {
-			queryHeight = lastStoreHeight
-		}
-		valInfo2 := loadValidatorsInfo(db, queryHeight)
+		lastStoreHeight := lastStoreHeightFor(height, valInfo.LastHeightChanged)
+		valInfo2 := loadValidatorsInfo(db, lastStoreHeight)
 		if valInfo2 == nil {
-			panic(
-				fmt.Sprintf(
-					"Couldn't find validators at height %d as last changed from height %d",
-					queryHeight,
-					height,
-				),
-			)
+			// TODO (melekes): remove in the 0.33 major release
+			valInfo2 = loadValidatorsInfo(db, valInfo.LastHeightChanged)
+			if valInfo2 == nil {
+				panic(
+					fmt.Sprintf("Couldn't find validators at height %d as last changed from height %d",
+						lastStoreHeight,
+						height,
+					),
+				)
+			}
 		}
-		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - queryHeight)) // mutate
+		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - lastStoreHeight)) // mutate
 		valInfo = valInfo2
 	}
 
 	return valInfo.ValidatorSet, nil
+}
+
+func lastStoreHeightFor(height, lastHeightChanged int64) int64 {
+	lastStoreHeight := height - height%valSetStoreInterval
+	if lastStoreHeight > lastHeightChanged {
+		return lastStoreHeight
+	}
+	return lastHeightChanged
 }
 
 // CONTRACT: Returned ValidatorsInfo can be mutated.
