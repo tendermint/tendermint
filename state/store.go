@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	// persist validators every valSetStoreInterval blocks to avoid
+	// persist validators every valSetCheckpointInterval blocks to avoid
 	// LoadValidators taking too much time.
 	// https://github.com/tendermint/tendermint/pull/3438
 	// 100000 results in ~ 100ms to get 100 validators (see BenchmarkLoadValidators)
-	valSetStoreInterval = 100000
+	valSetCheckpointInterval = 100000
 )
 
 //------------------------------------------------------------------------
@@ -191,35 +191,35 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 		return nil, ErrNoValSetForHeight{height}
 	}
 	if valInfo.ValidatorSet == nil {
-		lastStoreHeight := lastStoreHeightFor(height, valInfo.LastHeightChanged)
-		valInfo2 := loadValidatorsInfo(db, lastStoreHeight)
+		lastStoredHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
+		valInfo2 := loadValidatorsInfo(db, lastStoredHeight)
 		if valInfo2 == nil {
 			// TODO (melekes): remove the below if condition in the 0.33 major
 			// release and just panic. Old chains might panic otherwise if they
-			// haven't saved validators at intermediate (%valSetStoreInterval) height
-			// yet.
+			// haven't saved validators at intermediate (%valSetCheckpointInterval)
+			// height yet.
 			valInfo2 = loadValidatorsInfo(db, valInfo.LastHeightChanged)
-			lastStoreHeight = valInfo.LastHeightChanged
+			lastStoredHeight = valInfo.LastHeightChanged
 			if valInfo2 == nil {
 				panic(
 					fmt.Sprintf("Couldn't find validators at height %d as last changed from height %d",
-						lastStoreHeight,
+						lastStoredHeight,
 						height,
 					),
 				)
 			}
 		}
-		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - lastStoreHeight)) // mutate
+		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - lastStoredHeight)) // mutate
 		valInfo = valInfo2
 	}
 
 	return valInfo.ValidatorSet, nil
 }
 
-func lastStoreHeightFor(height, lastHeightChanged int64) int64 {
-	lastStoreHeight := height - height%valSetStoreInterval
-	if lastStoreHeight > lastHeightChanged {
-		return lastStoreHeight
+func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
+	checkpointHeight := height - height%valSetCheckpointInterval
+	if checkpointHeight > lastHeightChanged {
+		return checkpointHeight
 	}
 	return lastHeightChanged
 }
@@ -255,7 +255,7 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 	valInfo := &ValidatorsInfo{
 		LastHeightChanged: lastHeightChanged,
 	}
-	if lastHeightChanged == height || height%valSetStoreInterval == 0 {
+	if height == lastHeightChanged || height%valSetCheckpointInterval == 0 {
 		valInfo.ValidatorSet = valSet
 	}
 	db.Set(calcValidatorsKey(height), valInfo.Bytes())

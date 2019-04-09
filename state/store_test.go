@@ -11,6 +11,7 @@ import (
 
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
+
 	config := cfg.ResetTestRoot("state_")
 	defer os.RemoveAll(config.RootDir)
 	dbType := dbm.DBBackendType(config.DBBackend)
@@ -23,7 +24,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	SaveState(stateDB, state)
 
-	for i := 10; i < 10000000000; i *= 10 {
+	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		saveValidatorsInfo(stateDB, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
