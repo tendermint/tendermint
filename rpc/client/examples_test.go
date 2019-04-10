@@ -14,6 +14,7 @@ func ExampleHTTP_simple() {
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewKVStoreApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
+	defer rpctest.StopTendermint(node)
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
@@ -49,9 +50,6 @@ func ExampleHTTP_simple() {
 		panic("returned value does not match sent value")
 	}
 
-	// Shut down Tendermint
-	rpctest.StopTendermint(node)
-
 	fmt.Println("Sent tx     :", string(tx))
 	fmt.Println("Queried for :", string(qres.Response.Key))
 	fmt.Println("Got value   :", string(qres.Response.Value))
@@ -66,6 +64,7 @@ func ExampleHTTP_batching() {
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewKVStoreApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
+	defer rpctest.StopTendermint(node)
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
@@ -120,9 +119,6 @@ func ExampleHTTP_batching() {
 		}
 		fmt.Println(string(qr.Response.Key), "=", string(qr.Response.Value))
 	}
-
-	// Shut down Tendermint
-	rpctest.StopTendermint(node)
 
 	// Output:
 	// firstName = satoshi
