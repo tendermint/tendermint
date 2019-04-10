@@ -98,7 +98,9 @@ func WriteRPCResponseHTTPError(
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpCode)
-	w.Write(jsonBytes) // nolint: errcheck, gas
+	if _, err := w.Write(jsonBytes); err != nil {
+		panic(err)
+	}
 }
 
 func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
@@ -108,7 +110,9 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(jsonBytes) // nolint: errcheck, gas
+	if _, err := w.Write(jsonBytes); err != nil {
+		panic(err)
+	}
 }
 
 // WriteRPCResponseArrayHTTP will do the same as WriteRPCResponseHTTP, except it
@@ -124,13 +128,15 @@ func WriteRPCResponseArrayHTTP(w http.ResponseWriter, res []types.RPCResponse) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write(jsonBytes) // nolint: errcheck, gas
+		if _, err := w.Write(jsonBytes); err != nil {
+			panic(err)
+		}
 	}
 }
 
 //-----------------------------------------------------------------------------
 
-// Wraps an HTTP handler, adding error logging.
+// RecoverAndLogHandler wraps an HTTP handler, adding error logging.
 // If the inner function panics, the outer function recovers, logs, sends an
 // HTTP 500 error response.
 func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
