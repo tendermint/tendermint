@@ -26,7 +26,7 @@ concrete reasons for stopping peers.
 ### Implementation Changes
 
 PeerBehaviour then becomes an interface for signaling peer errors as well
-as marking peers for `good`.
+as for marking peers as `good`.
 
 XXX: It might be better to pass p2p.ID instead of the whole peer but as
 a first draft maintain the underlying implementation as much as
