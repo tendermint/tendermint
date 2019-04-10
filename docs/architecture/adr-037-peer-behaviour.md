@@ -18,7 +18,7 @@ and ties up the reactors in a larger dependency graph when testing.
 
 ## Decision
 
-Introduce a PeerBehaviour interface and concrete implementations which
+Introduce a `PeerBehaviour` interface and concrete implementations which
 provide methods for reactors to signal peer behaviour without direct
 coupling `p2p.Switch`.  Introduce a ErrPeer to provide 
 concrete reasons for stopping peers.
