@@ -4,18 +4,24 @@ import (
 	"bytes"
 	"fmt"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
 func ExampleHTTP_simple() {
-	// Assumes the Tendermint RPC endpoint is available through
-	// http://127.0.0.1:26657 and is running the kvstore proxy app
-	c := client.NewHTTP("127.0.0.1:26657", "/websocket")
+	// Start a tendermint node (and kvstore) in the background to test against
+	app := kvstore.NewKVStoreApplication()
+	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
 
-	// Generate a random key/value pair
-	k := []byte(cmn.RandStr(8))
-	v := []byte(cmn.RandStr(8))
+	// Create our RPC client
+	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
+	c := client.NewHTTP(rpcAddr, "/websocket")
+
+	// Create a transaction
+	k := []byte("name")
+	v := []byte("satoshi")
 	tx := append(k, append([]byte("="), v...)...)
 
 	// Broadcast the transaction and wait for it to commit (rather use
@@ -42,48 +48,83 @@ func ExampleHTTP_simple() {
 	if !bytes.Equal(qres.Response.Value, v) {
 		panic("returned value does not match sent value")
 	}
+
+	// Shut down Tendermint
+	rpctest.StopTendermint(node)
+
+	fmt.Println("Sent tx     :", string(tx))
+	fmt.Println("Queried for :", string(qres.Response.Key))
+	fmt.Println("Got value   :", string(qres.Response.Value))
+
+	// Output:
+	// Sent tx     : name=satoshi
+	// Queried for : name
+	// Got value   : satoshi
 }
 
 func ExampleHTTP_batching() {
-	makeTxKV := func() []byte {
-		k := []byte(cmn.RandStr(8))
-		v := []byte(cmn.RandStr(8))
-		return append(k, append([]byte("="), v...)...)
-	}
+	// Start a tendermint node (and kvstore) in the background to test against
+	app := kvstore.NewKVStoreApplication()
+	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
 
-	// Assumes the Tendermint RPC endpoint is available through
-	// http://127.0.0.1:26657 and is running the kvstore proxy app
-	c := client.NewHTTP("127.0.0.1:26657", "/websocket")
+	// Create our RPC client
+	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
+	c := client.NewHTTP(rpcAddr, "/websocket")
 
-	// Generate two random key/value pairs and their equivalent transactions
-	tx1 := makeTxKV()
-	tx2 := makeTxKV()
+	// Create our two transactions
+	k1 := []byte("firstName")
+	v1 := []byte("satoshi")
+	tx1 := append(k1, append([]byte("="), v1...)...)
+
+	k2 := []byte("lastName")
+	v2 := []byte("nakamoto")
+	tx2 := append(k2, append([]byte("="), v2...)...)
+
+	txs := [][]byte{tx1, tx2}
 
 	// Create a new batch
 	batch := c.NewBatch()
 
-	// Queue up the first transaction
-	_, err := batch.BroadcastTxCommit(tx1)
-	if err != nil {
-		panic(err)
-	}
-
-	// Then queue up the second transaction
-	_, err = batch.BroadcastTxCommit(tx2)
-	if err != nil {
-		panic(err)
+	// Queue up our transactions
+	for _, tx := range txs {
+		if _, err := batch.BroadcastTxCommit(tx); err != nil {
+			panic(err)
+		}
 	}
 
 	// Send the batch of 2 transactions
+	if _, err := batch.Send(); err != nil {
+		panic(err)
+	}
+
+	// Now let's query for the original results as a batch
+	keys := [][]byte{k1, k2}
+	for _, key := range keys {
+		if _, err := batch.ABCIQuery("/key", key); err != nil {
+			panic(err)
+		}
+	}
+
+	// Send the 2 queries and keep the results
 	results, err := batch.Send()
 	if err != nil {
 		panic(err)
 	}
-	// `results` will now contain the deserialized result objects from each of
-	// the sent BroadcastTxCommit transactions
 
-	// Do something useful with the results here
+	// Each result in the returned list is the deserialized result of each
+	// respective ABCIQuery response
 	for _, result := range results {
-		fmt.Println(result)
+		qr, ok := result.(*ctypes.ResultABCIQuery)
+		if !ok {
+			panic("invalid result type from ABCIQuery request")
+		}
+		fmt.Println(string(qr.Response.Key), "=", string(qr.Response.Value))
 	}
+
+	// Shut down Tendermint
+	rpctest.StopTendermint(node)
+
+	// Output:
+	// firstName = satoshi
+	// lastName = nakamoto
 }
