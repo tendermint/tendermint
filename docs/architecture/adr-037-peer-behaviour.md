@@ -6,8 +6,7 @@
 ## Context
 
 The responsibility for signaling and acting upon peer behaviour lacks a single 
-owning component and is heavily coupled with the network stack, (cf.
-[#2067](https://github.com/tendermint/tendermint/issues/2067)). Reactors
+owning component and is heavily coupled with the network stack[^1]. Reactors
 maintain a reference to the `p2p.Switch` which they use to call 
 `switch.StopPeerForError(...)` when a peer misbehaves and 
 `switch.MarkAsGood(...)` when a peer contributes in some meaningful way. 
@@ -76,7 +75,7 @@ func NewSwitchedPeerBehaviour(sw *Switch) *SwitchedPeerBehaviour {
 }
 ```
 
-Reactors, which are often difficult to unit test (Cf. [#3506](https://github.com/tendermint/tendermint/pull/3506)). could use an implementation which exposes the signals produced by the reactor in
+Reactors, which are often difficult to unit test[^2]. could use an implementation which exposes the signals produced by the reactor in
 manufactured scenarios:
 
 ```go
@@ -142,5 +141,5 @@ Proposed
 
 ## References
 
-* [#2067](https://github.com/tendermint/tendermint/issues/2067): P2P Refactor
-* [#3506](https://github.com/tendermint/tendermint/pull/3506): ADR 036: Blockchain Reactor Refactor
+* [^1] Issue [#2067](https://github.com/tendermint/tendermint/issues/2067): P2P Refactor
+* [^2] PR: [#3506](https://github.com/tendermint/tendermint/pull/3506): ADR 036: Blockchain Reactor Refactor
