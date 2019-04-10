@@ -137,7 +137,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				continue
 			}
 			if len(r.URL.Path) > 1 {
-				responses = append(responses, types.RPCInvalidRequestError(request.ID, errors.Errorf("Path %s is invalid", r.URL.Path)))
+				responses = append(responses, types.RPCInvalidRequestError(request.ID, errors.Errorf("path %s is invalid", r.URL.Path)))
 				continue
 			}
 			rpcFunc, ok := funcMap[request.Method]
@@ -205,7 +205,7 @@ func mapParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params map[string]json.
 
 func arrayParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params []json.RawMessage, argsOffset int) ([]reflect.Value, error) {
 	if len(rpcFunc.argNames) != len(params) {
-		return nil, errors.Errorf("Expected %v parameters (%v), got %v (%v)",
+		return nil, errors.Errorf("expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
 	}
 
@@ -247,7 +247,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte) ([]reflect
 	}
 
 	// Otherwise, bad format, we cannot parse
-	return nil, errors.Errorf("Unknown type for JSON params: %v. Expected map or array", err)
+	return nil, errors.Errorf("unknown type for JSON params: %v. Expected map or array", err)
 }
 
 // rpc.json
@@ -383,7 +383,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	if isHexString {
 		if !expectingString && !expectingByteSlice {
-			err := errors.Errorf("Got a hex string arg, but expected '%s'",
+			err := errors.Errorf("got a hex string arg, but expected '%s'",
 				rt.Kind().String())
 			return reflect.ValueOf(nil), err, false
 		}

@@ -301,15 +301,15 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, result inter
 	response := &types.RPCResponse{}
 	err = json.Unmarshal(responseBytes, response)
 	if err != nil {
-		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
+		return nil, errors.Errorf("error unmarshalling rpc response: %v", err)
 	}
 	if response.Error != nil {
-		return nil, errors.Errorf("Response error: %v", response.Error)
+		return nil, errors.Errorf("response error: %v", response.Error)
 	}
 	// Unmarshal the RawMessage into the result.
 	err = cdc.UnmarshalJSON(response.Result, result)
 	if err != nil {
-		return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
+		return nil, errors.Errorf("error unmarshalling rpc response result: %v", err)
 	}
 	return result, nil
 }
@@ -319,20 +319,20 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, results
 	var responses []types.RPCResponse
 	err = json.Unmarshal(responseBytes, &responses)
 	if err != nil {
-		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
+		return nil, errors.Errorf("error unmarshalling rpc response: %v", err)
 	}
 	// No response error checking here as there may be a mixture of successful
 	// and unsuccessful responses.
 
 	if len(results) != len(responses) {
-		return nil, errors.Errorf("Expected %d result objects into which to inject responses, but got %d", len(responses), len(results))
+		return nil, errors.Errorf("expected %d result objects into which to inject responses, but got %d", len(responses), len(results))
 	}
 
 	// Unmarshal the Result fields into the final result objects
 	for i := 0; i < len(responses); i++ {
 		err = cdc.UnmarshalJSON(responses[i].Result, results[i])
 		if err != nil {
-			return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
+			return nil, errors.Errorf("error unmarshalling rpc response result: %v", err)
 		}
 	}
 	return results, nil

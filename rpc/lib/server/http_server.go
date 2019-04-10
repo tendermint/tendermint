@@ -214,14 +214,14 @@ func Listen(addr string, config *Config) (listener net.Listener, err error) {
 	parts := strings.SplitN(addr, "://", 2)
 	if len(parts) != 2 {
 		return nil, errors.Errorf(
-			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
+			"invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
 			addr,
 		)
 	}
 	proto, addr := parts[0], parts[1]
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
-		return nil, errors.Errorf("Failed to listen on %v: %v", addr, err)
+		return nil, errors.Errorf("failed to listen on %v: %v", addr, err)
 	}
 	if config.MaxOpenConnections > 0 {
 		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
