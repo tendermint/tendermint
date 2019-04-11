@@ -122,7 +122,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			var request types.RPCRequest
 			err = json.Unmarshal(b, &request)
 			if err != nil {
-				WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshalling request")))
+				WriteRPCResponseHTTP(w, types.RPCParseError(request.ID, errors.Wrap(err, "error unmarshalling request")))
 				return
 			}
 			requests = []types.RPCRequest{request}
