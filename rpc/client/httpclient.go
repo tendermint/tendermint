@@ -62,27 +62,11 @@ type BatchHTTP struct {
 // non-batch) must conform. Acts as an additional code-level sanity check to
 // make sure the implementations stay coherent.
 type rpcClient interface {
-	Status() (*ctypes.ResultStatus, error)
-	ABCIInfo() (*ctypes.ResultABCIInfo, error)
-	ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error)
-	ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
-	BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
-	BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
-	BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
-	UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error)
-	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
-	NetInfo() (*ctypes.ResultNetInfo, error)
-	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
-	ConsensusState() (*ctypes.ResultConsensusState, error)
-	Health() (*ctypes.ResultHealth, error)
-	BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
-	Genesis() (*ctypes.ResultGenesis, error)
-	Block(height *int64) (*ctypes.ResultBlock, error)
-	BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
-	Commit(height *int64) (*ctypes.ResultCommit, error)
-	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
-	TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error)
-	Validators(height *int64) (*ctypes.ResultValidators, error)
+	ABCIClient
+	HistoryClient
+	NetworkClient
+	SignClient
+	StatusClient
 }
 
 // baseRPCClient implements the basic RPC method logic without the actual
