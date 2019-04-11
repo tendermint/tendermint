@@ -530,14 +530,14 @@ func TestClearingEmptyJSONRPCRequestBatch(t *testing.T) {
 }
 
 func TestConcurrentJSONRPCBatching(t *testing.T) {
+	var wg sync.WaitGroup
 	c := getHTTPClient()
-	doneg := &sync.WaitGroup{}
 	for i := 0; i < 50; i++ {
-		doneg.Add(1)
+		wg.Add(1)
 		go func(_i int) {
 			testBatchedJSONRPCCalls(t, c)
-			doneg.Done()
+			wg.Done()
 		}(i)
 	}
-	doneg.Wait()
+	wg.Wait()
 }
