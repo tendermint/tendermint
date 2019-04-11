@@ -27,3 +27,7 @@ mempool load for external ABCI apps.
 ### BUG FIXES:
 
 - [mempool] \#3512 Fix panic from concurrent access to txsMap, a regression for external ABCI apps introduced in v0.31.1
+- [state] Persist validators every 100000 blocks even if no changes to the set
+  occurred. This prevents possible DoS attack using /validators RPC endpoint.
+  Before /validators response time was growing linearly if no changes were made
+  to validator set. (@guagualvcha)
