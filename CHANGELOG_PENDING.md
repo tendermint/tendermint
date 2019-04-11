@@ -17,6 +17,7 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [p2p] Do not log "Can't add peer's address to addrbook" error for a private peer
 
 ### BUG FIXES:
 - [p2p] \#2716 Check if we're already connected to peer right before dialing it (@melekes)
