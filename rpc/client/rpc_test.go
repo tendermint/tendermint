@@ -534,10 +534,10 @@ func TestConcurrentJSONRPCBatching(t *testing.T) {
 	c := getHTTPClient()
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
-		go func(_i int) {
+		go func() {
 			testBatchedJSONRPCCalls(t, c)
 			wg.Done()
-		}(i)
+		}()
 	}
 	wg.Wait()
 }
