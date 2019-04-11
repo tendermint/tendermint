@@ -84,18 +84,18 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 
 //------------------------------------------------------------------------------------
 
-// JSONRPCBufferedRequest encapsulates a single buffered request, as well as its
+// jsonRPCBufferedRequest encapsulates a single buffered request, as well as its
 // anticipated response structure.
-type JSONRPCBufferedRequest struct {
-	Request types.RPCRequest
-	Result  interface{} // The result will be deserialized into this object.
+type jsonRPCBufferedRequest struct {
+	request types.RPCRequest
+	result  interface{} // The result will be deserialized into this object.
 }
 
 // JSONRPCRequestBatch allows us to buffer multiple request/response structures
 // into a single batch request. Note that this batch acts like a FIFO queue, and
 // is thread-safe.
 type JSONRPCRequestBatch struct {
-	requests []*JSONRPCBufferedRequest
+	requests []*jsonRPCBufferedRequest
 	client   *JSONRPCClient
 	mtx      sync.Mutex
 }
@@ -155,18 +155,18 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 // NewRequestBatch starts a batch of requests for this client.
 func (c *JSONRPCClient) NewRequestBatch() *JSONRPCRequestBatch {
 	return &JSONRPCRequestBatch{
-		requests: make([]*JSONRPCBufferedRequest, 0),
+		requests: make([]*jsonRPCBufferedRequest, 0),
 		client:   c,
 	}
 }
 
-func (c *JSONRPCClient) sendBatch(requests []*JSONRPCBufferedRequest) ([]interface{}, error) {
+func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interface{}, error) {
 	reqCount := len(requests)
 	reqs := make([]types.RPCRequest, reqCount)
 	results := make([]interface{}, reqCount)
 	for i := 0; i < reqCount; i++ {
-		reqs[i] = requests[i].Request
-		results[i] = requests[i].Result
+		reqs[i] = requests[i].request
+		results[i] = requests[i].result
 	}
 	// serialize the array of requests into a single JSON object
 	requestBytes, err := json.Marshal(reqs)
@@ -203,7 +203,7 @@ func (b *JSONRPCRequestBatch) Count() int {
 	return len(b.requests)
 }
 
-func (b *JSONRPCRequestBatch) enqueue(req *JSONRPCBufferedRequest) {
+func (b *JSONRPCRequestBatch) enqueue(req *jsonRPCBufferedRequest) {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 	b.requests = append(b.requests, req)
@@ -218,7 +218,7 @@ func (b *JSONRPCRequestBatch) Clear() int {
 
 func (b *JSONRPCRequestBatch) clear() int {
 	count := len(b.requests)
-	b.requests = make([]*JSONRPCBufferedRequest, 0)
+	b.requests = make([]*jsonRPCBufferedRequest, 0)
 	return count
 }
 
@@ -241,7 +241,7 @@ func (b *JSONRPCRequestBatch) Call(method string, params map[string]interface{},
 	if err != nil {
 		return nil, err
 	}
-	b.enqueue(&JSONRPCBufferedRequest{Request: request, Result: result})
+	b.enqueue(&jsonRPCBufferedRequest{request: request, result: result})
 	return result, nil
 }
 
