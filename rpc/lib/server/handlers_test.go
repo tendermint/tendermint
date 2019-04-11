@@ -169,14 +169,6 @@ func TestRPCNotificationInBatch(t *testing.T) {
 		},
 		{
 			`[
-				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]},
-				{"jsonrpc": "2.0","id": ""},
-				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]}
-			 ]`,
-			2,
-		},
-		{
-			`[
 				{"jsonrpc": "2.0","id": ""},
 				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]},
 				{"jsonrpc": "2.0","id": ""},
