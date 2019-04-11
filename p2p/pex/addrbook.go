@@ -66,8 +66,7 @@ type AddrBook interface {
 	// Send a selection of addresses with bias
 	GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddress
 
-	// TODO: remove
-	ListOfKnownAddresses() []*knownAddress
+	Size() int
 
 	// Persist to disk
 	Save()
@@ -254,7 +253,7 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 	bookSize := a.size()
 	if bookSize <= 0 {
 		if bookSize < 0 {
-			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))
 		}
 		return nil
 	}
@@ -339,7 +338,7 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	bookSize := a.size()
 	if bookSize <= 0 {
 		if bookSize < 0 {
-			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))
 		}
 		return nil
 	}
@@ -389,7 +388,7 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	bookSize := a.size()
 	if bookSize <= 0 {
 		if bookSize < 0 {
-			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))
 		}
 		return nil
 	}
@@ -412,18 +411,6 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	selection := a.randomPickAddresses(bucketTypeNew, numRequiredNewAdd)
 	selection = append(selection, a.randomPickAddresses(bucketTypeOld, numAddresses-len(selection))...)
 	return selection
-}
-
-// ListOfKnownAddresses returns the new and old addresses.
-func (a *addrBook) ListOfKnownAddresses() []*knownAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
-	addrs := []*knownAddress{}
-	for _, addr := range a.addrLookup {
-		addrs = append(addrs, addr.copy())
-	}
-	return addrs
 }
 
 //------------------------------------------------
@@ -473,8 +460,7 @@ func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 	case bucketTypeOld:
 		return a.bucketsOld[bucketIdx]
 	default:
-		cmn.PanicSanity("Should not happen")
-		return nil
+		panic("Invalid bucket type")
 	}
 }
 

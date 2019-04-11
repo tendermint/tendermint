@@ -1,5 +1,56 @@
 # Changelog
 
+## v0.31.3
+
+*April 1st, 2019*
+
+This release includes two security sensitive fixes: it ensures generated private
+keys are valid, and it prevents certain DNS lookups that would cause the node to
+panic if the lookup failed.
+
+### BUG FIXES:
+
+- [crypto/secp256k1] [\#3439](https://github.com/tendermint/tendermint/issues/3439)
+    Ensure generated private keys are valid by randomly sampling until a valid key is found.
+    Previously, it was possible (though rare!) to generate keys that exceeded the curve order.
+    Such keys would lead to invalid signatures.
+- [p2p] [\#3522](https://github.com/tendermint/tendermint/issues/3522) Memoize
+  socket address in peer connections to avoid DNS lookups. Previously, failed
+  DNS lookups could cause the node to panic.
+
+## v0.31.2
+
+*March 30th, 2019*
+
+This release fixes a regression from v0.31.1 where Tendermint panics under
+mempool load for external ABCI apps.
+
+Special thanks to external contributors on this release:
+@guagualvcha
+
+### BREAKING CHANGES:
+
+* CLI/RPC/Config
+
+* Apps
+
+* Go API
+- [libs/autofile] [\#3504](https://github.com/tendermint/tendermint/issues/3504) Remove unused code in autofile package. Deleted functions: `Group.Search`, `Group.FindLast`, `GroupReader.ReadLine`, `GroupReader.PushLine`, `MakeSimpleSearchFunc` (@guagualvcha)
+
+* Blockchain Protocol
+
+* P2P Protocol
+
+### FEATURES:
+
+### IMPROVEMENTS:
+
+- [circle] [\#3497](https://github.com/tendermint/tendermint/issues/3497) Move release management to CircleCI
+
+### BUG FIXES:
+
+- [mempool] [\#3512](https://github.com/tendermint/tendermint/issues/3512) Fix panic from concurrent access to txsMap, a regression for external ABCI apps introduced in v0.31.1
+
 ## v0.31.1
 
 *March 27th, 2019*
