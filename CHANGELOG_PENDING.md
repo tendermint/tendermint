@@ -25,7 +25,7 @@
   occurred (@guagualvcha). This
   1) Prevents possible DoS attack using `/validators` or `/status` RPC
   endpoints. Before response time was growing linearly with height if no
-  changes were made to validator set.
+  changes were made to the validator set.
   2) Fixes performance degradation in `ExecCommitBlock` where we call
   `LoadValidators` for each `Evidence` in the block.
 - [p2p] \#2716 Check if we're already connected to peer right before dialing it (@melekes)
