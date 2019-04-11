@@ -20,7 +20,8 @@
 
 ### BUG FIXES:
 
-- [state] Persist validators every 100000 blocks even if no changes to the set
+- [state] [\#3438](https://github.com/tendermint/tendermint/pull/3438) 
+  Persist validators every 100000 blocks even if no changes to the set
   occurred (@guagualvcha). This
   1) Prevents possible DoS attack using `/validators` or `/status` RPC
   endpoints. Before response time was growing linearly with height if no
