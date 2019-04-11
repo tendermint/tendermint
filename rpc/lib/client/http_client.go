@@ -97,7 +97,7 @@ type JSONRPCBufferedRequest struct {
 type JSONRPCRequestBatch struct {
 	requests []*JSONRPCBufferedRequest
 	client   *JSONRPCClient
-	mtx      *sync.Mutex
+	mtx      sync.Mutex
 }
 
 // JSONRPCClient takes params as a slice
@@ -157,7 +157,6 @@ func (c *JSONRPCClient) NewRequestBatch() *JSONRPCRequestBatch {
 	return &JSONRPCRequestBatch{
 		requests: make([]*JSONRPCBufferedRequest, 0),
 		client:   c,
-		mtx:      &sync.Mutex{},
 	}
 }
 
@@ -206,8 +205,8 @@ func (b *JSONRPCRequestBatch) Count() int {
 
 func (b *JSONRPCRequestBatch) enqueue(req *JSONRPCBufferedRequest) {
 	b.mtx.Lock()
+	defer b.mtx.Unlock()
 	b.requests = append(b.requests, req)
-	b.mtx.Unlock()
 }
 
 // Clear empties out the request batch.
