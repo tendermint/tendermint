@@ -13,20 +13,26 @@ import (
 )
 
 func TestSaveValidatorsInfo(t *testing.T) {
-	// test we persist validators every 100000 blocks
+	// test we persist validators every valSetCheckpointInterval blocks
 	stateDB := dbm.NewMemDB()
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 
 	// TODO(melekes): remove in 0.33 release
 	// https://github.com/tendermint/tendermint/issues/3543
+	saveValidatorsInfo(stateDB, 1, 1, vals)
+	saveValidatorsInfo(stateDB, 2, 1, vals)
 	assert.NotPanics(t, func() {
-		LoadValidators(stateDB, 100000)
+		_, err := LoadValidators(stateDB, 2)
+		if err != nil {
+			panic(err)
+		}
 	})
+	//ENDREMOVE
 
-	saveValidatorsInfo(stateDB, 100000, 1, vals)
+	saveValidatorsInfo(stateDB, valSetCheckpointInterval, 1, vals)
 
-	loadedVals, err := LoadValidators(stateDB, 100000)
+	loadedVals, err := LoadValidators(stateDB, valSetCheckpointInterval)
 	assert.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 }
