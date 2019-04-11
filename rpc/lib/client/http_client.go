@@ -315,8 +315,10 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, result inter
 }
 
 func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, results []interface{}) ([]interface{}, error) {
-	var err error
-	var responses []types.RPCResponse
+	var (
+		err       error
+		responses []types.RPCResponse
+	)
 	err = json.Unmarshal(responseBytes, &responses)
 	if err != nil {
 		return nil, errors.Errorf("error unmarshalling rpc response: %v", err)
