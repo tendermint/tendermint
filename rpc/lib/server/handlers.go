@@ -103,7 +103,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(types.JSONRPCStringID(""), errors.Wrap(err, "Error reading request body")))
+			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(types.JSONRPCStringID(""), errors.Wrap(err, "error reading request body")))
 			return
 		}
 		// if its an empty request (like from a browser),
@@ -150,7 +150,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
 				if err != nil {
-					responses = append(responses, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+					responses = append(responses, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "error converting json params to arguments")))
 					continue
 				}
 				args = append(args, fnArgs...)
@@ -272,7 +272,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, cdc, r)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(types.JSONRPCStringID(""), errors.Wrap(err, "Error converting http params to arguments")))
+			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(types.JSONRPCStringID(""), errors.Wrap(err, "error converting http params to arguments")))
 			return
 		}
 		args = append(args, fnArgs...)
@@ -642,7 +642,7 @@ func (wsc *wsConnection) readRoutine() {
 			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshaling request")))
+				wsc.WriteRPCResponse(types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "error unmarshaling request")))
 				continue
 			}
 
@@ -665,7 +665,7 @@ func (wsc *wsConnection) readRoutine() {
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
 				if err != nil {
-					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "error converting json params to arguments")))
 					continue
 				}
 				args = append(args, fnArgs...)
