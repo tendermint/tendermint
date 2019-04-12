@@ -36,14 +36,14 @@ In addition to default application interface which now have this structure
 
 ```go
 type Application interface {
-	// Info and Mempool methods...
+    // Info and Mempool methods...
 
-	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain with validators and other info from TendermintCore
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
-	DeliverTx(tx []byte) ResponseDeliverTx           // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+    // Consensus Connection
+    InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain with validators and other info from TendermintCore
+    BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
+    DeliverTx(tx []byte) ResponseDeliverTx           // Deliver a tx for full processing
+    EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
+    Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
 }
 ```
 
@@ -51,12 +51,12 @@ this doc proposes to add one more:
 
 ```go
 type Application interface {
-	// Info and Mempool methods...
+    // Info and Mempool methods...
 	
-	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain           // Initialize blockchain with validators and other info from TendermintCore
-	DeliverBlock(RequestDeliverBlock) ResponseDeliverBlock  // Deliver full block
-	Commit() ResponseCommit                                 // Commit the state and return the application Merkle root hash
+    // Consensus Connection
+    InitChain(RequestInitChain) ResponseInitChain           // Initialize blockchain with validators and other info from TendermintCore
+    DeliverBlock(RequestDeliverBlock) ResponseDeliverBlock  // Deliver full block
+    Commit() ResponseCommit                                 // Commit the state and return the application Merkle root hash
 }
 
 type RequestDeliverBlock struct {
@@ -68,7 +68,7 @@ type RequestDeliverBlock struct {
 }
 
 type ResponseDeliverBlock struct {
-	ValidatorUpdates      []ValidatorUpdate
+    ValidatorUpdates      []ValidatorUpdate
     ConsensusParamUpdates *ConsensusParams
     Tags                  []common.KVPair
 	TxResults             []ResponseDeliverTx  
