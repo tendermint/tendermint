@@ -14,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	amino "github.com/tendermint/go-amino"
+	cmn "github.com/tendermint/tendermint/libs/common"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -104,6 +105,7 @@ type JSONRPCRequestBatch struct {
 type JSONRPCClient struct {
 	address string
 	client  *http.Client
+	id      types.JSONRPCStringID
 	cdc     *amino.Codec
 }
 
@@ -123,6 +125,7 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 	return &JSONRPCClient{
 		address: address,
 		client:  client,
+		id:      types.JSONRPCStringID("jsonrpc-client-" + cmn.RandStr(8)),
 		cdc:     amino.NewCodec(),
 	}
 }
@@ -130,7 +133,7 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 // Call will send the request for the given method through to the RPC endpoint
 // immediately, without buffering of requests.
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	request, err := types.MapToRequest(c.cdc, types.JSONRPCStringID("jsonrpc-client"), method, params)
+	request, err := types.MapToRequest(c.cdc, c.id, method, params)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +152,7 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	if err != nil {
 		return nil, err
 	}
-	return unmarshalResponseBytes(c.cdc, responseBytes, result)
+	return unmarshalResponseBytes(c.cdc, responseBytes, c.id, result)
 }
 
 // NewRequestBatch starts a batch of requests for this client.
@@ -183,7 +186,7 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 	if err != nil {
 		return nil, err
 	}
-	return unmarshalResponseBytesArray(c.cdc, responseBytes, results)
+	return unmarshalResponseBytesArray(c.cdc, responseBytes, c.id, results)
 }
 
 func (c *JSONRPCClient) Codec() *amino.Codec {
@@ -237,7 +240,7 @@ func (b *JSONRPCRequestBatch) Send() ([]interface{}, error) {
 // Call enqueues a request to call the given RPC method with the specified
 // parameters, in the same way that the `JSONRPCClient.Call` function would.
 func (b *JSONRPCRequestBatch) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	request, err := types.MapToRequest(b.client.cdc, types.JSONRPCStringID("jsonrpc-client"), method, params)
+	request, err := types.MapToRequest(b.client.cdc, b.client.id, method, params)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +282,7 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 	if err != nil {
 		return nil, err
 	}
-	return unmarshalResponseBytes(c.cdc, responseBytes, result)
+	return unmarshalResponseBytes(c.cdc, responseBytes, "", result)
 }
 
 func (c *URIClient) Codec() *amino.Codec {
@@ -292,7 +295,7 @@ func (c *URIClient) SetCodec(cdc *amino.Codec) {
 
 //------------------------------------------------
 
-func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, result interface{}) (interface{}, error) {
+func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, expectedID types.JSONRPCStringID, result interface{}) (interface{}, error) {
 	// Read response.  If rpc/core/types is imported, the result will unmarshal
 	// into the correct type.
 	// log.Notice("response", "response", string(responseBytes))
@@ -305,6 +308,20 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, result inter
 	if response.Error != nil {
 		return nil, errors.Errorf("response error: %v", response.Error)
 	}
+	// From the JSON-RPC 2.0 spec:
+	//  id: It MUST be the same as the value of the id member in the Request Object.
+	if len(expectedID) > 0 {
+		if response.ID == nil {
+			return nil, errors.Errorf("missing ID in response")
+		}
+		id, ok := response.ID.(types.JSONRPCStringID)
+		if !ok {
+			return nil, errors.Errorf("expected ID string in response, but got: %v", id)
+		}
+		if expectedID != id {
+			return nil, errors.Errorf("response ID (%s) does not match request ID (%s)", id, expectedID)
+		}
+	}
 	// Unmarshal the RawMessage into the result.
 	err = cdc.UnmarshalJSON(response.Result, result)
 	if err != nil {
@@ -313,7 +330,7 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, result inter
 	return result, nil
 }
 
-func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, results []interface{}) ([]interface{}, error) {
+func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expectedID types.JSONRPCStringID, results []interface{}) ([]interface{}, error) {
 	var (
 		err       error
 		responses []types.RPCResponse
@@ -327,6 +344,23 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, results
 
 	if len(results) != len(responses) {
 		return nil, errors.Errorf("expected %d result objects into which to inject responses, but got %d", len(responses), len(results))
+	}
+
+	// From the JSON-RPC 2.0 spec:
+	//  id: It MUST be the same as the value of the id member in the Request Object.
+	if len(expectedID) > 0 {
+		for i, response := range responses {
+			if response.ID == nil {
+				return nil, errors.Errorf("missing ID in response (index %d)", i)
+			}
+			id, ok := response.ID.(types.JSONRPCStringID)
+			if !ok {
+				return nil, errors.Errorf("expected ID string in response (index %d), but got: %v", i, id)
+			}
+			if expectedID != id {
+				return nil, errors.Errorf("response ID (%s), index %d, does not match request ID (%s)", id, i, expectedID)
+			}
+		}
 	}
 
 	// Unmarshal the Result fields into the final result objects
