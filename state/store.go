@@ -219,10 +219,7 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 
 func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
 	checkpointHeight := height - height%valSetCheckpointInterval
-	if checkpointHeight > lastHeightChanged {
-		return checkpointHeight
-	}
-	return lastHeightChanged
+	return cmn.MaxInt64(checkpointHeight, lastHeightChanged)
 }
 
 // CONTRACT: Returned ValidatorsInfo can be mutated.
