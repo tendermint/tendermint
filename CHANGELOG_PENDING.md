@@ -17,8 +17,8 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [p2p] [\#3463](https://github.com/tendermint/tendermint/pull/3463) Do not log "Can't add peer's address to addrbook" error for a private peer
 - [rpc] \#3534 Add support for batched requests/responses in JSON RPC
-- [p2p] \#3463 Do not log "Can't add peer's address to addrbook" error for a private peer
 
 ### BUG FIXES:
 - [p2p] \#2716 Check if we're already connected to peer right before dialing it (@melekes)
