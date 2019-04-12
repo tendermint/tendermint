@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.31.4
+
+*April 12th, 2019*
+
+This release fixes a regression from v0.31.3 which used the peer's `SocketAddr` to add the peer to
+the address book. This swallowed the peer's self-reported port which is important in case of reconnect.
+It brings back `NetAddress()` to `NodeInfo` and uses it instead of `SocketAddr` for adding peers.
+Additionally, it improves response time on the `/validators` or `/status` RPC endpoints.
+As a side-effect it makes these RPC endpoint more difficult to DoS and fixes a performance degradation in `ExecCommitBlock`.
+Also, it contains an [ADR](https://github.com/tendermint/tendermint/pull/3539) that proposes decoupling the 
+responsibility for peer behaviour from the `p2p.Switch` (by @brapse). 
+
+Special thanks to external contributors on this release:
+@brapse, @guagualvcha, @mydring
+
+### IMPROVEMENTS:
+- [p2p] [\#3463](https://github.com/tendermint/tendermint/pull/3463) Do not log "Can't add peer's address to addrbook" error for a private peer
+- [p2p] [\#3547](https://github.com/tendermint/tendermint/pull/3547) Fix a couple of annoying typos (@mdyring)
+
+### BUG FIXES:
+
+- [docs] [\#3514](https://github.com/tendermint/tendermint/issues/3514) Fix block.Header.Time description (@melekes)
+- [p2p] [\#2716](https://github.com/tendermint/tendermint/issues/2716) Check if we're already connected to peer right before dialing it (@melekes)
+- [p2p] [\#3545](https://github.com/tendermint/tendermint/issues/3545) Add back `NetAddress()` to `NodeInfo` and use it instead of peer's `SocketAddr()` when adding a peer to the `PEXReactor` (potential fix for [\#3532](https://github.com/tendermint/tendermint/issues/3532))
+- [state] [\#3438](https://github.com/tendermint/tendermint/pull/3438)
+  Persist validators every 100000 blocks even if no changes to the set
+  occurred (@guagualvcha). This
+  1) Prevents possible DoS attack using `/validators` or `/status` RPC
+  endpoints. Before response time was growing linearly with height if no
+  changes were made to the validator set.
+  2) Fixes performance degradation in `ExecCommitBlock` where we call
+  `LoadValidators` for each `Evidence` in the block.
+
 ## v0.31.3
 
 *April 1st, 2019*
@@ -7,6 +40,12 @@
 This release includes two security sensitive fixes: it ensures generated private
 keys are valid, and it prevents certain DNS lookups that would cause the node to
 panic if the lookup failed.
+
+### BREAKING CHANGES:
+* Go API
+  - [crypto/secp256k1] [\#3439](https://github.com/tendermint/tendermint/issues/3439) 
+    The `secp256k1.GenPrivKeySecp256k1` function has changed to guarantee that it returns a valid key, which means it 
+    will return a different private key than in previous versions for the same secret.
 
 ### BUG FIXES:
 
@@ -35,7 +74,7 @@ Special thanks to external contributors on this release:
 * Apps
 
 * Go API
-- [libs/autofile] [\#3504](https://github.com/tendermint/tendermint/issues/3504) Remove unused code in autofile package. Deleted functions: `Group.Search`, `Group.FindLast`, `GroupReader.ReadLine`, `GroupReader.PushLine`, `MakeSimpleSearchFunc` (@guagualvcha)
+  - [libs/autofile] [\#3504](https://github.com/tendermint/tendermint/issues/3504) Remove unused code in autofile package. Deleted functions: `Group.Search`, `Group.FindLast`, `GroupReader.ReadLine`, `GroupReader.PushLine`, `MakeSimpleSearchFunc` (@guagualvcha)
 
 * Blockchain Protocol
 
