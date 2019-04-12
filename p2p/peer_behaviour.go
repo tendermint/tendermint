@@ -8,6 +8,8 @@ const (
 	ErrPeerMessageOutofOrder
 )
 
+// PeerBehaviour provides an interface for reactors to signal the behaviour
+// of peers synchronously to other components.
 type PeerBehaviour interface {
 	Errored(peer Peer, reason ErrPeer)
 	MarkPeerAsGood(peer Peer)
@@ -34,6 +36,9 @@ func NewSwitchedPeerBehaviour(sw *Switch) *SwitchedPeerBehaviour {
 type PeerErrors map[Peer][]ErrPeer
 type GoodPeers map[Peer]bool
 
+// StorePeerBehaviour serves a mock concrete implementation of the
+// PeerBehaviour interface used in reactor tests to ensure reactors
+// produce the correct signals in manufactured scenarios.
 type StorePeerBehaviour struct {
 	pe PeerErrors
 	gp GoodPeers
