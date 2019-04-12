@@ -581,7 +581,7 @@ func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
 	_, ok := book.ourAddrs[addr.String()]
 	return ok
 }
-func (book *addrBookMock) MarkGood(*NetAddress) {}
+func (book *addrBookMock) MarkGood(ID) {}
 func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
 	_, ok := book.addrs[addr.String()]
 	return ok

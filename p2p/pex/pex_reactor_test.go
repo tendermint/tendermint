@@ -531,7 +531,7 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 			book.SetLogger(log.TestingLogger())
 			for j := 0; j < len(knownAddrs); j++ {
 				book.AddAddress(knownAddrs[j], srcAddrs[j])
-				book.MarkGood(knownAddrs[j])
+				book.MarkGood(knownAddrs[j].ID)
 			}
 			sw.SetAddrBook(book)
 
