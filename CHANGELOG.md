@@ -9,15 +9,11 @@ the address book. This swallowed the peer's self-reported port which is importan
 It brings back `NetAddress()` to `NodeInfo` and uses it instead of `SocketAddr` for adding peers.
 Additionally, it improves response time on the `/validators` or `/status` RPC endpoints.
 As a side-effect it makes these RPC endpoint more difficult to DoS and fixes a performance degradation in `ExecCommitBlock`.
+Also, it contains an [ADR](https://github.com/tendermint/tendermint/pull/3539) that proposes decoupling the 
+responsibility for peer behaviour from the `p2p.Switch` (by @brapse). 
 
 Special thanks to external contributors on this release:
 @brapse, @guagualvcha, @mydring
-
-### BREAKING CHANGES:
-
-* Go API
-  - [p2p] [\#3545](https://github.com/tendermint/tendermint/pull/3545) The `AddrBook` interface method `MarkAsGood` now only takes a `p2p.ID` instead of a `p2p.NetAddress`
-  - [p2p] [\#3011](https://github.com/tendermint/tendermint/pull/3011) Remove `ListOfKnownAddresses` from the `AddrBook` interface
 
 ### IMPROVEMENTS:
 - [p2p] [\#3463](https://github.com/tendermint/tendermint/pull/3463) Do not log "Can't add peer's address to addrbook" error for a private peer
@@ -44,6 +40,12 @@ Special thanks to external contributors on this release:
 This release includes two security sensitive fixes: it ensures generated private
 keys are valid, and it prevents certain DNS lookups that would cause the node to
 panic if the lookup failed.
+
+### BREAKING CHANGES:
+* Go API
+  - [crypto/secp256k1] [\#3439](https://github.com/tendermint/tendermint/issues/3439) 
+    The `secp256k1.GenPrivKeySecp256k1` function has changed to guarantee that it returns a valid key, which means it 
+    will return a different private key than in previous versions for the same secret.
 
 ### BUG FIXES:
 
