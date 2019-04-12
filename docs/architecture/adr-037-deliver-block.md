@@ -71,7 +71,7 @@ type ResponseDeliverBlock struct {
     ValidatorUpdates      []ValidatorUpdate
     ConsensusParamUpdates *ConsensusParams
     Tags                  []common.KVPair
-	TxResults             []ResponseDeliverTx  
+    TxResults             []ResponseDeliverTx  
 }
 
 ```
