@@ -364,7 +364,7 @@ func (mt *MultiplexTransport) upgrade(
 	if err != nil {
 		return nil, nil, ErrRejected{
 			conn:          c,
-			err:           fmt.Errorf("secrect conn failed: %v", err),
+			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
 		}
 	}
@@ -377,7 +377,7 @@ func (mt *MultiplexTransport) upgrade(
 				conn: c,
 				id:   connID,
 				err: fmt.Errorf(
-					"conn.ID (%v) dialed ID (%v) missmatch",
+					"conn.ID (%v) dialed ID (%v) mismatch",
 					connID,
 					dialedID,
 				),
@@ -409,7 +409,7 @@ func (mt *MultiplexTransport) upgrade(
 			conn: c,
 			id:   connID,
 			err: fmt.Errorf(
-				"conn.ID (%v) NodeInfo.ID (%v) missmatch",
+				"conn.ID (%v) NodeInfo.ID (%v) mismatch",
 				connID,
 				nodeInfo.ID(),
 			),
