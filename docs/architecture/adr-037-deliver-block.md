@@ -95,7 +95,7 @@ In review
 
 ### Negative
 
-- breaking change, all applications should be adapted to new interface
+- Tendermint should now support 2 kinds of ABCI
 
 ### Neutral
 
