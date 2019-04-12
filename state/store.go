@@ -245,10 +245,10 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 }
 
 // saveValidatorsInfo persists the validator set.
-// `height` is the effective height for which the validator is responsible for signing.
-// It should be called from s.Save(), right before the state itself is persisted.
-// If the validator set did not change after processing the latest block,
-// only the last height for which the validators changed is persisted.
+//
+// `height` is the effective height for which the validator is responsible for
+// signing. It should be called from s.Save(), right before the state itself is
+// persisted.
 func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
 	if lastHeightChanged > height {
 		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
@@ -256,6 +256,8 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 	valInfo := &ValidatorsInfo{
 		LastHeightChanged: lastHeightChanged,
 	}
+	// Only persist validator set if it was updated or checkpoint height (see
+	// valSetCheckpointInterval) is reached.
 	if height == lastHeightChanged || height%valSetCheckpointInterval == 0 {
 		valInfo.ValidatorSet = valSet
 	}
