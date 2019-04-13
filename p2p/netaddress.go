@@ -71,13 +71,13 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 	if len(spl) < 2 {
 		return nil, ErrNetAddressNoID{addr}
 	}
-	return NewNetAddressStringWithOptionalID(addr)
+	return newNetAddressStringWithOptionalID(addr)
 }
 
 // NewNetAddressStringWithOptionalID returns a new NetAddress using the
 // provided address in the form of "ID@IP:Port", where the ID is optional.
 // Also resolves the host if host is not an IP.
-func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
+func newNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
 	addrWithoutProtocol := removeProtocolIfDefined(addr)
 
 	var id ID

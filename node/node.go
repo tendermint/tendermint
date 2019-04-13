@@ -574,7 +574,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := p2p.NewNetAddressStringWithOptionalID(n.config.P2P.ListenAddress)
+	addr, err := p2p.NewNetAddressString(n.config.P2P.ListenAddress)
 	if err != nil {
 		return err
 	}
