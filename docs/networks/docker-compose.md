@@ -4,7 +4,7 @@ With Docker Compose, you can spin up local testnets with a single command.
 
 ## Requirements
 
-1. [Install tendermint](/docs/introduction/install.md)
+1. [Install tendermint](../introduction/install.md)
 2. [Install docker](https://docs.docker.com/engine/installation/)
 3. [Install docker-compose](https://docs.docker.com/compose/install/)
 

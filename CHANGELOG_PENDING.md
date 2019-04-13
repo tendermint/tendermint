@@ -1,4 +1,4 @@
-## v0.32.0
+## v0.31.2
 
 **
 
@@ -9,20 +9,25 @@
 * Apps
 
 * Go API
-- [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
-- [rpc/client] \#3458 Include NetworkClient interface into Client interface
 
 * Blockchain Protocol
 
 * P2P Protocol
 
 ### FEATURES:
-- [rpc] \#3419 Start HTTPS server if `rpc.tls_cert_file` and `rpc.tls_key_file` are provided in the config (@guagualvcha)
 
 ### IMPROVEMENTS:
-
-- [mempool] \#2778 No longer send txs back to peers who sent it to you
+- [p2p] [\#3463](https://github.com/tendermint/tendermint/pull/3463) Do not log "Can't add peer's address to addrbook" error for a private peer
 
 ### BUG FIXES:
 
-- [blockchain] \#2699 update the maxHeight when a peer is removed
+- [state] [\#3438](https://github.com/tendermint/tendermint/pull/3438) 
+  Persist validators every 100000 blocks even if no changes to the set
+  occurred (@guagualvcha). This
+  1) Prevents possible DoS attack using `/validators` or `/status` RPC
+  endpoints. Before response time was growing linearly with height if no
+  changes were made to the validator set.
+  2) Fixes performance degradation in `ExecCommitBlock` where we call
+  `LoadValidators` for each `Evidence` in the block.
+- [p2p] \#2716 Check if we're already connected to peer right before dialing it (@melekes)
+- [docs] \#3514 Fix block.Header.Time description (@melekes)

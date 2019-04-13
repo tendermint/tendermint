@@ -161,10 +161,6 @@ func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, r
 
 func TestSwitchFiltersOutItself(t *testing.T) {
 	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc)
-	// addr := s1.NodeInfo().NetAddress()
-
-	// // add ourselves like we do in node.go#427
-	// s1.addrBook.AddOurAddress(addr)
 
 	// simulate s1 having a public IP by creating a remote peer with the same ID
 	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: cfg}
@@ -498,7 +494,7 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 		rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
 		remotePeers = append(remotePeers, rp)
 		rp.Start()
-		c, err := rp.Dial(sw.NodeInfo().NetAddress())
+		c, err := rp.Dial(sw.NetAddress())
 		require.NoError(t, err)
 		// spawn a reading routine to prevent connection from closing
 		go func(c net.Conn) {
@@ -517,7 +513,7 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	// 2. check we close new connections if we already have MaxNumInboundPeers peers
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
 	rp.Start()
-	conn, err := rp.Dial(sw.NodeInfo().NetAddress())
+	conn, err := rp.Dial(sw.NetAddress())
 	require.NoError(t, err)
 	// check conn is closed
 	one := make([]byte, 1)
@@ -535,6 +531,10 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 
 type errorTransport struct {
 	acceptErr error
+}
+
+func (et errorTransport) NetAddress() NetAddress {
+	panic("not implemented")
 }
 
 func (et errorTransport) Accept(c peerConfig) (Peer, error) {
@@ -626,7 +626,7 @@ func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
 	_, ok := book.ourAddrs[addr.String()]
 	return ok
 }
-func (book *addrBookMock) MarkGood(*NetAddress) {}
+func (book *addrBookMock) MarkGood(ID) {}
 func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
 	_, ok := book.addrs[addr.String()]
 	return ok

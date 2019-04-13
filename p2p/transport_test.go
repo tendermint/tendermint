@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -142,43 +144,23 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 
 func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 	mt := testSetupMultiplexTransport(t)
+	id, addr := mt.nodeKey.ID(), mt.listener.Addr().String()
+	laddr, err := NewNetAddressStringWithOptionalID(IDAddressString(id, addr))
+	require.NoError(t, err)
 
 	var (
-		seed = rand.New(rand.NewSource(time.Now().UnixNano()))
-		errc = make(chan error, seed.Intn(64)+64)
+		seed     = rand.New(rand.NewSource(time.Now().UnixNano()))
+		nDialers = seed.Intn(64) + 64
+		errc     = make(chan error, nDialers)
 	)
 
 	// Setup dialers.
-	for i := 0; i < cap(errc); i++ {
-		go func() {
-			var (
-				pv     = ed25519.GenPrivKey()
-				dialer = newMultiplexTransport(
-					testNodeInfo(PubKeyToID(pv.PubKey()), defaultNodeName),
-					NodeKey{
-						PrivKey: pv,
-					},
-				)
-			)
-			addr, err := NewNetAddressStringWithOptionalID(IDAddressString(mt.nodeKey.ID(), mt.listener.Addr().String()))
-			if err != nil {
-				errc <- err
-				return
-			}
-
-			_, err = dialer.Dial(*addr, peerConfig{})
-			if err != nil {
-				errc <- err
-				return
-			}
-
-			// Signal that the connection was established.
-			errc <- nil
-		}()
+	for i := 0; i < nDialers; i++ {
+		go testDialer(*laddr, errc)
 	}
 
 	// Catch connection errors.
-	for i := 0; i < cap(errc); i++ {
+	for i := 0; i < nDialers; i++ {
 		if err := <-errc; err != nil {
 			t.Fatal(err)
 		}
@@ -214,6 +196,27 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 	if err := mt.Close(); err != nil {
 		t.Errorf("close errored: %v", err)
 	}
+}
+
+func testDialer(dialAddr NetAddress, errc chan error) {
+	var (
+		pv     = ed25519.GenPrivKey()
+		dialer = newMultiplexTransport(
+			testNodeInfo(PubKeyToID(pv.PubKey()), defaultNodeName),
+			NodeKey{
+				PrivKey: pv,
+			},
+		)
+	)
+
+	_, err := dialer.Dial(dialAddr, peerConfig{})
+	if err != nil {
+		errc <- err
+		return
+	}
+
+	// Signal that the connection was established.
+	errc <- nil
 }
 
 func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
@@ -591,6 +594,7 @@ func TestTransportHandshake(t *testing.T) {
 	}
 }
 
+// create listener
 func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 	var (
 		pv = ed25519.GenPrivKey()

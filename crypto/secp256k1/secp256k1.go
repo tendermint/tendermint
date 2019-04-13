@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"io"
+	"math/big"
 
 	"golang.org/x/crypto/ripemd160"
 
@@ -65,32 +66,61 @@ func (privKey PrivKeySecp256k1) Equals(other crypto.PrivKey) bool {
 }
 
 // GenPrivKey generates a new ECDSA private key on curve secp256k1 private key.
-// It uses OS randomness in conjunction with the current global random seed
-// in tendermint/libs/common to generate the private key.
+// It uses OS randomness to generate the private key.
 func GenPrivKey() PrivKeySecp256k1 {
 	return genPrivKey(crypto.CReader())
 }
 
 // genPrivKey generates a new secp256k1 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKeySecp256k1 {
-	privKeyBytes := [32]byte{}
-	_, err := io.ReadFull(rand, privKeyBytes[:])
-	if err != nil {
-		panic(err)
+	var privKeyBytes [32]byte
+	d := new(big.Int)
+	for {
+		privKeyBytes = [32]byte{}
+		_, err := io.ReadFull(rand, privKeyBytes[:])
+		if err != nil {
+			panic(err)
+		}
+
+		d.SetBytes(privKeyBytes[:])
+		// break if we found a valid point (i.e. > 0 and < N == curverOrder)
+		isValidFieldElement := 0 < d.Sign() && d.Cmp(secp256k1.S256().N) < 0
+		if isValidFieldElement {
+			break
+		}
 	}
-	// crypto.CRandBytes is guaranteed to be 32 bytes long, so it can be
-	// casted to PrivKeySecp256k1.
+
 	return PrivKeySecp256k1(privKeyBytes)
 }
 
+var one = new(big.Int).SetInt64(1)
+
 // GenPrivKeySecp256k1 hashes the secret with SHA2, and uses
 // that 32 byte output to create the private key.
+//
+// It makes sure the private key is a valid field element by setting:
+//
+// c = sha256(secret)
+// k = (c mod (n − 1)) + 1, where n = curve order.
+//
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
 func GenPrivKeySecp256k1(secret []byte) PrivKeySecp256k1 {
-	privKey32 := sha256.Sum256(secret)
-	// sha256.Sum256() is guaranteed to be 32 bytes long, so it can be
-	// casted to PrivKeySecp256k1.
+	secHash := sha256.Sum256(secret)
+	// to guarantee that we have a valid field element, we use the approach of:
+	// "Suite B Implementer’s Guide to FIPS 186-3", A.2.1
+	// https://apps.nsa.gov/iaarchive/library/ia-guidance/ia-solutions-for-classified/algorithm-guidance/suite-b-implementers-guide-to-fips-186-3-ecdsa.cfm
+	// see also https://github.com/golang/go/blob/0380c9ad38843d523d9c9804fe300cb7edd7cd3c/src/crypto/ecdsa/ecdsa.go#L89-L101
+	fe := new(big.Int).SetBytes(secHash[:])
+	n := new(big.Int).Sub(secp256k1.S256().N, one)
+	fe.Mod(fe, n)
+	fe.Add(fe, one)
+
+	feB := fe.Bytes()
+	var privKey32 [32]byte
+	// copy feB over to fixed 32 byte privKey32 and pad (if necessary)
+	copy(privKey32[32-len(feB):32], feB)
+
 	return PrivKeySecp256k1(privKey32)
 }
 
