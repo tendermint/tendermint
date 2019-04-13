@@ -157,7 +157,7 @@ var (
 	errSendQueueFull            = errors.New("block request not made, send-queue is full")
 	errPeerTooShort             = errors.New("peer height too low, old peer removed/ new peer not added")
 	errSlowPeer                 = errors.New("peer is not sending us data fast enough")
-	errNoPeerFoundForHeight     = errors.New("could not found peer for block request")
+	errNoPeerFoundForHeight     = errors.New("could not find peer for block request")
 )
 
 func init() {
@@ -239,9 +239,7 @@ func init() {
 					// A block was received that was unsolicited, from unexpected peer, or that we already have it.
 					// Ignore block, remove peer and send error to switch.
 					fsm.pool.removePeer(data.peerId, err)
-					if err != nil {
-						fsm.toBcR.sendPeerError(err, data.peerId)
-					}
+					fsm.toBcR.sendPeerError(err, data.peerId)
 				}
 
 				return waitForBlock, err
@@ -255,6 +253,7 @@ func init() {
 					fsm.toBcR.sendPeerError(data.err, first.peer.id)
 					fsm.logger.Error("send peer error for", "peer", second.peer.id)
 					fsm.toBcR.sendPeerError(data.err, second.peer.id)
+					// Remove the first two blocks. This will also remove the peers
 					fsm.pool.invalidateFirstTwoBlocks(data.err)
 				} else {
 					fsm.pool.processedCurrentHeightBlock()
@@ -272,8 +271,8 @@ func init() {
 				return waitForBlock, nil
 
 			case makeRequestsEv:
-				err := fsm.makeNextRequests(data.maxNumRequests)
-				return waitForBlock, err
+				fsm.makeNextRequests(data.maxNumRequests)
+				return waitForBlock, nil
 
 			case stopFSMEv:
 				return finished, errNoErrorFinished
@@ -399,6 +398,6 @@ func (fsm *bReactorFSM) cleanup() {
 	// TODO
 }
 
-func (fsm *bReactorFSM) makeNextRequests(maxNumPendingRequests int32) error {
-	return fsm.pool.makeNextRequests(maxNumPendingRequests)
+func (fsm *bReactorFSM) makeNextRequests(maxNumPendingRequests int32) {
+	fsm.pool.makeNextRequests(maxNumPendingRequests)
 }

@@ -340,8 +340,7 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 			pool := tt.pool
 
 			maxRequestsPerPeer = int32(tt.maxRequestsPerPeer)
-			err := pool.makeNextRequests(10)
-			assert.Nil(t, err)
+			pool.makeNextRequests(10)
 			assert.Equal(t, tt.expNumPending, pool.numPending)
 			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*int32(len(pool.peers)))
 

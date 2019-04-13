@@ -249,6 +249,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			event: blockResponseEv,
 			data: bReactorEventData{
 				peerId: src.ID(),
+				height: msg.Block.Height,
 				block:  msg.Block,
 				length: len(msgBytes),
 			},
@@ -299,9 +300,13 @@ ForLoop:
 			case doSendCh <- struct{}{}:
 			default:
 			}
-			//continue ForLoop
 
 		case <-doSendCh:
+			// Tell FSM to make more requests.
+			// The maxNumPendingRequests may be changed based on low/ high watermark thresholds for
+			// - the number of blocks received and waiting to be processed,
+			// - the number of blockResponse messages waiting in messagesForFSMCh, etc.
+			// Currently maxNumPendingRequests value is not changed.
 			msgData := bReactorMessageData{
 				event: makeRequestsEv,
 				data: bReactorEventData{
@@ -334,7 +339,6 @@ ForLoop:
 			case doProcessCh <- struct{}{}:
 			default:
 			}
-			//continue FOR_LOOP
 
 		case <-doProcessCh:
 			err := bcR.processBlocksFromPoolRoutine()
@@ -364,7 +368,6 @@ ForLoop:
 					"max_peer_height", bcR.fsm.pool.getMaxPeerHeight(), "blocks/s", lastRate)
 				lastHundred = time.Now()
 			}
-			//continue ForLoop
 
 		case msg := <-bcR.messagesForFSMCh:
 			_ = sendMessageToFSMSync(bcR.fsm, msg)
@@ -448,7 +451,6 @@ func (bcR *BlockchainReactor) sendStatusRequest() {
 // BlockRequest sends `BlockRequest` height.
 func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) error {
 	peer := bcR.Switch.Peers().Get(peerID)
-
 	if peer == nil {
 		return errNilPeerForBlockRequest
 	}

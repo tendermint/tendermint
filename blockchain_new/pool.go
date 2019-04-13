@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -80,6 +81,7 @@ func (pool *blockPool) reachedMaxHeight() bool {
 }
 
 func (pool *blockPool) rescheduleRequest(peerID p2p.ID, height int64) {
+	pool.logger.Debug("reschedule requests made to peer for height ", "peerID", peerID, "height", height)
 	pool.requests[height] = true
 	delete(pool.blocks, height)
 	delete(pool.peers[peerID].blocks, height)
@@ -99,6 +101,7 @@ func (pool *blockPool) updateMaxPeerHeight() {
 // Adds a new peer or updates an existing peer with a new height.
 // If the peer is too short it is removed.
 func (pool *blockPool) updatePeer(peerID p2p.ID, height int64) error {
+	pool.logger.Debug("updatePeer", "peerID", peerID, "height", height)
 	peer := pool.peers[peerID]
 
 	if height < pool.height {
@@ -157,6 +160,8 @@ func (pool *blockPool) deletePeer(peerID p2p.ID) {
 // Removes any blocks and requests associated with the peer and deletes the peer.
 // Also triggers new requests if blocks have been removed.
 func (pool *blockPool) removePeer(peerID p2p.ID, err error) {
+	pool.logger.Debug("removing peer", "peerID", peerID)
+
 	peer := pool.peers[peerID]
 	if peer == nil {
 		return
@@ -252,33 +257,17 @@ func (pool *blockPool) invalidateFirstTwoBlocks(err error) {
 }
 
 func (pool *blockPool) processedCurrentHeightBlock() {
-	peerID := pool.blocks[pool.height]
-	delete(pool.peers[peerID].blocks, pool.height)
+	peerID, peerOk := pool.blocks[pool.height]
+	if peerOk {
+		delete(pool.peers[peerID].blocks, pool.height)
+	}
 	delete(pool.blocks, pool.height)
+	pool.logger.Debug("processed and removed block at height", "height", pool.height)
 	pool.height++
 	pool.removeShortPeers()
 }
 
-func (pool *blockPool) makeRequestBatch() []int {
-	pool.removeUselessPeers()
-	// If running low on planned requests, make more.
-	for height := pool.nextRequestHeight; pool.numPending < int32(maxNumPendingRequests); height++ {
-		if pool.nextRequestHeight > pool.maxPeerHeight {
-			break
-		}
-		pool.requests[height] = true
-		pool.nextRequestHeight++
-	}
-
-	heights := make([]int, 0, len(pool.requests))
-	for k := range pool.requests {
-		heights = append(heights, int(k))
-	}
-	sort.Ints(heights)
-	return heights
-}
-
-func (pool *blockPool) removeUselessPeers() {
+func (pool *blockPool) removeBadPeers() {
 	pool.removeShortPeers()
 	for _, peer := range pool.peers {
 		if err := peer.isGood(); err != nil {
@@ -290,22 +279,38 @@ func (pool *blockPool) removeUselessPeers() {
 	}
 }
 
-func (pool *blockPool) makeNextRequests(maxNumPendingRequests int32) (err error) {
-	pool.removeUselessPeers()
-	heights := pool.makeRequestBatch()
+func (pool *blockPool) makeRequestBatch(maxNumPendingRequests int32) []int {
+	pool.removeBadPeers()
+	// If running low on planned requests, make more.
+	numNeeded := int32(cmn.MinInt(int(maxNumPendingRequests), len(pool.peers)*int(maxRequestsPerPeer))) - pool.numPending
+	for int32(len(pool.requests)) < numNeeded {
+		if pool.nextRequestHeight > pool.maxPeerHeight {
+			break
+		}
+		pool.requests[pool.nextRequestHeight] = true
+		pool.nextRequestHeight++
+	}
+
+	heights := make([]int, 0, len(pool.requests))
+	for k := range pool.requests {
+		heights = append(heights, int(k))
+	}
+	sort.Ints(heights)
+	return heights
+}
+
+func (pool *blockPool) makeNextRequests(maxNumPendingRequests int32) {
+	heights := pool.makeRequestBatch(maxNumPendingRequests)
+	pool.logger.Debug("makeNextRequests will make following requests", "number", len(heights), "heights", heights)
 
 	for _, height := range heights {
 		h := int64(height)
-		if pool.numPending >= int32(len(pool.peers))*maxRequestsPerPeer {
-			break
-		}
-		if err = pool.sendRequest(h); err == errNoPeerFoundForHeight {
-			break
+		if err := pool.sendRequest(h); err != nil {
+			// Errors from sendRequest() are handled by this function
+			return
 		}
 		delete(pool.requests, h)
 	}
-
-	return err
 }
 
 func (pool *blockPool) sendRequest(height int64) error {
@@ -317,7 +322,10 @@ func (pool *blockPool) sendRequest(height int64) error {
 			continue
 		}
 		pool.logger.Debug("assign request to peer", "peer", peer.id, "height", height)
-		_ = pool.toBcR.sendBlockRequest(peer.id, height)
+		if err := pool.toBcR.sendBlockRequest(peer.id, height); err == errNilPeerForBlockRequest {
+			pool.removePeer(peer.id, err)
+			pool.toBcR.sendPeerError(err, peer.id)
+		}
 
 		pool.blocks[height] = peer.id
 		pool.numPending++

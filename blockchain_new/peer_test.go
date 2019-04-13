@@ -90,6 +90,9 @@ func TestPeerTimer(t *testing.T) {
 	assert.Equal(t, 1, numErrFuncCalls)
 	assert.Equal(t, lastErr, errNoPeerResponse)
 	assert.True(t, peer.didTimeout)
+
+	// Restore the peerTimeout to its original value
+	peerTimeout = 15 * time.Second
 }
 
 func TestIncrPending(t *testing.T) {
@@ -111,6 +114,9 @@ func TestIncrPending(t *testing.T) {
 	assert.NotNil(t, peer.recvMonitor)
 	assert.NotNil(t, peer.timeout)
 	assert.Equal(t, int32(2), peer.numPending)
+
+	// Restore the peerTimeout to its original value
+	peerTimeout = 15 * time.Second
 }
 
 func TestDecrPending(t *testing.T) {
@@ -140,6 +146,9 @@ func TestDecrPending(t *testing.T) {
 	assert.Equal(t, int32(1), peer.numPending)
 	// make sure timer is running and stop it
 	checkByStoppingPeerTimer(t, peer, true)
+
+	// Restore the peerTimeout to its original value
+	peerTimeout = 15 * time.Second
 }
 
 func TestCanBeRemovedDueToExpiration(t *testing.T) {
@@ -157,6 +166,10 @@ func TestCanBeRemovedDueToExpiration(t *testing.T) {
 	time.Sleep(2 * time.Millisecond)
 	// timer expired, should be able to remove peer
 	assert.Equal(t, errNoPeerResponse, peer.isGood())
+
+	// Restore the peerTimeout to its original value
+	peerTimeout = 15 * time.Second
+
 }
 
 func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
@@ -216,5 +229,6 @@ func TestCleanupPeer(t *testing.T) {
 	mtx.Unlock()
 
 	checkByStoppingPeerTimer(t, peer, false)
-
+	// Restore the peerTimeout to its original value
+	peerTimeout = 15 * time.Second
 }
