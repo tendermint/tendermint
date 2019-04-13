@@ -103,7 +103,7 @@ type ErrSwitchDuplicatePeerID struct {
 }
 
 func (e ErrSwitchDuplicatePeerID) Error() string {
-	return fmt.Sprintf("Duplicate peer ID %v", e.ID)
+	return fmt.Sprintf("duplicate peer ID %v", e.ID)
 }
 
 // ErrSwitchDuplicatePeerIP to be raised whena a peer is connecting with a known
@@ -113,7 +113,7 @@ type ErrSwitchDuplicatePeerIP struct {
 }
 
 func (e ErrSwitchDuplicatePeerIP) Error() string {
-	return fmt.Sprintf("Duplicate peer IP %v", e.IP.String())
+	return fmt.Sprintf("duplicate peer IP %v", e.IP.String())
 }
 
 // ErrSwitchConnectToSelf to be raised when trying to connect to itself.
@@ -122,7 +122,7 @@ type ErrSwitchConnectToSelf struct {
 }
 
 func (e ErrSwitchConnectToSelf) Error() string {
-	return fmt.Sprintf("Connect to self: %v", e.Addr)
+	return fmt.Sprintf("connect to self: %v", e.Addr)
 }
 
 type ErrSwitchAuthenticationFailure struct {
@@ -132,7 +132,7 @@ type ErrSwitchAuthenticationFailure struct {
 
 func (e ErrSwitchAuthenticationFailure) Error() string {
 	return fmt.Sprintf(
-		"Failed to authenticate peer. Dialed %v, but got peer with ID %s",
+		"failed to authenticate peer. Dialed %v, but got peer with ID %s",
 		e.Dialed,
 		e.Got,
 	)
@@ -152,7 +152,7 @@ type ErrNetAddressNoID struct {
 }
 
 func (e ErrNetAddressNoID) Error() string {
-	return fmt.Sprintf("Address (%s) does not contain ID", e.Addr)
+	return fmt.Sprintf("address (%s) does not contain ID", e.Addr)
 }
 
 type ErrNetAddressInvalid struct {
@@ -161,7 +161,7 @@ type ErrNetAddressInvalid struct {
 }
 
 func (e ErrNetAddressInvalid) Error() string {
-	return fmt.Sprintf("Invalid address (%s): %v", e.Addr, e.Err)
+	return fmt.Sprintf("invalid address (%s): %v", e.Addr, e.Err)
 }
 
 type ErrNetAddressLookup struct {
@@ -170,5 +170,15 @@ type ErrNetAddressLookup struct {
 }
 
 func (e ErrNetAddressLookup) Error() string {
-	return fmt.Sprintf("Error looking up host (%s): %v", e.Addr, e.Err)
+	return fmt.Sprintf("error looking up host (%s): %v", e.Addr, e.Err)
+}
+
+// ErrCurrentlyDialingOrExistingAddress indicates that we're currently
+// dialing this address or it belongs to an existing peer.
+type ErrCurrentlyDialingOrExistingAddress struct {
+	Addr string
+}
+
+func (e ErrCurrentlyDialingOrExistingAddress) Error() string {
+	return fmt.Sprintf("connection with %s has been established or dialed", e.Addr)
 }

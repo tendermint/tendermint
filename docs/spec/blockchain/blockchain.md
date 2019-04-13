@@ -244,7 +244,7 @@ The height is an incrementing integer. The first block has `block.Header.Height 
 ### Time
 
 ```
-block.Header.Timestamp >= prevBlock.Header.Timestamp + 1 ms
+block.Header.Timestamp >= prevBlock.Header.Timestamp + state.consensusParams.Block.TimeIotaMs
 block.Header.Timestamp == MedianTime(block.LastCommit, state.LastValidators)
 ```
 
