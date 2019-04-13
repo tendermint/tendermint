@@ -20,7 +20,7 @@ func TestNewNetAddress(t *testing.T) {
 	}, "Calling NewNetAddress with UDPAddr should not panic in testing")
 }
 
-func TestNewNetAddressStringWithOptionalID(t *testing.T) {
+func TestnewNetAddressStringWithOptionalID(t *testing.T) {
 	testCases := []struct {
 		name     string
 		addr     string
@@ -59,7 +59,7 @@ func TestNewNetAddressStringWithOptionalID(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			addr, err := NewNetAddressStringWithOptionalID(tc.addr)
+			addr, err := newNetAddressStringWithOptionalID(tc.addr)
 			if tc.correct {
 				if assert.Nil(t, err, tc.addr) {
 					assert.Equal(t, tc.expected, addr.String())
@@ -120,7 +120,7 @@ func TestNetAddressProperties(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		addr, err := NewNetAddressStringWithOptionalID(tc.addr)
+		addr, err := newNetAddressStringWithOptionalID(tc.addr)
 		require.Nil(t, err)
 
 		assert.Equal(t, tc.valid, addr.Valid())
@@ -141,10 +141,10 @@ func TestNetAddressReachabilityTo(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		addr, err := NewNetAddressStringWithOptionalID(tc.addr)
+		addr, err := newNetAddressStringWithOptionalID(tc.addr)
 		require.Nil(t, err)
 
-		other, err := NewNetAddressStringWithOptionalID(tc.other)
+		other, err := newNetAddressStringWithOptionalID(tc.other)
 		require.Nil(t, err)
 
 		assert.Equal(t, tc.reachability, addr.ReachabilityTo(other))

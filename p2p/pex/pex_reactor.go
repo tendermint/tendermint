@@ -327,7 +327,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		if netAddr == nil {
 			return errors.New("nil address in pexAddrsMessage")
 		}
-		// TODO: extract validating logic from NewNetAddressStringWithOptionalID
+		// TODO: extract validating logic from newNetAddressStringWithOptionalID
 		// and put it in netAddr#Valid (#2722)
 		na, err := p2p.NewNetAddressString(netAddr.String())
 		if err != nil {
