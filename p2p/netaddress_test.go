@@ -20,7 +20,7 @@ func TestNewNetAddress(t *testing.T) {
 	}, "Calling NewNetAddress with UDPAddr should not panic in testing")
 }
 
-func TestnewNetAddressStringWithOptionalID(t *testing.T) {
+func TestNewNetAddressStringWithOptionalID(t *testing.T) {
 	testCases := []struct {
 		name     string
 		addr     string
