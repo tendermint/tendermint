@@ -158,6 +158,7 @@ var (
 	errPeerTooShort             = errors.New("peer height too low, old peer removed/ new peer not added")
 	errSlowPeer                 = errors.New("peer is not sending us data fast enough")
 	errNoPeerFoundForHeight     = errors.New("could not find peer for block request")
+	errSwitchRemovesPeer        = errors.New("switch is removing peer")
 )
 
 func init() {

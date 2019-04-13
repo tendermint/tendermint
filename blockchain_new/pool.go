@@ -238,7 +238,7 @@ func (pool *blockPool) getNextTwoBlocks() (first, second *blockData, err error) 
 
 	if err == errMissingBlocks {
 		// We need both to sync the first block.
-		pool.logger.Error("missing first two blocks from height", "height", pool.height)
+		pool.logger.Error("missing blocks at height and/ or height+1", "height", pool.height)
 	}
 	return
 }

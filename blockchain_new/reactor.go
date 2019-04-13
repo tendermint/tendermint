@@ -203,6 +203,7 @@ func (bcR *BlockchainReactor) sendRemovePeerToFSM(peerID p2p.ID) {
 		event: peerRemoveEv,
 		data: bReactorEventData{
 			peerId: peerID,
+			err:    errSwitchRemovesPeer,
 		},
 	}
 	bcR.sendMessageToFSMAsync(msgData)
@@ -315,8 +316,18 @@ ForLoop:
 			}
 			_ = sendMessageToFSMSync(bcR.fsm, msgData)
 
-		case err := <-bcR.errorsFromFSMCh:
-			bcR.reportPeerErrorToSwitch(err.err, err.peerID)
+		case msg := <-bcR.errorsFromFSMCh:
+			bcR.reportPeerErrorToSwitch(msg.err, msg.peerID)
+			if msg.err == errNoPeerResponse {
+				msgData := bReactorMessageData{
+					event: peerRemoveEv,
+					data: bReactorEventData{
+						peerId: msg.peerID,
+						err:    msg.err,
+					},
+				}
+				_ = sendMessageToFSMSync(bcR.fsm, msgData)
+			}
 
 		case <-statusUpdateTicker.C:
 			// Ask for status updates.

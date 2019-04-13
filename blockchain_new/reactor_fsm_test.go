@@ -71,6 +71,7 @@ type fsmStepTestValues struct {
 	failBlockReq      bool
 	blockReqIncreased bool
 	blocksAdded       []int64
+	peersNotInPool    []p2p.ID
 
 	expectedLastBlockReq *lastBlockRequestT
 }
@@ -132,6 +133,18 @@ func waitForBlock_BlockRespEv_WantWaitForBlock(peerID p2p.ID, height int64, prev
 			block:  types.MakeBlock(int64(height), txs, nil, nil)},
 		expectedState: "waitForBlock",
 		blocksAdded:   append(prevBlocks, height),
+	}
+}
+
+func waitForBlock_PeerRemoveEv_waitForBlock(peerID p2p.ID, err error, peerSet []p2p.ID) fsmStepTestValues {
+	return fsmStepTestValues{
+		currentState: "waitForBlock", event: peerRemoveEv,
+		data: bReactorEventData{
+			peerId: peerID,
+			err:    err,
+		},
+		expectedState:  "waitForBlock",
+		peersNotInPool: peerSet,
 	}
 }
 
@@ -264,14 +277,13 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 		{
 			name:               "block verification failure",
 			startingHeight:     1,
-			maxRequestsPerPeer: 2,
+			maxRequestsPerPeer: 3,
 			steps: []fsmStepTestValues{
 				// startFSMEv
 				unknown_StartFSMEv_WantWaitForPeer,
 				// statusResponseEv from P1
 				waitForPeer_StatusEv_WantWaitForBlock("P1", 3),
-				// statusResponseEv from P2
-				waitForBlock_StatusEv_WantWaitForBlock("P2", 3),
+
 				// makeRequestEv
 				waitForBlock_MakeRequestEv_WantWaitForBlock(maxNumPendingRequests),
 				// blockResponseEv for height 1
@@ -279,7 +291,10 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 				// blockResponseEv for height 2
 				waitForBlock_BlockRespEv_WantWaitForBlock("P1", 2, []int64{1}),
 				// blockResponseEv for height 3
-				waitForBlock_BlockRespEv_WantWaitForBlock("P2", 3, []int64{1, 2}),
+				waitForBlock_BlockRespEv_WantWaitForBlock("P1", 3, []int64{1, 2}),
+
+				// statusResponseEv from P2
+				waitForBlock_StatusEv_WantWaitForBlock("P2", 3),
 
 				// processedBlockEv with Error
 				waitForBlock_ProcessedBlockEv_Err_WantWaitForBlock,
@@ -287,9 +302,11 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 				// makeRequestEv
 				waitForBlock_MakeRequestEv_WantWaitForBlock(maxNumPendingRequests),
 				// blockResponseEv for height 1
-				waitForBlock_BlockRespEv_WantWaitForBlock("P2", 1, []int64{3}),
+				waitForBlock_BlockRespEv_WantWaitForBlock("P2", 1, []int64{}),
 				// blockResponseEv for height 2
-				waitForBlock_BlockRespEv_WantWaitForBlock("P2", 2, []int64{1, 3}),
+				waitForBlock_BlockRespEv_WantWaitForBlock("P2", 2, []int64{1}),
+				// blockResponseEv for height 2
+				waitForBlock_BlockRespEv_WantWaitForBlock("P2", 3, []int64{1, 2}),
 
 				waitForBlock_ProcessedBlockEv_WantWaitForBlock,
 				waitForBlock_ProcessedBlockEv_WantFinished,
@@ -353,6 +370,68 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 					assert.Nil(t, firstAfter.peer)
 					assert.Nil(t, secondAfter.block)
 					assert.Nil(t, secondAfter.peer)
+				}
+				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
+			}
+		})
+	}
+}
+
+func TestFSMPeerRemoveEvent(t *testing.T) {
+	tests := []struct {
+		name               string
+		startingHeight     int64
+		maxRequestsPerPeer int32
+		steps              []fsmStepTestValues
+	}{
+		{
+			name:               "peer remove event with no blocks",
+			startingHeight:     1,
+			maxRequestsPerPeer: 3,
+			steps: []fsmStepTestValues{
+				// startFSMEv
+				unknown_StartFSMEv_WantWaitForPeer,
+				// statusResponseEv from P1
+				waitForPeer_StatusEv_WantWaitForBlock("P1", 3),
+				// statusResponseEv from P2
+				waitForBlock_StatusEv_WantWaitForBlock("P2", 3),
+				// statusResponseEv from P3
+				waitForBlock_StatusEv_WantWaitForBlock("P3", 3),
+
+				waitForBlock_PeerRemoveEv_waitForBlock("P2", errSwitchRemovesPeer, []p2p.ID{"P2"}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test reactor
+			testBcR := newTestReactor(tt.startingHeight)
+			resetTestValues()
+
+			if tt.maxRequestsPerPeer != 0 {
+				maxRequestsPerPeer = tt.maxRequestsPerPeer
+			}
+
+			for _, step := range tt.steps {
+				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
+				failSendStatusRequest = step.failStatusReq
+				failSendBlockRequest = step.failBlockReq
+
+				oldNumStatusRequests := numStatusRequests
+
+				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
+				assert.Equal(t, step.errWanted, fsmErr)
+
+				if step.shouldSendStatusReq {
+					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
+				} else {
+					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
+				}
+
+				for _, peerID := range step.peersNotInPool {
+					_, ok := testBcR.fsm.pool.peers[peerID]
+					assert.False(t, ok)
 				}
 				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
 			}
@@ -531,7 +610,7 @@ func TestReactorFSMPeerTimeout(t *testing.T) {
 	assert.Equal(t, 1, numStatusRequests)
 
 	// Send a status response message to FSM
-	peerID := p2p.ID(cmn.RandStr(12))
+	peerID := p2p.ID("P1")
 	sendStatusResponse(fsm, peerID, 10)
 	time.Sleep(5 * time.Millisecond)
 
@@ -547,6 +626,10 @@ func TestReactorFSMPeerTimeout(t *testing.T) {
 
 	// let FSM timeout on the block response message
 	time.Sleep(100 * time.Millisecond)
+	assert.Equal(t, peerID, lastPeerError.peerID)
+	assert.Equal(t, errNoPeerResponse, lastPeerError.err)
+
+	peerTimeout = 15 * time.Second
 
 }
 
