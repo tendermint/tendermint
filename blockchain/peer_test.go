@@ -1,4 +1,4 @@
-package blockchain_new
+package blockchain
 
 import (
 	"sync"

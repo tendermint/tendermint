@@ -1,4 +1,4 @@
-package blockchain_new
+package blockchain_old
 
 import (
 	amino "github.com/tendermint/go-amino"
