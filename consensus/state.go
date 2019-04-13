@@ -781,8 +781,17 @@ func (cs *ConsensusState) handleTxsAvailable() {
 }
 
 func (cs *ConsensusState) SetReadonly(readonly bool) {
-	cs.readonly = readonly
 	cs.Logger.Info("[SetReadonly]: Set to " + strconv.FormatBool(readonly) + " " + strconv.FormatBool(cs.readonly))
+	cs.mtx.Lock()
+	cs.readonly = readonly
+	cs.mtx.Unlock()
+
+	if (!cs.readonly) {
+		if (cs.LastCommit.HasAll()) {
+			// Fix consensus stalling after readOnly switch with no other validators in the network
+			cs.scheduleTimeout(5000, cs.Height, cs.Round, cstypes.RoundStepPrevoteWait)
+		}
+	}
 }
 
 func (cs *ConsensusState) IsReadonly() bool {
