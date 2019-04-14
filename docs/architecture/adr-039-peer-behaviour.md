@@ -75,7 +75,7 @@ func (spb *SwitchedPeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) 
     spb.sw.StopPeerForError(peer, reason)
 }
 
-func (spb *SwitchedPeerBehaviour) Behaved(peer Peer) {
+func (spb *SwitchedPeerBehaviour) Behaved(peer Peer, reason GoodBehaviourPeer) {
     spb.sw.MarkPeerAsGood(peer)
 }
 
