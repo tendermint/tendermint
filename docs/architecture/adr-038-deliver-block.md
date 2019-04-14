@@ -89,6 +89,8 @@ In review
 
 ### Positive
 
+- much simpler introduction and tutorials for new developers (instead of implementing 5 methods whey 
+will need to implement only 3)
 - txs can be handled in parallel
 - simpler interface
 - faster communications between Tendermint and application
@@ -96,6 +98,3 @@ In review
 ### Negative
 
 - Tendermint should now support 2 kinds of ABCI
-
-### Neutral
-
