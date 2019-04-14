@@ -106,10 +106,10 @@ func NewStorePeerBehaviour() *StorePeerBehaviour{
 }
 
 func (spb StorePeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) {
-    if _, ok := spb.pe[peer]; !ok {
+    if _, ok := spb.eb[peer]; !ok {
         spb.eb[peer] = []ErrorBehaviours{reason}
     } else {
-        spb.eb[peer] = append(spb.pe[peer], reason)
+        spb.eb[peer] = append(spb.eb[peer], reason)
     }
 }
 
