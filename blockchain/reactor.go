@@ -356,7 +356,6 @@ ForLoop:
 			if err == errMissingBlocks {
 				continue ForLoop
 			}
-
 			// Notify FSM of block processing result.
 			msgData := bReactorMessageData{
 				event: processedBlockEv,
@@ -445,11 +444,22 @@ func (bcR *BlockchainReactor) processBlocksFromPoolRoutine() error {
 	return nil
 }
 
-func (bcR *BlockchainReactor) resetStateTimer(name string, timer *time.Timer, timeout time.Duration, f func()) {
+func (bcR *BlockchainReactor) resetStateTimer(name string, timer **time.Timer, timeout time.Duration) {
 	if timer == nil {
-		timer = time.AfterFunc(timeout, f)
+		panic("nil timer pointer parameter")
+	}
+	if *timer == nil {
+		*timer = time.AfterFunc(timeout, func() {
+			msg := bReactorMessageData{
+				event: stateTimeoutEv,
+				data: bReactorEventData{
+					stateName: name,
+				},
+			}
+			bcR.sendMessageToFSMAsync(msg)
+		})
 	} else {
-		timer.Reset(timeout)
+		(*timer).Reset(timeout)
 	}
 }
 

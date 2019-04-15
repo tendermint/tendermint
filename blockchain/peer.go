@@ -98,8 +98,6 @@ func (peer *bpPeer) decrPending(recvSize int) {
 
 func (peer *bpPeer) onTimeout() {
 	peer.errFunc(errNoPeerResponse, peer.id)
-	peer.logger.Error("SendTimeout", "reason", errNoPeerResponse, "timeout", peerTimeout)
-	peer.didTimeout = true
 }
 
 func (peer *bpPeer) isGood() error {

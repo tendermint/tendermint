@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,6 +24,8 @@ func sendEventToFSM(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) 
 }
 
 var (
+	testFSMmtx sync.Mutex
+
 	failSendStatusRequest bool
 	failSendBlockRequest  bool
 	numStatusRequests     int
@@ -444,7 +447,7 @@ const (
 	maxRequestsPerPeerTest      = 40
 	maxTotalPendingRequestsTest = 600
 	maxNumPeersTest             = 1000
-	maxNumBlocksInChainTest     = 100000
+	maxNumBlocksInChainTest     = 50000
 )
 
 type testFields struct {
@@ -540,7 +543,7 @@ func makeCorrectTransitionSequenceWithRandomParameters() testFields {
 	maxRequestsPerPeer := int32(cmn.RandIntn(maxRequestsPerPeerTest) + 1)
 
 	// generate the maximum number of total pending requests
-	maxPendingRequests := int32(cmn.RandIntn(maxTotalPendingRequestsTest) + 1)
+	maxPendingRequests := int32(cmn.RandIntn(maxTotalPendingRequestsTest-int(maxRequestsPerPeer))) + maxRequestsPerPeer
 
 	// generate the number of blocks to be synced
 	numBlocks := int64(cmn.RandIntn(maxNumBlocksInChainTest)) + startingHeight
@@ -585,10 +588,6 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
 				}
 
-				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.getBlockAndPeerAtHeight(height)
-					assert.Nil(t, err)
-				}
 				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
 			}
 
@@ -596,7 +595,7 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 	}
 }
 
-func TestReactorFSMPeerTimeout(t *testing.T) {
+func TestFSMPeerTimeout(t *testing.T) {
 	maxRequestsPerPeer = 2
 	resetTestValues()
 	peerTimeout = 20 * time.Millisecond
@@ -626,6 +625,8 @@ func TestReactorFSMPeerTimeout(t *testing.T) {
 
 	// let FSM timeout on the block response message
 	time.Sleep(100 * time.Millisecond)
+	testFSMmtx.Lock()
+	defer testFSMmtx.Unlock()
 	assert.Equal(t, peerID, lastPeerError.peerID)
 	assert.Equal(t, errNoPeerResponse, lastPeerError.err)
 
@@ -637,6 +638,8 @@ func TestReactorFSMPeerTimeout(t *testing.T) {
 // implementation for the test reactor APIs
 
 func (testR *testReactor) sendPeerError(err error, peerID p2p.ID) {
+	testFSMmtx.Lock()
+	defer testFSMmtx.Unlock()
 	testR.logger.Info("Reactor received sendPeerError call from FSM", "peer", peerID, "err", err)
 	lastPeerError.peerID = peerID
 	lastPeerError.err = err
@@ -655,18 +658,13 @@ func (testR *testReactor) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (testR *testReactor) resetStateTimer(name string, timer *time.Timer, timeout time.Duration, f func()) {
+func (testR *testReactor) resetStateTimer(name string, timer **time.Timer, timeout time.Duration) {
 	testR.logger.Info("Reactor received resetStateTimer call from FSM", "state", name, "timeout", timeout)
 	if _, ok := stateTimerStarts[name]; !ok {
 		stateTimerStarts[name] = 1
 	} else {
 		stateTimerStarts[name]++
 	}
-}
-
-func (testR *testReactor) switchToConsensus() {
-	testR.logger.Info("Reactor received switchToConsensus call from FSM")
-
 }
 
 // ----------------------------------------

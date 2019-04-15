@@ -16,14 +16,19 @@ import (
 var (
 	numErrFuncCalls int
 	lastErr         error
+	peerTestMtx     sync.Mutex
 )
 
 func resetErrors() {
+	peerTestMtx.Lock()
+	defer peerTestMtx.Unlock()
 	numErrFuncCalls = 0
 	lastErr = nil
 }
 
 func errFunc(err error, peerID p2p.ID) {
+	peerTestMtx.Lock()
+	defer peerTestMtx.Unlock()
 	_ = peerID
 	lastErr = err
 	numErrFuncCalls++
@@ -86,16 +91,17 @@ func TestPeerTimer(t *testing.T) {
 	time.Sleep(3 * time.Millisecond)
 	checkByStoppingPeerTimer(t, peer, false)
 
+	peerTestMtx.Lock()
 	// ... check an error has been sent, error is peerNonResponsive
 	assert.Equal(t, 1, numErrFuncCalls)
 	assert.Equal(t, lastErr, errNoPeerResponse)
-	assert.True(t, peer.didTimeout)
+	peerTestMtx.Unlock()
 
 	// Restore the peerTimeout to its original value
 	peerTimeout = 15 * time.Second
 }
 
-func TestIncrPending(t *testing.T) {
+func TestPeerIncrPending(t *testing.T) {
 	peerTimeout = 2 * time.Millisecond
 
 	peer := &bpPeer{
@@ -119,7 +125,7 @@ func TestIncrPending(t *testing.T) {
 	peerTimeout = 15 * time.Second
 }
 
-func TestDecrPending(t *testing.T) {
+func TestPeerDecrPending(t *testing.T) {
 	peerTimeout = 2 * time.Millisecond
 
 	peer := &bpPeer{
@@ -151,7 +157,7 @@ func TestDecrPending(t *testing.T) {
 	peerTimeout = 15 * time.Second
 }
 
-func TestCanBeRemovedDueToExpiration(t *testing.T) {
+func TestPeerCanBeRemovedDueToExpiration(t *testing.T) {
 	minRecvRate = int64(100) // 100 bytes/sec exponential moving average
 
 	peer := &bpPeer{
@@ -165,14 +171,16 @@ func TestCanBeRemovedDueToExpiration(t *testing.T) {
 	peer.incrPending()
 	time.Sleep(2 * time.Millisecond)
 	// timer expired, should be able to remove peer
-	assert.Equal(t, errNoPeerResponse, peer.isGood())
+	peerTestMtx.Lock()
+	assert.Equal(t, errNoPeerResponse, lastErr)
+	peerTestMtx.Unlock()
 
 	// Restore the peerTimeout to its original value
 	peerTimeout = 15 * time.Second
 
 }
 
-func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
+func TestPeerCanBeRemovedDueToLowSpeed(t *testing.T) {
 	minRecvRate = int64(100) // 100 bytes/sec exponential moving average
 
 	peer := &bpPeer{
@@ -209,8 +217,7 @@ func TestCanBeRemovedDueToLowSpeed(t *testing.T) {
 
 }
 
-func TestCleanupPeer(t *testing.T) {
-	var mtx sync.Mutex
+func TestPeerCleanup(t *testing.T) {
 	peer := &bpPeer{
 		id:      p2p.ID(cmn.RandStr(12)),
 		height:  10,
@@ -224,9 +231,9 @@ func TestCleanupPeer(t *testing.T) {
 	peer.resetTimeout()
 	assert.NotNil(t, peer.timeout)
 
-	mtx.Lock()
+	peerTestMtx.Lock()
 	peer.cleanup()
-	mtx.Unlock()
+	peerTestMtx.Unlock()
 
 	checkByStoppingPeerTimer(t, peer, false)
 	// Restore the peerTimeout to its original value

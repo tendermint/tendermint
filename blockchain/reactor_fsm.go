@@ -19,8 +19,8 @@ type bReactorFSMState struct {
 	// called when entering the state
 	enter func(fsm *bReactorFSM)
 
-	// timer to ensure FSM is not stuck in a state forever
-	timer   *time.Timer
+	// timeout to ensure FSM is not stuck in a state forever
+	// the timer is owned and run by the fsm instance
 	timeout time.Duration
 }
 
@@ -35,8 +35,7 @@ type bcRMessageInterface interface {
 	sendStatusRequest()
 	sendBlockRequest(peerID p2p.ID, height int64) error
 	sendPeerError(err error, peerID p2p.ID)
-	resetStateTimer(name string, timer *time.Timer, timeout time.Duration, f func())
-	switchToConsensus()
+	resetStateTimer(name string, timer **time.Timer, timeout time.Duration)
 }
 
 // Blockchain Reactor State Machine
@@ -44,8 +43,9 @@ type bReactorFSM struct {
 	logger    log.Logger
 	startTime time.Time
 
-	state *bReactorFSMState
-	pool  *blockPool
+	state      *bReactorFSMState
+	stateTimer *time.Timer
+	pool       *blockPool
 
 	// interface used to call the Blockchain reactor to send StatusRequest, BlockRequest, reporting errors, etc.
 	toBcR bcRMessageInterface
@@ -169,9 +169,6 @@ func init() {
 			case startFSMEv:
 				// Broadcast Status message. Currently doesn't return non-nil error.
 				fsm.toBcR.sendStatusRequest()
-				if fsm.state.timer != nil {
-					fsm.state.timer.Stop()
-				}
 				return waitForPeer, nil
 
 			case stopFSMEv:
@@ -188,16 +185,17 @@ func init() {
 		timeout: waitForPeerTimeout,
 		enter: func(fsm *bReactorFSM) {
 			// Stop when leaving the state.
-			fsm.resetStateTimer(waitForPeer)
+			fsm.resetStateTimer()
 		},
 		handle: func(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) (*bReactorFSMState, error) {
 			switch ev {
 			case stateTimeoutEv:
+				if data.stateName != "waitForPeer" {
+					fsm.logger.Error("received a state timeout event for different state", "state", data.stateName)
+					return waitForPeer, nil
+				}
 				// There was no statusResponse received from any peer.
 				// Should we send status request again?
-				if fsm.state.timer != nil {
-					fsm.state.timer.Stop()
-				}
 				return finished, errNoPeerResponse
 
 			case statusResponseEv:
@@ -209,6 +207,9 @@ func init() {
 				return waitForBlock, nil
 
 			case stopFSMEv:
+				if fsm.stateTimer != nil {
+					fsm.stateTimer.Stop()
+				}
 				return finished, errNoErrorFinished
 
 			default:
@@ -225,10 +226,6 @@ func init() {
 			case statusResponseEv:
 				err := fsm.pool.updatePeer(data.peerId, data.height)
 				if len(fsm.pool.peers) == 0 {
-					fsm.toBcR.sendStatusRequest()
-					if fsm.state.timer != nil {
-						fsm.state.timer.Stop()
-					}
 					return waitForPeer, err
 				}
 				return waitForBlock, err
@@ -360,26 +357,10 @@ func (fsm *bReactorFSM) transition(next *bReactorFSMState) {
 	}
 }
 
-// FSM state timeout handler
-func (fsm *bReactorFSM) sendStateTimeoutEvent(stateName string) {
-	// Check that the timeout is for the state we are currently in to prevent wrong transitions.
-	if stateName == fsm.state.name {
-		msg := bReactorMessageData{
-			event: stateTimeoutEv,
-			data: bReactorEventData{
-				stateName: stateName,
-			},
-		}
-		_ = sendMessageToFSMSync(fsm, msg)
-	}
-}
-
 // Called when entering an FSM state in order to detect lack of progress in the state machine.
 // Note the use of the 'bcr' interface to facilitate testing without timer expiring.
-func (fsm *bReactorFSM) resetStateTimer(state *bReactorFSMState) {
-	fsm.toBcR.resetStateTimer(state.name, state.timer, state.timeout, func() {
-		fsm.sendStateTimeoutEvent(state.name)
-	})
+func (fsm *bReactorFSM) resetStateTimer() {
+	fsm.toBcR.resetStateTimer(fsm.state.name, &fsm.stateTimer, fsm.state.timeout)
 }
 
 func (fsm *bReactorFSM) isCaughtUp() bool {

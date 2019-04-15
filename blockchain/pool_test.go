@@ -49,10 +49,7 @@ func (testR *testBcR) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (testR *testBcR) resetStateTimer(name string, timer *time.Timer, timeout time.Duration, f func()) {
-}
-
-func (testR *testBcR) switchToConsensus() {
+func (testR *testBcR) resetStateTimer(name string, timer **time.Timer, timeout time.Duration) {
 }
 
 func newTestBcR() *testBcR {
