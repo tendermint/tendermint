@@ -170,12 +170,18 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		}
 	} else {
 		// inbound peer is its own source
-		addr := p.SocketAddr()
+		addr, err := p.NodeInfo().NetAddress()
+		if err != nil {
+			r.Logger.Error("Failed to get peer NetAddress", "err", err, "peer", p)
+			return
+		}
+
+		// Make it explicit that addr and src are the same for an inbound peer.
 		src := addr
 
 		// add to book. dont RequestAddrs right away because
 		// we don't trust inbound as much - let ensurePeersRoutine handle it.
-		err := r.book.AddAddress(addr, src)
+		err = r.book.AddAddress(addr, src)
 		r.logErrAddrBook(err)
 	}
 }
@@ -312,7 +318,10 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	}
 	r.requestsSent.Delete(id)
 
-	srcAddr := src.SocketAddr()
+	srcAddr, err := src.NodeInfo().NetAddress()
+	if err != nil {
+		return err
+	}
 	for _, netAddr := range addrs {
 		// Validate netAddr. Disconnect from a peer if it sends us invalid data.
 		if netAddr == nil {
