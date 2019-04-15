@@ -310,17 +310,8 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, expectedID t
 	}
 	// From the JSON-RPC 2.0 spec:
 	//  id: It MUST be the same as the value of the id member in the Request Object.
-	if len(expectedID) > 0 {
-		if response.ID == nil {
-			return nil, errors.Errorf("missing ID in response")
-		}
-		id, ok := response.ID.(types.JSONRPCStringID)
-		if !ok {
-			return nil, errors.Errorf("expected ID string in response, but got: %v", id)
-		}
-		if expectedID != id {
-			return nil, errors.Errorf("response ID (%s) does not match request ID (%s)", id, expectedID)
-		}
+	if err := validateResponseID(response, expectedID); err != nil {
+		return nil, err
 	}
 	// Unmarshal the RawMessage into the result.
 	err = cdc.UnmarshalJSON(response.Result, result)
@@ -348,18 +339,9 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expecte
 
 	// From the JSON-RPC 2.0 spec:
 	//  id: It MUST be the same as the value of the id member in the Request Object.
-	if len(expectedID) > 0 {
-		for i, response := range responses {
-			if response.ID == nil {
-				return nil, errors.Errorf("missing ID in response (index %d)", i)
-			}
-			id, ok := response.ID.(types.JSONRPCStringID)
-			if !ok {
-				return nil, errors.Errorf("expected ID string in response (index %d), but got: %v", i, id)
-			}
-			if expectedID != id {
-				return nil, errors.Errorf("response ID (%s), index %d, does not match request ID (%s)", id, i, expectedID)
-			}
+	for i, response := range responses {
+		if err := validateResponseID(&response, expectedID); err != nil {
+			return nil, errors.Errorf("failed to validate response ID in response %d: %v", i, err)
 		}
 	}
 
@@ -371,6 +353,23 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expecte
 		}
 	}
 	return results, nil
+}
+
+func validateResponseID(res *types.RPCResponse, expectedID types.JSONRPCStringID) error {
+	// we only validate a response ID if the expected ID is non-empty
+	if len(expectedID) > 0 {
+		if res.ID == nil {
+			return errors.Errorf("missing ID in response")
+		}
+		id, ok := res.ID.(types.JSONRPCStringID)
+		if !ok {
+			return errors.Errorf("expected ID string in response but got: %v", id)
+		}
+		if expectedID != id {
+			return errors.Errorf("response ID (%s) does not match request ID (%s)", id, expectedID)
+		}
+	}
+	return nil
 }
 
 func argsToURLValues(cdc *amino.Codec, args map[string]interface{}) (url.Values, error) {
