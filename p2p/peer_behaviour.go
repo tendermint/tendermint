@@ -22,26 +22,32 @@ type PeerBehaviour interface {
 	Errored(peer Peer, reason ErrorBehaviourPeer)
 }
 
-type SwitchedPeerBehaviour struct {
+type switchedPeerBehaviour struct {
 	sw *Switch
 }
 
-func (spb *SwitchedPeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) {
+func (spb *switchedPeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) {
 	spb.sw.StopPeerForError(peer, reason)
 }
 
-func (spb *SwitchedPeerBehaviour) Behaved(peer Peer, reason GoodBehaviourPeer) {
+func (spb *switchedPeerBehaviour) Behaved(peer Peer, reason GoodBehaviourPeer) {
 	spb.sw.MarkPeerAsGood(peer)
 }
 
-func NewSwitchedPeerBehaviour(sw *Switch) *SwitchedPeerBehaviour {
-	return &SwitchedPeerBehaviour{
+func NewswitchedPeerBehaviour(sw *Switch) PeerBehaviour {
+	return &switchedPeerBehaviour{
 		sw: sw,
 	}
 }
 
 type ErrorBehaviours map[Peer][]ErrorBehaviourPeer
 type GoodBehaviours map[Peer][]GoodBehaviourPeer
+
+type IStorePeerBehaviour interface {
+	PeerBehaviour
+	GetErrored() ErrorBehaviours
+	GetBehaved() GoodBehaviours
+}
 
 // StorePeerBehaviour serves a mock concrete implementation of the
 // PeerBehaviour interface used in reactor tests to ensure reactors
@@ -51,7 +57,7 @@ type StorePeerBehaviour struct {
 	gb GoodBehaviours
 }
 
-func NewStorePeerBehaviour() *StorePeerBehaviour {
+func NewStorePeerBehaviour() IStorePeerBehaviour {
 	return &StorePeerBehaviour{
 		eb: make(ErrorBehaviours),
 		gb: make(GoodBehaviours),
