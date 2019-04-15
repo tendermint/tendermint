@@ -1,5 +1,7 @@
 package p2p
 
+import "sync"
+
 type ErrorPeerBehaviour int
 
 const (
@@ -47,8 +49,9 @@ type GoodBehaviours map[Peer][]GoodPeerBehaviour
 // PeerBehaviour interface used in reactor tests to ensure reactors
 // produce the correct signals in manufactured scenarios.
 type storedPeerBehaviour struct {
-	eb ErrorBehaviours
-	gb GoodBehaviours
+	eb  ErrorBehaviours
+	gb  GoodBehaviours
+	mtx sync.Mutex
 }
 
 type StoredPeerBehaviour interface {
@@ -64,6 +67,8 @@ func NewStoredPeerBehaviour() *storedPeerBehaviour {
 }
 
 func (spb *storedPeerBehaviour) Errored(peer Peer, reason ErrorPeerBehaviour) {
+	spb.mtx.Lock()
+	defer spb.mtx.Unlock()
 	if _, ok := spb.eb[peer]; !ok {
 		spb.eb[peer] = []ErrorPeerBehaviour{reason}
 	} else {
@@ -71,11 +76,13 @@ func (spb *storedPeerBehaviour) Errored(peer Peer, reason ErrorPeerBehaviour) {
 	}
 }
 
-func (spb *storedPeerBehaviour) GetErrored() ErrorBehaviours {
+func (spb storedPeerBehaviour) GetErrored() ErrorBehaviours {
 	return spb.eb
 }
 
 func (spb *storedPeerBehaviour) Behaved(peer Peer, reason GoodPeerBehaviour) {
+	spb.mtx.Lock()
+	defer spb.mtx.Unlock()
 	if _, ok := spb.gb[peer]; !ok {
 		spb.gb[peer] = []GoodPeerBehaviour{reason}
 	} else {
@@ -83,6 +90,6 @@ func (spb *storedPeerBehaviour) Behaved(peer Peer, reason GoodPeerBehaviour) {
 	}
 }
 
-func (spb *storedPeerBehaviour) GetBehaved() GoodBehaviours {
+func (spb storedPeerBehaviour) GetBehaved() GoodBehaviours {
 	return spb.gb
 }
