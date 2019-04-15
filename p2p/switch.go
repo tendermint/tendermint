@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -46,7 +48,7 @@ type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
-	MarkGood(*NetAddress)
+	MarkGood(ID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
@@ -339,14 +341,11 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 			return
 		}
 
-		if sw.IsDialingOrExistingAddress(addr) {
-			sw.Logger.Debug("Peer connection has been established or dialed while we waiting next try", "addr", addr)
-			return
-		}
-
 		err := sw.DialPeerWithAddress(addr, true)
 		if err == nil {
 			return // success
+		} else if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
+			return
 		}
 
 		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
@@ -365,9 +364,12 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 		// sleep an exponentially increasing amount
 		sleepIntervalSeconds := math.Pow(reconnectBackOffBaseSeconds, float64(i))
 		sw.randomSleep(time.Duration(sleepIntervalSeconds) * time.Second)
+
 		err := sw.DialPeerWithAddress(addr, true)
 		if err == nil {
 			return // success
+		} else if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
+			return
 		}
 		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
 	}
@@ -383,12 +385,21 @@ func (sw *Switch) SetAddrBook(addrBook AddrBook) {
 // like contributed to consensus.
 func (sw *Switch) MarkPeerAsGood(peer Peer) {
 	if sw.addrBook != nil {
-		sw.addrBook.MarkGood(peer.SocketAddr())
+		sw.addrBook.MarkGood(peer.ID())
 	}
 }
 
 //---------------------------------------------------------------------
 // Dialing
+
+type privateAddr interface {
+	PrivateAddr() bool
+}
+
+func isPrivateAddr(err error) bool {
+	te, ok := errors.Cause(err).(privateAddr)
+	return ok && te.PrivateAddr()
+}
 
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
 // Used to dial peers from config on startup or from unsafe-RPC (trusted sources).
@@ -412,7 +423,11 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			// do not add our address or ID
 			if !netAddr.Same(ourAddr) {
 				if err := addrBook.AddAddress(netAddr, ourAddr); err != nil {
-					sw.Logger.Error("Can't add peer's address to addrbook", "err", err)
+					if isPrivateAddr(err) {
+						sw.Logger.Debug("Won't add peer's address to addrbook", "err", err)
+					} else {
+						sw.Logger.Error("Can't add peer's address to addrbook", "err", err)
+					}
 				}
 			}
 		}
@@ -435,15 +450,10 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 
 			sw.randomSleep(0)
 
-			if sw.IsDialingOrExistingAddress(addr) {
-				sw.Logger.Debug("Ignore attempt to connect to an existing peer", "addr", addr)
-				return
-			}
-
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
 				switch err.(type) {
-				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeerID:
+				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeerID, ErrCurrentlyDialingOrExistingAddress:
 					sw.Logger.Debug("Error dialing peer", "err", err)
 				default:
 					sw.Logger.Error("Error dialing peer", "err", err)
@@ -454,11 +464,20 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 	return nil
 }
 
-// DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects and authenticates successfully.
-// If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
+// DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects
+// and authenticates successfully.
+// If `persistent == true`, the switch will always try to reconnect to this
+// peer if the connection ever fails.
+// If we're currently dialing this address or it belongs to an existing peer,
+// ErrCurrentlyDialingOrExistingAddress is returned.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
+	if sw.IsDialingOrExistingAddress(addr) {
+		return ErrCurrentlyDialingOrExistingAddress{addr.String()}
+	}
+
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
+
 	return sw.addOutboundPeerWithConfig(addr, sw.config, persistent)
 }
 
