@@ -1,4 +1,4 @@
-# ADR 038: Deliver Block
+# ADR 037: Deliver Block
 
 Author: Daniil Lashin (@danil-lashin)
 
