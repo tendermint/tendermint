@@ -1,89 +1,88 @@
 package p2p
 
-type ErrorBehaviourPeer int
+type ErrorPeerBehaviour int
 
 const (
-	ErrorBehaviourUnknown = iota
-	ErrorBehaviourBadMessage
-	ErrorBehaviourMessageOutofOrder
+	ErrorPeerBehaviourUnknown = iota
+	ErrorPeerBehaviourBadMessage
+	ErrorPeerBehaviourMessageOutofOrder
 )
 
-type GoodBehaviourPeer int
+type GoodPeerBehaviour int
 
 const (
-	GoodBehaviourVote = iota
-	GoodBehaviourBlockPart
+	GoodPeerBehaviourVote = iota + 100
+	GoodPeerBehaviourBlockPart
 )
 
 // PeerBehaviour provides an interface for reactors to signal the behaviour
 // of peers synchronously to other components.
 type PeerBehaviour interface {
-	Behaved(peer Peer, reason GoodBehaviourPeer)
-	Errored(peer Peer, reason ErrorBehaviourPeer)
+	Behaved(peer Peer, reason GoodPeerBehaviour)
+	Errored(peer Peer, reason ErrorPeerBehaviour)
 }
 
-type switchedPeerBehaviour struct {
+type switchPeerBehaviour struct {
 	sw *Switch
 }
 
-func (spb *switchedPeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) {
+func (spb *switchPeerBehaviour) Errored(peer Peer, reason ErrorPeerBehaviour) {
 	spb.sw.StopPeerForError(peer, reason)
 }
 
-func (spb *switchedPeerBehaviour) Behaved(peer Peer, reason GoodBehaviourPeer) {
+func (spb *switchPeerBehaviour) Behaved(peer Peer, reason GoodPeerBehaviour) {
 	spb.sw.MarkPeerAsGood(peer)
 }
 
-func NewswitchedPeerBehaviour(sw *Switch) PeerBehaviour {
-	return &switchedPeerBehaviour{
+func NewSwitchPeerBehaviour(sw *Switch) PeerBehaviour {
+	return &switchPeerBehaviour{
 		sw: sw,
 	}
 }
 
-type ErrorBehaviours map[Peer][]ErrorBehaviourPeer
-type GoodBehaviours map[Peer][]GoodBehaviourPeer
+type ErrorBehaviours map[Peer][]ErrorPeerBehaviour
+type GoodBehaviours map[Peer][]GoodPeerBehaviour
 
-type IStorePeerBehaviour interface {
-	PeerBehaviour
-	GetErrored() ErrorBehaviours
-	GetBehaved() GoodBehaviours
-}
-
-// StorePeerBehaviour serves a mock concrete implementation of the
+// storedPeerBehaviour serves a mock concrete implementation of the
 // PeerBehaviour interface used in reactor tests to ensure reactors
 // produce the correct signals in manufactured scenarios.
-type storePeerBehaviour struct {
+type storedPeerBehaviour struct {
 	eb ErrorBehaviours
 	gb GoodBehaviours
 }
 
-func NewStorePeerBehaviour() IStorePeerBehaviour {
-	return &storePeerBehaviour{
-		eb: make(ErrorBehaviours),
-		gb: make(GoodBehaviours),
+type StoredPeerBehaviour interface {
+    GetErrored() ErrorBehaviours
+    GetBehaved() GoodBehaviours
+}
+
+func NewStoredPeerBehaviour() *storedPeerBehaviour {
+	return &storedPeerBehaviour{
+		eb: ErrorBehaviours{},
+		gb: GoodBehaviours{},
 	}
 }
 
-func (spb *storePeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) {
+func (spb *storedPeerBehaviour) Errored(peer Peer, reason ErrorPeerBehaviour) {
 	if _, ok := spb.eb[peer]; !ok {
-		spb.eb[peer] = []ErrorBehaviourPeer{reason}
+		spb.eb[peer] = []ErrorPeerBehaviour{reason}
 	} else {
 		spb.eb[peer] = append(spb.eb[peer], reason)
 	}
 }
 
-func (mpb *storePeerBehaviour) GetErrored() ErrorBehaviours {
-	return mpb.eb
+func (spb *storedPeerBehaviour) GetErrored() ErrorBehaviours {
+	return spb.eb
 }
 
-func (spb *storePeerBehaviour) Behaved(peer Peer, reason GoodBehaviourPeer) {
+func (spb *storedPeerBehaviour) Behaved(peer Peer, reason GoodPeerBehaviour) {
 	if _, ok := spb.gb[peer]; !ok {
-		spb.gb[peer] = []GoodBehaviourPeer{reason}
+		spb.gb[peer] = []GoodPeerBehaviour{reason}
 	} else {
 		spb.gb[peer] = append(spb.gb[peer], reason)
 	}
 }
 
-func (spb *storePeerBehaviour) GetBehaved() GoodBehaviours {
+func (spb *storedPeerBehaviour) GetBehaved() GoodBehaviours {
 	return spb.gb
 }

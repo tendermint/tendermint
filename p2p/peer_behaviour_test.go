@@ -5,19 +5,19 @@ import (
 	"testing"
 )
 
-func TestStorePeerBehaviour(t *testing.T) {
+func TestStoredPeerBehaviour(t *testing.T) {
 	peer := newMockPeer(net.IP{127, 0, 0, 1})
-	pb := NewStorePeerBehaviour()
-	pb.Errored(peer, ErrorBehaviourUnknown)
+	pb := NewStoredPeerBehaviour()
+	pb.Errored(peer, ErrorPeerBehaviourUnknown)
 
 	peerErrors := pb.GetErrored()
-	if peerErrors[peer][0] != ErrorBehaviourUnknown {
+	if peerErrors[peer][0] != ErrorPeerBehaviourUnknown {
 		t.Errorf("Expected the peer to have errored")
 	}
 
-	pb.Behaved(peer, GoodBehaviourVote)
+	pb.Behaved(peer, GoodPeerBehaviourVote)
 	goodPeers := pb.GetBehaved()
-	if goodPeers[peer][0] != GoodBehaviourVote {
+	if goodPeers[peer][0] != GoodPeerBehaviourVote {
 		t.Errorf("Expected the peer to have voted")
 	}
 }
