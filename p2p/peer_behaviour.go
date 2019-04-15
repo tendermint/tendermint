@@ -52,19 +52,19 @@ type IStorePeerBehaviour interface {
 // StorePeerBehaviour serves a mock concrete implementation of the
 // PeerBehaviour interface used in reactor tests to ensure reactors
 // produce the correct signals in manufactured scenarios.
-type StorePeerBehaviour struct {
+type storePeerBehaviour struct {
 	eb ErrorBehaviours
 	gb GoodBehaviours
 }
 
 func NewStorePeerBehaviour() IStorePeerBehaviour {
-	return &StorePeerBehaviour{
+	return &storePeerBehaviour{
 		eb: make(ErrorBehaviours),
 		gb: make(GoodBehaviours),
 	}
 }
 
-func (spb StorePeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) {
+func (spb *storePeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) {
 	if _, ok := spb.eb[peer]; !ok {
 		spb.eb[peer] = []ErrorBehaviourPeer{reason}
 	} else {
@@ -72,11 +72,11 @@ func (spb StorePeerBehaviour) Errored(peer Peer, reason ErrorBehaviourPeer) {
 	}
 }
 
-func (mpb *StorePeerBehaviour) GetErrored() ErrorBehaviours {
+func (mpb *storePeerBehaviour) GetErrored() ErrorBehaviours {
 	return mpb.eb
 }
 
-func (spb StorePeerBehaviour) Behaved(peer Peer, reason GoodBehaviourPeer) {
+func (spb *storePeerBehaviour) Behaved(peer Peer, reason GoodBehaviourPeer) {
 	if _, ok := spb.gb[peer]; !ok {
 		spb.gb[peer] = []GoodBehaviourPeer{reason}
 	} else {
@@ -84,6 +84,6 @@ func (spb StorePeerBehaviour) Behaved(peer Peer, reason GoodBehaviourPeer) {
 	}
 }
 
-func (spb *StorePeerBehaviour) GetBehaved() GoodBehaviours {
+func (spb *storePeerBehaviour) GetBehaved() GoodBehaviours {
 	return spb.gb
 }
