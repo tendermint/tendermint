@@ -130,8 +130,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			requests = []types.RPCRequest{request}
 		}
 
-		for i := 0; i < len(requests); i++ {
-			request := requests[i]
+		for _, request := range requests {
 			// A Notification is a Request object without an "id" member.
 			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
 			if request.ID == types.JSONRPCStringID("") {
