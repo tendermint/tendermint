@@ -6,20 +6,20 @@
 
 This release fixes a regression from v0.31.4 where, in existing chains that
 were upgraded, `/validators` could return an empty validator set. This is true
-for almost all heights given the validator set remains the same.
+for almost all heights, given the validator set remains the same.
 
 Special thanks to external contributors on this release:
 @brapse, @guagualvcha, @dongsam, @phucc
 
 ### IMPROVEMENTS:
 
-- [libs/common] CMap: slight optimization in Keys() and Values() (@phucc)
+- [libs/common] `CMap`: slight optimization in `Keys()` and `Values()` (@phucc)
 - [gitignore] gitignore: add .vendor-new (@dongsam)
 
 ### BUG FIXES:
 
 - [state] [\#3537](https://github.com/tendermint/tendermint/pull/3537#issuecomment-482711833)
-  LoadValidators: do not return an empty validator set
+  `LoadValidators`: do not return an empty validator set
 - [blockchain] [\#3457](https://github.com/tendermint/tendermint/issues/3457)
   Fix "peer did not send us anything" in `fast_sync` mode when under high pressure
 
