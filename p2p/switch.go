@@ -46,7 +46,7 @@ type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
-	MarkGood(*NetAddress)
+	MarkGood(ID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
@@ -378,7 +378,7 @@ func (sw *Switch) SetAddrBook(addrBook AddrBook) {
 // like contributed to consensus.
 func (sw *Switch) MarkPeerAsGood(peer Peer) {
 	if sw.addrBook != nil {
-		sw.addrBook.MarkGood(peer.SocketAddr())
+		sw.addrBook.MarkGood(peer.ID())
 	}
 }
 

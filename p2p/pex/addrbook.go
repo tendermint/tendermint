@@ -54,7 +54,7 @@ type AddrBook interface {
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
 
 	// Mark address
-	MarkGood(*p2p.NetAddress)
+	MarkGood(p2p.ID)
 	MarkAttempt(*p2p.NetAddress)
 	MarkBad(*p2p.NetAddress)
 
@@ -296,11 +296,11 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 
 // MarkGood implements AddrBook - it marks the peer as good and
 // moves it into an "old" bucket.
-func (a *addrBook) MarkGood(addr *p2p.NetAddress) {
+func (a *addrBook) MarkGood(id p2p.ID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	ka := a.addrLookup[addr.ID]
+	ka := a.addrLookup[id]
 	if ka == nil {
 		return
 	}
