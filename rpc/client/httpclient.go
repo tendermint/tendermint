@@ -75,13 +75,8 @@ type baseRPCClient struct {
 	caller rpcclient.JSONRPCCaller
 }
 
-// HTTP implements rpcClient
 var _ rpcClient = (*HTTP)(nil)
-
-// BatchHTTP implements rpcClient
 var _ rpcClient = (*BatchHTTP)(nil)
-
-// baseRPCClient implements rpcClient
 var _ rpcClient = (*baseRPCClient)(nil)
 
 //-----------------------------------------------------------------------------
