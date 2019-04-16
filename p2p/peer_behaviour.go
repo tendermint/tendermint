@@ -29,12 +29,12 @@ type PeerBehaviour interface {
 	Errored(peerID ID, reason ErrorPeerBehaviour) error
 }
 
-type switchPeerBehaviour struct {
+type SwitchPeerBehaviour struct {
 	sw *Switch
 }
 
 // Reports the ErrorPeerBehaviour of peer identified by peerID to the Switch.
-func (spb *switchPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) error {
+func (spb *SwitchPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) error {
 	peer := spb.sw.Peers().Get(peerID)
 	if peer == nil {
 		return errors.New("Peer not found")
@@ -45,7 +45,7 @@ func (spb *switchPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) er
 }
 
 // Reports the GoodPeerBehaviour of peer identified by peerID to the Switch.
-func (spb *switchPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) error {
+func (spb *SwitchPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) error {
 	peer := spb.sw.Peers().Get(peerID)
 	if peer == nil {
 		return errors.New("Peer not found")
@@ -56,8 +56,8 @@ func (spb *switchPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) err
 }
 
 // Return a new switchPeerBehaviour instance which wraps the Switch.
-func NewSwitchPeerBehaviour(sw *Switch) *switchPeerBehaviour {
-	return &switchPeerBehaviour{
+func NewSwitchPeerBehaviour(sw *Switch) *SwitchPeerBehaviour {
+	return &SwitchPeerBehaviour{
 		sw: sw,
 	}
 }
@@ -65,29 +65,29 @@ func NewSwitchPeerBehaviour(sw *Switch) *switchPeerBehaviour {
 // storedPeerBehaviour serves a mock concrete implementation of the
 // PeerBehaviour interface used in reactor tests to ensure reactors
 // produce the correct signals in manufactured scenarios.
-type storedPeerBehaviour struct {
+type StoredPeerBehaviour struct {
 	eb  map[ID][]ErrorPeerBehaviour
 	gb  map[ID][]GoodPeerBehaviour
 	mtx sync.RWMutex
 }
 
-// StoredPeerBehaviour provides an interface for accessing ErrorPeerBehaviours
+// GettablePeerBehaviour provides an interface for accessing ErrorPeerBehaviours
 // and GoodPeerBehaviour recorded by an implementation of PeerBehaviour
-type StoredPeerBehaviour interface {
+type GettablePeerBehaviour interface {
 	GetErrorBehaviours(peerID ID) []ErrorPeerBehaviour
 	GetGoodBehaviours(peerID ID) []GoodPeerBehaviour
 }
 
 // Creates a new storedPeerBehaviour instance.
-func NewStoredPeerBehaviour() *storedPeerBehaviour {
-	return &storedPeerBehaviour{
+func NewStoredPeerBehaviour() *StoredPeerBehaviour {
+	return &StoredPeerBehaviour{
 		eb: map[ID][]ErrorPeerBehaviour{},
 		gb: map[ID][]GoodPeerBehaviour{},
 	}
 }
 
 // Stores the ErrorPeerBehaviour produced by the peer identified by peerID.
-func (spb *storedPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) {
+func (spb *StoredPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) {
 	spb.mtx.Lock()
 	defer spb.mtx.Unlock()
 	if _, ok := spb.eb[peerID]; !ok {
@@ -98,7 +98,7 @@ func (spb *storedPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) {
 }
 
 // Return all the ErrorBehaviours produced by peer identified by peerID.
-func (spb *storedPeerBehaviour) GetErrorBehaviours(peerID ID) []ErrorPeerBehaviour {
+func (spb *StoredPeerBehaviour) GetErrorBehaviours(peerID ID) []ErrorPeerBehaviour {
 	spb.mtx.RLock()
 	defer spb.mtx.RUnlock()
 	if items, ok := spb.eb[peerID]; ok {
@@ -112,7 +112,7 @@ func (spb *storedPeerBehaviour) GetErrorBehaviours(peerID ID) []ErrorPeerBehavio
 }
 
 // Stores the GoodPeerBehaviour of the peer identified by peerID.
-func (spb *storedPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) {
+func (spb *StoredPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) {
 	spb.mtx.Lock()
 	defer spb.mtx.Unlock()
 	if _, ok := spb.gb[peerID]; !ok {
@@ -123,7 +123,7 @@ func (spb *storedPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) {
 }
 
 // Returns all the GoodPeerBehaviours produced by the peer identified by peerID.
-func (spb *storedPeerBehaviour) GetGoodBehaviours(peerID ID) []GoodPeerBehaviour {
+func (spb *StoredPeerBehaviour) GetGoodBehaviours(peerID ID) []GoodPeerBehaviour {
 	spb.mtx.RLock()
 	defer spb.mtx.RUnlock()
 	if items, ok := spb.gb[peerID]; ok {
