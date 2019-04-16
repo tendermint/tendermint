@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.30.4
+
+*April 16th, 2019*
+
+This release fixes a regression from v0.30.3 which used the peer's SocketAddr to add the peer to the address book. 
+This swallowed the peer's self-reported port which is important in case of reconnect. 
+It brings back NetAddress() to NodeInfo and uses it instead of SocketAddr for adding peers. 
+
+### BUG FIXES:
+
+- [p2p] [\#3545](https://github.com/tendermint/tendermint/issues/3545) Add back `NetAddress()` to `NodeInfo` and use it 
+instead of peer's `SocketAddr()` when adding a peer to the `PEXReactor` (potential fix for [\#3532](https://github.com/tendermint/tendermint/issues/3532))
+
 ## v0.30.3
 
 *April 1st, 2019*
