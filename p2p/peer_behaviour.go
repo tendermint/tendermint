@@ -1,7 +1,11 @@
 package p2p
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
 
+// Type of error behaviour a peer can perform.
 type ErrorPeerBehaviour int
 
 const (
@@ -10,6 +14,7 @@ const (
 	ErrorPeerBehaviourMessageOutofOrder
 )
 
+// Type of good behaviour a peer can perform.
 type GoodPeerBehaviour int
 
 const (
@@ -20,76 +25,113 @@ const (
 // PeerBehaviour provides an interface for reactors to signal the behaviour
 // of peers synchronously to other components.
 type PeerBehaviour interface {
-	Behaved(peer Peer, reason GoodPeerBehaviour)
-	Errored(peer Peer, reason ErrorPeerBehaviour)
+	Behaved(peerID ID, reason GoodPeerBehaviour) error
+	Errored(peerID ID, reason ErrorPeerBehaviour) error
 }
 
 type switchPeerBehaviour struct {
 	sw *Switch
 }
 
-func (spb *switchPeerBehaviour) Errored(peer Peer, reason ErrorPeerBehaviour) {
+// Reports the ErrorPeerBehaviour of peer identified by peerID to the Switch.
+func (spb *switchPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) error {
+	peer := spb.sw.Peers().Get(peerID)
+	if peer == nil {
+		return errors.New("Peer not found")
+	}
+
 	spb.sw.StopPeerForError(peer, reason)
+	return nil
 }
 
-func (spb *switchPeerBehaviour) Behaved(peer Peer, reason GoodPeerBehaviour) {
+// Reports the GoodPeerBehaviour of peer identified by peerID to the Switch.
+func (spb *switchPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) error {
+	peer := spb.sw.Peers().Get(peerID)
+	if peer == nil {
+		return errors.New("Peer not found")
+	}
+
 	spb.sw.MarkPeerAsGood(peer)
+	return nil
 }
 
-func NewSwitchPeerBehaviour(sw *Switch) PeerBehaviour {
+// Return a new switchPeerBehaviour instance which wraps the Switch.
+func NewSwitchPeerBehaviour(sw *Switch) *switchPeerBehaviour {
 	return &switchPeerBehaviour{
 		sw: sw,
 	}
 }
 
-type ErrorBehaviours map[Peer][]ErrorPeerBehaviour
-type GoodBehaviours map[Peer][]GoodPeerBehaviour
-
 // storedPeerBehaviour serves a mock concrete implementation of the
 // PeerBehaviour interface used in reactor tests to ensure reactors
 // produce the correct signals in manufactured scenarios.
 type storedPeerBehaviour struct {
-	eb  ErrorBehaviours
-	gb  GoodBehaviours
-	mtx sync.Mutex
+	eb  map[ID][]ErrorPeerBehaviour
+	gb  map[ID][]GoodPeerBehaviour
+	mtx sync.RWMutex
 }
 
+// StoredPeerBehaviour provides an interface for accessing ErrorPeerBehaviours
+// and GoodPeerBehaviour recorded by an implementation of PeerBehaviour
 type StoredPeerBehaviour interface {
-    GetErrored() ErrorBehaviours
-    GetBehaved() GoodBehaviours
+	GetErrorBehaviours(peerID ID) []ErrorPeerBehaviour
+	GetGoodBehaviours(peerID ID) []GoodPeerBehaviour
 }
 
+// Creates a new storedPeerBehaviour instance.
 func NewStoredPeerBehaviour() *storedPeerBehaviour {
 	return &storedPeerBehaviour{
-		eb: ErrorBehaviours{},
-		gb: GoodBehaviours{},
+		eb: map[ID][]ErrorPeerBehaviour{},
+		gb: map[ID][]GoodPeerBehaviour{},
 	}
 }
 
-func (spb *storedPeerBehaviour) Errored(peer Peer, reason ErrorPeerBehaviour) {
+// Stores the ErrorPeerBehaviour produced by the peer identified by peerID.
+func (spb *storedPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) {
 	spb.mtx.Lock()
 	defer spb.mtx.Unlock()
-	if _, ok := spb.eb[peer]; !ok {
-		spb.eb[peer] = []ErrorPeerBehaviour{reason}
+	if _, ok := spb.eb[peerID]; !ok {
+		spb.eb[peerID] = []ErrorPeerBehaviour{reason}
 	} else {
-		spb.eb[peer] = append(spb.eb[peer], reason)
+		spb.eb[peerID] = append(spb.eb[peerID], reason)
 	}
 }
 
-func (spb *storedPeerBehaviour) GetErrored() ErrorBehaviours {
-	return spb.eb
+// Return all the ErrorBehaviours produced by peer identified by peerID.
+func (spb *storedPeerBehaviour) GetErrorBehaviours(peerID ID) []ErrorPeerBehaviour {
+	spb.mtx.RLock()
+	defer spb.mtx.RUnlock()
+	if items, ok := spb.eb[peerID]; ok {
+		result := make([]ErrorPeerBehaviour, len(items))
+		copy(result, items)
+
+		return result
+	} else {
+		return []ErrorPeerBehaviour{}
+	}
 }
 
-func (spb *storedPeerBehaviour) Behaved(peer Peer, reason GoodPeerBehaviour) {
+// Stores the GoodPeerBehaviour of the peer identified by peerID.
+func (spb *storedPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) {
 	spb.mtx.Lock()
 	defer spb.mtx.Unlock()
-	if _, ok := spb.gb[peer]; !ok {
-		spb.gb[peer] = []GoodPeerBehaviour{reason}
+	if _, ok := spb.gb[peerID]; !ok {
+		spb.gb[peerID] = []GoodPeerBehaviour{reason}
 	} else {
-		spb.gb[peer] = append(spb.gb[peer], reason)
+		spb.gb[peerID] = append(spb.gb[peerID], reason)
 	}
 }
 
-func (spb *storedPeerBehaviour) GetBehaved() GoodBehaviours {
-	return spb.gb
+// Returns all the GoodPeerBehaviours produced by the peer identified by peerID.
+func (spb *storedPeerBehaviour) GetGoodBehaviours(peerID ID) []GoodPeerBehaviour {
+	spb.mtx.RLock()
+	defer spb.mtx.RUnlock()
+	if items, ok := spb.gb[peerID]; ok {
+		result := make([]GoodPeerBehaviour, len(items))
+		copy(result, items)
+
+		return result
+	} else {
+		return []GoodPeerBehaviour{}
+	}
 }

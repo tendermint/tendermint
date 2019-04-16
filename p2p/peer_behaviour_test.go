@@ -8,16 +8,22 @@ import (
 func TestStoredPeerBehaviour(t *testing.T) {
 	peer := newMockPeer(net.IP{127, 0, 0, 1})
 	pb := NewStoredPeerBehaviour()
-	pb.Errored(peer, ErrorPeerBehaviourUnknown)
+	pb.Errored(peer.ID(), ErrorPeerBehaviourUnknown)
 
-	peerErrors := pb.GetErrored()
-	if peerErrors[peer][0] != ErrorPeerBehaviourUnknown {
-		t.Errorf("Expected the peer to have errored")
+	peerErrors := pb.GetErrorBehaviours(peer.ID())
+	if len(peerErrors) != 1 {
+		t.Errorf("Expected the peer have one error behaviour")
+	}
+	if peerErrors[0] != ErrorPeerBehaviourUnknown {
+		t.Errorf("Expected error to be ErrorPeerBehaviourUnknown")
 	}
 
-	pb.Behaved(peer, GoodPeerBehaviourVote)
-	goodPeers := pb.GetBehaved()
-	if goodPeers[peer][0] != GoodPeerBehaviourVote {
+	pb.Behaved(peer.ID(), GoodPeerBehaviourVote)
+	peerGoods := pb.GetGoodBehaviours(peer.ID())
+	if len(peerGoods) != 1 {
+		t.Errorf("Expected the peer have one good behaviour")
+	}
+	if peerGoods[0] != GoodPeerBehaviourVote {
 		t.Errorf("Expected the peer to have voted")
 	}
 }
