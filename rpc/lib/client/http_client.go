@@ -96,9 +96,10 @@ type jsonRPCBufferedRequest struct {
 // into a single batch request. Note that this batch acts like a FIFO queue, and
 // is thread-safe.
 type JSONRPCRequestBatch struct {
-	requests []*jsonRPCBufferedRequest
-	client   *JSONRPCClient
+	client *JSONRPCClient
+
 	mtx      sync.Mutex
+	requests []*jsonRPCBufferedRequest
 }
 
 // JSONRPCClient takes params as a slice
