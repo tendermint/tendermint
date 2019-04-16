@@ -352,17 +352,18 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expecte
 
 func validateResponseID(res *types.RPCResponse, expectedID types.JSONRPCStringID) error {
 	// we only validate a response ID if the expected ID is non-empty
-	if len(expectedID) > 0 {
-		if res.ID == nil {
-			return errors.Errorf("missing ID in response")
-		}
-		id, ok := res.ID.(types.JSONRPCStringID)
-		if !ok {
-			return errors.Errorf("expected ID string in response but got: %v", id)
-		}
-		if expectedID != id {
-			return errors.Errorf("response ID (%s) does not match request ID (%s)", id, expectedID)
-		}
+	if len(expectedID) == 0 {
+		return nil
+	}
+	if res.ID == nil {
+		return errors.Errorf("missing ID in response")
+	}
+	id, ok := res.ID.(types.JSONRPCStringID)
+	if !ok {
+		return errors.Errorf("expected ID string in response but got: %v", id)
+	}
+	if expectedID != id {
+		return errors.Errorf("response ID (%s) does not match request ID (%s)", id, expectedID)
 	}
 	return nil
 }
