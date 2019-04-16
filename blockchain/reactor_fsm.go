@@ -376,10 +376,10 @@ func (fsm *bReactorFSM) isCaughtUp() bool {
 	return isCaughtUp
 }
 
-func (fsm *bReactorFSM) cleanup() {
-	// TODO
-}
-
 func (fsm *bReactorFSM) makeNextRequests(maxNumPendingRequests int32) {
 	fsm.pool.makeNextRequests(maxNumPendingRequests)
+}
+
+func (fsm *bReactorFSM) cleanup() {
+	fsm.pool.cleanup()
 }

@@ -142,10 +142,6 @@ func (conR *consensusReactorTest) SwitchToConsensus(state sm.State, blocksSynced
 
 func TestFastSyncNoBlockResponse(t *testing.T) {
 
-	peerTimeout = 15 * time.Second
-	maxRequestsPerPeer = 20
-	maxNumPendingRequests = 100
-
 	config = cfg.ResetTestRoot("blockchain_new_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
@@ -213,9 +209,6 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
 func TestFastSyncBadBlockStopsPeer(t *testing.T) {
-
-	maxRequestsPerPeer = 20
-	maxNumPendingRequests = 400
 	numNodes := 4
 	maxBlockHeight := int64(148)
 
@@ -349,15 +342,10 @@ func setupReactors(
 
 // WIP - used for some scale testing, will remove
 func TestFastSyncMultiNode(t *testing.T) {
-	peerTimeout = 15 * time.Second
-
 	numNodes := 8
 	maxHeight := int64(1000)
 	//numNodes := 20
 	//maxHeight := int64(10000)
-
-	maxRequestsPerPeer = 40
-	maxNumPendingRequests = 500
 
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	genDoc, privVals := randGenesisDoc(1, false, 30)

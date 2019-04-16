@@ -26,10 +26,9 @@ func sendEventToFSM(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) 
 var (
 	testFSMmtx sync.Mutex
 
-	failSendStatusRequest bool
-	failSendBlockRequest  bool
-	numStatusRequests     int
-	numBlockRequests      int32
+	failSendBlockRequest bool
+	numStatusRequests    int
+	numBlockRequests     int32
 )
 
 type lastBlockRequestT struct {
@@ -51,7 +50,6 @@ var stateTimerStarts map[string]int
 func resetTestValues() {
 	stateTimerStarts = make(map[string]int)
 	failSendBlockRequest = false
-	failSendStatusRequest = false
 	numStatusRequests = 0
 	numBlockRequests = 0
 	lastBlockRequest.peerID = ""
@@ -68,13 +66,11 @@ type fsmStepTestValues struct {
 	errWanted      error
 	expectedState  string
 
-	failStatusReq       bool
 	shouldSendStatusReq bool
-
-	failBlockReq      bool
-	blockReqIncreased bool
-	blocksAdded       []int64
-	peersNotInPool    []p2p.ID
+	failBlockReq        bool
+	blockReqIncreased   bool
+	blocksAdded         []int64
+	peersNotInPool      []p2p.ID
 
 	expectedLastBlockReq *lastBlockRequestT
 }
@@ -170,6 +166,20 @@ func fixBlockResponseEvStep(step *fsmStepTestValues, testBcR *testReactor) {
 	}
 }
 
+func shouldApplyProcessedBlockEvStep(step *fsmStepTestValues, testBcR *testReactor) bool {
+	if step.event == processedBlockEv {
+		_, err := testBcR.fsm.pool.getBlockAndPeerAtHeight(testBcR.fsm.pool.height)
+		if err == errMissingBlocks {
+			return false
+		}
+		_, err = testBcR.fsm.pool.getBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
+		if err == errMissingBlocks {
+			return false
+		}
+	}
+	return true
+}
+
 func TestFSMBasic(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -237,8 +247,6 @@ func TestFSMBasic(t *testing.T) {
 
 			for _, step := range tt.steps {
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-				failSendStatusRequest = step.failStatusReq
-				failSendBlockRequest = step.failBlockReq
 
 				oldNumStatusRequests := numStatusRequests
 				oldNumBlockRequests := numBlockRequests
@@ -329,8 +337,6 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 
 			for _, step := range tt.steps {
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-				failSendStatusRequest = step.failStatusReq
-				failSendBlockRequest = step.failBlockReq
 
 				oldNumStatusRequests := numStatusRequests
 				oldNumBlockRequests := numBlockRequests
@@ -418,8 +424,6 @@ func TestFSMPeerRemoveEvent(t *testing.T) {
 
 			for _, step := range tt.steps {
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-				failSendStatusRequest = step.failStatusReq
-				failSendBlockRequest = step.failBlockReq
 
 				oldNumStatusRequests := numStatusRequests
 
@@ -446,8 +450,8 @@ const (
 	maxStartingHeightTest       = 100
 	maxRequestsPerPeerTest      = 40
 	maxTotalPendingRequestsTest = 600
-	maxNumPeersTest             = 1000
-	maxNumBlocksInChainTest     = 50000
+	maxNumPeersTest             = 500
+	maxNumBlocksInChainTest     = 10000
 )
 
 type testFields struct {
@@ -461,7 +465,7 @@ type testFields struct {
 func makeCorrectTransitionSequence(startingHeight int64, numBlocks int64, numPeers int, randomPeerHeights bool,
 	maxRequestsPerPeer int32, maxPendingRequests int32) testFields {
 
-	// Generate numPeers peers with random or numBlocks heights according to the randomPeerHeights flag
+	// Generate numPeers peers with random or numBlocks heights according to the randomPeerHeights flag.
 	peerHeights := make([]int64, numPeers)
 	for i := 0; i < numPeers; i++ {
 		if i == 0 {
@@ -501,7 +505,7 @@ func makeCorrectTransitionSequence(startingHeight int64, numBlocks int64, numPee
 forLoop:
 	for i := 0; i < int(numBlocks); i++ {
 
-		// Add the makeRequestEv step periodically
+		// Add the makeRequestEv step periodically.
 		if i%int(maxRequestsPerPeer) == 0 {
 			testSteps = append(testSteps, waitForBlock_MakeRequestEv_WantWaitForBlock(maxPendingRequests))
 		}
@@ -512,10 +516,10 @@ forLoop:
 		height++
 		numBlocksReceived++
 
-		// Add the processedBlockEv step periodically
+		// Add the processedBlockEv step periodically.
 		if numBlocksReceived >= int(maxRequestsPerPeer) || height >= numBlocks {
 			for j := int(height) - numBlocksReceived; j < int(height); j++ {
-				if j >= int(numBlocks)-1 {
+				if j >= int(numBlocks) {
 					// This is the last block that is processed, we should be in "finished" state.
 					testSteps = append(testSteps, waitForBlock_ProcessedBlockEv_WantFinished)
 					break forLoop
@@ -531,24 +535,25 @@ forLoop:
 		name:               testName,
 		startingHeight:     startingHeight,
 		maxRequestsPerPeer: maxRequestsPerPeer,
+		maxPendingRequests: maxPendingRequests,
 		steps:              testSteps,
 	}
 }
 
 func makeCorrectTransitionSequenceWithRandomParameters() testFields {
-	// generate a starting height for fast sync
+	// Generate a starting height for fast sync.
 	startingHeight := int64(cmn.RandIntn(maxStartingHeightTest) + 1)
 
-	// generate the number of requests per peer
+	// Generate the number of requests per peer.
 	maxRequestsPerPeer := int32(cmn.RandIntn(maxRequestsPerPeerTest) + 1)
 
-	// generate the maximum number of total pending requests
+	// Generate the maximum number of total pending requests, >= maxRequestsPerPeer.
 	maxPendingRequests := int32(cmn.RandIntn(maxTotalPendingRequestsTest-int(maxRequestsPerPeer))) + maxRequestsPerPeer
 
-	// generate the number of blocks to be synced
+	// Generate the number of blocks to be synced.
 	numBlocks := int64(cmn.RandIntn(maxNumBlocksInChainTest)) + startingHeight
 
-	// generate a number of peers and their heights
+	// Generate a number of peers.
 	numPeers := cmn.RandIntn(maxNumPeersTest) + 1
 
 	return makeCorrectTransitionSequence(startingHeight, numBlocks, numPeers, true, maxRequestsPerPeer, maxPendingRequests)
@@ -573,11 +578,12 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 
 			for _, step := range tt.steps {
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-				failSendStatusRequest = step.failStatusReq
-				failSendBlockRequest = step.failBlockReq
 
 				oldNumStatusRequests := numStatusRequests
 				fixBlockResponseEvStep(&step, testBcR)
+				if !shouldApplyProcessedBlockEvStep(&step, testBcR) {
+					continue
+				}
 
 				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
 				assert.Equal(t, step.errWanted, fsmErr)
@@ -631,6 +637,7 @@ func TestFSMPeerTimeout(t *testing.T) {
 	assert.Equal(t, errNoPeerResponse, lastPeerError.err)
 
 	peerTimeout = 15 * time.Second
+	maxRequestsPerPeer = 40
 
 }
 
@@ -683,29 +690,6 @@ func sendStatusResponse(fsm *bReactorFSM, peerID p2p.ID, height int64) {
 	}
 
 	_ = sendMessageToFSMSync(fsm, msgData)
-}
-
-func sendStatusResponse2(fsm *bReactorFSM, peerID p2p.ID, height int64) {
-	msgBytes := makeStatusResponseMessage(height)
-	msgData := &bReactorMessageData{
-		event: statusResponseEv,
-		data: bReactorEventData{
-			peerId: peerID,
-			height: height,
-			length: len(msgBytes),
-		},
-	}
-	_ = fsm.handle(msgData)
-}
-
-func sendStateTimeout(fsm *bReactorFSM, name string) {
-	msgData := &bReactorMessageData{
-		event: stateTimeoutEv,
-		data: bReactorEventData{
-			stateName: name,
-		},
-	}
-	_ = fsm.handle(msgData)
 }
 
 // -------------------------------------------------------

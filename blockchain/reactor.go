@@ -39,8 +39,8 @@ const (
 )
 
 var (
-	maxRequestsPerPeer    int32 = 20
-	maxNumPendingRequests int32 = 600
+	maxRequestsPerPeer    int32 = 40
+	maxNumPendingRequests int32 = 500
 )
 
 type consensusReactor interface {
@@ -402,7 +402,7 @@ func (bcR *BlockchainReactor) reportPeerErrorToSwitch(err error, peerID p2p.ID) 
 // - pool calls when it detects slow peer or when peer times out
 // - FSM calls when:
 //    - processing a block (addBlock) fails
-//    - BCR process of block reports failure to FSM, FSM sends back the peers of first and second
+//    - BCR processing of a block reports failure to FSM, FSM sends back the peers of first and second blocks
 func (bcR *BlockchainReactor) sendPeerError(err error, peerID p2p.ID) {
 	bcR.errorsFromFSMCh <- peerError{err, peerID}
 }

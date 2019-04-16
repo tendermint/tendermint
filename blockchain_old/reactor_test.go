@@ -315,6 +315,7 @@ func TestFastSyncMultiNode(t *testing.T) {
 
 outerFor:
 	for {
+		time.Sleep(1 * time.Second)
 		i := 0
 		for i < numNodes {
 			if !reactorPairs[i].reactor.pool.IsCaughtUp() {
@@ -326,7 +327,6 @@ outerFor:
 			fmt.Println("SETUP FAST SYNC Duration", time.Since(start))
 			break outerFor
 		} else {
-			time.Sleep(1 * time.Second)
 		}
 	}
 
