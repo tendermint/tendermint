@@ -165,12 +165,11 @@ func (c *JSONRPCClient) NewRequestBatch() *JSONRPCRequestBatch {
 }
 
 func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interface{}, error) {
-	reqCount := len(requests)
-	reqs := make([]types.RPCRequest, reqCount)
-	results := make([]interface{}, reqCount)
-	for i := 0; i < reqCount; i++ {
-		reqs[i] = requests[i].request
-		results[i] = requests[i].result
+	reqs := make([]types.RPCRequest, 0)
+	results := make([]interface{}, 0)
+	for _, req := range requests {
+		reqs = append(reqs, req.request)
+		results = append(results, req.result)
 	}
 	// serialize the array of requests into a single JSON object
 	requestBytes, err := json.Marshal(reqs)
