@@ -76,7 +76,7 @@ func (spb *storedPeerBehaviour) Errored(peer Peer, reason ErrorPeerBehaviour) {
 	}
 }
 
-func (spb storedPeerBehaviour) GetErrored() ErrorBehaviours {
+func (spb *storedPeerBehaviour) GetErrored() ErrorBehaviours {
 	return spb.eb
 }
 
@@ -90,6 +90,6 @@ func (spb *storedPeerBehaviour) Behaved(peer Peer, reason GoodPeerBehaviour) {
 	}
 }
 
-func (spb storedPeerBehaviour) GetBehaved() GoodBehaviours {
+func (spb *storedPeerBehaviour) GetBehaved() GoodBehaviours {
 	return spb.gb
 }
