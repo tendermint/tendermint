@@ -337,18 +337,13 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expecte
 		return nil, errors.Errorf("expected %d result objects into which to inject responses, but got %d", len(responses), len(results))
 	}
 
-	// From the JSON-RPC 2.0 spec:
-	//  id: It MUST be the same as the value of the id member in the Request Object.
 	for i, response := range responses {
+		// From the JSON-RPC 2.0 spec:
+		//  id: It MUST be the same as the value of the id member in the Request Object.
 		if err := validateResponseID(&response, expectedID); err != nil {
 			return nil, errors.Errorf("failed to validate response ID in response %d: %v", i, err)
 		}
-	}
-
-	// Unmarshal the Result fields into the final result objects
-	for i := 0; i < len(responses); i++ {
-		err = cdc.UnmarshalJSON(responses[i].Result, results[i])
-		if err != nil {
+		if err := cdc.UnmarshalJSON(responses[i].Result, results[i]); err != nil {
 			return nil, errors.Errorf("error unmarshalling rpc response result: %v", err)
 		}
 	}
