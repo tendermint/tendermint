@@ -18,6 +18,8 @@
 
 ### IMPROVEMENTS:
 - [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC
+- [circle] [\#3578](https://github.com/tendermint/tendermint/pull/3578) Pin
+  golang version to 1.12
 
 ### BUG FIXES:
 - [state] [\#3537](https://github.com/tendermint/tendermint/pull/3537#issuecomment-482711833) LoadValidators: do not return an empty validator set
