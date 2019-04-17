@@ -165,8 +165,8 @@ func (c *JSONRPCClient) NewRequestBatch() *JSONRPCRequestBatch {
 }
 
 func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interface{}, error) {
-	reqs := make([]types.RPCRequest, 0)
-	results := make([]interface{}, 0)
+	reqs := make([]types.RPCRequest, 0, len(requests))
+	results := make([]interface{}, 0, len(requests))
 	for _, req := range requests {
 		reqs = append(reqs, req.request)
 		results = append(results, req.result)
