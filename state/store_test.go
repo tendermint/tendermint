@@ -6,34 +6,50 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	cfg "github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestSaveValidatorsInfo(t *testing.T) {
-	// test we persist validators every valSetCheckpointInterval blocks
+func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 
-	// TODO(melekes): remove in 0.33 release
-	// https://github.com/tendermint/tendermint/issues/3543
+	// 1) LoadValidators loads validators using a height where they were last changed
 	saveValidatorsInfo(stateDB, 1, 1, vals)
 	saveValidatorsInfo(stateDB, 2, 1, vals)
+	loadedVals, err := LoadValidators(stateDB, 2)
+	require.NoError(t, err)
+	assert.NotZero(t, loadedVals.Size())
+
+	// 2) LoadValidators loads validators using a checkpoint height
+
+	// TODO(melekes): REMOVE in 0.33 release
+	// https://github.com/tendermint/tendermint/issues/3543
+	// for releases prior to v0.31.4, it uses last height changed
+	valInfo := &ValidatorsInfo{
+		LastHeightChanged: valSetCheckpointInterval,
+	}
+	stateDB.Set(calcValidatorsKey(valSetCheckpointInterval), valInfo.Bytes())
 	assert.NotPanics(t, func() {
-		_, err := LoadValidators(stateDB, 2)
+		saveValidatorsInfo(stateDB, valSetCheckpointInterval+1, 1, vals)
+		loadedVals, err := LoadValidators(stateDB, valSetCheckpointInterval+1)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
+		}
+		if loadedVals.Size() == 0 {
+			t.Fatal("Expected validators to be non-empty")
 		}
 	})
-	//ENDREMOVE
+	// ENDREMOVE
 
 	saveValidatorsInfo(stateDB, valSetCheckpointInterval, 1, vals)
 
-	loadedVals, err := LoadValidators(stateDB, valSetCheckpointInterval)
-	assert.NoError(t, err)
+	loadedVals, err = LoadValidators(stateDB, valSetCheckpointInterval)
+	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 }
 
