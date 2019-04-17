@@ -55,7 +55,7 @@ type AddrBook interface {
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
 
 	// Mark address
-	MarkGood(*p2p.NetAddress)
+	MarkGood(p2p.ID)
 	MarkAttempt(*p2p.NetAddress)
 	MarkBad(*p2p.NetAddress)
 
@@ -296,11 +296,11 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 
 // MarkGood implements AddrBook - it marks the peer as good and
 // moves it into an "old" bucket.
-func (a *addrBook) MarkGood(addr *p2p.NetAddress) {
+func (a *addrBook) MarkGood(id p2p.ID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	ka := a.addrLookup[addr.ID]
+	ka := a.addrLookup[id]
 	if ka == nil {
 		return
 	}
@@ -586,21 +586,8 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookNilAddr{addr, src}
 	}
 
-	if a.routabilityStrict && !addr.Routable() {
-		return ErrAddrBookNonRoutable{addr}
-	}
-
-	if !addr.Valid() {
-		return ErrAddrBookInvalidAddr{addr}
-	}
-
 	if !addr.HasID() {
 		return ErrAddrBookInvalidAddrNoID{addr}
-	}
-
-	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
-	if _, ok := a.ourAddrs[addr.String()]; ok {
-		return ErrAddrBookSelf{addr}
 	}
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
@@ -609,6 +596,19 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if _, ok := a.privateIDs[src.ID]; ok {
 		return ErrAddrBookPrivateSrc{src}
+	}
+
+	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
+	if _, ok := a.ourAddrs[addr.String()]; ok {
+		return ErrAddrBookSelf{addr}
+	}
+
+	if a.routabilityStrict && !addr.Routable() {
+		return ErrAddrBookNonRoutable{addr}
+	}
+
+	if !addr.Valid() {
+		return ErrAddrBookInvalidAddr{addr}
 	}
 
 	ka := a.addrLookup[addr.ID]

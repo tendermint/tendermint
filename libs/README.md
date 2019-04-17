@@ -13,7 +13,7 @@ CLI wraps the `cobra` and `viper` packages and handles some common elements of b
 
 ## clist
 
-Clist provides a linekd list that is safe for concurrent access by many readers.
+Clist provides a linked list that is safe for concurrent access by many readers.
 
 ## common
 

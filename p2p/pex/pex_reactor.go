@@ -48,6 +48,24 @@ const (
 	biasToSelectNewPeers = 30 // 70 to select good peers
 )
 
+type errMaxAttemptsToDial struct {
+}
+
+func (e errMaxAttemptsToDial) Error() string {
+	return fmt.Sprintf("reached max attempts %d to dial", maxAttemptsToDial)
+}
+
+type errTooEarlyToDial struct {
+	backoffDuration time.Duration
+	lastDialed      time.Time
+}
+
+func (e errTooEarlyToDial) Error() string {
+	return fmt.Sprintf(
+		"too early to dial (backoff duration: %d, last dialed: %v, time since: %v)",
+		e.backoffDuration, e.lastDialed, time.Since(e.lastDialed))
+}
+
 // PEXReactor handles PEX (peer exchange) and ensures that an
 // adequate number of peers are connected to the switch.
 //
@@ -170,12 +188,18 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		}
 	} else {
 		// inbound peer is its own source
-		addr := p.SocketAddr()
+		addr, err := p.NodeInfo().NetAddress()
+		if err != nil {
+			r.Logger.Error("Failed to get peer NetAddress", "err", err, "peer", p)
+			return
+		}
+
+		// Make it explicit that addr and src are the same for an inbound peer.
 		src := addr
 
 		// add to book. dont RequestAddrs right away because
 		// we don't trust inbound as much - let ensurePeersRoutine handle it.
-		err := r.book.AddAddress(addr, src)
+		err = r.book.AddAddress(addr, src)
 		r.logErrAddrBook(err)
 	}
 }
@@ -312,7 +336,10 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	}
 	r.requestsSent.Delete(id)
 
-	srcAddr := src.SocketAddr()
+	srcAddr, err := src.NodeInfo().NetAddress()
+	if err != nil {
+		return err
+	}
 	for _, netAddr := range addrs {
 		// Validate netAddr. Disconnect from a peer if it sends us invalid data.
 		if netAddr == nil {
@@ -440,7 +467,19 @@ func (r *PEXReactor) ensurePeers() {
 
 	// Dial picked addresses
 	for _, addr := range toDial {
-		go r.dialPeer(addr)
+		go func(addr *p2p.NetAddress) {
+			err := r.dialPeer(addr)
+			if err != nil {
+				switch err.(type) {
+				case errMaxAttemptsToDial:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				case errTooEarlyToDial:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				default:
+					r.Logger.Error(err.Error(), "addr", addr)
+				}
+			}
+		}(addr)
 	}
 
 	// If we need more addresses, pick a random peer and ask for more.
@@ -470,17 +509,16 @@ func (r *PEXReactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastD
 	return atd.number, atd.lastDialed
 }
 
-func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
+func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 	attempts, lastDialed := r.dialAttemptsInfo(addr)
 
 	if attempts > maxAttemptsToDial {
-		// Do not log the message if the addr gets readded.
-		if attempts+1 == maxAttemptsToDial {
-			r.Logger.Info("Reached max attempts to dial", "addr", addr, "attempts", attempts)
-			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
-		}
+		// TODO(melekes): have a blacklist in the addrbook with peers whom we've
+		// failed to connect to. Then we can clean up attemptsToDial, which acts as
+		// a blacklist currently.
+		// https://github.com/tendermint/tendermint/issues/3572
 		r.book.MarkBad(addr)
-		return
+		return errMaxAttemptsToDial{}
 	}
 
 	// exponential backoff if it's not our first attempt to dial given address
@@ -489,33 +527,31 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
 		sinceLastDialed := time.Since(lastDialed)
 		if sinceLastDialed < backoffDuration {
-			r.Logger.Debug("Too early to dial", "addr", addr, "backoff_duration", backoffDuration, "last_dialed", lastDialed, "time_since", sinceLastDialed)
-			return
+			return errTooEarlyToDial{backoffDuration, lastDialed}
 		}
 	}
 
 	err := r.Switch.DialPeerWithAddress(addr, false)
+
 	if err != nil {
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
-			return
+			return err
 		}
 
-		r.Logger.Error("Dialing failed", "addr", addr, "err", err, "attempts", attempts)
 		markAddrInBookBasedOnErr(addr, r.book, err)
-		if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
+		switch err.(type) {
+		case p2p.ErrSwitchAuthenticationFailure:
+			// NOTE: addr is removed from addrbook in markAddrInBookBasedOnErr
 			r.attemptsToDial.Delete(addr.DialString())
-		} else {
-			// FIXME: if the addr is going to be removed from the addrbook (hard to
-			// tell at this point), we need to Delete it from attemptsToDial, not
-			// record another attempt.
-			// record attempt
+		default:
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
-		return
+		return errors.Wrapf(err, "dialing failed (attempts: %d)", attempts+1)
 	}
 
 	// cleanup any history
 	r.attemptsToDial.Delete(addr.DialString())
+	return nil
 }
 
 // checkSeeds checks that addresses are well formed.
@@ -624,14 +660,16 @@ func (r *PEXReactor) crawlPeers(addrs []*p2p.NetAddress) {
 			LastCrawled: now,
 		}
 
-		err := r.Switch.DialPeerWithAddress(addr, false)
+		err := r.dialPeer(addr)
 		if err != nil {
-			if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
-				continue
+			switch err.(type) {
+			case errMaxAttemptsToDial:
+				r.Logger.Debug(err.Error(), "addr", addr)
+			case errTooEarlyToDial:
+				r.Logger.Debug(err.Error(), "addr", addr)
+			default:
+				r.Logger.Error(err.Error(), "addr", addr)
 			}
-
-			r.Logger.Error("Dialing failed", "addr", addr, "err", err)
-			markAddrInBookBasedOnErr(addr, r.book, err)
 			continue
 		}
 
