@@ -467,7 +467,7 @@ func (r *PEXReactor) ensurePeers() {
 
 	// Dial picked addresses
 	for _, addr := range toDial {
-		go func() {
+		go func(addr *p2p.NetAddress) {
 			err := r.dialPeer(addr)
 			if err != nil {
 				switch err.(type) {
@@ -479,7 +479,7 @@ func (r *PEXReactor) ensurePeers() {
 					r.Logger.Error(err.Error(), "addr", addr)
 				}
 			}
-		}()
+		}(addr)
 	}
 
 	// If we need more addresses, pick a random peer and ask for more.
