@@ -262,7 +262,7 @@ func TestWaitChan(t *testing.T) {
 			time.Sleep(time.Duration(cmn.RandIntn(25)) * time.Millisecond)
 		}
 		// apply a deterministic pause so the counter has time to catch up
-		time.Sleep(time.Duration(25) * time.Millisecond)
+		time.Sleep(25 * time.Millisecond)
 		close(done)
 	}()
 
