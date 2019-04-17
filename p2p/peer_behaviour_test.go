@@ -31,11 +31,11 @@ func TestStoredPeerBehaviour(t *testing.T) {
 
 	pb.Behaved(peer.ID(), GoodPeerBehaviourVote)
 	peerGoods = pb.GetGoodBehaviours(peer.ID())
-	if len(peerErrors) != 1 {
+	if len(peerGoods) != 1 {
 		t.Errorf("Expected the peer have one good behaviour")
 	}
 
-	if peerErrors[0] != ErrorPeerBehaviourUnknown {
+	if peerGoods[0] != GoodPeerBehaviourVote {
 		t.Errorf("Expected peer to have voted")
 	}
 }
