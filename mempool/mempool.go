@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -35,15 +34,10 @@ type Mempool interface {
 	// transactions (~ all available transactions).
 	ReapMaxTxs(max int) types.Txs
 
-	// TxsWaitChan returns a channel to wait on transactions. It will be closed
-	// once the mempool is not empty (ie. the internal `mem.txs` has at least one
-	// element)
-	TxsWaitChan() <-chan struct{}
-
-	// TxsFront returns the first transaction in the ordered list for peer
-	// goroutines to call .NextWait() on.
-	// FIXME: leaking implementation details!
-	TxsFront() *clist.CElement
+	// OnNewTx allows one to set a callback, which will be called when a new
+	// transaction is added to the mempool.
+	// Used by Reactor to broadcast new transactions to peers.
+	OnNewTx(cb func(Tx))
 
 	// Lock locks the mempool. The consensus must be able to hold lock to safely update.
 	Lock()
@@ -77,6 +71,17 @@ type Mempool interface {
 
 	// TxsBytes returns the total size of all txs in the mempool.
 	TxsBytes() int64
+}
+
+//--------------------------------------------------------------------------------
+
+// Tx wraps raw transaction and adds a few methods to extract useful
+// information like where transaction is coming from, at which height it was
+// received, etc.
+type Tx interface {
+	Height() int64
+	HasSender(uint16) bool
+	Raw() types.Tx
 }
 
 //--------------------------------------------------------------------------------

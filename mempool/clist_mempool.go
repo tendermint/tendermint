@@ -66,6 +66,7 @@ type CListMempool struct {
 	logger log.Logger
 
 	metrics *Metrics
+	onNewTx func(Tx)
 }
 
 var _ Mempool = &CListMempool{}
@@ -194,12 +195,21 @@ func (mem *CListMempool) Flush() {
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 }
 
+// TxsFront returns the first transaction in the ordered list for peer
+// goroutines to call .NextWait() on.
 func (mem *CListMempool) TxsFront() *clist.CElement {
 	return mem.txs.Front()
 }
 
+// TxsWaitChan returns a channel to wait on transactions. It will be closed
+// once the mempool is not empty (ie. the internal `mem.txs` has at least one
+// element).
 func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 	return mem.txs.WaitChan()
+}
+
+func (mem *CListMempool) OnNewTx(cb func(Tx)) {
+	mem.onNewTx = cb
 }
 
 // It blocks if we're waiting on Update() or Reap().
@@ -337,6 +347,7 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
+	mem.onNewTx(memTx)
 }
 
 // Called from:
