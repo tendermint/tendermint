@@ -1,4 +1,4 @@
-package lite
+package verifying
 
 import (
 	"fmt"
@@ -13,10 +13,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestInquirerValidPath(t *testing.T) {
+func TestProviderValidPath(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	trust := NewDBProvider("trust", dbm.NewMemDB())
-	source := NewDBProvider("source", dbm.NewMemDB())
+	trust := lite.NewDBProvider("trust", dbm.NewMemDB())
+	source := lite.NewDBProvider("source", dbm.NewMemDB())
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
@@ -45,35 +45,41 @@ func TestInquirerValidPath(t *testing.T) {
 
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
-	require.Nil(err)
-	cert := NewDynamicVerifier(chainID, trust, source)
-	cert.SetLogger(log.TestingLogger())
+	require.NoError(err)
+	vp := NewProvider(chainID, trust, source)
+	vp.SetLogger(log.TestingLogger())
 
-	// This should fail validation:
-	sh := fcz[count-1].SignedHeader
-	err = cert.Verify(sh)
-	require.NotNil(err)
+	// The latest commit is the first one.
+	fc, err := vp.LatestFullCommit(chainID, 0, fcz[count-1].SignedHeader.Height)
+	require.NoError(err)
+	require.NoError(fc.ValidateFull(chainID))
+	require.Equal(fcz[0].SignedHeader, fc.SignedHeader)
 
 	// Adding a few commits in the middle should be insufficient.
+	// The latest commit is still the first one.
 	for i := 10; i < 13; i++ {
 		err := source.SaveFullCommit(fcz[i])
-		require.Nil(err)
+		require.NoError(err)
 	}
-	err = cert.Verify(sh)
-	assert.NotNil(err)
+	fc, err = vp.LatestFullCommit(chainID, 0, fcz[count-1].SignedHeader.Height)
+	require.NoError(err)
+	require.NoError(fc.ValidateFull(chainID))
+	require.Equal(fcz[0].SignedHeader, fc.SignedHeeader)
 
 	// With more info, we succeed.
 	for i := 0; i < count; i++ {
 		err := source.SaveFullCommit(fcz[i])
-		require.Nil(err)
+		require.NoError(err)
 	}
-	err = cert.Verify(sh)
-	assert.Nil(err, "%+v", err)
+	fc, err = vp.LatestFullCommit(chainID, 0, fcz[count-1].SignedHeader.Height)
+	require.NoError(err)
+	require.NoError(fc.ValidateFull(chainID))
+	require.Equal(fcz[count-1].SignedHeader, fc.SignedHeeader)
 }
 
-func TestDynamicVerify(t *testing.T) {
-	trust := NewDBProvider("trust", dbm.NewMemDB())
-	source := NewDBProvider("source", dbm.NewMemDB())
+func TestProviderDynamicVerification(t *testing.T) {
+	trust := lite.NewDBProvider("trust", dbm.NewMemDB())
+	source := lite.NewDBProvider("source", dbm.NewMemDB())
 
 	// 10 commits with one valset, 1 to change,
 	// 10 commits with the next one
@@ -110,18 +116,15 @@ func TestDynamicVerify(t *testing.T) {
 
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
-	require.Nil(t, err)
-	ver := NewDynamicVerifier(chainID, trust, source)
-	ver.SetLogger(log.TestingLogger())
+	require.NoError(t, err)
+	vp := NewProvider(chainID, trust, source)
+	vp.SetLogger(log.TestingLogger())
 
 	// fetch the latest from the source
 	latestFC, err := source.LatestFullCommit(chainID, 1, maxHeight)
 	require.NoError(t, err)
-
-	// try to update to the latest
-	err = ver.Verify(latestFC.SignedHeader)
-	require.NoError(t, err)
-
+	require.NoError(latestFC.ValidateFull(chainID))
+	require.Equal(fcz[nCommits-1].SignedHeader, latestFC.SignedHeader)
 }
 
 func makeFullCommit(height int64, keys privKeys, vals, nextVals *types.ValidatorSet, chainID string) FullCommit {
@@ -135,10 +138,10 @@ func makeFullCommit(height int64, keys privKeys, vals, nextVals *types.Validator
 		appHash, consHash, resHash, 0, len(keys))
 }
 
-func TestInquirerVerifyHistorical(t *testing.T) {
+func TestVerifingProviderHistorical(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	trust := NewDBProvider("trust", dbm.NewMemDB())
-	source := NewDBProvider("source", dbm.NewMemDB())
+	trust := lite.NewDBProvider("trust", dbm.NewMemDB())
+	source := lite.NewDBProvider("source", dbm.NewMemDB())
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
@@ -167,9 +170,9 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
-	require.Nil(err)
-	cert := NewDynamicVerifier(chainID, trust, source)
-	cert.SetLogger(log.TestingLogger())
+	require.NoError(err)
+	vp := NewProvider(chainID, trust, source)
+	vp.SetLogger(log.TestingLogger())
 
 	// Store a few full commits as trust.
 	for _, i := range []int{2, 5} {
@@ -177,51 +180,49 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	}
 
 	// See if we can jump forward using trusted full commits.
-	// Souce doesn't have fcz[9] so cert.LastTrustedHeight wont' change.
+	// Souce doesn't have fcz[9] so vp.LastTrustedHeight wont' change.
 	err = source.SaveFullCommit(fcz[7])
-	require.Nil(err, "%+v", err)
-	sh := fcz[8].SignedHeader
-	err = cert.Verify(sh)
-	require.Nil(err, "%+v", err)
-	assert.Equal(fcz[7].Height(), cert.LastTrustedHeight())
+	require.NoError(err, "%+v", err)
+	assert.Equal(fcz[7].Height(), vp.LastTrustedHeight())
 	fc_, err := trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
-	require.NotNil(err, "%+v", err)
-	assert.Equal(fc_, (FullCommit{}))
+	require.Error(err, "%+v", err)
+	assert.Equal((FullCommit{}), fc_)
 
 	// With fcz[9] Verify will update last trusted height.
 	err = source.SaveFullCommit(fcz[9])
-	require.Nil(err, "%+v", err)
-	sh = fcz[8].SignedHeader
-	err = cert.Verify(sh)
-	require.Nil(err, "%+v", err)
-	assert.Equal(fcz[8].Height(), cert.LastTrustedHeight())
+	require.NoError(err, "%+v", err)
+	assert.Equal(fcz[8].Height(), vp.LastTrustedHeight())
 	fc_, err = trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
-	require.Nil(err, "%+v", err)
-	assert.Equal(fc_.Height(), fcz[8].Height())
+	require.NoError(err, "%+v", err)
+	assert.Equal(fcz[8].Height(), fc_.Height())
 
 	// Add access to all full commits via untrusted source.
 	for i := 0; i < count; i++ {
 		err := source.SaveFullCommit(fcz[i])
-		require.Nil(err)
+		require.NoError(err)
 	}
 
-	// Try to check an unknown seed in the past.
-	sh = fcz[3].SignedHeader
-	err = cert.Verify(sh)
-	require.Nil(err, "%+v", err)
-	assert.Equal(fcz[8].Height(), cert.LastTrustedHeight())
+	// Try to fetch an unknown commit from the past.
+	fc_, err = trust.LatestFullCommit(chainID, fcz[2].Height(), fcz[3].Height())
+	require.NoError(err, "%+v", err)
+	assert.Equal(fcz[2].Height(), fc_.Height())
+	assert.Equal(fcz[8].Height(), vp.LastTrustedHeight())
+	// TODO This should work for as long as the trust period hasn't passed for
+	// fcz[2].  Write a test that tries to retroactively fetchees fcz[3] from
+	// source.  Initially it should fail since source doesn't have it, but it
+	// should succeed once source is provided it.
 
-	// Jump all the way forward again.
-	sh = fcz[count-1].SignedHeader
-	err = cert.Verify(sh)
-	require.Nil(err, "%+v", err)
-	assert.Equal(fcz[9].Height(), cert.LastTrustedHeight())
+	// Try to fetch the latest known commit.
+	fc_, err = trust.LatestFullCommit(chainID, 0, fcz[9].Height())
+	require.NoError(err, "%+v", err)
+	assert.Equal(fcz[9].Height(), fc_.Height())
+	assert.Equal(fcz[9].Height(), vp.LastTrustedHeight())
 }
 
-func TestConcurrencyInquirerVerify(t *testing.T) {
+func TestConcurrentProvider(t *testing.T) {
 	_, require := assert.New(t), require.New(t)
-	trust := NewDBProvider("trust", dbm.NewMemDB()).SetLimit(10)
-	source := NewDBProvider("source", dbm.NewMemDB())
+	trust := lite.NewDBProvider("trust", dbm.NewMemDB()).SetLimit(10)
+	source := lite.NewDBProvider("source", dbm.NewMemDB())
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
@@ -250,13 +251,14 @@ func TestConcurrencyInquirerVerify(t *testing.T) {
 
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
-	require.Nil(err)
-	cert := NewDynamicVerifier(chainID, trust, source)
-	cert.SetLogger(log.TestingLogger())
+	require.NoError(err)
+	vp := NewProvider(chainID, trust, source)
+	vp.SetLogger(log.TestingLogger())
+	cp := NewConcurrentProvider(vp)
 
 	err = source.SaveFullCommit(fcz[7])
 	err = source.SaveFullCommit(fcz[8])
-	require.Nil(err, "%+v", err)
+	require.NoError(err, "%+v", err)
 	sh := fcz[8].SignedHeader
 
 	var wg sync.WaitGroup
@@ -265,12 +267,12 @@ func TestConcurrencyInquirerVerify(t *testing.T) {
 	for i := 0; i < count; i++ {
 		wg.Add(1)
 		go func(index int) {
-			errList[index] = cert.Verify(sh)
+			errList[index] = cp.UpdateToHeight(chainID, fcz[8].SignedHeader.Height)
 			defer wg.Done()
 		}(i)
 	}
 	wg.Wait()
 	for _, err := range errList {
-		require.Nil(err)
+		require.NoError(err)
 	}
 }

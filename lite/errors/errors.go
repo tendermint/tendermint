@@ -41,6 +41,12 @@ func (e errEmptyTree) Error() string {
 	return "Tree is empty"
 }
 
+type errCommitExpired struct{}
+
+func (e errCommitExpired) Error() string {
+	return "Commit is too old to be trusted"
+}
+
 //----------------------------------------
 // Methods for above error types
 
@@ -105,6 +111,21 @@ func ErrEmptyTree() error {
 func IsErrEmptyTree(err error) bool {
 	if err_, ok := err.(cmn.Error); ok {
 		_, ok := err_.Data().(errEmptyTree)
+		return ok
+	}
+	return false
+}
+
+//-----------------
+// ErrCommitExpired
+
+func ErrCommitExpired() error {
+	return cmn.ErrorWrap(errCommitExpired{}, "")
+}
+
+func IsErrCommitExpired(err error) bool {
+	if err_, ok := err.(cmn.Error); ok {
+		_, ok := err_.Data().(errCommitExpired)
 		return ok
 	}
 	return false

@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestBaseCert(t *testing.T) {
+func TestBaseVerifier(t *testing.T) {
 	assert := assert.New(t)
 
 	keys := genPrivKeys(4)

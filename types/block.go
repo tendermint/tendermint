@@ -403,6 +403,18 @@ func (h *Header) Populate(
 	h.ProposerAddress = proposerAddress
 }
 
+// NOTE: While it's possible to make this faster via a custom implementation,
+// (or naively via a struct copy, though this isn't yet a frozen design goal),
+// for now use hashes in case of any issues that may arise in implementation.
+func (h *Header) Equal(h2 *Header) bool {
+	h1Hash := h.Hash()
+	if h1Hash == nil {
+		panic("incomplete heaeders cannot be compared")
+	}
+	h2Hash := h2.Hash()
+	return bytes.Compare(h1Hash, h2Hash) == 0
+}
+
 // Hash returns the hash of the header.
 // It computes a Merkle tree from the header fields
 // ordered as they appear in the Header.
@@ -600,6 +612,18 @@ func (commit *Commit) ValidateBasic() error {
 	return nil
 }
 
+// NOTE: While it's possible to make this faster via a custom implementation,
+// (naively via a struct copy won't work due to the volatile fields),
+// for now use hashes in case of any issues that may arise in implementation.
+func (commit *Commit) Equal(commit2 *Commit) bool {
+	c1Hash := commit.Hash()
+	if c1Hash == nil {
+		panic("incomplete commit cannot be compared")
+	}
+	c2Hash := commit2.Hash()
+	return bytes.Compare(c1Hash, c2Hash) == 0
+}
+
 // Hash returns the hash of the commit
 func (commit *Commit) Hash() cmn.HexBytes {
 	if commit == nil {
@@ -642,6 +666,15 @@ func (commit *Commit) StringIndented(indent string) string {
 type SignedHeader struct {
 	*Header `json:"header"`
 	Commit  *Commit `json:"commit"`
+}
+
+// Returns true iff both the header and commit hold identical information
+// (disregarding any volatile memoized fields).
+// Header and Commit must be their final immutable forms, otherwise this
+// function will panic.
+func (sh SignedHeader) Equal(sh2 SignedHeader) bool {
+	return sh.Header.Equal(sh2.Header) &&
+		sh.Commit.Equal(sh2.Commit)
 }
 
 // ValidateBasic does basic consistency checks and makes sure the header

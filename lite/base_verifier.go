@@ -14,7 +14,11 @@ var _ Verifier = (*BaseVerifier)(nil)
 // later, requiring sufficient votes (> 2/3) from the given valset.
 // To verify blocks produced by a blockchain with mutable validator sets,
 // use the DynamicVerifier.
-// TODO: Handle unbonding time.
+//
+// NOTE: Verifier as a supported interface is deprecated, it may be reasonable
+// to rename this to simply "verifier" and to remove that intereface
+// declaration.  See also VerifyingProvider, which is not a Verifier, but is a
+// Provider.
 type BaseVerifier struct {
 	chainID string
 	height  int64

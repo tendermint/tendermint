@@ -416,15 +416,16 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 	return errTooMuchChange{talliedVotingPower, vals.TotalVotingPower()*2/3 + 1}
 }
 
-// VerifyFutureCommit will check to see if the set would be valid with a different
-// validator set.
+// VerifyFutureCommit checks to see if a given future validator set has
+// committed a block, and whether those who signed of this future validator set
+// has sufficient overlap with this validator set.
 //
-// vals is the old validator set that we know.  Over 2/3 of the power in old
-// signed this block.
+// vals is the current validator set that we know.  Over 2/3 of the power in
+// this valset is expected to have signed this block.
 //
-// In Tendermint, 1/3 of the voting power can halt or fork the chain, but 1/3
-// can't make arbitrary state transitions.  You still need > 2/3 Byzantine to
-// make arbitrary state transitions.
+// Justification for the 2/3: In Tendermint, 1/3 of the voting power can halt
+// or fork the chain, but 1/3 can't make arbitrary state transitions.  You
+// still need > 2/3 Byzantine to make arbitrary state transitions.
 //
 // To preserve this property in the light client, we also require > 2/3 of the
 // old vals to sign the future commit at H, that way we preserve the property
@@ -433,18 +434,17 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 // > 2/3.  Otherwise, the lite client isn't providing the same security
 // guarantees.
 //
-// Even if we added a slashing condition that if you sign a block header with
-// the wrong validator set, then we would only need > 1/3 of signatures from
-// the old vals on the new commit, it wouldn't be sufficient because the new
-// vals can be arbitrary and commit some arbitrary app hash.
-//
 // newSet is the validator set that signed this block.  Only votes from new are
 // sufficient for 2/3 majority in the new set as well, for it to be a valid
 // commit.
 //
-// NOTE: This doesn't check whether the commit is a future commit, because the
-// current height isn't part of the ValidatorSet.  Caller must check that the
-// commit height is greater than the height for this validator set.
+// NOTE: This doesn't check whether the commit is actually a future commit,
+// because the current height isn't part of the ValidatorSet.  Caller must
+// check that the commit height is greater than the height for this validator
+// set.
+//
+// NOTE: This function is strictly more restrictive than merely checking
+// whether newSet.VerifyCommit(...), in fact it calls exactly that.
 func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID string,
 	blockID BlockID, height int64, commit *Commit) error {
 	oldVals := vals

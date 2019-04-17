@@ -4,7 +4,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/lite"
+	"github.com/tendermint/tendermint/lite/verifying"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
@@ -15,7 +15,7 @@ var _ rpcclient.Client = Wrapper{}
 // provable before passing it along. Allows you to make any rpcclient fully secure.
 type Wrapper struct {
 	rpcclient.Client
-	cert *lite.DynamicVerifier
+	cert *verifying.Provider
 	prt  *merkle.ProofRuntime
 }
 
@@ -23,7 +23,7 @@ type Wrapper struct {
 // host and return a cryptographically secure rpc client.
 //
 // If it is wrapping an HTTP rpcclient, it will also wrap the websocket interface
-func SecureClient(c rpcclient.Client, cert *lite.DynamicVerifier) Wrapper {
+func SecureClient(c rpcclient.Client, cert *verifying.Provider) Wrapper {
 	prt := defaultProofRuntime()
 	wrap := Wrapper{c, cert, prt}
 	// TODO: no longer possible as no more such interface exposed....
