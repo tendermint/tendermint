@@ -575,7 +575,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 	}
 }
 
-func TestFSMPeerRemoveEvent(t *testing.T) {
+func TestFSMPeerRelatedErrors(t *testing.T) {
 	tests := []struct {
 		name               string
 		startingHeight     int64
@@ -597,49 +597,6 @@ func TestFSMPeerRemoveEvent(t *testing.T) {
 				makeStepPeerRemoveEv("waitForBlock", "waitForBlock", "P2", errSwitchRemovesPeer, []p2p.ID{"P2"}),
 			},
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			if tt.maxRequestsPerPeer != 0 {
-				maxRequestsPerPeer = tt.maxRequestsPerPeer
-			}
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-
-				oldNumStatusRequests := numStatusRequests
-
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-
-				if step.shouldSendStatusReq {
-					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
-				} else {
-					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
-				}
-
-				for _, peerID := range step.peersNotInPool {
-					_, ok := testBcR.fsm.pool.peers[peerID]
-					assert.False(t, ok)
-				}
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-			}
-		})
-	}
-}
-
-func TestFSMShortPeer(t *testing.T) {
-	tests := []struct {
-		name               string
-		startingHeight     int64
-		maxRequestsPerPeer int32
-		steps              []fsmStepTestValues
-	}{
 		{
 			name:           "new peer with low height while in waitForPeer state",
 			startingHeight: 100,
@@ -674,49 +631,6 @@ func TestFSMShortPeer(t *testing.T) {
 				makeStepStatusEv("waitForBlock", "waitForPeer", "P1", 3, errPeerTooShort),
 			},
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			if tt.maxRequestsPerPeer != 0 {
-				maxRequestsPerPeer = tt.maxRequestsPerPeer
-			}
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-
-				oldNumStatusRequests := numStatusRequests
-
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-
-				if step.shouldSendStatusReq {
-					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
-				} else {
-					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
-				}
-
-				for _, peerID := range step.peersNotInPool {
-					_, ok := testBcR.fsm.pool.peers[peerID]
-					assert.False(t, ok)
-				}
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-			}
-		})
-	}
-}
-
-func TestFSMPeerAbsentInSwitch(t *testing.T) {
-	tests := []struct {
-		name               string
-		startingHeight     int64
-		maxRequestsPerPeer int32
-		steps              []fsmStepTestValues
-	}{
 		{
 			name:               "peer remove event with no blocks",
 			startingHeight:     9999999,
