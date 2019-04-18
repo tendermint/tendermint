@@ -332,7 +332,7 @@ func (h *Handshaker) ReplayBlocks(
 
 	// First handle edge cases and constraints on the storeBlockHeight.
 	if storeBlockHeight == 0 {
-		return appHash, checkAppHash(state, appHash)
+		return appHash, checkAppHashAgainstState(appHash, state)
 
 	} else if storeBlockHeight < appBlockHeight {
 		// the app should never be ahead of the store (but this is under app's control)
@@ -359,7 +359,7 @@ func (h *Handshaker) ReplayBlocks(
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We're good!
-			return appHash, checkAppHash(state, appHash)
+			return appHash, checkAppHashAgainstState(appHash, state)
 		}
 
 	} else if storeBlockHeight == stateBlockHeight+1 {
@@ -417,6 +417,12 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
+
+		// Extra check to ensure the app was not changed in a way it shouldn't have.
+		if len(appHash) > 0 {
+			checkAppHashAgainstBlock(appHash, block)
+		}
+
 		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, state.LastValidators, h.stateDB)
 		if err != nil {
 			return nil, err
@@ -434,7 +440,7 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 		appHash = state.AppHash
 	}
 
-	return appHash, checkAppHash(state, appHash)
+	return appHash, checkAppHashAgainstState(appHash, state)
 }
 
 // ApplyBlock on the proxyApp with the last block.
@@ -456,9 +462,26 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	return state, nil
 }
 
-func checkAppHash(state sm.State, appHash []byte) error {
-	if !bytes.Equal(state.AppHash, appHash) {
-		panic(fmt.Errorf("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, state.AppHash).Error())
+func checkAppHashAgainstBlock(appHash []byte, block *types.Block) error {
+	if !bytes.Equal(appHash, block.AppHash) {
+		panic(fmt.Sprintf(`block.AppHash does not match AppHash after replay. Got %X, expected %X.
+
+Block: %v
+`,
+			appHash, block.AppHash, block))
+	}
+	return nil
+}
+
+func checkAppHashAgainstState(appHash []byte, state sm.State) error {
+	if !bytes.Equal(appHash, state.AppHash) {
+		panic(fmt.Sprintf(`state.AppHash does not match AppHash after replay. Got
+%X, expected %X.
+
+State: %v
+
+Did you reset Tendermint without resetting your application's data?`,
+			appHash, state.AppHash, state))
 	}
 	return nil
 }
