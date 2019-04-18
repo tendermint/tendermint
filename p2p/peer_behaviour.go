@@ -111,7 +111,7 @@ func (spb *StoredPeerBehaviour) GetErrorBehaviours(peerID ID) []ErrorPeerBehavio
 	}
 }
 
-// Stores the GoodPeerBehaviour of the peer identified by peerID.
+// Behaved stores the GoodPeerBehaviour of peer identified by ID.
 func (spb *StoredPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) {
 	spb.mtx.Lock()
 	defer spb.mtx.Unlock()
