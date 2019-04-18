@@ -332,7 +332,7 @@ func (h *Handshaker) ReplayBlocks(
 
 	// First handle edge cases and constraints on the storeBlockHeight.
 	if storeBlockHeight == 0 {
-		assertAppHashEqualsStateHash(appHash, state)
+		assertAppHashEqualsOneFromState(appHash, state)
 		return appHash, nil
 
 	} else if storeBlockHeight < appBlockHeight {
@@ -360,7 +360,7 @@ func (h *Handshaker) ReplayBlocks(
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We're good!
-			assertAppHashEqualsStateHash(appHash, state)
+			assertAppHashEqualsOneFromState(appHash, state)
 			return appHash, nil
 		}
 
@@ -422,7 +422,7 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 
 		// Extra check to ensure the app was not changed in a way it shouldn't have.
 		if len(appHash) > 0 {
-			assertAppHashEqualsBlockHash(appHash, block)
+			assertAppHashEqualsOneFromBlock(appHash, block)
 		}
 
 		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, state.LastValidators, h.stateDB)
@@ -442,7 +442,7 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 		appHash = state.AppHash
 	}
 
-	assertAppHashEqualsStateHash(appHash, state)
+	assertAppHashEqualsOneFromState(appHash, state)
 	return appHash, nil
 }
 
@@ -465,7 +465,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	return state, nil
 }
 
-func assertAppHashEqualsBlockHash(appHash []byte, block *types.Block) {
+func assertAppHashEqualsOneFromBlock(appHash []byte, block *types.Block) {
 	if !bytes.Equal(appHash, block.AppHash) {
 		panic(fmt.Sprintf(`block.AppHash does not match AppHash after replay. Got %X, expected %X.
 
@@ -475,7 +475,7 @@ Block: %v
 	}
 }
 
-func assertAppHashEqualsStateHash(appHash []byte, state sm.State) {
+func assertAppHashEqualsOneFromState(appHash []byte, state sm.State) {
 	if !bytes.Equal(appHash, state.AppHash) {
 		panic(fmt.Sprintf(`state.AppHash does not match AppHash after replay. Got
 %X, expected %X.
