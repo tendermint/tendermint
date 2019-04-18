@@ -28,7 +28,8 @@ type PeerBehaviour interface {
 	Behaved(peerID ID, reason GoodPeerBehaviour) error
 	Errored(peerID ID, reason ErrorPeerBehaviour) error
 }
-
+// SwitchPeerBehaviour relays peer behaviour signals to a Switch, which is
+// needed until Switch satisfies the PeerBehaviour interface.
 type SwitchPeerBehaviour struct {
 	sw *Switch
 }
