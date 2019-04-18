@@ -86,7 +86,7 @@ func NewStoredPeerBehaviour() *StoredPeerBehaviour {
 	}
 }
 
-// Stores the ErrorPeerBehaviour produced by the peer identified by peerID.
+// Errored stores the ErrorPeerBehaviour produced by the peer identified by ID.
 func (spb *StoredPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) {
 	spb.mtx.Lock()
 	defer spb.mtx.Unlock()
