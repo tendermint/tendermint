@@ -28,16 +28,6 @@ func (s *bReactorFSMState) String() string {
 	return s.name
 }
 
-// Interface used by FSM for sending Block and Status requests,
-// informing of peer errors and state timeouts
-// Implemented by BlockchainReactor and tests
-type bcRMessageInterface interface {
-	sendStatusRequest()
-	sendBlockRequest(peerID p2p.ID, height int64) error
-	sendPeerError(err error, peerID p2p.ID)
-	resetStateTimer(name string, timer **time.Timer, timeout time.Duration)
-}
-
 // Blockchain Reactor State Machine
 type bReactorFSM struct {
 	logger    log.Logger
@@ -49,6 +39,15 @@ type bReactorFSM struct {
 
 	// interface used to call the Blockchain reactor to send StatusRequest, BlockRequest, reporting errors, etc.
 	toBcR bcRMessageInterface
+}
+
+func NewFSM(height int64, toBcR bcRMessageInterface) *bReactorFSM {
+	return &bReactorFSM{
+		state:     unknown,
+		startTime: time.Now(),
+		pool:      newBlockPool(height, toBcR),
+		toBcR:     toBcR,
+	}
 }
 
 // bReactorEventData is part of the message sent by the reactor to the FSM and used by the state handlers.
@@ -86,26 +85,26 @@ func (msg *bReactorMessageData) String() string {
 	case startFSMEv:
 		dataStr = ""
 	case statusResponseEv:
-		dataStr = fmt.Sprintf("peer: %v height: %v", msg.data.peerId, msg.data.height)
+		dataStr = fmt.Sprintf("peer=%v height=%v", msg.data.peerId, msg.data.height)
 	case blockResponseEv:
-		dataStr = fmt.Sprintf("peer: %v block.height: %v lenght: %v", msg.data.peerId, msg.data.block.Height, msg.data.length)
+		dataStr = fmt.Sprintf("peer=%v block.height=%v lenght=%v", msg.data.peerId, msg.data.block.Height, msg.data.length)
 	case processedBlockEv:
-		dataStr = fmt.Sprintf("block processing returned following error: %v", msg.data.err)
+		dataStr = fmt.Sprintf("error=%v", msg.data.err)
 	case makeRequestsEv:
-		dataStr = fmt.Sprintf("new requests needed")
+		dataStr = ""
 	case stopFSMEv:
 		dataStr = ""
 	case peerRemoveEv:
 		dataStr = fmt.Sprintf("peer: %v is being removed by the switch", msg.data.peerId)
 	case stateTimeoutEv:
-		dataStr = fmt.Sprintf("state: %v", msg.data.stateName)
+		dataStr = fmt.Sprintf("state=%v", msg.data.stateName)
 
 	default:
 		dataStr = fmt.Sprintf("cannot interpret message data")
 		return "event unknown"
 	}
 
-	return fmt.Sprintf("event: %v %v", msg.event, dataStr)
+	return fmt.Sprintf("%v: %v", msg.event, dataStr)
 }
 
 func (ev bReactorEvent) String() string {
@@ -159,6 +158,7 @@ var (
 	errSlowPeer                 = errors.New("peer is not sending us data fast enough")
 	errNoPeerFoundForHeight     = errors.New("could not find peer for block request")
 	errSwitchRemovesPeer        = errors.New("switch is removing peer")
+	errTimeoutEventWrongState   = errors.New("timeout event for a different state than the current one")
 )
 
 func init() {
@@ -192,7 +192,7 @@ func init() {
 			case stateTimeoutEv:
 				if data.stateName != "waitForPeer" {
 					fsm.logger.Error("received a state timeout event for different state", "state", data.stateName)
-					return waitForPeer, nil
+					return waitForPeer, errTimeoutEventWrongState
 				}
 				// There was no statusResponse received from any peer.
 				// Should we send status request again?
@@ -292,13 +292,14 @@ func init() {
 	}
 }
 
-func NewFSM(height int64, toBcR bcRMessageInterface) *bReactorFSM {
-	return &bReactorFSM{
-		state:     unknown,
-		startTime: time.Now(),
-		pool:      newBlockPool(height, toBcR),
-		toBcR:     toBcR,
-	}
+// Interface used by FSM for sending Block and Status requests,
+// informing of peer errors and state timeouts
+// Implemented by BlockchainReactor and tests
+type bcRMessageInterface interface {
+	sendStatusRequest()
+	sendBlockRequest(peerID p2p.ID, height int64) error
+	sendPeerError(err error, peerID p2p.ID)
+	resetStateTimer(name string, timer **time.Timer, timeout time.Duration)
 }
 
 func (fsm *bReactorFSM) setLogger(l log.Logger) {
@@ -327,20 +328,20 @@ func (fsm *bReactorFSM) stop() {
 
 // handle processes messages and events sent to the FSM.
 func (fsm *bReactorFSM) handle(msg *bReactorMessageData) error {
-	fsm.logger.Debug("FSM received event", "event", msg.event, "state", fsm.state.name)
+	fsm.logger.Debug("FSM received", "event", msg, "state", fsm.state)
 
 	if fsm.state == nil {
 		fsm.state = unknown
 	}
 	next, err := fsm.state.handle(fsm, msg.event, msg.data)
 	if err != nil {
-		fsm.logger.Error("FSM event handler returned", "err", err, "state", fsm.state.name, "event", msg.event)
+		fsm.logger.Error("FSM event handler returned", "err", err, "state", fsm.state, "event", msg.event)
 	}
 
 	oldState := fsm.state.name
 	fsm.transition(next)
 	if oldState != fsm.state.name {
-		fsm.logger.Info("FSM changed state", "old_state", oldState, "event", msg.event, "new_state", fsm.state.name)
+		fsm.logger.Info("FSM changed state", "new_state", fsm.state)
 	}
 	return err
 }

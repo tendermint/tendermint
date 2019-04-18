@@ -334,15 +334,14 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resetPoolTestResults()
 
-			pool := tt.pool
-
+			var pool = tt.pool
 			maxRequestsPerPeer = int32(tt.maxRequestsPerPeer)
 			pool.makeNextRequests(10)
 			assert.Equal(t, tt.expNumPending, pool.numPending)
 			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*int32(len(pool.peers)))
 
 			for _, tPeer := range tt.expPeerResults {
-				peer := pool.peers[tPeer.id]
+				var peer = pool.peers[tPeer.id]
 				assert.NotNil(t, peer)
 				assert.Equal(t, tPeer.numPending, peer.numPending)
 			}

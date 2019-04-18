@@ -209,6 +209,7 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
 func TestFastSyncBadBlockStopsPeer(t *testing.T) {
+	var mtx sync.Mutex
 	numNodes := 4
 	maxBlockHeight := int64(148)
 
@@ -234,6 +235,7 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 		reactorPairs[i] = newBlockchainReactor(logger[i], genDoc, privVals, height)
 	}
 
+	mtx.Lock()
 	switches := p2p.MakeConnectedSwitches(config.P2P, numNodes, func(i int, s *p2p.Switch) *p2p.Switch {
 		reactorPairs[i].conR.mtx.Lock()
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].bcR)
@@ -244,6 +246,7 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 		return s
 
 	}, p2p.Connect2Switches)
+	mtx.Unlock()
 
 	defer func() {
 		for _, r := range reactorPairs {
@@ -270,9 +273,9 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 	assert.Equal(t, numNodes-1, reactorPairs[1].bcR.Switch.Peers().Size())
 
 	//mark last reactorPair as an invalid peer
-	reactorPairs[numNodes-1].conR.mtx.Lock()
+	mtx.Lock()
 	reactorPairs[numNodes-1].bcR.store = otherChain.bcR.store
-	reactorPairs[numNodes-1].conR.mtx.Unlock()
+	mtx.Unlock()
 
 	lastLogger := log.TestingLogger()
 	lastReactorPair := newBlockchainReactor(lastLogger, genDoc, privVals, 0)
