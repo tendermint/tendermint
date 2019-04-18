@@ -96,7 +96,7 @@ func equalErrorBehaviours(a []ErrorPeerBehaviour, b []ErrorPeerBehaviour) bool {
 	return len(same) == len(a)
 }
 
-// TestStoredPeerBehaviourConcurrency constrcuts a scenario in which
+// TestStoredPeerBehaviourConcurrency constructs a scenario in which
 // multiple goroutines are using the same StoredPeerBehaviour instance.
 // This test is meant to reproduce the conditions in which StoredPeerBehaviour
 // will be used within a Reactor Receive method test and ensure thread safety.
