@@ -122,7 +122,8 @@ func (spb *StoredPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) {
 	}
 }
 
-// Returns all the GoodPeerBehaviours produced by the peer identified by peerID.
+// GetGoodPeerBehaviours returns all positive behaviours produced by the peer
+// identified by peerID.
 func (spb *StoredPeerBehaviour) GetGoodBehaviours(peerID ID) []GoodPeerBehaviour {
 	spb.mtx.RLock()
 	defer spb.mtx.RUnlock()
