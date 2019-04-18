@@ -33,7 +33,7 @@ type SwitchPeerBehaviour struct {
 	sw *Switch
 }
 
-// Reports the ErrorPeerBehaviour of peer identified by peerID to the Switch.
+// Errored reports the ErrorPeerBehaviour of peer identified by ID to the Switch.
 func (spb *SwitchPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) error {
 	peer := spb.sw.Peers().Get(peerID)
 	if peer == nil {
