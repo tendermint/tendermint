@@ -78,7 +78,8 @@ type GettablePeerBehaviour interface {
 	GetGoodBehaviours(peerID ID) []GoodPeerBehaviour
 }
 
-// Creates a new storedPeerBehaviour instance.
+// NewStoredPeerBehaviour returns a PeerBehaviour which records all observed
+// behaviour in memory.
 func NewStoredPeerBehaviour() *StoredPeerBehaviour {
 	return &StoredPeerBehaviour{
 		eb: map[ID][]ErrorPeerBehaviour{},
