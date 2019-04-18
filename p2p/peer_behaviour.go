@@ -14,7 +14,7 @@ const (
 	ErrorPeerBehaviourMessageOutofOrder
 )
 
-// Type of good behaviour a peer can perform.
+// GoodPeerBehaviour are types of observable positive peer behaviours.
 type GoodPeerBehaviour int
 
 const (
