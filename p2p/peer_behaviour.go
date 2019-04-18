@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// Type of error behaviour a peer can perform.
+// ErrorPeerBehaviour are types of observable erroneous peer behaviours.
 type ErrorPeerBehaviour int
 
 const (
