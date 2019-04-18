@@ -97,7 +97,7 @@ func TestListenerTimeoutAccept(t *testing.T) {
 }
 
 func TestListenerTimeoutReadWrite(t *testing.T) {
-	var (
+	const (
 		// This needs to be long enough s.t. the Accept will definitely succeed:
 		timeoutAccept = time.Second
 		// This can be really short but in the TCP case, the accept can
