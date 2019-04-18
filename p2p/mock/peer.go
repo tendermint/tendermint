@@ -40,6 +40,24 @@ func NewPeer(ip net.IP) *Peer {
 	return mp
 }
 
+func NewFixIdPeer(ip net.IP, id p2p.ID) *Peer {
+	var netAddr *p2p.NetAddress
+	if ip == nil {
+		_, netAddr = p2p.CreateRoutableAddr()
+	} else {
+		netAddr = p2p.NewNetAddressIPPort(ip, 26656)
+	}
+	netAddr.ID = id
+	mp := &Peer{
+		ip:   ip,
+		id:   id,
+		addr: netAddr,
+		kv:   make(map[string]interface{}),
+	}
+	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
+	return mp
+}
+
 func (mp *Peer) FlushStop()                              { mp.Stop() }
 func (mp *Peer) TrySend(chID byte, msgBytes []byte) bool { return true }
 func (mp *Peer) Send(chID byte, msgBytes []byte) bool    { return true }

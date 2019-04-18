@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/p2p/mock"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -237,6 +240,36 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	timeoutWaitGroup(t, N, func(j int) {
 		<-blocksSubs[j].Out()
 	}, css)
+}
+
+func TestReactorReconnectionPeerGetPeerState(t *testing.T) {
+	N := 1
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
+		func(c *cfg.Config) {
+			c.Consensus.CreateEmptyBlocks = false
+		})
+	defer cleanup()
+	reactors, _, eventBuses := startConsensusNet(t, css, N)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+	reactor := reactors[0]
+	defer reactor.Stop()
+	sw := reactor.Switch
+	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
+	nodeId := nodeKey.ID()
+
+	for i := 0; i < 100; i++ {
+		peer := mock.NewFixIdPeer(nil, nodeId)
+		err := p2p.AddPeerToSwitch(sw, peer)
+		assert.NoError(t, err)
+		assert.True(t, sw.Peers().Has(nodeId))
+		msg := cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.PrevoteType})
+		p := sw.Peers().Get(nodeId)
+		assert.NotNil(t, p)
+		reactor.Receive(StateChannel, p, msg) //will not panic
+		sw.StopPeerForError(peer, "peer not available")
+		for sw.Peers().Has(peer.ID()) {
+		}
+	}
 }
 
 // Test we record stats about votes and block parts from other peers.

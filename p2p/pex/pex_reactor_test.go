@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,6 +35,39 @@ func TestPEXReactorBasic(t *testing.T) {
 
 	assert.NotNil(t, r)
 	assert.NotEmpty(t, r.GetChannels())
+}
+
+func TestPEXReactorDoNotStopReconnectionPeer(t *testing.T) {
+	r, book := createReactor(&PEXReactorConfig{})
+	defer teardownReactor(book)
+
+	sw := createSwitchAndAddReactors(r)
+	sw.SetAddrBook(book)
+	sw.Start()
+	defer sw.Stop()
+
+	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
+	nodeId := nodeKey.ID()
+
+	for i := 0; i < 100; i++ {
+		peer := mock.NewFixIdPeer(nil, nodeId)
+		p2p.AddPeerToSwitch(sw, peer)
+		assert.True(t, sw.Peers().Has(peer.ID()))
+
+		msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
+
+		// first time creates the entry
+		r.Receive(PexChannel, peer, msg)
+		assert.True(t, sw.Peers().Has(peer.ID()))
+
+		// next time sets the last time value
+		r.Receive(PexChannel, peer, msg)
+		assert.True(t, sw.Peers().Has(peer.ID()))
+
+		go sw.StopPeerForError(peer, "peer not available")
+		for sw.Peers().Has(peer.ID()) {
+		}
+	}
 }
 
 func TestPEXReactorAddRemovePeer(t *testing.T) {
@@ -144,7 +179,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	sw.SetAddrBook(book)
 
 	peer := mock.NewPeer(nil)
-	p2p.AddPeerToSwitch(sw, peer)
+	p2p.AddPeerToSwitchPeerSet(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
@@ -174,7 +209,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	sw.SetAddrBook(book)
 
 	peer := mock.NewPeer(nil)
-	p2p.AddPeerToSwitch(sw, peer)
+	p2p.AddPeerToSwitchPeerSet(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
