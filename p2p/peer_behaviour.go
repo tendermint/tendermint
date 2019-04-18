@@ -97,7 +97,7 @@ func (spb *StoredPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) {
 	}
 }
 
-// Return all the ErrorBehaviours produced by peer identified by peerID.
+// ErrorBehaviours returns all erorrs produced by peer identified by ID.
 func (spb *StoredPeerBehaviour) GetErrorBehaviours(peerID ID) []ErrorPeerBehaviour {
 	spb.mtx.RLock()
 	defer spb.mtx.RUnlock()
