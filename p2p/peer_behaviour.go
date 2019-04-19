@@ -28,6 +28,7 @@ type PeerBehaviour interface {
 	Behaved(peerID ID, reason GoodPeerBehaviour) error
 	Errored(peerID ID, reason ErrorPeerBehaviour) error
 }
+
 // SwitchPeerBehaviour relays peer behaviour signals to a Switch, which is
 // needed until Switch satisfies the PeerBehaviour interface.
 type SwitchPeerBehaviour struct {
@@ -67,9 +68,9 @@ func NewSwitchPeerBehaviour(sw *Switch) *SwitchPeerBehaviour {
 // PeerBehaviour interface used in reactor tests to ensure reactors
 // produce the correct signals in manufactured scenarios.
 type StoredPeerBehaviour struct {
+	mtx sync.RWMutex
 	eb  map[ID][]ErrorPeerBehaviour
 	gb  map[ID][]GoodPeerBehaviour
-	mtx sync.RWMutex
 }
 
 // GettablePeerBehaviour provides an interface for accessing ErrorPeerBehaviours
