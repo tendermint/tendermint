@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	amino "github.com/tendermint/go-amino"
@@ -292,4 +293,22 @@ func TestVoteValidateBasic(t *testing.T) {
 			assert.Equal(t, tc.expectErr, vote.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
+}
+
+func TestVoteEncodingRountrip(t *testing.T) {
+	// none of the below would pass validation:
+	now := time.Now().Truncate(0).UTC()
+	bid := BlockID{Hash: []byte("fake hash"), PartsHeader: PartSetHeader{0, []byte("another fake hash")}}
+	vote := &Vote{Height: 1, Round: 1, Type: PrevoteType, BlockID: bid, ValidatorAddress: []byte("no real addr"), Timestamp: now, Signature: []byte("totaly_fake_sig")}
+
+	bz, err := proto.Marshal(&VoteCustomType{vote})
+	if err != nil {
+		panic(err)
+	}
+	vct := &VoteCustomType{}
+	err = proto.Unmarshal(bz, vct)
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, vct.Vote, vote)
 }

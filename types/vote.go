@@ -166,9 +166,6 @@ func (vote *Vote) ValidateBasic() error {
 	return nil
 }
 
-func (vote Vote) toCustomType() VoteCustomType {
-	return VoteCustomType{Vote: &vote}
-}
 func (vote Vote) Equal(other Vote) bool {
 	proto := vote.toVoteType()
 	return proto.Equal(other.toVoteType())
@@ -180,7 +177,7 @@ func (vote *Vote) toVoteType() *VoteType {
 		Height:           vote.Height,
 		Round:            int64(vote.Round), // TODO
 		BlockID:          &BlockIDType{Hash: vote.BlockID.Hash, PartSetHeader: &PartSetHeaderType{Total: int64(vote.BlockID.PartsHeader.Total), Hash: vote.BlockID.PartsHeader.Hash.Bytes()}},
-		TimestampField:   &types.Timestamp{Seconds: int64(vote.Timestamp.Second()), Nanos: int32(vote.Timestamp.Nanosecond())},
+		TimestampField:   &types.Timestamp{Seconds: int64(vote.Timestamp.Unix()), Nanos: int32(vote.Timestamp.Nanosecond())},
 		ValidatorAddress: vote.ValidatorAddress[:],
 		ValidatorIndex:   int64(vote.ValidatorIndex),
 		Signature:        vote.Signature,
@@ -197,6 +194,8 @@ func fromVoteType(voteType *VoteType) *Vote {
 		vote.Round = int(voteType.Round) // FIXME
 		vote.BlockID = BlockID{Hash: voteType.BlockID.Hash, PartsHeader: PartSetHeader{int(voteType.BlockID.PartSetHeader.Total), voteType.BlockID.PartSetHeader.Hash}}
 		ti, err := ptypes.Timestamp(&tspb.Timestamp{Seconds: voteType.TimestampField.Seconds, Nanos: voteType.TimestampField.Nanos})
+		ti = ti.UTC().Truncate(0)
+		fmt.Println("ti", ti)
 		if err != nil {
 			panic(err)
 		}
