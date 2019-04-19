@@ -37,6 +37,44 @@ func TestPEXReactorBasic(t *testing.T) {
 	assert.NotEmpty(t, r.GetChannels())
 }
 
+func TestPEXReactorStopPeerWithOutInitPeer(t *testing.T) {
+	r, book := createReactor(&PEXReactorConfig{})
+	defer teardownReactor(book)
+
+	sw := createSwitchAndAddReactors(r)
+	sw.SetAddrBook(book)
+	sw.Start()
+	defer sw.Stop()
+
+	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
+	nodeId := nodeKey.ID()
+	stopForError := 0
+	for i := 0; i < 10000; i++ {
+		peer := mock.NewFixIdPeer(nil, nodeId)
+		// Only add to peerSet
+		p2p.AddPeerToSwitchPeerSet(sw, peer)
+		assert.True(t, sw.Peers().Has(peer.ID()))
+
+		msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
+
+		// first time creates the entry
+		r.Receive(PexChannel, peer, msg)
+		if !sw.Peers().Has(peer.ID()) {
+			stopForError++
+		}
+		// next time sets the last time value
+		r.Receive(PexChannel, peer, msg)
+		if !sw.Peers().Has(peer.ID()) {
+			stopForError++
+		}
+
+		go sw.StopPeerForError(peer, "peer not available")
+		for sw.Peers().Has(peer.ID()) {
+		}
+	}
+	assert.NotEqual(t, stopForError, 0)
+}
+
 func TestPEXReactorDoNotStopReconnectionPeer(t *testing.T) {
 	r, book := createReactor(&PEXReactorConfig{})
 	defer teardownReactor(book)
@@ -49,7 +87,7 @@ func TestPEXReactorDoNotStopReconnectionPeer(t *testing.T) {
 	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 	nodeId := nodeKey.ID()
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10000; i++ {
 		peer := mock.NewFixIdPeer(nil, nodeId)
 		p2p.AddPeerToSwitch(sw, peer)
 		assert.True(t, sw.Peers().Has(peer.ID()))

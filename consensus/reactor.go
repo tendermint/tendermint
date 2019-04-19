@@ -225,9 +225,6 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	// Get peer states
-	if src.Get(types.PeerStateKey) == nil {
-		fmt.Println("============= nil result ========")
-	}
 	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
 	if !ok {
 		panic(fmt.Sprintf("Peer %v has no state", src))
