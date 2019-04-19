@@ -2,9 +2,15 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+	"github.com/golang/protobuf/ptypes"
+	tspb "github.com/golang/protobuf/ptypes/timestamp"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -158,4 +164,93 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
+}
+
+func (vote Vote) toCustomType() VoteCustomType {
+	return VoteCustomType{Vote: &vote}
+}
+func (vote Vote) Equal(other Vote) bool {
+	proto := vote.toVoteType()
+	return proto.Equal(other.toVoteType())
+}
+
+func (vote *Vote) toVoteType() *VoteType {
+	proto := &VoteType{
+		Type:             uint32(vote.Type),
+		Height:           vote.Height,
+		Round:            int64(vote.Round), // TODO
+		BlockID:          &BlockIDType{Hash: vote.BlockID.Hash, PartSetHeader: &PartSetHeaderType{Total: int64(vote.BlockID.PartsHeader.Total), Hash: vote.BlockID.PartsHeader.Hash.Bytes()}},
+		TimestampField:   &types.Timestamp{Seconds: int64(vote.Timestamp.Second()), Nanos: int32(vote.Timestamp.Nanosecond())},
+		ValidatorAddress: vote.ValidatorAddress[:],
+		ValidatorIndex:   int64(vote.ValidatorIndex),
+		Signature:        vote.Signature,
+	}
+	return proto
+}
+
+func fromVoteType(voteType *VoteType) *Vote {
+	vote := &Vote{}
+	if voteType != nil {
+		vote.Type = SignedMsgType(voteType.Type)
+
+		vote.Height = voteType.Height
+		vote.Round = int(voteType.Round) // FIXME
+		vote.BlockID = BlockID{Hash: voteType.BlockID.Hash, PartsHeader: PartSetHeader{int(voteType.BlockID.PartSetHeader.Total), voteType.BlockID.PartSetHeader.Hash}}
+		ti, err := ptypes.Timestamp(&tspb.Timestamp{Seconds: voteType.TimestampField.Seconds, Nanos: voteType.TimestampField.Nanos})
+		if err != nil {
+			panic(err)
+		}
+		vote.Timestamp = ti
+		vote.ValidatorAddress = voteType.ValidatorAddress
+		vote.ValidatorIndex = int(voteType.ValidatorIndex) // FIXME
+
+		vote.Signature = voteType.Signature
+	}
+
+	return vote
+}
+
+func (vote *Vote) Size() int {
+	return vote.toVoteType().Size()
+}
+
+func NewPopulatedVote(r randyTypes) *Vote {
+	data := NewPopulatedVoteType(r, false)
+	gt := fromVoteType(data)
+	return gt
+}
+
+func (vote Vote) Marshal() ([]byte, error) {
+	vt := vote.toVoteType()
+	return proto.Marshal(vt)
+}
+
+func (vote *Vote) Unmarshal(data []byte) error {
+	pr := &VoteType{}
+	err := proto.Unmarshal(data, pr)
+	if err != nil {
+		return err
+	}
+
+	*vote = *fromVoteType(pr)
+	return nil
+}
+
+func (vote Vote) MarshalJSON() ([]byte, error) {
+	return json.Marshal(vote)
+}
+
+func (gt *Vote) UnmarshalJSON(data []byte) error {
+	var v Vote
+	err := json.Unmarshal(data, &v)
+	if err != nil {
+		return err
+	}
+	*gt = v
+	return nil
+}
+
+func (gt Vote) Compare(other Vote) int {
+	// todo
+	return 1
 }

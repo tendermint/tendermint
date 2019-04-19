@@ -1,0 +1,40 @@
+syntax = "proto2";
+
+package types;
+
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+
+option (gogoproto.unmarshaler_all) = false;
+option (gogoproto.marshaler_all) = false;
+option (gogoproto.populate_all) = true;
+option (gogoproto.testgen_all) = true;
+
+message VoteCustomType {
+  required VoteType vote = 1 [(gogoproto.customtype) = "Vote"];
+}
+
+message VoteType {
+  required uint32 Type = 1;
+  required int64 Height = 2;
+  required int64 Round = 3;
+  required BlockIDType BlockID = 4;
+  required google.protobuf.Timestamp timestamp_field = 5;
+  required bytes ValidatorAddress = 6;
+  required int64 ValidatorIndex = 7;
+  optional bytes Signature = 8;
+}
+
+// TODO: try if it's worth using custom types here too instead?
+// (probably not a good idea: more interface methods to implement
+// and this messages do not travel the wire separately)
+message PartSetHeaderType {
+  required sint64 total = 1;
+  required bytes hash = 2;
+}
+
+message BlockIDType {
+  optional bytes Hash = 1;
+  optional PartSetHeaderType PartSetHeader = 2;
+}
