@@ -176,8 +176,8 @@ func (vote *Vote) toVoteType() *VoteType {
 		Type:             uint32(vote.Type),
 		Height:           vote.Height,
 		Round:            int64(vote.Round), // TODO
-		BlockID:          &BlockIDType{Hash: vote.BlockID.Hash, PartSetHeader: &PartSetHeaderType{Total: int64(vote.BlockID.PartsHeader.Total), Hash: vote.BlockID.PartsHeader.Hash.Bytes()}},
-		TimestampField:   &types.Timestamp{Seconds: int64(vote.Timestamp.Unix()), Nanos: int32(vote.Timestamp.Nanosecond())},
+		BlockID:          vote.BlockID.toBlockIDType(),
+		TimestampField:   toTimestamp(vote.Timestamp),
 		ValidatorAddress: vote.ValidatorAddress[:],
 		ValidatorIndex:   int64(vote.ValidatorIndex),
 		Signature:        vote.Signature,
@@ -189,24 +189,71 @@ func fromVoteType(voteType *VoteType) *Vote {
 	vote := &Vote{}
 	if voteType != nil {
 		vote.Type = SignedMsgType(voteType.Type)
-
 		vote.Height = voteType.Height
-		vote.Round = int(voteType.Round) // FIXME
-		vote.BlockID = BlockID{Hash: voteType.BlockID.Hash, PartsHeader: PartSetHeader{int(voteType.BlockID.PartSetHeader.Total), voteType.BlockID.PartSetHeader.Hash}}
-		ti, err := ptypes.Timestamp(&tspb.Timestamp{Seconds: voteType.TimestampField.Seconds, Nanos: voteType.TimestampField.Nanos})
-		ti = ti.UTC().Truncate(0)
-		fmt.Println("ti", ti)
+		vote.Round = int(voteType.Round) // FIXME int <-> int64
+		vote.BlockID = fromBlockIDType(voteType.BlockID)
+		ti, err := fromTimeStamp(voteType.TimestampField)
 		if err != nil {
-			panic(err)
+			panic(err) // FIXME probably we don't want to panic here
 		}
 		vote.Timestamp = ti
 		vote.ValidatorAddress = voteType.ValidatorAddress
-		vote.ValidatorIndex = int(voteType.ValidatorIndex) // FIXME
-
+		vote.ValidatorIndex = int(voteType.ValidatorIndex) // FIXME int <-> int64
 		vote.Signature = voteType.Signature
 	}
 
 	return vote
+}
+
+func fromBlockIDType(bIDt *BlockIDType) BlockID {
+	bid := BlockID{}
+	if bIDt != nil {
+		bid.Hash = bIDt.Hash
+		bid.PartsHeader = fromPartSetHeaderType(bIDt.PartSetHeader)
+	}
+	return bid
+}
+
+func (bid *BlockID) toBlockIDType() *BlockIDType {
+	bidt := &BlockIDType{}
+	if bid != nil {
+		bidt.Hash = bid.Hash
+		bidt.PartSetHeader = bid.PartsHeader.toPartSetHeaderType()
+	}
+	return bidt
+}
+
+func (psh *PartSetHeader) toPartSetHeaderType() *PartSetHeaderType {
+	psht := &PartSetHeaderType{}
+	if psh != nil {
+		psht.Total = int64(psh.Total)
+		psht.Hash = psh.Hash.Bytes()
+	}
+	return psht
+}
+
+func fromPartSetHeaderType(psht *PartSetHeaderType) PartSetHeader {
+	psh := PartSetHeader{}
+	if psht != nil {
+		psh.Total = int(psht.Total) // FIXME int <-> int64 ...
+		psh.Hash = psht.Hash
+	}
+	return psh
+}
+
+func fromTimeStamp(ts *types.Timestamp) (time.Time, error) {
+	// TODO: we can re-use this method everywhere we convert between time.Time and proto ...
+	ti, err := ptypes.Timestamp(&tspb.Timestamp{Seconds: ts.Seconds, Nanos: ts.Nanos})
+	if err != nil {
+		return ti, err
+	}
+	ti = ti.UTC().Truncate(0)
+	return ti, nil
+}
+
+func toTimestamp(ti time.Time) *types.Timestamp {
+	// FIXME int <-> int64
+	return &types.Timestamp{Seconds: int64(ti.Unix()), Nanos: int32(ti.Nanosecond())}
 }
 
 func (vote *Vote) Size() int {
@@ -239,17 +286,17 @@ func (vote Vote) MarshalJSON() ([]byte, error) {
 	return json.Marshal(vote)
 }
 
-func (gt *Vote) UnmarshalJSON(data []byte) error {
+func (vote *Vote) UnmarshalJSON(data []byte) error {
 	var v Vote
 	err := json.Unmarshal(data, &v)
 	if err != nil {
 		return err
 	}
-	*gt = v
+	*vote = v
 	return nil
 }
 
-func (gt Vote) Compare(other Vote) int {
-	// todo
+func (vote Vote) Compare(other Vote) int {
+	// TODO: replace with an actual implementation
 	return 1
 }
