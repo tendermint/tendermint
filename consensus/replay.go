@@ -13,7 +13,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	//auto "github.com/tendermint/tendermint/libs/autofile"
-	cmn "github.com/tendermint/tendermint/libs/common"
+
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -263,7 +263,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
 	if err != nil {
-		return fmt.Errorf("Error on replay: %v", err)
+		return fmt.Errorf("error on replay: %v", err)
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
@@ -341,11 +341,11 @@ func (h *Handshaker) ReplayBlocks(
 
 	} else if storeBlockHeight < stateBlockHeight {
 		// the state should never be ahead of the store (this is under tendermint's control)
-		cmn.PanicSanity(fmt.Sprintf("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
+		panic(fmt.Sprintf("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
 
 	} else if storeBlockHeight > stateBlockHeight+1 {
 		// store should be at most one ahead of the state (this is under tendermint's control)
-		cmn.PanicSanity(fmt.Sprintf("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
+		panic(fmt.Sprintf("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
 	}
 
 	var err error
@@ -395,8 +395,7 @@ func (h *Handshaker) ReplayBlocks(
 
 	}
 
-	cmn.PanicSanity("Should never happen")
-	return nil, nil
+	panic("should never happen")
 }
 
 func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int64, mutateState bool) ([]byte, error) {
