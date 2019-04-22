@@ -90,7 +90,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *
 	}
 }
 
-func sendTxs(cs *ConsensusState, ctx context.Context) {
+func sendTxs(ctx context.Context, cs *ConsensusState) {
 	for i := 0; i < 256; i++ {
 		select {
 		case <-ctx.Done():
@@ -115,7 +115,7 @@ func TestWALCrash(t *testing.T) {
 			1},
 		{"many non-empty blocks",
 			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
-				go sendTxs(cs, ctx)
+				go sendTxs(ctx, cs)
 			},
 			3},
 	}
@@ -631,24 +631,26 @@ func (app *badApp) Commit() abci.ResponseCommit {
 // utils for making blocks
 
 func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
+	var height int64
+
 	// Search for height marker
-	gr, found, err := wal.SearchForEndHeight(0, &WALSearchOptions{})
+	gr, found, err := wal.SearchForEndHeight(height, &WALSearchOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
 	if !found {
-		return nil, nil, fmt.Errorf("WAL does not contain height %d", 1)
+		return nil, nil, fmt.Errorf("WAL does not contain height %d", height)
 	}
 	defer gr.Close() // nolint: errcheck
 
 	// log.Notice("Build a blockchain by reading from the WAL")
 
-	var blocks []*types.Block
-	var commits []*types.Commit
-
-	var thisBlockParts *types.PartSet
-	var thisBlockCommit *types.Commit
-	var height int64
+	var (
+		blocks          []*types.Block
+		commits         []*types.Commit
+		thisBlockParts  *types.PartSet
+		thisBlockCommit *types.Commit
+	)
 
 	dec := NewWALDecoder(gr)
 	for {
@@ -740,7 +742,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey, appVersion version.
 	stateDB := dbm.NewMemDB()
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion
-	store := NewMockBlockStore(config, state.ConsensusParams)
+	store := newMockBlockStore(config, state.ConsensusParams)
 	return stateDB, state, store
 }
 
@@ -755,7 +757,7 @@ type mockBlockStore struct {
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func NewMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
+func newMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
 	return &mockBlockStore{config, params, nil, nil}
 }
 
