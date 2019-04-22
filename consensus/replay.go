@@ -230,6 +230,7 @@ func (h *Handshaker) SetEventBus(eventBus types.BlockEventPublisher) {
 	h.eventBus = eventBus
 }
 
+// NBlocks returns the number of blocks applied to the state.
 func (h *Handshaker) NBlocks() int {
 	return h.nBlocks
 }
@@ -274,7 +275,8 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	return nil
 }
 
-// Replay all blocks since appBlockHeight and ensure the result matches the current state.
+// ReplayBlocks replays all blocks since appBlockHeight and ensures the result
+// matches the current state.
 // Returns the final AppHash or an error.
 func (h *Handshaker) ReplayBlocks(
 	state sm.State,
@@ -319,7 +321,7 @@ func (h *Handshaker) ReplayBlocks(
 			} else {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				if len(h.genDoc.Validators) == 0 {
-					return nil, fmt.Errorf("Validator set is nil in genesis and still empty after InitChain")
+					return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
 				}
 			}
 
@@ -382,7 +384,7 @@ func (h *Handshaker) ReplayBlocks(
 			return state.AppHash, err
 
 		} else if appBlockHeight == storeBlockHeight {
-			// We ran Commit, but didn't save the state, so replayBlock with mock app
+			// We ran Commit, but didn't save the state, so replayBlock with mock app.
 			abciResponses, err := sm.LoadABCIResponses(h.stateDB, storeBlockHeight)
 			if err != nil {
 				return nil, err
@@ -395,7 +397,8 @@ func (h *Handshaker) ReplayBlocks(
 
 	}
 
-	panic("should never happen")
+	panic(fmt.Sprintf("uncovered case! appHeight: %d, storeHeight: %d, stateHeight: %d",
+		appBlockHeight, storeBlockHeight, stateBlockHeight))
 }
 
 func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int64, mutateState bool) ([]byte, error) {
