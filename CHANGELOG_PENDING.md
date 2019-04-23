@@ -9,17 +9,17 @@
 * Apps
 
 * Go API
-- [mempool] \#2659 Mempool now an interface
-  * old Mempool renamed to CListMempool
-  * NewMempool renamed to NewCListMempool
-  * Option renamed to CListOption
-  * MempoolReactor renamed to Reactor
-  * NewMempoolReactor renamed to NewReactor
-  * unexpose TxID method
-  * TxInfo.PeerID renamed to SenderID
-  * unexpose MempoolReactor.Mempool
-- [state] \#2659 Mempool interface moved to mempool package
-  * MockMempool moved to top-level mock package and renamed to Mempool
+- [mempool] \#2659 `Mempool` now an interface
+  * old `Mempool` implementation renamed to `CListMempool`
+  * `NewMempool` renamed to `NewCListMempool`
+  * `Option` renamed to `CListOption`
+  * unexpose `MempoolReactor.Mempool`
+  * `MempoolReactor` renamed to `Reactor`
+  * `NewMempoolReactor` renamed to `NewReactor`
+  * unexpose `TxID` method
+  * `TxInfo.PeerID` renamed to `SenderID`
+- [state] \#2659 `Mempool` interface moved to mempool package
+  * `MockMempool` moved to top-level mock package and renamed to `Mempool`
 
 * Blockchain Protocol
 
