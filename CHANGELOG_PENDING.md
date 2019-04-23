@@ -9,6 +9,14 @@
 * Apps
 
 * Go API
+- [mempool] \#2659 Mempool now an interface
+  * old Mempool renamed to CListMempool
+  * MempoolReactor renamed to Reactor
+  * unexpose TxID method
+  * TxInfo.PeerID renamed to SenderID
+  * unexpose MempoolReactor.Mempool
+- [state] \#2659 Mempool interface moved to mempool package
+  * MockMempool moved to top-level mock package and renamed to Mempool
 
 * Blockchain Protocol
 
@@ -25,4 +33,4 @@
 - [state] [\#3537](https://github.com/tendermint/tendermint/pull/3537#issuecomment-482711833) LoadValidators: do not return an empty validator set
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
   to 16 (as a result, the node will stop retrying after a 35 hours time window)
-- [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests 
+- [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests
