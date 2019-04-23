@@ -70,15 +70,15 @@ type CListMempool struct {
 
 var _ Mempool = &CListMempool{}
 
-// Option sets an optional parameter on the mempool.
-type Option func(*CListMempool)
+// CListMempoolOption sets an optional parameter on the mempool.
+type CListMempoolOption func(*CListMempool)
 
 // NewCListMempool returns a new mempool with the given configuration and connection to an application.
 func NewCListMempool(
 	config *cfg.MempoolConfig,
 	proxyAppConn proxy.AppConnMempool,
 	height int64,
-	options ...Option,
+	options ...CListMempoolOption,
 ) *CListMempool {
 	mempool := &CListMempool{
 		config:        config,
@@ -115,18 +115,18 @@ func (mem *CListMempool) SetLogger(l log.Logger) {
 
 // WithPreCheck sets a filter for the mempool to reject a tx if f(tx) returns
 // false. This is ran before CheckTx.
-func WithPreCheck(f PreCheckFunc) Option {
+func WithPreCheck(f PreCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.preCheck = f }
 }
 
 // WithPostCheck sets a filter for the mempool to reject a tx if f(tx) returns
 // false. This is ran after CheckTx.
-func WithPostCheck(f PostCheckFunc) Option {
+func WithPostCheck(f PostCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.postCheck = f }
 }
 
 // WithMetrics sets the metrics.
-func WithMetrics(metrics *Metrics) Option {
+func WithMetrics(metrics *Metrics) CListMempoolOption {
 	return func(mem *CListMempool) { mem.metrics = metrics }
 }
 
@@ -194,10 +194,16 @@ func (mem *CListMempool) Flush() {
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 }
 
+// TxsFront returns the first transaction in the ordered list for peer
+// goroutines to call .NextWait() on.
+// FIXME: leaking implementation details!
 func (mem *CListMempool) TxsFront() *clist.CElement {
 	return mem.txs.Front()
 }
 
+// TxsWaitChan returns a channel to wait on transactions. It will be closed
+// once the mempool is not empty (ie. the internal `mem.txs` has at least one
+// element)
 func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 	return mem.txs.WaitChan()
 }
