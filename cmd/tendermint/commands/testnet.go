@@ -39,7 +39,7 @@ func init() {
 	TestnetFilesCmd.Flags().IntVar(&nValidators, "v", 4,
 		"Number of validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().StringVar(&configFile, "config", "",
-		"Use this file as the base configuration")
+		"Config file to use (note some options may be overwritten)")
 	TestnetFilesCmd.Flags().IntVar(&nNonValidators, "n", 0,
 		"Number of non-validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().StringVar(&outputDir, "o", "./mytestnet",
