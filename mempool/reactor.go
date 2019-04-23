@@ -37,7 +37,7 @@ const (
 type Reactor struct {
 	p2p.BaseReactor
 	config  *cfg.MempoolConfig
-	mempool Mempool
+	mempool *CListMempool
 	ids     *mempoolIDs
 }
 
@@ -105,7 +105,7 @@ func newMempoolIDs() *mempoolIDs {
 }
 
 // NewReactor returns a new Reactor with the given config and mempool.
-func NewReactor(config *cfg.MempoolConfig, mempool Mempool) *Reactor {
+func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
 	memR := &Reactor{
 		config:  config,
 		mempool: mempool,
@@ -115,18 +115,10 @@ func NewReactor(config *cfg.MempoolConfig, mempool Mempool) *Reactor {
 	return memR
 }
 
-type mempoolWithLogger interface {
-	SetLogger(log.Logger)
-}
-
 // SetLogger sets the Logger on the reactor and the underlying mempool.
 func (memR *Reactor) SetLogger(l log.Logger) {
 	memR.Logger = l
-
-	// set mempoolWithLogger if mempool supports it
-	if mem, ok := memR.mempool.(mempoolWithLogger); ok {
-		mem.SetLogger(l)
-	}
+	memR.mempool.SetLogger(l)
 }
 
 // OnStart implements p2p.BaseReactor.
