@@ -1,8 +1,6 @@
 package db
 
-import (
-	"sync"
-)
+import "sync"
 
 type atomicSetDeleter interface {
 	Mutex() *sync.Mutex

@@ -322,6 +322,34 @@ func TestPEXReactorSeedMode(t *testing.T) {
 	assert.Equal(t, 0, sw.Peers().Size())
 }
 
+func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
+	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true})
+	defer teardownReactor(book)
+
+	sw := createSwitchAndAddReactors(pexR)
+	sw.SetAddrBook(book)
+	err = sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	peer := mock.NewPeer(nil)
+	addr := peer.SocketAddr()
+
+	err = book.AddAddress(addr, addr)
+	require.NoError(t, err)
+
+	assert.True(t, book.HasAddress(addr))
+	// imitate maxAttemptsToDial reached
+	pexR.attemptsToDial.Store(addr.DialString(), _attemptsToDial{maxAttemptsToDial + 1, time.Now()})
+	pexR.crawlPeers([]*p2p.NetAddress{addr})
+	assert.False(t, book.HasAddress(addr))
+}
+
 // connect a peer to a seed, wait a bit, then stop it.
 // this should give it time to request addrs and for the seed
 // to call FlushStop, and allows us to test calling Stop concurrently
@@ -539,7 +567,7 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 			book.SetLogger(log.TestingLogger())
 			for j := 0; j < len(knownAddrs); j++ {
 				book.AddAddress(knownAddrs[j], srcAddrs[j])
-				book.MarkGood(knownAddrs[j])
+				book.MarkGood(knownAddrs[j].ID)
 			}
 			sw.SetAddrBook(book)
 
