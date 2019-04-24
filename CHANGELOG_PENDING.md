@@ -26,7 +26,7 @@
 * P2P Protocol
 
 ### FEATURES:
-- [node] \#2659 Add Mempool method, which allows you to access mempool
+- [node] \#2659 Add `node.Mempool()` method, which allows you to access mempool
 
 ### IMPROVEMENTS:
 - [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC

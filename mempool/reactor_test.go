@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -64,13 +63,15 @@ func makeAndConnectReactors(config *cfg.Config, N int) []*Reactor {
 	return reactors
 }
 
-// wait for all txs on all reactors
-func waitForTxs(t *testing.T, txs types.Txs, reactors []*Reactor) {
+func waitForTxsOnReactors(t *testing.T, txs types.Txs, reactors []*Reactor) {
 	// wait for the txs in all mempools
 	wg := new(sync.WaitGroup)
-	for i := 0; i < len(reactors); i++ {
+	for i, reactor := range reactors {
 		wg.Add(1)
-		go _waitForTxs(t, wg, txs, i, reactors)
+		go func(r *Reactor, reactorIndex int) {
+			defer wg.Done()
+			waitForTxsOnReactor(t, txs, r, reactorIndex)
+		}(reactor, i)
 	}
 
 	done := make(chan struct{})
@@ -87,19 +88,17 @@ func waitForTxs(t *testing.T, txs types.Txs, reactors []*Reactor) {
 	}
 }
 
-// wait for all txs on a single mempool
-func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int, reactors []*Reactor) {
-
-	mempool := reactors[reactorIdx].mempool
-	for mempool.Size() != len(txs) {
+func waitForTxsOnReactor(t *testing.T, txs types.Txs, reactor *Reactor, reactorIndex int) {
+	mempool := reactor.mempool
+	for mempool.Size() < len(txs) {
 		time.Sleep(time.Millisecond * 100)
 	}
 
 	reapedTxs := mempool.ReapMaxTxs(len(txs))
 	for i, tx := range txs {
-		assert.Equal(t, tx, reapedTxs[i], fmt.Sprintf("txs at index %d on reactor %d don't match: %v vs %v", i, reactorIdx, tx, reapedTxs[i]))
+		assert.Equalf(t, tx, reapedTxs[i],
+			"txs at index %d on reactor %d don't match: %v vs %v", i, reactorIndex, tx, reapedTxs[i])
 	}
-	wg.Done()
 }
 
 // ensure no txs on reactor after some timeout
@@ -131,7 +130,7 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
 	txs := checkTxs(t, reactors[0].mempool, NUM_TXS, UnknownPeerID)
-	waitForTxs(t, txs, reactors)
+	waitForTxsOnReactors(t, txs, reactors)
 }
 
 func TestReactorNoBroadcastToSender(t *testing.T) {
