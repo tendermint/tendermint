@@ -85,7 +85,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if _, err := os.Stat(oldPrivVal); !os.IsNotExist(err) {
 		oldPV, err := privval.LoadOldFilePV(oldPrivVal)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading OldPrivValidator from %v: %v\n", oldPrivVal, err)
+			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v\n", oldPrivVal, err)
 		}
 		logger.Info("Upgrading PrivValidator file",
 			"old", oldPrivVal,
@@ -177,7 +177,7 @@ func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.L
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
-		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
+		return nil, fmt.Errorf("error starting proxy app connections: %v", err)
 	}
 	return proxyApp, nil
 }
@@ -223,7 +223,7 @@ func doHandshakeForNewNode(stateDB dbm.DB, state sm.State, blockStore sm.BlockSt
 	handshaker.SetLogger(logger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
-		return fmt.Errorf("Error during handshake: %v", err)
+		return fmt.Errorf("error during handshake: %v", err)
 	}
 	return nil
 }
@@ -373,7 +373,7 @@ func setupNewNodeTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p
 					return err
 				}
 				if res.IsErr() {
-					return fmt.Errorf("Error querying abci app: %v", res)
+					return fmt.Errorf("error querying abci app: %v", res)
 				}
 
 				return nil
@@ -391,7 +391,7 @@ func setupNewNodeTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p
 					return err
 				}
 				if res.IsErr() {
-					return fmt.Errorf("Error querying abci app: %v", res)
+					return fmt.Errorf("error querying abci app: %v", res)
 				}
 
 				return nil
@@ -1004,7 +1004,7 @@ func createAndStartPrivValidatorSocketClient(
 		listener = privval.NewTCPListener(ln, ed25519.GenPrivKey())
 	default:
 		return nil, fmt.Errorf(
-			"Wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
+			"wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
 			protocol,
 		)
 	}
