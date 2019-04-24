@@ -136,6 +136,11 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 
 //------------------------------------------------------------------------------
 
+type mempoolWithWAL interface {
+	InitWAL()
+	CloseWAL()
+}
+
 // Node is the highest level interface to a full Tendermint node.
 // It includes all configuration information and running services.
 type Node struct {
@@ -160,7 +165,7 @@ type Node struct {
 	blockStore       *bc.BlockStore        // store the blockchain to disk
 	bcReactor        *bc.BlockchainReactor // for fast-syncing
 	mempoolReactor   *mempl.Reactor        // for gossipping transactions
-	mempool          *mempl.CListMempool
+	mempool          mempl.Mempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
 	evidencePool     *evidence.EvidencePool // tracking evidence
@@ -330,9 +335,6 @@ func NewNode(config *cfg.Config,
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
 	mempoolLogger := logger.With("module", "mempool")
-	if config.Mempool.WalEnabled() {
-		mempool.InitWAL() // no need to have the mempool wal during tests
-	}
 	mempoolReactor := mempl.NewReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
@@ -585,6 +587,12 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
+	if n.config.Mempool.WalEnabled() {
+		if m, ok := n.mempool.(mempoolWithWAL); ok {
+			m.InitWAL() // no need to have the mempool wal during tests
+		}
+	}
+
 	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
@@ -618,7 +626,9 @@ func (n *Node) OnStop() {
 
 	// stop mempool WAL
 	if n.config.Mempool.WalEnabled() {
-		n.mempool.CloseWAL()
+		if m, ok := n.mempool.(mempoolWithWAL); ok {
+			m.CloseWAL()
+		}
 	}
 
 	if err := n.transport.Close(); err != nil {
