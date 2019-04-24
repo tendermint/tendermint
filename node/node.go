@@ -159,17 +159,18 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
-func getStoresForNewNode(config *cfg.Config, dbProvider DBProvider) (*bc.BlockStore, dbm.DB, error) {
-	blockStoreDB, err := dbProvider(&DBContext{"blockstore", config})
+func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *bc.BlockStore, stateDB dbm.DB, err error) {
+	var blockStoreDB dbm.DB
+	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
 	if err != nil {
-		return nil, nil, err
+		return
 	}
-	blockStore := bc.NewBlockStore(blockStoreDB)
-	stateDB, err := dbProvider(&DBContext{"state", config})
+	blockStore = bc.NewBlockStore(blockStoreDB)
+	stateDB, err = dbProvider(&DBContext{"state", config})
 	if err != nil {
-		return nil, nil, err
+		return
 	}
-	return blockStore, stateDB, nil
+	return
 }
 
 func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.Logger) (proxy.AppConns, error) {
@@ -479,7 +480,7 @@ func NewNode(config *cfg.Config,
 	metricsProvider MetricsProvider,
 	logger log.Logger) (*Node, error) {
 
-	blockStore, stateDB, err := getStoresForNewNode(config, dbProvider)
+	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
 		return nil, err
 	}
