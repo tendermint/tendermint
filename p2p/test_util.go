@@ -23,7 +23,7 @@ type mockNodeInfo struct {
 }
 
 func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
-func (ni mockNodeInfo) NetAddress() *NetAddress             { return ni.addr }
+func (ni mockNodeInfo) NetAddress() (*NetAddress, error)    { return ni.addr, nil }
 func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
@@ -35,7 +35,8 @@ func CreateRandomPeer(outbound bool) *peer {
 	addr, netAddr := CreateRoutableAddr()
 	p := &peer{
 		peerConn: peerConn{
-			outbound: outbound,
+			outbound:   outbound,
+			socketAddr: netAddr,
 		},
 		nodeInfo: mockNodeInfo{netAddr},
 		mconn:    &conn.MConnection{},
@@ -174,10 +175,15 @@ func MakeSwitch(
 		PrivKey: ed25519.GenPrivKey(),
 	}
 	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
+	addr, err := NewNetAddressString(
+		IDAddressString(nodeKey.ID(), nodeInfo.(DefaultNodeInfo).ListenAddr),
+	)
+	if err != nil {
+		panic(err)
+	}
 
 	t := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
 
-	addr := nodeInfo.NetAddress()
 	if err := t.Listen(*addr); err != nil {
 		panic(err)
 	}
@@ -214,7 +220,7 @@ func testPeerConn(
 	cfg *config.P2PConfig,
 	outbound, persistent bool,
 	ourNodePrivKey crypto.PrivKey,
-	originalAddr *NetAddress,
+	socketAddr *NetAddress,
 ) (pc peerConn, err error) {
 	conn := rawConn
 
@@ -231,12 +237,7 @@ func testPeerConn(
 	}
 
 	// Only the information we already have
-	return peerConn{
-		outbound:     outbound,
-		persistent:   persistent,
-		conn:         conn,
-		originalAddr: originalAddr,
-	}, nil
+	return newPeerConn(outbound, persistent, conn, socketAddr), nil
 }
 
 //----------------------------------------------------------------

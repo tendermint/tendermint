@@ -339,6 +339,6 @@ type CanonicalVote struct {
 
 The field ordering and the fixed sized encoding for the first three fields is optimized to ease parsing of SignBytes
 in HSMs. It creates fixed offsets for relevant fields that need to be read in this context.
-For more details, see the [signing spec](/docs/spec/consensus/signing.md).
+For more details, see the [signing spec](../consensus/signing.md).
 Also, see the motivating discussion in
 [#1622](https://github.com/tendermint/tendermint/issues/1622).

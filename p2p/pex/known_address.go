@@ -33,18 +33,6 @@ func (ka *knownAddress) ID() p2p.ID {
 	return ka.Addr.ID
 }
 
-func (ka *knownAddress) copy() *knownAddress {
-	return &knownAddress{
-		Addr:        ka.Addr,
-		Src:         ka.Src,
-		Attempts:    ka.Attempts,
-		LastAttempt: ka.LastAttempt,
-		LastSuccess: ka.LastSuccess,
-		BucketType:  ka.BucketType,
-		Buckets:     ka.Buckets,
-	}
-}
-
 func (ka *knownAddress) isOld() bool {
 	return ka.BucketType == bucketTypeOld
 }

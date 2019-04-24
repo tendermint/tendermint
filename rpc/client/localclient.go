@@ -58,11 +58,7 @@ func NewLocal(node *nm.Node) *Local {
 	}
 }
 
-var (
-	_ Client        = (*Local)(nil)
-	_ NetworkClient = (*Local)(nil)
-	_ EventsClient  = (*Local)(nil)
-)
+var _ Client = (*Local)(nil)
 
 // SetLogger allows to set a logger on the client.
 func (c *Local) SetLogger(l log.Logger) {

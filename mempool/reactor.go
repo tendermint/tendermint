@@ -2,14 +2,16 @@ package mempool
 
 import (
 	"fmt"
+	"math"
 	"reflect"
+	"sync"
 	"time"
 
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/libs/clist"
-	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/clist"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -21,13 +23,85 @@ const (
 	maxTxSize  = maxMsgSize - 8 // account for amino overhead of TxMessage
 
 	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
+
+	// UnknownPeerID is the peer ID to use when running CheckTx when there is
+	// no peer (e.g. RPC)
+	UnknownPeerID uint16 = 0
+
+	maxActiveIDs = math.MaxUint16
 )
 
 // MempoolReactor handles mempool tx broadcasting amongst peers.
+// It maintains a map from peer ID to counter, to prevent gossiping txs to the
+// peers you received it from.
 type MempoolReactor struct {
 	p2p.BaseReactor
 	config  *cfg.MempoolConfig
 	Mempool *Mempool
+	ids     *mempoolIDs
+}
+
+type mempoolIDs struct {
+	mtx       sync.RWMutex
+	peerMap   map[p2p.ID]uint16
+	nextID    uint16              // assumes that a node will never have over 65536 active peers
+	activeIDs map[uint16]struct{} // used to check if a given peerID key is used, the value doesn't matter
+}
+
+// Reserve searches for the next unused ID and assignes it to the
+// peer.
+func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) {
+	ids.mtx.Lock()
+	defer ids.mtx.Unlock()
+
+	curID := ids.nextPeerID()
+	ids.peerMap[peer.ID()] = curID
+	ids.activeIDs[curID] = struct{}{}
+}
+
+// nextPeerID returns the next unused peer ID to use.
+// This assumes that ids's mutex is already locked.
+func (ids *mempoolIDs) nextPeerID() uint16 {
+	if len(ids.activeIDs) == maxActiveIDs {
+		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", maxActiveIDs))
+	}
+
+	_, idExists := ids.activeIDs[ids.nextID]
+	for idExists {
+		ids.nextID++
+		_, idExists = ids.activeIDs[ids.nextID]
+	}
+	curID := ids.nextID
+	ids.nextID++
+	return curID
+}
+
+// Reclaim returns the ID reserved for the peer back to unused pool.
+func (ids *mempoolIDs) Reclaim(peer p2p.Peer) {
+	ids.mtx.Lock()
+	defer ids.mtx.Unlock()
+
+	removedID, ok := ids.peerMap[peer.ID()]
+	if ok {
+		delete(ids.activeIDs, removedID)
+		delete(ids.peerMap, peer.ID())
+	}
+}
+
+// GetForPeer returns an ID reserved for the peer.
+func (ids *mempoolIDs) GetForPeer(peer p2p.Peer) uint16 {
+	ids.mtx.RLock()
+	defer ids.mtx.RUnlock()
+
+	return ids.peerMap[peer.ID()]
+}
+
+func newMempoolIDs() *mempoolIDs {
+	return &mempoolIDs{
+		peerMap:   make(map[p2p.ID]uint16),
+		activeIDs: map[uint16]struct{}{0: {}},
+		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
+	}
 }
 
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
@@ -35,6 +109,7 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
+		ids:     newMempoolIDs(),
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
@@ -68,11 +143,13 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
+	memR.ids.ReserveForPeer(peer)
 	go memR.broadcastTxRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	memR.ids.Reclaim(peer)
 	// broadcast routine checks if peer is gone and returns
 }
 
@@ -89,7 +166,8 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		err := memR.Mempool.CheckTx(msg.Tx, nil)
+		peerID := memR.ids.GetForPeer(src)
+		err := memR.Mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{PeerID: peerID})
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", TxID(msg.Tx), "err", err)
 		}
@@ -110,8 +188,13 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		return
 	}
 
+	peerID := memR.ids.GetForPeer(peer)
 	var next *clist.CElement
 	for {
+		// In case of both next.NextWaitChan() and peer.Quit() are variable at the same time
+		if !memR.IsRunning() || !peer.IsRunning() {
+			return
+		}
 		// This happens because the CElement we were looking at got garbage
 		// collected (removed). That is, .NextWait() returned nil. Go ahead and
 		// start from the beginning.
@@ -146,12 +229,15 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 			continue
 		}
 
-		// send memTx
-		msg := &TxMessage{Tx: memTx.tx}
-		success := peer.Send(MempoolChannel, cdc.MustMarshalBinaryBare(msg))
-		if !success {
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-			continue
+		// ensure peer hasn't already sent us this tx
+		if _, ok := memTx.senders.Load(peerID); !ok {
+			// send memTx
+			msg := &TxMessage{Tx: memTx.tx}
+			success := peer.Send(MempoolChannel, cdc.MustMarshalBinaryBare(msg))
+			if !success {
+				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+				continue
+			}
 		}
 
 		select {
