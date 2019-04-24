@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/types"
+	dbm "github.com/pakula/prism/libs/db"
+	"github.com/pakula/prism/types"
 )
 
 //-------------------------------------------

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/types"
 )
 
 // Waiter is informed of current height, decided whether to quit early

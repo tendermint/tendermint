@@ -1,9 +1,9 @@
 package types
 
 import (
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	abci "github.com/pakula/prism/abci/types"
+	"github.com/pakula/prism/crypto/tmhash"
+	cmn "github.com/pakula/prism/libs/common"
 )
 
 const (

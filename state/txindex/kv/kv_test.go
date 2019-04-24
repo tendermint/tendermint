@@ -8,13 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	db "github.com/tendermint/tendermint/libs/db"
+	abci "github.com/pakula/prism/abci/types"
+	cmn "github.com/pakula/prism/libs/common"
+	db "github.com/pakula/prism/libs/db"
 
-	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/libs/pubsub/query"
+	"github.com/pakula/prism/state/txindex"
+	"github.com/pakula/prism/types"
 )
 
 func TestTxIndex(t *testing.T) {
@@ -163,7 +163,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	require.NoError(t, err)
 
 	// indexed fourth (to test we don't include txs with similar tags)
-	// https://github.com/tendermint/tendermint/issues/2908
+	// https://github.com/pakula/prism/issues/2908
 	txResult4 := txResultWithTags([]cmn.KVPair{
 		{Key: []byte("account.number.id"), Value: []byte("1")},
 	})

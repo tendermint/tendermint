@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/pakula/prism/libs/common"
 )
 
 func randCompactBitArray(bits int) (*CompactBitArray, []byte) {

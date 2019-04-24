@@ -6,11 +6,11 @@ GOTOOLS = \
 	github.com/square/certstrap
 GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
-OUTPUT?=build/tendermint
+OUTPUT?=build/prism
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
-BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+BUILD_FLAGS = -ldflags "-X github.com/pakula/prism/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
 all: check build test install
 
@@ -20,19 +20,19 @@ check: check_tools get_vendor_deps
 ### Build Tendermint
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/prism/
 
 build_c:
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" -o $(OUTPUT) ./cmd/prism/
 
 build_race:
-	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
+	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/prism
 
 install:
-	CGO_ENABLED=0 go install  $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+	CGO_ENABLED=0 go install  $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/prism
 
 install_c:
-	CGO_ENABLED=1 go install  $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" ./cmd/tendermint
+	CGO_ENABLED=1 go install  $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" ./cmd/prism
 
 ########################################
 ### Protobuf
@@ -88,7 +88,7 @@ update_tools:
 #Update dependencies
 get_vendor_deps:
 	@echo "--> Running dep"
-	@dep ensure
+	@DEPNOLOCK=1 dep ensure
 
 #For ABCI and libs
 get_protoc:
@@ -106,11 +106,11 @@ get_protoc:
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
 	go get github.com/RobotsAndPencils/goviz
-	@goviz -i github.com/tendermint/tendermint/cmd/tendermint -d 3 | dot -Tpng -o dependency-graph.png
+	@goviz -i github.com/pakula/prism/cmd/prism -d 3 | dot -Tpng -o dependency-graph.png
 
 get_deps_bin_size:
 	@# Copy of build recipe with additional flags to perform binary size analysis
-	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/ 2>&1))
+	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/prism/ 2>&1))
 	@find $(WORK) -type f -name "*.a" | xargs -I{} du -hxs "{}" | sort -rh | sed -e s:${WORK}/::g > deps_bin_size.log
 	@echo "Results can be found here: $(CURDIR)/deps_bin_size.log"
 
@@ -121,9 +121,9 @@ protoc_libs: libs/common/types.pb.go
 
 gen_certs: clean_certs
 	## Generating certificates for TLS testing...
-	certstrap init --common-name "tendermint.com" --passphrase ""
+	certstrap init --common-name "color-platform.org" --passphrase ""
 	certstrap request-cert -ip "::" --passphrase ""
-	certstrap sign "::" --CA "tendermint.com" --passphrase ""
+	certstrap sign "::" --CA "color-platform.com" --passphrase ""
 	mv out/::.crt out/::.key db/remotedb
 
 clean_certs:
@@ -156,7 +156,7 @@ test_cover:
 
 test_apps:
 	# run the app tests using bash
-	# requires `abci-cli` and `tendermint` binaries installed
+	# requires `abci-cli` and `prism` binaries installed
 	bash test/app/test.sh
 
 test_abci_apps:
@@ -252,7 +252,7 @@ DESTINATION = ./index.html.md
 
 rpc-docs:
 	cat rpc/core/slate_header.txt > $(DESTINATION)
-	godoc2md -template rpc/core/doc_template.txt github.com/tendermint/tendermint/rpc/core | grep -v -e "pipe.go" -e "routes.go" -e "dev.go" | sed 's,/src/target,https://github.com/tendermint/tendermint/tree/master/rpc/core,' >> $(DESTINATION)
+	godoc2md -template rpc/core/doc_template.txt github.com/pakula/prism/rpc/core | grep -v -e "pipe.go" -e "routes.go" -e "dev.go" | sed 's,/src/target,https://github.com/pakula/prism/tree/master/rpc/core,' >> $(DESTINATION)
 
 check_dep:
 	dep status >> /dev/null
@@ -262,9 +262,9 @@ check_dep:
 ### Docker image
 
 build-docker:
-	cp $(OUTPUT) DOCKER/tendermint
-	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
-	rm -rf DOCKER/tendermint
+	cp $(OUTPUT) DOCKER/prism
+	docker build --label=prism --tag="pakula/prism" DOCKER
+	rm -rf DOCKER/prism
 
 ###########################################################
 ### Local testnet using docker
@@ -278,7 +278,7 @@ build-docker-localnode:
 
 # Run a 4-node testnet locally
 localnet-start: localnet-stop
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
+	@if ! [ -f build/league_0_node_0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/prism:Z prism/localnode testnet --l 2 --v 2 --o . --populate-persistent-peers --starting-ip-address 192.166.10.2 ; fi
 	docker-compose up
 
 # Stop testnet
@@ -293,13 +293,13 @@ sentry-start:
 	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
 	@if ! [ -f $(HOME)/.ssh/id_rsa.pub ]; then ssh-keygen ; fi
 	cd networks/remote/terraform && terraform init && terraform apply -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
-	@if ! [ -f $(CURDIR)/build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 0 --n 4 --o . ; fi
+	@if ! [ -f $(CURDIR)/build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/prism:Z prism/localnode testnet --l 0 --v 0 --n 4 --o . ; fi
 	cd networks/remote/ansible && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
 	@echo "Next step: Add your validator setup in the genesis.json and config.tml files and run \"make sentry-config\". (Public key of validator, chain ID, peer IP and node ID.)"
 
 # Configuration management
 sentry-config:
-	cd networks/remote/ansible && ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$(CURDIR)/build/tendermint -e CONFIGDIR=$(CURDIR)/build
+	cd networks/remote/ansible && ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$(CURDIR)/build/prism -e CONFIGDIR=$(CURDIR)/build
 
 sentry-stop:
 	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi

@@ -3,8 +3,8 @@ package consensus
 import (
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
+	cmn "github.com/pakula/prism/libs/common"
+	"github.com/pakula/prism/libs/log"
 )
 
 var (

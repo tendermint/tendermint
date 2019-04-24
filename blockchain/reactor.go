@@ -8,10 +8,10 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/libs/log"
+	"github.com/pakula/prism/p2p"
+	sm "github.com/pakula/prism/state"
+	"github.com/pakula/prism/types"
 )
 
 const (
@@ -173,6 +173,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 
 // Receive implements Reactor by handling 4 types of messages (look below).
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+	bcR.Logger.Info("Received raw message", "src", src, "chId", chID)
 	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)

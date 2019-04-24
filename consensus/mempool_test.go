@@ -9,10 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tendermint/tendermint/abci/example/code"
-	abci "github.com/tendermint/tendermint/abci/types"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/abci/example/code"
+	abci "github.com/pakula/prism/abci/types"
+	sm "github.com/pakula/prism/state"
+	"github.com/pakula/prism/types"
 )
 
 // for testing

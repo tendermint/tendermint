@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/tendermint/tendermint/abci/example/code"
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/pakula/prism/abci/example/code"
+	"github.com/pakula/prism/abci/types"
 )
 
 type CounterApplication struct {

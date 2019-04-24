@@ -17,32 +17,32 @@ import (
 	"github.com/rs/cors"
 
 	amino "github.com/tendermint/go-amino"
-	abci "github.com/tendermint/tendermint/abci/types"
-	bc "github.com/tendermint/tendermint/blockchain"
-	cfg "github.com/tendermint/tendermint/config"
-	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/evidence"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/pex"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
-	rpccore "github.com/tendermint/tendermint/rpc/core"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/state/txindex/kv"
-	"github.com/tendermint/tendermint/state/txindex/null"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
+	abci "github.com/pakula/prism/abci/types"
+	bc "github.com/pakula/prism/blockchain"
+	cfg "github.com/pakula/prism/config"
+	cs "github.com/pakula/prism/consensus"
+	"github.com/pakula/prism/crypto/ed25519"
+	"github.com/pakula/prism/evidence"
+	cmn "github.com/pakula/prism/libs/common"
+	dbm "github.com/pakula/prism/libs/db"
+	"github.com/pakula/prism/libs/log"
+	tmpubsub "github.com/pakula/prism/libs/pubsub"
+	mempl "github.com/pakula/prism/mempool"
+	"github.com/pakula/prism/p2p"
+	"github.com/pakula/prism/p2p/pex"
+	"github.com/pakula/prism/privval"
+	"github.com/pakula/prism/proxy"
+	rpccore "github.com/pakula/prism/rpc/core"
+	ctypes "github.com/pakula/prism/rpc/core/types"
+	grpccore "github.com/pakula/prism/rpc/grpc"
+	rpcserver "github.com/pakula/prism/rpc/lib/server"
+	sm "github.com/pakula/prism/state"
+	"github.com/pakula/prism/state/txindex"
+	"github.com/pakula/prism/state/txindex/kv"
+	"github.com/pakula/prism/state/txindex/null"
+	"github.com/pakula/prism/types"
+	tmtime "github.com/pakula/prism/types/time"
+	"github.com/pakula/prism/version"
 )
 
 //------------------------------------------------------------------------------
@@ -61,6 +61,19 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	dbType := dbm.DBBackendType(ctx.Config.DBBackend)
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
+}
+
+// LeaguesDocProvider returns a LeaguesDoc.
+// It allows the LeaguesDoc to be pulled from sources other than the
+// filesystem, for instance from a distributed key-value store cluster.
+type LeaguesDocProvider func() (*types.LeaguesDoc, error)
+
+// DefaultLeaguesDocProviderFunc returns a LeaguesDocProvider that loads
+// the LeaguesDoc from the config.LeaguesFile() on the filesystem.
+func DefaultLeaguesDocProviderFunc(config *cfg.Config) LeaguesDocProvider {
+	return func() (*types.LeaguesDoc, error) {
+		return types.LeaguesDocFromFile(config.LeaguesFile())
+	}
 }
 
 // GenesisDocProvider returns a GenesisDoc.
@@ -110,6 +123,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		privval.LoadOrGenFilePV(newPrivValKey, newPrivValState),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		DefaultLeaguesDocProviderFunc(config),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
@@ -143,6 +157,7 @@ type Node struct {
 
 	// config
 	config        *cfg.Config
+	leagues       *types.LeaguesDoc   // initial topology
 	genesisDoc    *types.GenesisDoc   // initial validator set
 	privValidator types.PrivValidator // local node's validator key
 
@@ -175,6 +190,7 @@ func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
+	leaguesDocProvider LeaguesDocProvider,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
@@ -189,6 +205,12 @@ func NewNode(config *cfg.Config,
 
 	// Get State
 	stateDB, err := dbProvider(&DBContext{"state", config})
+	if err != nil {
+		return nil, err
+	}
+
+	// Get leagues topology file
+	leagues, err := leaguesDocProvider()
 	if err != nil {
 		return nil, err
 	}
@@ -502,7 +524,7 @@ func NewNode(config *cfg.Config,
 				// blocks assuming 10s blocks ~ 28 hours.
 				// TODO (melekes): make it dynamic based on the actual block latencies
 				// from the live network.
-				// https://github.com/tendermint/tendermint/issues/3523
+				// https://github.com/pakula/prism/issues/3523
 				SeedDisconnectWaitPeriod: 28 * time.Hour,
 			})
 		pexReactor.SetLogger(logger.With("module", "pex"))
@@ -521,6 +543,7 @@ func NewNode(config *cfg.Config,
 
 	node := &Node{
 		config:        config,
+		leagues:       leagues,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
@@ -699,7 +722,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
 		// If necessary adjust global WriteTimeout to ensure it's greater than
 		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
+		// See https://github.com/pakula/prism/issues/3435
 		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
 			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 		}

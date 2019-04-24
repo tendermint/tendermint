@@ -8,7 +8,7 @@ import golang_proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
-import types "github.com/tendermint/tendermint/abci/types"
+import types "github.com/pakula/prism/abci/types"
 
 import bytes "bytes"
 

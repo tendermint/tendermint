@@ -5,9 +5,9 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/tendermint/tendermint/libs/log"
-	rpc "github.com/tendermint/tendermint/rpc/lib/server"
-	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
+	"github.com/pakula/prism/libs/log"
+	rpc "github.com/pakula/prism/rpc/lib/server"
+	monitor "github.com/pakula/prism/tools/tm-monitor/monitor"
 )
 
 func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) net.Listener {

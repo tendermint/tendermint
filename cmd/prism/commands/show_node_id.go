@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/pakula/prism/p2p"
 )
 
 // ShowNodeIDCmd dumps node's ID to the standard output.

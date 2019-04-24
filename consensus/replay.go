@@ -11,16 +11,16 @@ import (
 	//"strings"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	//auto "github.com/tendermint/tendermint/libs/autofile"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
+	abci "github.com/pakula/prism/abci/types"
+	//auto "github.com/pakula/prism/libs/autofile"
+	cmn "github.com/pakula/prism/libs/common"
+	dbm "github.com/pakula/prism/libs/db"
+	"github.com/pakula/prism/libs/log"
 
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
+	"github.com/pakula/prism/proxy"
+	sm "github.com/pakula/prism/state"
+	"github.com/pakula/prism/types"
+	"github.com/pakula/prism/version"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)

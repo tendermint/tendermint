@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
+	cmn "github.com/pakula/prism/libs/common"
+	dbm "github.com/pakula/prism/libs/db"
 
-	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/libs/pubsub/query"
+	"github.com/pakula/prism/state/txindex"
+	"github.com/pakula/prism/types"
 )
 
 const (

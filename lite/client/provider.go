@@ -8,12 +8,12 @@ package client
 import (
 	"fmt"
 
-	log "github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/lite"
-	lerr "github.com/tendermint/tendermint/lite/errors"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
+	log "github.com/pakula/prism/libs/log"
+	"github.com/pakula/prism/lite"
+	lerr "github.com/pakula/prism/lite/errors"
+	rpcclient "github.com/pakula/prism/rpc/client"
+	ctypes "github.com/pakula/prism/rpc/core/types"
+	"github.com/pakula/prism/types"
 )
 
 // SignStatusClient combines a SignClient and StatusClient.

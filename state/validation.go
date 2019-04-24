@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/crypto"
+	dbm "github.com/pakula/prism/libs/db"
+	"github.com/pakula/prism/types"
 )
 
 //-----------------------------------------------------
@@ -189,7 +189,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	// NOTE: we will ignore evidence from H if the key was not a validator
 	// at H, even if it is a validator at some nearby H'
 	// XXX: this makes lite-client bisection as is unsafe
-	// See https://github.com/tendermint/tendermint/issues/3244
+	// See https://github.com/pakula/prism/issues/3244
 	ev := evidence
 	height, addr := ev.Height(), ev.Address()
 	_, val := valset.GetByAddress(addr)

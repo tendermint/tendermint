@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	log "github.com/tendermint/tendermint/libs/log"
-	lerr "github.com/tendermint/tendermint/lite/errors"
-	"github.com/tendermint/tendermint/types"
+	log "github.com/pakula/prism/libs/log"
+	lerr "github.com/pakula/prism/lite/errors"
+	"github.com/pakula/prism/types"
 )
 
 const sizeOfPendingMap = 1024
@@ -20,7 +20,7 @@ var _ Verifier = (*DynamicVerifier)(nil)
 // "trusted" local system.
 // TODO: make this single threaded and create a new
 // ConcurrentDynamicVerifier that wraps it with concurrency.
-// see https://github.com/tendermint/tendermint/issues/3170
+// see https://github.com/pakula/prism/issues/3170
 type DynamicVerifier struct {
 	chainID string
 	logger  log.Logger
@@ -157,7 +157,7 @@ func (dv *DynamicVerifier) Verify(shdr types.SignedHeader) error {
 	// the validator set at SignedHeader.Height + 1 so we can verify the
 	// SignedHeader.NextValidatorSet.
 	// TODO: is the ValidateFull below mostly redundant with the BaseVerifier.Verify above?
-	// See https://github.com/tendermint/tendermint/issues/3174.
+	// See https://github.com/pakula/prism/issues/3174.
 
 	// Get the next validator set.
 	nextValset, err := dv.source.ValidatorSet(dv.chainID, shdr.Height+1)

@@ -15,7 +15,7 @@ import (
 
 	"errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/pakula/prism/libs/common"
 )
 
 // NetAddress defines information about a peer on the network

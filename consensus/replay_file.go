@@ -11,14 +11,14 @@ import (
 
 	"github.com/pkg/errors"
 
-	bc "github.com/tendermint/tendermint/blockchain"
-	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	bc "github.com/pakula/prism/blockchain"
+	cfg "github.com/pakula/prism/config"
+	cmn "github.com/pakula/prism/libs/common"
+	dbm "github.com/pakula/prism/libs/db"
+	"github.com/pakula/prism/libs/log"
+	"github.com/pakula/prism/proxy"
+	sm "github.com/pakula/prism/state"
+	"github.com/pakula/prism/types"
 )
 
 const (

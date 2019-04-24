@@ -16,8 +16,8 @@ import (
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"
 
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pakula/prism/crypto"
+	cmn "github.com/pakula/prism/libs/common"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -36,13 +36,13 @@ var (
 
 // SecretConnection implements net.Conn.
 // It is an implementation of the STS protocol.
-// See https://github.com/tendermint/tendermint/blob/0.1/docs/sts-final.pdf for
+// See https://github.com/pakula/prism/blob/0.1/docs/sts-final.pdf for
 // details on the protocol.
 //
 // Consumers of the SecretConnection are responsible for authenticating
 // the remote peer's pubkey against known information, like a nodeID.
 // Otherwise they are vulnerable to MITM.
-// (TODO(ismail): see also https://github.com/tendermint/tendermint/issues/3010)
+// (TODO(ismail): see also https://github.com/pakula/prism/issues/3010)
 type SecretConnection struct {
 
 	// immutable
@@ -367,7 +367,7 @@ func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte, err err
 	curve25519.ScalarMult(shrKey, locPrivKey, remPubKey)
 
 	// reject if the returned shared secret is all zeroes
-	// related to: https://github.com/tendermint/tendermint/issues/3010
+	// related to: https://github.com/pakula/prism/issues/3010
 	zero := new([32]byte)
 	if subtle.ConstantTimeCompare(shrKey[:], zero[:]) == 1 {
 		return nil, ErrSharedSecretIsZero

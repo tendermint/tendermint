@@ -1,6 +1,6 @@
 FROM alpine:3.7
 
-ENV DATA_ROOT /tendermint
+ENV DATA_ROOT /prism
 ENV TMHOME $DATA_ROOT
 
 RUN addgroup tmuser && \
@@ -13,16 +13,16 @@ RUN apk add --no-cache bash curl jq
 
 ENV GOPATH /go
 ENV PATH "$PATH:/go/bin"
-RUN mkdir -p /go/src/github.com/tendermint/tendermint && \
+RUN mkdir -p /go/src/github.com/pakula/prism && \
     apk add --no-cache go build-base git && \
-    cd /go/src/github.com/tendermint/tendermint && \
-    git clone https://github.com/tendermint/tendermint . && \
+    cd /go/src/github.com/pakula/prism && \
+    git clone https://github.com/pakula/prism . && \
     git checkout develop && \
     make get_tools && \
     make get_vendor_deps && \
     make install && \
     cd - && \
-    rm -rf /go/src/github.com/tendermint/tendermint && \
+    rm -rf /go/src/github.com/pakula/prism && \
     apk del go build-base git
 
 VOLUME $DATA_ROOT
@@ -30,6 +30,6 @@ VOLUME $DATA_ROOT
 EXPOSE 26656
 EXPOSE 26657
 
-ENTRYPOINT ["tendermint"]
+ENTRYPOINT ["prism"]
 
 CMD ["node", "--moniker=`hostname`", "--proxy_app=kvstore"]

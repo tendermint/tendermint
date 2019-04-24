@@ -2,60 +2,60 @@ version: '3'
 
 services:
   node0:
-    container_name: node0
-    image: "tendermint/localnode"
+    container_name: prismnode0
+    image: "prism/localnode"
     ports:
       - "26656-26657:26656-26657"
     environment:
       - ID=0
-      - LOG=${LOG:-tendermint.log}
+      - LOG=prism.log
     volumes:
-      - ./build:/tendermint:Z
+      - ./build:/prism:Z
     networks:
       localnet:
-        ipv4_address: 192.167.10.2
+        ipv4_address: 192.166.10.2
 
   node1:
-    container_name: node1
-    image: "tendermint/localnode"
+    container_name: prismnode1
+    image: "prism/localnode"
     ports:
       - "26659-26660:26656-26657"
     environment:
       - ID=1
-      - LOG=${LOG:-tendermint.log}
+      - LOG=prism.log
     volumes:
-      - ./build:/tendermint:Z
+      - ./build:/prism:Z
     networks:
       localnet:
-        ipv4_address: 192.167.10.3
+        ipv4_address: 192.166.10.3
 
   node2:
-    container_name: node2
-    image: "tendermint/localnode"
+    container_name: prismnode2
+    image: "prism/localnode"
     environment:
       - ID=2
-      - LOG=${LOG:-tendermint.log}
+      - LOG=prism.log
     ports:
       - "26661-26662:26656-26657"
     volumes:
-      - ./build:/tendermint:Z
+      - ./build:/prism:Z
     networks:
       localnet:
-        ipv4_address: 192.167.10.4
+        ipv4_address: 192.166.10.4
 
   node3:
-    container_name: node3
-    image: "tendermint/localnode"
+    container_name: prismnode3
+    image: "prism/localnode"
     environment:
       - ID=3
-      - LOG=${LOG:-tendermint.log}
+      - LOG=prism.log
     ports:
       - "26663-26664:26656-26657"
     volumes:
-      - ./build:/tendermint:Z
+      - ./build:/prism:Z
     networks:
       localnet:
-        ipv4_address: 192.167.10.5
+        ipv4_address: 192.166.10.5
 
 networks:
   localnet:
@@ -64,5 +64,5 @@ networks:
       driver: default
       config:
       -
-        subnet: 192.167.10.0/16
+        subnet: 192.166.10.0/24
 

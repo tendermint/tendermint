@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	mock "github.com/tendermint/tendermint/tools/tm-monitor/mock"
-	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
-	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/crypto/ed25519"
+	ctypes "github.com/pakula/prism/rpc/core/types"
+	mock "github.com/pakula/prism/tools/tm-monitor/mock"
+	monitor "github.com/pakula/prism/tools/tm-monitor/monitor"
+	tmtypes "github.com/pakula/prism/types"
 )
 
 func TestMonitorUpdatesNumberOfValidators(t *testing.T) {

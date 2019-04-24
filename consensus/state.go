@@ -10,17 +10,17 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/fail"
-	"github.com/tendermint/tendermint/libs/log"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	cmn "github.com/pakula/prism/libs/common"
+	"github.com/pakula/prism/libs/fail"
+	"github.com/pakula/prism/libs/log"
+	tmtime "github.com/pakula/prism/types/time"
 
-	cfg "github.com/tendermint/tendermint/config"
-	cstypes "github.com/tendermint/tendermint/consensus/types"
-	tmevents "github.com/tendermint/tendermint/libs/events"
-	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	cfg "github.com/pakula/prism/config"
+	cstypes "github.com/pakula/prism/consensus/types"
+	tmevents "github.com/pakula/prism/libs/events"
+	"github.com/pakula/prism/p2p"
+	sm "github.com/pakula/prism/state"
+	"github.com/pakula/prism/types"
 )
 
 //-----------------------------------------------------------------------------
@@ -704,7 +704,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 			// We probably don't want to stop the peer here. The vote does not
 			// necessarily comes from a malicious peer but can be just broadcasted by
 			// a typical peer.
-			// https://github.com/tendermint/tendermint/issues/1281
+			// https://github.com/pakula/prism/issues/1281
 		}
 
 		// NOTE: the vote is broadcast to peers by the reactor listening
@@ -720,7 +720,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 
 	if err != nil {
 		// Causes TestReactorValidatorSetChanges to timeout
-		// https://github.com/tendermint/tendermint/issues/3406
+		// https://github.com/pakula/prism/issues/3406
 		// cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
 		// 	"peer", peerID, "err", err, "msg", msg)
 	}

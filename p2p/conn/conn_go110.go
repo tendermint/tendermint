@@ -6,7 +6,7 @@ package conn
 // has the SetDeadline method implemented as per
 //  https://github.com/golang/go/commit/e2dd8ca946be884bb877e074a21727f1a685a706
 // lest we run into problems like
-//  https://github.com/tendermint/tendermint/issues/851
+//  https://github.com/pakula/prism/issues/851
 
 import "net"
 

@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/crypto"
+	"github.com/pakula/prism/privval"
+	"github.com/pakula/prism/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/pakula/prism/crypto/ed25519"
+	"github.com/pakula/prism/libs/log"
 )
 
 const (

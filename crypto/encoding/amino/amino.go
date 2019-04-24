@@ -4,10 +4,10 @@ import (
 	"reflect"
 
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/multisig"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
+	"github.com/pakula/prism/crypto"
+	"github.com/pakula/prism/crypto/ed25519"
+	"github.com/pakula/prism/crypto/multisig"
+	"github.com/pakula/prism/crypto/secp256k1"
 )
 
 var cdc = amino.NewCodec()

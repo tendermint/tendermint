@@ -2,8 +2,8 @@ package privval
 
 import (
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/crypto"
+	"github.com/pakula/prism/types"
 )
 
 // RemoteSignerMsg is sent between SignerServiceEndpoint and the SignerServiceEndpoint client.

@@ -5,12 +5,12 @@ import (
 	"net/http"
 
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/pakula/prism/libs/log"
 
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/core"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	rpcclient "github.com/pakula/prism/rpc/client"
+	"github.com/pakula/prism/rpc/core"
+	ctypes "github.com/pakula/prism/rpc/core/types"
+	rpcserver "github.com/pakula/prism/rpc/lib/server"
 )
 
 const (

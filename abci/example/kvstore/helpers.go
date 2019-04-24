@@ -1,8 +1,8 @@
 package kvstore
 
 import (
-	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pakula/prism/abci/types"
+	cmn "github.com/pakula/prism/libs/common"
 )
 
 // RandVal creates one random validator, with a key derived

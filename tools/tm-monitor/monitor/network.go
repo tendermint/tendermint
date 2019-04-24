@@ -5,7 +5,7 @@ import (
 	"time"
 
 	metrics "github.com/rcrowley/go-metrics"
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmtypes "github.com/pakula/prism/types"
 )
 
 // UptimeData stores data for how long network has been running.

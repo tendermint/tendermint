@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/libs/log"
-	rs "github.com/tendermint/tendermint/rpc/lib/server"
-	types "github.com/tendermint/tendermint/rpc/lib/types"
+	"github.com/pakula/prism/libs/log"
+	rs "github.com/pakula/prism/rpc/lib/server"
+	types "github.com/pakula/prism/rpc/lib/types"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -43,7 +43,7 @@ func statusOK(code int) bool { return code >= 200 && code <= 299 }
 
 // Ensure that nefarious/unintended inputs to `params`
 // do not crash our RPC handlers.
-// See Issue https://github.com/tendermint/tendermint/issues/708.
+// See Issue https://github.com/pakula/prism/issues/708.
 func TestRPCParams(t *testing.T) {
 	mux := testMux()
 	tests := []struct {

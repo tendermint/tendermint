@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/pakula/prism/libs/log"
 )
 
 func TestWSClientReconnectWithJitter(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/pakula/prism/libs/common"
 )
 
 // Config is an gRPC server configuration.

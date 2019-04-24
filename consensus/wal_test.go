@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/libs/autofile"
-	"github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/pakula/prism/consensus/types"
+	"github.com/pakula/prism/libs/autofile"
+	"github.com/pakula/prism/libs/log"
+	tmtypes "github.com/pakula/prism/types"
+	tmtime "github.com/pakula/prism/types/time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

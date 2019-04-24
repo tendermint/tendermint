@@ -9,14 +9,14 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-	cstypes "github.com/tendermint/tendermint/consensus/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	tmevents "github.com/tendermint/tendermint/libs/events"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	cstypes "github.com/pakula/prism/consensus/types"
+	cmn "github.com/pakula/prism/libs/common"
+	tmevents "github.com/pakula/prism/libs/events"
+	"github.com/pakula/prism/libs/log"
+	"github.com/pakula/prism/p2p"
+	sm "github.com/pakula/prism/state"
+	"github.com/pakula/prism/types"
+	tmtime "github.com/pakula/prism/types/time"
 )
 
 const (

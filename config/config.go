@@ -28,11 +28,12 @@ const (
 // config/toml.go
 // NOTE: libs/cli must know to look in the config dir!
 var (
-	DefaultTendermintDir = ".tendermint"
+	DefaultTendermintDir = ".prism"
 	defaultConfigDir     = "config"
 	defaultDataDir       = "data"
 
 	defaultConfigFileName  = "config.toml"
+	defaultLeaguesFileName = "leagues.json"
 	defaultGenesisJSONName = "genesis.json"
 
 	defaultPrivValKeyName   = "priv_validator_key.json"
@@ -42,6 +43,7 @@ var (
 	defaultAddrBookName = "addrbook.json"
 
 	defaultConfigFilePath   = filepath.Join(defaultConfigDir, defaultConfigFileName)
+	defaultLeaguesFilePath  = filepath.Join(defaultConfigDir, defaultLeaguesFileName)
 	defaultGenesisJSONPath  = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
 	defaultPrivValKeyPath   = filepath.Join(defaultConfigDir, defaultPrivValKeyName)
 	defaultPrivValStatePath = filepath.Join(defaultDataDir, defaultPrivValStateName)
@@ -165,6 +167,9 @@ type BaseConfig struct {
 	// Output format: 'plain' (colored text) or 'json'
 	LogFormat string `mapstructure:"log_format"`
 
+	// Path to the JSON file containing the initial topology of the network
+	Leagues string `mapstructure:"leagues_file"`
+
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis_file"`
 
@@ -195,6 +200,7 @@ type BaseConfig struct {
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
+		Leagues:            defaultLeaguesFilePath,
 		Genesis:            defaultGenesisJSONPath,
 		PrivValidatorKey:   defaultPrivValKeyPath,
 		PrivValidatorState: defaultPrivValStatePath,
@@ -225,6 +231,12 @@ func TestBaseConfig() BaseConfig {
 func (cfg BaseConfig) ChainID() string {
 	return cfg.chainID
 }
+
+// LeaguesFile returns the full path to the leagues.json file
+func (cfg BaseConfig) LeaguesFile() string {
+	return rootify(cfg.Genesis, cfg.RootDir)
+}
+
 
 // GenesisFile returns the full path to the genesis.json file
 func (cfg BaseConfig) GenesisFile() string {
@@ -337,7 +349,7 @@ type RPCConfig struct {
 	// How long to wait for a tx to be committed during /broadcast_tx_commit
 	// WARNING: Using a value larger than 10s will result in increasing the
 	// global HTTP write timeout, which applies to all connections and endpoints.
-	// See https://github.com/tendermint/tendermint/issues/3435
+	// See https://github.com/pakula/prism/issues/3435
 	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 
 	// The name of a file containing certificate that is used to create the HTTPS server.
@@ -649,6 +661,10 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 // ConsensusConfig defines the configuration for the Tendermint consensus service,
 // including timeouts and details about the WAL and the block structure.
 type ConsensusConfig struct {
+	UseLeagues     bool         `mapstructure:"use_leagues"`
+	League         int          `mapstructure:"league"`
+	NodeId         int          `mapstructure:"node_id"`
+
 	RootDir string `mapstructure:"home"`
 	WalPath string `mapstructure:"wal_file"`
 	walFile string // overrides WalPath if set
@@ -676,6 +692,9 @@ type ConsensusConfig struct {
 // DefaultConsensusConfig returns a default configuration for the consensus service
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
+		League:                      -1,
+		NodeId:                      -1,
+		
 		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
 		TimeoutPropose:              3000 * time.Millisecond,
 		TimeoutProposeDelta:         500 * time.Millisecond,

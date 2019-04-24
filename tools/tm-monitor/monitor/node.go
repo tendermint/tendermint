@@ -7,13 +7,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/libs/events"
-	"github.com/tendermint/tendermint/libs/log"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpc_client "github.com/tendermint/tendermint/rpc/lib/client"
-	em "github.com/tendermint/tendermint/tools/tm-monitor/eventmeter"
-	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/crypto"
+	"github.com/pakula/prism/libs/events"
+	"github.com/pakula/prism/libs/log"
+	ctypes "github.com/pakula/prism/rpc/core/types"
+	rpc_client "github.com/pakula/prism/rpc/lib/client"
+	em "github.com/pakula/prism/tools/tm-monitor/eventmeter"
+	tmtypes "github.com/pakula/prism/types"
 )
 
 const maxRestarts = 25

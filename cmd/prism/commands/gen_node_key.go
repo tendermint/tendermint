@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/p2p"
+	cmn "github.com/pakula/prism/libs/common"
+	"github.com/pakula/prism/p2p"
 )
 
 // GenNodeKeyCmd allows the generation of a node key. It prints node's ID to

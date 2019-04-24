@@ -14,17 +14,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
-	bc "github.com/tendermint/tendermint/blockchain"
-	cfg "github.com/tendermint/tendermint/config"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
-	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	abcicli "github.com/pakula/prism/abci/client"
+	"github.com/pakula/prism/abci/example/kvstore"
+	abci "github.com/pakula/prism/abci/types"
+	bc "github.com/pakula/prism/blockchain"
+	cfg "github.com/pakula/prism/config"
+	dbm "github.com/pakula/prism/libs/db"
+	"github.com/pakula/prism/libs/log"
+	mempl "github.com/pakula/prism/mempool"
+	"github.com/pakula/prism/p2p"
+	sm "github.com/pakula/prism/state"
+	"github.com/pakula/prism/types"
 )
 
 //----------------------------------------------

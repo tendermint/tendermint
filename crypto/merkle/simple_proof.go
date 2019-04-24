@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/pakula/prism/libs/common"
 )
 
 // SimpleProof represents a simple Merkle proof.

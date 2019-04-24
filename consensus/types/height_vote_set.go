@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/types"
+	cmn "github.com/pakula/prism/libs/common"
+	"github.com/pakula/prism/p2p"
+	"github.com/pakula/prism/types"
 )
 
 type RoundVoteSet struct {

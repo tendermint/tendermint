@@ -1,7 +1,7 @@
 package privval
 
 import (
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/pakula/prism/libs/common"
 )
 
 // IsConnTimeout returns a boolean indicating whether the error is known to

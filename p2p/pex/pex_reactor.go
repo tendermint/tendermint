@@ -9,9 +9,9 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/conn"
+	cmn "github.com/pakula/prism/libs/common"
+	"github.com/pakula/prism/p2p"
+	"github.com/pakula/prism/p2p/conn"
 )
 
 type Peer = p2p.Peer
@@ -521,6 +521,8 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
 		return
+	} else {
+		r.Logger.Info("Connected to peer", "addr", addr)
 	}
 
 	// cleanup any history

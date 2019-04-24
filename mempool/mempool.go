@@ -11,14 +11,14 @@ import (
 
 	"github.com/pkg/errors"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
-	auto "github.com/tendermint/tendermint/libs/autofile"
-	"github.com/tendermint/tendermint/libs/clist"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
+	abci "github.com/pakula/prism/abci/types"
+	cfg "github.com/pakula/prism/config"
+	auto "github.com/pakula/prism/libs/autofile"
+	"github.com/pakula/prism/libs/clist"
+	cmn "github.com/pakula/prism/libs/common"
+	"github.com/pakula/prism/libs/log"
+	"github.com/pakula/prism/proxy"
+	"github.com/pakula/prism/types"
 )
 
 // PreCheckFunc is an optional filter executed before CheckTx and rejects

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/version"
+	cmn "github.com/pakula/prism/libs/common"
+	"github.com/pakula/prism/version"
 )
 
 const (

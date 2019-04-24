@@ -4,9 +4,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/types"
+	"github.com/pakula/prism/crypto"
+	cmn "github.com/pakula/prism/libs/common"
+	"github.com/pakula/prism/types"
 )
 
 // OldFilePV is the old version of the FilePV, pre v0.28.0.

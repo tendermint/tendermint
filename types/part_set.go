@@ -8,8 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pakula/prism/crypto/merkle"
+	cmn "github.com/pakula/prism/libs/common"
 )
 
 var (

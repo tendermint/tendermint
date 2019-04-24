@@ -3,9 +3,9 @@ package lite
 import (
 	"bytes"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-	lerr "github.com/tendermint/tendermint/lite/errors"
-	"github.com/tendermint/tendermint/types"
+	cmn "github.com/pakula/prism/libs/common"
+	lerr "github.com/pakula/prism/lite/errors"
+	"github.com/pakula/prism/types"
 )
 
 var _ Verifier = (*BaseVerifier)(nil)

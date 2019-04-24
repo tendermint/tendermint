@@ -4,7 +4,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/tendermint/tendermint/crypto"
+	"github.com/pakula/prism/crypto"
 )
 
 // The code in this file is adapted from agl/ed25519.

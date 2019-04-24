@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	cfg "github.com/tendermint/tendermint/config"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/types"
+	cfg "github.com/pakula/prism/config"
+	dbm "github.com/pakula/prism/libs/db"
+	"github.com/pakula/prism/types"
 )
 
 func TestSaveValidatorsInfo(t *testing.T) {
@@ -19,7 +19,7 @@ func TestSaveValidatorsInfo(t *testing.T) {
 	vals := types.NewValidatorSet([]*types.Validator{val})
 
 	// TODO(melekes): remove in 0.33 release
-	// https://github.com/tendermint/tendermint/issues/3543
+	// https://github.com/pakula/prism/issues/3543
 	saveValidatorsInfo(stateDB, 1, 1, vals)
 	saveValidatorsInfo(stateDB, 2, 1, vals)
 	assert.NotPanics(t, func() {
