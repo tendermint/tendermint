@@ -53,7 +53,8 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 
 	// Get the latest trusted FC.
 	tlfc, err := trust.LatestFullCommit(chainID, 1, 1<<63-1)
-	if err != nil {
+	//If there is no prior state or last state is older than the Trust Period fetch the last state.
+	if err != nil || time.Now().Sub(tlfc.SignedHeader.Time) > options.TrustPeriod {
 		// Get the latest source commit, or the one provided in options.
 		targetCommit, err := getTargetCommit(client, options)
 		if err != nil {
@@ -100,37 +101,49 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 	return vp, nil
 }
 
-// Returns the desired trusted sync point to fetch from the client.
+// getTragetCommit returns a commit trusted with weak subjectivity. It either:
+// 1. Fetches a commit at height provide in options and ensure the specified is within the trust period of latest
+// 2. Trusts the remote node and gets the latest commit
+// 3. Returns an error if the height provided in trust option is too old to sync to latest.
 func getTargetCommit(client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
+
+	// Get the lastest commit always
+	latestBlock, err := client.Commit(nil)
+	if err != nil {
+		return types.SignedHeader{}, err
+	}
+
 	if options.TrustHeight != 0 {
-		resCommit, err := client.Commit(&options.TrustHeight)
+		trustBlock, err := client.Commit(&options.TrustHeight)
 		if err != nil {
 			return types.SignedHeader{}, err
 		}
-		targetCommit := resCommit.SignedHeader
-		if !bytes.Equal(targetCommit.Hash(), options.TrustHash) {
+
+		if latestBlock.Time.Sub(trustBlock.Time) > options.TrustPeriod {
+			return types.SignedHeader{}, fmt.Errorf("Your Trusted Block Height is older than the trust period from Latest Block")
+		}
+
+		trustCommit := trustBlock.SignedHeader
+		if !bytes.Equal(trustCommit.Hash(), options.TrustHash) {
 			return types.SignedHeader{}, fmt.Errorf("WARNING!!! Expected height/hash %v/%X but got %X",
-				options.TrustHeight, options.TrustHash, targetCommit.Hash())
+				options.TrustHeight, options.TrustHash, trustCommit.Hash())
 		}
-		return targetCommit, nil
+		return trustCommit, nil
 	} else {
-		resCommit, err := client.Commit(nil)
-		if err != nil {
-			return types.SignedHeader{}, err
-		}
-		targetCommit := resCommit.SignedHeader
+
+		latestCommit := latestBlock.SignedHeader
 		// NOTE: This should really belong in the callback.
 		// WARN THE USER IN ALL CAPS THAT THE LITE CLIENT IS NEW,
 		// AND THAT WE WILL SYNC TO AND VERIFY LATEST COMMIT.
 		fmt.Printf("trusting source at height %v and hash %X...\n",
-			targetCommit.Height, targetCommit.Hash())
+			latestCommit.Height, latestCommit.Hash())
 		if options.Callback != nil {
-			err := options.Callback(targetCommit.Height, targetCommit.Hash())
+			err := options.Callback(latestCommit.Height, latestCommit.Hash())
 			if err != nil {
 				return types.SignedHeader{}, err
 			}
 		}
-		return targetCommit, nil
+		return latestCommit, nil
 	}
 }
 
