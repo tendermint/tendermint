@@ -254,6 +254,8 @@ func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logge
 	}
 }
 
+// This creates and starts the private validator socket client if, and only if,
+// `config.PrivValidatorListenAddr` is non-empty.
 func optionallyCreateAndStartPrivValidator(config *cfg.Config, privValidator types.PrivValidator, logger log.Logger) (types.PrivValidator, error) {
 	if config.PrivValidatorListenAddr != "" {
 		// FIXME: we should start services inside OnStart
@@ -266,6 +268,10 @@ func optionallyCreateAndStartPrivValidator(config *cfg.Config, privValidator typ
 	return privValidator, nil
 }
 
+// This returns whether or not fast sync is enabled based on (1) whether
+// `config.FastSync` is true, and (2) if there's only a single validator,
+// whether the given `privValidator`'s address is not the same as the sole
+// validator's address.
 func optionallyFastSync(config *cfg.Config, state sm.State, privValidator types.PrivValidator) bool {
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
@@ -461,6 +467,8 @@ func createAddrBook(config *cfg.Config, nodeInfo p2p.NodeInfo, sw *p2p.Switch, l
 	return addrBook
 }
 
+// This instantiates the profile server in a separate goroutine only if
+// `config.ProfileListenAddress` is non-empty.
 func optionallyRunProfileServer(config *cfg.Config, logger log.Logger) {
 	profileHost := config.ProfListenAddress
 	if profileHost != "" {
