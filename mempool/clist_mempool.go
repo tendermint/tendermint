@@ -130,8 +130,6 @@ func WithMetrics(metrics *Metrics) CListMempoolOption {
 	return func(mem *CListMempool) { mem.metrics = metrics }
 }
 
-// InitWAL creates a directory for the WAL file and opens a file itself.
-//
 // *panics* if can't create directory or open file.
 // *not thread safe*
 func (mem *CListMempool) InitWAL() {
@@ -147,8 +145,6 @@ func (mem *CListMempool) InitWAL() {
 	mem.wal = af
 }
 
-// CloseWAL closes and discards the underlying WAL file.
-// Any further writes will not be relayed to disk.
 func (mem *CListMempool) CloseWAL() {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()

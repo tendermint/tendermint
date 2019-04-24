@@ -136,11 +136,6 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 
 //------------------------------------------------------------------------------
 
-type mempoolWithWAL interface {
-	InitWAL()
-	CloseWAL()
-}
-
 // Node is the highest level interface to a full Tendermint node.
 // It includes all configuration information and running services.
 type Node struct {
@@ -588,9 +583,7 @@ func (n *Node) OnStart() error {
 	n.isListening = true
 
 	if n.config.Mempool.WalEnabled() {
-		if m, ok := n.mempool.(mempoolWithWAL); ok {
-			m.InitWAL() // no need to have the mempool wal during tests
-		}
+		n.mempool.InitWAL() // no need to have the mempool wal during tests
 	}
 
 	// Start the switch (the P2P server).
@@ -626,9 +619,7 @@ func (n *Node) OnStop() {
 
 	// stop mempool WAL
 	if n.config.Mempool.WalEnabled() {
-		if m, ok := n.mempool.(mempoolWithWAL); ok {
-			m.CloseWAL()
-		}
+		n.mempool.CloseWAL()
 	}
 
 	if err := n.transport.Close(); err != nil {

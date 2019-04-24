@@ -40,3 +40,6 @@ func (Mempool) TxsBytes() int64               { return 0 }
 
 func (Mempool) TxsFront() *clist.CElement    { return nil }
 func (Mempool) TxsWaitChan() <-chan struct{} { return nil }
+
+func (Mempool) InitWAL()  {}
+func (Mempool) CloseWAL() {}
