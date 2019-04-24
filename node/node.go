@@ -65,19 +65,6 @@ func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
-// GenesisDocProvider returns a GenesisDoc.
-// It allows the GenesisDoc to be pulled from sources other than the
-// filesystem, for instance from a distributed key-value store cluster.
-type GenesisDocProvider func() (*types.GenesisDoc, error)
-
-// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
-// the GenesisDoc from the config.GenesisFile() on the filesystem.
-func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
-	return func() (*types.GenesisDoc, error) {
-		return types.GenesisDocFromFile(config.GenesisFile())
-	}
-}
-
 // NodeProvider takes a config and a logger and returns a ready to go Node.
 type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 
@@ -112,7 +99,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		privval.LoadOrGenFilePV(newPrivValKey, newPrivValState),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
-		DefaultGenesisDocProviderFunc(config),
+		sm.DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
@@ -183,26 +170,6 @@ func getStoresForNewNode(config *cfg.Config, dbProvider DBProvider) (*bc.BlockSt
 		return nil, nil, err
 	}
 	return blockStore, stateDB, nil
-}
-
-func loadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (sm.State, *types.GenesisDoc, error) {
-	// Get genesis doc
-	// TODO: move to state package?
-	genDoc, err := loadGenesisDoc(stateDB)
-	if err != nil {
-		genDoc, err = genesisDocProvider()
-		if err != nil {
-			return sm.State{}, nil, err
-		}
-		// save genesis doc to prevent a certain class of user errors (e.g. when it
-		// was changed, accidentally or not). Also good for audit trail.
-		saveGenesisDoc(stateDB, genDoc)
-	}
-	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
-	if err != nil {
-		return sm.State{}, nil, err
-	}
-	return state, genDoc, nil
 }
 
 func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.Logger) (proxy.AppConns, error) {
@@ -507,7 +474,7 @@ func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
-	genesisDocProvider GenesisDocProvider,
+	genesisDocProvider sm.GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
 	logger log.Logger) (*Node, error) {
@@ -517,7 +484,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	state, genDoc, err := loadStateFromDBOrGenesisDoc(stateDB, genesisDocProvider)
+	state, genDoc, err := sm.LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -1015,33 +982,6 @@ func makeNodeInfo(
 }
 
 //------------------------------------------------------------------------------
-
-var (
-	genesisDocKey = []byte("genesisDoc")
-)
-
-// panics if failed to unmarshal bytes
-func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
-	bytes := db.Get(genesisDocKey)
-	if len(bytes) == 0 {
-		return nil, errors.New("Genesis doc not found")
-	}
-	var genDoc *types.GenesisDoc
-	err := cdc.UnmarshalJSON(bytes, &genDoc)
-	if err != nil {
-		cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
-	}
-	return genDoc, nil
-}
-
-// panics if failed to marshal the given genesis document
-func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
-	bytes, err := cdc.MarshalJSON(genDoc)
-	if err != nil {
-		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
-	}
-	db.SetSync(genesisDocKey, bytes)
-}
 
 func createAndStartPrivValidatorSocketClient(
 	listenAddr string,

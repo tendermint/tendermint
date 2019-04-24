@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/state"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
@@ -166,7 +167,7 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 		panic(err)
 	}
 	node, err := nm.NewNode(config, pv, nodeKey, papp,
-		nm.DefaultGenesisDocProviderFunc(config),
+		state.DefaultGenesisDocProviderFunc(config),
 		nm.DefaultDBProvider,
 		nm.DefaultMetricsProvider(config.Instrumentation),
 		logger)
