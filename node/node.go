@@ -218,7 +218,7 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider, eve
 	return indexerService, txIndexer, nil
 }
 
-func doHandshakeForNewNode(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore, genDoc *types.GenesisDoc, eventBus *types.EventBus, proxyApp proxy.AppConns, logger log.Logger) error {
+func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore, genDoc *types.GenesisDoc, eventBus *types.EventBus, proxyApp proxy.AppConns, logger log.Logger) error {
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(logger)
 	handshaker.SetEventBus(eventBus)
@@ -228,7 +228,7 @@ func doHandshakeForNewNode(stateDB dbm.DB, state sm.State, blockStore sm.BlockSt
 	return nil
 }
 
-func logNewNodeInfo(state sm.State, privValidator types.PrivValidator, logger, consensusLogger log.Logger) {
+func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -278,7 +278,7 @@ func optionallyFastSync(config *cfg.Config, state sm.State, privValidator types.
 	return fastSync
 }
 
-func buildNewNodeMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns, state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
+func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns, state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
@@ -301,7 +301,7 @@ func buildNewNodeMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns, sta
 	return mempoolReactor, mempool
 }
 
-func buildNewNodeEvidenceReactor(config *cfg.Config, dbProvider DBProvider, stateDB dbm.DB, logger log.Logger) (*evidence.EvidenceReactor, *evidence.EvidencePool, error) {
+func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider, stateDB dbm.DB, logger log.Logger) (*evidence.EvidenceReactor, *evidence.EvidencePool, error) {
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
 		return nil, nil, err
@@ -314,7 +314,7 @@ func buildNewNodeEvidenceReactor(config *cfg.Config, dbProvider DBProvider, stat
 	return evidenceReactor, evidencePool, nil
 }
 
-func buildNewNodeConsensusReactor(config *cfg.Config,
+func createConsensusReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
@@ -347,7 +347,7 @@ func buildNewNodeConsensusReactor(config *cfg.Config,
 	return consensusReactor, consensusState
 }
 
-func setupNewNodeTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p2p.NodeKey, proxyApp proxy.AppConns) (*p2p.MultiplexTransport, []p2p.PeerFilterFunc) {
+func createTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p2p.NodeKey, proxyApp proxy.AppConns) (*p2p.MultiplexTransport, []p2p.PeerFilterFunc) {
 	var (
 		mConnConfig = p2p.MConnConfig(config.P2P)
 		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
@@ -403,7 +403,7 @@ func setupNewNodeTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p
 	return transport, peerFilters
 }
 
-func buildNewNodeSwitch(config *cfg.Config,
+func createSwitch(config *cfg.Config,
 	transport *p2p.MultiplexTransport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
@@ -433,7 +433,7 @@ func buildNewNodeSwitch(config *cfg.Config,
 	return sw
 }
 
-func buildNewNodeAddrBook(config *cfg.Config, nodeInfo p2p.NodeInfo, sw *p2p.Switch, logger, p2pLogger log.Logger) pex.AddrBook {
+func createAddrBook(config *cfg.Config, nodeInfo p2p.NodeInfo, sw *p2p.Switch, logger, p2pLogger log.Logger) pex.AddrBook {
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 
 	// Add ourselves to addrbook to prevent dialing ourselves
@@ -461,7 +461,7 @@ func buildNewNodeAddrBook(config *cfg.Config, nodeInfo p2p.NodeInfo, sw *p2p.Swi
 	return addrBook
 }
 
-func runProfileServer(config *cfg.Config, logger log.Logger) {
+func optionallyRunProfileServer(config *cfg.Config, logger log.Logger) {
 	profileHost := config.ProfListenAddress
 	if profileHost != "" {
 		go func() {
@@ -514,7 +514,7 @@ func NewNode(config *cfg.Config,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
-	if err := doHandshakeForNewNode(stateDB, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
+	if err := doHandshake(stateDB, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
 		return nil, err
 	}
 
@@ -530,7 +530,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	logNewNodeInfo(state, privValidator, logger, consensusLogger)
+	logNodeStartupInfo(state, privValidator, logger, consensusLogger)
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -539,10 +539,10 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
 	// Make MempoolReactor
-	mempoolReactor, mempool := buildNewNodeMempoolReactor(config, proxyApp, state, memplMetrics, logger)
+	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
 
 	// Make Evidence Reactor
-	evidenceReactor, evidencePool, err := buildNewNodeEvidenceReactor(config, dbProvider, stateDB, logger)
+	evidenceReactor, evidencePool, err := createEvidenceReactor(config, dbProvider, stateDB, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -563,7 +563,7 @@ func NewNode(config *cfg.Config,
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make ConsensusReactor
-	consensusReactor, consensusState := buildNewNodeConsensusReactor(
+	consensusReactor, consensusState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evidencePool,
 		privValidator, csMetrics, fastSync, eventBus, consensusLogger,
 	)
@@ -574,11 +574,11 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Setup Transport.
-	transport, peerFilters := setupNewNodeTransport(config, nodeInfo, nodeKey, proxyApp)
+	transport, peerFilters := createTransport(config, nodeInfo, nodeKey, proxyApp)
 
 	// Setup Switch.
 	p2pLogger := logger.With("module", "p2p")
-	sw := buildNewNodeSwitch(
+	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
 		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
@@ -595,10 +595,10 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
-	addrBook := buildNewNodeAddrBook(config, nodeInfo, sw, logger, p2pLogger)
+	addrBook := createAddrBook(config, nodeInfo, sw, logger, p2pLogger)
 
 	// run the profile server
-	runProfileServer(config, logger)
+	optionallyRunProfileServer(config, logger)
 
 	node := &Node{
 		config:        config,
