@@ -268,20 +268,12 @@ func optionallyCreateAndStartPrivValidator(config *cfg.Config, privValidator typ
 	return privValidator, nil
 }
 
-// This returns whether or not fast sync is enabled based on (1) whether
-// `config.FastSync` is true, and (2) if there's only a single validator,
-// whether the given `privValidator`'s address is not the same as the sole
-// validator's address.
-func optionallyFastSync(config *cfg.Config, state sm.State, privValidator types.PrivValidator) bool {
-	fastSync := config.FastSync
-	if state.Validators.Size() == 1 {
-		addr, _ := state.Validators.GetByIndex(0)
-		privValAddr := privValidator.GetPubKey().Address()
-		if bytes.Equal(privValAddr, addr) {
-			fastSync = false
-		}
+func onlyValidatorIsUs(state sm.State, privVal types.PrivValidator) bool {
+	if state.Validators.Size() > 1 {
+		return false
 	}
-	return fastSync
+	addr, _ := state.Validators.GetByIndex(0)
+	return bytes.Equal(privVal.GetPubKey().Address(), addr)
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns, state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
@@ -542,7 +534,7 @@ func NewNode(config *cfg.Config,
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
-	fastSync := optionallyFastSync(config, state, privValidator)
+	fastSync := config.FastSync && !onlyValidatorIsUs(state, privValidator)
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
