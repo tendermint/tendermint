@@ -192,7 +192,7 @@ func (sd *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(sd.conn, msg)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrDialerWriteTimeout, err.Error())
+		err = errors.Wrap(ErrDialerWriteTimeout, err.Error())
 	}
 
 	return
