@@ -37,9 +37,9 @@ type accept struct {
 // events.
 // TODO(xla): Refactor out with more static Reactor setup and PeerBehaviour.
 type peerConfig struct {
-	chDescs      []*conn.ChannelDescriptor
-	onPeerError  func(Peer, interface{})
-	outbound     bool
+	chDescs     []*conn.ChannelDescriptor
+	onPeerError func(Peer, interface{})
+	outbound    bool
 	// isPersistent allows you to set a function, which, given socket address
 	// (for outbound peers) OR self-reported address (for inbound peers), tells
 	// if the peer is persistent or not.
