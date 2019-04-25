@@ -462,12 +462,12 @@ func createAddrBook(config *cfg.Config, nodeInfo p2p.NodeInfo, sw *p2p.Switch, l
 // This instantiates the profile server in a separate goroutine only if
 // `config.ProfileListenAddress` is non-empty.
 func optionallyRunProfileServer(config *cfg.Config, logger log.Logger) {
-	profileHost := config.ProfListenAddress
-	if profileHost != "" {
-		go func() {
-			logger.Error("Profile server", "err", http.ListenAndServe(profileHost, nil))
-		}()
+	if config.ProfListenAddress == "" {
+		return
 	}
+	go func() {
+		logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+	}()
 }
 
 // NewNode returns a new, ready to go, Tendermint Node.
@@ -597,7 +597,6 @@ func NewNode(config *cfg.Config,
 	// Note we currently use the addrBook regardless at least for AddOurAddress
 	addrBook := createAddrBook(config, nodeInfo, sw, logger, p2pLogger)
 
-	// run the profile server
 	optionallyRunProfileServer(config, logger)
 
 	node := &Node{
