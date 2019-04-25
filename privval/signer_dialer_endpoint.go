@@ -176,7 +176,7 @@ func (sd *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 
 func (sd *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	if !sd.isConnected() {
-		return cmn.ErrorWrap(ErrListenerNoConnection, "endpoint is not connected")
+		return errors.Wrap(ErrListenerNoConnection, "endpoint is not connected")
 	}
 
 	// Reset read deadline
