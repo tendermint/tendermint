@@ -257,13 +257,14 @@ func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logge
 // This creates and starts the private validator socket client if, and only if,
 // `config.PrivValidatorListenAddr` is non-empty.
 func optionallyCreateAndStartPrivValidator(config *cfg.Config, privValidator types.PrivValidator, logger log.Logger) (types.PrivValidator, error) {
-	if config.PrivValidatorListenAddr != "" {
-		// FIXME: we should start services inside OnStart
-		var err error
-		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error with private validator socket client")
-		}
+	if config.PrivValidatorListenAddr == "" {
+		return privValidator, nil
+	}
+	// FIXME: we should start services inside OnStart
+	var err error
+	privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error with private validator socket client")
 	}
 	return privValidator, nil
 }
