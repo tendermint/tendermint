@@ -300,7 +300,19 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
-		go sw.reconnectToPeer(peer.SocketAddr())
+		var addr *NetAddress
+		if peer.IsOutbound() { // socket address for outbound peers
+			addr = peer.SocketAddr()
+		} else { // self-reported address for inbound peers
+			var err error
+			addr, err = peer.NodeInfo().NetAddress()
+			if err != nil {
+				sw.Logger.Error("Wanted to reconnect to inbound peer, but self-reported address is wrong",
+					"peer", peer, "addr", addr, "err", err)
+				return
+			}
+		}
+		go sw.reconnectToPeer(addr)
 	}
 }
 
@@ -509,6 +521,7 @@ func (sw *Switch) IsDialingOrExistingAddress(addr *NetAddress) bool {
 // ErrNetAddressLookup errors are ignored. However, if there are other errors,
 // all of them are returned.
 func (sw *Switch) AddPersistentPeers(addrs []string) []error {
+	sw.Logger.Info("Adding persistent peers", "addrs", addrs)
 	netAddrs, errs := NewNetAddressStrings(addrs)
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)

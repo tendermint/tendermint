@@ -322,6 +322,42 @@ func TestPEXReactorSeedMode(t *testing.T) {
 	assert.Equal(t, 0, sw.Peers().Size())
 }
 
+func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
+	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 1 * time.Millisecond})
+	defer teardownReactor(book)
+
+	sw := createSwitchAndAddReactors(pexR)
+	sw.SetAddrBook(book)
+	err = sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	assert.Zero(t, sw.Peers().Size())
+
+	peerSwitch := testCreateDefaultPeer(dir, 1)
+	require.NoError(t, peerSwitch.Start())
+	defer peerSwitch.Stop()
+
+	errs := sw.AddPersistentPeers([]string{peerSwitch.NetAddress().String()})
+	require.Empty(t, errs)
+
+	// 1. Test crawlPeers dials the peer
+	pexR.crawlPeers([]*p2p.NetAddress{peerSwitch.NetAddress()})
+	assert.Equal(t, 1, sw.Peers().Size())
+	assert.True(t, sw.Peers().Has(peerSwitch.NodeInfo().ID()))
+
+	time.Sleep(10 * time.Millisecond)
+
+	// 2. attemptDisconnects should not disconnect because the peer is persistent
+	pexR.attemptDisconnects()
+	assert.Equal(t, 1, sw.Peers().Size())
+}
+
 func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 	// directory to store address books
 	dir, err := ioutil.TempDir("", "pex_reactor")
