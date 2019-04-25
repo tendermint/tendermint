@@ -465,6 +465,26 @@ func TestSwitchReconnectsToInboundPersistentPeer(t *testing.T) {
 	assert.Equal(t, 1, sw.Peers().Size())
 }
 
+func TestSwitchDialPeersAsync(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	err := sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	defer rp.Stop()
+
+	errs := sw.DialPeersAsync([]string{rp.Addr().String()})
+	require.Empty(t, errs)
+	time.Sleep(dialRandomizerIntervalMilliseconds * time.Millisecond)
+	require.NotNil(t, sw.Peers().Get(rp.ID()))
+}
+
 func waitUntilSwitchHasAtLeastNPeers(sw *Switch, n int) {
 	for i := 0; i < 20; i++ {
 		time.Sleep(250 * time.Millisecond)
