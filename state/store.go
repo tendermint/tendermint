@@ -116,7 +116,7 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	var genDoc *types.GenesisDoc
 	err := cdc.UnmarshalJSON(bytes, &genDoc)
 	if err != nil {
-		cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
+		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
 	}
 	return genDoc, nil
 }
@@ -125,7 +125,7 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 	bytes, err := cdc.MarshalJSON(genDoc)
 	if err != nil {
-		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
+		panic(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
 	}
 	db.SetSync(genesisDocKey, bytes)
 }
