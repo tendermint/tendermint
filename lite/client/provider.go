@@ -56,19 +56,26 @@ func (p *provider) StatusClient() rpcclient.StatusClient {
 
 // LatestFullCommit implements Provider.
 func (p *provider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (fc lite.FullCommit, err error) {
+	// If the chain-id is wrong, error
 	if chainID != p.chainID {
 		err = fmt.Errorf("expected chainID %s, got %s", p.chainID, chainID)
 		return
 	}
+
+	// if the heights are incorrect error
 	if maxHeight != 0 && maxHeight < minHeight {
 		err = fmt.Errorf("need maxHeight == 0 or minHeight <= maxHeight, got min %v and max %v",
 			minHeight, maxHeight)
 		return
 	}
+
+	// Fetch the latest block
 	commit, err := p.fetchLatestCommit(minHeight, maxHeight)
 	if err != nil {
 		return
 	}
+
+	// Make a lite.FullCommit out of the signed header
 	fc, err = p.fillFullCommit(commit.SignedHeader)
 	return
 }

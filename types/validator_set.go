@@ -368,51 +368,71 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 
 // Verify that +2/3 of the set had signed the given signBytes.
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *Commit) error {
+
+	// If the ValidatorSet size is different than the commit.Precommits size somthing is wrong
 	if vals.Size() != len(commit.Precommits) {
 		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", vals.Size(), len(commit.Precommits))
 	}
+
+	// If the height to check is different than the commit height return an error
 	if height != commit.Height() {
 		return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
 	}
+
+	// If the blockHash is not equal to the commit block hash return an error
 	if !blockID.Equals(commit.BlockID) {
 		return fmt.Errorf("Invalid commit -- wrong block id: want %v got %v",
 			blockID, commit.BlockID)
 	}
 
-	talliedVotingPower := int64(0)
+	var talliedVotingPower int64
 	round := commit.Round()
 
 	for idx, precommit := range commit.Precommits {
+		// Some precommits will likely be missing, skip those
 		if precommit == nil {
-			continue // OK, some precommits can be missing.
+			continue
 		}
+
+		// Malicous data checking for height
 		if precommit.Height != height {
 			return fmt.Errorf("Invalid commit -- wrong height: want %v got %v", height, precommit.Height)
 		}
+
+		// Malicous data checking for round
 		if precommit.Round != round {
 			return fmt.Errorf("Invalid commit -- wrong round: want %v got %v", round, precommit.Round)
 		}
+
+		// Malicous data checking for precommit
 		if precommit.Type != PrecommitType {
 			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
-		_, val := vals.GetByIndex(idx)
+
 		// Validate signature.
-		precommitSignBytes := precommit.SignBytes(chainID)
-		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
+		_, val := vals.GetByAddress(precommit.ValidatorAddress)
+		if val == nil {
+			continue
+		}
+
+		// verify that the valiator signed the precommit
+		if !val.PubKey.VerifyBytes(precommit.SignBytes(chainID), precommit.Signature) {
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
+
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
 			talliedVotingPower += val.VotingPower
-		} else {
-			// It's OK that the BlockID doesn't match.  We include stray
-			// precommits to measure validator availability.
 		}
+
+		// It's OK that the BlockID doesn't match.  We include stray
+		// precommits to measure validator availability.
 	}
 
 	if talliedVotingPower > vals.TotalVotingPower()*2/3 {
 		return nil
 	}
+
 	return errTooMuchChange{talliedVotingPower, vals.TotalVotingPower()*2/3 + 1}
 }
 
@@ -434,7 +454,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 // > 2/3.  Otherwise, the lite client isn't providing the same security
 // guarantees.
 //
-// newSet is the validator set that signed this block.  Only votes from new are
+// newVals is the validator set that signed this block.  Only votes from new are
 // sufficient for 2/3 majority in the new set as well, for it to be a valid
 // commit.
 //
@@ -444,13 +464,13 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 // set.
 //
 // NOTE: This function is strictly more restrictive than merely checking
-// whether newSet.VerifyCommit(...), in fact it calls exactly that.
-func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID string,
+// whether newVals.VerifyCommit(...), in fact it calls exactly that.
+func (vals *ValidatorSet) VerifyFutureCommit(newVals *ValidatorSet, chainID string,
 	blockID BlockID, height int64, commit *Commit) error {
 	oldVals := vals
 
-	// Commit must be a valid commit for newSet.
-	err := newSet.VerifyCommit(chainID, blockID, height, commit)
+	// Commit must be a valid commit for newVals.
+	err := newVals.VerifyCommit(chainID, blockID, height, commit)
 	if err != nil {
 		return err
 	}

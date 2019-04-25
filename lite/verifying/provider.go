@@ -49,40 +49,21 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 	source := lclient.NewProvider(chainID, client)
 	vp := makeProvider(chainID, options.TrustPeriod, trust, source)
 	vp.SetLogger(logger)
-	trustPeriod := options.TrustPeriod
 
-	// Get the latest trusted FC.
-	tlfc, err := trust.LatestFullCommit(chainID, 1, 1<<63-1)
-	//If there is no prior state or last state is older than the Trust Period fetch the last state.
-	if err != nil || time.Now().Sub(tlfc.SignedHeader.Time) > options.TrustPeriod {
-		// Get the latest source commit, or the one provided in options.
-		targetCommit, err := getTargetCommit(client, options)
-		if err != nil {
-			return nil, err
-		}
-		err = vp.fillValidateAndSaveToTrust(targetCommit, nil, nil)
-		if err != nil {
-			return nil, err
-		}
-		return vp, nil
+	// Get the latest source commit, or the one provided in options.
+	trustCommit, err := getTrustCommit(client, options)
+	if err != nil {
+		return nil, err
+	}
+
+	err = vp.fillValidateAndSaveToTrust(trustCommit, nil, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	// sanity check
-	if time.Now().Sub(tlfc.SignedHeader.Time) <= 0 {
-		panic(fmt.Sprintf("impossible time %v vs %v", time.Now(), tlfc.SignedHeader.Time))
-	}
-
-	if time.Now().Sub(tlfc.SignedHeader.Time) > trustPeriod {
-		// Get the latest source commit, or the one provided in options.
-		targetCommit, err := getTargetCommit(client, options)
-		if err != nil {
-			return nil, err
-		}
-		err = vp.fillValidateAndSaveToTrust(targetCommit, nil, nil)
-		if err != nil {
-			return nil, err
-		}
-		return vp, nil
+	if time.Now().Sub(trustCommit.Time) <= 0 {
+		panic(fmt.Sprintf("impossible time %v vs %v", time.Now(), trustCommit.Time))
 	}
 
 	// Otherwise we're syncing within the unbonding period.
@@ -90,22 +71,26 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 	// UpdateToHeight() will fetch it again, and latestCommit isn't used), but
 	// it's only once upon initialization of a validator so it's not a big
 	// deal.
-	latestCommit, err := client.Commit(nil)
-	if err != nil {
-		return nil, err
+	if options.TrustHeight > 0 {
+		latestCommit, err := client.Commit(nil)
+		if err != nil {
+			return nil, err
+		}
+		err = vp.UpdateToHeight(chainID, latestCommit.SignedHeader.Height)
+		if err != nil {
+			return nil, err
+		}
 	}
-	err = vp.UpdateToHeight(chainID, latestCommit.SignedHeader.Height)
-	if err != nil {
-		return nil, err
-	}
+
 	return vp, nil
 }
 
 // getTragetCommit returns a commit trusted with weak subjectivity. It either:
-// 1. Fetches a commit at height provide in options and ensure the specified is within the trust period of latest
+// 1. Fetches a commit at height provided in options and ensures the specified commit
+// 	is within the trust period of latest block
 // 2. Trusts the remote node and gets the latest commit
 // 3. Returns an error if the height provided in trust option is too old to sync to latest.
-func getTargetCommit(client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
+func getTrustCommit(client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
 
 	// Get the lastest commit always
 	latestBlock, err := client.Commit(nil)
@@ -132,11 +117,11 @@ func getTargetCommit(client lclient.SignStatusClient, options TrustOptions) (typ
 	} else {
 
 		latestCommit := latestBlock.SignedHeader
+
 		// NOTE: This should really belong in the callback.
 		// WARN THE USER IN ALL CAPS THAT THE LITE CLIENT IS NEW,
 		// AND THAT WE WILL SYNC TO AND VERIFY LATEST COMMIT.
-		fmt.Printf("trusting source at height %v and hash %X...\n",
-			latestCommit.Height, latestCommit.Hash())
+		fmt.Printf("trusting source at height %v and hash %X...\n", latestCommit.Height, latestCommit.Hash())
 		if options.Callback != nil {
 			err := options.Callback(latestCommit.Height, latestCommit.Hash())
 			if err != nil {
@@ -212,12 +197,11 @@ func (vp *provider) ChainID() string {
 
 // Implements UpdatingProvider
 //
-// On success, it will store the full commit (SignedHeader + Validators) in
-// vp.trusted.
-// NOTE: For concurreent usage, use concurrentProvider.
+// On success, it will store the full commit (SignedHeader + Validators) in vp.trusted
+// NOTE: For concurreent usage, use concurrentProvider
 func (vp *provider) UpdateToHeight(chainID string, height int64) error {
 
-	// If we alreeady have the commit, just return nil.
+	// If we alreedy have the commit, just return nil
 	_, err := vp.trusted.LatestFullCommit(vp.chainID, height, height)
 	if err == nil {
 		return nil
@@ -238,28 +222,31 @@ func (vp *provider) UpdateToHeight(chainID string, height int64) error {
 }
 
 // If valset or nextValset are nil, fetches them.
-// Then, validatees the full commit, then savees it.
+// Then, validatees the full commit, then saves it.
 func (vp *provider) fillValidateAndSaveToTrust(signedHeader types.SignedHeader, valset, nextValset *types.ValidatorSet) (err error) {
 
-	// Get the valset.
-	if valset != nil {
+	// If there is no valset passed, fetch it
+	if valset == nil {
 		valset, err = vp.source.ValidatorSet(vp.chainID, signedHeader.Height)
 		if err != nil {
 			return cmn.ErrorWrap(err, "fetching the valset")
 		}
 	}
 
-	// Get the next validator set.
-	if nextValset != nil {
+	// If there is no nextvalset passed, fetch it
+	if nextValset == nil {
+		// TODO: Don't loop forever, just do it 10 times
 		for {
+			// fetch block at signedHeader.Height+1
 			nextValset, err = vp.source.ValidatorSet(vp.chainID, signedHeader.Height+1)
 			if lerr.IsErrUnknownValidators(err) {
 				// try again until we get it.
-				fmt.Printf("fetching validatorset for height %v...\n",
-					signedHeader.Height+1)
+				fmt.Printf("fetching validatorset for height %v...\n", signedHeader.Height+1)
 				continue
 			} else if err != nil {
 				return cmn.ErrorWrap(err, "fetching the next valset")
+			} else if nextValset != nil {
+				break
 			}
 		}
 	}
@@ -270,16 +257,19 @@ func (vp *provider) fillValidateAndSaveToTrust(signedHeader types.SignedHeader, 
 		Validators:     valset,
 		NextValidators: nextValset,
 	}
+
 	// Validate the full commit.  This checks the cryptographic
 	// signatures of Commit against Validators.
 	if err := fc.ValidateFull(vp.chainID); err != nil {
 		return cmn.ErrorWrap(err, "verifying validators from source")
 	}
+
 	// Trust it.
 	err = vp.trusted.SaveFullCommit(fc)
 	if err != nil {
 		return cmn.ErrorWrap(err, "saving full commit")
 	}
+
 	return nil
 }
 
@@ -290,35 +280,20 @@ func (vp *provider) fillValidateAndSaveToTrust(signedHeader types.SignedHeader, 
 // Returns ErrCommitExpired when trustedFC is too old.
 // Panics if trustedFC.Height() >= newFC.Height().
 func (vp *provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
+
+	// Shouldn't have trusted commits before the new commit height
 	if trustedFC.Height() >= newFC.Height() {
 		panic("should not happen")
 	}
+
+	// Check that the latest commit isn't beyond the vp.trustPeriod
 	if vp.now().Sub(trustedFC.SignedHeader.Time) > vp.trustPeriod {
 		return lerr.ErrCommitExpired()
 	}
-	if trustedFC.Height() == newFC.Height()-1 {
-		err := trustedFC.NextValidators.VerifyCommit(
-			vp.chainID, newFC.SignedHeader.Commit.BlockID,
-			newFC.SignedHeader.Height, newFC.SignedHeader.Commit,
-		)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := trustedFC.NextValidators.VerifyFutureCommit(
-			newFC.Validators,
-			vp.chainID, newFC.SignedHeader.Commit.BlockID,
-			newFC.SignedHeader.Height, newFC.SignedHeader.Commit,
-		)
-		if err != nil {
-			return err
-		}
-	}
 
-	if vp.now().Before(newFC.SignedHeader.Time) {
-		// TODO print warning
-		// TODO if too egregious, return error.
-		// return FullCommit{}, errors.New("now should not be before source time")
+	// If the new full commit is the next block, verify it. Otherwise use the verify future commit function
+	if err := trustedFC.NextValidators.VerifyCommit(vp.chainID, newFC.SignedHeader.Commit.BlockID, newFC.SignedHeader.Height, newFC.SignedHeader.Commit); err != nil {
+		return err
 	}
 
 	return vp.trusted.SaveFullCommit(newFC)
@@ -352,13 +327,13 @@ func (vp *provider) fetchAndVerifyToHeight(h int64) (lite.FullCommit, error) {
 
 	// Verify latest FullCommit against trusted FullCommits
 	// Use a loop rather than recursion to avoid stack overflows.
-FOR_LOOP:
 	for {
 		// Fetch latest full commit from trusted.
 		trustedFC, err := vp.trusted.LatestFullCommit(vp.chainID, 1, h)
 		if err != nil {
 			return lite.FullCommit{}, err
 		}
+
 		// We have nothing to do.
 		if trustedFC.Height() == h {
 			return trustedFC, nil
@@ -366,6 +341,7 @@ FOR_LOOP:
 
 		// Update to full commit with checks.
 		err = vp.verifyAndSave(trustedFC, sourceFC)
+
 		// Handle special case when err is ErrTooMuchChange.
 		if types.IsErrTooMuchChange(err) {
 			// Divide and conquer.
@@ -374,12 +350,15 @@ FOR_LOOP:
 				panic("should not happen")
 			}
 			mid := (start + end) / 2
+
+			// Recursive call back into fetchAndVerifyToHeight. Once you get to an inner
+			// call that succeeeds, the outer calls will succeed.
 			_, err = vp.fetchAndVerifyToHeight(mid)
 			if err != nil {
 				return lite.FullCommit{}, err
 			}
 			// If we made it to mid, we retry.
-			continue FOR_LOOP
+			continue
 		} else if err != nil {
 			return lite.FullCommit{}, err
 		}

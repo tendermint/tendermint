@@ -38,36 +38,37 @@ func (fc FullCommit) ValidateFull(chainID string) error {
 	if fc.Validators.Size() == 0 {
 		return errors.New("need FullCommit.Validators")
 	}
-	if !bytes.Equal(
-		fc.SignedHeader.ValidatorsHash,
-		fc.Validators.Hash()) {
+
+	// If the commit ValidatorHash doesn't match the block ValidatorHash return an error
+	if !bytes.Equal(fc.SignedHeader.ValidatorsHash, fc.Validators.Hash()) {
 		return fmt.Errorf("header has vhash %X but valset hash is %X",
 			fc.SignedHeader.ValidatorsHash,
 			fc.Validators.Hash(),
 		)
 	}
+
 	// Ensure that NextValidators exists and matches the header.
 	if fc.NextValidators.Size() == 0 {
 		return errors.New("need FullCommit.NextValidators")
 	}
-	if !bytes.Equal(
-		fc.SignedHeader.NextValidatorsHash,
-		fc.NextValidators.Hash()) {
+
+	// If the commit ValidatorHash doesn't match the block ValidatorHash return an error
+	if !bytes.Equal(fc.SignedHeader.NextValidatorsHash, fc.NextValidators.Hash()) {
 		return fmt.Errorf("header has next vhash %X but next valset hash is %X",
 			fc.SignedHeader.NextValidatorsHash,
 			fc.NextValidators.Hash(),
 		)
 	}
+
 	// Validate the header.
 	err := fc.SignedHeader.ValidateBasic(chainID)
 	if err != nil {
 		return err
 	}
+
 	// Validate the signatures on the commit.
 	hdr, cmt := fc.SignedHeader.Header, fc.SignedHeader.Commit
-	return fc.Validators.VerifyCommit(
-		hdr.ChainID, cmt.BlockID,
-		hdr.Height, cmt)
+	return fc.Validators.VerifyCommit(hdr.ChainID, cmt.BlockID, hdr.Height, cmt)
 }
 
 // Height returns the height of the header.
