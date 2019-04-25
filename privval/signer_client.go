@@ -27,7 +27,7 @@ func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
 
 	if !endpoint.IsRunning() {
 		if err := endpoint.Start(); err != nil {
-			return nil, errors.Wrap(err, "failed to start private validator")
+			return nil, errors.Wrap(err, "failed to start listener endpoint")
 		}
 	}
 
