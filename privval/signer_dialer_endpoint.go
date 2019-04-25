@@ -168,7 +168,7 @@ func (sd *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	const maxRemoteSignerMsgSize = 1024 * 10
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(sd.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrDialerReadTimeout, err.Error())
+		err = errors.Wrap(ErrDialerReadTimeout, err.Error())
 	}
 
 	return
