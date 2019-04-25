@@ -656,7 +656,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 
 		// retry persistent peers after
 		// any dial error besides IsSelf()
-		if p.IsPersistent() {
+		if sw.isPeerPersistentFn()(addr) {
 			go sw.reconnectToPeer(addr)
 		}
 
