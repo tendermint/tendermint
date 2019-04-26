@@ -530,9 +530,32 @@ func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
 	}
 }
 
-// ToVote converts the CommitSig to a Vote using the given valIdx
-// and the ValidatorAddress contained in the commitSig.
-func (commit *Commit) ToVote(valIdx int, commitSig *CommitSig) *Vote {
+// Construct a VoteSet from the commit and validator set. Panics
+// if precommits from the commit can't be added to the voteset.
+func (commit *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	height, round := commit.height, commit.round
+	voteSet := NewVoteSet(chainID, height, round, PrecommitType, vals)
+	for idx, precommit := range commit.Precommits {
+		if precommit == nil {
+			continue
+		}
+		added, err := voteSet.AddVote(commit.getVote(idx))
+		if !added || err != nil {
+			panic(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
+		}
+	}
+	return voteSet
+}
+
+// getVote converts the CommitSig for the given valIdx to a Vote.
+// Returns nil if the precommit at valIdx is nil.
+// Panics if valIdx >= commit.Size().
+func (commit *Commit) getVote(valIdx int) *Vote {
+	commitSig := commit.Precommits[valIdx]
+	if commitSig == nil {
+		return nil
+	}
+
 	// NOTE: this commitSig might be for a nil blockID,
 	// so we can't just use commit.BlockID here.
 	// For #1648, CommitSig will need to indicate what BlockID it's for !
@@ -553,11 +576,9 @@ func (commit *Commit) ToVote(valIdx int, commitSig *CommitSig) *Vote {
 // VoteSignBytes constructs the SignBytes for the given CommitSig.
 // The only unique part of the SignBytes is the Timestamp - all other fields
 // signed over are otherwise the same for all validators.
-func (commit *Commit) VoteSignBytes(chainID string, cs *CommitSig) []byte {
-	// NOTE: we don't know or care about the valIdx, but we need
-	// a value to make a Vote so we don't have to duplicate SignBytes logic.
-	valIdx := -1
-	return commit.ToVote(valIdx, cs).SignBytes(chainID)
+// Panics if valIdx >= commit.Size().
+func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
+	return commit.getVote(valIdx).SignBytes(chainID)
 }
 
 // memoizeHeightRound memoizes the height and round of the commit using
@@ -620,8 +641,7 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 // Panics if `index >= commit.Size()`.
 // Implements VoteSetReader.
 func (commit *Commit) GetByIndex(valIdx int) *Vote {
-	commitSig := commit.Precommits[valIdx]
-	return commit.ToVote(valIdx, commitSig)
+	return commit.getVote(valIdx)
 }
 
 // IsCommit returns true if there is at least one vote.
