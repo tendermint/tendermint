@@ -224,10 +224,10 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 }
 
 func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc, eventBus *types.EventBus, proxyApp proxy.AppConns, logger log.Logger) error {
+	genDoc *types.GenesisDoc, eventBus *types.EventBus, proxyApp proxy.AppConns, consensusLogger log.Logger) error {
 
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
-	handshaker.SetLogger(logger)
+	handshaker.SetLogger(consensusLogger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		return fmt.Errorf("error during handshake: %v", err)
@@ -464,17 +464,6 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	return pexReactor
 }
 
-// This instantiates the profile server in a separate goroutine only if
-// `config.ProfileListenAddress` is non-empty.
-func optionallyRunProfileServer(config *cfg.Config, logger log.Logger) {
-	if config.ProfListenAddress == "" {
-		return
-	}
-	go func() {
-		logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
-	}()
-}
-
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -555,11 +544,10 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	blockExecLogger := logger.With("module", "state")
 	// make block executor for consensus and blockchain reactors to execute blocks
 	blockExec := sm.NewBlockExecutor(
 		stateDB,
-		blockExecLogger,
+		logger.With("module", "state"),
 		proxyApp.Consensus(),
 		mempool,
 		evidencePool,
@@ -610,7 +598,9 @@ func NewNode(config *cfg.Config,
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
 
-	optionallyRunProfileServer(config, logger)
+	if config.ProfListenAddress != "" {
+		go logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+	}
 
 	node := &Node{
 		config:        config,
