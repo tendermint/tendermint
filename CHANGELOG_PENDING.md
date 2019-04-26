@@ -9,7 +9,8 @@
 * Apps
 
 * Go API
-- [libs/common] Removed PanicSanity, PanicCrisis, PanicConsensus and PanicQ
+- [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
+- [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
 
 * Blockchain Protocol
 
