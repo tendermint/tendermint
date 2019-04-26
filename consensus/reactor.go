@@ -491,7 +491,7 @@ OUTER_LOOP:
 			if prs.ProposalBlockParts == nil {
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					cmn.PanicCrisis(fmt.Sprintf("Failed to load block %d when blockStore is at %d",
+					panic(fmt.Sprintf("Failed to load block %d when blockStore is at %d",
 						prs.Height, conR.conS.blockStore.Height()))
 				}
 				ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
@@ -1110,7 +1110,7 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValida
 		NOTE: This is wrong, 'round' could change.
 		e.g. if orig round is not the same as block LastCommit round.
 		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
-			cmn.PanicSanity(fmt.Sprintf("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
+			panic(fmt.Sprintf("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
 		}
 	*/
 	if ps.PRS.CatchupCommitRound == round {
