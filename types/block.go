@@ -533,12 +533,16 @@ func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
 // ToVote converts the CommitSig to a Vote using the given valIdx
 // and the ValidatorAddress contained in the commitSig.
 func (commit *Commit) ToVote(valIdx int, commitSig *CommitSig) *Vote {
+	// NOTE: this commitSig might be for a nil blockID,
+	// so we can't just use commit.BlockID here.
+	// For #1648, CommitSig will need to indicate what BlockID it's for !
+	blockID := commitSig.BlockID
 	commit.memoizeHeightRound()
 	return &Vote{
 		Type:             PrecommitType,
 		Height:           commit.height,
 		Round:            commit.round,
-		BlockID:          commit.BlockID,
+		BlockID:          blockID,
 		Timestamp:        commitSig.Timestamp,
 		ValidatorAddress: commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
@@ -550,30 +554,10 @@ func (commit *Commit) ToVote(valIdx int, commitSig *CommitSig) *Vote {
 // The only unique part of the SignBytes is the Timestamp - all other fields
 // signed over are otherwise the same for all validators.
 func (commit *Commit) VoteSignBytes(chainID string, cs *CommitSig) []byte {
-	canonicalVote := commit.canonicalVote(chainID, cs)
-	bz, err := cdc.MarshalBinaryLengthPrefixed(canonicalVote)
-	if err != nil {
-		panic(err)
-	}
-	return bz
-}
-
-// make the canonical vote sign bytes for this commit using
-// the timestamp given in the commitSig.
-func (commit *Commit) canonicalVote(chainID string, commitSig *CommitSig) CanonicalVote {
-	commit.memoizeHeightRound()
-	// NOTE: this commitSig might be for a nil blockID,
-	// so we can't just use commit.BlockID here.
-	// For #1648, CommitSig will need to indicate what BlockID it's for !
-	blockID := CanonicalizeBlockID(commitSig.BlockID)
-	return CanonicalVote{
-		Type:      PrecommitType,
-		Height:    commit.height,
-		Round:     int64(commit.round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
-		BlockID:   blockID,
-		Timestamp: commitSig.Timestamp,
-		ChainID:   chainID,
-	}
+	// NOTE: we don't know or care about the valIdx, but we need
+	// a value to make a Vote so we don't have to duplicate SignBytes logic.
+	valIdx := -1
+	return commit.ToVote(valIdx, cs).SignBytes(chainID)
 }
 
 // memoizeHeightRound memoizes the height and round of the commit using
