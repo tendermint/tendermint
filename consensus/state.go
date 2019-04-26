@@ -489,7 +489,7 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		if precommit == nil {
 			continue
 		}
-		added, err := lastPrecommits.AddVote(seenCommit.ToVote(idx, precommit, state.LastValidators))
+		added, err := lastPrecommits.AddVote(seenCommit.ToVote(idx, precommit))
 		if !added || err != nil {
 			cmn.PanicCrisis(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
 		}

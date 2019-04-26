@@ -502,28 +502,6 @@ func (cs *CommitSig) toVote() *Vote {
 
 //-------------------------------------
 
-type CommitVotes struct {
-	*Commit
-	valSet *ValidatorSet
-}
-
-func NewCommitVotes(commit *Commit, valSet *ValidatorSet) *CommitVotes {
-	return &CommitVotes{
-		Commit: commit,
-		valSet: valSet,
-	}
-}
-
-// GetByIndex returns the vote corresponding to a given validator index.
-// Panics if `index >= commit.Size()`.
-// Implements VoteSetReader.
-func (cv *CommitVotes) GetByIndex(valIdx int) *Vote {
-	commitSig := cv.Commit.Precommits[valIdx]
-	return cv.Commit.ToVote(valIdx, commitSig, cv.valSet)
-}
-
-//-------------------------------------
-
 // Commit contains the evidence that a block was committed by a set of validators.
 // NOTE: Commit is empty for height 1, but never nil.
 type Commit struct {
@@ -552,17 +530,17 @@ func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
 	}
 }
 
-// ToVote converts the CommitSig to a Vote using the ValidatorAddress contained in the valSet.
-func (commit *Commit) ToVote(valIdx int, commitSig *CommitSig, valSet *ValidatorSet) *Vote {
+// ToVote converts the CommitSig to a Vote using the given valIdx
+// and the ValidatorAddress contained in the commitSig.
+func (commit *Commit) ToVote(valIdx int, commitSig *CommitSig) *Vote {
 	commit.memoizeHeightRound()
-	valAddr, _ := valSet.GetByIndex(valIdx)
 	return &Vote{
 		Type:             PrecommitType,
 		Height:           commit.height,
 		Round:            commit.round,
 		BlockID:          commit.BlockID,
 		Timestamp:        commitSig.Timestamp,
-		ValidatorAddress: valAddr,
+		ValidatorAddress: commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
 		Signature:        commitSig.Signature,
 	}
@@ -654,8 +632,13 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 	return commit.bitArray
 }
 
-// Commit does not implement GetByIndex directly since it doesn't
-// have enough information to return a Vote. See CommitVotes struct.
+// GetByIndex returns the vote corresponding to a given validator index.
+// Panics if `index >= commit.Size()`.
+// Implements VoteSetReader.
+func (commit *Commit) GetByIndex(valIdx int) *Vote {
+	commitSig := commit.Precommits[valIdx]
+	return commit.ToVote(valIdx, commitSig)
+}
 
 // IsCommit returns true if there is at least one vote.
 func (commit *Commit) IsCommit() bool {

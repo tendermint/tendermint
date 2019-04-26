@@ -639,15 +639,7 @@ OUTER_LOOP:
 			// Load the block commit for prs.Height,
 			// which contains precommit signatures for prs.Height.
 			commit := conR.conS.blockStore.LoadBlockCommit(prs.Height)
-			valSet, err := conR.conS.blockExec.LoadValidators(prs.Height)
-			if err != nil {
-				// This should never happen as we should have the validator
-				// set for this height by now. In any case, don't panic.
-				logger.Error("Failed to load validator set for commit", "height", prs.Height, "err", err)
-				continue OUTER_LOOP
-			}
-			commitVotes := types.NewCommitVotes(commit, valSet)
-			if ps.PickSendVote(commitVotes) {
+			if ps.PickSendVote(commit) {
 				logger.Debug("Picked Catchup commit to send", "height", prs.Height)
 				continue OUTER_LOOP
 			}
