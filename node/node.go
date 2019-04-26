@@ -151,6 +151,7 @@ type Node struct {
 	mempoolReactor   *mempl.MempoolReactor  // for gossipping transactions
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
+	pexReactor       *pex.PEXReactor        // for exchanging peer addresses
 	evidencePool     *evidence.EvidencePool // tracking evidence
 	proxyApp         proxy.AppConns         // connection to the application
 	rpcListeners     []net.Listener         // rpc servers
@@ -166,10 +167,12 @@ func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *bc.BlockSto
 		return
 	}
 	blockStore = bc.NewBlockStore(blockStoreDB)
+
 	stateDB, err = dbProvider(&DBContext{"state", config})
 	if err != nil {
 		return
 	}
+
 	return
 }
 
@@ -191,7 +194,9 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 	return eventBus, nil
 }
 
-func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider, eventBus *types.EventBus, logger log.Logger) (*txindex.IndexerService, txindex.TxIndexer, error) {
+func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
+	eventBus *types.EventBus, logger log.Logger) (*txindex.IndexerService, txindex.TxIndexer, error) {
+
 	var txIndexer txindex.TxIndexer
 	switch config.TxIndex.Indexer {
 	case "kv":
@@ -218,7 +223,9 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider, eve
 	return indexerService, txIndexer, nil
 }
 
-func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore, genDoc *types.GenesisDoc, eventBus *types.EventBus, proxyApp proxy.AppConns, logger log.Logger) error {
+func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
+	genDoc *types.GenesisDoc, eventBus *types.EventBus, proxyApp proxy.AppConns, logger log.Logger) error {
+
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(logger)
 	handshaker.SetEventBus(eventBus)
@@ -228,7 +235,9 @@ func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore, genDo
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logger, consensusLogger log.Logger) {
+func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logger,
+	consensusLogger log.Logger) {
+
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -254,21 +263,6 @@ func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logge
 	}
 }
 
-// This creates and starts the private validator socket client if, and only if,
-// `config.PrivValidatorListenAddr` is non-empty.
-func optionallyCreateAndStartPrivValidator(config *cfg.Config, privValidator types.PrivValidator, logger log.Logger) (types.PrivValidator, error) {
-	if config.PrivValidatorListenAddr == "" {
-		return privValidator, nil
-	}
-	// FIXME: we should start services inside OnStart
-	var err error
-	privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error with private validator socket client")
-	}
-	return privValidator, nil
-}
-
 func onlyValidatorIsUs(state sm.State, privVal types.PrivValidator) bool {
 	if state.Validators.Size() > 1 {
 		return false
@@ -277,7 +271,9 @@ func onlyValidatorIsUs(state sm.State, privVal types.PrivValidator) bool {
 	return bytes.Equal(privVal.GetPubKey().Address(), addr)
 }
 
-func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns, state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
+func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
+	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
+
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
@@ -300,7 +296,9 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 	return mempoolReactor, mempool
 }
 
-func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider, stateDB dbm.DB, logger log.Logger) (*evidence.EvidenceReactor, *evidence.EvidencePool, error) {
+func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
+	stateDB dbm.DB, logger log.Logger) (*evidence.EvidenceReactor, *evidence.EvidencePool, error) {
+
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
 		return nil, nil, err
@@ -432,32 +430,38 @@ func createSwitch(config *cfg.Config,
 	return sw
 }
 
-func createAddrBook(config *cfg.Config, nodeInfo p2p.NodeInfo, sw *p2p.Switch, logger, p2pLogger log.Logger) pex.AddrBook {
+func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
+	p2pLogger log.Logger) pex.AddrBook {
+
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
+	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	addrBook.AddOurAddress(sw.NetAddress())
 
-	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
-	if config.P2P.PexReactor {
-		// TODO persistent peers ? so we can have their DNS addrs saved
-		pexReactor := pex.NewPEXReactor(addrBook,
-			&pex.PEXReactorConfig{
-				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
-				SeedMode: config.P2P.SeedMode,
-				// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
-				// blocks assuming 10s blocks ~ 28 hours.
-				// TODO (melekes): make it dynamic based on the actual block latencies
-				// from the live network.
-				// https://github.com/tendermint/tendermint/issues/3523
-				SeedDisconnectWaitPeriod: 28 * time.Hour,
-			})
-		pexReactor.SetLogger(logger.With("module", "pex"))
-		sw.AddReactor("PEX", pexReactor)
-	}
-
 	sw.SetAddrBook(addrBook)
+
 	return addrBook
+}
+
+func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
+	sw *p2p.Switch, logger log.Logger) *pex.PEXReactor {
+
+	// TODO persistent peers ? so we can have their DNS addrs saved
+	pexReactor := pex.NewPEXReactor(addrBook,
+		&pex.PEXReactorConfig{
+			Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
+			SeedMode: config.P2P.SeedMode,
+			// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
+			// blocks assuming 10s blocks ~ 28 hours.
+			// TODO (melekes): make it dynamic based on the actual block latencies
+			// from the live network.
+			// https://github.com/tendermint/tendermint/issues/3523
+			SeedDisconnectWaitPeriod: 28 * time.Hour,
+		})
+	pexReactor.SetLogger(logger.With("module", "pex"))
+	sw.AddReactor("PEX", pexReactor)
+	return pexReactor
 }
 
 // This instantiates the profile server in a separate goroutine only if
@@ -526,9 +530,12 @@ func NewNode(config *cfg.Config,
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
-	privValidator, err = optionallyCreateAndStartPrivValidator(config, privValidator, logger)
-	if err != nil {
-		return nil, err
+	if config.PrivValidatorListenAddr != "" {
+		// FIXME: we should start services inside OnStart
+		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
+		if err != nil {
+			return nil, errors.Wrap(err, "error with private validator socket client")
+		}
 	}
 
 	logNodeStartupInfo(state, privValidator, logger, consensusLogger)
@@ -584,6 +591,8 @@ func NewNode(config *cfg.Config,
 		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
 
+	addrBook := createAddrBookAndSetOnSwitch(config, sw, p2pLogger)
+
 	// Optionally, start the pex reactor
 	//
 	// TODO:
@@ -596,7 +605,10 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
-	addrBook := createAddrBook(config, nodeInfo, sw, logger, p2pLogger)
+	var pexReactor *pex.PEXReactor
+	if config.P2P.PexReactor {
+		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+	}
 
 	optionallyRunProfileServer(config, logger)
 
@@ -617,6 +629,7 @@ func NewNode(config *cfg.Config,
 		mempoolReactor:   mempoolReactor,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
+		pexReactor:       pexReactor,
 		evidencePool:     evidencePool,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
@@ -883,6 +896,11 @@ func (n *Node) ConsensusReactor() *cs.ConsensusReactor {
 // MempoolReactor returns the Node's MempoolReactor.
 func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
+}
+
+// PEXReactor returns the Node's PEXReactor.
+func (n *Node) PEXReactor() *pex.PEXReactor {
+	return n.pexReactor
 }
 
 // EvidencePool returns the Node's EvidencePool.
