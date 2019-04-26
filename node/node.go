@@ -321,7 +321,7 @@ func createConsensusReactor(config *cfg.Config,
 	csMetrics *cs.Metrics,
 	fastSync bool,
 	eventBus *types.EventBus,
-	logger log.Logger) (*consensus.ConsensusReactor, *consensus.ConsensusState) {
+	consensusLogger log.Logger) (*consensus.ConsensusReactor, *consensus.ConsensusState) {
 
 	consensusState := cs.NewConsensusState(
 		config.Consensus,
@@ -332,12 +332,12 @@ func createConsensusReactor(config *cfg.Config,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
 	)
-	consensusState.SetLogger(logger)
+	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
 	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
-	consensusReactor.SetLogger(logger)
+	consensusReactor.SetLogger(consensusLogger)
 	// services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor
 	consensusReactor.SetEventBus(eventBus)
@@ -410,7 +410,7 @@ func createSwitch(config *cfg.Config,
 	evidenceReactor *evidence.EvidenceReactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
-	logger log.Logger) *p2p.Switch {
+	p2pLogger log.Logger) *p2p.Switch {
 
 	sw := p2p.NewSwitch(
 		config.P2P,
@@ -418,7 +418,7 @@ func createSwitch(config *cfg.Config,
 		p2p.WithMetrics(p2pMetrics),
 		p2p.SwitchPeerFilters(peerFilters...),
 	)
-	sw.SetLogger(logger)
+	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -426,7 +426,7 @@ func createSwitch(config *cfg.Config,
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
-	logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
+	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
 	return sw
 }
 
