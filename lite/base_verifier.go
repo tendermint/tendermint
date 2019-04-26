@@ -59,8 +59,7 @@ func (bv *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
 	}
 
 	// We can't verify with the wrong validator set.
-	if !bytes.Equal(signedHeader.ValidatorsHash,
-		bv.valset.Hash()) {
+	if !bytes.Equal(signedHeader.ValidatorsHash, bv.valset.Hash()) {
 		return lerr.ErrUnexpectedValidators(signedHeader.ValidatorsHash, bv.valset.Hash())
 	}
 

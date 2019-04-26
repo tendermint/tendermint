@@ -15,40 +15,48 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	loggerPath = "lite"
+	memDBFile  = "trusted.mem"
+	lvlDBFile  = "trusted.lvl"
+	dbName     = "trust-base"
+)
+
 type TrustOptions struct {
 	// Required: only trust commits up to this old.
-	TrustPeriod time.Duration
+	TrustPeriod time.Duration `json:"trust-period"`
 
 	// Option 1: TrustHeight and TrustHash can both be provided
 	// to force the trusting of a particular height and hash.
 	// If the latest trusted height/hash is more recent, then this option is
 	// ignored.
-	TrustHeight int64
-	TrustHash   []byte
+	TrustHeight int64  `json:"trust-height"`
+	TrustHash   []byte `json:"trust-hash"`
 
 	// Option 2: Callback can be set to implement a confirmation
 	// step if the trust store is uninitialized, or expired.
 	Callback func(height int64, hash []byte) error
 }
 
+// initProvider sets up the databases and loggers and instantiates the provider object
+func initProvider(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger, cacheSize int, options TrustOptions) *provider {
+	logger = logger.With("module", loggerPath)
+	logger.Info(fmt.Sprintf("lite/verifying/NewProvider: chainID -> %s, rootDir -> %s, client -> %s", chainID, rootDir, client))
+
+	trust := lite.NewMultiProvider(
+		lite.NewDBProvider(memDBFile, dbm.NewMemDB()).SetLimit(cacheSize),
+		lite.NewDBProvider(lvlDBFile, dbm.NewDB(dbName, dbm.LevelDBBackend, rootDir)),
+	)
+
+	return makeProvider(chainID, options.TrustPeriod, trust, lclient.NewProvider(chainID, client), logger)
+}
+
 // NOTE If you retain the resulting verifier in memory for a long time,
 // usage of the verifier may eventually error, but immediate usage should
 // not error like that, so that e.g. cli usage never errors unexpectedly.
-// TODO Move some of this initialization to a separate function.
 func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger, cacheSize int, options TrustOptions) (*provider, error) {
 
-	logger = logger.With("module", "lite/proxy")
-	logger.Info("lite/proxy/NewProvider()...", "chainID", chainID, "rootDir", rootDir, "client", client)
-
-	memProvider := lite.NewDBProvider("trusted.mem", dbm.NewMemDB()).SetLimit(cacheSize)
-	lvlProvider := lite.NewDBProvider("trusted.lvl", dbm.NewDB("trust-base", dbm.LevelDBBackend, rootDir))
-	trust := lite.NewMultiProvider(
-		memProvider,
-		lvlProvider,
-	)
-	source := lclient.NewProvider(chainID, client)
-	vp := makeProvider(chainID, options.TrustPeriod, trust, source)
-	vp.SetLogger(logger)
+	vp := initProvider(chainID, rootDir, client, logger, cacheSize, options)
 
 	// Get the latest source commit, or the one provided in options.
 	trustCommit, err := getTrustCommit(client, options)
@@ -56,7 +64,7 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 		return nil, err
 	}
 
-	err = vp.fillValidateAndSaveToTrust(trustCommit, nil, nil)
+	err = vp.fillValsetAndSaveFC(trustCommit, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +93,7 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 	return vp, nil
 }
 
-// getTragetCommit returns a commit trusted with weak subjectivity. It either:
+// getTrustCommit returns a commit trusted with weak subjectivity. It either:
 // 1. Fetches a commit at height provided in options and ensures the specified commit
 // 	is within the trust period of latest block
 // 2. Trusts the remote node and gets the latest commit
@@ -98,7 +106,8 @@ func getTrustCommit(client lclient.SignStatusClient, options TrustOptions) (type
 		return types.SignedHeader{}, err
 	}
 
-	if options.TrustHeight != 0 {
+	// If the user has set a root of trust, confirm it then update to newest
+	if options.TrustHeight != 0 && options.TrustHash != nil {
 		trustBlock, err := client.Commit(&options.TrustHeight)
 		if err != nil {
 			return types.SignedHeader{}, err
@@ -170,12 +179,15 @@ type provider struct {
 // The trusted provider should be a DBProvider.
 // The source provider should be a client.HTTPProvider.
 // NOTE: The external facing constructor is called NewVerifyingProivider.
-func makeProvider(chainID string, trustPeriod time.Duration, trusted lite.PersistentProvider, source lite.Provider) *provider {
+func makeProvider(chainID string, trustPeriod time.Duration, trusted lite.PersistentProvider, source lite.Provider, logger log.Logger) *provider {
 	if trustPeriod == 0 {
 		panic("VerifyingProvider must have non-zero trust period")
 	}
+	logger = logger.With("module", loggerPath)
+	trusted.SetLogger(logger)
+	source.SetLogger(logger)
 	return &provider{
-		logger:               log.NewNopLogger(),
+		logger:               logger,
 		chainID:              chainID,
 		trustPeriod:          trustPeriod,
 		trusted:              trusted,
@@ -184,12 +196,7 @@ func makeProvider(chainID string, trustPeriod time.Duration, trusted lite.Persis
 	}
 }
 
-func (vp *provider) SetLogger(logger log.Logger) {
-	logger = logger.With("module", "lite")
-	vp.logger = logger
-	vp.trusted.SetLogger(logger)
-	vp.source.SetLogger(logger)
-}
+func (vp *provider) SetLogger(logger log.Logger) {}
 
 func (vp *provider) ChainID() string {
 	return vp.chainID
@@ -223,7 +230,7 @@ func (vp *provider) UpdateToHeight(chainID string, height int64) error {
 
 // If valset or nextValset are nil, fetches them.
 // Then, validatees the full commit, then saves it.
-func (vp *provider) fillValidateAndSaveToTrust(signedHeader types.SignedHeader, valset, nextValset *types.ValidatorSet) (err error) {
+func (vp *provider) fillValsetAndSaveFC(signedHeader types.SignedHeader, valset, nextValset *types.ValidatorSet) (err error) {
 
 	// If there is no valset passed, fetch it
 	if valset == nil {
