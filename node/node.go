@@ -888,7 +888,7 @@ func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
-// PEXReactor returns the Node's PEXReactor.
+// PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
 func (n *Node) PEXReactor() *pex.PEXReactor {
 	return n.pexReactor
 }
