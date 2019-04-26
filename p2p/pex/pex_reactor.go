@@ -223,13 +223,6 @@ func (r *PEXReactor) InitPeer(peer Peer) Peer {
 	return peer
 }
 
-// RemovePeer implements Reactor.
-func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
-	id := string(p.ID())
-	r.requestsSent.Delete(id)
-	r.lastReceivedRequests.Delete(id)
-}
-
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	msg, err := decodeMsg(msgBytes)

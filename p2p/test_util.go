@@ -31,6 +31,10 @@ func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
 	sw.peers.Add(peer)
 }
 
+func RemovePeerFromSwitchPeerSet(sw *Switch, peer Peer) {
+	sw.peers.Remove(peer)
+}
+
 func AddPeerToSwitch(sw *Switch, peer Peer) error {
 	return sw.addPeer(peer)
 }

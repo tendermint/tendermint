@@ -49,11 +49,11 @@ func TestPEXReactorStopPeerWithOutInitPeer(t *testing.T) {
 	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 	nodeId := nodeKey.ID()
 	stopForError := 0
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100; i++ {
 		peer := mock.NewFixIdPeer(nil, nodeId)
 		// Only add to peerSet
 		p2p.AddPeerToSwitchPeerSet(sw, peer)
-		assert.True(t, sw.Peers().Has(peer.ID()))
+		assert.True(t, sw.Peers().Has(nodeId))
 
 		msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
 
@@ -67,12 +67,9 @@ func TestPEXReactorStopPeerWithOutInitPeer(t *testing.T) {
 		if !sw.Peers().Has(peer.ID()) {
 			stopForError++
 		}
-
-		go sw.StopPeerForError(peer, "peer not available")
-		for sw.Peers().Has(peer.ID()) {
-		}
+		p2p.RemovePeerFromSwitchPeerSet(sw, peer)
 	}
-	assert.NotEqual(t, stopForError, 0)
+	assert.Equal(t, stopForError, 99)
 }
 
 func TestPEXReactorDoNotStopReconnectionPeer(t *testing.T) {
@@ -87,7 +84,7 @@ func TestPEXReactorDoNotStopReconnectionPeer(t *testing.T) {
 	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 	nodeId := nodeKey.ID()
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 1000; i++ {
 		peer := mock.NewFixIdPeer(nil, nodeId)
 		p2p.AddPeerToSwitch(sw, peer)
 		assert.True(t, sw.Peers().Has(peer.ID()))
@@ -102,9 +99,8 @@ func TestPEXReactorDoNotStopReconnectionPeer(t *testing.T) {
 		r.Receive(PexChannel, peer, msg)
 		assert.True(t, sw.Peers().Has(peer.ID()))
 
-		go sw.StopPeerForError(peer, "peer not available")
-		for sw.Peers().Has(peer.ID()) {
-		}
+		// simulate stop peer for error
+		p2p.RemovePeerFromSwitchPeerSet(sw, peer)
 	}
 }
 
