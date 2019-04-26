@@ -109,25 +109,27 @@ func testOutboundPeerConn(
 	persistent bool,
 	ourNodePrivKey crypto.PrivKey,
 ) (peerConn, error) {
+
+	var pc peerConn
 	conn, err := testDial(addr, config)
 	if err != nil {
-		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
+		return pc, cmn.ErrorWrap(err, "Error creating peer")
 	}
 
-	pc, err := testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
+	pc, err = testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
-			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
+			return pc, cmn.ErrorWrap(err, cerr.Error())
 		}
-		return peerConn{}, err
+		return pc, err
 	}
 
 	// ensure dialed ID matches connection ID
 	if addr.ID != pc.ID() {
 		if cerr := conn.Close(); cerr != nil {
-			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
+			return pc, cmn.ErrorWrap(err, cerr.Error())
 		}
-		return peerConn{}, ErrSwitchAuthenticationFailure{addr, pc.ID()}
+		return pc, ErrSwitchAuthenticationFailure{addr, pc.ID()}
 	}
 
 	return pc, nil

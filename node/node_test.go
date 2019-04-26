@@ -31,6 +31,7 @@ import (
 
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
+	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
@@ -41,11 +42,12 @@ func TestNodeStartStop(t *testing.T) {
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// wait for the node to produce a block
-	blockCh := make(chan interface{})
-	err = n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock, blockCh)
+	blocksSub, err := n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock)
 	require.NoError(t, err)
 	select {
-	case <-blockCh:
+	case <-blocksSub.Out():
+	case <-blocksSub.Cancelled():
+		t.Fatal("blocksSub was cancelled")
 	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for the node to produce a block")
 	}
@@ -90,6 +92,7 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 
 func TestNodeDelayedStart(t *testing.T) {
 	config := cfg.ResetTestRoot("node_delayed_start_test")
+	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
 
 	// create & start node
@@ -104,6 +107,7 @@ func TestNodeDelayedStart(t *testing.T) {
 
 func TestNodeSetAppVersion(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
+	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
@@ -124,16 +128,17 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	addr := "tcp://" + testFreeAddr(t)
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = addr
 
 	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
-	pvsc := privval.NewRemoteSigner(
+	pvsc := privval.NewSignerServiceEndpoint(
 		log.TestingLogger(),
 		config.ChainID(),
 		types.NewMockPV(),
 		dialer,
 	)
-	privval.RemoteSignerConnDeadline(100 * time.Millisecond)(pvsc)
+	privval.SignerServiceEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
 
 	go func() {
 		err := pvsc.Start()
@@ -145,7 +150,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SocketVal{}, n.PrivValidator())
+	assert.IsType(t, &privval.SignerValidatorEndpoint{}, n.PrivValidator())
 }
 
 // address without a protocol must result in error
@@ -153,6 +158,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	addrNoPrefix := testFreeAddr(t)
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = addrNoPrefix
 
 	_, err := DefaultNewNode(config, log.TestingLogger())
@@ -164,16 +170,17 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	defer os.Remove(tmpfile) // clean up
 
 	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
+	defer os.RemoveAll(config.RootDir)
 	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
 	dialer := privval.DialUnixFn(tmpfile)
-	pvsc := privval.NewRemoteSigner(
+	pvsc := privval.NewSignerServiceEndpoint(
 		log.TestingLogger(),
 		config.ChainID(),
 		types.NewMockPV(),
 		dialer,
 	)
-	privval.RemoteSignerConnDeadline(100 * time.Millisecond)(pvsc)
+	privval.SignerServiceEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
 
 	go func() {
 		err := pvsc.Start()
@@ -183,7 +190,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	assert.IsType(t, &privval.SocketVal{}, n.PrivValidator())
+	assert.IsType(t, &privval.SignerValidatorEndpoint{}, n.PrivValidator())
 
 }
 
@@ -200,6 +207,7 @@ func testFreeAddr(t *testing.T) string {
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
+	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
@@ -211,7 +219,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	var height int64 = 1
 	state, stateDB := state(1, height)
 	maxBytes := 16384
-	state.ConsensusParams.BlockSize.MaxBytes = int64(maxBytes)
+	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool

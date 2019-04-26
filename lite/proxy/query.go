@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"fmt"
+	"strings"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 
@@ -43,11 +44,7 @@ func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rp
 func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts rpcclient.ABCIQueryOptions,
 	node rpcclient.Client, cert lite.Verifier) (
 	*ctypes.ResultABCIQuery, error) {
-
-	if !opts.Prove {
-		return nil, cmn.NewError("require ABCIQueryOptions.Prove to be true")
-	}
-
+	opts.Prove = true
 	res, err := node.ABCIQueryWithOptions(path, key, opts)
 	if err != nil {
 		return nil, err
@@ -77,7 +74,14 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 	if resp.Value != nil {
 		// Value exists
 		// XXX How do we encode the key into a string...
-		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, string(resp.Key), resp.Value)
+		storeName, err := parseQueryStorePath(path)
+		if err != nil {
+			return nil, err
+		}
+		kp := merkle.KeyPath{}
+		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
+		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
+		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, kp.String(), resp.Value)
 		if err != nil {
 			return nil, cmn.ErrorWrap(err, "Couldn't verify value proof")
 		}
@@ -92,6 +96,24 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		}
 		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	}
+}
+
+func parseQueryStorePath(path string) (storeName string, err error) {
+	if !strings.HasPrefix(path, "/") {
+		return "", fmt.Errorf("expected path to start with /")
+	}
+
+	paths := strings.SplitN(path[1:], "/", 3)
+	switch {
+	case len(paths) != 3:
+		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+	case paths[0] != "store":
+		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+	case paths[2] != "key":
+		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+	}
+
+	return paths[1], nil
 }
 
 // GetCertifiedCommit gets the signed header for a given height and certifies

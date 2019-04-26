@@ -3,6 +3,7 @@ package consensus
 import (
 	"encoding/binary"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -14,10 +15,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func init() {
-	config = ResetConfig("consensus_mempool_test")
-}
-
 // for testing
 func assertMempool(txn txNotifier) sm.Mempool {
 	return txn.(sm.Mempool)
@@ -25,6 +22,7 @@ func assertMempool(txn txNotifier) sm.Mempool {
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
+	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
@@ -43,6 +41,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
+	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
@@ -58,6 +57,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
+	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
@@ -117,9 +117,9 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	for nTxs := 0; nTxs < NTxs; {
 		ticker := time.NewTicker(time.Second * 30)
 		select {
-		case b := <-newBlockCh:
-			evt := b.(types.EventDataNewBlock)
-			nTxs += int(evt.Block.Header.NumTxs)
+		case msg := <-newBlockCh:
+			blockEvent := msg.Data().(types.EventDataNewBlock)
+			nTxs += int(blockEvent.Block.Header.NumTxs)
 		case <-ticker.C:
 			panic("Timed out waiting to commit blocks with transactions")
 		}

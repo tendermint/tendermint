@@ -312,7 +312,7 @@ func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
-			"Negative MaxDataBytes. BlockSize.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
+			"Negative MaxDataBytes. Block.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
 			maxBytes,
 			-(maxDataBytes - maxBytes),
 		))
@@ -337,7 +337,7 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
-			"Negative MaxDataBytesUnknownEvidence. BlockSize.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
+			"Negative MaxDataBytesUnknownEvidence. Block.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
 			maxBytes,
 			-(maxDataBytes - maxBytes),
 		))

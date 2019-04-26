@@ -105,9 +105,13 @@ removed from the header in rpc responses as well.
 
 ## Branching Model and Release
 
-All repos should adhere to the branching model: http://nvie.com/posts/a-successful-git-branching-model/.
+We follow a variant of [git flow](http://nvie.com/posts/a-successful-git-branching-model/).
 This means that all pull-requests should be made against develop. Any merge to
 master constitutes a tagged release.
+
+Note all pull requests should be squash merged except for merging to master and
+merging master back to develop. This keeps the commit history clean and makes it
+easy to reference the pull request where a change was introduced.
 
 ### Development Procedure:
 - the latest state of development is on `develop`
@@ -120,13 +124,13 @@ master constitutes a tagged release.
 ### Pull Merge Procedure:
 - ensure pull branch is based on a recent develop
 - run `make test` to ensure that all tests pass
-- merge pull request
+- squash merge pull request
 - the `unstable` branch may be used to aggregate pull merges before fixing tests
 
 ### Release Procedure:
 - start on `develop`
 - run integration tests (see `test_integrations` in Makefile)
-- prepare changelog:
+- prepare release in a pull request against develop (to be squash merged):
     - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
     - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
       all issues
@@ -135,23 +139,15 @@ master constitutes a tagged release.
       the changelog. To lookup an alias from an email, try `bash
       ./scripts/authors.sh <email>`
     - reset the `CHANGELOG_PENDING.md`
-- bump versions
-- push to release/vX.X.X to run the extended integration tests on the CI
-- merge to master
-- merge master back to develop
+    - bump versions
+- push latest develop with prepared release details to release/vX.X.X to run the extended integration tests on the CI
+- if necessary, make pull requests against release/vX.X.X and squash merge them
+- merge to master (don't squash merge!)
+- merge master back to develop (don't squash merge!)
 
 ### Hotfix Procedure:
-- start on `master`
-- checkout a new branch named hotfix-vX.X.X
-- make the required changes
-  - these changes should be small and an absolute necessity
-  - add a note to CHANGELOG.md
-- bump versions
-- push to hotfix-vX.X.X to run the extended integration tests on the CI
-- merge hotfix-vX.X.X to master
-- merge hotfix-vX.X.X to develop
-- delete the hotfix-vX.X.X branch
 
+- follow the normal development and release procedure without any differences
 
 ## Testing
 

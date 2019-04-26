@@ -43,6 +43,7 @@ func TestApplyBlock(t *testing.T) {
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
+	//nolint:ineffassign
 	state, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
 
@@ -317,8 +318,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer eventBus.Stop()
 	blockExec.SetEventBus(eventBus)
 
-	updatesCh := make(chan interface{}, 1)
-	err = eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates, updatesCh)
+	updatesSub, err := eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates)
 	require.NoError(t, err)
 
 	block := makeBlock(state, 1)
@@ -342,16 +342,45 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	// test we threw an event
 	select {
-	case e := <-updatesCh:
-		event, ok := e.(types.EventDataValidatorSetUpdates)
-		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", e)
+	case msg := <-updatesSub.Out():
+		event, ok := msg.Data().(types.EventDataValidatorSetUpdates)
+		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", msg.Data())
 		if assert.NotEmpty(t, event.ValidatorUpdates) {
 			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
 			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
 		}
+	case <-updatesSub.Cancelled():
+		t.Fatalf("updatesSub was cancelled (reason: %v)", updatesSub.Err())
 	case <-time.After(1 * time.Second):
 		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
 	}
+}
+
+// TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
+// would result in empty set causes no panic, an error is raised and NextValidators is not updated
+func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	state, stateDB := state(1, 1)
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), MockMempool{}, MockEvidencePool{})
+
+	block := makeBlock(state, 1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+
+	// Remove the only validator
+	app.ValidatorUpdates = []abci.ValidatorUpdate{
+		{PubKey: types.TM2PB.PubKey(state.Validators.Validators[0].PubKey), Power: 0},
+	}
+
+	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
+	assert.NotNil(t, err)
+	assert.NotEmpty(t, state.NextValidators.Validators)
+
 }
 
 //----------------------------------------------------------------------------

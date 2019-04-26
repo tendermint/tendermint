@@ -1,13 +1,40 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
 )
+
+const (
+	// persist validators every valSetCheckpointInterval blocks to avoid
+	// LoadValidators taking too much time.
+	// https://github.com/tendermint/tendermint/pull/3438
+	// 100000 results in ~ 100ms to get 100 validators (see BenchmarkLoadValidators)
+	valSetCheckpointInterval = 100000
+)
+
+var (
+	genesisDocKey = []byte("genesisDoc")
+)
+
+// GenesisDocProvider returns a GenesisDoc.
+// It allows the GenesisDoc to be pulled from sources other than the
+// filesystem, for instance from a distributed key-value store cluster.
+type GenesisDocProvider func() (*types.GenesisDoc, error)
+
+// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
+// the GenesisDoc from the config.GenesisFile() on the filesystem.
+func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
+	return func() (*types.GenesisDoc, error) {
+		return types.GenesisDocFromFile(config.GenesisFile())
+	}
+}
 
 //------------------------------------------------------------------------
 
@@ -55,6 +82,52 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 	}
 
 	return state, nil
+}
+
+// LoadStateFromDBOrGenesisDocProvider attempts to load the state from the
+// database, or creates one using the given genesisDocProvider and persists the
+// result to the database. On success this also returns the genesis doc loaded
+// through the given provider.
+func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (State, *types.GenesisDoc, error) {
+	// Get genesis doc
+	genDoc, err := loadGenesisDoc(stateDB)
+	if err != nil {
+		genDoc, err = genesisDocProvider()
+		if err != nil {
+			return State{}, nil, err
+		}
+		// save genesis doc to prevent a certain class of user errors (e.g. when it
+		// was changed, accidentally or not). Also good for audit trail.
+		saveGenesisDoc(stateDB, genDoc)
+	}
+	state, err := LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+	if err != nil {
+		return State{}, nil, err
+	}
+	return state, genDoc, nil
+}
+
+// panics if failed to unmarshal bytes
+func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
+	bytes := db.Get(genesisDocKey)
+	if len(bytes) == 0 {
+		return nil, errors.New("Genesis doc not found")
+	}
+	var genDoc *types.GenesisDoc
+	err := cdc.UnmarshalJSON(bytes, &genDoc)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
+	}
+	return genDoc, nil
+}
+
+// panics if failed to marshal the given genesis document
+func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
+	bytes, err := cdc.MarshalJSON(genDoc)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
+	}
+	db.SetSync(genesisDocKey, bytes)
 }
 
 // LoadState loads the State from the database.
@@ -182,23 +255,36 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 	if valInfo == nil {
 		return nil, ErrNoValSetForHeight{height}
 	}
-
 	if valInfo.ValidatorSet == nil {
-		valInfo2 := loadValidatorsInfo(db, valInfo.LastHeightChanged)
-		if valInfo2 == nil {
-			panic(
-				fmt.Sprintf(
-					"Couldn't find validators at height %d as last changed from height %d",
-					valInfo.LastHeightChanged,
-					height,
-				),
-			)
+		lastStoredHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
+		valInfo2 := loadValidatorsInfo(db, lastStoredHeight)
+		if valInfo2 == nil || valInfo2.ValidatorSet == nil {
+			// TODO (melekes): remove the below if condition in the 0.33 major
+			// release and just panic. Old chains might panic otherwise if they
+			// haven't saved validators at intermediate (%valSetCheckpointInterval)
+			// height yet.
+			// https://github.com/tendermint/tendermint/issues/3543
+			valInfo2 = loadValidatorsInfo(db, valInfo.LastHeightChanged)
+			lastStoredHeight = valInfo.LastHeightChanged
+			if valInfo2 == nil || valInfo2.ValidatorSet == nil {
+				panic(
+					fmt.Sprintf("Couldn't find validators at height %d (height %d was originally requested)",
+						lastStoredHeight,
+						height,
+					),
+				)
+			}
 		}
-		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - valInfo.LastHeightChanged)) // mutate
+		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - lastStoredHeight)) // mutate
 		valInfo = valInfo2
 	}
 
 	return valInfo.ValidatorSet, nil
+}
+
+func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
+	checkpointHeight := height - height%valSetCheckpointInterval
+	return cmn.MaxInt64(checkpointHeight, lastHeightChanged)
 }
 
 // CONTRACT: Returned ValidatorsInfo can be mutated.
@@ -221,10 +307,10 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 }
 
 // saveValidatorsInfo persists the validator set.
-// `height` is the effective height for which the validator is responsible for signing.
-// It should be called from s.Save(), right before the state itself is persisted.
-// If the validator set did not change after processing the latest block,
-// only the last height for which the validators changed is persisted.
+//
+// `height` is the effective height for which the validator is responsible for
+// signing. It should be called from s.Save(), right before the state itself is
+// persisted.
 func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
 	if lastHeightChanged > height {
 		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
@@ -232,7 +318,9 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 	valInfo := &ValidatorsInfo{
 		LastHeightChanged: lastHeightChanged,
 	}
-	if lastHeightChanged == height {
+	// Only persist validator set if it was updated or checkpoint height (see
+	// valSetCheckpointInterval) is reached.
+	if height == lastHeightChanged || height%valSetCheckpointInterval == 0 {
 		valInfo.ValidatorSet = valSet
 	}
 	db.Set(calcValidatorsKey(height), valInfo.Bytes())

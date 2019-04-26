@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, State) {
 	state, err := LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
 
-	tearDown := func(t *testing.T) {}
+	tearDown := func(t *testing.T) { os.RemoveAll(config.RootDir) }
 
 	return tearDown, stateDB, state
 }
@@ -667,6 +668,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 		// no changes in voting power (ProposerPrio += VotingPower == Voting in 1st round; than shiftByAvg == 0,
 		// than -Total == -Voting)
 		// -> no change in ProposerPrio (stays zero):
@@ -691,6 +693,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	block := makeBlock(oldState, oldState.LastBlockHeight+1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 	updatedState, err := updateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
+	require.NoError(t, err)
 
 	lastState := updatedState
 	for i := 0; i < 200; i++ {
@@ -705,6 +708,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 		updatedStateInner, err := updateState(lastState, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 		lastState = updatedStateInner
 	}
 	// set state to last state of above iteration
@@ -734,6 +738,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		block := makeBlock(oldState, oldState.LastBlockHeight+1)
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 		state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 	}
 	require.Equal(t, 10+2, len(state.NextValidators.Validators))
 
@@ -765,6 +770,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		block = makeBlock(curState, curState.LastBlockHeight+1)
 		blockID = types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 		curState, err = updateState(curState, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 		if !bytes.Equal(curState.Validators.Proposer.Address, curState.NextValidators.Proposer.Address) {
 			isProposerUnchanged = false
 		}
@@ -789,6 +795,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err = updateState(updatedState, blockID, &block.Header, abciResponses, validatorUpdates)
+		require.NoError(t, err)
 		if i > numVals { // expect proposers to cycle through after the first iteration (of numVals blocks):
 			if proposers[i%numVals] == nil {
 				proposers[i%numVals] = updatedState.NextValidators.Proposer
@@ -802,10 +809,10 @@ func TestLargeGenesisValidator(t *testing.T) {
 func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 	const valSetSize = 2
 	tearDown, stateDB, state := setupTestCase(t)
+	defer tearDown(t)
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	SaveState(stateDB, state)
-	defer tearDown(t)
 
 	nextHeight := state.LastBlockHeight + 1
 
@@ -825,11 +832,11 @@ func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
 	tearDown, stateDB, state := setupTestCase(t)
+	defer tearDown(t)
 	require.Equal(t, int64(0), state.LastBlockHeight)
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	SaveState(stateDB, state)
-	defer tearDown(t)
 
 	_, valOld := state.Validators.GetByIndex(0)
 	var pubkeyOld = valOld.PubKey
@@ -907,7 +914,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	params[0] = state.ConsensusParams
 	for i := 1; i < N+1; i++ {
 		params[i] = *types.DefaultConsensusParams()
-		params[i].BlockSize.MaxBytes += int64(i)
+		params[i].Block.MaxBytes += int64(i)
 	}
 
 	// Build the params history by running updateState
@@ -955,11 +962,16 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
+func makeParams(
+	blockBytes, blockGas int64,
+	blockTimeIotaMs int64,
+	evidenceAge int64,
+) types.ConsensusParams {
 	return types.ConsensusParams{
-		BlockSize: types.BlockSizeParams{
-			MaxBytes: blockBytes,
-			MaxGas:   blockGas,
+		Block: types.BlockParams{
+			MaxBytes:   blockBytes,
+			MaxGas:     blockGas,
+			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: types.EvidenceParams{
 			MaxAge: evidenceAge,
@@ -968,7 +980,7 @@ func makeParams(blockBytes, blockGas, evidenceAge int64) types.ConsensusParams {
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeParams(1, 2, 3)
+	initParams := makeParams(1, 2, 3, 4)
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -979,19 +991,19 @@ func TestApplyUpdates(t *testing.T) {
 		1: {initParams, abci.ConsensusParams{}, initParams},
 		2: {initParams,
 			abci.ConsensusParams{
-				BlockSize: &abci.BlockSizeParams{
+				Block: &abci.BlockParams{
 					MaxBytes: 44,
 					MaxGas:   55,
 				},
 			},
-			makeParams(44, 55, 3)},
+			makeParams(44, 55, 3, 4)},
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
 					MaxAge: 66,
 				},
 			},
-			makeParams(1, 2, 66)},
+			makeParams(1, 2, 3, 66)},
 	}
 
 	for i, tc := range cases {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	// make govet noshadow happy...
+
 	asrt "github.com/stretchr/testify/assert"
 )
 

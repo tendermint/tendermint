@@ -83,7 +83,7 @@ evolve without breaking the header.
 
 ```go
 type ConsensusParams struct {
-	BlockSize
+	Block
 	Evidence
 	Validator
 }
@@ -95,22 +95,19 @@ type hashedParams struct {
 
 func (params ConsensusParams) Hash() []byte {
     SHA256(hashedParams{
-        BlockMaxBytes: params.BlockSize.MaxBytes,
-        BlockMaxGas: params.BlockSize.MaxGas,
+        BlockMaxBytes: params.Block.MaxBytes,
+        BlockMaxGas: params.Block.MaxGas,
     })
 }
 
-type BlockSize struct {
+type BlockParams struct {
 	MaxBytes        int64
 	MaxGas          int64
+  TimeIotaMs      int64
 }
 
-type Evidence struct {
+type EvidenceParams struct {
 	MaxAge int64
-}
-
-type Validator struct {
-	PubKeyTypes []string
 }
 
 type ValidatorParams struct {
@@ -118,14 +115,17 @@ type ValidatorParams struct {
 }
 ```
 
-#### BlockSize
+#### Block
 
-The total size of a block is limited in bytes by the `ConsensusParams.BlockSize.MaxBytes`.
+The total size of a block is limited in bytes by the `ConsensusParams.Block.MaxBytes`.
 Proposed blocks must be less than this size, and will be considered invalid
 otherwise.
 
 Blocks should additionally be limited by the amount of "gas" consumed by the
 transactions in the block, though this is not yet implemented.
+
+The minimal time between consecutive blocks is controlled by the
+`ConsensusParams.Block.TimeIotaMs`.
 
 #### Evidence
 

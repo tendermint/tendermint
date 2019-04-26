@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -20,6 +21,7 @@ import (
 var (
 	nValidators    int
 	nNonValidators int
+	configFile     string
 	outputDir      string
 	nodeDirPrefix  string
 
@@ -36,6 +38,8 @@ const (
 func init() {
 	TestnetFilesCmd.Flags().IntVar(&nValidators, "v", 4,
 		"Number of validators to initialize the testnet with")
+	TestnetFilesCmd.Flags().StringVar(&configFile, "config", "",
+		"Config file to use (note some options may be overwritten)")
 	TestnetFilesCmd.Flags().IntVar(&nNonValidators, "n", 0,
 		"Number of non-validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().StringVar(&outputDir, "o", "./mytestnet",
@@ -73,6 +77,21 @@ Example:
 
 func testnetFiles(cmd *cobra.Command, args []string) error {
 	config := cfg.DefaultConfig()
+
+	// overwrite default config if set and valid
+	if configFile != "" {
+		viper.SetConfigFile(configFile)
+		if err := viper.ReadInConfig(); err != nil {
+			return err
+		}
+		if err := viper.Unmarshal(config); err != nil {
+			return err
+		}
+		if err := config.ValidateBasic(); err != nil {
+			return err
+		}
+	}
+
 	genVals := make([]types.GenesisValidator, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -110,6 +129,12 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		config.SetRoot(nodeDir)
 
 		err := os.MkdirAll(filepath.Join(nodeDir, "config"), nodeDirPerm)
+		if err != nil {
+			_ = os.RemoveAll(outputDir)
+			return err
+		}
+
+		err = os.MkdirAll(filepath.Join(nodeDir, "data"), nodeDirPerm)
 		if err != nil {
 			_ = os.RemoveAll(outputDir)
 			return err

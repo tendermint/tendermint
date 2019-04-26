@@ -66,11 +66,12 @@ To build and serve the documentation locally, run:
 
 ```
 # from this directory
-npm install
 npm install -g vuepress
 ```
 
-then change the following line in the `config.js`:
+NOTE: the command may require `sudo`.
+
+then change the following line in the `.vuepress/config.js`:
 
 ```
 base: "/docs/",

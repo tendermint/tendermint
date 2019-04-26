@@ -11,7 +11,7 @@ remotedb's RemoteDB implements db.DB so can be used normally
 like other databases. One just has to explicitly connect to the
 remote database with a client setup such as:
 
-	client, err := remotedb.NewInsecure(addr)
+	client, err := remotedb.NewRemoteDB(addr, cert)
 	// Make sure to invoke InitRemote!
 	if err := client.InitRemote(&remotedb.Init{Name: "test-remote-db", Type: "leveldb"}); err != nil {
 	    log.Fatalf("Failed to initialize the remote db")
