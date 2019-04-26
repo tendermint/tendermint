@@ -530,16 +530,16 @@ func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
 	}
 }
 
-// Construct a VoteSet from the commit and validator set. Panics
+// Construct a VoteSet from the Commit and validator set. Panics
 // if precommits from the commit can't be added to the voteset.
-func (commit *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
-	height, round := commit.height, commit.round
-	voteSet := NewVoteSet(chainID, height, round, PrecommitType, vals)
+func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
+	height, round, typ := commit.Height(), commit.Round(), PrecommitType
+	voteSet := NewVoteSet(chainID, height, round, typ, vals)
 	for idx, precommit := range commit.Precommits {
 		if precommit == nil {
 			continue
 		}
-		added, err := voteSet.AddVote(commit.getVote(idx))
+		added, err := voteSet.AddVote(commit.GetVote(idx))
 		if !added || err != nil {
 			panic(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
 		}
@@ -547,10 +547,10 @@ func (commit *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	return voteSet
 }
 
-// getVote converts the CommitSig for the given valIdx to a Vote.
+// GetVote converts the CommitSig for the given valIdx to a Vote.
 // Returns nil if the precommit at valIdx is nil.
 // Panics if valIdx >= commit.Size().
-func (commit *Commit) getVote(valIdx int) *Vote {
+func (commit *Commit) GetVote(valIdx int) *Vote {
 	commitSig := commit.Precommits[valIdx]
 	if commitSig == nil {
 		return nil
@@ -578,7 +578,7 @@ func (commit *Commit) getVote(valIdx int) *Vote {
 // signed over are otherwise the same for all validators.
 // Panics if valIdx >= commit.Size().
 func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
-	return commit.getVote(valIdx).SignBytes(chainID)
+	return commit.GetVote(valIdx).SignBytes(chainID)
 }
 
 // memoizeHeightRound memoizes the height and round of the commit using
@@ -641,7 +641,7 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 // Panics if `index >= commit.Size()`.
 // Implements VoteSetReader.
 func (commit *Commit) GetByIndex(valIdx int) *Vote {
-	return commit.getVote(valIdx)
+	return commit.GetVote(valIdx)
 }
 
 // IsCommit returns true if there is at least one vote.
