@@ -46,13 +46,16 @@ func TestSubscribe(t *testing.T) {
 
 		err = s.Publish(ctx, "Asylum")
 		assert.NoError(t, err)
+
+		err = s.Publish(ctx, "Ivan")
+		assert.NoError(t, err)
 	}()
 
 	select {
 	case <-published:
 		assertReceive(t, "Quicksilver", subscription.Out())
 		assertCancelled(t, subscription, pubsub.ErrOutOfCapacity)
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(3 * time.Second):
 		t.Fatal("Expected Publish(Asylum) not to block")
 	}
 }
@@ -101,7 +104,7 @@ func TestSubscribeUnbuffered(t *testing.T) {
 	select {
 	case <-published:
 		t.Fatal("Expected Publish(Darkhawk) to block")
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(3 * time.Second):
 		assertReceive(t, "Ultron", subscription.Out())
 		assertReceive(t, "Darkhawk", subscription.Out())
 	}

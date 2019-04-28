@@ -39,6 +39,8 @@ import (
 	"errors"
 	"sync"
 
+	"time"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -404,7 +406,7 @@ func (state *state) send(msg interface{}, tags map[string]string) {
 					// don't block on buffered channels
 					select {
 					case subscription.out <- Message{msg, tags}:
-					default:
+					case <-time.After(2 * time.Second): //give some time for the subscriber to handle
 						state.remove(clientID, qStr, ErrOutOfCapacity)
 					}
 				}
