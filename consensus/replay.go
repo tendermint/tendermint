@@ -13,7 +13,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	//auto "github.com/tendermint/tendermint/libs/autofile"
-	cmn "github.com/tendermint/tendermint/libs/common"
+
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -230,6 +230,7 @@ func (h *Handshaker) SetEventBus(eventBus types.BlockEventPublisher) {
 	h.eventBus = eventBus
 }
 
+// NBlocks returns the number of blocks applied to the state.
 func (h *Handshaker) NBlocks() int {
 	return h.nBlocks
 }
@@ -265,7 +266,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
 	if err != nil {
-		return fmt.Errorf("Error on replay: %v", err)
+		return fmt.Errorf("error on replay: %v", err)
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
@@ -276,7 +277,8 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	return nil
 }
 
-// Replay all blocks since appBlockHeight and ensure the result matches the current state.
+// ReplayBlocks replays all blocks since appBlockHeight and ensures the result
+// matches the current state.
 // Returns the final AppHash or an error.
 func (h *Handshaker) ReplayBlocks(
 	state sm.State,
@@ -321,12 +323,12 @@ func (h *Handshaker) ReplayBlocks(
 			} else {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				if len(h.genDoc.Validators) == 0 {
-					return nil, fmt.Errorf("Validator set is nil in genesis and still empty after InitChain")
+					return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
 				}
 			}
 
 			if res.ConsensusParams != nil {
-				state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams, state.ConsensusParams.Block.TimeIotaMs)
+				state.ConsensusParams = state.ConsensusParams.Update(res.ConsensusParams)
 			}
 			sm.SaveState(h.stateDB, state)
 		}
@@ -334,7 +336,8 @@ func (h *Handshaker) ReplayBlocks(
 
 	// First handle edge cases and constraints on the storeBlockHeight.
 	if storeBlockHeight == 0 {
-		return appHash, checkAppHash(state, appHash)
+		assertAppHashEqualsOneFromState(appHash, state)
+		return appHash, nil
 
 	} else if storeBlockHeight < appBlockHeight {
 		// the app should never be ahead of the store (but this is under app's control)
@@ -342,11 +345,11 @@ func (h *Handshaker) ReplayBlocks(
 
 	} else if storeBlockHeight < stateBlockHeight {
 		// the state should never be ahead of the store (this is under tendermint's control)
-		cmn.PanicSanity(fmt.Sprintf("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
+		panic(fmt.Sprintf("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
 
 	} else if storeBlockHeight > stateBlockHeight+1 {
 		// store should be at most one ahead of the state (this is under tendermint's control)
-		cmn.PanicSanity(fmt.Sprintf("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
+		panic(fmt.Sprintf("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
 	}
 
 	var err error
@@ -361,7 +364,8 @@ func (h *Handshaker) ReplayBlocks(
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We're good!
-			return appHash, checkAppHash(state, appHash)
+			assertAppHashEqualsOneFromState(appHash, state)
+			return appHash, nil
 		}
 
 	} else if storeBlockHeight == stateBlockHeight+1 {
@@ -382,7 +386,7 @@ func (h *Handshaker) ReplayBlocks(
 			return state.AppHash, err
 
 		} else if appBlockHeight == storeBlockHeight {
-			// We ran Commit, but didn't save the state, so replayBlock with mock app
+			// We ran Commit, but didn't save the state, so replayBlock with mock app.
 			abciResponses, err := sm.LoadABCIResponses(h.stateDB, storeBlockHeight)
 			if err != nil {
 				return nil, err
@@ -395,8 +399,8 @@ func (h *Handshaker) ReplayBlocks(
 
 	}
 
-	cmn.PanicSanity("Should never happen")
-	return nil, nil
+	panic(fmt.Sprintf("uncovered case! appHeight: %d, storeHeight: %d, stateHeight: %d",
+		appBlockHeight, storeBlockHeight, stateBlockHeight))
 }
 
 func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int64, mutateState bool) ([]byte, error) {
@@ -419,6 +423,11 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
+		// Extra check to ensure the app was not changed in a way it shouldn't have.
+		if len(appHash) > 0 {
+			assertAppHashEqualsOneFromBlock(appHash, block)
+		}
+
 		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateDB)
 		if err != nil {
 			return nil, err
@@ -436,7 +445,8 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 		appHash = state.AppHash
 	}
 
-	return appHash, checkAppHash(state, appHash)
+	assertAppHashEqualsOneFromState(appHash, state)
+	return appHash, nil
 }
 
 // ApplyBlock on the proxyApp with the last block.
@@ -458,11 +468,26 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	return state, nil
 }
 
-func checkAppHash(state sm.State, appHash []byte) error {
-	if !bytes.Equal(state.AppHash, appHash) {
-		panic(fmt.Errorf("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, state.AppHash).Error())
+func assertAppHashEqualsOneFromBlock(appHash []byte, block *types.Block) {
+	if !bytes.Equal(appHash, block.AppHash) {
+		panic(fmt.Sprintf(`block.AppHash does not match AppHash after replay. Got %X, expected %X.
+
+Block: %v
+`,
+			appHash, block.AppHash, block))
 	}
-	return nil
+}
+
+func assertAppHashEqualsOneFromState(appHash []byte, state sm.State) {
+	if !bytes.Equal(appHash, state.AppHash) {
+		panic(fmt.Sprintf(`state.AppHash does not match AppHash after replay. Got
+%X, expected %X.
+
+State: %v
+
+Did you reset Tendermint without resetting your application's data?`,
+			appHash, state.AppHash, state))
+	}
 }
 
 //--------------------------------------------------------------------------------

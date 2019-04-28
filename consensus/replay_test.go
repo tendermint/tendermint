@@ -7,7 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -21,12 +21,14 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -90,7 +92,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *
 	}
 }
 
-func sendTxs(cs *ConsensusState, ctx context.Context) {
+func sendTxs(ctx context.Context, cs *ConsensusState) {
 	for i := 0; i < 256; i++ {
 		select {
 		case <-ctx.Done():
@@ -115,7 +117,7 @@ func TestWALCrash(t *testing.T) {
 			1},
 		{"many non-empty blocks",
 			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
-				go sendTxs(cs, ctx)
+				go sendTxs(ctx, cs)
 			},
 			3},
 	}
@@ -262,9 +264,6 @@ func (w *crashingWAL) Stop() error  { return w.next.Stop() }
 func (w *crashingWAL) Wait()        { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
-// Handshake Tests
-const NUM_BLOCKS = 6
-
 type testSim struct {
 	GenesisState sm.State
 	Config       *cfg.Config
@@ -272,6 +271,10 @@ type testSim struct {
 	Commits      []*types.Commit
 	CleanupFunc  cleanupFunc
 }
+
+const (
+	numBlocks = 6
+)
 
 var (
 	mempool = sm.MockMempool{}
@@ -470,7 +473,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	sim.Chain = make([]*types.Block, 0)
 	sim.Commits = make([]*types.Commit, 0)
-	for i := 1; i <= NUM_BLOCKS; i++ {
+	for i := 1; i <= numBlocks; i++ {
 		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(int64(i)))
 		sim.Commits = append(sim.Commits, css[0].blockStore.LoadBlockCommit(int64(i)))
 	}
@@ -499,20 +502,20 @@ func TestHandshakeReplaySome(t *testing.T) {
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, NUM_BLOCKS-1, m, false)
+		testHandshakeReplay(t, config, numBlocks-1, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, NUM_BLOCKS-1, m, true)
+		testHandshakeReplay(t, config, numBlocks-1, m, true)
 	}
 }
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, NUM_BLOCKS, m, false)
+		testHandshakeReplay(t, config, numBlocks, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, NUM_BLOCKS, m, true)
+		testHandshakeReplay(t, config, numBlocks, m, true)
 	}
 }
 
@@ -570,14 +573,14 @@ func TestMockProxyApp(t *testing.T) {
 func tempWALWithData(data []byte) string {
 	walFile, err := ioutil.TempFile("", "wal")
 	if err != nil {
-		panic(fmt.Errorf("failed to create temp WAL file: %v", err))
+		panic(fmt.Sprintf("failed to create temp WAL file: %v", err))
 	}
 	_, err = walFile.Write(data)
 	if err != nil {
-		panic(fmt.Errorf("failed to write to temp WAL file: %v", err))
+		panic(fmt.Sprintf("failed to write to temp WAL file: %v", err))
 	}
 	if err := walFile.Close(); err != nil {
-		panic(fmt.Errorf("failed to close temp WAL file: %v", err))
+		panic(fmt.Sprintf("failed to close temp WAL file: %v", err))
 	}
 	return walFile.Name()
 }
@@ -597,11 +600,11 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		config = sim.Config
 		chain = sim.Chain
 		commits = sim.Commits
-		store = NewMockBlockStore(config, genisisState.ConsensusParams)
+		store = newMockBlockStore(config, genisisState.ConsensusParams)
 	} else { //test single node
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
 		defer os.RemoveAll(testConfig.RootDir)
-		walBody, err := WALWithNBlocks(t, NUM_BLOCKS)
+		walBody, err := WALWithNBlocks(t, numBlocks)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
 		config.Consensus.SetWalFile(walFile)
@@ -628,7 +631,8 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	latestAppHash := state.AppHash
 
 	// make a new client creator
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
+	kvstoreApp := kvstore.NewPersistentKVStoreApplication(filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
+
 	clientCreator2 := proxy.NewLocalClientCreator(kvstoreApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
@@ -662,8 +666,8 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		t.Fatalf("Expected app hashes to match after handshake/replay. got %X, expected %X", res.LastBlockAppHash, latestAppHash)
 	}
 
-	expectedBlocksToSync := NUM_BLOCKS - nBlocks
-	if nBlocks == NUM_BLOCKS && mode > 0 {
+	expectedBlocksToSync := numBlocks - nBlocks
+	if nBlocks == numBlocks && mode > 0 {
 		expectedBlocksToSync++
 	} else if nBlocks > 0 && mode == 1 {
 		expectedBlocksToSync++
@@ -678,7 +682,7 @@ func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.Ap
 	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
-	blkID := types.BlockID{blk.Hash(), blk.MakePartSet(testPartSize).Header()}
+	blkID := types.BlockID{Hash: blk.Hash(), PartsHeader: blk.MakePartSet(testPartSize).Header()}
 	newState, err := blockExec.ApplyBlock(st, blkID, blk)
 	if err != nil {
 		panic(err)
@@ -726,7 +730,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 
 func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, nBlocks int, mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
-	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
+	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -764,28 +768,162 @@ func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, c
 	return state
 }
 
+func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
+	// 1. Initialize tendermint and commit 3 blocks with the following app hashes:
+	//		- 0x01
+	//		- 0x02
+	//		- 0x03
+	config := ResetConfig("handshake_test_")
+	defer os.RemoveAll(config.RootDir)
+	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	const appVersion = 0x0
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), appVersion)
+	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
+	state.LastValidators = state.Validators.Copy()
+	// mode = 0 for committing all the blocks
+	blocks := makeBlocks(3, &state, privVal)
+	store.chain = blocks
+
+	// 2. Tendermint must panic if app returns wrong hash for the first block
+	//		- RANDOM HASH
+	//		- 0x02
+	//		- 0x03
+	{
+		app := &badApp{numBlocks: 3, allHashesAreWrong: true}
+		clientCreator := proxy.NewLocalClientCreator(app)
+		proxyApp := proxy.NewAppConns(clientCreator)
+		err := proxyApp.Start()
+		require.NoError(t, err)
+		defer proxyApp.Stop()
+
+		assert.Panics(t, func() {
+			h := NewHandshaker(stateDB, state, store, genDoc)
+			h.Handshake(proxyApp)
+		})
+	}
+
+	// 3. Tendermint must panic if app returns wrong hash for the last block
+	//		- 0x01
+	//		- 0x02
+	//		- RANDOM HASH
+	{
+		app := &badApp{numBlocks: 3, onlyLastHashIsWrong: true}
+		clientCreator := proxy.NewLocalClientCreator(app)
+		proxyApp := proxy.NewAppConns(clientCreator)
+		err := proxyApp.Start()
+		require.NoError(t, err)
+		defer proxyApp.Stop()
+
+		assert.Panics(t, func() {
+			h := NewHandshaker(stateDB, state, store, genDoc)
+			h.Handshake(proxyApp)
+		})
+	}
+}
+
+func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
+	blocks := make([]*types.Block, 0)
+
+	var (
+		prevBlock     *types.Block
+		prevBlockMeta *types.BlockMeta
+	)
+
+	appHeight := byte(0x01)
+	for i := 0; i < n; i++ {
+		height := int64(i + 1)
+
+		block, parts := makeBlock(*state, prevBlock, prevBlockMeta, privVal, height)
+		blocks = append(blocks, block)
+
+		prevBlock = block
+		prevBlockMeta = types.NewBlockMeta(block, parts)
+
+		// update state
+		state.AppHash = []byte{appHeight}
+		appHeight++
+		state.LastBlockHeight = height
+	}
+
+	return blocks
+}
+
+func makeVote(header *types.Header, blockID types.BlockID, valset *types.ValidatorSet, privVal types.PrivValidator) *types.Vote {
+	addr := privVal.GetPubKey().Address()
+	idx, _ := valset.GetByAddress(addr)
+	vote := &types.Vote{
+		ValidatorAddress: addr,
+		ValidatorIndex:   idx,
+		Height:           header.Height,
+		Round:            1,
+		Timestamp:        tmtime.Now(),
+		Type:             types.PrecommitType,
+		BlockID:          blockID,
+	}
+
+	privVal.SignVote(header.ChainID, vote)
+
+	return vote
+}
+
+func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
+	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
+
+	lastCommit := types.NewCommit(types.BlockID{}, nil)
+	if height > 1 {
+		vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVal).CommitSig()
+		lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{vote})
+	}
+
+	return state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+}
+
+type badApp struct {
+	abci.BaseApplication
+	numBlocks           byte
+	height              byte
+	allHashesAreWrong   bool
+	onlyLastHashIsWrong bool
+}
+
+func (app *badApp) Commit() abci.ResponseCommit {
+	app.height++
+	if app.onlyLastHashIsWrong {
+		if app.height == app.numBlocks {
+			return abci.ResponseCommit{Data: cmn.RandBytes(8)}
+		}
+		return abci.ResponseCommit{Data: []byte{app.height}}
+	} else if app.allHashesAreWrong {
+		return abci.ResponseCommit{Data: cmn.RandBytes(8)}
+	}
+
+	panic("either allHashesAreWrong or onlyLastHashIsWrong must be set")
+}
+
 //--------------------------
 // utils for making blocks
 
 func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
+	var height int64
+
 	// Search for height marker
-	gr, found, err := wal.SearchForEndHeight(0, &WALSearchOptions{})
+	gr, found, err := wal.SearchForEndHeight(height, &WALSearchOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
 	if !found {
-		return nil, nil, fmt.Errorf("WAL does not contain height %d.", 1)
+		return nil, nil, fmt.Errorf("WAL does not contain height %d", height)
 	}
 	defer gr.Close() // nolint: errcheck
 
 	// log.Notice("Build a blockchain by reading from the WAL")
 
-	var blocks []*types.Block
-	var commits []*types.Commit
-
-	var thisBlockParts *types.PartSet
-	var thisBlockCommit *types.Commit
-	var height int64
+	var (
+		blocks          []*types.Block
+		commits         []*types.Commit
+		thisBlockParts  *types.PartSet
+		thisBlockCommit *types.Commit
+	)
 
 	dec := NewWALDecoder(gr)
 	for {
@@ -877,7 +1015,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey, appVersion version.
 	stateDB := dbm.NewMemDB()
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion
-	store := NewMockBlockStore(config, state.ConsensusParams)
+	store := newMockBlockStore(config, state.ConsensusParams)
 	sm.SaveState(stateDB, state)
 	return stateDB, state, store
 }
@@ -893,7 +1031,7 @@ type mockBlockStore struct {
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func NewMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
+func newMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
 	return &mockBlockStore{config, params, nil, nil}
 }
 
@@ -902,7 +1040,7 @@ func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain
 func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
-		BlockID: types.BlockID{block.Hash(), block.MakePartSet(types.BlockPartSizeBytes).Header()},
+		BlockID: types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()},
 		Header:  block.Header,
 	}
 }
@@ -916,15 +1054,16 @@ func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return bs.commits[height-1]
 }
 
-//----------------------------------------
+//---------------------------------------
+// Test handshake/init chain
 
-func TestInitChainUpdateValidators(t *testing.T) {
+func TestHandshakeUpdatesValidators(t *testing.T) {
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := proxy.NewLocalClientCreator(app)
 
-	config := ResetConfig("proxy_test_")
+	config := ResetConfig("handshake_test_")
 	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	stateDB, state, store := stateAndStore(config, privVal.GetPubKey(), 0x0)

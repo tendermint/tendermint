@@ -1,4 +1,4 @@
-## v0.32.0
+## v0.31.6
 
 **
 
@@ -9,7 +9,8 @@
 * Apps
 
 * Go API
-- [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
+- [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
+- [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
 
 * Blockchain Protocol
 
@@ -18,8 +19,11 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC
+- [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add `-config=<path-to-config>` option to `testnet` cmd (@gregdhill)
+- [cs/replay] \#3460 check appHash for each block
 
 ### BUG FIXES:
-
-- [blockchain] \#2699 update the maxHeight when a peer is removed
-- [consensus/replay] \#3067 getBeginBlockValidatorInfo loads validators from stateDB instead of state
+- [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
+  to 16 (as a result, the node will stop retrying after a 35 hours time window)
+- [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests

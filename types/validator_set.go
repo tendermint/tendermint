@@ -31,7 +31,8 @@ const (
 // ValidatorSet represent a set of *Validator at a given height.
 // The validators can be fetched by address or index.
 // The index is in order of .Address, so the indices are fixed
-// for all rounds of a given blockchain height.
+// for all rounds of a given blockchain height - ie. the validators
+// are sorted by their address.
 // On the other hand, the .ProposerPriority of each validator and
 // the designated .GetProposer() of a set changes every round,
 // upon calling .IncrementProposerPriority().

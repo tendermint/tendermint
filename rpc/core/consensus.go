@@ -10,6 +10,8 @@ import (
 
 // Get the validator set at the given block height.
 // If no height is provided, it will fetch the current validator set.
+// Note the validators are sorted by their address - this is the canonical
+// order for the validators in the set as used in computing their Merkle root.
 //
 // ```shell
 // curl 'localhost:26657/validators'
@@ -216,7 +218,7 @@ func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState
 		}
 		peerStates[i] = ctypes.PeerStateInfo{
 			// Peer basic info.
-			NodeAddress: peer.NodeInfo().NetAddress().String(),
+			NodeAddress: peer.SocketAddr().String(),
 			// Peer consensus state.
 			PeerState: peerStateJSON,
 		}

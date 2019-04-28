@@ -372,7 +372,7 @@ func ensureNoNewUnlock(unlockCh <-chan tmpubsub.Message) {
 }
 
 func ensureNoNewTimeout(stepCh <-chan tmpubsub.Message, timeout int64) {
-	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
+	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
 	ensureNoNewEvent(
 		stepCh,
 		timeoutDuration,
@@ -419,7 +419,7 @@ func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int) {
 }
 
 func ensureNewTimeout(timeoutCh <-chan tmpubsub.Message, height int64, round int, timeout int64) {
-	timeoutDuration := time.Duration(timeout*5) * time.Nanosecond
+	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }

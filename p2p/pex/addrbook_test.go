@@ -41,7 +41,7 @@ func TestAddrBookPickAddress(t *testing.T) {
 	assert.NotNil(t, addr, "expected an address")
 
 	// pick an address when we only have old address
-	book.MarkGood(addrSrc.addr)
+	book.MarkGood(addrSrc.addr.ID)
 	addr = book.PickAddress(0)
 	assert.NotNil(t, addr, "expected an address")
 	addr = book.PickAddress(50)
@@ -126,7 +126,7 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 	// Promote half of them
 	for i, addrSrc := range randAddrs {
 		if i%2 == 0 {
-			book.MarkGood(addrSrc.addr)
+			book.MarkGood(addrSrc.addr.ID)
 		}
 	}
 
@@ -330,7 +330,7 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 	randAddrsLen := len(randAddrs)
 	for i, addrSrc := range randAddrs {
 		if int((float64(i)/float64(randAddrsLen))*100) >= 20 {
-			book.MarkGood(addrSrc.addr)
+			book.MarkGood(addrSrc.addr.ID)
 		}
 	}
 
@@ -435,12 +435,12 @@ func TestPrivatePeers(t *testing.T) {
 
 func testAddrBookAddressSelection(t *testing.T, bookSize int) {
 	// generate all combinations of old (m) and new addresses
-	for nOld := 0; nOld <= bookSize; nOld++ {
-		nNew := bookSize - nOld
-		dbgStr := fmt.Sprintf("book of size %d (new %d, old %d)", bookSize, nNew, nOld)
+	for nBookOld := 0; nBookOld <= bookSize; nBookOld++ {
+		nBookNew := bookSize - nBookOld
+		dbgStr := fmt.Sprintf("book of size %d (new %d, old %d)", bookSize, nBookNew, nBookOld)
 
 		// create book and get selection
-		book, fname := createAddrBookWithMOldAndNNewAddrs(t, nOld, nNew)
+		book, fname := createAddrBookWithMOldAndNNewAddrs(t, nBookOld, nBookNew)
 		defer deleteTempFile(fname)
 		addrs := book.GetSelectionWithBias(biasToSelectNewPeers)
 		assert.NotNil(t, addrs, "%s - expected a non-nil selection", dbgStr)
@@ -460,27 +460,25 @@ func testAddrBookAddressSelection(t *testing.T, bookSize int) {
 		// Given:
 		// n - num new addrs, m - num old addrs
 		// k - num new addrs expected in the beginning (based on bias %)
-		// i=min(n, k), aka expFirstNew
+		// i=min(n, max(k,r-m)), aka expNew
 		// j=min(m, r-i), aka expOld
 		//
 		// We expect this layout:
-		// indices:      0...i-1   i...i+j-1    i+j...r
-		// addresses:    N0..Ni-1  O0..Oj-1     Ni...
+		// indices:      0...i-1   i...i+j-1
+		// addresses:    N0..Ni-1  O0..Oj-1
 		//
 		// There is at least one partition and at most three.
 		var (
-			k           = percentageOfNum(biasToSelectNewPeers, nAddrs)
-			expFirstNew = cmn.MinInt(nNew, k)
-			expOld      = cmn.MinInt(nOld, nAddrs-expFirstNew)
-			expNew      = nAddrs - expOld
-			expLastNew  = expNew - expFirstNew
+			k      = percentageOfNum(biasToSelectNewPeers, nAddrs)
+			expNew = cmn.MinInt(nNew, cmn.MaxInt(k, nAddrs-nBookOld))
+			expOld = cmn.MinInt(nOld, nAddrs-expNew)
 		)
 
 		// Verify that the number of old and new addresses are as expected
-		if nNew < expNew || nNew > expNew {
+		if nNew != expNew {
 			t.Fatalf("%s - expected new addrs %d, got %d", dbgStr, expNew, nNew)
 		}
-		if nOld < expOld || nOld > expOld {
+		if nOld != expOld {
 			t.Fatalf("%s - expected old addrs %d, got %d", dbgStr, expOld, nOld)
 		}
 
@@ -499,15 +497,12 @@ func testAddrBookAddressSelection(t *testing.T, bookSize int) {
 		case expOld == 0: // all new addresses
 			expSeqLens = []int{nAddrs}
 			expSeqTypes = []int{1}
-		case expFirstNew == 0: // all old addresses
+		case expNew == 0: // all old addresses
 			expSeqLens = []int{nAddrs}
 			expSeqTypes = []int{2}
-		case nAddrs-expFirstNew-expOld == 0: // new addresses, old addresses
-			expSeqLens = []int{expFirstNew, expOld}
+		case nAddrs-expNew-expOld == 0: // new addresses, old addresses
+			expSeqLens = []int{expNew, expOld}
 			expSeqTypes = []int{1, 2}
-		default: // new addresses, old addresses, new addresses
-			expSeqLens = []int{expFirstNew, expOld, expLastNew}
-			expSeqTypes = []int{1, 2, 1}
 		}
 
 		assert.Equal(t, expSeqLens, seqLens,
@@ -574,7 +569,7 @@ func createAddrBookWithMOldAndNNewAddrs(t *testing.T, nOld, nNew int) (book *add
 	randAddrs := randNetAddressPairs(t, nOld)
 	for _, addr := range randAddrs {
 		book.AddAddress(addr.addr, addr.src)
-		book.MarkGood(addr.addr)
+		book.MarkGood(addr.addr.ID)
 	}
 
 	randAddrs = randNetAddressPairs(t, nNew)

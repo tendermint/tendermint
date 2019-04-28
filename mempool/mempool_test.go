@@ -6,17 +6,20 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
+	mrand "math/rand"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	"github.com/stretchr/testify/require"
+
 	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -63,8 +66,9 @@ func ensureFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	}
 }
 
-func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
+func checkTxs(t *testing.T, mempool *Mempool, count int, peerID uint16) types.Txs {
 	txs := make(types.Txs, count)
+	txInfo := TxInfo{PeerID: peerID}
 	for i := 0; i < count; i++ {
 		txBytes := make([]byte, 20)
 		txs[i] = txBytes
@@ -72,7 +76,7 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 		if err != nil {
 			t.Error(err)
 		}
-		if err := mempool.CheckTx(txBytes, nil); err != nil {
+		if err := mempool.CheckTxWithInfo(txBytes, nil, txInfo); err != nil {
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
 			// returned.
@@ -92,7 +96,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	defer cleanup()
 
 	// Ensure gas calculation behaves as expected
-	checkTxs(t, mempool, 1)
+	checkTxs(t, mempool, 1, UnknownPeerID)
 	tx0 := mempool.TxsFront().Value.(*mempoolTx)
 	// assert that kv store has gas wanted = 1.
 	require.Equal(t, app.CheckTx(tx0.tx).GasWanted, int64(1), "KVStore had a gas value neq to 1")
@@ -126,7 +130,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 20000, 30, 20},
 	}
 	for tcIndex, tt := range tests {
-		checkTxs(t, mempool, tt.numTxsToCreate)
+		checkTxs(t, mempool, tt.numTxsToCreate, UnknownPeerID)
 		got := mempool.ReapMaxBytesMaxGas(tt.maxBytes, tt.maxGas)
 		assert.Equal(t, tt.expectedNumTxs, len(got), "Got %d txs, expected %d, tc #%d",
 			len(got), tt.expectedNumTxs, tcIndex)
@@ -167,7 +171,7 @@ func TestMempoolFilters(t *testing.T) {
 	}
 	for tcIndex, tt := range tests {
 		mempool.Update(1, emptyTxArr, tt.preFilter, tt.postFilter)
-		checkTxs(t, mempool, tt.numTxsToCreate)
+		checkTxs(t, mempool, tt.numTxsToCreate, UnknownPeerID)
 		require.Equal(t, tt.expectedNumTxs, mempool.Size(), "mempool had the incorrect size, on test case %d", tcIndex)
 		mempool.Flush()
 	}
@@ -198,7 +202,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch of txs, it should only fire once
-	txs := checkTxs(t, mempool, 100)
+	txs := checkTxs(t, mempool, 100, UnknownPeerID)
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
@@ -213,7 +217,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs. we already fired for this height so it shouldnt fire again
-	moreTxs := checkTxs(t, mempool, 50)
+	moreTxs := checkTxs(t, mempool, 50, UnknownPeerID)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// now call update with all the txs. it should not fire as there are no txs left
@@ -224,7 +228,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs, it should only fire once
-	checkTxs(t, mempool, 100)
+	checkTxs(t, mempool, 100, UnknownPeerID)
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 }
@@ -338,28 +342,6 @@ func TestSerialReap(t *testing.T) {
 
 	// We should have 600 now.
 	reapCheck(600)
-}
-
-func TestCacheRemove(t *testing.T) {
-	cache := newMapTxCache(100)
-	numTxs := 10
-	txs := make([][]byte, numTxs)
-	for i := 0; i < numTxs; i++ {
-		// probability of collision is 2**-256
-		txBytes := make([]byte, 32)
-		rand.Read(txBytes)
-		txs[i] = txBytes
-		cache.Push(txBytes)
-		// make sure its added to both the linked list and the map
-		require.Equal(t, i+1, len(cache.map_))
-		require.Equal(t, i+1, cache.list.Len())
-	}
-	for i := 0; i < numTxs; i++ {
-		cache.Remove(txs[i])
-		// make sure its removed from both the map and the linked list
-		require.Equal(t, numTxs-(i+1), len(cache.map_))
-		require.Equal(t, numTxs-(i+1), cache.list.Len())
-	}
 }
 
 func TestMempoolCloseWAL(t *testing.T) {
@@ -530,6 +512,54 @@ func TestMempoolTxsBytes(t *testing.T) {
 	assert.EqualValues(t, 0, mempool.TxsBytes())
 }
 
+// This will non-deterministically catch some concurrency failures like
+// https://github.com/tendermint/tendermint/issues/3509
+// TODO: all of the tests should probably also run using the remote proxy app
+// since otherwise we're not actually testing the concurrency of the mempool here!
+func TestMempoolRemoteAppConcurrency(t *testing.T) {
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
+	app := kvstore.NewKVStoreApplication()
+	cc, server := newRemoteApp(t, sockPath, app)
+	defer server.Stop()
+	config := cfg.ResetTestRoot("mempool_test")
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
+	defer cleanup()
+
+	// generate small number of txs
+	nTxs := 10
+	txLen := 200
+	txs := make([]types.Tx, nTxs)
+	for i := 0; i < nTxs; i++ {
+		txs[i] = cmn.RandBytes(txLen)
+	}
+
+	// simulate a group of peers sending them over and over
+	N := config.Mempool.Size
+	maxPeers := 5
+	for i := 0; i < N; i++ {
+		peerID := mrand.Intn(maxPeers)
+		txNum := mrand.Intn(nTxs)
+		tx := txs[int(txNum)]
+
+		// this will err with ErrTxInCache many times ...
+		mempool.CheckTxWithInfo(tx, nil, TxInfo{PeerID: uint16(peerID)})
+	}
+	err := mempool.FlushAppConn()
+	require.NoError(t, err)
+}
+
+// caller must close server
+func newRemoteApp(t *testing.T, addr string, app abci.Application) (clientCreator proxy.ClientCreator, server cmn.Service) {
+	clientCreator = proxy.NewRemoteClientCreator(addr, "socket", true)
+
+	// Start server
+	server = abciserver.NewSocketServer(addr, app)
+	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	if err := server.Start(); err != nil {
+		t.Fatalf("Error starting socket server: %v", err.Error())
+	}
+	return clientCreator, server
+}
 func checksumIt(data []byte) string {
 	h := sha256.New()
 	h.Write(data)

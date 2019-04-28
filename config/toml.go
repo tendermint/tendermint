@@ -28,13 +28,13 @@ func init() {
 // and panics if it fails.
 func EnsureRoot(rootDir string) {
 	if err := cmn.EnsureDir(rootDir, DefaultDirPerm); err != nil {
-		cmn.PanicSanity(err.Error())
+		panic(err.Error())
 	}
 	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
-		cmn.PanicSanity(err.Error())
+		panic(err.Error())
 	}
 	if err := cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
-		cmn.PanicSanity(err.Error())
+		panic(err.Error())
 	}
 
 	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
@@ -180,6 +180,17 @@ max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
 # global HTTP write timeout, which applies to all connections and endpoints.
 # See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "{{ .RPC.TimeoutBroadcastTxCommit }}"
+
+# The name of a file containing certificate that is used to create the HTTPS server.
+# If the certificate is signed by a certificate authority,
+# the certFile should be the concatenation of the server's certificate, any intermediates,
+# and the CA's certificate.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+tls_cert_file = "{{ .RPC.TLSCertFile }}"
+
+# The name of a file containing matching private key that is used to create the HTTPS server.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
 ##### peer to peer configuration options #####
 [p2p]

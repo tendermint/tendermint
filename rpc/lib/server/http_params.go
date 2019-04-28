@@ -76,7 +76,7 @@ func GetParamUint(r *http.Request, param string) (uint, error) {
 func GetParamRegexp(r *http.Request, param string, re *regexp.Regexp) (string, error) {
 	s := GetParam(r, param)
 	if !re.MatchString(s) {
-		return "", errors.Errorf(param, "Did not match regular expression %v", re.String())
+		return "", errors.Errorf(param, "did not match regular expression %v", re.String())
 	}
 	return s, nil
 }

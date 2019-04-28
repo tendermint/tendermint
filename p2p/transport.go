@@ -24,6 +24,7 @@ type IPResolver interface {
 // accept is the container to carry the upgraded connection and NodeInfo from an
 // asynchronously running routine to the Accept method.
 type accept struct {
+	netAddr  *NetAddress
 	conn     net.Conn
 	nodeInfo NodeInfo
 	err      error
@@ -47,6 +48,9 @@ type peerConfig struct {
 // the transport. Each transport is also responsible to filter establishing
 // peers specific to its domain.
 type Transport interface {
+	// Listening address.
+	NetAddress() NetAddress
+
 	// Accept returns a newly connected Peer.
 	Accept(peerConfig) (Peer, error)
 
@@ -115,6 +119,7 @@ func MultiplexTransportResolver(resolver IPResolver) MultiplexTransportOption {
 // MultiplexTransport accepts and dials tcp connections and upgrades them to
 // multiplexed peers.
 type MultiplexTransport struct {
+	netAddr  NetAddress
 	listener net.Listener
 
 	acceptc chan accept
@@ -161,6 +166,11 @@ func NewMultiplexTransport(
 	}
 }
 
+// NetAddress implements Transport.
+func (mt *MultiplexTransport) NetAddress() NetAddress {
+	return mt.netAddr
+}
+
 // Accept implements Transport.
 func (mt *MultiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 	select {
@@ -173,7 +183,7 @@ func (mt *MultiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 
 		cfg.outbound = false
 
-		return mt.wrapPeer(a.conn, a.nodeInfo, cfg, nil), nil
+		return mt.wrapPeer(a.conn, a.nodeInfo, cfg, a.netAddr), nil
 	case <-mt.closec:
 		return nil, ErrTransportClosed{}
 	}
@@ -224,6 +234,7 @@ func (mt *MultiplexTransport) Listen(addr NetAddress) error {
 		return err
 	}
 
+	mt.netAddr = addr
 	mt.listener = ln
 
 	go mt.acceptPeers()
@@ -258,15 +269,21 @@ func (mt *MultiplexTransport) acceptPeers() {
 			var (
 				nodeInfo   NodeInfo
 				secretConn *conn.SecretConnection
+				netAddr    *NetAddress
 			)
 
 			err := mt.filterConn(c)
 			if err == nil {
 				secretConn, nodeInfo, err = mt.upgrade(c, nil)
+				if err == nil {
+					addr := c.RemoteAddr()
+					id := PubKeyToID(secretConn.RemotePubKey())
+					netAddr = NewNetAddress(id, addr)
+				}
 			}
 
 			select {
-			case mt.acceptc <- accept{secretConn, nodeInfo, err}:
+			case mt.acceptc <- accept{netAddr, secretConn, nodeInfo, err}:
 				// Make the upgraded peer available.
 			case <-mt.closec:
 				// Give up if the transport was closed.
@@ -347,7 +364,7 @@ func (mt *MultiplexTransport) upgrade(
 	if err != nil {
 		return nil, nil, ErrRejected{
 			conn:          c,
-			err:           fmt.Errorf("secrect conn failed: %v", err),
+			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
 		}
 	}
@@ -360,7 +377,7 @@ func (mt *MultiplexTransport) upgrade(
 				conn: c,
 				id:   connID,
 				err: fmt.Errorf(
-					"conn.ID (%v) dialed ID (%v) missmatch",
+					"conn.ID (%v) dialed ID (%v) mismatch",
 					connID,
 					dialedID,
 				),
@@ -392,7 +409,7 @@ func (mt *MultiplexTransport) upgrade(
 			conn: c,
 			id:   connID,
 			err: fmt.Errorf(
-				"conn.ID (%v) NodeInfo.ID (%v) missmatch",
+				"conn.ID (%v) NodeInfo.ID (%v) mismatch",
 				connID,
 				nodeInfo.ID(),
 			),
@@ -426,14 +443,14 @@ func (mt *MultiplexTransport) wrapPeer(
 	c net.Conn,
 	ni NodeInfo,
 	cfg peerConfig,
-	dialedAddr *NetAddress,
+	socketAddr *NetAddress,
 ) Peer {
 
 	peerConn := newPeerConn(
 		cfg.outbound,
 		cfg.persistent,
 		c,
-		dialedAddr,
+		socketAddr,
 	)
 
 	p := newPeer(
