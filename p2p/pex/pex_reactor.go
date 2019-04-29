@@ -463,9 +463,10 @@ func (r *PEXReactor) ensurePeers() {
 		}
 	}
 
-	// If we are not connected to nor dialing anybody, fallback to dialing a seed.
-	if out+in+dial+len(toDial) == 0 {
-		r.Logger.Info("No addresses to dial nor connected peers. Falling back to seeds")
+	// If we are not dialing anyone and need more addresses - dial a seed
+	// This is done in addition to asking a peer for addresses to work-around peers not participating in PEX
+	if r.book.NeedMoreAddrs() && len(toDial) == 0 {
+		r.Logger.Info("No addresses to dial. Falling back to seeds")
 		r.dialSeeds()
 	}
 }

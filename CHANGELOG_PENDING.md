@@ -19,3 +19,5 @@
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+* [pex] #3603 Dial seeds when addressbook needs more addresses (@defunctzombie)
