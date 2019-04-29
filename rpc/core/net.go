@@ -185,10 +185,8 @@ func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialS
 		return &ctypes.ResultDialSeeds{}, errors.New("No seeds provided")
 	}
 	logger.Info("DialSeeds", "seeds", seeds)
-	errs := p2pPeers.DialPeersAsync(seeds)
-	if len(errs) > 0 {
-		// do not bother with returning all errors at once
-		return &ctypes.ResultDialSeeds{}, errs[0]
+	if err := p2pPeers.DialPeersAsync(seeds); err != nil {
+		return &ctypes.ResultDialSeeds{}, err
 	}
 	return &ctypes.ResultDialSeeds{Log: "Dialing seeds in progress. See /net_info for details"}, nil
 }
@@ -198,10 +196,8 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent bool) (*c
 		return &ctypes.ResultDialPeers{}, errors.New("No peers provided")
 	}
 	logger.Info("DialPeers", "peers", peers, "persistent", persistent)
-	errs := p2pPeers.AddPersistentPeers(peers)
-	if len(errs) > 0 {
-		// do not bother with returning all errors at once
-		return &ctypes.ResultDialPeers{}, errs[0]
+	if err := p2pPeers.AddPersistentPeers(peers); err != nil {
+		return &ctypes.ResultDialPeers{}, err
 	}
 	// parsing errors are handled above by AddPersistentPeers
 	_ = p2pPeers.DialPeersAsync(peers)

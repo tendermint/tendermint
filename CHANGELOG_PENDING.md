@@ -29,5 +29,5 @@
   to 16 (as a result, the node will stop retrying after a 35 hours time window)
 - [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests
 - [p2p] \#3362 make persistent prop independent of conn direction
-  * `Switch#DialPeersAsync` now only takes a list of peers and returns multiple errors
+  * `Switch#DialPeersAsync` now only takes a list of peers
   * `Switch#DialPeerWithAddress` now only takes an address

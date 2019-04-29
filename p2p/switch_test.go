@@ -405,8 +405,8 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	errs := sw.AddPersistentPeers([]string{rp.Addr().String()})
-	require.Empty(t, errs)
+	err = sw.AddPersistentPeers([]string{rp.Addr().String()})
+	require.NoError(t, err)
 
 	err = sw.DialPeerWithAddress(rp.Addr())
 	require.Nil(t, err)
@@ -451,8 +451,8 @@ func TestSwitchReconnectsToInboundPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	errs := sw.AddPersistentPeers([]string{rp.Addr().String()})
-	require.Empty(t, errs)
+	err = sw.AddPersistentPeers([]string{rp.Addr().String()})
+	require.NoError(t, err)
 
 	conn, err := rp.Dial(sw.NetAddress())
 	require.NoError(t, err)
@@ -479,8 +479,8 @@ func TestSwitchDialPeersAsync(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	errs := sw.DialPeersAsync([]string{rp.Addr().String()})
-	require.Empty(t, errs)
+	err = sw.DialPeersAsync([]string{rp.Addr().String()})
+	require.NoError(t, err)
 	time.Sleep(dialRandomizerIntervalMilliseconds * time.Millisecond)
 	require.NotNil(t, sw.Peers().Get(rp.ID()))
 }

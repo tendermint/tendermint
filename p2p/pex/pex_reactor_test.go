@@ -343,8 +343,8 @@ func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
 	require.NoError(t, peerSwitch.Start())
 	defer peerSwitch.Stop()
 
-	errs := sw.AddPersistentPeers([]string{peerSwitch.NetAddress().String()})
-	require.Empty(t, errs)
+	err = sw.AddPersistentPeers([]string{peerSwitch.NetAddress().String()})
+	require.NoError(t, err)
 
 	// 1. Test crawlPeers dials the peer
 	pexR.crawlPeers([]*p2p.NetAddress{peerSwitch.NetAddress()})

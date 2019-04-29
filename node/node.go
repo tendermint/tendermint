@@ -471,10 +471,9 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
-	errs := sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
-	if len(errs) > 0 {
-		// do not bother with returning all errors at once
-		return nil, errors.Wrap(errs[0], "error in persistent_peers")
+	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+	if err != nil {
+		return nil, errors.Wrap(err, "error in persistent_peers")
 	}
 
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())

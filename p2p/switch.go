@@ -418,20 +418,24 @@ func isPrivateAddr(err error) bool {
 
 // DialPeersAsync dials a list of peers asynchronously in random order.
 // Used to dial peers from config on startup or from unsafe-RPC (trusted sources).
-// ErrNetAddressLookup errors are ignored. However, if there are other errors,
-// all of them are returned.
+// It ignores ErrNetAddressLookup. However, if there are other errors, first
+// encounter is returned.
 // Nop if there are no peers.
-func (sw *Switch) DialPeersAsync(peers []string) []error {
+func (sw *Switch) DialPeersAsync(peers []string) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
+	// report all the errors
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
+	}
+	// return first non-ErrNetAddressLookup error
+	for _, err := range errs {
 		if _, ok := err.(ErrNetAddressLookup); ok {
 			continue
 		}
-		return errs
+		return err
 	}
 	sw.dialPeersAsync(netAddrs)
-	return []error{}
+	return nil
 }
 
 func (sw *Switch) dialPeersAsync(netAddrs []*NetAddress) {
@@ -516,22 +520,25 @@ func (sw *Switch) IsDialingOrExistingAddress(addr *NetAddress) bool {
 		(!sw.config.AllowDuplicateIP && sw.peers.HasIP(addr.IP))
 }
 
-// AddPersistentPeers allows you to set persistent peers. If there's an error
-// in any of the given addrs, it will be returned along with other errors.
-// ErrNetAddressLookup errors are ignored. However, if there are other errors,
-// all of them are returned.
-func (sw *Switch) AddPersistentPeers(addrs []string) []error {
+// AddPersistentPeers allows you to set persistent peers. It ignores
+// ErrNetAddressLookup. However, if there are other errors, first encounter is
+// returned.
+func (sw *Switch) AddPersistentPeers(addrs []string) error {
 	sw.Logger.Info("Adding persistent peers", "addrs", addrs)
 	netAddrs, errs := NewNetAddressStrings(addrs)
+	// report all the errors
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
+	}
+	// return first non-ErrNetAddressLookup error
+	for _, err := range errs {
 		if _, ok := err.(ErrNetAddressLookup); ok {
 			continue
 		}
-		return errs
+		return err
 	}
 	sw.persistentPeersAddrs = netAddrs
-	return []error{}
+	return nil
 }
 
 func (sw *Switch) isPeerPersistentFn() func(*NetAddress) bool {
