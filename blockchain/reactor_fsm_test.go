@@ -274,17 +274,13 @@ func TestFSMBasic(t *testing.T) {
 				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
 
 				// blockResponseEv for height 1
-				makeStepBlockRespEv("waitForBlock", "waitForBlock",
-					"P1", 1, []int64{}),
+				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P1", 1, []int64{}),
 				// blockResponseEv for height 2
-				makeStepBlockRespEv("waitForBlock", "waitForBlock",
-					"P1", 2, []int64{1}),
+				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P1", 2, []int64{1}),
 				// blockResponseEv for height 3
-				makeStepBlockRespEv("waitForBlock", "waitForBlock",
-					"P2", 3, []int64{1, 2}),
+				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P2", 3, []int64{1, 2}),
 				// blockResponseEv for height 4
-				makeStepBlockRespEv("waitForBlock", "waitForBlock",
-					"P2", 4, []int64{1, 2, 3}),
+				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P2", 4, []int64{1, 2, 3}),
 				// processedBlockEv
 				makeStepProcessedBlockEv("waitForBlock", "waitForBlock", nil),
 				makeStepProcessedBlockEv("waitForBlock", "waitForBlock", nil),
@@ -379,11 +375,9 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P2", 1, []int64{}),
 				// blockResponseEv for height 2
-				makeStepBlockRespEv("waitForBlock", "waitForBlock",
-					"P2", 2, []int64{1}),
+				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P2", 2, []int64{1}),
 				// blockResponseEv for height 3
-				makeStepBlockRespEv("waitForBlock", "waitForBlock",
-					"P2", 3, []int64{1, 2}),
+				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P2", 3, []int64{1, 2}),
 
 				makeStepProcessedBlockEv("waitForBlock", "waitForBlock", nil),
 				makeStepProcessedBlockEv("waitForBlock", "finished", nil),
@@ -439,10 +433,8 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 					secondAfter, err2 := testBcR.fsm.pool.getBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
 					assert.NotNil(t, err1)
 					assert.NotNil(t, err2)
-					assert.Nil(t, firstAfter.block)
-					assert.Nil(t, firstAfter.peer)
-					assert.Nil(t, secondAfter.block)
-					assert.Nil(t, secondAfter.peer)
+					assert.Nil(t, firstAfter)
+					assert.Nil(t, secondAfter)
 				}
 				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
 				if step.expectedState == "finished" {
@@ -534,6 +526,89 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 		},
 	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test reactor
+			testBcR := newTestReactor(tt.startingHeight)
+			resetTestValues()
+
+			if tt.maxRequestsPerPeer != 0 {
+				maxRequestsPerPeer = tt.maxRequestsPerPeer
+			}
+
+			for _, step := range tt.steps {
+				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
+
+				oldNumStatusRequests := numStatusRequests
+				oldNumBlockRequests := numBlockRequests
+
+				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
+				assert.Equal(t, step.errWanted, fsmErr)
+
+				if step.shouldSendStatusReq {
+					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
+				} else {
+					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
+				}
+
+				if step.blockReqIncreased {
+					assert.True(t, oldNumBlockRequests < numBlockRequests)
+				} else {
+					assert.Equal(t, oldNumBlockRequests, numBlockRequests)
+				}
+
+				for _, height := range step.blocksAdded {
+					_, err := testBcR.fsm.pool.getBlockAndPeerAtHeight(height)
+					assert.Nil(t, err)
+				}
+				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
+			}
+		})
+	}
+}
+
+func TestFSMBlockAtCurrentHeightNeverArrives(t *testing.T) {
+	tests := []struct {
+		name               string
+		startingHeight     int64
+		maxRequestsPerPeer int32
+		steps              []fsmStepTestValues
+	}{
+		{
+			name:               "block at current height undelivered",
+			startingHeight:     1,
+			maxRequestsPerPeer: 3,
+			steps: []fsmStepTestValues{
+				// startFSMEv
+				makeStepStartFSMEv(),
+				// statusResponseEv from P1
+				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
+				// make some requests
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				// block received for height 1
+				makeStepBlockRespEv("waitForBlock", "waitForBlock",
+					"P1", 1, []int64{}),
+				// block recevied for height 2
+				makeStepBlockRespEv("waitForBlock", "waitForBlock",
+					"P1", 2, []int64{1}),
+				// processed block at height 1
+				makeStepProcessedBlockEv("waitForBlock", "waitForBlock", nil),
+
+				// add peer P2
+				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 3, nil),
+				// timeout on block at height 3
+				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForBlock", errNoPeerResponse),
+
+				// make some requests (includes redo-s for blocks 2 and 3)
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				// block received for height 2 from P2
+				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P2", 2, []int64{}),
+				// block received for height 3 from P2
+				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P2", 3, []int64{2}),
+				makeStepProcessedBlockEv("waitForBlock", "finished", nil),
+			},
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test reactor

@@ -34,7 +34,7 @@ type blockPool struct {
 	blocks map[int64]p2p.ID
 
 	requests          map[int64]bool // list of blocks to be assigned peers for blockRequest
-	nextRequestHeight int64          // next request to be added to requests
+	nextRequestHeight int64          // next height to be added to requests
 
 	height        int64 // processing height
 	maxPeerHeight int64 // maximum height of all peers
@@ -224,15 +224,14 @@ func (pool *blockPool) makeNextRequests(maxNumPendingRequests int32) {
 
 	for _, height := range heights {
 		h := int64(height)
-		if err := pool.sendRequest(h); err != nil {
-			// Errors from sendRequest() are handled by this function
+		if !pool.sendRequest(h) {
 			return
 		}
 		delete(pool.requests, h)
 	}
 }
 
-func (pool *blockPool) sendRequest(height int64) error {
+func (pool *blockPool) sendRequest(height int64) bool {
 	for _, peer := range pool.peers {
 		if peer.numPending >= int32(maxRequestsPerPeer) {
 			continue
@@ -243,7 +242,6 @@ func (pool *blockPool) sendRequest(height int64) error {
 		pool.logger.Debug("assign request to peer", "peer", peer.id, "height", height)
 		if err := pool.toBcR.sendBlockRequest(peer.id, height); err == errNilPeerForBlockRequest {
 			pool.removePeer(peer.id, err)
-			pool.toBcR.sendPeerError(err, peer.id)
 		}
 
 		pool.blocks[height] = peer.id
@@ -252,10 +250,10 @@ func (pool *blockPool) sendRequest(height int64) error {
 		peer.blocks[height] = nil
 		peer.incrPending()
 
-		return nil
+		return true
 	}
 	pool.logger.Error("could not find peer to send request for block at height", "height", height)
-	return errNoPeerFoundForHeight
+	return false
 }
 
 // Validates that the block comes from the peer it was expected from and stores it in the 'blocks' map.
@@ -289,12 +287,12 @@ func (pool *blockPool) getBlockAndPeerAtHeight(height int64) (bData *blockData, 
 	peerID := pool.blocks[height]
 	peer := pool.peers[peerID]
 	if peer == nil {
-		return &blockData{}, errMissingBlocks
+		return nil, errMissingBlocks
 	}
 
 	block, ok := peer.blocks[height]
 	if !ok || block == nil {
-		return &blockData{}, errMissingBlocks
+		return nil, errMissingBlocks
 	}
 
 	return &blockData{peer: peer, block: block}, nil
@@ -308,14 +306,12 @@ func (pool *blockPool) getNextTwoBlocks() (first, second *blockData, err error) 
 		err = err2
 	}
 
-	if err == errMissingBlocks {
-		// We need both to sync the first block.
-		pool.logger.Error("missing blocks at height and/ or height+1", "height", pool.height)
-	}
+	pool.logger.Debug("blocks at height and/ or height+1", "first", first, "second", second)
+
 	return
 }
 
-// Remove peers that sent us the first two blocks, blocks will also be removed by removePeer().
+// Remove the peers that sent us the first two blocks, blocks are removed by removePeer().
 func (pool *blockPool) invalidateFirstTwoBlocks(err error) {
 	first, err1 := pool.getBlockAndPeerAtHeight(pool.height)
 	second, err2 := pool.getBlockAndPeerAtHeight(pool.height + 1)
@@ -337,6 +333,13 @@ func (pool *blockPool) processedCurrentHeightBlock() {
 	pool.logger.Debug("processed and removed block at height", "height", pool.height)
 	pool.height++
 	pool.removeShortPeers()
+}
+
+func (pool *blockPool) removePeerAtCurrentHeight(err error) {
+	first, err := pool.getBlockAndPeerAtHeight(pool.height)
+	if err == nil {
+		pool.removePeer(first.peer.id, err)
+	}
 }
 
 func (pool *blockPool) cleanup() {

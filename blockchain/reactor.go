@@ -194,24 +194,25 @@ func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcStatusRequestMessa
 }
 
 func (bcR *BlockchainReactor) sendMessageToFSMAsync(msg bReactorMessageData) {
-	bcR.Logger.Error("send message to FSM for processing", "msg", msg.String())
+	bcR.Logger.Debug("send message to FSM for processing", "msg", msg.String())
 	bcR.messagesForFSMCh <- msg
 }
 
-func (bcR *BlockchainReactor) sendRemovePeerToFSM(peerID p2p.ID) {
-	msgData := bReactorMessageData{
-		event: peerRemoveEv,
-		data: bReactorEventData{
-			peerId: peerID,
-			err:    errSwitchRemovesPeer,
-		},
-	}
-	bcR.sendMessageToFSMAsync(msgData)
+func (bcR *BlockchainReactor) sendErrorToFSMAsync(msg bReactorMessageData) {
+	bcR.Logger.Debug("send message to FSM for processing", "msg", msg.String())
+	bcR.errorsForFSMCh <- msg
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
 func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	bcR.sendRemovePeerToFSM(peer.ID())
+	msgData := bReactorMessageData{
+		event: peerRemoveEv,
+		data: bReactorEventData{
+			peerId: peer.ID(),
+			err:    errSwitchRemovesPeer,
+		},
+	}
+	bcR.sendErrorToFSMAsync(msgData)
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
@@ -280,8 +281,8 @@ func (bcR *BlockchainReactor) poolRoutine() {
 
 	bcR.fsm.start()
 
-	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
-	trySendTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
+	processReceivedBlockTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
+	sendBlockRequestTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
 
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
@@ -289,20 +290,13 @@ func (bcR *BlockchainReactor) poolRoutine() {
 	lastHundred := time.Now()
 	lastRate := 0.0
 
-	doProcessCh := make(chan struct{}, 1)
-	doSendCh := make(chan struct{}, 1)
+	doProcessBlockCh := make(chan struct{}, 1)
 
 ForLoop:
 	for {
 		select {
 
-		case <-trySendTicker.C: // chan time
-			select {
-			case doSendCh <- struct{}{}:
-			default:
-			}
-
-		case <-doSendCh:
+		case <-sendBlockRequestTicker.C:
 			// Tell FSM to make more requests.
 			// The maxNumPendingRequests may be changed based on low/ high watermark thresholds for
 			// - the number of blocks received and waiting to be processed,
@@ -345,13 +339,13 @@ ForLoop:
 				break ForLoop
 			}
 
-		case <-trySyncTicker.C: // chan time
+		case <-processReceivedBlockTicker.C: // chan time
 			select {
-			case doProcessCh <- struct{}{}:
+			case doProcessBlockCh <- struct{}{}:
 			default:
 			}
 
-		case <-doProcessCh:
+		case <-doProcessBlockCh:
 			err := bcR.processBlocksFromPoolRoutine()
 			if err == errMissingBlocks {
 				continue ForLoop
@@ -369,7 +363,7 @@ ForLoop:
 				continue ForLoop
 			}
 
-			doProcessCh <- struct{}{}
+			doProcessBlockCh <- struct{}{}
 
 			bcR.blocksSynced++
 			if bcR.blocksSynced%100 == 0 {

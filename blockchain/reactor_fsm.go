@@ -141,7 +141,8 @@ var (
 
 // state timers
 var (
-	waitForPeerTimeout = 2 * time.Second
+	waitForPeerTimeout                 = 2 * time.Second
+	waitForBlockAtCurrentHeightTimeout = 5 * time.Second
 )
 
 // errors
@@ -156,7 +157,6 @@ var (
 	errSendQueueFull            = errors.New("block request not made, send-queue is full")
 	errPeerTooShort             = errors.New("peer height too low, old peer removed/ new peer not added")
 	errSlowPeer                 = errors.New("peer is not sending us data fast enough")
-	errNoPeerFoundForHeight     = errors.New("could not find peer for block request")
 	errSwitchRemovesPeer        = errors.New("switch is removing peer")
 	errTimeoutEventWrongState   = errors.New("timeout event for a different state than the current one")
 )
@@ -219,7 +219,12 @@ func init() {
 	}
 
 	waitForBlock = &bReactorFSMState{
-		name: "waitForBlock",
+		name:    "waitForBlock",
+		timeout: waitForBlockAtCurrentHeightTimeout,
+		enter: func(fsm *bReactorFSM) {
+			// Stop when leaving the state.
+			fsm.resetStateTimer()
+		},
 		handle: func(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) (*bReactorFSMState, error) {
 			switch ev {
 
@@ -239,7 +244,6 @@ func init() {
 					fsm.pool.removePeer(data.peerId, err)
 					fsm.toBcR.sendPeerError(err, data.peerId)
 				}
-
 				return waitForBlock, err
 
 			case processedBlockEv:
@@ -259,6 +263,7 @@ func init() {
 						fsm.stop()
 						return finished, nil
 					}
+					fsm.resetStateTimer()
 				}
 
 				return waitForBlock, data.err
@@ -272,7 +277,20 @@ func init() {
 				fsm.makeNextRequests(data.maxNumRequests)
 				return waitForBlock, nil
 
+			case stateTimeoutEv:
+				if data.stateName != "waitForBlock" {
+					fsm.logger.Error("received a state timeout event for different state", "state", data.stateName)
+					return waitForBlock, errTimeoutEventWrongState
+				}
+				// We haven't received the block at current height. Remove peer.
+				fsm.pool.removePeerAtCurrentHeight(errNoPeerResponse)
+				fsm.resetStateTimer()
+				return waitForBlock, errNoPeerResponse
+
 			case stopFSMEv:
+				if fsm.stateTimer != nil {
+					fsm.stateTimer.Stop()
+				}
 				return finished, errNoErrorFinished
 
 			default:
