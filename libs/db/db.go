@@ -16,6 +16,7 @@ const (
 	GoLevelDBBackend DBBackendType = "goleveldb"
 	MemDBBackend     DBBackendType = "memdb"
 	FSDBBackend      DBBackendType = "fsdb" // using the filesystem naively
+	BoltDBBackend    DBBackendType = "boltdb"
 )
 
 type dbCreator func(name string, dir string) (DB, error)
