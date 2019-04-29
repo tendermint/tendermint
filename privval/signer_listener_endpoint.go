@@ -191,41 +191,29 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 		// Is there a connection ready?
 		select {
 		case sl.conn = <-sl.connectedCh:
-			{
-				sl.Logger.Debug("SignerListenerEndpoint: received connection")
-				return nil
-			}
+			sl.Logger.Debug("SignerListenerEndpoint: received connection")
+			return nil
 		default:
-			{
-				sl.Logger.Debug("SignerListenerEndpoint: no connection is ready")
-			}
+			sl.Logger.Debug("SignerListenerEndpoint: no connection is ready")
 		}
 
 		// should we trigger a reconnect?
 		select {
 		case sl.connectCh <- struct{}{}:
-			{
-				sl.Logger.Debug("SignerListenerEndpoint: triggered a reconnect")
-			}
+			sl.Logger.Debug("SignerListenerEndpoint: triggered a reconnect")
 		default:
-			{
-				sl.Logger.Debug("SignerListenerEndpoint: reconnect in progress")
-			}
+			sl.Logger.Debug("SignerListenerEndpoint: reconnect in progress")
 		}
 
 		// block until connected or timeout
 		select {
 		case sl.conn = <-sl.connectedCh:
-			{
-				sl.Logger.Debug("SignerListenerEndpoint: connected")
-			}
+			sl.Logger.Debug("SignerListenerEndpoint: connected")
 		case <-time.After(maxWait):
-			{
-				sl.Logger.Debug("SignerListenerEndpoint: timeout")
-				return ErrListenerTimeout
-			}
+			sl.Logger.Debug("SignerListenerEndpoint: timeout")
 		}
 	}
+
 	return nil
 }
 
