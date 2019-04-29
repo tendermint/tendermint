@@ -156,6 +156,7 @@ func (th *TestHarness) Run() {
 			}
 			startErr = err
 		} else {
+			th.logger.Info("Accepted external connection")
 			accepted = true
 			break
 		}

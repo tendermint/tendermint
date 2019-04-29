@@ -211,6 +211,7 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 			sl.Logger.Debug("SignerListenerEndpoint: connected")
 		case <-time.After(maxWait):
 			sl.Logger.Debug("SignerListenerEndpoint: timeout")
+			return ErrListenerTimeout
 		}
 	}
 
