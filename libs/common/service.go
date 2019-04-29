@@ -194,8 +194,7 @@ func (bs *BaseService) Reset() error {
 
 // OnReset implements Service by panicking.
 func (bs *BaseService) OnReset() error {
-	PanicSanity("The service cannot be reset")
-	return nil
+	panic("The service cannot be reset")
 }
 
 // IsRunning implements Service by returning true or false depending on the

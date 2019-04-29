@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.31.5
+
+*April 16th, 2019*
+
+This release fixes a regression from v0.31.4 where, in existing chains that
+were upgraded, `/validators` could return an empty validator set. This is true
+for almost all heights, given the validator set remains the same.
+
+Special thanks to external contributors on this release:
+@brapse, @guagualvcha, @dongsam, @phucc
+
+### IMPROVEMENTS:
+
+- [libs/common] `CMap`: slight optimization in `Keys()` and `Values()` (@phucc)
+- [gitignore] gitignore: add .vendor-new (@dongsam)
+
+### BUG FIXES:
+
+- [state] [\#3537](https://github.com/tendermint/tendermint/pull/3537#issuecomment-482711833)
+  `LoadValidators`: do not return an empty validator set
+- [blockchain] [\#3457](https://github.com/tendermint/tendermint/issues/3457)
+  Fix "peer did not send us anything" in `fast_sync` mode when under high pressure
+
 ## v0.31.4
 
 *April 12th, 2019*
@@ -9,13 +32,14 @@ the address book. This swallowed the peer's self-reported port which is importan
 It brings back `NetAddress()` to `NodeInfo` and uses it instead of `SocketAddr` for adding peers.
 Additionally, it improves response time on the `/validators` or `/status` RPC endpoints.
 As a side-effect it makes these RPC endpoint more difficult to DoS and fixes a performance degradation in `ExecCommitBlock`.
-Also, it contains an [ADR](https://github.com/tendermint/tendermint/pull/3539) that proposes decoupling the 
-responsibility for peer behaviour from the `p2p.Switch` (by @brapse). 
+Also, it contains an [ADR](https://github.com/tendermint/tendermint/pull/3539) that proposes decoupling the
+responsibility for peer behaviour from the `p2p.Switch` (by @brapse).
 
 Special thanks to external contributors on this release:
 @brapse, @guagualvcha, @mydring
 
 ### IMPROVEMENTS:
+
 - [p2p] [\#3463](https://github.com/tendermint/tendermint/pull/3463) Do not log "Can't add peer's address to addrbook" error for a private peer
 - [p2p] [\#3547](https://github.com/tendermint/tendermint/pull/3547) Fix a couple of annoying typos (@mdyring)
 
@@ -43,8 +67,8 @@ panic if the lookup failed.
 
 ### BREAKING CHANGES:
 * Go API
-  - [crypto/secp256k1] [\#3439](https://github.com/tendermint/tendermint/issues/3439) 
-    The `secp256k1.GenPrivKeySecp256k1` function has changed to guarantee that it returns a valid key, which means it 
+  - [crypto/secp256k1] [\#3439](https://github.com/tendermint/tendermint/issues/3439)
+    The `secp256k1.GenPrivKeySecp256k1` function has changed to guarantee that it returns a valid key, which means it
     will return a different private key than in previous versions for the same secret.
 
 ### BUG FIXES:
