@@ -2,12 +2,12 @@ package privval
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
