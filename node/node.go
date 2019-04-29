@@ -23,6 +23,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -234,9 +235,7 @@ func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logger,
-	consensusLogger log.Logger) {
-
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -252,7 +251,6 @@ func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logge
 		)
 	}
 
-	pubKey := privValidator.GetPubKey()
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
 	if state.Validators.HasAddress(addr) {
@@ -526,7 +524,13 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
-	logNodeStartupInfo(state, privValidator, logger, consensusLogger)
+	pubKey := privValidator.GetPubKey()
+	if pubKey == nil {
+		// TODO: planned for next PR. GetPubKey should return errors
+		return nil, errors.New("could not retrieve public key from private validator")
+	}
+
+	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
