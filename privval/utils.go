@@ -24,7 +24,7 @@ func IsConnTimeout(err error) bool {
 	return false
 }
 
-// NewSignerListener creates a new signer Listener using the corresponding listen address
+// NewSignerListener creates a new SignerListenerEndpoint using the corresponding listen address
 func NewSignerListener(listenAddr string, logger log.Logger) (*SignerListenerEndpoint, error) {
 	var listener net.Listener
 

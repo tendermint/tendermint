@@ -60,7 +60,7 @@ func (sl *SignerListenerEndpoint) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service.
+// OnStop implements cmn.Service
 func (sl *SignerListenerEndpoint) OnStop() {
 	sl.Logger.Debug("SignerListenerEndpoint: OnStop calling Close")
 	_ = sl.Close()
