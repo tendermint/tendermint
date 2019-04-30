@@ -2,9 +2,10 @@ package db
 
 import (
 	"bytes"
-	"github.com/etcd-io/bbolt"
 	"path/filepath"
 	"sync"
+
+	"github.com/etcd-io/bbolt"
 )
 
 var bucket = []byte("boltdb_bucket")
@@ -26,6 +27,13 @@ func NewBoltdb(name, dir string) (DB, error) {
 func NewBoltdbWithOpts(name, dir string, opts *bbolt.Options) (DB, error) {
 	dbPath := filepath.Join(dir, name+".db")
 	db, err := bbolt.Open(dbPath, 0600, opts)
+	if err != nil {
+		return nil, err
+	}
+	err = db.Update(func(tx *bbolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists(bucket)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
