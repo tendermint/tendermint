@@ -145,7 +145,7 @@ When a new transaction is added to the Tendermint Core, it will ask the
 application to check it.
 
 ```go
-func (app *KVStoreApplication) isValid(tx []byte) (code int) {
+func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
 	// check format
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) != 2 {
@@ -153,16 +153,20 @@ func (app *KVStoreApplication) isValid(tx []byte) (code int) {
 	}
 
 	key, value := parts[0], parts[1]
-	code := 0 // OK
 
 	// check if the same key=value already exists
-	err := db.View(func(txn *badger.Txn) error {
-		existing, err := txn.Get(key)
+	err := app.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
 		if err != nil && err != badger.ErrKeyNotFound {
 			return err
 		}
-		if err == nil && existing == value {
-			code = 2
+		if err == nil {
+			return item.Value(func(val []byte) error {
+				if bytes.Equal(val, value) {
+					code = 2
+				}
+				return nil
+			})
 		}
 		return nil
 	})
@@ -198,10 +202,9 @@ persistent and fast key-value (KV) database.
 import "github.com/dgraph-io/badger"
 
 type KVStoreApplication struct {
-	db *badger.DB
+	db           *badger.DB
+	currentBatch *badger.Txn
 }
-
-var _ abcitypes.Application = (*KVStoreApplication)(nil)
 
 func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 	return &KVStoreApplication{
@@ -218,9 +221,10 @@ application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
 
 ```
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	app.currentBatch = db.NewTransaction(true)
+	app.currentBatch = app.db.NewTransaction(true)
 	return abcitypes.ResponseBeginBlock{}
 }
+
 ```
 
 Here we create a batch, which will store block's transactions.
@@ -256,7 +260,7 @@ yet committed).
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	app.currentBatch.Save()
+	app.currentBatch.Commit()
 	return abcitypes.ResponseCommit{Data: []byte{}}
 }
 ```
@@ -270,16 +274,19 @@ application's `Query` method.
 ```go
 func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.ResponseQuery) {
 	resQuery.Key = reqQuery.Data
-	err := db.View(func(txn *badger.Txn) error {
-		value, err := txn.Get(reqQuery.Data)
+	err := app.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(reqQuery.Data)
 		if err != nil && err != badger.ErrKeyNotFound {
 			return err
 		}
 		if err == badger.ErrKeyNotFound {
 			resQuery.Log = "does not exist"
 		} else {
-			resQuery.Log = "exists"
-			resQuery.Value = value
+			return item.Value(func(val []byte) error {
+				resQuery.Log = "exists"
+				resQuery.Value = val
+				return nil
+			})
 		}
 		return nil
 	})
@@ -296,80 +303,127 @@ The complete specification can be found
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
 ```go
-func main() {
-	app := kvstore.NewKVStoreApplication()
+package main
 
-	node := NewTendermint(app, &nodeOpts)
-	err := node.Start()
-	if err != nil {
-		panic(err)
-	}
+import (
+	"flag"
+	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
-	// wait for rpc
-	waitForRPC()
-	waitForGRPC()
+	"github.com/dgraph-io/badger"
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 
-	if !nodeOpts.suppressStdout {
-		fmt.Println("Tendermint running!")
-	}
+	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
+	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
+	"github.com/tendermint/tendermint/libs/log"
+	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/proxy"
+)
 
-	return node
+var configFile string
+
+func init() {
+	flag.StringVar(&configFile, "config", "$HOME/.tendermint/config/config.toml", "Path to config.toml")
 }
 
-func newTendermint(app abci.Application, configFile string) ( *nm.Node, error ) {
-	config := cfg.DefaultConfig()
-  viper.SetConfigFile(configFile)
-  if err := viper.ReadInConfig(); err != nil {
-    return nil, errors.Wrap(err, "viper failed to read config file")
-  }
-  if err := viper.Unmarshal(config); err != nil {
-    return  nil, errors.Wrap(err, "viper failed to unmarshal config")
-  }
-  if err := config.ValidateBasic(); err != nil {
-    return nil, errors.Wrap(err, "config is invalid")
-  }
-
-  logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-  logger = log.NewFilter(logger, log.AllowError())
-
-	pv := privval.LoadFilePV(
-      config.PrivValidatorKeyFile(),
-      config.PrivValidatorStateFile()
-      )
-
-	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+func main() {
+	opts := badger.DefaultOptions
+	opts.Dir = "/tmp/badger"
+	opts.ValueDir = "/tmp/badger"
+	db, err := badger.Open(opts)
 	if err != nil {
-    return nil, errors.Wrap(err, "failed to load node's key")
+		fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+	app := NewKVStoreApplication(db)
+
+	flag.Parse()
+
+	node, err := newTendermint(app, configFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v", err)
+		os.Exit(2)
 	}
 
+	node.Start()
+	defer func() {
+		node.Stop()
+		node.Wait()
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+	os.Exit(0)
+}
+
+func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
+	// read config
+	config := cfg.DefaultConfig()
+	config.RootDir = filepath.Dir(filepath.Dir(configFile))
+	viper.SetConfigFile(configFile)
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, errors.Wrap(err, "viper failed to read config file")
+	}
+	if err := viper.Unmarshal(config); err != nil {
+		return nil, errors.Wrap(err, "viper failed to unmarshal config")
+	}
+	if err := config.ValidateBasic(); err != nil {
+		return nil, errors.Wrap(err, "config is invalid")
+	}
+
+	// create logger
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	var err error
+	logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse log level")
+	}
+
+	// read private validator
+	pv := privval.LoadFilePV(
+		config.PrivValidatorKeyFile(),
+		config.PrivValidatorStateFile(),
+	)
+
+	// read node key
+	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load node's key")
+	}
+
+	// create node
 	node, err := nm.NewNode(
-    config,
-    pv,
-    nodeKey,
-    proxy.NewLocalClientCreator(app),
-		state.DefaultGenesisDocProviderFunc(config),
+		config,
+		pv,
+		nodeKey,
+		proxy.NewLocalClientCreator(app),
+		nm.DefaultGenesisDocProviderFunc(config),
 		nm.DefaultDBProvider,
 		nm.DefaultMetricsProvider(config.Instrumentation),
 		logger)
 	if err != nil {
-    return nil, errors.Wrap(err, "failed to create new Tendermint node")
+		return nil, errors.Wrap(err, "failed to create new Tendermint node")
 	}
-	return node, nil
-}
 
-// StopTendermint stops a test tendermint server, waits until it's stopped and
-// cleans up test/config files.
-func StopTendermint(node *nm.Node) {
-	node.Stop()
-	node.Wait()
-	os.RemoveAll(node.Config().RootDir)
+	return node, nil
 }
 ```
 
 ## 1.5 Getting Up and Running
 
 ```
-$ go run main.go
+$ TMHOME="/tmp/example" tendermint init
+$ go build
+$ ./example -config "/tmp/example/config/config.toml"
 ```
 
 Now open another tab in your terminal and try sending a transaction:
