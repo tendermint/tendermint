@@ -33,7 +33,7 @@ connections die, or we fail to dial, we will redial every 5s for a few minutes,
 then switch to an exponential backoff schedule, and after about a day of
 trying, stop dialing the peer.
 
-So long as we have less than `MaxNumOutboundPeers`, we periodically request
+As long as we have less than `MaxNumOutboundPeers`, we periodically request
 additional peers from each of our own and try seeds.
 
 ## Listening
