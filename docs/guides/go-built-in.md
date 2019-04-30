@@ -81,107 +81,168 @@ BlockChain Interface (ABCI). All message types are defined in a [protobuf
 file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
 This allows Tendermint to run applications written in any programming language.
 
+Create a file called `app.go` with the following content:
+
 ```go
+package main
+
+import (
+	abcitypes "github.com/tendermint/tendermint/abci/types"
+)
+
 type KVStoreApplication struct {
 }
 
 var _ abcitypes.Application = (*KVStoreApplication)(nil)
 
-func NewBaseApplication() *KVStoreApplication {
+func NewKVStoreApplication() *KVStoreApplication {
 	return &KVStoreApplication{}
 }
 
-func (KVStoreApplication) Info(req RequestInfo) ResponseInfo {
-	return ResponseInfo{}
+func (KVStoreApplication) Info(req abcitypes.RequestInfo) abcitypes.ResponseInfo {
+	return abcitypes.ResponseInfo{}
 }
 
-func (KVStoreApplication) SetOption(req RequestSetOption) ResponseSetOption {
-	return ResponseSetOption{}
+func (KVStoreApplication) SetOption(req abcitypes.RequestSetOption) abcitypes.ResponseSetOption {
+	return abcitypes.ResponseSetOption{}
 }
 
-func (KVStoreApplication) DeliverTx(tx []byte) ResponseDeliverTx {
-	return ResponseDeliverTx{Code: CodeTypeOK}
+func (KVStoreApplication) DeliverTx(tx []byte) abcitypes.ResponseDeliverTx {
+	return abcitypes.ResponseDeliverTx{Code: 0}
 }
 
-func (KVStoreApplication) CheckTx(tx []byte) ResponseCheckTx {
-	return ResponseCheckTx{Code: CodeTypeOK}
+func (KVStoreApplication) CheckTx(tx []byte) abcitypes.ResponseCheckTx {
+	return abcitypes.ResponseCheckTx{Code: 0}
 }
 
-func (KVStoreApplication) Commit() ResponseCommit {
-	return ResponseCommit{}
+func (KVStoreApplication) Commit() abcitypes.ResponseCommit {
+	return abcitypes.ResponseCommit{}
 }
 
-func (KVStoreApplication) Query(req RequestQuery) ResponseQuery {
-	return ResponseQuery{Code: CodeTypeOK}
+func (KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.ResponseQuery {
+	return abcitypes.ResponseQuery{Code: 0}
 }
 
-func (KVStoreApplication) InitChain(req RequestInitChain) ResponseInitChain {
-	return ResponseInitChain{}
+func (KVStoreApplication) InitChain(req abcitypes.RequestInitChain) abcitypes.ResponseInitChain {
+	return abcitypes.ResponseInitChain{}
 }
 
-func (KVStoreApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
-	return ResponseBeginBlock{}
+func (KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
+	return abcitypes.ResponseBeginBlock{}
 }
 
-func (KVStoreApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
-	return ResponseEndBlock{}
+func (KVStoreApplication) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndBlock {
+	return abcitypes.ResponseEndBlock{}
 }
 ```
 
-Let's go through each method.
+Now I will go through each method explaining when it's called and adding
+required business logic.
 
 ### 1.3.1 CheckTx
 
 When a new transaction is added to the Tendermint Core, it will ask the
 application to check it.
 
-For now, we'll make all the transactions valid by responding with `0` code.
+For transactions, which have a form of `{bytes}={bytes}`, we'll return a zero
+code indicating that they are valid. For others, we'll respond with `1`. Note
+that anything with non-zero code will be considered invalid (`-1`, `100`,
+etc.) by Tendermint Core.
 
 ```go
-func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
-	return types.ResponseCheckTx{Code: 0, GasWanted: 1}
+func (app *KVStoreApplication) CheckTx(tx []byte) abcitypes.ResponseCheckTx {
+  // check format
+	parts := bytes.Split(tx, []byte("="))
+	if len(parts) != 2 {
+		return abcitypes.ResponseCheckTx{Code: 1, GasWanted: 1}
+	}
+
+	key, value := parts[0], parts[1]
+	code := 0 // OK
+
+  // check if the same key=value already exists
+	err := db.View(func(txn *badger.Txn) error {
+		existing, err := txn.Get(key)
+		if err != badger.ErrKeyNotFound && existing == value {
+			code = 2
+		}
+		return nil
+	})
+
+	return abcitypes.ResponseCheckTx{Code: code, GasWanted: 1}
+}
+```
+
+For the actual underlying key-value store we'll use
+[badger](https://github.com/dgraph-io/badger), which is an embeddable,
+persistent and fast key-value (KV) database.
+
+```go
+import "github.com/dgraph-io/badger"
+
+type KVStoreApplication struct {
+	db *badger.DB
+}
+
+var _ abcitypes.Application = (*KVStoreApplication)(nil)
+
+func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
+	return &KVStoreApplication{
+		db: db,
+	}
 }
 ```
 
 TODO: explain gas? :(
 
-### 1.3.2 BeginBlock -> DeliverTx -> EndBlock
+### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
+
+When Tendermint Core has decided on the block, it's transfered to the
+application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
+`EndBlock` in the end.
+
+For this guide, we'll only need `DeliverTx` and `Commit`.
 
 ```go
 func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
-	var key, value []byte
 	parts := bytes.Split(tx, []byte("="))
-	if len(parts) == 2 {
-		key, value = parts[0], parts[1]
-	} else {
-		key, value = tx, tx
+	if len(parts) != 2 {
+	  return types.ResponseDeliverTx{Code: 1}
 	}
-	app.state.db.Set(prefixKey(key), value)
-	app.state.Size += 1
-
-	tags := []cmn.KVPair{
-		{Key: []byte("app.creator"), Value: []byte("Cosmoshi Netowoko")},
-		{Key: []byte("app.key"), Value: key},
-	}
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
+	key, value := parts[0], parts[1]
+  existing, ok := app.db.Get(key)
+  if ok {
+    if existing == value { // already exists
+	    return types.ResponseDeliverTx{Code: 2}
+    }
+	  app.currentBatch.Set(key, value)
+    app.updated++
+  } else {
+    app.new++
+  }
+	return types.ResponseDeliverTx{Code: 0}
 }
 ```
 
-### 1.3.3 Commit
+`Commit` instructs the application to persist the new state.
+TODO: explain why we need appHash
 
 ```go
 func (app *KVStoreApplication) Commit() types.ResponseCommit {
-	// Using a memdb - just return the big endian size of the db
-	appHash := make([]byte, 8)
-	binary.PutVarint(appHash, app.state.Size)
-	app.state.AppHash = appHash
-	app.state.Height += 1
-	saveState(app.state)
-	return types.ResponseCommit{Data: appHash}
+  app.currentBatch.Save()
+
+	app.state.Height++
+	app.state.New += app.new
+	app.state.Updated += app.updated
+  app.new = 0
+  app.updated = 0
+  app.state.Save()
+
+	return types.ResponseCommit{Data: app.Hash()}
 }
 ```
 
-### 1.3.4 InitChain
+### 1.3.3 InitChain
 
 ```go
 func (app *KVStoreApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
@@ -189,42 +250,19 @@ func (app *KVStoreApplication) InitChain(req types.RequestInitChain) types.Respo
 }
 ```
 
-### 1.3.5 Info & Query & SetOption
-
-```go
-func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-	return types.ResponseInfo{
-		Data:       fmt.Sprintf("{\"size\":%v}", app.state.Size),
-		Version:    version.ABCIVersion,
-		AppVersion: ProtocolVersion.Uint64(),
-	}
-}
-```
+### 1.3.4 Query
 
 ```go
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-	if reqQuery.Prove {
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
-		resQuery.Index = -1 // TODO make Proof return index
-		resQuery.Key = reqQuery.Data
-		resQuery.Value = value
-		if value != nil {
-			resQuery.Log = "exists"
-		} else {
-			resQuery.Log = "does not exist"
-		}
-		return
-	} else {
-		resQuery.Key = reqQuery.Data
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
-		resQuery.Value = value
-		if value != nil {
-			resQuery.Log = "exists"
-		} else {
-			resQuery.Log = "does not exist"
-		}
-		return
-	}
+  resQuery.Key = reqQuery.Data
+  value := app.db.Get(reqQuery.Data)
+  resQuery.Value = value
+  if value != nil {
+    resQuery.Log = "exists"
+  } else {
+    resQuery.Log = "does not exist"
+  }
+  return
 }
 ```
 
