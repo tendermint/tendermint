@@ -707,7 +707,7 @@ type Channel struct {
 func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 	desc = desc.FillDefaults()
 	if desc.Priority <= 0 {
-		cmn.PanicSanity("Channel default priority must be a positive integer")
+		panic("Channel default priority must be a positive integer")
 	}
 	return &Channel{
 		conn:                    conn,

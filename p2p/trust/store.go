@@ -156,7 +156,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 	peers := make(map[string]MetricHistoryJSON)
 	err := json.Unmarshal(bytes, &peers)
 	if err != nil {
-		cmn.PanicCrisis(fmt.Sprintf("Could not unmarshal Trust Metric Store DB data: %v", err))
+		panic(fmt.Sprintf("Could not unmarshal Trust Metric Store DB data: %v", err))
 	}
 
 	// If history data exists in the file,
