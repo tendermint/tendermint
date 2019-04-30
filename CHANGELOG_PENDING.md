@@ -20,6 +20,7 @@
 
 ### IMPROVEMENTS:
 - [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC
+- [cli] \#3606 (https://github.com/tendermint/tendermint/issues/3585) Add option to not clear address book with unsafe reset (@climber73)
 - [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add `-config=<path-to-config>` option to `testnet` cmd (@gregdhill)
 - [cs/replay] \#3460 check appHash for each block
 
