@@ -15,7 +15,7 @@ Where X=Go](https://learnxinyminutes.com/docs/go/) first to familiarize
 yourself with the syntax.
 
 By following along with this guide, you'll create a Tendermint Core project
-called kvstore, a (very) simple distributed key-value store.
+called kvstore, a (very) simple distributed BFT key-value store.
 
 # 1 Creating a built-in application in Go
 
@@ -144,36 +144,53 @@ required business logic.
 When a new transaction is added to the Tendermint Core, it will ask the
 application to check it.
 
-For transactions, which have a form of `{bytes}={bytes}`, we'll return a zero
-code indicating that they are valid. For others, we'll respond with `1`. Note
-that anything with non-zero code will be considered invalid (`-1`, `100`,
-etc.) by Tendermint Core.
-
 ```go
-func (app *KVStoreApplication) CheckTx(tx []byte) abcitypes.ResponseCheckTx {
-  // check format
+func (app *KVStoreApplication) isValid(tx []byte) (code int) {
+	// check format
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) != 2 {
-		return abcitypes.ResponseCheckTx{Code: 1, GasWanted: 1}
+		return 1
 	}
 
 	key, value := parts[0], parts[1]
 	code := 0 // OK
 
-  // check if the same key=value already exists
+	// check if the same key=value already exists
 	err := db.View(func(txn *badger.Txn) error {
 		existing, err := txn.Get(key)
-		if err != badger.ErrKeyNotFound && existing == value {
+		if err != nil && err != badger.ErrKeyNotFound {
+			return err
+		}
+		if err == nil && existing == value {
 			code = 2
 		}
 		return nil
 	})
+	if err != nil {
+		panic(err)
+	}
 
+	return code
+}
+
+func (app *KVStoreApplication) CheckTx(tx []byte) abcitypes.ResponseCheckTx {
+	code := app.isValid(tx)
 	return abcitypes.ResponseCheckTx{Code: code, GasWanted: 1}
 }
 ```
 
-For the actual underlying key-value store we'll use
+If the transaction does not have a form of `{bytes}={bytes}`, we return `1`
+code. When the same key=value already exist (same key and value), we return `2`
+code. For others, we return a zero code indicating that they are valid.
+
+Note that anything with non-zero code will be considered invalid (`-1`, `100`,
+etc.) by Tendermint Core.
+
+Valid transactions will eventually be committed given they are not too big and
+have enough gas. To learn more about gas, check out ["the
+specification"](https://tendermint.com/docs/spec/abci/apps.html#gas).
+
+For the underlying key-value store we'll use
 [badger](https://github.com/dgraph-io/badger), which is an embeddable,
 persistent and fast key-value (KV) database.
 
@@ -193,76 +210,83 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 }
 ```
 
-TODO: explain gas? :(
-
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
 When Tendermint Core has decided on the block, it's transfered to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
 `EndBlock` in the end.
 
-For this guide, we'll only need `DeliverTx` and `Commit`.
-
-```go
-func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
-	parts := bytes.Split(tx, []byte("="))
-	if len(parts) != 2 {
-	  return types.ResponseDeliverTx{Code: 1}
-	}
-	key, value := parts[0], parts[1]
-  existing, ok := app.db.Get(key)
-  if ok {
-    if existing == value { // already exists
-	    return types.ResponseDeliverTx{Code: 2}
-    }
-	  app.currentBatch.Set(key, value)
-    app.updated++
-  } else {
-    app.new++
-  }
-	return types.ResponseDeliverTx{Code: 0}
+```
+func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
+	app.currentBatch = db.NewTransaction(true)
+	return abcitypes.ResponseBeginBlock{}
 }
 ```
+
+Here we create a batch, which will store block's transactions.
+
+```go
+func (app *KVStoreApplication) DeliverTx(tx []byte) abcitypes.ResponseDeliverTx {
+	code := app.isValid(tx)
+	if code != 0 {
+		return abcitypes.ResponseDeliverTx{Code: code}
+	}
+
+	parts := bytes.Split(tx, []byte("="))
+	key, value := parts[0], parts[1]
+
+	err := app.currentBatch.Set(key, value)
+	if err != nil {
+		panic(err)
+	}
+
+	return abcitypes.ResponseDeliverTx{Code: 0}
+}
+```
+
+If the transaction is badly formatted or the same key=value already exist, we
+again return the non-zero code. Otherwise, we add it to the current batch.
+
+Note we can't commit transactions inside the `DeliverTx` because in such case
+`Query`, which may be called in parallel, will return inconsistent data (i.e.
+it will report that some value already exist even when the actual block was not
+yet committed).
 
 `Commit` instructs the application to persist the new state.
-TODO: explain why we need appHash
 
 ```go
-func (app *KVStoreApplication) Commit() types.ResponseCommit {
-  app.currentBatch.Save()
-
-	app.state.Height++
-	app.state.New += app.new
-	app.state.Updated += app.updated
-  app.new = 0
-  app.updated = 0
-  app.state.Save()
-
-	return types.ResponseCommit{Data: app.Hash()}
+func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
+	app.currentBatch.Save()
+	return abcitypes.ResponseCommit{Data: []byte{}}
 }
 ```
 
-### 1.3.3 InitChain
+### 1.3.3 Query
+
+Now, when the client wants to know whenever a particular key/value exist, it
+will call Tendermint RPC `/abci_query` endpoint, which in turn will call the
+application's `Query` method.
 
 ```go
-func (app *KVStoreApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
-	return types.ResponseInitChain{}
-}
-```
-
-### 1.3.4 Query
-
-```go
-func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-  resQuery.Key = reqQuery.Data
-  value := app.db.Get(reqQuery.Data)
-  resQuery.Value = value
-  if value != nil {
-    resQuery.Log = "exists"
-  } else {
-    resQuery.Log = "does not exist"
-  }
-  return
+func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.ResponseQuery) {
+	resQuery.Key = reqQuery.Data
+	err := db.View(func(txn *badger.Txn) error {
+		value, err := txn.Get(reqQuery.Data)
+		if err != nil && err != badger.ErrKeyNotFound {
+			return err
+		}
+		if err == badger.ErrKeyNotFound {
+			resQuery.Log = "does not exist"
+		} else {
+			resQuery.Log = "exists"
+			resQuery.Value = value
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return
 }
 ```
 
@@ -274,16 +298,7 @@ The complete specification can be found
 ```go
 func main() {
 	app := kvstore.NewKVStoreApplication()
-	node = rpctest.StartTendermint(app)
-	// and shut down proper at the end
-	rpctest.StopTendermint(node)
-}
 
-func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
-	nodeOpts := defaultOptions
-	for _, opt := range opts {
-		opt(&nodeOpts)
-	}
 	node := NewTendermint(app, &nodeOpts)
 	err := node.Start()
 	if err != nil {
@@ -301,33 +316,45 @@ func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
 	return node
 }
 
-func NewTendermint(app abci.Application, opts *Options) *nm.Node {
-	// Create & start node
-	config := GetConfig(opts.recreateConfig)
-	var logger log.Logger
-	if opts.suppressStdout {
-		logger = log.NewNopLogger()
-	} else {
-		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-		logger = log.NewFilter(logger, log.AllowError())
-	}
-	pvKeyFile := config.PrivValidatorKeyFile()
-	pvKeyStateFile := config.PrivValidatorStateFile()
-	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
-	papp := proxy.NewLocalClientCreator(app)
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+func newTendermint(app abci.Application, configFile string) ( *nm.Node, error ) {
+	config := cfg.DefaultConfig()
+  viper.SetConfigFile(configFile)
+  if err := viper.ReadInConfig(); err != nil {
+    return nil, errors.Wrap(err, "viper failed to read config file")
+  }
+  if err := viper.Unmarshal(config); err != nil {
+    return  nil, errors.Wrap(err, "viper failed to unmarshal config")
+  }
+  if err := config.ValidateBasic(); err != nil {
+    return nil, errors.Wrap(err, "config is invalid")
+  }
+
+  logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+  logger = log.NewFilter(logger, log.AllowError())
+
+	pv := privval.LoadFilePV(
+      config.PrivValidatorKeyFile(),
+      config.PrivValidatorStateFile()
+      )
+
+	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 	if err != nil {
-		panic(err)
+    return nil, errors.Wrap(err, "failed to load node's key")
 	}
-	node, err := nm.NewNode(config, pv, nodeKey, papp,
+
+	node, err := nm.NewNode(
+    config,
+    pv,
+    nodeKey,
+    proxy.NewLocalClientCreator(app),
 		state.DefaultGenesisDocProviderFunc(config),
 		nm.DefaultDBProvider,
 		nm.DefaultMetricsProvider(config.Instrumentation),
 		logger)
 	if err != nil {
-		panic(err)
+    return nil, errors.Wrap(err, "failed to create new Tendermint node")
 	}
-	return node
+	return node, nil
 }
 
 // StopTendermint stops a test tendermint server, waits until it's stopped and
