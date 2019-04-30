@@ -15,18 +15,18 @@ import (
 func TestNewBoltDB(t *testing.T) {
 	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
 	// Test write locks
-	db, err := NewBoltdb(name, "")
+	db, err := NewBoltDB(name, "")
 	require.Nil(t, err)
 	defer os.RemoveAll("./" + name + ".db")
-	_, err = NewBoltdb(name, "")
+	_, err = NewBoltDB(name, "")
 	require.NotNil(t, err)
 	db.Close() // Close the db to release the lock
 
 	// Open the db twice in a row to test read-only locks
-	ro1, err := NewBoltdbWithOpts(name, "", &bbolt.Options{ReadOnly: true})
+	ro1, err := NewBoltDBWithOpts(name, "", &bbolt.Options{ReadOnly: true})
 	defer ro1.Close()
 	require.Nil(t, err)
-	ro2, err := NewBoltdbWithOpts(name, "", &bbolt.Options{ReadOnly: true})
+	ro2, err := NewBoltDBWithOpts(name, "", &bbolt.Options{ReadOnly: true})
 	defer ro2.Close()
 	require.Nil(t, err)
 }
@@ -39,7 +39,7 @@ func BenchmarkBoltdbRandomReadsWrites(b *testing.B) {
 	for i := 0; i < int(numItems); i++ {
 		internal[int64(i)] = int64(0)
 	}
-	db, err := NewBoltdb(fmt.Sprintf("test_%x", cmn.RandStr(12)), "")
+	db, err := NewBoltDB(fmt.Sprintf("test_%x", cmn.RandStr(12)), "")
 	if err != nil {
 		b.Fatal(err.Error())
 		return

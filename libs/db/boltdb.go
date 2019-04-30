@@ -2,31 +2,32 @@ package db
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/etcd-io/bbolt"
 )
 
-var bucket = []byte("boltdb_bucket")
+var bucket = []byte("tm")
 
 func init() {
 	registerDBCreator(BoltDBBackend, func(name string, dir string) (DB, error) {
-		return NewBoltdb(name, dir)
+		return NewBoltDB(name, dir)
 	}, false)
 }
 
-type Boltdb struct {
+type BoltDB struct {
 	db *bbolt.DB
 }
 
-func NewBoltdb(name, dir string) (DB, error) {
-	return NewBoltdbWithOpts(name, dir, bbolt.DefaultOptions)
+func NewBoltDB(name, dir string) (DB, error) {
+	return NewBoltDBWithOpts(name, dir, bbolt.DefaultOptions)
 }
 
-func NewBoltdbWithOpts(name, dir string, opts *bbolt.Options) (DB, error) {
+func NewBoltDBWithOpts(name string, dir string, opts *bbolt.Options) (DB, error) {
 	dbPath := filepath.Join(dir, name+".db")
-	db, err := bbolt.Open(dbPath, 0600, opts)
+	db, err := bbolt.Open(dbPath, os.ModePerm, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -37,10 +38,10 @@ func NewBoltdbWithOpts(name, dir string, opts *bbolt.Options) (DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Boltdb{db: db}, nil
+	return &BoltDB{db: db}, nil
 }
 
-func (bdb *Boltdb) Get(key []byte) (value []byte) {
+func (bdb *BoltDB) Get(key []byte) (value []byte) {
 	key = nonNilBytes(key)
 	err := bdb.db.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
@@ -53,11 +54,11 @@ func (bdb *Boltdb) Get(key []byte) (value []byte) {
 	return
 }
 
-func (bdb *Boltdb) Has(key []byte) bool {
+func (bdb *BoltDB) Has(key []byte) bool {
 	return bdb.Get(key) != nil
 }
 
-func (bdb *Boltdb) Set(key, value []byte) {
+func (bdb *BoltDB) Set(key, value []byte) {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
 	err := bdb.db.Update(func(tx *bbolt.Tx) error {
@@ -69,11 +70,11 @@ func (bdb *Boltdb) Set(key, value []byte) {
 	}
 }
 
-func (bdb *Boltdb) SetSync(key, value []byte) {
+func (bdb *BoltDB) SetSync(key, value []byte) {
 	bdb.Set(key, value)
 }
 
-func (bdb *Boltdb) Delete(key []byte) {
+func (bdb *BoltDB) Delete(key []byte) {
 	key = nonNilBytes(key)
 	err := bdb.db.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Delete(key)
@@ -83,28 +84,28 @@ func (bdb *Boltdb) Delete(key []byte) {
 	}
 }
 
-func (bdb *Boltdb) DeleteSync(key []byte) {
+func (bdb *BoltDB) DeleteSync(key []byte) {
 	bdb.Delete(key)
 }
 
-func (bdb *Boltdb) Close() {
+func (bdb *BoltDB) Close() {
 	bdb.db.Close()
 }
 
-func (bdb *Boltdb) Print() {
+func (bdb *BoltDB) Print() {
 	panic("boltdb.print not yet implemented")
 }
 
-func (bdb *Boltdb) Stats() map[string]string {
+func (bdb *BoltDB) Stats() map[string]string {
 	panic("boltdb.stats not yet implemented")
 }
 
 type BoltdbBatch struct {
 	buffer *sync.Map
-	db     *Boltdb
+	db     *BoltDB
 }
 
-func (bdb *Boltdb) NewBatch() Batch {
+func (bdb *BoltDB) NewBatch() Batch {
 	return &BoltdbBatch{
 		buffer: &sync.Map{},
 		db:     bdb,
@@ -139,7 +140,7 @@ func (bdb *BoltdbBatch) WriteSync() {
 
 func (bdb *BoltdbBatch) Close() {}
 
-func (bdb *Boltdb) Iterator(start, end []byte) Iterator {
+func (bdb *BoltDB) Iterator(start, end []byte) Iterator {
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
 		panic(err)
@@ -148,7 +149,7 @@ func (bdb *Boltdb) Iterator(start, end []byte) Iterator {
 	return newBoltdbIterator(c, start, end, false)
 }
 
-func (bdb *Boltdb) ReverseIterator(start, end []byte) Iterator {
+func (bdb *BoltDB) ReverseIterator(start, end []byte) Iterator {
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
 		panic(err)
