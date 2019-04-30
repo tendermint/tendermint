@@ -473,7 +473,7 @@ func NewNode(config *cfg.Config,
 	sw.SetNodeKey(nodeKey)
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
-		return nil, errors.Wrap(err, "error in persistent_peers")
+		return nil, errors.Wrap(err, "could not add peers from persistent_peers config")
 	}
 
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())

@@ -639,8 +639,8 @@ func (sw *Switch) acceptRoutine() {
 
 // dial the peer; make secret connection; authenticate against the dialed ID;
 // add the peer.
-// if dialing fails, start the reconnect loop. If handhsake fails, its over.
-// If peer is started succesffuly, reconnectLoop will start when
+// if dialing fails, start the reconnect loop. If handshake fails, it's over.
+// If peer is started successfully, reconnectLoop will start when
 // StopPeerForError is called.
 func (sw *Switch) addOutboundPeerWithConfig(
 	addr *NetAddress,
