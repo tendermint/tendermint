@@ -23,6 +23,7 @@
 - [cli] \#3606 (https://github.com/tendermint/tendermint/issues/3585) Add option to not clear address book with unsafe reset (@climber73)
 - [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add `-config=<path-to-config>` option to `testnet` cmd (@gregdhill)
 - [cs/replay] \#3460 check appHash for each block
+- [p2p] \#3609 (https://github.com/tendermint/tendermint/issues/3531) Session should terminate on nonce wrapping (@climber73)
 
 ### BUG FIXES:
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
