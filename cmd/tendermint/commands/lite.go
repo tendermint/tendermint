@@ -8,6 +8,7 @@ import (
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/lite/proxy"
+	"github.com/tendermint/tendermint/lite/verifying"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
@@ -73,7 +74,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	node := rpcclient.NewHTTP(nodeAddr, "/websocket")
 
 	logger.Info("Constructing Verifier...")
-	cert, err := proxy.NewVerifier(chainID, home, node, logger, cacheSize)
+	cert, err := verifying.NewProvider(chainID, home, node, logger, cacheSize, verifying.TrustOptions{})
 	if err != nil {
 		return cmn.ErrorWrap(err, "constructing Verifier")
 	}
