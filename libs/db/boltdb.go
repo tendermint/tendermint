@@ -180,6 +180,7 @@ func (bdb *boltDBBatch) WriteSync() {
 
 func (bdb *boltDBBatch) Close() {}
 
+// Any concurrent writes (Set, SetSync) will block until the Iterator is closed.
 func (bdb *BoltDB) Iterator(start, end []byte) Iterator {
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
@@ -189,6 +190,7 @@ func (bdb *BoltDB) Iterator(start, end []byte) Iterator {
 	return newBoltDBIterator(c, start, end, false)
 }
 
+// Any concurrent writes (Set, SetSync) will block until the Iterator is closed.
 func (bdb *BoltDB) ReverseIterator(start, end []byte) Iterator {
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
