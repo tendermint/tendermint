@@ -25,7 +25,7 @@ func init() {
 // NOTE: All operations (including Set, Delete) are synchronous by default. One
 // can globally turn it off by using NoSync config option (not recommended).
 //
-// A sigle bucket is used per a database instance. This could lead to
+// A single bucket is used per a database instance. This could lead to
 // performance issues when/if there will be lots of keys.
 type BoltDB struct {
 	db *bbolt.DB

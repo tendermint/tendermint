@@ -16,7 +16,7 @@ func TestBoltDBNewBoltDB(t *testing.T) {
 	defer cleanupDBDir(dir, name)
 
 	db, err := NewBoltDB(name, dir)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	db.Close()
 }
 
