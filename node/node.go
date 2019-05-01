@@ -425,10 +425,6 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
-	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
-	if err != nil {
-		return nil, errors.Wrap(err, "could not add peers from persistent_peers config")
-	}
 
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
 	return sw
@@ -582,6 +578,11 @@ func NewNode(config *cfg.Config,
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
 		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
+
+	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
+	}
 
 	addrBook := createAddrBookAndSetOnSwitch(config, sw, p2pLogger)
 
