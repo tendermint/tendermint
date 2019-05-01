@@ -205,11 +205,8 @@ type boltDBIterator struct {
 	start []byte
 	end   []byte
 
-	//current key
-	cKey []byte
-
-	//current value
-	cValue []byte
+	currentKey   []byte
+	currentValue []byte
 
 	isInvalid bool
 	isReverse bool
@@ -221,7 +218,8 @@ func newBoltDBIterator(itr *bbolt.Cursor, start, end []byte, isReverse bool) *bo
 		if end == nil {
 			ck, cv = itr.Last()
 		} else {
-			ck, cv = itr.Seek(end)
+			_, _ = itr.Seek(end) // after key
+			ck, cv = itr.Prev()  // return to end key
 		}
 	} else {
 		if start == nil {
@@ -232,37 +230,39 @@ func newBoltDBIterator(itr *bbolt.Cursor, start, end []byte, isReverse bool) *bo
 	}
 
 	return &boltDBIterator{
-		itr:       itr,
-		start:     start,
-		end:       end,
-		cKey:      ck,
-		cValue:    cv,
-		isReverse: isReverse,
-		isInvalid: false,
+		itr:          itr,
+		start:        start,
+		end:          end,
+		currentKey:   ck,
+		currentValue: cv,
+		isReverse:    isReverse,
+		isInvalid:    false,
 	}
 }
 
-func (bdbi *boltDBIterator) Domain() ([]byte, []byte) {
-	return bdbi.start, bdbi.end
+func (itr *boltDBIterator) Domain() ([]byte, []byte) {
+	return itr.start, itr.end
 }
 
-func (bdbi *boltDBIterator) Valid() bool {
-	if bdbi.isInvalid {
+func (itr *boltDBIterator) Valid() bool {
+	if itr.isInvalid {
 		return false
 	}
 
-	var start = bdbi.start
-	var end = bdbi.end
-	var key = bdbi.cKey
+	// iterated to the end of the cursor
+	if len(itr.currentKey) == 0 {
+		itr.isInvalid = true
+		return false
+	}
 
-	if bdbi.isReverse {
-		if start != nil && bytes.Compare(key, start) < 0 {
-			bdbi.isInvalid = true
+	if itr.isReverse {
+		if itr.start != nil && bytes.Compare(itr.currentKey, itr.start) < 0 {
+			itr.isInvalid = true
 			return false
 		}
 	} else {
-		if end != nil && bytes.Compare(end, key) <= 0 {
-			bdbi.isInvalid = true
+		if itr.end != nil && bytes.Compare(itr.end, itr.currentKey) <= 0 {
+			itr.isInvalid = true
 			return false
 		}
 	}
@@ -271,26 +271,30 @@ func (bdbi *boltDBIterator) Valid() bool {
 	return true
 }
 
-func (bdbi *boltDBIterator) Next() {
-	bdbi.assertIsValid()
-	bdbi.cKey, bdbi.cValue = bdbi.itr.Next()
+func (itr *boltDBIterator) Next() {
+	itr.assertIsValid()
+	if itr.isReverse {
+		itr.currentKey, itr.currentValue = itr.itr.Prev()
+	} else {
+		itr.currentKey, itr.currentValue = itr.itr.Next()
+	}
 }
 
-func (bdbi *boltDBIterator) Key() []byte {
-	bdbi.assertIsValid()
-	return bdbi.cKey
+func (itr *boltDBIterator) Key() []byte {
+	itr.assertIsValid()
+	return itr.currentKey
 }
 
-func (bdbi *boltDBIterator) Value() []byte {
-	bdbi.assertIsValid()
-	return bdbi.cValue
+func (itr *boltDBIterator) Value() []byte {
+	itr.assertIsValid()
+	return itr.currentValue
 }
 
 // boltdb cursor has no close op.
-func (bdbi *boltDBIterator) Close() {}
+func (itr *boltDBIterator) Close() {}
 
-func (bdbi *boltDBIterator) assertIsValid() {
-	if !bdbi.Valid() {
+func (itr *boltDBIterator) assertIsValid() {
+	if !itr.Valid() {
 		panic("Boltdb-iterator is invalid")
 	}
 }
