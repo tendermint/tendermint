@@ -285,6 +285,9 @@ func init() {
 				// We haven't received the block at current height. Remove peer.
 				fsm.pool.removePeerAtCurrentHeight(errNoPeerResponse)
 				fsm.resetStateTimer()
+				if len(fsm.pool.peers) == 0 {
+					return waitForPeer, errNoPeerResponse
+				}
 				return waitForBlock, errNoPeerResponse
 
 			case stopFSMEv:
@@ -325,23 +328,14 @@ func (fsm *bReactorFSM) setLogger(l log.Logger) {
 	fsm.pool.setLogger(l)
 }
 
-func sendMessageToFSMSync(fsm *bReactorFSM, msg bReactorMessageData) error {
-	err := fsm.handle(&msg)
-	return err
-}
-
 // Starts the FSM goroutine.
 func (fsm *bReactorFSM) start() {
-	_ = sendMessageToFSMSync(fsm, bReactorMessageData{
-		event: startFSMEv,
-	})
+	_ = fsm.handle(&bReactorMessageData{event: startFSMEv})
 }
 
 // Stops the FSM goroutine.
 func (fsm *bReactorFSM) stop() {
-	_ = sendMessageToFSMSync(fsm, bReactorMessageData{
-		event: stopFSMEv,
-	})
+	_ = fsm.handle(&bReactorMessageData{event: stopFSMEv})
 }
 
 // handle processes messages and events sent to the FSM.
