@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,8 +11,6 @@ import (
 	"github.com/etcd-io/bbolt"
 )
 
-// A sigle bucket is used per a database instance. This could lead to
-// performance issues when/if there will be lots of keys.
 var bucket = []byte("tm")
 
 func init() {
@@ -25,6 +24,9 @@ func init() {
 //
 // NOTE: All operations (including Set, Delete) are synchronous by default. One
 // can globally turn it off by using NoSync config option (not recommended).
+//
+// A sigle bucket is used per a database instance. This could lead to
+// performance issues when/if there will be lots of keys.
 type BoltDB struct {
 	db *bbolt.DB
 }
@@ -34,8 +36,13 @@ func NewBoltDB(name, dir string) (DB, error) {
 	return NewBoltDBWithOpts(name, dir, bbolt.DefaultOptions)
 }
 
-// NewBoltDBWithOpts allows you to supply *bbolt.Options.
+// NewBoltDBWithOpts allows you to supply *bbolt.Options. ReadOnly: true is not
+// supported because NewBoltDBWithOpts creates a global bucket.
 func NewBoltDBWithOpts(name string, dir string, opts *bbolt.Options) (DB, error) {
+	if opts.ReadOnly {
+		return nil, errors.New("ReadOnly: true is not supported")
+	}
+
 	dbPath := filepath.Join(dir, name+".db")
 	db, err := bbolt.Open(dbPath, os.ModePerm, opts)
 	if err != nil {
