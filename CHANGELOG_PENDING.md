@@ -1,4 +1,4 @@
-## v0.31.5
+## v0.31.6
 
 **
 
@@ -9,6 +9,8 @@
 * Apps
 
 * Go API
+- [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
+- [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
 
 * Blockchain Protocol
 
@@ -24,10 +26,10 @@
 - [node] \#3362 returns an error if `persistent_peers` list is invalid (except when IP lookup fails)
 
 ### BUG FIXES:
-- [state] [\#3537](https://github.com/tendermint/tendermint/pull/3537#issuecomment-482711833) LoadValidators: do not return an empty validator set
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
   to 16 (as a result, the node will stop retrying after a 35 hours time window)
 - [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests
 - [p2p] \#3362 make persistent prop independent of conn direction
   * `Switch#DialPeersAsync` now only takes a list of peers
   * `Switch#DialPeerWithAddress` now only takes an address
+- [pex] \#3603 Dial seeds when addrbook needs more addresses (@defunctzombie)
