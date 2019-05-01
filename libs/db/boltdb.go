@@ -25,8 +25,8 @@ func init() {
 // NOTE: All operations (including Set, Delete) are synchronous by default. One
 // can globally turn it off by using NoSync config option (not recommended).
 //
-// A single bucket is used per a database instance. This could lead to
-// performance issues when/if there will be lots of keys.
+// A single bucket ([]byte("tm")) is used per a database instance. This could
+// lead to performance issues when/if there will be lots of keys.
 type BoltDB struct {
 	db *bbolt.DB
 }
@@ -116,13 +116,16 @@ func (bdb *BoltDB) Print() {
 	stats := bdb.db.Stats()
 	fmt.Printf("%v\n", stats)
 
-	bdb.db.View(func(tx *bbolt.Tx) error {
+	err := bdb.db.View(func(tx *bbolt.Tx) error {
 		tx.Bucket(bucket).ForEach(func(k, v []byte) error {
 			fmt.Printf("[%X]:\t[%X]\n", k, v)
 			return nil
 		})
 		return nil
 	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (bdb *BoltDB) Stats() map[string]string {
