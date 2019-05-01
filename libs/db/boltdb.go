@@ -12,7 +12,7 @@ import (
 var bucket = []byte("tm")
 
 func init() {
-	registerDBCreator(BoltDBBackend, func(name string, dir string) (DB, error) {
+	registerDBCreator(BoltDBBackend, func(name, dir string) (DB, error) {
 		return NewBoltDB(name, dir)
 	}, false)
 }
@@ -112,18 +112,18 @@ func (bdb *BoltDB) NewBatch() Batch {
 	}
 }
 
-func (bdb *BoltdbBatch) Set(key, value []byte) {
-	bdb.buffer.Store(key, value)
+func (bdbb *BoltdbBatch) Set(key, value []byte) {
+	bdbb.buffer.Store(key, value)
 }
 
-func (bdb *BoltdbBatch) Delete(key []byte) {
-	bdb.buffer.Delete(key)
+func (bdbb *BoltdbBatch) Delete(key []byte) {
+	bdbb.buffer.Delete(key)
 }
 
-func (bdb *BoltdbBatch) Write() {
-	err := bdb.db.db.Batch(func(tx *bbolt.Tx) error {
+func (bdbb *BoltdbBatch) Write() {
+	err := bdbb.db.db.Batch(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
-		bdb.buffer.Range(func(key, value interface{}) bool {
+		bdbb.buffer.Range(func(key, value interface{}) bool {
 			b.Put(key.([]byte), value.([]byte))
 			return true
 		})
@@ -134,11 +134,13 @@ func (bdb *BoltdbBatch) Write() {
 	}
 }
 
-func (bdb *BoltdbBatch) WriteSync() {
-	bdb.Write()
+func (bdbb *BoltdbBatch) WriteSync() {
+	bdbb.Write()
 }
 
-func (bdb *BoltdbBatch) Close() {}
+func (bdbb *BoltdbBatch) Close() {
+	bdbb.buffer = nil
+}
 
 func (bdb *BoltDB) Iterator(start, end []byte) Iterator {
 	tx, err := bdb.db.Begin(false)
