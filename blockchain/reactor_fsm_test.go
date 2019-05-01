@@ -1150,16 +1150,15 @@ func (testR *testReactor) resetStateTimer(name string, timer **time.Timer, timeo
 // helper functions for tests to simulate different events
 func sendStatusResponse(fsm *bReactorFSM, peerID p2p.ID, height int64) {
 	msgBytes := makeStatusResponseMessage(height)
-	msgData := bReactorMessageData{
+
+	_ = fsm.handle(&bReactorMessageData{
 		event: statusResponseEv,
 		data: bReactorEventData{
 			peerId: peerID,
 			height: height,
 			length: len(msgBytes),
 		},
-	}
-
-	_ = sendMessageToFSMSync(fsm, msgData)
+	})
 }
 
 // -------------------------------------------------------
