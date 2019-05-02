@@ -149,7 +149,7 @@ type Node struct {
 	blockStore       *bc.BlockStore        // store the blockchain to disk
 	bcReactor        *bc.BlockchainReactor // for fast-syncing
 	mempoolReactor   *mempl.Reactor        // for gossipping transactions
-	mempool          mempl.Mempool
+	mempool          *mempl.CListMempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
 	pexReactor       *pex.PEXReactor        // for exchanging peer addresses
@@ -273,7 +273,7 @@ func onlyValidatorIsUs(state sm.State, privVal types.PrivValidator) bool {
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
-	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
+	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.Reactor, *mempl.CListMempool) {
 
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
@@ -312,7 +312,7 @@ func createConsensusReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.Mempool,
+	mempool *mempl.CListMempool,
 	evidencePool *evidence.EvidencePool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
@@ -401,7 +401,7 @@ func createSwitch(config *cfg.Config,
 	transport *p2p.MultiplexTransport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *mempl.MempoolReactor,
+	mempoolReactor *mempl.Reactor,
 	bcReactor *blockchain.BlockchainReactor,
 	consensusReactor *consensus.ConsensusReactor,
 	evidenceReactor *evidence.EvidenceReactor,
