@@ -149,7 +149,7 @@ type Node struct {
 	blockStore       *bc.BlockStore        // store the blockchain to disk
 	bcReactor        *bc.BlockchainReactor // for fast-syncing
 	mempoolReactor   *mempl.Reactor        // for gossipping transactions
-	mempool          *mempl.CListMempool
+	mempool          mempl.Mempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
 	pexReactor       *pex.PEXReactor        // for exchanging peer addresses
