@@ -33,11 +33,6 @@ jobs:
             export PATH="$GOBIN:$PATH"
             make get_tools
       - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
-      - run:
           name: binaries
           command: |
             export PATH="$GOBIN:$PATH"
@@ -87,12 +82,6 @@ jobs:
             set -ex
             export PATH="$GOBIN:$PATH"
             make lint
-      - run:
-          name: check_dep
-          command: |
-            set -ex
-            export PATH="$GOBIN:$PATH"
-            make check_dep
 
   test_abci_apps:
     <<: *defaults
@@ -278,15 +267,11 @@ jobs:
       - run:
           name: Build dependencies
           command: |
-            make get_tools get_vendor_deps
+            make get_tools
       - persist_to_workspace:
           root: .
           paths:
             - "release-version.source"
-      - save_cache:
-          key: v1-release-deps-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - "vendor"
 
   build_artifacts:
     <<: *defaults
