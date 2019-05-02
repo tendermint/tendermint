@@ -66,6 +66,10 @@ func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsen
 	return res
 }
 
+func (blockExec *BlockExecutor) DB() dbm.DB {
+	return blockExec.db
+}
+
 // SetEventBus - sets the event bus for publishing block related events.
 // If not called, it defaults to types.NopEventBus.
 func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) {
@@ -116,7 +120,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, state.LastValidators, blockExec.db)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
@@ -233,7 +237,6 @@ func execBlockOnProxyApp(
 	logger log.Logger,
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
-	lastValSet *types.ValidatorSet,
 	stateDB dbm.DB,
 ) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
@@ -261,7 +264,7 @@ func execBlockOnProxyApp(
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	commitInfo, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
+	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
 
 	// Begin block
 	var err error
@@ -296,22 +299,31 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
-
-	// Sanity check that commit length matches validator set size -
-	// only applies after first block
+func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
+	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
+	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
+	var lastValSet *types.ValidatorSet
+	var err error
 	if block.Height > 1 {
-		precommitLen := len(block.LastCommit.Precommits)
+		lastValSet, err = LoadValidators(stateDB, block.Height-1)
+		if err != nil {
+			panic(err) // shouldn't happen
+		}
+
+		// Sanity check that commit length matches validator set size -
+		// only applies after first block
+
+		precommitLen := block.LastCommit.Size()
 		valSetLen := len(lastValSet.Validators)
 		if precommitLen != valSetLen {
 			// sanity check
 			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, lastValSet.Validators))
 		}
+	} else {
+		lastValSet = types.NewValidatorSet(nil)
 	}
 
-	// Collect the vote info (list of validators and whether or not they signed).
-	voteInfos := make([]abci.VoteInfo, len(lastValSet.Validators))
 	for i, val := range lastValSet.Validators {
 		var vote *types.CommitSig
 		if i < len(block.LastCommit.Precommits) {
@@ -324,12 +336,6 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 		voteInfos[i] = voteInfo
 	}
 
-	commitInfo := abci.LastCommitInfo{
-		Round: int32(block.LastCommit.Round()),
-		Votes: voteInfos,
-	}
-
-	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
 		// We need the validator set. We already did this in validateBlock.
 		// TODO: Should we instead cache the valset in the evidence itself and add
@@ -341,6 +347,10 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
 	}
 
+	commitInfo := abci.LastCommitInfo{
+		Round: int32(block.LastCommit.Round()),
+		Votes: voteInfos,
+	}
 	return commitInfo, byzVals
 
 }
@@ -469,10 +479,9 @@ func ExecCommitBlock(
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
 	logger log.Logger,
-	lastValSet *types.ValidatorSet,
 	stateDB dbm.DB,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, lastValSet, stateDB)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

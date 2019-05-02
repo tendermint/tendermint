@@ -45,13 +45,14 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "failed to read genesis file")
 	}
-	stateDB := db.NewMemDB()
 	blockStoreDB := db.NewMemDB()
+	stateDB := blockStoreDB
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return errors.Wrap(err, "failed to make genesis state")
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
+	sm.SaveState(stateDB, state)
 	blockStore := bc.NewBlockStore(blockStoreDB)
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
