@@ -208,6 +208,10 @@ func (vp *Provider) Verify(signedHeader types.SignedHeader) error {
 
 	valSet, err := vp.ValidatorSet(signedHeader.ChainID, signedHeader.Height)
 
+	if err != nil {
+		return err
+	}
+
 	// We can't verify commits older than bv.height.
 	if signedHeader.Height < vp.height {
 		return cmn.NewError("BaseVerifier height is %v, cannot verify height %v",
