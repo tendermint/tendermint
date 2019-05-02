@@ -104,7 +104,7 @@ func (cp concurrentProvider) joinConcurrency(chainID string, height int64) (uniq
 			uniq.err = err
 			// *After* setting the results, *then* call close(uniq.wait).
 			close(uniq.wait)
-			cp.mtx.Lock() // temporarily acquire lock to remove this iteem
+			cp.mtx.Lock() // temporarily acquire lock to remove this item
 			delete(cp.pendingVerifications, pkey)
 			cp.mtx.Unlock() // and release lock
 		}

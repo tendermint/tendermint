@@ -44,7 +44,7 @@ func (e errEmptyTree) Error() string {
 type errCommitExpired struct{}
 
 func (e errCommitExpired) Error() string {
-	return "Commit is too old to be trusted"
+	return "commit is too old to be trusted"
 }
 
 //----------------------------------------

@@ -16,7 +16,7 @@ var _ Verifier = (*BaseVerifier)(nil)
 // use the DynamicVerifier.
 //
 // NOTE: Verifier as a supported interface is deprecated, it may be reasonable
-// to rename this to simply "verifier" and to remove that intereface
+// to rename this to simply "verifier" and to remove that interface
 // declaration.  See also VerifyingProvider, which is not a Verifier, but is a
 // Provider.
 type BaseVerifier struct {
