@@ -51,6 +51,10 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
 		blocksSubs = append(blocksSubs, blocksSub)
+
+		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
+			sm.SaveState(css[i].blockExec.DB(), css[i].state)
+		}
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
@@ -329,7 +333,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, cleanup := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	css, _, _, cleanup := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+
 	defer cleanup()
 	logger := log.TestingLogger()
 

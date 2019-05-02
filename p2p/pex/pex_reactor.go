@@ -471,9 +471,7 @@ func (r *PEXReactor) ensurePeers() {
 			err := r.dialPeer(addr)
 			if err != nil {
 				switch err.(type) {
-				case errMaxAttemptsToDial:
-					r.Logger.Debug(err.Error(), "addr", addr)
-				case errTooEarlyToDial:
+				case errMaxAttemptsToDial, errTooEarlyToDial:
 					r.Logger.Debug(err.Error(), "addr", addr)
 				default:
 					r.Logger.Error(err.Error(), "addr", addr)
@@ -482,8 +480,8 @@ func (r *PEXReactor) ensurePeers() {
 		}(addr)
 	}
 
-	// If we need more addresses, pick a random peer and ask for more.
 	if r.book.NeedMoreAddrs() {
+		// 1) Pick a random peer and ask for more.
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
 		if peersCount > 0 {
@@ -491,12 +489,14 @@ func (r *PEXReactor) ensurePeers() {
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestAddrs(peer)
 		}
-	}
 
-	// If we are not connected to nor dialing anybody, fallback to dialing a seed.
-	if out+in+dial+len(toDial) == 0 {
-		r.Logger.Info("No addresses to dial nor connected peers. Falling back to seeds")
-		r.dialSeeds()
+		// 2) Dial seeds if we are not dialing anyone.
+		// This is done in addition to asking a peer for addresses to work-around
+		// peers not participating in PEX.
+		if len(toDial) == 0 {
+			r.Logger.Info("No addresses to dial. Falling back to seeds")
+			r.dialSeeds()
+		}
 	}
 }
 
@@ -663,9 +663,7 @@ func (r *PEXReactor) crawlPeers(addrs []*p2p.NetAddress) {
 		err := r.dialPeer(addr)
 		if err != nil {
 			switch err.(type) {
-			case errMaxAttemptsToDial:
-				r.Logger.Debug(err.Error(), "addr", addr)
-			case errTooEarlyToDial:
+			case errMaxAttemptsToDial, errTooEarlyToDial:
 				r.Logger.Debug(err.Error(), "addr", addr)
 			default:
 				r.Logger.Error(err.Error(), "addr", addr)
