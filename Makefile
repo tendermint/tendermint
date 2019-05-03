@@ -6,7 +6,8 @@ GOTOOLS = \
 GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
-GO111MODULE=on
+
+export GO111MODULE = on
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
