@@ -531,8 +531,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) error {
 		}
 	}
 
-	err := r.Switch.DialPeerWithAddress(addr, false)
-
+	err := r.Switch.DialPeerWithAddress(addr)
 	if err != nil {
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			return err
@@ -584,7 +583,7 @@ func (r *PEXReactor) dialSeeds() {
 	for _, i := range perm {
 		// dial a random seed
 		seedAddr := r.seedAddrs[i]
-		err := r.Switch.DialPeerWithAddress(seedAddr, false)
+		err := r.Switch.DialPeerWithAddress(seedAddr)
 		if err == nil {
 			return
 		}

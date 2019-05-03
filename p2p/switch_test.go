@@ -167,7 +167,7 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	rp.Start()
 
 	// addr should be rejected in addPeer based on the same ID
-	err := s1.DialPeerWithAddress(rp.Addr(), false)
+	err := s1.DialPeerWithAddress(rp.Addr())
 	if assert.Error(t, err) {
 		if err, ok := err.(ErrRejected); ok {
 			if !err.IsSelf() {
@@ -212,6 +212,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -256,6 +257,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -281,6 +283,7 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 	})
 	if err != nil {
@@ -326,6 +329,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 	})
 	require.Nil(err)
@@ -390,49 +394,33 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	assert.EqualValues(t, 0, peersMetricValue())
 }
 
-func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
+func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	defer sw.Stop()
 
-	// simulate remote peer
+	// 1. simulate failure by closing connection
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
 	rp.Start()
 	defer rp.Stop()
 
-	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		persistent:   true,
-		reactorsByCh: sw.reactorsByCh,
-	})
-	require.Nil(err)
+	err = sw.AddPersistentPeers([]string{rp.Addr().String()})
+	require.NoError(t, err)
 
-	require.Nil(sw.addPeer(p))
+	err = sw.DialPeerWithAddress(rp.Addr())
+	require.Nil(t, err)
+	time.Sleep(50 * time.Millisecond)
+	require.NotNil(t, sw.Peers().Get(rp.ID()))
 
-	require.NotNil(sw.Peers().Get(rp.ID()))
-
-	// simulate failure by closing connection
+	p := sw.Peers().List()[0]
 	p.(*peer).CloseConn()
 
-	// TODO: remove sleep, detect the disconnection, wait for reconnect
-	npeers := sw.Peers().Size()
-	for i := 0; i < 20; i++ {
-		time.Sleep(250 * time.Millisecond)
-		npeers = sw.Peers().Size()
-		if npeers > 0 {
-			break
-		}
-	}
-	assert.NotZero(npeers)
-	assert.False(p.IsRunning())
+	waitUntilSwitchHasAtLeastNPeers(sw, 1)
+	assert.False(t, p.IsRunning())        // old peer instance
+	assert.Equal(t, 1, sw.Peers().Size()) // new peer instance
 
-	// simulate another remote peer
+	// 2. simulate first time dial failure
 	rp = &remotePeer{
 		PrivKey: ed25519.GenPrivKey(),
 		Config:  cfg,
@@ -443,23 +431,68 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	// simulate first time dial failure
 	conf := config.DefaultP2PConfig()
 	conf.TestDialFail = true
-	err = sw.addOutboundPeerWithConfig(rp.Addr(), conf, true)
-	require.NotNil(err)
-
+	err = sw.addOutboundPeerWithConfig(rp.Addr(), conf)
+	require.NotNil(t, err)
 	// DialPeerWithAddres - sw.peerConfig resets the dialer
+	waitUntilSwitchHasAtLeastNPeers(sw, 2)
+	assert.Equal(t, 2, sw.Peers().Size())
+}
 
-	// TODO: same as above
+func TestSwitchReconnectsToInboundPersistentPeer(t *testing.T) {
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	err := sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	// 1. simulate failure by closing the connection
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	defer rp.Stop()
+
+	err = sw.AddPersistentPeers([]string{rp.Addr().String()})
+	require.NoError(t, err)
+
+	conn, err := rp.Dial(sw.NetAddress())
+	require.NoError(t, err)
+	time.Sleep(50 * time.Millisecond)
+	require.NotNil(t, sw.Peers().Get(rp.ID()))
+
+	conn.Close()
+
+	waitUntilSwitchHasAtLeastNPeers(sw, 1)
+	assert.Equal(t, 1, sw.Peers().Size())
+}
+
+func TestSwitchDialPeersAsync(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	err := sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	defer rp.Stop()
+
+	err = sw.DialPeersAsync([]string{rp.Addr().String()})
+	require.NoError(t, err)
+	time.Sleep(dialRandomizerIntervalMilliseconds * time.Millisecond)
+	require.NotNil(t, sw.Peers().Get(rp.ID()))
+}
+
+func waitUntilSwitchHasAtLeastNPeers(sw *Switch, n int) {
 	for i := 0; i < 20; i++ {
 		time.Sleep(250 * time.Millisecond)
-		npeers = sw.Peers().Size()
-		if npeers > 1 {
+		has := sw.Peers().Size()
+		if has >= n {
 			break
 		}
 	}
-	assert.EqualValues(2, npeers)
 }
 
 func TestSwitchFullConnectivity(t *testing.T) {

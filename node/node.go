@@ -579,6 +579,11 @@ func NewNode(config *cfg.Config,
 		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
 
+	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
+	}
+
 	addrBook := createAddrBookAndSetOnSwitch(config, sw, p2pLogger)
 
 	// Optionally, start the pex reactor
@@ -675,12 +680,8 @@ func (n *Node) OnStart() error {
 	}
 
 	// Always connect to persistent peers
-	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "), true)
-		if err != nil {
-			return err
-		}
-	}
+	// parsing errors are handled above by AddPersistentPeers
+	_ = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 
 	return nil
 }
