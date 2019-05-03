@@ -5,137 +5,88 @@ import (
 	"sync"
 )
 
-// ErrorPeerBehaviour are types of observable erroneous peer behaviours.
-type ErrorPeerBehaviour int
+// PeerBehaviour are types of reportable behaviours by peers.
+type PeerBehaviour int
 
 const (
-	ErrorPeerBehaviourUnknown = iota
-	ErrorPeerBehaviourBadMessage
-	ErrorPeerBehaviourMessageOutofOrder
+	PeerBehaviourBadMessage = iota
+	PeerBehaviourMessageOutOfOrder
+	PeerBehaviourVote
+	PeerBehaviourBlockPart
 )
 
-// GoodPeerBehaviour are types of observable positive peer behaviours.
-type GoodPeerBehaviour int
-
-const (
-	GoodPeerBehaviourVote = iota + 100
-	GoodPeerBehaviourBlockPart
-)
-
-// PeerBehaviour provides an interface for reactors to signal the behaviour
+// PeerReporter provides an interface for reactors to report the behaviour
 // of peers synchronously to other components.
-type PeerBehaviour interface {
-	Behaved(peerID ID, reason GoodPeerBehaviour) error
-	Errored(peerID ID, reason ErrorPeerBehaviour) error
+type PeerReporter interface {
+	Report(peerID ID, behaviour PeerBehaviour) error
 }
 
-// SwitchPeerBehaviour relays peer behaviour signals to a Switch, which is
-// needed until Switch satisfies the PeerBehaviour interface.
-type SwitchPeerBehaviour struct {
+// SwitchPeerReporter reports peer behaviour to an internal Switch
+type SwitchPeerReporter struct {
 	sw *Switch
 }
 
-// Errored reports the ErrorPeerBehaviour of peer identified by ID to the Switch.
-func (spb *SwitchPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) error {
-	peer := spb.sw.Peers().Get(peerID)
-	if peer == nil {
-		return errors.New("Peer not found")
-	}
-
-	spb.sw.StopPeerForError(peer, reason)
-	return nil
-}
-
-// Reports the GoodPeerBehaviour of peer identified by peerID to the Switch.
-func (spb *SwitchPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) error {
-	peer := spb.sw.Peers().Get(peerID)
-	if peer == nil {
-		return errors.New("Peer not found")
-	}
-
-	spb.sw.MarkPeerAsGood(peer)
-	return nil
-}
-
 // Return a new switchPeerBehaviour instance which wraps the Switch.
-func NewSwitchPeerBehaviour(sw *Switch) *SwitchPeerBehaviour {
-	return &SwitchPeerBehaviour{
+func NewSwitchPeerReporter(sw *Switch) *SwitchPeerReporter {
+	return &SwitchPeerReporter{
 		sw: sw,
 	}
 }
 
-// storedPeerBehaviour serves a mock concrete implementation of the
-// PeerBehaviour interface used in reactor tests to ensure reactors
-// produce the correct signals in manufactured scenarios.
-type StoredPeerBehaviour struct {
+// Report reports the behaviour of a peer to the Switch
+func (spb *SwitchPeerReporter) Report(peerID ID, behaviour PeerBehaviour) error {
+	peer := spb.sw.Peers().Get(peerID)
+	if peer == nil {
+		return errors.New("Peer not found")
+	}
+
+	switch behaviour {
+	case PeerBehaviourVote, PeerBehaviourBlockPart:
+		spb.sw.MarkPeerAsGood(peer)
+	case PeerBehaviourBadMessage:
+		spb.sw.StopPeerForError(peer, "Bad message")
+	case PeerBehaviourMessageOutOfOrder:
+		spb.sw.StopPeerForError(peer, "Message out of order")
+	default:
+		return errors.New("Unknown behaviour")
+	}
+
+	return nil
+}
+
+// MockPeerBehaviour serves a mock concrete implementation of the
+// PeerReporter interface used in reactor tests to ensure reactors
+// report the correct behaviour in manufactured scenarios.
+type MockPeerReporter struct {
 	mtx sync.RWMutex
-	eb  map[ID][]ErrorPeerBehaviour
-	gb  map[ID][]GoodPeerBehaviour
+	pb  map[ID][]PeerBehaviour
 }
 
-// GettablePeerBehaviour provides an interface for accessing ErrorPeerBehaviours
-// and GoodPeerBehaviour recorded by an implementation of PeerBehaviour
-type GettablePeerBehaviour interface {
-	GetErrorBehaviours(peerID ID) []ErrorPeerBehaviour
-	GetGoodBehaviours(peerID ID) []GoodPeerBehaviour
-}
-
-// NewStoredPeerBehaviour returns a PeerBehaviour which records all observed
-// behaviour in memory.
-func NewStoredPeerBehaviour() *StoredPeerBehaviour {
-	return &StoredPeerBehaviour{
-		eb: map[ID][]ErrorPeerBehaviour{},
-		gb: map[ID][]GoodPeerBehaviour{},
+// NewMockPeerReporter returns a PeerReporter which records all reported
+// behaviours in memory.
+func NewMockPeerReporter() *MockPeerReporter {
+	return &MockPeerReporter{
+		pb: map[ID][]PeerBehaviour{},
 	}
 }
 
-// Errored stores the ErrorPeerBehaviour produced by the peer identified by ID.
-func (spb *StoredPeerBehaviour) Errored(peerID ID, reason ErrorPeerBehaviour) {
-	spb.mtx.Lock()
-	defer spb.mtx.Unlock()
-	if _, ok := spb.eb[peerID]; !ok {
-		spb.eb[peerID] = []ErrorPeerBehaviour{reason}
-	} else {
-		spb.eb[peerID] = append(spb.eb[peerID], reason)
-	}
+// Report stores the PeerBehaviour produced by the peer identified by ID.
+func (mpr *MockPeerReporter) Report(peerID ID, behaviour PeerBehaviour) {
+	mpr.mtx.Lock()
+	defer mpr.mtx.Unlock()
+	mpr.pb[peerID] = append(mpr.pb[peerID], behaviour)
 }
 
-// ErrorBehaviours returns all erorrs produced by peer identified by ID.
-func (spb *StoredPeerBehaviour) GetErrorBehaviours(peerID ID) []ErrorPeerBehaviour {
-	spb.mtx.RLock()
-	defer spb.mtx.RUnlock()
-	if items, ok := spb.eb[peerID]; ok {
-		result := make([]ErrorPeerBehaviour, len(items))
+// GetBehaviours returns all behaviours reported on the peer identified by peerID.
+func (mpr *MockPeerReporter) GetBehaviours(peerID ID) []PeerBehaviour {
+	mpr.mtx.RLock()
+	defer mpr.mtx.RUnlock()
+	if items, ok := mpr.pb[peerID]; ok {
+		result := make([]PeerBehaviour, len(items))
 		copy(result, items)
 
 		return result
 	} else {
-		return []ErrorPeerBehaviour{}
-	}
-}
-
-// Behaved stores the GoodPeerBehaviour of peer identified by ID.
-func (spb *StoredPeerBehaviour) Behaved(peerID ID, reason GoodPeerBehaviour) {
-	spb.mtx.Lock()
-	defer spb.mtx.Unlock()
-	if _, ok := spb.gb[peerID]; !ok {
-		spb.gb[peerID] = []GoodPeerBehaviour{reason}
-	} else {
-		spb.gb[peerID] = append(spb.gb[peerID], reason)
-	}
-}
-
-// GetGoodPeerBehaviours returns all positive behaviours produced by the peer
-// identified by peerID.
-func (spb *StoredPeerBehaviour) GetGoodBehaviours(peerID ID) []GoodPeerBehaviour {
-	spb.mtx.RLock()
-	defer spb.mtx.RUnlock()
-	if items, ok := spb.gb[peerID]; ok {
-		result := make([]GoodPeerBehaviour, len(items))
-		copy(result, items)
-
-		return result
-	} else {
-		return []GoodPeerBehaviour{}
+		return []PeerBehaviour{}
 	}
 }

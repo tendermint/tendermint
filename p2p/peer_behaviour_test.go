@@ -6,84 +6,43 @@ import (
 	"testing"
 )
 
-func TestStoredPeerBehaviour(t *testing.T) {
+// TestMockPeerBehaviour tests the MockPeerBehaviours ability to store reported
+// peer behaviour in memory indexed by the peerID
+func TestMockPeerBehaviour(t *testing.T) {
 	peer := newMockPeer(net.IP{127, 0, 0, 1})
-	pb := NewStoredPeerBehaviour()
+	pr := NewMockPeerReporter()
 
-	peerErrors := pb.GetErrorBehaviours(peer.ID())
-	if len(peerErrors) != 0 {
-		t.Errorf("Expected the peer have zero error behaviours")
+	behaviours := pr.GetBehaviours(peer.ID())
+	if len(behaviours) != 0 {
+		t.Errorf("Expected to have no behaviours reported")
 	}
 
-	pb.Errored(peer.ID(), ErrorPeerBehaviourUnknown)
-	peerErrors = pb.GetErrorBehaviours(peer.ID())
-	if len(peerErrors) != 1 {
-		t.Errorf("Expected the peer have one error behaviour")
+	pr.Report(peer.ID(), PeerBehaviourBadMessage)
+	behaviours = pr.GetBehaviours(peer.ID())
+	if len(behaviours) != 1 {
+		t.Errorf("Expected the peer have one reported behaviour")
 	}
 
-	if peerErrors[0] != ErrorPeerBehaviourUnknown {
-		t.Errorf("Expected error to be ErrorPeerBehaviourUnknown")
+	if behaviours[0] != PeerBehaviourBadMessage {
+		t.Errorf("Expected PeerBehaviourBadMessage to have been reported")
 	}
-
-	peerGoods := pb.GetGoodBehaviours(peer.ID())
-	if len(peerGoods) != 0 {
-		t.Errorf("Expected the peer have zero error behaviour")
-	}
-
-	pb.Behaved(peer.ID(), GoodPeerBehaviourVote)
-	peerGoods = pb.GetGoodBehaviours(peer.ID())
-	if len(peerGoods) != 1 {
-		t.Errorf("Expected the peer have one good behaviour")
-	}
-
-	if peerGoods[0] != GoodPeerBehaviourVote {
-		t.Errorf("Expected peer to have voted")
-	}
-
 }
 
-type scriptedGoodBehaviour struct {
+type scriptedBehaviours struct {
 	PeerID     ID
-	Behaviours []GoodPeerBehaviour
+	Behaviours []PeerBehaviour
 }
 
-type scriptedErrorBehaviour struct {
-	PeerID     ID
-	Behaviours []ErrorPeerBehaviour
-}
-
-type goodScriptItem struct {
+type scriptItem struct {
 	PeerID    ID
-	Behaviour GoodPeerBehaviour
+	Behaviour PeerBehaviour
 }
 
-type errorScriptItem struct {
-	PeerID    ID
-	Behaviour ErrorPeerBehaviour
-}
-
-func equalGoodBehaviours(a []GoodPeerBehaviour, b []GoodPeerBehaviour) bool {
+func equalBehaviours(a []PeerBehaviour, b []PeerBehaviour) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	same := make([]GoodPeerBehaviour, len(a))
-
-	for i, aBehaviour := range a {
-		for _, bBehaviour := range b {
-			if aBehaviour == bBehaviour {
-				same[i] = aBehaviour
-			}
-		}
-	}
-
-	return len(same) == len(a)
-}
-
-func equalErrorBehaviours(a []ErrorPeerBehaviour, b []ErrorPeerBehaviour) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	same := make([]ErrorPeerBehaviour, len(a))
+	same := make([]PeerBehaviour, len(a))
 
 	for i, aBehaviour := range a {
 		for _, bBehaviour := range b {
@@ -97,30 +56,21 @@ func equalErrorBehaviours(a []ErrorPeerBehaviour, b []ErrorPeerBehaviour) bool {
 }
 
 // TestStoredPeerBehaviourConcurrency constructs a scenario in which
-// multiple goroutines are using the same StoredPeerBehaviour instance.
-// This test is meant to reproduce the conditions in which StoredPeerBehaviour
-// will be used within a Reactor Receive method test and ensure thread safety.
+// multiple goroutines are using the same MockPeerBehaviour instance. This
+// test reproduces the conditions in which MockPeerBehaviour will
+// be used within a Reactor Receive method tests to ensure thread safety.
 func TestStoredPeerBehaviourConcurrency(t *testing.T) {
-	goodBehaviourScript := []scriptedGoodBehaviour{
-		{"1", []GoodPeerBehaviour{GoodPeerBehaviourVote}},
-		{"2", []GoodPeerBehaviour{GoodPeerBehaviourVote, GoodPeerBehaviourVote, GoodPeerBehaviourVote, GoodPeerBehaviourVote}},
-		{"3", []GoodPeerBehaviour{GoodPeerBehaviourBlockPart, GoodPeerBehaviourVote, GoodPeerBehaviourBlockPart, GoodPeerBehaviourVote}},
-		{"4", []GoodPeerBehaviour{GoodPeerBehaviourVote, GoodPeerBehaviourVote, GoodPeerBehaviourVote, GoodPeerBehaviourVote}},
-		{"5", []GoodPeerBehaviour{GoodPeerBehaviourBlockPart, GoodPeerBehaviourVote, GoodPeerBehaviourBlockPart, GoodPeerBehaviourVote}},
-	}
-
-	errorBehaviourScript := []scriptedErrorBehaviour{
-		{"1", []ErrorPeerBehaviour{ErrorPeerBehaviourUnknown}},
-		{"2", []ErrorPeerBehaviour{ErrorPeerBehaviourUnknown, ErrorPeerBehaviourBadMessage, ErrorPeerBehaviourBadMessage, ErrorPeerBehaviourUnknown}},
-		{"3", []ErrorPeerBehaviour{ErrorPeerBehaviourBadMessage, ErrorPeerBehaviourUnknown, ErrorPeerBehaviourBadMessage, ErrorPeerBehaviourUnknown}},
-		{"4", []ErrorPeerBehaviour{ErrorPeerBehaviourUnknown, ErrorPeerBehaviourBadMessage, ErrorPeerBehaviourBadMessage, ErrorPeerBehaviourUnknown}},
-		{"5", []ErrorPeerBehaviour{ErrorPeerBehaviourBadMessage, ErrorPeerBehaviourUnknown, ErrorPeerBehaviourBadMessage, ErrorPeerBehaviourUnknown}},
+	behaviourScript := []scriptedBehaviours{
+		{"1", []PeerBehaviour{PeerBehaviourVote}},
+		{"2", []PeerBehaviour{PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote}},
+		{"3", []PeerBehaviour{PeerBehaviourBlockPart, PeerBehaviourVote, PeerBehaviourBlockPart, PeerBehaviourVote}},
+		{"4", []PeerBehaviour{PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote}},
+		{"5", []PeerBehaviour{PeerBehaviourBlockPart, PeerBehaviourVote, PeerBehaviourBlockPart, PeerBehaviourVote}},
 	}
 
 	var receiveWg sync.WaitGroup
-	pb := NewStoredPeerBehaviour()
-	goodScriptItems := make(chan goodScriptItem)
-	errorScriptItems := make(chan errorScriptItem)
+	pr := NewMockPeerReporter()
+	scriptItems := make(chan scriptItem)
 	done := make(chan int)
 	numConsumers := 3
 	for i := 0; i < numConsumers; i++ {
@@ -129,10 +79,8 @@ func TestStoredPeerBehaviourConcurrency(t *testing.T) {
 			defer receiveWg.Done()
 			for {
 				select {
-				case gb := <-goodScriptItems:
-					pb.Behaved(gb.PeerID, gb.Behaviour)
-				case eb := <-errorScriptItems:
-					pb.Errored(eb.PeerID, eb.Behaviour)
+				case pb := <-scriptItems:
+					pr.Report(pb.PeerID, pb.Behaviour)
 				case <-done:
 					return
 				}
@@ -144,19 +92,9 @@ func TestStoredPeerBehaviourConcurrency(t *testing.T) {
 	sendingWg.Add(1)
 	go func() {
 		defer sendingWg.Done()
-		for _, item := range goodBehaviourScript {
+		for _, item := range behaviourScript {
 			for _, reason := range item.Behaviours {
-				goodScriptItems <- goodScriptItem{item.PeerID, reason}
-			}
-		}
-	}()
-
-	sendingWg.Add(1)
-	go func() {
-		defer sendingWg.Done()
-		for _, item := range errorBehaviourScript {
-			for _, reason := range item.Behaviours {
-				errorScriptItems <- errorScriptItem{item.PeerID, reason}
+				scriptItems <- scriptItem{item.PeerID, reason}
 			}
 		}
 	}()
@@ -169,15 +107,9 @@ func TestStoredPeerBehaviourConcurrency(t *testing.T) {
 
 	receiveWg.Wait()
 
-	for _, items := range goodBehaviourScript {
-		if !equalGoodBehaviours(pb.GetGoodBehaviours(items.PeerID), items.Behaviours) {
+	for _, items := range behaviourScript {
+		if !equalBehaviours(pr.GetBehaviours(items.PeerID), items.Behaviours) {
 			t.Errorf("Expected peer %s to have behaved \n", items.PeerID)
-		}
-	}
-
-	for _, items := range errorBehaviourScript {
-		if !equalErrorBehaviours(pb.GetErrorBehaviours(items.PeerID), items.Behaviours) {
-			t.Errorf("Expected peer %s to have errored \n", items.PeerID)
 		}
 	}
 }
