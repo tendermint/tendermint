@@ -3,7 +3,7 @@ version: 2
 defaults: &defaults
   working_directory: /go/src/github.com/tendermint/tendermint
   docker:
-    - image: circleci/golang
+    - image: circleci/golang:1.12
   environment:
     GOBIN: /tmp/workspace/bin
 
