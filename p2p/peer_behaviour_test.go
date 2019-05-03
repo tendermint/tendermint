@@ -6,11 +6,11 @@ import (
 	"testing"
 )
 
-// TestMockPeerBehaviour tests the MockPeerBehaviours ability to store reported
+// TestMockPeerBehaviour tests the MockPeerBehaviour' ability to store reported
 // peer behaviour in memory indexed by the peerID
-func TestMockPeerBehaviour(t *testing.T) {
+func TestMockPeerBehaviourReporter(t *testing.T) {
 	peer := newMockPeer(net.IP{127, 0, 0, 1})
-	pr := NewMockPeerReporter()
+	pr := NewMockPeerBehaviourReporter()
 
 	behaviours := pr.GetBehaviours(peer.ID())
 	if len(behaviours) != 0 {
@@ -55,11 +55,11 @@ func equalBehaviours(a []PeerBehaviour, b []PeerBehaviour) bool {
 	return len(same) == len(a)
 }
 
-// TestStoredPeerBehaviourConcurrency constructs a scenario in which
-// multiple goroutines are using the same MockPeerBehaviour instance. This
-// test reproduces the conditions in which MockPeerBehaviour will
+// TestPeerBehaviourConcurrency constructs a scenario in which
+// multiple goroutines are using the same MockPeerBehaviourReporter instance.
+// This test reproduces the conditions in which MockPeerBehaviourReporter will
 // be used within a Reactor Receive method tests to ensure thread safety.
-func TestStoredPeerBehaviourConcurrency(t *testing.T) {
+func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	behaviourScript := []scriptedBehaviours{
 		{"1", []PeerBehaviour{PeerBehaviourVote}},
 		{"2", []PeerBehaviour{PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote}},
@@ -69,7 +69,7 @@ func TestStoredPeerBehaviourConcurrency(t *testing.T) {
 	}
 
 	var receiveWg sync.WaitGroup
-	pr := NewMockPeerReporter()
+	pr := NewMockPeerBehaviourReporter()
 	scriptItems := make(chan scriptItem)
 	done := make(chan int)
 	numConsumers := 3

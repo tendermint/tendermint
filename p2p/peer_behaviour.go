@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// PeerBehaviour are types of reportable behaviours by peers.
+// PeerBehaviour are types of reportable behaviours about peers.
 type PeerBehaviour int
 
 const (
@@ -15,38 +15,38 @@ const (
 	PeerBehaviourBlockPart
 )
 
-// PeerReporter provides an interface for reactors to report the behaviour
+// PeerBehaviourReporter provides an interface for reactors to report the behaviour
 // of peers synchronously to other components.
-type PeerReporter interface {
+type PeerBehaviourReporter interface {
 	Report(peerID ID, behaviour PeerBehaviour) error
 }
 
-// SwitchPeerReporter reports peer behaviour to an internal Switch
-type SwitchPeerReporter struct {
+// SwitchPeerBehaviouReporter reports peer behaviour to an internal Switch
+type SwitchPeerBehaviourReporter struct {
 	sw *Switch
 }
 
-// Return a new switchPeerBehaviour instance which wraps the Switch.
-func NewSwitchPeerReporter(sw *Switch) *SwitchPeerReporter {
-	return &SwitchPeerReporter{
+// Return a new SwitchPeerBehaviourReporter instance which wraps the Switch.
+func NewSwitchPeerBehaviourReporter(sw *Switch) *SwitchPeerBehaviourReporter {
+	return &SwitchPeerBehaviourReporter{
 		sw: sw,
 	}
 }
 
 // Report reports the behaviour of a peer to the Switch
-func (spb *SwitchPeerReporter) Report(peerID ID, behaviour PeerBehaviour) error {
-	peer := spb.sw.Peers().Get(peerID)
+func (spbr *SwitchPeerBehaviourReporter) Report(peerID ID, behaviour PeerBehaviour) error {
+	peer := spbr.sw.Peers().Get(peerID)
 	if peer == nil {
 		return errors.New("Peer not found")
 	}
 
 	switch behaviour {
 	case PeerBehaviourVote, PeerBehaviourBlockPart:
-		spb.sw.MarkPeerAsGood(peer)
+		spbr.sw.MarkPeerAsGood(peer)
 	case PeerBehaviourBadMessage:
-		spb.sw.StopPeerForError(peer, "Bad message")
+		spbr.sw.StopPeerForError(peer, "Bad message")
 	case PeerBehaviourMessageOutOfOrder:
-		spb.sw.StopPeerForError(peer, "Message out of order")
+		spbr.sw.StopPeerForError(peer, "Message out of order")
 	default:
 		return errors.New("Unknown behaviour")
 	}
@@ -54,34 +54,34 @@ func (spb *SwitchPeerReporter) Report(peerID ID, behaviour PeerBehaviour) error 
 	return nil
 }
 
-// MockPeerBehaviour serves a mock concrete implementation of the
-// PeerReporter interface used in reactor tests to ensure reactors
+// MockPeerBehaviourReporter serves a mock concrete implementation of the
+// PeerBehaviourReporter interface used in reactor tests to ensure reactors
 // report the correct behaviour in manufactured scenarios.
-type MockPeerReporter struct {
+type MockPeerBehaviourReporter struct {
 	mtx sync.RWMutex
 	pb  map[ID][]PeerBehaviour
 }
 
-// NewMockPeerReporter returns a PeerReporter which records all reported
+// NewMockPeerBehaviourReporter returns a PeerBehaviourReporter which records all reported
 // behaviours in memory.
-func NewMockPeerReporter() *MockPeerReporter {
-	return &MockPeerReporter{
+func NewMockPeerBehaviourReporter() *MockPeerBehaviourReporter {
+	return &MockPeerBehaviourReporter{
 		pb: map[ID][]PeerBehaviour{},
 	}
 }
 
-// Report stores the PeerBehaviour produced by the peer identified by ID.
-func (mpr *MockPeerReporter) Report(peerID ID, behaviour PeerBehaviour) {
-	mpr.mtx.Lock()
-	defer mpr.mtx.Unlock()
-	mpr.pb[peerID] = append(mpr.pb[peerID], behaviour)
+// Report stores the PeerBehaviour produced by the peer identified by peerID.
+func (mpbr *MockPeerBehaviourReporter) Report(peerID ID, behaviour PeerBehaviour) {
+	mpbr.mtx.Lock()
+	defer mpbr.mtx.Unlock()
+	mpbr.pb[peerID] = append(mpbr.pb[peerID], behaviour)
 }
 
 // GetBehaviours returns all behaviours reported on the peer identified by peerID.
-func (mpr *MockPeerReporter) GetBehaviours(peerID ID) []PeerBehaviour {
-	mpr.mtx.RLock()
-	defer mpr.mtx.RUnlock()
-	if items, ok := mpr.pb[peerID]; ok {
+func (mpbr *MockPeerBehaviourReporter) GetBehaviours(peerID ID) []PeerBehaviour {
+	mpbr.mtx.RLock()
+	defer mpbr.mtx.RUnlock()
+	if items, ok := mpbr.pb[peerID]; ok {
 		result := make([]PeerBehaviour, len(items))
 		copy(result, items)
 
