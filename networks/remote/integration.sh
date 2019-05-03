@@ -32,7 +32,6 @@ cd $GOPATH/src/$REPO
 ## build
 git checkout zach/ansible
 make get_tools
-make get_vendor_deps
 make build
 
 # generate an ssh key

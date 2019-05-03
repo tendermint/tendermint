@@ -42,8 +42,7 @@ dependencies so we can get away with telling people they can just `go get` our
 software.
 
 Since some dependencies are not under our control, a third party may break our
-build, in which case we can fall back on `dep ensure` (or `make
-get_vendor_deps`). Even for dependencies under our control, dep helps us to
+build, in which case we can fall back on `go mod tidy`. Even for dependencies under our control, dep helps us to
 keep multiple repos in sync as they evolve. Anything with an executable, such
 as apps, tools, and the core, should use dep.
 

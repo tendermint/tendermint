@@ -29,7 +29,6 @@ cd tendermint
 
 ```
 make get_tools
-make get_vendor_deps
 ```
 
 ### Compile
@@ -71,7 +70,6 @@ To upgrade, run
 ```
 cd $GOPATH/src/github.com/tendermint/tendermint
 git pull origin master
-make get_vendor_deps
 make install
 ```
 

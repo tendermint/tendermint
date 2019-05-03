@@ -9,4 +9,3 @@ RUN make get_tools
 
 COPY . /go/src/github.com/tendermint/tendermint/tools/tm-bench
 
-RUN make get_vendor_deps

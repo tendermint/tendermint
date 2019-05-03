@@ -20,7 +20,6 @@ COPY . $REPO
 # Install the vendored dependencies
 # docker caching prevents reinstall on code change!
 RUN make get_tools
-RUN make get_vendor_deps
 
 # install ABCI CLI
 RUN make install_abci
