@@ -196,11 +196,14 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent bool) (*c
 		return &ctypes.ResultDialPeers{}, errors.New("No peers provided")
 	}
 	logger.Info("DialPeers", "peers", peers, "persistent", persistent)
-	if err := p2pPeers.AddPersistentPeers(peers); err != nil {
+	if persistent {
+		if err := p2pPeers.AddPersistentPeers(peers); err != nil {
+			return &ctypes.ResultDialPeers{}, err
+		}
+	}
+	if err := p2pPeers.DialPeersAsync(peers); err != nil {
 		return &ctypes.ResultDialPeers{}, err
 	}
-	// parsing errors are handled above by AddPersistentPeers
-	_ = p2pPeers.DialPeersAsync(peers)
 	return &ctypes.ResultDialPeers{Log: "Dialing peers in progress. See /net_info for details"}, nil
 }
 

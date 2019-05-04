@@ -308,7 +308,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 			addr, err = peer.NodeInfo().NetAddress()
 			if err != nil {
 				sw.Logger.Error("Wanted to reconnect to inbound peer, but self-reported address is wrong",
-					"peer", peer, "addr", addr, "err", err)
+					"peer", peer, "err", err)
 				return
 			}
 		}

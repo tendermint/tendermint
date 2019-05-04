@@ -410,7 +410,6 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 
 	err = sw.DialPeerWithAddress(rp.Addr())
 	require.Nil(t, err)
-	time.Sleep(50 * time.Millisecond)
 	require.NotNil(t, sw.Peers().Get(rp.ID()))
 
 	p := sw.Peers().List()[0]
@@ -430,6 +429,9 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 	}
 	rp.Start()
 	defer rp.Stop()
+
+	err = sw.AddPersistentPeers([]string{rp.Addr().String()})
+	require.NoError(t, err)
 
 	conf := config.DefaultP2PConfig()
 	conf.TestDialFail = true

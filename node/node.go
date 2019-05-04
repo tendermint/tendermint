@@ -683,7 +683,10 @@ func (n *Node) OnStart() error {
 
 	// Always connect to persistent peers
 	// parsing errors are handled above by AddPersistentPeers
-	_ = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
+	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
+	if err != nil {
+		return errors.Wrap(err, "could not dial peers from persistent_peers field")
+	}
 
 	return nil
 }
