@@ -13,6 +13,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -93,7 +94,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	fastSync := true
 	db := dbm.NewMemDB()
 	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
-		sm.MockMempool{}, sm.MockEvidencePool{})
+		mock.Mempool{}, sm.MockEvidencePool{})
 	sm.SaveState(db, state)
 
 	// let's add some blocks in

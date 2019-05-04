@@ -146,9 +146,10 @@ type Node struct {
 	// services
 	eventBus         *types.EventBus // pub/sub for services
 	stateDB          dbm.DB
-	blockStore       *bc.BlockStore         // store the blockchain to disk
-	bcReactor        *bc.BlockchainReactor  // for fast-syncing
-	mempoolReactor   *mempl.MempoolReactor  // for gossipping transactions
+	blockStore       *bc.BlockStore        // store the blockchain to disk
+	bcReactor        *bc.BlockchainReactor // for fast-syncing
+	mempoolReactor   *mempl.Reactor        // for gossipping transactions
+	mempool          mempl.Mempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
 	pexReactor       *pex.PEXReactor        // for exchanging peer addresses
@@ -272,9 +273,9 @@ func onlyValidatorIsUs(state sm.State, privVal types.PrivValidator) bool {
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
-	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
+	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.Reactor, *mempl.CListMempool) {
 
-	mempool := mempl.NewMempool(
+	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
@@ -283,11 +284,7 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
 	mempoolLogger := logger.With("module", "mempool")
-	mempool.SetLogger(mempoolLogger)
-	if config.Mempool.WalEnabled() {
-		mempool.InitWAL() // no need to have the mempool wal during tests
-	}
-	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
+	mempoolReactor := mempl.NewReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
 	if config.Consensus.WaitForTxs() {
@@ -315,7 +312,7 @@ func createConsensusReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.Mempool,
+	mempool *mempl.CListMempool,
 	evidencePool *evidence.EvidencePool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
@@ -404,7 +401,7 @@ func createSwitch(config *cfg.Config,
 	transport *p2p.MultiplexTransport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *mempl.MempoolReactor,
+	mempoolReactor *mempl.Reactor,
 	bcReactor *blockchain.BlockchainReactor,
 	consensusReactor *consensus.ConsensusReactor,
 	evidenceReactor *evidence.EvidenceReactor,
@@ -622,6 +619,7 @@ func NewNode(config *cfg.Config,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
+		mempool:          mempool,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		pexReactor:       pexReactor,
@@ -673,6 +671,10 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
+	if n.config.Mempool.WalEnabled() {
+		n.mempool.InitWAL() // no need to have the mempool wal during tests
+	}
+
 	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
@@ -702,7 +704,7 @@ func (n *Node) OnStop() {
 
 	// stop mempool WAL
 	if n.config.Mempool.WalEnabled() {
-		n.mempoolReactor.Mempool.CloseWAL()
+		n.mempool.CloseWAL()
 	}
 
 	if err := n.transport.Close(); err != nil {
@@ -737,7 +739,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetStateDB(n.stateDB)
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
-	rpccore.SetMempool(n.mempoolReactor.Mempool)
+	rpccore.SetMempool(n.mempool)
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetP2PPeers(n.sw)
 	rpccore.SetP2PTransport(n)
@@ -884,9 +886,14 @@ func (n *Node) ConsensusReactor() *cs.ConsensusReactor {
 	return n.consensusReactor
 }
 
-// MempoolReactor returns the Node's MempoolReactor.
-func (n *Node) MempoolReactor() *mempl.MempoolReactor {
+// MempoolReactor returns the Node's mempool reactor.
+func (n *Node) MempoolReactor() *mempl.Reactor {
 	return n.mempoolReactor
+}
+
+// Mempool returns the Node's mempool.
+func (n *Node) Mempool() mempl.Mempool {
+	return n.mempool
 }
 
 // PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
