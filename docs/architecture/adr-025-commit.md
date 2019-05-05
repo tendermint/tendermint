@@ -62,7 +62,7 @@ const (
 
 Note the need for an extra byte to indicate whether the signature is for the BlockID or for nil.
 This byte can also be used to indicate an absent vote, rather than using a nil object like we currently do,
-which has been [problematic for Amino](https://github.com/tendermint/go-amino/issues/260).
+which has been [problematic for compatibility between Amino and proto3](https://github.com/tendermint/go-amino/issues/260).
 
 Note we also continue to store the `ValidatorAddress` in the `CommitSig`.
 While this still takes 20-bytes per signature, it ensures that the Commit has all
