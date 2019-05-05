@@ -532,6 +532,7 @@ func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
 
 // Construct a VoteSet from the Commit and validator set. Panics
 // if precommits from the commit can't be added to the voteset.
+// Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
 	height, round, typ := commit.Height(), commit.Round(), PrecommitType
 	voteSet := NewVoteSet(chainID, height, round, typ, vals)

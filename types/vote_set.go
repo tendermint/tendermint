@@ -528,6 +528,9 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 //--------------------------------------------------------------------------------
 // Commit
 
+// MakeCommit constructs a Commit from the VoteSet.
+// Panics if the vote type is not PrecommitType or if
+// there's no +2/3 votes for a single block.
 func (voteSet *VoteSet) MakeCommit() *Commit {
 	if voteSet.type_ != PrecommitType {
 		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
