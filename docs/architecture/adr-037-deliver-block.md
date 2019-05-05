@@ -10,24 +10,24 @@ Author: Daniil Lashin (@danil-lashin)
 
 Initial conversation: https://github.com/tendermint/tendermint/issues/2901
 
-Some applications can handle transactions in parallel, or at least some 
+Some applications can handle transactions in parallel, or at least some
 part of tx processing can be parallelized. Now it is not possible for developer
 to execute txs in parallel because Tendermint delivers them consequentially.
 
 ## Decision
 
-Now Tendermint have `BeginBlock`, `EndBlock`, `Commit`, `DeliverTx` steps 
-while executing block. This doc proposes merging this steps into one `DeliverBlock` 
-step. It will allow developers of applications to decide how they want to 
-execute transactions (in parallel or consequentially). Also it will simplify and 
-speed up communications between application and Tendermint. 
+Now Tendermint have `BeginBlock`, `EndBlock`, `Commit`, `DeliverTx` steps
+while executing block. This doc proposes merging this steps into one `DeliverBlock`
+step. It will allow developers of applications to decide how they want to
+execute transactions (in parallel or consequentially). Also it will simplify and
+speed up communications between application and Tendermint.
 
-As @jaekwon [mentioned](https://github.com/tendermint/tendermint/issues/2901#issuecomment-477746128) 
-in discussion not all application will benefit from this solution. In some cases, 
+As @jaekwon [mentioned](https://github.com/tendermint/tendermint/issues/2901#issuecomment-477746128)
+in discussion not all application will benefit from this solution. In some cases,
 when application handles transaction consequentially, it way slow down the blockchain,
-because it need to wait until full block is transmitted to application to start 
+because it need to wait until full block is transmitted to application to start
 processing it. Also, in the case of complete change of ABCI, we need to force all the apps
-to change their implementation completely. That's why I propose to introduce one more ABCI 
+to change their implementation completely. That's why I propose to introduce one more ABCI
 type.
 
 # Implementation Changes
@@ -52,7 +52,7 @@ this doc proposes to add one more:
 ```go
 type Application interface {
     // Info and Mempool methods...
-	
+
     // Consensus Connection
     InitChain(RequestInitChain) ResponseInitChain           // Initialize blockchain with validators and other info from TendermintCore
     DeliverBlock(RequestDeliverBlock) ResponseDeliverBlock  // Deliver full block
@@ -61,9 +61,9 @@ type Application interface {
 
 type RequestDeliverBlock struct {
     Hash                 []byte
-    Header               Header      
+    Header               Header
     Txs                  Txs
-    LastCommitInfo       LastCommitInfo 
+    LastCommitInfo       LastCommitInfo
     ByzantineValidators  []Evidence
 }
 
@@ -71,7 +71,7 @@ type ResponseDeliverBlock struct {
     ValidatorUpdates      []ValidatorUpdate
     ConsensusParamUpdates *ConsensusParams
     Tags                  []common.KVPair
-    TxResults             []ResponseDeliverTx  
+    TxResults             []ResponseDeliverTx
 }
 
 ```
@@ -79,7 +79,7 @@ type ResponseDeliverBlock struct {
 Also, we will need to add new config param, which will specify what kind of ABCI application uses.
 For example, it can be `abci_type`. Then we will have 2 types:
 - `advanced` - current ABCI
-- `simple` - proposed implementation 
+- `simple` - proposed implementation
 
 ## Status
 
@@ -89,7 +89,7 @@ In review
 
 ### Positive
 
-- much simpler introduction and tutorials for new developers (instead of implementing 5 methods whey 
+- much simpler introduction and tutorials for new developers (instead of implementing 5 methods whey
 will need to implement only 3)
 - txs can be handled in parallel
 - simpler interface

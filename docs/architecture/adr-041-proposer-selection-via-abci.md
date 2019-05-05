@@ -1,4 +1,4 @@
-# ADR 036: Application should be in charge of validator set
+# ADR 041: Application should be in charge of validator set
 
 ## Changelog
 
