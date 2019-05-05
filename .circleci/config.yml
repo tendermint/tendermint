@@ -26,7 +26,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v3-pkg-cache
+            - v4-pkg-cache
       - run:
           name: tools
           command: |
@@ -43,7 +43,7 @@ jobs:
             - bin
             - profiles
       - save_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
           paths:
             - /go/pkg
       - save_cache:
@@ -57,7 +57,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -73,7 +73,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -89,7 +89,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -106,7 +106,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -121,7 +121,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
@@ -136,7 +136,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: mkdir -p /tmp/logs
@@ -161,7 +161,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -208,7 +208,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -272,6 +272,10 @@ jobs:
           root: .
           paths:
             - "release-version.source"
+      - save_cache:
+            key: v2-release-deps-{{ checksum "go.sum" }}
+            paths:
+              - "/go/pkg/mod"
 
   build_artifacts:
     <<: *defaults
@@ -280,7 +284,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-release-deps-{{ .Branch }}-{{ .Revision }}
+            - v2-release-deps-{{ checksum "go.sum" }}
       - attach_workspace:
           at: /tmp/workspace
       - run:
