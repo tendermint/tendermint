@@ -22,6 +22,7 @@
   * `MockMempool` moved to top-level mock package and renamed to `Mempool`
 - [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
 - [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
+- [libs/db] \#3611 Removed LevelDBBackend
 
 * Blockchain Protocol
 
@@ -38,6 +39,9 @@
 - [rpc] \#3362 `/dial_seeds` & `/dial_peers` return errors if addresses are incorrect (except when IP lookup fails)
 - [node] \#3362 returns an error if `persistent_peers` list is invalid (except when IP lookup fails)
 - [p2p] \#3531 Terminate session on nonce wrapping (@climber73)
+- [libs/db] \#3611 Conditional compilation
+  * Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
+    use `make build_c` / `make install_c`
 
 ### BUG FIXES:
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
