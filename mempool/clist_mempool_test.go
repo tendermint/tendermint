@@ -177,16 +177,30 @@ func TestMempoolFilters(t *testing.T) {
 	}
 }
 
-func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
+func TestMempoolUpdate(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
+
+	// 1. Adds valid txs to the cache
 	mempool.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 	err := mempool.CheckTx([]byte{0x01}, nil)
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrTxInCache, err)
 	}
+
+	// 2. Removes valid txs from the mempool
+	err = mempool.CheckTx([]byte{0x02}, nil)
+	require.NoError(t, err)
+	mempool.Update(1, []types.Tx{[]byte{0x02}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+	assert.Zero(t, mempool.Size())
+
+	// 3. Removes invalid transactions from the cache, but leaves them in the mempool (if present)
+	err = mempool.CheckTx([]byte{0x03}, nil)
+	require.NoError(t, err)
+	mempool.Update(1, []types.Tx{[]byte{0x03}}, abciResponses(1, 1), nil, nil)
+	assert.Equal(t, 1, mempool.Size())
 }
 
 func TestTxsAvailable(t *testing.T) {
