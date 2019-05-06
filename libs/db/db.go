@@ -17,6 +17,7 @@ const (
 	// CLevelDBBackend represents cleveldb (uses levigo wrapper)
 	//   - fast
 	//   - requires gcc
+	//   - use cleveldb build tag (go build -tags cleveldb)
 	CLevelDBBackend DBBackendType = "cleveldb"
 	// MemDBBackend represents in-memoty key value store, which is mostly used
 	// for testing.
@@ -29,6 +30,7 @@ const (
 	// github.com/etcd-io/bbolt)
 	//   - EXPERIMENTAL
 	//   - may be faster is some use-cases (random reads - indexer)
+	//   - use boltdb build tag (go build -tags boltdb)
 	BoltDBBackend DBBackendType = "boltdb"
 )
 
