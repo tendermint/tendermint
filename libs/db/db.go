@@ -5,18 +5,31 @@ import (
 	"strings"
 )
 
-//----------------------------------------
-// Main entry
-
 type DBBackendType string
 
+// These are valid db_backend values.
 const (
-	LevelDBBackend   DBBackendType = "leveldb" // legacy, defaults to goleveldb unless +gcc
-	CLevelDBBackend  DBBackendType = "cleveldb"
+	// GoLevelDBBackend represents goleveldb (github.com/syndtr/goleveldb - most
+	// popular implementation)
+	//   - pure go
+	//   - stable
 	GoLevelDBBackend DBBackendType = "goleveldb"
-	MemDBBackend     DBBackendType = "memdb"
-	FSDBBackend      DBBackendType = "fsdb" // using the filesystem naively
-	BoltDBBackend    DBBackendType = "boltdb"
+	// CLevelDBBackend represents cleveldb (uses levigo wrapper)
+	//   - fast
+	//   - requires gcc
+	CLevelDBBackend DBBackendType = "cleveldb"
+	// MemDBBackend represents in-memoty key value store, which is mostly used
+	// for testing.
+	MemDBBackend DBBackendType = "memdb"
+	// FSDBBackend represents filesystem database
+	//	 - EXPERIMENTAL
+	//   - slow
+	FSDBBackend DBBackendType = "fsdb"
+	// BoltDBBackend represents bolt (uses etcd's fork of bolt -
+	// github.com/etcd-io/bbolt)
+	//   - EXPERIMENTAL
+	//   - may be faster is some use-cases (random reads - indexer)
+	BoltDBBackend DBBackendType = "boltdb"
 )
 
 type dbCreator func(name string, dir string) (DB, error)
