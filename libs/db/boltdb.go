@@ -161,11 +161,11 @@ func (bdb *BoltDB) NewBatch() Batch {
 }
 
 func (bdb *boltDBBatch) Set(key, value []byte) {
-	bdb.buffer.Store(key, value)
+	bdb.buffer.Store(string(key), value)
 }
 
 func (bdb *boltDBBatch) Delete(key []byte) {
-	bdb.buffer.Delete(key)
+	bdb.buffer.Delete(string(key))
 }
 
 // NOTE: the operation is synchronous (see BoltDB for reasons)
@@ -174,7 +174,7 @@ func (bdb *boltDBBatch) Write() {
 		b := tx.Bucket(bucket)
 		var putErr error
 		bdb.buffer.Range(func(key, value interface{}) bool {
-			putErr = b.Put(key.([]byte), value.([]byte))
+			putErr = b.Put([]byte(key.(string)), value.([]byte))
 			return putErr == nil // stop if putErr is not nil
 		})
 		return putErr
