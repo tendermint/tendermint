@@ -190,31 +190,31 @@ func (bdb *boltDBBatch) WriteSync() {
 
 func (bdb *boltDBBatch) Close() {}
 
-// WARNING: Any concurrent writes (Set, SetSync) will block until the Iterator
-// is closed.
+// WARNING: Any concurrent writes or reads will block until the iterator is
+// closed.
 func (bdb *BoltDB) Iterator(start, end []byte) Iterator {
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
 		panic(err)
 	}
-	c := tx.Bucket(bucket).Cursor()
-	return newBoltDBIterator(c, start, end, false)
+	return newBoltDBIterator(tx, start, end, false)
 }
 
-// WARNING: Any concurrent writes (Set, SetSync) will block until the Iterator
-// is closed.
+// WARNING: Any concurrent writes or reads will block until the iterator is
+// closed.
 func (bdb *BoltDB) ReverseIterator(start, end []byte) Iterator {
 	tx, err := bdb.db.Begin(false)
 	if err != nil {
 		panic(err)
 	}
-	c := tx.Bucket(bucket).Cursor()
-	return newBoltDBIterator(c, start, end, true)
+	return newBoltDBIterator(tx, start, end, true)
 }
 
 // boltDBIterator allows you to iterate on range of keys/values given some
 // start / end keys (nil & nil will result in doing full scan).
 type boltDBIterator struct {
+	tx *bbolt.Tx
+
 	itr   *bbolt.Cursor
 	start []byte
 	end   []byte
@@ -226,7 +226,9 @@ type boltDBIterator struct {
 	isReverse bool
 }
 
-func newBoltDBIterator(itr *bbolt.Cursor, start, end []byte, isReverse bool) *boltDBIterator {
+func newBoltDBIterator(tx *bbolt.Tx, start, end []byte, isReverse bool) *boltDBIterator {
+	itr := tx.Bucket(bucket).Cursor()
+
 	var ck, cv []byte
 	if isReverse {
 		if end == nil {
@@ -244,6 +246,7 @@ func newBoltDBIterator(itr *bbolt.Cursor, start, end []byte, isReverse bool) *bo
 	}
 
 	return &boltDBIterator{
+		tx:           tx,
 		itr:          itr,
 		start:        start,
 		end:          end,
@@ -304,8 +307,12 @@ func (itr *boltDBIterator) Value() []byte {
 	return itr.currentValue
 }
 
-// boltdb cursor has no close op.
-func (itr *boltDBIterator) Close() {}
+func (itr *boltDBIterator) Close() {
+	err := itr.tx.Rollback()
+	if err != nil {
+		panic(err)
+	}
+}
 
 func (itr *boltDBIterator) assertIsValid() {
 	if !itr.Valid() {
