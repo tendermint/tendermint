@@ -430,11 +430,8 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	err = sw.AddPersistentPeers([]string{rp.Addr().String()})
-	require.NoError(t, err)
-
 	conf := config.DefaultP2PConfig()
-	conf.TestDialFail = true
+	conf.TestDialFail = true // will trigger a reconnect
 	err = sw.addOutboundPeerWithConfig(rp.Addr(), conf)
 	require.NotNil(t, err)
 	// DialPeerWithAddres - sw.peerConfig resets the dialer
