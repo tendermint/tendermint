@@ -1,4 +1,5 @@
 // +build cleveldb
+
 package db
 
 import (
