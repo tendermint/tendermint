@@ -163,7 +163,7 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 
 	peerState, ok := peer.Get(types.PeerStateKey).(*PeerState)
 	if !ok {
-		panic(fmt.Sprintf("Peer %v has no state", peer))
+		panic(fmt.Sprintf("peer %v has no state", peer))
 	}
 	// Begin routines for this peer.
 	go conR.gossipDataRoutine(peer, peerState)
