@@ -1,5 +1,4 @@
-// +build gcc
-
+// +build cleveldb
 package db
 
 import (
