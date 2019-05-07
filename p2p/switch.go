@@ -745,6 +745,11 @@ func (sw *Switch) addPeer(p Peer) error {
 		return nil
 	}
 
+	// Add some data to the peer, which is required by reactors.
+	for _, reactor := range sw.reactors {
+		p = reactor.InitPeer(p)
+	}
+
 	// Start the peer's send/recv routines.
 	// Must start it before adding it to the peer set
 	// to prevent Start and Stop from being called concurrently.
@@ -763,9 +768,6 @@ func (sw *Switch) addPeer(p Peer) error {
 	}
 	sw.metrics.Peers.Add(float64(1))
 
-	for _, reactor := range sw.reactors {
-		p = reactor.InitPeer(p)
-	}
 	// Start all the reactor protocols on the peer.
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(p)
