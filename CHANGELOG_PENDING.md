@@ -48,3 +48,7 @@
   * `Switch#DialPeerWithAddress` now only takes an address
 - [consensus] \#3067 getBeginBlockValidatorInfo loads validators from stateDB instead of state (@james-ray)
 - [pex] \#3603 Dial seeds when addrbook needs more addresses (@defunctzombie)
+- [mempool] \#3322 Remove only valid (Code==0) txs on Update
+  * `Mempool#Update` and `BlockExecutor#Commit` now accept
+    `[]*abci.ResponseDeliverTx` - list of `DeliverTx` responses, which should
+    match `block.Txs`

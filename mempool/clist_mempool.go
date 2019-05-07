@@ -519,6 +519,7 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 func (mem *CListMempool) Update(
 	height int64,
 	txs types.Txs,
+	deliverTxResponses []*abci.ResponseDeliverTx,
 	preCheck PreCheckFunc,
 	postCheck PostCheckFunc,
 ) error {
@@ -533,20 +534,37 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
-	// Add committed transactions to cache (if missing).
-	for _, tx := range txs {
-		_ = mem.cache.Push(tx)
-	}
+	for i, tx := range txs {
+		if deliverTxResponses[i].Code == abci.CodeTypeOK {
+			// Add valid committed tx to the cache (if missing).
+			_ = mem.cache.Push(tx)
 
-	// Remove committed transactions.
-	txsLeft := mem.removeTxs(txs)
+			// Remove valid committed tx from the mempool.
+			if e, ok := mem.txsMap.Load(txKey(tx)); ok {
+				mem.removeTx(tx, e.(*clist.CElement), false)
+			}
+		} else {
+			// Allow invalid transactions to be resubmitted.
+			mem.cache.Remove(tx)
+
+			// Don't remove invalid tx from the mempool.
+			// Otherwise evil proposer can drop valid txs.
+			// Example:
+			//   100 -> 101 -> 102
+			// Block, proposed by evil proposer:
+			//   101 -> 102
+			// Mempool (if you remove txs):
+			//   100
+			// https://github.com/tendermint/tendermint/issues/3322.
+		}
+	}
 
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
-	if len(txsLeft) > 0 {
+	if mem.Size() > 0 {
 		if mem.config.Recheck {
-			mem.logger.Info("Recheck txs", "numtxs", len(txsLeft), "height", height)
-			mem.recheckTxs(txsLeft)
+			mem.logger.Info("Recheck txs", "numtxs", mem.Size(), "height", height)
+			mem.recheckTxs()
 			// At this point, mem.txs are being rechecked.
 			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 			// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
@@ -561,42 +579,22 @@ func (mem *CListMempool) Update(
 	return nil
 }
 
-func (mem *CListMempool) removeTxs(txs types.Txs) []types.Tx {
-	// Build a map for faster lookups.
-	txsMap := make(map[string]struct{}, len(txs))
-	for _, tx := range txs {
-		txsMap[string(tx)] = struct{}{}
+func (mem *CListMempool) recheckTxs() {
+	if mem.Size() == 0 {
+		panic("recheckTxs is called, but the mempool is empty")
 	}
 
-	txsLeft := make([]types.Tx, 0, mem.txs.Len())
-	for e := mem.txs.Front(); e != nil; e = e.Next() {
-		memTx := e.Value.(*mempoolTx)
-		// Remove the tx if it's already in a block.
-		if _, ok := txsMap[string(memTx.tx)]; ok {
-			// NOTE: we don't remove committed txs from the cache.
-			mem.removeTx(memTx.tx, e, false)
-
-			continue
-		}
-		txsLeft = append(txsLeft, memTx.tx)
-	}
-	return txsLeft
-}
-
-// NOTE: pass in txs because mem.txs can mutate concurrently.
-func (mem *CListMempool) recheckTxs(txs []types.Tx) {
-	if len(txs) == 0 {
-		return
-	}
 	atomic.StoreInt32(&mem.rechecking, 1)
 	mem.recheckCursor = mem.txs.Front()
 	mem.recheckEnd = mem.txs.Back()
 
 	// Push txs to proxyAppConn
 	// NOTE: globalCb may be called concurrently.
-	for _, tx := range txs {
-		mem.proxyAppConn.CheckTxAsync(tx)
+	for e := mem.txs.Front(); e != nil; e = e.Next() {
+		memTx := e.Value.(*mempoolTx)
+		mem.proxyAppConn.CheckTxAsync(memTx.tx)
 	}
+
 	mem.proxyAppConn.FlushAsync()
 }
 
