@@ -21,18 +21,14 @@ type Peer struct {
 // NewPeer creates and starts a new mock peer. If the ip
 // is nil, random routable address is used.
 func NewPeer(ip net.IP) *Peer {
-	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
-	return NewPeerWithID(ip, nodeKey.ID())
-}
-
-// NewPeerWithID allows you to provide an ID for a peer.
-func NewPeerWithID(ip net.IP, id p2p.ID) *Peer {
 	var netAddr *p2p.NetAddress
 	if ip == nil {
 		_, netAddr = p2p.CreateRoutableAddr()
 	} else {
 		netAddr = p2p.NewNetAddressIPPort(ip, 26656)
 	}
+	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
+	id := nodeKey.ID()
 	netAddr.ID = id
 	mp := &Peer{
 		ip:   ip,
