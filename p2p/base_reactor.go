@@ -24,6 +24,10 @@ type Reactor interface {
 
 	// InitPeer is called by the switch before the peer is started. Use it to
 	// initialize data for the peer (e.g. peer state).
+	//
+	// NOTE: The switch won't call AddPeer nor RemovePeer if it fails to start
+	// the peer. Do not store any data associated with the peer in the reactor
+	// itself unless you don't want to have a state, which is never cleaned up.
 	InitPeer(peer Peer) Peer
 
 	// AddPeer is called by the switch after the peer is added and successfully
