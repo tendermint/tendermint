@@ -38,6 +38,7 @@
 - [rpc] \#3362 `/dial_seeds` & `/dial_peers` return errors if addresses are incorrect (except when IP lookup fails)
 - [node] \#3362 returns an error if `persistent_peers` list is invalid (except when IP lookup fails)
 - [p2p] \#3531 Terminate session on nonce wrapping (@climber73)
+- [genesis] \#3638 Sort Genesis file on save
 - [libs/db] \#3611 Conditional compilation
   * Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
     use `make build_c` / `make install_c` (full instructions can be found at
