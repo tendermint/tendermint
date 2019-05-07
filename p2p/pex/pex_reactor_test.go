@@ -49,7 +49,7 @@ func TestPEXReactorStopPeerWithOutInitPeer(t *testing.T) {
 	nodeId := nodeKey.ID()
 	stopForError := 0
 	for i := 0; i < 100; i++ {
-		peer := mock.NewFixIdPeer(nil, nodeId)
+		peer := mock.NewPeerWithID(nil, nodeId)
 		// Only add to peerSet
 		p2p.AddPeerToSwitchPeerSet(sw, peer)
 		assert.True(t, sw.Peers().Has(nodeId))
@@ -84,7 +84,7 @@ func TestPEXReactorDoNotStopReconnectionPeer(t *testing.T) {
 	nodeId := nodeKey.ID()
 
 	for i := 0; i < 1000; i++ {
-		peer := mock.NewFixIdPeer(nil, nodeId)
+		peer := mock.NewPeerWithID(nil, nodeId)
 		p2p.AddPeerToSwitch(sw, peer)
 		assert.True(t, sw.Peers().Has(peer.ID()))
 
