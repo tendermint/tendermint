@@ -79,9 +79,7 @@ make install
 
 Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7).
 
-### Ubuntu
-
-Install LevelDB with snappy (optionally):
+Install LevelDB with snappy (optionally). Below are commands for Ubuntu:
 
 ```
 sudo apt-get update
@@ -100,23 +98,23 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
   rm -f v1.20.tar.gz
 ```
 
-Set database backend to cleveldb:
+Set a database backend to `cleveldb`:
 
 ```
 # config/config.toml
 db_backend = "cleveldb"
 ```
 
-To install Tendermint, run
+To install Tendermint, run:
 
 ```
 CGO_LDFLAGS="-lsnappy" make install_c
 ```
 
-or run
+or run:
 
 ```
 CGO_LDFLAGS="-lsnappy" make build_c
 ```
 
-to put the binary in `./build`.
+which puts the binary in `./build`.

@@ -484,16 +484,7 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.PrecommitType, state.LastValidators)
-	for _, precommit := range seenCommit.Precommits {
-		if precommit == nil {
-			continue
-		}
-		added, err := lastPrecommits.AddVote(seenCommit.ToVote(precommit))
-		if !added || err != nil {
-			panic(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
-		}
-	}
+	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
 	}

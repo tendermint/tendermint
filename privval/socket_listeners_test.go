@@ -130,8 +130,8 @@ func TestListenerTimeoutReadWrite(t *testing.T) {
 			t.Errorf("for %s listener, have %v, want %v", tc.description, have, want)
 		}
 
-		if have, want := opErr.Timeout(), true; have != want {
-			t.Errorf("for %s listener, got unexpected error: have %v, want %v", tc.description, have, want)
+		if !opErr.Timeout() {
+			t.Errorf("for %s listener, got unexpected error: have %v, want Timeout error", tc.description, opErr)
 		}
 	}
 }
