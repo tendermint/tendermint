@@ -22,7 +22,6 @@
   * `MockMempool` moved to top-level mock package and renamed to `Mempool`
 - [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
 - [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
-- [libs/db] \#3611 Removed LevelDBBackend
 
 * Blockchain Protocol
 

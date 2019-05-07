@@ -218,7 +218,7 @@ func DefaultBaseConfig() BaseConfig {
 		ProfListenAddress:  "",
 		FastSync:           true,
 		FilterPeers:        false,
-		DBBackend:          "leveldb",
+		DBBackend:          "goleveldb",
 		DBPath:             "data",
 	}
 }
