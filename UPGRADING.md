@@ -3,6 +3,13 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+## v0.32.0
+
+### Config Changes
+
+If you have `db_backend` set to `leveldb` in your config file, please change it
+to `goleveldb`.
+
 ## v0.31.0
 
 This release contains a breaking change to the behaviour of the pubsub system.
