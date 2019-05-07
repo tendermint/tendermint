@@ -205,8 +205,8 @@ func (r *PEXReactor) AddPeer(p Peer) {
 }
 
 // RemovePeer implements Reactor by resetting peer's requests info.
-func (r *PEXReactor) RemovePeer(p Peer) {
-	id := string(peer.ID())
+func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
+	id := string(p.ID())
 	r.requestsSent.Delete(id)
 	r.lastReceivedRequests.Delete(id)
 }

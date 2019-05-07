@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
@@ -34,73 +33,6 @@ func TestPEXReactorBasic(t *testing.T) {
 
 	assert.NotNil(t, r)
 	assert.NotEmpty(t, r.GetChannels())
-}
-
-func TestPEXReactorStopPeerWithOutInitPeer(t *testing.T) {
-	r, book := createReactor(&PEXReactorConfig{})
-	defer teardownReactor(book)
-
-	sw := createSwitchAndAddReactors(r)
-	sw.SetAddrBook(book)
-	sw.Start()
-	defer sw.Stop()
-
-	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
-	nodeId := nodeKey.ID()
-	stopForError := 0
-	for i := 0; i < 100; i++ {
-		peer := mock.NewPeerWithID(nil, nodeId)
-		// Only add to peerSet
-		p2p.AddPeerToSwitchPeerSet(sw, peer)
-		assert.True(t, sw.Peers().Has(nodeId))
-
-		msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
-
-		// first time creates the entry
-		r.Receive(PexChannel, peer, msg)
-		if !sw.Peers().Has(peer.ID()) {
-			stopForError++
-		}
-		// next time sets the last time value
-		r.Receive(PexChannel, peer, msg)
-		if !sw.Peers().Has(peer.ID()) {
-			stopForError++
-		}
-		p2p.RemovePeerFromSwitchPeerSet(sw, peer)
-	}
-	assert.Equal(t, stopForError, 99)
-}
-
-func TestPEXReactorDoNotStopReconnectionPeer(t *testing.T) {
-	r, book := createReactor(&PEXReactorConfig{})
-	defer teardownReactor(book)
-
-	sw := createSwitchAndAddReactors(r)
-	sw.SetAddrBook(book)
-	sw.Start()
-	defer sw.Stop()
-
-	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
-	nodeId := nodeKey.ID()
-
-	for i := 0; i < 1000; i++ {
-		peer := mock.NewPeerWithID(nil, nodeId)
-		p2p.AddPeerToSwitch(sw, peer)
-		assert.True(t, sw.Peers().Has(peer.ID()))
-
-		msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
-
-		// first time creates the entry
-		r.Receive(PexChannel, peer, msg)
-		assert.True(t, sw.Peers().Has(peer.ID()))
-
-		// next time sets the last time value
-		r.Receive(PexChannel, peer, msg)
-		assert.True(t, sw.Peers().Has(peer.ID()))
-
-		// simulate stop peer for error
-		p2p.RemovePeerFromSwitchPeerSet(sw, peer)
-	}
 }
 
 func TestPEXReactorAddRemovePeer(t *testing.T) {
