@@ -93,7 +93,7 @@ func TestCLevelDBBackend(t *testing.T) {
 	// Can't use "" (current directory) or "./" here because levigo.Open returns:
 	// "Error initializing DB: IO error: test_XXX.db: Invalid argument"
 	dir := os.TempDir()
-	db := NewDB(name, CLevelDBBackend, dir)
+	db := NewDB(name, LevelDBBackend, dir)
 	defer cleanupDBDir(dir, name)
 
 	_, ok := db.(*CLevelDB)
@@ -103,7 +103,7 @@ func TestCLevelDBBackend(t *testing.T) {
 func TestCLevelDBStats(t *testing.T) {
 	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
 	dir := os.TempDir()
-	db := NewDB(name, CLevelDBBackend, dir)
+	db := NewDB(name, LevelDBBackend, dir)
 	defer cleanupDBDir(dir, name)
 
 	assert.NotEmpty(t, db.Stats())

@@ -5,15 +5,16 @@ import (
 	"strings"
 )
 
+//----------------------------------------
+// Main entry
+
 type DBBackendType string
 
-// These are valid db_backend values.
 const (
-	// GoLevelDBBackend represents goleveldb (github.com/syndtr/goleveldb - most
-	// popular implementation)
-	//   - pure go
-	//   - stable
-	GoLevelDBBackend DBBackendType = "goleveldb"
+	// LevelDBBackend is a legacy type. Defaults to goleveldb unless cleveldb
+	// build tag was used, in which it becomes cleveldb.
+	// DEPRECATED. Please use concrete types (golevedb, cleveldb, etc.)
+	LevelDBBackend DBBackendType = "leveldb"
 	// CLevelDBBackend represents cleveldb (uses levigo wrapper)
 	//   - fast
 	//   - requires gcc

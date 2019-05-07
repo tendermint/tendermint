@@ -14,6 +14,7 @@ func init() {
 	dbCreator := func(name string, dir string) (DB, error) {
 		return NewCLevelDB(name, dir)
 	}
+	registerDBCreator(LevelDBBackend, dbCreator, true)
 	registerDBCreator(CLevelDBBackend, dbCreator, false)
 }
 
