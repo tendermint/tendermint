@@ -1,3 +1,5 @@
+// +build boltdb
+
 package db
 
 import (

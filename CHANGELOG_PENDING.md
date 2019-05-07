@@ -38,6 +38,11 @@
 - [rpc] \#3362 `/dial_seeds` & `/dial_peers` return errors if addresses are incorrect (except when IP lookup fails)
 - [node] \#3362 returns an error if `persistent_peers` list is invalid (except when IP lookup fails)
 - [p2p] \#3531 Terminate session on nonce wrapping (@climber73)
+- [libs/db] \#3611 Conditional compilation
+  * Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
+    use `make build_c` / `make install_c` (full instructions can be found at
+    https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support)
+  * Use `boltdb` tag to compile Tendermint with bolt db
 
 ### BUG FIXES:
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
