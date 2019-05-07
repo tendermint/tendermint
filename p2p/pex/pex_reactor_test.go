@@ -330,7 +330,8 @@ func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 1 * time.Millisecond})
+	pexRConfig := &PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 1 * time.Millisecond}
+	pexR, book := createReactor(pexRConfig)
 	defer teardownReactor(book)
 
 	sw := createSwitchAndAddReactors(pexR)
@@ -352,6 +353,9 @@ func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
 	pexR.crawlPeers([]*p2p.NetAddress{peerSwitch.NetAddress()})
 	assert.Equal(t, 1, sw.Peers().Size())
 	assert.True(t, sw.Peers().Has(peerSwitch.NodeInfo().ID()))
+
+	// sleep for SeedDisconnectWaitPeriod
+	time.Sleep(pexRConfig.SeedDisconnectWaitPeriod + 1*time.Millisecond)
 
 	// 2. attemptDisconnects should not disconnect because the peer is persistent
 	pexR.attemptDisconnects()
