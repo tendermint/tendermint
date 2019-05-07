@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/etcd-io/bbolt"
 )
@@ -150,36 +149,58 @@ func (bdb *BoltDB) Stats() map[string]string {
 // boltDBBatch stores key values in sync.Map and dumps them to the underlying
 // DB upon Write call.
 type boltDBBatch struct {
-	buffer *sync.Map
-	db     *BoltDB
+	buffer []struct {
+		k []byte
+		v []byte
+	}
+	db *BoltDB
 }
 
 // NewBatch returns a new batch.
 func (bdb *BoltDB) NewBatch() Batch {
 	return &boltDBBatch{
-		buffer: &sync.Map{},
-		db:     bdb,
+		buffer: make([]struct {
+			k []byte
+			v []byte
+		}, 0),
+		db: bdb,
 	}
 }
 
+// It is safe to modify the contents of the argument after Set returns but not
+// before.
 func (bdb *boltDBBatch) Set(key, value []byte) {
-	bdb.buffer.Store(string(key), value)
+	bdb.buffer = append(bdb.buffer, struct {
+		k []byte
+		v []byte
+	}{
+		key, value,
+	})
 }
 
+// It is safe to modify the contents of the argument after Delete returns but
+// not before.
 func (bdb *boltDBBatch) Delete(key []byte) {
-	bdb.buffer.Delete(string(key))
+	for i, elem := range bdb.buffer {
+		if bytes.Equal(elem.k, key) {
+			// delete without preserving order
+			bdb.buffer[i] = bdb.buffer[len(bdb.buffer)-1]
+			bdb.buffer = bdb.buffer[:len(bdb.buffer)-1]
+			return
+		}
+	}
 }
 
 // NOTE: the operation is synchronous (see BoltDB for reasons)
 func (bdb *boltDBBatch) Write() {
 	err := bdb.db.db.Batch(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
-		var putErr error
-		bdb.buffer.Range(func(key, value interface{}) bool {
-			putErr = b.Put([]byte(key.(string)), value.([]byte))
-			return putErr == nil // stop if putErr is not nil
-		})
-		return putErr
+		for _, elem := range bdb.buffer {
+			if putErr := b.Put(elem.k, elem.v); putErr != nil {
+				return putErr
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		panic(err)
