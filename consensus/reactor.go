@@ -155,7 +155,15 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	}
 }
 
-// AddPeer implements Reactor
+// InitPeer implements Reactor by creating a state for the peer.
+func (conR *ConsensusReactor) InitPeer(peer p2p.Peer) p2p.Peer {
+	peerState := NewPeerState(peer).SetLogger(conR.Logger)
+	peer.Set(types.PeerStateKey, peerState)
+	return peer
+}
+
+// AddPeer implements Reactor by spawning multiple gossiping goroutines for the
+// peer.
 func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	if !conR.IsRunning() {
 		return
@@ -177,14 +185,7 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	}
 }
 
-func (conR *ConsensusReactor) InitPeer(peer p2p.Peer) p2p.Peer {
-	// create a state for the peer
-	peerState := NewPeerState(peer).SetLogger(conR.Logger)
-	peer.Set(types.PeerStateKey, peerState)
-	return peer
-}
-
-// RemovePeer implements Reactor
+// RemovePeer is a noop.
 func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
@@ -445,9 +446,9 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 
 func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) {
 	nrsMsg = &NewRoundStepMessage{
-		Height:                rs.Height,
-		Round:                 rs.Round,
-		Step:                  rs.Step,
+		Height: rs.Height,
+		Round:  rs.Round,
+		Step:   rs.Step,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
