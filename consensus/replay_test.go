@@ -24,6 +24,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -277,7 +278,7 @@ const (
 )
 
 var (
-	mempool = sm.MockMempool{}
+	mempool = mock.Mempool{}
 	evpool  = sm.MockEvidencePool{}
 
 	sim testSim

@@ -24,7 +24,7 @@ build:
 	CGO_ENABLED=0 go build -mod=readonly $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
 
 build_c:
-	CGO_ENABLED=1 go build -mod=readonly $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=1 go build -mod=readonly $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
 
 build_race:
 	CGO_ENABLED=0 go build -mod=readonly -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
@@ -33,7 +33,7 @@ install:
 	CGO_ENABLED=0 go install -mod=readonly  $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 
 install_c:
-	CGO_ENABLED=1 go install -mod=readonly  $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" ./cmd/tendermint
+	CGO_ENABLED=1 go install -mod=readonly $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
 
 ########################################
 ### Protobuf
@@ -128,7 +128,7 @@ clean_certs:
 	rm -f db/remotedb/::.crt db/remotedb/::.key
 
 test_libs: gen_certs
-	go test -tags gcc $(PACKAGES)
+	go test -tags clevedb boltdb $(PACKAGES)
 	make clean_certs
 
 grpc_dbserver:
