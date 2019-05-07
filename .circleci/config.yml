@@ -6,7 +6,6 @@ defaults: &defaults
     - image: circleci/golang
   environment:
     GOBIN: /tmp/workspace/bin
-    GO111MODULE: on
 
 docs_update_config: &docs_update_config
   working_directory: ~/repo
@@ -147,7 +146,7 @@ jobs:
             for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
 
-              go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+              GO111MODULE=on go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
