@@ -556,6 +556,9 @@ func (commit *Commit) memoizeHeightRound() {
 // ToVote converts a CommitSig to a Vote.
 // If the CommitSig is nil, the Vote will be nil.
 func (commit *Commit) ToVote(cs *CommitSig) *Vote {
+	if cs == nil {
+		return nil
+	}
 	// TODO: use commit.validatorSet to reconstruct vote
 	// and deprecate .toVote
 	return cs.toVote()
