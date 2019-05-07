@@ -34,7 +34,7 @@ Please don't make Pull Requests to `master`.
 
 ## Dependencies
 
-We use [dep](https://github.com/golang/dep) to manage dependencies.
+We use [go modules](https://github.com/golang/go/wiki/Modules) to manage dependencies.
 
 That said, the master branch of every Tendermint repository should just build
 with `go get`, which means they should be kept up-to-date with their
@@ -42,17 +42,17 @@ dependencies so we can get away with telling people they can just `go get` our
 software.
 
 Since some dependencies are not under our control, a third party may break our
-build, in which case we can fall back on `go mod tidy`. Even for dependencies under our control, dep helps us to
+build, in which case we can fall back on `go mod tidy`. Even for dependencies under our control, go helps us to
 keep multiple repos in sync as they evolve. Anything with an executable, such
 as apps, tools, and the core, should use dep.
 
-Run `dep status` to get a list of vendor dependencies that may not be
+Run `go list -u -m all` to get a list of dependencies that may not be
 up-to-date.
 
 When updating dependencies, please only update the particular dependencies you
-need. Instead of running `dep ensure -update`, which will update anything,
+need. Instead of running `go get -u=patch`, which will update anything,
 specify exactly the dependency you want to update, eg.
-`dep ensure -update github.com/tendermint/go-amino`.
+`GO111MODULE=on go get -u github.com/tendermint/go-amino@master`.
 
 ## Vagrant
 
