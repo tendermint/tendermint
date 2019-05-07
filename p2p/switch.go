@@ -324,13 +324,19 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	if sw.peers.Remove(peer) {
-		sw.metrics.Peers.Add(float64(-1))
-	}
 	sw.transport.Cleanup(peer)
 	peer.Stop()
+
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
+	}
+
+	// Removing a peer should go last to avoid a situation where a peer
+	// reconnect to our node and the switch calls InitPeer before
+	// RemovePeer is finished.
+	// https://github.com/tendermint/tendermint/issues/3338
+	if sw.peers.Remove(peer) {
+		sw.metrics.Peers.Add(float64(-1))
 	}
 }
 

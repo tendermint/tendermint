@@ -176,13 +176,6 @@ func (r *PEXReactor) GetChannels() []*conn.ChannelDescriptor {
 	}
 }
 
-func (r *PEXReactor) InitPeer(peer Peer) Peer {
-	// Peer might reconnect to us before the switch has executed RemovePeer.
-	// https://github.com/tendermint/tendermint/issues/3338
-	r.resetPeersRequestsInfo(peer)
-	return peer
-}
-
 // AddPeer implements Reactor by adding peer to the address book (if inbound)
 // or by requesting more addresses (if outbound).
 func (r *PEXReactor) AddPeer(p Peer) {
@@ -213,7 +206,9 @@ func (r *PEXReactor) AddPeer(p Peer) {
 
 // RemovePeer implements Reactor by resetting peer's requests info.
 func (r *PEXReactor) RemovePeer(p Peer) {
-	r.resetPeersRequestsInfo(p)
+	id := string(peer.ID())
+	r.requestsSent.Delete(id)
+	r.lastReceivedRequests.Delete(id)
 }
 
 func (r *PEXReactor) logErrAddrBook(err error) {
@@ -708,12 +703,6 @@ func (r *PEXReactor) attemptDisconnects() {
 		}
 		r.Switch.StopPeerGracefully(peer)
 	}
-}
-
-func (r *PEXReactor) resetPeersRequestsInfo(peer Peer) {
-	id := string(peer.ID())
-	r.requestsSent.Delete(id)
-	r.lastReceivedRequests.Delete(id)
 }
 
 func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
