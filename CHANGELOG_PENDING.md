@@ -22,6 +22,7 @@
   * `MockMempool` moved to top-level mock package and renamed to `Mempool`
 - [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
 - [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
+- [p2p] \#3346 Reactor#InitPeer method is added to Reactor interface
 
 * Blockchain Protocol
 
@@ -48,9 +49,8 @@
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
   to 16 (as a result, the node will stop retrying after a 35 hours time window)
 - [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests
-<<<<<<< HEAD
-- [p2p] \#3346 Init data structures for peer before starting it (previously was done in AddPeer) (fixes #3346 and #3338; @guagualvcha)
-=======
+- [p2p] \#3346 Init data structures for peer before starting it (previously was
+  done in AddPeer) (fixes #3346 and #3338; @guagualvcha)
 - [p2p] \#3362 make persistent prop independent of conn direction
   * `Switch#DialPeersAsync` now only takes a list of peers
   * `Switch#DialPeerWithAddress` now only takes an address
@@ -60,4 +60,3 @@
   * `Mempool#Update` and `BlockExecutor#Commit` now accept
     `[]*abci.ResponseDeliverTx` - list of `DeliverTx` responses, which should
     match `block.Txs`
->>>>>>> develop
