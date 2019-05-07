@@ -137,6 +137,12 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	}
 }
 
+func (bcR *BlockchainReactor) InitPeer(peer p2p.Peer) {
+	// Peer might reconnect to us before the switch has executed RemovePeer.
+	// https://github.com/tendermint/tendermint/issues/3338
+	bcR.pool.RemovePeer(peer.ID())
+}
+
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
