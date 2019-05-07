@@ -176,6 +176,13 @@ func (r *PEXReactor) GetChannels() []*conn.ChannelDescriptor {
 	}
 }
 
+func (r *PEXReactor) InitPeer(peer Peer) Peer {
+	id := string(peer.ID())
+	r.requestsSent.Delete(id)
+	r.lastReceivedRequests.Delete(id)
+	return peer
+}
+
 // AddPeer implements Reactor by adding peer to the address book (if inbound)
 // or by requesting more addresses (if outbound).
 func (r *PEXReactor) AddPeer(p Peer) {
@@ -214,13 +221,6 @@ func (r *PEXReactor) logErrAddrBook(err error) {
 			r.Logger.Debug("Failed to add new address", "err", err)
 		}
 	}
-}
-
-func (r *PEXReactor) InitPeer(peer Peer) Peer {
-	id := string(peer.ID())
-	r.requestsSent.Delete(id)
-	r.lastReceivedRequests.Delete(id)
-	return peer
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
@@ -304,7 +304,7 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	minInterval := r.minReceiveRequestInterval()
 	if now.Sub(lastReceived) < minInterval {
 		r.lastReceivedRequests.Delete(id)
-		return fmt.Errorf("Peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
+		return fmt.Errorf("peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
 			src.ID(),
 			lastReceived,
 			now,
@@ -315,14 +315,14 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	return nil
 }
 
-// RequestAddrs asks peer for more addresses if we do not already
-// have a request out for this peer.
+// RequestAddrs asks peer for more addresses if we do not already have a
+// request out for this peer.
 func (r *PEXReactor) RequestAddrs(p Peer) {
-	r.Logger.Debug("Request addrs", "from", p)
 	id := string(p.ID())
 	if r.requestsSent.Has(id) {
 		return
 	}
+	r.Logger.Debug("Request addrs", "from", p)
 	r.requestsSent.Set(id, struct{}{})
 	p.Send(PexChannel, cdc.MustMarshalBinaryBare(&pexRequestMessage{}))
 }
@@ -333,7 +333,7 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
-		return errors.New("Unsolicited pexAddrsMessage")
+		return errors.New("unsolicited pexAddrsMessage")
 	}
 	r.requestsSent.Delete(id)
 
