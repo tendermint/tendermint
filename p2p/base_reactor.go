@@ -26,7 +26,7 @@ type Reactor interface {
 	// initialize data for the peer (e.g. peer state).
 	InitPeer(peer Peer) Peer
 
-	// AddPeer is called by the switch after the peer is added and successfuly
+	// AddPeer is called by the switch after the peer is added and successfully
 	// started. Use it to start goroutines communicating with the peer.
 	AddPeer(peer Peer)
 
