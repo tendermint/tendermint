@@ -653,7 +653,7 @@ func TestSwitchInitPeerIsNotCalledBeforeRemovePeer(t *testing.T) {
 	defer rp.Stop()
 	_, err = rp.Dial(sw.NetAddress())
 	require.NoError(t, err)
-	time.Sleep(50 * time.Millisecond)
+	waitUntilSwitchHasAtLeastNPeers(sw, 1)
 
 	// stop peer asynchronously
 	go sw.StopPeerForError(sw.Peers().Get(rp.ID()), "test")
@@ -661,7 +661,7 @@ func TestSwitchInitPeerIsNotCalledBeforeRemovePeer(t *testing.T) {
 	// simulate peer reconnecting to us
 	_, err = rp.Dial(sw.NetAddress())
 	require.NoError(t, err)
-	time.Sleep(50 * time.Millisecond)
+	waitUntilSwitchHasAtLeastNPeers(sw, 1)
 
 	// make sure reactor.RemovePeer is finished before InitPeer is called
 	assert.False(t, reactor.InitCalledBeforeRemoveFinished())
