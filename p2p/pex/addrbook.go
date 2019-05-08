@@ -147,6 +147,7 @@ func (a *addrBook) OnStart() error {
 
 // OnStop implements Service.
 func (a *addrBook) OnStop() {
+	a.Save()
 	a.BaseService.OnStop()
 }
 
