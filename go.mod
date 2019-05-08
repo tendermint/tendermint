@@ -7,6 +7,7 @@ require (
 	github.com/btcsuite/btcd v0.0.0-20190115013929-ed77733ec07d
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a
 	github.com/davecgh/go-spew v1.1.1
+	github.com/etcd-io/bbolt v1.3.2
 	github.com/fortytw2/leaktest v1.2.0
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-kit/kit v0.6.0
