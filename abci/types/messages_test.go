@@ -24,7 +24,7 @@ func TestMarshalJSON(t *testing.T) {
 		GasWanted: 43,
 		Events: []Event{
 			{
-				Type: "testType",
+				Type: "testEvent",
 				Attributes: []cmn.KVPair{
 					{Key: []byte("pho"), Value: []byte("bo")},
 				},
@@ -90,7 +90,7 @@ func TestWriteReadMessage2(t *testing.T) {
 			GasWanted: 10,
 			Events: []Event{
 				{
-					Type: "testType",
+					Type: "testEvent",
 					Attributes: []cmn.KVPair{
 						{Key: []byte("abc"), Value: []byte("def")},
 					},
