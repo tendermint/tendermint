@@ -23,8 +23,6 @@ const (
 
 	// ask for best height every 10s
 	statusUpdateIntervalSeconds = 10
-	// check if we should switch to consensus reactor
-	switchToConsensusIntervalSeconds = 1
 
 	// NOTE: keep up to date with bcBlockResponseMessage
 	bcBlockResponseMessagePrefixSize   = 4
@@ -284,7 +282,6 @@ func (bcR *BlockchainReactor) poolRoutine() {
 	sendBlockRequestTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
 
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
-	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
 
 	lastHundred := time.Now()
 	lastRate := 0.0
@@ -309,18 +306,6 @@ ForLoop:
 		case <-statusUpdateTicker.C:
 			// Ask for status updates.
 			go bcR.sendStatusRequest()
-
-		case <-switchToConsensusTicker.C:
-			height, numPending, maxPeerHeight := bcR.fsm.pool.getStatus()
-			outbound, inbound, _ := bcR.Switch.NumPeers()
-			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "maxPeerHeight", maxPeerHeight,
-				"outbound", outbound, "inbound", inbound)
-			if bcR.fsm.isCaughtUp() {
-				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
-				bcR.fsm.stop()
-				bcR.switchToConsensus()
-				break ForLoop
-			}
 
 		case <-processReceivedBlockTicker.C: // chan time
 			select {
@@ -363,6 +348,8 @@ ForLoop:
 
 		case msg := <-bcR.eventsFromFSMCh:
 			switch msg.event {
+			case syncFinishedEv:
+				break ForLoop
 			case peerErrorEv:
 				bcR.reportPeerErrorToSwitch(msg.data.err, msg.data.peerID)
 				if msg.data.err == errNoPeerResponse {
@@ -452,6 +439,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 	return nil
 }
 
+// Implements bcRMessageInterface
 func (bcR *BlockchainReactor) switchToConsensus() {
 	conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 	if ok {

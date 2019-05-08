@@ -143,9 +143,6 @@ var (
 	// timeouts for state timers
 	waitForPeerTimeout                 = 2 * time.Second
 	waitForBlockAtCurrentHeightTimeout = 5 * time.Second
-
-	// overall timer for fast sync
-	fastSyncNoProgressTimeout = 5 * time.Second
 )
 
 // errors
@@ -236,6 +233,9 @@ func init() {
 				if len(fsm.pool.peers) == 0 {
 					return waitForPeer, err
 				}
+				if fsm.pool.reachedMaxHeight() {
+					return finished, nil
+				}
 				return waitForBlock, err
 
 			case blockResponseEv:
@@ -262,21 +262,26 @@ func init() {
 					fsm.pool.invalidateFirstTwoBlocks(data.err)
 				} else {
 					fsm.pool.processedCurrentHeightBlock()
-					if fsm.pool.reachedMaxHeight() {
-						return finished, nil
-					}
 					// Since we advanced one block reset the state timer
 					fsm.resetStateTimer()
+				}
+
+				// Both cases above may result in achieving maximum height.
+				if fsm.pool.reachedMaxHeight() {
+					return finished, nil
 				}
 
 				return waitForBlock, data.err
 
 			case peerRemoveEv:
 				// This event is sent by the switch to remove disconnected and errored peers.
+				fsm.pool.removePeer(data.peerId, data.err)
 				if len(fsm.pool.peers) == 0 {
 					return waitForPeer, nil
 				}
-				fsm.pool.removePeer(data.peerId, data.err)
+				if fsm.pool.reachedMaxHeight() {
+					return finished, nil
+				}
 				return waitForBlock, nil
 
 			case makeRequestsEv:
@@ -288,11 +293,14 @@ func init() {
 					fsm.logger.Error("received a state timeout event for different state", "state", data.stateName)
 					return waitForBlock, errTimeoutEventWrongState
 				}
-				// We haven't received the block at current height. Remove peer.
-				fsm.pool.removePeerAtCurrentHeight(errNoPeerResponse)
+				// We haven't received the block at current height or height+1. Remove peer.
+				fsm.pool.removePeerAtCurrentHeights(errNoPeerResponse)
 				fsm.resetStateTimer()
 				if len(fsm.pool.peers) == 0 {
 					return waitForPeer, errNoPeerResponse
+				}
+				if fsm.pool.reachedMaxHeight() {
+					return finished, errNoPeerResponse
 				}
 				return waitForBlock, errNoPeerResponse
 
@@ -311,6 +319,8 @@ func init() {
 	finished = &bReactorFSMState{
 		name: "finished",
 		enter: func(fsm *bReactorFSM) {
+			fsm.logger.Error("Time to switch to consensus reactor!", "height", fsm.pool.height)
+			fsm.toBcR.switchToConsensus()
 			fsm.cleanup()
 		},
 		handle: func(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) (*bReactorFSMState, error) {
@@ -327,6 +337,7 @@ type bcRMessageInterface interface {
 	sendBlockRequest(peerID p2p.ID, height int64) error
 	sendPeerError(err error, peerID p2p.ID)
 	resetStateTimer(name string, timer **time.Timer, timeout time.Duration)
+	switchToConsensus()
 }
 
 func (fsm *bReactorFSM) setLogger(l log.Logger) {
@@ -337,11 +348,6 @@ func (fsm *bReactorFSM) setLogger(l log.Logger) {
 // Starts the FSM.
 func (fsm *bReactorFSM) start() {
 	_ = fsm.handle(&bcReactorMessage{event: startFSMEv})
-}
-
-// Stops the FSM.
-func (fsm *bReactorFSM) stop() {
-	_ = fsm.handle(&bcReactorMessage{event: stopFSMEv})
 }
 
 // handle processes messages and events sent to the FSM.
@@ -383,17 +389,7 @@ func (fsm *bReactorFSM) resetStateTimer() {
 }
 
 func (fsm *bReactorFSM) isCaughtUp() bool {
-	// Some conditions to determine if we're caught up.
-	// Ensures we've either received a block or waited some amount of time,
-	// and that we're synced to the highest known height.
-	// Note we use maxPeerHeight - 1 because to sync block H requires block H+1 to verify the LastCommit.
-	receivedBlockOrTimedOut := fsm.pool.height > 0 || time.Since(fsm.startTime) > fastSyncNoProgressTimeout
-	ourChainIsLongestAmongPeers := fsm.pool.maxPeerHeight == 0 || fsm.state == finished
-	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
-
-	return isCaughtUp
-
-	//return fsm.state == finished
+	return fsm.state == finished
 }
 
 func (fsm *bReactorFSM) makeNextRequests(maxNumPendingRequests int32) {

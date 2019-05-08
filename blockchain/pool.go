@@ -66,12 +66,6 @@ func (pool *blockPool) setLogger(l log.Logger) {
 	pool.logger = l
 }
 
-// GetStatus returns pool's height, numPending requests and the number of
-// requests ready to be send in the future.
-func (pool *blockPool) getStatus() (height int64, numPending int32, maxPeerHeight int64) {
-	return pool.height, pool.numPending, pool.maxPeerHeight
-}
-
 func (pool blockPool) getMaxPeerHeight() int64 {
 	return pool.maxPeerHeight
 }
@@ -95,6 +89,16 @@ func (pool *blockPool) updateMaxPeerHeight() {
 			max = peer.height
 		}
 	}
+
+	if max < pool.maxPeerHeight {
+		// Remove any planned requests for heights over the new maxPeerHeight
+		for h := range pool.requests {
+			if h > max {
+				delete(pool.requests, h)
+			}
+		}
+	}
+
 	pool.maxPeerHeight = max
 }
 
@@ -122,7 +126,7 @@ func (pool *blockPool) updatePeer(peerID p2p.ID, height int64) error {
 		pool.peers[peerID] = peer
 	} else {
 		// Update existing peer.
-		// Remove any requests made for heights in (height, peer.height].
+		// Remove any requests made for heights in range (height, peer.height].
 		for h, block := range pool.peers[peerID].blocks {
 			if h <= height {
 				continue
@@ -339,13 +343,21 @@ func (pool *blockPool) processedCurrentHeightBlock() {
 	pool.removeShortPeers()
 }
 
-func (pool *blockPool) removePeerAtCurrentHeight(err error) {
+// This function is called when the FSM is not able to make progress for a certain amount of time.
+// This happens if the block at either pool.height or pool.height+1 has not been delivered during this time.
+func (pool *blockPool) removePeerAtCurrentHeights(err error) {
 	peerID := pool.blocks[pool.height]
-	peer := pool.peers[peerID]
-	if peer == nil {
+	peer, ok := pool.peers[peerID]
+	if ok && peer.blocks[pool.height] == nil {
+		pool.removePeer(peer.id, err)
 		return
 	}
-	pool.removePeer(peer.id, err)
+	peerID = pool.blocks[pool.height+1]
+	peer, ok = pool.peers[peerID]
+	if ok && peer.blocks[pool.height+1] == nil {
+		pool.removePeer(peer.id, err)
+	}
+
 }
 
 func (pool *blockPool) cleanup() {
