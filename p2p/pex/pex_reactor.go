@@ -145,7 +145,7 @@ func (r *PEXReactor) OnStart() error {
 	if err != nil {
 		return err
 	} else if numOnline == 0 && r.book.Empty() {
-		return errors.New("Address book is empty, and could not connect to any seed nodes")
+		return errors.New("Address book is empty and no seed nodes")
 	}
 
 	r.seedAddrs = seedAddrs
@@ -573,7 +573,7 @@ func (r *PEXReactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, er
 			return 0, nil, errors.Wrap(e, "seed node configuration has error")
 		}
 	}
-	return
+	return numOnline, netAddrs, nil
 }
 
 // randomly dial seeds until we connect to one or exhaust them
@@ -608,8 +608,13 @@ func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
 // Seed/Crawler Mode causes this node to quickly disconnect
 // from peers, except other seed nodes.
 func (r *PEXReactor) crawlPeersRoutine() {
-	// Do an initial crawl
-	r.crawlPeers(r.book.GetSelection())
+	// If we have any seed nodes, consult them first
+	if len(r.seedAddrs) > 0 {
+		r.dialSeeds()
+	} else {
+		// Do an initial crawl
+		r.crawlPeers(r.book.GetSelection())
+	}
 
 	// Fire periodically
 	ticker := time.NewTicker(crawlPeerPeriod)
