@@ -518,6 +518,18 @@ func handshake(
 		}
 	}
 
+	addr, err := peerNodeInfo.NetAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	// If the node is reporting a non-routable address then we use the remote IP from the connection as the ListenAddr.
+	// While this doesn't prevent adding bogus IPs, it does help ensure we use routable IPs for inbound node info.
+	// Note: If the remote address is not routable (i.e. private network) then ListenAddr will still be set to this private address.
+	if !addr.Routable() {
+		peerNodeInfo.ListenAddr = c.RemoteAddr().String()
+	}
+
 	return peerNodeInfo, c.SetDeadline(time.Time{})
 }
 
