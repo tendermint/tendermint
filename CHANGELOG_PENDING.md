@@ -49,9 +49,10 @@
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
   to 16 (as a result, the node will stop retrying after a 35 hours time window)
 - [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests
-- [p2p] \#3346 Init data structures for peer before starting it (previously was
-  done in AddPeer) (@guagualvcha)
-- [p2p] \#3338 Ensure RemovePeer is always called before InitPeer
+- [consensus] \#3346 Create a peer state in consensus reactor before the peer
+  is started (@guagualvcha)
+- [p2p] \#3338 Ensure RemovePeer is always called before InitPeer (upon a peer
+  reconnecting to our node)
 - [p2p] \#3362 make persistent prop independent of conn direction
   * `Switch#DialPeersAsync` now only takes a list of peers
   * `Switch#DialPeerWithAddress` now only takes an address

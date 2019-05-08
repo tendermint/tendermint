@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -601,6 +602,69 @@ func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 		assert.NoError(t, err)
 		sw.Stop()
 	})
+}
+
+// mockReactor checks that InitPeer never called before RemovePeer. If that's
+// not true, InitCalledBeforeRemoveFinished will return true.
+type mockReactor struct {
+	*BaseReactor
+
+	// atomic
+	removePeerInProgress           uint32
+	initCalledBeforeRemoveFinished uint32
+}
+
+func (r *mockReactor) RemovePeer(peer Peer, reason interface{}) {
+	atomic.StoreUint32(&r.removePeerInProgress, 1)
+	defer atomic.StoreUint32(&r.removePeerInProgress, 0)
+	time.Sleep(100 * time.Millisecond)
+}
+
+func (r *mockReactor) InitPeer(peer Peer) Peer {
+	if atomic.LoadUint32(&r.removePeerInProgress) == 1 {
+		atomic.StoreUint32(&r.initCalledBeforeRemoveFinished, 1)
+	}
+
+	return peer
+}
+
+func (r *mockReactor) InitCalledBeforeRemoveFinished() bool {
+	return atomic.LoadUint32(&r.initCalledBeforeRemoveFinished) == 1
+}
+
+// see stopAndRemovePeer
+func TestSwitchInitPeerIsNotCalledBeforeRemovePeer(t *testing.T) {
+	// make reactor
+	reactor := &mockReactor{}
+	reactor.BaseReactor = NewBaseReactor("mockReactor", reactor)
+
+	// make switch
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", func(i int, sw *Switch) *Switch {
+		sw.AddReactor("mock", reactor)
+		return sw
+	})
+	err := sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	// add peer
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
+	rp.Start()
+	defer rp.Stop()
+	_, err = rp.Dial(sw.NetAddress())
+	require.NoError(t, err)
+	time.Sleep(50 * time.Millisecond)
+
+	// stop peer asynchronously
+	go sw.StopPeerForError(sw.Peers().Get(rp.ID()), "test")
+
+	// simulate peer reconnecting to us
+	_, err = rp.Dial(sw.NetAddress())
+	require.NoError(t, err)
+	time.Sleep(50 * time.Millisecond)
+
+	// make sure reactor.RemovePeer is finished before InitPeer is called
+	assert.False(t, reactor.InitCalledBeforeRemoveFinished())
 }
 
 func BenchmarkSwitchBroadcast(b *testing.B) {
