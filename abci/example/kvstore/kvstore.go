@@ -90,10 +90,10 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 
 	events := []types.Event{
 		{
-			Type: "string",
+			Type: "app",
 			Attributes: []cmn.KVPair{
-				{Key: []byte("app.creator"), Value: []byte("Cosmoshi Netowoko")},
-				{Key: []byte("app.key"), Value: key},
+				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
+				{Key: []byte("key"), Value: key},
 			},
 		},
 	}
