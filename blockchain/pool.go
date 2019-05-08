@@ -239,7 +239,14 @@ func (pool *blockPool) sendRequest(height int64) bool {
 		if peer.height < height {
 			continue
 		}
-		pool.logger.Debug("assign request to peer", "peer", peer.id, "height", height)
+
+		// Log with Info if the request is made for current processing height, Debug otherwise
+		if height == pool.height {
+			pool.logger.Info("assign request to peer", "peer", peer.id, "height", height)
+		} else {
+			pool.logger.Debug("assign request to peer", "peer", peer.id, "height", height)
+		}
+
 		if err := pool.toBcR.sendBlockRequest(peer.id, height); err == errNilPeerForBlockRequest {
 			pool.removePeer(peer.id, err)
 		}
@@ -279,7 +286,7 @@ func (pool *blockPool) addBlock(peerID p2p.ID, block *types.Block, blockSize int
 	pool.blocks[block.Height] = peerID
 	pool.numPending--
 	pool.peers[peerID].decrPending(blockSize)
-	pool.logger.Debug("added new block", "height", block.Height, "from_peer", peerID, "total", len(pool.blocks))
+	pool.logger.Info("added new block", "height", block.Height, "from_peer", peerID, "total", len(pool.blocks))
 	return nil
 }
 
@@ -305,9 +312,6 @@ func (pool *blockPool) getNextTwoBlocks() (first, second *blockData, err error) 
 	if err == nil {
 		err = err2
 	}
-
-	pool.logger.Debug("blocks at height and/ or height+1", "first", first, "second", second)
-
 	return
 }
 
@@ -336,10 +340,12 @@ func (pool *blockPool) processedCurrentHeightBlock() {
 }
 
 func (pool *blockPool) removePeerAtCurrentHeight(err error) {
-	first, err := pool.getBlockAndPeerAtHeight(pool.height)
-	if err == nil {
-		pool.removePeer(first.peer.id, err)
+	peerID := pool.blocks[pool.height]
+	peer := pool.peers[peerID]
+	if peer == nil {
+		return
 	}
+	pool.removePeer(peer.id, err)
 }
 
 func (pool *blockPool) cleanup() {

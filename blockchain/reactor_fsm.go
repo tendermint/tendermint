@@ -78,7 +78,7 @@ const (
 	stateTimeoutEv
 )
 
-func (msg *bReactorMessageData) String() string {
+func (msg *bcReactorMessage) String() string {
 	var dataStr string
 
 	switch msg.event {
@@ -139,10 +139,13 @@ var (
 	finished     *bReactorFSMState
 )
 
-// state timers
 var (
+	// timeouts for state timers
 	waitForPeerTimeout                 = 2 * time.Second
 	waitForBlockAtCurrentHeightTimeout = 5 * time.Second
+
+	// overall timer for fast sync
+	fastSyncNoProgressTimeout = 5 * time.Second
 )
 
 // errors
@@ -158,7 +161,7 @@ var (
 	errPeerTooShort             = errors.New("peer height too low, old peer removed/ new peer not added")
 	errSlowPeer                 = errors.New("peer is not sending us data fast enough")
 	errSwitchRemovesPeer        = errors.New("switch is removing peer")
-	errTimeoutEventWrongState   = errors.New("timeout event for a different state than the current one")
+	errTimeoutEventWrongState   = errors.New("timeout event for a state different than the current one")
 )
 
 func init() {
@@ -260,9 +263,9 @@ func init() {
 				} else {
 					fsm.pool.processedCurrentHeightBlock()
 					if fsm.pool.reachedMaxHeight() {
-						fsm.stop()
 						return finished, nil
 					}
+					// Since we advanced one block reset the state timer
 					fsm.resetStateTimer()
 				}
 
@@ -270,6 +273,9 @@ func init() {
 
 			case peerRemoveEv:
 				// This event is sent by the switch to remove disconnected and errored peers.
+				if len(fsm.pool.peers) == 0 {
+					return waitForPeer, nil
+				}
 				fsm.pool.removePeer(data.peerId, data.err)
 				return waitForBlock, nil
 
@@ -328,18 +334,18 @@ func (fsm *bReactorFSM) setLogger(l log.Logger) {
 	fsm.pool.setLogger(l)
 }
 
-// Starts the FSM goroutine.
+// Starts the FSM.
 func (fsm *bReactorFSM) start() {
-	_ = fsm.handle(&bReactorMessageData{event: startFSMEv})
+	_ = fsm.handle(&bcReactorMessage{event: startFSMEv})
 }
 
-// Stops the FSM goroutine.
+// Stops the FSM.
 func (fsm *bReactorFSM) stop() {
-	_ = fsm.handle(&bReactorMessageData{event: stopFSMEv})
+	_ = fsm.handle(&bcReactorMessage{event: stopFSMEv})
 }
 
 // handle processes messages and events sent to the FSM.
-func (fsm *bReactorFSM) handle(msg *bReactorMessageData) error {
+func (fsm *bReactorFSM) handle(msg *bcReactorMessage) error {
 	fsm.logger.Debug("FSM received", "event", msg, "state", fsm.state)
 
 	if fsm.state == nil {
@@ -380,13 +386,14 @@ func (fsm *bReactorFSM) isCaughtUp() bool {
 	// Some conditions to determine if we're caught up.
 	// Ensures we've either received a block or waited some amount of time,
 	// and that we're synced to the highest known height.
-	// Note we use maxPeerHeight - 1 because to sync block H requires block H+1
-	// to verify the LastCommit.
-	receivedBlockOrTimedOut := fsm.pool.height > 0 || time.Since(fsm.startTime) > 5*time.Second
-	ourChainIsLongestAmongPeers := fsm.pool.maxPeerHeight == 0 || fsm.pool.height >= (fsm.pool.maxPeerHeight-1) || fsm.state == finished
+	// Note we use maxPeerHeight - 1 because to sync block H requires block H+1 to verify the LastCommit.
+	receivedBlockOrTimedOut := fsm.pool.height > 0 || time.Since(fsm.startTime) > fastSyncNoProgressTimeout
+	ourChainIsLongestAmongPeers := fsm.pool.maxPeerHeight == 0 || fsm.state == finished
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
 
 	return isCaughtUp
+
+	//return fsm.state == finished
 }
 
 func (fsm *bReactorFSM) makeNextRequests(maxNumPendingRequests int32) {

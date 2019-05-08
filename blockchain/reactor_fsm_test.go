@@ -20,7 +20,7 @@ type testReactor struct {
 }
 
 func sendEventToFSM(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) error {
-	return fsm.handle(&bReactorMessageData{event: ev, data: data})
+	return fsm.handle(&bcReactorMessage{event: ev, data: data})
 }
 
 var (
@@ -567,7 +567,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 	}
 }
 
-func TestFSMBlockAtCurrentHeightNeverArrives(t *testing.T) {
+func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
 	tests := []struct {
 		name               string
 		startingHeight     int64
@@ -861,7 +861,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 		steps              []fsmStepTestValues
 	}{
 		{
-			name:               "timeout event in state waitForPeer for state == waitForPeer",
+			name:               "timeout event for state waitForPeer while in state waitForPeer",
 			startingHeight:     1,
 			maxRequestsPerPeer: 3,
 			steps: []fsmStepTestValues{
@@ -870,12 +870,46 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 			},
 		},
 		{
-			name:               "timeout event for state waitForPeer for state != waitForPeer",
+			name:               "timeout event for state waitForPeer while in a state != waitForPeer",
 			startingHeight:     1,
 			maxRequestsPerPeer: 3,
 			steps: []fsmStepTestValues{
 				makeStepStartFSMEv(),
 				makeStepStateTimeoutEv("waitForPeer", "waitForPeer", "waitForBlock", errTimeoutEventWrongState),
+			},
+		},
+		{
+			name:               "timeout event for state waitForBlock while in state waitForBlock ",
+			startingHeight:     1,
+			maxRequestsPerPeer: 3,
+			steps: []fsmStepTestValues{
+				makeStepStartFSMEv(),
+				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepStateTimeoutEv("waitForBlock", "waitForPeer", "waitForBlock", errNoPeerResponse),
+			},
+		},
+		{
+			name:               "timeout event for state waitForBlock while in a state != waitForBlock",
+			startingHeight:     1,
+			maxRequestsPerPeer: 3,
+			steps: []fsmStepTestValues{
+				makeStepStartFSMEv(),
+				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForPeer", errTimeoutEventWrongState),
+			},
+		},
+		{
+			name:               "timeout event for state waitForBlock with multiple peers",
+			startingHeight:     1,
+			maxRequestsPerPeer: 3,
+			steps: []fsmStepTestValues{
+				makeStepStartFSMEv(),
+				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 3, nil),
+				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForBlock", errNoPeerResponse),
 			},
 		},
 	}
@@ -1085,7 +1119,7 @@ func TestFSMPeerTimeout(t *testing.T) {
 	sendStatusResponse(fsm, peerID, 10)
 	time.Sleep(5 * time.Millisecond)
 
-	if err := fsm.handle(&bReactorMessageData{
+	if err := fsm.handle(&bcReactorMessage{
 		event: makeRequestsEv,
 		data:  bReactorEventData{maxNumRequests: maxNumPendingRequests}}); err != nil {
 	}
@@ -1151,7 +1185,7 @@ func (testR *testReactor) resetStateTimer(name string, timer **time.Timer, timeo
 func sendStatusResponse(fsm *bReactorFSM, peerID p2p.ID, height int64) {
 	msgBytes := makeStatusResponseMessage(height)
 
-	_ = fsm.handle(&bReactorMessageData{
+	_ = fsm.handle(&bcReactorMessage{
 		event: statusResponseEv,
 		data: bReactorEventData{
 			peerId: peerID,

@@ -30,16 +30,16 @@ var (
 )
 
 type bpPeer struct {
-	id          p2p.ID
+	logger log.Logger
+	id     p2p.ID
+
+	height      int64                  // the peer reported height
+	numPending  int32                  // number of requests still waiting for block responses
+	blocks      map[int64]*types.Block // blocks received or expected to be received from this peer
+	timeout     *time.Timer
+	didTimeout  bool
 	recvMonitor *flow.Monitor
 
-	height     int64                  // the peer reported height
-	numPending int32                  // number of requests pending assignment or block response
-	blocks     map[int64]*types.Block // blocks received or waiting to be received from this peer
-	timeout    *time.Timer
-	didTimeout bool
-
-	logger  log.Logger
 	errFunc func(err error, peerID p2p.ID) // function to call on error
 }
 
