@@ -63,7 +63,7 @@ var (
 
 // Query defines an interface for a query to be used for subscribing.
 type Query interface {
-	Matches(tags map[string]string) bool
+	Matches(events map[string][]string) bool
 	String() string
 }
 
