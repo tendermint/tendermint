@@ -83,23 +83,26 @@ func (pool *blockPool) rescheduleRequest(peerID p2p.ID, height int64) {
 
 // Updates the pool's max height. If no peers are left maxPeerHeight is set to 0.
 func (pool *blockPool) updateMaxPeerHeight() {
-	var max int64
+	var newMax int64
 	for _, peer := range pool.peers {
-		if peer.height > max {
-			max = peer.height
+		if peer.height > newMax {
+			newMax = peer.height
 		}
 	}
 
-	if max < pool.maxPeerHeight {
-		// Remove any planned requests for heights over the new maxPeerHeight
+	if newMax < pool.maxPeerHeight {
+		// Remove any planned requests for heights over the new maxPeerHeight.
+		// This may happen if a peer has updated with lower height.
 		for h := range pool.requests {
-			if h > max {
+			if h > newMax {
 				delete(pool.requests, h)
 			}
 		}
 	}
-
-	pool.maxPeerHeight = max
+	if pool.nextRequestHeight > newMax {
+		pool.nextRequestHeight = newMax + 1
+	}
+	pool.maxPeerHeight = newMax
 }
 
 // Adds a new peer or updates an existing peer with a new height.

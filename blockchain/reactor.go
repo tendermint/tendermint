@@ -240,7 +240,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 
 	case *bcBlockResponseMessage:
-		msgData := bcReactorMessage{
+		msgForFSM := bcReactorMessage{
 			event: blockResponseEv,
 			data: bReactorEventData{
 				peerId: src.ID(),
@@ -249,11 +249,11 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				length: len(msgBytes),
 			},
 		}
-		bcR.sendMessageToFSM(msgData)
+		bcR.messagesForFSMCh <- msgForFSM
 
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
-		msgData := bcReactorMessage{
+		msgForFSM := bcReactorMessage{
 			event: statusResponseEv,
 			data: bReactorEventData{
 				peerId: src.ID(),
@@ -261,16 +261,11 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				length: len(msgBytes),
 			},
 		}
-		bcR.sendMessageToFSM(msgData)
+		bcR.messagesForFSMCh <- msgForFSM
 
 	default:
 		bcR.Logger.Error(fmt.Sprintf("unknown message type %v", reflect.TypeOf(msg)))
 	}
-}
-
-func (bcR *BlockchainReactor) sendMessageToFSM(msg bcReactorMessage) {
-	bcR.Logger.Debug("send message to FSM for processing", "msg", msg.String())
-	bcR.messagesForFSMCh <- msg
 }
 
 // poolRoutine receives and handles messages from the Receive() routine and from the FSM
@@ -280,13 +275,11 @@ func (bcR *BlockchainReactor) poolRoutine() {
 
 	processReceivedBlockTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	sendBlockRequestTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
-
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
+	doProcessBlockCh := make(chan struct{}, 1)
 
 	lastHundred := time.Now()
 	lastRate := 0.0
-
-	doProcessBlockCh := make(chan struct{}, 1)
 
 ForLoop:
 	for {
@@ -341,18 +334,25 @@ ForLoop:
 			}
 
 		case msg := <-bcR.messagesForFSMCh:
+			// Sent from the Receive() routine when status (statusResponseEv) and
+			// block (blockResponseEv) response events are received
 			_ = bcR.fsm.handle(&msg)
 
 		case msg := <-bcR.errorsForFSMCh:
+			// Sent from the switch.RemovePeer() routine (RemovePeerEv) and
+			// FSM state timer expiry routine (stateTimeoutEv).
 			_ = bcR.fsm.handle(&msg)
 
 		case msg := <-bcR.eventsFromFSMCh:
 			switch msg.event {
 			case syncFinishedEv:
+				// Sent from the FSM when it enters finished state.
 				break ForLoop
 			case peerErrorEv:
+				// Sent from the FSM when it detects peer error
 				bcR.reportPeerErrorToSwitch(msg.data.err, msg.data.peerID)
 				if msg.data.err == errNoPeerResponse {
+					// Sent from the peer timeout handler routine
 					_ = bcR.fsm.handle(&bcReactorMessage{
 						event: peerRemoveEv,
 						data: bReactorEventData{
@@ -360,6 +360,9 @@ ForLoop:
 							err:    msg.data.err,
 						},
 					})
+				} else {
+					// For slow peers, or errors due to blocks received from wrong peer
+					// the FSM had already removed the peers
 				}
 			default:
 				bcR.Logger.Error("Event from FSM not supported", "type", msg.event)
@@ -480,7 +483,7 @@ func (bcR *BlockchainReactor) resetStateTimer(name string, timer **time.Timer, t
 					stateName: name,
 				},
 			}
-			bcR.sendMessageToFSM(msg)
+			bcR.errorsForFSMCh <- msg
 		})
 	} else {
 		(*timer).Reset(timeout)

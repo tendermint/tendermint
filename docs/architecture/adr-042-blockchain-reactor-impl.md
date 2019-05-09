@@ -1,4 +1,4 @@
-# ADR 041: Blockchain Reactor Design
+# ADR 042: Blockchain Reactor Design
 
 Author: @ancaz
 
@@ -187,19 +187,19 @@ H: The FSM times out in `waitForPeer` state, moves to `finished` state where it 
 #### 2. Typical Fast Sync
 
 S: A node fast syncs blocks from honest peers and eventually downloads and executes the penultimate block.
+
 H: The FSM in `waitForBlock` state will receive the processedBlockEv from the reactor and detect that the termination height is achieved.
 
-#### 3. Peer Fakes "Big" Height
+#### 3. Peer Claims Big Height but no Blocks
 
 S: In this scenario a faulty peer claims a big height (for which there are no blocks).
-H: The requests for the non-existing block will timeout, the peer removed and the pool's maxPeerHeight updated. FSM checks if the termination height is achieved when peers are removed.
 
-S': A variation of this scenario is a faulty peer that claims a big height and after receiving the Block request for an non-existing block sends an unsolicited Status response with a lower height.
-H': FSM updates the peer height and check if the termination height is achieved.
+H: The requests for the non-existing block will timeout, the peer removed and the pool's maxPeerHeight updated. FSM checks if the termination height is achieved when peers are removed.
 
 #### 4. Highest Peer Removed or Updated to Short
 
 S: The fast sync node is caught up with all peers except one tall peer. The tall peer is removed or it sends Status response with low height.
+
 H: FSM checks termination condition on peer removal and updates.
 
 #### 5. Block At Current Height Delayed
