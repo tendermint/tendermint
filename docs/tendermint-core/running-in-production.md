@@ -8,7 +8,7 @@ key-value database. Unfortunately, this implementation of LevelDB seems to suffe
 install the real C-implementation of LevelDB and compile Tendermint to use
 that using `make build_c`. See the [install instructions](../introduction/install.md) for details.
 
-Tendermint keeps multiple distinct LevelDB databases in the `$TMROOT/data`:
+Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
 
 - `blockstore.db`: Keeps the entire blockchain - stores blocks,
   block commits, and block meta data, each indexed by height. Used to sync new
