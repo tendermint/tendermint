@@ -75,7 +75,10 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 	return txResult, nil
 }
 
-// AddBatch indexes a batch of transactions using the given list of events.
+// AddBatch indexes a batch of transactions using the given list of events. Each
+// key that indexed from the tx's events is a composite of the event type and
+// the respective attribute's key delimited by a "." (eg. "account.number").
+// Any event with an empty type is not indexed.
 func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
 	defer storeBatch.Close()
@@ -113,7 +116,10 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	return nil
 }
 
-// Index indexes a single transaction using the given list of tags.
+// Index indexes a single transaction using the given list of events. Each key
+// that indexed from the tx's events is a composite of the event type and the
+// respective attribute's key delimited by a "." (eg. "account.number").
+// Any event with an empty type is not indexed.
 func (txi *TxIndex) Index(result *types.TxResult) error {
 	b := txi.store.NewBatch()
 	defer b.Close()
