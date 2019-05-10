@@ -261,6 +261,8 @@ func TestWaitChan(t *testing.T) {
 			pushed++
 			time.Sleep(time.Duration(cmn.RandIntn(25)) * time.Millisecond)
 		}
+		// apply a deterministic pause so the counter has time to catch up
+		time.Sleep(25 * time.Millisecond)
 		close(done)
 	}()
 
@@ -273,7 +275,7 @@ FOR_LOOP:
 			next = next.Next()
 			seen++
 			if next == nil {
-				continue
+				t.Fatal("Next should not be nil when waiting on NextWaitChan")
 			}
 		case <-done:
 			break FOR_LOOP

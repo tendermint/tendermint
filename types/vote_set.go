@@ -70,7 +70,7 @@ type VoteSet struct {
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
 func NewVoteSet(chainID string, height int64, round int, type_ SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
-		cmn.PanicSanity("Cannot make VoteSet for height == 0, doesn't make sense.")
+		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
 	return &VoteSet{
 		chainID:       chainID,
@@ -130,7 +130,7 @@ func (voteSet *VoteSet) Size() int {
 // NOTE: Vote must not be nil
 func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 	if voteSet == nil {
-		cmn.PanicSanity("AddVote() on nil VoteSet")
+		panic("AddVote() on nil VoteSet")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
@@ -196,7 +196,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		return added, NewConflictingVoteError(val, conflicting, vote)
 	}
 	if !added {
-		cmn.PanicSanity("Expected to add non-conflicting vote")
+		panic("Expected to add non-conflicting vote")
 	}
 	return added, nil
 }
@@ -220,7 +220,7 @@ func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower
 	// Already exists in voteSet.votes?
 	if existing := voteSet.votes[valIndex]; existing != nil {
 		if existing.BlockID.Equals(vote.BlockID) {
-			cmn.PanicSanity("addVerifiedVote does not expect duplicate votes")
+			panic("addVerifiedVote does not expect duplicate votes")
 		} else {
 			conflicting = existing
 		}
@@ -290,7 +290,7 @@ func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower
 // NOTE: VoteSet must not be nil
 func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 	if voteSet == nil {
-		cmn.PanicSanity("SetPeerMaj23() on nil VoteSet")
+		panic("SetPeerMaj23() on nil VoteSet")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
@@ -363,7 +363,7 @@ func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
 	defer voteSet.mtx.Unlock()
 	valIndex, val := voteSet.valSet.GetByAddress(address)
 	if val == nil {
-		cmn.PanicSanity("GetByAddress(address) returned nil")
+		panic("GetByAddress(address) returned nil")
 	}
 	return voteSet.votes[valIndex]
 }
@@ -528,16 +528,19 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 //--------------------------------------------------------------------------------
 // Commit
 
+// MakeCommit constructs a Commit from the VoteSet.
+// Panics if the vote type is not PrecommitType or if
+// there's no +2/3 votes for a single block.
 func (voteSet *VoteSet) MakeCommit() *Commit {
 	if voteSet.type_ != PrecommitType {
-		cmn.PanicSanity("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
+		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
 	// Make sure we have a 2/3 majority
 	if voteSet.maj23 == nil {
-		cmn.PanicSanity("Cannot MakeCommit() unless a blockhash has +2/3")
+		panic("Cannot MakeCommit() unless a blockhash has +2/3")
 	}
 
 	// For every validator, get the precommit
