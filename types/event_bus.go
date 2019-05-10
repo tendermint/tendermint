@@ -109,8 +109,8 @@ func (b *EventBus) validateAndStringifyEvents(events []types.Event, logger log.L
 		}
 
 		for _, attr := range event.Attributes {
-			compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			result[compositeKey] = append(result[compositeKey], string(attr.Value))
+			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			result[compositeTag] = append(result[compositeTag], string(attr.Value))
 		}
 	}
 
