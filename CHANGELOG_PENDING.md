@@ -31,6 +31,8 @@
 - [node] \#2659 Add `node.Mempool()` method, which allows you to access mempool
 
 ### IMPROVEMENTS:
+- [p2p] [\#3463](https://github.com/tendermint/tendermint/pull/3463) Do not log "Can't add peer's address to addrbook" error for a private peer
+- [p2p] [\#3552](https://github.com/tendermint/tendermint/pull/3552) Add PeerBehaviour Interface (@brapse)
 - [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC
 - [cli] \#3585 Add option to not clear address book with unsafe reset (@climber73)
 - [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add `-config=<path-to-config>` option to `testnet` cmd (@gregdhill)
