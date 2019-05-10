@@ -93,8 +93,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// Build mock responses.
 	block := makeBlock(state, 2)
 	abciResponses := NewABCIResponses(block)
-	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
-	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: nil}
+	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
+	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{
 		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
 	}}
@@ -134,11 +134,13 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		2: {
 			[]*abci.ResponseDeliverTx{
 				{Code: 383},
-				{Data: []byte("Gotcha!"),
-					Tags: []cmn.KVPair{
-						{Key: []byte("a"), Value: []byte("1")},
-						{Key: []byte("build"), Value: []byte("stuff")},
-					}},
+				{
+					Data: []byte("Gotcha!"),
+					Events: []abci.Event{
+						{Type: "type1", Attributes: []cmn.KVPair{{Key: []byte("a"), Value: []byte("1")}}},
+						{Type: "type2", Attributes: []cmn.KVPair{{Key: []byte("build"), Value: []byte("stuff")}}},
+					},
+				},
 			},
 			types.ABCIResults{
 				{383, nil},

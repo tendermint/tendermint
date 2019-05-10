@@ -22,10 +22,15 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	defer eventBus.Stop()
 
 	tx := Tx("foo")
-	result := abci.ResponseDeliverTx{Data: []byte("bar"), Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
+	result := abci.ResponseDeliverTx{
+		Data: []byte("bar"),
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
 
 	// PublishEventTx adds all these 3 tags, so the query below should work
-	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND baz=1", tx.Hash())
+	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
 	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
@@ -62,11 +67,19 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	defer eventBus.Stop()
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
-	resultEndBlock := abci.ResponseEndBlock{Tags: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}}
+	resultBeginBlock := abci.ResponseBeginBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
+	resultEndBlock := abci.ResponseEndBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+		},
+	}
 
 	// PublishEventNewBlock adds the tm.event tag, so the query below should work
-	query := "tm.event='NewBlock' AND baz=1 AND foz=2"
+	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
 	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
@@ -101,11 +114,19 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	defer eventBus.Stop()
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
-	resultEndBlock := abci.ResponseEndBlock{Tags: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}}
+	resultBeginBlock := abci.ResponseBeginBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
+	resultEndBlock := abci.ResponseEndBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+		},
+	}
 
 	// PublishEventNewBlockHeader adds the tm.event tag, so the query below should work
-	query := "tm.event='NewBlockHeader' AND baz=1 AND foz=2"
+	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
 	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
