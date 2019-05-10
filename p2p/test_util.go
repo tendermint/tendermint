@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -23,8 +23,8 @@ type mockNodeInfo struct {
 }
 
 func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
-func (ni mockNodeInfo) NetAddress() *NetAddress             { return ni.addr }
-func (ni mockNodeInfo) ValidateBasic() error                { return nil }
+func (ni mockNodeInfo) NetAddress() (*NetAddress, error)    { return ni.addr, nil }
+func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
 func AddPeerToSwitch(sw *Switch, peer Peer) {
@@ -35,7 +35,8 @@ func CreateRandomPeer(outbound bool) *peer {
 	addr, netAddr := CreateRoutableAddr()
 	p := &peer{
 		peerConn: peerConn{
-			outbound: outbound,
+			outbound:   outbound,
+			socketAddr: netAddr,
 		},
 		nodeInfo: mockNodeInfo{netAddr},
 		mconn:    &conn.MConnection{},
@@ -125,7 +126,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		return err
 	}
 
-	ni, err := handshake(conn, 50*time.Millisecond, sw.nodeInfo)
+	ni, err := handshake(conn, time.Second, sw.nodeInfo)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)
@@ -174,17 +175,22 @@ func MakeSwitch(
 		PrivKey: ed25519.GenPrivKey(),
 	}
 	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
+	addr, err := NewNetAddressString(
+		IDAddressString(nodeKey.ID(), nodeInfo.(DefaultNodeInfo).ListenAddr),
+	)
+	if err != nil {
+		panic(err)
+	}
 
 	t := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
 
-	addr := nodeInfo.NetAddress()
 	if err := t.Listen(*addr); err != nil {
 		panic(err)
 	}
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
-	sw.SetLogger(log.TestingLogger())
+	sw.SetLogger(log.TestingLogger().With("switch", i))
 	sw.SetNodeKey(&nodeKey)
 
 	ni := nodeInfo.(DefaultNodeInfo)
@@ -214,7 +220,7 @@ func testPeerConn(
 	cfg *config.P2PConfig,
 	outbound, persistent bool,
 	ourNodePrivKey crypto.PrivKey,
-	originalAddr *NetAddress,
+	socketAddr *NetAddress,
 ) (pc peerConn, err error) {
 	conn := rawConn
 
@@ -231,12 +237,7 @@ func testPeerConn(
 	}
 
 	// Only the information we already have
-	return peerConn{
-		outbound:     outbound,
-		persistent:   persistent,
-		conn:         conn,
-		originalAddr: originalAddr,
-	}, nil
+	return newPeerConn(outbound, persistent, conn, socketAddr), nil
 }
 
 //----------------------------------------------------------------
@@ -250,14 +251,22 @@ func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 	return DefaultNodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		ID_:             id,
-		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		Network:         network,
 		Version:         "1.2.3-rc0-deadbeef",
 		Channels:        []byte{testCh},
 		Moniker:         name,
 		Other: DefaultNodeInfoOther{
 			TxIndex:    "on",
-			RPCAddress: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+			RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		},
 	}
+}
+
+func getFreePort() int {
+	port, err := cmn.GetFreePort()
+	if err != nil {
+		panic(err)
+	}
+	return port
 }

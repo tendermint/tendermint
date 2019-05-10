@@ -29,7 +29,21 @@ func parseFlags() (headPath string, chopSize int64, limitSize int64, version boo
 	return
 }
 
+type fmtLogger struct{}
+
+func (fmtLogger) Info(msg string, keyvals ...interface{}) {
+	strs := make([]string, len(keyvals))
+	for i, kv := range keyvals {
+		strs[i] = fmt.Sprintf("%v", kv)
+	}
+	fmt.Printf("%s %s\n", msg, strings.Join(strs, ","))
+}
+
 func main() {
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(fmtLogger{}, func() {
+		fmt.Println("logjack shutting down")
+	})
 
 	// Read options
 	headPath, chopSize, limitSize, version := parseFlags()
@@ -51,29 +65,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	go func() {
-		// Forever, read from stdin and write to AutoFile.
-		buf := make([]byte, readBufferSize)
-		for {
-			n, err := os.Stdin.Read(buf)
-			group.Write(buf[:n])
-			group.Flush()
-			if err != nil {
-				group.Stop()
-				if err == io.EOF {
-					os.Exit(0)
-				} else {
-					fmt.Println("logjack errored")
-					os.Exit(1)
-				}
+	// Forever read from stdin and write to AutoFile.
+	buf := make([]byte, readBufferSize)
+	for {
+		n, err := os.Stdin.Read(buf)
+		group.Write(buf[:n])
+		group.FlushAndSync()
+		if err != nil {
+			group.Stop()
+			if err == io.EOF {
+				os.Exit(0)
+			} else {
+				fmt.Println("logjack errored")
+				os.Exit(1)
 			}
 		}
-	}()
-
-	// Trap signal
-	cmn.TrapSignal(func() {
-		fmt.Println("logjack shutting down")
-	})
+	}
 }
 
 func parseBytesize(chopSize string) int64 {

@@ -40,7 +40,11 @@ These files are found in `$HOME/.tendermint`:
 ```
 $ ls $HOME/.tendermint
 
-config.toml  data  genesis.json  priv_validator.json
+config  data
+
+$ ls $HOME/.tendermint/config/
+
+config.toml  genesis.json  node_key.json  priv_validator.json
 ```
 
 For a single, local node, no further configuration is required.
@@ -110,7 +114,18 @@ source ~/.profile
 
 This will install `go` and other dependencies, get the Tendermint source code, then compile the `tendermint` binary.
 
-Next, use the `tendermint testnet` command to create four directories of config files (found in `./mytestnet`) and copy each directory to the relevant machine in the cloud, so that each machine has `$HOME/mytestnet/node[0-3]` directory. Then from each machine, run:
+Next, use the `tendermint testnet` command to create four directories of config files (found in `./mytestnet`) and copy each directory to the relevant machine in the cloud, so that each machine has `$HOME/mytestnet/node[0-3]` directory.
+
+Before you can start the network, you'll need peers identifiers (IPs are not enough and can change). We'll refer to them as ID1, ID2, ID3, ID4.
+
+```
+tendermint show_node_id --home ./mytestnet/node0
+tendermint show_node_id --home ./mytestnet/node1
+tendermint show_node_id --home ./mytestnet/node2
+tendermint show_node_id --home ./mytestnet/node3
+```
+
+Finally, from each machine, run:
 
 ```
 tendermint node --home ./mytestnet/node0 --proxy_app=kvstore --p2p.persistent_peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
@@ -121,6 +136,6 @@ tendermint node --home ./mytestnet/node3 --proxy_app=kvstore --p2p.persistent_pe
 
 Note that after the third node is started, blocks will start to stream in
 because >2/3 of validators (defined in the `genesis.json`) have come online.
-Seeds can also be specified in the `config.toml`. See [here](../tendermint-core/configuration.md) for more information about configuration options.
+Persistent peers can also be specified in the `config.toml`. See [here](../tendermint-core/configuration.md) for more information about configuration options.
 
 Transactions can then be sent as covered in the single, local node example above.

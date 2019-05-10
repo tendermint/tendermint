@@ -10,14 +10,12 @@ import (
 )
 
 // PrivValidator defines the functionality of a local Tendermint validator
-// that signs votes, proposals, and heartbeats, and never double signs.
+// that signs votes and proposals, and never double signs.
 type PrivValidator interface {
-	GetAddress() Address // redundant since .PubKey().Address()
 	GetPubKey() crypto.PubKey
 
 	SignVote(chainID string, vote *Vote) error
 	SignProposal(chainID string, proposal *Proposal) error
-	SignHeartbeat(chainID string, heartbeat *Heartbeat) error
 }
 
 //----------------------------------------
@@ -30,7 +28,7 @@ func (pvs PrivValidatorsByAddress) Len() int {
 }
 
 func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	return bytes.Compare(pvs[i].GetAddress(), pvs[j].GetAddress()) == -1
+	return bytes.Compare(pvs[i].GetPubKey().Address(), pvs[j].GetPubKey().Address()) == -1
 }
 
 func (pvs PrivValidatorsByAddress) Swap(i, j int) {
@@ -45,16 +43,20 @@ func (pvs PrivValidatorsByAddress) Swap(i, j int) {
 // MockPV implements PrivValidator without any safety or persistence.
 // Only use it for testing.
 type MockPV struct {
-	privKey crypto.PrivKey
+	privKey              crypto.PrivKey
+	breakProposalSigning bool
+	breakVoteSigning     bool
 }
 
 func NewMockPV() *MockPV {
-	return &MockPV{ed25519.GenPrivKey()}
+	return &MockPV{ed25519.GenPrivKey(), false, false}
 }
 
-// Implements PrivValidator.
-func (pv *MockPV) GetAddress() Address {
-	return pv.privKey.PubKey().Address()
+// NewMockPVWithParams allows one to create a MockPV instance, but with finer
+// grained control over the operation of the mock validator. This is useful for
+// mocking test failures.
+func NewMockPVWithParams(privKey crypto.PrivKey, breakProposalSigning, breakVoteSigning bool) *MockPV {
+	return &MockPV{privKey, breakProposalSigning, breakVoteSigning}
 }
 
 // Implements PrivValidator.
@@ -64,7 +66,11 @@ func (pv *MockPV) GetPubKey() crypto.PubKey {
 
 // Implements PrivValidator.
 func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
-	signBytes := vote.SignBytes(chainID)
+	useChainID := chainID
+	if pv.breakVoteSigning {
+		useChainID = "incorrect-chain-id"
+	}
+	signBytes := vote.SignBytes(useChainID)
 	sig, err := pv.privKey.Sign(signBytes)
 	if err != nil {
 		return err
@@ -75,7 +81,11 @@ func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
 
 // Implements PrivValidator.
 func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
-	signBytes := proposal.SignBytes(chainID)
+	useChainID := chainID
+	if pv.breakProposalSigning {
+		useChainID = "incorrect-chain-id"
+	}
+	signBytes := proposal.SignBytes(useChainID)
 	sig, err := pv.privKey.Sign(signBytes)
 	if err != nil {
 		return err
@@ -84,19 +94,10 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 	return nil
 }
 
-// signHeartbeat signs the heartbeat without any checking.
-func (pv *MockPV) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
-	sig, err := pv.privKey.Sign(heartbeat.SignBytes(chainID))
-	if err != nil {
-		return err
-	}
-	heartbeat.Signature = sig
-	return nil
-}
-
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	return fmt.Sprintf("MockPV{%v}", pv.GetAddress())
+	addr := pv.GetPubKey().Address()
+	return fmt.Sprintf("MockPV{%v}", addr)
 }
 
 // XXX: Implement.
@@ -121,12 +122,7 @@ func (pv *erroringMockPV) SignProposal(chainID string, proposal *Proposal) error
 	return ErroringMockPVErr
 }
 
-// signHeartbeat signs the heartbeat without any checking.
-func (pv *erroringMockPV) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
-	return ErroringMockPVErr
-}
-
 // NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.
 func NewErroringMockPV() *erroringMockPV {
-	return &erroringMockPV{&MockPV{ed25519.GenPrivKey()}}
+	return &erroringMockPV{&MockPV{ed25519.GenPrivKey(), false, false}}
 }

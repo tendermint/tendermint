@@ -4,9 +4,9 @@ package types;
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "google/protobuf/timestamp.proto";
-import "github.com/tendermint/tendermint/libs/common/types.proto";
 import "github.com/tendermint/tendermint/crypto/merkle/merkle.proto";
+import "github.com/tendermint/tendermint/libs/common/types.proto";
+import "google/protobuf/timestamp.proto";
 
 // This file is copied from http://github.com/tendermint/abci
 // NOTE: When using custom types, mind the warnings.
@@ -207,13 +207,13 @@ message ResponseCommit {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 message ConsensusParams {
-  BlockSizeParams block_size = 1;
+  BlockParams block = 1;
   EvidenceParams evidence = 2;
   ValidatorParams validator = 3;
 }
 
-// BlockSize contains limits on the block size.
-message BlockSizeParams {
+// BlockParams contains limits on the block size and timestamp.
+message BlockParams {
   // Note: must be greater than 0
   int64 max_bytes = 1;
   // Note: must be greater or equal to -1

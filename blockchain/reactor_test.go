@@ -1,72 +1,153 @@
 package blockchain
 
 import (
-	"net"
+	"os"
+	"sort"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
+
+	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
-	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
-	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
+var config *cfg.Config
+
+func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+	validators := make([]types.GenesisValidator, numValidators)
+	privValidators := make([]types.PrivValidator, numValidators)
+	for i := 0; i < numValidators; i++ {
+		val, privVal := types.RandValidator(randPower, minPower)
+		validators[i] = types.GenesisValidator{
+			PubKey: val.PubKey,
+			Power:  val.VotingPower,
+		}
+		privValidators[i] = privVal
+	}
+	sort.Sort(types.PrivValidatorsByAddress(privValidators))
+
+	return &types.GenesisDoc{
+		GenesisTime: tmtime.Now(),
+		ChainID:     config.ChainID(),
+		Validators:  validators,
+	}, privValidators
+}
+
+func makeVote(header *types.Header, blockID types.BlockID, valset *types.ValidatorSet, privVal types.PrivValidator) *types.Vote {
+	addr := privVal.GetPubKey().Address()
+	idx, _ := valset.GetByAddress(addr)
+	vote := &types.Vote{
+		ValidatorAddress: addr,
+		ValidatorIndex:   idx,
+		Height:           header.Height,
+		Round:            1,
+		Timestamp:        tmtime.Now(),
+		Type:             types.PrecommitType,
+		BlockID:          blockID,
+	}
+
+	privVal.SignVote(header.ChainID, vote)
+
+	return vote
+}
+
+type BlockchainReactorPair struct {
+	reactor *BlockchainReactor
+	app     proxy.AppConns
+}
+
+func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals []types.PrivValidator, maxBlockHeight int64) BlockchainReactorPair {
+	if len(privVals) != 1 {
+		panic("only support one validator")
+	}
+
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	if err != nil {
+		panic(cmn.ErrorWrap(err, "error start app"))
+	}
+
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
 	blockStore := NewBlockStore(blockDB)
-	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
+
+	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
 	}
-	return state, blockStore
-}
 
-func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainReactor {
-	state, blockStore := makeStateAndBlockStore(logger)
-
-	// Make the blockchainReactor itself
+	// Make the BlockchainReactor itself.
+	// NOTE we have to create and commit the blocks first because
+	// pool.height is determined from the store.
 	fastSync := true
-	var nilApp proxy.AppConnConsensus
-	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), nilApp,
+	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), proxyApp.Consensus(),
 		sm.MockMempool{}, sm.MockEvidencePool{})
+
+	// let's add some blocks in
+	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
+		lastCommit := types.NewCommit(types.BlockID{}, nil)
+		if blockHeight > 1 {
+			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
+			lastBlock := blockStore.LoadBlock(blockHeight - 1)
+
+			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0]).CommitSig()
+			lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{vote})
+		}
+
+		thisBlock := makeBlock(blockHeight, state, lastCommit)
+
+		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		blockID := types.BlockID{thisBlock.Hash(), thisParts.Header()}
+
+		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		if err != nil {
+			panic(cmn.ErrorWrap(err, "error apply block"))
+		}
+
+		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
+	}
 
 	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
-	// Next: we need to set a switch in order for peers to be added in
-	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig(), nil)
-
-	// Lastly: let's add some blocks in
-	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		firstBlock := makeBlock(blockHeight, state)
-		secondBlock := makeBlock(blockHeight+1, state)
-		firstParts := firstBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockStore.SaveBlock(firstBlock, firstParts, secondBlock.LastCommit)
-	}
-
-	return bcReactor
+	return BlockchainReactorPair{bcReactor, proxyApp}
 }
 
 func TestNoBlockResponse(t *testing.T) {
-	maxBlockHeight := int64(20)
+	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	bcr := newBlockchainReactor(log.TestingLogger(), maxBlockHeight)
-	bcr.Start()
-	defer bcr.Stop()
+	maxBlockHeight := int64(65)
 
-	// Add some peers in
-	peer := newbcrTestPeer(p2p.ID(cmn.RandStr(12)))
-	bcr.AddPeer(peer)
+	reactorPairs := make([]BlockchainReactorPair, 2)
 
-	chID := byte(0x01)
+	reactorPairs[0] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	reactorPairs[1] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
+
+	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		return s
+
+	}, p2p.Connect2Switches)
+
+	defer func() {
+		for _, r := range reactorPairs {
+			r.reactor.Stop()
+			r.app.Stop()
+		}
+	}()
 
 	tests := []struct {
 		height   int64
@@ -78,72 +159,101 @@ func TestNoBlockResponse(t *testing.T) {
 		{100, false},
 	}
 
-	// receive a request message from peer,
-	// wait for our response to be received on the peer
-	for _, tt := range tests {
-		reqBlockMsg := &bcBlockRequestMessage{tt.height}
-		reqBlockBytes := cdc.MustMarshalBinaryBare(reqBlockMsg)
-		bcr.Receive(chID, peer, reqBlockBytes)
-		msg := peer.lastBlockchainMessage()
+	for {
+		if reactorPairs[1].reactor.pool.IsCaughtUp() {
+			break
+		}
 
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	assert.Equal(t, maxBlockHeight, reactorPairs[0].reactor.store.Height())
+
+	for _, tt := range tests {
+		block := reactorPairs[1].reactor.store.LoadBlock(tt.height)
 		if tt.existent {
-			if blockMsg, ok := msg.(*bcBlockResponseMessage); !ok {
-				t.Fatalf("Expected to receive a block response for height %d", tt.height)
-			} else if blockMsg.Block.Height != tt.height {
-				t.Fatalf("Expected response to be for height %d, got %d", tt.height, blockMsg.Block.Height)
-			}
+			assert.True(t, block != nil)
 		} else {
-			if noBlockMsg, ok := msg.(*bcNoBlockResponseMessage); !ok {
-				t.Fatalf("Expected to receive a no block response for height %d", tt.height)
-			} else if noBlockMsg.Height != tt.height {
-				t.Fatalf("Expected response to be for height %d, got %d", tt.height, noBlockMsg.Height)
-			}
+			assert.True(t, block == nil)
 		}
 	}
 }
 
-/*
 // NOTE: This is too hard to test without
 // an easy way to add test peer to switch
 // or without significant refactoring of the module.
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
 func TestBadBlockStopsPeer(t *testing.T) {
-	maxBlockHeight := int64(20)
+	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	bcr := newBlockchainReactor(log.TestingLogger(), maxBlockHeight)
-	bcr.Start()
-	defer bcr.Stop()
+	maxBlockHeight := int64(148)
 
-	// Add some peers in
-	peer := newbcrTestPeer(p2p.ID(cmn.RandStr(12)))
+	otherChain := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	defer func() {
+		otherChain.reactor.Stop()
+		otherChain.app.Stop()
+	}()
 
-	// XXX: This doesn't add the peer to anything,
-	// so it's hard to check that it's later removed
-	bcr.AddPeer(peer)
-	assert.True(t, bcr.Switch.Peers().Size() > 0)
+	reactorPairs := make([]BlockchainReactorPair, 4)
 
-	// send a bad block from the peer
-	// default blocks already dont have commits, so should fail
-	block := bcr.store.LoadBlock(3)
-	msg := &bcBlockResponseMessage{Block: block}
-	peer.Send(BlockchainChannel, struct{ BlockchainMessage }{msg})
+	reactorPairs[0] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	reactorPairs[1] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[2] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[3] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
 
-	ticker := time.NewTicker(time.Millisecond * 10)
-	timer := time.NewTimer(time.Second * 2)
-LOOP:
-	for {
-		select {
-		case <-ticker.C:
-			if bcr.Switch.Peers().Size() == 0 {
-				break LOOP
-			}
-		case <-timer.C:
-			t.Fatal("Timed out waiting to disconnect peer")
+	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		return s
+
+	}, p2p.Connect2Switches)
+
+	defer func() {
+		for _, r := range reactorPairs {
+			r.reactor.Stop()
+			r.app.Stop()
 		}
+	}()
+
+	for {
+		if reactorPairs[3].reactor.pool.IsCaughtUp() {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
 	}
+
+	//at this time, reactors[0-3] is the newest
+	assert.Equal(t, 3, reactorPairs[1].reactor.Switch.Peers().Size())
+
+	//mark reactorPairs[3] is an invalid peer
+	reactorPairs[3].reactor.store = otherChain.reactor.store
+
+	lastReactorPair := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs = append(reactorPairs, lastReactorPair)
+
+	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
+		return s
+
+	}, p2p.Connect2Switches)...)
+
+	for i := 0; i < len(reactorPairs)-1; i++ {
+		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
+	}
+
+	for {
+		if lastReactorPair.reactor.pool.IsCaughtUp() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
 }
-*/
 
 //----------------------------------------------
 // utility funcs
@@ -155,56 +265,41 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, state sm.State) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), new(types.Commit), nil, state.Validators.GetProposer().Address)
+func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
 	return block
 }
 
-// The Test peer
-type bcrTestPeer struct {
-	cmn.BaseService
-	id p2p.ID
-	ch chan interface{}
+type testApp struct {
+	abci.BaseApplication
 }
 
-var _ p2p.Peer = (*bcrTestPeer)(nil)
+var _ abci.Application = (*testApp)(nil)
 
-func newbcrTestPeer(id p2p.ID) *bcrTestPeer {
-	bcr := &bcrTestPeer{
-		id: id,
-		ch: make(chan interface{}, 2),
-	}
-	bcr.BaseService = *cmn.NewBaseService(nil, "bcrTestPeer", bcr)
-	return bcr
+func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
+	return abci.ResponseInfo{}
 }
 
-func (tp *bcrTestPeer) lastBlockchainMessage() interface{} { return <-tp.ch }
-
-func (tp *bcrTestPeer) TrySend(chID byte, msgBytes []byte) bool {
-	var msg BlockchainMessage
-	err := cdc.UnmarshalBinaryBare(msgBytes, &msg)
-	if err != nil {
-		panic(cmn.ErrorWrap(err, "Error while trying to parse a BlockchainMessage"))
-	}
-	if _, ok := msg.(*bcStatusResponseMessage); ok {
-		// Discard status response messages since they skew our results
-		// We only want to deal with:
-		// + bcBlockResponseMessage
-		// + bcNoBlockResponseMessage
-	} else {
-		tp.ch <- msg
-	}
-	return true
+func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+	return abci.ResponseBeginBlock{}
 }
 
-func (tp *bcrTestPeer) FlushStop()                           {}
-func (tp *bcrTestPeer) Send(chID byte, msgBytes []byte) bool { return tp.TrySend(chID, msgBytes) }
-func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo               { return p2p.DefaultNodeInfo{} }
-func (tp *bcrTestPeer) Status() p2p.ConnectionStatus         { return p2p.ConnectionStatus{} }
-func (tp *bcrTestPeer) ID() p2p.ID                           { return tp.id }
-func (tp *bcrTestPeer) IsOutbound() bool                     { return false }
-func (tp *bcrTestPeer) IsPersistent() bool                   { return true }
-func (tp *bcrTestPeer) Get(s string) interface{}             { return s }
-func (tp *bcrTestPeer) Set(string, interface{})              {}
-func (tp *bcrTestPeer) RemoteIP() net.IP                     { return []byte{127, 0, 0, 1} }
-func (tp *bcrTestPeer) OriginalAddr() *p2p.NetAddress        { return nil }
+func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
+	return abci.ResponseEndBlock{}
+}
+
+func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+	return abci.ResponseDeliverTx{Tags: []cmn.KVPair{}}
+}
+
+func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {
+	return abci.ResponseCheckTx{}
+}
+
+func (app *testApp) Commit() abci.ResponseCommit {
+	return abci.ResponseCommit{}
+}
+
+func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
+	return
+}

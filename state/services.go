@@ -23,6 +23,7 @@ type Mempool interface {
 
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
+	CheckTxWithInfo(types.Tx, func(*abci.Response), mempool.TxInfo) error
 	ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs
 	Update(int64, types.Txs, mempool.PreCheckFunc, mempool.PostCheckFunc) error
 	Flush()
@@ -37,11 +38,17 @@ type MockMempool struct{}
 
 var _ Mempool = MockMempool{}
 
-func (MockMempool) Lock()                                            {}
-func (MockMempool) Unlock()                                          {}
-func (MockMempool) Size() int                                        { return 0 }
-func (MockMempool) CheckTx(_ types.Tx, _ func(*abci.Response)) error { return nil }
-func (MockMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs          { return types.Txs{} }
+func (MockMempool) Lock()     {}
+func (MockMempool) Unlock()   {}
+func (MockMempool) Size() int { return 0 }
+func (MockMempool) CheckTx(_ types.Tx, _ func(*abci.Response)) error {
+	return nil
+}
+func (MockMempool) CheckTxWithInfo(_ types.Tx, _ func(*abci.Response),
+	_ mempool.TxInfo) error {
+	return nil
+}
+func (MockMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
 func (MockMempool) Update(
 	_ int64,
 	_ types.Txs,
@@ -80,10 +87,13 @@ type BlockStore interface {
 // evidence pool
 
 // EvidencePool defines the EvidencePool interface used by the ConsensusState.
+// Get/Set/Commit
 type EvidencePool interface {
 	PendingEvidence(int64) []types.Evidence
 	AddEvidence(types.Evidence) error
 	Update(*types.Block, State)
+	// IsCommitted indicates if this evidence was already marked committed in another block.
+	IsCommitted(types.Evidence) bool
 }
 
 // MockMempool is an empty implementation of a Mempool, useful for testing.
@@ -92,3 +102,4 @@ type MockEvidencePool struct{}
 func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
 func (m MockEvidencePool) AddEvidence(types.Evidence) error       { return nil }
 func (m MockEvidencePool) Update(*types.Block, State)             {}
+func (m MockEvidencePool) IsCommitted(types.Evidence) bool        { return false }

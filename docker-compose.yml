@@ -8,7 +8,7 @@ services:
       - "26656-26657:26656-26657"
     environment:
       - ID=0
-      - LOG=$${LOG:-tendermint.log}
+      - LOG=${LOG:-tendermint.log}
     volumes:
       - ./build:/tendermint:Z
     networks:
@@ -22,7 +22,7 @@ services:
       - "26659-26660:26656-26657"
     environment:
       - ID=1
-      - LOG=$${LOG:-tendermint.log}
+      - LOG=${LOG:-tendermint.log}
     volumes:
       - ./build:/tendermint:Z
     networks:
@@ -34,7 +34,7 @@ services:
     image: "tendermint/localnode"
     environment:
       - ID=2
-      - LOG=$${LOG:-tendermint.log}
+      - LOG=${LOG:-tendermint.log}
     ports:
       - "26661-26662:26656-26657"
     volumes:
@@ -48,7 +48,7 @@ services:
     image: "tendermint/localnode"
     environment:
       - ID=3
-      - LOG=$${LOG:-tendermint.log}
+      - LOG=${LOG:-tendermint.log}
     ports:
       - "26663-26664:26656-26657"
     volumes:

@@ -13,14 +13,14 @@ func TestSimpleMap(t *testing.T) {
 		values []string // each string gets converted to []byte in test
 		want   string
 	}{
-		{[]string{"key1"}, []string{"value1"}, "321d150de16dceb51c72981b432b115045383259b1a550adf8dc80f927508967"},
-		{[]string{"key1"}, []string{"value2"}, "2a9e4baf321eac99f6eecc3406603c14bc5e85bb7b80483cbfc75b3382d24a2f"},
+		{[]string{"key1"}, []string{"value1"}, "a44d3cc7daba1a4600b00a2434b30f8b970652169810d6dfa9fb1793a2189324"},
+		{[]string{"key1"}, []string{"value2"}, "0638e99b3445caec9d95c05e1a3fc1487b4ddec6a952ff337080360b0dcc078c"},
 		// swap order with 2 keys
-		{[]string{"key1", "key2"}, []string{"value1", "value2"}, "c4d8913ab543ba26aa970646d4c99a150fd641298e3367cf68ca45fb45a49881"},
-		{[]string{"key2", "key1"}, []string{"value2", "value1"}, "c4d8913ab543ba26aa970646d4c99a150fd641298e3367cf68ca45fb45a49881"},
+		{[]string{"key1", "key2"}, []string{"value1", "value2"}, "8fd19b19e7bb3f2b3ee0574027d8a5a4cec370464ea2db2fbfa5c7d35bb0cff3"},
+		{[]string{"key2", "key1"}, []string{"value2", "value1"}, "8fd19b19e7bb3f2b3ee0574027d8a5a4cec370464ea2db2fbfa5c7d35bb0cff3"},
 		// swap order with 3 keys
-		{[]string{"key1", "key2", "key3"}, []string{"value1", "value2", "value3"}, "b23cef00eda5af4548a213a43793f2752d8d9013b3f2b64bc0523a4791196268"},
-		{[]string{"key1", "key3", "key2"}, []string{"value1", "value3", "value2"}, "b23cef00eda5af4548a213a43793f2752d8d9013b3f2b64bc0523a4791196268"},
+		{[]string{"key1", "key2", "key3"}, []string{"value1", "value2", "value3"}, "1dd674ec6782a0d586a903c9c63326a41cbe56b3bba33ed6ff5b527af6efb3dc"},
+		{[]string{"key1", "key3", "key2"}, []string{"value1", "value3", "value2"}, "1dd674ec6782a0d586a903c9c63326a41cbe56b3bba33ed6ff5b527af6efb3dc"},
 	}
 	for i, tc := range tests {
 		db := newSimpleMap()

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/crypto/nacl/secretbox" // forked to github.com/tendermint/crypto
+	"golang.org/x/crypto/nacl/secretbox"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -17,7 +17,6 @@ const secretLen = 32
 
 // secret must be 32 bytes long. Use something like Sha256(Bcrypt(passphrase))
 // The ciphertext is (secretbox.Overhead + 24) bytes longer than the plaintext.
-// NOTE: call crypto.MixEntropy() first.
 func EncryptSymmetric(plaintext []byte, secret []byte) (ciphertext []byte) {
 	if len(secret) != secretLen {
 		cmn.PanicSanity(fmt.Sprintf("Secret must be 32 bytes long, got len %v", len(secret)))

@@ -46,6 +46,10 @@ func (mBatch *memBatch) WriteSync() {
 	mBatch.write(true)
 }
 
+func (mBatch *memBatch) Close() {
+	mBatch.ops = nil
+}
+
 func (mBatch *memBatch) write(doSync bool) {
 	if mtx := mBatch.db.Mutex(); mtx != nil {
 		mtx.Lock()

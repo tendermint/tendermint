@@ -11,9 +11,10 @@ const (
 )
 
 type filter struct {
-	next           Logger
-	allowed        level            // XOR'd levels for default case
-	allowedKeyvals map[keyval]level // When key-value match, use this level
+	next             Logger
+	allowed          level            // XOR'd levels for default case
+	initiallyAllowed level            // XOR'd levels for initial case
+	allowedKeyvals   map[keyval]level // When key-value match, use this level
 }
 
 type keyval struct {
@@ -33,6 +34,7 @@ func NewFilter(next Logger, options ...Option) Logger {
 	for _, option := range options {
 		option(l)
 	}
+	l.initiallyAllowed = l.allowed
 	return l
 }
 
@@ -76,14 +78,45 @@ func (l *filter) Error(msg string, keyvals ...interface{}) {
 //     logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
 //		 logger.With("user", "Sam").With("module", "crypto").Info("Hello") # produces "I... Hello module=crypto user=Sam"
 func (l *filter) With(keyvals ...interface{}) Logger {
+	keyInAllowedKeyvals := false
+
 	for i := len(keyvals) - 2; i >= 0; i -= 2 {
 		for kv, allowed := range l.allowedKeyvals {
-			if keyvals[i] == kv.key && keyvals[i+1] == kv.value {
-				return &filter{next: l.next.With(keyvals...), allowed: allowed, allowedKeyvals: l.allowedKeyvals}
+			if keyvals[i] == kv.key {
+				keyInAllowedKeyvals = true
+				// Example:
+				//		logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"))
+				//		logger.With("module", "crypto")
+				if keyvals[i+1] == kv.value {
+					return &filter{
+						next:             l.next.With(keyvals...),
+						allowed:          allowed, // set the desired level
+						allowedKeyvals:   l.allowedKeyvals,
+						initiallyAllowed: l.initiallyAllowed,
+					}
+				}
 			}
 		}
 	}
-	return &filter{next: l.next.With(keyvals...), allowed: l.allowed, allowedKeyvals: l.allowedKeyvals}
+
+	// Example:
+	//		logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"))
+	//		logger.With("module", "main")
+	if keyInAllowedKeyvals {
+		return &filter{
+			next:             l.next.With(keyvals...),
+			allowed:          l.initiallyAllowed, // return back to initially allowed
+			allowedKeyvals:   l.allowedKeyvals,
+			initiallyAllowed: l.initiallyAllowed,
+		}
+	}
+
+	return &filter{
+		next:             l.next.With(keyvals...),
+		allowed:          l.allowed, // simply continue with the current level
+		allowedKeyvals:   l.allowedKeyvals,
+		initiallyAllowed: l.initiallyAllowed,
+	}
 }
 
 //--------------------------------------------------------------------------------

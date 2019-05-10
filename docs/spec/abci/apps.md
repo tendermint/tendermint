@@ -31,8 +31,13 @@ states to the latest committed state at once.
 
 When `Commit` completes, it unlocks the mempool.
 
-Note that it is not possible to send transactions to Tendermint during `Commit` - if your app
-tries to send a `/broadcast_tx` to Tendermint during Commit, it will deadlock.
+WARNING: if the ABCI app logic processing the `Commit` message sends a
+`/broadcast_tx_sync` or `/broadcast_tx_commit` and waits for the response
+before proceeding, it will deadlock. Executing those `broadcast_tx` calls
+involves acquiring a lock that is held during the `Commit` call, so it's not
+possible. If you make the call to the `broadcast_tx` endpoints concurrently,
+that's no problem, it just can't be part of the sequential logic of the
+`Commit` function.
 
 ### Consensus Connection
 
@@ -103,7 +108,7 @@ the difference credited back. Tendermint adopts a similar abstraction,
 though uses it only optionally and weakly, allowing applications to define
 their own sense of the cost of execution.
 
-In Tendermint, the `ConsensusParams.BlockSize.MaxGas` limits the amount of `gas` that can be used in a block.
+In Tendermint, the `ConsensusParams.Block.MaxGas` limits the amount of `gas` that can be used in a block.
 The default value is `-1`, meaning no limit, or that the concept of gas is
 meaningless.
 
@@ -166,6 +171,15 @@ the tags will be hashed into the next block header.
 The application may set the validator set during InitChain, and update it during
 EndBlock.
 
+Note that the maximum total power of the validator set is bounded by
+`MaxTotalVotingPower = MaxInt64 / 8`. Applications are responsible for ensuring
+they do not make changes to the validator set that cause it to exceed this
+limit.
+
+Additionally, applications must ensure that a single set of updates does not contain any duplicates -
+a given public key can only appear in an update once. If an update includes
+duplicates, the block execution will fail irrecoverably.
+
 ### InitChain
 
 ResponseInitChain can return a list of validators.
@@ -206,6 +220,7 @@ following rules:
   - if the validator does not already exist, it will be added to the validator
     set with the given power
   - if the validator does already exist, its power will be adjusted to the given power
+- the total power of the new validator set must not exceed MaxTotalVotingPower
 
 Note the updates returned in block `H` will only take effect at block `H+2`.
 
@@ -215,7 +230,7 @@ ConsensusParams enforce certain limits in the blockchain, like the maximum size
 of blocks, amount of gas used in a block, and the maximum acceptable age of
 evidence. They can be set in InitChain and updated in EndBlock.
 
-### BlockSize.MaxBytes
+### Block.MaxBytes
 
 The maximum size of a complete Amino encoded block.
 This is enforced by Tendermint consensus.
@@ -225,7 +240,7 @@ the header, the validator set, and any included evidence in the block.
 
 Must have `0 < MaxBytes < 100 MB`.
 
-### BlockSize.MaxGas
+### Block.MaxGas
 
 The maximum of the sum of `GasWanted` in a proposed block.
 This is *not* enforced by Tendermint consensus.
@@ -235,6 +250,13 @@ txs included in a proposed block.
 
 Must have `MaxGas >= -1`.
 If `MaxGas == -1`, no limit is enforced.
+
+### Block.TimeIotaMs
+
+The minimum time between consecutive blocks (in milliseconds).
+This is enforced by Tendermint consensus.
+
+Must have `TimeIotaMs > 0` to ensure time monotonicity.
 
 ### EvidenceParams.MaxAge
 
@@ -250,8 +272,8 @@ Must have `0 < MaxAge`.
 The application may set the ConsensusParams during InitChain, and update them during
 EndBlock. If the ConsensusParams is empty, it will be ignored. Each field
 that is not empty will be applied in full. For instance, if updating the
-BlockSize.MaxBytes, applications must also set the other BlockSize fields (like
-BlockSize.MaxGas), even if they are unchanged, as they will otherwise cause the
+Block.MaxBytes, applications must also set the other Block fields (like
+Block.MaxGas), even if they are unchanged, as they will otherwise cause the
 value to be updated to 0.
 
 #### InitChain
@@ -407,21 +429,22 @@ If `storeBlockHeight == stateBlockHeight && appBlockHeight < storeBlockHeight`,
 replay all blocks in full from `appBlockHeight` to `storeBlockHeight`.
 This happens if we completed processing the block, but the app forgot its height.
 
-If `storeBlockHeight == stateBlockHeight && appBlockHeight == storeBlockHeight`, we're done
+If `storeBlockHeight == stateBlockHeight && appBlockHeight == storeBlockHeight`, we're done.
 This happens if we crashed at an opportune spot.
 
 If `storeBlockHeight == stateBlockHeight+1`
 This happens if we started processing the block but didn't finish.
 
-    If `appBlockHeight < stateBlockHeight`
-    	replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,
-    	and replay the block at `storeBlockHeight` using the WAL.
-    This happens if the app forgot the last block it committed.
+If `appBlockHeight < stateBlockHeight`
+    replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,
+    and replay the block at `storeBlockHeight` using the WAL.
+This happens if the app forgot the last block it committed.
 
-    If `appBlockHeight == stateBlockHeight`,
-    	replay the last block (storeBlockHeight) in full.
-    This happens if we crashed before the app finished Commit
+If `appBlockHeight == stateBlockHeight`,
+    replay the last block (storeBlockHeight) in full.
+This happens if we crashed before the app finished Commit
 
-    If appBlockHeight == storeBlockHeight {
-    	update the state using the saved ABCI responses but dont run the block against the real app.
-    This happens if we crashed after the app finished Commit but before Tendermint saved the state.
+If `appBlockHeight == storeBlockHeight`
+    update the state using the saved ABCI responses but dont run the block against the real app.
+This happens if we crashed after the app finished Commit but before Tendermint saved the state.
+

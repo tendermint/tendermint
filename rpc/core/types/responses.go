@@ -5,7 +5,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -110,6 +110,7 @@ type Peer struct {
 	NodeInfo         p2p.DefaultNodeInfo  `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
+	RemoteIP         string               `json:"remote_ip"`
 }
 
 // Validators for a height
@@ -177,8 +178,10 @@ type ResultTxSearch struct {
 
 // List of mempool txs
 type ResultUnconfirmedTxs struct {
-	N   int        `json:"n_txs"`
-	Txs []types.Tx `json:"txs"`
+	Count      int        `json:"n_txs"`
+	Total      int        `json:"total"`
+	TotalBytes int64      `json:"total_bytes"`
+	Txs        []types.Tx `json:"txs"`
 }
 
 // Info abci msg
@@ -204,4 +207,5 @@ type (
 type ResultEvent struct {
 	Query string            `json:"query"`
 	Data  types.TMEventData `json:"data"`
+	Tags  map[string]string `json:"tags"`
 }

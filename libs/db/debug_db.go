@@ -250,3 +250,8 @@ func (dbch debugBatch) WriteSync() {
 	fmt.Printf("%v.batch.WriteSync()\n", dbch.label)
 	dbch.bch.WriteSync()
 }
+
+// Implements Batch.
+func (dbch debugBatch) Close() {
+	dbch.bch.Close()
+}

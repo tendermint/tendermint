@@ -29,10 +29,14 @@ Vagrant.configure("2") do |config|
     usermod -a -G docker vagrant
 
     # install go
-    wget -q https://dl.google.com/go/go1.11.linux-amd64.tar.gz
-    tar -xvf go1.11.linux-amd64.tar.gz
+    wget -q https://dl.google.com/go/go1.12.linux-amd64.tar.gz
+    tar -xvf go1.12.linux-amd64.tar.gz
     mv go /usr/local
-    rm -f go1.11.linux-amd64.tar.gz
+    rm -f go1.12.linux-amd64.tar.gz
+
+    # install nodejs (for docs)
+    curl -sL https://deb.nodesource.com/setup_11.x | bash -
+    apt-get install -y nodejs
 
     # cleanup
     apt-get autoremove -y
@@ -53,6 +57,6 @@ Vagrant.configure("2") do |config|
 
     # get all deps and tools, ready to install/test
     su - vagrant  -c 'source /home/vagrant/.bash_profile'
-    su - vagrant -c 'cd /home/vagrant/go/src/github.com/tendermint/tendermint && make get_tools && make get_dev_tools && make get_vendor_deps'
+    su - vagrant -c 'cd /home/vagrant/go/src/github.com/tendermint/tendermint && make get_tools && make get_vendor_deps'
   SHELL
 end

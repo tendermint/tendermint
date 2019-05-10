@@ -183,6 +183,10 @@ func (mBatch *goLevelDBBatch) WriteSync() {
 	}
 }
 
+// Implements Batch.
+// Close is no-op for goLevelDBBatch.
+func (mBatch *goLevelDBBatch) Close() {}
+
 //----------------------------------------
 // Iterator
 // NOTE This is almost identical to db/c_level_db.Iterator
@@ -212,13 +216,13 @@ var _ Iterator = (*goLevelDBIterator)(nil)
 
 func newGoLevelDBIterator(source iterator.Iterator, start, end []byte, isReverse bool) *goLevelDBIterator {
 	if isReverse {
-		if start == nil {
+		if end == nil {
 			source.Last()
 		} else {
-			valid := source.Seek(start)
+			valid := source.Seek(end)
 			if valid {
-				soakey := source.Key() // start or after key
-				if bytes.Compare(start, soakey) < 0 {
+				eoakey := source.Key() // end or after key
+				if bytes.Compare(end, eoakey) <= 0 {
 					source.Prev()
 				}
 			} else {
@@ -264,11 +268,12 @@ func (itr *goLevelDBIterator) Valid() bool {
 	}
 
 	// If key is end or past it, invalid.
+	var start = itr.start
 	var end = itr.end
 	var key = itr.source.Key()
 
 	if itr.isReverse {
-		if end != nil && bytes.Compare(key, end) <= 0 {
+		if start != nil && bytes.Compare(key, start) < 0 {
 			itr.isInvalid = true
 			return false
 		}

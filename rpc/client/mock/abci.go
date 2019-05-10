@@ -23,7 +23,7 @@ var (
 )
 
 func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	return &ctypes.ResultABCIInfo{a.App.Info(proxy.RequestInfo)}, nil
+	return &ctypes.ResultABCIInfo{Response: a.App.Info(proxy.RequestInfo)}, nil
 }
 
 func (a ABCIApp) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
@@ -37,7 +37,7 @@ func (a ABCIApp) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts clien
 		Height: opts.Height,
 		Prove:  opts.Prove,
 	})
-	return &ctypes.ResultABCIQuery{q}, nil
+	return &ctypes.ResultABCIQuery{Response: q}, nil
 }
 
 // NOTE: Caller should call a.App.Commit() separately,
@@ -60,7 +60,7 @@ func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error
 	if !c.IsErr() {
 		go func() { a.App.DeliverTx(tx) }() // nolint: errcheck
 	}
-	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log, tx.Hash()}, nil
+	return &ctypes.ResultBroadcastTx{Code: c.Code, Data: c.Data, Log: c.Log, Hash: tx.Hash()}, nil
 }
 
 func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
@@ -69,7 +69,7 @@ func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 	if !c.IsErr() {
 		go func() { a.App.DeliverTx(tx) }() // nolint: errcheck
 	}
-	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log, tx.Hash()}, nil
+	return &ctypes.ResultBroadcastTx{Code: c.Code, Data: c.Data, Log: c.Log, Hash: tx.Hash()}, nil
 }
 
 // ABCIMock will send all abci related request to the named app,
@@ -87,7 +87,7 @@ func (m ABCIMock) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultABCIInfo{res.(abci.ResponseInfo)}, nil
+	return &ctypes.ResultABCIInfo{Response: res.(abci.ResponseInfo)}, nil
 }
 
 func (m ABCIMock) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
@@ -100,7 +100,7 @@ func (m ABCIMock) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts clie
 		return nil, err
 	}
 	resQuery := res.(abci.ResponseQuery)
-	return &ctypes.ResultABCIQuery{resQuery}, nil
+	return &ctypes.ResultABCIQuery{Response: resQuery}, nil
 }
 
 func (m ABCIMock) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {

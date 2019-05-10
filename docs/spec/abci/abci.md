@@ -45,7 +45,9 @@ include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
 something about what happened during the methods execution.
 
 Tags can be used to index transactions and blocks according to what happened
-during their execution.
+during their execution. Note that the set of tags returned for a block from
+`BeginBlock` and `EndBlock` are merged. In case both methods return the same
+tag, only the value defined in `EndBlock` is used.
 
 Keys and values in tags must be UTF-8 encoded strings (e.g.
 "account.owner": "Bob", "balance": "100.0",
@@ -345,8 +347,10 @@ Commit are included in the header of the next block.
   - `Version (Version)`: Version of the blockchain and the application
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
-  - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
-    local time when block was created.
+  - `Time (google.protobuf.Timestamp)`: Time of the previous block.
+    For heights > 1, it's the weighted median of the timestamps of the valid
+    votes in the block.LastCommit.
+    For height == 1, it's genesis time.
   - `NumTxs (int32)`: Number of transactions in the block
   - `TotalTxs (int64)`: Total number of transactions in the blockchain until
     now
@@ -441,12 +445,12 @@ Commit are included in the header of the next block.
 ###  ConsensusParams
 
 - **Fields**:
-  - `BlockSize (BlockSizeParams)`: Parameters limiting the size of a block.
+  - `Block (BlockParams)`: Parameters limiting the size of a block and time between consecutive blocks.
   - `Evidence (EvidenceParams)`: Parameters limiting the validity of
     evidence of byzantine behaviour.
   - `Validator (ValidatorParams)`: Parameters limitng the types of pubkeys validators can use.
 
-### BlockSizeParams
+### BlockParams
 
 - **Fields**:
   - `MaxBytes (int64)`: Max size of a block, in bytes.

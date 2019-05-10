@@ -8,7 +8,6 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -264,8 +263,12 @@ FOR_LOOP:
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
-				conR := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
-				conR.SwitchToConsensus(state, blocksSynced)
+				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
+				if ok {
+					conR.SwitchToConsensus(state, blocksSynced)
+				} else {
+					// should only happen during testing
+				}
 
 				break FOR_LOOP
 			}
@@ -298,7 +301,7 @@ FOR_LOOP:
 
 			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 			firstPartsHeader := firstParts.Header()
-			firstID := types.BlockID{first.Hash(), firstPartsHeader}
+			firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
 			// Finally, verify the first block using the second's commit
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
@@ -314,6 +317,13 @@ FOR_LOOP:
 					// still need to clean up the rest.
 					bcR.Switch.StopPeerForError(peer, fmt.Errorf("BlockchainReactor validation error: %v", err))
 				}
+				peerID2 := bcR.pool.RedoRequest(second.Height)
+				peer2 := bcR.Switch.Peers().Get(peerID2)
+				if peer2 != nil && peer2 != peer {
+					// NOTE: we've already removed the peer's request, but we
+					// still need to clean up the rest.
+					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("BlockchainReactor validation error: %v", err))
+				}
 				continue FOR_LOOP
 			} else {
 				bcR.pool.PopRequest()
@@ -327,8 +337,7 @@ FOR_LOOP:
 				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
-					cmn.PanicQ(fmt.Sprintf("Failed to process committed block (%d:%X): %v",
-						first.Height, first.Hash(), err))
+					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 				}
 				blocksSynced++
 
@@ -421,11 +430,7 @@ type bcBlockResponseMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *bcBlockResponseMessage) ValidateBasic() error {
-	if err := m.Block.ValidateBasic(); err != nil {
-		return err
-	}
-
-	return nil
+	return m.Block.ValidateBasic()
 }
 
 func (m *bcBlockResponseMessage) String() string {

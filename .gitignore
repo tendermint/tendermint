@@ -42,3 +42,6 @@ terraform.tfstate.backup
 terraform.tfstate.d
 
 .vscode
+
+go.mod
+go.sum

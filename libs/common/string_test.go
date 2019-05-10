@@ -3,6 +3,8 @@ package common
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,4 +36,23 @@ func TestASCIITrim(t *testing.T) {
 	assert.Equal(t, ASCIITrim("a "), "a")
 	assert.Equal(t, ASCIITrim(" a "), "a")
 	assert.Panics(t, func() { ASCIITrim("\xC2\xA2") })
+}
+
+func TestStringSliceEqual(t *testing.T) {
+	tests := []struct {
+		a    []string
+		b    []string
+		want bool
+	}{
+		{[]string{"hello", "world"}, []string{"hello", "world"}, true},
+		{[]string{"test"}, []string{"test"}, true},
+		{[]string{"test1"}, []string{"test2"}, false},
+		{[]string{"hello", "world."}, []string{"hello", "world!"}, false},
+		{[]string{"only 1 word"}, []string{"two", "words!"}, false},
+		{[]string{"two", "words!"}, []string{"only 1 word"}, false},
+	}
+	for i, tt := range tests {
+		require.Equal(t, tt.want, StringSliceEqual(tt.a, tt.b),
+			"StringSliceEqual failed on test %d", i)
+	}
 }

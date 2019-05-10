@@ -1,7 +1,7 @@
 package kv
 
 import (
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 )
 
 var cdc = amino.NewCodec()

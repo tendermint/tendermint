@@ -34,7 +34,7 @@ func TestNodeNewBlockReceived(t *testing.T) {
 	n.SendBlocksTo(blockCh)
 
 	blockHeader := tmtypes.Header{Height: 5}
-	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlockHeader{blockHeader})
+	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlockHeader{Header: blockHeader})
 
 	assert.Equal(t, int64(5), n.Height)
 	assert.Equal(t, blockHeader, <-blockCh)

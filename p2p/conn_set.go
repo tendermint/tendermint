@@ -11,6 +11,7 @@ type ConnSet interface {
 	HasIP(net.IP) bool
 	Set(net.Conn, []net.IP)
 	Remove(net.Conn)
+	RemoveAddr(net.Addr)
 }
 
 type connSetItem struct {
@@ -60,6 +61,13 @@ func (cs *connSet) Remove(c net.Conn) {
 	defer cs.Unlock()
 
 	delete(cs.conns, c.RemoteAddr().String())
+}
+
+func (cs *connSet) RemoveAddr(addr net.Addr) {
+	cs.Lock()
+	defer cs.Unlock()
+
+	delete(cs.conns, addr.String())
 }
 
 func (cs *connSet) Set(c net.Conn, ips []net.IP) {

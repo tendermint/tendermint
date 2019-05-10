@@ -12,9 +12,18 @@ import (
 const defaultCapacity = 0
 
 type EventBusSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
+	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error)
 	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
+
+	NumClients() int
+	NumClientSubscriptions(clientID string) int
+}
+
+type Subscription interface {
+	Out() <-chan tmpubsub.Message
+	Cancelled() <-chan struct{}
+	Err() error
 }
 
 // EventBus is a common bus for all events going through the system. All calls
@@ -52,8 +61,22 @@ func (b *EventBus) OnStop() {
 	b.pubsub.Stop()
 }
 
-func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
-	return b.pubsub.Subscribe(ctx, subscriber, query, out)
+func (b *EventBus) NumClients() int {
+	return b.pubsub.NumClients()
+}
+
+func (b *EventBus) NumClientSubscriptions(clientID string) int {
+	return b.pubsub.NumClientSubscriptions(clientID)
+}
+
+func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error) {
+	return b.pubsub.Subscribe(ctx, subscriber, query, outCapacity...)
+}
+
+// This method can be used for a local consensus explorer and synchronous
+// testing. Do not use for for public facing / untrusted subscriptions!
+func (b *EventBus) SubscribeUnbuffered(ctx context.Context, subscriber string, query tmpubsub.Query) (Subscription, error) {
+	return b.pubsub.SubscribeUnbuffered(ctx, subscriber, query)
 }
 
 func (b *EventBus) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
@@ -67,16 +90,52 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	b.pubsub.PublishWithTags(ctx, eventData, tmpubsub.NewTagMap(map[string]string{EventTypeKey: eventType}))
+	b.pubsub.PublishWithTags(ctx, eventData, map[string]string{EventTypeKey: eventType})
 	return nil
 }
 
+func (b *EventBus) validateAndStringifyTags(tags []cmn.KVPair, logger log.Logger) map[string]string {
+	result := make(map[string]string)
+	for _, tag := range tags {
+		// basic validation
+		if len(tag.Key) == 0 {
+			logger.Debug("Got tag with an empty key (skipping)", "tag", tag)
+			continue
+		}
+		result[string(tag.Key)] = string(tag.Value)
+	}
+	return result
+}
+
 func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
-	return b.Publish(EventNewBlock, data)
+	// no explicit deadline for publishing events
+	ctx := context.Background()
+
+	resultTags := append(data.ResultBeginBlock.Tags, data.ResultEndBlock.Tags...)
+	tags := b.validateAndStringifyTags(resultTags, b.Logger.With("block", data.Block.StringShort()))
+
+	// add predefined tags
+	logIfTagExists(EventTypeKey, tags, b.Logger)
+	tags[EventTypeKey] = EventNewBlock
+
+	b.pubsub.PublishWithTags(ctx, data, tags)
+	return nil
 }
 
 func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
-	return b.Publish(EventNewBlockHeader, data)
+	// no explicit deadline for publishing events
+	ctx := context.Background()
+
+	resultTags := append(data.ResultBeginBlock.Tags, data.ResultEndBlock.Tags...)
+	// TODO: Create StringShort method for Header and use it in logger.
+	tags := b.validateAndStringifyTags(resultTags, b.Logger.With("header", data.Header))
+
+	// add predefined tags
+	logIfTagExists(EventTypeKey, tags, b.Logger)
+	tags[EventTypeKey] = EventNewBlockHeader
+
+	b.pubsub.PublishWithTags(ctx, data, tags)
+	return nil
 }
 
 func (b *EventBus) PublishEventVote(data EventDataVote) error {
@@ -94,17 +153,7 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	tags := make(map[string]string)
-
-	// validate and fill tags from tx result
-	for _, tag := range data.Result.Tags {
-		// basic validation
-		if len(tag.Key) == 0 {
-			b.Logger.Info("Got tag with an empty key (skipping)", "tag", tag, "tx", data.Tx)
-			continue
-		}
-		tags[string(tag.Key)] = string(tag.Value)
-	}
+	tags := b.validateAndStringifyTags(data.Result.Tags, b.Logger.With("tx", data.Tx))
 
 	// add predefined tags
 	logIfTagExists(EventTypeKey, tags, b.Logger)
@@ -116,12 +165,8 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	logIfTagExists(TxHeightKey, tags, b.Logger)
 	tags[TxHeightKey] = fmt.Sprintf("%d", data.Height)
 
-	b.pubsub.PublishWithTags(ctx, data, tmpubsub.NewTagMap(tags))
+	b.pubsub.PublishWithTags(ctx, data, tags)
 	return nil
-}
-
-func (b *EventBus) PublishEventProposalHeartbeat(data EventDataProposalHeartbeat) error {
-	return b.Publish(EventProposalHeartbeat, data)
 }
 
 func (b *EventBus) PublishEventNewRoundStep(data EventDataRoundState) error {

@@ -6,14 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"golang.org/x/crypto/bcrypt" // forked to github.com/tendermint/crypto
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/tendermint/tendermint/crypto"
 )
 
 func TestSimple(t *testing.T) {
-
-	crypto.MixEntropy([]byte("someentropy"))
 
 	plaintext := []byte("sometext")
 	secret := []byte("somesecretoflengththirtytwo===32")
@@ -26,13 +24,9 @@ func TestSimple(t *testing.T) {
 
 func TestSimpleWithKDF(t *testing.T) {
 
-	crypto.MixEntropy([]byte("someentropy"))
-
 	plaintext := []byte("sometext")
 	secretPass := []byte("somesecret")
-	salt := []byte("somesaltsomesalt") // len 16
-	// NOTE: we use a fork of x/crypto so we can inject our own randomness for salt
-	secret, err := bcrypt.GenerateFromPassword(salt, secretPass, 12)
+	secret, err := bcrypt.GenerateFromPassword(secretPass, 12)
 	if err != nil {
 		t.Error(err)
 	}
