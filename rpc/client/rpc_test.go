@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,9 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -249,7 +252,8 @@ func TestAppCalls(t *testing.T) {
 func TestBroadcastTxSync(t *testing.T) {
 	require := require.New(t)
 
-	mempool := node.MempoolReactor().Mempool
+	// TODO (melekes): use mempool which is set on RPC rather than getting it from node
+	mempool := node.Mempool()
 	initMempoolSize := mempool.Size()
 
 	for i, c := range GetClients() {
@@ -269,7 +273,7 @@ func TestBroadcastTxSync(t *testing.T) {
 func TestBroadcastTxCommit(t *testing.T) {
 	require := require.New(t)
 
-	mempool := node.MempoolReactor().Mempool
+	mempool := node.Mempool()
 	for i, c := range GetClients() {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
@@ -284,7 +288,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 func TestUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
-	mempool := node.MempoolReactor().Mempool
+	mempool := node.Mempool()
 	_ = mempool.CheckTx(tx, nil)
 
 	for i, c := range GetClients() {
@@ -305,7 +309,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 func TestNumUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
-	mempool := node.MempoolReactor().Mempool
+	mempool := node.Mempool()
 	_ = mempool.CheckTx(tx, nil)
 	mempoolSize := mempool.Size()
 
@@ -440,4 +444,101 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, result.Txs, 0)
 	}
+}
+
+func TestBatchedJSONRPCCalls(t *testing.T) {
+	c := getHTTPClient()
+	testBatchedJSONRPCCalls(t, c)
+}
+
+func testBatchedJSONRPCCalls(t *testing.T, c *client.HTTP) {
+	k1, v1, tx1 := MakeTxKV()
+	k2, v2, tx2 := MakeTxKV()
+
+	batch := c.NewBatch()
+	r1, err := batch.BroadcastTxCommit(tx1)
+	require.NoError(t, err)
+	r2, err := batch.BroadcastTxCommit(tx2)
+	require.NoError(t, err)
+	require.Equal(t, 2, batch.Count())
+	bresults, err := batch.Send()
+	require.NoError(t, err)
+	require.Len(t, bresults, 2)
+	require.Equal(t, 0, batch.Count())
+
+	bresult1, ok := bresults[0].(*ctypes.ResultBroadcastTxCommit)
+	require.True(t, ok)
+	require.Equal(t, *bresult1, *r1)
+	bresult2, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
+	require.True(t, ok)
+	require.Equal(t, *bresult2, *r2)
+	apph := cmn.MaxInt64(bresult1.Height, bresult2.Height) + 1
+
+	client.WaitForHeight(c, apph, nil)
+
+	q1, err := batch.ABCIQuery("/key", k1)
+	require.NoError(t, err)
+	q2, err := batch.ABCIQuery("/key", k2)
+	require.NoError(t, err)
+	require.Equal(t, 2, batch.Count())
+	qresults, err := batch.Send()
+	require.NoError(t, err)
+	require.Len(t, qresults, 2)
+	require.Equal(t, 0, batch.Count())
+
+	qresult1, ok := qresults[0].(*ctypes.ResultABCIQuery)
+	require.True(t, ok)
+	require.Equal(t, *qresult1, *q1)
+	qresult2, ok := qresults[1].(*ctypes.ResultABCIQuery)
+	require.True(t, ok)
+	require.Equal(t, *qresult2, *q2)
+
+	require.Equal(t, qresult1.Response.Key, k1)
+	require.Equal(t, qresult2.Response.Key, k2)
+	require.Equal(t, qresult1.Response.Value, v1)
+	require.Equal(t, qresult2.Response.Value, v2)
+}
+
+func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
+	c := getHTTPClient()
+	_, _, tx1 := MakeTxKV()
+	_, _, tx2 := MakeTxKV()
+
+	batch := c.NewBatch()
+	_, err := batch.BroadcastTxCommit(tx1)
+	require.NoError(t, err)
+	_, err = batch.BroadcastTxCommit(tx2)
+	require.NoError(t, err)
+	// we should have 2 requests waiting
+	require.Equal(t, 2, batch.Count())
+	// we want to make sure we cleared 2 pending requests
+	require.Equal(t, 2, batch.Clear())
+	// now there should be no batched requests
+	require.Equal(t, 0, batch.Count())
+}
+
+func TestSendingEmptyJSONRPCRequestBatch(t *testing.T) {
+	c := getHTTPClient()
+	batch := c.NewBatch()
+	_, err := batch.Send()
+	require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
+}
+
+func TestClearingEmptyJSONRPCRequestBatch(t *testing.T) {
+	c := getHTTPClient()
+	batch := c.NewBatch()
+	require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")
+}
+
+func TestConcurrentJSONRPCBatching(t *testing.T) {
+	var wg sync.WaitGroup
+	c := getHTTPClient()
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			testBatchedJSONRPCCalls(t, c)
+		}()
+	}
+	wg.Wait()
 }

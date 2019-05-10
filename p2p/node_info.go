@@ -23,14 +23,13 @@ func MaxNodeInfoSize() int {
 // NodeInfo exposes basic info of a node
 // and determines if we're compatible.
 type NodeInfo interface {
+	ID() ID
 	nodeInfoAddress
 	nodeInfoTransport
 }
 
-// nodeInfoAddress exposes just the core info of a node.
 type nodeInfoAddress interface {
-	ID() ID
-	NetAddress() *NetAddress
+	NetAddress() (*NetAddress, error)
 }
 
 // nodeInfoTransport validates a nodeInfo and checks
@@ -215,20 +214,9 @@ OUTER_LOOP:
 // it includes the authenticated peer ID and the self-reported
 // ListenAddr. Note that the ListenAddr is not authenticated and
 // may not match that address actually dialed if its an outbound peer.
-func (info DefaultNodeInfo) NetAddress() *NetAddress {
+func (info DefaultNodeInfo) NetAddress() (*NetAddress, error) {
 	idAddr := IDAddressString(info.ID(), info.ListenAddr)
-	netAddr, err := NewNetAddressString(idAddr)
-	if err != nil {
-		switch err.(type) {
-		case ErrNetAddressLookup:
-			// XXX If the peer provided a host name  and the lookup fails here
-			// we're out of luck.
-			// TODO: use a NetAddress in DefaultNodeInfo
-		default:
-			panic(err) // everything should be well formed by now
-		}
-	}
-	return netAddr
+	return NewNetAddressString(idAddr)
 }
 
 //-----------------------------------------------------------

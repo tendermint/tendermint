@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
-
 	"github.com/stretchr/testify/require"
 )
 

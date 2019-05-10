@@ -16,16 +16,15 @@ type addrBookJSON struct {
 }
 
 func (a *addrBook) saveToFile(filePath string) {
-	a.Logger.Info("Saving AddrBook to file", "size", a.Size())
-
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	// Compile Addrs
-	addrs := []*knownAddress{}
+
+	a.Logger.Info("Saving AddrBook to file", "size", a.size())
+
+	addrs := make([]*knownAddress, 0, len(a.addrLookup))
 	for _, ka := range a.addrLookup {
 		addrs = append(addrs, ka)
 	}
-
 	aJSON := &addrBookJSON{
 		Key:   a.key,
 		Addrs: addrs,
@@ -54,14 +53,14 @@ func (a *addrBook) loadFromFile(filePath string) bool {
 	// Load addrBookJSON{}
 	r, err := os.Open(filePath)
 	if err != nil {
-		cmn.PanicCrisis(fmt.Sprintf("Error opening file %s: %v", filePath, err))
+		panic(fmt.Sprintf("Error opening file %s: %v", filePath, err))
 	}
 	defer r.Close() // nolint: errcheck
 	aJSON := &addrBookJSON{}
 	dec := json.NewDecoder(r)
 	err = dec.Decode(aJSON)
 	if err != nil {
-		cmn.PanicCrisis(fmt.Sprintf("Error reading file %s: %v", filePath, err))
+		panic(fmt.Sprintf("Error reading file %s: %v", filePath, err))
 	}
 
 	// Restore all the fields...
