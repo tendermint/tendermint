@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-ethereum/rlp"
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -57,6 +58,7 @@ type Vote struct {
 	ValidatorAddress Address       `json:"validator_address"`
 	ValidatorIndex   int           `json:"validator_index"`
 	Signature        []byte        `json:"signature"`
+	Data             []byte        `json:"data"` // extra data [peppermint]
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -70,7 +72,8 @@ func (vote *Vote) CommitSig() *CommitSig {
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
+	// [peppermint] converted from amino to rlp
+	bz, err := rlp.EncodeToBytes(CanonicalizeVote(chainID, vote))
 	if err != nil {
 		panic(err)
 	}

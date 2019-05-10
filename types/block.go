@@ -368,6 +368,7 @@ type Header struct {
 	// hashes of block data
 	LastCommitHash cmn.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
 	DataHash       cmn.HexBytes `json:"data_hash"`        // transactions
+	Votes          []*CommitSig `json:"votes"`            // [peppermint] add votes to in header
 
 	// hashes from the app output from the prev block
 	ValidatorsHash     cmn.HexBytes `json:"validators_hash"`      // validators for the current block

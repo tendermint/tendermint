@@ -34,6 +34,9 @@ install:
 install_c:
 	CGO_ENABLED=1 go install  $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" ./cmd/tendermint
 
+install_noc:
+	go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+
 ########################################
 ### Protobuf
 

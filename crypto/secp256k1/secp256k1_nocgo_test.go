@@ -5,13 +5,13 @@ package secp256k1
 import (
 	"testing"
 
-	secp256k1 "github.com/btcsuite/btcd/btcec"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
 // Ensure that signature verification works, and that
 // non-canonical signatures fail.
-// Note: run with CGO_ENABLED=0 or go test -tags !cgo.
+// // Note: run with CGO_ENABLED=0 or go test -tags !cgo.
 func TestSignatureVerificationAndRejectUpperS(t *testing.T) {
 	msg := []byte("We have lingered long enough on the shores of the cosmic ocean.")
 	for i := 0; i < 500; i++ {
@@ -22,6 +22,9 @@ func TestSignatureVerificationAndRejectUpperS(t *testing.T) {
 		require.False(t, sig.S.Cmp(secp256k1halfN) > 0)
 
 		pub := priv.PubKey()
+		addr := pub.Address()
+		t.Log("address ", addr)
+
 		require.True(t, pub.VerifyBytes(msg, sigStr))
 
 		// malleate:
@@ -35,4 +38,17 @@ func TestSignatureVerificationAndRejectUpperS(t *testing.T) {
 			priv,
 		)
 	}
+}
+
+func TestGenEthPrivKey(t *testing.T) {
+	msg := []byte("We have lingered long enough on the shores of the cosmic ocean.")
+	priv := GenPrivKey()
+	t.Log("privkey ", priv)
+	sigStr, err := priv.Sign(msg)
+	require.NoError(t, err)
+	pub := priv.PubKey()
+	addr := pub.Address()
+	t.Log("address ", addr)
+	t.Log("pub ", pub)
+	t.Log("SigStr ", sigStr)
 }

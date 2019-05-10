@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"runtime/debug"
@@ -923,6 +924,9 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	// Make proposal
 	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
+	proposal.Data = block.DataHash // [peppermint] add data hash to proposal
+	d := proposal.SignBytes(cs.state.ChainID)
+	cs.Logger.Info("[peppermint] New proposal", "signBytes", d)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 
 		// send proposal and block parts on internal msg queue
@@ -1301,6 +1305,13 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 		// but may differ from the LastCommit included in the next block
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
+		for _, precommit := range seenCommit.Precommits {
+			if precommit != nil {
+				// [peppermint] collect non-nil votes
+				block.Header.Votes = append(block.Header.Votes, precommit)
+				cs.Logger.Info(fmt.Sprintf("[peppermint] Committed vote:: Height: %v, Round: %v, VoteData %v, Sig %v", precommit.Height, precommit.Round, precommit.Data, hex.EncodeToString(precommit.Signature)))
+			}
+		}
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
@@ -1700,7 +1711,12 @@ func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, heade
 		Type:             type_,
 		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
+	if cs.LockedBlock != nil {
+		cs.Logger.Info("[peppermint] sign add vote", "lockedHeaderHash", hex.EncodeToString(header.Hash), "lockedBlockDataHash", hex.EncodeToString(cs.LockedBlock.DataHash))
+		vote.Data = cs.LockedBlock.DataHash
+	}
 	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
+	cs.Logger.Info("[peppermint] vote sign with data", "signBytes", vote.SignBytes(cs.state.ChainID))
 	return vote, err
 }
 

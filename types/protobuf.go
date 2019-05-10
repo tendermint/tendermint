@@ -1,6 +1,8 @@
 package types
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -39,6 +41,12 @@ var TM2PB = tm2pb{}
 type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) abci.Header {
+	reqBodyBytes := new(bytes.Buffer)
+	//TODO check if this works as supposed to when multiple validators
+	json.NewEncoder(reqBodyBytes).Encode(header.Votes)
+	reqBodyBytes.Bytes()
+
+	fmt.Printf("inside Protobuf.go %v", reqBodyBytes.String())
 	return abci.Header{
 		Version: abci.Version{
 			Block: header.Version.Block.Uint64(),
@@ -54,6 +62,8 @@ func (tm2pb) Header(header *Header) abci.Header {
 
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
+
+		Votes: reqBodyBytes.Bytes(),
 
 		ValidatorsHash:     header.ValidatorsHash,
 		NextValidatorsHash: header.NextValidatorsHash,

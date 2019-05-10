@@ -2640,15 +2640,17 @@ type Header struct {
 	// hashes of block data
 	LastCommitHash []byte `protobuf:"bytes,8,opt,name=last_commit_hash,json=lastCommitHash,proto3" json:"last_commit_hash,omitempty"`
 	DataHash       []byte `protobuf:"bytes,9,opt,name=data_hash,json=dataHash,proto3" json:"data_hash,omitempty"`
+	//[peppermint]
+	Votes          []byte `protobuf:"bytes,10,opt,name=votes,json=votes,proto3" json:"votes,omitempty"`
 	// hashes from the app output from the prev block
-	ValidatorsHash     []byte `protobuf:"bytes,10,opt,name=validators_hash,json=validatorsHash,proto3" json:"validators_hash,omitempty"`
-	NextValidatorsHash []byte `protobuf:"bytes,11,opt,name=next_validators_hash,json=nextValidatorsHash,proto3" json:"next_validators_hash,omitempty"`
-	ConsensusHash      []byte `protobuf:"bytes,12,opt,name=consensus_hash,json=consensusHash,proto3" json:"consensus_hash,omitempty"`
-	AppHash            []byte `protobuf:"bytes,13,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
-	LastResultsHash    []byte `protobuf:"bytes,14,opt,name=last_results_hash,json=lastResultsHash,proto3" json:"last_results_hash,omitempty"`
+	ValidatorsHash     []byte `protobuf:"bytes,11,opt,name=validators_hash,json=validatorsHash,proto3" json:"validators_hash,omitempty"`
+	NextValidatorsHash []byte `protobuf:"bytes,12,opt,name=next_validators_hash,json=nextValidatorsHash,proto3" json:"next_validators_hash,omitempty"`
+	ConsensusHash      []byte `protobuf:"bytes,13,opt,name=consensus_hash,json=consensusHash,proto3" json:"consensus_hash,omitempty"`
+	AppHash            []byte `protobuf:"bytes,14,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
+	LastResultsHash    []byte `protobuf:"bytes,15,opt,name=last_results_hash,json=lastResultsHash,proto3" json:"last_results_hash,omitempty"`
 	// consensus info
-	EvidenceHash         []byte   `protobuf:"bytes,15,opt,name=evidence_hash,json=evidenceHash,proto3" json:"evidence_hash,omitempty"`
-	ProposerAddress      []byte   `protobuf:"bytes,16,opt,name=proposer_address,json=proposerAddress,proto3" json:"proposer_address,omitempty"`
+	EvidenceHash         []byte   `protobuf:"bytes,16,opt,name=evidence_hash,json=evidenceHash,proto3" json:"evidence_hash,omitempty"`
+	ProposerAddress      []byte   `protobuf:"bytes,17,opt,name=proposer_address,json=proposerAddress,proto3" json:"proposer_address,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

@@ -28,6 +28,7 @@ type Proposal struct {
 	BlockID   BlockID   `json:"block_id"`
 	Timestamp time.Time `json:"timestamp"`
 	Signature []byte    `json:"signature"`
+	Data      []byte    `json:"data"` // [peppermint] tx data
 }
 
 // NewProposal returns a new Proposal.

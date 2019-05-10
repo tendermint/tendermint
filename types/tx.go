@@ -20,7 +20,9 @@ type Tx []byte
 
 // Hash computes the TMHASH hash of the wire encoded transaction.
 func (tx Tx) Hash() []byte {
-	return tmhash.Sum(tx)
+	// return tmhash.Sum(tx)
+	//[peppermint] remove pulp prefix :)
+	return tmhash.Sum(tx[4:])
 }
 
 // String returns the hex-encoded transaction as a string.
