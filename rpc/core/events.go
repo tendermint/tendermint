@@ -22,19 +22,20 @@ import (
 // string (escaped with single quotes), number, date or time.
 //
 // Examples:
-//		tm.event = 'NewBlock'								# new blocks
-//		tm.event = 'CompleteProposal'				# node got a complete proposal
+//		tm.event = 'NewBlock'				# new blocks
+//		tm.event = 'CompleteProposal'		# node got a complete proposal
 //		tm.event = 'Tx' AND tx.hash = 'XYZ' # single transaction
-//		tm.event = 'Tx' AND tx.height = 5		# all txs of the fifth block
-//		tx.height = 5												# all txs of the fifth block
+//		tm.event = 'Tx' AND tx.height = 5	# all txs of the fifth block
+//		tx.height = 5						# all txs of the fifth block
 //
 // Tendermint provides a few predefined keys: tm.event, tx.hash and tx.height.
-// Note for transactions, you can define additional keys by providing tags with
+// Note for transactions, you can define additional keys by providing events with
 // DeliverTx response.
 //
 //		DeliverTx{
-//			Tags: []*KVPair{
-//				"agent.name": "K",
+//			Events: []Event{
+//				{"agent": {{"name": "K"}},
+// 				{"account": {{"owner": "Igore"}, {"created_at": 2013-05-03T14:45:00Z}},
 //			}
 //	  }
 //
@@ -105,8 +106,10 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse query")
 	}
+
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
+
 	sub, err := eventBus.Subscribe(subCtx, addr, q)
 	if err != nil {
 		return nil, err
@@ -116,7 +119,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 		for {
 			select {
 			case msg := <-sub.Out():
-				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
+				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Events: msg.Events()}
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						ctx.WSConn.Codec(),
