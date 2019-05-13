@@ -7,6 +7,10 @@
 * CLI/RPC/Config
 
 * Apps
+  * [abci] \#1859 `ResponseCheckTx`, `ResponseDeliverTx`, `ResponseBeginBlock`,
+  and `ResponseEndBlock` now include `Events` instead of `Tags`. Each `Event`
+  contains a `type` and a list of `attributes` (list of key-value pairs) allowing
+  for inclusion of multiple distinct events in each response.
 
 * Go API
 - [mempool] \#2659 `Mempool` now an interface
@@ -21,6 +25,12 @@
 - [state] \#2659 `Mempool` interface moved to mempool package
   * `MockMempool` moved to top-level mock package and renamed to `Mempool`
 - [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
+- [libs/pubsub] \#1859 Updates to support events (list-of-lists):
+  * Rename `PublishWithTags` to `PublishWithEvents` which now takes a `map[string][]string` instead of `map[string]string`.
+  * `Query#Matches` now accepts `map[string][]string`.
+  * `Message` now returns events through `Events()` instead of `Tags()`.
+- [rpc/core] \#1859 Updates to support events (list-of-lists):
+  * `ResultEvent` now contains `Events` instead of `Tags`.
 - [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
 
 * Blockchain Protocol
