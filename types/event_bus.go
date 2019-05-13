@@ -102,13 +102,17 @@ func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 func (b *EventBus) validateAndStringifyEvents(events []types.Event, logger log.Logger) map[string][]string {
 	result := make(map[string][]string)
 	for _, event := range events {
-		// basic validation
 		if len(event.Type) == 0 {
-			logger.Debug("Got tag with an empty type (skipping)", "event", event)
+			logger.Debug("Got an event with an empty type (skipping)", "event", event)
 			continue
 		}
 
 		for _, attr := range event.Attributes {
+			if len(attr.Key) == 0 {
+				logger.Debug("Got an event attribute with an empty key(skipping)", "event", event)
+				continue
+			}
+
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
 			result[compositeTag] = append(result[compositeTag], string(attr.Value))
 		}
