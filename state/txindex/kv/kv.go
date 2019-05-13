@@ -91,9 +91,12 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 			// only index events with a non-empty type
 			if len(event.Type) > 0 {
 				for _, attr := range event.Attributes {
-					compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-					if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
-						storeBatch.Set(keyForEvent(compositeTag, attr.Value, result), hash)
+					if len(attr.Key) > 0 {
+						compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+						if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
+							storeBatch.Set(keyForEvent(compositeTag, attr.Value, result), hash)
+
+						}
 					}
 				}
 			}
@@ -129,11 +132,13 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	// index tx by tags
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
-		for _, attr := range event.Attributes {
-			if len(event.Type) > 0 {
-				compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-				if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
-					b.Set(keyForEvent(compositeTag, attr.Value, result), hash)
+		if len(event.Type) > 0 {
+			for _, attr := range event.Attributes {
+				if len(attr.Key) > 0 {
+					compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+					if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
+						b.Set(keyForEvent(compositeTag, attr.Value, result), hash)
+					}
 				}
 			}
 		}
