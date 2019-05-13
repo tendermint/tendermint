@@ -21,7 +21,15 @@ func TestTxIndex(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Events: nil}}
+	txResult := &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "", Events: nil,
+		},
+	}
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch(1)
@@ -36,7 +44,15 @@ func TestTxIndex(t *testing.T) {
 	assert.Equal(t, txResult, loadedTxResult)
 
 	tx2 := types.Tx("BYE BYE WORLD")
-	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Events: nil}}
+	txResult2 := &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx2,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "", Events: nil,
+		},
+	}
 	hash2 := tx2.Hash()
 
 	err = indexer.Index(txResult2)
