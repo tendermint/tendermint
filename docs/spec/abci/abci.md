@@ -38,20 +38,30 @@ Finally, `Query`, `CheckTx`, and `DeliverTx` include a `Codespace string`, whose
 intended use is to disambiguate `Code` values returned by different domains of the
 application. The `Codespace` is a namespace for the `Code`.
 
-## Tags
+## Events
 
 Some methods (`CheckTx, BeginBlock, DeliverTx, EndBlock`)
-include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
-something about what happened during the methods execution.
+include an `Events` field in their `Response*`. Each event contains a type and a
+list of lists containing key-value pairs denoting something about what happened
+during the method's execution.
 
-Tags can be used to index transactions and blocks according to what happened
-during their execution. Note that the set of tags returned for a block from
+Events can be used to index transactions and blocks according to what happened
+during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
 tag, only the value defined in `EndBlock` is used.
 
-Keys and values in tags must be UTF-8 encoded strings (e.g.
-"account.owner": "Bob", "balance": "100.0",
-"time": "2018-01-02T12:30:00Z")
+Each event has a `type` which should be unique and is meant to categorize the
+series of events for a particular `Response*` or tx. Keys and values in tags
+must be UTF-8 encoded strings.
+
+Example:
+
+```json
+{
+  "rewards": [{"amount": "...", "recipient": "...", "validator": "..."}, ...],
+  "account": [{"owner":  "...", "balance":  "..."}, ...]    
+} 
+```
 
 ## Determinism
 
