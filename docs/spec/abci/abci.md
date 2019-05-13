@@ -51,7 +51,7 @@ during their execution. Note that the set of events returned for a block from
 tag, only the value defined in `EndBlock` is used.
 
 Each event has a `type` which should be unique and is meant to categorize the
-series of events for a particular `Response*` or tx. Keys and values in tags
+series of events for a particular `Response*` or tx. Keys and values in events
 must be UTF-8 encoded strings.
 
 Example:
