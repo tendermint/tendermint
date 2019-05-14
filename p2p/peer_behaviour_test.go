@@ -72,6 +72,52 @@ func equalBehaviours(a []p2p.PeerBehaviour, b []p2p.PeerBehaviour) bool {
 	return true
 }
 
+// TestEqualPeerBehaviours tests that equalBehaviours can tell that two slices
+// of peer behaviours can be compared for the behaviours they contain and the
+// freequencies that those behaviours occur.
+func TestEqualPeerBehaviours(t *testing.T) {
+	equals := []struct {
+		left  []p2p.PeerBehaviour
+		right []p2p.PeerBehaviour
+	}{
+		// Empty sets
+		{[]p2p.PeerBehaviour{}, []p2p.PeerBehaviour{}},
+		// Single behaviours
+		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote}, []p2p.PeerBehaviour{p2p.PeerBehaviourVote}},
+		// Equal Frequencies
+		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote},
+			[]p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote}},
+		// Equal frequencies different orders
+		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourBlockPart},
+			[]p2p.PeerBehaviour{p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote}},
+	}
+
+	for _, test := range equals {
+		if !equalBehaviours(test.left, test.right) {
+			t.Errorf("Expected %#v and %#v to be equal", test.left, test.right)
+		}
+	}
+
+	unequals := []struct {
+		left  []p2p.PeerBehaviour
+		right []p2p.PeerBehaviour
+	}{
+		// Comparing empty sets to non empty sets
+		{[]p2p.PeerBehaviour{}, []p2p.PeerBehaviour{p2p.PeerBehaviourVote}},
+		// Different behaviours
+		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote}, []p2p.PeerBehaviour{p2p.PeerBehaviourBlockPart}},
+		// Same behaviour with different frequencies
+		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote},
+			[]p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote}},
+	}
+
+	for _, test := range unequals {
+		if equalBehaviours(test.left, test.right) {
+			t.Errorf("Expected %#v and %#v to be unequal", test.left, test.right)
+		}
+	}
+}
+
 // TestPeerBehaviourConcurrency constructs a scenario in which
 // multiple goroutines are using the same MockPeerBehaviourReporter instance.
 // This test reproduces the conditions in which MockPeerBehaviourReporter will
