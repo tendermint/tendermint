@@ -203,20 +203,20 @@ func hostnameOrIP(i int) string {
 	if len(hostnames) > 0 && i < len(hostnames) {
 		return hostnames[i]
 	}
-	if startingIPAddress != "" {
-		ip := net.ParseIP(startingIPAddress)
-		ip = ip.To4()
-		if ip == nil {
-			fmt.Printf("%v: non ipv4 address\n", startingIPAddress)
-			os.Exit(1)
-		}
-
-		for j := 0; j < i; j++ {
-			ip[3]++
-		}
-		return ip.String()
+	if startingIPAddress == "" {
+		return fmt.Sprintf("%s%d", hostnamePrefix, i)
 	}
-	return fmt.Sprintf("%s%d", hostnamePrefix, i)
+	ip := net.ParseIP(startingIPAddress)
+	ip = ip.To4()
+	if ip == nil {
+		fmt.Printf("%v: non ipv4 address\n", startingIPAddress)
+		os.Exit(1)
+	}
+
+	for j := 0; j < i; j++ {
+		ip[3]++
+	}
+	return ip.String()
 }
 
 func persistentPeersString(config *cfg.Config) (string, error) {
