@@ -39,22 +39,37 @@ type scriptItem struct {
 	Behaviour p2p.PeerBehaviour
 }
 
+// equalBehaviours returns true if a and b contain the same PeerBehaviours with
+// the same freequency and otherwise false.
 func equalBehaviours(a []p2p.PeerBehaviour, b []p2p.PeerBehaviour) bool {
-	if len(a) != len(b) {
+	aHistogram := map[p2p.PeerBehaviour]int{}
+	bHistogram := map[p2p.PeerBehaviour]int{}
+
+	for _, behaviour := range a {
+		aHistogram[behaviour] += 1
+	}
+
+	for _, behaviour := range b {
+		bHistogram[behaviour] += 1
+	}
+
+	if len(aHistogram) != len(bHistogram) {
 		return false
 	}
 
-	var same int = 0
-	for _, aBehaviour := range a {
-		for _, bBehaviour := range b {
-			if aBehaviour == bBehaviour {
-				same++
-				break
-			}
+	for _, behaviour := range a {
+		if aHistogram[behaviour] != bHistogram[behaviour] {
+			return false
 		}
 	}
 
-	return same == len(a)
+	for _, behaviour := range b {
+		if bHistogram[behaviour] != aHistogram[behaviour] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // TestPeerBehaviourConcurrency constructs a scenario in which
