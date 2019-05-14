@@ -27,6 +27,7 @@ var (
 
 	populatePersistentPeers bool
 	hostnamePrefix          string
+	hostnameSuffix          string
 	startingIPAddress       string
 	hostnames               []string
 	p2pPort                 int
@@ -52,6 +53,8 @@ func init() {
 		"Update config of each node with the list of persistent peers build using either hostname-prefix or starting-ip-address")
 	TestnetFilesCmd.Flags().StringVar(&hostnamePrefix, "hostname-prefix", "node",
 		"Hostname prefix (node results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
+	TestnetFilesCmd.Flags().StringVar(&hostnameSuffix, "hostname-suffix", "",
+		"Hostname suffix (\".xyz.com\" results in persistent peers list ID0@node0.xyz.com:26656, ID1@node1.xyz.com:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting-ip-address", "",
 		"Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
 	TestnetFilesCmd.Flags().StringArrayVar(&hostnames, "hostname", []string{},
@@ -204,7 +207,7 @@ func hostnameOrIP(i int) string {
 		return hostnames[i]
 	}
 	if startingIPAddress == "" {
-		return fmt.Sprintf("%s%d", hostnamePrefix, i)
+		return fmt.Sprintf("%s%d%s", hostnamePrefix, i, hostnameSuffix)
 	}
 	ip := net.ParseIP(startingIPAddress)
 	ip = ip.To4()
