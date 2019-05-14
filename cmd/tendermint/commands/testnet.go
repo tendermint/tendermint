@@ -31,6 +31,7 @@ var (
 	startingIPAddress       string
 	hostnames               []string
 	p2pPort                 int
+	randomMonikers          bool
 )
 
 const (
@@ -61,6 +62,8 @@ func init() {
 		"Manually override all hostnames of validators and non-validators (use --hostname multiple times for multiple hosts)")
 	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 26656,
 		"P2P Port")
+	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random-monikers", false,
+		"Randomize the moniker for each generated node")
 }
 
 // TestnetFilesCmd allows initialisation of files for a Tendermint testnet.
@@ -194,6 +197,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		if populatePersistentPeers {
 			config.P2P.PersistentPeers = persistentPeers
 		}
+		config.Moniker = moniker(i)
 
 		cfg.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), config)
 	}
@@ -234,4 +238,21 @@ func persistentPeersString(config *cfg.Config) (string, error) {
 		persistentPeers[i] = p2p.IDAddressString(nodeKey.ID(), fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
 	}
 	return strings.Join(persistentPeers, ","), nil
+}
+
+func moniker(i int) string {
+	if randomMonikers {
+		return randomMoniker()
+	}
+	if len(hostnames) > 0 && i < len(hostnames) {
+		return hostnames[i]
+	}
+	if startingIPAddress == "" {
+		return fmt.Sprintf("%s%d%s", hostnamePrefix, i, hostnameSuffix)
+	}
+	return randomMoniker()
+}
+
+func randomMoniker() string {
+	return cmn.HexBytes(cmn.RandBytes(8)).String()
 }
