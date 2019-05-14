@@ -28,6 +28,7 @@ var (
 	populatePersistentPeers bool
 	hostnamePrefix          string
 	startingIPAddress       string
+	hostnames               []string
 	p2pPort                 int
 )
 
@@ -53,6 +54,8 @@ func init() {
 		"Hostname prefix (node results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting-ip-address", "",
 		"Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
+	TestnetFilesCmd.Flags().StringArrayVar(&hostnames, "hostname", []string{},
+		"Manually override all hostnames of validators and non-validators (use --hostname multiple times for multiple hosts)")
 	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 26656,
 		"P2P Port")
 }
@@ -76,6 +79,13 @@ Example:
 }
 
 func testnetFiles(cmd *cobra.Command, args []string) error {
+	if len(hostnames) > 0 && len(hostnames) != (nValidators+nNonValidators) {
+		return fmt.Errorf(
+			"testnet needs precisely %d hostnames (number of validators plus non-validators) if --hostname parameter is used",
+			nValidators+nNonValidators,
+		)
+	}
+
 	config := cfg.DefaultConfig()
 
 	// overwrite default config if set and valid
@@ -190,6 +200,9 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 }
 
 func hostnameOrIP(i int) string {
+	if len(hostnames) > 0 && i < len(hostnames) {
+		return hostnames[i]
+	}
 	if startingIPAddress != "" {
 		ip := net.ParseIP(startingIPAddress)
 		ip = ip.To4()
@@ -203,7 +216,6 @@ func hostnameOrIP(i int) string {
 		}
 		return ip.String()
 	}
-
 	return fmt.Sprintf("%s%d", hostnamePrefix, i)
 }
 
