@@ -1,9 +1,10 @@
-package p2p_test
+package behaviour_test
 
 import (
 	"sync"
 	"testing"
 
+	bh "github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -11,39 +12,39 @@ import (
 // peer behaviour in memory indexed by the peerID
 func TestMockPeerBehaviourReporter(t *testing.T) {
 	var peerID p2p.ID = "MockPeer"
-	pr := p2p.NewMockPeerBehaviourReporter()
+	pr := bh.NewMockPeerBehaviourReporter()
 
 	behaviours := pr.GetBehaviours(peerID)
 	if len(behaviours) != 0 {
 		t.Error("Expected to have no behaviours reported")
 	}
 
-	pr.Report(peerID, p2p.PeerBehaviourBadMessage)
+	pr.Report(peerID, bh.PeerBehaviourBadMessage)
 	behaviours = pr.GetBehaviours(peerID)
 	if len(behaviours) != 1 {
 		t.Error("Expected the peer have one reported behaviour")
 	}
 
-	if behaviours[0] != p2p.PeerBehaviourBadMessage {
+	if behaviours[0] != bh.PeerBehaviourBadMessage {
 		t.Error("Expected PeerBehaviourBadMessage to have been reported")
 	}
 }
 
 type scriptedBehaviours struct {
 	PeerID     p2p.ID
-	Behaviours []p2p.PeerBehaviour
+	Behaviours []bh.PeerBehaviour
 }
 
 type scriptItem struct {
 	PeerID    p2p.ID
-	Behaviour p2p.PeerBehaviour
+	Behaviour bh.PeerBehaviour
 }
 
 // equalBehaviours returns true if a and b contain the same PeerBehaviours with
 // the same freequency and otherwise false.
-func equalBehaviours(a []p2p.PeerBehaviour, b []p2p.PeerBehaviour) bool {
-	aHistogram := map[p2p.PeerBehaviour]int{}
-	bHistogram := map[p2p.PeerBehaviour]int{}
+func equalBehaviours(a []bh.PeerBehaviour, b []bh.PeerBehaviour) bool {
+	aHistogram := map[bh.PeerBehaviour]int{}
+	bHistogram := map[bh.PeerBehaviour]int{}
 
 	for _, behaviour := range a {
 		aHistogram[behaviour] += 1
@@ -77,19 +78,19 @@ func equalBehaviours(a []p2p.PeerBehaviour, b []p2p.PeerBehaviour) bool {
 // freequencies that those behaviours occur.
 func TestEqualPeerBehaviours(t *testing.T) {
 	equals := []struct {
-		left  []p2p.PeerBehaviour
-		right []p2p.PeerBehaviour
+		left  []bh.PeerBehaviour
+		right []bh.PeerBehaviour
 	}{
 		// Empty sets
-		{[]p2p.PeerBehaviour{}, []p2p.PeerBehaviour{}},
+		{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{}},
 		// Single behaviours
-		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote}, []p2p.PeerBehaviour{p2p.PeerBehaviourVote}},
+		{[]bh.PeerBehaviour{bh.PeerBehaviourVote}, []bh.PeerBehaviour{bh.PeerBehaviourVote}},
 		// Equal Frequencies
-		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote},
-			[]p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote}},
+		{[]bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote},
+			[]bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote}},
 		// Equal frequencies different orders
-		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourBlockPart},
-			[]p2p.PeerBehaviour{p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote}},
+		{[]bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourBlockPart},
+			[]bh.PeerBehaviour{bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote}},
 	}
 
 	for _, test := range equals {
@@ -99,16 +100,16 @@ func TestEqualPeerBehaviours(t *testing.T) {
 	}
 
 	unequals := []struct {
-		left  []p2p.PeerBehaviour
-		right []p2p.PeerBehaviour
+		left  []bh.PeerBehaviour
+		right []bh.PeerBehaviour
 	}{
 		// Comparing empty sets to non empty sets
-		{[]p2p.PeerBehaviour{}, []p2p.PeerBehaviour{p2p.PeerBehaviourVote}},
+		{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{bh.PeerBehaviourVote}},
 		// Different behaviours
-		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote}, []p2p.PeerBehaviour{p2p.PeerBehaviourBlockPart}},
+		{[]bh.PeerBehaviour{bh.PeerBehaviourVote}, []bh.PeerBehaviour{bh.PeerBehaviourBlockPart}},
 		// Same behaviour with different frequencies
-		{[]p2p.PeerBehaviour{p2p.PeerBehaviourVote},
-			[]p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote}},
+		{[]bh.PeerBehaviour{bh.PeerBehaviourVote},
+			[]bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote}},
 	}
 
 	for _, test := range unequals {
@@ -124,15 +125,15 @@ func TestEqualPeerBehaviours(t *testing.T) {
 // be used within a Reactor Receive method tests to ensure thread safety.
 func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	behaviourScript := []scriptedBehaviours{
-		{"1", []p2p.PeerBehaviour{p2p.PeerBehaviourVote}},
-		{"2", []p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote, p2p.PeerBehaviourVote, p2p.PeerBehaviourVote}},
-		{"3", []p2p.PeerBehaviour{p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote, p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote}},
-		{"4", []p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote, p2p.PeerBehaviourVote, p2p.PeerBehaviourVote}},
-		{"5", []p2p.PeerBehaviour{p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote, p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote}},
+		{"1", []bh.PeerBehaviour{bh.PeerBehaviourVote}},
+		{"2", []bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote, bh.PeerBehaviourVote, bh.PeerBehaviourVote}},
+		{"3", []bh.PeerBehaviour{bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote, bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote}},
+		{"4", []bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote, bh.PeerBehaviourVote, bh.PeerBehaviourVote}},
+		{"5", []bh.PeerBehaviour{bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote, bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote}},
 	}
 
 	var receiveWg sync.WaitGroup
-	pr := p2p.NewMockPeerBehaviourReporter()
+	pr := bh.NewMockPeerBehaviourReporter()
 	scriptItems := make(chan scriptItem)
 	done := make(chan int)
 	numConsumers := 3
