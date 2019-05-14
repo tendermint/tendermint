@@ -1,58 +1,60 @@
-package p2p
+package p2p_test
 
 import (
-	"net"
 	"sync"
 	"testing"
+
+	"github.com/tendermint/tendermint/p2p"
 )
 
 // TestMockPeerBehaviour tests the MockPeerBehaviour' ability to store reported
 // peer behaviour in memory indexed by the peerID
 func TestMockPeerBehaviourReporter(t *testing.T) {
-	peer := newMockPeer(net.IP{127, 0, 0, 1})
-	pr := NewMockPeerBehaviourReporter()
+	var peerID p2p.ID = "MockPeer"
+	pr := p2p.NewMockPeerBehaviourReporter()
 
-	behaviours := pr.GetBehaviours(peer.ID())
+	behaviours := pr.GetBehaviours(peerID)
 	if len(behaviours) != 0 {
-		t.Errorf("Expected to have no behaviours reported")
+		t.Error("Expected to have no behaviours reported")
 	}
 
-	pr.Report(peer.ID(), PeerBehaviourBadMessage)
-	behaviours = pr.GetBehaviours(peer.ID())
+	pr.Report(peerID, p2p.PeerBehaviourBadMessage)
+	behaviours = pr.GetBehaviours(peerID)
 	if len(behaviours) != 1 {
-		t.Errorf("Expected the peer have one reported behaviour")
+		t.Error("Expected the peer have one reported behaviour")
 	}
 
-	if behaviours[0] != PeerBehaviourBadMessage {
-		t.Errorf("Expected PeerBehaviourBadMessage to have been reported")
+	if behaviours[0] != p2p.PeerBehaviourBadMessage {
+		t.Error("Expected PeerBehaviourBadMessage to have been reported")
 	}
 }
 
 type scriptedBehaviours struct {
-	PeerID     ID
-	Behaviours []PeerBehaviour
+	PeerID     p2p.ID
+	Behaviours []p2p.PeerBehaviour
 }
 
 type scriptItem struct {
-	PeerID    ID
-	Behaviour PeerBehaviour
+	PeerID    p2p.ID
+	Behaviour p2p.PeerBehaviour
 }
 
-func equalBehaviours(a []PeerBehaviour, b []PeerBehaviour) bool {
+func equalBehaviours(a []p2p.PeerBehaviour, b []p2p.PeerBehaviour) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	same := make([]PeerBehaviour, len(a))
 
-	for i, aBehaviour := range a {
+	var same int = 0
+	for _, aBehaviour := range a {
 		for _, bBehaviour := range b {
 			if aBehaviour == bBehaviour {
-				same[i] = aBehaviour
+				same++
+				break
 			}
 		}
 	}
 
-	return len(same) == len(a)
+	return same == len(a)
 }
 
 // TestPeerBehaviourConcurrency constructs a scenario in which
@@ -61,15 +63,15 @@ func equalBehaviours(a []PeerBehaviour, b []PeerBehaviour) bool {
 // be used within a Reactor Receive method tests to ensure thread safety.
 func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	behaviourScript := []scriptedBehaviours{
-		{"1", []PeerBehaviour{PeerBehaviourVote}},
-		{"2", []PeerBehaviour{PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote}},
-		{"3", []PeerBehaviour{PeerBehaviourBlockPart, PeerBehaviourVote, PeerBehaviourBlockPart, PeerBehaviourVote}},
-		{"4", []PeerBehaviour{PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote, PeerBehaviourVote}},
-		{"5", []PeerBehaviour{PeerBehaviourBlockPart, PeerBehaviourVote, PeerBehaviourBlockPart, PeerBehaviourVote}},
+		{"1", []p2p.PeerBehaviour{p2p.PeerBehaviourVote}},
+		{"2", []p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote, p2p.PeerBehaviourVote, p2p.PeerBehaviourVote}},
+		{"3", []p2p.PeerBehaviour{p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote, p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote}},
+		{"4", []p2p.PeerBehaviour{p2p.PeerBehaviourVote, p2p.PeerBehaviourVote, p2p.PeerBehaviourVote, p2p.PeerBehaviourVote}},
+		{"5", []p2p.PeerBehaviour{p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote, p2p.PeerBehaviourBlockPart, p2p.PeerBehaviourVote}},
 	}
 
 	var receiveWg sync.WaitGroup
-	pr := NewMockPeerBehaviourReporter()
+	pr := p2p.NewMockPeerBehaviourReporter()
 	scriptItems := make(chan scriptItem)
 	done := make(chan int)
 	numConsumers := 3
@@ -108,8 +110,10 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	receiveWg.Wait()
 
 	for _, items := range behaviourScript {
-		if !equalBehaviours(pr.GetBehaviours(items.PeerID), items.Behaviours) {
-			t.Errorf("Expected peer %s to have behaved \n", items.PeerID)
+		reported := pr.GetBehaviours(items.PeerID)
+		if !equalBehaviours(reported, items.Behaviours) {
+			t.Errorf("Expected peer %s to have behaved \nExpected: %#v \nGot %#v \n",
+				items.PeerID, items.Behaviours, reported)
 		}
 	}
 }
