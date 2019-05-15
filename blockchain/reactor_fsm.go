@@ -147,18 +147,20 @@ var (
 
 // errors
 var (
-	errNoErrorFinished          = errors.New("FSM is finished")
-	errInvalidEvent             = errors.New("invalid event in current state")
-	errNoPeerResponse           = errors.New("FSM timed out on peer response")
-	errBadDataFromPeer          = errors.New("received from wrong peer or bad block")
-	errMissingBlocks            = errors.New("missing blocks")
-	errBlockVerificationFailure = errors.New("block verification failure, redo")
-	errNilPeerForBlockRequest   = errors.New("peer for block request does not exist in the switch")
-	errSendQueueFull            = errors.New("block request not made, send-queue is full")
-	errPeerTooShort             = errors.New("peer height too low, old peer removed/ new peer not added")
-	errSlowPeer                 = errors.New("peer is not sending us data fast enough")
-	errSwitchRemovesPeer        = errors.New("switch is removing peer")
-	errTimeoutEventWrongState   = errors.New("timeout event for a state different than the current one")
+	errNoErrorFinished                 = errors.New("FSM is finished")
+	errInvalidEvent                    = errors.New("invalid event in current state")
+	errNoTallerPeer                    = errors.New("FSM timed out on waiting for a peer taller than this node")
+	errNoPeerResponseForCurrentHeights = errors.New("FSM timed out on peer block response for current heights")
+	errNoPeerResponse                  = errors.New("FSM timed out on peer block response")
+	errBadDataFromPeer                 = errors.New("received from wrong peer or bad block")
+	errMissingBlocks                   = errors.New("missing blocks")
+	errBlockVerificationFailure        = errors.New("block verification failure, redo")
+	errNilPeerForBlockRequest          = errors.New("peer for block request does not exist in the switch")
+	errSendQueueFull                   = errors.New("block request not made, send-queue is full")
+	errPeerTooShort                    = errors.New("peer height too low, old peer removed/ new peer not added")
+	errSlowPeer                        = errors.New("peer is not sending us data fast enough")
+	errSwitchRemovesPeer               = errors.New("switch is removing peer")
+	errTimeoutEventWrongState          = errors.New("timeout event for a state different than the current one")
 )
 
 func init() {
@@ -196,7 +198,7 @@ func init() {
 				}
 				// There was no statusResponse received from any peer.
 				// Should we send status request again?
-				return finished, errNoPeerResponse
+				return finished, errNoTallerPeer
 
 			case statusResponseEv:
 				if err := fsm.pool.updatePeer(data.peerId, data.height); err != nil {
@@ -300,12 +302,12 @@ func init() {
 				fsm.pool.removePeerAtCurrentHeights(errNoPeerResponse)
 				fsm.resetStateTimer()
 				if len(fsm.pool.peers) == 0 {
-					return waitForPeer, errNoPeerResponse
+					return waitForPeer, errNoPeerResponseForCurrentHeights
 				}
 				if fsm.pool.reachedMaxHeight() {
-					return finished, errNoPeerResponse
+					return finished, nil
 				}
-				return waitForBlock, errNoPeerResponse
+				return waitForBlock, errNoPeerResponseForCurrentHeights
 
 			case stopFSMEv:
 				if fsm.stateTimer != nil {

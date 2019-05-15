@@ -599,7 +599,7 @@ func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
 				// add peer P2
 				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 3, nil),
 				// timeout on block at height 3, P1 will be removed
-				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForBlock", errNoPeerResponse),
+				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForBlock", errNoPeerResponseForCurrentHeights),
 
 				// make some requests (should include redo-s for blocks 2 and 3)
 				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
@@ -636,7 +636,7 @@ func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
 				makeStepProcessedBlockEv("waitForBlock", "waitForBlock", nil),
 
 				// timeout on block at height 4
-				makeStepStateTimeoutEv("waitForBlock", "finished", "waitForBlock", errNoPeerResponse),
+				makeStepStateTimeoutEv("waitForBlock", "finished", "waitForBlock", nil),
 			},
 		},
 	}
@@ -965,7 +965,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 			maxRequestsPerPeer: 3,
 			steps: []fsmStepTestValues{
 				makeStepStartFSMEv(),
-				makeStepStateTimeoutEv("waitForPeer", "finished", "waitForPeer", errNoPeerResponse),
+				makeStepStateTimeoutEv("waitForPeer", "finished", "waitForPeer", errNoTallerPeer),
 			},
 		},
 		{
@@ -985,7 +985,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 				makeStepStartFSMEv(),
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
 				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
-				makeStepStateTimeoutEv("waitForBlock", "waitForPeer", "waitForBlock", errNoPeerResponse),
+				makeStepStateTimeoutEv("waitForBlock", "waitForPeer", "waitForBlock", errNoPeerResponseForCurrentHeights),
 			},
 		},
 		{
@@ -1008,7 +1008,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
 				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
 				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 3, nil),
-				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForBlock", errNoPeerResponse),
+				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForBlock", errNoPeerResponseForCurrentHeights),
 			},
 		},
 	}
