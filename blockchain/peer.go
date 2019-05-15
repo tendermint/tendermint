@@ -37,7 +37,6 @@ type bpPeer struct {
 	numPending  int32                  // number of requests still waiting for block responses
 	blocks      map[int64]*types.Block // blocks received or expected to be received from this peer
 	timeout     *time.Timer
-	didTimeout  bool
 	recvMonitor *flow.Monitor
 
 	errFunc func(err error, peerID p2p.ID) // function to call on error
@@ -101,11 +100,8 @@ func (peer *bpPeer) onTimeout() {
 }
 
 func (peer *bpPeer) isGood() error {
-	if peer.didTimeout {
-		return errNoPeerResponse
-	}
 
-	if !peer.didTimeout && peer.numPending > 0 {
+	if peer.numPending > 0 {
 		curRate := peer.recvMonitor.Status().CurRate
 		// curRate can be 0 on start
 		if curRate != 0 && curRate < minRecvRate {
@@ -115,7 +111,6 @@ func (peer *bpPeer) isGood() error {
 				"curRate", fmt.Sprintf("%d KB/s", curRate/1024),
 				"minRate", fmt.Sprintf("%d KB/s", minRecvRate/1024))
 			// consider the peer timedout
-			peer.didTimeout = true
 			return errSlowPeer
 		}
 	}
