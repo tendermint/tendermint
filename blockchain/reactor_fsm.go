@@ -139,10 +139,10 @@ var (
 	finished     *bReactorFSMState
 )
 
+// timeouts for state timers
 var (
-	// timeouts for state timers
-	waitForPeerTimeout                 = 2 * time.Second
-	waitForBlockAtCurrentHeightTimeout = 5 * time.Second
+	waitForPeerTimeout                 = 5 * time.Second
+	waitForBlockAtCurrentHeightTimeout = 10 * time.Second
 )
 
 // errors
@@ -153,7 +153,7 @@ var (
 	errBadDataFromPeer          = errors.New("received from wrong peer or bad block")
 	errMissingBlocks            = errors.New("missing blocks")
 	errBlockVerificationFailure = errors.New("block verification failure, redo")
-	errNilPeerForBlockRequest   = errors.New("nil peer for block request")
+	errNilPeerForBlockRequest   = errors.New("peer for block request does not exist in the switch")
 	errSendQueueFull            = errors.New("block request not made, send-queue is full")
 	errPeerTooShort             = errors.New("peer height too low, old peer removed/ new peer not added")
 	errSlowPeer                 = errors.New("peer is not sending us data fast enough")
@@ -203,6 +203,9 @@ func init() {
 					if len(fsm.pool.peers) == 0 {
 						return waitForPeer, err
 					}
+				}
+				if fsm.stateTimer != nil {
+					fsm.stateTimer.Stop()
 				}
 				return waitForBlock, nil
 
@@ -392,8 +395,12 @@ func (fsm *bReactorFSM) isCaughtUp() bool {
 	return fsm.state == finished
 }
 
-func (fsm *bReactorFSM) makeNextRequests(maxNumPendingRequests int32) {
-	fsm.pool.makeNextRequests(maxNumPendingRequests)
+func (fsm *bReactorFSM) makeNextRequests(maxNumRequests int32) {
+	fsm.pool.makeNextRequests(maxNumRequests)
+}
+
+func (fsm *bReactorFSM) getNumberOfBlocksAdded() int32 {
+	return fsm.pool.getNumberOfBlocksAdded()
 }
 
 func (fsm *bReactorFSM) cleanup() {

@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	maxRequestsPerPeer    int32 = 40
+	maxRequestsPerPeer    int32 = 20
 	maxNumPendingRequests int32 = 500
 )
 
@@ -166,7 +166,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
-	if !peer.TrySend(BlockchainChannel, msgBytes) {
+	if !peer.Send(BlockchainChannel, msgBytes) {
 		// doing nothing, will try later in `poolRoutine`
 	}
 	// peer is added to the pool once we receive the first
@@ -287,14 +287,20 @@ ForLoop:
 
 		case <-sendBlockRequestTicker.C:
 			// Tell FSM to make more requests.
-			// The maxNumPendingRequests may be changed based on low/ high watermark thresholds for
+			// Approximate the number of new rquests based on:
 			// - the number of blocks received and waiting to be processed,
-			// - the number of blockResponse messages waiting in messagesForFSMCh, etc.
-			// Currently maxNumPendingRequests value is not changed.
+			blocksToBeProcessed := bcR.fsm.getNumberOfBlocksAdded()
+			// - the approximate number of blockResponse messages waiting in messagesForFSMCh, etc.
+			// (queue may include Status response messages)
+			blocksToBeAdded := len(bcR.messagesForFSMCh)
+			numRequests := maxNumPendingRequests - blocksToBeProcessed - int32(blocksToBeAdded)
+			if numRequests <= 0 {
+				continue
+			}
 			_ = bcR.fsm.handle(&bcReactorMessage{
 				event: makeRequestsEv,
 				data: bReactorEventData{
-					maxNumRequests: maxNumPendingRequests}})
+					maxNumRequests: numRequests}})
 
 		case <-statusUpdateTicker.C:
 			// Ask for status updates.
