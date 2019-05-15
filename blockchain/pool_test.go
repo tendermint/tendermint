@@ -143,38 +143,21 @@ func TestBlockPoolUpdatePeer(t *testing.T) {
 			poolWanted: makeBlockPool(testBcR, 100, []bpPeer{{id: "P1", height: 123}}, map[int64]tPBlocks{}),
 		},
 		{
-			name:       "decrease the height of P1 from 120 to 110 (still over current processing height)",
+			name:       "decrease the height of P1 from 120 to 110",
 			pool:       makeBlockPool(testBcR, 100, []bpPeer{{id: "P1", height: 120}}, map[int64]tPBlocks{}),
 			args:       testPeer{"P1", 110},
-			poolWanted: makeBlockPool(testBcR, 100, []bpPeer{{id: "P1", height: 110}}, map[int64]tPBlocks{}),
-		},
-		{
-			name:       "decrease the height of P1 from 120 to 90 (under current processing height)",
-			pool:       makeBlockPool(testBcR, 100, []bpPeer{{id: "P1", height: 120}}, map[int64]tPBlocks{}),
-			args:       testPeer{"P1", 90},
-			errWanted:  errPeerTooShort,
+			errWanted:  errPeerLowersItsHeight,
 			poolWanted: makeBlockPool(testBcR, 100, []bpPeer{}, map[int64]tPBlocks{}),
 		},
 		{
 			name: "decrease the height of P1 from 105 to 102 with blocks",
 			pool: makeBlockPool(testBcR, 100, []bpPeer{{id: "P1", height: 105}},
 				map[int64]tPBlocks{
-					100: {"P1", true}, 101: {"P1", true}, 102: {"P1", true},
-					103: {"P1", true}, 104: {"P1", false}}),
-			args: testPeer{"P1", 102},
-			poolWanted: makeBlockPool(testBcR, 100, []bpPeer{{id: "P1", height: 102}},
-				map[int64]tPBlocks{
 					100: {"P1", true}, 101: {"P1", true}, 102: {"P1", true}}),
-		},
-		{
-			name: "decrease the height of P1 from 102 to 99 with blocks",
-			pool: makeBlockPool(testBcR, 100, []bpPeer{{id: "P1", height: 102}},
-				map[int64]tPBlocks{
-					100: {"P1", true}, 101: {"P1", true}, 102: {"P1", true}}),
-			args: testPeer{"P1", 99},
+			args:      testPeer{"P1", 102},
+			errWanted: errPeerLowersItsHeight,
 			poolWanted: makeBlockPool(testBcR, 100, []bpPeer{},
 				map[int64]tPBlocks{}),
-			errWanted: errPeerTooShort,
 		},
 	}
 

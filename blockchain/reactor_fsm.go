@@ -150,6 +150,7 @@ var (
 	errNoErrorFinished                 = errors.New("FSM is finished")
 	errInvalidEvent                    = errors.New("invalid event in current state")
 	errNoTallerPeer                    = errors.New("FSM timed out on waiting for a peer taller than this node")
+	errPeerLowersItsHeight             = errors.New("peer reports a height lower than previous")
 	errNoPeerResponseForCurrentHeights = errors.New("FSM timed out on peer block response for current heights")
 	errNoPeerResponse                  = errors.New("FSM timed out on peer block response")
 	errBadDataFromPeer                 = errors.New("received from wrong peer or bad block")

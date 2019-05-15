@@ -802,7 +802,7 @@ func TestFSMPeerRelatedEvents(t *testing.T) {
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 200, nil),
 				// statusResponseEv from P1
-				makeStepStatusEv("waitForBlock", "waitForPeer", "P1", 3, errPeerTooShort),
+				makeStepStatusEv("waitForBlock", "waitForPeer", "P1", 3, errPeerLowersItsHeight),
 			},
 		},
 		{

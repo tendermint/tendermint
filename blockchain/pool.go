@@ -106,7 +106,7 @@ func (pool *blockPool) updateMaxPeerHeight() {
 }
 
 // Adds a new peer or updates an existing peer with a new height.
-// If the peer is too short it is removed.
+// If a new peer is too short it is not added.
 func (pool *blockPool) updatePeer(peerID p2p.ID, height int64) error {
 	peer := pool.peers[peerID]
 	oldHeight := int64(0)
@@ -115,37 +115,22 @@ func (pool *blockPool) updatePeer(peerID p2p.ID, height int64) error {
 	}
 	pool.logger.Debug("updatePeer", "peerID", peerID, "height", height, "old_height", oldHeight)
 
-	if height < pool.height {
-		pool.logger.Info("Peer height too small", "peer", peerID, "height", height, "fsm_height", pool.height)
-
-		// Don't add or update a peer that is not useful.
-		if peer != nil {
-			pool.logger.Info("remove short peer", "peer", peerID, "height", height, "fsm_height", pool.height)
-			pool.removePeer(peerID, errPeerTooShort)
-		}
-		return errPeerTooShort
-	}
-
 	if peer == nil {
+		if height < pool.height {
+			pool.logger.Info("Peer height too small", "peer", peerID, "height", height, "fsm_height", pool.height)
+			return errPeerTooShort
+		}
 		// Add new peer.
 		peer = newBPPeer(peerID, height, pool.toBcR.sendPeerError)
 		peer.setLogger(pool.logger.With("peer", peerID))
 		pool.peers[peerID] = peer
 	} else {
-		// Update existing peer.
-		// Remove any requests made for heights in range (height, peer.height].
-		for h, block := range pool.peers[peerID].blocks {
-			if h <= height {
-				continue
-			}
-			// Reschedule the requests for all blocks waiting for the peer, or received and not processed yet.
-			if block == nil {
-				// Since block was not yet received it is counted in numPending, decrement.
-				pool.numPending--
-				pool.peers[peerID].numPending--
-			}
-			pool.rescheduleRequest(peerID, h)
+		// Check if peer is lowering its height. This is not allowed.
+		if height < peer.height {
+			pool.removePeer(peerID, errPeerLowersItsHeight)
+			return errPeerLowersItsHeight
 		}
+		// Update existing peer.
 		peer.height = height
 	}
 
@@ -171,7 +156,7 @@ func (pool *blockPool) deletePeer(peerID p2p.ID) {
 // Removes any blocks and requests associated with the peer and deletes the peer.
 // Also triggers new requests if blocks have been removed.
 func (pool *blockPool) removePeer(peerID p2p.ID, err error) {
-	pool.logger.Info("removing peer", "peerID", peerID)
+	pool.logger.Info("removing peer", "peerID", peerID, "error", err)
 
 	peer := pool.peers[peerID]
 	if peer == nil {
