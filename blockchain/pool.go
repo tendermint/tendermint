@@ -30,13 +30,15 @@ func (bd *blockData) String() string {
 
 type blockPool struct {
 	logger log.Logger
-	peers  map[p2p.ID]*bpPeer
+	// Set of peers that have sent status responses, with height bigger than pool.height
+	peers map[p2p.ID]*bpPeer
+	// Set of block heights and the corresponding peers from where a block response is expected or has been received.
 	blocks map[int64]p2p.ID
 
-	requests          map[int64]bool // list of blocks to be assigned peers for blockRequest
-	nextRequestHeight int64          // next height to be added to requests
+	requests          map[int64]struct{} // list of blocks to be assigned peers for blockRequest
+	nextRequestHeight int64              // next height to be added to requests
 
-	height        int64 // processing height
+	height        int64 // height of next block to execute
 	maxPeerHeight int64 // maximum height of all peers
 	numPending    int32 // total numPending across peers
 	toBcR         bcRMessageInterface
@@ -47,7 +49,7 @@ func newBlockPool(height int64, toBcR bcRMessageInterface) *blockPool {
 		peers:             make(map[p2p.ID]*bpPeer),
 		maxPeerHeight:     0,
 		blocks:            make(map[int64]p2p.ID),
-		requests:          make(map[int64]bool),
+		requests:          make(map[int64]struct{}),
 		nextRequestHeight: height,
 		height:            height,
 		toBcR:             toBcR,
@@ -71,12 +73,12 @@ func (pool blockPool) getMaxPeerHeight() int64 {
 }
 
 func (pool *blockPool) reachedMaxHeight() bool {
-	return pool.maxPeerHeight == 0 || pool.height >= pool.maxPeerHeight
+	return pool.height >= pool.maxPeerHeight
 }
 
 func (pool *blockPool) rescheduleRequest(peerID p2p.ID, height int64) {
 	pool.logger.Info("reschedule requests made to peer for height ", "peerID", peerID, "height", height)
-	pool.requests[height] = true
+	pool.requests[height] = struct{}{}
 	delete(pool.blocks, height)
 	delete(pool.peers[peerID].blocks, height)
 }
@@ -88,19 +90,6 @@ func (pool *blockPool) updateMaxPeerHeight() {
 		if peer.height > newMax {
 			newMax = peer.height
 		}
-	}
-
-	if newMax < pool.maxPeerHeight {
-		// Remove any planned requests for heights over the new maxPeerHeight.
-		// This may happen if the tallest peer has been removed.
-		for h := range pool.requests {
-			if h > newMax {
-				delete(pool.requests, h)
-			}
-		}
-	}
-	if pool.nextRequestHeight > newMax {
-		pool.nextRequestHeight = newMax + 1
 	}
 	pool.maxPeerHeight = newMax
 }
@@ -134,22 +123,24 @@ func (pool *blockPool) updatePeer(peerID p2p.ID, height int64) error {
 		peer.height = height
 	}
 
+	// Update the pool's maxPeerHeight if needed. Note that for updates it can only increase or left unchanged.
 	pool.updateMaxPeerHeight()
 
 	return nil
 }
 
 // Stops the peer timer and deletes the peer. Recomputes the max peer height.
-func (pool *blockPool) deletePeer(peerID p2p.ID) {
-	if p, ok := pool.peers[peerID]; ok {
-		if p.timeout != nil {
-			p.timeout.Stop()
-		}
-		delete(pool.peers, peerID)
+func (pool *blockPool) deletePeer(peer *bpPeer) {
+	if peer == nil {
+		return
+	}
+	if peer.timeout != nil {
+		peer.timeout.Stop()
+	}
+	delete(pool.peers, peer.id)
 
-		if p.height == pool.maxPeerHeight {
-			pool.updateMaxPeerHeight()
-		}
+	if peer.height == pool.maxPeerHeight {
+		pool.updateMaxPeerHeight()
 	}
 }
 
@@ -162,15 +153,33 @@ func (pool *blockPool) removePeer(peerID p2p.ID, err error) {
 	if peer == nil {
 		return
 	}
-	// Reschedule the requests for all blocks waiting for the peer, or received and not processed yet.
+	// Reschedule the block requests made to the peer, or received and not processed yet.
+	// Note that some of the requests may be removed further down.
 	for h, block := range pool.peers[peerID].blocks {
 		if block == nil {
 			pool.numPending--
 		}
 		pool.rescheduleRequest(peerID, h)
 	}
-	pool.deletePeer(peerID)
 
+	oldMaxPeerHeight := pool.maxPeerHeight
+	// Delete the peer. This operation may result in the pool's maxPeerHeight being lowered.
+	pool.deletePeer(peer)
+
+	// Check if the pool's maxPeerHeight has been lowered.
+	// This may happen if the tallest peer has been removed.
+	if oldMaxPeerHeight > pool.maxPeerHeight {
+		// Remove any planned requests for heights over the new maxPeerHeight.
+		for h := range pool.requests {
+			if h > pool.maxPeerHeight {
+				delete(pool.requests, h)
+			}
+		}
+		// Adjust the nextRequestHeight to the new max plus one.
+		if pool.nextRequestHeight > pool.maxPeerHeight {
+			pool.nextRequestHeight = pool.maxPeerHeight + 1
+		}
+	}
 }
 
 // Called every time FSM advances its height.
@@ -187,9 +196,7 @@ func (pool *blockPool) removeBadPeers() {
 	for _, peer := range pool.peers {
 		if err := peer.isGood(); err != nil {
 			pool.removePeer(peer.id, err)
-			if err == errSlowPeer {
-				peer.errFunc(errSlowPeer, peer.id)
-			}
+			peer.errFunc(err, peer.id)
 		}
 	}
 }
@@ -202,7 +209,7 @@ func (pool *blockPool) makeRequestBatch(maxNumRequests int32) []int {
 		if pool.nextRequestHeight > pool.maxPeerHeight {
 			break
 		}
-		pool.requests[pool.nextRequestHeight] = true
+		pool.requests[pool.nextRequestHeight] = struct{}{}
 		pool.nextRequestHeight++
 	}
 
@@ -271,7 +278,8 @@ func (pool *blockPool) sendRequest(height int64) bool {
 
 // Validates that the block comes from the peer it was expected from and stores it in the 'blocks' map.
 func (pool *blockPool) addBlock(peerID p2p.ID, block *types.Block, blockSize int) error {
-	if _, ok := pool.peers[peerID]; !ok {
+	peer, ok := pool.peers[peerID]
+	if !ok {
 		pool.logger.Error("peer doesn't exist", "peer", peerID, "block_received", block.Height)
 		return errBadDataFromPeer
 	}
@@ -288,10 +296,9 @@ func (pool *blockPool) addBlock(peerID p2p.ID, block *types.Block, blockSize int
 		return errBadDataFromPeer
 	}
 
-	pool.peers[peerID].blocks[block.Height] = block
-	pool.blocks[block.Height] = peerID
+	peer.blocks[block.Height] = block
 	pool.numPending--
-	pool.peers[peerID].decrPending(blockSize)
+	peer.decrPending(blockSize)
 	pool.logger.Info("added new block", "height", block.Height, "from_peer", peerID, "total", len(pool.blocks))
 	return nil
 }
@@ -368,8 +375,6 @@ func (pool *blockPool) removePeerAtCurrentHeights(err error) {
 
 func (pool *blockPool) cleanup() {
 	for _, peer := range pool.peers {
-		if peer.timeout != nil {
-			peer.timeout.Stop()
-		}
+		peer.cleanup()
 	}
 }

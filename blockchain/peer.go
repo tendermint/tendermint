@@ -11,10 +11,13 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const defaultPeerTimeout = 15 * time.Second
+
 //--------
 // Peer
 var (
-	peerTimeout = 15 * time.Second // not const so we can override with tests
+	// Timeout for a peer to respond to a block request.
+	peerTimeout = defaultPeerTimeout
 
 	// Minimum recv rate to ensure we're receiving blocks from a peer fast
 	// enough. If a peer is not sending data at at least that rate, we
@@ -100,7 +103,6 @@ func (peer *bpPeer) onTimeout() {
 }
 
 func (peer *bpPeer) isGood() error {
-
 	if peer.numPending > 0 {
 		curRate := peer.recvMonitor.Status().CurRate
 		// curRate can be 0 on start
@@ -111,10 +113,9 @@ func (peer *bpPeer) isGood() error {
 				"curRate", fmt.Sprintf("%d KB/s", curRate/1024),
 				"minRate", fmt.Sprintf("%d KB/s", minRecvRate/1024))
 			// consider the peer timedout
-			return errSlowPeer
+			return err
 		}
 	}
-
 	return nil
 }
 

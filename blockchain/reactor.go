@@ -47,8 +47,7 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	// immutable
-	initialState sm.State
+	initialState sm.State // immutable
 	state        sm.State
 
 	blockExec *sm.BlockExecutor

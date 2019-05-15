@@ -13,10 +13,11 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
+// These vars are used to record and verify different events generated during tests
 var (
-	numErrFuncCalls int
-	lastErr         error
-	peerTestMtx     sync.Mutex
+	numErrFuncCalls int        // number of calls to the errFunc
+	lastErr         error      // last generated error
+	peerTestMtx     sync.Mutex // needed as modifications of these variables are done from timer handler goroutine also
 )
 
 func resetErrors() {
@@ -48,12 +49,8 @@ func checkByStoppingPeerTimer(t *testing.T, peer *bpPeer, running bool) {
 }
 
 func TestPeerResetMonitor(t *testing.T) {
-	peer := &bpPeer{
-		id:      p2p.ID(cmn.RandStr(12)),
-		height:  10,
-		logger:  log.TestingLogger(),
-		errFunc: errFunc,
-	}
+	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
+	peer.setLogger(log.TestingLogger())
 	peer.resetMonitor()
 	assert.NotNil(t, peer.recvMonitor)
 }
@@ -61,12 +58,8 @@ func TestPeerResetMonitor(t *testing.T) {
 func TestPeerTimer(t *testing.T) {
 	peerTimeout = 2 * time.Millisecond
 
-	peer := &bpPeer{
-		id:      p2p.ID(cmn.RandStr(12)),
-		height:  10,
-		logger:  log.TestingLogger(),
-		errFunc: errFunc,
-	}
+	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
+	peer.setLogger(log.TestingLogger())
 	assert.Nil(t, peer.timeout)
 
 	// initial reset call with peer having a nil timer
@@ -98,18 +91,14 @@ func TestPeerTimer(t *testing.T) {
 	peerTestMtx.Unlock()
 
 	// Restore the peerTimeout to its original value
-	peerTimeout = 15 * time.Second
+	peerTimeout = defaultPeerTimeout
 }
 
 func TestPeerIncrPending(t *testing.T) {
 	peerTimeout = 2 * time.Millisecond
 
-	peer := &bpPeer{
-		id:      p2p.ID(cmn.RandStr(12)),
-		height:  10,
-		logger:  log.TestingLogger(),
-		errFunc: errFunc,
-	}
+	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
+	peer.setLogger(log.TestingLogger())
 
 	peer.incrPending()
 	assert.NotNil(t, peer.recvMonitor)
@@ -122,18 +111,14 @@ func TestPeerIncrPending(t *testing.T) {
 	assert.Equal(t, int32(2), peer.numPending)
 
 	// Restore the peerTimeout to its original value
-	peerTimeout = 15 * time.Second
+	peerTimeout = defaultPeerTimeout
 }
 
 func TestPeerDecrPending(t *testing.T) {
 	peerTimeout = 2 * time.Millisecond
 
-	peer := &bpPeer{
-		id:      p2p.ID(cmn.RandStr(12)),
-		height:  10,
-		logger:  log.TestingLogger(),
-		errFunc: errFunc,
-	}
+	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
+	peer.setLogger(log.TestingLogger())
 
 	// panic if numPending is 0 and try to decrement it
 	assert.Panics(t, func() { peer.decrPending(10) })
@@ -154,18 +139,14 @@ func TestPeerDecrPending(t *testing.T) {
 	checkByStoppingPeerTimer(t, peer, true)
 
 	// Restore the peerTimeout to its original value
-	peerTimeout = 15 * time.Second
+	peerTimeout = defaultPeerTimeout
 }
 
 func TestPeerCanBeRemovedDueToExpiration(t *testing.T) {
 	minRecvRate = int64(100) // 100 bytes/sec exponential moving average
 
-	peer := &bpPeer{
-		id:      p2p.ID(cmn.RandStr(12)),
-		height:  10,
-		errFunc: errFunc,
-		logger:  log.TestingLogger(),
-	}
+	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
+	peer.setLogger(log.TestingLogger())
 
 	peerTimeout = time.Millisecond
 	peer.incrPending()
@@ -176,19 +157,15 @@ func TestPeerCanBeRemovedDueToExpiration(t *testing.T) {
 	peerTestMtx.Unlock()
 
 	// Restore the peerTimeout to its original value
-	peerTimeout = 15 * time.Second
+	peerTimeout = defaultPeerTimeout
 
 }
 
 func TestPeerCanBeRemovedDueToLowSpeed(t *testing.T) {
 	minRecvRate = int64(100) // 100 bytes/sec exponential moving average
 
-	peer := &bpPeer{
-		id:      p2p.ID(cmn.RandStr(12)),
-		height:  10,
-		errFunc: errFunc,
-		logger:  log.TestingLogger(),
-	}
+	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
+	peer.setLogger(log.TestingLogger())
 
 	peerTimeout = time.Second
 	peerSampleRate = 0
@@ -200,14 +177,14 @@ func TestPeerCanBeRemovedDueToLowSpeed(t *testing.T) {
 	// monitor starts with a higher rEMA (~ 2*minRecvRate), wait for it to go down
 	time.Sleep(900 * time.Millisecond)
 
-	// normal peer - send a bit more than 100 byes/sec, > 10 byes/100msec, check peer is not considered slow
+	// normal peer - send a bit more than 100 bytes/sec, > 10 bytes/100msec, check peer is not considered slow
 	for i := 0; i < 10; i++ {
 		peer.decrPending(11)
 		time.Sleep(100 * time.Millisecond)
 		require.Nil(t, peer.isGood())
 	}
 
-	// slow peer - send a bit less than 10 byes/100msec
+	// slow peer - send a bit less than 10 bytes/100msec
 	for i := 0; i < 10; i++ {
 		peer.decrPending(9)
 		time.Sleep(100 * time.Millisecond)
@@ -218,12 +195,10 @@ func TestPeerCanBeRemovedDueToLowSpeed(t *testing.T) {
 }
 
 func TestPeerCleanup(t *testing.T) {
-	peer := &bpPeer{
-		id:      p2p.ID(cmn.RandStr(12)),
-		height:  10,
-		logger:  log.TestingLogger(),
-		errFunc: errFunc,
-	}
+
+	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
+	peer.setLogger(log.TestingLogger())
+
 	peerTimeout = 2 * time.Millisecond
 	assert.Nil(t, peer.timeout)
 
@@ -237,5 +212,5 @@ func TestPeerCleanup(t *testing.T) {
 
 	checkByStoppingPeerTimer(t, peer, false)
 	// Restore the peerTimeout to its original value
-	peerTimeout = 15 * time.Second
+	peerTimeout = defaultPeerTimeout
 }
