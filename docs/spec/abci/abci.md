@@ -42,7 +42,7 @@ application. The `Codespace` is a namespace for the `Code`.
 
 Some methods (`CheckTx, BeginBlock, DeliverTx, EndBlock`)
 include an `Events` field in their `Response*`. Each event contains a type and a
-list of lists containing key-value pairs denoting something about what happened
+list of attributes, which are key-value pairs denoting something about what happened
 during the method's execution.
 
 Events can be used to index transactions and blocks according to what happened
