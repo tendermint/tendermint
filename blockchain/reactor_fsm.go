@@ -402,10 +402,6 @@ func (fsm *bReactorFSM) makeNextRequests(maxNumRequests int32) {
 	fsm.pool.makeNextRequests(maxNumRequests)
 }
 
-func (fsm *bReactorFSM) getNumberOfBlocksAdded() int32 {
-	return fsm.pool.getNumberOfBlocksAdded()
-}
-
 func (fsm *bReactorFSM) cleanup() {
 	fsm.pool.cleanup()
 }

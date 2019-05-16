@@ -251,7 +251,7 @@ func TestFSMBasic(t *testing.T) {
 				// statusResponseEv
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 2, nil),
 				// makeRequestEv
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				// blockResponseEv for height 1
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P1", 1, []int64{}),
@@ -274,7 +274,7 @@ func TestFSMBasic(t *testing.T) {
 				// statusResponseEv from P2
 				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 4, nil),
 				// makeRequestEv
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 
 				// blockResponseEv for height 1
 				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P1", 1, []int64{}),
@@ -356,7 +356,7 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
 
 				// makeRequestEv
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				// blockResponseEv for height 1
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P1", 1, []int64{}),
@@ -374,7 +374,7 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 				makeStepProcessedBlockEv("waitForBlock", "waitForBlock", errBlockVerificationFailure),
 
 				// makeRequestEv
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P2", 1, []int64{}),
 				// blockResponseEv for height 2
@@ -465,7 +465,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 300, nil),
 				// makeRequestEv
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				// blockResponseEv for height 100
 				makeStepBlockRespEvErrored("waitForBlock", "waitForBlock",
 					"P1", 100, []int64{}, errBadDataFromPeer, []p2p.ID{}),
@@ -482,7 +482,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 100, nil),
 
 				// makeRequestEv
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P1", 1, []int64{}),
 
@@ -503,7 +503,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
 
 				// makeRequestEv
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				makeStepBlockRespEvErrored("waitForBlock", "waitForBlock",
 					"P2", 1, []int64{}, errBadDataFromPeer, []p2p.ID{"P2"}),
 			},
@@ -518,7 +518,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
 				// makeRequestEv
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 
 				// add another peer
 				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 3, nil),
@@ -587,7 +587,7 @@ func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
 				// make requests (blocks 1-3 to P1)
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				// blocks received for heights 1 and 2
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P1", 1, []int64{}),
@@ -602,7 +602,7 @@ func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
 				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForBlock", errNoPeerResponseForCurrentHeights),
 
 				// make some requests (should include redo-s for blocks 2 and 3)
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				// block received for height 2 from P2
 				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P2", 2, []int64{}),
 				// block received for height 3 from P2
@@ -620,11 +620,11 @@ func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
 				// make some requests (blocks 1-3 to P1)
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 
 				// add peer P2
 				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 30, nil),
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 
 				// blocks received for heights 1-3
 				makeStepBlockRespEv("waitForBlock", "waitForBlock", "P1", 1, []int64{}),
@@ -725,7 +725,7 @@ func TestFSMPeerRelatedEvents(t *testing.T) {
 				makeStepStartFSMEv(),
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 101, nil),
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 
 				// statusResponseEv from P2
 				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 200, nil),
@@ -752,7 +752,7 @@ func TestFSMPeerRelatedEvents(t *testing.T) {
 				makeStepStartFSMEv(),
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 101, nil),
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 
 				// statusResponseEv from P2
 				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 200, nil),
@@ -815,7 +815,7 @@ func TestFSMPeerRelatedEvents(t *testing.T) {
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 20000000, nil),
 				makeStepMakeRequestsEvErrored("waitForBlock", "waitForBlock",
-					maxNumPendingRequests, nil, []p2p.ID{"P1"}),
+					maxNumRequests, nil, []p2p.ID{"P1"}),
 			},
 		},
 	}
@@ -984,7 +984,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 			steps: []fsmStepTestValues{
 				makeStepStartFSMEv(),
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				makeStepStateTimeoutEv("waitForBlock", "waitForPeer", "waitForBlock", errNoPeerResponseForCurrentHeights),
 			},
 		},
@@ -995,7 +995,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 			steps: []fsmStepTestValues{
 				makeStepStartFSMEv(),
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForPeer", errTimeoutEventWrongState),
 			},
 		},
@@ -1006,7 +1006,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 			steps: []fsmStepTestValues{
 				makeStepStartFSMEv(),
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				makeStepStatusEv("waitForBlock", "waitForBlock", "P2", 3, nil),
 				makeStepStateTimeoutEv("waitForBlock", "waitForBlock", "waitForBlock", errNoPeerResponseForCurrentHeights),
 			},
@@ -1057,7 +1057,7 @@ func makeCorrectTransitionSequence(startingHeight int64, numBlocks int64, numPee
 	// Approximate the slice capacity to save time for appends.
 	testSteps := make([]fsmStepTestValues, 0, 3*numBlocks+int64(numPeers))
 
-	testName := fmt.Sprintf("%v-blocks %v-startingHeight %v-peers %v-maxRequestsPerPeer %v-maxNumPendingRequests",
+	testName := fmt.Sprintf("%v-blocks %v-startingHeight %v-peers %v-maxRequestsPerPeer %v-maxNumRequests",
 		numBlocks, startingHeight, numPeers, maxRequestsPerPeer, maxPendingRequests)
 
 	// Add startFSMEv step.
@@ -1087,7 +1087,7 @@ forLoop:
 		if i%int(maxRequestsPerPeer) == 0 {
 			testSteps = append(
 				testSteps,
-				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumPendingRequests),
+				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 			)
 		}
 
@@ -1220,7 +1220,7 @@ func TestFSMPeerTimeout(t *testing.T) {
 
 	if err := fsm.handle(&bcReactorMessage{
 		event: makeRequestsEv,
-		data:  bReactorEventData{maxNumRequests: maxNumPendingRequests}}); err != nil {
+		data:  bReactorEventData{maxNumRequests: maxNumRequests}}); err != nil {
 	}
 	// Check that FSM sends a block request message and...
 	assert.Equal(t, maxRequestsPerPeer, numBlockRequests)

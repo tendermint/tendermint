@@ -33,8 +33,11 @@ const (
 )
 
 var (
-	maxRequestsPerPeer    int32 = 20
-	maxNumPendingRequests int32 = 500
+	// Maximum number of requests that can be pending per peer, i.e. for which requests have been sent but blocks
+	// have not been received.
+	maxRequestsPerPeer int32 = 20
+	// Maximum number of block requests for the reactor, pending or for which blocks have been received.
+	maxNumRequests int32 = 500
 )
 
 type consensusReactor interface {
@@ -285,21 +288,10 @@ ForLoop:
 		select {
 
 		case <-sendBlockRequestTicker.C:
-			// Tell FSM to make more requests.
-			// Approximate the number of new rquests based on:
-			// - the number of blocks received and waiting to be processed,
-			blocksToBeProcessed := bcR.fsm.getNumberOfBlocksAdded()
-			// - the approximate number of blockResponse messages waiting in messagesForFSMCh, etc.
-			// (queue may include Status response messages)
-			blocksToBeAdded := len(bcR.messagesForFSMCh)
-			numRequests := maxNumPendingRequests - blocksToBeProcessed - int32(blocksToBeAdded)
-			if numRequests <= 0 {
-				continue
-			}
 			_ = bcR.fsm.handle(&bcReactorMessage{
 				event: makeRequestsEv,
 				data: bReactorEventData{
-					maxNumRequests: numRequests}})
+					maxNumRequests: maxNumRequests}})
 
 		case <-statusUpdateTicker.C:
 			// Ask for status updates.
