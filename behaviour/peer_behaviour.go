@@ -7,20 +7,49 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// PeerBehaviour are types of reportable behaviours about peers.
-type PeerBehaviour int
+type PeerBehaviour struct {
+	peerID p2p.ID
+	reason interface{}
+}
 
-const (
-	PeerBehaviourBadMessage = iota
-	PeerBehaviourMessageOutOfOrder
-	PeerBehaviourVote
-	PeerBehaviourBlockPart
-)
+type badMessage struct {
+	explanation string
+}
+
+func BadMessage(peerID p2p.ID, explanation string) PeerBehaviour {
+	return PeerBehaviour{peerID: peerID, reason: badMessage{explanation}}
+}
+
+type messageOutOfOrder struct {
+	explanation string
+}
+
+func MessageOutOfOrder(peerID p2p.ID, explanation string) PeerBehaviour {
+	return PeerBehaviour{peerID: peerID, reason: badMessage{explanation}}
+}
+
+type consensusVote struct {
+	explanation string
+}
+
+// ConsensusVote creates a PeerBehaviour with a consensusVote reason.
+func ConsensusVote(peerID p2p.ID, explanation string) PeerBehaviour {
+	return PeerBehaviour{peerID: peerID, reason: consensusVote{explanation}}
+}
+
+type blockPart struct {
+	explanation string
+}
+
+// BlockPart creates a PeerBehaviour with a blockPart reason.
+func BlockPart(peerID p2p.ID, explanation string) PeerBehaviour {
+	return PeerBehaviour{peerID: peerID, reason: blockPart{explanation}}
+}
 
 // PeerBehaviourReporter provides an interface for reactors to report the behaviour
 // of peers synchronously to other components.
 type PeerBehaviourReporter interface {
-	Report(peerID p2p.ID, behaviour PeerBehaviour) error
+	Report(behaviour PeerBehaviour) error
 }
 
 // SwitchPeerBehaviouReporter reports peer behaviour to an internal Switch
@@ -36,18 +65,18 @@ func NewSwitchPeerBehaviourReporter(sw *p2p.Switch) *SwitchPeerBehaviourReporter
 }
 
 // Report reports the behaviour of a peer to the Switch
-func (spbr *SwitchPeerBehaviourReporter) Report(peerID p2p.ID, behaviour PeerBehaviour) error {
-	peer := spbr.sw.Peers().Get(peerID)
+func (spbr *SwitchPeerBehaviourReporter) Report(behaviour PeerBehaviour) error {
+	peer := spbr.sw.Peers().Get(behaviour.peerID)
 	if peer == nil {
 		return errors.New("Peer not found")
 	}
 
-	switch behaviour {
-	case PeerBehaviourVote, PeerBehaviourBlockPart:
+	switch behaviour.reason.(type) {
+	case consensusVote, blockPart:
 		spbr.sw.MarkPeerAsGood(peer)
-	case PeerBehaviourBadMessage:
+	case badMessage:
 		spbr.sw.StopPeerForError(peer, "Bad message")
-	case PeerBehaviourMessageOutOfOrder:
+	case messageOutOfOrder:
 		spbr.sw.StopPeerForError(peer, "Message out of order")
 	default:
 		return errors.New("Unknown behaviour")
@@ -73,10 +102,10 @@ func NewMockPeerBehaviourReporter() *MockPeerBehaviourReporter {
 }
 
 // Report stores the PeerBehaviour produced by the peer identified by peerID.
-func (mpbr *MockPeerBehaviourReporter) Report(peerID p2p.ID, behaviour PeerBehaviour) {
+func (mpbr *MockPeerBehaviourReporter) Report(behaviour PeerBehaviour) {
 	mpbr.mtx.Lock()
 	defer mpbr.mtx.Unlock()
-	mpbr.pb[peerID] = append(mpbr.pb[peerID], behaviour)
+	mpbr.pb[behaviour.peerID] = append(mpbr.pb[behaviour.peerID], behaviour)
 }
 
 // GetBehaviours returns all behaviours reported on the peer identified by peerID.

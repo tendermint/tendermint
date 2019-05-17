@@ -19,25 +19,26 @@ func TestMockPeerBehaviourReporter(t *testing.T) {
 		t.Error("Expected to have no behaviours reported")
 	}
 
-	pr.Report(peerID, bh.PeerBehaviourBadMessage)
+	badMessage := bh.BadMessage(peerID, "bad message")
+	pr.Report(badMessage)
 	behaviours = pr.GetBehaviours(peerID)
 	if len(behaviours) != 1 {
 		t.Error("Expected the peer have one reported behaviour")
 	}
 
-	if behaviours[0] != bh.PeerBehaviourBadMessage {
-		t.Error("Expected PeerBehaviourBadMessage to have been reported")
+	if behaviours[0] != badMessage {
+		t.Error("Expected Bad Message to have been reported")
 	}
 }
 
 type scriptedBehaviours struct {
-	PeerID     p2p.ID
-	Behaviours []bh.PeerBehaviour
+	peerID     p2p.ID
+	behaviours []bh.PeerBehaviour
 }
 
 type scriptItem struct {
-	PeerID    p2p.ID
-	Behaviour bh.PeerBehaviour
+	peerID    p2p.ID
+	behaviour bh.PeerBehaviour
 }
 
 // equalBehaviours returns true if a and b contain the same PeerBehaviours with
@@ -77,39 +78,43 @@ func equalBehaviours(a []bh.PeerBehaviour, b []bh.PeerBehaviour) bool {
 // of peer behaviours can be compared for the behaviours they contain and the
 // freequencies that those behaviours occur.
 func TestEqualPeerBehaviours(t *testing.T) {
-	equals := []struct {
-		left  []bh.PeerBehaviour
-		right []bh.PeerBehaviour
-	}{
-		// Empty sets
-		{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{}},
-		// Single behaviours
-		{[]bh.PeerBehaviour{bh.PeerBehaviourVote}, []bh.PeerBehaviour{bh.PeerBehaviourVote}},
-		// Equal Frequencies
-		{[]bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote},
-			[]bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote}},
-		// Equal frequencies different orders
-		{[]bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourBlockPart},
-			[]bh.PeerBehaviour{bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote}},
-	}
+	var (
+		peerID        p2p.ID = "MockPeer"
+		consensusVote        = bh.ConsensusVote(peerID, "voted")
+		blockPart            = bh.BlockPart(peerID, "blocked")
+		equals               = []struct {
+			left  []bh.PeerBehaviour
+			right []bh.PeerBehaviour
+		}{
+			// Empty sets
+			{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{}},
+			// Single behaviours
+			{[]bh.PeerBehaviour{consensusVote}, []bh.PeerBehaviour{consensusVote}},
+			// Equal Frequencies
+			{[]bh.PeerBehaviour{consensusVote, consensusVote},
+				[]bh.PeerBehaviour{consensusVote, consensusVote}},
+			// Equal frequencies different orders
+			{[]bh.PeerBehaviour{consensusVote, blockPart},
+				[]bh.PeerBehaviour{blockPart, consensusVote}},
+		}
+		unequals = []struct {
+			left  []bh.PeerBehaviour
+			right []bh.PeerBehaviour
+		}{
+			// Comparing empty sets to non empty sets
+			{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{consensusVote}},
+			// Different behaviours
+			{[]bh.PeerBehaviour{consensusVote}, []bh.PeerBehaviour{blockPart}},
+			// Same behaviour with different frequencies
+			{[]bh.PeerBehaviour{consensusVote},
+				[]bh.PeerBehaviour{consensusVote, consensusVote}},
+		}
+	)
 
 	for _, test := range equals {
 		if !equalBehaviours(test.left, test.right) {
 			t.Errorf("Expected %#v and %#v to be equal", test.left, test.right)
 		}
-	}
-
-	unequals := []struct {
-		left  []bh.PeerBehaviour
-		right []bh.PeerBehaviour
-	}{
-		// Comparing empty sets to non empty sets
-		{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{bh.PeerBehaviourVote}},
-		// Different behaviours
-		{[]bh.PeerBehaviour{bh.PeerBehaviourVote}, []bh.PeerBehaviour{bh.PeerBehaviourBlockPart}},
-		// Same behaviour with different frequencies
-		{[]bh.PeerBehaviour{bh.PeerBehaviourVote},
-			[]bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote}},
 	}
 
 	for _, test := range unequals {
@@ -124,13 +129,18 @@ func TestEqualPeerBehaviours(t *testing.T) {
 // This test reproduces the conditions in which MockPeerBehaviourReporter will
 // be used within a Reactor Receive method tests to ensure thread safety.
 func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
-	behaviourScript := []scriptedBehaviours{
-		{"1", []bh.PeerBehaviour{bh.PeerBehaviourVote}},
-		{"2", []bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote, bh.PeerBehaviourVote, bh.PeerBehaviourVote}},
-		{"3", []bh.PeerBehaviour{bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote, bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote}},
-		{"4", []bh.PeerBehaviour{bh.PeerBehaviourVote, bh.PeerBehaviourVote, bh.PeerBehaviourVote, bh.PeerBehaviourVote}},
-		{"5", []bh.PeerBehaviour{bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote, bh.PeerBehaviourBlockPart, bh.PeerBehaviourVote}},
-	}
+	var (
+		peerID          p2p.ID = "MockPeer"
+		consensusVote          = bh.ConsensusVote(peerID, "voted")
+		blockPart              = bh.BlockPart(peerID, "blocked")
+		behaviourScript        = []scriptedBehaviours{
+			{"1", []bh.PeerBehaviour{consensusVote}},
+			{"2", []bh.PeerBehaviour{consensusVote, consensusVote, consensusVote, consensusVote}},
+			{"3", []bh.PeerBehaviour{blockPart, consensusVote, blockPart, consensusVote}},
+			{"4", []bh.PeerBehaviour{consensusVote, consensusVote, consensusVote, consensusVote}},
+			{"5", []bh.PeerBehaviour{blockPart, consensusVote, blockPart, consensusVote}},
+		}
+	)
 
 	var receiveWg sync.WaitGroup
 	pr := bh.NewMockPeerBehaviourReporter()
@@ -144,7 +154,7 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 			for {
 				select {
 				case pb := <-scriptItems:
-					pr.Report(pb.PeerID, pb.Behaviour)
+					pr.Report(pb.behaviour)
 				case <-done:
 					return
 				}
@@ -157,8 +167,8 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	go func() {
 		defer sendingWg.Done()
 		for _, item := range behaviourScript {
-			for _, reason := range item.Behaviours {
-				scriptItems <- scriptItem{item.PeerID, reason}
+			for _, reason := range item.behaviours {
+				scriptItems <- scriptItem{item.peerID, reason}
 			}
 		}
 	}()
@@ -172,10 +182,10 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	receiveWg.Wait()
 
 	for _, items := range behaviourScript {
-		reported := pr.GetBehaviours(items.PeerID)
-		if !equalBehaviours(reported, items.Behaviours) {
+		reported := pr.GetBehaviours(items.peerID)
+		if !equalBehaviours(reported, items.behaviours) {
 			t.Errorf("Expected peer %s to have behaved \nExpected: %#v \nGot %#v \n",
-				items.PeerID, items.Behaviours, reported)
+				items.peerID, items.behaviours, reported)
 		}
 	}
 }
