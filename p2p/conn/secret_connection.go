@@ -154,32 +154,37 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 	defer sc.sendMtx.Unlock()
 
 	for 0 < len(data) {
-		var sealedFrame = pool.Get(aeadSizeOverhead + totalFrameSize)
-		var frame = pool.Get(totalFrameSize)
-		var chunk []byte
-		if dataMaxSize < len(data) {
-			chunk = data[:dataMaxSize]
-			data = data[dataMaxSize:]
-		} else {
-			chunk = data
-			data = nil
-		}
-		chunkLength := len(chunk)
-		binary.LittleEndian.PutUint32(frame, uint32(chunkLength))
-		copy(frame[dataLenSize:], chunk)
+		if err := func() error {
+			var sealedFrame = pool.Get(aeadSizeOverhead + totalFrameSize)
+			var frame = pool.Get(totalFrameSize)
+			defer pool.Put(sealedFrame)
+			defer pool.Put(frame)
+			var chunk []byte
+			if dataMaxSize < len(data) {
+				chunk = data[:dataMaxSize]
+				data = data[dataMaxSize:]
+			} else {
+				chunk = data
+				data = nil
+			}
+			chunkLength := len(chunk)
+			binary.LittleEndian.PutUint32(frame, uint32(chunkLength))
+			copy(frame[dataLenSize:], chunk)
 
-		// encrypt the frame
-		sc.sendAead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
-		incrNonce(sc.sendNonce)
-		// end encryption
+			// encrypt the frame
+			sc.sendAead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
+			incrNonce(sc.sendNonce)
+			// end encryption
 
-		_, err = sc.conn.Write(sealedFrame)
-		pool.Put(sealedFrame)
-		pool.Put(frame)
-		if err != nil {
+			_, err = sc.conn.Write(sealedFrame)
+			if err != nil {
+				return err
+			}
+			n += len(chunk)
+			return nil
+		}(); err != nil {
 			return n, err
 		}
-		n += len(chunk)
 	}
 	return
 }

@@ -35,7 +35,6 @@
   version = "v1.1.1"
 
 [[projects]]
-<<<<<<< HEAD
   digest = "1:5f7414cf41466d4b4dd7ec52b2cd3e481e08cfd11e7e24fef730c0e483e88bb1"
   name = "github.com/etcd-io/bbolt"
   packages = ["."]
@@ -187,8 +186,7 @@
   version = "v0.0.1"
 
 [[projects]]
-  digest = "1:c568d7727aa262c32bdf8a3f7db83614f7af0ed661474b24588de635c20024c7"
->>>>>>> 7a03a822... use byte buffer pool to decreass allocs
+  digest = "1:53e8c5c79716437e601696140e8b1801aae4204f4ec54a504333702a49572c4f"
   name = "github.com/magiconair/properties"
   packages = [
     ".",
@@ -521,12 +519,7 @@
     "github.com/btcsuite/btcd/btcec",
     "github.com/btcsuite/btcutil/base58",
     "github.com/btcsuite/btcutil/bech32",
-<<<<<<< HEAD
     "github.com/etcd-io/bbolt",
-=======
-    "github.com/ethereum/go-ethereum/crypto/secp256k1",
-    "github.com/ethereum/go-ethereum/swarm/testutil",
->>>>>>> 7a03a822... use byte buffer pool to decreass allocs
     "github.com/fortytw2/leaktest",
     "github.com/go-kit/kit/log",
     "github.com/go-kit/kit/log/level",
@@ -543,11 +536,8 @@
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/gorilla/websocket",
     "github.com/jmhodges/levigo",
-<<<<<<< HEAD
-    "github.com/magiconair/properties/assert",
-=======
     "github.com/libp2p/go-buffer-pool",
->>>>>>> 7a03a822... use byte buffer pool to decreass allocs
+    "github.com/magiconair/properties/assert",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
@@ -559,7 +549,6 @@
     "github.com/stretchr/testify/require",
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/errors",
-    "github.com/syndtr/goleveldb/leveldb/filter",
     "github.com/syndtr/goleveldb/leveldb/iterator",
     "github.com/syndtr/goleveldb/leveldb/opt",
     "github.com/tendermint/go-amino",
