@@ -59,3 +59,4 @@
   * `Mempool#Update` and `BlockExecutor#Commit` now accept
     `[]*abci.ResponseDeliverTx` - list of `DeliverTx` responses, which should
     match `block.Txs`
+- [networks] fixes ansible integration script (@carlosflrs)
