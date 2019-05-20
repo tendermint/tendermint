@@ -8,11 +8,11 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// TestMockPeerBehaviour tests the MockPeerBehaviour' ability to store reported
+// TestMockReporter tests the MockReporter's ability to store reported
 // peer behaviour in memory indexed by the peerID
-func TestMockPeerBehaviourReporter(t *testing.T) {
+func TestMockReporter(t *testing.T) {
 	var peerID p2p.ID = "MockPeer"
-	pr := bh.NewMockPeerBehaviourReporter()
+	pr := bh.NewMockReporter()
 
 	behaviours := pr.GetBehaviours(peerID)
 	if len(behaviours) != 0 {
@@ -138,7 +138,7 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	)
 
 	var receiveWg sync.WaitGroup
-	pr := bh.NewMockPeerBehaviourReporter()
+	pr := bh.NewMockReporter()
 	scriptItems := make(chan scriptItem)
 	done := make(chan int)
 	numConsumers := 3
