@@ -71,13 +71,13 @@ func (spbr *SwitchPeerBehaviourReporter) Report(behaviour PeerBehaviour) error {
 		return errors.New("Peer not found")
 	}
 
-	switch behaviour.reason.(type) {
+	switch reason := behaviour.reason.(type) {
 	case consensusVote, blockPart:
 		spbr.sw.MarkPeerAsGood(peer)
 	case badMessage:
-		spbr.sw.StopPeerForError(peer, "Bad message")
+		spbr.sw.StopPeerForError(peer, reason.explanation)
 	case messageOutOfOrder:
-		spbr.sw.StopPeerForError(peer, "Message out of order")
+		spbr.sw.StopPeerForError(peer, reason.explanation)
 	default:
 		return errors.New("Unknown behaviour")
 	}

@@ -130,15 +130,15 @@ func TestEqualPeerBehaviours(t *testing.T) {
 // be used within a Reactor Receive method tests to ensure thread safety.
 func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	var (
-		peerID          p2p.ID = "MockPeer"
-		consensusVote          = bh.ConsensusVote(peerID, "voted")
-		blockPart              = bh.BlockPart(peerID, "blocked")
-		behaviourScript        = []scriptedBehaviours{
-			{"1", []bh.PeerBehaviour{consensusVote}},
-			{"2", []bh.PeerBehaviour{consensusVote, consensusVote, consensusVote, consensusVote}},
-			{"3", []bh.PeerBehaviour{blockPart, consensusVote, blockPart, consensusVote}},
-			{"4", []bh.PeerBehaviour{consensusVote, consensusVote, consensusVote, consensusVote}},
-			{"5", []bh.PeerBehaviour{blockPart, consensusVote, blockPart, consensusVote}},
+		behaviourScript = []struct {
+			peerID     p2p.ID
+			behaviours []bh.PeerBehaviour
+		}{
+			{"1", []bh.PeerBehaviour{bh.ConsensusVote("1", "")}},
+			{"2", []bh.PeerBehaviour{bh.ConsensusVote("2", ""), bh.ConsensusVote("2", ""), bh.ConsensusVote("2", "")}},
+			{"3", []bh.PeerBehaviour{bh.BlockPart("3", ""), bh.ConsensusVote("3", ""), bh.BlockPart("3", ""), bh.ConsensusVote("3", "")}},
+			{"4", []bh.PeerBehaviour{bh.ConsensusVote("4", ""), bh.ConsensusVote("4", ""), bh.ConsensusVote("4", ""), bh.ConsensusVote("4", "")}},
+			{"5", []bh.PeerBehaviour{bh.BlockPart("5", ""), bh.ConsensusVote("5", ""), bh.BlockPart("5", ""), bh.ConsensusVote("5", "")}},
 		}
 	)
 
