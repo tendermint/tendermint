@@ -9,7 +9,7 @@ import (
 )
 
 // TestMockReporter tests the MockReporter's ability to store reported
-// peer behaviour in memory indexed by the peerID
+// peer behaviour in memory indexed by the peerID.
 func TestMockReporter(t *testing.T) {
 	var peerID p2p.ID = "MockPeer"
 	pr := bh.NewMockReporter()

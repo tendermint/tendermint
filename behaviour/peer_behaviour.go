@@ -4,7 +4,9 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// PeerBehaviour is a struct describing the behaviour of a peer performed.
+// PeerBehaviour is a struct describing a behaviour a peer performed.
+// `peerID` identifies the peer and reason characterizes the specific
+// behaviour performed by the peer.
 type PeerBehaviour struct {
 	peerID p2p.ID
 	reason interface{}
@@ -32,7 +34,7 @@ type consensusVote struct {
 	explanation string
 }
 
-// ConsensusVote creates a PeerBehaviour with a consensusVote reason.
+// ConsensusVote returns a consensusVote PeerBehaviour.
 func ConsensusVote(peerID p2p.ID, explanation string) PeerBehaviour {
 	return PeerBehaviour{peerID: peerID, reason: consensusVote{explanation}}
 }
