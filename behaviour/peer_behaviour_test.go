@@ -31,11 +31,6 @@ func TestMockPeerBehaviourReporter(t *testing.T) {
 	}
 }
 
-type scriptedBehaviours struct {
-	peerID     p2p.ID
-	behaviours []bh.PeerBehaviour
-}
-
 type scriptItem struct {
 	peerID    p2p.ID
 	behaviour bh.PeerBehaviour
