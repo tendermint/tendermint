@@ -4,7 +4,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// PeerBehaviour is a struct describing the behaviour of a peer.
+// PeerBehaviour is a struct describing the behaviour of a peer performed.
 type PeerBehaviour struct {
 	peerID p2p.ID
 	reason interface{}

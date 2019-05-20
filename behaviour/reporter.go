@@ -46,7 +46,7 @@ func (spbr *SwitchReporter) Report(behaviour PeerBehaviour) error {
 	return nil
 }
 
-// MockReporter serves a mock concrete implementation of the Reporter
+// MockReporter is a concrete implementation of the Reporter
 // interface used in reactor tests to ensure reactors report the correct
 // behaviour in manufactured scenarios.
 type MockReporter struct {

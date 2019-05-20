@@ -37,7 +37,7 @@ type scriptItem struct {
 }
 
 // equalBehaviours returns true if a and b contain the same PeerBehaviours with
-// the same freequency and otherwise false.
+// the same freequencies and otherwise false.
 func equalBehaviours(a []bh.PeerBehaviour, b []bh.PeerBehaviour) bool {
 	aHistogram := map[bh.PeerBehaviour]int{}
 	bHistogram := map[bh.PeerBehaviour]int{}
@@ -120,9 +120,9 @@ func TestEqualPeerBehaviours(t *testing.T) {
 }
 
 // TestPeerBehaviourConcurrency constructs a scenario in which
-// multiple goroutines are using the same MockPeerBehaviourReporter instance.
-// This test reproduces the conditions in which MockPeerBehaviourReporter will
-// be used within a Reactor Receive method tests to ensure thread safety.
+// multiple goroutines are using the same MockReporter instance.
+// This test reproduces the conditions in which MockReporter will
+// be used within a Reactor `Receive` method tests to ensure thread safety.
 func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	var (
 		behaviourScript = []struct {
