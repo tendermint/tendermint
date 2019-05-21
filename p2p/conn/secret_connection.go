@@ -73,6 +73,11 @@ type SecretConnection struct {
 // Caller should call conn.Close()
 // See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*SecretConnection, error) {
+
+	hash := sha256.New
+	hdkf_state := new([32]byte)
+	hkdfInit := hkdf.New(hash, []byte("INIT_HANDSHAKE"), nil, []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
+
 	locPubKey := locPrivKey.PubKey()
 
 	// Generate ephemeral keys for perfect forward secrecy.
@@ -87,7 +92,15 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	// Sort by lexical order.
-	loEphPub, _ := sort32(locEphPub, remEphPub)
+	loEphPub, hiEphPub := sort32(locEphPub, remEphPub)
+
+	io.ReadFull(hkdfInit, hdkf_state[:])
+
+	hkdfLoEphPub := hkdf.New(hash, loEphPub[:], hdkf_state[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
+
+	io.ReadFull(hkdfLoEphPub, hdkf_state[:])
+
+	hkdfHiEphPub := hkdf.New(hash, hiEphPub[:], hdkf_state[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
 
 	// Check if the local ephemeral public key
 	// was the least, lexicographically sorted.
@@ -98,9 +111,14 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	if err != nil {
 		return nil, err
 	}
+	io.ReadFull(hkdfHiEphPub, hdkf_state[:])
+
+	hkdfSecret := hkdf.New(hash, dhSecret[:], hdkf_state[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
+
+	io.ReadFull(hkdfSecret, hdkf_state[:])
 
 	// generate the secret used for receiving, sending, challenge via hkdf-sha2 on dhSecret
-	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(dhSecret, locIsLeast)
+	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(hdkf_state, locIsLeast)
 
 	// Construct SecretConnection.
 	sc := &SecretConnection{
