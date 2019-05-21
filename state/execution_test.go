@@ -35,7 +35,7 @@ func TestApplyBlock(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB := state(1, 1)
+	state, stateDB, _ := state(1, 1)
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, MockEvidencePool{})
@@ -59,7 +59,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB := state(2, 2)
+	state, stateDB, _ := state(2, 2)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -112,7 +112,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB := state(2, 12)
+	state, stateDB, _ := state(2, 12)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -308,7 +308,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB := state(1, 1)
+	state, stateDB, _ := state(1, 1)
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 
@@ -366,7 +366,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB := state(1, 1)
+	state, stateDB, _ := state(1, 1)
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
@@ -393,8 +393,9 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func state(nVals, height int) (State, dbm.DB) {
+func state(nVals, height int) (State, dbm.DB, []types.PrivValidator) {
 	vals := make([]types.GenesisValidator, nVals)
+	privVals := make([]types.PrivValidator, nVals)
 	for i := 0; i < nVals; i++ {
 		secret := []byte(fmt.Sprintf("test%d", i))
 		pk := ed25519.GenPrivKeyFromSecret(secret)
@@ -404,6 +405,7 @@ func state(nVals, height int) (State, dbm.DB) {
 			1000,
 			fmt.Sprintf("test%d", i),
 		}
+		privVals[i] = types.NewMockPVWithParams(pk, false, false)
 	}
 	s, _ := MakeGenesisState(&types.GenesisDoc{
 		ChainID:    chainID,
@@ -420,7 +422,7 @@ func state(nVals, height int) (State, dbm.DB) {
 		s.LastValidators = s.Validators.Copy()
 		SaveState(stateDB, s)
 	}
-	return s, stateDB
+	return s, stateDB, privVals
 }
 
 func makeBlock(state State, height int64) *types.Block {
