@@ -23,7 +23,6 @@ func TestValidateBlockHeader(t *testing.T) {
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
 	// we assume a single validator for this test
 	privVal := privVals[0]
-	blockID := types.BlockID{Hash: tmhash.Sum([]byte("block-header-id")), PartsHeader: types.PartSetHeader{}}
 	commit := types.NewCommit(types.BlockID{}, nil)
 
 	// some bad values
@@ -91,7 +90,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		require.NoError(t, err, "height %d", height)
 
 		// simulate a commit after this block
-		blockID = types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
+		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
 		vote, err := makeVote(height, blockID, state.Validators, privVal)
 		require.NoError(t, err, "height %d", height)
 		// for the next height
