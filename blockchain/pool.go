@@ -39,7 +39,6 @@ type blockPool struct {
 
 	height        int64 // height of next block to execute
 	maxPeerHeight int64 // maximum height of all peers
-	numPending    int32 // total numPending across peers TODO - can probably remove
 	toBcR         bcRMessageInterface
 }
 
@@ -150,10 +149,7 @@ func (pool *blockPool) removePeer(peerID p2p.ID, err error) {
 
 	// Reschedule the block requests made to the peer, or received and not processed yet.
 	// Note that some of the requests may be removed further down.
-	for h, block := range pool.peers[peerID].blocks {
-		if block == nil {
-			pool.numPending--
-		}
+	for h := range pool.peers[peerID].blocks {
 		pool.rescheduleRequest(peerID, h)
 	}
 
@@ -261,8 +257,6 @@ func (pool *blockPool) sendRequest(height int64) bool {
 		pool.logger.Info("assigned request to peer", "peer", peer.id, "height", height)
 
 		pool.blocks[height] = peer.id
-		pool.numPending++
-
 		peer.blocks[height] = nil
 		peer.incrPending()
 
@@ -293,7 +287,6 @@ func (pool *blockPool) addBlock(peerID p2p.ID, block *types.Block, blockSize int
 	}
 
 	peer.blocks[block.Height] = block
-	pool.numPending--
 	peer.decrPending(blockSize)
 	pool.logger.Info("added new block", "height", block.Height, "from_peer", peerID,
 		"total_pool_blocks", len(pool.blocks), "peer_numPending", peer.numPending)
