@@ -94,13 +94,13 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Sort by lexical order.
 	loEphPub, hiEphPub := sort32(locEphPub, remEphPub)
 
-	if err := io.ReadFull(hkdfInit, hdkf_state[:]); err != nil {
+	if _, err := io.ReadFull(hkdfInit, hdkf_state[:]); err != nil {
 		return nil, err
 	}
 
 	hkdfLoEphPub := hkdf.New(hash, loEphPub[:], hdkf_state[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
 
-	if err := io.ReadFull(hkdfLoEphPub, hdkf_state[:]); err != nil {
+	if _, err := io.ReadFull(hkdfLoEphPub, hdkf_state[:]); err != nil {
 		return nil, err
 	}
 
@@ -115,13 +115,13 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	if err != nil {
 		return nil, err
 	}
-	if err := io.ReadFull(hkdfHiEphPub, hdkf_state[:]); err != nil {
+	if _, err := io.ReadFull(hkdfHiEphPub, hdkf_state[:]); err != nil {
 		return nil, err
 	}
 
 	hkdfSecret := hkdf.New(hash, dhSecret[:], hdkf_state[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
 
-	if err := io.ReadFull(hkdfSecret, hdkf_state[:]); err != nil {
+	if _, err := io.ReadFull(hkdfSecret, hdkf_state[:]); err != nil {
 		return nil, err
 	}
 
