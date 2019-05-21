@@ -6,10 +6,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // TODO(#2589):
@@ -17,15 +19,12 @@ import (
 // - add txs and build up full State properly
 // - test block.Time (see #2587 - there are no conditions on time for the first height)
 func TestValidateBlockHeader(t *testing.T) {
-	var height int64 = 1 // TODO(#2589): generalize
-	state, stateDB := state(1, int(height))
-
+	state, stateDB, privVals := state(1, 1)
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
-
-	// A good block passes.
-	block := makeBlock(state, height)
-	err := blockExec.ValidateBlock(state, block)
-	require.NoError(t, err)
+	// we assume a single validator for this test
+	privVal := privVals[0]
+	blockID := types.BlockID{Hash: tmhash.Sum([]byte("block-header-id")), PartsHeader: types.PartSetHeader{}}
+	commit := types.NewCommit(types.BlockID{}, nil)
 
 	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
@@ -62,12 +61,69 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Proposer invalid", func(block *types.Block) { block.ProposerAddress = []byte("wrong size") }},
 	}
 
-	for _, tc := range testCases {
-		block := makeBlock(state, height)
-		tc.malleateBlock(block)
+	// this effectively implements a stripped-down version of
+	// BlockExecutor.ApplyBlock() at each height to build up state
+	for height := int64(1); height < 10; height++ {
+		// invalid blocks don't pass
+		for _, tc := range testCases {
+			block, _ := state.MakeBlock(
+				height,
+				makeTxs(height),
+				commit,
+				nil,
+				state.Validators.GetProposer().Address,
+			)
+			tc.malleateBlock(block)
+			err := blockExec.ValidateBlock(state, block)
+			require.Error(t, err, tc.name)
+		}
+
+		block, _ := state.MakeBlock(
+			height,
+			makeTxs(height),
+			commit,
+			nil,
+			state.Validators.GetProposer().Address,
+		)
+
+		// a good block passes
 		err := blockExec.ValidateBlock(state, block)
-		require.Error(t, err, tc.name)
+		require.NoError(t, err, "height %d", height)
+
+		// simulate a commit after this block
+		blockID = types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
+		vote, err := makeVote(height, blockID, state.Validators, privVal)
+		require.NoError(t, err, "height %d", height)
+		// for the next height
+		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
+
+		responses := &ABCIResponses{
+			EndBlock: &abci.ResponseEndBlock{},
+		}
+		emptyValidatorUpdates := make([]*types.Validator, 0)
+		state, err = updateState(state, blockID, &block.Header, responses, emptyValidatorUpdates)
+		require.NoError(t, err, "height %d", height)
+
+		SaveState(stateDB, state)
 	}
+}
+
+func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, privVal types.PrivValidator) (*types.Vote, error) {
+	addr := privVal.GetPubKey().Address()
+	idx, _ := valSet.GetByAddress(addr)
+	vote := &types.Vote{
+		ValidatorAddress: addr,
+		ValidatorIndex:   idx,
+		Height:           height,
+		Round:            0,
+		Timestamp:        tmtime.Now(),
+		Type:             types.PrecommitType,
+		BlockID:          blockID,
+	}
+	if err := privVal.SignVote(chainID, vote); err != nil {
+		return nil, err
+	}
+	return vote, nil
 }
 
 /*
@@ -92,7 +148,7 @@ func TestValidateBlockCommit(t *testing.T) {
 */
 func TestValidateBlockEvidence(t *testing.T) {
 	var height int64 = 1 // TODO(#2589): generalize
-	state, stateDB := state(1, int(height))
+	state, stateDB, _ := state(1, int(height))
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
 
@@ -131,7 +187,7 @@ func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { ret
 
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB := state(1, int(height))
+	state, stateDB, _ := state(1, int(height))
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, mockEvPoolAlwaysCommitted{})
 	// A block with a couple pieces of evidence passes.
