@@ -67,10 +67,6 @@ func (pool *blockPool) setLogger(l log.Logger) {
 	pool.logger = l
 }
 
-func (pool blockPool) getMaxPeerHeight() int64 {
-	return pool.maxPeerHeight
-}
-
 func (pool *blockPool) reachedMaxHeight() bool {
 	return pool.height >= pool.maxPeerHeight
 }

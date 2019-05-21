@@ -37,7 +37,7 @@ var (
 	// have not been received.
 	maxRequestsPerPeer int32 = 20
 	// Maximum number of block requests for the reactor, pending or for which blocks have been received.
-	maxNumRequests int32 = 500
+	maxNumRequests int32 = 64
 )
 
 type consensusReactor interface {
@@ -78,6 +78,37 @@ type BlockRequest struct {
 	PeerID p2p.ID
 }
 
+// NewBlockchainReactor returns new reactor instance.
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore,
+	fastSync bool) *BlockchainReactor {
+
+	if state.LastBlockHeight != store.Height() {
+		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
+			store.Height()))
+	}
+
+	const capacity = 1000
+	eventsFromFSMCh := make(chan bcFsmMessage, capacity)
+	messagesForFSMCh := make(chan bcReactorMessage, capacity)
+	errorsForFSMCh := make(chan bcReactorMessage, capacity)
+
+	startHeight := store.Height() + 1
+	bcR := &BlockchainReactor{
+		initialState:     state,
+		state:            state,
+		blockExec:        blockExec,
+		fastSync:         fastSync,
+		store:            store,
+		messagesForFSMCh: messagesForFSMCh,
+		eventsFromFSMCh:  eventsFromFSMCh,
+		errorsForFSMCh:   errorsForFSMCh,
+	}
+	fsm := NewFSM(startHeight, bcR)
+	bcR.fsm = fsm
+	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
+	return bcR
+}
+
 // bcReactorMessage is used by the reactor to send messages to the FSM.
 type bcReactorMessage struct {
 	event bReactorEvent
@@ -101,36 +132,6 @@ type bFsmEventData struct {
 type bcFsmMessage struct {
 	event bFsmEvent
 	data  bFsmEventData
-}
-
-// NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore,
-	fastSync bool) *BlockchainReactor {
-
-	if state.LastBlockHeight != store.Height() {
-		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
-			store.Height()))
-	}
-
-	const capacity = 1000
-	eventsFromFSMCh := make(chan bcFsmMessage, capacity)
-	messagesForFSMCh := make(chan bcReactorMessage, capacity)
-	errorsForFSMCh := make(chan bcReactorMessage, capacity)
-
-	bcR := &BlockchainReactor{
-		initialState:     state,
-		state:            state,
-		blockExec:        blockExec,
-		fastSync:         fastSync,
-		store:            store,
-		messagesForFSMCh: messagesForFSMCh,
-		eventsFromFSMCh:  eventsFromFSMCh,
-		errorsForFSMCh:   errorsForFSMCh,
-	}
-	fsm := NewFSM(store.Height()+1, bcR)
-	bcR.fsm = fsm
-	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
-	return bcR
 }
 
 // SetLogger implements cmn.Service by setting the logger on reactor and pool.
@@ -283,11 +284,60 @@ func (bcR *BlockchainReactor) poolRoutine() {
 	lastHundred := time.Now()
 	lastRate := 0.0
 
+	stopProcessing := make(chan struct{}, 1)
+
+	go func(stopProcessing chan struct{}) {
+	ForLoop:
+		for {
+			select {
+			case <-stopProcessing:
+				bcR.Logger.Info("finishing block execution")
+				break ForLoop
+			case <-processReceivedBlockTicker.C: // try to execute blocks
+				select {
+				case doProcessBlockCh <- struct{}{}:
+				default:
+				}
+			case <-doProcessBlockCh:
+				for {
+					err := bcR.processBlock()
+					if err == errMissingBlocks {
+						break
+					}
+					// Notify FSM of block processing result.
+					msgForFSM := bcReactorMessage{
+						event: processedBlockEv,
+						data: bReactorEventData{
+							err: err,
+						},
+					}
+					_ = bcR.fsm.handle(&msgForFSM)
+
+					if err != nil {
+						break
+					}
+
+					bcR.blocksSynced++
+					if bcR.blocksSynced%100 == 0 {
+						lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
+						height, maxPeerHeight := bcR.fsm.getStatus()
+						bcR.Logger.Info("Fast Sync Rate", "height", height,
+							"max_peer_height", maxPeerHeight, "blocks/s", lastRate)
+						lastHundred = time.Now()
+					}
+				}
+			}
+		}
+	}(stopProcessing)
+
 ForLoop:
 	for {
 		select {
 
 		case <-sendBlockRequestTicker.C:
+			if !bcR.fsm.needsBlocks() {
+				continue
+			}
 			_ = bcR.fsm.handle(&bcReactorMessage{
 				event: makeRequestsEv,
 				data: bReactorEventData{
@@ -296,39 +346,6 @@ ForLoop:
 		case <-statusUpdateTicker.C:
 			// Ask for status updates.
 			go bcR.sendStatusRequest()
-
-		case <-processReceivedBlockTicker.C: // chan time
-			select {
-			case doProcessBlockCh <- struct{}{}:
-			default:
-			}
-
-		case <-doProcessBlockCh:
-			err := bcR.processBlock()
-			if err == errMissingBlocks {
-				continue
-			}
-			// Notify FSM of block processing result.
-			_ = bcR.fsm.handle(&bcReactorMessage{
-				event: processedBlockEv,
-				data: bReactorEventData{
-					err: err,
-				},
-			})
-
-			if err == errBlockVerificationFailure {
-				continue
-			}
-
-			doProcessBlockCh <- struct{}{}
-
-			bcR.blocksSynced++
-			if bcR.blocksSynced%100 == 0 {
-				lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
-				bcR.Logger.Info("Fast Sync Rate", "height", bcR.fsm.pool.height,
-					"max_peer_height", bcR.fsm.pool.getMaxPeerHeight(), "blocks/s", lastRate)
-				lastHundred = time.Now()
-			}
 
 		case msg := <-bcR.messagesForFSMCh:
 			// Sent from the Receive() routine when status (statusResponseEv) and
@@ -343,6 +360,7 @@ ForLoop:
 		case msg := <-bcR.eventsFromFSMCh:
 			switch msg.event {
 			case syncFinishedEv:
+				stopProcessing <- struct{}{}
 				// Sent from the FSM when it enters finished state.
 				break ForLoop
 			case peerErrorEv:
@@ -380,7 +398,7 @@ func (bcR *BlockchainReactor) reportPeerErrorToSwitch(err error, peerID p2p.ID) 
 
 func (bcR *BlockchainReactor) processBlock() error {
 
-	firstBP, secondBP, err := bcR.fsm.pool.getNextTwoBlocks()
+	firstBP, secondBP, err := bcR.fsm.getNextTwoBlocks()
 	if err != nil {
 		// We need both to sync the first block.
 		return err
@@ -457,6 +475,7 @@ func (bcR *BlockchainReactor) switchToConsensus() {
 //    - adding a block (addBlock) fails
 //    - reactor processing of a block reports failure and FSM sends back the peers of first and second blocks
 func (bcR *BlockchainReactor) sendPeerError(err error, peerID p2p.ID) {
+	bcR.Logger.Info("sendPeerError:", "peer", peerID, "error", err)
 	msgData := bcFsmMessage{
 		event: peerErrorEv,
 		data: bFsmEventData{

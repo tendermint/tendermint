@@ -3,6 +3,7 @@ package blockchain
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -30,7 +31,9 @@ func (s *bReactorFSMState) String() string {
 
 // Blockchain Reactor State Machine
 type bReactorFSM struct {
-	logger    log.Logger
+	logger log.Logger
+	mtx    sync.Mutex
+
 	startTime time.Time
 
 	state      *bReactorFSMState
@@ -325,7 +328,7 @@ func init() {
 	finished = &bReactorFSMState{
 		name: "finished",
 		enter: func(fsm *bReactorFSM) {
-			fsm.logger.Error("Time to switch to consensus reactor!", "height", fsm.pool.height)
+			fsm.logger.Info("Time to switch to consensus reactor!", "height", fsm.pool.height)
 			fsm.toBcR.switchToConsensus()
 			fsm.cleanup()
 		},
@@ -358,6 +361,8 @@ func (fsm *bReactorFSM) start() {
 
 // handle processes messages and events sent to the FSM.
 func (fsm *bReactorFSM) handle(msg *bcReactorMessage) error {
+	fsm.mtx.Lock()
+	defer fsm.mtx.Unlock()
 	fsm.logger.Debug("FSM received", "event", msg, "state", fsm.state)
 
 	if fsm.state == nil {
@@ -404,4 +409,22 @@ func (fsm *bReactorFSM) makeNextRequests(maxNumRequests int32) {
 
 func (fsm *bReactorFSM) cleanup() {
 	fsm.pool.cleanup()
+}
+
+func (fsm *bReactorFSM) needsBlocks() bool {
+	fsm.mtx.Lock()
+	defer fsm.mtx.Unlock()
+	return fsm.state.name == "waitForBlock"
+}
+
+func (fsm *bReactorFSM) getNextTwoBlocks() (first, second *blockData, err error) {
+	fsm.mtx.Lock()
+	defer fsm.mtx.Unlock()
+	return fsm.pool.getNextTwoBlocks()
+}
+
+func (fsm *bReactorFSM) getStatus() (height, maxPeerHeight int64) {
+	fsm.mtx.Lock()
+	defer fsm.mtx.Unlock()
+	return fsm.pool.height, fsm.pool.maxPeerHeight
 }
