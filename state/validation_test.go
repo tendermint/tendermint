@@ -102,8 +102,6 @@ func TestValidateBlockHeader(t *testing.T) {
 		emptyValidatorUpdates := make([]*types.Validator, 0)
 		state, err = updateState(state, blockID, &block.Header, responses, emptyValidatorUpdates)
 		require.NoError(t, err, "height %d", height)
-
-		SaveState(stateDB, state)
 	}
 }
 
