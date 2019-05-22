@@ -77,6 +77,7 @@ func TestValidateBlockHeader(t *testing.T) {
 			require.Error(t, err, tc.name)
 		}
 
+		// a good block passes
 		block, _ := state.MakeBlock(
 			height,
 			makeTxs(height),
@@ -84,8 +85,6 @@ func TestValidateBlockHeader(t *testing.T) {
 			nil,
 			state.Validators.GetProposer().Address,
 		)
-
-		// a good block passes
 		err := blockExec.ValidateBlock(state, block)
 		require.NoError(t, err, "height %d", height)
 
