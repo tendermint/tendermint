@@ -160,7 +160,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
 
 		/*
-			wrongPrecommitsCommit is fine except for an incorrect number of precommits
+			wrongPrecommitsCommit is fine except for the extra bad precommit
 		*/
 		badVote := &types.Vote{
 			ValidatorAddress: badPrivVal.GetPubKey().Address(),
