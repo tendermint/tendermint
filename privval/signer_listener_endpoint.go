@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -135,7 +137,7 @@ func (sl *SignerListenerEndpoint) isConnected() bool {
 
 func (sl *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	if !sl.isConnected() {
-		return nil, cmn.ErrorWrap(ErrListenerNoConnection, "endpoint is not connected")
+		return nil, errors.Wrap(ErrListenerNoConnection, "endpoint is not connected")
 	}
 
 	// Reset read deadline
@@ -153,7 +155,7 @@ func (sl *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error)
 	const maxRemoteSignerMsgSize = 1024 * 10
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(sl.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
+		err = errors.Wrap(ErrListenerTimeout, err.Error())
 		sl.dropConnection()
 	}
 
@@ -162,7 +164,7 @@ func (sl *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error)
 
 func (sl *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	if !sl.isConnected() {
-		return cmn.ErrorWrap(ErrListenerNoConnection, "endpoint is not connected")
+		return errors.Wrap(ErrListenerNoConnection, "endpoint is not connected")
 	}
 
 	// Reset read deadline
@@ -179,7 +181,7 @@ func (sl *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) 
 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(sl.conn, msg)
 	if _, ok := err.(timeoutError); ok {
-		err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
+		err = errors.Wrap(ErrListenerTimeout, err.Error())
 		sl.dropConnection()
 	}
 

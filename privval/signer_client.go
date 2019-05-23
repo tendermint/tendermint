@@ -1,7 +1,6 @@
 package privval
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -20,11 +19,8 @@ type SignerClient struct {
 var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
+// it will start the endpoint (if not already started)
 func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
-	if endpoint == nil {
-		return nil, fmt.Errorf("endpoint cannot be nil")
-	}
-
 	if !endpoint.IsRunning() {
 		if err := endpoint.Start(); err != nil {
 			return nil, errors.Wrap(err, "failed to start listener endpoint")

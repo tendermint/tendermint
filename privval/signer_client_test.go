@@ -78,7 +78,7 @@ func TestSignerProposal(t *testing.T) {
 			want := &types.Proposal{Timestamp: ts}
 			have := &types.Proposal{Timestamp: ts}
 
-			defer tc.signerService.OnStop()
+			defer tc.signerService.Stop()
 			defer tc.signer.Close()
 
 			require.NoError(t, tc.mockPV.SignProposal(tc.chainID, want))
@@ -96,7 +96,7 @@ func TestSignerVote(t *testing.T) {
 			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signerService.OnStop()
+			defer tc.signerService.Stop()
 			defer tc.signer.Close()
 
 			require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
@@ -114,7 +114,7 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signerService.OnStop()
+			defer tc.signerService.Stop()
 			defer tc.signer.Close()
 
 			time.Sleep(testTimeoutReadWrite2o3)
@@ -142,7 +142,7 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signerService.OnStop()
+			defer tc.signerService.Stop()
 			defer tc.signer.Close()
 
 			// Check that even if the client does not request a
@@ -166,7 +166,7 @@ func TestSignerSignProposalErrors(t *testing.T) {
 			tc.signerService.privVal = types.NewErroringMockPV()
 			tc.mockPV = types.NewErroringMockPV()
 
-			defer tc.signerService.OnStop()
+			defer tc.signerService.Stop()
 			defer tc.signer.Close()
 
 			ts := time.Now()
@@ -193,7 +193,7 @@ func TestSignerSignVoteErrors(t *testing.T) {
 			tc.signerService.privVal = types.NewErroringMockPV()
 			tc.mockPV = types.NewErroringMockPV()
 
-			defer tc.signerService.OnStop()
+			defer tc.signerService.Stop()
 			defer tc.signer.Close()
 
 			err := tc.signer.SignVote(tc.chainID, vote)
@@ -227,11 +227,11 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 			tc.mockPV = types.NewErroringMockPV()
 
 			// Replace signer service with a broken one
-			tc.signerService.OnStop()
+			tc.signerService.Stop()
 			tmp := BrokenSignerDialerEndpoint{tc.signerService}
 			tmp.OnStart()
 
-			defer tmp.OnStop()
+			defer tmp.Stop()
 			defer tc.signer.Close()
 
 			ts := time.Now()
