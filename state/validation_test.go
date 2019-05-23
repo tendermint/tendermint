@@ -68,7 +68,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	for height := int64(1); height < 10; height++ {
 		/*
 			Invalid blocks don't pass
-		 */
+		*/
 		for _, tc := range testCases {
 			block, _ := state.MakeBlock(
 				height,
@@ -84,21 +84,21 @@ func TestValidateBlockHeader(t *testing.T) {
 
 		/*
 			A good block passes
-		 */
+		*/
 		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, state.Validators.GetProposer().Address)
 		err := blockExec.ValidateBlock(state, block)
 		require.NoError(t, err, "height %d", height)
 
 		/*
 			Apply the block to our current state
-		 */
+		*/
 		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
 		state, err = blockExec.ApplyBlock(state, blockID, block)
 		require.NoError(t, err, "height %d", height)
 
 		/*
 			Simulate a commit for this block
-		 */
+		*/
 		vote, err := makeVote(height, blockID, state.Validators, privVal)
 		require.NoError(t, err, "height %d", height)
 		// for the next height
@@ -126,7 +126,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		if height > 1 {
 			/*
 				#2589: ensure state.LastValidators.VerifyCommit fails here
-			 */
+			*/
 			// should be height-1 instead of height
 			wrongHeightVote, err := makeVote(height, state.LastBlockID, state.Validators, privVal)
 			require.NoError(t, err, "height %d", height)
@@ -138,7 +138,7 @@ func TestValidateBlockCommit(t *testing.T) {
 
 			/*
 				#2589: test len(block.LastCommit.Precommits) == state.LastValidators.Size()
-			 */
+			*/
 			block, _ = state.MakeBlock(height, makeTxs(height), wrongPrecommitsCommit, nil, state.Validators.GetProposer().Address)
 			err = blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitPrecommits := err.(types.ErrInvalidCommitPrecommits)
@@ -147,7 +147,7 @@ func TestValidateBlockCommit(t *testing.T) {
 
 		/*
 			A good block passes
-		 */
+		*/
 		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, state.Validators.GetProposer().Address)
 		err := blockExec.ValidateBlock(state, block)
 		require.NoError(t, err, "height %d", height)
@@ -159,7 +159,7 @@ func TestValidateBlockCommit(t *testing.T) {
 
 		/*
 			Simulate a correct commit for this block
-		 */
+		*/
 		vote, err := makeVote(height, blockID, state.Validators, privVal)
 		require.NoError(t, err, "height %d", height)
 		// for the next height
@@ -167,7 +167,7 @@ func TestValidateBlockCommit(t *testing.T) {
 
 		/*
 			wrongPrecommitsCommit is fine except for an incorrect number of precommits
-		 */
+		*/
 		badVote := &types.Vote{
 			ValidatorAddress: badPrivVal.GetPubKey().Address(),
 			ValidatorIndex:   0,
