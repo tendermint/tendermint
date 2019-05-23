@@ -229,7 +229,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 			// Replace signer service with a broken one
 			tc.signerService.Stop()
 			tmp := BrokenSignerDialerEndpoint{tc.signerService}
-			tmp.OnStart()
+			tmp.Start()
 
 			defer tmp.Stop()
 			defer tc.signer.Close()
@@ -238,7 +238,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
 			e := tc.signer.SignVote(tc.chainID, want)
-			println(e.Error())
+			t.Log(e.Error())
 			require.Error(t, e)
 		}()
 	}

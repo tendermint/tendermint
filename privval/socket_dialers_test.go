@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func getDialerTestCases(t *testing.T) []dialerTestCase {
@@ -44,6 +45,6 @@ func TestIsConnTimeoutForWrappedConnTimeouts(t *testing.T) {
 	dialer := DialTCPFn(tcpAddr, time.Millisecond, ed25519.GenPrivKey())
 	_, err := dialer()
 	assert.Error(t, err)
-	err = cmn.ErrorWrap(ErrListenerTimeout, err.Error())
+	err = errors.Wrap(ErrListenerTimeout, err.Error())
 	assert.True(t, IsConnTimeout(err))
 }
