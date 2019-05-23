@@ -98,7 +98,6 @@ func TestValidateBlockHeader(t *testing.T) {
 		// for the next height
 		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
 		state, err = blockExec.ApplyBlock(state, blockID, block)
-		//state, err = updateState(state, blockID, &block.Header, responses, emptyValidatorUpdates)
 		require.NoError(t, err, "height %d", height)
 	}
 }
