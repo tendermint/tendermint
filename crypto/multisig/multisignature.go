@@ -1,7 +1,8 @@
 package multisig
 
 import (
-	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/multisig/bitarray"
@@ -53,13 +54,19 @@ func (mSig *Multisignature) AddSignature(sig []byte, index int) {
 	mSig.Sigs[newSigIndex] = sig
 }
 
-// AddSignatureFromPubKey adds a signature to the multisig,
-// at the index in keys corresponding to the provided pubkey.
+// AddSignatureFromPubKey adds a signature to the multisig, at the index in
+// keys corresponding to the provided pubkey.
 func (mSig *Multisignature) AddSignatureFromPubKey(sig []byte, pubkey crypto.PubKey, keys []crypto.PubKey) error {
 	index := getIndex(pubkey, keys)
 	if index == -1 {
-		return errors.New("provided key didn't exist in pubkeys")
+		keysStr := make([]string, len(keys))
+		for i, k := range keys {
+			keysStr[i] = fmt.Sprintf("%X", k.Bytes())
+		}
+
+		return fmt.Errorf("provided key %X doesn't exist in pubkeys: \n%s", pubkey.Bytes(), strings.Join(keysStr, "\n"))
 	}
+
 	mSig.AddSignature(sig, index)
 	return nil
 }
