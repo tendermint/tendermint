@@ -66,7 +66,9 @@ func TestValidateBlockHeader(t *testing.T) {
 	}
 
 	for height := int64(1); height < 10; height++ {
-		// invalid blocks don't pass
+		/*
+			Invalid blocks don't pass
+		 */
 		for _, tc := range testCases {
 			block, _ := state.MakeBlock(
 				height,
@@ -80,52 +82,105 @@ func TestValidateBlockHeader(t *testing.T) {
 			require.Error(t, err, tc.name)
 		}
 
-		// a good block passes
-		block, _ := state.MakeBlock(
-			height,
-			makeTxs(height),
-			commit,
-			nil,
-			state.Validators.GetProposer().Address,
-		)
+		/*
+			A good block passes
+		 */
+		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, state.Validators.GetProposer().Address)
 		err := blockExec.ValidateBlock(state, block)
 		require.NoError(t, err, "height %d", height)
 
-		// simulate a commit after this block
+		/*
+			Apply the block to our current state
+		 */
 		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
+		state, err = blockExec.ApplyBlock(state, blockID, block)
+		require.NoError(t, err, "height %d", height)
+
+		/*
+			Simulate a commit for this block
+		 */
 		vote, err := makeVote(height, blockID, state.Validators, privVal)
 		require.NoError(t, err, "height %d", height)
 		// for the next height
 		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
+	}
+}
+
+func TestValidateBlockCommit(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	state, stateDB, privVals := state(1, 1)
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
+	// we assume a single validator for this test
+	privVal := privVals[0]
+	commit := types.NewCommit(types.BlockID{}, nil)
+	wrongPrecommitsCommit := types.NewCommit(types.BlockID{}, nil)
+	badPrivVal := types.NewMockPV()
+
+	for height := int64(1); height < 10; height++ {
+		if height > 1 {
+			/*
+				#2589: ensure state.LastValidators.VerifyCommit fails here
+			 */
+			// should be height-1 instead of height
+			wrongHeightVote, err := makeVote(height, state.LastBlockID, state.Validators, privVal)
+			require.NoError(t, err, "height %d", height)
+			wrongHeightCommit := types.NewCommit(state.LastBlockID, []*types.CommitSig{wrongHeightVote.CommitSig()})
+			block, _ := state.MakeBlock(height, makeTxs(height), wrongHeightCommit, nil, state.Validators.GetProposer().Address)
+			err = blockExec.ValidateBlock(state, block)
+			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
+			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
+
+			/*
+				#2589: test len(block.LastCommit.Precommits) == state.LastValidators.Size()
+			 */
+			block, _ = state.MakeBlock(height, makeTxs(height), wrongPrecommitsCommit, nil, state.Validators.GetProposer().Address)
+			err = blockExec.ValidateBlock(state, block)
+			_, isErrInvalidCommitPrecommits := err.(types.ErrInvalidCommitPrecommits)
+			require.True(t, isErrInvalidCommitPrecommits, "expected ErrInvalidCommitPrecommits height %d but got: %v", height, err)
+		}
+
+		/*
+			A good block passes
+		 */
+		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, state.Validators.GetProposer().Address)
+		err := blockExec.ValidateBlock(state, block)
+		require.NoError(t, err, "height %d", height)
+
+		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
+		// apply the block to our current state
 		state, err = blockExec.ApplyBlock(state, blockID, block)
 		require.NoError(t, err, "height %d", height)
-	}
-}
 
-func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, privVal types.PrivValidator) (*types.Vote, error) {
-	addr := privVal.GetPubKey().Address()
-	idx, _ := valSet.GetByAddress(addr)
-	vote := &types.Vote{
-		ValidatorAddress: addr,
-		ValidatorIndex:   idx,
-		Height:           height,
-		Round:            0,
-		Timestamp:        tmtime.Now(),
-		Type:             types.PrecommitType,
-		BlockID:          blockID,
-	}
-	if err := privVal.SignVote(chainID, vote); err != nil {
-		return nil, err
-	}
-	return vote, nil
-}
+		/*
+			Simulate a correct commit for this block
+		 */
+		vote, err := makeVote(height, blockID, state.Validators, privVal)
+		require.NoError(t, err, "height %d", height)
+		// for the next height
+		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
 
-/*
-	TODO(#2589):
-	- test len(block.LastCommit.Precommits) == state.LastValidators.Size()
-	- test state.LastValidators.VerifyCommit
-*/
-func TestValidateBlockCommit(t *testing.T) {
+		/*
+			wrongPrecommitsCommit is fine except for an incorrect number of precommits
+		 */
+		badVote := &types.Vote{
+			ValidatorAddress: badPrivVal.GetPubKey().Address(),
+			ValidatorIndex:   0,
+			Height:           height,
+			Round:            0,
+			Timestamp:        tmtime.Now(),
+			Type:             types.PrecommitType,
+			BlockID:          blockID,
+		}
+		err = badPrivVal.SignVote(chainID, vote)
+		require.NoError(t, err, "height %d", height)
+		wrongPrecommitsCommit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig(), badVote.CommitSig()})
+	}
 }
 
 /*
@@ -195,4 +250,24 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	- test making blocks from the types.MaxXXX functions works/fails as expected
 */
 func TestValidateBlockSize(t *testing.T) {
+}
+
+//-----------------------------------------------------------------------------
+
+func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, privVal types.PrivValidator) (*types.Vote, error) {
+	addr := privVal.GetPubKey().Address()
+	idx, _ := valSet.GetByAddress(addr)
+	vote := &types.Vote{
+		ValidatorAddress: addr,
+		ValidatorIndex:   idx,
+		Height:           height,
+		Round:            0,
+		Timestamp:        tmtime.Now(),
+		Type:             types.PrecommitType,
+		BlockID:          blockID,
+	}
+	if err := privVal.SignVote(chainID, vote); err != nil {
+		return nil, err
+	}
+	return vote, nil
 }
