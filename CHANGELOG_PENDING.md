@@ -59,3 +59,5 @@
   * `Mempool#Update` and `BlockExecutor#Commit` now accept
     `[]*abci.ResponseDeliverTx` - list of `DeliverTx` responses, which should
     match `block.Txs`
+- [lite] \#3669 Add context parameter to RPC Handlers in proxy routes (@yutianwu)
+
