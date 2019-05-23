@@ -17,11 +17,8 @@ import (
 )
 
 func TestValidateBlockHeader(t *testing.T) {
-	app := &testApp{}
-	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
-	err := proxyApp.Start()
-	require.Nil(t, err)
+	proxyApp := newTestApp()
+	require.NoError(t, proxyApp.Start())
 	defer proxyApp.Stop()
 
 	state, stateDB, privVals := state(1, 1)
@@ -107,11 +104,8 @@ func TestValidateBlockHeader(t *testing.T) {
 }
 
 func TestValidateBlockCommit(t *testing.T) {
-	app := &testApp{}
-	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
-	err := proxyApp.Start()
-	require.Nil(t, err)
+	proxyApp := newTestApp()
+	require.NoError(t, proxyApp.Start())
 	defer proxyApp.Stop()
 
 	state, stateDB, privVals := state(1, 1)
@@ -253,6 +247,12 @@ func TestValidateBlockSize(t *testing.T) {
 }
 
 //-----------------------------------------------------------------------------
+
+func newTestApp() proxy.AppConns {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	return proxy.NewAppConns(cc)
+}
 
 func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, privVal types.PrivValidator) (*types.Vote, error) {
 	addr := privVal.GetPubKey().Address()
