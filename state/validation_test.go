@@ -4,9 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/mock"
+	"github.com/tendermint/tendermint/proxy"
+
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
@@ -14,13 +16,16 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// TODO(#2589):
-// - generalize this past the first height
-// - add txs and build up full State properly
-// - test block.Time (see #2587 - there are no conditions on time for the first height)
 func TestValidateBlockHeader(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
 	state, stateDB, privVals := state(1, 1)
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 	// we assume a single validator for this test
 	privVal := privVals[0]
 	commit := types.NewCommit(types.BlockID{}, nil)
@@ -41,7 +46,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Version wrong2", func(block *types.Block) { block.Version = wrongVersion2 }},
 		{"ChainID wrong", func(block *types.Block) { block.ChainID = "not-the-real-one" }},
 		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
-		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 3600 * 24) }},
+		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
 		{"NumTxs wrong", func(block *types.Block) { block.NumTxs += 10 }},
 		{"TotalTxs wrong", func(block *types.Block) { block.TotalTxs += 10 }},
 
@@ -60,8 +65,6 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Proposer invalid", func(block *types.Block) { block.ProposerAddress = []byte("wrong size") }},
 	}
 
-	// this effectively implements a stripped-down version of
-	// BlockExecutor.ApplyBlock() at each height to build up state
 	for height := int64(1); height < 10; height++ {
 		// invalid blocks don't pass
 		for _, tc := range testCases {
@@ -94,12 +97,8 @@ func TestValidateBlockHeader(t *testing.T) {
 		require.NoError(t, err, "height %d", height)
 		// for the next height
 		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
-
-		responses := &ABCIResponses{
-			EndBlock: &abci.ResponseEndBlock{},
-		}
-		emptyValidatorUpdates := make([]*types.Validator, 0)
-		state, err = updateState(state, blockID, &block.Header, responses, emptyValidatorUpdates)
+		state, err = blockExec.ApplyBlock(state, blockID, block)
+		//state, err = updateState(state, blockID, &block.Header, responses, emptyValidatorUpdates)
 		require.NoError(t, err, "height %d", height)
 	}
 }
