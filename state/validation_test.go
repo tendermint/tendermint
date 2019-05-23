@@ -122,14 +122,6 @@ func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, p
 
 /*
 	TODO(#2589):
-	- test Block.Data.Hash() == Block.DataHash
-	- test len(Block.Data.Txs) == Block.NumTxs
-*/
-func TestValidateBlockData(t *testing.T) {
-}
-
-/*
-	TODO(#2589):
 	- test len(block.LastCommit.Precommits) == state.LastValidators.Size()
 	- test state.LastValidators.VerifyCommit
 */
