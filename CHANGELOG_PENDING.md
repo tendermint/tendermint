@@ -60,3 +60,4 @@
     `[]*abci.ResponseDeliverTx` - list of `DeliverTx` responses, which should
     match `block.Txs`
 - [networks] fixes ansible integration script (@carlosflrs)
+- [lite] \#3669 Add context parameter to RPC Handlers in proxy routes (@yutianwu)
