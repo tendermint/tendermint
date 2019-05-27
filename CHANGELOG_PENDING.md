@@ -35,8 +35,11 @@
 - [p2p] [\#3463](https://github.com/tendermint/tendermint/pull/3463) Do not log "Can't add peer's address to addrbook" error for a private peer
 - [p2p] [\#3552](https://github.com/tendermint/tendermint/pull/3552) Add PeerBehaviour Interface (@brapse)
 - [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC
+- [cli] [\#3661](https://github.com/tendermint/tendermint/pull/3661) Add
+  `--hostname-suffix`, `--hostname` and `--random-monikers` options to `testnet`
+  cmd for greater peer address/identity generation flexibility.
 - [cli] \#3585 Add option to not clear address book with unsafe reset (@climber73)
-- [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add `-config=<path-to-config>` option to `testnet` cmd (@gregdhill)
+- [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add `--config=<path-to-config>` option to `testnet` cmd (@gregdhill)
 - [cs/replay] \#3460 check appHash for each block
 - [rpc] \#3362 `/dial_seeds` & `/dial_peers` return errors if addresses are incorrect (except when IP lookup fails)
 - [node] \#3362 returns an error if `persistent_peers` list is invalid (except when IP lookup fails)
