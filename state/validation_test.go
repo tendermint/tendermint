@@ -212,6 +212,42 @@ func TestValidateBlockEvidence(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestValidateBlockRealEvidence(t *testing.T) {
+	proxyApp := newTestApp()
+	require.NoError(t, proxyApp.Start())
+	defer proxyApp.Stop()
+
+	state, stateDB, privVals := state(3, 1)
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
+	// we only use the first validator to sign commits
+	privVal := privVals[0]
+	commit := types.NewCommit(types.BlockID{}, nil)
+
+	for height := int64(1); height < 10; height++ {
+		/*
+			A good block passes
+		*/
+		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, state.Validators.GetProposer().Address)
+		err := blockExec.ValidateBlock(state, block)
+		require.NoError(t, err, "height %d", height)
+
+		/*
+			Apply the block to our current state
+		*/
+		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
+		state, err = blockExec.ApplyBlock(state, blockID, block)
+		require.NoError(t, err, "height %d", height)
+
+		/*
+			Simulate a commit for this block
+		*/
+		vote, err := makeVote(height, blockID, state.Validators, privVal)
+		require.NoError(t, err, "height %d", height)
+		// for the next height
+		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
+	}
+}
+
 // always returns true if asked if any evidence was already committed.
 type mockEvPoolAlwaysCommitted struct{}
 
