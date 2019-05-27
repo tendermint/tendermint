@@ -266,6 +266,27 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	})
 }
 
+func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
+	N := 1
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	defer cleanup()
+	reactors, _, eventBuses := startConsensusNet(t, css, N)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	var (
+		reactor = reactors[0]
+		peer    = mock.NewPeer(nil)
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.PrevoteType})
+	)
+
+	// we should call InitPeer here
+
+	// simulate switch calling Receive before AddPeer
+	assert.Panics(t, func() {
+		reactor.Receive(StateChannel, peer, msg)
+	})
+}
+
 // Test we record stats about votes and block parts from other peers.
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	N := 4
