@@ -45,6 +45,8 @@
     use `make build_c` / `make install_c` (full instructions can be found at
     https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support)
   * Use `boltdb` tag to compile Tendermint with bolt db
+- [p2p] [\#3666](https://github.com/tendermint/tendermint/issues/3666)
+  Add per channel telemtry to improve reactor observability
 
 ### BUG FIXES:
 - [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
