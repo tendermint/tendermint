@@ -6,7 +6,7 @@ changes in the PR.
 
 -->
 
-* [ ] Referenced an issue explaining the change
+* [ ] Referenced an issue explaining the need for the change
 * [ ] Updated all relevant documentation in docs
 * [ ] Updated all code comments where relevant
 * [ ] Wrote tests
