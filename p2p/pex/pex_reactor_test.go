@@ -144,7 +144,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	sw.SetAddrBook(book)
 
 	peer := mock.NewPeer(nil)
-	p2p.AddPeerToSwitch(sw, peer)
+	p2p.AddPeerToSwitchPeerSet(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
@@ -174,7 +174,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	sw.SetAddrBook(book)
 
 	peer := mock.NewPeer(nil)
-	p2p.AddPeerToSwitch(sw, peer)
+	p2p.AddPeerToSwitchPeerSet(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
