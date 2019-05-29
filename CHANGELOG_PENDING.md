@@ -18,4 +18,6 @@
 
 ### IMPROVEMENTS:
 
+* http rpc client will return wrapped error, can use errors.Cause() to get error code for handling.
+
 ### BUG FIXES:

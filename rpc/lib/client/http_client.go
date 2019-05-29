@@ -189,15 +189,15 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, result inter
 	response := &types.RPCResponse{}
 	err = json.Unmarshal(responseBytes, response)
 	if err != nil {
-		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
+		return nil, errors.Wrap(response.Error, "Error unmarshalling rpc response: %v")
 	}
 	if response.Error != nil {
-		return nil, errors.Errorf("Response error: %v", response.Error)
+		return nil, errors.Wrap(response.Error, "Response error: %v")
 	}
 	// Unmarshal the RawMessage into the result.
 	err = cdc.UnmarshalJSON(response.Result, result)
 	if err != nil {
-		return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
+		return nil, errors.Wrap(response.Error, "Error unmarshalling rpc response result: %v")
 	}
 	return result, nil
 }
