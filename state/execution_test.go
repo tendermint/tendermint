@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -393,19 +392,20 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func state(nVals, height int) (State, dbm.DB, []types.PrivValidator) {
+func state(nVals, height int) (State, dbm.DB, map[string]types.PrivValidator) {
 	vals := make([]types.GenesisValidator, nVals)
-	privVals := make([]types.PrivValidator, nVals)
+	privVals := make(map[string]types.PrivValidator, nVals)
 	for i := 0; i < nVals; i++ {
 		secret := []byte(fmt.Sprintf("test%d", i))
 		pk := ed25519.GenPrivKeyFromSecret(secret)
+		valAddr := pk.PubKey().Address()
 		vals[i] = types.GenesisValidator{
-			pk.PubKey().Address(),
+			valAddr,
 			pk.PubKey(),
 			1000,
 			fmt.Sprintf("test%d", i),
 		}
-		privVals[i] = types.NewMockPVWithParams(pk, false, false)
+		privVals[valAddr.String()] = types.NewMockPVWithParams(pk, false, false)
 	}
 	s, _ := MakeGenesisState(&types.GenesisDoc{
 		ChainID:    chainID,
