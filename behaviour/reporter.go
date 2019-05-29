@@ -40,7 +40,7 @@ func (spbr *SwitchReporter) Report(behaviour PeerBehaviour) error {
 	case messageOutOfOrder:
 		spbr.sw.StopPeerForError(peer, reason.explanation)
 	default:
-		return errors.New("Unknown reason reported")
+		return errors.New("unknown reason reported")
 	}
 
 	return nil
