@@ -29,7 +29,7 @@ func NewSwitcReporter(sw *p2p.Switch) *SwitchReporter {
 func (spbr *SwitchReporter) Report(behaviour PeerBehaviour) error {
 	peer := spbr.sw.Peers().Get(behaviour.peerID)
 	if peer == nil {
-		return errors.New("Peer not found")
+		return errors.New("peer not found")
 	}
 
 	switch reason := behaviour.reason.(type) {
