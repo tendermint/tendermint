@@ -21,10 +21,9 @@ func TestValidateBlockHeader(t *testing.T) {
 	require.NoError(t, proxyApp.Start())
 	defer proxyApp.Stop()
 
-	state, stateDB, privVals := state(1, 1)
+	nVals := 3
+	state, stateDB, privVals := state(nVals, 1)
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
-	// we assume a single validator for this test
-	privVal := privVals[0]
 	commit := types.NewCommit(types.BlockID{}, nil)
 
 	// some bad values
@@ -82,7 +81,8 @@ func TestValidateBlockHeader(t *testing.T) {
 		/*
 			A good block passes
 		*/
-		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, state.Validators.GetProposer().Address)
+		valAddr := state.Validators.GetProposer().Address
+		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, valAddr)
 		err := blockExec.ValidateBlock(state, block)
 		require.NoError(t, err, "height %d", height)
 
@@ -94,12 +94,17 @@ func TestValidateBlockHeader(t *testing.T) {
 		require.NoError(t, err, "height %d", height)
 
 		/*
-			Simulate a commit for this block
+			Simulate a commit for this block from all validators
 		*/
-		vote, err := makeVote(height, blockID, state.Validators, privVal)
-		require.NoError(t, err, "height %d", height)
+		sigs := make([]*types.CommitSig, 0)
+		for i := 0; i < nVals; i++ {
+			_, val := state.Validators.GetByIndex(i)
+			vote, err := makeVote(height, blockID, state.Validators, privVals[val.Address.String()])
+			require.NoError(t, err, "height %d", height)
+			sigs = append(sigs, vote.CommitSig())
+		}
 		// for the next height
-		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
+		commit = types.NewCommit(blockID, sigs)
 	}
 }
 
@@ -110,22 +115,21 @@ func TestValidateBlockCommit(t *testing.T) {
 
 	state, stateDB, privVals := state(1, 1)
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
-	// we assume a single validator for this test
-	privVal := privVals[0]
 	commit := types.NewCommit(types.BlockID{}, nil)
 	wrongPrecommitsCommit := types.NewCommit(types.BlockID{}, nil)
 	badPrivVal := types.NewMockPV()
 
 	for height := int64(1); height < 10; height++ {
+		valAddr := state.Validators.GetProposer().Address
 		if height > 1 {
 			/*
 				#2589: ensure state.LastValidators.VerifyCommit fails here
 			*/
 			// should be height-1 instead of height
-			wrongHeightVote, err := makeVote(height, state.LastBlockID, state.Validators, privVal)
+			wrongHeightVote, err := makeVote(height, state.LastBlockID, state.Validators, privVals[valAddr.String()])
 			require.NoError(t, err, "height %d", height)
 			wrongHeightCommit := types.NewCommit(state.LastBlockID, []*types.CommitSig{wrongHeightVote.CommitSig()})
-			block, _ := state.MakeBlock(height, makeTxs(height), wrongHeightCommit, nil, state.Validators.GetProposer().Address)
+			block, _ := state.MakeBlock(height, makeTxs(height), wrongHeightCommit, nil, valAddr)
 			err = blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
 			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
@@ -133,7 +137,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			/*
 				#2589: test len(block.LastCommit.Precommits) == state.LastValidators.Size()
 			*/
-			block, _ = state.MakeBlock(height, makeTxs(height), wrongPrecommitsCommit, nil, state.Validators.GetProposer().Address)
+			block, _ = state.MakeBlock(height, makeTxs(height), wrongPrecommitsCommit, nil, valAddr)
 			err = blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitPrecommits := err.(types.ErrInvalidCommitPrecommits)
 			require.True(t, isErrInvalidCommitPrecommits, "expected ErrInvalidCommitPrecommits height %d but got: %v", height, err)
@@ -142,7 +146,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			A good block passes
 		*/
-		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, state.Validators.GetProposer().Address)
+		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, valAddr)
 		err := blockExec.ValidateBlock(state, block)
 		require.NoError(t, err, "height %d", height)
 
@@ -154,7 +158,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			Simulate a correct commit for this block
 		*/
-		vote, err := makeVote(height, blockID, state.Validators, privVal)
+		vote, err := makeVote(height, blockID, state.Validators, privVals[valAddr.String()])
 		require.NoError(t, err, "height %d", height)
 		// for the next height
 		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
@@ -210,42 +214,6 @@ func TestValidateBlockEvidence(t *testing.T) {
 	require.Error(t, err)
 	_, ok := err.(*types.ErrEvidenceOverflow)
 	require.True(t, ok)
-}
-
-func TestValidateBlockRealEvidence(t *testing.T) {
-	proxyApp := newTestApp()
-	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop()
-
-	state, stateDB, privVals := state(3, 1)
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
-	// we only use the first validator to sign commits
-	privVal := privVals[0]
-	commit := types.NewCommit(types.BlockID{}, nil)
-
-	for height := int64(1); height < 10; height++ {
-		/*
-			A good block passes
-		*/
-		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, state.Validators.GetProposer().Address)
-		err := blockExec.ValidateBlock(state, block)
-		require.NoError(t, err, "height %d", height)
-
-		/*
-			Apply the block to our current state
-		*/
-		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
-		state, err = blockExec.ApplyBlock(state, blockID, block)
-		require.NoError(t, err, "height %d", height)
-
-		/*
-			Simulate a commit for this block
-		*/
-		vote, err := makeVote(height, blockID, state.Validators, privVal)
-		require.NoError(t, err, "height %d", height)
-		// for the next height
-		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
-	}
 }
 
 // always returns true if asked if any evidence was already committed.
