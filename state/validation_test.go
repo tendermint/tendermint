@@ -16,10 +16,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-func init() {
-	types.RegisterMockEvidencesGlobal()
-}
-
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
@@ -254,14 +250,6 @@ func TestValidateBlockEvidence(t *testing.T) {
 	}
 }
 
-// always returns true if asked if any evidence was already committed.
-type mockEvPoolAlwaysCommitted struct{}
-
-func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
-func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
-func (m mockEvPoolAlwaysCommitted) Update(*types.Block, State)             {}
-func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
-
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, _ := state(1, int(height))
@@ -289,6 +277,18 @@ func TestValidateBlockSize(t *testing.T) {
 }
 
 //-----------------------------------------------------------------------------
+
+func init() {
+	types.RegisterMockEvidencesGlobal()
+}
+
+// always returns true if asked if any evidence was already committed.
+type mockEvPoolAlwaysCommitted struct{}
+
+func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
+func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
+func (m mockEvPoolAlwaysCommitted) Update(*types.Block, State)             {}
+func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
 
 func newTestApp() proxy.AppConns {
 	app := &testApp{}
