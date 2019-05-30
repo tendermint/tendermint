@@ -35,6 +35,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:5f7414cf41466d4b4dd7ec52b2cd3e481e08cfd11e7e24fef730c0e483e88bb1"
+  name = "github.com/etcd-io/bbolt"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "63597a96ec0ad9e6d43c3fc81e809909e0237461"
+  version = "v1.3.2"
+
+[[projects]]
   digest = "1:544229a3ca0fb2dd5ebc2896d3d2ff7ce096d9751635301e44e37e761349ee70"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
@@ -170,9 +178,12 @@
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
 
 [[projects]]
-  digest = "1:c568d7727aa262c32bdf8a3f7db83614f7af0ed661474b24588de635c20024c7"
+  digest = "1:53e8c5c79716437e601696140e8b1801aae4204f4ec54a504333702a49572c4f"
   name = "github.com/magiconair/properties"
-  packages = ["."]
+  packages = [
+    ".",
+    "assert",
+  ]
   pruneopts = "UT"
   revision = "c2353362d570a7bfa228149c62842019201cfb71"
   version = "v1.8.0"
@@ -500,6 +511,7 @@
     "github.com/btcsuite/btcd/btcec",
     "github.com/btcsuite/btcutil/base58",
     "github.com/btcsuite/btcutil/bech32",
+    "github.com/etcd-io/bbolt",
     "github.com/fortytw2/leaktest",
     "github.com/go-kit/kit/log",
     "github.com/go-kit/kit/log/level",
@@ -516,6 +528,7 @@
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/gorilla/websocket",
     "github.com/jmhodges/levigo",
+    "github.com/magiconair/properties/assert",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",

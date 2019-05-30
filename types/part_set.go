@@ -226,7 +226,7 @@ func (ps *PartSet) IsComplete() bool {
 
 func (ps *PartSet) GetReader() io.Reader {
 	if !ps.IsComplete() {
-		cmn.PanicSanity("Cannot GetReader() on incomplete PartSet")
+		panic("Cannot GetReader() on incomplete PartSet")
 	}
 	return NewPartSetReader(ps.parts)
 }

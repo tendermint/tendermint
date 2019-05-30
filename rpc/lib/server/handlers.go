@@ -103,7 +103,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(types.JSONRPCStringID(""), errors.Wrap(err, "Error reading request body")))
+			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(types.JSONRPCStringID(""), errors.Wrap(err, "error reading request body")))
 			return
 		}
 		// if its an empty request (like from a browser),
@@ -113,49 +113,59 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			return
 		}
 
-		var request types.RPCRequest
-		err = json.Unmarshal(b, &request)
-		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshalling request")))
-			return
-		}
-		// A Notification is a Request object without an "id" member.
-		// The Server MUST NOT reply to a Notification, including those that are within a batch request.
-		if request.ID == types.JSONRPCStringID("") {
-			logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
-			return
-		}
-		if len(r.URL.Path) > 1 {
-			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(request.ID, errors.Errorf("Path %s is invalid", r.URL.Path)))
-			return
-		}
-
-		rpcFunc := funcMap[request.Method]
-		if rpcFunc == nil || rpcFunc.ws {
-			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
-			return
-		}
-
-		ctx := &types.Context{JSONReq: &request, HTTPReq: r}
-		args := []reflect.Value{reflect.ValueOf(ctx)}
-		if len(request.Params) > 0 {
-			fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
-			if err != nil {
-				WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+		// first try to unmarshal the incoming request as an array of RPC requests
+		var (
+			requests  []types.RPCRequest
+			responses []types.RPCResponse
+		)
+		if err := json.Unmarshal(b, &requests); err != nil {
+			// next, try to unmarshal as a single request
+			var request types.RPCRequest
+			if err := json.Unmarshal(b, &request); err != nil {
+				WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "error unmarshalling request")))
 				return
 			}
-			args = append(args, fnArgs...)
+			requests = []types.RPCRequest{request}
 		}
 
-		returns := rpcFunc.f.Call(args)
-
-		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
-		result, err := unreflectResult(returns)
-		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, err))
-			return
+		for _, request := range requests {
+			// A Notification is a Request object without an "id" member.
+			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
+			if request.ID == types.JSONRPCStringID("") {
+				logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
+				continue
+			}
+			if len(r.URL.Path) > 1 {
+				responses = append(responses, types.RPCInvalidRequestError(request.ID, errors.Errorf("path %s is invalid", r.URL.Path)))
+				continue
+			}
+			rpcFunc, ok := funcMap[request.Method]
+			if !ok || rpcFunc.ws {
+				responses = append(responses, types.RPCMethodNotFoundError(request.ID))
+				continue
+			}
+			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
+			args := []reflect.Value{reflect.ValueOf(ctx)}
+			if len(request.Params) > 0 {
+				fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
+				if err != nil {
+					responses = append(responses, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "error converting json params to arguments")))
+					continue
+				}
+				args = append(args, fnArgs...)
+			}
+			returns := rpcFunc.f.Call(args)
+			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
+			result, err := unreflectResult(returns)
+			if err != nil {
+				responses = append(responses, types.RPCInternalError(request.ID, err))
+				continue
+			}
+			responses = append(responses, types.NewRPCSuccessResponse(cdc, request.ID, result))
 		}
-		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
+		if len(responses) > 0 {
+			WriteRPCResponseArrayHTTP(w, responses)
+		}
 	}
 }
 
@@ -194,7 +204,7 @@ func mapParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params map[string]json.
 
 func arrayParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params []json.RawMessage, argsOffset int) ([]reflect.Value, error) {
 	if len(rpcFunc.argNames) != len(params) {
-		return nil, errors.Errorf("Expected %v parameters (%v), got %v (%v)",
+		return nil, errors.Errorf("expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
 	}
 
@@ -236,7 +246,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte) ([]reflect
 	}
 
 	// Otherwise, bad format, we cannot parse
-	return nil, errors.Errorf("Unknown type for JSON params: %v. Expected map or array", err)
+	return nil, errors.Errorf("unknown type for JSON params: %v. Expected map or array", err)
 }
 
 // rpc.json
@@ -261,7 +271,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, cdc, r)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(types.JSONRPCStringID(""), errors.Wrap(err, "Error converting http params to arguments")))
+			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(types.JSONRPCStringID(""), errors.Wrap(err, "error converting http params to arguments")))
 			return
 		}
 		args = append(args, fnArgs...)
@@ -372,7 +382,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	if isHexString {
 		if !expectingString && !expectingByteSlice {
-			err := errors.Errorf("Got a hex string arg, but expected '%s'",
+			err := errors.Errorf("got a hex string arg, but expected '%s'",
 				rt.Kind().String())
 			return reflect.ValueOf(nil), err, false
 		}
@@ -631,7 +641,7 @@ func (wsc *wsConnection) readRoutine() {
 			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshaling request")))
+				wsc.WriteRPCResponse(types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "error unmarshaling request")))
 				continue
 			}
 
@@ -654,7 +664,7 @@ func (wsc *wsConnection) readRoutine() {
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
 				if err != nil {
-					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "error converting json params to arguments")))
 					continue
 				}
 				args = append(args, fnArgs...)

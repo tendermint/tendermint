@@ -70,6 +70,42 @@ func TestSimpleProof(t *testing.T) {
 	}
 }
 
+func TestSimpleHashAlternatives(t *testing.T) {
+
+	total := 100
+
+	items := make([][]byte, total)
+	for i := 0; i < total; i++ {
+		items[i] = testItem(cmn.RandBytes(tmhash.Size))
+	}
+
+	rootHash1 := SimpleHashFromByteSlicesIterative(items)
+	rootHash2 := SimpleHashFromByteSlices(items)
+	require.Equal(t, rootHash1, rootHash2, "Unmatched root hashes: %X vs %X", rootHash1, rootHash2)
+}
+
+func BenchmarkSimpleHashAlternatives(b *testing.B) {
+	total := 100
+
+	items := make([][]byte, total)
+	for i := 0; i < total; i++ {
+		items[i] = testItem(cmn.RandBytes(tmhash.Size))
+	}
+
+	b.ResetTimer()
+	b.Run("recursive", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = SimpleHashFromByteSlices(items)
+		}
+	})
+
+	b.Run("iterative", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = SimpleHashFromByteSlicesIterative(items)
+		}
+	})
+}
+
 func Test_getSplitPoint(t *testing.T) {
 	tests := []struct {
 		length int
