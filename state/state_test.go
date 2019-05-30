@@ -840,7 +840,6 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	_, valOld := state.Validators.GetByIndex(0)
 	var pubkeyOld = valOld.PubKey
 	pubkey := ed25519.GenPrivKey().PubKey()
-	const height = 1
 
 	// Swap the first validator with a new one (validator set size stays the same).
 	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, pubkey)
