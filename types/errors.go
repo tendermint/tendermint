@@ -21,7 +21,7 @@ type (
 func NewErrInvalidCommitHeight(expected, actual int64) ErrInvalidCommitHeight {
 	return ErrInvalidCommitHeight{
 		Expected: expected,
-		Actual: actual,
+		Actual:   actual,
 	}
 }
 
@@ -32,7 +32,7 @@ func (e ErrInvalidCommitHeight) Error() string {
 func NewErrInvalidCommitPrecommits(expected, actual int) ErrInvalidCommitPrecommits {
 	return ErrInvalidCommitPrecommits{
 		Expected: expected,
-		Actual: actual,
+		Actual:   actual,
 	}
 }
 
