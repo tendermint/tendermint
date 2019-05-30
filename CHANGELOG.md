@@ -20,19 +20,10 @@ Special thanks to external contributors on this release:
 * Go API
   - [libs/common] Removed deprecated `PanicSanity`, `PanicCrisis`,
     `PanicConsensus` and `PanicQ`
-  - [mempool] [\#2659](https://github.com/tendermint/tendermint/issues/2659) `Mempool` now an interface
-    * old `Mempool` implementation renamed to `CListMempool`
-    * `NewMempool` renamed to `NewCListMempool`
-    * `Option` renamed to `CListOption`
-    * unexpose `MempoolReactor.Mempool`
-    * `MempoolReactor` renamed to `Reactor`
-    * `NewMempoolReactor` renamed to `NewReactor`
-    * unexpose `TxID` method
-    * `TxInfo.PeerID` renamed to `SenderID`
+  - [mempool, state] [\#2659](https://github.com/tendermint/tendermint/issues/2659) `Mempool` now an interface that lives in the mempool package.
+    See issue and PR for more details.
   - [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to `state` package
   - [p2p] [\#3346](https://github.com/tendermint/tendermint/issues/3346) `Reactor#InitPeer` method is added to `Reactor` interface
-  - [state] [\#2659](https://github.com/tendermint/tendermint/issues/2659) `Mempool` interface moved to mempool package
-    * `MockMempool` moved to top-level mock package and renamed to `Mempool`
   - [types] [\#1648](https://github.com/tendermint/tendermint/issues/1648) `Commit#VoteSignBytes` signature was changed
 
 ### FEATURES:
@@ -64,22 +55,17 @@ Special thanks to external contributors on this release:
   incorrect (except when IP lookup fails)
 
 ### BUG FIXES:
-- [consensus] [\#3067](https://github.com/tendermint/tendermint/issues/3067) `getBeginBlockValidatorInfo` loads validators from stateDB
-  instead of state (@james-ray)
+- [consensus] [\#3067](https://github.com/tendermint/tendermint/issues/3067) Fix replay from appHeight==0 validator set changes (@james-ray)
 - [consensus] [\#3304](https://github.com/tendermint/tendermint/issues/3304) Create a peer state in consensus reactor before the peer
   is started (@guagualvcha)
 - [lite] [\#3669](https://github.com/tendermint/tendermint/issues/3669) Add context parameter to RPC Handlers in proxy routes (@yutianwu)
-- [mempool] [\#3322](https://github.com/tendermint/tendermint/issues/3322) Remove only valid (Code==0) txs on Update
-  * `Mempool#Update` and `BlockExecutor#Commit` now accept
-  `[]*abci.ResponseDeliverTx` - list of `DeliverTx` responses, which should
-  match `block.Txs`
+- [mempool] [\#3322](https://github.com/tendermint/tendermint/issues/3322) When a block is committed, only remove committed txs from the mempool
+that were valid (ie. `ResponseDeliverTx.Code == 0`)
 - [p2p] [\#3338](https://github.com/tendermint/tendermint/issues/3338) Ensure `RemovePeer` is always called before `InitPeer` (upon a peer
   reconnecting to our node)
-- [p2p] [\#3532](https://github.com/tendermint/tendermint/issues/3532) limit the number of attempts to connect to a peer in seed mode
+- [p2p] [\#3532](https://github.com/tendermint/tendermint/issues/3532) Limit the number of attempts to connect to a peer in seed mode
   to 16 (as a result, the node will stop retrying after a 35 hours time window)
-- [p2p] [\#3362](https://github.com/tendermint/tendermint/issues/3362) make persistent prop independent of conn direction
-  * `Switch#DialPeersAsync` now only takes a list of peers
-  * `Switch#DialPeerWithAddress` now only takes an address
+- [p2p] [\#3362](https://github.com/tendermint/tendermint/issues/3362) Allow inbound peers to be persistent, including for seed nodes.
 - [pex] [\#3603](https://github.com/tendermint/tendermint/pull/3603) Dial seeds when addrbook needs more addresses (@defunctzombie)
 
 ### OTHERS:
