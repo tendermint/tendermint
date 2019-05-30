@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -128,14 +127,6 @@ func (cfg *Config) ValidateBasic() error {
 		cfg.Instrumentation.ValidateBasic(),
 		"Error in [instrumentation] section",
 	)
-}
-
-// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
-// the GenesisDoc from the config.GenesisFile() on the filesystem.
-func DefaultGenesisDocProviderFunc(config *Config) types.GenesisDocProvider {
-	return func() (*types.GenesisDoc, error) {
-		return types.GenesisDocFromFile(config.GenesisFile())
-	}
 }
 
 //-----------------------------------------------------------------------------
