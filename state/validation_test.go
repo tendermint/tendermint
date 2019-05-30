@@ -126,7 +126,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			block, _ = state.MakeBlock(height, makeTxs(height), wrongPrecommitsCommit, nil, proposerAddr)
 			err = blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitPrecommits := err.(types.ErrInvalidCommitPrecommits)
-			require.True(t, isErrInvalidCommitPrecommits, "expected ErrInvalidCommitPrecommits height %d but got: %v", height, err)
+			require.True(t, isErrInvalidCommitPrecommits, "expected ErrInvalidCommitPrecommits at height %d but got: %v", height, err)
 		}
 
 		/*
