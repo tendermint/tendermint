@@ -84,10 +84,10 @@ func state(nVals, height int) (State, dbm.DB, map[string]types.PrivValidator) {
 		pk := ed25519.GenPrivKeyFromSecret(secret)
 		valAddr := pk.PubKey().Address()
 		vals[i] = types.GenesisValidator{
-			valAddr,
-			pk.PubKey(),
-			1000,
-			fmt.Sprintf("test%d", i),
+			Address: valAddr,
+			PubKey:  pk.PubKey(),
+			Power:   1000,
+			Name:    fmt.Sprintf("test%d", i),
 		}
 		privVals[valAddr.String()] = types.NewMockPVWithParams(pk, false, false)
 	}
@@ -157,7 +157,7 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, pubkey crypto.PubKey) 
 		}
 	}
 
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func makeHeaderPartsResponsesValPowerChange(state State, power int64) (types.Header, types.BlockID, *ABCIResponses) {
@@ -177,7 +177,7 @@ func makeHeaderPartsResponsesValPowerChange(state State, power int64) (types.Hea
 		}
 	}
 
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func makeHeaderPartsResponsesParams(state State, params types.ConsensusParams) (types.Header, types.BlockID, *ABCIResponses) {
@@ -186,7 +186,7 @@ func makeHeaderPartsResponsesParams(state State, params types.ConsensusParams) (
 	abciResponses := &ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
 	}
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func randomGenesisDoc() *types.GenesisDoc {
