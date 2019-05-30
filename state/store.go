@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
@@ -22,19 +21,6 @@ const (
 var (
 	genesisDocKey = []byte("genesisDoc")
 )
-
-// GenesisDocProvider returns a GenesisDoc.
-// It allows the GenesisDoc to be pulled from sources other than the
-// filesystem, for instance from a distributed key-value store cluster.
-type GenesisDocProvider func() (*types.GenesisDoc, error)
-
-// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
-// the GenesisDoc from the config.GenesisFile() on the filesystem.
-func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
-	return func() (*types.GenesisDoc, error) {
-		return types.GenesisDocFromFile(config.GenesisFile())
-	}
-}
 
 //------------------------------------------------------------------------
 
@@ -88,7 +74,7 @@ func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (
 // database, or creates one using the given genesisDocProvider and persists the
 // result to the database. On success this also returns the genesis doc loaded
 // through the given provider.
-func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (State, *types.GenesisDoc, error) {
+func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider types.GenesisDocProvider) (State, *types.GenesisDoc, error) {
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {

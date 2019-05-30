@@ -31,6 +31,11 @@ type GenesisValidator struct {
 	Name    string        `json:"name"`
 }
 
+// GenesisDocProvider returns a GenesisDoc.
+// It allows the GenesisDoc to be pulled from sources other than the
+// filesystem, for instance from a distributed key-value store cluster.
+type GenesisDocProvider func() (*GenesisDoc, error)
+
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
 type GenesisDoc struct {
 	GenesisTime     time.Time          `json:"genesis_time"`
