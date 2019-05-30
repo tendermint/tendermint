@@ -16,6 +16,8 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
+const testStopHeight int64 = 10
+
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
@@ -61,7 +63,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Proposer invalid", func(block *types.Block) { block.ProposerAddress = []byte("wrong size") }},
 	}
 
-	for height := int64(1); height < 10; height++ {
+	for height := int64(1); height < testStopHeight; height++ {
 		/*
 			Invalid blocks don't pass
 		*/
@@ -119,7 +121,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	wrongPrecommitsCommit := types.NewCommit(types.BlockID{}, nil)
 	badPrivVal := types.NewMockPV()
 
-	for height := int64(1); height < 10; height++ {
+	for height := int64(1); height < testStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		if height > 1 {
 			/*
@@ -191,7 +193,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 	commit := types.NewCommit(types.BlockID{}, nil)
 
-	for height := int64(1); height < 10; height++ {
+	for height := int64(1); height < testStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		proposerIdx, _ := state.Validators.GetByAddress(proposerAddr)
 		goodEvidence := types.NewMockGoodEvidence(height, proposerIdx, proposerAddr)
