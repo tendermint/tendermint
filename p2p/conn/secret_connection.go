@@ -157,8 +157,10 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		if err := func() error {
 			var sealedFrame = pool.Get(aeadSizeOverhead + totalFrameSize)
 			var frame = pool.Get(totalFrameSize)
-			defer pool.Put(sealedFrame)
-			defer pool.Put(frame)
+			defer func() {
+				pool.Put(sealedFrame)
+				pool.Put(frame)
+			}()
 			var chunk []byte
 			if dataMaxSize < len(data) {
 				chunk = data[:dataMaxSize]
