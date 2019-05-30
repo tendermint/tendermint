@@ -4,12 +4,12 @@
 
 *May 31st, 2019*
 
-This release contains fixes for the consensus and p2p packages as well as one
-security issue in the mempool package. It also carries many improvements. See
-below for details.
+This release contains many fixes and improvements, primarily for p2p functionality.
+It also fixes a security issue in the mempool package.
 
-Tendermint now supports [boltdb](https://github.com/etcd-io/bbolt), although
+With this release, Tendermint now supports [boltdb](https://github.com/etcd-io/bbolt), although
 in experimental mode. Feel free to try and report to us any findings/issues.
+Note also that the build tags for compiling CLevelDB have changed.
 
 Special thanks to external contributors on this release:
 @guagualvcha, @james-ray, @gregdhill, @climber73, @yutianwu,
@@ -22,7 +22,6 @@ Special thanks to external contributors on this release:
     `PanicConsensus` and `PanicQ`
   - [mempool, state] [\#2659](https://github.com/tendermint/tendermint/issues/2659) `Mempool` now an interface that lives in the mempool package.
     See issue and PR for more details.
-  - [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to `state` package
   - [p2p] [\#3346](https://github.com/tendermint/tendermint/issues/3346) `Reactor#InitPeer` method is added to `Reactor` interface
   - [types] [\#1648](https://github.com/tendermint/tendermint/issues/1648) `Commit#VoteSignBytes` signature was changed
 
