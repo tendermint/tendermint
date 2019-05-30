@@ -182,8 +182,7 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
 }
 
-func makeHeaderPartsResponsesParams(state State, height int64,
-	params types.ConsensusParams) (types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesParams(state State, params types.ConsensusParams) (types.Header, types.BlockID, *ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &ABCIResponses{

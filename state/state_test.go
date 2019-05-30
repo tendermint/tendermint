@@ -921,7 +921,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			changeIndex++
 			cp = params[changeIndex]
 		}
-		header, blockID, responses := makeHeaderPartsResponsesParams(state, i, cp)
+		header, blockID, responses := makeHeaderPartsResponsesParams(state, cp)
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 		state, err = updateState(state, blockID, &header, responses, validatorUpdates)
