@@ -54,7 +54,7 @@ Special thanks to external contributors on this release:
   incorrect (except when IP lookup fails)
 
 ### BUG FIXES:
-- [consensus] [\#3067](https://github.com/tendermint/tendermint/issues/3067) Fix replay from appHeight==0 validator set changes (@james-ray)
+- [consensus] [\#3067](https://github.com/tendermint/tendermint/issues/3067) Fix replay from appHeight==0 with validator set changes (@james-ray)
 - [consensus] [\#3304](https://github.com/tendermint/tendermint/issues/3304) Create a peer state in consensus reactor before the peer
   is started (@guagualvcha)
 - [lite] [\#3669](https://github.com/tendermint/tendermint/issues/3669) Add context parameter to RPC Handlers in proxy routes (@yutianwu)
