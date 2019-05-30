@@ -18,8 +18,22 @@ type (
 	}
 )
 
+func NewErrInvalidCommitHeight(expected, actual int64) ErrInvalidCommitHeight {
+	return ErrInvalidCommitHeight{
+		Expected: expected,
+		Actual: actual,
+	}
+}
+
 func (e ErrInvalidCommitHeight) Error() string {
 	return fmt.Sprintf("Invalid commit -- wrong height: %v vs %v", e.Expected, e.Actual)
+}
+
+func NewErrInvalidCommitPrecommits(expected, actual int) ErrInvalidCommitPrecommits {
+	return ErrInvalidCommitPrecommits{
+		Expected: expected,
+		Actual: actual,
+	}
 }
 
 func (e ErrInvalidCommitPrecommits) Error() string {
