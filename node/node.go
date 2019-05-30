@@ -65,6 +65,23 @@ func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
+// GenesisDocProvider is an alias to types.GenesisDocProvider to prevent
+// breaking changes to the node package API for now.
+//
+// TODO: Remove this in a future breaking API update.
+// DEPRECATED
+type GenesisDocProvider = types.GenesisDocProvider
+
+// DefaultGenesisDocProviderFunc is effectively an alias to
+// config.DefaultGenesisDocProviderFunc to prevent breaking changes to the node
+// package's API for now.
+//
+// TODO: Remove this in a future breaking API update.
+// DEPRECATED
+func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
+	return cfg.DefaultGenesisDocProviderFunc(config)
+}
+
 // NodeProvider takes a config and a logger and returns a ready to go Node.
 type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 
@@ -99,7 +116,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		privval.LoadOrGenFilePV(newPrivValKey, newPrivValState),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
-		cfg.DefaultGenesisDocProviderFunc(config),
+		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
