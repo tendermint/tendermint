@@ -139,8 +139,7 @@ func makeConsensusParams(
 	}
 }
 
-func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
-	pubkey crypto.PubKey) (types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesValPubKeyChange(state State, pubkey crypto.PubKey) (types.Header, types.BlockID, *ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &ABCIResponses{
@@ -161,8 +160,7 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
 }
 
-func makeHeaderPartsResponsesValPowerChange(state State, height int64,
-	power int64) (types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesValPowerChange(state State, power int64) (types.Header, types.BlockID, *ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &ABCIResponses{

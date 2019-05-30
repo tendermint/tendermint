@@ -231,7 +231,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 			changeIndex++
 			power++
 		}
-		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
+		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, power)
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 		state, err = updateState(state, blockID, &header, responses, validatorUpdates)
@@ -843,7 +843,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const height = 1
 
 	// Swap the first validator with a new one (validator set size stays the same).
-	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
+	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, pubkey)
 
 	// Save state etc.
 	var err error
