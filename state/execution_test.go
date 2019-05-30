@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -12,8 +11,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
@@ -380,94 +377,4 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 
-}
-
-//----------------------------------------------------------------------------
-
-// make some bogus txs
-func makeTxs(height int64) (txs []types.Tx) {
-	for i := 0; i < nTxsPerBlock; i++ {
-		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
-	}
-	return txs
-}
-
-func state(nVals, height int) (State, dbm.DB, map[string]types.PrivValidator) {
-	vals := make([]types.GenesisValidator, nVals)
-	privVals := make(map[string]types.PrivValidator, nVals)
-	for i := 0; i < nVals; i++ {
-		secret := []byte(fmt.Sprintf("test%d", i))
-		pk := ed25519.GenPrivKeyFromSecret(secret)
-		valAddr := pk.PubKey().Address()
-		vals[i] = types.GenesisValidator{
-			valAddr,
-			pk.PubKey(),
-			1000,
-			fmt.Sprintf("test%d", i),
-		}
-		privVals[valAddr.String()] = types.NewMockPVWithParams(pk, false, false)
-	}
-	s, _ := MakeGenesisState(&types.GenesisDoc{
-		ChainID:    chainID,
-		Validators: vals,
-		AppHash:    nil,
-	})
-
-	// save validators to db for 2 heights
-	stateDB := dbm.NewMemDB()
-	SaveState(stateDB, s)
-
-	for i := 1; i < height; i++ {
-		s.LastBlockHeight++
-		s.LastValidators = s.Validators.Copy()
-		SaveState(stateDB, s)
-	}
-	return s, stateDB, privVals
-}
-
-func makeBlock(state State, height int64) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().Address)
-	return block
-}
-
-//----------------------------------------------------------------------------
-
-type testApp struct {
-	abci.BaseApplication
-
-	CommitVotes         []abci.VoteInfo
-	ByzantineValidators []abci.Evidence
-	ValidatorUpdates    []abci.ValidatorUpdate
-}
-
-var _ abci.Application = (*testApp)(nil)
-
-func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
-	return abci.ResponseInfo{}
-}
-
-func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	app.CommitVotes = req.LastCommitInfo.Votes
-	app.ByzantineValidators = req.ByzantineValidators
-	return abci.ResponseBeginBlock{}
-}
-
-func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return abci.ResponseEndBlock{ValidatorUpdates: app.ValidatorUpdates}
-}
-
-func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Tags: []cmn.KVPair{}}
-}
-
-func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {
-	return abci.ResponseCheckTx{}
-}
-
-func (app *testApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{}
-}
-
-func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
-	return
 }

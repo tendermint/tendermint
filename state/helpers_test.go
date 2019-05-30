@@ -1,0 +1,245 @@
+package state
+
+import (
+	"bytes"
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
+)
+
+type paramsChangeTestCase struct {
+	height int64
+	params types.ConsensusParams
+}
+
+func init() {
+	types.RegisterMockEvidencesGlobal()
+}
+
+// always returns true if asked if any evidence was already committed.
+type mockEvPoolAlwaysCommitted struct{}
+
+func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
+func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
+func (m mockEvPoolAlwaysCommitted) Update(*types.Block, State)             {}
+func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
+
+func newTestApp() proxy.AppConns {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	return proxy.NewAppConns(cc)
+}
+
+func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, privVal types.PrivValidator) (*types.Vote, error) {
+	addr := privVal.GetPubKey().Address()
+	idx, _ := valSet.GetByAddress(addr)
+	vote := &types.Vote{
+		ValidatorAddress: addr,
+		ValidatorIndex:   idx,
+		Height:           height,
+		Round:            0,
+		Timestamp:        tmtime.Now(),
+		Type:             types.PrecommitType,
+		BlockID:          blockID,
+	}
+	if err := privVal.SignVote(chainID, vote); err != nil {
+		return nil, err
+	}
+	return vote, nil
+}
+
+func makeValidCommit(t *testing.T, height int64, blockID types.BlockID, vals *types.ValidatorSet, privVals map[string]types.PrivValidator) *types.Commit {
+	sigs := make([]*types.CommitSig, 0)
+	for i := 0; i < vals.Size(); i++ {
+		_, val := vals.GetByIndex(i)
+		vote, err := makeVote(height, blockID, vals, privVals[val.Address.String()])
+		require.NoError(t, err, "height %d", height)
+		sigs = append(sigs, vote.CommitSig())
+	}
+	return types.NewCommit(blockID, sigs)
+}
+
+// make some bogus txs
+func makeTxs(height int64) (txs []types.Tx) {
+	for i := 0; i < nTxsPerBlock; i++ {
+		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
+	}
+	return txs
+}
+
+func state(nVals, height int) (State, dbm.DB, map[string]types.PrivValidator) {
+	vals := make([]types.GenesisValidator, nVals)
+	privVals := make(map[string]types.PrivValidator, nVals)
+	for i := 0; i < nVals; i++ {
+		secret := []byte(fmt.Sprintf("test%d", i))
+		pk := ed25519.GenPrivKeyFromSecret(secret)
+		valAddr := pk.PubKey().Address()
+		vals[i] = types.GenesisValidator{
+			valAddr,
+			pk.PubKey(),
+			1000,
+			fmt.Sprintf("test%d", i),
+		}
+		privVals[valAddr.String()] = types.NewMockPVWithParams(pk, false, false)
+	}
+	s, _ := MakeGenesisState(&types.GenesisDoc{
+		ChainID:    chainID,
+		Validators: vals,
+		AppHash:    nil,
+	})
+
+	// save validators to db for 2 heights
+	stateDB := dbm.NewMemDB()
+	SaveState(stateDB, s)
+
+	for i := 1; i < height; i++ {
+		s.LastBlockHeight++
+		s.LastValidators = s.Validators.Copy()
+		SaveState(stateDB, s)
+	}
+	return s, stateDB, privVals
+}
+
+func makeBlock(state State, height int64) *types.Block {
+	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().Address)
+	return block
+}
+
+func genValSet(size int) *types.ValidatorSet {
+	vals := make([]*types.Validator, size)
+	for i := 0; i < size; i++ {
+		vals[i] = types.NewValidator(ed25519.GenPrivKey().PubKey(), 10)
+	}
+	return types.NewValidatorSet(vals)
+}
+
+func makeConsensusParams(
+	blockBytes, blockGas int64,
+	blockTimeIotaMs int64,
+	evidenceAge int64,
+) types.ConsensusParams {
+	return types.ConsensusParams{
+		Block: types.BlockParams{
+			MaxBytes:   blockBytes,
+			MaxGas:     blockGas,
+			TimeIotaMs: blockTimeIotaMs,
+		},
+		Evidence: types.EvidenceParams{
+			MaxAge: evidenceAge,
+		},
+	}
+}
+
+func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
+	pubkey crypto.PubKey) (types.Header, types.BlockID, *ABCIResponses) {
+
+	block := makeBlock(state, state.LastBlockHeight+1)
+	abciResponses := &ABCIResponses{
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+	}
+
+	// If the pubkey is new, remove the old and add the new.
+	_, val := state.NextValidators.GetByIndex(0)
+	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
+		abciResponses.EndBlock = &abci.ResponseEndBlock{
+			ValidatorUpdates: []abci.ValidatorUpdate{
+				types.TM2PB.NewValidatorUpdate(val.PubKey, 0),
+				types.TM2PB.NewValidatorUpdate(pubkey, 10),
+			},
+		}
+	}
+
+	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+}
+
+func makeHeaderPartsResponsesValPowerChange(state State, height int64,
+	power int64) (types.Header, types.BlockID, *ABCIResponses) {
+
+	block := makeBlock(state, state.LastBlockHeight+1)
+	abciResponses := &ABCIResponses{
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
+	}
+
+	// If the pubkey is new, remove the old and add the new.
+	_, val := state.NextValidators.GetByIndex(0)
+	if val.VotingPower != power {
+		abciResponses.EndBlock = &abci.ResponseEndBlock{
+			ValidatorUpdates: []abci.ValidatorUpdate{
+				types.TM2PB.NewValidatorUpdate(val.PubKey, power),
+			},
+		}
+	}
+
+	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+}
+
+func makeHeaderPartsResponsesParams(state State, height int64,
+	params types.ConsensusParams) (types.Header, types.BlockID, *ABCIResponses) {
+
+	block := makeBlock(state, state.LastBlockHeight+1)
+	abciResponses := &ABCIResponses{
+		EndBlock: &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
+	}
+	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
+}
+
+func randomGenesisDoc() *types.GenesisDoc {
+	pubkey := ed25519.GenPrivKey().PubKey()
+	return &types.GenesisDoc{
+		GenesisTime:     tmtime.Now(),
+		ChainID:         "abc",
+		Validators:      []types.GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
+		ConsensusParams: types.DefaultConsensusParams(),
+	}
+}
+
+//----------------------------------------------------------------------------
+
+type testApp struct {
+	abci.BaseApplication
+
+	CommitVotes         []abci.VoteInfo
+	ByzantineValidators []abci.Evidence
+	ValidatorUpdates    []abci.ValidatorUpdate
+}
+
+var _ abci.Application = (*testApp)(nil)
+
+func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
+	return abci.ResponseInfo{}
+}
+
+func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+	app.CommitVotes = req.LastCommitInfo.Votes
+	app.ByzantineValidators = req.ByzantineValidators
+	return abci.ResponseBeginBlock{}
+}
+
+func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
+	return abci.ResponseEndBlock{ValidatorUpdates: app.ValidatorUpdates}
+}
+
+func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+	return abci.ResponseDeliverTx{Tags: []cmn.KVPair{}}
+}
+
+func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {
+	return abci.ResponseCheckTx{}
+}
+
+func (app *testApp) Commit() abci.ResponseCommit {
+	return abci.ResponseCommit{}
+}
+
+func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
+	return
+}

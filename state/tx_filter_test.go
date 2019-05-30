@@ -7,11 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestTxFilter(t *testing.T) {
@@ -43,15 +41,5 @@ func TestTxFilter(t *testing.T) {
 		} else {
 			assert.Nil(t, f(tc.tx), "#%v", i)
 		}
-	}
-}
-
-func randomGenesisDoc() *types.GenesisDoc {
-	pubkey := ed25519.GenPrivKey().PubKey()
-	return &types.GenesisDoc{
-		GenesisTime:     tmtime.Now(),
-		ChainID:         "abc",
-		Validators:      []types.GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
-		ConsensusParams: types.DefaultConsensusParams(),
 	}
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -877,14 +876,6 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func genValSet(size int) *types.ValidatorSet {
-	vals := make([]*types.Validator, size)
-	for i := 0; i < size; i++ {
-		vals[i] = types.NewValidator(ed25519.GenPrivKey().PubKey(), 10)
-	}
-	return types.NewValidatorSet(vals)
-}
-
 func TestStateMakeBlock(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
@@ -962,25 +953,8 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeParams(
-	blockBytes, blockGas int64,
-	blockTimeIotaMs int64,
-	evidenceAge int64,
-) types.ConsensusParams {
-	return types.ConsensusParams{
-		Block: types.BlockParams{
-			MaxBytes:   blockBytes,
-			MaxGas:     blockGas,
-			TimeIotaMs: blockTimeIotaMs,
-		},
-		Evidence: types.EvidenceParams{
-			MaxAge: evidenceAge,
-		},
-	}
-}
-
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeParams(1, 2, 3, 4)
+	initParams := makeConsensusParams(1, 2, 3, 4)
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -996,76 +970,18 @@ func TestApplyUpdates(t *testing.T) {
 					MaxGas:   55,
 				},
 			},
-			makeParams(44, 55, 3, 4)},
+			makeConsensusParams(44, 55, 3, 4)},
 		3: {initParams,
 			abci.ConsensusParams{
 				Evidence: &abci.EvidenceParams{
 					MaxAge: 66,
 				},
 			},
-			makeParams(1, 2, 3, 66)},
+			makeConsensusParams(1, 2, 3, 66)},
 	}
 
 	for i, tc := range cases {
 		res := tc.init.Update(&(tc.updates))
 		assert.Equal(t, tc.expected, res, "case %d", i)
 	}
-}
-
-func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
-	pubkey crypto.PubKey) (types.Header, types.BlockID, *ABCIResponses) {
-
-	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &ABCIResponses{
-		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
-	}
-
-	// If the pubkey is new, remove the old and add the new.
-	_, val := state.NextValidators.GetByIndex(0)
-	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
-		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
-				types.TM2PB.NewValidatorUpdate(val.PubKey, 0),
-				types.TM2PB.NewValidatorUpdate(pubkey, 10),
-			},
-		}
-	}
-
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
-}
-
-func makeHeaderPartsResponsesValPowerChange(state State, height int64,
-	power int64) (types.Header, types.BlockID, *ABCIResponses) {
-
-	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &ABCIResponses{
-		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
-	}
-
-	// If the pubkey is new, remove the old and add the new.
-	_, val := state.NextValidators.GetByIndex(0)
-	if val.VotingPower != power {
-		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
-				types.TM2PB.NewValidatorUpdate(val.PubKey, power),
-			},
-		}
-	}
-
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
-}
-
-func makeHeaderPartsResponsesParams(state State, height int64,
-	params types.ConsensusParams) (types.Header, types.BlockID, *ABCIResponses) {
-
-	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &ABCIResponses{
-		EndBlock: &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
-	}
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
-}
-
-type paramsChangeTestCase struct {
-	height int64
-	params types.ConsensusParams
 }
