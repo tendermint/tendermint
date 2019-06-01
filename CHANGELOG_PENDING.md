@@ -19,3 +19,5 @@
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [mempool] \#3699 Revert the change where we only remove valid transactions
+  from the mempool once a block is committed.
