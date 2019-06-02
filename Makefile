@@ -120,23 +120,30 @@ get_deps_bin_size:
 protoc_libs: libs/common/types.pb.go
 
 gen_certs: clean_certs
-	## Generating certificates for TLS testing...
+	## generate certificates for TLS testing...
 	certstrap init --common-name "tendermint.com" --passphrase ""
-	certstrap request-cert -ip "::" --passphrase ""
-	certstrap sign "::" --CA "tendermint.com" --passphrase ""
-	mv out/::.crt out/::.key db/remotedb
+	certstrap request-cert --common-name "remotedb" -ip "127.0.0.1" --passphrase ""
+	certstrap sign "remotedb" --CA "tendermint.com" --passphrase ""
+	mv out/remotedb.crt libs/db/remotedb/test.crt
+	mv out/remotedb.key libs/db/remotedb/test.key
+	certstrap request-cert --common-name "server" -ip "127.0.0.1" --passphrase ""
+	certstrap sign "server" --CA "tendermint.com" --passphrase ""
+	mv out/server.crt rpc/lib/server/test.crt
+	mv out/server.key rpc/lib/server/test.key
+	## cleanup
+	rm -rf out
 
 clean_certs:
-	## Cleaning TLS testing certificates...
-	rm -rf out
-	rm -f db/remotedb/::.crt db/remotedb/::.key
+	rm -f libs/db/remotedb/test.crt
+	rm -f libs/db/remotedb/test.key
+	rm -f rpc/lib/server/test.crt
+	rm -f rpc/lib/server/test.key
 
 test_libs: gen_certs
 	go test -tags clevedb boltdb $(PACKAGES)
-	make clean_certs
 
 grpc_dbserver:
-	protoc -I db/remotedb/proto/ db/remotedb/proto/defs.proto --go_out=plugins=grpc:db/remotedb/proto
+	protoc -I libs/db/remotedb/proto/ libs/db/remotedb/proto/defs.proto --go_out=plugins=grpc:libs/db/remotedb/proto
 
 protoc_grpc: rpc/grpc/types.pb.go
 
