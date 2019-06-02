@@ -4,9 +4,6 @@ set -e
 # run the linter
 # make lint
 
-# setup certs
-make gen_certs
-
 # run the unit tests with coverage
 echo "" > coverage.txt
 for d in $(go list ./... | grep -v vendor); do
