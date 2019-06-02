@@ -1,4 +1,4 @@
-package state
+package state_test
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/proxy"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -30,7 +31,7 @@ type mockEvPoolAlwaysCommitted struct{}
 
 func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
 func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
-func (m mockEvPoolAlwaysCommitted) Update(*types.Block, State)             {}
+func (m mockEvPoolAlwaysCommitted) Update(*types.Block, sm.State)          {}
 func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
 
 func newTestApp() proxy.AppConns {
@@ -38,6 +39,19 @@ func newTestApp() proxy.AppConns {
 	cc := proxy.NewLocalClientCreator(app)
 	return proxy.NewAppConns(cc)
 }
+
+//func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte, blockExec sm.BlockExecutor) {
+//	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, proposerAddr)
+//	if err := blockExec.ValidateBlock(state, block); err != nil {
+//		return nil, err
+//	}
+//	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
+//	state, err = blockExec.ApplyBlock(state, blockID, block)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return nil, nil
+//}
 
 func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, privVal types.PrivValidator) (*types.Vote, error) {
 	addr := privVal.GetPubKey().Address()
@@ -76,7 +90,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func state(nVals, height int) (State, dbm.DB, map[string]types.PrivValidator) {
+func state(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
 	vals := make([]types.GenesisValidator, nVals)
 	privVals := make(map[string]types.PrivValidator, nVals)
 	for i := 0; i < nVals; i++ {
@@ -91,7 +105,7 @@ func state(nVals, height int) (State, dbm.DB, map[string]types.PrivValidator) {
 		}
 		privVals[valAddr.String()] = types.NewMockPVWithParams(pk, false, false)
 	}
-	s, _ := MakeGenesisState(&types.GenesisDoc{
+	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
 		ChainID:    chainID,
 		Validators: vals,
 		AppHash:    nil,
@@ -99,17 +113,17 @@ func state(nVals, height int) (State, dbm.DB, map[string]types.PrivValidator) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
-	SaveState(stateDB, s)
+	sm.SaveState(stateDB, s)
 
 	for i := 1; i < height; i++ {
 		s.LastBlockHeight++
 		s.LastValidators = s.Validators.Copy()
-		SaveState(stateDB, s)
+		sm.SaveState(stateDB, s)
 	}
 	return s, stateDB, privVals
 }
 
-func makeBlock(state State, height int64) *types.Block {
+func makeBlock(state sm.State, height int64) *types.Block {
 	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().Address)
 	return block
 }
@@ -139,10 +153,10 @@ func makeConsensusParams(
 	}
 }
 
-func makeHeaderPartsResponsesValPubKeyChange(state State, pubkey crypto.PubKey) (types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesValPubKeyChange(state sm.State, pubkey crypto.PubKey) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &ABCIResponses{
+	abciResponses := &sm.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
@@ -160,10 +174,10 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, pubkey crypto.PubKey) 
 	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
 }
 
-func makeHeaderPartsResponsesValPowerChange(state State, power int64) (types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesValPowerChange(state sm.State, power int64) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &ABCIResponses{
+	abciResponses := &sm.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
@@ -180,10 +194,10 @@ func makeHeaderPartsResponsesValPowerChange(state State, power int64) (types.Hea
 	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses
 }
 
-func makeHeaderPartsResponsesParams(state State, params types.ConsensusParams) (types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesParams(state sm.State, params types.ConsensusParams) (types.Header, types.BlockID, *sm.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
-	abciResponses := &ABCIResponses{
+	abciResponses := &sm.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
 	}
 	return block.Header, types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}, abciResponses

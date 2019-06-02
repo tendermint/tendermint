@@ -1,4 +1,4 @@
-package state
+package state_test
 
 import (
 	"os"
@@ -9,6 +9,7 @@ import (
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -32,10 +33,10 @@ func TestTxFilter(t *testing.T) {
 
 	for i, tc := range testCases {
 		stateDB := dbm.NewDB("state", "memdb", os.TempDir())
-		state, err := LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		require.NoError(t, err)
 
-		f := TxPreCheck(state)
+		f := sm.TxPreCheck(state)
 		if tc.isErr {
 			assert.NotNil(t, f(tc.tx), "#%v", i)
 		} else {
