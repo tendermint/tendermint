@@ -3,9 +3,7 @@ package state_test
 import (
 	"bytes"
 	"fmt"
-	"testing"
 
-	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -40,18 +38,41 @@ func newTestApp() proxy.AppConns {
 	return proxy.NewAppConns(cc)
 }
 
-//func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte, blockExec sm.BlockExecutor) {
-//	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, proposerAddr)
-//	if err := blockExec.ValidateBlock(state, block); err != nil {
-//		return nil, err
-//	}
-//	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
-//	state, err = blockExec.ApplyBlock(state, blockID, block)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return nil, nil
-//}
+func makeAndCommitGoodBlock(
+	state sm.State,
+	height int64,
+	lastCommit *types.Commit,
+	proposerAddr []byte,
+	blockExec *sm.BlockExecutor,
+	privVals map[string]types.PrivValidator,
+	evidence []types.Evidence) (sm.State, types.BlockID, *types.Commit, error) {
+	// A good block passes
+	state, blockID, err := makeAndApplyGoodBlock(state, height, lastCommit, proposerAddr, blockExec, evidence)
+	if err != nil {
+		return state, types.BlockID{}, nil, err
+	}
+
+	// Simulate a lastCommit for this block from all validators for the next height
+	commit, err := makeValidCommit(height, blockID, state.Validators, privVals)
+	if err != nil {
+		return state, types.BlockID{}, nil, err
+	}
+	return state, blockID, commit, nil
+}
+
+func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
+	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, error) {
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
+	if err := blockExec.ValidateBlock(state, block); err != nil {
+		return state, types.BlockID{}, err
+	}
+	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
+	state, err := blockExec.ApplyBlock(state, blockID, block)
+	if err != nil {
+		return state, types.BlockID{}, err
+	}
+	return state, blockID, nil
+}
 
 func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, privVal types.PrivValidator) (*types.Vote, error) {
 	addr := privVal.GetPubKey().Address()
@@ -71,15 +92,17 @@ func makeVote(height int64, blockID types.BlockID, valSet *types.ValidatorSet, p
 	return vote, nil
 }
 
-func makeValidCommit(t *testing.T, height int64, blockID types.BlockID, vals *types.ValidatorSet, privVals map[string]types.PrivValidator) *types.Commit {
+func makeValidCommit(height int64, blockID types.BlockID, vals *types.ValidatorSet, privVals map[string]types.PrivValidator) (*types.Commit, error) {
 	sigs := make([]*types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(i)
 		vote, err := makeVote(height, blockID, vals, privVals[val.Address.String()])
-		require.NoError(t, err, "height %d", height)
+		if err != nil {
+			return nil, err
+		}
 		sigs = append(sigs, vote.CommitSig())
 	}
-	return types.NewCommit(blockID, sigs)
+	return types.NewCommit(blockID, sigs), nil
 }
 
 // make some bogus txs

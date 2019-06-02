@@ -25,7 +25,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	nVals := 3
 	state, stateDB, privVals := state(nVals, 1)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
-	commit := types.NewCommit(types.BlockID{}, nil)
+	lastCommit := types.NewCommit(types.BlockID{}, nil)
 
 	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
@@ -62,13 +62,14 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Proposer invalid", func(block *types.Block) { block.ProposerAddress = []byte("wrong size") }},
 	}
 
+	// Build up state for multiple heights
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		/*
 			Invalid blocks don't pass
 		*/
 		for _, tc := range testCases {
-			block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, proposerAddr)
+			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, proposerAddr)
 			tc.malleateBlock(block)
 			err := blockExec.ValidateBlock(state, block)
 			require.Error(t, err, tc.name)
@@ -77,21 +78,9 @@ func TestValidateBlockHeader(t *testing.T) {
 		/*
 			A good block passes
 		*/
-		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, proposerAddr)
-		err := blockExec.ValidateBlock(state, block)
+		var err error
+		state, _, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerAddr, blockExec, privVals, nil)
 		require.NoError(t, err, "height %d", height)
-
-		/*
-			Apply the block to our current state
-		*/
-		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
-		state, err = blockExec.ApplyBlock(state, blockID, block)
-		require.NoError(t, err, "height %d", height)
-
-		/*
-			Simulate a commit for this block from all validators for the next height
-		*/
-		commit = makeValidCommit(t, height, blockID, state.Validators, privVals)
 	}
 }
 
@@ -102,7 +91,7 @@ func TestValidateBlockCommit(t *testing.T) {
 
 	state, stateDB, privVals := state(1, 1)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
-	commit := types.NewCommit(types.BlockID{}, nil)
+	lastCommit := types.NewCommit(types.BlockID{}, nil)
 	wrongPrecommitsCommit := types.NewCommit(types.BlockID{}, nil)
 	badPrivVal := types.NewMockPV()
 
@@ -133,26 +122,16 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			A good block passes
 		*/
-		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, proposerAddr)
-		err := blockExec.ValidateBlock(state, block)
+		var err error
+		var blockID types.BlockID
+		state, blockID, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerAddr, blockExec, privVals, nil)
 		require.NoError(t, err, "height %d", height)
-
-		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
-		// apply the block to our current state
-		state, err = blockExec.ApplyBlock(state, blockID, block)
-		require.NoError(t, err, "height %d", height)
-
-		/*
-			Simulate a correct commit for this block
-		*/
-		vote, err := makeVote(height, blockID, state.Validators, privVals[proposerAddr.String()])
-		require.NoError(t, err, "height %d", height)
-		// for the next height
-		commit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig()})
 
 		/*
 			wrongPrecommitsCommit is fine except for the extra bad precommit
 		*/
+		goodVote, err := makeVote(height, blockID, state.Validators, privVals[proposerAddr.String()])
+		require.NoError(t, err, "height %d", height)
 		badVote := &types.Vote{
 			ValidatorAddress: badPrivVal.GetPubKey().Address(),
 			ValidatorIndex:   0,
@@ -162,9 +141,9 @@ func TestValidateBlockCommit(t *testing.T) {
 			Type:             types.PrecommitType,
 			BlockID:          blockID,
 		}
-		err = badPrivVal.SignVote(chainID, vote)
+		err = badPrivVal.SignVote(chainID, goodVote)
 		require.NoError(t, err, "height %d", height)
-		wrongPrecommitsCommit = types.NewCommit(blockID, []*types.CommitSig{vote.CommitSig(), badVote.CommitSig()})
+		wrongPrecommitsCommit = types.NewCommit(blockID, []*types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()})
 	}
 }
 
@@ -176,7 +155,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	nVals := 3
 	state, stateDB, privVals := state(nVals, 1)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
-	commit := types.NewCommit(types.BlockID{}, nil)
+	lastCommit := types.NewCommit(types.BlockID{}, nil)
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
@@ -194,7 +173,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			for i := int64(0); i <= maxNumEvidence; i++ {
 				evidence = append(evidence, goodEvidence)
 			}
-			block, _ := state.MakeBlock(height, makeTxs(height), commit, evidence, proposerAddr)
+			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 			err := blockExec.ValidateBlock(state, block)
 			_, ok := err.(*types.ErrEvidenceOverflow)
 			require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d", height)
@@ -211,21 +190,10 @@ func TestValidateBlockEvidence(t *testing.T) {
 		for i := int64(0); i < maxNumEvidence; i++ {
 			evidence = append(evidence, goodEvidence)
 		}
-		block, _ := state.MakeBlock(height, makeTxs(height), commit, nil, proposerAddr)
-		err := blockExec.ValidateBlock(state, block)
-		require.NoError(t, err, "height %d", height)
 
-		/*
-			Apply the block to our current state
-		*/
-		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
-		state, err = blockExec.ApplyBlock(state, blockID, block)
+		var err error
+		state, _, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerAddr, blockExec, privVals, evidence)
 		require.NoError(t, err, "height %d", height)
-
-		/*
-			Simulate a commit for this block
-		*/
-		commit = makeValidCommit(t, height, blockID, state.Validators, privVals)
 	}
 }
 
