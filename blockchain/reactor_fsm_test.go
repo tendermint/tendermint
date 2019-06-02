@@ -2,11 +2,8 @@ package blockchain
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -15,46 +12,29 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// reactor for FSM testing
-type testReactor struct {
-	logger log.Logger
-	fsm    *bReactorFSM
-}
-
-func sendEventToFSM(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) error {
-	return fsm.handle(&bcReactorMessage{event: ev, data: data})
-}
-
-var (
-	testMutex         sync.Mutex
-	numStatusRequests int
-	numBlockRequests  int32
-)
-
 type lastBlockRequestT struct {
 	peerID p2p.ID
 	height int64
 }
-
-var lastBlockRequest lastBlockRequestT
 
 type lastPeerErrorT struct {
 	peerID p2p.ID
 	err    error
 }
 
-var lastPeerError lastPeerErrorT
+// reactor for FSM testing
+type testReactor struct {
+	logger            log.Logger
+	fsm               *bReactorFSM
+	numStatusRequests int
+	numBlockRequests  int32
+	lastBlockRequest  lastBlockRequestT
+	lastPeerError     lastPeerErrorT
+	stateTimerStarts  map[string]int
+}
 
-var stateTimerStarts map[string]int
-
-func resetTestValues() {
-	stateTimerStarts = make(map[string]int)
-	numStatusRequests = 0
-	numBlockRequests = 0
-	lastBlockRequest.peerID = ""
-	lastBlockRequest.height = 0
-	lastPeerError.peerID = ""
-	lastPeerError.err = nil
+func sendEventToFSM(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) error {
+	return fsm.handle(&bcReactorMessage{event: ev, data: data})
 }
 
 type fsmStepTestValues struct {
@@ -142,12 +122,13 @@ func makeStepMakeRequestsEv(current, expected string, maxPendingRequests int32) 
 func makeStepMakeRequestsEvErrored(current, expected string,
 	maxPendingRequests int32, err error, peersRemoved []p2p.ID) fsmStepTestValues {
 	return fsmStepTestValues{
-		currentState:   current,
-		event:          makeRequestsEv,
-		data:           bReactorEventData{maxNumRequests: maxPendingRequests},
-		expectedState:  expected,
-		errWanted:      err,
-		peersNotInPool: peersRemoved,
+		currentState:      current,
+		event:             makeRequestsEv,
+		data:              bReactorEventData{maxNumRequests: maxPendingRequests},
+		expectedState:     expected,
+		errWanted:         err,
+		peersNotInPool:    peersRemoved,
+		blockReqIncreased: true,
 	}
 }
 
@@ -201,7 +182,7 @@ func makeStepPeerRemoveEv(current, expected string, peerID p2p.ID, err error, pe
 // --------------------------------------------
 
 func newTestReactor(height int64) *testReactor {
-	testBcR := &testReactor{logger: log.TestingLogger()}
+	testBcR := &testReactor{logger: log.TestingLogger(), stateTimerStarts: make(map[string]int)}
 	testBcR.fsm = NewFSM(height, testBcR)
 	testBcR.fsm.setLogger(testBcR.logger)
 	return testBcR
@@ -220,27 +201,79 @@ func fixBlockResponseEvStep(step *fsmStepTestValues, testBcR *testReactor) {
 	}
 }
 
-func shouldApplyProcessedBlockEvStep(step *fsmStepTestValues, testBcR *testReactor) bool {
-	if step.event == processedBlockEv {
-		_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height)
-		if err == errMissingBlock {
-			return false
-		}
-		_, err = testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
-		if err == errMissingBlock {
-			return false
-		}
+type testFields struct {
+	name               string
+	startingHeight     int64
+	maxRequestsPerPeer int32
+	maxPendingRequests int32
+	steps              []fsmStepTestValues
+}
+
+func executeFSMTests(t *testing.T, tests []testFields, matchRespToReq bool) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test reactor
+			testBcR := newTestReactor(tt.startingHeight)
+
+			if tt.maxRequestsPerPeer != 0 {
+				maxRequestsPerPeer = tt.maxRequestsPerPeer
+			}
+
+			for _, step := range tt.steps {
+				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
+
+				var heightBefore int64
+				if step.event == processedBlockEv && step.data.err == errBlockVerificationFailure {
+					heightBefore = testBcR.fsm.pool.height
+				}
+				oldNumStatusRequests := testBcR.numStatusRequests
+				oldNumBlockRequests := testBcR.numBlockRequests
+				if matchRespToReq {
+					fixBlockResponseEvStep(&step, testBcR)
+				}
+
+				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
+				assert.Equal(t, step.errWanted, fsmErr)
+
+				if step.shouldSendStatusReq {
+					assert.Equal(t, oldNumStatusRequests+1, testBcR.numStatusRequests)
+				} else {
+					assert.Equal(t, oldNumStatusRequests, testBcR.numStatusRequests)
+				}
+
+				if step.blockReqIncreased {
+					assert.True(t, oldNumBlockRequests < testBcR.numBlockRequests)
+				} else {
+					assert.Equal(t, oldNumBlockRequests, testBcR.numBlockRequests)
+				}
+
+				for _, height := range step.blocksAdded {
+					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
+					assert.Nil(t, err)
+				}
+				if step.event == processedBlockEv && step.data.err == errBlockVerificationFailure {
+					heightAfter := testBcR.fsm.pool.height
+					assert.Equal(t, heightBefore, heightAfter)
+					firstAfter, err1 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height)
+					secondAfter, err2 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
+					assert.NotNil(t, err1)
+					assert.NotNil(t, err2)
+					assert.Nil(t, firstAfter)
+					assert.Nil(t, secondAfter)
+				}
+
+				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
+
+				if step.expectedState == "finished" {
+					assert.True(t, testBcR.fsm.isCaughtUp())
+				}
+			}
+		})
 	}
-	return true
 }
 
 func TestFSMBasic(t *testing.T) {
-	tests := []struct {
-		name               string
-		startingHeight     int64
-		maxRequestsPerPeer int32
-		steps              []fsmStepTestValues
-	}{
+	tests := []testFields{
 		{
 			name:               "one block, one peer - TS2",
 			startingHeight:     1,
@@ -292,59 +325,11 @@ func TestFSMBasic(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			if tt.maxRequestsPerPeer != 0 {
-				maxRequestsPerPeer = tt.maxRequestsPerPeer
-			}
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-
-				oldNumStatusRequests := numStatusRequests
-				oldNumBlockRequests := numBlockRequests
-
-				fixBlockResponseEvStep(&step, testBcR)
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-
-				if step.shouldSendStatusReq {
-					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
-				} else {
-					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
-				}
-
-				if step.blockReqIncreased {
-					assert.True(t, oldNumBlockRequests < numBlockRequests)
-				} else {
-					assert.Equal(t, oldNumBlockRequests, numBlockRequests)
-				}
-
-				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
-					assert.Nil(t, err)
-				}
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-				if step.expectedState == "finished" {
-					assert.True(t, testBcR.fsm.isCaughtUp())
-				}
-			}
-
-		})
-	}
+	executeFSMTests(t, tests, true)
 }
 
 func TestFSMBlockVerificationFailure(t *testing.T) {
-	tests := []struct {
-		name               string
-		startingHeight     int64
-		maxRequestsPerPeer int32
-		steps              []fsmStepTestValues
-	}{
+	tests := []testFields{
 		{
 			name:               "block verification failure - TS2 variant",
 			startingHeight:     1,
@@ -388,73 +373,11 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			if tt.maxRequestsPerPeer != 0 {
-				maxRequestsPerPeer = tt.maxRequestsPerPeer
-			}
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-
-				oldNumStatusRequests := numStatusRequests
-				oldNumBlockRequests := numBlockRequests
-
-				var heightBefore int64
-				if step.event == processedBlockEv && step.data.err == errBlockVerificationFailure {
-					heightBefore = testBcR.fsm.pool.height
-				}
-
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-
-				if step.shouldSendStatusReq {
-					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
-				} else {
-					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
-				}
-
-				if step.blockReqIncreased {
-					assert.True(t, oldNumBlockRequests < numBlockRequests)
-				} else {
-					assert.Equal(t, oldNumBlockRequests, numBlockRequests)
-				}
-
-				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
-					assert.Nil(t, err)
-				}
-
-				if step.event == processedBlockEv && step.data.err == errBlockVerificationFailure {
-					heightAfter := testBcR.fsm.pool.height
-					assert.Equal(t, heightBefore, heightAfter)
-					firstAfter, err1 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height)
-					secondAfter, err2 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
-					assert.NotNil(t, err1)
-					assert.NotNil(t, err2)
-					assert.Nil(t, firstAfter)
-					assert.Nil(t, secondAfter)
-				}
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-				if step.expectedState == "finished" {
-					assert.True(t, testBcR.fsm.isCaughtUp())
-				}
-			}
-		})
-	}
+	executeFSMTests(t, tests, false)
 }
 
 func TestFSMBadBlockFromPeer(t *testing.T) {
-	tests := []struct {
-		name               string
-		startingHeight     int64
-		maxRequestsPerPeer int32
-		steps              []fsmStepTestValues
-	}{
+	tests := []testFields{
 		{
 			name:               "block we haven't asked for",
 			startingHeight:     1,
@@ -529,54 +452,11 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			if tt.maxRequestsPerPeer != 0 {
-				maxRequestsPerPeer = tt.maxRequestsPerPeer
-			}
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-
-				oldNumStatusRequests := numStatusRequests
-				oldNumBlockRequests := numBlockRequests
-
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-
-				if step.shouldSendStatusReq {
-					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
-				} else {
-					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
-				}
-
-				if step.blockReqIncreased {
-					assert.True(t, oldNumBlockRequests < numBlockRequests)
-				} else {
-					assert.Equal(t, oldNumBlockRequests, numBlockRequests)
-				}
-
-				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
-					assert.Nil(t, err)
-				}
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-			}
-		})
-	}
+	executeFSMTests(t, tests, false)
 }
 
 func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
-	tests := []struct {
-		name               string
-		startingHeight     int64
-		maxRequestsPerPeer int32
-		steps              []fsmStepTestValues
-	}{
+	tests := []testFields{
 		{
 			name:               "block at current height undelivered - TS5",
 			startingHeight:     1,
@@ -640,54 +520,12 @@ func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
 
-			if tt.maxRequestsPerPeer != 0 {
-				maxRequestsPerPeer = tt.maxRequestsPerPeer
-			}
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-
-				oldNumStatusRequests := numStatusRequests
-				oldNumBlockRequests := numBlockRequests
-
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-
-				if step.shouldSendStatusReq {
-					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
-				} else {
-					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
-				}
-
-				if step.blockReqIncreased {
-					assert.True(t, oldNumBlockRequests < numBlockRequests)
-				} else {
-					assert.Equal(t, oldNumBlockRequests, numBlockRequests)
-				}
-
-				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
-					assert.Nil(t, err)
-				}
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-			}
-		})
-	}
+	executeFSMTests(t, tests, true)
 }
 
 func TestFSMPeerRelatedEvents(t *testing.T) {
-	tests := []struct {
-		name               string
-		startingHeight     int64
-		maxRequestsPerPeer int32
-		steps              []fsmStepTestValues
-	}{
+	tests := []testFields{
 		{
 			name:           "peer remove event with no blocks",
 			startingHeight: 1,
@@ -734,7 +572,7 @@ func TestFSMPeerRelatedEvents(t *testing.T) {
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P1", 100, []int64{}),
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
-					"P1", 101, []int64{1}),
+					"P1", 101, []int64{100}),
 
 				// processed block at heights 1 and 2
 				makeStepProcessedBlockEv("waitForBlock", "waitForBlock", nil),
@@ -761,7 +599,7 @@ func TestFSMPeerRelatedEvents(t *testing.T) {
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P1", 100, []int64{}),
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
-					"P1", 101, []int64{1}),
+					"P1", 101, []int64{100}),
 
 				// processed block at heights 1 and 2
 				makeStepProcessedBlockEv("waitForBlock", "waitForBlock", nil),
@@ -820,46 +658,11 @@ func TestFSMPeerRelatedEvents(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			if tt.maxRequestsPerPeer != 0 {
-				maxRequestsPerPeer = tt.maxRequestsPerPeer
-			}
-
-			for _, step := range tt.steps {
-				require.Equal(t, step.currentState, testBcR.fsm.state.name)
-
-				oldNumStatusRequests := numStatusRequests
-
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-
-				if step.shouldSendStatusReq {
-					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
-				} else {
-					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
-				}
-
-				for _, peerID := range step.peersNotInPool {
-					_, ok := testBcR.fsm.pool.peers[peerID]
-					assert.False(t, ok)
-				}
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-			}
-		})
-	}
+	executeFSMTests(t, tests, true)
 }
 
 func TestFSMStopFSM(t *testing.T) {
-	tests := []struct {
-		name           string
-		startingHeight int64
-		steps          []fsmStepTestValues
-	}{
+	tests := []testFields{
 		{
 			name: "stopFSMEv in unknown",
 			steps: []fsmStepTestValues{
@@ -890,28 +693,11 @@ func TestFSMStopFSM(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-			}
-		})
-	}
+	executeFSMTests(t, tests, false)
 }
 
 func TestFSMUnknownElements(t *testing.T) {
-	tests := []struct {
-		name           string
-		startingHeight int64
-		steps          []fsmStepTestValues
-	}{
+	tests := []testFields{
 		{
 			name: "unknown event for state unknown",
 			steps: []fsmStepTestValues{
@@ -936,29 +722,11 @@ func TestFSMUnknownElements(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-			}
-		})
-	}
+	executeFSMTests(t, tests, false)
 }
 
 func TestFSMPeerStateTimeoutEvent(t *testing.T) {
-	tests := []struct {
-		name               string
-		startingHeight     int64
-		maxRequestsPerPeer int32
-		steps              []fsmStepTestValues
-	}{
+	tests := []testFields{
 		{
 			name:               "timeout event for state waitForPeer while in state waitForPeer - TS1",
 			startingHeight:     1,
@@ -1013,28 +781,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create test reactor
-			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
-
-			for _, step := range tt.steps {
-				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
-				fsmErr := sendEventToFSM(testBcR.fsm, step.event, step.data)
-				assert.Equal(t, step.errWanted, fsmErr)
-				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
-			}
-		})
-	}
-}
-
-type testFields struct {
-	name               string
-	startingHeight     int64
-	maxRequestsPerPeer int32
-	maxPendingRequests int32
-	steps              []fsmStepTestValues
+	executeFSMTests(t, tests, false)
 }
 
 func makeCorrectTransitionSequence(startingHeight int64, numBlocks int64, numPeers int, randomPeerHeights bool,
@@ -1155,6 +902,20 @@ func makeCorrectTransitionSequenceWithRandomParameters() testFields {
 	return makeCorrectTransitionSequence(startingHeight, numBlocks, numPeers, true, maxRequestsPerPeer, maxPendingRequests)
 }
 
+func shouldApplyProcessedBlockEvStep(step *fsmStepTestValues, testBcR *testReactor) bool {
+	if step.event == processedBlockEv {
+		_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height)
+		if err == errMissingBlock {
+			return false
+		}
+		_, err = testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
+		if err == errMissingBlock {
+			return false
+		}
+	}
+	return true
+}
+
 func TestFSMCorrectTransitionSequences(t *testing.T) {
 
 	tests := []testFields{
@@ -1166,7 +927,6 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test reactor
 			testBcR := newTestReactor(tt.startingHeight)
-			resetTestValues()
 
 			if tt.maxRequestsPerPeer != 0 {
 				maxRequestsPerPeer = tt.maxRequestsPerPeer
@@ -1175,7 +935,7 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 			for _, step := range tt.steps {
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
 
-				oldNumStatusRequests := numStatusRequests
+				oldNumStatusRequests := testBcR.numStatusRequests
 				fixBlockResponseEvStep(&step, testBcR)
 				if !shouldApplyProcessedBlockEvStep(&step, testBcR) {
 					continue
@@ -1185,9 +945,9 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 				assert.Equal(t, step.errWanted, fsmErr)
 
 				if step.shouldSendStatusReq {
-					assert.Equal(t, oldNumStatusRequests+1, numStatusRequests)
+					assert.Equal(t, oldNumStatusRequests+1, testBcR.numStatusRequests)
 				} else {
-					assert.Equal(t, oldNumStatusRequests, numStatusRequests)
+					assert.Equal(t, oldNumStatusRequests, testBcR.numStatusRequests)
 				}
 
 				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
@@ -1203,23 +963,21 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 // ----------------------------------------
 // implements the bcRNotifier
 func (testR *testReactor) sendPeerError(err error, peerID p2p.ID) {
-	testMutex.Lock()
-	defer testMutex.Unlock()
 	testR.logger.Info("Reactor received sendPeerError call from FSM", "peer", peerID, "err", err)
-	lastPeerError.peerID = peerID
-	lastPeerError.err = err
+	testR.lastPeerError.peerID = peerID
+	testR.lastPeerError.err = err
 }
 
 func (testR *testReactor) sendStatusRequest() {
 	testR.logger.Info("Reactor received sendStatusRequest call from FSM")
-	numStatusRequests++
+	testR.numStatusRequests++
 }
 
 func (testR *testReactor) sendBlockRequest(peerID p2p.ID, height int64) error {
 	testR.logger.Info("Reactor received sendBlockRequest call from FSM", "peer", peerID, "height", height)
-	numBlockRequests++
-	lastBlockRequest.peerID = peerID
-	lastBlockRequest.height = height
+	testR.numBlockRequests++
+	testR.lastBlockRequest.peerID = peerID
+	testR.lastBlockRequest.height = height
 	if height == 9999999 {
 		// simulate switch does not have peer
 		return errNilPeerForBlockRequest
@@ -1229,15 +987,14 @@ func (testR *testReactor) sendBlockRequest(peerID p2p.ID, height int64) error {
 
 func (testR *testReactor) resetStateTimer(name string, timer **time.Timer, timeout time.Duration) {
 	testR.logger.Info("Reactor received resetStateTimer call from FSM", "state", name, "timeout", timeout)
-	if _, ok := stateTimerStarts[name]; !ok {
-		stateTimerStarts[name] = 1
+	if _, ok := testR.stateTimerStarts[name]; !ok {
+		testR.stateTimerStarts[name] = 1
 	} else {
-		stateTimerStarts[name]++
+		testR.stateTimerStarts[name]++
 	}
 }
 
 func (testR *testReactor) switchToConsensus() {
-
 }
 
 // ----------------------------------------
