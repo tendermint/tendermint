@@ -13,33 +13,11 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// These vars are used to record and verify different events generated during tests
-var (
-	numErrFuncCalls int        // number of calls to the errFunc
-	lastErr         error      // last generated error
-	peerTestMtx     sync.Mutex // needed as modifications of these variables are done from timer handler goroutine also
-)
-
-func resetErrors() {
-	peerTestMtx.Lock()
-	defer peerTestMtx.Unlock()
-	numErrFuncCalls = 0
-	lastErr = nil
-}
-
-func errFunc(err error, peerID p2p.ID) {
-	peerTestMtx.Lock()
-	defer peerTestMtx.Unlock()
-	_ = peerID
-	lastErr = err
-	numErrFuncCalls++
-}
-
 // check if peer timer is running or not (a running timer can be successfully stopped)
 // Note: it does stop the timer!
 func checkByStoppingPeerTimer(t *testing.T, peer *bpPeer, running bool) {
 	assert.NotPanics(t, func() {
-		stopped := peer.timeout.Stop()
+		stopped := peer.StopBlockResponseTimer()
 		if running {
 			assert.True(t, stopped)
 		} else {
@@ -49,36 +27,52 @@ func checkByStoppingPeerTimer(t *testing.T, peer *bpPeer, running bool) {
 }
 
 func TestPeerResetMonitor(t *testing.T) {
-	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
-	peer.setLogger(log.TestingLogger())
+	peer := NewBPPeer(
+		p2p.ID(cmn.RandStr(12)), 10,
+		func(err error, _ p2p.ID) {},
+		nil)
+	peer.SetLogger(log.TestingLogger())
 	peer.resetMonitor()
 	assert.NotNil(t, peer.recvMonitor)
 }
 
 func TestPeerTimer(t *testing.T) {
-	peerTimeout = 2 * time.Millisecond
+	var (
+		numErrFuncCalls int        // number of calls to the errFunc
+		lastErr         error      // last generated error
+		peerTestMtx     sync.Mutex // modifications of ^^ variables are also done from timer handler goroutine
+	)
+	params := &bpPeerParams{peerTimeout: 2 * time.Millisecond}
 
-	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
-	peer.setLogger(log.TestingLogger())
-	assert.Nil(t, peer.timeout)
+	peer := NewBPPeer(
+		p2p.ID(cmn.RandStr(12)), 10,
+		func(err error, _ p2p.ID) {
+			peerTestMtx.Lock()
+			defer peerTestMtx.Unlock()
+			lastErr = err
+			numErrFuncCalls++
+		},
+		params)
+
+	peer.SetLogger(log.TestingLogger())
+	assert.Nil(t, peer.blockResponseTimer)
 
 	// initial reset call with peer having a nil timer
 	peer.resetTimeout()
-	assert.NotNil(t, peer.timeout)
+	assert.NotNil(t, peer.blockResponseTimer)
 	// make sure timer is running and stop it
 	checkByStoppingPeerTimer(t, peer, true)
 
 	// reset with non nil expired timer
 	peer.resetTimeout()
-	assert.NotNil(t, peer.timeout)
+	assert.NotNil(t, peer.blockResponseTimer)
 	// make sure timer is running and stop it
 	checkByStoppingPeerTimer(t, peer, true)
-	resetErrors()
 
 	// reset with running timer (started above)
 	time.Sleep(time.Millisecond)
 	peer.resetTimeout()
-	assert.NotNil(t, peer.timeout)
+	assert.NotNil(t, peer.blockResponseTimer)
 
 	// let the timer expire and ...
 	time.Sleep(3 * time.Millisecond)
@@ -89,128 +83,137 @@ func TestPeerTimer(t *testing.T) {
 	assert.Equal(t, 1, numErrFuncCalls)
 	assert.Equal(t, lastErr, errNoPeerResponse)
 	peerTestMtx.Unlock()
-
-	// Restore the peerTimeout to its original value
-	peerTimeout = defaultPeerTimeout
 }
 
 func TestPeerIncrPending(t *testing.T) {
-	peerTimeout = 2 * time.Millisecond
+	params := &bpPeerParams{peerTimeout: 2 * time.Millisecond}
 
-	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
-	peer.setLogger(log.TestingLogger())
+	peer := NewBPPeer(
+		p2p.ID(cmn.RandStr(12)), 10,
+		func(err error, _ p2p.ID) {},
+		params)
 
-	peer.incrPending()
+	peer.SetLogger(log.TestingLogger())
+
+	peer.IncrPending()
 	assert.NotNil(t, peer.recvMonitor)
-	assert.NotNil(t, peer.timeout)
-	assert.Equal(t, int32(1), peer.numPending)
+	assert.NotNil(t, peer.blockResponseTimer)
+	assert.Equal(t, int32(1), peer.GetNumPendingBlockRequests())
 
-	peer.incrPending()
+	peer.IncrPending()
 	assert.NotNil(t, peer.recvMonitor)
-	assert.NotNil(t, peer.timeout)
-	assert.Equal(t, int32(2), peer.numPending)
-
-	// Restore the peerTimeout to its original value
-	peerTimeout = defaultPeerTimeout
+	assert.NotNil(t, peer.blockResponseTimer)
+	assert.Equal(t, int32(2), peer.GetNumPendingBlockRequests())
 }
 
 func TestPeerDecrPending(t *testing.T) {
-	peerTimeout = 2 * time.Millisecond
+	params := &bpPeerParams{peerTimeout: 2 * time.Millisecond}
 
-	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
-	peer.setLogger(log.TestingLogger())
+	peer := NewBPPeer(
+		p2p.ID(cmn.RandStr(12)), 10,
+		func(err error, _ p2p.ID) {},
+		params)
 
-	// panic if numPending is 0 and try to decrement it
-	assert.Panics(t, func() { peer.decrPending(10) })
+	peer.SetLogger(log.TestingLogger())
+
+	// panic if numPendingBlockRequests is 0 and try to decrement it
+	assert.Panics(t, func() { peer.DecrPending(10) })
 
 	// decrement to zero
-	peer.incrPending()
-	peer.decrPending(10)
-	assert.Equal(t, int32(0), peer.numPending)
+	peer.IncrPending()
+	peer.DecrPending(10)
+	assert.Equal(t, int32(0), peer.GetNumPendingBlockRequests())
 	// make sure timer is not running
 	checkByStoppingPeerTimer(t, peer, false)
 
 	// decrement to non zero
-	peer.incrPending()
-	peer.incrPending()
-	peer.decrPending(10)
-	assert.Equal(t, int32(1), peer.numPending)
+	peer.IncrPending()
+	peer.IncrPending()
+	peer.DecrPending(10)
+	assert.Equal(t, int32(1), peer.GetNumPendingBlockRequests())
 	// make sure timer is running and stop it
 	checkByStoppingPeerTimer(t, peer, true)
-
-	// Restore the peerTimeout to its original value
-	peerTimeout = defaultPeerTimeout
 }
 
 func TestPeerCanBeRemovedDueToExpiration(t *testing.T) {
-	minRecvRate = int64(100) // 100 bytes/sec exponential moving average
 
-	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
-	peer.setLogger(log.TestingLogger())
+	params := &bpPeerParams{peerTimeout: 2 * time.Millisecond}
+	var (
+		numErrFuncCalls int        // number of calls to the errFunc
+		lastErr         error      // last generated error
+		peerTestMtx     sync.Mutex // modifications of ^^ variables are also done from timer handler goroutine
+	)
 
-	peerTimeout = time.Millisecond
-	peer.incrPending()
-	time.Sleep(2 * time.Millisecond)
+	peer := NewBPPeer(
+		p2p.ID(cmn.RandStr(12)), 10,
+		func(err error, _ p2p.ID) {
+			peerTestMtx.Lock()
+			defer peerTestMtx.Unlock()
+			lastErr = err
+			numErrFuncCalls++
+		},
+		params)
+
+	peer.SetLogger(log.TestingLogger())
+
+	peer.IncrPending()
+	time.Sleep(3 * time.Millisecond)
 	// timer expired, should be able to remove peer
 	peerTestMtx.Lock()
+	assert.Equal(t, 1, numErrFuncCalls)
 	assert.Equal(t, errNoPeerResponse, lastErr)
 	peerTestMtx.Unlock()
-
-	// Restore the peerTimeout to its original value
-	peerTimeout = defaultPeerTimeout
-
 }
 
 func TestPeerCanBeRemovedDueToLowSpeed(t *testing.T) {
-	minRecvRate = int64(100) // 100 bytes/sec exponential moving average
+	params := &bpPeerParams{
+		peerTimeout: time.Second,
+		minRecvRate: int64(100), // 100 bytes/sec exponential moving average
+	}
+	peer := NewBPPeer(
+		p2p.ID(cmn.RandStr(12)), 10,
+		func(err error, _ p2p.ID) {},
+		params)
+	peer.SetLogger(log.TestingLogger())
 
-	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
-	peer.setLogger(log.TestingLogger())
-
-	peerTimeout = time.Second
-	peerSampleRate = 0
-	peerWindowSize = 0
-
-	peer.incrPending()
-	peer.numPending = 100
+	peer.IncrPending()
+	peer.numPendingBlockRequests = 100
 
 	// monitor starts with a higher rEMA (~ 2*minRecvRate), wait for it to go down
 	time.Sleep(900 * time.Millisecond)
 
 	// normal peer - send a bit more than 100 bytes/sec, > 10 bytes/100msec, check peer is not considered slow
 	for i := 0; i < 10; i++ {
-		peer.decrPending(11)
+		peer.DecrPending(11)
 		time.Sleep(100 * time.Millisecond)
-		require.Nil(t, peer.isGood())
+		require.Nil(t, peer.IsGood())
 	}
 
 	// slow peer - send a bit less than 10 bytes/100msec
 	for i := 0; i < 10; i++ {
-		peer.decrPending(9)
+		peer.DecrPending(9)
 		time.Sleep(100 * time.Millisecond)
 	}
 	// check peer is considered slow
-	assert.Equal(t, errSlowPeer, peer.isGood())
+	assert.Equal(t, errSlowPeer, peer.IsGood())
 
 }
 
 func TestPeerCleanup(t *testing.T) {
+	params := &bpPeerParams{peerTimeout: 2 * time.Millisecond}
 
-	peer := newBPPeer(p2p.ID(cmn.RandStr(12)), 10, errFunc)
-	peer.setLogger(log.TestingLogger())
+	peer := NewBPPeer(
+		p2p.ID(cmn.RandStr(12)), 10,
+		func(err error, _ p2p.ID) {},
+		params)
+	peer.SetLogger(log.TestingLogger())
 
-	peerTimeout = 2 * time.Millisecond
-	assert.Nil(t, peer.timeout)
+	assert.Nil(t, peer.blockResponseTimer)
 
 	// initial reset call with peer having a nil timer
 	peer.resetTimeout()
-	assert.NotNil(t, peer.timeout)
+	assert.NotNil(t, peer.blockResponseTimer)
 
-	peerTestMtx.Lock()
-	peer.cleanup()
-	peerTestMtx.Unlock()
-
+	peer.Cleanup()
 	checkByStoppingPeerTimer(t, peer, false)
-	// Restore the peerTimeout to its original value
-	peerTimeout = defaultPeerTimeout
 }

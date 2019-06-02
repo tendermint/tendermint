@@ -11,87 +11,144 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const defaultPeerTimeout = 15 * time.Second
-
 //--------
 // Peer
-var (
-	// Timeout for a peer to respond to a block request.
-	peerTimeout = defaultPeerTimeout
-
-	// Minimum recv rate to ensure we're receiving blocks from a peer fast
-	// enough. If a peer is not sending data at at least that rate, we
-	// consider them to have timedout and we disconnect.
-	//
-	// Assuming a DSL connection (not a good choice) 128 Kbps (upload) ~ 15 KB/s,
-	// sending data across atlantic ~ 7.5 KB/s.
-	minRecvRate = int64(7680)
-
-	// Monitor parameters
-	peerSampleRate = time.Second
-	peerWindowSize = 40 * peerSampleRate
-)
+type bpPeerParams struct {
+	peerTimeout    time.Duration
+	minRecvRate    int64
+	peerSampleRate time.Duration
+	peerWindowSize time.Duration
+}
 
 type bpPeer struct {
 	logger log.Logger
 	id     p2p.ID
 
-	height      int64                  // the peer reported height
-	numPending  int32                  // number of requests still waiting for block responses
-	blocks      map[int64]*types.Block // blocks received or expected to be received from this peer
-	timeout     *time.Timer
-	recvMonitor *flow.Monitor
+	height                  int64                  // the peer reported height
+	numPendingBlockRequests int32                  // number of requests still waiting for block responses
+	blocks                  map[int64]*types.Block // blocks received or expected to be received from this peer
+	blockResponseTimer      *time.Timer
+	recvMonitor             *flow.Monitor
+	parameters              *bpPeerParams // parameters for timer and monitor
 
-	errFunc func(err error, peerID p2p.ID) // function to call on error
+	errFunc func(onErr error, peerID p2p.ID) // function to call on error
+
 }
 
-func newBPPeer(
-	peerID p2p.ID, height int64, errFunc func(err error, peerID p2p.ID)) *bpPeer {
-	peer := &bpPeer{
+func NewBPPeer(
+	peerID p2p.ID, height int64, errFunc func(err error, peerID p2p.ID), parameters *bpPeerParams) *bpPeer {
+
+	if parameters == nil {
+		parameters = bpPeerDefaultParams()
+	}
+	return &bpPeer{
 		id:         peerID,
 		height:     height,
 		blocks:     make(map[int64]*types.Block, maxRequestsPerPeer),
-		numPending: 0,
 		logger:     log.NewNopLogger(),
 		errFunc:    errFunc,
+		parameters: parameters,
 	}
-	return peer
 }
 
-func (peer *bpPeer) setLogger(l log.Logger) {
+func bpPeerDefaultParams() *bpPeerParams {
+	return &bpPeerParams{
+		// Timeout for a peer to respond to a block request.
+		peerTimeout: 15 * time.Second,
+
+		// Minimum recv rate to ensure we're receiving blocks from a peer fast
+		// enough. If a peer is not sending data at at least that rate, we
+		// consider them to have timedout and we disconnect.
+		//
+		// Assuming a DSL connection (not a good choice) 128 Kbps (upload) ~ 15 KB/s,
+		// sending data across atlantic ~ 7.5 KB/s.
+		minRecvRate: int64(7680),
+
+		// Monitor parameters
+		peerSampleRate: time.Second,
+		peerWindowSize: 40 * time.Second,
+	}
+}
+
+func (peer *bpPeer) ID() p2p.ID {
+	return peer.id
+}
+
+func (peer *bpPeer) SetLogger(l log.Logger) {
 	peer.logger = l
 }
 
+func (peer *bpPeer) GetHeight() int64 {
+	return peer.height
+}
+
+func (peer *bpPeer) SetHeight(height int64) {
+	peer.height = height
+}
+
+func (peer *bpPeer) GetNumPendingBlockRequests() int32 {
+	return peer.numPendingBlockRequests
+}
+
+func (peer *bpPeer) GetBlockAtHeight(height int64) (*types.Block, error) {
+	block, ok := peer.blocks[height]
+	if !ok {
+		return nil, errMissingRequest
+	}
+	if block == nil {
+		return nil, errMissingBlock
+	}
+	return peer.blocks[height], nil
+}
+
+func (peer *bpPeer) SetBlockAtHeight(height int64, block *types.Block) {
+	peer.blocks[height] = block
+}
+
+func (peer *bpPeer) RemoveBlockAtHeight(height int64) {
+	if _, ok := peer.blocks[height]; !ok {
+		return
+	}
+	delete(peer.blocks, height)
+}
+
 func (peer *bpPeer) resetMonitor() {
-	peer.recvMonitor = flow.New(peerSampleRate, peerWindowSize)
-	initialValue := float64(minRecvRate) * math.E
+	peer.recvMonitor = flow.New(peer.parameters.peerSampleRate, peer.parameters.peerWindowSize)
+	initialValue := float64(peer.parameters.minRecvRate) * math.E
 	peer.recvMonitor.SetREMA(initialValue)
 }
 
 func (peer *bpPeer) resetTimeout() {
-	if peer.timeout == nil {
-		peer.timeout = time.AfterFunc(peerTimeout, peer.onTimeout)
+	if peer.blockResponseTimer == nil {
+		peer.blockResponseTimer = time.AfterFunc(peer.parameters.peerTimeout, peer.onTimeout)
 	} else {
-		peer.timeout.Reset(peerTimeout)
+		peer.blockResponseTimer.Reset(peer.parameters.peerTimeout)
 	}
 }
 
-func (peer *bpPeer) incrPending() {
-	if peer.numPending == 0 {
+func (peer *bpPeer) IncrPending() {
+	if peer.numPendingBlockRequests == 0 {
 		peer.resetMonitor()
 		peer.resetTimeout()
 	}
-	peer.numPending++
+	peer.numPendingBlockRequests++
 }
 
-func (peer *bpPeer) decrPending(recvSize int) {
-	if peer.numPending == 0 {
+func (peer *bpPeer) StopBlockResponseTimer() bool {
+	if peer.blockResponseTimer == nil {
+		return false
+	}
+	return peer.blockResponseTimer.Stop()
+}
+
+func (peer *bpPeer) DecrPending(recvSize int) {
+	if peer.GetNumPendingBlockRequests() == 0 {
 		panic("cannot decrement, peer does not have pending requests")
 	}
 
-	peer.numPending--
-	if peer.numPending == 0 {
-		peer.timeout.Stop()
+	peer.numPendingBlockRequests--
+	if peer.GetNumPendingBlockRequests() == 0 {
+		_ = peer.StopBlockResponseTimer()
 	} else {
 		peer.recvMonitor.Update(recvSize)
 		peer.resetTimeout()
@@ -102,29 +159,27 @@ func (peer *bpPeer) onTimeout() {
 	peer.errFunc(errNoPeerResponse, peer.id)
 }
 
-func (peer *bpPeer) isGood() error {
-	if peer.numPending > 0 {
-		curRate := peer.recvMonitor.Status().CurRate
-		// curRate can be 0 on start
-		if curRate != 0 && curRate < minRecvRate {
-			err := errSlowPeer
-			peer.logger.Error("SendTimeout", "peer", peer.id,
-				"reason", err,
-				"curRate", fmt.Sprintf("%d KB/s", curRate/1024),
-				"minRate", fmt.Sprintf("%d KB/s", minRecvRate/1024))
-			// consider the peer timedout
-			return err
-		}
+func (peer *bpPeer) IsGood() error {
+	if peer.numPendingBlockRequests == 0 {
+		return nil
+	}
+	curRate := peer.recvMonitor.Status().CurRate
+	// curRate can be 0 on start
+	if curRate != 0 && curRate < peer.parameters.minRecvRate {
+		err := errSlowPeer
+		peer.logger.Error("SendTimeout", "peer", peer,
+			"reason", err,
+			"curRate", fmt.Sprintf("%d KB/s", curRate/1024),
+			"minRate", fmt.Sprintf("%d KB/s", peer.parameters.minRecvRate/1024))
+		return err
 	}
 	return nil
 }
 
-func (peer *bpPeer) cleanup() {
-	if peer.timeout != nil {
-		peer.timeout.Stop()
-	}
+func (peer *bpPeer) Cleanup() {
+	_ = peer.StopBlockResponseTimer()
 }
 
 func (peer *bpPeer) String() string {
-	return fmt.Sprintf("peer: %v height: %v pending: %v", peer.id, peer.height, peer.numPending)
+	return fmt.Sprintf("peer: %v height: %v pending: %v", peer.id, peer.height, peer.numPendingBlockRequests)
 }

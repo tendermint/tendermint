@@ -301,7 +301,7 @@ func (bcR *BlockchainReactor) poolRoutine() {
 			case <-doProcessBlockCh:
 				for {
 					err := bcR.processBlock()
-					if err == errMissingBlocks {
+					if err == errMissingBlock {
 						break
 					}
 					// Notify FSM of block processing result.
@@ -434,14 +434,14 @@ func (bcR *BlockchainReactor) processBlock() error {
 	return nil
 }
 
-// Implements bcRMessageInterface
+// Implements bcRNotifier
 // sendStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.store.Height()})
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 }
 
-// Implements bcRMessageInterface
+// Implements bcRNotifier
 // BlockRequest sends `BlockRequest` height.
 func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) error {
 	peer := bcR.Switch.Peers().Get(peerID)
@@ -457,7 +457,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 	return nil
 }
 
-// Implements bcRMessageInterface
+// Implements bcRNotifier
 func (bcR *BlockchainReactor) switchToConsensus() {
 	conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
@@ -468,7 +468,7 @@ func (bcR *BlockchainReactor) switchToConsensus() {
 	}
 }
 
-// Implements bcRMessageInterface
+// Implements bcRNotifier
 // Called by FSM and pool:
 // - pool calls when it detects slow peer or when peer times out
 // - FSM calls when:
@@ -486,7 +486,7 @@ func (bcR *BlockchainReactor) sendPeerError(err error, peerID p2p.ID) {
 	bcR.eventsFromFSMCh <- msgData
 }
 
-// Implements bcRMessageInterface
+// Implements bcRNotifier
 func (bcR *BlockchainReactor) resetStateTimer(name string, timer **time.Timer, timeout time.Duration) {
 	if timer == nil {
 		panic("nil timer pointer parameter")

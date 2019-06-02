@@ -60,8 +60,8 @@ type tPBlocks struct {
 
 // Makes a block pool with specified current height, list of peers, block requests and block responses
 func makeBlockPool(bcr *testBcR, height int64, peers []bpPeer, blocks map[int64]tPBlocks) *blockPool {
-	bPool := newBlockPool(height, bcr)
-	bPool.setLogger(bcr.logger)
+	bPool := NewBlockPool(height, bcr)
+	bPool.SetLogger(bcr.logger)
 
 	txs := []types.Tx{types.Tx("foo"), types.Tx("bar")}
 
@@ -70,8 +70,8 @@ func makeBlockPool(bcr *testBcR, height int64, peers []bpPeer, blocks map[int64]
 		if p.height > maxH {
 			maxH = p.height
 		}
-		bPool.peers[p.id] = newBPPeer(p.id, p.height, bcr.sendPeerError)
-		bPool.peers[p.id].setLogger(bcr.logger)
+		bPool.peers[p.ID()] = NewBPPeer(p.ID(), p.height, bcr.sendPeerError, nil)
+		bPool.peers[p.ID()].SetLogger(bcr.logger)
 
 	}
 	bPool.maxPeerHeight = maxH
@@ -83,7 +83,7 @@ func makeBlockPool(bcr *testBcR, height int64, peers []bpPeer, blocks map[int64]
 			bPool.peers[p.id].blocks[h] = types.MakeBlock(int64(h), txs, nil, nil)
 		} else {
 			// simulate that a request for block at height h has been sent to peer p.id
-			bPool.peers[p.id].incrPending()
+			bPool.peers[p.id].IncrPending()
 		}
 	}
 	return bPool
@@ -94,7 +94,7 @@ func assertPeerSetsEquivalent(t *testing.T, set1 map[p2p.ID]*bpPeer, set2 map[p2
 	for peerID, peer1 := range set1 {
 		peer2 := set2[peerID]
 		assert.NotNil(t, peer2)
-		assert.Equal(t, peer1.numPending, peer2.numPending)
+		assert.Equal(t, peer1.GetNumPendingBlockRequests(), peer2.GetNumPendingBlockRequests())
 		assert.Equal(t, peer1.height, peer2.height)
 		assert.Equal(t, len(peer1.blocks), len(peer2.blocks))
 		for h, block1 := range peer1.blocks {
@@ -164,7 +164,7 @@ func TestBlockPoolUpdatePeer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pool := tt.pool
-			err := pool.updatePeer(tt.args.id, tt.args.height)
+			err := pool.UpdatePeer(tt.args.id, tt.args.height)
 			assert.Equal(t, tt.errWanted, err)
 			assert.Equal(t, tt.poolWanted.blocks, tt.pool.blocks)
 			assertPeerSetsEquivalent(t, tt.poolWanted.peers, tt.pool.peers)
@@ -236,7 +236,7 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.pool.removePeer(tt.args.peerID, tt.args.err)
+			tt.pool.RemovePeer(tt.args.peerID, tt.args.err)
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)
 		})
 	}
@@ -285,27 +285,27 @@ func TestBlockPoolRemoveShortPeers(t *testing.T) {
 
 func TestBlockPoolSendRequestBatch(t *testing.T) {
 	type testPeerResult struct {
-		id         p2p.ID
-		numPending int32
+		id                      p2p.ID
+		numPendingBlockRequests int32
 	}
 
 	testBcR := newTestBcR()
 
 	tests := []struct {
-		name               string
-		pool               *blockPool
-		maxRequestsPerPeer int32
-		expRequests        map[int64]bool
-		expPeerResults     []testPeerResult
-		expNumPending      int32
+		name                       string
+		pool                       *blockPool
+		maxRequestsPerPeer         int32
+		expRequests                map[int64]bool
+		expPeerResults             []testPeerResult
+		expnumPendingBlockRequests int32
 	}{
 		{
-			name:               "one peer - send up to maxRequestsPerPeer block requests",
-			pool:               makeBlockPool(testBcR, 10, []bpPeer{{id: "P1", height: 100}}, map[int64]tPBlocks{}),
-			maxRequestsPerPeer: 2,
-			expRequests:        map[int64]bool{10: true, 11: true},
-			expPeerResults:     []testPeerResult{{id: "P1", numPending: 2}},
-			expNumPending:      2,
+			name:                       "one peer - send up to maxRequestsPerPeer block requests",
+			pool:                       makeBlockPool(testBcR, 10, []bpPeer{{id: "P1", height: 100}}, map[int64]tPBlocks{}),
+			maxRequestsPerPeer:         2,
+			expRequests:                map[int64]bool{10: true, 11: true},
+			expPeerResults:             []testPeerResult{{id: "P1", numPendingBlockRequests: 2}},
+			expnumPendingBlockRequests: 2,
 		},
 		{
 			name:               "n peers - send n*maxRequestsPerPeer block requests",
@@ -313,9 +313,9 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 			maxRequestsPerPeer: 2,
 			expRequests:        map[int64]bool{10: true, 11: true},
 			expPeerResults: []testPeerResult{
-				{id: "P1", numPending: 2},
-				{id: "P2", numPending: 2}},
-			expNumPending: 4,
+				{id: "P1", numPendingBlockRequests: 2},
+				{id: "P2", numPendingBlockRequests: 2}},
+			expnumPendingBlockRequests: 4,
 		},
 	}
 
@@ -325,13 +325,13 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 
 			var pool = tt.pool
 			maxRequestsPerPeer = int32(tt.maxRequestsPerPeer)
-			pool.makeNextRequests(10)
+			pool.MakeNextRequests(10)
 			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*int32(len(pool.peers)))
 
 			for _, tPeer := range tt.expPeerResults {
 				var peer = pool.peers[tPeer.id]
 				assert.NotNil(t, peer)
-				assert.Equal(t, tPeer.numPending, peer.numPending)
+				assert.Equal(t, tPeer.numPendingBlockRequests, peer.GetNumPendingBlockRequests())
 			}
 			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*int32(len(pool.peers)))
 
@@ -425,7 +425,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.pool.addBlock(tt.args.peerID, tt.args.block, tt.args.blockSize)
+			err := tt.pool.AddBlock(tt.args.peerID, tt.args.block, tt.args.blockSize)
 			assert.Equal(t, tt.errWanted, err)
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)
 		})
@@ -447,7 +447,7 @@ func TestBlockPoolGetNextTwoBlocks(t *testing.T) {
 			pool: makeBlockPool(testBcR, 10,
 				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
 				map[int64]tPBlocks{15: {"P1", true}, 16: {"P2", true}}),
-			errWanted: errMissingBlocks,
+			errWanted: errMissingBlock,
 		},
 		{
 			name: "second block missing",
@@ -455,7 +455,7 @@ func TestBlockPoolGetNextTwoBlocks(t *testing.T) {
 				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
 				map[int64]tPBlocks{15: {"P1", true}, 18: {"P2", true}}),
 			firstWanted: 15,
-			errWanted:   errMissingBlocks,
+			errWanted:   errMissingBlock,
 		},
 		{
 			name: "first block missing",
@@ -463,7 +463,7 @@ func TestBlockPoolGetNextTwoBlocks(t *testing.T) {
 				[]bpPeer{{id: "P1", height: 100}, {id: "P2", height: 100}},
 				map[int64]tPBlocks{16: {"P2", true}, 18: {"P2", true}}),
 			secondWanted: 16,
-			errWanted:    errMissingBlocks,
+			errWanted:    errMissingBlock,
 		},
 		{
 			name: "both blocks present",
@@ -478,7 +478,7 @@ func TestBlockPoolGetNextTwoBlocks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pool := tt.pool
-			gotFirst, gotSecond, err := pool.getNextTwoBlocks()
+			gotFirst, gotSecond, err := pool.GetNextTwoBlocks()
 			assert.Equal(t, tt.errWanted, err)
 
 			if tt.firstWanted != 0 {
@@ -546,7 +546,7 @@ func TestBlockPoolInvalidateFirstTwoBlocks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.pool.invalidateFirstTwoBlocks(errNoPeerResponse)
+			tt.pool.InvalidateFirstTwoBlocks(errNoPeerResponse)
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)
 		})
 	}
@@ -586,7 +586,7 @@ func TestProcessedCurrentHeightBlock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.pool.processedCurrentHeightBlock()
+			tt.pool.ProcessedCurrentHeightBlock()
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)
 		})
 	}
@@ -644,7 +644,7 @@ func TestRemovePeerAtCurrentHeight(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.pool.removePeerAtCurrentHeights(errNoPeerResponse)
+			tt.pool.RemovePeerAtCurrentHeights(errNoPeerResponse)
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)
 		})
 	}

@@ -222,12 +222,12 @@ func fixBlockResponseEvStep(step *fsmStepTestValues, testBcR *testReactor) {
 
 func shouldApplyProcessedBlockEvStep(step *fsmStepTestValues, testBcR *testReactor) bool {
 	if step.event == processedBlockEv {
-		_, err := testBcR.fsm.pool.getBlockAndPeerAtHeight(testBcR.fsm.pool.height)
-		if err == errMissingBlocks {
+		_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height)
+		if err == errMissingBlock {
 			return false
 		}
-		_, err = testBcR.fsm.pool.getBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
-		if err == errMissingBlocks {
+		_, err = testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
+		if err == errMissingBlock {
 			return false
 		}
 	}
@@ -325,7 +325,7 @@ func TestFSMBasic(t *testing.T) {
 				}
 
 				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.getBlockAndPeerAtHeight(height)
+					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
 					assert.Nil(t, err)
 				}
 				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
@@ -425,15 +425,15 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 				}
 
 				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.getBlockAndPeerAtHeight(height)
+					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
 					assert.Nil(t, err)
 				}
 
 				if step.event == processedBlockEv && step.data.err == errBlockVerificationFailure {
 					heightAfter := testBcR.fsm.pool.height
 					assert.Equal(t, heightBefore, heightAfter)
-					firstAfter, err1 := testBcR.fsm.pool.getBlockAndPeerAtHeight(testBcR.fsm.pool.height)
-					secondAfter, err2 := testBcR.fsm.pool.getBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
+					firstAfter, err1 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height)
+					secondAfter, err2 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
 					assert.NotNil(t, err1)
 					assert.NotNil(t, err2)
 					assert.Nil(t, firstAfter)
@@ -561,7 +561,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 				}
 
 				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.getBlockAndPeerAtHeight(height)
+					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
 					assert.Nil(t, err)
 				}
 				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
@@ -672,7 +672,7 @@ func TestFSMBlockAtCurrentHeightDoesNotArriveInTime(t *testing.T) {
 				}
 
 				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.getBlockAndPeerAtHeight(height)
+					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
 					assert.Nil(t, err)
 				}
 				assert.Equal(t, step.expectedState, testBcR.fsm.state.name)
@@ -1200,49 +1200,8 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 	}
 }
 
-func TestFSMPeerTimeout(t *testing.T) {
-	maxRequestsPerPeer = 2
-	resetTestValues()
-	peerTimeout = 20 * time.Millisecond
-	// Create and start the FSM
-	testBcR := newTestReactor(1)
-	fsm := testBcR.fsm
-	fsm.start()
-
-	// Check that FSM sends a status request message
-	time.Sleep(time.Millisecond)
-	assert.Equal(t, 1, numStatusRequests)
-
-	// Send a status response message to FSM
-	peerID := p2p.ID("P1")
-	sendStatusResponse(fsm, peerID, 10)
-	time.Sleep(5 * time.Millisecond)
-
-	if err := fsm.handle(&bcReactorMessage{
-		event: makeRequestsEv,
-		data:  bReactorEventData{maxNumRequests: maxNumRequests}}); err != nil {
-	}
-	// Check that FSM sends a block request message and...
-	assert.Equal(t, maxRequestsPerPeer, numBlockRequests)
-	// ... the block request has the expected height and peer
-	assert.Equal(t, maxRequestsPerPeer, int32(len(fsm.pool.peers[peerID].blocks)))
-	assert.Equal(t, peerID, lastBlockRequest.peerID)
-
-	// let FSM timeout on the block response message
-	time.Sleep(100 * time.Millisecond)
-	testMutex.Lock()
-	defer testMutex.Unlock()
-	assert.Equal(t, peerID, lastPeerError.peerID)
-	assert.Equal(t, errNoPeerResponse, lastPeerError.err)
-
-	peerTimeout = 15 * time.Second
-	maxRequestsPerPeer = 40
-
-}
-
 // ----------------------------------------
-// implementation for the test reactor APIs
-
+// implements the bcRNotifier
 func (testR *testReactor) sendPeerError(err error, peerID p2p.ID) {
 	testMutex.Lock()
 	defer testMutex.Unlock()
@@ -1282,29 +1241,3 @@ func (testR *testReactor) switchToConsensus() {
 }
 
 // ----------------------------------------
-
-// -------------------------------------------------------
-// helper functions for tests to simulate different events
-func sendStatusResponse(fsm *bReactorFSM, peerID p2p.ID, height int64) {
-	msgBytes := makeStatusResponseMessage(height)
-
-	_ = fsm.handle(&bcReactorMessage{
-		event: statusResponseEv,
-		data: bReactorEventData{
-			peerId: peerID,
-			height: height,
-			length: len(msgBytes),
-		},
-	})
-}
-
-// -------------------------------------------------------
-
-// ----------------------------------------------------
-// helper functions to make blockchain reactor messages
-func makeStatusResponseMessage(height int64) []byte {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{height})
-	return msgBytes
-}
-
-// ----------------------------------------------------
