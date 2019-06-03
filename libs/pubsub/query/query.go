@@ -241,7 +241,7 @@ func (q *Query) Matches(events map[string][]string) bool {
 // First, it looks up the key in the events and if it finds one, tries to compare
 // all the values from it to the operand using the operator.
 //
-// "tx.gas", "=", "7", { "tx.gas": 7, "tx.ID": "4AE393495334" }
+// "tx.gas", "=", "7", {"tx": [{"gas": 7, "ID": "4AE393495334"}]}
 func match(tag string, op Operator, operand reflect.Value, events map[string][]string) bool {
 	// look up the tag from the query in tags
 	values, ok := events[tag]
