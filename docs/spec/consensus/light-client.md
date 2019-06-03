@@ -18,6 +18,8 @@ Header(height int64) (SignedHeader, error) // returns signed header for the give
 Validators(height int64) (ResultValidators, error) // returns validator set for the given height
 LastHeader(valSetNumber int64) (SignedHeader, error)   // returns last header signed by the validator set with the given validator set number
 
+Test
+
 type SignedHeader struct {
     Header        Header
     Commit        Commit
