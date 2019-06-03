@@ -221,4 +221,4 @@ func CheckVS(oh, nh) bool {
 
 **Remark.** Computing all PAs might be too expensive (all subsets of $oh.V$ that have a certain combined voting power in oh). Similarly, we then have to compute all voting powers of PAs in nh to get the maximum. This is disturbing, as right now, based on the examples, I expect that CheckVS will mostly return false, assuming that there are frequent changes in the validator sets. However, $oh.V=nh.V$ might be the common case.
 
-**To Do.** The current invariant assumes that the 1/3 fault assumption is always satisfied. If this is not the case, and there is slashing, we should write the spec of the fault assumptions with temporary violations. Cf. fork accountability, slashing, "counter factual signing" etc. What is there?
+**To Do.** The current invariant assumes that the 1/3 fault assumption is always satisfied. If this is not the case, and there is slashing, etc., we should write the spec of the fault assumptions with temporary violations. Cf. fork accountability, slashing, "counter factual signing" etc. 
