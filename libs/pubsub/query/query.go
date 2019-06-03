@@ -150,7 +150,7 @@ func (q *Query) Conditions() []Condition {
 
 // Matches returns true if the query matches against any event in the given set
 // of events, false otherwise. For each event, a match exists if the query is
-// matches against *any* value in a slice of values.
+// matched against *any* value in a slice of values.
 //
 // For example, query "name=John" matches events = {"name": ["John", "Eric"]}.
 // More examples could be found in parser_test.go and query_test.go.
