@@ -17,5 +17,6 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [cs] \#3656 Exit if SwitchToConsensus fails
 
 ### BUG FIXES:
