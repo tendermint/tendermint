@@ -18,6 +18,6 @@
 
 ### IMPROVEMENTS:
 
-* http rpc client will return wrapped error, can use errors.Cause() to get error code for handling.
+* [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code.
 
 ### BUG FIXES:
