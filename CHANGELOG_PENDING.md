@@ -9,6 +9,7 @@
 * Apps
 
 * Go API
+- [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
 
 * Blockchain Protocol
 
