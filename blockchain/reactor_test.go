@@ -262,7 +262,6 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 outerFor:
 	for {
 		time.Sleep(1 * time.Second)
-
 		for i := 0; i < numNodes; i++ {
 			reactorPairs[i].conR.mtx.Lock()
 			if !reactorPairs[i].conR.switchedToConsensus {
@@ -272,7 +271,7 @@ outerFor:
 			reactorPairs[i].conR.mtx.Unlock()
 		}
 
-		break outerFor
+		break
 	}
 
 	//at this time, reactors[0-3] is the newest
@@ -300,7 +299,6 @@ outerFor:
 
 	for {
 		time.Sleep(1 * time.Second)
-
 		lastReactorPair.conR.mtx.Lock()
 		if lastReactorPair.conR.switchedToConsensus {
 			lastReactorPair.conR.mtx.Unlock()
@@ -314,7 +312,6 @@ outerFor:
 	}
 
 	assert.True(t, lastReactorPair.bcR.Switch.Peers().Size() < len(reactorPairs)-1)
-	fmt.Println("TestFastSyncBadBlockStopsPeer finished")
 }
 
 func setupReactors(
@@ -358,8 +355,6 @@ func TestFastSyncMultiNode(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	start := time.Now()
-
 	reactorPairs, switches := setupReactors(numNodes, maxHeight, genDoc, privVals)
 
 	defer func() {
@@ -382,8 +377,7 @@ outerFor:
 			reactorPairs[i].conR.mtx.Unlock()
 		}
 
-		fmt.Println("SETUP FAST SYNC Duration", time.Since(start))
-		break outerFor
+		break
 	}
 
 	//at this time, reactors[0-3] are the newest
@@ -402,7 +396,7 @@ outerFor:
 
 	}, p2p.Connect2Switches)...)
 
-	start = time.Now()
+	start := time.Now()
 
 	for i := 0; i < len(reactorPairs)-1; i++ {
 		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)

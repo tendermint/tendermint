@@ -34,7 +34,7 @@ type testReactor struct {
 }
 
 func sendEventToFSM(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) error {
-	return fsm.handle(&bcReactorMessage{event: ev, data: data})
+	return fsm.Handle(&bcReactorMessage{event: ev, data: data})
 }
 
 type fsmStepTestValues struct {
@@ -184,7 +184,7 @@ func makeStepPeerRemoveEv(current, expected string, peerID p2p.ID, err error, pe
 func newTestReactor(height int64) *testReactor {
 	testBcR := &testReactor{logger: log.TestingLogger(), stateTimerStarts: make(map[string]int)}
 	testBcR.fsm = NewFSM(height, testBcR)
-	testBcR.fsm.setLogger(testBcR.logger)
+	testBcR.fsm.SetLogger(testBcR.logger)
 	return testBcR
 }
 
@@ -224,7 +224,7 @@ func executeFSMTests(t *testing.T, tests []testFields, matchRespToReq bool) {
 
 				var heightBefore int64
 				if step.event == processedBlockEv && step.data.err == errBlockVerificationFailure {
-					heightBefore = testBcR.fsm.pool.height
+					heightBefore = testBcR.fsm.pool.Height
 				}
 				oldNumStatusRequests := testBcR.numStatusRequests
 				oldNumBlockRequests := testBcR.numBlockRequests
@@ -252,10 +252,10 @@ func executeFSMTests(t *testing.T, tests []testFields, matchRespToReq bool) {
 					assert.Nil(t, err)
 				}
 				if step.event == processedBlockEv && step.data.err == errBlockVerificationFailure {
-					heightAfter := testBcR.fsm.pool.height
+					heightAfter := testBcR.fsm.pool.Height
 					assert.Equal(t, heightBefore, heightAfter)
-					firstAfter, err1 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height)
-					secondAfter, err2 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
+					firstAfter, err1 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.Height)
+					secondAfter, err2 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.Height + 1)
 					assert.NotNil(t, err1)
 					assert.NotNil(t, err2)
 					assert.Nil(t, firstAfter)
@@ -391,7 +391,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				// blockResponseEv for height 100
 				makeStepBlockRespEvErrored("waitForBlock", "waitForBlock",
-					"P1", 100, []int64{}, errBadDataFromPeer, []p2p.ID{}),
+					"P1", 100, []int64{}, errMissingRequest, []p2p.ID{}),
 			},
 		},
 		{
@@ -399,12 +399,12 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 			startingHeight:     1,
 			maxRequestsPerPeer: 3,
 			steps: []fsmStepTestValues{
-				// startFSMEv
 				makeStepStartFSMEv(),
+
 				// statusResponseEv from P1
 				makeStepStatusEv("waitForPeer", "waitForBlock", "P1", 100, nil),
 
-				// makeRequestEv
+				// request and add block 1
 				makeStepMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
 				makeStepBlockRespEv("waitForBlock", "waitForBlock",
 					"P1", 1, []int64{}),
@@ -412,7 +412,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 				// simulate error in this step. Since peer is removed together with block 1,
 				// the blocks present in the pool will be {}
 				makeStepBlockRespEvErrored("waitForBlock", "waitForBlock",
-					"P1", 1, []int64{}, errBadDataFromPeer, []p2p.ID{"P1"}),
+					"P1", 1, []int64{}, errDuplicateBlock, []p2p.ID{"P1"}),
 			},
 		},
 		{
@@ -904,11 +904,11 @@ func makeCorrectTransitionSequenceWithRandomParameters() testFields {
 
 func shouldApplyProcessedBlockEvStep(step *fsmStepTestValues, testBcR *testReactor) bool {
 	if step.event == processedBlockEv {
-		_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height)
+		_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.Height)
 		if err == errMissingBlock {
 			return false
 		}
-		_, err = testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.height + 1)
+		_, err = testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.Height + 1)
 		if err == errMissingBlock {
 			return false
 		}

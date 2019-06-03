@@ -143,8 +143,8 @@ var (
 )
 
 // timeouts for state timers
-var (
-	waitForPeerTimeout                 = 5 * time.Second
+const (
+	waitForPeerTimeout                 = 3 * time.Second
 	waitForBlockAtCurrentHeightTimeout = 10 * time.Second
 )
 
@@ -158,6 +158,7 @@ var (
 	errNoPeerResponse                  = errors.New("FSM timed out on peer block response")
 	errBadDataFromPeer                 = errors.New("received from wrong peer or bad block")
 	errMissingBlock                    = errors.New("missing blocks")
+	errDuplicateBlock                  = errors.New("received duplicate block from peer")
 	errMissingRequest                  = errors.New("missing request")
 	errBlockVerificationFailure        = errors.New("block verification failure, redo")
 	errNilPeerForBlockRequest          = errors.New("peer for block request does not exist in the switch")
@@ -207,7 +208,7 @@ func init() {
 
 			case statusResponseEv:
 				if err := fsm.pool.UpdatePeer(data.peerId, data.height); err != nil {
-					if len(fsm.pool.peers) == 0 {
+					if fsm.pool.NumPeers() == 0 {
 						return waitForPeer, err
 					}
 				}
@@ -240,7 +241,7 @@ func init() {
 
 			case statusResponseEv:
 				err := fsm.pool.UpdatePeer(data.peerId, data.height)
-				if len(fsm.pool.peers) == 0 {
+				if fsm.pool.NumPeers() == 0 {
 					return waitForPeer, err
 				}
 				if fsm.pool.ReachedMaxHeight() {
@@ -264,10 +265,10 @@ func init() {
 				first, second, _ := fsm.pool.GetNextTwoBlocks()
 				if data.err != nil {
 					fsm.logger.Error("process blocks returned error", "err", data.err, "first", first.block.Height, "second", second.block.Height)
-					fsm.logger.Error("send peer error for", "peer", first.peer.ID())
-					fsm.toBcR.sendPeerError(data.err, first.peer.ID())
-					fsm.logger.Error("send peer error for", "peer", second.peer.ID())
-					fsm.toBcR.sendPeerError(data.err, second.peer.ID())
+					fsm.logger.Error("send peer error for", "peer", first.peer.ID)
+					fsm.toBcR.sendPeerError(data.err, first.peer.ID)
+					fsm.logger.Error("send peer error for", "peer", second.peer.ID)
+					fsm.toBcR.sendPeerError(data.err, second.peer.ID)
 					// Remove the first two blocks. This will also remove the peers
 					fsm.pool.InvalidateFirstTwoBlocks(data.err)
 				} else {
@@ -286,7 +287,7 @@ func init() {
 			case peerRemoveEv:
 				// This event is sent by the switch to remove disconnected and errored peers.
 				fsm.pool.RemovePeer(data.peerId, data.err)
-				if len(fsm.pool.peers) == 0 {
+				if fsm.pool.NumPeers() == 0 {
 					return waitForPeer, nil
 				}
 				if fsm.pool.ReachedMaxHeight() {
@@ -306,7 +307,7 @@ func init() {
 				// We haven't received the block at current height or height+1. Remove peer.
 				fsm.pool.RemovePeerAtCurrentHeights(errNoPeerResponse)
 				fsm.resetStateTimer()
-				if len(fsm.pool.peers) == 0 {
+				if fsm.pool.NumPeers() == 0 {
 					return waitForPeer, errNoPeerResponseForCurrentHeights
 				}
 				if fsm.pool.ReachedMaxHeight() {
@@ -329,7 +330,7 @@ func init() {
 	finished = &bReactorFSMState{
 		name: "finished",
 		enter: func(fsm *bReactorFSM) {
-			fsm.logger.Info("Time to switch to consensus reactor!", "height", fsm.pool.height)
+			fsm.logger.Info("Time to switch to consensus reactor!", "height", fsm.pool.Height)
 			fsm.toBcR.switchToConsensus()
 			fsm.cleanup()
 		},
@@ -350,18 +351,18 @@ type bcReactor interface {
 	switchToConsensus()
 }
 
-func (fsm *bReactorFSM) setLogger(l log.Logger) {
+func (fsm *bReactorFSM) SetLogger(l log.Logger) {
 	fsm.logger = l
 	fsm.pool.SetLogger(l)
 }
 
 // Starts the FSM.
-func (fsm *bReactorFSM) start() {
-	_ = fsm.handle(&bcReactorMessage{event: startFSMEv})
+func (fsm *bReactorFSM) Start() {
+	_ = fsm.Handle(&bcReactorMessage{event: startFSMEv})
 }
 
 // handle processes messages and events sent to the FSM.
-func (fsm *bReactorFSM) handle(msg *bcReactorMessage) error {
+func (fsm *bReactorFSM) Handle(msg *bcReactorMessage) error {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
 	fsm.logger.Debug("FSM received", "event", msg, "state", fsm.state)
@@ -427,5 +428,5 @@ func (fsm *bReactorFSM) getNextTwoBlocks() (first, second *blockData, err error)
 func (fsm *bReactorFSM) getStatus() (height, maxPeerHeight int64) {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
-	return fsm.pool.height, fsm.pool.maxPeerHeight
+	return fsm.pool.Height, fsm.pool.MaxPeerHeight
 }

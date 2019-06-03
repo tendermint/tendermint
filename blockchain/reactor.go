@@ -137,7 +137,7 @@ type bcFsmMessage struct {
 // SetLogger implements cmn.Service by setting the logger on reactor and pool.
 func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 	bcR.BaseService.Logger = l
-	bcR.fsm.setLogger(l)
+	bcR.fsm.SetLogger(l)
 }
 
 // OnStart implements cmn.Service.
@@ -252,6 +252,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				length: len(msgBytes),
 			},
 		}
+		bcR.Logger.Info("Received", "src", src, "height", msg.Block.Height)
 		bcR.messagesForFSMCh <- msgForFSM
 
 	case *bcStatusResponseMessage:
@@ -274,7 +275,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 // poolRoutine receives and handles messages from the Receive() routine and from the FSM
 func (bcR *BlockchainReactor) poolRoutine() {
 
-	bcR.fsm.start()
+	bcR.fsm.Start()
 
 	processReceivedBlockTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	sendBlockRequestTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
@@ -311,7 +312,7 @@ func (bcR *BlockchainReactor) poolRoutine() {
 							err: err,
 						},
 					}
-					_ = bcR.fsm.handle(&msgForFSM)
+					_ = bcR.fsm.Handle(&msgForFSM)
 
 					if err != nil {
 						break
@@ -338,7 +339,7 @@ ForLoop:
 			if !bcR.fsm.needsBlocks() {
 				continue
 			}
-			_ = bcR.fsm.handle(&bcReactorMessage{
+			_ = bcR.fsm.Handle(&bcReactorMessage{
 				event: makeRequestsEv,
 				data: bReactorEventData{
 					maxNumRequests: maxNumRequests}})
@@ -350,12 +351,12 @@ ForLoop:
 		case msg := <-bcR.messagesForFSMCh:
 			// Sent from the Receive() routine when status (statusResponseEv) and
 			// block (blockResponseEv) response events are received
-			_ = bcR.fsm.handle(&msg)
+			_ = bcR.fsm.Handle(&msg)
 
 		case msg := <-bcR.errorsForFSMCh:
 			// Sent from the switch.RemovePeer() routine (RemovePeerEv) and
 			// FSM state timer expiry routine (stateTimeoutEv).
-			_ = bcR.fsm.handle(&msg)
+			_ = bcR.fsm.Handle(&msg)
 
 		case msg := <-bcR.eventsFromFSMCh:
 			switch msg.event {
@@ -368,7 +369,7 @@ ForLoop:
 				bcR.reportPeerErrorToSwitch(msg.data.err, msg.data.peerID)
 				if msg.data.err == errNoPeerResponse {
 					// Sent from the peer timeout handler routine
-					_ = bcR.fsm.handle(&bcReactorMessage{
+					_ = bcR.fsm.Handle(&bcReactorMessage{
 						event: peerRemoveEv,
 						data: bReactorEventData{
 							peerId: msg.data.peerID,
@@ -418,15 +419,14 @@ func (bcR *BlockchainReactor) processBlock() error {
 	// currently necessary.
 	err = bcR.state.Validators.VerifyCommit(
 		chainID, firstID, first.Height, second.LastCommit)
-
 	if err != nil {
-		bcR.Logger.Error("error in validation", "err", err, first.Height, second.Height)
+		bcR.Logger.Error("error during commit verification", "err", err,
+			"first", first.Height, "second", second.Height)
 		return errBlockVerificationFailure
 	}
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	// Get the hash without persisting the state.
 	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
 	if err != nil {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
