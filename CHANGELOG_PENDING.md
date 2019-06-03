@@ -1,4 +1,4 @@
-## v0.31.7
+## v0.31.8
 
 **
 
@@ -19,5 +19,3 @@
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
-- [mempool] \#3699 Revert the change where we only remove valid transactions
-  from the mempool once a block is committed.
