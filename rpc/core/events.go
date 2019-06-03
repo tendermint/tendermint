@@ -204,6 +204,9 @@ func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe
 // }
 // defer client.Stop()
 // err = client.UnsubscribeAll(context.Background(), "test-client")
+// if err != nil {
+//   // handle error
+// }
 // ```
 //
 // > The above command returns JSON structured like this:
