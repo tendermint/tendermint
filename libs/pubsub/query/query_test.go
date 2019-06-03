@@ -48,6 +48,11 @@ func TestMatches(t *testing.T) {
 		{"abci.owner.name = 'Ivan'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true},
 		{"abci.owner.name = 'Ivan' AND abci.owner.name = 'Igor'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true},
 		{"abci.owner.name = 'Ivan' AND abci.owner.name = 'John'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, false},
+
+		{"tm.events.type='NewBlock'", map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}}, false, true},
+		{"app.name = 'fuzzed'", map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}}, false, true},
+		{"tm.events.type='NewBlock' AND app.name = 'fuzzed'", map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}}, false, true},
+		{"tm.events.type='NewHeader' AND app.name = 'fuzzed'", map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}}, false, false},
 	}
 
 	for _, tc := range testCases {
