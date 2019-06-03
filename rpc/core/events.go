@@ -6,7 +6,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
@@ -32,17 +31,35 @@ import (
 // Note for transactions, you can define additional keys by providing events with
 // DeliverTx response.
 //
-//		DeliverTx{
-//			Events: []Event{
-//				{"agent": {{"name": "K"}},
-// 				{"account": {{"owner": "Igore"}, {"created_at": 2013-05-03T14:45:00Z}},
-//			}
-//	  }
+// DeliverTx{
+// 	Events: []Event{
+// 		{
+// 			"rewards": [
+// 				{"address": "A", "amount": "5tokens", "source": "Z"},
+// 				{"address": "B", "amount": "42tokens", "source": "Z"}
+// 			],
+// 		},
+// 		{
+// 			"transfer": [
+// 				{"sender": "A", "recipient": "C", "amount": "5tokens", "timestamp": "2013-05-03T14:45:00Z"},
+// 				{"sender": "X", "recipient": "Y", "amount": "32tokens", "timestamp": "2013-05-03T14:49:00Z"},
+// 			],
+// 		}
+// 	},
+// }
 //
-//		tm.event = 'Tx' AND agent.name = 'K'
-//		tm.event = 'Tx' AND account.created_at >= TIME 2013-05-03T14:45:00Z
-//		tm.event = 'Tx' AND contract.sign_date = DATE 2017-01-01
-//		tm.event = 'Tx' AND account.owner CONTAINS 'Igor'
+// To query for txs where address A has rewards:
+// tm.event = 'Tx' AND rewards.address = 'A'
+//
+// To query for txs where address A has rewards from source Z:
+// tm.event = 'Tx' AND rewards.address = 'A' AND rewards.source = 'Z'
+//
+// To query for txs where a transfer happened after a specific time:
+// tm.event = 'Tx' AND transfer.timestamp >= TIME 2013-05-03T14:45:00Z
+//
+// The following queries would return no results:
+// tm.event = 'Tx' AND rewards.address = 'C'
+// tm.event = 'Tx' AND rewards.address = 'A' AND rewards.source = 'Y'
 //
 // See list of all possible events here
 // https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants
