@@ -43,6 +43,11 @@ func TestMatches(t *testing.T) {
 
 		{"abci.owner.name CONTAINS 'Igor'", map[string][]string{"abci.owner.name": {"Igor,Ivan"}}, false, true},
 		{"abci.owner.name CONTAINS 'Igor'", map[string][]string{"abci.owner.name": {"Pavel,Ivan"}}, false, false},
+
+		{"abci.owner.name = 'Igor'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true},
+		{"abci.owner.name = 'Ivan'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true},
+		{"abci.owner.name = 'Ivan' AND abci.owner.name = 'Igor'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true},
+		{"abci.owner.name = 'Ivan' AND abci.owner.name = 'John'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, false},
 	}
 
 	for _, tc := range testCases {
@@ -50,6 +55,8 @@ func TestMatches(t *testing.T) {
 		if !tc.err {
 			require.Nil(t, err)
 		}
+
+		require.NotNil(t, q, "Query '%s' should not be nil", tc.s)
 
 		if tc.matches {
 			assert.True(t, q.Matches(tc.events), "Query '%s' should match %v", tc.s, tc.events)

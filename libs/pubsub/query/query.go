@@ -249,105 +249,113 @@ func match(tag string, op Operator, operand reflect.Value, events map[string][]s
 		return false
 	}
 
-	// return true if any value in the set of the event's values matches
 	for _, value := range values {
-		switch operand.Kind() {
-		case reflect.Struct: // time
-			operandAsTime := operand.Interface().(time.Time)
+		// return true if any value in the set of the event's values matches
+		if matchValue(value, op, operand) {
+			return true
+		}
+	}
 
-			// try our best to convert value from tags to time.Time
-			var (
-				v   time.Time
-				err error
-			)
+	return false
+}
 
-			if strings.ContainsAny(value, "T") {
-				v, err = time.Parse(TimeLayout, value)
-			} else {
-				v, err = time.Parse(DateLayout, value)
-			}
-			if err != nil {
-				panic(fmt.Sprintf("failed to convert value %v from tag to time.Time: %v", value, err))
-			}
+func matchValue(value string, op Operator, operand reflect.Value) bool {
+	switch operand.Kind() {
+	case reflect.Struct: // time
+		operandAsTime := operand.Interface().(time.Time)
 
-			switch op {
-			case OpLessEqual:
-				return v.Before(operandAsTime) || v.Equal(operandAsTime)
-			case OpGreaterEqual:
-				return v.Equal(operandAsTime) || v.After(operandAsTime)
-			case OpLess:
-				return v.Before(operandAsTime)
-			case OpGreater:
-				return v.After(operandAsTime)
-			case OpEqual:
-				return v.Equal(operandAsTime)
-			}
+		// try our best to convert value from tags to time.Time
+		var (
+			v   time.Time
+			err error
+		)
 
-		case reflect.Float64:
-			operandFloat64 := operand.Interface().(float64)
-			var v float64
+		if strings.ContainsAny(value, "T") {
+			v, err = time.Parse(TimeLayout, value)
+		} else {
+			v, err = time.Parse(DateLayout, value)
+		}
+		if err != nil {
+			panic(fmt.Sprintf("failed to convert value %v from tag to time.Time: %v", value, err))
+		}
 
-			// try our best to convert value from tags to float64
-			v, err := strconv.ParseFloat(value, 64)
+		switch op {
+		case OpLessEqual:
+			return v.Before(operandAsTime) || v.Equal(operandAsTime)
+		case OpGreaterEqual:
+			return v.Equal(operandAsTime) || v.After(operandAsTime)
+		case OpLess:
+			return v.Before(operandAsTime)
+		case OpGreater:
+			return v.After(operandAsTime)
+		case OpEqual:
+			return v.Equal(operandAsTime)
+		}
+
+	case reflect.Float64:
+		operandFloat64 := operand.Interface().(float64)
+		var v float64
+
+		// try our best to convert value from tags to float64
+		v, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			panic(fmt.Sprintf("failed to convert value %v from tag to float64: %v", value, err))
+		}
+
+		switch op {
+		case OpLessEqual:
+			return v <= operandFloat64
+		case OpGreaterEqual:
+			return v >= operandFloat64
+		case OpLess:
+			return v < operandFloat64
+		case OpGreater:
+			return v > operandFloat64
+		case OpEqual:
+			return v == operandFloat64
+		}
+
+	case reflect.Int64:
+		operandInt := operand.Interface().(int64)
+		var v int64
+		// if value looks like float, we try to parse it as float
+		if strings.ContainsAny(value, ".") {
+			v1, err := strconv.ParseFloat(value, 64)
 			if err != nil {
 				panic(fmt.Sprintf("failed to convert value %v from tag to float64: %v", value, err))
 			}
-
-			switch op {
-			case OpLessEqual:
-				return v <= operandFloat64
-			case OpGreaterEqual:
-				return v >= operandFloat64
-			case OpLess:
-				return v < operandFloat64
-			case OpGreater:
-				return v > operandFloat64
-			case OpEqual:
-				return v == operandFloat64
+			v = int64(v1)
+		} else {
+			var err error
+			// try our best to convert value from tags to int64
+			v, err = strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				panic(fmt.Sprintf("failed to convert value %v from tag to int64: %v", value, err))
 			}
-
-		case reflect.Int64:
-			operandInt := operand.Interface().(int64)
-			var v int64
-			// if value looks like float, we try to parse it as float
-			if strings.ContainsAny(value, ".") {
-				v1, err := strconv.ParseFloat(value, 64)
-				if err != nil {
-					panic(fmt.Sprintf("failed to convert value %v from tag to float64: %v", value, err))
-				}
-				v = int64(v1)
-			} else {
-				var err error
-				// try our best to convert value from tags to int64
-				v, err = strconv.ParseInt(value, 10, 64)
-				if err != nil {
-					panic(fmt.Sprintf("failed to convert value %v from tag to int64: %v", value, err))
-				}
-			}
-			switch op {
-			case OpLessEqual:
-				return v <= operandInt
-			case OpGreaterEqual:
-				return v >= operandInt
-			case OpLess:
-				return v < operandInt
-			case OpGreater:
-				return v > operandInt
-			case OpEqual:
-				return v == operandInt
-			}
-
-		case reflect.String:
-			switch op {
-			case OpEqual:
-				return value == operand.String()
-			case OpContains:
-				return strings.Contains(value, operand.String())
-			}
-
-		default:
-			panic(fmt.Sprintf("unknown kind of operand %v", operand.Kind()))
 		}
+		switch op {
+		case OpLessEqual:
+			return v <= operandInt
+		case OpGreaterEqual:
+			return v >= operandInt
+		case OpLess:
+			return v < operandInt
+		case OpGreater:
+			return v > operandInt
+		case OpEqual:
+			return v == operandInt
+		}
+
+	case reflect.String:
+		switch op {
+		case OpEqual:
+			return value == operand.String()
+		case OpContains:
+			return strings.Contains(value, operand.String())
+		}
+
+	default:
+		panic(fmt.Sprintf("unknown kind of operand %v", operand.Kind()))
 	}
 
 	return false
