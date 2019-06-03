@@ -154,6 +154,41 @@ func TestDifferentClients(t *testing.T) {
 	assert.Zero(t, len(subscription3.Out()))
 }
 
+func TestSubscribeDuplicateKeys(t *testing.T) {
+	ctx := context.Background()
+	s := pubsub.NewServer()
+	s.SetLogger(log.TestingLogger())
+	require.NoError(t, s.Start())
+	defer s.Stop()
+
+	sub1, err := s.Subscribe(ctx, "client-1", query.MustParse("abci.Invoices.Number='17'"))
+	require.NoError(t, err)
+
+	sub2, err := s.Subscribe(ctx, "client-2", query.MustParse("abci.Invoices.Number='22'"))
+	require.NoError(t, err)
+
+	sub3, err := s.Subscribe(ctx, "client-3", query.MustParse("abci.Invoices.Number='1' AND abci.Invoices.Number='22'"))
+	require.NoError(t, err)
+
+	sub4, err := s.Subscribe(ctx, "client-4", query.MustParse("abci.Invoices.Number='100'"))
+	require.NoError(t, err)
+
+	err = s.PublishWithEvents(
+		ctx,
+		"Iceman",
+		map[string][]string{
+			"abci.Account.Owner":   {"Ivan"},
+			"abci.Invoices.Number": {"1", "17", "22"},
+		},
+	)
+	require.NoError(t, err)
+
+	assertReceive(t, "Iceman", sub1.Out())
+	assertReceive(t, "Iceman", sub2.Out())
+	assertReceive(t, "Iceman", sub3.Out())
+	require.Zero(t, len(sub4.Out()))
+}
+
 func TestClientSubscribesTwice(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
