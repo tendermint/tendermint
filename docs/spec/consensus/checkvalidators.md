@@ -4,6 +4,10 @@ As part of the light client, the CheckVS procedure has to check, whether given
 two headers (whose heigts differ by more than 1), the LightClient can trust  the
 newer header under the assumption it trusted the old one.
 
+This document contains some math formulas. To ease reading, the file
+  /tendermint/docs/spec/pdfs/checkvalidators.pdf
+displays them correctly.
+
 ## Definitions
 
   * header fields
