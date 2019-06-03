@@ -61,7 +61,12 @@ var (
 	ErrAlreadySubscribed = errors.New("already subscribed")
 )
 
-// Query defines an interface for a query to be used for subscribing.
+// Query defines an interface for a query to be used for subscribing. A query
+// matches against a map of events. Each key in this map is a composite of the
+// even type and an attribute key (e.g. "{eventType}.{eventAttrKey}") and the
+// values are the event values that are contained under that relationship. This
+// allows event types to repeat themselves with the same set of keys and
+// different values.
 type Query interface {
 	Matches(events map[string][]string) bool
 	String() string
