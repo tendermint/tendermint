@@ -145,8 +145,7 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	// add predefined new block header event
 	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlockHeader)
 
-	_ = b.pubsub.PublishWithEvents(ctx, data, events)
-	return nil
+	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
 func (b *EventBus) PublishEventVote(data EventDataVote) error {
