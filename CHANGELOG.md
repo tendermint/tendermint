@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.31.7
+
+*June 3, 2019*
+
+This releases fixes a regression in the mempool introduced in v0.31.6.
+The regression caused the invalid committed txs to be proposed in blocks over and
+over again.
+
+### BUG FIXES:
+- [mempool] \#3699 Remove all committed txs from the mempool.
+    This reverts the change from v0.31.6 where we only remove valid txs from the mempool.
+    Note this means malicious proposals can cause txs to be dropped from the
+    mempools of other nodes by including them in blocks before they are valid.
+    See \#3322.
+
 ## v0.31.6
 
 *May 31st, 2019*
