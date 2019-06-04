@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
-
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
@@ -87,20 +87,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		hash := result.Tx.Hash()
 
 		// index tx by events
-		for _, event := range result.Result.Events {
-			// only index events with a non-empty type
-			if len(event.Type) > 0 {
-				for _, attr := range event.Attributes {
-					if len(attr.Key) > 0 {
-						compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-						if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
-							storeBatch.Set(keyForEvent(compositeTag, attr.Value, result), hash)
-
-						}
-					}
-				}
-			}
-		}
+		txi.indexEvents(result, hash, storeBatch)
 
 		// index tx by height
 		if txi.indexAllTags || cmn.StringInSlice(types.TxHeightKey, txi.tagsToIndex) {
@@ -129,20 +116,8 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 
 	hash := result.Tx.Hash()
 
-	// index tx by tags
-	for _, event := range result.Result.Events {
-		// only index events with a non-empty type
-		if len(event.Type) > 0 {
-			for _, attr := range event.Attributes {
-				if len(attr.Key) > 0 {
-					compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-					if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
-						b.Set(keyForEvent(compositeTag, attr.Value, result), hash)
-					}
-				}
-			}
-		}
-	}
+	// index tx by events
+	txi.indexEvents(result, hash, b)
 
 	// index tx by height
 	if txi.indexAllTags || cmn.StringInSlice(types.TxHeightKey, txi.tagsToIndex) {
@@ -159,6 +134,26 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	b.Write()
 
 	return nil
+}
+
+func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.SetDeleter) {
+	for _, event := range result.Result.Events {
+		// only index events with a non-empty type
+		if len(event.Type) == 0 {
+			continue
+		}
+
+		for _, attr := range event.Attributes {
+			if len(attr.Key) == 0 {
+				continue
+			}
+
+			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
+				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
+			}
+		}
+	}
 }
 
 // Search performs a search using the given query. It breaks the query into
