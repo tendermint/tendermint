@@ -259,6 +259,9 @@ func match(tag string, op Operator, operand reflect.Value, events map[string][]s
 	return false
 }
 
+// matchValue will attempt to match a string value against an operation an
+// operand. A boolean is returned representing the match result. It will panic
+// if an error occurs or if the operand is invalid.
 func matchValue(value string, op Operator, operand reflect.Value) bool {
 	switch operand.Kind() {
 	case reflect.Struct: // time
