@@ -91,8 +91,7 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	_ = b.pubsub.PublishWithEvents(ctx, eventData, map[string][]string{EventTypeKey: {eventType}})
-	return nil
+	return b.pubsub.PublishWithEvents(ctx, eventData, map[string][]string{EventTypeKey: {eventType}})
 }
 
 // validateAndStringifyEvents takes a slice of event objects and creates a
