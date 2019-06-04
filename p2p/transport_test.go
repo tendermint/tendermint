@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -138,9 +136,7 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 
 func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 	mt := testSetupMultiplexTransport(t)
-	id, addr := mt.nodeKey.ID(), mt.listener.Addr().String()
-	laddr, err := NewNetAddressString(IDAddressString(id, addr))
-	require.NoError(t, err)
+	laddr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
 	var (
 		seed     = rand.New(rand.NewSource(time.Now().UnixNano()))
