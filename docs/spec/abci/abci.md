@@ -50,17 +50,45 @@ during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
 tag, only the value defined in `EndBlock` is used.
 
-Each event has a `type` which should be unique and is meant to categorize the
-series of events for a particular `Response*` or tx. Keys and values in events
-must be UTF-8 encoded strings.
+Each event has a `type` which is meant to categorize the event for a particular
+`Response*` or tx. A `Response*` or tx may contain multiple events with duplicate
+`type` values, where each distinct entry is meant to categorize attributes for a
+particular event. Every key and value in an event's attributes must be UTF-8
+encoded strings along with the even type itself.
 
 Example:
 
-```json
-{
-  "rewards": [{"amount": "...", "recipient": "...", "validator": "..."}, ...],
-  "account": [{"owner":  "...", "balance":  "..."}, ...]    
-} 
+```go
+ abci.ResponseDeliverTx{
+ 	// ...
+	Events: []abci.Event{
+		{
+			Type: "validator.provisions",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			},
+		},
+		{
+			Type: "validator.provisions",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			},
+		},
+		{
+			Type: "validator.slashed",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("reason"), Value: []byte("...")},
+			},
+		},		
+		// ...
+	},
+}
 ```
 
 ## Determinism
