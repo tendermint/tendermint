@@ -32,35 +32,76 @@ import (
 // Note for transactions, you can define additional keys by providing events with
 // DeliverTx response.
 //
-// DeliverTx{
-// 	Events: []Event{
+// ```go
+// import (
+//		abci "github.com/tendermint/tendermint/abci/types"
+// 		"github.com/tendermint/tendermint/libs/pubsub/query"
+// )
+//
+// abci.ResponseDeliverTx{
+// 	Events: []abci.Event{
 // 		{
-// 			"rewards": [
-// 				{"address": "A", "amount": "5tokens", "source": "Z"},
-// 				{"address": "B", "amount": "42tokens", "source": "Z"}
-// 			],
+// 			Type: "rewards.withdraw",
+// 			Attributes: cmn.KVPairs{
+// 				cmn.KVPair{Key: []byte("address"), Value: []byte("AddrA")},
+// 				cmn.KVPair{Key: []byte("source"), Value: []byte("SrcX")},
+// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+// 				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+// 			},
 // 		},
 // 		{
-// 			"transfer": [
-// 				{"sender": "A", "recipient": "C", "amount": "5tokens", "timestamp": "2013-05-03T14:45:00Z"},
-// 				{"sender": "X", "recipient": "Y", "amount": "32tokens", "timestamp": "2013-05-03T14:49:00Z"},
-// 			],
-// 		}
+// 			Type: "rewards.withdraw",
+// 			Attributes: cmn.KVPairs{
+// 				cmn.KVPair{Key: []byte("address"), Value: []byte("AddrB")},
+// 				cmn.KVPair{Key: []byte("source"), Value: []byte("SrcY")},
+// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+// 				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+// 			},
+// 		},
+// 		{
+// 			Type: "transfer",
+// 			Attributes: cmn.KVPairs{
+// 				cmn.KVPair{Key: []byte("sender"), Value: []byte("AddrC")},
+// 				cmn.KVPair{Key: []byte("recipient"), Value: []byte("AddrD")},
+// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+// 			},
+// 		},
 // 	},
 // }
+// ```
 //
-// To query for txs where address A has rewards:
-// tm.event = 'Tx' AND rewards.address = 'A'
+// All events are indexed by a composite key of the form `{eventType}.{evenAttrKey}`.
+// In the above examples, the following keys would be indexed:
 //
-// To query for txs where address A has rewards from source Z:
-// tm.event = 'Tx' AND rewards.address = 'A' AND rewards.source = 'Z'
+// - `rewards.withdraw.address`
+// - `rewards.withdraw.source`
+// - `rewards.withdraw.amount`
+// - `rewards.withdraw.balance`
+// - `transfer.sender`
+// - `transfer.recipient`
+// - `transfer.amount`
 //
-// To query for txs where a transfer happened after a specific time:
-// tm.event = 'Tx' AND transfer.timestamp >= TIME 2013-05-03T14:45:00Z
+// Multiple event types with duplicate keys are allowed and are meant to
+// categorize unique and distinct events. In the above example, all events
+// indexed under the key `rewards.withdraw.address` will have the following
+// values stored and queryable:
+//
+// - `AddrA`
+// - `AddrB`
+//
+// // To create a query for txs where address AddrA withdrew rewards:
+// query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA'")
+//
+// // To create a query for txs where address AddrA withdrew rewards from source Y:
+// query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA' AND rewards.withdraw.source = 'Y'")
+//
+// // To create a query for txs where AddrA transferred funds:
+// query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrA'")
 //
 // The following queries would return no results:
-// tm.event = 'Tx' AND rewards.address = 'C'
-// tm.event = 'Tx' AND rewards.address = 'A' AND rewards.source = 'Y'
+// query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrZ'")
+// query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrZ'")
+// query.MustParse("tm.event = 'Tx' AND rewards.withdraw.source = 'W'")
 //
 // See list of all possible events here
 // https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants
