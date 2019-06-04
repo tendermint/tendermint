@@ -61,7 +61,7 @@ import (
 // ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
 // defer cancel()
 // query := "tm.event = 'Tx' AND tx.height = 3"
-// txs, err = client.Subscribe(ctx, "test-client", query, txs)
+// txs, err := client.Subscribe(ctx, "test-client", query)
 // if err != nil {
 //   // handle error
 // }
