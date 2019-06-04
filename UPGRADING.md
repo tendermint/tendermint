@@ -3,6 +3,14 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+
+## v0.32.0
+
+### Config Changes
+
+If you have `db_backend` set to `leveldb` in your config file, please change it
+to `goleveldb` or `cleveldb`.
+
 ## v0.31.6
 
 There are no breaking changes in this release except Go API of p2p and
