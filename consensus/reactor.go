@@ -155,16 +155,24 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	}
 }
 
-// AddPeer implements Reactor
+// InitPeer implements Reactor by creating a state for the peer.
+func (conR *ConsensusReactor) InitPeer(peer p2p.Peer) p2p.Peer {
+	peerState := NewPeerState(peer).SetLogger(conR.Logger)
+	peer.Set(types.PeerStateKey, peerState)
+	return peer
+}
+
+// AddPeer implements Reactor by spawning multiple gossiping goroutines for the
+// peer.
 func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	if !conR.IsRunning() {
 		return
 	}
 
-	// Create peerState for peer
-	peerState := NewPeerState(peer).SetLogger(conR.Logger)
-	peer.Set(types.PeerStateKey, peerState)
-
+	peerState, ok := peer.Get(types.PeerStateKey).(*PeerState)
+	if !ok {
+		panic(fmt.Sprintf("peer %v has no state", peer))
+	}
 	// Begin routines for this peer.
 	go conR.gossipDataRoutine(peer, peerState)
 	go conR.gossipVotesRoutine(peer, peerState)
@@ -177,7 +185,7 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	}
 }
 
-// RemovePeer implements Reactor
+// RemovePeer is a noop.
 func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
