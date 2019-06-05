@@ -22,5 +22,6 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [p2p] \#3666 Add per channel telemtry to improve reactor observability
 
 ### BUG FIXES:
