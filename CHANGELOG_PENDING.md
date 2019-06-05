@@ -1,10 +1,12 @@
-## v0.31.6
+## v0.31.8
 
 **
 
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
+  * [rpc] \#3616 Improve `/block_results` response format (`results.DeliverTx` ->
+  `results.deliver_tx`). See docs for details.
 
 * Apps
   * [abci] \#1859 `ResponseCheckTx`, `ResponseDeliverTx`, `ResponseBeginBlock`,
@@ -13,57 +15,19 @@
   for inclusion of multiple distinct events in each response.
 
 * Go API
-- [mempool] \#2659 `Mempool` now an interface
-  * old `Mempool` implementation renamed to `CListMempool`
-  * `NewMempool` renamed to `NewCListMempool`
-  * `Option` renamed to `CListOption`
-  * unexpose `MempoolReactor.Mempool`
-  * `MempoolReactor` renamed to `Reactor`
-  * `NewMempoolReactor` renamed to `NewReactor`
-  * unexpose `TxID` method
-  * `TxInfo.PeerID` renamed to `SenderID`
-- [state] \#2659 `Mempool` interface moved to mempool package
-  * `MockMempool` moved to top-level mock package and renamed to `Mempool`
-- [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
-- [libs/pubsub] \#1859 Updates to support events (list-of-lists):
-  * Rename `PublishWithTags` to `PublishWithEvents` which now takes a `map[string][]string` instead of `map[string]string`.
-  * `Query#Matches` now accepts `map[string][]string`.
-  * `Message` now returns events through `Events()` instead of `Tags()`.
-- [rpc/core] \#1859 Updates to support events (list-of-lists):
-  * `ResultEvent` now contains `Events` instead of `Tags`.
-- [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
+  * [libs/db] Removed deprecated `LevelDBBackend` const
+    * If you have `db_backend` set to `leveldb` in your config file, please
+    change it to `goleveldb` or `cleveldb`.
 
 * Blockchain Protocol
 
 * P2P Protocol
 
 ### FEATURES:
-- [node] \#2659 Add `node.Mempool()` method, which allows you to access mempool
 
 ### IMPROVEMENTS:
-- [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC
-- [cli] \#3585 Add option to not clear address book with unsafe reset (@climber73)
-- [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add `-config=<path-to-config>` option to `testnet` cmd (@gregdhill)
-- [cs/replay] \#3460 check appHash for each block
-- [rpc] \#3362 `/dial_seeds` & `/dial_peers` return errors if addresses are incorrect (except when IP lookup fails)
-- [node] \#3362 returns an error if `persistent_peers` list is invalid (except when IP lookup fails)
-- [p2p] \#3531 Terminate session on nonce wrapping (@climber73)
-- [libs/db] \#3611 Conditional compilation
-  * Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
-    use `make build_c` / `make install_c` (full instructions can be found at
-    https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support)
-  * Use `boltdb` tag to compile Tendermint with bolt db
+- [p2p] \#3666 Add per channel telemtry to improve reactor observability
+
+* [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code.
 
 ### BUG FIXES:
-- [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
-  to 16 (as a result, the node will stop retrying after a 35 hours time window)
-- [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests
-- [p2p] \#3362 make persistent prop independent of conn direction
-  * `Switch#DialPeersAsync` now only takes a list of peers
-  * `Switch#DialPeerWithAddress` now only takes an address
-- [consensus] \#3067 getBeginBlockValidatorInfo loads validators from stateDB instead of state (@james-ray)
-- [pex] \#3603 Dial seeds when addrbook needs more addresses (@defunctzombie)
-- [mempool] \#3322 Remove only valid (Code==0) txs on Update
-  * `Mempool#Update` and `BlockExecutor#Commit` now accept
-    `[]*abci.ResponseDeliverTx` - list of `DeliverTx` responses, which should
-    match `block.Txs`

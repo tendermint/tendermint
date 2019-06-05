@@ -3,6 +3,24 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
+
+## v0.32.0
+
+### Config Changes
+
+If you have `db_backend` set to `leveldb` in your config file, please change it
+to `goleveldb` or `cleveldb`.
+
+## v0.31.6
+
+There are no breaking changes in this release except Go API of p2p and
+mempool packages. Hovewer, if you're using cleveldb, you'll need to change
+the compilation tag:
+
+Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
+use `make build_c` / `make install_c` (full instructions can be found at
+https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support)
+
 ## v0.31.0
 
 This release contains a breaking change to the behaviour of the pubsub system.

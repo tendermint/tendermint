@@ -4,6 +4,14 @@ Thank you for considering making contributions to Tendermint and related reposit
 
 Please follow standard github best practices: fork the repo, branch from the tip of develop, make some commits, and submit a pull request to develop. See the [open issues](https://github.com/tendermint/tendermint/issues) for things we need help with!
 
+Before making a pull request, please open an issue describing the
+change you would like to make. If an issue for your change already exists,
+please comment on it that you will submit a pull request. Be sure to reference the issue in the opening
+comment of your pull request. If your change is substantial, you will be asked
+to write a more detailed design document in the form of an
+Architectural Decision Record (ie. see [here](./docs/architecture/)) before submitting code
+changes.
+
 Please make sure to use `gofmt` before every commit - the easiest way to do this is have your editor run it for you upon saving a file.
 
 ## Forking

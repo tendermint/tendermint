@@ -13,9 +13,10 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tendermint/libs/common"
 
+	amino "github.com/tendermint/go-amino"
+
+	cmn "github.com/tendermint/tendermint/libs/common"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
@@ -303,10 +304,10 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, expectedID t
 	response := &types.RPCResponse{}
 	err = json.Unmarshal(responseBytes, response)
 	if err != nil {
-		return nil, errors.Errorf("error unmarshalling rpc response: %v", err)
+		return nil, errors.Wrap(err, "error unmarshalling rpc response")
 	}
 	if response.Error != nil {
-		return nil, errors.Errorf("response error: %v", response.Error)
+		return nil, errors.Wrap(response.Error, "response error")
 	}
 	// From the JSON-RPC 2.0 spec:
 	//  id: It MUST be the same as the value of the id member in the Request Object.
@@ -316,7 +317,7 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, expectedID t
 	// Unmarshal the RawMessage into the result.
 	err = cdc.UnmarshalJSON(response.Result, result)
 	if err != nil {
-		return nil, errors.Errorf("error unmarshalling rpc response result: %v", err)
+		return nil, errors.Wrap(err, "error unmarshalling rpc response result")
 	}
 	return result, nil
 }
@@ -328,7 +329,7 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expecte
 	)
 	err = json.Unmarshal(responseBytes, &responses)
 	if err != nil {
-		return nil, errors.Errorf("error unmarshalling rpc response: %v", err)
+		return nil, errors.Wrap(err, "error unmarshalling rpc response")
 	}
 	// No response error checking here as there may be a mixture of successful
 	// and unsuccessful responses.
@@ -341,10 +342,10 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expecte
 		// From the JSON-RPC 2.0 spec:
 		//  id: It MUST be the same as the value of the id member in the Request Object.
 		if err := validateResponseID(&response, expectedID); err != nil {
-			return nil, errors.Errorf("failed to validate response ID in response %d: %v", i, err)
+			return nil, errors.Wrapf(err, "failed to validate response ID in response %d", i)
 		}
 		if err := cdc.UnmarshalJSON(responses[i].Result, results[i]); err != nil {
-			return nil, errors.Errorf("error unmarshalling rpc response result: %v", err)
+			return nil, errors.Wrap(err, "error unmarshalling rpc response result")
 		}
 	}
 	return results, nil

@@ -145,7 +145,7 @@ func (r *PEXReactor) OnStart() error {
 	if err != nil {
 		return err
 	} else if numOnline == 0 && r.book.Empty() {
-		return errors.New("Address book is empty, and could not connect to any seed nodes")
+		return errors.New("Address book is empty and couldn't resolve any seed nodes")
 	}
 
 	r.seedAddrs = seedAddrs
@@ -204,6 +204,13 @@ func (r *PEXReactor) AddPeer(p Peer) {
 	}
 }
 
+// RemovePeer implements Reactor by resetting peer's requests info.
+func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
+	id := string(p.ID())
+	r.requestsSent.Delete(id)
+	r.lastReceivedRequests.Delete(id)
+}
+
 func (r *PEXReactor) logErrAddrBook(err error) {
 	if err != nil {
 		switch err.(type) {
@@ -214,13 +221,6 @@ func (r *PEXReactor) logErrAddrBook(err error) {
 			r.Logger.Debug("Failed to add new address", "err", err)
 		}
 	}
-}
-
-// RemovePeer implements Reactor.
-func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
-	id := string(p.ID())
-	r.requestsSent.Delete(id)
-	r.lastReceivedRequests.Delete(id)
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
@@ -303,7 +303,7 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	now := time.Now()
 	minInterval := r.minReceiveRequestInterval()
 	if now.Sub(lastReceived) < minInterval {
-		return fmt.Errorf("Peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
+		return fmt.Errorf("peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
 			src.ID(),
 			lastReceived,
 			now,
@@ -314,14 +314,14 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	return nil
 }
 
-// RequestAddrs asks peer for more addresses if we do not already
-// have a request out for this peer.
+// RequestAddrs asks peer for more addresses if we do not already have a
+// request out for this peer.
 func (r *PEXReactor) RequestAddrs(p Peer) {
-	r.Logger.Debug("Request addrs", "from", p)
 	id := string(p.ID())
 	if r.requestsSent.Has(id) {
 		return
 	}
+	r.Logger.Debug("Request addrs", "from", p)
 	r.requestsSent.Set(id, struct{}{})
 	p.Send(PexChannel, cdc.MustMarshalBinaryBare(&pexRequestMessage{}))
 }
@@ -332,7 +332,7 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
-		return errors.New("Unsolicited pexAddrsMessage")
+		return errors.New("unsolicited pexAddrsMessage")
 	}
 	r.requestsSent.Delete(id)
 
@@ -573,7 +573,7 @@ func (r *PEXReactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, er
 			return 0, nil, errors.Wrap(e, "seed node configuration has error")
 		}
 	}
-	return
+	return numOnline, netAddrs, nil
 }
 
 // randomly dial seeds until we connect to one or exhaust them
@@ -608,8 +608,13 @@ func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
 // Seed/Crawler Mode causes this node to quickly disconnect
 // from peers, except other seed nodes.
 func (r *PEXReactor) crawlPeersRoutine() {
-	// Do an initial crawl
-	r.crawlPeers(r.book.GetSelection())
+	// If we have any seed nodes, consult them first
+	if len(r.seedAddrs) > 0 {
+		r.dialSeeds()
+	} else {
+		// Do an initial crawl
+		r.crawlPeers(r.book.GetSelection())
+	}
 
 	// Fire periodically
 	ticker := time.NewTicker(crawlPeerPeriod)

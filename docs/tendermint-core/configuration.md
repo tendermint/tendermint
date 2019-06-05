@@ -42,7 +42,7 @@ fast_sync = true
 #   - EXPERIMENTAL
 #   - may be faster is some use-cases (random reads - indexer)
 #   - use boltdb build tag (go build -tags boltdb)
-db_backend = "leveldb"
+db_backend = "goleveldb"
 
 # Database directory
 db_dir = "data"
