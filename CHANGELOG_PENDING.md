@@ -14,6 +14,7 @@
 - [libs/db] Removed deprecated `LevelDBBackend` const
   * If you have `db_backend` set to `leveldb` in your config file, please
     change it to `goleveldb` or `cleveldb`.
+- [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
 
 * Blockchain Protocol
 
