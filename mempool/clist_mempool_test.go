@@ -200,12 +200,15 @@ func TestMempoolUpdate(t *testing.T) {
 		assert.Zero(t, mempool.Size())
 	}
 
-	// 3. Removes invalid transactions from the cache, but leaves them in the mempool (if present)
+	// 3. Removes invalid transactions from the cache and the mempool (if present)
 	{
 		err := mempool.CheckTx([]byte{0x03}, nil)
 		require.NoError(t, err)
 		mempool.Update(1, []types.Tx{[]byte{0x03}}, abciResponses(1, 1), nil, nil)
-		assert.Equal(t, 1, mempool.Size())
+		assert.Zero(t, mempool.Size())
+
+		err = mempool.CheckTx([]byte{0x03}, nil)
+		assert.NoError(t, err)
 	}
 }
 
