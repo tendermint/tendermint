@@ -65,6 +65,19 @@ func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
+// GenesisDocProvider returns a GenesisDoc.
+// It allows the GenesisDoc to be pulled from sources other than the
+// filesystem, for instance from a distributed key-value store cluster.
+type GenesisDocProvider func() (*types.GenesisDoc, error)
+
+// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
+// the GenesisDoc from the config.GenesisFile() on the filesystem.
+func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
+	return func() (*types.GenesisDoc, error) {
+		return types.GenesisDocFromFile(config.GenesisFile())
+	}
+}
+
 // NodeProvider takes a config and a logger and returns a ready to go Node.
 type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 
@@ -99,7 +112,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		privval.LoadOrGenFilePV(newPrivValKey, newPrivValState),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
-		sm.DefaultGenesisDocProviderFunc(config),
+		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
@@ -146,9 +159,10 @@ type Node struct {
 	// services
 	eventBus         *types.EventBus // pub/sub for services
 	stateDB          dbm.DB
-	blockStore       *bc.BlockStore         // store the blockchain to disk
-	bcReactor        *bc.BlockchainReactor  // for fast-syncing
-	mempoolReactor   *mempl.MempoolReactor  // for gossipping transactions
+	blockStore       *bc.BlockStore        // store the blockchain to disk
+	bcReactor        *bc.BlockchainReactor // for fast-syncing
+	mempoolReactor   *mempl.Reactor        // for gossipping transactions
+	mempool          mempl.Mempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
 	pexReactor       *pex.PEXReactor        // for exchanging peer addresses
@@ -269,9 +283,9 @@ func onlyValidatorIsUs(state sm.State, privVal types.PrivValidator) bool {
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
-	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.MempoolReactor, *mempl.Mempool) {
+	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.Reactor, *mempl.CListMempool) {
 
-	mempool := mempl.NewMempool(
+	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
@@ -280,11 +294,7 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
 	mempoolLogger := logger.With("module", "mempool")
-	mempool.SetLogger(mempoolLogger)
-	if config.Mempool.WalEnabled() {
-		mempool.InitWAL() // no need to have the mempool wal during tests
-	}
-	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
+	mempoolReactor := mempl.NewReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
 	if config.Consensus.WaitForTxs() {
@@ -312,7 +322,7 @@ func createConsensusReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.Mempool,
+	mempool *mempl.CListMempool,
 	evidencePool *evidence.EvidencePool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
@@ -401,7 +411,7 @@ func createSwitch(config *cfg.Config,
 	transport *p2p.MultiplexTransport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *mempl.MempoolReactor,
+	mempoolReactor *mempl.Reactor,
 	bcReactor *blockchain.BlockchainReactor,
 	consensusReactor *consensus.ConsensusReactor,
 	evidenceReactor *evidence.EvidenceReactor,
@@ -466,7 +476,7 @@ func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
-	genesisDocProvider sm.GenesisDocProvider,
+	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
 	logger log.Logger) (*Node, error) {
@@ -476,7 +486,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	state, genDoc, err := sm.LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
+	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -582,6 +592,11 @@ func NewNode(config *cfg.Config,
 		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
 
+	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
+	}
+
 	addrBook := createAddrBookAndSetOnSwitch(config, sw, p2pLogger)
 
 	// Optionally, start the pex reactor
@@ -620,6 +635,7 @@ func NewNode(config *cfg.Config,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
+		mempool:          mempool,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
 		pexReactor:       pexReactor,
@@ -661,7 +677,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := p2p.NewNetAddressStringWithOptionalID(n.config.P2P.ListenAddress)
+	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID(), n.config.P2P.ListenAddress))
 	if err != nil {
 		return err
 	}
@@ -671,6 +687,10 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
+	if n.config.Mempool.WalEnabled() {
+		n.mempool.InitWAL() // no need to have the mempool wal during tests
+	}
+
 	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
@@ -678,11 +698,9 @@ func (n *Node) OnStart() error {
 	}
 
 	// Always connect to persistent peers
-	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "), true)
-		if err != nil {
-			return err
-		}
+	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
+	if err != nil {
+		return errors.Wrap(err, "could not dial peers from persistent_peers field")
 	}
 
 	return nil
@@ -704,7 +722,7 @@ func (n *Node) OnStop() {
 
 	// stop mempool WAL
 	if n.config.Mempool.WalEnabled() {
-		n.mempoolReactor.Mempool.CloseWAL()
+		n.mempool.CloseWAL()
 	}
 
 	if err := n.transport.Close(); err != nil {
@@ -739,7 +757,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetStateDB(n.stateDB)
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
-	rpccore.SetMempool(n.mempoolReactor.Mempool)
+	rpccore.SetMempool(n.mempool)
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetP2PPeers(n.sw)
 	rpccore.SetP2PTransport(n)
@@ -886,9 +904,14 @@ func (n *Node) ConsensusReactor() *cs.ConsensusReactor {
 	return n.consensusReactor
 }
 
-// MempoolReactor returns the Node's MempoolReactor.
-func (n *Node) MempoolReactor() *mempl.MempoolReactor {
+// MempoolReactor returns the Node's mempool reactor.
+func (n *Node) MempoolReactor() *mempl.Reactor {
 	return n.mempoolReactor
+}
+
+// Mempool returns the Node's mempool.
+func (n *Node) Mempool() mempl.Mempool {
+	return n.mempool
 }
 
 // PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
@@ -994,6 +1017,56 @@ func makeNodeInfo(
 }
 
 //------------------------------------------------------------------------------
+
+var (
+	genesisDocKey = []byte("genesisDoc")
+)
+
+// LoadStateFromDBOrGenesisDocProvider attempts to load the state from the
+// database, or creates one using the given genesisDocProvider and persists the
+// result to the database. On success this also returns the genesis doc loaded
+// through the given provider.
+func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (sm.State, *types.GenesisDoc, error) {
+	// Get genesis doc
+	genDoc, err := loadGenesisDoc(stateDB)
+	if err != nil {
+		genDoc, err = genesisDocProvider()
+		if err != nil {
+			return sm.State{}, nil, err
+		}
+		// save genesis doc to prevent a certain class of user errors (e.g. when it
+		// was changed, accidentally or not). Also good for audit trail.
+		saveGenesisDoc(stateDB, genDoc)
+	}
+	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+	if err != nil {
+		return sm.State{}, nil, err
+	}
+	return state, genDoc, nil
+}
+
+// panics if failed to unmarshal bytes
+func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
+	b := db.Get(genesisDocKey)
+	if len(b) == 0 {
+		return nil, errors.New("Genesis doc not found")
+	}
+	var genDoc *types.GenesisDoc
+	err := cdc.UnmarshalJSON(b, &genDoc)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
+	}
+	return genDoc, nil
+}
+
+// panics if failed to marshal the given genesis document
+func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
+	b, err := cdc.MarshalJSON(genDoc)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
+	}
+	db.SetSync(genesisDocKey, b)
+}
 
 func createAndStartPrivValidatorSocketClient(
 	listenAddr string,

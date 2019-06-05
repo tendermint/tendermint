@@ -8,6 +8,7 @@
 
 import re
 import argparse
+import sys
 
 
 def semver(ver):
@@ -15,6 +16,18 @@ def semver(ver):
     ver="v0.0"
     #raise argparse.ArgumentTypeError('--version must be a semantic version number with major, minor and patch numbers')
   return ver
+
+
+def get_tendermint_version():
+  """Extracts the current Tendermint version from version/version.go"""
+  pattern = re.compile(r"TMCoreSemVer = \"(?P<version>([0-9.]+)+)\"")
+  with open("version/version.go", "rt") as version_file:
+    for line in version_file:
+      m = pattern.search(line)
+      if m:
+        return m.group('version')
+
+  return None
 
 
 if __name__ == "__main__":
@@ -34,4 +47,16 @@ if __name__ == "__main__":
   else:
     patch = int(patch) + 1
 
-  print("{0}.{1}".format(majorminorprefix, patch))
+  expected_version = "{0}.{1}".format(majorminorprefix, patch)
+  # if we're doing a release
+  if expected_version != "v0.0.0":
+    cur_version = get_tendermint_version()
+    if not cur_version:
+      print("Failed to obtain Tendermint version from version/version.go")
+      sys.exit(1)
+    expected_version_noprefix = expected_version.lstrip("v")
+    if expected_version_noprefix != "0.0.0" and expected_version_noprefix != cur_version:
+      print("Expected version/version.go#TMCoreSemVer to be {0}, but was {1}".format(expected_version_noprefix, cur_version))
+      sys.exit(1)
+
+  print(expected_version)

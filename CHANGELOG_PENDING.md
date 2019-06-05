@@ -1,16 +1,20 @@
-## v0.31.6
+## v0.31.8
 
 **
 
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
+- [rpc] \#3616 Improve `/block_results` response format (`results.DeliverTx` ->
+  `results.deliver_tx`). See docs for details.
 
 * Apps
 
 * Go API
-- [libs/common] Removed `PanicSanity`, `PanicCrisis`, `PanicConsensus` and `PanicQ`
-- [node] Moved `GenesisDocProvider` and `DefaultGenesisDocProviderFunc` to state package
+- [libs/db] Removed deprecated `LevelDBBackend` const
+  * If you have `db_backend` set to `leveldb` in your config file, please
+    change it to `goleveldb` or `cleveldb`.
+- [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
 
 * Blockchain Protocol
 
@@ -19,12 +23,10 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [privval] \#3370 Refactored validator/kms connection (@jleni)
-- [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC
-- [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add `-config=<path-to-config>` option to `testnet` cmd (@gregdhill)
-- [cs/replay] \#3460 check appHash for each block
+- [p2p] \#3666 Add per channel telemtry to improve reactor observability
+
+* [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code.
+
+* [privval] \#3370 Refactored validator/kms connection (@jleni)
 
 ### BUG FIXES:
-- [p2p] \#3532 limit the number of attempts to connect to a peer in seed mode
-  to 16 (as a result, the node will stop retrying after a 35 hours time window)
-- [consensus] \#2723, \#3451 and \#3317 Fix non-deterministic tests

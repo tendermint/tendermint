@@ -37,11 +37,15 @@ type accept struct {
 // events.
 // TODO(xla): Refactor out with more static Reactor setup and PeerBehaviour.
 type peerConfig struct {
-	chDescs              []*conn.ChannelDescriptor
-	onPeerError          func(Peer, interface{})
-	outbound, persistent bool
-	reactorsByCh         map[byte]Reactor
-	metrics              *Metrics
+	chDescs     []*conn.ChannelDescriptor
+	onPeerError func(Peer, interface{})
+	outbound    bool
+	// isPersistent allows you to set a function, which, given socket address
+	// (for outbound peers) OR self-reported address (for inbound peers), tells
+	// if the peer is persistent or not.
+	isPersistent func(*NetAddress) bool
+	reactorsByCh map[byte]Reactor
+	metrics      *Metrics
 }
 
 // Transport emits and connects to Peers. The implementation of Peer is left to
@@ -446,9 +450,21 @@ func (mt *MultiplexTransport) wrapPeer(
 	socketAddr *NetAddress,
 ) Peer {
 
+	persistent := false
+	if cfg.isPersistent != nil {
+		if cfg.outbound {
+			persistent = cfg.isPersistent(socketAddr)
+		} else {
+			selfReportedAddr, err := ni.NetAddress()
+			if err == nil {
+				persistent = cfg.isPersistent(selfReportedAddr)
+			}
+		}
+	}
+
 	peerConn := newPeerConn(
 		cfg.outbound,
-		cfg.persistent,
+		persistent,
 		c,
 		socketAddr,
 	)
