@@ -23,6 +23,10 @@
 
 # Allow only patch releases for serialization libraries
 [[constraint]]
+  name = "github.com/etcd-io/bbolt"
+  version = "v1.3.2"
+
+[[constraint]]
   name = "github.com/tendermint/go-amino"
   version = "~0.14.1"
 

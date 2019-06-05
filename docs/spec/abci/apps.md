@@ -265,7 +265,7 @@ This is enforced by Tendermint consensus.
 If a block includes evidence older than this, the block will be rejected
 (validators won't vote for it).
 
-Must have `0 < MaxAge`.
+Must have `MaxAge > 0`.
 
 ### Updates
 

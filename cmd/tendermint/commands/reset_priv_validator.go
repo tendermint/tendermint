@@ -18,6 +18,12 @@ var ResetAllCmd = &cobra.Command{
 	Run:   resetAll,
 }
 
+var keepAddrBook bool
+
+func init() {
+	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "Keep the address book intact")
+}
+
 // ResetPrivValidatorCmd resets the private validator files.
 var ResetPrivValidatorCmd = &cobra.Command{
 	Use:   "unsafe_reset_priv_validator",
@@ -41,7 +47,11 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 // ResetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
 func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) {
-	removeAddrBook(addrBookFile, logger)
+	if keepAddrBook {
+		logger.Info("The address book remains intact")
+	} else {
+		removeAddrBook(addrBookFile, logger)
+	}
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {

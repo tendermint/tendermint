@@ -1,5 +1,90 @@
 # Changelog
 
+## v0.31.7
+
+*June 3, 2019*
+
+This releases fixes a regression in the mempool introduced in v0.31.6.
+The regression caused the invalid committed txs to be proposed in blocks over and
+over again.
+
+### BUG FIXES:
+- [mempool] \#3699 Remove all committed txs from the mempool.
+    This reverts the change from v0.31.6 where we only remove valid txs from the mempool.
+    Note this means malicious proposals can cause txs to be dropped from the
+    mempools of other nodes by including them in blocks before they are valid.
+    See \#3322.
+
+## v0.31.6
+
+*May 31st, 2019*
+
+This release contains many fixes and improvements, primarily for p2p functionality.
+It also fixes a security issue in the mempool package.
+
+With this release, Tendermint now supports [boltdb](https://github.com/etcd-io/bbolt), although
+in experimental mode. Feel free to try and report to us any findings/issues.
+Note also that the build tags for compiling CLevelDB have changed.
+
+Special thanks to external contributors on this release:
+@guagualvcha, @james-ray, @gregdhill, @climber73, @yutianwu,
+@carlosflrs, @defunctzombie, @leoluk, @needkane, @CrocdileChan
+
+### BREAKING CHANGES:
+
+* Go API
+  - [libs/common] Removed deprecated `PanicSanity`, `PanicCrisis`,
+    `PanicConsensus` and `PanicQ`
+  - [mempool, state] [\#2659](https://github.com/tendermint/tendermint/issues/2659) `Mempool` now an interface that lives in the mempool package.
+    See issue and PR for more details.
+  - [p2p] [\#3346](https://github.com/tendermint/tendermint/issues/3346) `Reactor#InitPeer` method is added to `Reactor` interface
+  - [types] [\#1648](https://github.com/tendermint/tendermint/issues/1648) `Commit#VoteSignBytes` signature was changed
+
+### FEATURES:
+- [node] [\#2659](https://github.com/tendermint/tendermint/issues/2659) Add `node.Mempool()` method, which allows you to access mempool
+- [libs/db] [\#3604](https://github.com/tendermint/tendermint/pull/3604) Add experimental support for bolt db (etcd's fork of bolt) (@CrocdileChan)
+
+### IMPROVEMENTS:
+- [cli] [\#3585](https://github.com/tendermint/tendermint/issues/3585) Add `--keep-addr-book` option to `unsafe_reset_all` cmd to not
+  clear the address book (@climber73)
+- [cli] [\#3160](https://github.com/tendermint/tendermint/issues/3160) Add
+  `--config=<path-to-config>` option to `testnet` cmd (@gregdhill)
+- [cli] [\#3661](https://github.com/tendermint/tendermint/pull/3661) Add
+  `--hostname-suffix`, `--hostname` and `--random-monikers` options to `testnet`
+  cmd for greater peer address/identity generation flexibility.
+- [crypto] [\#3672](https://github.com/tendermint/tendermint/issues/3672) Return more info in the `AddSignatureFromPubKey` error
+- [cs/replay] [\#3460](https://github.com/tendermint/tendermint/issues/3460) Check appHash for each block
+- [libs/db] [\#3611](https://github.com/tendermint/tendermint/issues/3611) Conditional compilation
+  * Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
+    use `make build_c` / `make install_c` (full instructions can be found at
+    https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support)
+  * Use `boltdb` tag to compile Tendermint with bolt db
+- [node] [\#3362](https://github.com/tendermint/tendermint/issues/3362) Return an error if `persistent_peers` list is invalid (except
+  when IP lookup fails)
+- [p2p] [\#3463](https://github.com/tendermint/tendermint/pull/3463) Do not log "Can't add peer's address to addrbook" error for a private peer (@guagualvcha)
+- [p2p] [\#3531](https://github.com/tendermint/tendermint/issues/3531) Terminate session on nonce wrapping (@climber73)
+- [pex] [\#3647](https://github.com/tendermint/tendermint/pull/3647) Dial seeds, if any, instead of crawling peers first (@defunctzombie)
+- [rpc] [\#3534](https://github.com/tendermint/tendermint/pull/3534) Add support for batched requests/responses in JSON RPC
+- [rpc] [\#3362](https://github.com/tendermint/tendermint/issues/3362) `/dial_seeds` & `/dial_peers` return errors if addresses are
+  incorrect (except when IP lookup fails)
+
+### BUG FIXES:
+- [consensus] [\#3067](https://github.com/tendermint/tendermint/issues/3067) Fix replay from appHeight==0 with validator set changes (@james-ray)
+- [consensus] [\#3304](https://github.com/tendermint/tendermint/issues/3304) Create a peer state in consensus reactor before the peer
+  is started (@guagualvcha)
+- [lite] [\#3669](https://github.com/tendermint/tendermint/issues/3669) Add context parameter to RPC Handlers in proxy routes (@yutianwu)
+- [mempool] [\#3322](https://github.com/tendermint/tendermint/issues/3322) When a block is committed, only remove committed txs from the mempool
+that were valid (ie. `ResponseDeliverTx.Code == 0`)
+- [p2p] [\#3338](https://github.com/tendermint/tendermint/issues/3338) Ensure `RemovePeer` is always called before `InitPeer` (upon a peer
+  reconnecting to our node)
+- [p2p] [\#3532](https://github.com/tendermint/tendermint/issues/3532) Limit the number of attempts to connect to a peer in seed mode
+  to 16 (as a result, the node will stop retrying after a 35 hours time window)
+- [p2p] [\#3362](https://github.com/tendermint/tendermint/issues/3362) Allow inbound peers to be persistent, including for seed nodes.
+- [pex] [\#3603](https://github.com/tendermint/tendermint/pull/3603) Dial seeds when addrbook needs more addresses (@defunctzombie)
+
+### OTHERS:
+- [networks] fixes ansible integration script (@carlosflrs)
+
 ## v0.31.5
 
 *April 16th, 2019*

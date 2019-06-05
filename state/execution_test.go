@@ -16,10 +16,10 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-	tmtime "github.com/tendermint/tendermint/types/time"
-
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 var (
@@ -38,7 +38,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB := state(1, 1)
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		MockMempool{}, MockEvidencePool{})
+		mock.Mempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
@@ -85,7 +85,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -146,7 +146,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the byzantine validator
@@ -310,7 +310,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB := state(1, 1)
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), MockMempool{}, MockEvidencePool{})
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 
 	eventBus := types.NewEventBus()
 	err = eventBus.Start()
@@ -367,7 +367,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer proxyApp.Stop()
 
 	state, stateDB := state(1, 1)
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), MockMempool{}, MockEvidencePool{})
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
