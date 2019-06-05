@@ -34,6 +34,7 @@ const (
 	EventTimeoutWait      = "TimeoutWait"
 	EventUnlock           = "Unlock"
 	EventValidBlock       = "ValidBlock"
+	EventMajorPrecommits  = "MajorPrecommits"
 	EventVote             = "Vote"
 )
 
@@ -108,6 +109,15 @@ type EventDataCompleteProposal struct {
 	Step   string `json:"step"`
 
 	BlockID BlockID `json:"block_id"`
+	Block   Block   `json:"block"`
+}
+
+type EventDataMajorPrecommits struct {
+	Height int64  `json:"height"`
+	Round  int    `json:"round"`
+	Step   string `json:"step"`
+
+	Votes VoteSet `json:"votes"`
 }
 
 type EventDataVote struct {
@@ -137,6 +147,7 @@ const (
 
 var (
 	EventQueryCompleteProposal    = QueryForEvent(EventCompleteProposal)
+	EventQueryMajorPrecommits     = QueryForEvent(EventMajorPrecommits)
 	EventQueryLock                = QueryForEvent(EventLock)
 	EventQueryNewBlock            = QueryForEvent(EventNewBlock)
 	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeader)

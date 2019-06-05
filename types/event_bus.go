@@ -192,6 +192,10 @@ func (b *EventBus) PublishEventCompleteProposal(data EventDataCompleteProposal) 
 	return b.Publish(EventCompleteProposal, data)
 }
 
+func (b *EventBus) PublishEventMajorPrecommits(data EventDataMajorPrecommits) error {
+	return b.Publish(EventMajorPrecommits, data)
+}
+
 func (b *EventBus) PublishEventPolka(data EventDataRoundState) error {
 	return b.Publish(EventPolka, data)
 }

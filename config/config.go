@@ -153,6 +153,18 @@ type BaseConfig struct {
 	// and verifying their commits
 	FastSync bool `mapstructure:"fast_sync"`
 
+	// it is for fullnode/witness who do not need consensus to sync block.
+	HotSyncReactor bool `mapstructure:"hot_sync_reactor"`
+
+	// only take effect when HotSyncReactor is true.
+	// If true, will sync blocks use hot sync protocol
+	// If false, still use tendermint consensus protocol, but can still handle other peers sync request.
+	HotSync bool `mapstructure:"hot_sync"`
+
+	// the max wait time for subscribe a block.
+	// only take effect when hot_sync is true
+	HotSyncTimeout time.Duration `mapstructure:"hot_sync_timeout"`
+
 	// Database backend: goleveldb | cleveldb | boltdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 	//   - pure go
@@ -217,6 +229,9 @@ func DefaultBaseConfig() BaseConfig {
 		LogFormat:          LogFormatPlain,
 		ProfListenAddress:  "",
 		FastSync:           true,
+		HotSync:            false,
+		HotSyncReactor:     false,
+		HotSyncTimeout:     3 * time.Second,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
@@ -275,6 +290,9 @@ func (cfg BaseConfig) ValidateBasic() error {
 	case LogFormatPlain, LogFormatJSON:
 	default:
 		return errors.New("unknown log_format (must be 'plain' or 'json')")
+	}
+	if !cfg.HotSyncReactor && cfg.HotSync {
+		return errors.New("config hot_sync can't be true while hot_sync_reactor is false")
 	}
 	return nil
 }

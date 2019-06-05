@@ -121,7 +121,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
 	}
 
-	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync, false, false)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	return BlockchainReactorPair{bcReactor, proxyApp}
@@ -256,21 +256,6 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
-}
-
-//----------------------------------------------
-// utility funcs
-
-func makeTxs(height int64) (txs []types.Tx) {
-	for i := 0; i < 10; i++ {
-		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
-	}
-	return txs
-}
-
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
-	return block
 }
 
 type testApp struct {

@@ -20,6 +20,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/blockchain"
 	bc "github.com/tendermint/tendermint/blockchain"
+	"github.com/tendermint/tendermint/blockchain/hot"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
@@ -124,19 +125,20 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 }
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
+type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *hot.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics,*hot.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
+				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				hot.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
+		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics(),hot.NopMetrics()
 	}
 }
 
@@ -434,6 +436,7 @@ func createSwitch(config *cfg.Config,
 	bcReactor *blockchain.BlockchainReactor,
 	consensusReactor *consensus.ConsensusReactor,
 	evidenceReactor *evidence.EvidenceReactor,
+	hotSyncReactor *hot.BlockchainReactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
@@ -449,6 +452,9 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+	if config.HotSyncReactor {
+		sw.AddReactor("HOT", hotSyncReactor)
+	}
 
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
@@ -574,7 +580,7 @@ func NewNode(config *cfg.Config,
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSync && !onlyValidatorIsUs(state, privValidator)
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics,hotMetrics:= metricsProvider(genDoc.ChainID)
 
 	// Make MempoolReactor
 	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
@@ -596,13 +602,23 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync, config.HotSyncReactor, config.HotSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
+
+	var hotSyncReactor *hot.BlockchainReactor
+	if config.HotSyncReactor {
+		hotSyncLogger := logger.With("module", "hotsync")
+		hotSyncReactor = hot.NewBlockChainReactor(state.Copy(), blockExec, blockStore, config.HotSync, fastSync, config.HotSyncTimeout, hot.WithMetrics(hotMetrics), hot.WithEventBus(eventBus))
+		hotSyncReactor.SetLogger(hotSyncLogger)
+		if privValidator != nil {
+			hotSyncReactor.SetPrivValidator(privValidator)
+		}
+	}
 
 	// Make ConsensusReactor
 	consensusReactor, consensusState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evidencePool,
-		privValidator, csMetrics, fastSync, eventBus, consensusLogger,
+		privValidator, csMetrics, fastSync || config.HotSync, eventBus, consensusLogger,
 	)
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
@@ -617,7 +633,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+		consensusReactor, evidenceReactor, hotSyncReactor, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))

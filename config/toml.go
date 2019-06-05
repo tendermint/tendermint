@@ -81,6 +81,19 @@ moniker = "{{ .BaseConfig.Moniker }}"
 # and verifying their commits
 fast_sync = {{ .BaseConfig.FastSync }}
 
+# Only take effect when HotSyncReactor is true.
+# If true, will sync blocks use hot sync protocol
+# If false, still use tendermint consensus protocol, but can still handle other peers sync request.
+hot_sync = {{.BaseConfig.HotSync}}
+
+# The max wait time for subscribe a block.
+# Only take effect when hot_sync is true
+hot_sync_timeout = "{{.BaseConfig.HotSyncTimeout}}"
+
+# It will benefit fullnode and witness who do not need consensus by saving network and cpu resources.
+# Recommend the node that is not validator to turn on.
+hot_sync_reactor = {{.BaseConfig.HotSyncReactor}}
+
 # Database backend: goleveldb | cleveldb | boltdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go

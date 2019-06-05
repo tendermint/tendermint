@@ -46,6 +46,21 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
 }
 
+//----------------------------------------------
+// utility funcs
+
+func makeTxs(height int64) (txs []types.Tx) {
+	for i := 0; i < 10; i++ {
+		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
+	}
+	return txs
+}
+
+func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+	return block
+}
+
 func TestLoadBlockStoreStateJSON(t *testing.T) {
 	db := db.NewMemDB()
 

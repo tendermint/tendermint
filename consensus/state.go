@@ -1652,6 +1652,12 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 
 		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {
+			cs.eventBus.PublishEventMajorPrecommits(types.EventDataMajorPrecommits{
+				Height: cs.Height,
+				Round:  cs.Round,
+				Step:   cs.Step.String(),
+				Votes:  *precommits.Copy(),
+			})
 			// Executed as TwoThirdsMajority could be from a higher round
 			cs.enterNewRound(height, vote.Round)
 			cs.enterPrecommit(height, vote.Round)

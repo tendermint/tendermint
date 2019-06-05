@@ -119,6 +119,21 @@ func (voteSet *VoteSet) Size() int {
 	return voteSet.valSet.Size()
 }
 
+func (voteSet *VoteSet) Copy() *VoteSet {
+	if voteSet == nil {
+		return nil
+	}
+	return &VoteSet{
+		chainID: voteSet.chainID,
+		height:  voteSet.height,
+		round:   voteSet.round,
+		type_:   voteSet.type_,
+		valSet:  voteSet.valSet,
+		votes:   voteSet.votes,
+		maj23:   voteSet.maj23,
+	}
+}
+
 // Returns added=true if vote is valid and new.
 // Otherwise returns err=ErrVote[
 //		UnexpectedStep | InvalidIndex | InvalidAddress |
