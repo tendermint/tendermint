@@ -13,9 +13,9 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	
+
 	amino "github.com/tendermint/go-amino"
-	
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -307,7 +307,7 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, expectedID t
 		return nil, errors.Wrap(err, "error unmarshalling rpc response")
 	}
 	if response.Error != nil {
-    		return nil, errors.Wrap(response.Error, "response error")
+		return nil, errors.Wrap(response.Error, "response error")
 	}
 	// From the JSON-RPC 2.0 spec:
 	//  id: It MUST be the same as the value of the id member in the Request Object.
