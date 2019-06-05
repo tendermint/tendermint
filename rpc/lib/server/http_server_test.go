@@ -80,7 +80,7 @@ func TestStartHTTPAndTLSServer(t *testing.T) {
 	go StartHTTPAndTLSServer(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec
 	}
 	c := &http.Client{Transport: tr}
 	res, err := c.Get("https://" + ln.Addr().String())
