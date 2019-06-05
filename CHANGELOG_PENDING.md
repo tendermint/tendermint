@@ -24,4 +24,6 @@
 ### IMPROVEMENTS:
 - [p2p] \#3666 Add per channel telemtry to improve reactor observability
 
+* [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code.
+
 ### BUG FIXES:
