@@ -50,7 +50,6 @@ import (
 // https://godoc.org/github.com/tendermint/tendermint/libs/pubsub/query.
 //
 // ```go
-// import "github.com/tendermint/tendermint/libs/pubsub/query"
 // import "github.com/tendermint/tendermint/types"
 //
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
@@ -59,15 +58,17 @@ import (
 //   // handle error
 // }
 // defer client.Stop()
-// ctx, cancel := context.WithTimeout(context.Background(), timeout)
+// ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
 // defer cancel()
-// query := query.MustParse("tm.event = 'Tx' AND tx.height = 3")
-// txs := make(chan interface{})
-// err = client.Subscribe(ctx, "test-client", query, txs)
+// query := "tm.event = 'Tx' AND tx.height = 3"
+// txs, err := client.Subscribe(ctx, "test-client", query)
+// if err != nil {
+//   // handle error
+// }
 //
 // go func() {
 //   for e := range txs {
-//     fmt.Println("got ", e.(types.EventDataTx))
+//     fmt.Println("got ", e.Data.(types.EventDataTx))
 //	 }
 // }()
 // ```
@@ -154,7 +155,11 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 //   // handle error
 // }
 // defer client.Stop()
-// err = client.Unsubscribe("test-client", query)
+// query := "tm.event = 'Tx' AND tx.height = 3"
+// err = client.Unsubscribe(context.Background(), "test-client", query)
+// if err != nil {
+//   // handle error
+// }
 // ```
 //
 // > The above command returns JSON structured like this:
@@ -198,7 +203,10 @@ func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe
 //   // handle error
 // }
 // defer client.Stop()
-// err = client.UnsubscribeAll("test-client")
+// err = client.UnsubscribeAll(context.Background(), "test-client")
+// if err != nil {
+//   // handle error
+// }
 // ```
 //
 // > The above command returns JSON structured like this:
