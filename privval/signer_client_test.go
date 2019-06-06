@@ -208,12 +208,11 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	}
 }
 
-type BrokenSignerDialerEndpoint struct {
+type brokenSignerDialerEndpoint struct {
 	*SignerDialerEndpoint
 }
 
-// nolint
-func (ss *BrokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+func (ss *brokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, PubKeyResponse{})
 	return
 }
@@ -228,7 +227,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 
 			// Replace signer service with a broken one
 			tc.signerService.Stop()
-			tmp := BrokenSignerDialerEndpoint{tc.signerService}
+			tmp := brokenSignerDialerEndpoint{tc.signerService}
 			tmp.Start()
 
 			defer tmp.Stop()
