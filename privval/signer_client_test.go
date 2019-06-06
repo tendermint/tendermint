@@ -55,7 +55,7 @@ func TestSignerClose(t *testing.T) {
 func TestSignerGetPubKey(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		func() {
-			defer tc.signerService.OnStop()
+			defer tc.signerService.Stop()
 			defer tc.signer.Close()
 
 			pubKey := tc.signer.GetPubKey()
