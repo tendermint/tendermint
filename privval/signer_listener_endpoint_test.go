@@ -163,7 +163,7 @@ func getStartEndpoint(t *testing.T, readyCh chan struct{}, sv *SignerListenerEnd
 	go func(sv *SignerListenerEndpoint) {
 		require.NoError(t, sv.Start())
 		assert.True(t, sv.IsRunning())
-		readyCh <- struct{}{}
+		close(readyCh)
 	}(sv)
 }
 
