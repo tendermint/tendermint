@@ -27,7 +27,7 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 
 		ve, se := getMockEndpoints(t, chainID, mockPV, dtc.addr, dtc.dialer)
 		sr, err := NewSignerClient(ve)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		tc := signerTestCase{
 			chainID:       chainID,
