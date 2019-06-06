@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -408,29 +408,23 @@ func (bcR *BlockchainReactor) processBlock() error {
 	first := firstBP.block
 	second := secondBP.block
 
-	chainID := bcR.initialState.ChainID
-
 	firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 	firstPartsHeader := firstParts.Header()
 	firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
-	// Finally, verify the first block using the second's commit
-	// NOTE: we can probably make this more efficient, but note that calling
-	// first.Hash() doesn't verify the tx contents, so MakePartSet() is
-	// currently necessary.
-	err = bcR.state.Validators.VerifyCommit(
-		chainID, firstID, first.Height, second.LastCommit)
+
+	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
 	if err != nil {
-		bcR.Logger.Error("error during commit verification", "err", err,
-			"first", first.Height, "second", second.Height)
-		return errBlockVerificationFailure
+		switch err.(type) {
+		case sm.ErrInvalidBlock:
+			bcR.Logger.Error("verification error during applyBlock", "err", err)
+			return errBlockVerificationFailure
+		default:
+			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+		}
 	}
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	bcR.state, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
-	if err != nil {
-		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
-	}
 	return nil
 }
 
