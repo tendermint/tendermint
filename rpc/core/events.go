@@ -22,23 +22,22 @@ import (
 // string (escaped with single quotes), number, date or time.
 //
 // Examples:
-//		tm.event = 'NewBlock'				# new blocks
-//		tm.event = 'CompleteProposal'		# node got a complete proposal
+//		tm.event = 'NewBlock'               # new blocks
+//		tm.event = 'CompleteProposal'       # node got a complete proposal
 //		tm.event = 'Tx' AND tx.hash = 'XYZ' # single transaction
-//		tm.event = 'Tx' AND tx.height = 5	# all txs of the fifth block
-//		tx.height = 5						# all txs of the fifth block
+//		tm.event = 'Tx' AND tx.height = 5   # all txs of the fifth block
+//		tx.height = 5                       # all txs of the fifth block
 //
 // Tendermint provides a few predefined keys: tm.event, tx.hash and tx.height.
 // Note for transactions, you can define additional keys by providing events with
 // DeliverTx response.
 //
-// ```go
-// import (
-//		abci "github.com/tendermint/tendermint/abci/types"
-// 		"github.com/tendermint/tendermint/libs/pubsub/query"
-// )
+//  import (
+//	  abci "github.com/tendermint/tendermint/abci/types"
+// 	  "github.com/tendermint/tendermint/libs/pubsub/query"
+//  )
 //
-// abci.ResponseDeliverTx{
+//  abci.ResponseDeliverTx{
 // 	Events: []abci.Event{
 // 		{
 // 			Type: "rewards.withdraw",
@@ -67,41 +66,39 @@ import (
 // 			},
 // 		},
 // 	},
-// }
-// ```
+//  }
 //
-// All events are indexed by a composite key of the form `{eventType}.{evenAttrKey}`.
+// All events are indexed by a composite key of the form {eventType}.{evenAttrKey}.
 // In the above examples, the following keys would be indexed:
-//
-// - `rewards.withdraw.address`
-// - `rewards.withdraw.source`
-// - `rewards.withdraw.amount`
-// - `rewards.withdraw.balance`
-// - `transfer.sender`
-// - `transfer.recipient`
-// - `transfer.amount`
+//     - rewards.withdraw.address
+//     - rewards.withdraw.source
+//     - rewards.withdraw.amount
+//     - rewards.withdraw.balance
+//     - transfer.sender
+//     - transfer.recipient
+//     - transfer.amount
 //
 // Multiple event types with duplicate keys are allowed and are meant to
 // categorize unique and distinct events. In the above example, all events
 // indexed under the key `rewards.withdraw.address` will have the following
 // values stored and queryable:
 //
-// - `AddrA`
-// - `AddrB`
+//     - AddrA
+//     - AddrB
 //
-// // To create a query for txs where address AddrA withdrew rewards:
-// query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA'")
+// To create a query for txs where address AddrA withdrew rewards:
+//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA'")
 //
-// // To create a query for txs where address AddrA withdrew rewards from source Y:
-// query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA' AND rewards.withdraw.source = 'Y'")
+// To create a query for txs where address AddrA withdrew rewards from source Y:
+//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA' AND rewards.withdraw.source = 'Y'")
 //
-// // To create a query for txs where AddrA transferred funds:
-// query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrA'")
+// To create a query for txs where AddrA transferred funds:
+//  query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrA'")
 //
 // The following queries would return no results:
-// query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrZ'")
-// query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrZ'")
-// query.MustParse("tm.event = 'Tx' AND rewards.withdraw.source = 'W'")
+//  query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrZ'")
+//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrZ'")
+//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.source = 'W'")
 //
 // See list of all possible events here
 // https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants
