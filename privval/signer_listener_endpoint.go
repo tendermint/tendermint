@@ -48,8 +48,6 @@ func NewSignerListenerEndpoint(logger log.Logger, listener net.Listener) *Signer
 
 // OnStart implements cmn.Service.
 func (sl *SignerListenerEndpoint) OnStart() error {
-	sl.Logger.Debug("SignerListenerEndpoint: OnStart")
-
 	sl.stopCh = make(chan struct{})
 	sl.stoppedCh = make(chan struct{})
 
@@ -64,10 +62,8 @@ func (sl *SignerListenerEndpoint) OnStart() error {
 
 // OnStop implements cmn.Service
 func (sl *SignerListenerEndpoint) OnStop() {
-	sl.Logger.Debug("SignerListenerEndpoint: OnStop calling Close")
 	_ = sl.Close()
 
-	sl.Logger.Debug("SignerListenerEndpoint: OnStop stop listening")
 	// Stop listening
 	if sl.listener != nil {
 		if err := sl.listener.Close(); err != nil {
@@ -84,7 +80,6 @@ func (sl *SignerListenerEndpoint) OnStop() {
 func (sl *SignerListenerEndpoint) Close() error {
 	sl.mtx.Lock()
 	defer sl.mtx.Unlock()
-	sl.Logger.Debug("SignerListenerEndpoint: Close")
 
 	sl.dropConnection()
 	return nil
@@ -109,22 +104,18 @@ func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 	sl.mtx.Lock()
 	defer sl.mtx.Unlock()
 
-	sl.Logger.Debug("SignerListenerEndpoint: Send request", "connected", sl.isConnected())
 	err := sl.ensureConnection(sl.timeoutAccept)
 	if err != nil {
 		return nil, err
 	}
 
-	sl.Logger.Debug("Send request. Write")
 	err = sl.writeMessage(request)
 	if err != nil {
 		return nil, err
 	}
 
-	sl.Logger.Debug("Send request. Read")
 	res, err := sl.readMessage()
 	if err != nil {
-		sl.Logger.Debug("Read Error", "err", err)
 		return nil, err
 	}
 
@@ -142,10 +133,6 @@ func (sl *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error)
 
 	// Reset read deadline
 	deadline := time.Now().Add(sl.timeoutReadWrite)
-	sl.Logger.Debug(
-		"SignerListenerEndpoint: readMessage",
-		"timeout", sl.timeoutReadWrite,
-		"deadline", deadline)
 
 	err = sl.conn.SetReadDeadline(deadline)
 	if err != nil {
@@ -169,10 +156,6 @@ func (sl *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) 
 
 	// Reset read deadline
 	deadline := time.Now().Add(sl.timeoutReadWrite)
-	sl.Logger.Debug(
-		"SignerListenerEndpoint: writeMessage",
-		"timeout", sl.timeoutReadWrite,
-		"deadline", deadline)
 
 	err = sl.conn.SetWriteDeadline(deadline)
 	if err != nil {
@@ -193,26 +176,23 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 		// Is there a connection ready?
 		select {
 		case sl.conn = <-sl.connectedCh:
-			sl.Logger.Debug("SignerListenerEndpoint: received connection")
 			return nil
 		default:
-			sl.Logger.Debug("SignerListenerEndpoint: no connection is ready")
 		}
 
 		// should we trigger a reconnect?
 		select {
 		case sl.connectCh <- struct{}{}:
-			sl.Logger.Debug("SignerListenerEndpoint: triggered a reconnect")
+			break
 		default:
-			sl.Logger.Debug("SignerListenerEndpoint: reconnect in progress")
+			break
 		}
 
 		// block until connected or timeout
 		select {
 		case sl.conn = <-sl.connectedCh:
-			sl.Logger.Debug("SignerListenerEndpoint: connected")
+			break
 		case <-time.After(maxWait):
-			sl.Logger.Debug("SignerListenerEndpoint: timeout")
 			return ErrListenerTimeout
 		}
 	}
@@ -221,8 +201,6 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 }
 
 func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
-	sl.Logger.Debug("SignerListenerEndpoint: AcceptNewConnection")
-
 	if !sl.IsRunning() || sl.listener == nil {
 		return nil, fmt.Errorf("endpoint is closing")
 	}
@@ -230,7 +208,6 @@ func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
 	// wait for a new conn
 	conn, err := sl.listener.Accept()
 	if err != nil {
-		sl.Logger.Debug("listener accept failed", "err", err)
 		return nil, err
 	}
 
@@ -249,7 +226,6 @@ func (sl *SignerListenerEndpoint) dropConnection() {
 
 func (sl *SignerListenerEndpoint) serviceLoop() {
 	defer close(sl.stoppedCh)
-	sl.Logger.Debug("SignerListenerEndpoint::serviceLoop")
 
 	for {
 		select {
@@ -264,10 +240,8 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 					// We have a good connection, wait for someone that needs one or cancellation
 					select {
 					case sl.connectedCh <- conn:
-						sl.Logger.Debug("SignerListenerEndpoint: connection relayed")
 						break
 					case <-sl.stopCh:
-						sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
 						return
 					}
 				}
@@ -278,7 +252,6 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 				}
 			}
 		case <-sl.stopCh:
-			sl.Logger.Debug("SignerListenerEndpoint::serviceLoop Stop")
 			return
 		}
 	}
