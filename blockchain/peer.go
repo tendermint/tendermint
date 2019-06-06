@@ -62,11 +62,6 @@ func (peer *bpPeer) SetLogger(l log.Logger) {
 	peer.logger = l
 }
 
-// SetHeight sets the height of the peer.
-func (peer *bpPeer) SetHeight(height int64) {
-	peer.Height = height
-}
-
 // Cleanup performs cleanup of the peer, removes blocks, requests, stops timers and monitors.
 func (peer *bpPeer) Cleanup() {
 	if peer.blockResponseTimer != nil {
@@ -97,26 +92,12 @@ func (peer *bpPeer) BlockAtHeight(height int64) (*types.Block, error) {
 	return peer.blocks[height], nil
 }
 
-// RequestSent records that a request was sent, and starts the peer timer and monitor if needed.
-func (peer *bpPeer) RequestSent(height int64) {
-	peer.blocks[height] = nil
-
-	if peer.NumPendingBlockRequests == 0 {
-		peer.startMonitor()
-		peer.resetBlockResponseTimer()
-	}
-	peer.NumPendingBlockRequests++
-}
-
-// BlockReceived handles a block arrival at peer level. Block must be non-nil and recvSize a positive integer
-func (peer *bpPeer) BlockReceived(block *types.Block, recvSize int) error {
+// AddBlock adds a block at peer level. Block must be non-nil and recvSize a positive integer
+// The peer must have a pending request for this block.
+func (peer *bpPeer) AddBlock(block *types.Block, recvSize int) error {
 	if block == nil || recvSize < 0 {
 		panic("bad parameters")
 	}
-	if peer.NumPendingBlockRequests == 0 {
-		panic("peer does not have pending requests")
-	}
-
 	existingBlock, ok := peer.blocks[block.Height]
 	if !ok {
 		peer.logger.Error("unsolicited block", "blockHeight", block.Height, "peer", peer.ID)
@@ -126,7 +107,9 @@ func (peer *bpPeer) BlockReceived(block *types.Block, recvSize int) error {
 		peer.logger.Error("already have a block for height", "height", block.Height)
 		return errDuplicateBlock
 	}
-
+	if peer.NumPendingBlockRequests == 0 {
+		panic("peer does not have pending requests")
+	}
 	peer.blocks[block.Height] = block
 	peer.NumPendingBlockRequests--
 	if peer.NumPendingBlockRequests == 0 {
@@ -139,9 +122,20 @@ func (peer *bpPeer) BlockReceived(block *types.Block, recvSize int) error {
 	return nil
 }
 
-// RemoveBlockAtHeight removes the block of given height
-func (peer *bpPeer) RemoveBlockAtHeight(height int64) {
+// RemoveBlock removes the block of given height
+func (peer *bpPeer) RemoveBlock(height int64) {
 	delete(peer.blocks, height)
+}
+
+// RequestSent records that a request was sent, and starts the peer timer and monitor if needed.
+func (peer *bpPeer) RequestSent(height int64) {
+	peer.blocks[height] = nil
+
+	if peer.NumPendingBlockRequests == 0 {
+		peer.startMonitor()
+		peer.resetBlockResponseTimer()
+	}
+	peer.NumPendingBlockRequests++
 }
 
 // CheckRate verifies that the response rate of the peer is acceptable (higher than the minimum allowed).

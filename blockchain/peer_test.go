@@ -92,14 +92,14 @@ func TestPeerRequestSent(t *testing.T) {
 	assert.Equal(t, int32(2), peer.NumPendingBlockRequests)
 }
 
-func TestPeerGetAndRemoveBlockAtHeight(t *testing.T) {
+func TestPeerGetAndRemoveBlock(t *testing.T) {
 	peer := NewBPPeer(
 		p2p.ID(cmn.RandStr(12)), 100,
 		func(err error, _ p2p.ID) {},
 		nil)
 
 	// Change peer height
-	peer.SetHeight(int64(10))
+	peer.Height = int64(10)
 	assert.Equal(t, int64(10), peer.Height)
 
 	// request some blocks and receive few of them
@@ -109,7 +109,7 @@ func TestPeerGetAndRemoveBlockAtHeight(t *testing.T) {
 			// only receive blocks 1..5
 			continue
 		}
-		_ = peer.BlockReceived(makeSmallBlock(i), 10)
+		_ = peer.AddBlock(makeSmallBlock(i), 10)
 	}
 
 	tests := []struct {
@@ -133,14 +133,14 @@ func TestPeerGetAndRemoveBlockAtHeight(t *testing.T) {
 			assert.Equal(t, tt.blockPresent, b != nil)
 
 			// remove the block
-			peer.RemoveBlockAtHeight(tt.height)
+			peer.RemoveBlock(tt.height)
 			_, err = peer.BlockAtHeight(tt.height)
 			assert.Equal(t, errMissingRequest, err)
 		})
 	}
 }
 
-func TestPeerBlockReceived(t *testing.T) {
+func TestPeerAddBlock(t *testing.T) {
 	peer := NewBPPeer(
 		p2p.ID(cmn.RandStr(12)), 100,
 		func(err error, _ p2p.ID) {},
@@ -151,7 +151,7 @@ func TestPeerBlockReceived(t *testing.T) {
 		peer.RequestSent(int64(i))
 		if i == 5 {
 			// receive block 5
-			_ = peer.BlockReceived(makeSmallBlock(i), 10)
+			_ = peer.AddBlock(makeSmallBlock(i), 10)
 		}
 	}
 
@@ -170,7 +170,7 @@ func TestPeerBlockReceived(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// try to get the block
-			err := peer.BlockReceived(makeSmallBlock(int(tt.height)), 10)
+			err := peer.AddBlock(makeSmallBlock(int(tt.height)), 10)
 			assert.Equal(t, tt.wantErr, err)
 			_, err = peer.BlockAtHeight(tt.height)
 			assert.Equal(t, tt.blockPresent, err == nil)
@@ -230,14 +230,14 @@ func TestPeerCheckRate(t *testing.T) {
 
 	// normal peer - send a bit more than 100 bytes/sec, > 10 bytes/100msec, check peer is not considered slow
 	for i := 0; i < 10; i++ {
-		_ = peer.BlockReceived(makeSmallBlock(i), 11)
+		_ = peer.AddBlock(makeSmallBlock(i), 11)
 		time.Sleep(100 * time.Millisecond)
 		require.Nil(t, peer.CheckRate())
 	}
 
 	// slow peer - send a bit less than 10 bytes/100msec
 	for i := 10; i < 20; i++ {
-		_ = peer.BlockReceived(makeSmallBlock(i), 9)
+		_ = peer.AddBlock(makeSmallBlock(i), 9)
 		time.Sleep(100 * time.Millisecond)
 	}
 	// check peer is considered slow

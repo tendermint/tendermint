@@ -50,7 +50,7 @@ func (pool *blockPool) rescheduleRequest(peerID p2p.ID, height int64) {
 	pool.logger.Info("reschedule requests made to peer for height ", "peerID", peerID, "height", height)
 	pool.plannedRequests[height] = struct{}{}
 	delete(pool.blocks, height)
-	pool.peers[peerID].RemoveBlockAtHeight(height)
+	pool.peers[peerID].RemoveBlock(height)
 }
 
 // Updates the pool's max height. If no peers are left MaxPeerHeight is set to 0.
@@ -84,6 +84,7 @@ func (pool *blockPool) UpdatePeer(peerID p2p.ID, height int64) error {
 		peer = NewBPPeer(peerID, height, pool.toBcR.sendPeerError, nil)
 		peer.SetLogger(pool.logger.With("peer", peerID))
 		pool.peers[peerID] = peer
+		pool.logger.Info("XXX added peer", "num_peers", len(pool.peers))
 	} else {
 		// Check if peer is lowering its height. This is not allowed.
 		if height < peer.Height {
@@ -91,7 +92,7 @@ func (pool *blockPool) UpdatePeer(peerID p2p.ID, height int64) error {
 			return errPeerLowersItsHeight
 		}
 		// Update existing peer.
-		peer.SetHeight(height)
+		peer.Height = height
 	}
 
 	// Update the pool's MaxPeerHeight if needed. Note that for updates it can only increase or left unchanged.
@@ -251,7 +252,7 @@ func (pool *blockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 		return errBadDataFromPeer
 	}
 
-	return peer.BlockReceived(block, blockSize)
+	return peer.AddBlock(block, blockSize)
 }
 
 type blockData struct {
@@ -300,7 +301,7 @@ func (pool *blockPool) InvalidateFirstTwoBlocks(err error) {
 func (pool *blockPool) ProcessedCurrentHeightBlock() {
 	peerID, peerOk := pool.blocks[pool.Height]
 	if peerOk {
-		pool.peers[peerID].RemoveBlockAtHeight(pool.Height)
+		pool.peers[peerID].RemoveBlock(pool.Height)
 	}
 	delete(pool.blocks, pool.Height)
 	pool.logger.Debug("processed and removed block at height", "height", pool.Height)
