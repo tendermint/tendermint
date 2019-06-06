@@ -35,9 +35,9 @@ const (
 var (
 	// Maximum number of requests that can be pending per peer, i.e. for which requests have been sent but blocks
 	// have not been received.
-	maxRequestsPerPeer int32 = 20
+	maxRequestsPerPeer int = 20
 	// Maximum number of block requests for the reactor, pending or for which blocks have been received.
-	maxNumRequests int32 = 64
+	maxNumRequests int = 64
 )
 
 type consensusReactor interface {

@@ -21,7 +21,7 @@ type testBcR struct {
 }
 
 type testValues struct {
-	numRequestsSent int32
+	numRequestsSent int
 }
 
 var testResults testValues
@@ -283,7 +283,7 @@ func TestBlockPoolRemoveShortPeers(t *testing.T) {
 func TestBlockPoolSendRequestBatch(t *testing.T) {
 	type testPeerResult struct {
 		id                      p2p.ID
-		numPendingBlockRequests int32
+		numPendingBlockRequests int
 	}
 
 	testBcR := newTestBcR()
@@ -291,10 +291,10 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 	tests := []struct {
 		name                       string
 		pool                       *blockPool
-		maxRequestsPerPeer         int32
+		maxRequestsPerPeer         int
 		expRequests                map[int64]bool
 		expPeerResults             []testPeerResult
-		expnumPendingBlockRequests int32
+		expnumPendingBlockRequests int
 	}{
 		{
 			name:                       "one peer - send up to maxRequestsPerPeer block requests",
@@ -321,16 +321,16 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 			resetPoolTestResults()
 
 			var pool = tt.pool
-			maxRequestsPerPeer = int32(tt.maxRequestsPerPeer)
+			maxRequestsPerPeer = tt.maxRequestsPerPeer
 			pool.MakeNextRequests(10)
-			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*int32(len(pool.peers)))
+			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*len(pool.peers))
 
 			for _, tPeer := range tt.expPeerResults {
 				var peer = pool.peers[tPeer.id]
 				assert.NotNil(t, peer)
 				assert.Equal(t, tPeer.numPendingBlockRequests, peer.NumPendingBlockRequests)
 			}
-			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*int32(len(pool.peers)))
+			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*len(pool.peers))
 
 		})
 	}

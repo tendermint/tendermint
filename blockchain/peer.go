@@ -25,7 +25,7 @@ type bpPeer struct {
 	ID     p2p.ID
 
 	Height                  int64                  // the peer reported height
-	NumPendingBlockRequests int32                  // number of requests still waiting for block responses
+	NumPendingBlockRequests int                    // number of requests still waiting for block responses
 	blocks                  map[int64]*types.Block // blocks received or expected to be received from this peer
 	blockResponseTimer      *time.Timer
 	recvMonitor             *flow.Monitor
@@ -70,7 +70,7 @@ func (peer *bpPeer) Cleanup() {
 	if peer.NumPendingBlockRequests != 0 {
 		peer.logger.Info("peer with pending requests is being cleaned")
 	}
-	if int32(len(peer.blocks))-peer.NumPendingBlockRequests != 0 {
+	if len(peer.blocks)-peer.NumPendingBlockRequests != 0 {
 		peer.logger.Info("peer with pending blocks is being cleaned")
 	}
 	for h := range peer.blocks {

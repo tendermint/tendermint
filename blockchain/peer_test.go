@@ -84,12 +84,12 @@ func TestPeerRequestSent(t *testing.T) {
 	peer.RequestSent(1)
 	assert.NotNil(t, peer.recvMonitor)
 	assert.NotNil(t, peer.blockResponseTimer)
-	assert.Equal(t, int32(1), peer.NumPendingBlockRequests)
+	assert.Equal(t, 1, peer.NumPendingBlockRequests)
 
 	peer.RequestSent(1)
 	assert.NotNil(t, peer.recvMonitor)
 	assert.NotNil(t, peer.blockResponseTimer)
-	assert.Equal(t, int32(2), peer.NumPendingBlockRequests)
+	assert.Equal(t, 2, peer.NumPendingBlockRequests)
 }
 
 func TestPeerGetAndRemoveBlock(t *testing.T) {

@@ -27,7 +27,7 @@ type testReactor struct {
 	logger            log.Logger
 	fsm               *bReactorFSM
 	numStatusRequests int
-	numBlockRequests  int32
+	numBlockRequests  int
 	lastBlockRequest  lastBlockRequestT
 	lastPeerError     lastPeerErrorT
 	stateTimerStarts  map[string]int
@@ -109,7 +109,7 @@ func makeStepStatusEv(current, expected string, peerID p2p.ID, height int64, err
 		errWanted:     err}
 }
 
-func makeStepMakeRequestsEv(current, expected string, maxPendingRequests int32) fsmStepTestValues {
+func makeStepMakeRequestsEv(current, expected string, maxPendingRequests int) fsmStepTestValues {
 	return fsmStepTestValues{
 		currentState:      current,
 		event:             makeRequestsEv,
@@ -120,7 +120,7 @@ func makeStepMakeRequestsEv(current, expected string, maxPendingRequests int32) 
 }
 
 func makeStepMakeRequestsEvErrored(current, expected string,
-	maxPendingRequests int32, err error, peersRemoved []p2p.ID) fsmStepTestValues {
+	maxPendingRequests int, err error, peersRemoved []p2p.ID) fsmStepTestValues {
 	return fsmStepTestValues{
 		currentState:      current,
 		event:             makeRequestsEv,
@@ -204,8 +204,8 @@ func fixBlockResponseEvStep(step *fsmStepTestValues, testBcR *testReactor) {
 type testFields struct {
 	name               string
 	startingHeight     int64
-	maxRequestsPerPeer int32
-	maxPendingRequests int32
+	maxRequestsPerPeer int
+	maxPendingRequests int
 	steps              []fsmStepTestValues
 }
 
@@ -785,7 +785,7 @@ func TestFSMPeerStateTimeoutEvent(t *testing.T) {
 }
 
 func makeCorrectTransitionSequence(startingHeight int64, numBlocks int64, numPeers int, randomPeerHeights bool,
-	maxRequestsPerPeer int32, maxPendingRequests int32) testFields {
+	maxRequestsPerPeer int, maxPendingRequests int) testFields {
 
 	// Generate numPeers peers with random or numBlocks heights according to the randomPeerHeights flag.
 	peerHeights := make([]int64, numPeers)
@@ -888,10 +888,10 @@ func makeCorrectTransitionSequenceWithRandomParameters() testFields {
 	startingHeight := int64(cmn.RandIntn(maxStartingHeightTest) + 1)
 
 	// Generate the number of requests per peer.
-	maxRequestsPerPeer := int32(cmn.RandIntn(maxRequestsPerPeerTest) + 1)
+	maxRequestsPerPeer := cmn.RandIntn(maxRequestsPerPeerTest) + 1
 
 	// Generate the maximum number of total pending requests, >= maxRequestsPerPeer.
-	maxPendingRequests := int32(cmn.RandIntn(maxTotalPendingRequestsTest-int(maxRequestsPerPeer))) + maxRequestsPerPeer
+	maxPendingRequests := cmn.RandIntn(maxTotalPendingRequestsTest-int(maxRequestsPerPeer)) + maxRequestsPerPeer
 
 	// Generate the number of blocks to be synced.
 	numBlocks := int64(cmn.RandIntn(maxNumBlocksInChainTest)) + startingHeight

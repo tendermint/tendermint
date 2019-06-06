@@ -61,7 +61,7 @@ type bReactorEventData struct {
 	block          *types.Block // for block response
 	stateName      string       // for state timeout events
 	length         int          // for block response event, length of received block, used to detect slow peers
-	maxNumRequests int32        // for request needed event, maximum number of pending requests
+	maxNumRequests int          // for request needed event, maximum number of pending requests
 }
 
 // Blockchain Reactor Events (the input to the state machine)
@@ -405,7 +405,7 @@ func (fsm *bReactorFSM) isCaughtUp() bool {
 	return fsm.state == finished
 }
 
-func (fsm *bReactorFSM) makeNextRequests(maxNumRequests int32) {
+func (fsm *bReactorFSM) makeNextRequests(maxNumRequests int) {
 	fsm.pool.MakeNextRequests(maxNumRequests)
 }
 

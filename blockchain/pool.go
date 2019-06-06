@@ -168,7 +168,7 @@ func (pool *blockPool) removeBadPeers() {
 
 // Makes a batch of requests sorted by height up to a specified maximum.
 // The parameter 'maxNumRequests' includes the number of block requests already made.
-func (pool *blockPool) makeRequestBatch(maxNumRequests int32) []int {
+func (pool *blockPool) makeRequestBatch(maxNumRequests int) []int {
 	pool.removeBadPeers()
 	// At this point pool.requests may include heights for requests to be redone due to removal of peers:
 	// - peers timed out or were removed by switch
@@ -191,7 +191,7 @@ func (pool *blockPool) makeRequestBatch(maxNumRequests int32) []int {
 	return heights
 }
 
-func (pool *blockPool) MakeNextRequests(maxNumRequests int32) {
+func (pool *blockPool) MakeNextRequests(maxNumRequests int) {
 	heights := pool.makeRequestBatch(maxNumRequests)
 	pool.logger.Info("makeNextRequests will make following requests", "number", len(heights), "heights", heights)
 
@@ -208,7 +208,7 @@ func (pool *blockPool) MakeNextRequests(maxNumRequests int32) {
 
 func (pool *blockPool) sendRequest(height int64) bool {
 	for _, peer := range pool.peers {
-		if peer.NumPendingBlockRequests >= int32(maxRequestsPerPeer) {
+		if peer.NumPendingBlockRequests >= maxRequestsPerPeer {
 			continue
 		}
 		if peer.Height < height {
