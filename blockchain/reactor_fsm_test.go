@@ -248,14 +248,14 @@ func executeFSMTests(t *testing.T, tests []testFields, matchRespToReq bool) {
 				}
 
 				for _, height := range step.blocksAdded {
-					_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(height)
+					_, err := testBcR.fsm.pool.BlockAndPeerAtHeight(height)
 					assert.Nil(t, err)
 				}
 				if step.event == processedBlockEv && step.data.err == errBlockVerificationFailure {
 					heightAfter := testBcR.fsm.pool.Height
 					assert.Equal(t, heightBefore, heightAfter)
-					firstAfter, err1 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.Height)
-					secondAfter, err2 := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.Height + 1)
+					firstAfter, err1 := testBcR.fsm.pool.BlockAndPeerAtHeight(testBcR.fsm.pool.Height)
+					secondAfter, err2 := testBcR.fsm.pool.BlockAndPeerAtHeight(testBcR.fsm.pool.Height + 1)
 					assert.NotNil(t, err1)
 					assert.NotNil(t, err2)
 					assert.Nil(t, firstAfter)
@@ -904,11 +904,11 @@ func makeCorrectTransitionSequenceWithRandomParameters() testFields {
 
 func shouldApplyProcessedBlockEvStep(step *fsmStepTestValues, testBcR *testReactor) bool {
 	if step.event == processedBlockEv {
-		_, err := testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.Height)
+		_, err := testBcR.fsm.pool.BlockAndPeerAtHeight(testBcR.fsm.pool.Height)
 		if err == errMissingBlock {
 			return false
 		}
-		_, err = testBcR.fsm.pool.GetBlockAndPeerAtHeight(testBcR.fsm.pool.Height + 1)
+		_, err = testBcR.fsm.pool.BlockAndPeerAtHeight(testBcR.fsm.pool.Height + 1)
 		if err == errMissingBlock {
 			return false
 		}

@@ -429,7 +429,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 	}
 }
 
-func TestBlockPoolGetNextTwoBlocks(t *testing.T) {
+func TestBlockPoolFirstTwoBlocksAndPeers(t *testing.T) {
 	testBcR := newTestBcR()
 
 	tests := []struct {
@@ -475,21 +475,23 @@ func TestBlockPoolGetNextTwoBlocks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pool := tt.pool
-			gotFirst, gotSecond, err := pool.GetNextTwoBlocks()
+			gotFirst, gotSecond, err := pool.FirstTwoBlocksAndPeers()
 			assert.Equal(t, tt.errWanted, err)
 
 			if tt.firstWanted != 0 {
 				peer := pool.blocks[tt.firstWanted]
 				block := pool.peers[peer].blocks[tt.firstWanted]
-				assert.Equal(t, gotFirst.block, block,
-					"blockPool.getNextTwoBlocks() gotFirst = %v, want %v", gotFirst.block.Height, tt.firstWanted)
+				assert.Equal(t, block, gotFirst.block,
+					"blockPool.FirstTwoBlocksAndPeers() gotFirst = %v, want %v",
+					tt.firstWanted, gotFirst.block.Height)
 			}
 
 			if tt.secondWanted != 0 {
 				peer := pool.blocks[tt.secondWanted]
 				block := pool.peers[peer].blocks[tt.secondWanted]
-				assert.Equal(t, gotSecond.block, block,
-					"blockPool.getNextTwoBlocks() gotFirst = %v, want %v", gotSecond.block.Height, tt.secondWanted)
+				assert.Equal(t, block, gotSecond.block,
+					"blockPool.FirstTwoBlocksAndPeers() gotFirst = %v, want %v",
+					tt.secondWanted, gotSecond.block.Height)
 			}
 		})
 	}

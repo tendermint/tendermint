@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -321,7 +321,7 @@ func (bcR *BlockchainReactor) poolRoutine() {
 					bcR.blocksSynced++
 					if bcR.blocksSynced%100 == 0 {
 						lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
-						height, maxPeerHeight := bcR.fsm.getStatus()
+						height, maxPeerHeight := bcR.fsm.Status()
 						bcR.Logger.Info("Fast Sync Rate", "height", height,
 							"max_peer_height", maxPeerHeight, "blocks/s", lastRate)
 						lastHundred = time.Now()
@@ -336,7 +336,7 @@ ForLoop:
 		select {
 
 		case <-sendBlockRequestTicker.C:
-			if !bcR.fsm.needsBlocks() {
+			if !bcR.fsm.NeedsBlocks() {
 				continue
 			}
 			_ = bcR.fsm.Handle(&bcReactorMessage{
@@ -399,14 +399,11 @@ func (bcR *BlockchainReactor) reportPeerErrorToSwitch(err error, peerID p2p.ID) 
 
 func (bcR *BlockchainReactor) processBlock() error {
 
-	firstBP, secondBP, err := bcR.fsm.getNextTwoBlocks()
+	first, second, err := bcR.fsm.FirstTwoBlocks()
 	if err != nil {
 		// We need both to sync the first block.
 		return err
 	}
-
-	first := firstBP.block
-	second := secondBP.block
 
 	firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 	firstPartsHeader := firstParts.Header()

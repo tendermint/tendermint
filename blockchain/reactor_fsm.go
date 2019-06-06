@@ -90,7 +90,8 @@ func (msg *bcReactorMessage) String() string {
 	case statusResponseEv:
 		dataStr = fmt.Sprintf("peer=%v height=%v", msg.data.peerId, msg.data.height)
 	case blockResponseEv:
-		dataStr = fmt.Sprintf("peer=%v block.height=%v lenght=%v", msg.data.peerId, msg.data.block.Height, msg.data.length)
+		dataStr = fmt.Sprintf("peer=%v block.height=%v lenght=%v",
+			msg.data.peerId, msg.data.block.Height, msg.data.length)
 	case processedBlockEv:
 		dataStr = fmt.Sprintf("error=%v", msg.data.err)
 	case makeRequestsEv:
@@ -199,7 +200,8 @@ func init() {
 			switch ev {
 			case stateTimeoutEv:
 				if data.stateName != "waitForPeer" {
-					fsm.logger.Error("received a state timeout event for different state", "state", data.stateName)
+					fsm.logger.Error("received a state timeout event for different state",
+						"state", data.stateName)
 					return waitForPeer, errTimeoutEventWrongState
 				}
 				// There was no statusResponse received from any peer.
@@ -261,10 +263,10 @@ func init() {
 				return waitForBlock, err
 
 			case processedBlockEv:
-				fsm.logger.Debug("processedBlockEv", "err", data.err)
-				first, second, _ := fsm.pool.GetNextTwoBlocks()
 				if data.err != nil {
-					fsm.logger.Error("process blocks returned error", "err", data.err, "first", first.block.Height, "second", second.block.Height)
+					first, second, _ := fsm.pool.FirstTwoBlocksAndPeers()
+					fsm.logger.Error("error processing block", "err", data.err,
+						"first", first.block.Height, "second", second.block.Height)
 					fsm.logger.Error("send peer error for", "peer", first.peer.ID)
 					fsm.toBcR.sendPeerError(data.err, first.peer.ID)
 					fsm.logger.Error("send peer error for", "peer", second.peer.ID)
@@ -301,7 +303,8 @@ func init() {
 
 			case stateTimeoutEv:
 				if data.stateName != "waitForBlock" {
-					fsm.logger.Error("received a state timeout event for different state", "state", data.stateName)
+					fsm.logger.Error("received a state timeout event for different state",
+						"state", data.stateName)
 					return waitForBlock, errTimeoutEventWrongState
 				}
 				// We haven't received the block at current height or height+1. Remove peer.
@@ -372,7 +375,8 @@ func (fsm *bReactorFSM) Handle(msg *bcReactorMessage) error {
 	}
 	next, err := fsm.state.handle(fsm, msg.event, msg.data)
 	if err != nil {
-		fsm.logger.Error("FSM event handler returned", "err", err, "state", fsm.state, "event", msg.event)
+		fsm.logger.Error("FSM event handler returned", "err", err,
+			"state", fsm.state, "event", msg.event)
 	}
 
 	oldState := fsm.state.name
@@ -413,19 +417,26 @@ func (fsm *bReactorFSM) cleanup() {
 	fsm.pool.Cleanup()
 }
 
-func (fsm *bReactorFSM) needsBlocks() bool {
+func (fsm *bReactorFSM) NeedsBlocks() bool {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
-	return fsm.state.name == "waitForBlock"
+	return fsm.state.name == "waitForBlock" && fsm.pool.NeedsBlocks()
 }
 
-func (fsm *bReactorFSM) getNextTwoBlocks() (first, second *blockData, err error) {
+// NextTwoBlocks returns the two blocks at pool height and height+1
+func (fsm *bReactorFSM) FirstTwoBlocks() (first, second *types.Block, err error) {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
-	return fsm.pool.GetNextTwoBlocks()
+	firstBP, secondBP, err := fsm.pool.FirstTwoBlocksAndPeers()
+	if err == nil {
+		first = firstBP.block
+		second = secondBP.block
+	}
+	return
 }
 
-func (fsm *bReactorFSM) getStatus() (height, maxPeerHeight int64) {
+// Status returns the pool's height and the maximum peer height.
+func (fsm *bReactorFSM) Status() (height, maxPeerHeight int64) {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
 	return fsm.pool.Height, fsm.pool.MaxPeerHeight

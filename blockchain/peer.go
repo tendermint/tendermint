@@ -80,7 +80,7 @@ func (peer *bpPeer) Cleanup() {
 	peer.recvMonitor = nil
 }
 
-// BlockAtHeight returns the block at a given height if available and a non-nil error otherwise.
+// BlockAtHeight returns the block at a given height if available and errMissingBlock otherwise.
 func (peer *bpPeer) BlockAtHeight(height int64) (*types.Block, error) {
 	block, ok := peer.blocks[height]
 	if !ok {
