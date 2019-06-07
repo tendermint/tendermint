@@ -66,7 +66,9 @@ func (bdb *BoltDB) Get(key []byte) (value []byte) {
 	key = nonEmptyKey(nonNilBytes(key))
 	err := bdb.db.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
-		value = b.Get(key)
+		if v := b.Get(key); v != nil {
+			value = append([]byte{}, v...)
+		}
 		return nil
 	})
 	if err != nil {
@@ -312,12 +314,16 @@ func (itr *boltDBIterator) Next() {
 
 func (itr *boltDBIterator) Key() []byte {
 	itr.assertIsValid()
-	return itr.currentKey
+	return append([]byte{}, itr.currentKey...)
 }
 
 func (itr *boltDBIterator) Value() []byte {
 	itr.assertIsValid()
-	return itr.currentValue
+	var value []byte
+	if itr.currentValue != nil {
+		value = append([]byte{}, itr.currentValue...)
+	}
+	return value
 }
 
 func (itr *boltDBIterator) Close() {

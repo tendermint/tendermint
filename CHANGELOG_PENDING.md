@@ -29,3 +29,4 @@
 
 ### BUG FIXES:
 - [libs/db] Fixed the BoltDB backend's Batch.Delete implementation (@Yawning)
+- [libs/db] Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
