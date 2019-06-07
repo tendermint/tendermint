@@ -149,55 +149,45 @@ func (bdb *BoltDB) Stats() map[string]string {
 // boltDBBatch stores key values in sync.Map and dumps them to the underlying
 // DB upon Write call.
 type boltDBBatch struct {
-	buffer []struct {
-		k []byte
-		v []byte
-	}
-	db *BoltDB
+	db  *BoltDB
+	ops []operation
 }
 
 // NewBatch returns a new batch.
 func (bdb *BoltDB) NewBatch() Batch {
 	return &boltDBBatch{
-		buffer: make([]struct {
-			k []byte
-			v []byte
-		}, 0),
-		db: bdb,
+		ops: nil,
+		db:  bdb,
 	}
 }
 
 // It is safe to modify the contents of the argument after Set returns but not
 // before.
 func (bdb *boltDBBatch) Set(key, value []byte) {
-	bdb.buffer = append(bdb.buffer, struct {
-		k []byte
-		v []byte
-	}{
-		key, value,
-	})
+	bdb.ops = append(bdb.ops, operation{opTypeSet, key, value})
 }
 
 // It is safe to modify the contents of the argument after Delete returns but
 // not before.
 func (bdb *boltDBBatch) Delete(key []byte) {
-	for i, elem := range bdb.buffer {
-		if bytes.Equal(elem.k, key) {
-			// delete without preserving order
-			bdb.buffer[i] = bdb.buffer[len(bdb.buffer)-1]
-			bdb.buffer = bdb.buffer[:len(bdb.buffer)-1]
-			return
-		}
-	}
+	bdb.ops = append(bdb.ops, operation{opTypeDelete, key, nil})
 }
 
 // NOTE: the operation is synchronous (see BoltDB for reasons)
 func (bdb *boltDBBatch) Write() {
 	err := bdb.db.db.Batch(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
-		for _, elem := range bdb.buffer {
-			if putErr := b.Put(elem.k, elem.v); putErr != nil {
-				return putErr
+		for _, op := range bdb.ops {
+			key := nonEmptyKey(nonNilBytes(op.key))
+			switch op.opType {
+			case opTypeSet:
+				if putErr := b.Put(key, op.value); putErr != nil {
+					return putErr
+				}
+			case opTypeDelete:
+				if delErr := b.Delete(key); delErr != nil {
+					return delErr
+				}
 			}
 		}
 		return nil
