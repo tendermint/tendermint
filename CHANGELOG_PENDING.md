@@ -4,6 +4,11 @@
 
 ### BREAKING CHANGES:
 
+- \#3613 Switch from golang/dep to Go 1.11 Modules to resolve dependencies:
+  - it is recommended to switch to Go Modules if your project has tendermint 
+  as a dependency
+  - read more on Modules here: https://github.com/golang/go/wiki/Modules  
+
 * CLI/RPC/Config
 - [rpc] \#3616 Improve `/block_results` response format (`results.DeliverTx` ->
   `results.deliver_tx`). See docs for details.

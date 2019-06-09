@@ -19,7 +19,6 @@ RUN mkdir -p /go/src/github.com/tendermint/tendermint && \
     git clone https://github.com/tendermint/tendermint . && \
     git checkout develop && \
     make get_tools && \
-    make get_vendor_deps && \
     make install && \
     cd - && \
     rm -rf /go/src/github.com/tendermint/tendermint && \
