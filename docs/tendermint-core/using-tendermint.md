@@ -202,8 +202,10 @@ Note that raw hex cannot be used in `POST` transactions.
 
 ## Reset
 
-**WARNING: UNSAFE** Only do this in development and only if you can
+::: warning
+**UNSAFE** Only do this in development and only if you can
 afford to lose all blockchain data!
+:::
 
 To reset a blockchain, stop the node and run:
 
