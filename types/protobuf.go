@@ -45,8 +45,6 @@ func (tm2pb) Header(header *Header) abci.Header {
 	//TODO check if this works as supposed to when multiple validators
 	json.NewEncoder(reqBodyBytes).Encode(header.Votes)
 	reqBodyBytes.Bytes()
-
-	fmt.Printf("inside Protobuf.go %v", reqBodyBytes.String())
 	return abci.Header{
 		Version: abci.Version{
 			Block: header.Version.Block.Uint64(),

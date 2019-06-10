@@ -47,7 +47,7 @@ type CanonicalRLPVote struct {
 	ChainID string
 	// TODO Make sure this works in contract
 	// otherwise change the SignedMsgType to a byte
-	Type   SignedMsgType
+	Type   byte
 	Height uint
 	Round  uint
 	Data   []byte
@@ -94,7 +94,7 @@ func CanonicalizeVote(chainID string, vote *Vote) CanonicalRLPVote {
 	// TODO ensure that removing Timestamp and BlockID has no security issues
 	return CanonicalRLPVote{
 		ChainID: chainID,
-		Type:    vote.Type,
+		Type:    byte(vote.Type),
 		Height:  uint(vote.Height),
 		Round:   uint(vote.Round),
 		Data:    vote.Data,
