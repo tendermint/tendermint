@@ -124,6 +124,75 @@ func TestTxSearch(t *testing.T) {
 	}
 }
 
+func TestTxSearchDeprecatedIndexing(t *testing.T) {
+	allowedTags := []string{"account.number", "sender"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+
+	// index tx using events indexing (composite key)
+	txResult1 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
+	})
+	hash1 := txResult1.Tx.Hash()
+
+	err := indexer.Index(txResult1)
+	require.NoError(t, err)
+
+	// index tx also using deprecated indexing (tag as key)
+	txResult2 := txResultWithEvents(nil)
+	txResult2.Tx = types.Tx("HELLO WORLD 2")
+
+	hash2 := txResult2.Tx.Hash()
+	b := indexer.store.NewBatch()
+
+	rawBytes, err := cdc.MarshalBinaryBare(txResult2)
+	require.NoError(t, err)
+
+	depKey := []byte(fmt.Sprintf("%s/%s/%d/%d",
+		"sender",
+		"addr1",
+		txResult2.Height,
+		txResult2.Index,
+	))
+
+	b.Set(depKey, hash2)
+	b.Set(keyForHeight(txResult2), hash2)
+	b.Set(hash2, rawBytes)
+	b.Write()
+
+	testCases := []struct {
+		q       string
+		results []*types.TxResult
+	}{
+		// search by hash
+		{fmt.Sprintf("tx.hash = '%X'", hash1), []*types.TxResult{txResult1}},
+		// search by hash
+		{fmt.Sprintf("tx.hash = '%X'", hash2), []*types.TxResult{txResult2}},
+		// search by exact match (one tag)
+		{"account.number = 1", []*types.TxResult{txResult1}},
+		{"account.number >= 1 AND account.number <= 5", []*types.TxResult{txResult1}},
+		// search by range (lower bound)
+		{"account.number >= 1", []*types.TxResult{txResult1}},
+		// search by range (upper bound)
+		{"account.number <= 5", []*types.TxResult{txResult1}},
+		// search using not allowed tag
+		{"not_allowed = 'boom'", []*types.TxResult{}},
+		// search for not existing tx result
+		{"account.number >= 2 AND account.number <= 5", []*types.TxResult{}},
+		// search using not existing tag
+		{"account.date >= TIME 2013-05-03T14:45:00Z", []*types.TxResult{}},
+		// search by deprecated tag
+		{"sender = 'addr1'", []*types.TxResult{txResult2}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.q, func(t *testing.T) {
+			results, err := indexer.Search(query.MustParse(tc.q))
+			require.NoError(t, err)
+			require.Equal(t, results, tc.results)
+		})
+	}
+}
+
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	allowedTags := []string{"account.number"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
