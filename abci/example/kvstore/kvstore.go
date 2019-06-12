@@ -84,14 +84,21 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	} else {
 		key, value = tx, tx
 	}
+
 	app.state.db.Set(prefixKey(key), value)
 	app.state.Size += 1
 
-	tags := []cmn.KVPair{
-		{Key: []byte("app.creator"), Value: []byte("Cosmoshi Netowoko")},
-		{Key: []byte("app.key"), Value: key},
+	events := []types.Event{
+		{
+			Type: "app",
+			Attributes: []cmn.KVPair{
+				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
+				{Key: []byte("key"), Value: key},
+			},
+		},
 	}
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
+
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
 }
 
 func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {

@@ -10,14 +10,18 @@
   - read more on Modules here: https://github.com/golang/go/wiki/Modules  
 
 * CLI/RPC/Config
-- [rpc] \#3616 Improve `/block_results` response format (`results.DeliverTx` ->
+  * [rpc] \#3616 Improve `/block_results` response format (`results.DeliverTx` ->
   `results.deliver_tx`). See docs for details.
 
 * Apps
+  * [abci] \#1859 `ResponseCheckTx`, `ResponseDeliverTx`, `ResponseBeginBlock`,
+  and `ResponseEndBlock` now include `Events` instead of `Tags`. Each `Event`
+  contains a `type` and a list of `attributes` (list of key-value pairs) allowing
+  for inclusion of multiple distinct events in each response.
 
 * Go API
-- [libs/db] Removed deprecated `LevelDBBackend` const
-  * If you have `db_backend` set to `leveldb` in your config file, please
+  * [libs/db] Removed deprecated `LevelDBBackend` const
+    * If you have `db_backend` set to `leveldb` in your config file, please
     change it to `goleveldb` or `cleveldb`.
 - [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
 
