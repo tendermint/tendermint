@@ -130,8 +130,7 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	// add predefined new block event
 	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlock)
 
-	_ = b.pubsub.PublishWithEvents(ctx, data, events)
-	return nil
+	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
 func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
@@ -170,8 +169,7 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	events[TxHashKey] = append(events[TxHashKey], fmt.Sprintf("%X", data.Tx.Hash()))
 	events[TxHeightKey] = append(events[TxHeightKey], fmt.Sprintf("%d", data.Height))
 
-	_ = b.pubsub.PublishWithEvents(ctx, data, events)
-	return nil
+	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
 func (b *EventBus) PublishEventNewRoundStep(data EventDataRoundState) error {
