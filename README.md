@@ -26,13 +26,16 @@ For protocol details, see [the specification](/docs/spec).
 For detailed analysis of the consensus protocol, including safety and liveness proofs,
 see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
 
-## A Note on Production Readiness
+## Releases
+
+NOTE: The master branch is now an active development branch (starting with `v0.32`). Please, do not depend on it and 
+use [releases](https://github.com/tendermint/tendermint/releases) instead. 
 
 While Tendermint is being used in production in private, permissioned
 environments, we are still working actively to harden and audit it in preparation
 for use in public blockchains, such as the [Cosmos Network](https://cosmos.network/).
-We are also still making breaking changes to the protocol and the APIs.
-Thus, we tag the releases as *alpha software*.
+We are also still making breaking changes to the protocol and the APIs and have not yet released v1.0.
+Thus, we tag the releases as *alpha software*. 
 
 In any case, if you intend to run Tendermint in production,
 please [contact us](mailto:partners@tendermint.com) and [join the chat](https://riot.im/app/#/room/#tendermint:matrix.org).
