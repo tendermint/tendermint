@@ -45,8 +45,6 @@ type CanonicalVote struct {
 // [peppermint] create RLP vote to decode in contract
 type CanonicalRLPVote struct {
 	ChainID string
-	// TODO Make sure this works in contract
-	// otherwise change the SignedMsgType to a byte
 	Type   byte
 	Height uint
 	Round  uint

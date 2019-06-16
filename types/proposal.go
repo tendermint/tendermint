@@ -71,9 +71,9 @@ func (p *Proposal) ValidateBasic() error {
 	if len(p.Signature) == 0 {
 		return errors.New("Signature is missing")
 	}
-	if len(p.Signature) > MaxSignatureSize {
-		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
-	}
+	// if len(p.Signature) > MaxSignatureSize {
+	// 	return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+	// }
 	return nil
 }
 
