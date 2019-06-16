@@ -112,14 +112,16 @@ header should also be recorded under `CLI/RPC/Config` since the field will be
 removed from the header in rpc responses as well.
 
 ## Branching Model and Release
+
 The main development branch is master. 
-Every release is maintained in a release branch
-named `vX.Y.Z`.
-Note all pull requests should be squash merged except for merging to master. 
-This keeps the commit history clean and makes it
+
+Every release is maintained in a release branch named `vX.Y.Z`.
+
+Note all pull requests should be squash merged except for merging to master. This keeps the commit history clean and makes it
 easy to reference the pull request where a change was introduced.
 
-### Development Procedure:
+### Development Procedure
+
 - the latest state of development is on `master`
 - `master` must never fail `make test`
 - never --force onto `master` (except when reverting a broken commit, which should seldom happen)
@@ -127,7 +129,8 @@ easy to reference the pull request where a change was introduced.
 - make changes and update the `CHANGELOG_PENDING.md` to record your change
 - before submitting a pull request, run `git rebase` on top of the latest `master`
 
-### Pull Merge Procedure:
+### Pull Merge Procedure
+
 - ensure pull branch is based on a recent `master`
 - run `make test` to ensure that all tests pass
 - squash merge pull request
@@ -135,10 +138,11 @@ easy to reference the pull request where a change was introduced.
 
 ### Release Procedure
 
-#### Major (Breaking) Release
-- start on `master` 
-- run integration tests (see `test_integrations` in Makefile)
-- prepare release in a pull request against `master` (to be squash merged):
+#### Major Release
+
+1. start on `master` 
+2. run integration tests (see `test_integrations` in Makefile)
+3. prepare release in a pull request against `master` (to be squash merged):
     - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
     - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
       all issues
@@ -148,10 +152,10 @@ easy to reference the pull request where a change was introduced.
       ./scripts/authors.sh <email>`
     - reset the `CHANGELOG_PENDING.md`
     - bump versions
-- push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
-- merge back to master (don't squash merge!)
+4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
+5. merge back to master (don't squash merge!)
 
-#### Minor (Non-Breaking) Release
+#### Minor Release
 
 If there were no breaking changes and you need to create a release nonetheless, 
 the procedure is almost exactly like with a new release above. 
@@ -161,8 +165,15 @@ The branch name should match the release number you want to create.
 Merging this PR will trigger the next release. 
 For example, if the PR is against an existing 0.34 branch which already contains a v0.34.0 release/tag, 
 the patch version will be incremented and the created release will be v0.34.1.
- 
 
+#### Backport Release
+
+1. start from the existing release branch you want to backport changes to (e.g. v0.30)
+Branch to a release/vX.X.X branch locally (e.g. release/v0.30.7)
+2. cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
+3. steps 2 and 3 from Major Release
+4. push changes to release/vX.X.X branch
+5. open a PR against the existing vX.X branch
 
 ## Testing
 
