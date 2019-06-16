@@ -156,9 +156,12 @@ easy to reference the pull request where a change was introduced.
 If there were no breaking changes and you need to create a release nonetheless, 
 the procedure is almost exactly like with a new release above. 
 
-The only difference is that in the end you create a PR against the existing `X.X` branch.
+The only difference is that in the end you create a pull request against the existing `X.X` branch.
 The branch name should match the release number you want to create.
-Merging this PR will trigger the next release.
+Merging this PR will trigger the next release. 
+For example, if the PR is against an existing 0.34 branch which already contains a v0.34.0 release/tag, 
+the patch version will be incremented and the created release will be v0.34.1.
+ 
 
 
 ## Testing
