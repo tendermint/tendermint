@@ -117,7 +117,7 @@ The main development branch is master.
 
 Every release is maintained in a release branch named `vX.Y.Z`.
 
-Note all pull requests should be squash merged except for merging to master. This keeps the commit history clean and makes it
+Note all pull requests should be squash merged except for merging to a release branch (named `vX.Y`). This keeps the commit history clean and makes it
 easy to reference the pull request where a change was introduced.
 
 ### Development Procedure
