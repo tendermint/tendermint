@@ -714,7 +714,6 @@ func (n *Node) OnStop() {
 	n.indexerService.Stop()
 
 	// now stop the reactors
-	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 
 	// stop mempool WAL

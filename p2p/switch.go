@@ -221,11 +221,7 @@ func (sw *Switch) OnStart() error {
 func (sw *Switch) OnStop() {
 	// Stop peers
 	for _, p := range sw.peers.List() {
-		sw.transport.Cleanup(p)
-		p.Stop()
-		if sw.peers.Remove(p) {
-			sw.metrics.Peers.Add(float64(-1))
-		}
+		sw.stopAndRemovePeer(p, nil)
 	}
 
 	// Stop reactors
