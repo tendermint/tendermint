@@ -91,7 +91,7 @@ func (msg *bcReactorMessage) String() string {
 	case statusResponseEv:
 		dataStr = fmt.Sprintf("peer=%v height=%v", msg.data.peerID, msg.data.height)
 	case blockResponseEv:
-		dataStr = fmt.Sprintf("peer=%v block.height=%v lenght=%v",
+		dataStr = fmt.Sprintf("peer=%v block.height=%v length=%v",
 			msg.data.peerID, msg.data.block.Height, msg.data.length)
 	case processedBlockEv:
 		dataStr = fmt.Sprintf("error=%v", msg.data.err)
@@ -103,10 +103,8 @@ func (msg *bcReactorMessage) String() string {
 		dataStr = fmt.Sprintf("peer: %v is being removed by the switch", msg.data.peerID)
 	case stateTimeoutEv:
 		dataStr = fmt.Sprintf("state=%v", msg.data.stateName)
-
 	default:
 		dataStr = fmt.Sprintf("cannot interpret message data")
-		return "event unknown"
 	}
 
 	return fmt.Sprintf("%v: %v", msg.event, dataStr)

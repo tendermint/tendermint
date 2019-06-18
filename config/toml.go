@@ -48,8 +48,7 @@ func EnsureRoot(rootDir string) {
 // XXX: this func should probably be called by cmd/tendermint/commands/init.go
 // alongside the writing of the genesis.json and priv_validator.json
 func writeDefaultConfigFile(configFilePath string) {
-	config := DefaultConfig()
-	WriteConfigFile(configFilePath, config)
+	WriteConfigFile(configFilePath, DefaultConfig())
 }
 
 // WriteConfigFile renders config using the template and writes it to configFilePath.
