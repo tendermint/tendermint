@@ -84,7 +84,7 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 }
 
 // CustomReactorRegistrationRequest allows client to load custom reactors
-// easily into tendermint.
+// easily into tendermint node.
 type CustomReactorRegistrationRequest struct {
 	Name    string
 	Reactor p2p.Reactor
