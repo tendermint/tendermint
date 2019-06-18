@@ -38,20 +38,58 @@ Finally, `Query`, `CheckTx`, and `DeliverTx` include a `Codespace string`, whose
 intended use is to disambiguate `Code` values returned by different domains of the
 application. The `Codespace` is a namespace for the `Code`.
 
-## Tags
+## Events
 
 Some methods (`CheckTx, BeginBlock, DeliverTx, EndBlock`)
-include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
-something about what happened during the methods execution.
+include an `Events` field in their `Response*`. Each event contains a type and a
+list of attributes, which are key-value pairs denoting something about what happened
+during the method's execution.
 
-Tags can be used to index transactions and blocks according to what happened
-during their execution. Note that the set of tags returned for a block from
+Events can be used to index transactions and blocks according to what happened
+during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
 tag, only the value defined in `EndBlock` is used.
 
-Keys and values in tags must be UTF-8 encoded strings (e.g.
-"account.owner": "Bob", "balance": "100.0",
-"time": "2018-01-02T12:30:00Z")
+Each event has a `type` which is meant to categorize the event for a particular
+`Response*` or tx. A `Response*` or tx may contain multiple events with duplicate
+`type` values, where each distinct entry is meant to categorize attributes for a
+particular event. Every key and value in an event's attributes must be UTF-8
+encoded strings along with the even type itself.
+
+Example:
+
+```go
+ abci.ResponseDeliverTx{
+ 	// ...
+	Events: []abci.Event{
+		{
+			Type: "validator.provisions",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			},
+		},
+		{
+			Type: "validator.provisions",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			},
+		},
+		{
+			Type: "validator.slashed",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("reason"), Value: []byte("...")},
+			},
+		},		
+		// ...
+	},
+}
+```
 
 ## Determinism
 

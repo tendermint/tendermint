@@ -98,7 +98,9 @@ func WriteRPCResponseHTTPError(
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpCode)
-	w.Write(jsonBytes) // nolint: errcheck, gas
+	if _, err := w.Write(jsonBytes); err != nil {
+		panic(err)
+	}
 }
 
 func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
@@ -108,12 +110,33 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(jsonBytes) // nolint: errcheck, gas
+	if _, err := w.Write(jsonBytes); err != nil {
+		panic(err)
+	}
+}
+
+// WriteRPCResponseArrayHTTP will do the same as WriteRPCResponseHTTP, except it
+// can write arrays of responses for batched request/response interactions via
+// the JSON RPC.
+func WriteRPCResponseArrayHTTP(w http.ResponseWriter, res []types.RPCResponse) {
+	if len(res) == 1 {
+		WriteRPCResponseHTTP(w, res[0])
+	} else {
+		jsonBytes, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		if _, err := w.Write(jsonBytes); err != nil {
+			panic(err)
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
 
-// Wraps an HTTP handler, adding error logging.
+// RecoverAndLogHandler wraps an HTTP handler, adding error logging.
 // If the inner function panics, the outer function recovers, logs, sends an
 // HTTP 500 error response.
 func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
@@ -191,14 +214,14 @@ func Listen(addr string, config *Config) (listener net.Listener, err error) {
 	parts := strings.SplitN(addr, "://", 2)
 	if len(parts) != 2 {
 		return nil, errors.Errorf(
-			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
+			"invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
 			addr,
 		)
 	}
 	proto, addr := parts[0], parts[1]
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
-		return nil, errors.Errorf("Failed to listen on %v: %v", addr, err)
+		return nil, errors.Errorf("failed to listen on %v: %v", addr, err)
 	}
 	if config.MaxOpenConnections > 0 {
 		listener = netutil.LimitListener(listener, config.MaxOpenConnections)

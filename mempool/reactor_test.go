@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -43,8 +42,8 @@ func mempoolLogger() log.Logger {
 }
 
 // connect N mempool reactors through N switches
-func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor {
-	reactors := make([]*MempoolReactor, N)
+func makeAndConnectReactors(config *cfg.Config, N int) []*Reactor {
+	reactors := make([]*Reactor, N)
 	logger := mempoolLogger()
 	for i := 0; i < N; i++ {
 		app := kvstore.NewKVStoreApplication()
@@ -52,7 +51,7 @@ func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor 
 		mempool, cleanup := newMempoolWithApp(cc)
 		defer cleanup()
 
-		reactors[i] = NewMempoolReactor(config.Mempool, mempool) // so we dont start the consensus states
+		reactors[i] = NewReactor(config.Mempool, mempool) // so we dont start the consensus states
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
@@ -64,13 +63,15 @@ func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor 
 	return reactors
 }
 
-// wait for all txs on all reactors
-func waitForTxs(t *testing.T, txs types.Txs, reactors []*MempoolReactor) {
+func waitForTxsOnReactors(t *testing.T, txs types.Txs, reactors []*Reactor) {
 	// wait for the txs in all mempools
 	wg := new(sync.WaitGroup)
-	for i := 0; i < len(reactors); i++ {
+	for i, reactor := range reactors {
 		wg.Add(1)
-		go _waitForTxs(t, wg, txs, i, reactors)
+		go func(r *Reactor, reactorIndex int) {
+			defer wg.Done()
+			waitForTxsOnReactor(t, txs, r, reactorIndex)
+		}(reactor, i)
 	}
 
 	done := make(chan struct{})
@@ -87,25 +88,23 @@ func waitForTxs(t *testing.T, txs types.Txs, reactors []*MempoolReactor) {
 	}
 }
 
-// wait for all txs on a single mempool
-func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int, reactors []*MempoolReactor) {
-
-	mempool := reactors[reactorIdx].Mempool
-	for mempool.Size() != len(txs) {
+func waitForTxsOnReactor(t *testing.T, txs types.Txs, reactor *Reactor, reactorIndex int) {
+	mempool := reactor.mempool
+	for mempool.Size() < len(txs) {
 		time.Sleep(time.Millisecond * 100)
 	}
 
 	reapedTxs := mempool.ReapMaxTxs(len(txs))
 	for i, tx := range txs {
-		assert.Equal(t, tx, reapedTxs[i], fmt.Sprintf("txs at index %d on reactor %d don't match: %v vs %v", i, reactorIdx, tx, reapedTxs[i]))
+		assert.Equalf(t, tx, reapedTxs[i],
+			"txs at index %d on reactor %d don't match: %v vs %v", i, reactorIndex, tx, reapedTxs[i])
 	}
-	wg.Done()
 }
 
 // ensure no txs on reactor after some timeout
-func ensureNoTxs(t *testing.T, reactor *MempoolReactor, timeout time.Duration) {
+func ensureNoTxs(t *testing.T, reactor *Reactor, timeout time.Duration) {
 	time.Sleep(timeout) // wait for the txs in all mempools
-	assert.Zero(t, reactor.Mempool.Size())
+	assert.Zero(t, reactor.mempool.Size())
 }
 
 const (
@@ -116,7 +115,7 @@ const (
 func TestReactorBroadcastTxMessage(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 4
-	reactors := makeAndConnectMempoolReactors(config, N)
+	reactors := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			r.Stop()
@@ -130,14 +129,14 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
-	txs := checkTxs(t, reactors[0].Mempool, NUM_TXS, UnknownPeerID)
-	waitForTxs(t, txs, reactors)
+	txs := checkTxs(t, reactors[0].mempool, NUM_TXS, UnknownPeerID)
+	waitForTxsOnReactors(t, txs, reactors)
 }
 
 func TestReactorNoBroadcastToSender(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectMempoolReactors(config, N)
+	reactors := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			r.Stop()
@@ -146,7 +145,7 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 
 	// send a bunch of txs to the first reactor's mempool, claiming it came from peer
 	// ensure peer gets no txs
-	checkTxs(t, reactors[0].Mempool, NUM_TXS, 1)
+	checkTxs(t, reactors[0].mempool, NUM_TXS, 1)
 	ensureNoTxs(t, reactors[1], 100*time.Millisecond)
 }
 
@@ -157,7 +156,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectMempoolReactors(config, N)
+	reactors := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			r.Stop()
@@ -180,7 +179,7 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectMempoolReactors(config, N)
+	reactors := makeAndConnectReactors(config, N)
 
 	// stop reactors
 	for _, r := range reactors {

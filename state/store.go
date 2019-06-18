@@ -115,9 +115,9 @@ func saveState(db dbm.DB, state State, key []byte) {
 // of the various ABCI calls during block processing.
 // It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
-	DeliverTx  []*abci.ResponseDeliverTx
-	EndBlock   *abci.ResponseEndBlock
-	BeginBlock *abci.ResponseBeginBlock
+	DeliverTx  []*abci.ResponseDeliverTx `json:"deliver_tx"`
+	EndBlock   *abci.ResponseEndBlock    `json:"end_block"`
+	BeginBlock *abci.ResponseBeginBlock  `json:"begin_block"`
 }
 
 // NewABCIResponses returns a new ABCIResponses
@@ -193,7 +193,7 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 	if valInfo.ValidatorSet == nil {
 		lastStoredHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
 		valInfo2 := loadValidatorsInfo(db, lastStoredHeight)
-		if valInfo2 == nil {
+		if valInfo2 == nil || valInfo2.ValidatorSet == nil {
 			// TODO (melekes): remove the below if condition in the 0.33 major
 			// release and just panic. Old chains might panic otherwise if they
 			// haven't saved validators at intermediate (%valSetCheckpointInterval)
@@ -201,7 +201,7 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 			// https://github.com/tendermint/tendermint/issues/3543
 			valInfo2 = loadValidatorsInfo(db, valInfo.LastHeightChanged)
 			lastStoredHeight = valInfo.LastHeightChanged
-			if valInfo2 == nil {
+			if valInfo2 == nil || valInfo2.ValidatorSet == nil {
 				panic(
 					fmt.Sprintf("Couldn't find validators at height %d (height %d was originally requested)",
 						lastStoredHeight,
