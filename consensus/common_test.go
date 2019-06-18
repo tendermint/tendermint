@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -29,6 +28,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/tmstore"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -260,7 +260,7 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state sm.State, pv type
 
 func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.State, pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
 	// Get BlockStore
-	blockStore := bc.NewBlockStore(blockDB)
+	blockStore := tmstore.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
 	mtx := new(sync.Mutex)

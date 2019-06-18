@@ -1,4 +1,4 @@
-package blockchain
+package tmstore
 
 import (
 	"bytes"
@@ -30,6 +30,18 @@ type cleanupFunc func()
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	commitSigs := []*types.CommitSig{{Height: height, Timestamp: timestamp}}
 	return types.NewCommit(types.BlockID{}, commitSigs)
+}
+
+func makeTxs(height int64) (txs []types.Tx) {
+	for i := 0; i < 10; i++ {
+		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
+	}
+	return txs
+}
+
+func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+	return block
 }
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {

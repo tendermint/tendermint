@@ -11,13 +11,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/tmstore"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -279,7 +279,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	dbType := dbm.DBBackendType(config.DBBackend)
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
-	blockStore := bc.NewBlockStore(blockStoreDB)
+	blockStore := tmstore.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())

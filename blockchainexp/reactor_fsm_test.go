@@ -1,4 +1,4 @@
-package blockchain
+package blockchainexp
 
 import (
 	"fmt"
@@ -104,7 +104,7 @@ func makeStepStatusEv(current, expected string, peerID p2p.ID, height int64, err
 	return fsmStepTestValues{
 		currentState:  current,
 		event:         statusResponseEv,
-		data:          bReactorEventData{peerId: peerID, height: height},
+		data:          bReactorEventData{peerID: peerID, height: height},
 		expectedState: expected,
 		errWanted:     err}
 }
@@ -138,7 +138,7 @@ func makeStepBlockRespEv(current, expected string, peerID p2p.ID, height int64, 
 		currentState: current,
 		event:        blockResponseEv,
 		data: bReactorEventData{
-			peerId: peerID,
+			peerID: peerID,
 			height: height,
 			block:  types.MakeBlock(int64(height), txs, nil, nil),
 			length: 100},
@@ -155,7 +155,7 @@ func makeStepBlockRespEvErrored(current, expected string,
 		currentState: current,
 		event:        blockResponseEv,
 		data: bReactorEventData{
-			peerId: peerID,
+			peerID: peerID,
 			height: height,
 			block:  types.MakeBlock(int64(height), txs, nil, nil),
 			length: 100},
@@ -171,7 +171,7 @@ func makeStepPeerRemoveEv(current, expected string, peerID p2p.ID, err error, pe
 		currentState: current,
 		event:        peerRemoveEv,
 		data: bReactorEventData{
-			peerId: peerID,
+			peerID: peerID,
 			err:    err,
 		},
 		expectedState:  expected,
@@ -196,7 +196,7 @@ func fixBlockResponseEvStep(step *fsmStepTestValues, testBcR *testReactor) {
 		height := step.data.height
 		peerID, ok := testBcR.fsm.pool.blocks[height]
 		if ok {
-			step.data.peerId = peerID
+			step.data.peerID = peerID
 		}
 	}
 }

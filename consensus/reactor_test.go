@@ -17,13 +17,13 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/tmstore"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -128,7 +128,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
 
 		blockDB := dbm.NewMemDB()
-		blockStore := bc.NewBlockStore(blockDB)
+		blockStore := tmstore.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
 		mtx := new(sync.Mutex)

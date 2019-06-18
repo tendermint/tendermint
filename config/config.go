@@ -64,6 +64,7 @@ type Config struct {
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	FastSyncParams  *FastSyncParamsConfig  `mapstructure:"fastsyncp"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -76,6 +77,7 @@ func DefaultConfig() *Config {
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
+		FastSyncParams:  DefaultFastSyncParamsConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -89,6 +91,7 @@ func TestConfig() *Config {
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
+		FastSyncParams:  TestFastSyncParamsConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -119,6 +122,9 @@ func (cfg *Config) ValidateBasic() error {
 	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [mempool] section")
+	}
+	if err := cfg.FastSyncParams.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [fastsync] section")
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [consensus] section")
@@ -641,6 +647,37 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 		return errors.New("cache_size can't be negative")
 	}
 	return nil
+}
+
+//-----------------------------------------------------------------------------
+// FastSyncParamsConfig
+
+// FastSyncParamsConfig defines the configuration for the Tendermint fast sync service
+type FastSyncParamsConfig struct {
+	Version string `mapstructure:"version"`
+}
+
+// DefaultFastSyncParamsConfig returns a default configuration for the fast sync service
+func DefaultFastSyncParamsConfig() *FastSyncParamsConfig {
+	return &FastSyncParamsConfig{
+		Version: "legacy",
+	}
+}
+
+// TestTxIndexConfig returns a default configuration for the transaction indexer.
+func TestFastSyncParamsConfig() *FastSyncParamsConfig {
+	return DefaultFastSyncParamsConfig()
+}
+
+func (cfg *FastSyncParamsConfig) ValidateBasic() error {
+	switch cfg.Version {
+	case "legacy":
+		return nil
+	case "experimental":
+		return nil
+	default:
+		return errors.New("unknown fast sync version")
+	}
 }
 
 //-----------------------------------------------------------------------------

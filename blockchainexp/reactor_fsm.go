@@ -1,4 +1,4 @@
-package blockchain
+package blockchainexp
 
 import (
 	"errors"
@@ -44,6 +44,7 @@ type bReactorFSM struct {
 	toBcR bcReactor
 }
 
+// NewFSM creates a new reactor FSM.
 func NewFSM(height int64, toBcR bcReactor) *bReactorFSM {
 	return &bReactorFSM{
 		state:     unknown,
@@ -55,7 +56,7 @@ func NewFSM(height int64, toBcR bcReactor) *bReactorFSM {
 
 // bReactorEventData is part of the message sent by the reactor to the FSM and used by the state handlers.
 type bReactorEventData struct {
-	peerId         p2p.ID
+	peerID         p2p.ID
 	err            error        // for peer error: timeout, slow; for processed block event if error occurred
 	height         int64        // for status response; for processed block event
 	block          *types.Block // for block response
@@ -88,10 +89,10 @@ func (msg *bcReactorMessage) String() string {
 	case startFSMEv:
 		dataStr = ""
 	case statusResponseEv:
-		dataStr = fmt.Sprintf("peer=%v height=%v", msg.data.peerId, msg.data.height)
+		dataStr = fmt.Sprintf("peer=%v height=%v", msg.data.peerID, msg.data.height)
 	case blockResponseEv:
 		dataStr = fmt.Sprintf("peer=%v block.height=%v lenght=%v",
-			msg.data.peerId, msg.data.block.Height, msg.data.length)
+			msg.data.peerID, msg.data.block.Height, msg.data.length)
 	case processedBlockEv:
 		dataStr = fmt.Sprintf("error=%v", msg.data.err)
 	case makeRequestsEv:
@@ -99,7 +100,7 @@ func (msg *bcReactorMessage) String() string {
 	case stopFSMEv:
 		dataStr = ""
 	case peerRemoveEv:
-		dataStr = fmt.Sprintf("peer: %v is being removed by the switch", msg.data.peerId)
+		dataStr = fmt.Sprintf("peer: %v is being removed by the switch", msg.data.peerID)
 	case stateTimeoutEv:
 		dataStr = fmt.Sprintf("state=%v", msg.data.stateName)
 
@@ -209,7 +210,7 @@ func init() {
 				return finished, errNoTallerPeer
 
 			case statusResponseEv:
-				if err := fsm.pool.UpdatePeer(data.peerId, data.height); err != nil {
+				if err := fsm.pool.UpdatePeer(data.peerID, data.height); err != nil {
 					if fsm.pool.NumPeers() == 0 {
 						return waitForPeer, err
 					}
@@ -242,7 +243,7 @@ func init() {
 			switch ev {
 
 			case statusResponseEv:
-				err := fsm.pool.UpdatePeer(data.peerId, data.height)
+				err := fsm.pool.UpdatePeer(data.peerID, data.height)
 				if fsm.pool.NumPeers() == 0 {
 					return waitForPeer, err
 				}
@@ -253,12 +254,12 @@ func init() {
 
 			case blockResponseEv:
 				fsm.logger.Debug("blockResponseEv", "H", data.block.Height)
-				err := fsm.pool.AddBlock(data.peerId, data.block, data.length)
+				err := fsm.pool.AddBlock(data.peerID, data.block, data.length)
 				if err != nil {
 					// A block was received that was unsolicited, from unexpected peer, or that we already have it.
 					// Ignore block, remove peer and send error to switch.
-					fsm.pool.RemovePeer(data.peerId, err)
-					fsm.toBcR.sendPeerError(err, data.peerId)
+					fsm.pool.RemovePeer(data.peerID, err)
+					fsm.toBcR.sendPeerError(err, data.peerID)
 				}
 				return waitForBlock, err
 
@@ -288,7 +289,7 @@ func init() {
 
 			case peerRemoveEv:
 				// This event is sent by the switch to remove disconnected and errored peers.
-				fsm.pool.RemovePeer(data.peerId, data.err)
+				fsm.pool.RemovePeer(data.peerID, data.err)
 				if fsm.pool.NumPeers() == 0 {
 					return waitForPeer, nil
 				}

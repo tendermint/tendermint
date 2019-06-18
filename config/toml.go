@@ -48,7 +48,8 @@ func EnsureRoot(rootDir string) {
 // XXX: this func should probably be called by cmd/tendermint/commands/init.go
 // alongside the writing of the genesis.json and priv_validator.json
 func writeDefaultConfigFile(configFilePath string) {
-	WriteConfigFile(configFilePath, DefaultConfig())
+	config := DefaultConfig()
+	WriteConfigFile(configFilePath, config)
 }
 
 // WriteConfigFile renders config using the template and writes it to configFilePath.
@@ -345,6 +346,15 @@ max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 
 # Instrumentation namespace
 namespace = "{{ .Instrumentation.Namespace }}"
+
+##### fast sync configuration options #####
+[fastsync]
+
+# Fast Sync version to use:
+#   1) "experimental"
+#   2) "legacy" (default)
+version = {{ .FastSyncParams.Version }}
+
 `
 
 /****** these are for test settings ***********/

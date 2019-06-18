@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/db"
@@ -19,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/tmstore"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -52,7 +52,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 		return errors.Wrap(err, "failed to make genesis state")
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
-	blockStore := bc.NewBlockStore(blockStoreDB)
+	blockStore := tmstore.NewBlockStore(blockStoreDB)
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
