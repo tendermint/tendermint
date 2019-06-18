@@ -47,6 +47,11 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
+// CustomReactorPrefix is prefixed to the reactor name
+// in CustomReactorRegistrationRequest to prevent clashes
+// with built-in reactors.
+const CustomReactorPrefix = "CUSTOM_"
+
 //------------------------------------------------------------------------------
 
 // DBContext specifies config information for loading a new DB.
@@ -76,6 +81,13 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 	return func() (*types.GenesisDoc, error) {
 		return types.GenesisDocFromFile(config.GenesisFile())
 	}
+}
+
+// CustomReactorRegistrationRequest allows client to load custom reactors
+// easily into tendermint.
+type CustomReactorRegistrationRequest struct {
+	Name    string
+	Reactor p2p.Reactor
 }
 
 // NodeProvider takes a config and a logger and returns a ready to go Node.
@@ -116,6 +128,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
+		nil,
 	)
 }
 
@@ -420,7 +433,8 @@ func createSwitch(config *cfg.Config,
 	evidenceReactor *evidence.EvidenceReactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
-	p2pLogger log.Logger) *p2p.Switch {
+	p2pLogger log.Logger,
+	customReactorRegistrationRequests []*CustomReactorRegistrationRequest) *p2p.Switch {
 
 	sw := p2p.NewSwitch(
 		config.P2P,
@@ -433,6 +447,11 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+
+	for _, custonmReactorRegistrationRequest := range customReactorRegistrationRequests {
+		sw.AddReactor(custonmReactorRegistrationRequest.Name, custonmReactorRegistrationRequest.Reactor)
+	}
+
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
@@ -482,7 +501,8 @@ func NewNode(config *cfg.Config,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
-	logger log.Logger) (*Node, error) {
+	logger log.Logger,
+	customReactorRegistrationRequests []*CustomReactorRegistrationRequest) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
@@ -586,7 +606,8 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+		consensusReactor, evidenceReactor, nodeInfo, nodeKey,
+		p2pLogger, customReactorRegistrationRequests,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
