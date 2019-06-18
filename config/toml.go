@@ -363,7 +363,7 @@ namespace = "{{ .Instrumentation.Namespace }}"
 # Fast Sync version to use:
 #   1) "experimental"
 #   2) "legacy" (default)
-version = {{ .FastSyncParams.Version }}
+version = "{{ .FastSyncParams.Version }}"
 
 `
 
