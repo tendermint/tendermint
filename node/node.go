@@ -448,8 +448,8 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 
-	for _, custonmReactorRegistrationRequest := range customReactorRegistrationRequests {
-		sw.AddReactor(custonmReactorRegistrationRequest.Name, custonmReactorRegistrationRequest.Reactor)
+	for _, regRequest := range customReactorRegistrationRequests {
+		sw.AddReactor(CustomReactorPrefix+regRequest.Name, regRequest.Reactor)
 	}
 
 	sw.SetNodeInfo(nodeInfo)
