@@ -329,13 +329,13 @@ func createBlockchainReactor(config *cfg.Config,
 	fastSync bool,
 	logger log.Logger) (bcReactor p2p.Reactor, err error) {
 
-	switch config.FastSyncParams.Version {
+	switch config.FastSync.Version {
 	case "v0":
 		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v1":
 		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSyncParams.Version)
+		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
@@ -562,7 +562,7 @@ func NewNode(config *cfg.Config,
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
-	fastSync := config.FastSync && !onlyValidatorIsUs(state, privValidator)
+	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, privValidator)
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
@@ -999,13 +999,13 @@ func makeNodeInfo(
 	}
 
 	var bcChannel byte
-	switch config.FastSyncParams.Version {
+	switch config.FastSync.Version {
 	case "v0":
 		bcChannel = bcv0.BlockchainChannel
 	case "v1":
 		bcChannel = bcv1.BlockchainChannel
 	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSyncParams.Version)
+		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
 	nodeInfo := p2p.DefaultNodeInfo{

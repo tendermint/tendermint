@@ -1,4 +1,4 @@
-package blockchainexp
+package v1
 
 import (
 	"sync"
@@ -15,7 +15,7 @@ import (
 )
 
 func TestPeerMonitor(t *testing.T) {
-	peer := NewBPPeer(
+	peer := NewBpPeer(
 		p2p.ID(cmn.RandStr(12)), 10,
 		func(err error, _ p2p.ID) {},
 		nil)
@@ -32,9 +32,9 @@ func TestPeerResetBlockResponseTimer(t *testing.T) {
 		lastErr         error      // last generated error
 		peerTestMtx     sync.Mutex // modifications of ^^ variables are also done from timer handler goroutine
 	)
-	params := &bpPeerParams{timeout: 2 * time.Millisecond}
+	params := &BpPeerParams{timeout: 2 * time.Millisecond}
 
-	peer := NewBPPeer(
+	peer := NewBpPeer(
 		p2p.ID(cmn.RandStr(12)), 10,
 		func(err error, _ p2p.ID) {
 			peerTestMtx.Lock()
@@ -72,9 +72,9 @@ func TestPeerResetBlockResponseTimer(t *testing.T) {
 }
 
 func TestPeerRequestSent(t *testing.T) {
-	params := &bpPeerParams{timeout: 2 * time.Millisecond}
+	params := &BpPeerParams{timeout: 2 * time.Millisecond}
 
-	peer := NewBPPeer(
+	peer := NewBpPeer(
 		p2p.ID(cmn.RandStr(12)), 10,
 		func(err error, _ p2p.ID) {},
 		params)
@@ -93,7 +93,7 @@ func TestPeerRequestSent(t *testing.T) {
 }
 
 func TestPeerGetAndRemoveBlock(t *testing.T) {
-	peer := NewBPPeer(
+	peer := NewBpPeer(
 		p2p.ID(cmn.RandStr(12)), 100,
 		func(err error, _ p2p.ID) {},
 		nil)
@@ -141,7 +141,7 @@ func TestPeerGetAndRemoveBlock(t *testing.T) {
 }
 
 func TestPeerAddBlock(t *testing.T) {
-	peer := NewBPPeer(
+	peer := NewBpPeer(
 		p2p.ID(cmn.RandStr(12)), 100,
 		func(err error, _ p2p.ID) {},
 		nil)
@@ -180,14 +180,14 @@ func TestPeerAddBlock(t *testing.T) {
 
 func TestPeerOnErrFuncCalledDueToExpiration(t *testing.T) {
 
-	params := &bpPeerParams{timeout: 2 * time.Millisecond}
+	params := &BpPeerParams{timeout: 2 * time.Millisecond}
 	var (
 		numErrFuncCalls int        // number of calls to the onErr function
 		lastErr         error      // last generated error
 		peerTestMtx     sync.Mutex // modifications of ^^ variables are also done from timer handler goroutine
 	)
 
-	peer := NewBPPeer(
+	peer := NewBpPeer(
 		p2p.ID(cmn.RandStr(12)), 10,
 		func(err error, _ p2p.ID) {
 			peerTestMtx.Lock()
@@ -209,11 +209,11 @@ func TestPeerOnErrFuncCalledDueToExpiration(t *testing.T) {
 }
 
 func TestPeerCheckRate(t *testing.T) {
-	params := &bpPeerParams{
+	params := &BpPeerParams{
 		timeout:     time.Second,
 		minRecvRate: int64(100), // 100 bytes/sec exponential moving average
 	}
-	peer := NewBPPeer(
+	peer := NewBpPeer(
 		p2p.ID(cmn.RandStr(12)), 10,
 		func(err error, _ p2p.ID) {},
 		params)
@@ -245,9 +245,9 @@ func TestPeerCheckRate(t *testing.T) {
 }
 
 func TestPeerCleanup(t *testing.T) {
-	params := &bpPeerParams{timeout: 2 * time.Millisecond}
+	params := &BpPeerParams{timeout: 2 * time.Millisecond}
 
-	peer := NewBPPeer(
+	peer := NewBpPeer(
 		p2p.ID(cmn.RandStr(12)), 10,
 		func(err error, _ p2p.ID) {},
 		params)
@@ -263,7 +263,7 @@ func TestPeerCleanup(t *testing.T) {
 
 // Check if peer timer is running or not (a running timer can be successfully stopped).
 // Note: stops the timer.
-func checkByStoppingPeerTimer(t *testing.T, peer *bpPeer, running bool) {
+func checkByStoppingPeerTimer(t *testing.T, peer *BpPeer, running bool) {
 	assert.NotPanics(t, func() {
 		stopped := peer.stopBlockResponseTimer()
 		if running {

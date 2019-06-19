@@ -1,4 +1,4 @@
-package blockchainexp
+package v1
 
 import (
 	"errors"
@@ -58,7 +58,7 @@ type BlockchainReactor struct {
 
 	fastSync bool
 
-	fsm          *bReactorFSM
+	fsm          *BcReactorFSM
 	blocksSynced int
 
 	// Receive goroutine forwards messages to this channel to be processed in the context of the poolRoutine.
@@ -210,7 +210,8 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := decodeMsg(msgBytes)
 	if err != nil {
-		bcR.Logger.Error("error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		bcR.Logger.Error("error decoding message",
+			"src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		bcR.Switch.StopPeerForError(src, err)
 		return
 	}

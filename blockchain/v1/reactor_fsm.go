@@ -1,4 +1,4 @@
-package blockchainexp
+package v1
 
 import (
 	"errors"
@@ -12,41 +12,41 @@ import (
 )
 
 // Blockchain Reactor State
-type bReactorFSMState struct {
+type bcReactorFSMState struct {
 	name string
 
 	// called when transitioning out of current state
-	handle func(*bReactorFSM, bReactorEvent, bReactorEventData) (next *bReactorFSMState, err error)
+	handle func(*BcReactorFSM, bReactorEvent, bReactorEventData) (next *bcReactorFSMState, err error)
 	// called when entering the state
-	enter func(fsm *bReactorFSM)
+	enter func(fsm *BcReactorFSM)
 
 	// timeout to ensure FSM is not stuck in a state forever
 	// the timer is owned and run by the fsm instance
 	timeout time.Duration
 }
 
-func (s *bReactorFSMState) String() string {
+func (s *bcReactorFSMState) String() string {
 	return s.name
 }
 
-// Blockchain Reactor State Machine
-type bReactorFSM struct {
+// BcReactorFSM is the datastructure for the Blockchain Reactor State Machine
+type BcReactorFSM struct {
 	logger log.Logger
 	mtx    sync.Mutex
 
 	startTime time.Time
 
-	state      *bReactorFSMState
+	state      *bcReactorFSMState
 	stateTimer *time.Timer
-	pool       *blockPool
+	pool       *BlockPool
 
 	// interface used to call the Blockchain reactor to send StatusRequest, BlockRequest, reporting errors, etc.
 	toBcR bcReactor
 }
 
 // NewFSM creates a new reactor FSM.
-func NewFSM(height int64, toBcR bcReactor) *bReactorFSM {
-	return &bReactorFSM{
+func NewFSM(height int64, toBcR bcReactor) *BcReactorFSM {
+	return &BcReactorFSM{
 		state:     unknown,
 		startTime: time.Now(),
 		pool:      NewBlockPool(height, toBcR),
@@ -136,10 +136,10 @@ func (ev bReactorEvent) String() string {
 
 // states
 var (
-	unknown      *bReactorFSMState
-	waitForPeer  *bReactorFSMState
-	waitForBlock *bReactorFSMState
-	finished     *bReactorFSMState
+	unknown      *bcReactorFSMState
+	waitForPeer  *bcReactorFSMState
+	waitForBlock *bcReactorFSMState
+	finished     *bcReactorFSMState
 )
 
 // timeouts for state timers
@@ -170,9 +170,9 @@ var (
 )
 
 func init() {
-	unknown = &bReactorFSMState{
+	unknown = &bcReactorFSMState{
 		name: "unknown",
-		handle: func(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) (*bReactorFSMState, error) {
+		handle: func(fsm *BcReactorFSM, ev bReactorEvent, data bReactorEventData) (*bcReactorFSMState, error) {
 			switch ev {
 			case startFSMEv:
 				// Broadcast Status message. Currently doesn't return non-nil error.
@@ -188,14 +188,14 @@ func init() {
 		},
 	}
 
-	waitForPeer = &bReactorFSMState{
+	waitForPeer = &bcReactorFSMState{
 		name:    "waitForPeer",
 		timeout: waitForPeerTimeout,
-		enter: func(fsm *bReactorFSM) {
+		enter: func(fsm *BcReactorFSM) {
 			// Stop when leaving the state.
 			fsm.resetStateTimer()
 		},
-		handle: func(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) (*bReactorFSMState, error) {
+		handle: func(fsm *BcReactorFSM, ev bReactorEvent, data bReactorEventData) (*bcReactorFSMState, error) {
 			switch ev {
 			case stateTimeoutEv:
 				if data.stateName != "waitForPeer" {
@@ -230,14 +230,14 @@ func init() {
 		},
 	}
 
-	waitForBlock = &bReactorFSMState{
+	waitForBlock = &bcReactorFSMState{
 		name:    "waitForBlock",
 		timeout: waitForBlockAtCurrentHeightTimeout,
-		enter: func(fsm *bReactorFSM) {
+		enter: func(fsm *BcReactorFSM) {
 			// Stop when leaving the state.
 			fsm.resetStateTimer()
 		},
-		handle: func(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) (*bReactorFSMState, error) {
+		handle: func(fsm *BcReactorFSM, ev bReactorEvent, data bReactorEventData) (*bcReactorFSMState, error) {
 			switch ev {
 
 			case statusResponseEv:
@@ -246,7 +246,7 @@ func init() {
 					return waitForPeer, err
 				}
 				if fsm.pool.ReachedMaxHeight() {
-					return finished, nil
+					return finished, err
 				}
 				return waitForBlock, err
 
@@ -258,6 +258,9 @@ func init() {
 					// Ignore block, remove peer and send error to switch.
 					fsm.pool.RemovePeer(data.peerID, err)
 					fsm.toBcR.sendPeerError(err, data.peerID)
+				}
+				if fsm.pool.NumPeers() == 0 {
+					return waitForPeer, err
 				}
 				return waitForBlock, err
 
@@ -329,14 +332,14 @@ func init() {
 		},
 	}
 
-	finished = &bReactorFSMState{
+	finished = &bcReactorFSMState{
 		name: "finished",
-		enter: func(fsm *bReactorFSM) {
+		enter: func(fsm *BcReactorFSM) {
 			fsm.logger.Info("Time to switch to consensus reactor!", "height", fsm.pool.Height)
 			fsm.toBcR.switchToConsensus()
 			fsm.cleanup()
 		},
-		handle: func(fsm *bReactorFSM, ev bReactorEvent, data bReactorEventData) (*bReactorFSMState, error) {
+		handle: func(fsm *BcReactorFSM, ev bReactorEvent, data bReactorEventData) (*bcReactorFSMState, error) {
 			return nil, nil
 		},
 	}
@@ -353,18 +356,19 @@ type bcReactor interface {
 	switchToConsensus()
 }
 
-func (fsm *bReactorFSM) SetLogger(l log.Logger) {
+// SetLogger sets the FSM logger.
+func (fsm *BcReactorFSM) SetLogger(l log.Logger) {
 	fsm.logger = l
 	fsm.pool.SetLogger(l)
 }
 
-// Starts the FSM.
-func (fsm *bReactorFSM) Start() {
+// Start starts the FSM.
+func (fsm *BcReactorFSM) Start() {
 	_ = fsm.Handle(&bcReactorMessage{event: startFSMEv})
 }
 
-// handle processes messages and events sent to the FSM.
-func (fsm *bReactorFSM) Handle(msg *bcReactorMessage) error {
+// Handle processes messages and events sent to the FSM.
+func (fsm *BcReactorFSM) Handle(msg *bcReactorMessage) error {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
 	fsm.logger.Debug("FSM received", "event", msg, "state", fsm.state)
@@ -386,7 +390,7 @@ func (fsm *bReactorFSM) Handle(msg *bcReactorMessage) error {
 	return err
 }
 
-func (fsm *bReactorFSM) transition(next *bReactorFSMState) {
+func (fsm *BcReactorFSM) transition(next *bcReactorFSMState) {
 	if next == nil {
 		return
 	}
@@ -400,30 +404,31 @@ func (fsm *bReactorFSM) transition(next *bReactorFSMState) {
 
 // Called when entering an FSM state in order to detect lack of progress in the state machine.
 // Note the use of the 'bcr' interface to facilitate testing without timer expiring.
-func (fsm *bReactorFSM) resetStateTimer() {
+func (fsm *BcReactorFSM) resetStateTimer() {
 	fsm.toBcR.resetStateTimer(fsm.state.name, &fsm.stateTimer, fsm.state.timeout)
 }
 
-func (fsm *bReactorFSM) isCaughtUp() bool {
+func (fsm *BcReactorFSM) isCaughtUp() bool {
 	return fsm.state == finished
 }
 
-func (fsm *bReactorFSM) makeNextRequests(maxNumRequests int) {
+func (fsm *BcReactorFSM) makeNextRequests(maxNumRequests int) {
 	fsm.pool.MakeNextRequests(maxNumRequests)
 }
 
-func (fsm *bReactorFSM) cleanup() {
+func (fsm *BcReactorFSM) cleanup() {
 	fsm.pool.Cleanup()
 }
 
-func (fsm *bReactorFSM) NeedsBlocks() bool {
+// NeedsBlocks checks if more block requests are required.
+func (fsm *BcReactorFSM) NeedsBlocks() bool {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
 	return fsm.state.name == "waitForBlock" && fsm.pool.NeedsBlocks()
 }
 
-// NextTwoBlocks returns the two blocks at pool height and height+1
-func (fsm *bReactorFSM) FirstTwoBlocks() (first, second *types.Block, err error) {
+// FirstTwoBlocks returns the two blocks at pool height and height+1
+func (fsm *BcReactorFSM) FirstTwoBlocks() (first, second *types.Block, err error) {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
 	firstBP, secondBP, err := fsm.pool.FirstTwoBlocksAndPeers()
@@ -435,7 +440,7 @@ func (fsm *bReactorFSM) FirstTwoBlocks() (first, second *types.Block, err error)
 }
 
 // Status returns the pool's height and the maximum peer height.
-func (fsm *bReactorFSM) Status() (height, maxPeerHeight int64) {
+func (fsm *BcReactorFSM) Status() (height, maxPeerHeight int64) {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
 	return fsm.pool.Height, fsm.pool.MaxPeerHeight

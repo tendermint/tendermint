@@ -1,4 +1,4 @@
-package blockchainexp
+package v1
 
 import (
 	"fmt"
@@ -157,7 +157,7 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	maxBlockHeight := int64(500)
+	maxBlockHeight := int64(65)
 
 	reactorPairs := make([]BlockchainReactorPair, 2)
 
@@ -193,7 +193,7 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 	}
 
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(10 * time.Millisecond)
 		reactorPairs[1].conR.mtx.Lock()
 		if reactorPairs[1].conR.switchedToConsensus {
 			reactorPairs[1].conR.mtx.Unlock()
@@ -265,7 +265,7 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 
 outerFor:
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(10 * time.Millisecond)
 		for i := 0; i < numNodes; i++ {
 			reactorPairs[i].conR.mtx.Lock()
 			if !reactorPairs[i].conR.switchedToConsensus {
@@ -274,7 +274,6 @@ outerFor:
 			}
 			reactorPairs[i].conR.mtx.Unlock()
 		}
-
 		break
 	}
 
@@ -316,112 +315,6 @@ outerFor:
 	}
 
 	assert.True(t, lastReactorPair.bcR.Switch.Peers().Size() < len(reactorPairs)-1)
-}
-
-func setupReactors(
-	numReactors int, maxBlockHeight int64,
-	genDoc *types.GenesisDoc, privVals []types.PrivValidator) ([]BlockchainReactorPair, []*p2p.Switch) {
-
-	defer os.RemoveAll(config.RootDir)
-
-	reactorPairs := make([]BlockchainReactorPair, numReactors)
-
-	var logger = make([]log.Logger, numReactors)
-
-	for i := 0; i < numReactors; i++ {
-		logger[i] = log.TestingLogger()
-		height := int64(0)
-		if i == 0 {
-			height = maxBlockHeight
-		}
-		reactorPairs[i] = newBlockchainReactorPair(logger[i], genDoc, privVals, height)
-	}
-
-	switches := p2p.MakeConnectedSwitches(config.P2P, numReactors, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[i].bcR)
-		s.AddReactor("CONSENSUS", reactorPairs[i].conR)
-		moduleName := fmt.Sprintf("blockchain-%v", i)
-		reactorPairs[i].bcR.SetLogger(logger[i].With("module", moduleName))
-		return s
-
-	}, p2p.Connect2Switches)
-
-	return reactorPairs, switches
-}
-
-// WIP - used for some scale testing, will remove
-func TestFastSyncMultiNode(t *testing.T) {
-	numNodes := 6
-	maxHeight := int64(500)
-	//numNodes := 20
-	//maxHeight := int64(10000)
-
-	config = cfg.ResetTestRoot("blockchain_reactor_test")
-	genDoc, privVals := randGenesisDoc(1, false, 30)
-
-	reactorPairs, switches := setupReactors(numNodes, maxHeight, genDoc, privVals)
-
-	defer func() {
-		for _, r := range reactorPairs {
-			_ = r.bcR.Stop()
-			_ = r.conR.Stop()
-		}
-	}()
-
-outerFor:
-	for {
-		time.Sleep(1 * time.Second)
-
-		for i := 0; i < numNodes; i++ {
-			reactorPairs[i].conR.mtx.Lock()
-			if !reactorPairs[i].conR.switchedToConsensus {
-				reactorPairs[i].conR.mtx.Unlock()
-				continue outerFor
-			}
-			reactorPairs[i].conR.mtx.Unlock()
-		}
-
-		break
-	}
-
-	//at this time, reactors[0-3] are the newest
-	assert.Equal(t, numNodes-1, reactorPairs[0].bcR.Switch.Peers().Size())
-
-	lastLogger := log.TestingLogger()
-	lastReactorPair := newBlockchainReactorPair(lastLogger, genDoc, privVals, 0)
-	reactorPairs = append(reactorPairs, lastReactorPair)
-
-	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].bcR)
-		s.AddReactor("CONSENSUS", reactorPairs[len(reactorPairs)-1].conR)
-		moduleName := fmt.Sprintf("blockchainTEST-%d", len(reactorPairs)-1)
-		reactorPairs[len(reactorPairs)-1].bcR.SetLogger(lastLogger.With("module", moduleName))
-		return s
-
-	}, p2p.Connect2Switches)...)
-
-	start := time.Now()
-
-	for i := 0; i < len(reactorPairs)-1; i++ {
-		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
-	}
-
-	for {
-		time.Sleep(1 * time.Second)
-		lastReactorPair.conR.mtx.Lock()
-		if lastReactorPair.conR.switchedToConsensus {
-			fmt.Println("FAST SYNC Duration", time.Since(start))
-			lastReactorPair.conR.mtx.Unlock()
-			break
-		}
-		lastReactorPair.conR.mtx.Unlock()
-
-		if lastReactorPair.bcR.Switch.Peers().Size() == 0 {
-			break
-		}
-	}
-
-	assert.True(t, lastReactorPair.bcR.Switch.Peers().Size() < len(reactorPairs))
 }
 
 //----------------------------------------------

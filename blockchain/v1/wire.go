@@ -1,4 +1,4 @@
-package blockchainexp
+package v1
 
 import (
 	amino "github.com/tendermint/go-amino"

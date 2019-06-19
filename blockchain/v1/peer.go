@@ -1,4 +1,4 @@
-package blockchainexp
+package v1
 
 import (
 	"fmt"
@@ -13,14 +13,17 @@ import (
 
 //--------
 // Peer
-type bpPeerParams struct {
+
+// BpPeerParams stores the peer parameters that are used when creating a peer.
+type BpPeerParams struct {
 	timeout     time.Duration
 	minRecvRate int64
 	sampleRate  time.Duration
 	windowSize  time.Duration
 }
 
-type bpPeer struct {
+// BpPeer is the datastructure associated with a fast sync peer.
+type BpPeer struct {
 	logger log.Logger
 	ID     p2p.ID
 
@@ -29,20 +32,20 @@ type bpPeer struct {
 	blocks                  map[int64]*types.Block // blocks received or expected to be received from this peer
 	blockResponseTimer      *time.Timer
 	recvMonitor             *flow.Monitor
-	params                  *bpPeerParams // parameters for timer and monitor
+	params                  *BpPeerParams // parameters for timer and monitor
 
 	onErr func(err error, peerID p2p.ID) // function to call on error
 
 }
 
-// NewBPPeer creates a new peer.
-func NewBPPeer(
-	peerID p2p.ID, height int64, onErr func(err error, peerID p2p.ID), params *bpPeerParams) *bpPeer {
+// NewBpPeer creates a new peer.
+func NewBpPeer(
+	peerID p2p.ID, height int64, onErr func(err error, peerID p2p.ID), params *BpPeerParams) *BpPeer {
 
 	if params == nil {
-		params = bpPeerDefaultParams()
+		params = BpPeerDefaultParams()
 	}
-	return &bpPeer{
+	return &BpPeer{
 		ID:     peerID,
 		Height: height,
 		blocks: make(map[int64]*types.Block, maxRequestsPerPeer),
@@ -53,17 +56,17 @@ func NewBPPeer(
 }
 
 // String returns a string representation of a peer.
-func (peer *bpPeer) String() string {
+func (peer *BpPeer) String() string {
 	return fmt.Sprintf("peer: %v height: %v pending: %v", peer.ID, peer.Height, peer.NumPendingBlockRequests)
 }
 
 // SetLogger sets the logger of the peer.
-func (peer *bpPeer) SetLogger(l log.Logger) {
+func (peer *BpPeer) SetLogger(l log.Logger) {
 	peer.logger = l
 }
 
 // Cleanup performs cleanup of the peer, removes blocks, requests, stops timers and monitors.
-func (peer *bpPeer) Cleanup() {
+func (peer *BpPeer) Cleanup() {
 	if peer.blockResponseTimer != nil {
 		peer.blockResponseTimer.Stop()
 	}
@@ -81,7 +84,7 @@ func (peer *bpPeer) Cleanup() {
 }
 
 // BlockAtHeight returns the block at a given height if available and errMissingBlock otherwise.
-func (peer *bpPeer) BlockAtHeight(height int64) (*types.Block, error) {
+func (peer *BpPeer) BlockAtHeight(height int64) (*types.Block, error) {
 	block, ok := peer.blocks[height]
 	if !ok {
 		return nil, errMissingRequest
@@ -94,7 +97,7 @@ func (peer *bpPeer) BlockAtHeight(height int64) (*types.Block, error) {
 
 // AddBlock adds a block at peer level. Block must be non-nil and recvSize a positive integer
 // The peer must have a pending request for this block.
-func (peer *bpPeer) AddBlock(block *types.Block, recvSize int) error {
+func (peer *BpPeer) AddBlock(block *types.Block, recvSize int) error {
 	if block == nil || recvSize < 0 {
 		panic("bad parameters")
 	}
@@ -123,12 +126,12 @@ func (peer *bpPeer) AddBlock(block *types.Block, recvSize int) error {
 }
 
 // RemoveBlock removes the block of given height
-func (peer *bpPeer) RemoveBlock(height int64) {
+func (peer *BpPeer) RemoveBlock(height int64) {
 	delete(peer.blocks, height)
 }
 
 // RequestSent records that a request was sent, and starts the peer timer and monitor if needed.
-func (peer *bpPeer) RequestSent(height int64) {
+func (peer *BpPeer) RequestSent(height int64) {
 	peer.blocks[height] = nil
 
 	if peer.NumPendingBlockRequests == 0 {
@@ -139,7 +142,7 @@ func (peer *bpPeer) RequestSent(height int64) {
 }
 
 // CheckRate verifies that the response rate of the peer is acceptable (higher than the minimum allowed).
-func (peer *bpPeer) CheckRate() error {
+func (peer *BpPeer) CheckRate() error {
 	if peer.NumPendingBlockRequests == 0 {
 		return nil
 	}
@@ -156,22 +159,22 @@ func (peer *bpPeer) CheckRate() error {
 	return nil
 }
 
-func (peer *bpPeer) onTimeout() {
+func (peer *BpPeer) onTimeout() {
 	peer.onErr(errNoPeerResponse, peer.ID)
 }
 
-func (peer *bpPeer) stopMonitor() {
+func (peer *BpPeer) stopMonitor() {
 	peer.recvMonitor.Done()
 	peer.recvMonitor = nil
 }
 
-func (peer *bpPeer) startMonitor() {
+func (peer *BpPeer) startMonitor() {
 	peer.recvMonitor = flow.New(peer.params.sampleRate, peer.params.windowSize)
 	initialValue := float64(peer.params.minRecvRate) * math.E
 	peer.recvMonitor.SetREMA(initialValue)
 }
 
-func (peer *bpPeer) resetBlockResponseTimer() {
+func (peer *BpPeer) resetBlockResponseTimer() {
 	if peer.blockResponseTimer == nil {
 		peer.blockResponseTimer = time.AfterFunc(peer.params.timeout, peer.onTimeout)
 	} else {
@@ -179,15 +182,16 @@ func (peer *bpPeer) resetBlockResponseTimer() {
 	}
 }
 
-func (peer *bpPeer) stopBlockResponseTimer() bool {
+func (peer *BpPeer) stopBlockResponseTimer() bool {
 	if peer.blockResponseTimer == nil {
 		return false
 	}
 	return peer.blockResponseTimer.Stop()
 }
 
-func bpPeerDefaultParams() *bpPeerParams {
-	return &bpPeerParams{
+// BpPeerDefaultParams returns the default peer parameters.
+func BpPeerDefaultParams() *BpPeerParams {
+	return &BpPeerParams{
 		// Timeout for a peer to respond to a block request.
 		timeout: 15 * time.Second,
 

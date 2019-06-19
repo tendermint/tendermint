@@ -1,4 +1,4 @@
-package blockchainexp
+package v1
 
 import (
 	"sort"
@@ -8,10 +8,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type blockPool struct {
+// BlockPool keeps track of the fast sync peers, block requests and block responses.
+type BlockPool struct {
 	logger log.Logger
 	// Set of peers that have sent status responses, with height bigger than pool.Height
-	peers map[p2p.ID]*bpPeer
+	peers map[p2p.ID]*BpPeer
 	// Set of block heights and the corresponding peers from where a block response is expected or has been received.
 	blocks map[int64]p2p.ID
 
@@ -23,10 +24,10 @@ type blockPool struct {
 	toBcR         bcReactor
 }
 
-// NewBlockPool creates a new blockPool.
-func NewBlockPool(height int64, toBcR bcReactor) *blockPool {
-	return &blockPool{
-		peers:             make(map[p2p.ID]*bpPeer),
+// NewBlockPool creates a new BlockPool.
+func NewBlockPool(height int64, toBcR bcReactor) *BlockPool {
+	return &BlockPool{
+		peers:             make(map[p2p.ID]*BpPeer),
 		MaxPeerHeight:     0,
 		blocks:            make(map[int64]p2p.ID),
 		plannedRequests:   make(map[int64]struct{}),
@@ -37,16 +38,16 @@ func NewBlockPool(height int64, toBcR bcReactor) *blockPool {
 }
 
 // SetLogger sets the logger of the pool.
-func (pool *blockPool) SetLogger(l log.Logger) {
+func (pool *BlockPool) SetLogger(l log.Logger) {
 	pool.logger = l
 }
 
 // ReachedMaxHeight check if the pool has reached the maximum peer height.
-func (pool *blockPool) ReachedMaxHeight() bool {
+func (pool *BlockPool) ReachedMaxHeight() bool {
 	return pool.Height >= pool.MaxPeerHeight
 }
 
-func (pool *blockPool) rescheduleRequest(peerID p2p.ID, height int64) {
+func (pool *BlockPool) rescheduleRequest(peerID p2p.ID, height int64) {
 	pool.logger.Info("reschedule requests made to peer for height ", "peerID", peerID, "height", height)
 	pool.plannedRequests[height] = struct{}{}
 	delete(pool.blocks, height)
@@ -54,7 +55,7 @@ func (pool *blockPool) rescheduleRequest(peerID p2p.ID, height int64) {
 }
 
 // Updates the pool's max height. If no peers are left MaxPeerHeight is set to 0.
-func (pool *blockPool) updateMaxPeerHeight() {
+func (pool *BlockPool) updateMaxPeerHeight() {
 	var newMax int64
 	for _, peer := range pool.peers {
 		peerHeight := peer.Height
@@ -66,8 +67,8 @@ func (pool *blockPool) updateMaxPeerHeight() {
 }
 
 // UpdatePeer adds a new peer or updates an existing peer with a new height.
-// If a peer is too short it is not added.
-func (pool *blockPool) UpdatePeer(peerID p2p.ID, height int64) error {
+// If a peer is short it is not added.
+func (pool *BlockPool) UpdatePeer(peerID p2p.ID, height int64) error {
 
 	peer := pool.peers[peerID]
 
@@ -78,7 +79,7 @@ func (pool *blockPool) UpdatePeer(peerID p2p.ID, height int64) error {
 			return errPeerTooShort
 		}
 		// Add new peer.
-		peer = NewBPPeer(peerID, height, pool.toBcR.sendPeerError, nil)
+		peer = NewBpPeer(peerID, height, pool.toBcR.sendPeerError, nil)
 		peer.SetLogger(pool.logger.With("peer", peerID))
 		pool.peers[peerID] = peer
 		pool.logger.Info("added peer", "peerID", peerID, "height", height, "num_peers", len(pool.peers))
@@ -99,7 +100,7 @@ func (pool *blockPool) UpdatePeer(peerID p2p.ID, height int64) error {
 }
 
 // Cleans and deletes the peer. Recomputes the max peer height.
-func (pool *blockPool) deletePeer(peer *bpPeer) {
+func (pool *BlockPool) deletePeer(peer *BpPeer) {
 	if peer == nil {
 		return
 	}
@@ -112,7 +113,7 @@ func (pool *blockPool) deletePeer(peer *bpPeer) {
 }
 
 // RemovePeer removes the blocks and requests from the peer, reschedules them and deletes the peer.
-func (pool *blockPool) RemovePeer(peerID p2p.ID, err error) {
+func (pool *BlockPool) RemovePeer(peerID p2p.ID, err error) {
 	peer := pool.peers[peerID]
 	if peer == nil {
 		return
@@ -145,7 +146,7 @@ func (pool *blockPool) RemovePeer(peerID p2p.ID, err error) {
 	}
 }
 
-func (pool *blockPool) removeShortPeers() {
+func (pool *BlockPool) removeShortPeers() {
 	for _, peer := range pool.peers {
 		if peer.Height < pool.Height {
 			pool.RemovePeer(peer.ID, nil)
@@ -153,7 +154,7 @@ func (pool *blockPool) removeShortPeers() {
 	}
 }
 
-func (pool *blockPool) removeBadPeers() {
+func (pool *BlockPool) removeBadPeers() {
 	pool.removeShortPeers()
 	for _, peer := range pool.peers {
 		if err := peer.CheckRate(); err != nil {
@@ -164,9 +165,10 @@ func (pool *blockPool) removeBadPeers() {
 }
 
 // MakeNextRequests creates more requests if the block pool is running low.
-func (pool *blockPool) MakeNextRequests(maxNumRequests int) {
+func (pool *BlockPool) MakeNextRequests(maxNumRequests int) {
 	heights := pool.makeRequestBatch(maxNumRequests)
-	pool.logger.Info("makeNextRequests will make following requests", "number", len(heights), "heights", heights)
+	pool.logger.Info("makeNextRequests will make following requests",
+		"number", len(heights), "heights", heights)
 
 	for _, height := range heights {
 		h := int64(height)
@@ -180,7 +182,7 @@ func (pool *blockPool) MakeNextRequests(maxNumRequests int) {
 }
 
 // Makes a batch of requests sorted by height such that the block pool has up to maxNumRequests entries.
-func (pool *blockPool) makeRequestBatch(maxNumRequests int) []int {
+func (pool *BlockPool) makeRequestBatch(maxNumRequests int) []int {
 	pool.removeBadPeers()
 	// At this point pool.requests may include heights for requests to be redone due to removal of peers:
 	// - peers timed out or were removed by switch
@@ -204,7 +206,7 @@ func (pool *blockPool) makeRequestBatch(maxNumRequests int) []int {
 	return heights
 }
 
-func (pool *blockPool) sendRequest(height int64) bool {
+func (pool *BlockPool) sendRequest(height int64) bool {
 	for _, peer := range pool.peers {
 		if peer.NumPendingBlockRequests >= maxRequestsPerPeer {
 			continue
@@ -216,7 +218,8 @@ func (pool *blockPool) sendRequest(height int64) bool {
 		err := pool.toBcR.sendBlockRequest(peer.ID, height)
 		if err == errNilPeerForBlockRequest {
 			// Switch does not have this peer, remove it and continue to look for another peer.
-			pool.logger.Error("switch does not have peer..removing peer selected for height", "peer", peer.ID, "height", height)
+			pool.logger.Error("switch does not have peer..removing peer selected for height", "peer",
+				peer.ID, "height", height)
 			pool.RemovePeer(peer.ID, err)
 			continue
 		}
@@ -237,8 +240,8 @@ func (pool *blockPool) sendRequest(height int64) bool {
 	return false
 }
 
-// Validates that the block comes from the peer it was expected from and stores it in the 'blocks' map.
-func (pool *blockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int) error {
+// AddBlock validates that the block comes from the peer it was expected from and stores it in the 'blocks' map.
+func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int) error {
 	peer, ok := pool.peers[peerID]
 	if !ok {
 		pool.logger.Error("block from unknown peer", "height", block.Height, "peer", peerID)
@@ -253,14 +256,15 @@ func (pool *blockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 	return peer.AddBlock(block, blockSize)
 }
 
-type blockData struct {
+// BlockData stores the peer responsible to deliver a block and the actual block if delivered.
+type BlockData struct {
 	block *types.Block
-	peer  *bpPeer
+	peer  *BpPeer
 }
 
 // BlockAndPeerAtHeight retrieves the block and delivery peer at specified height.
 // Returns errMissingBlock if a block was not found
-func (pool *blockPool) BlockAndPeerAtHeight(height int64) (bData *blockData, err error) {
+func (pool *BlockPool) BlockAndPeerAtHeight(height int64) (bData *BlockData, err error) {
 	peerID := pool.blocks[height]
 	peer := pool.peers[peerID]
 	if peer == nil {
@@ -272,12 +276,12 @@ func (pool *blockPool) BlockAndPeerAtHeight(height int64) (bData *blockData, err
 		return nil, err
 	}
 
-	return &blockData{peer: peer, block: block}, nil
+	return &BlockData{peer: peer, block: block}, nil
 
 }
 
 // FirstTwoBlocksAndPeers returns the blocks and the delivery peers at pool's height H and H+1.
-func (pool *blockPool) FirstTwoBlocksAndPeers() (first, second *blockData, err error) {
+func (pool *BlockPool) FirstTwoBlocksAndPeers() (first, second *BlockData, err error) {
 	first, err = pool.BlockAndPeerAtHeight(pool.Height)
 	second, err2 := pool.BlockAndPeerAtHeight(pool.Height + 1)
 	if err == nil {
@@ -287,7 +291,7 @@ func (pool *blockPool) FirstTwoBlocksAndPeers() (first, second *blockData, err e
 }
 
 // InvalidateFirstTwoBlocks removes the peers that sent us the first two blocks, blocks are removed by RemovePeer().
-func (pool *blockPool) InvalidateFirstTwoBlocks(err error) {
+func (pool *BlockPool) InvalidateFirstTwoBlocks(err error) {
 	first, err1 := pool.BlockAndPeerAtHeight(pool.Height)
 	second, err2 := pool.BlockAndPeerAtHeight(pool.Height + 1)
 
@@ -301,7 +305,7 @@ func (pool *blockPool) InvalidateFirstTwoBlocks(err error) {
 
 // ProcessedCurrentHeightBlock performs cleanup after a block is processed. It removes block at pool height and
 // the peers that are now short.
-func (pool *blockPool) ProcessedCurrentHeightBlock() {
+func (pool *BlockPool) ProcessedCurrentHeightBlock() {
 	peerID, peerOk := pool.blocks[pool.Height]
 	if peerOk {
 		pool.peers[peerID].RemoveBlock(pool.Height)
@@ -316,7 +320,7 @@ func (pool *blockPool) ProcessedCurrentHeightBlock() {
 // delivery peer and returns. If a block at height H exists then the check and peer removal is done for H+1.
 // This function is called when the FSM is not able to make progress for some time.
 // This happens if either the block H or H+1 have not been delivered.
-func (pool *blockPool) RemovePeerAtCurrentHeights(err error) {
+func (pool *BlockPool) RemovePeerAtCurrentHeights(err error) {
 	peerID := pool.blocks[pool.Height]
 	peer, ok := pool.peers[peerID]
 	if ok {
@@ -340,17 +344,18 @@ func (pool *blockPool) RemovePeerAtCurrentHeights(err error) {
 }
 
 // Cleanup performs pool and peer cleanup
-func (pool *blockPool) Cleanup() {
+func (pool *BlockPool) Cleanup() {
 	for _, peer := range pool.peers {
 		peer.Cleanup()
 	}
 }
 
 // NumPeers returns the number of peers in the pool
-func (pool *blockPool) NumPeers() int {
+func (pool *BlockPool) NumPeers() int {
 	return len(pool.peers)
 }
 
-func (pool *blockPool) NeedsBlocks() bool {
+// NeedsBlocks returns true if more blocks are required.
+func (pool *BlockPool) NeedsBlocks() bool {
 	return len(pool.blocks) < maxNumRequests
 }
