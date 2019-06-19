@@ -112,7 +112,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func state(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
+func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
 	vals := make([]types.GenesisValidator, nVals)
 	privVals := make(map[string]types.PrivValidator, nVals)
 	for i := 0; i < nVals; i++ {

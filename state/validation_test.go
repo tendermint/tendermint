@@ -23,7 +23,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	defer proxyApp.Stop()
 
 	nVals := 3
-	state, stateDB, privVals := state(nVals, 1)
+	state, stateDB, privVals := makeState(nVals, 1)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 	lastCommit := types.NewCommit(types.BlockID{}, nil)
 
@@ -89,7 +89,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	require.NoError(t, proxyApp.Start())
 	defer proxyApp.Stop()
 
-	state, stateDB, privVals := state(1, 1)
+	state, stateDB, privVals := makeState(1, 1)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 	lastCommit := types.NewCommit(types.BlockID{}, nil)
 	wrongPrecommitsCommit := types.NewCommit(types.BlockID{}, nil)
@@ -153,7 +153,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defer proxyApp.Stop()
 
 	nVals := 3
-	state, stateDB, privVals := state(nVals, 1)
+	state, stateDB, privVals := makeState(nVals, 1)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 	lastCommit := types.NewCommit(types.BlockID{}, nil)
 
@@ -199,7 +199,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB, _ := state(1, int(height))
+	state, stateDB, _ := makeState(1, int(height))
 
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, mockEvPoolAlwaysCommitted{})
 	// A block with a couple pieces of evidence passes.

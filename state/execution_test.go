@@ -32,7 +32,7 @@ func TestApplyBlock(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB, _ := state(1, 1)
+	state, stateDB, _ := makeState(1, 1)
 
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.MockEvidencePool{})
@@ -56,7 +56,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB, _ := state(2, 2)
+	state, stateDB, _ := makeState(2, 2)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -109,7 +109,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB, _ := state(2, 12)
+	state, stateDB, _ := makeState(2, 12)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -305,7 +305,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB, _ := state(1, 1)
+	state, stateDB, _ := makeState(1, 1)
 
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 
@@ -363,7 +363,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB, _ := state(1, 1)
+	state, stateDB, _ := makeState(1, 1)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 
 	block := makeBlock(state, 1)
