@@ -101,7 +101,7 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
 }
 
-func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+func (app *KVStoreApplication) CheckTx(tx types.RequestCheckTx) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
