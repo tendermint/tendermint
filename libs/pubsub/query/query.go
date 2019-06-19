@@ -148,12 +148,14 @@ func (q *Query) Conditions() []Condition {
 	return conditions
 }
 
-// Matches returns true if the query matches the given set of tags, false otherwise.
+// Matches returns true if the query matches against any event in the given set
+// of events, false otherwise. For each event, a match exists if the query is
+// matched against *any* value in a slice of values.
 //
-// For example, query "name=John" matches tags = {"name": "John"}. More
-// examples could be found in parser_test.go and query_test.go.
-func (q *Query) Matches(tags map[string]string) bool {
-	if len(tags) == 0 {
+// For example, query "name=John" matches events = {"name": ["John", "Eric"]}.
+// More examples could be found in parser_test.go and query_test.go.
+func (q *Query) Matches(events map[string][]string) bool {
+	if len(events) == 0 {
 		return false
 	}
 
@@ -162,7 +164,8 @@ func (q *Query) Matches(tags map[string]string) bool {
 	var tag string
 	var op Operator
 
-	// tokens must be in the following order: tag ("tx.gas") -> operator ("=") -> operand ("7")
+	// tokens must be in the following order:
+	// tag ("tx.gas") -> operator ("=") -> operand ("7")
 	for _, token := range q.parser.Tokens() {
 		switch token.pegRule {
 
@@ -188,7 +191,7 @@ func (q *Query) Matches(tags map[string]string) bool {
 
 			// see if the triplet (tag, operator, operand) matches any tag
 			// "tx.gas", "=", "7", { "tx.gas": 7, "tx.ID": "4AE393495334" }
-			if !match(tag, op, reflect.ValueOf(valueWithoutSingleQuotes), tags) {
+			if !match(tag, op, reflect.ValueOf(valueWithoutSingleQuotes), events) {
 				return false
 			}
 		case rulenumber:
@@ -198,7 +201,7 @@ func (q *Query) Matches(tags map[string]string) bool {
 				if err != nil {
 					panic(fmt.Sprintf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)", err, number))
 				}
-				if !match(tag, op, reflect.ValueOf(value), tags) {
+				if !match(tag, op, reflect.ValueOf(value), events) {
 					return false
 				}
 			} else {
@@ -206,7 +209,7 @@ func (q *Query) Matches(tags map[string]string) bool {
 				if err != nil {
 					panic(fmt.Sprintf("got %v while trying to parse %s as int64 (should never happen if the grammar is correct)", err, number))
 				}
-				if !match(tag, op, reflect.ValueOf(value), tags) {
+				if !match(tag, op, reflect.ValueOf(value), events) {
 					return false
 				}
 			}
@@ -215,7 +218,7 @@ func (q *Query) Matches(tags map[string]string) bool {
 			if err != nil {
 				panic(fmt.Sprintf("got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)", err, buffer[begin:end]))
 			}
-			if !match(tag, op, reflect.ValueOf(value), tags) {
+			if !match(tag, op, reflect.ValueOf(value), events) {
 				return false
 			}
 		case ruledate:
@@ -223,7 +226,7 @@ func (q *Query) Matches(tags map[string]string) bool {
 			if err != nil {
 				panic(fmt.Sprintf("got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)", err, buffer[begin:end]))
 			}
-			if !match(tag, op, reflect.ValueOf(value), tags) {
+			if !match(tag, op, reflect.ValueOf(value), events) {
 				return false
 			}
 		}
@@ -232,34 +235,53 @@ func (q *Query) Matches(tags map[string]string) bool {
 	return true
 }
 
-// match returns true if the given triplet (tag, operator, operand) matches any tag.
+// match returns true if the given triplet (tag, operator, operand) matches any
+// value in an event for that key.
 //
-// First, it looks up the tag in tags and if it finds one, tries to compare the
-// value from it to the operand using the operator.
+// First, it looks up the key in the events and if it finds one, tries to compare
+// all the values from it to the operand using the operator.
 //
-// "tx.gas", "=", "7", { "tx.gas": 7, "tx.ID": "4AE393495334" }
-func match(tag string, op Operator, operand reflect.Value, tags map[string]string) bool {
+// "tx.gas", "=", "7", {"tx": [{"gas": 7, "ID": "4AE393495334"}]}
+func match(tag string, op Operator, operand reflect.Value, events map[string][]string) bool {
 	// look up the tag from the query in tags
-	value, ok := tags[tag]
+	values, ok := events[tag]
 	if !ok {
 		return false
 	}
+
+	for _, value := range values {
+		// return true if any value in the set of the event's values matches
+		if matchValue(value, op, operand) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// matchValue will attempt to match a string value against an operation an
+// operand. A boolean is returned representing the match result. It will panic
+// if an error occurs or if the operand is invalid.
+func matchValue(value string, op Operator, operand reflect.Value) bool {
 	switch operand.Kind() {
 	case reflect.Struct: // time
 		operandAsTime := operand.Interface().(time.Time)
+
 		// try our best to convert value from tags to time.Time
 		var (
 			v   time.Time
 			err error
 		)
+
 		if strings.ContainsAny(value, "T") {
 			v, err = time.Parse(TimeLayout, value)
 		} else {
 			v, err = time.Parse(DateLayout, value)
 		}
 		if err != nil {
-			panic(fmt.Sprintf("Failed to convert value %v from tag to time.Time: %v", value, err))
+			panic(fmt.Sprintf("failed to convert value %v from tag to time.Time: %v", value, err))
 		}
+
 		switch op {
 		case OpLessEqual:
 			return v.Before(operandAsTime) || v.Equal(operandAsTime)
@@ -272,14 +294,17 @@ func match(tag string, op Operator, operand reflect.Value, tags map[string]strin
 		case OpEqual:
 			return v.Equal(operandAsTime)
 		}
+
 	case reflect.Float64:
 		operandFloat64 := operand.Interface().(float64)
 		var v float64
+
 		// try our best to convert value from tags to float64
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to convert value %v from tag to float64: %v", value, err))
+			panic(fmt.Sprintf("failed to convert value %v from tag to float64: %v", value, err))
 		}
+
 		switch op {
 		case OpLessEqual:
 			return v <= operandFloat64
@@ -292,6 +317,7 @@ func match(tag string, op Operator, operand reflect.Value, tags map[string]strin
 		case OpEqual:
 			return v == operandFloat64
 		}
+
 	case reflect.Int64:
 		operandInt := operand.Interface().(int64)
 		var v int64
@@ -299,7 +325,7 @@ func match(tag string, op Operator, operand reflect.Value, tags map[string]strin
 		if strings.ContainsAny(value, ".") {
 			v1, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				panic(fmt.Sprintf("Failed to convert value %v from tag to float64: %v", value, err))
+				panic(fmt.Sprintf("failed to convert value %v from tag to float64: %v", value, err))
 			}
 			v = int64(v1)
 		} else {
@@ -307,7 +333,7 @@ func match(tag string, op Operator, operand reflect.Value, tags map[string]strin
 			// try our best to convert value from tags to int64
 			v, err = strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				panic(fmt.Sprintf("Failed to convert value %v from tag to int64: %v", value, err))
+				panic(fmt.Sprintf("failed to convert value %v from tag to int64: %v", value, err))
 			}
 		}
 		switch op {
@@ -322,6 +348,7 @@ func match(tag string, op Operator, operand reflect.Value, tags map[string]strin
 		case OpEqual:
 			return v == operandInt
 		}
+
 	case reflect.String:
 		switch op {
 		case OpEqual:
@@ -329,8 +356,9 @@ func match(tag string, op Operator, operand reflect.Value, tags map[string]strin
 		case OpContains:
 			return strings.Contains(value, operand.String())
 		}
+
 	default:
-		panic(fmt.Sprintf("Unknown kind of operand %v", operand.Kind()))
+		panic(fmt.Sprintf("unknown kind of operand %v", operand.Kind()))
 	}
 
 	return false

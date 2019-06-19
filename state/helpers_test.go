@@ -7,7 +7,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -270,7 +269,7 @@ func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 }
 
 func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Tags: []cmn.KVPair{}}
+	return abci.ResponseDeliverTx{}
 }
 
 func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {

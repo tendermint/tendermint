@@ -26,17 +26,12 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v3-pkg-cache
+            - v4-pkg-cache
       - run:
           name: tools
           command: |
             export PATH="$GOBIN:$PATH"
             make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
       - run:
           name: binaries
           command: |
@@ -48,7 +43,7 @@ jobs:
             - bin
             - profiles
       - save_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
           paths:
             - /go/pkg
       - save_cache:
@@ -62,7 +57,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -78,7 +73,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -87,12 +82,6 @@ jobs:
             set -ex
             export PATH="$GOBIN:$PATH"
             make lint
-      - run:
-          name: check_dep
-          command: |
-            set -ex
-            export PATH="$GOBIN:$PATH"
-            make check_dep
 
   test_abci_apps:
     <<: *defaults
@@ -100,7 +89,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -117,7 +106,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -132,7 +121,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
@@ -147,7 +136,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: mkdir -p /tmp/logs
@@ -157,7 +146,7 @@ jobs:
             for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
 
-              go test -v -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+              GO111MODULE=on go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
@@ -172,7 +161,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -219,7 +208,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -278,15 +267,15 @@ jobs:
       - run:
           name: Build dependencies
           command: |
-            make get_tools get_vendor_deps
+            make get_tools
       - persist_to_workspace:
           root: .
           paths:
             - "release-version.source"
       - save_cache:
-          key: v1-release-deps-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - "vendor"
+            key: v2-release-deps-{{ checksum "go.sum" }}
+            paths:
+              - "/go/pkg/mod"
 
   build_artifacts:
     <<: *defaults
@@ -295,7 +284,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-release-deps-{{ .Branch }}-{{ .Revision }}
+            - v2-release-deps-{{ checksum "go.sum" }}
       - attach_workspace:
           at: /tmp/workspace
       - run:
