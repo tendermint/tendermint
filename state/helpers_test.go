@@ -19,10 +19,6 @@ type paramsChangeTestCase struct {
 	params types.ConsensusParams
 }
 
-func init() {
-	types.RegisterMockEvidencesGlobal()
-}
-
 // always returns true if asked if any evidence was already committed.
 type mockEvPoolAlwaysCommitted struct{}
 
