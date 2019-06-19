@@ -515,7 +515,7 @@ type mockProxyApp struct {
 	abciResponses *sm.ABCIResponses
 }
 
-func (mock *mockProxyApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+func (mock *mockProxyApp) DeliverTx(tx abci.RequestDeliverTx) abci.ResponseDeliverTx {
 	r := mock.abciResponses.DeliverTx[mock.txCount]
 	mock.txCount++
 	if r == nil { //it could be nil because of amino unMarshall, it will cause an empty ResponseDeliverTx to become nil

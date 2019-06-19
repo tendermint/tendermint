@@ -291,7 +291,7 @@ func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return abci.ResponseEndBlock{}
 }
 
-func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+func (app *testApp) DeliverTx(tx abci.RequestDeliverTx) abci.ResponseDeliverTx {
 	return abci.ResponseDeliverTx{Events: []abci.Event{}}
 }
 

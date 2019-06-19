@@ -76,13 +76,13 @@ func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.Respon
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	var key, value []byte
-	parts := bytes.Split(tx, []byte("="))
+	parts := bytes.Split(req.Tx, []byte("="))
 	if len(parts) == 2 {
 		key, value = parts[0], parts[1]
 	} else {
-		key, value = tx, tx
+		key, value = req.Tx, req.Tx
 	}
 
 	app.state.db.Set(prefixKey(key), value)
