@@ -74,8 +74,8 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 	return app.app.DeliverTx(req)
 }
 
-func (app *PersistentKVStoreApplication) CheckTx(tx types.RequestCheckTx) types.ResponseCheckTx {
-	return app.app.CheckTx(tx)
+func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	return app.app.CheckTx(req)
 }
 
 // Commit will panic if InitChain was not called
