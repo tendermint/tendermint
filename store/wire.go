@@ -1,4 +1,4 @@
-package tmstore
+package store
 
 import (
 	amino "github.com/tendermint/go-amino"

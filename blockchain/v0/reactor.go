@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/tmstore"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -61,7 +61,7 @@ type BlockchainReactor struct {
 	initialState sm.State
 
 	blockExec *sm.BlockExecutor
-	store     *tmstore.BlockStore
+	store     *store.BlockStore
 	pool      *BlockPool
 	fastSync  bool
 
@@ -70,7 +70,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *tmstore.BlockStore,
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {

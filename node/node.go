@@ -18,8 +18,8 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
-	bc "github.com/tendermint/tendermint/blockchain"
-	bcexp "github.com/tendermint/tendermint/blockchainexp"
+	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
+	bcv1 "github.com/tendermint/tendermint/blockchain/v1"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
@@ -42,7 +42,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
-	"github.com/tendermint/tendermint/tmstore"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
@@ -160,9 +160,9 @@ type Node struct {
 	// services
 	eventBus         *types.EventBus // pub/sub for services
 	stateDB          dbm.DB
-	blockStore       *tmstore.BlockStore // store the blockchain to disk
-	bcReactor        p2p.Reactor         // for fast-syncing
-	mempoolReactor   *mempl.Reactor      // for gossipping transactions
+	blockStore       *store.BlockStore // store the blockchain to disk
+	bcReactor        p2p.Reactor       // for fast-syncing
+	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
@@ -175,13 +175,13 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
-func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *tmstore.BlockStore, stateDB dbm.DB, err error) {
+func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
 	if err != nil {
 		return
 	}
-	blockStore = tmstore.NewBlockStore(blockStoreDB)
+	blockStore = store.NewBlockStore(blockStoreDB)
 
 	stateDB, err = dbProvider(&DBContext{"state", config})
 	if err != nil {
@@ -320,6 +320,26 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 	return evidenceReactor, evidencePool, nil
+}
+
+func createBlockchainReactor(config *cfg.Config,
+	state sm.State,
+	blockExec *sm.BlockExecutor,
+	blockStore *store.BlockStore,
+	fastSync bool,
+	logger log.Logger) (bcReactor p2p.Reactor, err error) {
+
+	switch config.FastSyncParams.Version {
+	case "v0":
+		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	case "v1":
+		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	default:
+		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSyncParams.Version)
+	}
+
+	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	return bcReactor, nil
 }
 
 func createConsensusReactor(config *cfg.Config,
@@ -566,16 +586,10 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor
-	var bcReactor p2p.Reactor
-	// Make BlockchainReactor
-	switch config.FastSyncParams.Version {
-	case "experimental":
-		bcReactor = bcexp.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	default:
-		bcReactor = bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync, logger)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create blockchain reactor")
 	}
-
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make ConsensusReactor
 	consensusReactor, consensusState := createConsensusReactor(
@@ -895,7 +909,7 @@ func (n *Node) Switch() *p2p.Switch {
 }
 
 // BlockStore returns the Node's BlockStore.
-func (n *Node) BlockStore() *tmstore.BlockStore {
+func (n *Node) BlockStore() *store.BlockStore {
 	return n.blockStore
 }
 
@@ -986,10 +1000,12 @@ func makeNodeInfo(
 
 	var bcChannel byte
 	switch config.FastSyncParams.Version {
-	case "experimental":
-		bcChannel = bcexp.BlockchainChannel
+	case "v0":
+		bcChannel = bcv0.BlockchainChannel
+	case "v1":
+		bcChannel = bcv1.BlockchainChannel
 	default:
-		bcChannel = bc.BlockchainChannel
+		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSyncParams.Version)
 	}
 
 	nodeInfo := p2p.DefaultNodeInfo{

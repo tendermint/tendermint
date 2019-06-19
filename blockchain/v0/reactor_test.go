@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/tmstore"
+	"github.com/tendermint/tendermint/store"
 
 	"github.com/stretchr/testify/assert"
 
@@ -83,7 +83,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
-	blockStore := tmstore.NewBlockStore(blockDB)
+	blockStore := store.NewBlockStore(blockDB)
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {

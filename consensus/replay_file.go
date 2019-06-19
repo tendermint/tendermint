@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/tmstore"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -280,7 +280,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	dbType := dbm.DBBackendType(config.DBBackend)
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
-	blockStore := tmstore.NewBlockStore(blockStoreDB)
+	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())

@@ -30,7 +30,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/tmstore"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -280,7 +280,7 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state sm.State, pv type
 
 func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.State, pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
 	// Get BlockStore
-	blockStore := tmstore.NewBlockStore(blockDB)
+	blockStore := store.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
 	mtx := new(sync.Mutex)

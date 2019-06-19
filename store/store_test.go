@@ -1,4 +1,4 @@
-package tmstore
+package store
 
 import (
 	"bytes"

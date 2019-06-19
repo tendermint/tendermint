@@ -671,7 +671,7 @@ type FastSyncParamsConfig struct {
 // DefaultFastSyncParamsConfig returns a default configuration for the fast sync service
 func DefaultFastSyncParamsConfig() *FastSyncParamsConfig {
 	return &FastSyncParamsConfig{
-		Version: "legacy",
+		Version: "v0",
 	}
 }
 
@@ -682,12 +682,12 @@ func TestFastSyncParamsConfig() *FastSyncParamsConfig {
 
 func (cfg *FastSyncParamsConfig) ValidateBasic() error {
 	switch cfg.Version {
-	case "legacy":
+	case "v0":
 		return nil
-	case "experimental":
+	case "v1":
 		return nil
 	default:
-		return errors.New("unknown fast sync version")
+		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
 	}
 }
 

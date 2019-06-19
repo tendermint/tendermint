@@ -286,6 +286,14 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
 
+##### fast sync configuration options #####
+[fastsync]
+
+# Fast Sync version to use:
+#   1) "v0" (default) - the legacy fast sync implementation
+#   2) "v1" - refactor of v0 version for better testability
+version = "{{ .FastSyncParams.Version }}"
+
 ##### consensus configuration options #####
 [consensus]
 
@@ -356,15 +364,6 @@ max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 
 # Instrumentation namespace
 namespace = "{{ .Instrumentation.Namespace }}"
-
-##### fast sync configuration options #####
-[fastsync]
-
-# Fast Sync version to use:
-#   1) "experimental"
-#   2) "legacy" (default)
-version = "{{ .FastSyncParams.Version }}"
-
 `
 
 /****** these are for test settings ***********/
