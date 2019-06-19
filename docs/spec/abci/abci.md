@@ -141,7 +141,7 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 ## Block Execution
 
 The first time a new blockchain is started, Tendermint calls
-`InitChain`. From then on, the follow sequence of methods is executed for each
+`InitChain`. From then on, the following sequence of methods is executed for each
 block:
 
 `BeginBlock, [DeliverTx], EndBlock, Commit`

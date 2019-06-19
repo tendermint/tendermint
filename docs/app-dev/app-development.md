@@ -133,8 +133,8 @@ the mempool. If Tendermint is just started or the clients sent more than
 100k transactions, old transactions may be sent to the application. So
 it is important CheckTx implements some logic to handle them.
 
-There are cases where a transaction will (or may) become valid in some
-future state, in which case you probably want to disable Tendermint's
+If there are cases in your application where a transaction may become invalid in some
+future state, you probably want to disable Tendermint's
 cache. You can do that by setting `[mempool] cache_size = 0` in the
 config.
 
@@ -205,7 +205,7 @@ Once all processing of the block is complete, Tendermint sends the
 Commit request and blocks waiting for a response. While the mempool may
 run concurrently with block processing (the BeginBlock, DeliverTxs, and
 EndBlock), it is locked for the Commit request so that its state can be
-safely reset during Commit. This means the app _MUST NOT_ do any
+safely updated during Commit. This means the app _MUST NOT_ do any
 blocking communication with the mempool (ie. broadcast_tx) during
 Commit, or there will be deadlock. Note also that all remaining
 transactions in the mempool are replayed on the mempool connection
