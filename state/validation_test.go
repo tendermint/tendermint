@@ -151,8 +151,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	require.NoError(t, proxyApp.Start())
 	defer proxyApp.Stop()
 
-	nVals := 3
-	state, stateDB, privVals := makeState(nVals, 1)
+	state, stateDB, privVals := makeState(3, 1)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 	lastCommit := types.NewCommit(types.BlockID{}, nil)
 
