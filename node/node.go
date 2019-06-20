@@ -446,9 +446,6 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
-	// Add ourselves to addrbook to prevent dialing ourselves
-	addrBook.AddOurAddress(sw.NetAddress())
-
 	sw.SetAddrBook(addrBook)
 
 	return addrBook
@@ -683,6 +680,10 @@ func (n *Node) OnStart() error {
 	}
 
 	n.isListening = true
+
+	// Add ourselves to addrbook to prevent dialing ourselves
+	// NOTE: sw.NetAddress is set by n.transport.Listen above
+	n.addrBook.AddOurAddress(n.sw.NetAddress())
 
 	if n.config.Mempool.WalEnabled() {
 		n.mempool.InitWAL() // no need to have the mempool wal during tests
