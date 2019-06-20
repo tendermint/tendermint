@@ -682,8 +682,7 @@ func (n *Node) OnStart() error {
 	n.isListening = true
 
 	// Add ourselves to addrbook to prevent dialing ourselves
-	// NOTE: sw.NetAddress is set by n.transport.Listen above
-	n.addrBook.AddOurAddress(n.sw.NetAddress())
+	n.addrBook.AddOurAddress(addr)
 
 	if n.config.Mempool.WalEnabled() {
 		n.mempool.InitWAL() // no need to have the mempool wal during tests
