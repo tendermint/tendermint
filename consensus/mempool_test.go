@@ -220,8 +220,8 @@ func (app *CounterApplication) DeliverTx(req abci.RequestDeliverTx) abci.Respons
 	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) CheckTx(tx abci.RequestCheckTx) abci.ResponseCheckTx {
-	txValue := txAsUint64(tx.Tx)
+func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+	txValue := txAsUint64(req.Tx)
 	if txValue != uint64(app.mempoolTxCount) {
 		return abci.ResponseCheckTx{
 			Code: code.CodeTypeBadNonce,
