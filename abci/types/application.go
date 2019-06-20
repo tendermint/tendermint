@@ -45,11 +45,11 @@ func (BaseApplication) SetOption(req RequestSetOption) ResponseSetOption {
 	return ResponseSetOption{}
 }
 
-func (BaseApplication) DeliverTx(tx RequestDeliverTx) ResponseDeliverTx {
+func (BaseApplication) DeliverTx(req RequestDeliverTx) ResponseDeliverTx {
 	return ResponseDeliverTx{Code: CodeTypeOK}
 }
 
-func (BaseApplication) CheckTx(tx RequestCheckTx) ResponseCheckTx {
+func (BaseApplication) CheckTx(req RequestCheckTx) ResponseCheckTx {
 	return ResponseCheckTx{Code: CodeTypeOK}
 }
 
