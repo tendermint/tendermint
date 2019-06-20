@@ -32,6 +32,9 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
+//
+// ### Query Parameters
+// None
 func Health(ctx *rpctypes.Context) (*ctypes.ResultHealth, error) {
 	return &ctypes.ResultHealth{}, nil
 }

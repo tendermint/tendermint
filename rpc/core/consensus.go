@@ -50,6 +50,11 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description                                    |
+// |-----------+--------+---------+----------+------------------------------------------------|
+// | height    | int64  | 0       | false    | Height (0 means latest)                        |
 func Validators(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the
 	// NextValidator of the last block.
@@ -203,6 +208,9 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultValidato
 //   }
 // }
 // ```
+//
+// ### Query Parameters
+// None
 func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
 	peers := p2pPeers.Peers().List()
@@ -280,6 +288,9 @@ func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState
 //  }
 //}
 //```
+//
+// ### Query Parameters
+// None
 func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
 	// Get self round state.
 	bz, err := consensusState.GetRoundStateSimpleJSON()
@@ -287,7 +298,7 @@ func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error)
 }
 
 // Get the consensus parameters  at the given block height.
-// If no height is provided, it will fetch the current consensus params.
+// If no height is provided, it will fetch the current consensus params from latest block.
 //
 // ```shell
 // curl 'localhost:26657/consensus_params'
@@ -323,6 +334,12 @@ func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error)
 //   }
 // }
 // ```
+//
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description                                    |
+// |-----------+--------+---------+----------+------------------------------------------------|
+// | height    | int64  | 0       | false    | Height (0 means latest)                        |
 func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
 	height := consensusState.GetState().LastBlockHeight + 1
 	height, err := getHeight(height, heightPtr)

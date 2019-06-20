@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Get block headers for minHeight <= height <= maxHeight.
+// Get block headers whose height is, minHeight <= height <= maxHeight.
 // Block headers are returned in descending order (highest first).
 //
 // ```shell
@@ -68,6 +68,13 @@ import (
 // }
 // ```
 //
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description                                    |
+// |-----------+--------+---------+----------+------------------------------------------------|
+// | minHeight    | int64  | nil     | true    | starting point of block headers                    |
+// | maxHeight    | int64  | nil   	 | true    | last block of which header will be fetched           |
+//
 // <aside class="notice">Returns at most 20 items.</aside>
 func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 
@@ -123,7 +130,6 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 }
 
 // Get block at a given height.
-// If no height is provided, it will fetch the latest block.
 //
 // ```shell
 // curl 'localhost:26657/block?height=10'
@@ -227,6 +233,12 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 //   "jsonrpc": "2.0"
 // }
 // ```
+//
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description                                    |
+// |-----------+--------+---------+----------+------------------------------------------------|
+// | height    | int64  | 0       | false    | Height (0 means latest)                        |
 func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
@@ -314,6 +326,12 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 //   "jsonrpc": "2.0"
 // }
 // ```
+//
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description                                    |
+// |-----------+--------+---------+----------+------------------------------------------------|
+// | height    | int64  | 0       | false    | Height (0 means latest)                        |
 func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
@@ -384,6 +402,12 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 //   }
 // }
 // ```
+//
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description                                    |
+// |-----------+--------+---------+----------+------------------------------------------------|
+// | height    | int64  | 0       | false    | Height (0 means latest)                        |
 func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)

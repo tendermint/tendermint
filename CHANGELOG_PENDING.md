@@ -36,6 +36,7 @@ program](https://hackerone.com/tendermint).
   custom reactors to run inside Tendermint node (@ParthDesai)
 
 ### IMPROVEMENTS:
+Fixing rpc api's documentation
 
 - [rpc] \#3700 Make possible to set absolute paths for TLS cert and key (@climber73)
 

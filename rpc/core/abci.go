@@ -97,6 +97,9 @@ func ABCIQuery(ctx *rpctypes.Context, path string, data cmn.HexBytes, height int
 // 	"jsonrpc": "2.0"
 // }
 // ```
+//
+// ### Query Parameters
+// None
 func ABCIInfo(ctx *rpctypes.Context) (*ctypes.ResultABCIInfo, error) {
 	resInfo, err := proxyAppQuery.InfoSync(proxy.RequestInfo)
 	if err != nil {

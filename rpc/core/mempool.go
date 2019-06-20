@@ -366,6 +366,9 @@ func UnconfirmedTxs(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmed
 //   }
 // }
 // ```
+//
+// ### Query Parameters
+// None
 func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error) {
 	return &ctypes.ResultUnconfirmedTxs{
 		Count:      mempool.Size(),
