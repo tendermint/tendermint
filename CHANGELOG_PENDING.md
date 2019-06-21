@@ -37,3 +37,4 @@
 ### BUG FIXES:
 - [libs/db] \#3717 Fixed the BoltDB backend's Batch.Delete implementation (@Yawning)
 - [libs/db] \#3718 Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
+- [node] \#3716 Fix a bug where `nil` is recorded as node's address
