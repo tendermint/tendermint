@@ -129,7 +129,6 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 		AppHash:    nil,
 	})
 
-	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
 	sm.SaveState(stateDB, s)
 
