@@ -198,7 +198,7 @@ func (b *Block) Hash() cmn.HexBytes {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
-	if b == nil || b.LastCommit == nil {
+	if b.LastCommit == nil {
 		return nil
 	}
 	b.fillHeader()

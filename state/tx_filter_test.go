@@ -51,7 +51,7 @@ func randomGenesisDoc() *types.GenesisDoc {
 	return &types.GenesisDoc{
 		GenesisTime:     tmtime.Now(),
 		ChainID:         "abc",
-		Validators:      []types.GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
+		Validators:      []types.GenesisValidator{{Address: pubkey.Address(), PubKey: pubkey, Power: 10, Name: "myval"}},
 		ConsensusParams: types.DefaultConsensusParams(),
 	}
 }
