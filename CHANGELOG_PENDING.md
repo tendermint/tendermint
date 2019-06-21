@@ -24,6 +24,11 @@
     change it to `goleveldb` or `cleveldb`.
   - [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
   - [abci] \#3193 Use RequestDeliverTx and RequestCheckTx in the ABCI interface
+  - [abci] \#2127 ABCI / mempool: Add a "Recheck Tx" indicator. Breaks the ABCI
+    client interface (`abcicli.Client`) to allow for supplying the ABCI
+    `types.RequestCheckTx` and `types.RequestDeliverTx` structs, and lets the
+    mempool indicate to the ABCI app whether a CheckTx request is a recheck or
+    not.
 
 * Blockchain Protocol
 
