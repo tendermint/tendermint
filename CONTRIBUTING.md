@@ -2,7 +2,8 @@
 
 Thank you for considering making contributions to Tendermint and related repositories! Start by taking a look at the [coding repo](https://github.com/tendermint/coding) for overall information on repository workflow and standards.
 
-Please follow standard github best practices: fork the repo, branch from the tip of develop, make some commits, and submit a pull request to develop. See the [open issues](https://github.com/tendermint/tendermint/issues) for things we need help with!
+Please follow standard github best practices: fork the repo, branch from the tip of `master`, make some commits, and submit a pull request to `master`. 
+See the [open issues](https://github.com/tendermint/tendermint/issues) for things we need help with!
 
 Before making a pull request, please open an issue describing the
 change you would like to make. If an issue for your change already exists,
@@ -112,32 +113,36 @@ removed from the header in rpc responses as well.
 
 ## Branching Model and Release
 
-We follow a variant of [git flow](http://nvie.com/posts/a-successful-git-branching-model/).
-This means that all pull-requests should be made against develop. Any merge to
-master constitutes a tagged release.
+The main development branch is master. 
 
-Note all pull requests should be squash merged except for merging to master and
-merging master back to develop. This keeps the commit history clean and makes it
+Every release is maintained in a release branch named `vX.Y.Z`.
+
+Note all pull requests should be squash merged except for merging to a release branch (named `vX.Y`). This keeps the commit history clean and makes it
 easy to reference the pull request where a change was introduced.
 
-### Development Procedure:
-- the latest state of development is on `develop`
-- `develop` must never fail `make test`
-- never --force onto `develop` (except when reverting a broken commit, which should seldom happen)
+### Development Procedure
+
+- the latest state of development is on `master`
+- `master` must never fail `make test`
+- never --force onto `master` (except when reverting a broken commit, which should seldom happen)
 - create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`)
 - make changes and update the `CHANGELOG_PENDING.md` to record your change
-- before submitting a pull request, run `git rebase` on top of the latest `develop`
+- before submitting a pull request, run `git rebase` on top of the latest `master`
 
-### Pull Merge Procedure:
-- ensure pull branch is based on a recent develop
+### Pull Merge Procedure
+
+- ensure pull branch is based on a recent `master`
 - run `make test` to ensure that all tests pass
 - squash merge pull request
 - the `unstable` branch may be used to aggregate pull merges before fixing tests
 
-### Release Procedure:
-- start on `develop`
-- run integration tests (see `test_integrations` in Makefile)
-- prepare release in a pull request against develop (to be squash merged):
+### Release Procedure
+
+#### Major Release
+
+1. start on `master` 
+2. run integration tests (see `test_integrations` in Makefile)
+3. prepare release in a pull request against `master` (to be squash merged):
     - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
     - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
       all issues
@@ -147,14 +152,28 @@ easy to reference the pull request where a change was introduced.
       ./scripts/authors.sh <email>`
     - reset the `CHANGELOG_PENDING.md`
     - bump versions
-- push latest develop with prepared release details to release/vX.X.X to run the extended integration tests on the CI
-- if necessary, make pull requests against release/vX.X.X and squash merge them
-- merge to master (don't squash merge!)
-- merge master back to develop (don't squash merge!)
+4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
+5. merge back to master (don't squash merge!)
 
-### Hotfix Procedure:
+#### Minor Release
 
-- follow the normal development and release procedure without any differences
+If there were no breaking changes and you need to create a release nonetheless, 
+the procedure is almost exactly like with a new release above. 
+
+The only difference is that in the end you create a pull request against the existing `X.X` branch.
+The branch name should match the release number you want to create.
+Merging this PR will trigger the next release. 
+For example, if the PR is against an existing 0.34 branch which already contains a v0.34.0 release/tag, 
+the patch version will be incremented and the created release will be v0.34.1.
+
+#### Backport Release
+
+1. start from the existing release branch you want to backport changes to (e.g. v0.30)
+Branch to a release/vX.X.X branch locally (e.g. release/v0.30.7)
+2. cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
+3. steps 2 and 3 from [Major Release](#major-release)
+4. push changes to release/vX.X.X branch
+5. open a PR against the existing vX.X branch
 
 ## Testing
 
