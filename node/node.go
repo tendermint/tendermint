@@ -630,7 +630,9 @@ func NewNode(config *cfg.Config,
 	}
 
 	if config.ProfListenAddress != "" {
-		go logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+		go func() {
+			logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+		}()
 	}
 
 	node := &Node{
