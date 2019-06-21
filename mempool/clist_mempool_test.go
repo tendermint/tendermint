@@ -314,7 +314,7 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res, err := appConnCon.DeliverTxSync(txBytes)
+			res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
 			if err != nil {
 				t.Errorf("Client error committing tx: %v", err)
 			}
@@ -522,7 +522,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	err = appConnCon.Start()
 	require.Nil(t, err)
 	defer appConnCon.Stop()
-	res, err := appConnCon.DeliverTxSync(txBytes)
+	res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Code)
 	res2, err := appConnCon.CommitSync()
