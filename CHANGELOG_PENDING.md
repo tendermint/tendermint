@@ -23,6 +23,7 @@
     If you have `db_backend` set to `leveldb` in your config file, please
     change it to `goleveldb` or `cleveldb`.
   - [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
+  - [abci] \#3193 Use RequestDeliverTx and RequestCheckTx in the ABCI interface
 
 * Blockchain Protocol
 

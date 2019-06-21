@@ -61,21 +61,21 @@ func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) t
 }
 
 // tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
-func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey/power"
-	if isValidatorTx(tx) {
+	if isValidatorTx(req.Tx) {
 		// update validators in the merkle tree
 		// and in app.ValUpdates
-		return app.execValidatorTx(tx)
+		return app.execValidatorTx(req.Tx)
 	}
 
 	// otherwise, update the key-value store
-	return app.app.DeliverTx(tx)
+	return app.app.DeliverTx(req)
 }
 
-func (app *PersistentKVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
-	return app.app.CheckTx(tx)
+func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	return app.app.CheckTx(req)
 }
 
 // Commit will panic if InitChain was not called
