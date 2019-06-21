@@ -692,7 +692,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{firstAddedVal}},
 	}
 	block := makeBlock(oldState, oldState.LastBlockHeight+1)
-	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 	updatedState, err := sm.UpdateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
 	require.NoError(t, err)
 
@@ -737,7 +737,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{addedVal}},
 		}
 		block := makeBlock(oldState, oldState.LastBlockHeight+1)
-		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 		state, err = sm.UpdateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
 		require.NoError(t, err)
 	}
@@ -769,7 +769,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 		block = makeBlock(curState, curState.LastBlockHeight+1)
-		blockID = types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+		blockID = types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 		curState, err = sm.UpdateState(curState, blockID, &block.Header, abciResponses, validatorUpdates)
 		require.NoError(t, err)
 		if !bytes.Equal(curState.Validators.Proposer.Address, curState.NextValidators.Proposer.Address) {
