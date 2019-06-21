@@ -285,10 +285,10 @@ func state(nVals int, height int64) (sm.State, dbm.DB) {
 		secret := []byte(fmt.Sprintf("test%d", i))
 		pk := ed25519.GenPrivKeyFromSecret(secret)
 		vals[i] = types.GenesisValidator{
-			pk.PubKey().Address(),
-			pk.PubKey(),
-			1000,
-			fmt.Sprintf("test%d", i),
+			Address: pk.PubKey().Address(),
+			PubKey:  pk.PubKey(),
+			Power:   1000,
+			Name:    fmt.Sprintf("test%d", i),
 		}
 	}
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{

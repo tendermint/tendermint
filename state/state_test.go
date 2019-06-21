@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -129,7 +128,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
 			},
 			types.ABCIResults{
-				{32, []byte("Hello")},
+				{Code: 32, Data: []byte("Hello")},
 			}},
 		2: {
 			[]*abci.ResponseDeliverTx{
@@ -143,8 +142,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				},
 			},
 			types.ABCIResults{
-				{383, nil},
-				{0, []byte("Gotcha!")},
+				{Code: 383, Data: nil},
+				{Code: 0, Data: []byte("Gotcha!")},
 			}},
 		3: {
 			nil,
@@ -404,7 +403,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	assert.EqualValues(t, 0, val1.ProposerPriority)
 
 	block := makeBlock(state, state.LastBlockHeight+1)
-	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 	abciResponses := &sm.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
@@ -514,7 +513,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	assert.Equal(t, val1PubKey.Address(), state.Validators.Proposer.Address)
 
 	block := makeBlock(state, state.LastBlockHeight+1)
-	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 	// no updates:
 	abciResponses := &sm.ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
@@ -667,7 +666,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		require.NoError(t, err)
 
 		block := makeBlock(oldState, oldState.LastBlockHeight+1)
-		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err := sm.UpdateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
 		require.NoError(t, err)
@@ -707,7 +706,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		require.NoError(t, err)
 
 		block := makeBlock(lastState, lastState.LastBlockHeight+1)
-		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedStateInner, err := sm.UpdateState(lastState, blockID, &block.Header, abciResponses, validatorUpdates)
 		require.NoError(t, err)
@@ -750,7 +749,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{removeGenesisVal}},
 	}
 	block = makeBlock(oldState, oldState.LastBlockHeight+1)
-	blockID = types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	blockID = types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 	require.NoError(t, err)
 	updatedState, err = sm.UpdateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
@@ -794,7 +793,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		require.NoError(t, err)
 
 		block := makeBlock(updatedState, updatedState.LastBlockHeight+1)
-		blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+		blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err = sm.UpdateState(updatedState, blockID, &block.Header, abciResponses, validatorUpdates)
 		require.NoError(t, err)

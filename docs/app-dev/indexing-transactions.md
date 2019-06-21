@@ -47,7 +47,7 @@ pairs of UTF-8 encoded strings (e.g. "account.owner": "Bob", "balance":
 Example:
 
 ```
-func (app *KVStoreApplication) DeliverTx(tx []byte) types.Result {
+func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Result {
     ...
     tags := []cmn.KVPair{
       {[]byte("account.name"), []byte("igor")},
