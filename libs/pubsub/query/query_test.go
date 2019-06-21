@@ -19,30 +19,40 @@ func TestMatches(t *testing.T) {
 
 	testCases := []struct {
 		s       string
-		tags    map[string]string
+		events  map[string][]string
 		err     bool
 		matches bool
 	}{
-		{"tm.events.type='NewBlock'", map[string]string{"tm.events.type": "NewBlock"}, false, true},
+		{"tm.events.type='NewBlock'", map[string][]string{"tm.events.type": {"NewBlock"}}, false, true},
 
-		{"tx.gas > 7", map[string]string{"tx.gas": "8"}, false, true},
-		{"tx.gas > 7 AND tx.gas < 9", map[string]string{"tx.gas": "8"}, false, true},
-		{"body.weight >= 3.5", map[string]string{"body.weight": "3.5"}, false, true},
-		{"account.balance < 1000.0", map[string]string{"account.balance": "900"}, false, true},
-		{"apples.kg <= 4", map[string]string{"apples.kg": "4.0"}, false, true},
-		{"body.weight >= 4.5", map[string]string{"body.weight": fmt.Sprintf("%v", float32(4.5))}, false, true},
-		{"oranges.kg < 4 AND watermellons.kg > 10", map[string]string{"oranges.kg": "3", "watermellons.kg": "12"}, false, true},
-		{"peaches.kg < 4", map[string]string{"peaches.kg": "5"}, false, false},
+		{"tx.gas > 7", map[string][]string{"tx.gas": {"8"}}, false, true},
+		{"tx.gas > 7 AND tx.gas < 9", map[string][]string{"tx.gas": {"8"}}, false, true},
+		{"body.weight >= 3.5", map[string][]string{"body.weight": {"3.5"}}, false, true},
+		{"account.balance < 1000.0", map[string][]string{"account.balance": {"900"}}, false, true},
+		{"apples.kg <= 4", map[string][]string{"apples.kg": {"4.0"}}, false, true},
+		{"body.weight >= 4.5", map[string][]string{"body.weight": {fmt.Sprintf("%v", float32(4.5))}}, false, true},
+		{"oranges.kg < 4 AND watermellons.kg > 10", map[string][]string{"oranges.kg": {"3"}, "watermellons.kg": {"12"}}, false, true},
+		{"peaches.kg < 4", map[string][]string{"peaches.kg": {"5"}}, false, false},
 
-		{"tx.date > DATE 2017-01-01", map[string]string{"tx.date": time.Now().Format(query.DateLayout)}, false, true},
-		{"tx.date = DATE 2017-01-01", map[string]string{"tx.date": txDate}, false, true},
-		{"tx.date = DATE 2018-01-01", map[string]string{"tx.date": txDate}, false, false},
+		{"tx.date > DATE 2017-01-01", map[string][]string{"tx.date": {time.Now().Format(query.DateLayout)}}, false, true},
+		{"tx.date = DATE 2017-01-01", map[string][]string{"tx.date": {txDate}}, false, true},
+		{"tx.date = DATE 2018-01-01", map[string][]string{"tx.date": {txDate}}, false, false},
 
-		{"tx.time >= TIME 2013-05-03T14:45:00Z", map[string]string{"tx.time": time.Now().Format(query.TimeLayout)}, false, true},
-		{"tx.time = TIME 2013-05-03T14:45:00Z", map[string]string{"tx.time": txTime}, false, false},
+		{"tx.time >= TIME 2013-05-03T14:45:00Z", map[string][]string{"tx.time": {time.Now().Format(query.TimeLayout)}}, false, true},
+		{"tx.time = TIME 2013-05-03T14:45:00Z", map[string][]string{"tx.time": {txTime}}, false, false},
 
-		{"abci.owner.name CONTAINS 'Igor'", map[string]string{"abci.owner.name": "Igor,Ivan"}, false, true},
-		{"abci.owner.name CONTAINS 'Igor'", map[string]string{"abci.owner.name": "Pavel,Ivan"}, false, false},
+		{"abci.owner.name CONTAINS 'Igor'", map[string][]string{"abci.owner.name": {"Igor,Ivan"}}, false, true},
+		{"abci.owner.name CONTAINS 'Igor'", map[string][]string{"abci.owner.name": {"Pavel,Ivan"}}, false, false},
+
+		{"abci.owner.name = 'Igor'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true},
+		{"abci.owner.name = 'Ivan'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true},
+		{"abci.owner.name = 'Ivan' AND abci.owner.name = 'Igor'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true},
+		{"abci.owner.name = 'Ivan' AND abci.owner.name = 'John'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, false},
+
+		{"tm.events.type='NewBlock'", map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}}, false, true},
+		{"app.name = 'fuzzed'", map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}}, false, true},
+		{"tm.events.type='NewBlock' AND app.name = 'fuzzed'", map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}}, false, true},
+		{"tm.events.type='NewHeader' AND app.name = 'fuzzed'", map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}}, false, false},
 	}
 
 	for _, tc := range testCases {
@@ -51,10 +61,12 @@ func TestMatches(t *testing.T) {
 			require.Nil(t, err)
 		}
 
+		require.NotNil(t, q, "Query '%s' should not be nil", tc.s)
+
 		if tc.matches {
-			assert.True(t, q.Matches(tc.tags), "Query '%s' should match %v", tc.s, tc.tags)
+			assert.True(t, q.Matches(tc.events), "Query '%s' should match %v", tc.s, tc.events)
 		} else {
-			assert.False(t, q.Matches(tc.tags), "Query '%s' should not match %v", tc.s, tc.tags)
+			assert.False(t, q.Matches(tc.events), "Query '%s' should not match %v", tc.s, tc.events)
 		}
 	}
 }

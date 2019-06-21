@@ -60,7 +60,7 @@ func TestEvidencePool(t *testing.T) {
 	pool := NewEvidencePool(stateDB, evidenceDB)
 
 	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
-	badEvidence := types.MockBadEvidence{goodEvidence}
+	badEvidence := types.MockBadEvidence{MockGoodEvidence: goodEvidence}
 
 	// bad evidence
 	err := pool.AddEvidence(badEvidence)

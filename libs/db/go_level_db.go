@@ -9,15 +9,12 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func init() {
 	dbCreator := func(name string, dir string) (DB, error) {
 		return NewGoLevelDB(name, dir)
 	}
-	registerDBCreator(LevelDBBackend, dbCreator, false)
 	registerDBCreator(GoLevelDBBackend, dbCreator, false)
 }
 
@@ -67,7 +64,7 @@ func (db *GoLevelDB) Set(key []byte, value []byte) {
 	value = nonNilBytes(value)
 	err := db.db.Put(key, value, nil)
 	if err != nil {
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 }
 
@@ -77,7 +74,7 @@ func (db *GoLevelDB) SetSync(key []byte, value []byte) {
 	value = nonNilBytes(value)
 	err := db.db.Put(key, value, &opt.WriteOptions{Sync: true})
 	if err != nil {
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 }
 
@@ -86,7 +83,7 @@ func (db *GoLevelDB) Delete(key []byte) {
 	key = nonNilBytes(key)
 	err := db.db.Delete(key, nil)
 	if err != nil {
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 }
 
@@ -95,7 +92,7 @@ func (db *GoLevelDB) DeleteSync(key []byte) {
 	key = nonNilBytes(key)
 	err := db.db.Delete(key, &opt.WriteOptions{Sync: true})
 	if err != nil {
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 }
 

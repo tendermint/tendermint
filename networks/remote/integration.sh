@@ -30,9 +30,7 @@ go get $REPO
 cd $GOPATH/src/$REPO
 
 ## build
-git checkout zach/ansible
 make get_tools
-make get_vendor_deps
 make build
 
 # generate an ssh key
@@ -84,8 +82,11 @@ ip3=$(strip $ip3)
 # all the ansible commands are also directory specific
 cd $GOPATH/src/github.com/tendermint/tendermint/networks/remote/ansible
 
+# create config dirs
+tendermint testnet
+
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
-ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$GOPATH/src/github.com/tendermint/tendermint/build/tendermint -e CONFIGDIR=$GOPATH/src/github.com/tendermint/tendermint/docs/examples
+ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$GOPATH/src/github.com/tendermint/tendermint/build/tendermint -e CONFIGDIR=$GOPATH/src/github.com/tendermint/tendermint/networks/remote/ansible/mytestnet
 
 sleep 10
 

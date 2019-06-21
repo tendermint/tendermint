@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -69,7 +70,7 @@ func TestByzantine(t *testing.T) {
 		blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
 
-		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		conR := NewConsensusReactor(css[i], true) // so we don't start the consensus states
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
@@ -81,6 +82,7 @@ func TestByzantine(t *testing.T) {
 		}
 
 		reactors[i] = conRI
+		sm.SaveState(css[i].blockExec.DB(), css[i].state) //for save height 1's validators info
 	}
 
 	defer func() {
@@ -175,7 +177,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Cons
 
 	// Create a new proposal block from state/txs from the mempool.
 	block1, blockParts1 := cs.createProposalBlock()
-	polRound, propBlockID := cs.ValidRound, types.BlockID{block1.Hash(), blockParts1.Header()}
+	polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartsHeader: blockParts1.Header()}
 	proposal1 := types.NewProposal(height, round, polRound, propBlockID)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal1); err != nil {
 		t.Error(err)
@@ -183,7 +185,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Cons
 
 	// Create a new proposal block from state/txs from the mempool.
 	block2, blockParts2 := cs.createProposalBlock()
-	polRound, propBlockID = cs.ValidRound, types.BlockID{block2.Hash(), blockParts2.Header()}
+	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartsHeader: blockParts2.Header()}
 	proposal2 := types.NewProposal(height, round, polRound, propBlockID)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal2); err != nil {
 		t.Error(err)
@@ -268,3 +270,4 @@ func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (br *ByzantineReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 	br.reactor.Receive(chID, peer, msgBytes)
 }
+func (br *ByzantineReactor) InitPeer(peer p2p.Peer) p2p.Peer { return peer }

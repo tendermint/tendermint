@@ -13,13 +13,12 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-	tmtime "github.com/tendermint/tendermint/types/time"
-
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 var (
@@ -38,10 +37,10 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB := state(1, 1)
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		MockMempool{}, MockEvidencePool{})
+		mock.Mempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
 	//nolint:ineffassign
 	state, err = blockExec.ApplyBlock(state, blockID, block)
@@ -63,7 +62,7 @@ func TestBeginBlockValidators(t *testing.T) {
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{prevHash, prevParts}
+	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
 
 	now := tmtime.Now()
 	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
@@ -85,7 +84,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -116,7 +115,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{prevHash, prevParts}
+	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
 
 	height1, idx1, val1 := int64(8), 0, state.Validators.Validators[0].Address
 	height2, idx2, val2 := int64(3), 1, state.Validators.Validators[1].Address
@@ -146,7 +145,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the byzantine validator
@@ -160,7 +159,7 @@ func TestValidateValidatorUpdates(t *testing.T) {
 
 	secpKey := secp256k1.GenPrivKey().PubKey()
 
-	defaultValidatorParams := types.ValidatorParams{[]string{types.ABCIPubKeyTypeEd25519}}
+	defaultValidatorParams := types.ValidatorParams{PubKeyTypes: []string{types.ABCIPubKeyTypeEd25519}}
 
 	testCases := []struct {
 		name string
@@ -310,7 +309,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB := state(1, 1)
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), MockMempool{}, MockEvidencePool{})
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 
 	eventBus := types.NewEventBus()
 	err = eventBus.Start()
@@ -322,7 +321,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	require.NoError(t, err)
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
 	app.ValidatorUpdates = []abci.ValidatorUpdate{
@@ -367,10 +366,10 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer proxyApp.Stop()
 
 	state, stateDB := state(1, 1)
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), MockMempool{}, MockEvidencePool{})
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: block.MakePartSet(testPartSize).Header()}
 
 	// Remove the only validator
 	app.ValidatorUpdates = []abci.ValidatorUpdate{
@@ -399,10 +398,10 @@ func state(nVals, height int) (State, dbm.DB) {
 		secret := []byte(fmt.Sprintf("test%d", i))
 		pk := ed25519.GenPrivKeyFromSecret(secret)
 		vals[i] = types.GenesisValidator{
-			pk.PubKey().Address(),
-			pk.PubKey(),
-			1000,
-			fmt.Sprintf("test%d", i),
+			Address: pk.PubKey().Address(),
+			PubKey:  pk.PubKey(),
+			Power:   1000,
+			Name:    fmt.Sprintf("test%d", i),
 		}
 	}
 	s, _ := MakeGenesisState(&types.GenesisDoc{
@@ -454,11 +453,11 @@ func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return abci.ResponseEndBlock{ValidatorUpdates: app.ValidatorUpdates}
 }
 
-func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Tags: []cmn.KVPair{}}
+func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
+	return abci.ResponseDeliverTx{Events: []abci.Event{}}
 }
 
-func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {
+func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{}
 }
 

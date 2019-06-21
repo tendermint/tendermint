@@ -52,8 +52,7 @@ func (v *Validator) CompareProposerPriority(other *Validator) *Validator {
 		} else if result > 0 {
 			return other
 		} else {
-			cmn.PanicSanity("Cannot compare identical validators")
-			return nil
+			panic("Cannot compare identical validators")
 		}
 	}
 }

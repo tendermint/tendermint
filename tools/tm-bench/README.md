@@ -100,6 +100,5 @@ Each of the connections is handled via two separate goroutines.
 ## Development
 
 ```
-make get_vendor_deps
 make test
 ```
