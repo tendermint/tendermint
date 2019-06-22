@@ -116,8 +116,13 @@ func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int
 	}
 	err := conR.conS.Start()
 	if err != nil {
-		conR.Logger.Error("Error starting conS", "err", err)
-		return
+		panic(fmt.Sprintf(`Failed to start consensus state: %v
+
+conS:
+%+v
+
+conR:
+%+v`, err, conR.conS, conR))
 	}
 }
 

@@ -32,6 +32,7 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [consensus] \#3656 Exit if SwitchToConsensus fails
 - [p2p] \#3666 Add per channel telemetry to improve reactor observability
 - [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code. (@wooparadog)
 - [abci/examples] \#3659 Change validator update tx format (incl. expected pubkey format, which is base64 now) (@needkane)
