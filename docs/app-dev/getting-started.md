@@ -28,7 +28,6 @@ Then run
 go get github.com/tendermint/tendermint
 cd $GOPATH/src/github.com/tendermint/tendermint
 make get_tools
-make get_vendor_deps
 make install_abci
 ```
 
@@ -138,7 +137,7 @@ The result should look like:
 Note the `value` in the result (`YWJjZA==`); this is the base64-encoding
 of the ASCII of `abcd`. You can verify this in a python 2 shell by
 running `"YWJjZA==".decode('base64')` or in python 3 shell by running
-`import codecs; codecs.decode("YWJjZA==", 'base64').decode('ascii')`.
+`import codecs; codecs.decode(b"YWJjZA==", 'base64').decode('ascii')`.
 Stay tuned for a future release that [makes this output more
 human-readable](https://github.com/tendermint/tendermint/issues/1794).
 

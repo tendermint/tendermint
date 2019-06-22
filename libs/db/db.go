@@ -9,10 +9,6 @@ type DBBackendType string
 
 // These are valid backend types.
 const (
-	// LevelDBBackend is a legacy type. Defaults to goleveldb unless cleveldb
-	// build tag was used, in which it becomes cleveldb.
-	// Deprecated: Use concrete types (golevedb, cleveldb, etc.)
-	LevelDBBackend DBBackendType = "leveldb"
 	// GoLevelDBBackend represents goleveldb (github.com/syndtr/goleveldb - most
 	// popular implementation)
 	//   - pure go

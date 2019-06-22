@@ -538,24 +538,23 @@ func (mem *CListMempool) Update(
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
 			_ = mem.cache.Push(tx)
-
-			// Remove valid committed tx from the mempool.
-			if e, ok := mem.txsMap.Load(txKey(tx)); ok {
-				mem.removeTx(tx, e.(*clist.CElement), false)
-			}
 		} else {
 			// Allow invalid transactions to be resubmitted.
 			mem.cache.Remove(tx)
+		}
 
-			// Don't remove invalid tx from the mempool.
-			// Otherwise evil proposer can drop valid txs.
-			// Example:
-			//   100 -> 101 -> 102
-			// Block, proposed by evil proposer:
-			//   101 -> 102
-			// Mempool (if you remove txs):
-			//   100
-			// https://github.com/tendermint/tendermint/issues/3322.
+		// Remove committed tx from the mempool.
+		//
+		// Note an evil proposer can drop valid txs!
+		// Mempool before:
+		//   100 -> 101 -> 102
+		// Block, proposed by an evil proposer:
+		//   101 -> 102
+		// Mempool after:
+		//   100
+		// https://github.com/tendermint/tendermint/issues/3322.
+		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
+			mem.removeTx(tx, e.(*clist.CElement), false)
 		}
 	}
 

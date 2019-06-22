@@ -356,10 +356,6 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	default:
 		conR.Logger.Error(fmt.Sprintf("Unknown chId %X", chID))
 	}
-
-	if err != nil {
-		conR.Logger.Error("Error in Receive()", "err", err)
-	}
 }
 
 // SetEventBus sets event bus.

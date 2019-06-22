@@ -64,7 +64,7 @@ build-tendermint: git-branch gopath-setup
 	@echo "*** Building tendermint"
 	go get -d -u github.com/tendermint/tendermint/cmd/tendermint
 	cd $(GOPATH)/src/github.com/tendermint/tendermint && git checkout "$(GIT_BRANCH)" && git pull
-	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/tendermint get_tools get_vendor_deps build
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/tendermint get_tools build
 	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
 
@@ -72,7 +72,7 @@ build-ethermint: git-branch gopath-setup
 	@echo "*** Building ethermint"
 	go get -d -u github.com/tendermint/ethermint/cmd/ethermint
 	cd $(GOPATH)/src/github.com/tendermint/ethermint && git checkout "$(GIT_BRANCH)" && git pull
-	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint get_vendor_deps build
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint build
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/build/ethermint $(GOPATH)/bin
 	@echo "*** Built ethermint"
 
@@ -80,14 +80,14 @@ build-gaia: git-branch gopath-setup
 	@echo "*** Building gaia"
 	go get -d -u go github.com/cosmos/gaia || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/gaia && git checkout "$(GIT_BRANCH)" && git pull
-	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia install
 	@echo "*** Built gaia"
 
 build-basecoind: git-branch gopath-setup
 	@echo "*** Building basecoind from cosmos-sdk"
 	go get -d -u github.com/cosmos/cosmos-sdk/examples/basecoin/cmd/basecoind
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
-	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_tools get_vendor_deps build
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_tools build
 	cp $(GOPATH)/src/github.com/cosmos/cosmos-sdk/build/basecoind $(GOPATH)/bin/basecoind
 	@echo "*** Built basecoind from cosmos-sdk"
 

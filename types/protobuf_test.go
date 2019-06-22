@@ -90,7 +90,7 @@ func TestABCIHeader(t *testing.T) {
 		height, numTxs,
 		[]byte("lastCommitHash"), []byte("dataHash"), []byte("evidenceHash"),
 	)
-	protocolVersion := version.Consensus{7, 8}
+	protocolVersion := version.Consensus{Block: 7, App: 8}
 	timestamp := time.Now()
 	lastBlockID := BlockID{
 		Hash: []byte("hash"),
