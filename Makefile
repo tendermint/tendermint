@@ -11,7 +11,12 @@ export GO111MODULE = on
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
-BUILD_FLAGS = -mod=readonly -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w "
+LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`
+BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
+
+ifeq ($(NOSTRIP),)
+	LD_FLAGS += -s -w
+endif
 
 all: check build test install
 
