@@ -268,64 +268,68 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	}
 }
 
-// poolRoutine receives and handles messages from the Receive() routine and from the FSM
-func (bcR *BlockchainReactor) poolRoutine() {
-
-	bcR.fsm.Start()
+// processBlocksRoutine processes blocks until signlaed to stop over the stopProcessing channel
+func (bcR *BlockchainReactor) processBlocksRoutine(stopProcessing chan struct{}) {
 
 	processReceivedBlockTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
-	sendBlockRequestTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
-	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	doProcessBlockCh := make(chan struct{}, 1)
 
 	lastHundred := time.Now()
 	lastRate := 0.0
 
-	stopProcessing := make(chan struct{}, 1)
-
-	go func(stopProcessing chan struct{}) {
-	ForLoop:
-		for {
+ForLoop:
+	for {
+		select {
+		case <-stopProcessing:
+			bcR.Logger.Info("finishing block execution")
+			break ForLoop
+		case <-processReceivedBlockTicker.C: // try to execute blocks
 			select {
-			case <-stopProcessing:
-				bcR.Logger.Info("finishing block execution")
-				break ForLoop
-			case <-processReceivedBlockTicker.C: // try to execute blocks
-				select {
-				case doProcessBlockCh <- struct{}{}:
-				default:
+			case doProcessBlockCh <- struct{}{}:
+			default:
+			}
+		case <-doProcessBlockCh:
+			for {
+				err := bcR.processBlock()
+				if err == errMissingBlock {
+					break
 				}
-			case <-doProcessBlockCh:
-				for {
-					err := bcR.processBlock()
-					if err == errMissingBlock {
-						break
-					}
-					// Notify FSM of block processing result.
-					msgForFSM := bcReactorMessage{
-						event: processedBlockEv,
-						data: bReactorEventData{
-							err: err,
-						},
-					}
-					_ = bcR.fsm.Handle(&msgForFSM)
+				// Notify FSM of block processing result.
+				msgForFSM := bcReactorMessage{
+					event: processedBlockEv,
+					data: bReactorEventData{
+						err: err,
+					},
+				}
+				_ = bcR.fsm.Handle(&msgForFSM)
 
-					if err != nil {
-						break
-					}
+				if err != nil {
+					break
+				}
 
-					bcR.blocksSynced++
-					if bcR.blocksSynced%100 == 0 {
-						lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
-						height, maxPeerHeight := bcR.fsm.Status()
-						bcR.Logger.Info("Fast Sync Rate", "height", height,
-							"max_peer_height", maxPeerHeight, "blocks/s", lastRate)
-						lastHundred = time.Now()
-					}
+				bcR.blocksSynced++
+				if bcR.blocksSynced%100 == 0 {
+					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
+					height, maxPeerHeight := bcR.fsm.Status()
+					bcR.Logger.Info("Fast Sync Rate", "height", height,
+						"max_peer_height", maxPeerHeight, "blocks/s", lastRate)
+					lastHundred = time.Now()
 				}
 			}
 		}
-	}(stopProcessing)
+	}
+}
+
+// poolRoutine receives and handles messages from the Receive() routine and from the FSM.
+func (bcR *BlockchainReactor) poolRoutine() {
+
+	bcR.fsm.Start()
+
+	sendBlockRequestTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
+	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
+
+	stopProcessing := make(chan struct{}, 1)
+	go bcR.processBlocksRoutine(stopProcessing)
 
 ForLoop:
 	for {

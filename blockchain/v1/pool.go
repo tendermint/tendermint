@@ -27,12 +27,12 @@ type BlockPool struct {
 // NewBlockPool creates a new BlockPool.
 func NewBlockPool(height int64, toBcR bcReactor) *BlockPool {
 	return &BlockPool{
-		peers:             make(map[p2p.ID]*BpPeer),
+		Height:            height,
 		MaxPeerHeight:     0,
+		peers:             make(map[p2p.ID]*BpPeer),
 		blocks:            make(map[int64]p2p.ID),
 		plannedRequests:   make(map[int64]struct{}),
 		nextRequestHeight: height,
-		Height:            height,
 		toBcR:             toBcR,
 	}
 }
@@ -167,8 +167,10 @@ func (pool *BlockPool) removeBadPeers() {
 // MakeNextRequests creates more requests if the block pool is running low.
 func (pool *BlockPool) MakeNextRequests(maxNumRequests int) {
 	heights := pool.makeRequestBatch(maxNumRequests)
-	pool.logger.Info("makeNextRequests will make following requests",
-		"number", len(heights), "heights", heights)
+	if len(heights) != 0 {
+		pool.logger.Info("makeNextRequests will make following requests",
+			"number", len(heights), "heights", heights)
+	}
 
 	for _, height := range heights {
 		h := int64(height)
@@ -345,9 +347,15 @@ func (pool *BlockPool) RemovePeerAtCurrentHeights(err error) {
 
 // Cleanup performs pool and peer cleanup
 func (pool *BlockPool) Cleanup() {
-	for _, peer := range pool.peers {
+	for id, peer := range pool.peers {
 		peer.Cleanup()
+		delete(pool.peers, id)
 	}
+	pool.plannedRequests = make(map[int64]struct{})
+	pool.blocks = make(map[int64]p2p.ID)
+	pool.nextRequestHeight = 0
+	pool.Height = 0
+	pool.MaxPeerHeight = 0
 }
 
 // NumPeers returns the number of peers in the pool

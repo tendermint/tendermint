@@ -379,6 +379,7 @@ type BlockchainMessage interface {
 	ValidateBasic() error
 }
 
+// RegisterBlockchainMessages registers the fast sync messages for amino encoding.
 func RegisterBlockchainMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*BlockchainMessage)(nil), nil)
 	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/blockchain/BlockRequest", nil)
@@ -426,8 +427,8 @@ func (m *bcNoBlockResponseMessage) ValidateBasic() error {
 	return nil
 }
 
-func (brm *bcNoBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", brm.Height)
+func (m *bcNoBlockResponseMessage) String() string {
+	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", m.Height)
 }
 
 //-------------------------------------

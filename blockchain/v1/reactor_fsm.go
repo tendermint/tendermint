@@ -159,7 +159,6 @@ var (
 	errBadDataFromPeer                 = errors.New("received from wrong peer or bad block")
 	errMissingBlock                    = errors.New("missing blocks")
 	errDuplicateBlock                  = errors.New("received duplicate block from peer")
-	errMissingRequest                  = errors.New("missing request")
 	errBlockVerificationFailure        = errors.New("block verification failure, redo")
 	errNilPeerForBlockRequest          = errors.New("peer for block request does not exist in the switch")
 	errSendQueueFull                   = errors.New("block request not made, send-queue is full")
@@ -340,7 +339,7 @@ func init() {
 			fsm.cleanup()
 		},
 		handle: func(fsm *BcReactorFSM, ev bReactorEvent, data bReactorEventData) (*bcReactorFSMState, error) {
-			return nil, nil
+			return finished, nil
 		},
 	}
 }

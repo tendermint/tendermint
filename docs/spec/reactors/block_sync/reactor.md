@@ -297,11 +297,6 @@ redoRequestsForPeer(pool, peerId):
   	  enqueue msg on redoChannel for requester
 ```
 
-### Go Routines in Blockchain Reactor
-
-![Go Routines Diagram](img/bc-reactor-routines.png)
-
-
 ## Channels
 
 Defines `maxMsgSize` for the maximum size of incoming messages,

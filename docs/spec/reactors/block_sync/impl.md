@@ -1,4 +1,6 @@
-## Blockchain Reactor
+## Blockchain Reactor v0 Modules
+
+### Blockchain Reactor
 
 - coordinates the pool for syncing
 - coordinates the store for persistence
@@ -8,7 +10,7 @@
 - starts the pool.Start() and its poolRoutine()
 - registers all the concrete types and interfaces for serialisation
 
-### poolRoutine
+#### poolRoutine
 
 - listens to these channels:
   - pool requests blocks from a specific peer by posting to requestsCh, block reactor then sends
@@ -22,7 +24,7 @@
 - implements Receive which is called by the switch/peer
   - calls AddBlock on the pool when it receives a new block from a peer
 
-## Block Pool
+### Block Pool
 
 - responsible for downloading blocks from peers
 - makeRequestersRoutine()
@@ -36,6 +38,7 @@
     - we receive a block
       - gotBlockCh is strange
 
-## Block Store
 
-- persists blocks to disk
+### Go Routines in Blockchain Reactor
+
+![Go Routines Diagram](img/bc-reactor-routines.png)

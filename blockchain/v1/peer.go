@@ -35,7 +35,6 @@ type BpPeer struct {
 	params                  *BpPeerParams // parameters for timer and monitor
 
 	onErr func(err error, peerID p2p.ID) // function to call on error
-
 }
 
 // NewBpPeer creates a new peer.
@@ -65,16 +64,16 @@ func (peer *BpPeer) SetLogger(l log.Logger) {
 	peer.logger = l
 }
 
-// Cleanup performs cleanup of the peer, removes blocks, requests, stops timers and monitors.
+// Cleanup performs cleanup of the peer, removes blocks, requests, stops timer and monitor.
 func (peer *BpPeer) Cleanup() {
 	if peer.blockResponseTimer != nil {
 		peer.blockResponseTimer.Stop()
 	}
 	if peer.NumPendingBlockRequests != 0 {
-		peer.logger.Info("peer with pending requests is being cleaned")
+		peer.logger.Info("peer with pending requests is being cleaned", "peer", peer.ID)
 	}
 	if len(peer.blocks)-peer.NumPendingBlockRequests != 0 {
-		peer.logger.Info("peer with pending blocks is being cleaned")
+		peer.logger.Info("peer with pending blocks is being cleaned", "peer", peer.ID)
 	}
 	for h := range peer.blocks {
 		delete(peer.blocks, h)
@@ -87,7 +86,7 @@ func (peer *BpPeer) Cleanup() {
 func (peer *BpPeer) BlockAtHeight(height int64) (*types.Block, error) {
 	block, ok := peer.blocks[height]
 	if !ok {
-		return nil, errMissingRequest
+		return nil, errMissingBlock
 	}
 	if block == nil {
 		return nil, errMissingBlock
@@ -104,7 +103,7 @@ func (peer *BpPeer) AddBlock(block *types.Block, recvSize int) error {
 	existingBlock, ok := peer.blocks[block.Height]
 	if !ok {
 		peer.logger.Error("unsolicited block", "blockHeight", block.Height, "peer", peer.ID)
-		return errMissingRequest
+		return errMissingBlock
 	}
 	if existingBlock != nil {
 		peer.logger.Error("already have a block for height", "height", block.Height)

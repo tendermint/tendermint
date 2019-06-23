@@ -374,7 +374,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 			poolWanted: makeBlockPool(testBcR, 10,
 				[]BpPeer{{ID: "P1", Height: 100}},
 				map[int64]tPBlocks{10: {"P1", false}}),
-			errWanted: errMissingRequest,
+			errWanted: errMissingBlock,
 		},
 		{name: "unexpected block 10 from known peer - already have 10",
 			pool: makeBlockPool(testBcR, 10,

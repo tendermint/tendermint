@@ -364,7 +364,7 @@ func TestFSMBadBlockFromPeer(t *testing.T) {
 
 				// blockResponseEv for height 100 should cause an error
 				sBlockRespEvErrored("waitForBlock", "waitForPeer",
-					"P1", 100, []int64{}, errMissingRequest, []p2p.ID{}),
+					"P1", 100, []int64{}, errMissingBlock, []p2p.ID{}),
 			},
 		},
 		{
