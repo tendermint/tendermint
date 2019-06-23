@@ -327,10 +327,18 @@ application easily in any language.
 We have implemented the counter in a number of languages [see the
 example directory](https://github.com/tendermint/tendermint/tree/develop/abci/example).
 
-To run the Node JS version, `cd` to `example/js` and run
+To run the Node JS version, You'll also need to fetch the relevant repository, from [here](https://github.com/tendermint/js-abci), then install it:
 
 ```
-node app.js
+git clone https://github.com/tendermint/js-abci.git
+cd js-abci
+npm install abci
+```
+
+Now run the app:
+
+```bash
+node example/counter.js
 ```
 
 (you'll have to kill the other counter application process). In another
