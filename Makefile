@@ -11,11 +11,7 @@ export GO111MODULE = on
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
-BUILD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`
-
-ifeq ($(NOSTRIP),)
-	BUILD_FLAGS += -s -w
-endif
+LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
 
 all: check build test install
 
@@ -25,19 +21,19 @@ check: check_tools
 ### Build Tendermint
 
 build:
-	CGO_ENABLED=0 go build -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=0 go build -mod=readonly -ldflags "$(LD_FLAGS)" -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
 
 build_c:
-	CGO_ENABLED=1 go build -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=1 go build -mod=readonly -ldflags "$(LD_FLAGS)" -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
 
 build_race:
-	CGO_ENABLED=0 go build -race -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
+	CGO_ENABLED=0 go build -race -mod=readonly -ldflags "$(LD_FLAGS)" -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
 
 install:
-	CGO_ENABLED=0 go install -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags $(BUILD_TAGS) ./cmd/tendermint
+	CGO_ENABLED=0 go install -mod=readonly -ldflags "$(LD_FLAGS)" -tags $(BUILD_TAGS) ./cmd/tendermint
 
 install_c:
-	CGO_ENABLED=1 go install -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
+	CGO_ENABLED=1 go install -mod=readonly -ldflags "$(LD_FLAGS)" -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
 
 ########################################
 ### Protobuf
@@ -110,7 +106,7 @@ draw_deps:
 
 get_deps_bin_size:
 	@# Copy of build recipe with additional flags to perform binary size analysis
-	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/ 2>&1))
+	$(eval $(shell go build -work -a $(LD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/ 2>&1))
 	@find $(WORK) -type f -name "*.a" | xargs -I{} du -hxs "{}" | sort -rh | sed -e s:${WORK}/::g > deps_bin_size.log
 	@echo "Results can be found here: $(CURDIR)/deps_bin_size.log"
 
