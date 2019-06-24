@@ -5,12 +5,13 @@
 Special thanks to external contributors on this release:
 @needkane, @SebastianElvis, @andynog, @Yawning, @wooparadog
 
-This release contains breaking changes to our build and release processes, and
-to the ABCI, namely:
+This release contains breaking changes to our build and release processes, ABCI,
+and the RPC, namely:
 - Use Go modules instead of dep
 - Bring active development to the `master` Github branch
 - ABCI Tags are now Events - see
   [docs](https://github.com/tendermint/tendermint/blob/60827f75623b92eff132dc0eff5b49d2025c591e/docs/spec/abci/abci.md#events)
+- Bind RPC to localhost by default, not to the public interface
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -22,8 +23,11 @@ program](https://hackerone.com/tendermint).
     It is recommended to switch to Go Modules if your project has tendermint as
     a dependency. Read more on Modules here:
     https://github.com/golang/go/wiki/Modules
-  - [rpc] \#3616 Improve `/block_results` response format (`results.DeliverTx`
+  - [config] [\#3632](https://github.com/tendermint/tendermint/pull/3632) Removed `leveldb` as generic
+    option for `db_backend`. Must be `goleveldb` or `cleveldb`.
+  - [rpc] \#3616 Fix field names for `/block_results` response (eg. `results.DeliverTx`
     -> `results.deliver_tx`). See docs for details.
+  - [rpc] \#3724 RPC now binds to `127.0.0.1` by default instead of `0.0.0.0`
 
 * Apps
   - [abci] \#1859 `ResponseCheckTx`, `ResponseDeliverTx`, `ResponseBeginBlock`,
@@ -50,7 +54,6 @@ program](https://hackerone.com/tendermint).
 - [consensus] \#3656 Exit if SwitchToConsensus fails
 - [p2p] \#3666 Add per channel telemetry to improve reactor observability
 - [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code. (@wooparadog)
-- [rpc] \#3724 RPC now binds to `127.0.0.1` by default instead of `0.0.0.0`
 
 ### BUG FIXES:
 - [libs/db] \#3717 Fixed the BoltDB backend's Batch.Delete implementation (@Yawning)

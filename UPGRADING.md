@@ -8,6 +8,23 @@ a newer version of Tendermint Core.
 This release is compatible with previous blockchains,
 however the new ABCI Events mechanism may create some complexity
 for nodes wishing to continue operation with v0.32 from a previous version.
+There are some minor breaking changes to the RPC.
+
+### Config Changes
+
+If you have `db_backend` set to `leveldb` in your config file, please change it
+to `goleveldb` or `cleveldb`.
+
+### RPC Changes
+
+The default listen address for the RPC is now `127.0.0.1`. If you want to expose
+it publicly, you have to explicitly configure it. Note exposing the RPC to the
+public internet may not be safe - endpoints which return a lot of data may
+enable resource exhaustion attacks on your node, causing the process to crash.
+
+Any consumers of `/block_results` need to be mindful of the change in all field
+names from CamelCase to Snake case, eg. `results.DeliverTx` is now `results.deliver_tx`.
+This is a fix, but it's breaking.
 
 ### ABCI Changes
 
@@ -93,10 +110,6 @@ The ABCI Application interface changed slightly so the CheckTx and DeliverTx
 methods now take Request structs. The contents of these structs are just the raw
 tx bytes, which were previously passed in as the argument.
 
-### Config Changes
-
-If you have `db_backend` set to `leveldb` in your config file, please change it
-to `goleveldb` or `cleveldb`.
 
 ## v0.31.6
 
