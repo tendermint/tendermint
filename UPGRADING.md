@@ -13,14 +13,66 @@ for nodes wishing to continue operation with v0.32 from a previous version.
 
 ABCI apps will need to be upgraded to adapt what were previously `Tags` to what
 are now `Events`, essentially a list of `Tags`. However, each `Event` also includes
-a `Type`, which is included as part of the query. The `Type` is meant to categorize
-each `Event`, although the `Type` can be omitted. In addition, `Events` with the
-same `Type` can be included alongside `Attributes` with the same `Key` as the values
-are simply respresented as a list. Because of the new `Event` structure,
-indexing now works by taking the composite of two values as the indexing value:
-`{eventType}.{attributeKey}` for each attribute. As a result, client subscriptions
-and queries must be modified to reflect this new structure (e.g. `transfer.recipient = 'XYZ'`). However, existing queries for older transactions will still work. For further
-documentation on `Events`, see the [docs](https://github.com/tendermint/tendermint/blob/60827f75623b92eff132dc0eff5b49d2025c591e/docs/spec/abci/abci.md#events).
+a `Type`, which is included as part of the query and is meant to categorize
+each `Event`. In addition, `Events` with the same `Type` can be included alongside
+`Attributes` with the same `Key` as the values are simply respresented as a list.
+Because of the new `Event` structure, indexing now works by taking the composite
+of two values as the indexing value: `{eventType}.{attributeKey}` for each attribute.
+As a result, client subscriptions and queries must be modified to reflect this
+new structure (e.g. `transfer.recipient = 'XYZ'`). However, existing queries for
+older transactions will still work.
+
+To illustrate this change and how ABCI apps must upgrade, consider the following
+example.
+
+A transaction with `Tags` prior to this update includes:
+
+```go
+abci.ResponseDeliverTx{
+  Tags: []cmn.KVPair{
+    {Key: []byte("sender"), Value: []byte("foo")},
+    {Key: []byte("recipient"), Value: []byte("bar")},
+    {Key: []byte("amount"), Value: []byte("35")},
+  }
+}
+```
+
+The following queries would match this transaction:
+
+```go
+query.MustParse("tm.event = 'Tx' AND sender = 'foo'")
+query.MustParse("tm.event = 'Tx' AND recipient = 'bar'")
+query.MustParse("tm.event = 'Tx' AND sender = 'foo' AND recipient = 'bar'")
+```
+
+Following this uprgade, assume the ABCI app updates the transaction to include
+the following `Events`:
+
+```go
+abci.ResponseDeliverTx{
+  Events: []abci.Event{
+    {
+      Type: "transfer",
+      Attributes: cmn.KVPairs{
+        {Key: []byte("sender"), Value: []byte("foo")},
+        {Key: []byte("recipient"), Value: []byte("bar")},
+        {Key: []byte("amount"), Value: []byte("35")},
+      },
+    }
+}
+```
+
+Now the following queries would match this transaction:
+
+```go
+query.MustParse("tm.event = 'Tx' AND transfer.sender = 'foo'")
+query.MustParse("tm.event = 'Tx' AND transfer.recipient = 'bar'")
+query.MustParse("tm.event = 'Tx' AND transfer.sender = 'foo' AND transfer.recipient = 'bar'")
+```
+
+Note, the previous queries would still match the old transaction.
+
+For further documentation on `Events`, see the [docs](https://github.com/tendermint/tendermint/blob/60827f75623b92eff132dc0eff5b49d2025c591e/docs/spec/abci/abci.md#events).
 
 ### Go Applications
 
