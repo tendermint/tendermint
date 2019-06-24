@@ -45,6 +45,8 @@ make build
 
 to put the binary in `./build`.
 
+_DISCLAIMER_ The binary of tendermint is build/installed without the DWARF symbol table. If you would like to build/install tendermint with the DWARF symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make file.
+
 The latest `tendermint version` is now installed.
 
 ## Run
@@ -55,8 +57,6 @@ To start a one-node blockchain with a simple in-process application:
 tendermint init
 tendermint node --proxy_app=kvstore
 ```
-
-_DISCLAIMER_ The binary of tendermint is build/installed without the DWARF symbol table. If you would like to build/install tendermint with the DWARF symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make file.
 
 ## Reinstall
 
