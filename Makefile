@@ -276,9 +276,7 @@ build-docker-localnode:
 
 # Run a 4-node testnet locally
 localnet-start: localnet-stop
-	# Expose RPC externally, since it binds to 127.0.0.1 by default
-	echo "[rpc]\nladdr = \"tcp://0.0.0.0:26657\"\n" > build/localnet-config-template.toml
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config localnet-config-template.toml --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2; fi
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2; fi
 	docker-compose up
 
 # Stop testnet
