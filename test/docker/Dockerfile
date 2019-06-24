@@ -28,10 +28,10 @@ RUN make install_abci
 RUN make install
 
 RUN tendermint testnet \
+        --config $REPO/test/docker/config-template.toml \
         --node-dir-prefix="mach" \
         --v=4 \
         --populate-persistent-peers=false \
-        --rpc-laddr tcp://0.0.0.0:26657 \
         --o=$REPO/test/p2p/data
 
 # Now copy in the code
