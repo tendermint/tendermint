@@ -1,31 +1,30 @@
-package state
+package state_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/mock"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// TODO(#2589):
-// - generalize this past the first height
-// - add txs and build up full State properly
-// - test block.Time (see #2587 - there are no conditions on time for the first height)
+const validationTestsStopHeight int64 = 10
+
 func TestValidateBlockHeader(t *testing.T) {
-	var height int64 = 1 // TODO(#2589): generalize
-	state, stateDB := state(1, int(height))
+	proxyApp := newTestApp()
+	require.NoError(t, proxyApp.Start())
+	defer proxyApp.Stop()
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
-
-	// A good block passes.
-	block := makeBlock(state, height)
-	err := blockExec.ValidateBlock(state, block)
-	require.NoError(t, err)
+	state, stateDB, privVals := makeState(3, 1)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+	lastCommit := types.NewCommit(types.BlockID{}, nil)
 
 	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
@@ -43,7 +42,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Version wrong2", func(block *types.Block) { block.Version = wrongVersion2 }},
 		{"ChainID wrong", func(block *types.Block) { block.ChainID = "not-the-real-one" }},
 		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
-		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 3600 * 24) }},
+		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
 		{"NumTxs wrong", func(block *types.Block) { block.NumTxs += 10 }},
 		{"TotalTxs wrong", func(block *types.Block) { block.TotalTxs += 10 }},
 
@@ -62,78 +61,145 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Proposer invalid", func(block *types.Block) { block.ProposerAddress = []byte("wrong size") }},
 	}
 
-	for _, tc := range testCases {
-		block := makeBlock(state, height)
-		tc.malleateBlock(block)
-		err := blockExec.ValidateBlock(state, block)
-		require.Error(t, err, tc.name)
+	// Build up state for multiple heights
+	for height := int64(1); height < validationTestsStopHeight; height++ {
+		proposerAddr := state.Validators.GetProposer().Address
+		/*
+			Invalid blocks don't pass
+		*/
+		for _, tc := range testCases {
+			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, proposerAddr)
+			tc.malleateBlock(block)
+			err := blockExec.ValidateBlock(state, block)
+			require.Error(t, err, tc.name)
+		}
+
+		/*
+			A good block passes
+		*/
+		var err error
+		state, _, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerAddr, blockExec, privVals, nil)
+		require.NoError(t, err, "height %d", height)
 	}
 }
 
-/*
-	TODO(#2589):
-	- test Block.Data.Hash() == Block.DataHash
-	- test len(Block.Data.Txs) == Block.NumTxs
-*/
-func TestValidateBlockData(t *testing.T) {
-}
-
-/*
-	TODO(#2589):
-	- test len(block.LastCommit.Precommits) == state.LastValidators.Size()
-	- test state.LastValidators.VerifyCommit
-*/
 func TestValidateBlockCommit(t *testing.T) {
-}
+	proxyApp := newTestApp()
+	require.NoError(t, proxyApp.Start())
+	defer proxyApp.Stop()
 
-/*
-	TODO(#2589):
-	- test good/bad evidence in block
-*/
-func TestValidateBlockEvidence(t *testing.T) {
-	var height int64 = 1 // TODO(#2589): generalize
-	state, stateDB := state(1, int(height))
+	state, stateDB, privVals := makeState(1, 1)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+	lastCommit := types.NewCommit(types.BlockID{}, nil)
+	wrongPrecommitsCommit := types.NewCommit(types.BlockID{}, nil)
+	badPrivVal := types.NewMockPV()
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, nil)
+	for height := int64(1); height < validationTestsStopHeight; height++ {
+		proposerAddr := state.Validators.GetProposer().Address
+		if height > 1 {
+			/*
+				#2589: ensure state.LastValidators.VerifyCommit fails here
+			*/
+			// should be height-1 instead of height
+			wrongHeightVote, err := makeVote(height, state.LastBlockID, state.Validators, privVals[proposerAddr.String()])
+			require.NoError(t, err, "height %d", height)
+			wrongHeightCommit := types.NewCommit(state.LastBlockID, []*types.CommitSig{wrongHeightVote.CommitSig()})
+			block, _ := state.MakeBlock(height, makeTxs(height), wrongHeightCommit, nil, proposerAddr)
+			err = blockExec.ValidateBlock(state, block)
+			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
+			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
 
-	// make some evidence
-	addr, _ := state.Validators.GetByIndex(0)
-	goodEvidence := types.NewMockGoodEvidence(height, 0, addr)
+			/*
+				#2589: test len(block.LastCommit.Precommits) == state.LastValidators.Size()
+			*/
+			block, _ = state.MakeBlock(height, makeTxs(height), wrongPrecommitsCommit, nil, proposerAddr)
+			err = blockExec.ValidateBlock(state, block)
+			_, isErrInvalidCommitPrecommits := err.(types.ErrInvalidCommitPrecommits)
+			require.True(t, isErrInvalidCommitPrecommits, "expected ErrInvalidCommitPrecommits at height %d but got: %v", height, err)
+		}
 
-	// A block with a couple pieces of evidence passes.
-	block := makeBlock(state, height)
-	block.Evidence.Evidence = []types.Evidence{goodEvidence, goodEvidence}
-	block.EvidenceHash = block.Evidence.Hash()
-	err := blockExec.ValidateBlock(state, block)
-	require.NoError(t, err)
+		/*
+			A good block passes
+		*/
+		var err error
+		var blockID types.BlockID
+		state, blockID, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerAddr, blockExec, privVals, nil)
+		require.NoError(t, err, "height %d", height)
 
-	// A block with too much evidence fails.
-	maxBlockSize := state.ConsensusParams.Block.MaxBytes
-	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
-	require.True(t, maxNumEvidence > 2)
-	for i := int64(0); i < maxNumEvidence; i++ {
-		block.Evidence.Evidence = append(block.Evidence.Evidence, goodEvidence)
+		/*
+			wrongPrecommitsCommit is fine except for the extra bad precommit
+		*/
+		goodVote, err := makeVote(height, blockID, state.Validators, privVals[proposerAddr.String()])
+		require.NoError(t, err, "height %d", height)
+		badVote := &types.Vote{
+			ValidatorAddress: badPrivVal.GetPubKey().Address(),
+			ValidatorIndex:   0,
+			Height:           height,
+			Round:            0,
+			Timestamp:        tmtime.Now(),
+			Type:             types.PrecommitType,
+			BlockID:          blockID,
+		}
+		err = badPrivVal.SignVote(chainID, goodVote)
+		require.NoError(t, err, "height %d", height)
+		wrongPrecommitsCommit = types.NewCommit(blockID, []*types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()})
 	}
-	block.EvidenceHash = block.Evidence.Hash()
-	err = blockExec.ValidateBlock(state, block)
-	require.Error(t, err)
-	_, ok := err.(*types.ErrEvidenceOverflow)
-	require.True(t, ok)
 }
 
-// always returns true if asked if any evidence was already committed.
-type mockEvPoolAlwaysCommitted struct{}
+func TestValidateBlockEvidence(t *testing.T) {
+	proxyApp := newTestApp()
+	require.NoError(t, proxyApp.Start())
+	defer proxyApp.Stop()
 
-func (m mockEvPoolAlwaysCommitted) PendingEvidence(int64) []types.Evidence { return nil }
-func (m mockEvPoolAlwaysCommitted) AddEvidence(types.Evidence) error       { return nil }
-func (m mockEvPoolAlwaysCommitted) Update(*types.Block, State)             {}
-func (m mockEvPoolAlwaysCommitted) IsCommitted(types.Evidence) bool        { return true }
+	state, stateDB, privVals := makeState(3, 1)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+	lastCommit := types.NewCommit(types.BlockID{}, nil)
+
+	for height := int64(1); height < validationTestsStopHeight; height++ {
+		proposerAddr := state.Validators.GetProposer().Address
+		proposerIdx, _ := state.Validators.GetByAddress(proposerAddr)
+		goodEvidence := types.NewMockGoodEvidence(height, proposerIdx, proposerAddr)
+		if height > 1 {
+			/*
+				A block with too much evidence fails
+			*/
+			maxBlockSize := state.ConsensusParams.Block.MaxBytes
+			maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
+			require.True(t, maxNumEvidence > 2)
+			evidence := make([]types.Evidence, 0)
+			// one more than the maximum allowed evidence
+			for i := int64(0); i <= maxNumEvidence; i++ {
+				evidence = append(evidence, goodEvidence)
+			}
+			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
+			err := blockExec.ValidateBlock(state, block)
+			_, ok := err.(*types.ErrEvidenceOverflow)
+			require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d", height)
+		}
+
+		/*
+			A good block with several pieces of good evidence passes
+		*/
+		maxBlockSize := state.ConsensusParams.Block.MaxBytes
+		maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBlockSize)
+		require.True(t, maxNumEvidence > 2)
+		evidence := make([]types.Evidence, 0)
+		// precisely the amount of allowed evidence
+		for i := int64(0); i < maxNumEvidence; i++ {
+			evidence = append(evidence, goodEvidence)
+		}
+
+		var err error
+		state, _, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerAddr, blockExec, privVals, evidence)
+		require.NoError(t, err, "height %d", height)
+	}
+}
 
 func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 	var height int64 = 1
-	state, stateDB := state(1, int(height))
+	state, stateDB, _ := makeState(1, int(height))
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, mockEvPoolAlwaysCommitted{})
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), nil, nil, mockEvPoolAlwaysCommitted{})
 	// A block with a couple pieces of evidence passes.
 	block := makeBlock(state, height)
 	addr, _ := state.Validators.GetByIndex(0)
@@ -144,13 +210,4 @@ func TestValidateFailBlockOnCommittedEvidence(t *testing.T) {
 
 	require.Error(t, err)
 	require.IsType(t, err, &types.ErrEvidenceInvalid{})
-}
-
-/*
-	TODO(#2589):
-	- test unmarshalling BlockParts that are too big into a Block that
-		(note this logic happens in the consensus, not in the validation here).
-	- test making blocks from the types.MaxXXX functions works/fails as expected
-*/
-func TestValidateBlockSize(t *testing.T) {
 }

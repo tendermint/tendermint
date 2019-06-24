@@ -37,6 +37,7 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [consensus] \#3656 Exit if SwitchToConsensus fails
 - [p2p] \#3666 Add per channel telemetry to improve reactor observability
 - [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code. (@wooparadog)
 - [abci/examples] \#3659 Change validator update tx format (incl. expected pubkey format, which is base64 now) (@needkane)
@@ -45,3 +46,4 @@
 - [libs/db] \#3717 Fixed the BoltDB backend's Batch.Delete implementation (@Yawning)
 - [libs/db] \#3718 Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
 - [node] \#3716 Fix a bug where `nil` is recorded as node's address
+- [node] \#3741 Fix profiler blocking the entire node

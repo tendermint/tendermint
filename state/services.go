@@ -43,7 +43,7 @@ type EvidencePool interface {
 	IsCommitted(types.Evidence) bool
 }
 
-// MockEvidencePool is an empty implementation of a Mempool, useful for testing.
+// MockEvidencePool is an empty implementation of EvidencePool, useful for testing.
 type MockEvidencePool struct{}
 
 func (m MockEvidencePool) PendingEvidence(int64) []types.Evidence { return nil }
