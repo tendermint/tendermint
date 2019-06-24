@@ -11,11 +11,10 @@ export GO111MODULE = on
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
-LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`
-BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
+BUILD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`
 
 ifeq ($(NOSTRIP),)
-	LD_FLAGS += -s -w
+	BUILD_FLAGS += -s -w
 endif
 
 all: check build test install
@@ -26,19 +25,19 @@ check: check_tools
 ### Build Tendermint
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=0 go build -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
 
 build_c:
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=1 go build -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
 
 build_race:
-	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
+	CGO_ENABLED=0 go build -race -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
 
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+	CGO_ENABLED=0 go install -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags $(BUILD_TAGS) ./cmd/tendermint
 
 install_c:
-	CGO_ENABLED=1 go install $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
+	CGO_ENABLED=1 go install -mod=readonly -ldflags "$(BUILD_FLAGS)" -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
 
 ########################################
 ### Protobuf
