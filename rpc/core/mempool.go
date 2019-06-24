@@ -19,6 +19,19 @@ import (
 // Returns right away, with no response. Does not wait for CheckTx nor
 // DeliverTx results.
 //
+// If you want to be sure that the transaction is included in a block, you can
+// subscribe for the result using JSONRPC via a websocket. See
+// https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+// If you haven't received anything after a couple of blocks, resend it. If the
+// same happens again, send it to some other node. A few reasons why it could
+// happen:
+//
+// 1. malicious node can drop or pretend it had committed your tx
+// 2. malicious proposer (not necessary the one you're communicating with) can
+// drop transactions, which might become valid in the future
+// (https://github.com/tendermint/tendermint/issues/3322)
+// 3. node can be offline
+//
 // Please refer to
 // https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
 // for formatting/encoding rules.
@@ -68,6 +81,18 @@ func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadca
 }
 
 // Returns with the response from CheckTx. Does not wait for DeliverTx result.
+//
+// If you want to be sure that the transaction is included in a block, you can
+// subscribe for the result using JSONRPC via a websocket. See
+// https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+// If you haven't received anything after a couple of blocks, resend it. If the
+// same happens again, send it to some other node. A few reasons why it could
+// happen:
+//
+// 1. malicious node can drop or pretend it had committed your tx
+// 2. malicious proposer (not necessary the one you're communicating with) can
+// drop transactions, which might become valid in the future
+// (https://github.com/tendermint/tendermint/issues/3322)
 //
 // Please refer to
 // https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
