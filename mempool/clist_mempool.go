@@ -593,7 +593,7 @@ func (mem *CListMempool) recheckTxs() {
 		memTx := e.Value.(*mempoolTx)
 		mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
 			Tx:   memTx.tx,
-			Type: abci.CheckTxType_Checked,
+			Type: abci.CheckTxType_Recheck,
 		})
 	}
 

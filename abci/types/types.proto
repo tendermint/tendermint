@@ -82,14 +82,13 @@ message RequestBeginBlock {
 }
 
 enum CheckTxType {
-  Unchecked = 0;
-  Checked = 1;
+  New = 0;
+  Recheck = 1;
 }
 
 message RequestCheckTx {
   bytes tx = 1;
   CheckTxType type = 2;
-  bytes additional_data = 3;
 }
 
 message RequestDeliverTx {
