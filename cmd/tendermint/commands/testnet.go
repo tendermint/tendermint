@@ -32,6 +32,7 @@ var (
 	hostnames               []string
 	p2pPort                 int
 	randomMonikers          bool
+	rpcListenAddr           string
 )
 
 const (
@@ -64,6 +65,8 @@ func init() {
 		"P2P Port")
 	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random-monikers", false,
 		"Randomize the moniker for each generated node")
+	TestnetFilesCmd.Flags().StringVar(&rpcListenAddr, "rpc-laddr", "tcp://127.0.0.1:26657",
+		"The address (tcp://host:port) on which the RPC interface should listen on each node")
 }
 
 // TestnetFilesCmd allows initialisation of files for a Tendermint testnet.
@@ -192,6 +195,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 	for i := 0; i < nValidators+nNonValidators; i++ {
 		nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
 		config.SetRoot(nodeDir)
+		config.RPC.ListenAddress = rpcListenAddr
 		config.P2P.AddrBookStrict = false
 		config.P2P.AllowDuplicateIP = true
 		if populatePersistentPeers {
