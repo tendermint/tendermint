@@ -11,21 +11,36 @@ for nodes wishing to continue operation with v0.32 from a previous version.
 
 ### ABCI Changes
 
-ABCI apps will need to be upgraded to adapt what were previously `Tags` to what
-are now `Events`, essentially a list of `Tags`. However, each `Event` also includes
-a `Type`, which is included as part of the query and is meant to categorize
-each `Event`. In addition, `Events` with the same `Type` can be included alongside
-`Attributes` with the same `Key` as the values are simply respresented as a list.
-Because of the new `Event` structure, indexing now works by taking the composite
-of two values as the indexing value: `{eventType}.{attributeKey}` for each attribute.
-As a result, client subscriptions and queries must be modified to reflect this
-new structure (e.g. `transfer.recipient = 'XYZ'`). However, existing queries for
-older transactions will still work.
+ABCI responses which previously had a `Tags` field now have an `Events` field
+instead. The original `Tags` field was simply a list of key-value pairs, where
+each key effectively represented some attribute of an event occuring in the
+blockchain, like `sender`, `receiver`, or `amount`. However, it was difficult to
+represent the occurence of multiple events (for instance, multiple transfers) in a single list.
+The new `Events` field contains a list of `Event`, where each `Event` is itself a list
+of key-value pairs, allowing for more natural expression of multiple events in
+eg. a single DeliverTx or EndBlock. Note each `Event` also includes a `Type`, which is meant to categorize the
+event.
 
-To illustrate this change and how ABCI apps must upgrade, consider the following
-example.
+For transaction indexing, the index key is
+prefixed with the event type: `{eventType}.{attributeKey}`.
+If the same event type and attribute key appear multiple times, the values are
+appended in a list.
 
-A transaction with `Tags` prior to this update includes:
+To make queries, include the event type as a prefix. For instance if you
+previously queried for `recipient = 'XYZ'`, and after the upgrade you name your event `transfer`,
+the new query would be for `transfer.recipient = 'XYZ'`.
+
+Note that transactions indexed on a node before upgrading to v0.32 will still be indexed
+using the old scheme. For instance, if a node upgraded at height 100,
+transactions before 100 would be queried with `recipient = 'XYZ'` and
+transactions after 100 would be queried with `transfer.recipient = 'XYZ'`.
+While this presents additional complexity to clients, it avoids the need to
+reindex. Of course, you can reset the node and sync from scratch to re-index
+entirely using the new scheme.
+
+We illustrate further with a more complete example.
+
+Prior to the update, suppose your `ResponseDeliverTx` look like:
 
 ```go
 abci.ResponseDeliverTx{
@@ -45,7 +60,7 @@ query.MustParse("tm.event = 'Tx' AND recipient = 'bar'")
 query.MustParse("tm.event = 'Tx' AND sender = 'foo' AND recipient = 'bar'")
 ```
 
-Following this uprgade, assume the ABCI app updates the transaction to include
+Following the upgrade, your `ResponseDeliverTx` would look something like:
 the following `Events`:
 
 ```go
@@ -69,8 +84,6 @@ query.MustParse("tm.event = 'Tx' AND transfer.sender = 'foo'")
 query.MustParse("tm.event = 'Tx' AND transfer.recipient = 'bar'")
 query.MustParse("tm.event = 'Tx' AND transfer.sender = 'foo' AND transfer.recipient = 'bar'")
 ```
-
-Note, the previous queries would still match the old transaction.
 
 For further documentation on `Events`, see the [docs](https://github.com/tendermint/tendermint/blob/60827f75623b92eff132dc0eff5b49d2025c591e/docs/spec/abci/abci.md#events).
 
