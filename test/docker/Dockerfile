@@ -27,7 +27,12 @@ RUN make install_abci
 # install Tendermint
 RUN make install
 
-RUN tendermint testnet --node-dir-prefix="mach" --v=4 --populate-persistent-peers=false --o=$REPO/test/p2p/data
+RUN tendermint testnet \
+        --config $REPO/test/docker/config-template.toml \
+        --node-dir-prefix="mach" \
+        --v=4 \
+        --populate-persistent-peers=false \
+        --o=$REPO/test/p2p/data
 
 # Now copy in the code
 # NOTE: this will overwrite whatever is in vendor/

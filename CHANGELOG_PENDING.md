@@ -50,6 +50,7 @@ program](https://hackerone.com/tendermint).
 - [consensus] \#3656 Exit if SwitchToConsensus fails
 - [p2p] \#3666 Add per channel telemetry to improve reactor observability
 - [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code. (@wooparadog)
+- [rpc] \#3724 RPC now binds to `127.0.0.1` by default instead of `0.0.0.0`
 
 ### BUG FIXES:
 - [libs/db] \#3717 Fixed the BoltDB backend's Batch.Delete implementation (@Yawning)
