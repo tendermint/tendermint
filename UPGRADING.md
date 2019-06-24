@@ -3,8 +3,25 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
-
 ## v0.32.0
+
+This release is compatible with previous blockchains,
+however the new ABCI Events mechanism may create some complexity
+for nodes wishing to continue operation with v0.32 from a previous version.
+
+### ABCI Changes
+
+ABCI apps will need to be upgraded to adapt what were previously `Tags` to what
+are now `Events`, essentially a list of Tags. However, each Event also includes
+a Type, which is included as part of the query.
+
+TODO: finalize with Bez
+
+### Go Applications
+
+The ABCI Application interface changed slightly so the CheckTx and DeliverTx
+methods now take Request structs. The contents of these structs are just the raw
+tx bytes, which were previously passed in as the argument.
 
 ### Config Changes
 

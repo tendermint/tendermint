@@ -1,6 +1,19 @@
-## v0.31.8
+## v0.32.0
 
-**
+*June 24, 2019*
+
+Special thanks to external contributors on this release:
+@needkane, @SebastianElvis, @andynog, @Yawning, @wooparadog
+
+This release contains breaking changes to our build and release processes, and
+to the ABCI, namely:
+- Use Go modules instead of dep
+- Bring active development to the `master` Github branch
+- ABCI Tags are now Events - see
+  [docs](https://github.com/tendermint/tendermint/blob/60827f75623b92eff132dc0eff5b49d2025c591e/docs/spec/abci/abci.md#events)
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -19,11 +32,12 @@
     allowing for inclusion of multiple distinct events in each response.
 
 * Go API
+  - [abci] \#3193 Use RequestDeliverTx and RequestCheckTx in the ABCI
+    Application interface
   - [libs/db] [\#3632](https://github.com/tendermint/tendermint/pull/3632) Removed deprecated `LevelDBBackend` const
     If you have `db_backend` set to `leveldb` in your config file, please
     change it to `goleveldb` or `cleveldb`.
   - [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
-  - [abci] \#3193 Use RequestDeliverTx and RequestCheckTx in the ABCI interface
 
 * Blockchain Protocol
 
@@ -32,10 +46,10 @@
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- [abci/examples] \#3659 Change validator update tx format in the `persistent_kvstore` to use base64 for pubkeys instead of hex (@needkane)
 - [consensus] \#3656 Exit if SwitchToConsensus fails
 - [p2p] \#3666 Add per channel telemetry to improve reactor observability
 - [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code. (@wooparadog)
-- [abci/examples] \#3659 Change validator update tx format (incl. expected pubkey format, which is base64 now) (@needkane)
 
 ### BUG FIXES:
 - [libs/db] \#3717 Fixed the BoltDB backend's Batch.Delete implementation (@Yawning)
