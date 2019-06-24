@@ -56,6 +56,8 @@ tendermint init
 tendermint node --proxy_app=kvstore
 ```
 
+_DISCLAIMER_ The binary of tendermint is build/installed without the DWARF symbol table. If you would like to build/install tendermint with the DWARF symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make file.
+
 ## Reinstall
 
 If you already have Tendermint installed, and you make updates, simply
