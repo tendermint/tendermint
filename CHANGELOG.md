@@ -13,7 +13,7 @@ and the RPC, namely:
 - Bring active development to the `master` Github branch
 - ABCI Tags are now Events - see
   [docs](https://github.com/tendermint/tendermint/blob/60827f75623b92eff132dc0eff5b49d2025c591e/docs/spec/abci/abci.md#events)
-- Bind RPC to localhost by default, not to the public interface
+- Bind RPC to localhost by default, not to the public interface [RPC_Changes](./UPGRADING.md#rpc_changes)
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
