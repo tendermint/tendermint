@@ -13,7 +13,7 @@ The following diagram illustrates the state of the
 ![v1 Blockchain Reactor Architecture
 Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
 
-While `v1` of the blockchan reactor has shown significant improvementsin erms of simplifying the concurrency model, the current PR has runinto few roadblocks.
+While `v1` of the blockchain reactor has shown significant improvements in terms of simplifying the concurrency model, the current PR has run into few roadblocks.
 
 * The current PR large and difficult to review.
 * Block gossiping and fast sync processes are highly coupled to the shared `Pool` data structure.
