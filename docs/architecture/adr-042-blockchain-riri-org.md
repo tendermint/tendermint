@@ -10,7 +10,8 @@ The following diagram illustrates the state of the
 
 [blockchain-reorg](https://github.com/tendermint/tendermint/pull/35610),which will be refered to as `v1`
 
-![v1 Blockchain Reactor Architecture Diagram](img/blockchain-reactor-v1.png)
+![v1 Blockchain Reactor Architecture
+Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
 
 While `v1` of the blockchan reactor has shown significant improvementsin erms of simplifying the concurrency model, the current PR has runinto few roadblocks.
 
@@ -23,7 +24,8 @@ While `v1` of the blockchan reactor has shown significant improvementsin erms of
 
 Partition the responsibilities of the blockchain reactor into a set ofcomponents which communicate exclusively with events. Events will containtimestamps allowing each component to track time as internal state.Internal state will be mutated by a set of `handle*` which will produce event(s).The integration between components will happen in the reactor andreactor tests will then become integration tests between components. This design will be known as `v2`
 
-![v2 Blockchain Reactor Architecture Diagram](img/blockchain-reactor-v2.png)
+![v2 Blockchain Reactor Architecture
+Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v2.png)
 
 ### Reactor changes in detail
 
