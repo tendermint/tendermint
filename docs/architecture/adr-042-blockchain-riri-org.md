@@ -5,7 +5,7 @@
 
 ## Context
 
-The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind.  The goal of[ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these twoprocesses by seperating business logic currently wrapped up ingo-channels into pure `handle*` functions.  While the ADR specified what the final formof the reactor might look like it lacked guidance on intermediary stepsto get there. 
+The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind.  The goal of[ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up ingo-channels into pure `handle*` functions.  While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there. 
 The following diagram illustrates the state of the
 
 [blockchain-reorg](https://github.com/tendermint/tendermint/pull/35610),which will be refered to as `v1`
