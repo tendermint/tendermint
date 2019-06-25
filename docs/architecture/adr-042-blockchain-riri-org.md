@@ -120,7 +120,7 @@ func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 An io handling routine within the reactor will isolate peer
 communication.
 
-```
+```go
 func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
     ...
     for {
@@ -245,6 +245,7 @@ func handleTimeCheckEv(time) {
 ## Peer
 The Peer Stores per peer state based on messages received by the
 scheduler.
+
 ```go
 type Peer struct {
 	lastTouched timestamp
