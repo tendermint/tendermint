@@ -32,7 +32,7 @@ Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdad
 The reactor will include a demultiplexing routine which will send each message to each sub routine for independant processing.
 
 
-```
+```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
     timer := time.NewTicker(interval)
     for {
@@ -81,13 +81,13 @@ func scheduleRoutine(input chan Message, output chan Message){
         }
     }
 }
-
 ```
+
 ## Lifecycle management
 
 A set of routines for individual processes allow processes to run in parallel with clear lifecycle management.
 
-```
+```go
 func (r *BlockChainReactor) Start() {
     r.msgs := make(chan Message, maxInFlight)
     schedulerMsgs := make(chan Message)
@@ -145,7 +145,7 @@ func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
 
 The processor will be responsible for validating and processing blocks.
 
-```
+```go
 type Proccesor struct {
     height ...
     state ...
@@ -195,7 +195,7 @@ func handleTimeCheckEv(time) {
 ## Schedule
 The scheduler (previously the pool) holds the internal state of the scheduler read/written in response to events.
 
-```
+```go
 type schedule {
     ...
 }
@@ -245,7 +245,7 @@ func handleTimeCheckEv(time) {
 ## Peer
 The Peer Stores per peer state based on messages received by the
 scheduler.
-```
+```go
 type Peer struct {
 	lastTouched timestamp
 	lastDownloaded timestamp
