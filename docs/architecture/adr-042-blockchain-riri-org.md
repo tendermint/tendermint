@@ -22,7 +22,7 @@ While `v1` of the blockchan reactor has shown significant improvementsin erms of
 
 ## Decision
 
-Partition the responsibilities of the blockchain reactor into a set ofcomponents which communicate exclusively with events. Events will containtimestamps allowing each component to track time as internal state.Internal state will be mutated by a set of `handle*` which will produce event(s).The integration between components will happen in the reactor andreactor tests will then become integration tests between components. This design will be known as `v2`
+Partition the responsibilities of the blockchain reactor into a set of components which communicate exclusively with events. Events will contain timestamps allowing each component to track time as internal state. The internal state will be mutated by a set of `handle*` which will produce event(s). The integration between components will happen in the reactor and reactor tests will then become integration tests between components. This design will be known as `v2`
 
 ![v2 Blockchain Reactor Architecture
 Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v2.png)
