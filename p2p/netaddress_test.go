@@ -110,7 +110,12 @@ func TestNetAddressProperties(t *testing.T) {
 		addr, err := NewNetAddressString(tc.addr)
 		require.Nil(t, err)
 
-		assert.Equal(t, tc.valid, addr.Valid())
+		err = addr.Valid()
+		if tc.valid {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
 		assert.Equal(t, tc.local, addr.Local())
 		assert.Equal(t, tc.routable, addr.Routable())
 	}
