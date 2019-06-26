@@ -178,10 +178,10 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		res := s.app.SetOption(*r.SetOption)
 		responses <- types.ToResponseSetOption(res)
 	case *types.Request_DeliverTx:
-		res := s.app.DeliverTx(r.DeliverTx.Tx)
+		res := s.app.DeliverTx(*r.DeliverTx)
 		responses <- types.ToResponseDeliverTx(res)
 	case *types.Request_CheckTx:
-		res := s.app.CheckTx(r.CheckTx.Tx)
+		res := s.app.CheckTx(*r.CheckTx)
 		responses <- types.ToResponseCheckTx(res)
 	case *types.Request_Commit:
 		res := s.app.Commit()

@@ -218,7 +218,7 @@ func MerkleRoot(items [][]byte) []byte{
 	case 0:
 		return nil
 	case 1:
-		return leafHash(leafs[0])
+		return leafHash(items[0])
 	default:
 		k := getSplitPoint(len(items))
 		left := MerkleRoot(items[:k])

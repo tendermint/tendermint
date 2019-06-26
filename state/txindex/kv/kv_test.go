@@ -21,7 +21,15 @@ func TestTxIndex(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
+	txResult := &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "", Events: nil,
+		},
+	}
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch(1)
@@ -36,7 +44,15 @@ func TestTxIndex(t *testing.T) {
 	assert.Equal(t, txResult, loadedTxResult)
 
 	tx2 := types.Tx("BYE BYE WORLD")
-	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
+	txResult2 := &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx2,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "", Events: nil,
+		},
+	}
 	hash2 := tx2.Hash()
 
 	err = indexer.Index(txResult2)
@@ -51,10 +67,10 @@ func TestTxSearch(t *testing.T) {
 	allowedTags := []string{"account.number", "account.owner", "account.date"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
-	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("1")},
-		{Key: []byte("account.owner"), Value: []byte("Ivan")},
-		{Key: []byte("not_allowed"), Value: []byte("Vlad")},
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
+		{Type: "", Attributes: []cmn.KVPair{{Key: []byte("not_allowed"), Value: []byte("Vlad")}}},
 	})
 	hash := txResult.Tx.Hash()
 
@@ -108,13 +124,82 @@ func TestTxSearch(t *testing.T) {
 	}
 }
 
+func TestTxSearchDeprecatedIndexing(t *testing.T) {
+	allowedTags := []string{"account.number", "sender"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+
+	// index tx using events indexing (composite key)
+	txResult1 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
+	})
+	hash1 := txResult1.Tx.Hash()
+
+	err := indexer.Index(txResult1)
+	require.NoError(t, err)
+
+	// index tx also using deprecated indexing (tag as key)
+	txResult2 := txResultWithEvents(nil)
+	txResult2.Tx = types.Tx("HELLO WORLD 2")
+
+	hash2 := txResult2.Tx.Hash()
+	b := indexer.store.NewBatch()
+
+	rawBytes, err := cdc.MarshalBinaryBare(txResult2)
+	require.NoError(t, err)
+
+	depKey := []byte(fmt.Sprintf("%s/%s/%d/%d",
+		"sender",
+		"addr1",
+		txResult2.Height,
+		txResult2.Index,
+	))
+
+	b.Set(depKey, hash2)
+	b.Set(keyForHeight(txResult2), hash2)
+	b.Set(hash2, rawBytes)
+	b.Write()
+
+	testCases := []struct {
+		q       string
+		results []*types.TxResult
+	}{
+		// search by hash
+		{fmt.Sprintf("tx.hash = '%X'", hash1), []*types.TxResult{txResult1}},
+		// search by hash
+		{fmt.Sprintf("tx.hash = '%X'", hash2), []*types.TxResult{txResult2}},
+		// search by exact match (one tag)
+		{"account.number = 1", []*types.TxResult{txResult1}},
+		{"account.number >= 1 AND account.number <= 5", []*types.TxResult{txResult1}},
+		// search by range (lower bound)
+		{"account.number >= 1", []*types.TxResult{txResult1}},
+		// search by range (upper bound)
+		{"account.number <= 5", []*types.TxResult{txResult1}},
+		// search using not allowed tag
+		{"not_allowed = 'boom'", []*types.TxResult{}},
+		// search for not existing tx result
+		{"account.number >= 2 AND account.number <= 5", []*types.TxResult{}},
+		// search using not existing tag
+		{"account.date >= TIME 2013-05-03T14:45:00Z", []*types.TxResult{}},
+		// search by deprecated tag
+		{"sender = 'addr1'", []*types.TxResult{txResult2}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.q, func(t *testing.T) {
+			results, err := indexer.Search(query.MustParse(tc.q))
+			require.NoError(t, err)
+			require.Equal(t, results, tc.results)
+		})
+	}
+}
+
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	allowedTags := []string{"account.number"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
-	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("1")},
-		{Key: []byte("account.number"), Value: []byte("2")},
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("2")}}},
 	})
 
 	err := indexer.Index(txResult)
@@ -132,9 +217,10 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
 	// indexed first, but bigger height (to test the order of transactions)
-	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("1")},
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
 	})
+
 	txResult.Tx = types.Tx("Bob's account")
 	txResult.Height = 2
 	txResult.Index = 1
@@ -142,8 +228,8 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	require.NoError(t, err)
 
 	// indexed second, but smaller height (to test the order of transactions)
-	txResult2 := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("2")},
+	txResult2 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("2")}}},
 	})
 	txResult2.Tx = types.Tx("Alice's account")
 	txResult2.Height = 1
@@ -153,8 +239,8 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	require.NoError(t, err)
 
 	// indexed third (to test the order of transactions)
-	txResult3 := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte("3")},
+	txResult3 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("3")}}},
 	})
 	txResult3.Tx = types.Tx("Jack's account")
 	txResult3.Height = 1
@@ -164,8 +250,8 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 
 	// indexed fourth (to test we don't include txs with similar tags)
 	// https://github.com/tendermint/tendermint/issues/2908
-	txResult4 := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number.id"), Value: []byte("1")},
+	txResult4 := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number.id"), Value: []byte("1")}}},
 	})
 	txResult4.Tx = types.Tx("Mike's account")
 	txResult4.Height = 2
@@ -183,9 +269,9 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 func TestIndexAllTags(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexAllTags())
 
-	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.owner"), Value: []byte("Ivan")},
-		{Key: []byte("account.number"), Value: []byte("1")},
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("owner"), Value: []byte("Ivan")}}},
+		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
 	})
 
 	err := indexer.Index(txResult)
@@ -202,17 +288,17 @@ func TestIndexAllTags(t *testing.T) {
 	assert.Equal(t, []*types.TxResult{txResult}, results)
 }
 
-func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
+func txResultWithEvents(events []abci.Event) *types.TxResult {
 	tx := types.Tx("HELLO WORLD")
 	return &types.TxResult{
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
 		Result: abci.ResponseDeliverTx{
-			Data: []byte{0},
-			Code: abci.CodeTypeOK,
-			Log:  "",
-			Tags: tags,
+			Data:   []byte{0},
+			Code:   abci.CodeTypeOK,
+			Log:    "",
+			Events: events,
 		},
 	}
 }
@@ -236,10 +322,10 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 			Index:  txIndex,
 			Tx:     tx,
 			Result: abci.ResponseDeliverTx{
-				Data: []byte{0},
-				Code: abci.CodeTypeOK,
-				Log:  "",
-				Tags: []cmn.KVPair{},
+				Data:   []byte{0},
+				Code:   abci.CodeTypeOK,
+				Log:    "",
+				Events: []abci.Event{},
 			},
 		}
 		if err := batch.Add(txResult); err != nil {

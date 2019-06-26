@@ -48,9 +48,6 @@ installFromGithub() {
 	echo ""
 }
 
-######################## COMMON TOOLS ########################################
-installFromGithub golang/dep 22125cfaa6ddc71e145b1535d4b7ee9744fefff2 cmd/dep
-
 ######################## DEVELOPER TOOLS #####################################
 installFromGithub gogo/protobuf 61dbc136cf5d2f08d68a011382652244990a53a9 protoc-gen-gogo
 

@@ -1,6 +1,11 @@
-## v0.31.6
+## v0.32.1
 
 **
+
+Special thanks to external contributors on this release:
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
