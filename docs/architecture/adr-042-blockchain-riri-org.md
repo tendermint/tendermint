@@ -5,10 +5,8 @@
 
 ## Context
 
-The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind.  The goal of[ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up ingo-channels into pure `handle*` functions.  While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there. 
-The following diagram illustrates the state of the
-
-[blockchain-reorg](https://github.com/tendermint/tendermint/pull/35610),which will be refered to as `v1`
+The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind.  The goal of [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up in go-channels into pure `handle*` functions.  While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there. 
+The following diagram illustrates the state of the [blockchain-reorg](https://github.com/tendermint/tendermint/pull/35610) reactor which will be refered to as `v1`.
 
 ![v1 Blockchain Reactor Architecture
 Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
@@ -20,17 +18,18 @@ While `v1` of the blockchain reactor has shown significant improvements in terms
 * Peer communication is spread over multiple components creating complex dependency graph which must be mocked out during testing.
 * Timeouts modeled as stateful tickers introduce non-determinism in tests
 
+This ADR is meant to specify the missing components and control nessesary to acheive [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md).
+
 ## Decision
 
-Partition the responsibilities of the blockchain reactor into a set of components which communicate exclusively with events. Events will contain timestamps allowing each component to track time as internal state. The internal state will be mutated by a set of `handle*` which will produce event(s). The integration between components will happen in the reactor and reactor tests will then become integration tests between components. This design will be known as `v2`
+Partition the responsibilities of the blockchain reactor into a set of components which communicate exclusively with events. Events will contain timestamps allowing each component to track time as internal state. The internal state will be mutated by a set of `handle*` which will produce event(s). The integration between components will happen in the reactor and reactor tests will then become integration tests between components. This design will be known as `v2`.
 
 ![v2 Blockchain Reactor Architecture
 Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v2.png)
 
 ### Reactor changes in detail
 
-The reactor will include a demultiplexing routine which will send each message to each sub routine for independant processing.
-
+The reactor will include a demultiplexing routine which will send each message to each sub routine for independant processing. Each sub routine will then select the messages it's interested in and call the handle specific function specified in [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md).
 
 ```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
@@ -67,7 +66,7 @@ func processRoutine(input chan Message, output chan Message) {
     }
 }
 
-func scheduleRoutine(input chan Message, output chan Message){
+func scheduleRoutine(input chan Message, output chan Message) {
     schelduer = NewScheduler(...)
     for {
         msg := <-msgs
@@ -85,7 +84,7 @@ func scheduleRoutine(input chan Message, output chan Message){
 
 ## Lifecycle management
 
-A set of routines for individual processes allow processes to run in parallel with clear lifecycle management.
+A set of routines for individual processes allow processes to run in parallel with clear lifecycle management. `Start`, `Stop`, and `AddPeer` hooks currently present in the reactor will delegate to the sub-routines allowing them to manage internal state independant without further coupling to the reactor.
 
 ```go
 func (r *BlockChainReactor) Start() {
@@ -117,8 +116,7 @@ func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 ```
 
 ## IO handling
-An io handling routine within the reactor will isolate peer
-communication.
+An io handling routine within the reactor will isolate peer communication.
 
 ```go
 func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
@@ -126,12 +124,12 @@ func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
     for {
         msg := <-ioMsgs
         switch msg := msg.(type) {
-            case bcBlockRequestMessage:
-                sendBlockToPeer(...)
-            case bcStatusRequestMessage
-                sendStatusResponseToPeer(...)
+            case scBlockRequestMessage:
+                r.sendBlockToPeer(...)
+            case scStatusRequestMessage
+                r.sendStatusResponseToPeer(...)
             case bcPeerError
-                swtich.StopPeerForError(msg.src)
+                r.Swtich.StopPeerForError(msg.src)
                 ...
             ...
             case bcFinished
@@ -144,6 +142,9 @@ func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
 ### Processor internals 
 
 The processor will be responsible for validating and processing blocks.
+The Processor will maintain an internal cursor `height` of the last
+processed block. As a set of unordered blocks arrive, the the Processor
+will check if it has `height+1` nessary to process the next block.
 
 ```go
 type Proccesor struct {
@@ -171,6 +172,7 @@ func (proc *Processor) handleBlockResponse(peerID, block, time) {
         delete blocks[height]
         height++
     }
+    return pcBlockProcessed{height}
 }
 
 func (proc *Processor) handleRemovePeer(peerID) {
@@ -178,7 +180,7 @@ func (proc *Processor) handleRemovePeer(peerID) {
     // Delete all unprocessed blocks from peerID
     for i = height; i < len(blocks); i++ {
         if peers[i] == peerID {
-            events = append(events, bcScheduleBlockFetch{height})
+            events = append(events, pcBlockReschedule{height})
             delete block[height]
         }
     }
@@ -186,14 +188,15 @@ func (proc *Processor) handleRemovePeer(peerID) {
 }
 
 func handleTimeCheckEv(time) {
-    if Now() - lastTouch > timeout {
-        return blockProcessTimeout{}
+    if time - lastTouch > timeout {
+        // Timeout the processor
+        ...
     }
 }
 ```
 
 ## Schedule
-The scheduler (previously the pool) holds the internal state of the scheduler read/written in response to events.
+The scheduler (previously the pool) is responsible for squeding peer status requests and block request responses.
 
 ```go
 type schedule {
@@ -221,7 +224,7 @@ func handleBlockResponseMessage(peerID, height, block, time) {
 
 func handleNoBlockResponseMessage(peerID, height, time) {
 	schedule.touchPeer(peerID, time)
-    // reschedule that block, punish peer..
+    // reschedule that block, punish peer...
     ...
 }
 
@@ -243,8 +246,7 @@ func handleTimeCheckEv(time) {
 ```
 
 ## Peer
-The Peer Stores per peer state based on messages received by the
-scheduler.
+The Peer Stores per peer state based on messages received by the scheduler.
 
 ```go
 type Peer struct {
