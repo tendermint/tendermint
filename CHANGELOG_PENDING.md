@@ -14,6 +14,7 @@ program](https://hackerone.com/tendermint).
 * Apps
 
 * Go API
+  - [libs] Removal of `NewDebugDB`, colors.go & errors.go (commented out file)
 
 * Blockchain Protocol
 
