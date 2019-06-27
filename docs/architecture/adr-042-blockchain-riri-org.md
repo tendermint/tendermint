@@ -288,6 +288,5 @@ Work in progress
 ## References
 
 
-* [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two
-* [Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561)
-
+* [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md): The original blockchain reactor re-org proposal
+* [Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561): The current blockchain reactor re-org implementation (v1)
