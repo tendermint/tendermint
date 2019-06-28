@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -127,8 +126,6 @@ func TestPeerGetAndRemoveBlock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fmt.Println("ff")
-
 			// try to get the block
 			b, err := peer.BlockAtHeight(tt.height)
 			assert.Equal(t, tt.wantErr, err)

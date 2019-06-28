@@ -150,22 +150,26 @@ const (
 
 // errors
 var (
-	errNoErrorFinished                 = errors.New("FSM is finished")
-	errInvalidEvent                    = errors.New("invalid event in current state")
-	errNoTallerPeer                    = errors.New("FSM timed out on waiting for a peer taller than this node")
-	errPeerLowersItsHeight             = errors.New("peer reports a height lower than previous")
-	errNoPeerResponseForCurrentHeights = errors.New("FSM timed out on peer block response for current heights")
-	errNoPeerResponse                  = errors.New("FSM timed out on peer block response")
-	errBadDataFromPeer                 = errors.New("received from wrong peer or bad block")
-	errMissingBlock                    = errors.New("missing blocks")
-	errDuplicateBlock                  = errors.New("received duplicate block from peer")
-	errBlockVerificationFailure        = errors.New("block verification failure, redo")
-	errNilPeerForBlockRequest          = errors.New("peer for block request does not exist in the switch")
-	errSendQueueFull                   = errors.New("block request not made, send-queue is full")
-	errPeerTooShort                    = errors.New("peer height too low, old peer removed/ new peer not added")
-	errSlowPeer                        = errors.New("peer is not sending us data fast enough")
-	errSwitchRemovesPeer               = errors.New("switch is removing peer")
-	errTimeoutEventWrongState          = errors.New("timeout event for a state different than the current one")
+	// internal to the package
+	errNoErrorFinished        = errors.New("fast sync is finished")
+	errInvalidEvent           = errors.New("invalid event in current state")
+	errMissingBlock           = errors.New("missing blocks")
+	errNilPeerForBlockRequest = errors.New("peer for block request does not exist in the switch")
+	errSendQueueFull          = errors.New("block request not made, send-queue is full")
+	errPeerTooShort           = errors.New("peer height too low, old peer removed/ new peer not added")
+	errSwitchRemovesPeer      = errors.New("switch is removing peer")
+	errTimeoutEventWrongState = errors.New("timeout event for a state different than the current one")
+	errNoTallerPeer           = errors.New("fast sync timed out on waiting for a peer taller than this node")
+
+	// reported eventually to the switch
+	errPeerLowersItsHeight             = errors.New("fast sync peer reports a height lower than previous")            // handle return
+	errNoPeerResponseForCurrentHeights = errors.New("fast sync timed out on peer block response for current heights") // handle return
+	errNoPeerResponse                  = errors.New("fast sync timed out on peer block response")                     // xx
+	errBadDataFromPeer                 = errors.New("fast sync received block from wrong peer or block is bad")       // xx
+	errDuplicateBlock                  = errors.New("fast sync received duplicate block from peer")
+	errBlockVerificationFailure        = errors.New("fast sync block verification failure")              // xx
+	errSlowPeer                        = errors.New("fast sync peer is not sending us data fast enough") // xx
+
 )
 
 func init() {
@@ -309,7 +313,7 @@ func init() {
 					return waitForBlock, errTimeoutEventWrongState
 				}
 				// We haven't received the block at current height or height+1. Remove peer.
-				fsm.pool.RemovePeerAtCurrentHeights(errNoPeerResponse)
+				fsm.pool.RemovePeerAtCurrentHeights(errNoPeerResponseForCurrentHeights)
 				fsm.resetStateTimer()
 				if fsm.pool.NumPeers() == 0 {
 					return waitForPeer, errNoPeerResponseForCurrentHeights

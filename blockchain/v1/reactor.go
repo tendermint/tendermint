@@ -7,7 +7,7 @@ import (
 	"time"
 
 	amino "github.com/tendermint/go-amino"
-
+	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -71,6 +71,8 @@ type BlockchainReactor struct {
 	// This channel is used by the FSM and indirectly the block pool to report errors to the blockchain reactor and
 	// the switch.
 	eventsFromFSMCh chan bcFsmMessage
+
+	swReporter *behaviour.SwitchReporter
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -101,6 +103,8 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	fsm := NewFSM(startHeight, bcR)
 	bcR.fsm = fsm
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
+	//bcR.swReporter = behaviour.NewSwitcReporter(bcR.BaseReactor.Switch)
+
 	return bcR
 }
 
@@ -137,6 +141,7 @@ func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 
 // OnStart implements cmn.Service.
 func (bcR *BlockchainReactor) OnStart() error {
+	bcR.swReporter = behaviour.NewSwitcReporter(bcR.BaseReactor.Switch)
 	if bcR.fastSync {
 		go bcR.poolRoutine()
 	}
@@ -212,13 +217,13 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	if err != nil {
 		bcR.Logger.Error("error decoding message",
 			"src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
-		bcR.Switch.StopPeerForError(src, err)
+		_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
 	if err = msg.ValidateBasic(); err != nil {
 		bcR.Logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		bcR.Switch.StopPeerForError(src, err)
+		_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
@@ -393,7 +398,7 @@ ForLoop:
 func (bcR *BlockchainReactor) reportPeerErrorToSwitch(err error, peerID p2p.ID) {
 	peer := bcR.Switch.Peers().Get(peerID)
 	if peer != nil {
-		bcR.Switch.StopPeerForError(peer, err)
+		_ = bcR.swReporter.Report(behaviour.BadMessage(peerID, err.Error()))
 	}
 }
 
