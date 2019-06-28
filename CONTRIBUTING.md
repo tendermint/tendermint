@@ -13,7 +13,7 @@ to write a more detailed design document in the form of an
 Architectural Decision Record (ie. see [here](./docs/architecture/)) before submitting code
 changes.
 
-Please make sure to use `gofmt` before every commit - the easiest way to do this is have your editor run it for you upon saving a file.
+Please make sure to use `make lint` before every commit - the easiest way to do this is have your editor run it for you upon saving a file.
 
 ## Forking
 
