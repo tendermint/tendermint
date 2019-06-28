@@ -13,7 +13,7 @@ to write a more detailed design document in the form of an
 Architectural Decision Record (ie. see [here](./docs/architecture/)) before submitting code
 changes.
 
-Please open a [Draft PR](https://github.blog/2019-02-14-introducing-draft-pull-requests/), even if it's incomplete, this inidicates to the community you're working on something and allows them to provide comments early in the development process. When the code is complete it can be marked as ready-for-review.
+Please open a [Draft PR](https://github.blog/2019-02-14-introducing-draft-pull-requests/), even if your contribution is incomplete, this inidicates to the community you're working on something and allows them to provide comments early in the development process. When the code is complete it can be marked as ready-for-review.
 
 Please make sure to use `gofmt` before every commit - the easiest way to do this is have your editor run it for you upon saving a file. Additionally please ensure that your code is lint compliant by running `make lint`
 
