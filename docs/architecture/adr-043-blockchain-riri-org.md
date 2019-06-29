@@ -125,9 +125,9 @@ func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
         msg := <-ioMsgs
         switch msg := msg.(type) {
             case scBlockRequestMessage:
-                r.sendBlockToPeer(...)
+                r.sendBlockRequestToPeer(...)
             case scStatusRequestMessage
-                r.sendStatusResponseToPeer(...)
+                r.sendStatusRequestToPeer(...)
             case bcPeerError
                 r.Swtich.StopPeerForError(msg.src)
                 ...
@@ -151,12 +151,11 @@ type Proccesor struct {
     height ...
     state ...
     blocks [height]*Block
-    peers[height]PeerID
+    peers[height]PeerID // keep track of which heights came from which peerID
     lastTouch timestamp
 }
 
 func (proc *Processor) handleBlockResponse(peerID, block, time) {
-    lastTouch = time
     if block.height < height {
         // skip
     } else if blocks[block.height] {
@@ -166,13 +165,19 @@ func (proc *Processor) handleBlockResponse(peerID, block, time) {
     }
 
     if blocks[height] && blocks[height+1] {
-        ... = processBlock(blocks[height], blocks[height+1])
-         bcR.store.SaveBlock(first, firstParts, second.LastCommit)
-        ... = proc.state.Validators.VerifyCommit
-        delete blocks[height]
-        height++
+        ... = state.Validators.VerifyCommit(...)
+        ... = store.SaveBlock(...)
+        state, err = blockExec.ApplyBlock(...)
+        ...
+        if err == nil {
+            delete blocks[height]
+            height++
+            lastTouch = time
+            return pcBlockProcessed{height}
+        } else {
+            return pcBlockProcessError{peerID, height}
+        }
     }
-    return pcBlockProcessed{height}
 }
 
 func (proc *Processor) handleRemovePeer(peerID) {
@@ -196,7 +201,7 @@ func handleTimeCheckEv(time) {
 ```
 
 ## Schedule
-The scheduler (previously the pool) is responsible for squeding peer status requests and block request responses.
+The scheduler is configured to maintain a target `n` of in flight messages and will use feedback from `_blockResponseMessage`, `_statusResponseMessage` and `_peerError` produce an optimal assignment of scBlockRequestMessage at each `timeCheckEv`.
 
 ```go
 type schedule {
@@ -205,6 +210,8 @@ type schedule {
 
 type Scheduler struct {
     ...
+    targetInFlight uint
+    minPeerSpeed uint
     schedule schedule{}
 }
 
@@ -228,18 +235,23 @@ func handleNoBlockResponseMessage(peerID, height, time) {
     ...
 }
 
+func handlePeerError(peerID)  {
+    // Remove the peer, reschedule the requests
+    ...
+}
+
 func handleTimeCheckEv(time) {
 	// clean peer list
 
     events = []
-	for peerID := range schedule.peersTouchedSince(time) {
+	for peerID := range schedule.peersNotTouchedSince(time) {
 		pending = schedule.pendingFrom(peerID) 
 		schedule.setPeerState(peerID, timedout)
 		schedule.resetBlocks(pending)
 		events = append(events, peerTimeout{peerID})
     }
 
-	events = append(events, schedule.getSchedule())
+	events = append(events, schedule.getSchedule(targetInFlight))
 
     return events
 }
