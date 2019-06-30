@@ -369,7 +369,7 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress:          "tcp://0.0.0.0:26657",
+		ListenAddress:          "tcp://127.0.0.1:26657",
 		CORSAllowedOrigins:     []string{},
 		CORSAllowedMethods:     []string{"HEAD", "GET", "POST"},
 		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
