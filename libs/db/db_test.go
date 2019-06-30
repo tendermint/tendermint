@@ -182,8 +182,7 @@ func TestDBBatchWrite(t *testing.T) {
 
 	for i, tc := range testCases {
 		mdb := newMockDB()
-		ddb := NewDebugDB(t.Name(), mdb)
-		batch := ddb.NewBatch()
+		batch := mdb.NewBatch()
 
 		tc.modify(batch)
 
