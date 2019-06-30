@@ -41,8 +41,6 @@ To pull in updates from the origin repo, run
   * `git fetch upstream`
   * `git rebase upstream/master` (or whatever branch you want)
 
-Please don't make Pull Requests to `master`.
-
 ## Dependencies
 
 We use [go modules](https://github.com/golang/go/wiki/Modules) to manage dependencies.
