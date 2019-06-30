@@ -80,6 +80,15 @@ This way a node can start by requesting the entire tree from one peer,
 and that peer can respond with say the first few keys, and the ranges to request
 from other peers.
 
+Finally, there has been significant work over the last few months rearchitecting
+the blockchain reactor to make it more easily testable and verifiable. This has
+culminated in a most recent design,
+[#3575](https://github.com/tendermint/tendermint/pull/3753),
+where the reactor is split into three indpendent routines: one for IO with
+peers; one for reading, writting, and verifying blocks; and one for scheduling
+requests to peers. Since the high level goals of state sync are quite similar
+to block sync, the same architecture and separation of concerns should apply.
+
 ### Considerations
 
 - Should we also support a warp-sync version? It would be faster
@@ -95,6 +104,8 @@ from other peers.
 To move forward with a light-client secure state sync based on key-ranges, here
 are some next steps:
 
+- The state sync reactor should follow the same architecture as the
+  new blockchain reactor ala [#3753](https://github.com/tendermint/tendermint/pull/3753).
 - The proposal in issue #3639 should be fleshed out and written up more formally as an ADR (ie.
   in this one)
 - Need to address the initial light client sync (this will depend on a working
