@@ -141,17 +141,14 @@ func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
 ```
 ### Processor internals 
 
-The processor will be responsible for validating and processing blocks.
-The Processor will maintain an internal cursor `height` of the last
-processed block. As a set of unordered blocks arrive, the the Processor
-will check if it has `height+1` nessary to process the next block.
+The processor will be responsible for validating and processing blocks. The Processor will maintain an internal cursor `height` of the last processed block. As a set of blocks arrive unordered, the the Processor will check if it has `height+1` nessary to process the next block. The processor also maintains the map `blockPeers` of peers to height, to keep track of which peer provided the block at `height`. `blockPeers` can be used in`handleRemovePeer(...)` to reschedule all unprocessed blocks provided by a peer who has errored.
 
 ```go
 type Proccesor struct {
-    height ...
+    height int64 // the height cursor
     state ...
-    blocks [height]*Block
-    peers[height]PeerID // keep track of which heights came from which peerID
+    blocks [height]*Block     // keep a set of blocks in memory until they are processed
+    blockPeers [height]PeerID // keep track of which heights came from which peerID
     lastTouch timestamp
 }
 
@@ -184,8 +181,9 @@ func (proc *Processor) handleRemovePeer(peerID) {
     events = []
     // Delete all unprocessed blocks from peerID
     for i = height; i < len(blocks); i++ {
-        if peers[i] == peerID {
+        if blockPeers[i] == peerID {
             events = append(events, pcBlockReschedule{height})
+
             delete block[height]
         }
     }
@@ -201,23 +199,68 @@ func handleTimeCheckEv(time) {
 ```
 
 ## Schedule
-The scheduler is configured to maintain a target `n` of in flight messages and will use feedback from `_blockResponseMessage`, `_statusResponseMessage` and `_peerError` produce an optimal assignment of scBlockRequestMessage at each `timeCheckEv`.
+
+The Schedule maintains the internal state used for scheduling blockRequestMessages based on some scheduling algorithm. The schedule needs to maintain state on:
+
+* The state `blockState` of every block seem up to height of maxHeight
+* The set of peers and their peer state `peerState`
+* which peers have which blocks
+* which blocks have been requested from which peers
 
 ```go
+type blockState int
+
+const (
+	blockStateNew = iota
+	blockStatePending,
+	blockStateReceived,
+	blockStateProcessed
+)
+
 type schedule {
-    ...
+    // a list of blocks in which blockState
+	blockStates        map[height]blockState
+
+    // a map of which blocks are available from which peers
+	blockPeers         map[height]map[p2p.ID]scPeer
+
+    // a map of peerID to schedule specific peer struct `scPeer`
+	peers              map[p2p.ID]scPeer
+    
+    // a map of heights to the peer we are waiting for a response from
+    pending map[height]scPeer
+
+	peerTimeout        int
+	peerMinSpeed       int
 }
 
-type Scheduler struct {
-    ...
-    targetInFlight uint
-    minPeerSpeed uint
-    schedule schedule{}
+...
+
+type scPeer struct {
+	peerID               p2p.ID
+	numOustandingRequest int
+	lastTouched          time.Time
+	monitor              flow.Monitor
 }
 
-func addPeer(peerID) {
-	schedule.addPeer(peerID)
-}
+
+type blockState int
+
+const (
+	blockStateNew = iota
+	blockStatePending,
+	blockStateReceived,
+	blockStateProcessed
+)
+```
+
+# Scheduler
+The scheduler is configured to maintain a target `n` of in flight
+messages and will use feedback from `_blockResponseMessage`,
+`_statusResponseMessage` and `_peerError` produce an optimal assignment
+of scBlockRequestMessage at each `timeCheckEv`. 
+
+```
 
 func handleStatusResponse(peerID, height, time) {
 	schedule.touchPeer(peerID, time)
