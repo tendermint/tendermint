@@ -81,8 +81,14 @@ message RequestBeginBlock {
   repeated Evidence byzantine_validators = 4 [(gogoproto.nullable)=false];
 }
 
+enum CheckTxType {
+  New = 0;
+  Recheck = 1;
+}
+
 message RequestCheckTx {
   bytes tx = 1;
+  CheckTxType type = 2;
 }
 
 message RequestDeliverTx {
