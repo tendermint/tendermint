@@ -31,3 +31,5 @@ program](https://hackerone.com/tendermint).
   - [rpc] \#3700 Make possible to set absolute paths for TLS cert and key (@climber73)
 
 ### BUG FIXES:
+- [p2p] \#3338 Prevent "sent next PEX request too soon" errors by not calling
+  ensurePeers outside of ensurePeersRoutine
