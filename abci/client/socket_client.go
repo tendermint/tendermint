@@ -243,12 +243,12 @@ func (cli *socketClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
 	return cli.queueRequest(types.ToRequestSetOption(req))
 }
 
-func (cli *socketClient) DeliverTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestDeliverTx(tx))
+func (cli *socketClient) DeliverTxAsync(req types.RequestDeliverTx) *ReqRes {
+	return cli.queueRequest(types.ToRequestDeliverTx(req))
 }
 
-func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestCheckTx(tx))
+func (cli *socketClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
+	return cli.queueRequest(types.ToRequestCheckTx(req))
 }
 
 func (cli *socketClient) QueryAsync(req types.RequestQuery) *ReqRes {
@@ -300,14 +300,14 @@ func (cli *socketClient) SetOptionSync(req types.RequestSetOption) (*types.Respo
 	return reqres.Response.GetSetOption(), cli.Error()
 }
 
-func (cli *socketClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
-	reqres := cli.queueRequest(types.ToRequestDeliverTx(tx))
+func (cli *socketClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
+	reqres := cli.queueRequest(types.ToRequestDeliverTx(req))
 	cli.FlushSync()
 	return reqres.Response.GetDeliverTx(), cli.Error()
 }
 
-func (cli *socketClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
-	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
+func (cli *socketClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	reqres := cli.queueRequest(types.ToRequestCheckTx(req))
 	cli.FlushSync()
 	return reqres.Response.GetCheckTx(), cli.Error()
 }

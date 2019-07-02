@@ -93,15 +93,15 @@ func ToRequestSetOption(req RequestSetOption) *Request {
 	}
 }
 
-func ToRequestDeliverTx(tx []byte) *Request {
+func ToRequestDeliverTx(req RequestDeliverTx) *Request {
 	return &Request{
-		Value: &Request_DeliverTx{&RequestDeliverTx{Tx: tx}},
+		Value: &Request_DeliverTx{&req},
 	}
 }
 
-func ToRequestCheckTx(tx []byte) *Request {
+func ToRequestCheckTx(req RequestCheckTx) *Request {
 	return &Request{
-		Value: &Request_CheckTx{&RequestCheckTx{Tx: tx}},
+		Value: &Request_CheckTx{&req},
 	}
 }
 
