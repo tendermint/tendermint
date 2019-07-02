@@ -14,8 +14,12 @@ program](https://hackerone.com/tendermint).
 * Apps
 
 * Go API
+  - [abci] \#2127 ABCI / mempool: Add a "Recheck Tx" indicator. Breaks the ABCI
+    client interface (`abcicli.Client`) to allow for supplying the ABCI
+    `types.RequestCheckTx` and `types.RequestDeliverTx` structs, and lets the
+    mempool indicate to the ABCI app whether a CheckTx request is a recheck or
+    not.
   - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
-
 
 * Blockchain Protocol
 
@@ -24,5 +28,6 @@ program](https://hackerone.com/tendermint).
 ### FEATURES:
 
 ### IMPROVEMENTS:
+  - [rpc] \#3700 Make possible to set absolute paths for TLS cert and key (@climber73)
 
 ### BUG FIXES:
