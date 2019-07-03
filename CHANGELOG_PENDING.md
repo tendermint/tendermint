@@ -26,6 +26,10 @@ program](https://hackerone.com/tendermint).
 * P2P Protocol
 
 ### FEATURES:
+- [node] Refactor `NewNode` to use functional options to make it more flexible
+  and extensible in the future.
+- [node] [\#3730](https://github.com/tendermint/tendermint/pull/3730) Add `CustomReactors` option to `NewNode` allowing caller to pass
+  custom reactors to run inside Tendermint node (@ParthDesai)
 
 ### IMPROVEMENTS:
   - [rpc] \#3700 Make possible to set absolute paths for TLS cert and key (@climber73)
