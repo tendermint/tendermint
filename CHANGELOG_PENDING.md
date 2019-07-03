@@ -33,3 +33,5 @@ program](https://hackerone.com/tendermint).
 ### BUG FIXES:
 - [p2p] \#3338 Prevent "sent next PEX request too soon" errors by not calling
   ensurePeers outside of ensurePeersRoutine
+- [behaviour] fix in struct returned in `messagOutOfOrder` PeerBehaviour 
+  
