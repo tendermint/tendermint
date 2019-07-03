@@ -389,12 +389,8 @@ workflows:
       - upload_coverage:
           requires:
             - test_cover
-      - reproducible_builds:
-          filters:
-            branches:
-              only:
-                - master
-                - develop
+      - reproducible_builds
+
   release:
     jobs:
       - prepare_build
