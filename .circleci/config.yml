@@ -331,6 +331,31 @@ jobs:
             docker push "tendermint/tendermint"
             docker logout
 
+  reproducible_builds:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build tendermint
+          no_output_timeout: 20m
+          command: |
+            sudo apt-get install -y ruby
+            bash -x ./scripts/gitian-build.sh all
+            for os in darwin linux windows; do
+              cp gitian-build-${os}/result/tendermint-${os}-res.yml .
+              rm -rf gitian-build-${os}/
+            done
+      - store_artifacts:
+          path: /go/src/github.com/tendermint/tendermint/tendermint-darwin-res.yml
+      - store_artifacts:
+          path: /go/src/github.com/tendermint/tendermint/tendermint-linux-res.yml
+      - store_artifacts:
+          path: /go/src/github.com/tendermint/tendermint/tendermint-windows-res.yml
+
 workflows:
   version: 2
   test-suite:
@@ -364,6 +389,12 @@ workflows:
       - upload_coverage:
           requires:
             - test_cover
+      - reproducible_builds:
+          filters:
+            branches:
+              only:
+                - master
+                - develop
   release:
     jobs:
       - prepare_build
