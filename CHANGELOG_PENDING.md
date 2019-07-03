@@ -23,14 +23,16 @@
     If you have `db_backend` set to `leveldb` in your config file, please
     change it to `goleveldb` or `cleveldb`.
   - [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
-  - [node] Change signature of `NewNode` to add `CustomReactorRegistrationRequests`
-    allowing caller to pass custom reactors to run inside tendermint node.
 
 * Blockchain Protocol
 
 * P2P Protocol
 
 ### FEATURES:
+- [node] Refactor `NewNode` to use functional options to make it more flexible
+  and extensible in the future.
+- [node] [\#3730](https://github.com/tendermint/tendermint/pull/3730) Add `CustomReactors` option to `NewNode` allowing caller to pass
+  custom reactors to run inside Tendermint node (@ParthDesai)
 
 ### IMPROVEMENTS:
 - [p2p] \#3666 Add per channel telemetry to improve reactor observability

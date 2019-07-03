@@ -47,10 +47,9 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// CustomReactorPrefix is prefixed to the reactor name
-// in CustomReactorRegistrationRequest to prevent clashes
-// with built-in reactors.
-const CustomReactorPrefix = "CUSTOM_"
+// CustomReactorNamePrefix is a prefix for all custom reactors to prevent
+// clashes with built-in reactors.
+const CustomReactorNamePrefix = "CUSTOM_"
 
 //------------------------------------------------------------------------------
 
@@ -81,13 +80,6 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 	return func() (*types.GenesisDoc, error) {
 		return types.GenesisDocFromFile(config.GenesisFile())
 	}
-}
-
-// CustomReactorRegistrationRequest allows client to load custom reactors
-// easily into tendermint node.
-type CustomReactorRegistrationRequest struct {
-	Name    string
-	Reactor p2p.Reactor
 }
 
 // NodeProvider takes a config and a logger and returns a ready to go Node.
@@ -128,7 +120,6 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
-		nil,
 	)
 }
 
@@ -146,6 +137,18 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
+	}
+}
+
+// Option sets a parameter for the node.
+type Option func(*Node)
+
+// CustomReactors allows you to add custom reactors to the node's Switch.
+func CustomReactors(reactors map[string]p2p.Reactor) Option {
+	return func(n *Node) {
+		for name, reactor := range reactors {
+			n.sw.AddReactor(CustomReactorNamePrefix+name, reactor)
+		}
 	}
 }
 
@@ -433,8 +436,7 @@ func createSwitch(config *cfg.Config,
 	evidenceReactor *evidence.EvidenceReactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
-	p2pLogger log.Logger,
-	customReactorRegistrationRequests []*CustomReactorRegistrationRequest) *p2p.Switch {
+	p2pLogger log.Logger) *p2p.Switch {
 
 	sw := p2p.NewSwitch(
 		config.P2P,
@@ -447,10 +449,6 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
-
-	for _, regRequest := range customReactorRegistrationRequests {
-		sw.AddReactor(CustomReactorPrefix+regRequest.Name, regRequest.Reactor)
-	}
 
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
@@ -502,7 +500,7 @@ func NewNode(config *cfg.Config,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
 	logger log.Logger,
-	customReactorRegistrationRequests []*CustomReactorRegistrationRequest) (*Node, error) {
+	options ...Option) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
@@ -606,8 +604,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		consensusReactor, evidenceReactor, nodeInfo, nodeKey,
-		p2pLogger, customReactorRegistrationRequests,
+		consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -664,6 +661,11 @@ func NewNode(config *cfg.Config,
 		eventBus:         eventBus,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
+
+	for _, option := range options {
+		option(node)
+	}
+
 	return node, nil
 }
 
