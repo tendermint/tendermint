@@ -989,10 +989,8 @@ func (n *Node) Config() *cfg.Config {
 
 //------------------------------------------------------------------------------
 
-func (n *Node) Listeners() []string {
-	return []string{
-		fmt.Sprintf("Listener(@%v)", n.config.P2P.ExternalAddress),
-	}
+func (n *Node) ListenAddress() string {
+	return n.transport.ListenAddress()
 }
 
 func (n *Node) IsListening() bool {

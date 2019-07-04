@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"syscall"
 	"testing"
 	"time"
@@ -339,4 +340,23 @@ func state(nVals int, height int64) (sm.State, dbm.DB) {
 		sm.SaveState(stateDB, s)
 	}
 	return s, stateDB
+}
+
+func TestNode_ListenAddress(t *testing.T) {
+	require.Regexp(t, "\\(\\d+\\)", "(0949)")
+	config := cfg.ResetTestRoot("node_node_test")
+	defer os.RemoveAll(config.RootDir)
+	localhost := "tcp://[::1]"
+	// Ask for a free port on the host
+	config.P2P.ListenAddress = fmt.Sprintf("%s:0", localhost)
+	config.RPC.ListenAddress = ""
+	config.P2P.ExternalAddress = "tcp://tendermint.com:55018"
+	// create & start node
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	err = n.Start()
+	require.NoError(t, err)
+	listenAddress := n.ListenAddress()
+	defer n.Stop()
+	require.Regexp(t, fmt.Sprintf(`%v:\d+`, regexp.QuoteMeta(localhost)), listenAddress)
 }

@@ -246,6 +246,13 @@ func (mt *MultiplexTransport) Listen(addr NetAddress) error {
 	return nil
 }
 
+// Returns the actual address to which the transport's listener is bound.
+// Useful when the port has been dynamically assigned by the OS, e.g. tcp://localhost:0
+func (mt *MultiplexTransport) ListenAddress() string {
+	addr := mt.listener.Addr()
+	return fmt.Sprintf("%s://%s", addr.Network(), addr.String())
+}
+
 func (mt *MultiplexTransport) acceptPeers() {
 	for {
 		c, err := mt.listener.Accept()

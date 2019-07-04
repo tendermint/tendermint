@@ -20,10 +20,16 @@ program](https://hackerone.com/tendermint).
     mempool indicate to the ABCI app whether a CheckTx request is a recheck or
     not.
   - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
+  - [node] Replace `Listeners() []string` from `Node` with `ListenAddress() string` - furthermore `ListenAddress` is 
+  now read from the transport's listener so will be accurate when port is dynamically allocated as in 
+  `P2P.ListenAddress = "tcp://localhost:0"
 
 * Blockchain Protocol
 
 * P2P Protocol
+
+* RPC
+- [rpc/net] `listeners` is now `listen_address` with the actual bound listen address.
 
 ### FEATURES:
 - [node] Refactor `NewNode` to use functional options to make it more flexible

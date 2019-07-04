@@ -89,10 +89,10 @@ func (s *ResultStatus) TxIndexEnabled() bool {
 
 // Info about peer connections
 type ResultNetInfo struct {
-	Listening bool     `json:"listening"`
-	Listeners []string `json:"listeners"`
-	NPeers    int      `json:"n_peers"`
-	Peers     []Peer   `json:"peers"`
+	Listening     bool   `json:"listening"`
+	ListenAddress string `json:"listen_address"`
+	NPeers        int    `json:"n_peers"`
+	Peers         []Peer `json:"peers"`
 }
 
 // Log from dialing seeds

@@ -38,7 +38,7 @@ type Consensus interface {
 }
 
 type transport interface {
-	Listeners() []string
+	ListenAddress() string
 	IsListening() bool
 	NodeInfo() p2p.NodeInfo
 }
