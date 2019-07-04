@@ -62,7 +62,7 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivVali
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             types.PrecommitType,
-		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
+		BlockID:          types.BlockID{Hash: []byte("fakehash"), PartsHeader: types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()
 	err := privVal.SignVote(chainID, vote)

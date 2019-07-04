@@ -111,7 +111,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockID := types.BlockID{thisBlock.Hash(), thisParts.Header()}
+		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
 
 		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
@@ -291,11 +291,11 @@ func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return abci.ResponseEndBlock{}
 }
 
-func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Tags: []cmn.KVPair{}}
+func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
+	return abci.ResponseDeliverTx{Events: []abci.Event{}}
 }
 
-func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {
+func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{}
 }
 

@@ -44,7 +44,7 @@ module.exports = {
           "/app-dev/app-development",
           "/app-dev/subscribing-to-events-via-websocket",
           "/app-dev/indexing-transactions",
-          "/app-dev/abci-spec",
+          "/spec/abci/abci",
           "/app-dev/ecosystem"
         ]
       },

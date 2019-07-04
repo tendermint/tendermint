@@ -42,15 +42,15 @@ func (app *CounterApplication) SetOption(req types.RequestSetOption) types.Respo
 	return types.ResponseSetOption{}
 }
 
-func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *CounterApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	if app.serial {
-		if len(tx) > 8 {
+		if len(req.Tx) > 8 {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeEncodingError,
-				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(tx))}
+				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(req.Tx))}
 		}
 		tx8 := make([]byte, 8)
-		copy(tx8[len(tx8)-len(tx):], tx)
+		copy(tx8[len(tx8)-len(req.Tx):], req.Tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue != uint64(app.txCount) {
 			return types.ResponseDeliverTx{
@@ -62,15 +62,15 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+func (app *CounterApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	if app.serial {
-		if len(tx) > 8 {
+		if len(req.Tx) > 8 {
 			return types.ResponseCheckTx{
 				Code: code.CodeTypeEncodingError,
-				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(tx))}
+				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(req.Tx))}
 		}
 		tx8 := make([]byte, 8)
-		copy(tx8[len(tx8)-len(tx):], tx)
+		copy(tx8[len(tx8)-len(req.Tx):], req.Tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue < uint64(app.txCount) {
 			return types.ResponseCheckTx{

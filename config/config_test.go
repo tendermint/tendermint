@@ -36,3 +36,19 @@ func TestConfigValidateBasic(t *testing.T) {
 	cfg.Consensus.TimeoutPropose = -10 * time.Second
 	assert.Error(t, cfg.ValidateBasic())
 }
+
+func TestTLSConfiguration(t *testing.T) {
+	assert := assert.New(t)
+	cfg := DefaultConfig()
+	cfg.SetRoot("/home/user")
+
+	cfg.RPC.TLSCertFile = "file.crt"
+	assert.Equal("/home/user/config/file.crt", cfg.RPC.CertFile())
+	cfg.RPC.TLSKeyFile = "file.key"
+	assert.Equal("/home/user/config/file.key", cfg.RPC.KeyFile())
+
+	cfg.RPC.TLSCertFile = "/abs/path/to/file.crt"
+	assert.Equal("/abs/path/to/file.crt", cfg.RPC.CertFile())
+	cfg.RPC.TLSKeyFile = "/abs/path/to/file.key"
+	assert.Equal("/abs/path/to/file.key", cfg.RPC.KeyFile())
+}

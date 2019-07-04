@@ -340,12 +340,21 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	if err != nil {
 		return err
 	}
+
+	srcIsSeed := false
+	for _, seedAddr := range r.seedAddrs {
+		if seedAddr.Equals(srcAddr) {
+			srcIsSeed = true
+			break
+		}
+	}
+
 	for _, netAddr := range addrs {
 		// Validate netAddr. Disconnect from a peer if it sends us invalid data.
 		if netAddr == nil {
 			return errors.New("nil address in pexAddrsMessage")
 		}
-		// TODO: extract validating logic from NewNetAddressStringWithOptionalID
+		// TODO: extract validating logic from NewNetAddressString
 		// and put it in netAddr#Valid (#2722)
 		na, err := p2p.NewNetAddressString(netAddr.String())
 		if err != nil {
@@ -365,13 +374,23 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		}
 
 		// If this address came from a seed node, try to connect to it without
-		// waiting.
-		for _, seedAddr := range r.seedAddrs {
-			if seedAddr.Equals(srcAddr) {
-				r.ensurePeers()
-			}
+		// waiting (#2093)
+		if srcIsSeed {
+			r.Logger.Info("Will dial address, which came from seed", "addr", netAddr, "seed", srcAddr)
+			go func(addr *p2p.NetAddress) {
+				err := r.dialPeer(addr)
+				if err != nil {
+					switch err.(type) {
+					case errMaxAttemptsToDial, errTooEarlyToDial:
+						r.Logger.Debug(err.Error(), "addr", addr)
+					default:
+						r.Logger.Error(err.Error(), "addr", addr)
+					}
+				}
+			}(netAddr)
 		}
 	}
+
 	return nil
 }
 
