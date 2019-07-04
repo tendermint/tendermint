@@ -127,7 +127,7 @@ Specifically, Lazy State Sync random reads to the underlying data
 structure while Eager can optimize for sequential reads.
 
 This distinctin between approaches was demonstrated by Binance's [ackratos](https://github.com/ackratos) in their
-implementation of [Lazy State sync](https://github.com/tendermint/tendermint/pull/3243), The [analysis]((https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/) of the performance, and
+implementation of [Lazy State sync](https://github.com/tendermint/tendermint/pull/3243), The [analysis](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/) of the performance, and
 follow up implementation of [Warp Sync](http://github.com/tendermint/tendermint/pull/3594).
 
 One proposed difference between Lazy and Eager state sync is the safety
@@ -138,7 +138,7 @@ would require complete syncing before validation of the data against the
 merkle root were possible. This could create DDOS attack vector in which
 a peer publishes an invalid manifest and making peers download invalid
 data. For this reason, WarpSync is faster but less safety-efficient; It
-takes longer as it takes longer to realize that data is invalid.
+as it takes longer to realize that data is invalid.
 
 However, upon analysis of the approaches with the orthogonal axis of
 eager/lazy and chunk/snapshot validation suggest that a version of
@@ -198,7 +198,7 @@ Proposed
 ### Negative
 * Static Scheduling lacks opportunity for real time chunk availability optimizations
 
-## references
+## References
 [sync: Sync current state without full replay for Applications](https://github.com/tendermint/tendermint/issues/828) - original issue
 [tendermint state sync proposal](https://docs.google.com/document/d/15MFsQtNA0MGBv7F096FFWRDzQ1vR6_dics5Y49vF8JU/edit?ts=5a0f3629) - Cloudhead proposal
 [tendermint state sync proposal 2](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit) - ackratos proposal
