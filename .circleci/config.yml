@@ -394,7 +394,6 @@ workflows:
             branches:
               only:
                 - master
-                - develop
   release:
     jobs:
       - prepare_build
