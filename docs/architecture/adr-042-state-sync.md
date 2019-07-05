@@ -15,20 +15,21 @@ facilitate setting up a new node as quickly as possible.
 ## Considerations
 Because Tendermint doesn't know anything about the application state,
 the goal of StateSync of to broker messages between nodes and through
-the ABCI. The implementation will have multiple touch points through the
-codebase:
+the ABCI. The implementation will have multiple touch points on both the
+tendermint code base and ABCI application.
 
-* A StateSync reactor to facilitate peer communication
-* A Set of ABCI messages to transmit application state to the reactor
-* A Set of MultiStore APIs for exposing snapshot data to the ABCI
-* A Storage format with validation and performance conciderations
+* A StateSync reactor to facilitate peer communication - Tendermint
+* A Set of ABCI messages to transmit application state to the reactor - Tendermint
+* A Set of MultiStore APIs for exposing snapshot data to the ABCI - ABCI application
+* A Storage format with validation and performance considerations - ABCI application
 
 ### Implementation Properties
 Beyond the approach, any implementation of StateSync can be evaluated
 across different criteria:
 
 * Speed: Expected throughput of producing and consuming snapshots
-* Safety: Cost of pushing partial or completely invalid snapshots to a node
+* Safety: Cost of pushing invalid snapshots to a node
+* Liveness: Cost of preventing a node from receiving/constructing a snapshot
 * Effort: How much effort does an implementation require
 
 ### Implementation Question
@@ -51,8 +52,11 @@ Broadly speaking there are two approaches to this problem which have had
 varying degrees of discussion and progress. These approach can be
 summarized as:
 
-* Lazy: Where snapshots are produced dynamically at request time
-* Eager: Where snapshots are produced periodically and served from disk at request time
+**Lazy:** Where snapshots are produced dynamically at request time. This
+solution would use the existing data structure.
+**Eager:** Where snapshots are produced periodically and served from disk at
+request time. This solution would create an auxiliary data structure
+optimized for batch read/writes.
 
 #### Lazy StateSync
 An [initial specification](https://docs.google.com/document/d/15MFsQtNA0MGBv7F096FFWRDzQ1vR6_dics5Y49vF8JU/edit?ts=5a0f3629) was published by Alexis Sellier.
@@ -110,10 +114,14 @@ and [some learnings](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip
 Note this still requires the honest majority peer assumption.
 One major advantage of the warp-sync approach is that chunks can be compressed before sending.
 
-Ideally State Sync in Tendermint would not require an honest majority of peers, and instead
-would rely on the standard light client security, meaning state chunks would be
-verifiable against the merkle root of the state. Such a design for tendermint
-was originally tracked in [#828](https://github.com/tendermint/tendermint/issues/828).
+Ideally State Sync in Tendermint would not require an honest majority of
+peers, and instead would rely on the standard light client security,
+meaning state chunks would be verifiable against the merkle root of the
+state. This property tends to come more naturally to the Lazy approach
+since it tends to use the existing structure of the tree (ie. keys or
+nodes) rather than state-sync specific chunks. Such a design for
+tendermint was originally tracked in
+[#828](https://github.com/tendermint/tendermint/issues/828).
 
 ### Analysis of Lazy vs Eager
 
@@ -130,22 +138,24 @@ This distinctin between approaches was demonstrated by Binance's [ackratos](http
 implementation of [Lazy State sync](https://github.com/tendermint/tendermint/pull/3243), The [analysis](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/) of the performance, and
 follow up implementation of [Warp Sync](http://github.com/tendermint/tendermint/pull/3594).
 
-One proposed difference between Lazy and Eager state sync is the safety
-model. It had been suggested that Lazy State Sync could use light client
-validation while Warp Sync was unsuitable for public networks as it
-relies on the majority of peers to produce a manifest. This manifest
-would require complete syncing before validation of the data against the
-merkle root were possible. This could create DDOS attack vector in which
-a peer publishes an invalid manifest and making peers download invalid
-data. For this reason, WarpSync is faster but less safety-efficient; It
-as it takes longer to realize that data is invalid.
+#### Compairing Security Models
+One proposed difference between Lazy and Eager state sync is the
+security model. It had been suggested that Lazy State Sync could use
+light client validation while Warp Sync was unsuitable for public
+networks as it relies on the majority of peers to produce a manifest.
+This manifest would require complete syncing before validation of the
+data against the merkle root were possible. This could create DDOS
+attack vector in which a peer publishes an invalid manifest and making
+peers download invalid data. For this reason, WarpSync is faster but
+less safety-efficient; It as it takes longer to realize that data is
+invalid.
 
 However, upon analysis of the approaches with the orthogonal axis of
 eager/lazy and chunk/snapshot validation suggest that a version of
 WarpSync with per chunk light client validation might get the optimal
 performance and safety.
 
-## Decision: WarpSync With Per Chunk Light Client Validation
+## Decision: Eager StateSync With Per Chunk Light Client Validation
 
 The conclusion after thorough concideration of the
 advantages/disadvances of eager/lazy is to produce a state sync which
@@ -156,7 +166,13 @@ allowing the snapshot to be downloaded in parallel.
 
 ### Implementation
 
-* A new StateSync reactor brokers message transmission between the peers
+Tendermint is responsible for downloading and verifying chunks of
+AppState from peers. ABCI Application is responsible for taking
+AppStateChunk objects from TM and constructing a valid state tree whose
+root corresponds with the AppHash of syncing block. In particular we
+will need implement:
+
+* Build new StateSync reactor brokers message transmission between the peers
   and the ABCI application
 * A set of ABCI Messages
 * Design SnapshotFormat as an interface which can:
