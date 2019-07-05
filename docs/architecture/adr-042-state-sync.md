@@ -41,7 +41,7 @@ across different criteria:
 * How is data validated
     * Trust a peer with it's data blindly
     * Trust a majority of peers
-    * Use light client validation to validate any key based on consensus
+    * Use light client validation to validate each chunk against consensus
       produced merkle tree root
 * What are the performance characteristics
     * Random vs sequential reads
