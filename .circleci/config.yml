@@ -365,7 +365,6 @@ workflows:
             branches:
               only:
                 - master
-                - develop
       - setup_dependencies
       - test_abci_apps:
           requires:
