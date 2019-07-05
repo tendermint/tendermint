@@ -33,52 +33,52 @@ The reactor will include a demultiplexing routine which will send each message t
 
 ```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
-    timer := time.NewTicker(interval)
-    for {
-        select {
-            case <-timer.C:
-                now := evTimeCheck{time.Now()}
-                schedulerMsgs <- now
-                processorMsgs <- now
-                ioMsgs <- now
-            case msg:= <- msgs:
-                schedulerMsgs <- msg
-                processorMsgs <- msg
-                ioMesgs <- msg
-                if msg == stop {
-                    break;
-                }
-        }
-    }
+	timer := time.NewTicker(interval)
+	for {
+		select {
+			case <-timer.C:
+				now := evTimeCheck{time.Now()}
+				schedulerMsgs <- now
+				processorMsgs <- now
+				ioMsgs <- now
+			case msg:= <- msgs:
+				schedulerMsgs <- msg
+				processorMsgs <- msg
+				ioMesgs <- msg
+				if msg == stop {
+					break;
+				}
+		}
+	}
 }
 
 func processRoutine(input chan Message, output chan Message) {
-    processor := NewProcessor(..)
-    for {
-        msg := <- input
-        switch msg := msg.(type) {
-            case bcBlockRequestMessage:
-                output <- processor.handleBlockRequest(msg, time.Now())
-            ...
-            case stop:
-                processor.stop()
-                break;
-    }
+	processor := NewProcessor(..)
+	for {
+		msg := <- input
+		switch msg := msg.(type) {
+			case bcBlockRequestMessage:
+				output <- processor.handleBlockRequest(msg, time.Now())
+			...
+			case stop:
+				processor.stop()
+				break;
+	}
 }
 
 func scheduleRoutine(input chan Message, output chan Message) {
-    schelduer = NewScheduler(...)
-    for {
-        msg := <-msgs
-        switch msg := input.(type) {
-            case bcBlockResponseMessage:
-                output <- scheduler.handleBlockResponse(msg, time.Now())
-            ...
-            case stop:
-                schedule.stop()
-                break;
-        }
-    }
+	schelduer = NewScheduler(...)
+	for {
+		msg := <-msgs
+		switch msg := input.(type) {
+			case bcBlockResponseMessage:
+				output <- scheduler.handleBlockResponse(msg, time.Now())
+			...
+			case stop:
+				schedule.stop()
+				break;
+		}
+	}
 }
 ```
 
@@ -88,29 +88,29 @@ A set of routines for individual processes allow processes to run in parallel wi
 
 ```go
 func (r *BlockChainReactor) Start() {
-    r.msgs := make(chan Message, maxInFlight)
-    schedulerMsgs := make(chan Message)
-    processorMsgs := make(chan Message)
-    ioMsgs := make(chan Message)
+	r.msgs := make(chan Message, maxInFlight)
+	schedulerMsgs := make(chan Message)
+	processorMsgs := make(chan Message)
+	ioMsgs := make(chan Message)
 
-    go processorRoutine(processorMsgs, r.msgs)
-    go scheduleRoutine(schedulerMsgs, r.msgs)
-    go ioRoutine(ioMsgs, r.msgs)
-    ...
+	go processorRoutine(processorMsgs, r.msgs)
+	go scheduleRoutine(schedulerMsgs, r.msgs)
+	go ioRoutine(ioMsgs, r.msgs)
+	...
 }
 
 ...
 func (r *BlockchainReactor) Stop() {
-    ...
-    r.msgs <- stop
-    ...
+	...
+	r.msgs <- stop
+	...
 }
 ...
 
 func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
-    ...
-    r.msgs <- bcAddPeerEv{peer.ID}
-    ...
+	...
+	r.msgs <- bcAddPeerEv{peer.ID}
+	...
 }
 
 ```
@@ -120,22 +120,22 @@ An io handling routine within the reactor will isolate peer communication.
 
 ```go
 func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
-    ...
-    for {
-        msg := <-ioMsgs
-        switch msg := msg.(type) {
-            case scBlockRequestMessage:
-                r.sendBlockRequestToPeer(...)
-            case scStatusRequestMessage
-                r.sendStatusRequestToPeer(...)
-            case bcPeerError
-                r.Swtich.StopPeerForError(msg.src)
-                ...
-            ...
-            case bcFinished
-                break;
-        }
-    }
+	...
+	for {
+		msg := <-ioMsgs
+		switch msg := msg.(type) {
+			case scBlockRequestMessage:
+				r.sendBlockRequestToPeer(...)
+			case scStatusRequestMessage
+				r.sendStatusRequestToPeer(...)
+			case bcPeerError
+				r.Swtich.StopPeerForError(msg.src)
+				...
+			...
+			case bcFinished
+				break;
+		}
+	}
 }
 
 ```
@@ -145,57 +145,57 @@ The processor will be responsible for validating and processing blocks. The Proc
 
 ```go
 type Proccesor struct {
-    height int64 // the height cursor
-    state ...
-    blocks [height]*Block     // keep a set of blocks in memory until they are processed
-    blockPeers [height]PeerID // keep track of which heights came from which peerID
-    lastTouch timestamp
+	height int64 // the height cursor
+	state ...
+	blocks [height]*Block	 // keep a set of blocks in memory until they are processed
+	blockPeers [height]PeerID // keep track of which heights came from which peerID
+	lastTouch timestamp
 }
 
 func (proc *Processor) handleBlockResponse(peerID, block, time) {
-    if block.height < height {
-        // skip
-    } else if blocks[block.height] {
-        return errDuplicateBlock{}
-    } else  {
-        blocks[block.height] = block
-    }
+	if block.height < height {
+		// skip
+	} else if blocks[block.height] {
+		return errDuplicateBlock{}
+	} else  {
+		blocks[block.height] = block
+	}
 
-    if blocks[height] && blocks[height+1] {
-        ... = state.Validators.VerifyCommit(...)
-        ... = store.SaveBlock(...)
-        state, err = blockExec.ApplyBlock(...)
-        ...
-        if err == nil {
-            delete blocks[height]
-            height++
-            lastTouch = time
-            return pcBlockProcessed{height}
-        } else {
-            ... // Delete all unprocessed block from the peer
-            return pcBlockProcessError{peerID, height}
-        }
-    }
+	if blocks[height] && blocks[height+1] {
+		... = state.Validators.VerifyCommit(...)
+		... = store.SaveBlock(...)
+		state, err = blockExec.ApplyBlock(...)
+		...
+		if err == nil {
+			delete blocks[height]
+			height++
+			lastTouch = time
+			return pcBlockProcessed{height}
+		} else {
+			... // Delete all unprocessed block from the peer
+			return pcBlockProcessError{peerID, height}
+		}
+	}
 }
 
 func (proc *Processor) handleRemovePeer(peerID) {
-    events = []
-    // Delete all unprocessed blocks from peerID
-    for i = height; i < len(blocks); i++ {
-        if blockPeers[i] == peerID {
-            events = append(events, pcBlockReschedule{height})
+	events = []
+	// Delete all unprocessed blocks from peerID
+	for i = height; i < len(blocks); i++ {
+		if blockPeers[i] == peerID {
+			events = append(events, pcBlockReschedule{height})
 
-            delete block[height]
-        }
-    }
-    return events
+			delete block[height]
+		}
+	}
+	return events
 }
 
 func handleTimeCheckEv(time) {
-    if time - lastTouch > timeout {
-        // Timeout the processor
-        ...
-    }
+	if time - lastTouch > timeout {
+		// Timeout the processor
+		...
+	}
 }
 ```
 
