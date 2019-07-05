@@ -194,21 +194,14 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 		lastStoredHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
 		valInfo2 := loadValidatorsInfo(db, lastStoredHeight)
 		if valInfo2 == nil || valInfo2.ValidatorSet == nil {
-			// TODO (melekes): remove the below if condition in the 0.33 major
-			// release and just panic. Old chains might panic otherwise if they
-			// haven't saved validators at intermediate (%valSetCheckpointInterval)
-			// height yet.
-			// https://github.com/tendermint/tendermint/issues/3543
 			valInfo2 = loadValidatorsInfo(db, valInfo.LastHeightChanged)
 			lastStoredHeight = valInfo.LastHeightChanged
-			if valInfo2 == nil || valInfo2.ValidatorSet == nil {
-				panic(
-					fmt.Sprintf("Couldn't find validators at height %d (height %d was originally requested)",
-						lastStoredHeight,
-						height,
-					),
-				)
-			}
+			panic(
+				fmt.Sprintf("Couldn't find validators at height %d (height %d was originally requested)",
+					lastStoredHeight,
+					height,
+				),
+			)
 		}
 		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - lastStoredHeight)) // mutate
 		valInfo = valInfo2
