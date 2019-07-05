@@ -172,6 +172,7 @@ func (proc *Processor) handleBlockResponse(peerID, block, time) {
             lastTouch = time
             return pcBlockProcessed{height}
         } else {
+            ... // Delete all unprocessed block from the peer
             return pcBlockProcessError{peerID, height}
         }
     }
@@ -228,12 +229,45 @@ type schedule {
 	peers              map[p2p.ID]scPeer
     
     // a map of heights to the peer we are waiting for a response from
-    pending map[height]scPeer
+	pending map[height]scPeer
+
+	targetPending  int // the number of blocks we want in blockStatePending
+	targetReceived int // the number of blocks we want in blockStateReceived
 
 	peerTimeout        int
 	peerMinSpeed       int
 }
 
+func (sc *schedule) numBlockInState(state blockState) uint32 {
+	num := 0
+	for i := sc.minHeight(); i <= sc.maxHeight(); i++ {
+		if sc.blockState[i] == state {
+			num++
+		}
+	}
+	return num
+}
+
+
+func (sc *schedule) popSchedule(maxRequest int) []scBlockRequestMessage {
+	// We only want to schedule requests such that we have less than sc.targetPending and sc.targetReceived
+	// This ensures we don't saturate the network or flood the processor with unprocessed blocks
+	todo := min(sc.targetPending - sc.numBlockInState(blockStatePending), sc.numBlockInState(blockStateReceived))
+	events := []scBlockRequestMessage{}
+	for i := sc.minHeight(); i < sc.maxMaxHeight(); i++ {
+		if todo == 0 {
+			break
+		}
+		if blockStates[i] == blockStateNew {
+			peer = sc.selectPeer(blockPeers[i])
+			sc.blockStates[i] = blockStatePending
+			sc.pending[i] = peer
+			events = append(events, scBlockRequestMessage{peerID: peer.peerID, height: i})
+			todo--
+		}
+	}
+	return events
+}
 ...
 
 type scPeer struct {
@@ -243,15 +277,6 @@ type scPeer struct {
 	monitor              flow.Monitor
 }
 
-
-type blockState int
-
-const (
-	blockStateNew = iota
-	blockStatePending,
-	blockStateReceived,
-	blockStateProcessed
-)
 ```
 
 # Scheduler
@@ -274,7 +299,7 @@ func handleBlockResponseMessage(peerID, height, block, time) {
 
 func handleNoBlockResponseMessage(peerID, height, time) {
 	schedule.touchPeer(peerID, time)
-    // reschedule that block, punish peer...
+	// reschedule that block, punish peer...
     ...
 }
 
@@ -294,9 +319,9 @@ func handleTimeCheckEv(time) {
 		events = append(events, peerTimeout{peerID})
     }
 
-	events = append(events, schedule.getSchedule(targetInFlight))
+	events = append(events, schedule.popSchedule())
 
-    return events
+	return events
 }
 ```
 
