@@ -412,7 +412,7 @@ func (h *Header) Equal(h2 *Header) bool {
 		panic("incomplete heaeders cannot be compared")
 	}
 	h2Hash := h2.Hash()
-	return bytes.Compare(h1Hash, h2Hash) == 0
+	return bytes.Equal(h1Hash, h2Hash)
 }
 
 // Hash returns the hash of the header.
@@ -708,7 +708,7 @@ func (commit *Commit) Equal(commit2 *Commit) bool {
 		panic("incomplete commit cannot be compared")
 	}
 	c2Hash := commit2.Hash()
-	return bytes.Compare(c1Hash, c2Hash) == 0
+	return bytes.Equal(c1Hash, c2Hash)
 }
 
 // Hash returns the hash of the commit

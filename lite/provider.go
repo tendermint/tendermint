@@ -111,7 +111,7 @@ func (cp concurrentProvider) joinConcurrency(chainID string, height int64) (uniq
 	}
 }
 
-func (cp concurrentProvider) UpdateToHeight(chainID string, height int64) error {
+func (cp *concurrentProvider) UpdateToHeight(chainID string, height int64) error {
 
 	// Performs synchronization for multi-threads verification at the same height.
 	var presult *pendingResult
