@@ -98,7 +98,7 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 // 	is within the trust period of latest block
 // 2. Trusts the remote node and gets the latest commit
 // 3. Returns an error if the height provided in trust option is too old to sync to latest.
-func getTrustCommit(client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
+func getTrustedCommit(client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
 
 	// Get the lastest commit always
 	latestBlock, err := client.Commit(nil)
