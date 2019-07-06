@@ -45,7 +45,7 @@ func initProvider(chainID, rootDir string, client lclient.SignStatusClient, logg
 
 	trust := lite.NewMultiProvider(
 		lite.NewDBProvider(memDBFile, dbm.NewMemDB()).SetLimit(cacheSize),
-		lite.NewDBProvider(lvlDBFile, dbm.NewDB(dbName, dbm.LevelDBBackend, rootDir)),
+		lite.NewDBProvider(lvlDBFile, dbm.NewDB(dbName, dbm.GoLevelDBBackend, rootDir)),
 	)
 
 	return makeProvider(chainID, options.TrustPeriod, trust, lclient.NewProvider(chainID, client), logger)
