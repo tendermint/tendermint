@@ -1,4 +1,5 @@
 # Tendermint
+![banner](docs/tendermint-core-image.jpg)
 
 [Byzantine-Fault Tolerant](https://en.wikipedia.org/wiki/Byzantine_fault_tolerance)
 [State Machines](https://en.wikipedia.org/wiki/State_machine_replication).
@@ -8,7 +9,7 @@ Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)), for short.
 [![API Reference](
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/tendermint/tendermint)
-[![Go version](https://img.shields.io/badge/go-1.10.4-blue.svg)](https://github.com/moovweb/gvm)
+[![Go version](https://img.shields.io/badge/go-1.12.0-blue.svg)](https://github.com/moovweb/gvm)
 [![riot.im](https://img.shields.io/badge/riot.im-JOIN%20CHAT-green.svg)](https://riot.im/app/#/room/#tendermint:matrix.org)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
@@ -17,7 +18,6 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 Branch    | Tests | Coverage
 ----------|-------|----------
 master    | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/master.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/master) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/master/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
-develop   | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/develop.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/develop) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/develop/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
@@ -27,13 +27,15 @@ For protocol details, see [the specification](/docs/spec).
 For detailed analysis of the consensus protocol, including safety and liveness proofs,
 see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
 
-## A Note on Production Readiness
+## Releases
 
-While Tendermint is being used in production in private, permissioned
-environments, we are still working actively to harden and audit it in preparation
-for use in public blockchains, such as the [Cosmos Network](https://cosmos.network/).
-We are also still making breaking changes to the protocol and the APIs.
-Thus, we tag the releases as *alpha software*.
+NOTE: The master branch is now an active development branch (starting with `v0.32`). Please, do not depend on it and
+use [releases](https://github.com/tendermint/tendermint/releases) instead.
+
+Tendermint is being used in production in both private and public environments,
+most notably the blockchains of the [Cosmos Network](https://cosmos.network/).
+However, we are still making breaking changes to the protocol and the APIs and have not yet released v1.0.
+See below for more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production,
 please [contact us](mailto:partners@tendermint.com) and [join the chat](https://riot.im/app/#/room/#tendermint:matrix.org).
@@ -96,6 +98,7 @@ include the in-process Go APIs.
 That said, breaking changes in the following packages will be documented in the
 CHANGELOG even if they don't lead to MINOR version bumps:
 
+- crypto
 - types
 - rpc/client
 - config

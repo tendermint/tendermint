@@ -22,25 +22,27 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	defer eventBus.Stop()
 
 	tx := Tx("foo")
-	result := abci.ResponseDeliverTx{Data: []byte("bar"), Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
-
-	txEventsCh := make(chan interface{})
+	result := abci.ResponseDeliverTx{
+		Data: []byte("bar"),
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
 
 	// PublishEventTx adds all these 3 tags, so the query below should work
-	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND baz=1", tx.Hash())
-	err = eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query), txEventsCh)
+	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
+	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
 	go func() {
-		for e := range txEventsCh {
-			edt := e.(EventDataTx)
-			assert.Equal(t, int64(1), edt.Height)
-			assert.Equal(t, uint32(0), edt.Index)
-			assert.Equal(t, tx, edt.Tx)
-			assert.Equal(t, result, edt.Result)
-			close(done)
-		}
+		msg := <-txsSub.Out()
+		edt := msg.Data().(EventDataTx)
+		assert.Equal(t, int64(1), edt.Height)
+		assert.Equal(t, uint32(0), edt.Index)
+		assert.Equal(t, tx, edt.Tx)
+		assert.Equal(t, result, edt.Result)
+		close(done)
 	}()
 
 	err = eventBus.PublishEventTx(EventDataTx{TxResult{
@@ -65,25 +67,30 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	defer eventBus.Stop()
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
-	resultEndBlock := abci.ResponseEndBlock{Tags: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}}
-
-	txEventsCh := make(chan interface{})
+	resultBeginBlock := abci.ResponseBeginBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
+	resultEndBlock := abci.ResponseEndBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+		},
+	}
 
 	// PublishEventNewBlock adds the tm.event tag, so the query below should work
-	query := "tm.event='NewBlock' AND baz=1 AND foz=2"
-	err = eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query), txEventsCh)
+	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
+	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
 	go func() {
-		for e := range txEventsCh {
-			edt := e.(EventDataNewBlock)
-			assert.Equal(t, block, edt.Block)
-			assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-			assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
-			close(done)
-		}
+		msg := <-blocksSub.Out()
+		edt := msg.Data().(EventDataNewBlock)
+		assert.Equal(t, block, edt.Block)
+		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
+		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		close(done)
 	}()
 
 	err = eventBus.PublishEventNewBlock(EventDataNewBlock{
@@ -100,6 +107,106 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	}
 }
 
+func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
+	eventBus := NewEventBus()
+	err := eventBus.Start()
+	require.NoError(t, err)
+	defer eventBus.Stop()
+
+	tx := Tx("foo")
+	result := abci.ResponseDeliverTx{
+		Data: []byte("bar"),
+		Events: []abci.Event{
+			{
+				Type: "transfer",
+				Attributes: []cmn.KVPair{
+					{Key: []byte("sender"), Value: []byte("foo")},
+					{Key: []byte("recipient"), Value: []byte("bar")},
+					{Key: []byte("amount"), Value: []byte("5")},
+				},
+			},
+			{
+				Type: "transfer",
+				Attributes: []cmn.KVPair{
+					{Key: []byte("sender"), Value: []byte("baz")},
+					{Key: []byte("recipient"), Value: []byte("cat")},
+					{Key: []byte("amount"), Value: []byte("13")},
+				},
+			},
+			{
+				Type: "withdraw.rewards",
+				Attributes: []cmn.KVPair{
+					{Key: []byte("address"), Value: []byte("bar")},
+					{Key: []byte("source"), Value: []byte("iceman")},
+					{Key: []byte("amount"), Value: []byte("33")},
+				},
+			},
+		},
+	}
+
+	testCases := []struct {
+		query         string
+		expectResults bool
+	}{
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='DoesNotExist'",
+			false,
+		},
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='foo'",
+			true,
+		},
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='baz'",
+			true,
+		},
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='foo' AND transfer.sender='baz'",
+			true,
+		},
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='foo' AND transfer.sender='DoesNotExist'",
+			false,
+		},
+	}
+
+	for i, tc := range testCases {
+		sub, err := eventBus.Subscribe(context.Background(), fmt.Sprintf("client-%d", i), tmquery.MustParse(tc.query))
+		require.NoError(t, err)
+
+		done := make(chan struct{})
+
+		go func() {
+			msg := <-sub.Out()
+			data := msg.Data().(EventDataTx)
+			assert.Equal(t, int64(1), data.Height)
+			assert.Equal(t, uint32(0), data.Index)
+			assert.Equal(t, tx, data.Tx)
+			assert.Equal(t, result, data.Result)
+			close(done)
+		}()
+
+		err = eventBus.PublishEventTx(EventDataTx{TxResult{
+			Height: 1,
+			Index:  0,
+			Tx:     tx,
+			Result: result,
+		}})
+		assert.NoError(t, err)
+
+		select {
+		case <-done:
+			if !tc.expectResults {
+				require.Fail(t, "unexpected transaction result(s) from subscription")
+			}
+		case <-time.After(1 * time.Second):
+			if tc.expectResults {
+				require.Fail(t, "failed to receive a transaction after 1 second")
+			}
+		}
+	}
+}
+
 func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()
@@ -107,25 +214,30 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	defer eventBus.Stop()
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
-	resultEndBlock := abci.ResponseEndBlock{Tags: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}}
-
-	txEventsCh := make(chan interface{})
+	resultBeginBlock := abci.ResponseBeginBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
+	resultEndBlock := abci.ResponseEndBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+		},
+	}
 
 	// PublishEventNewBlockHeader adds the tm.event tag, so the query below should work
-	query := "tm.event='NewBlockHeader' AND baz=1 AND foz=2"
-	err = eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query), txEventsCh)
+	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
+	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
 	go func() {
-		for e := range txEventsCh {
-			edt := e.(EventDataNewBlockHeader)
-			assert.Equal(t, block.Header, edt.Header)
-			assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-			assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
-			close(done)
-		}
+		msg := <-headersSub.Out()
+		edt := msg.Data().(EventDataNewBlockHeader)
+		assert.Equal(t, block.Header, edt.Header)
+		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
+		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		close(done)
 	}()
 
 	err = eventBus.PublishEventNewBlockHeader(EventDataNewBlockHeader{
@@ -148,18 +260,19 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, err)
 	defer eventBus.Stop()
 
-	eventsCh := make(chan interface{})
-	err = eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, eventsCh)
+	const numEventsExpected = 14
+
+	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, numEventsExpected)
 	require.NoError(t, err)
 
-	const numEventsExpected = 14
 	done := make(chan struct{})
 	go func() {
 		numEvents := 0
-		for range eventsCh {
+		for range sub.Out() {
 			numEvents++
 			if numEvents >= numEventsExpected {
 				close(done)
+				return
 			}
 		}
 	}()
@@ -243,15 +356,22 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	q := EventQueryNewBlock
 
 	for i := 0; i < numClients; i++ {
-		ch := make(chan interface{})
-		go func() {
-			for range ch {
-			}
-		}()
 		if randQueries {
 			q = randQuery()
 		}
-		eventBus.Subscribe(ctx, fmt.Sprintf("client-%d", i), q, ch)
+		sub, err := eventBus.Subscribe(ctx, fmt.Sprintf("client-%d", i), q)
+		if err != nil {
+			b.Fatal(err)
+		}
+		go func() {
+			for {
+				select {
+				case <-sub.Out():
+				case <-sub.Cancelled():
+					return
+				}
+			}
+		}()
 	}
 
 	eventType := EventNewBlock

@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"errors"
-
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // NetAddress defines information about a peer on the network
@@ -48,7 +46,7 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
 		if flag.Lookup("test.v") == nil { // normal run
-			cmn.PanicSanity(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
+			panic(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
 		} else { // in testing
 			netAddr := NewNetAddressIPPort(net.IP("0.0.0.0"), 0)
 			netAddr.ID = id
@@ -67,36 +65,27 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 // Also resolves the host if host is not an IP.
 // Errors are of type ErrNetAddressXxx where Xxx is in (NoID, Invalid, Lookup)
 func NewNetAddressString(addr string) (*NetAddress, error) {
-	spl := strings.Split(addr, "@")
-	if len(spl) < 2 {
+	addrWithoutProtocol := removeProtocolIfDefined(addr)
+	spl := strings.Split(addrWithoutProtocol, "@")
+	if len(spl) != 2 {
 		return nil, ErrNetAddressNoID{addr}
 	}
-	return NewNetAddressStringWithOptionalID(addr)
-}
 
-// NewNetAddressStringWithOptionalID returns a new NetAddress using the
-// provided address in the form of "ID@IP:Port", where the ID is optional.
-// Also resolves the host if host is not an IP.
-func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
-	addrWithoutProtocol := removeProtocolIfDefined(addr)
-
-	var id ID
-	spl := strings.Split(addrWithoutProtocol, "@")
-	if len(spl) == 2 {
-		idStr := spl[0]
-		idBytes, err := hex.DecodeString(idStr)
-		if err != nil {
-			return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
-		}
-		if len(idBytes) != IDByteLength {
-			return nil, ErrNetAddressInvalid{
-				addrWithoutProtocol,
-				fmt.Errorf("invalid hex length - got %d, expected %d", len(idBytes), IDByteLength)}
-		}
-
-		id, addrWithoutProtocol = ID(idStr), spl[1]
+	// get ID
+	idStr := spl[0]
+	idBytes, err := hex.DecodeString(idStr)
+	if err != nil {
+		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
+	if len(idBytes) != IDByteLength {
+		return nil, ErrNetAddressInvalid{
+			addrWithoutProtocol,
+			fmt.Errorf("invalid hex length - got %d, expected %d", len(idBytes), IDByteLength)}
+	}
+	var id ID
+	id, addrWithoutProtocol = ID(idStr), spl[1]
 
+	// get host and port
 	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
 	if err != nil {
 		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}

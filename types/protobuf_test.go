@@ -7,8 +7,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tendermint/go-amino"
-
+	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -65,7 +64,7 @@ func TestABCIValidators(t *testing.T) {
 func TestABCIConsensusParams(t *testing.T) {
 	cp := DefaultConsensusParams()
 	abciCP := TM2PB.ConsensusParams(cp)
-	cp2 := PB2TM.ConsensusParams(abciCP)
+	cp2 := cp.Update(abciCP)
 
 	assert.Equal(t, *cp, cp2)
 }
@@ -91,7 +90,7 @@ func TestABCIHeader(t *testing.T) {
 		height, numTxs,
 		[]byte("lastCommitHash"), []byte("dataHash"), []byte("evidenceHash"),
 	)
-	protocolVersion := version.Consensus{7, 8}
+	protocolVersion := version.Consensus{Block: 7, App: 8}
 	timestamp := time.Now()
 	lastBlockID := BlockID{
 		Hash: []byte("hash"),

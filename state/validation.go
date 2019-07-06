@@ -13,7 +13,7 @@ import (
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
+func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
@@ -94,10 +94,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		}
 	} else {
 		if len(block.LastCommit.Precommits) != state.LastValidators.Size() {
-			return fmt.Errorf("Invalid block commit size. Expected %v, got %v",
-				state.LastValidators.Size(),
-				len(block.LastCommit.Precommits),
-			)
+			return types.NewErrInvalidCommitPrecommits(state.LastValidators.Size(), len(block.LastCommit.Precommits))
 		}
 		err := state.LastValidators.VerifyCommit(
 			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
@@ -133,7 +130,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	}
 
 	// Limit the amount of evidence
-	maxNumEvidence, _ := types.MaxEvidencePerBlock(state.ConsensusParams.BlockSize.MaxBytes)
+	maxNumEvidence, _ := types.MaxEvidencePerBlock(state.ConsensusParams.Block.MaxBytes)
 	numEvidence := int64(len(block.Evidence.Evidence))
 	if numEvidence > maxNumEvidence {
 		return types.NewErrEvidenceOverflow(maxNumEvidence, numEvidence)
@@ -144,6 +141,9 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	for _, ev := range block.Evidence.Evidence {
 		if err := VerifyEvidence(stateDB, state, ev); err != nil {
 			return types.NewErrEvidenceInvalid(ev, err)
+		}
+		if evidencePool != nil && evidencePool.IsCommitted(ev) {
+			return types.NewErrEvidenceInvalid(ev, errors.New("evidence was already committed"))
 		}
 	}
 
@@ -185,6 +185,8 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	// The address must have been an active validator at the height.
 	// NOTE: we will ignore evidence from H if the key was not a validator
 	// at H, even if it is a validator at some nearby H'
+	// XXX: this makes lite-client bisection as is unsafe
+	// See https://github.com/tendermint/tendermint/issues/3244
 	ev := evidence
 	height, addr := ev.Height(), ev.Address()
 	_, val := valset.GetByAddress(addr)

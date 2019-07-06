@@ -5,31 +5,31 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
-	"strings"
+	"testing"
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
-	auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
-// WALGenerateNBlocks generates a consensus WAL. It does this by spining up a
+// WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
 // stripped down version of node (proxy app, event bus, consensus state) with a
 // persistent kvstore application and special consensus wal instance
 // (byteBufferWAL) and waits until numBlocks are created. If the node fails to produce given numBlocks, it returns an error.
-func WALGenerateNBlocks(wr io.Writer, numBlocks int) (err error) {
-	config := getConfig()
+func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
+	config := getConfig(t)
 
 	app := kvstore.NewPersistentKVStoreApplication(filepath.Join(config.DBDir(), "wal_generator"))
 
@@ -47,13 +47,14 @@ func WALGenerateNBlocks(wr io.Writer, numBlocks int) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "failed to read genesis file")
 	}
-	stateDB := db.NewMemDB()
 	blockStoreDB := db.NewMemDB()
+	stateDB := blockStoreDB
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return errors.Wrap(err, "failed to make genesis state")
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
+	sm.SaveState(stateDB, state)
 	blockStore := bc.NewBlockStore(blockStoreDB)
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
@@ -68,7 +69,7 @@ func WALGenerateNBlocks(wr io.Writer, numBlocks int) (err error) {
 		return errors.Wrap(err, "failed to start event bus")
 	}
 	defer eventBus.Stop()
-	mempool := sm.MockMempool{}
+	mempool := mock.Mempool{}
 	evpool := sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
@@ -102,28 +103,16 @@ func WALGenerateNBlocks(wr io.Writer, numBlocks int) (err error) {
 }
 
 //WALWithNBlocks returns a WAL content with numBlocks.
-func WALWithNBlocks(numBlocks int) (data []byte, err error) {
+func WALWithNBlocks(t *testing.T, numBlocks int) (data []byte, err error) {
 	var b bytes.Buffer
 	wr := bufio.NewWriter(&b)
 
-	if err := WALGenerateNBlocks(wr, numBlocks); err != nil {
+	if err := WALGenerateNBlocks(t, wr, numBlocks); err != nil {
 		return []byte{}, err
 	}
 
 	wr.Flush()
 	return b.Bytes(), nil
-}
-
-// f**ing long, but unique for each test
-func makePathname() string {
-	// get path
-	p, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	// fmt.Println(p)
-	sep := string(filepath.Separator)
-	return strings.Replace(p, sep, "_", -1)
 }
 
 func randPort() int {
@@ -140,9 +129,8 @@ func makeAddrs() (string, string, string) {
 }
 
 // getConfig returns a config for test cases
-func getConfig() *cfg.Config {
-	pathname := makePathname()
-	c := cfg.ResetTestRoot(fmt.Sprintf("%s_%d", pathname, cmn.RandInt()))
+func getConfig(t *testing.T) *cfg.Config {
+	c := cfg.ResetTestRoot(t.Name())
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
@@ -206,10 +194,9 @@ func (w *byteBufferWAL) WriteSync(m WALMessage) {
 	w.Write(m)
 }
 
-func (w *byteBufferWAL) Group() *auto.Group {
-	panic("not implemented")
-}
-func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
+func (w *byteBufferWAL) FlushAndSync() error { return nil }
+
+func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 

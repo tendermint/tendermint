@@ -35,6 +35,7 @@ shunit2
 addrbook.json
 
 */vendor
+.vendor-new/
 */.glide
 .terraform
 terraform.tfstate

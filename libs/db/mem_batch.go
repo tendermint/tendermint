@@ -1,8 +1,6 @@
 package db
 
-import (
-	"sync"
-)
+import "sync"
 
 type atomicSetDeleter interface {
 	Mutex() *sync.Mutex
@@ -44,6 +42,10 @@ func (mBatch *memBatch) Write() {
 
 func (mBatch *memBatch) WriteSync() {
 	mBatch.write(true)
+}
+
+func (mBatch *memBatch) Close() {
+	mBatch.ops = nil
 }
 
 func (mBatch *memBatch) write(doSync bool) {

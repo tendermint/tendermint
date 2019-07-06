@@ -16,7 +16,6 @@ cd $GOPATH/src/github.com/tendermint
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 make get_tools
-make get_vendor_deps
 make install_abci
 ```
 
@@ -89,12 +88,14 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
         return err
     }
 
-    // Wait forever
-    cmn.TrapSignal(func() {
+    // Stop upon receiving SIGTERM or CTRL-C.
+    cmn.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
-    return nil
+
+    // Run forever.
+    select {}
 }
 ```
 
@@ -238,12 +239,14 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
         return err
     }
 
-    // Wait forever
-    cmn.TrapSignal(func() {
+    // Stop upon receiving SIGTERM or CTRL-C.
+    cmn.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
-    return nil
+
+    // Run forever.
+    select {}
 }
 ```
 
@@ -323,10 +326,18 @@ application easily in any language.
 We have implemented the counter in a number of languages [see the
 example directory](https://github.com/tendermint/tendermint/tree/develop/abci/example).
 
-To run the Node JS version, `cd` to `example/js` and run
+To run the Node.js version, fist download & install [the Javascript ABCI server](https://github.com/tendermint/js-abci):
 
 ```
-node app.js
+git clone https://github.com/tendermint/js-abci.git
+cd js-abci
+npm install abci
+```
+
+Now you can start the app:
+
+```bash
+node example/counter.js
 ```
 
 (you'll have to kill the other counter application process). In another

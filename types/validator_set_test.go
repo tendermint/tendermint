@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -45,41 +46,32 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Nil(t, vset.Hash())
 
 	// add
-
 	val = randValidator_(vset.TotalVotingPower())
-	assert.True(t, vset.Add(val))
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
+
 	assert.True(t, vset.HasAddress(val.Address))
-	idx, val2 := vset.GetByAddress(val.Address)
+	idx, _ = vset.GetByAddress(val.Address)
 	assert.Equal(t, 0, idx)
-	assert.Equal(t, val, val2)
-	addr, val2 = vset.GetByIndex(0)
+	addr, _ = vset.GetByIndex(0)
 	assert.Equal(t, []byte(val.Address), addr)
-	assert.Equal(t, val, val2)
 	assert.Equal(t, 1, vset.Size())
 	assert.Equal(t, val.VotingPower, vset.TotalVotingPower())
-	assert.Equal(t, val, vset.GetProposer())
 	assert.NotNil(t, vset.Hash())
 	assert.NotPanics(t, func() { vset.IncrementProposerPriority(1) })
+	assert.Equal(t, val.Address, vset.GetProposer().Address)
 
 	// update
-	assert.False(t, vset.Update(randValidator_(vset.TotalVotingPower())))
+	val = randValidator_(vset.TotalVotingPower())
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
 	_, val = vset.GetByAddress(val.Address)
 	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
-	// Mimic update from types.PB2TM.ValidatorUpdates which does not know about ProposerPriority
-	// and hence defaults to 0.
+
 	val.ProposerPriority = 0
-	assert.True(t, vset.Update(val))
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
 	_, val = vset.GetByAddress(val.Address)
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
 
-	// remove
-	val2, removed := vset.Remove(randValidator_(vset.TotalVotingPower()).Address)
-	assert.Nil(t, val2)
-	assert.False(t, removed)
-	val2, removed = vset.Remove(val.Address)
-	assert.Equal(t, val.Address, val2.Address)
-	assert.True(t, removed)
 }
 
 func TestCopy(t *testing.T) {
@@ -116,8 +108,9 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	for i := 0; i < 1000; i++ {
 		privKey := ed25519.GenPrivKey()
 		pubKey := privKey.PubKey()
-		val := NewValidator(pubKey, 0)
-		if !vset.Add(val) {
+		val := NewValidator(pubKey, 10)
+		err := vset.UpdateWithChangeSet([]*Validator{val})
+		if err != nil {
 			panic("Failed to add validator")
 		}
 	}
@@ -284,7 +277,7 @@ func randPubKey() crypto.PubKey {
 func randValidator_(totalVotingPower int64) *Validator {
 	// this modulo limits the ProposerPriority/VotingPower to stay in the
 	// bounds of MaxTotalVotingPower minus the already existing voting power:
-	val := NewValidator(randPubKey(), cmn.RandInt64()%(MaxTotalVotingPower-totalVotingPower))
+	val := NewValidator(randPubKey(), int64(cmn.RandUint64()%uint64((MaxTotalVotingPower-totalVotingPower))))
 	val.ProposerPriority = cmn.RandInt64() % (MaxTotalVotingPower - totalVotingPower)
 	return val
 }
@@ -563,18 +556,12 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	sig, err := privKey.Sign(vote.SignBytes(chainID))
 	assert.NoError(t, err)
 	vote.Signature = sig
-	commit := &Commit{
-		BlockID:    blockID,
-		Precommits: []*Vote{vote},
-	}
+	commit := NewCommit(blockID, []*CommitSig{vote.CommitSig()})
 
 	badChainID := "notmychainID"
 	badBlockID := BlockID{Hash: []byte("goodbye")}
 	badHeight := height + 1
-	badCommit := &Commit{
-		BlockID:    blockID,
-		Precommits: []*Vote{nil},
-	}
+	badCommit := NewCommit(blockID, []*CommitSig{nil})
 
 	// test some error cases
 	// TODO: test more cases!
@@ -598,4 +585,688 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	// test a good one
 	err = vset.VerifyCommit(chainID, blockID, height, commit)
 	assert.Nil(t, err)
+}
+
+func TestEmptySet(t *testing.T) {
+
+	var valList []*Validator
+	valSet := NewValidatorSet(valList)
+	assert.Panics(t, func() { valSet.IncrementProposerPriority(1) })
+	assert.Panics(t, func() { valSet.RescalePriorities(100) })
+	assert.Panics(t, func() { valSet.shiftByAvgProposerPriority() })
+	assert.Panics(t, func() { assert.Zero(t, computeMaxMinPriorityDiff(valSet)) })
+	valSet.GetProposer()
+
+	// Add to empty set
+	v1 := newValidator([]byte("v1"), 100)
+	v2 := newValidator([]byte("v2"), 100)
+	valList = []*Validator{v1, v2}
+	assert.NoError(t, valSet.UpdateWithChangeSet(valList))
+	verifyValidatorSet(t, valSet)
+
+	// Delete all validators from set
+	v1 = newValidator([]byte("v1"), 0)
+	v2 = newValidator([]byte("v2"), 0)
+	delList := []*Validator{v1, v2}
+	assert.Error(t, valSet.UpdateWithChangeSet(delList))
+
+	// Attempt delete from empty set
+	assert.Error(t, valSet.UpdateWithChangeSet(delList))
+
+}
+
+func TestUpdatesForNewValidatorSet(t *testing.T) {
+
+	v1 := newValidator([]byte("v1"), 100)
+	v2 := newValidator([]byte("v2"), 100)
+	valList := []*Validator{v1, v2}
+	valSet := NewValidatorSet(valList)
+	verifyValidatorSet(t, valSet)
+
+	// Verify duplicates are caught in NewValidatorSet() and it panics
+	v111 := newValidator([]byte("v1"), 100)
+	v112 := newValidator([]byte("v1"), 123)
+	v113 := newValidator([]byte("v1"), 234)
+	valList = []*Validator{v111, v112, v113}
+	assert.Panics(t, func() { NewValidatorSet(valList) })
+
+	// Verify set including validator with voting power 0 cannot be created
+	v1 = newValidator([]byte("v1"), 0)
+	v2 = newValidator([]byte("v2"), 22)
+	v3 := newValidator([]byte("v3"), 33)
+	valList = []*Validator{v1, v2, v3}
+	assert.Panics(t, func() { NewValidatorSet(valList) })
+
+	// Verify set including validator with negative voting power cannot be created
+	v1 = newValidator([]byte("v1"), 10)
+	v2 = newValidator([]byte("v2"), -20)
+	v3 = newValidator([]byte("v3"), 30)
+	valList = []*Validator{v1, v2, v3}
+	assert.Panics(t, func() { NewValidatorSet(valList) })
+
+}
+
+type testVal struct {
+	name  string
+	power int64
+}
+
+func permutation(valList []testVal) []testVal {
+	if len(valList) == 0 {
+		return nil
+	}
+	permList := make([]testVal, len(valList))
+	perm := cmn.RandPerm(len(valList))
+	for i, v := range perm {
+		permList[v] = valList[i]
+	}
+	return permList
+}
+
+func createNewValidatorList(testValList []testVal) []*Validator {
+	valList := make([]*Validator, 0, len(testValList))
+	for _, val := range testValList {
+		valList = append(valList, newValidator([]byte(val.name), val.power))
+	}
+	return valList
+}
+
+func createNewValidatorSet(testValList []testVal) *ValidatorSet {
+	return NewValidatorSet(createNewValidatorList(testValList))
+}
+
+func valSetTotalProposerPriority(valSet *ValidatorSet) int64 {
+	sum := int64(0)
+	for _, val := range valSet.Validators {
+		// mind overflow
+		sum = safeAddClip(sum, val.ProposerPriority)
+	}
+	return sum
+}
+
+func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
+	// verify that the capacity and length of validators is the same
+	assert.Equal(t, len(valSet.Validators), cap(valSet.Validators))
+
+	// verify that the set's total voting power has been updated
+	tvp := valSet.totalVotingPower
+	valSet.updateTotalVotingPower()
+	expectedTvp := valSet.TotalVotingPower()
+	assert.Equal(t, expectedTvp, tvp,
+		"expected TVP %d. Got %d, valSet=%s", expectedTvp, tvp, valSet)
+
+	// verify that validator priorities are centered
+	valsCount := int64(len(valSet.Validators))
+	tpp := valSetTotalProposerPriority(valSet)
+	assert.True(t, tpp < valsCount && tpp > -valsCount,
+		"expected total priority in (-%d, %d). Got %d", valsCount, valsCount, tpp)
+
+	// verify that priorities are scaled
+	dist := computeMaxMinPriorityDiff(valSet)
+	assert.True(t, dist <= PriorityWindowSizeFactor*tvp,
+		"expected priority distance < %d. Got %d", PriorityWindowSizeFactor*tvp, dist)
+}
+
+func toTestValList(valList []*Validator) []testVal {
+	testList := make([]testVal, len(valList))
+	for i, val := range valList {
+		testList[i].name = string(val.Address)
+		testList[i].power = val.VotingPower
+	}
+	return testList
+}
+
+func testValSet(nVals int, power int64) []testVal {
+	vals := make([]testVal, nVals)
+	for i := 0; i < nVals; i++ {
+		vals[i] = testVal{fmt.Sprintf("v%d", i+1), power}
+	}
+	return vals
+}
+
+type valSetErrTestCase struct {
+	startVals  []testVal
+	updateVals []testVal
+}
+
+func executeValSetErrTestCase(t *testing.T, idx int, tt valSetErrTestCase) {
+	// create a new set and apply updates, keeping copies for the checks
+	valSet := createNewValidatorSet(tt.startVals)
+	valSetCopy := valSet.Copy()
+	valList := createNewValidatorList(tt.updateVals)
+	valListCopy := validatorListCopy(valList)
+	err := valSet.UpdateWithChangeSet(valList)
+
+	// for errors check the validator set has not been changed
+	assert.Error(t, err, "test %d", idx)
+	assert.Equal(t, valSet, valSetCopy, "test %v", idx)
+
+	// check the parameter list has not changed
+	assert.Equal(t, valList, valListCopy, "test %v", idx)
+}
+
+func TestValSetUpdatesDuplicateEntries(t *testing.T) {
+	testCases := []valSetErrTestCase{
+		// Duplicate entries in changes
+		{ // first entry is duplicated change
+			testValSet(2, 10),
+			[]testVal{{"v1", 11}, {"v1", 22}},
+		},
+		{ // second entry is duplicated change
+			testValSet(2, 10),
+			[]testVal{{"v2", 11}, {"v2", 22}},
+		},
+		{ // change duplicates are separated by a valid change
+			testValSet(2, 10),
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v1", 12}},
+		},
+		{ // change duplicates are separated by a valid change
+			testValSet(3, 10),
+			[]testVal{{"v1", 11}, {"v3", 22}, {"v1", 12}},
+		},
+
+		// Duplicate entries in remove
+		{ // first entry is duplicated remove
+			testValSet(2, 10),
+			[]testVal{{"v1", 0}, {"v1", 0}},
+		},
+		{ // second entry is duplicated remove
+			testValSet(2, 10),
+			[]testVal{{"v2", 0}, {"v2", 0}},
+		},
+		{ // remove duplicates are separated by a valid remove
+			testValSet(2, 10),
+			[]testVal{{"v1", 0}, {"v2", 0}, {"v1", 0}},
+		},
+		{ // remove duplicates are separated by a valid remove
+			testValSet(3, 10),
+			[]testVal{{"v1", 0}, {"v3", 0}, {"v1", 0}},
+		},
+
+		{ // remove and update same val
+			testValSet(2, 10),
+			[]testVal{{"v1", 0}, {"v2", 20}, {"v1", 30}},
+		},
+		{ // duplicate entries in removes + changes
+			testValSet(2, 10),
+			[]testVal{{"v1", 0}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
+		},
+		{ // duplicate entries in removes + changes
+			testValSet(3, 10),
+			[]testVal{{"v1", 0}, {"v3", 5}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
+		},
+	}
+
+	for i, tt := range testCases {
+		executeValSetErrTestCase(t, i, tt)
+	}
+}
+
+func TestValSetUpdatesOverflows(t *testing.T) {
+	maxVP := MaxTotalVotingPower
+	testCases := []valSetErrTestCase{
+		{ // single update leading to overflow
+			testValSet(2, 10),
+			[]testVal{{"v1", math.MaxInt64}},
+		},
+		{ // single update leading to overflow
+			testValSet(2, 10),
+			[]testVal{{"v2", math.MaxInt64}},
+		},
+		{ // add validator leading to overflow
+			testValSet(1, maxVP),
+			[]testVal{{"v2", math.MaxInt64}},
+		},
+		{ // add validator leading to exceed Max
+			testValSet(1, maxVP-1),
+			[]testVal{{"v2", 5}},
+		},
+		{ // add validator leading to exceed Max
+			testValSet(2, maxVP/3),
+			[]testVal{{"v3", maxVP / 2}},
+		},
+		{ // add validator leading to exceed Max
+			testValSet(1, maxVP),
+			[]testVal{{"v2", maxVP}},
+		},
+	}
+
+	for i, tt := range testCases {
+		executeValSetErrTestCase(t, i, tt)
+	}
+}
+
+func TestValSetUpdatesOtherErrors(t *testing.T) {
+	testCases := []valSetErrTestCase{
+		{ // update with negative voting power
+			testValSet(2, 10),
+			[]testVal{{"v1", -123}},
+		},
+		{ // update with negative voting power
+			testValSet(2, 10),
+			[]testVal{{"v2", -123}},
+		},
+		{ // remove non-existing validator
+			testValSet(2, 10),
+			[]testVal{{"v3", 0}},
+		},
+		{ // delete all validators
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
+			[]testVal{{"v1", 0}, {"v2", 0}, {"v3", 0}},
+		},
+	}
+
+	for i, tt := range testCases {
+		executeValSetErrTestCase(t, i, tt)
+	}
+}
+
+func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
+	valSetUpdatesBasicTests := []struct {
+		startVals    []testVal
+		updateVals   []testVal
+		expectedVals []testVal
+	}{
+		{ // no changes
+			testValSet(2, 10),
+			[]testVal{},
+			testValSet(2, 10),
+		},
+		{ // voting power changes
+			testValSet(2, 10),
+			[]testVal{{"v1", 11}, {"v2", 22}},
+			[]testVal{{"v1", 11}, {"v2", 22}},
+		},
+		{ // add new validators
+			[]testVal{{"v1", 10}, {"v2", 20}},
+			[]testVal{{"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+		},
+		{ // add new validator to middle
+			[]testVal{{"v1", 10}, {"v3", 20}},
+			[]testVal{{"v2", 30}},
+			[]testVal{{"v1", 10}, {"v2", 30}, {"v3", 20}},
+		},
+		{ // add new validator to beginning
+			[]testVal{{"v2", 10}, {"v3", 20}},
+			[]testVal{{"v1", 30}},
+			[]testVal{{"v1", 30}, {"v2", 10}, {"v3", 20}},
+		},
+		{ // delete validators
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
+			[]testVal{{"v2", 0}},
+			[]testVal{{"v1", 10}, {"v3", 30}},
+		},
+	}
+
+	for i, tt := range valSetUpdatesBasicTests {
+		// create a new set and apply updates, keeping copies for the checks
+		valSet := createNewValidatorSet(tt.startVals)
+		valList := createNewValidatorList(tt.updateVals)
+		err := valSet.UpdateWithChangeSet(valList)
+		assert.NoError(t, err, "test %d", i)
+
+		valListCopy := validatorListCopy(valSet.Validators)
+		// check that the voting power in the set's validators is not changing if the voting power
+		// is changed in the list of validators previously passed as parameter to UpdateWithChangeSet.
+		// this is to make sure copies of the validators are made by UpdateWithChangeSet.
+		if len(valList) > 0 {
+			valList[0].VotingPower++
+			assert.Equal(t, toTestValList(valListCopy), toTestValList(valSet.Validators), "test %v", i)
+
+		}
+
+		// check the final validator list is as expected and the set is properly scaled and centered.
+		assert.Equal(t, tt.expectedVals, toTestValList(valSet.Validators), "test %v", i)
+		verifyValidatorSet(t, valSet)
+	}
+}
+
+// Test that different permutations of an update give the same result.
+func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
+	// startVals - initial validators to create the set with
+	// updateVals - a sequence of updates to be applied to the set.
+	// updateVals is shuffled a number of times during testing to check for same resulting validator set.
+	valSetUpdatesOrderTests := []struct {
+		startVals  []testVal
+		updateVals []testVal
+	}{
+		0: { // order of changes should not matter, the final validator sets should be the same
+			[]testVal{{"v1", 10}, {"v2", 10}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
+
+		1: { // order of additions should not matter
+			[]testVal{{"v1", 10}, {"v2", 20}},
+			[]testVal{{"v3", 30}, {"v4", 40}, {"v5", 50}, {"v6", 60}}},
+
+		2: { // order of removals should not matter
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 0}, {"v3", 0}, {"v4", 0}}},
+
+		3: { // order of mixed operations should not matter
+			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}, {"v4", 40}},
+			[]testVal{{"v1", 0}, {"v3", 0}, {"v2", 22}, {"v5", 50}, {"v4", 44}}},
+	}
+
+	for i, tt := range valSetUpdatesOrderTests {
+		// create a new set and apply updates
+		valSet := createNewValidatorSet(tt.startVals)
+		valSetCopy := valSet.Copy()
+		valList := createNewValidatorList(tt.updateVals)
+		assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList))
+
+		// save the result as expected for next updates
+		valSetExp := valSetCopy.Copy()
+
+		// perform at most 20 permutations on the updates and call UpdateWithChangeSet()
+		n := len(tt.updateVals)
+		maxNumPerms := cmn.MinInt(20, n*n)
+		for j := 0; j < maxNumPerms; j++ {
+			// create a copy of original set and apply a random permutation of updates
+			valSetCopy := valSet.Copy()
+			valList := createNewValidatorList(permutation(tt.updateVals))
+
+			// check there was no error and the set is properly scaled and centered.
+			assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList),
+				"test %v failed for permutation %v", i, valList)
+			verifyValidatorSet(t, valSetCopy)
+
+			// verify the resulting test is same as the expected
+			assert.Equal(t, valSetCopy, valSetExp,
+				"test %v failed for permutation %v", i, valList)
+		}
+	}
+}
+
+// This tests the private function validator_set.go:applyUpdates() function, used only for additions and changes.
+// Should perform a proper merge of updatedVals and startVals
+func TestValSetApplyUpdatesTestsExecute(t *testing.T) {
+	valSetUpdatesBasicTests := []struct {
+		startVals    []testVal
+		updateVals   []testVal
+		expectedVals []testVal
+	}{
+		// additions
+		0: { // prepend
+			[]testVal{{"v4", 44}, {"v5", 55}},
+			[]testVal{{"v1", 11}},
+			[]testVal{{"v1", 11}, {"v4", 44}, {"v5", 55}}},
+		1: { // append
+			[]testVal{{"v4", 44}, {"v5", 55}},
+			[]testVal{{"v6", 66}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
+		2: { // insert
+			[]testVal{{"v4", 44}, {"v6", 66}},
+			[]testVal{{"v5", 55}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
+		3: { // insert multi
+			[]testVal{{"v4", 44}, {"v6", 66}, {"v9", 99}},
+			[]testVal{{"v5", 55}, {"v7", 77}, {"v8", 88}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}, {"v7", 77}, {"v8", 88}, {"v9", 99}}},
+		// changes
+		4: { // head
+			[]testVal{{"v1", 111}, {"v2", 22}},
+			[]testVal{{"v1", 11}},
+			[]testVal{{"v1", 11}, {"v2", 22}}},
+		5: { // tail
+			[]testVal{{"v1", 11}, {"v2", 222}},
+			[]testVal{{"v2", 22}},
+			[]testVal{{"v1", 11}, {"v2", 22}}},
+		6: { // middle
+			[]testVal{{"v1", 11}, {"v2", 222}, {"v3", 33}},
+			[]testVal{{"v2", 22}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
+		7: { // multi
+			[]testVal{{"v1", 111}, {"v2", 222}, {"v3", 333}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
+		// additions and changes
+		8: {
+			[]testVal{{"v1", 111}, {"v2", 22}},
+			[]testVal{{"v1", 11}, {"v3", 33}, {"v4", 44}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
+	}
+
+	for i, tt := range valSetUpdatesBasicTests {
+		// create a new validator set with the start values
+		valSet := createNewValidatorSet(tt.startVals)
+
+		// applyUpdates() with the update values
+		valList := createNewValidatorList(tt.updateVals)
+		valSet.applyUpdates(valList)
+
+		// check the new list of validators for proper merge
+		assert.Equal(t, toTestValList(valSet.Validators), tt.expectedVals, "test %v", i)
+	}
+}
+
+type testVSetCfg struct {
+	startVals    []testVal
+	deletedVals  []testVal
+	updatedVals  []testVal
+	addedVals    []testVal
+	expectedVals []testVal
+}
+
+func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
+	if nBase <= 0 || nAddMax < 0 {
+		panic(fmt.Sprintf("bad parameters %v %v", nBase, nAddMax))
+	}
+
+	const maxPower = 1000
+	var nOld, nDel, nChanged, nAdd int
+
+	nOld = int(cmn.RandUint()%uint(nBase)) + 1
+	if nBase-nOld > 0 {
+		nDel = int(cmn.RandUint() % uint(nBase-nOld))
+	}
+	nChanged = nBase - nOld - nDel
+
+	if nAddMax > 0 {
+		nAdd = cmn.RandInt()%nAddMax + 1
+	}
+
+	cfg := testVSetCfg{}
+
+	cfg.startVals = make([]testVal, nBase)
+	cfg.deletedVals = make([]testVal, nDel)
+	cfg.addedVals = make([]testVal, nAdd)
+	cfg.updatedVals = make([]testVal, nChanged)
+	cfg.expectedVals = make([]testVal, nBase-nDel+nAdd)
+
+	for i := 0; i < nBase; i++ {
+		cfg.startVals[i] = testVal{fmt.Sprintf("v%d", i), int64(cmn.RandUint()%maxPower + 1)}
+		if i < nOld {
+			cfg.expectedVals[i] = cfg.startVals[i]
+		}
+		if i >= nOld && i < nOld+nChanged {
+			cfg.updatedVals[i-nOld] = testVal{fmt.Sprintf("v%d", i), int64(cmn.RandUint()%maxPower + 1)}
+			cfg.expectedVals[i] = cfg.updatedVals[i-nOld]
+		}
+		if i >= nOld+nChanged {
+			cfg.deletedVals[i-nOld-nChanged] = testVal{fmt.Sprintf("v%d", i), 0}
+		}
+	}
+
+	for i := nBase; i < nBase+nAdd; i++ {
+		cfg.addedVals[i-nBase] = testVal{fmt.Sprintf("v%d", i), int64(cmn.RandUint()%maxPower + 1)}
+		cfg.expectedVals[i-nDel] = cfg.addedVals[i-nBase]
+	}
+
+	sort.Sort(testValsByAddress(cfg.startVals))
+	sort.Sort(testValsByAddress(cfg.deletedVals))
+	sort.Sort(testValsByAddress(cfg.updatedVals))
+	sort.Sort(testValsByAddress(cfg.addedVals))
+	sort.Sort(testValsByAddress(cfg.expectedVals))
+
+	return cfg
+
+}
+
+func applyChangesToValSet(t *testing.T, valSet *ValidatorSet, valsLists ...[]testVal) {
+	changes := make([]testVal, 0)
+	for _, valsList := range valsLists {
+		changes = append(changes, valsList...)
+	}
+	valList := createNewValidatorList(changes)
+	err := valSet.UpdateWithChangeSet(valList)
+	assert.NoError(t, err)
+}
+
+func TestValSetUpdatePriorityOrderTests(t *testing.T) {
+	const nMaxElections = 5000
+
+	testCases := []testVSetCfg{
+		0: { // remove high power validator, keep old equal lower power validators
+			startVals:    []testVal{{"v1", 1}, {"v2", 1}, {"v3", 1000}},
+			deletedVals:  []testVal{{"v3", 0}},
+			updatedVals:  []testVal{},
+			addedVals:    []testVal{},
+			expectedVals: []testVal{{"v1", 1}, {"v2", 1}},
+		},
+		1: { // remove high power validator, keep old different power validators
+			startVals:    []testVal{{"v1", 1}, {"v2", 10}, {"v3", 1000}},
+			deletedVals:  []testVal{{"v3", 0}},
+			updatedVals:  []testVal{},
+			addedVals:    []testVal{},
+			expectedVals: []testVal{{"v1", 1}, {"v2", 10}},
+		},
+		2: { // remove high power validator, add new low power validators, keep old lower power
+			startVals:    []testVal{{"v1", 1}, {"v2", 2}, {"v3", 1000}},
+			deletedVals:  []testVal{{"v3", 0}},
+			updatedVals:  []testVal{{"v2", 1}},
+			addedVals:    []testVal{{"v4", 40}, {"v5", 50}},
+			expectedVals: []testVal{{"v1", 1}, {"v2", 1}, {"v4", 40}, {"v5", 50}},
+		},
+
+		// generate a configuration with 100 validators,
+		// randomly select validators for updates and deletes, and
+		// generate 10 new validators to be added
+		3: randTestVSetCfg(t, 100, 10),
+
+		4: randTestVSetCfg(t, 1000, 100),
+
+		5: randTestVSetCfg(t, 10, 100),
+
+		6: randTestVSetCfg(t, 100, 1000),
+
+		7: randTestVSetCfg(t, 1000, 1000),
+
+		8: randTestVSetCfg(t, 10000, 1000),
+
+		9: randTestVSetCfg(t, 1000, 10000),
+	}
+
+	for _, cfg := range testCases {
+
+		// create a new validator set
+		valSet := createNewValidatorSet(cfg.startVals)
+		verifyValidatorSet(t, valSet)
+
+		// run election up to nMaxElections times, apply changes and verify that the priority order is correct
+		verifyValSetUpdatePriorityOrder(t, valSet, cfg, nMaxElections)
+	}
+}
+
+func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int) {
+
+	// Run election up to nMaxElections times, sort validators by priorities
+	valSet.IncrementProposerPriority(cmn.RandInt()%nMaxElections + 1)
+	origValsPriSorted := validatorListCopy(valSet.Validators)
+	sort.Sort(validatorsByPriority(origValsPriSorted))
+
+	// apply the changes, get the updated validators, sort by priorities
+	applyChangesToValSet(t, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
+	updatedValsPriSorted := validatorListCopy(valSet.Validators)
+	sort.Sort(validatorsByPriority(updatedValsPriSorted))
+
+	// basic checks
+	assert.Equal(t, toTestValList(valSet.Validators), cfg.expectedVals)
+	verifyValidatorSet(t, valSet)
+
+	// verify that the added validators have the smallest priority:
+	//  - they should be at the beginning of valListNewPriority since it is sorted by priority
+	if len(cfg.addedVals) > 0 {
+		addedValsPriSlice := updatedValsPriSorted[:len(cfg.addedVals)]
+		sort.Sort(ValidatorsByAddress(addedValsPriSlice))
+		assert.Equal(t, cfg.addedVals, toTestValList(addedValsPriSlice))
+
+		//  - and should all have the same priority
+		expectedPri := addedValsPriSlice[0].ProposerPriority
+		for _, val := range addedValsPriSlice[1:] {
+			assert.Equal(t, expectedPri, val.ProposerPriority)
+		}
+	}
+}
+
+//---------------------
+// Sort validators by priority and address
+type validatorsByPriority []*Validator
+
+func (valz validatorsByPriority) Len() int {
+	return len(valz)
+}
+
+func (valz validatorsByPriority) Less(i, j int) bool {
+	if valz[i].ProposerPriority < valz[j].ProposerPriority {
+		return true
+	}
+	if valz[i].ProposerPriority > valz[j].ProposerPriority {
+		return false
+	}
+	return bytes.Compare(valz[i].Address, valz[j].Address) < 0
+}
+
+func (valz validatorsByPriority) Swap(i, j int) {
+	it := valz[i]
+	valz[i] = valz[j]
+	valz[j] = it
+}
+
+//-------------------------------------
+// Sort testVal-s by address.
+type testValsByAddress []testVal
+
+func (tvals testValsByAddress) Len() int {
+	return len(tvals)
+}
+
+func (tvals testValsByAddress) Less(i, j int) bool {
+	return bytes.Compare([]byte(tvals[i].name), []byte(tvals[j].name)) == -1
+}
+
+func (tvals testValsByAddress) Swap(i, j int) {
+	it := tvals[i]
+	tvals[i] = tvals[j]
+	tvals[j] = it
+}
+
+//-------------------------------------
+// Benchmark tests
+//
+func BenchmarkUpdates(b *testing.B) {
+	const (
+		n = 100
+		m = 2000
+	)
+	// Init with n validators
+	vs := make([]*Validator, n)
+	for j := 0; j < n; j++ {
+		vs[j] = newValidator([]byte(fmt.Sprintf("v%d", j)), 100)
+	}
+	valSet := NewValidatorSet(vs)
+	l := len(valSet.Validators)
+
+	// Make m new validators
+	newValList := make([]*Validator, m)
+	for j := 0; j < m; j++ {
+		newValList[j] = newValidator([]byte(fmt.Sprintf("v%d", j+l)), 1000)
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		// Add m validators to valSetCopy
+		valSetCopy := valSet.Copy()
+		assert.NoError(b, valSetCopy.UpdateWithChangeSet(newValList))
+	}
 }

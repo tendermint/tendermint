@@ -394,7 +394,6 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	return nil
 }
 
 func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
@@ -547,7 +546,7 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTxSync(txBytes)
+	res, err := client.DeliverTxSync(types.RequestDeliverTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -573,7 +572,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.CheckTxSync(txBytes)
+	res, err := client.CheckTxSync(types.RequestCheckTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -637,9 +636,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 }
 
 func cmdCounter(cmd *cobra.Command, args []string) error {
-
 	app := counter.NewCounterApplication(flagSerial)
-
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
@@ -652,12 +649,14 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Wait forever
-	cmn.TrapSignal(func() {
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
-	return nil
+
+	// Run forever.
+	select {}
 }
 
 func cmdKVStore(cmd *cobra.Command, args []string) error {
@@ -682,12 +681,14 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Wait forever
-	cmn.TrapSignal(func() {
+	// Stop upon receiving SIGTERM or CTRL-C.
+	cmn.TrapSignal(logger, func() {
 		// Cleanup
 		srv.Stop()
 	})
-	return nil
+
+	// Run forever.
+	select {}
 }
 
 //--------------------------------------------------------------------------------

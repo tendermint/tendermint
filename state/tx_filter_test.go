@@ -1,4 +1,4 @@
-package state
+package state_test
 
 import (
 	"os"
@@ -7,16 +7,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestTxFilter(t *testing.T) {
 	genDoc := randomGenesisDoc()
-	genDoc.ConsensusParams.BlockSize.MaxBytes = 3000
+	genDoc.ConsensusParams.Block.MaxBytes = 3000
 
 	// Max size of Txs is much smaller than size of block,
 	// since we need to account for commits and evidence.
@@ -34,24 +33,14 @@ func TestTxFilter(t *testing.T) {
 
 	for i, tc := range testCases {
 		stateDB := dbm.NewDB("state", "memdb", os.TempDir())
-		state, err := LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		require.NoError(t, err)
 
-		f := TxPreCheck(state)
+		f := sm.TxPreCheck(state)
 		if tc.isErr {
 			assert.NotNil(t, f(tc.tx), "#%v", i)
 		} else {
 			assert.Nil(t, f(tc.tx), "#%v", i)
 		}
-	}
-}
-
-func randomGenesisDoc() *types.GenesisDoc {
-	pubkey := ed25519.GenPrivKey().PubKey()
-	return &types.GenesisDoc{
-		GenesisTime:     tmtime.Now(),
-		ChainID:         "abc",
-		Validators:      []types.GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
-		ConsensusParams: types.DefaultConsensusParams(),
 	}
 }

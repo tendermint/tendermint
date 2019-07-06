@@ -1,6 +1,8 @@
 package types
 
 import (
+	// it is ok to use math/rand here: we do not need a cryptographically secure random
+	// number generator here and we can run the tests a bit faster
 	"crypto/rand"
 	"math"
 	"os"
@@ -162,8 +164,8 @@ func TestBlockString(t *testing.T) {
 func makeBlockIDRandom() BlockID {
 	blockHash := make([]byte, tmhash.Size)
 	partSetHash := make([]byte, tmhash.Size)
-	rand.Read(blockHash)
-	rand.Read(partSetHash)
+	rand.Read(blockHash)   //nolint: gosec
+	rand.Read(partSetHash) //nolint: gosec
 	blockPartsHeader := PartSetHeader{123, partSetHash}
 	return BlockID{blockHash, blockPartsHeader}
 }
@@ -198,7 +200,6 @@ func TestCommit(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	assert.NotNil(t, commit.FirstPrecommit())
 	assert.Equal(t, h-1, commit.Height())
 	assert.Equal(t, 1, commit.Round())
 	assert.Equal(t, PrecommitType, SignedMsgType(commit.Type()))
@@ -339,5 +340,29 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount),
 				"#%v", i)
 		}
+	}
+}
+
+func TestCommitToVoteSet(t *testing.T) {
+	lastID := makeBlockIDRandom()
+	h := int64(3)
+
+	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	assert.NoError(t, err)
+
+	chainID := voteSet.ChainID()
+	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
+
+	for i := 0; i < len(vals); i++ {
+		vote1 := voteSet.GetByIndex(i)
+		vote2 := voteSet2.GetByIndex(i)
+		vote3 := commit.GetVote(i)
+
+		vote1bz := cdc.MustMarshalBinaryBare(vote1)
+		vote2bz := cdc.MustMarshalBinaryBare(vote2)
+		vote3bz := cdc.MustMarshalBinaryBare(vote3)
+		assert.Equal(t, vote1bz, vote2bz)
+		assert.Equal(t, vote1bz, vote3bz)
 	}
 }

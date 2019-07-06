@@ -2,10 +2,7 @@
 set -e
 
 # run the linter
-# make metalinter_test
-
-# setup certs
-make gen_certs
+# make lint
 
 # run the unit tests with coverage
 echo "" > coverage.txt
@@ -16,6 +13,3 @@ for d in $(go list ./... | grep -v vendor); do
 		rm profile.out
 	fi
 done
-
-# cleanup certs
-make clean_certs

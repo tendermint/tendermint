@@ -26,10 +26,3 @@ func ExampleSha256() {
 	// Output:
 	// f91afb642f3d1c87c17eb01aae5cb65c242dfdbe7cf1066cc260f4ce5d33b94e
 }
-
-func ExampleRipemd160() {
-	sum := crypto.Ripemd160([]byte("This is Tendermint"))
-	fmt.Printf("%x\n", sum)
-	// Output:
-	// 051e22663e8f0fd2f2302f1210f954adff009005
-}

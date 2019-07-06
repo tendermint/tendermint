@@ -1,16 +1,18 @@
 package rpcserver
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -30,10 +32,12 @@ func TestMaxOpenConnections(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		fmt.Fprint(w, "some body")
 	})
-	l, err := Listen("tcp://127.0.0.1:0", Config{MaxOpenConnections: max})
+	config := DefaultConfig()
+	config.MaxOpenConnections = max
+	l, err := Listen("tcp://127.0.0.1:0", config)
 	require.NoError(t, err)
 	defer l.Close()
-	go StartHTTPServer(l, mux, log.TestingLogger())
+	go StartHTTPServer(l, mux, log.TestingLogger(), config)
 
 	// Make N GET calls to the server.
 	attempts := max * 2
@@ -64,16 +68,27 @@ func TestMaxOpenConnections(t *testing.T) {
 }
 
 func TestStartHTTPAndTLSServer(t *testing.T) {
-	// set up fixtures
-	listenerAddr := "tcp://0.0.0.0:0"
-	listener, err := Listen(listenerAddr, Config{MaxOpenConnections: 1})
+	ln, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
+	defer ln.Close()
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "some body")
+	})
 
-	// test failure
-	err = StartHTTPAndTLSServer(listener, mux, "", "", log.TestingLogger())
-	require.IsType(t, (*os.PathError)(nil), err)
+	go StartHTTPAndTLSServer(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
 
-	// TODO: test that starting the server can actually work
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec
+	}
+	c := &http.Client{Transport: tr}
+	res, err := c.Get("https://" + ln.Addr().String())
+	require.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	body, err := ioutil.ReadAll(res.Body)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("some body"), body)
 }

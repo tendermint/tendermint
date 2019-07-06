@@ -59,6 +59,16 @@ type Vote struct {
 	Signature        []byte        `json:"signature"`
 }
 
+// CommitSig converts the Vote to a CommitSig.
+// If the Vote is nil, the CommitSig will be nil.
+func (vote *Vote) CommitSig() *CommitSig {
+	if vote == nil {
+		return nil
+	}
+	cs := CommitSig(*vote)
+	return &cs
+}
+
 func (vote *Vote) SignBytes(chainID string) []byte {
 	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
 	if err != nil {
@@ -83,7 +93,7 @@ func (vote *Vote) String() string {
 	case PrecommitType:
 		typeString = "Precommit"
 	default:
-		cmn.PanicSanity("Unknown vote type")
+		panic("Unknown vote type")
 	}
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",

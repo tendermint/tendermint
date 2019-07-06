@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -54,7 +55,7 @@ type AddrBook interface {
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
 
 	// Mark address
-	MarkGood(*p2p.NetAddress)
+	MarkGood(p2p.ID)
 	MarkAttempt(*p2p.NetAddress)
 	MarkBad(*p2p.NetAddress)
 
@@ -65,8 +66,7 @@ type AddrBook interface {
 	// Send a selection of addresses with bias
 	GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddress
 
-	// TODO: remove
-	ListOfKnownAddresses() []*knownAddress
+	Size() int
 
 	// Persist to disk
 	Save()
@@ -253,7 +253,7 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 	bookSize := a.size()
 	if bookSize <= 0 {
 		if bookSize < 0 {
-			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))
 		}
 		return nil
 	}
@@ -296,11 +296,11 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 
 // MarkGood implements AddrBook - it marks the peer as good and
 // moves it into an "old" bucket.
-func (a *addrBook) MarkGood(addr *p2p.NetAddress) {
+func (a *addrBook) MarkGood(id p2p.ID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	ka := a.addrLookup[addr.ID]
+	ka := a.addrLookup[id]
 	if ka == nil {
 		return
 	}
@@ -338,7 +338,7 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	bookSize := a.size()
 	if bookSize <= 0 {
 		if bookSize < 0 {
-			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))
 		}
 		return nil
 	}
@@ -369,6 +369,10 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	return allAddr[:numAddresses]
 }
 
+func percentageOfNum(p, n int) int {
+	return int(math.Round((float64(p) / float64(100)) * float64(n)))
+}
+
 // GetSelectionWithBias implements AddrBook.
 // It randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
 // Must never return a nil address.
@@ -384,7 +388,7 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	bookSize := a.size()
 	if bookSize <= 0 {
 		if bookSize < 0 {
-			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))
 		}
 		return nil
 	}
@@ -401,83 +405,12 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 		bookSize*getSelectionPercent/100)
 	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
 
-	selection := make([]*p2p.NetAddress, numAddresses)
-
-	oldBucketToAddrsMap := make(map[int]map[string]struct{})
-	var oldIndex int
-	newBucketToAddrsMap := make(map[int]map[string]struct{})
-	var newIndex int
-
-	selectionIndex := 0
-ADDRS_LOOP:
-	for selectionIndex < numAddresses {
-		pickFromOldBucket := int((float64(selectionIndex)/float64(numAddresses))*100) >= biasTowardsNewAddrs
-		pickFromOldBucket = (pickFromOldBucket && a.nOld > 0) || a.nNew == 0
-		bucket := make(map[string]*knownAddress)
-
-		// loop until we pick a random non-empty bucket
-		for len(bucket) == 0 {
-			if pickFromOldBucket {
-				oldIndex = a.rand.Intn(len(a.bucketsOld))
-				bucket = a.bucketsOld[oldIndex]
-			} else {
-				newIndex = a.rand.Intn(len(a.bucketsNew))
-				bucket = a.bucketsNew[newIndex]
-			}
-		}
-
-		// pick a random index
-		randIndex := a.rand.Intn(len(bucket))
-
-		// loop over the map to return that index
-		var selectedAddr *p2p.NetAddress
-		for _, ka := range bucket {
-			if randIndex == 0 {
-				selectedAddr = ka.Addr
-				break
-			}
-			randIndex--
-		}
-
-		// if we have selected the address before, restart the loop
-		// otherwise, record it and continue
-		if pickFromOldBucket {
-			if addrsMap, ok := oldBucketToAddrsMap[oldIndex]; ok {
-				if _, ok = addrsMap[selectedAddr.String()]; ok {
-					continue ADDRS_LOOP
-				}
-			} else {
-				oldBucketToAddrsMap[oldIndex] = make(map[string]struct{})
-			}
-			oldBucketToAddrsMap[oldIndex][selectedAddr.String()] = struct{}{}
-		} else {
-			if addrsMap, ok := newBucketToAddrsMap[newIndex]; ok {
-				if _, ok = addrsMap[selectedAddr.String()]; ok {
-					continue ADDRS_LOOP
-				}
-			} else {
-				newBucketToAddrsMap[newIndex] = make(map[string]struct{})
-			}
-			newBucketToAddrsMap[newIndex][selectedAddr.String()] = struct{}{}
-		}
-
-		selection[selectionIndex] = selectedAddr
-		selectionIndex++
-	}
-
+	// number of new addresses that, if possible, should be in the beginning of the selection
+	// if there are no enough old addrs, will choose new addr instead.
+	numRequiredNewAdd := cmn.MaxInt(percentageOfNum(biasTowardsNewAddrs, numAddresses), numAddresses-a.nOld)
+	selection := a.randomPickAddresses(bucketTypeNew, numRequiredNewAdd)
+	selection = append(selection, a.randomPickAddresses(bucketTypeOld, numAddresses-len(selection))...)
 	return selection
-}
-
-// ListOfKnownAddresses returns the new and old addresses.
-func (a *addrBook) ListOfKnownAddresses() []*knownAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
-	addrs := []*knownAddress{}
-	for _, addr := range a.addrLookup {
-		addrs = append(addrs, addr.copy())
-	}
-	return addrs
 }
 
 //------------------------------------------------
@@ -527,8 +460,7 @@ func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 	case bucketTypeOld:
 		return a.bucketsOld[bucketIdx]
 	default:
-		cmn.PanicSanity("Should not happen")
-		return nil
+		panic("Invalid bucket type")
 	}
 }
 
@@ -654,21 +586,8 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookNilAddr{addr, src}
 	}
 
-	if a.routabilityStrict && !addr.Routable() {
-		return ErrAddrBookNonRoutable{addr}
-	}
-
-	if !addr.Valid() {
-		return ErrAddrBookInvalidAddr{addr}
-	}
-
 	if !addr.HasID() {
 		return ErrAddrBookInvalidAddrNoID{addr}
-	}
-
-	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
-	if _, ok := a.ourAddrs[addr.String()]; ok {
-		return ErrAddrBookSelf{addr}
 	}
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
@@ -677,6 +596,19 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if _, ok := a.privateIDs[src.ID]; ok {
 		return ErrAddrBookPrivateSrc{src}
+	}
+
+	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
+	if _, ok := a.ourAddrs[addr.String()]; ok {
+		return ErrAddrBookSelf{addr}
+	}
+
+	if a.routabilityStrict && !addr.Routable() {
+		return ErrAddrBookNonRoutable{addr}
+	}
+
+	if !addr.Valid() {
+		return ErrAddrBookInvalidAddr{addr}
 	}
 
 	ka := a.addrLookup[addr.ID]
@@ -701,6 +633,44 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	bucket := a.calcNewBucket(addr, src)
 	a.addToNewBucket(ka, bucket)
 	return nil
+}
+
+func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddress {
+	var buckets []map[string]*knownAddress
+	switch bucketType {
+	case bucketTypeNew:
+		buckets = a.bucketsNew
+	case bucketTypeOld:
+		buckets = a.bucketsOld
+	default:
+		panic("unexpected bucketType")
+	}
+	total := 0
+	for _, bucket := range buckets {
+		total = total + len(bucket)
+	}
+	addresses := make([]*knownAddress, 0, total)
+	for _, bucket := range buckets {
+		for _, ka := range bucket {
+			addresses = append(addresses, ka)
+		}
+	}
+	selection := make([]*p2p.NetAddress, 0, num)
+	chosenSet := make(map[string]bool, num)
+	rand.Shuffle(total, func(i, j int) {
+		addresses[i], addresses[j] = addresses[j], addresses[i]
+	})
+	for _, addr := range addresses {
+		if chosenSet[addr.Addr.String()] {
+			continue
+		}
+		chosenSet[addr.Addr.String()] = true
+		selection = append(selection, addr.Addr)
+		if len(selection) >= num {
+			return selection
+		}
+	}
+	return selection
 }
 
 // Make space in the new buckets by expiring the really bad entries.

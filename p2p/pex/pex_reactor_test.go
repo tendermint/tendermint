@@ -3,7 +3,6 @@ package pex
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,14 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/conn"
+	"github.com/tendermint/tendermint/p2p/mock"
 )
 
 var (
@@ -101,7 +96,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	}
 
 	addOtherNodeAddrToAddrBook := func(switchIndex, otherSwitchIndex int) {
-		addr := switches[otherSwitchIndex].NodeInfo().NetAddress()
+		addr := switches[otherSwitchIndex].NetAddress()
 		books[switchIndex].AddAddress(addr, addr)
 	}
 
@@ -132,7 +127,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	r.RequestAddrs(peer)
 
 	size := book.Size()
-	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
+	addrs := []*p2p.NetAddress{peer.SocketAddr()}
 	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
@@ -148,8 +143,8 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	sw := createSwitchAndAddReactors(r)
 	sw.SetAddrBook(book)
 
-	peer := newMockPeer()
-	p2p.AddPeerToSwitch(sw, peer)
+	peer := mock.NewPeer(nil)
+	p2p.AddPeerToSwitchPeerSet(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
@@ -178,8 +173,8 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	sw := createSwitchAndAddReactors(r)
 	sw.SetAddrBook(book)
 
-	peer := newMockPeer()
-	p2p.AddPeerToSwitch(sw, peer)
+	peer := mock.NewPeer(nil)
+	p2p.AddPeerToSwitchPeerSet(sw, peer)
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
@@ -189,7 +184,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.True(t, r.requestsSent.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
-	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
+	addrs := []*p2p.NetAddress{peer.SocketAddr()}
 	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
 
 	// receive some addrs. should clear the request
@@ -209,36 +204,36 @@ func TestCheckSeeds(t *testing.T) {
 	defer os.RemoveAll(dir) // nolint: errcheck
 
 	// 1. test creating peer with no seeds works
-	peer := testCreateDefaultPeer(dir, 0)
-	require.Nil(t, peer.Start())
-	peer.Stop()
+	peerSwitch := testCreateDefaultPeer(dir, 0)
+	require.Nil(t, peerSwitch.Start())
+	peerSwitch.Stop()
 
 	// 2. create seed
 	seed := testCreateSeed(dir, 1, []*p2p.NetAddress{}, []*p2p.NetAddress{})
 
 	// 3. test create peer with online seed works
-	peer = testCreatePeerWithSeed(dir, 2, seed)
-	require.Nil(t, peer.Start())
-	peer.Stop()
+	peerSwitch = testCreatePeerWithSeed(dir, 2, seed)
+	require.Nil(t, peerSwitch.Start())
+	peerSwitch.Stop()
 
 	// 4. test create peer with all seeds having unresolvable DNS fails
 	badPeerConfig := &PEXReactorConfig{
 		Seeds: []string{"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
 			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657"},
 	}
-	peer = testCreatePeerWithConfig(dir, 2, badPeerConfig)
-	require.Error(t, peer.Start())
-	peer.Stop()
+	peerSwitch = testCreatePeerWithConfig(dir, 2, badPeerConfig)
+	require.Error(t, peerSwitch.Start())
+	peerSwitch.Stop()
 
 	// 5. test create peer with one good seed address succeeds
 	badPeerConfig = &PEXReactorConfig{
 		Seeds: []string{"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
 			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657",
-			seed.NodeInfo().NetAddress().String()},
+			seed.NetAddress().String()},
 	}
-	peer = testCreatePeerWithConfig(dir, 2, badPeerConfig)
-	require.Nil(t, peer.Start())
-	peer.Stop()
+	peerSwitch = testCreatePeerWithConfig(dir, 2, badPeerConfig)
+	require.Nil(t, peerSwitch.Start())
+	peerSwitch.Stop()
 }
 
 func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
@@ -268,12 +263,13 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	defer os.RemoveAll(dir) // nolint: errcheck
 
 	// 1. create peer
-	peer := testCreateDefaultPeer(dir, 1)
-	require.Nil(t, peer.Start())
-	defer peer.Stop()
+	peerSwitch := testCreateDefaultPeer(dir, 1)
+	require.Nil(t, peerSwitch.Start())
+	defer peerSwitch.Stop()
 
 	// 2. Create seed which knows about the peer
-	seed := testCreateSeed(dir, 2, []*p2p.NetAddress{peer.NodeInfo().NetAddress()}, []*p2p.NetAddress{peer.NodeInfo().NetAddress()})
+	peerAddr := peerSwitch.NetAddress()
+	seed := testCreateSeed(dir, 2, []*p2p.NetAddress{peerAddr}, []*p2p.NetAddress{peerAddr})
 	require.Nil(t, seed.Start())
 	defer seed.Stop()
 
@@ -289,31 +285,184 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	assertPeersWithTimeout(t, []*p2p.Switch{secondPeer}, 10*time.Millisecond, 1*time.Second, 2)
 }
 
-func TestPEXReactorCrawlStatus(t *testing.T) {
+func TestPEXReactorSeedMode(t *testing.T) {
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
+	pexRConfig := &PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 10 * time.Millisecond}
+	pexR, book := createReactor(pexRConfig)
+	defer teardownReactor(book)
+
+	sw := createSwitchAndAddReactors(pexR)
+	sw.SetAddrBook(book)
+	err = sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	assert.Zero(t, sw.Peers().Size())
+
+	peerSwitch := testCreateDefaultPeer(dir, 1)
+	require.NoError(t, peerSwitch.Start())
+	defer peerSwitch.Stop()
+
+	// 1. Test crawlPeers dials the peer
+	pexR.crawlPeers([]*p2p.NetAddress{peerSwitch.NetAddress()})
+	assert.Equal(t, 1, sw.Peers().Size())
+	assert.True(t, sw.Peers().Has(peerSwitch.NodeInfo().ID()))
+
+	// 2. attemptDisconnects should not disconnect because of wait period
+	pexR.attemptDisconnects()
+	assert.Equal(t, 1, sw.Peers().Size())
+
+	// sleep for SeedDisconnectWaitPeriod
+	time.Sleep(pexRConfig.SeedDisconnectWaitPeriod + 1*time.Millisecond)
+
+	// 3. attemptDisconnects should disconnect after wait period
+	pexR.attemptDisconnects()
+	assert.Equal(t, 0, sw.Peers().Size())
+}
+
+func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
+	pexRConfig := &PEXReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 1 * time.Millisecond}
+	pexR, book := createReactor(pexRConfig)
+	defer teardownReactor(book)
+
+	sw := createSwitchAndAddReactors(pexR)
+	sw.SetAddrBook(book)
+	err = sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
+
+	assert.Zero(t, sw.Peers().Size())
+
+	peerSwitch := testCreateDefaultPeer(dir, 1)
+	require.NoError(t, peerSwitch.Start())
+	defer peerSwitch.Stop()
+
+	err = sw.AddPersistentPeers([]string{peerSwitch.NetAddress().String()})
+	require.NoError(t, err)
+
+	// 1. Test crawlPeers dials the peer
+	pexR.crawlPeers([]*p2p.NetAddress{peerSwitch.NetAddress()})
+	assert.Equal(t, 1, sw.Peers().Size())
+	assert.True(t, sw.Peers().Has(peerSwitch.NodeInfo().ID()))
+
+	// sleep for SeedDisconnectWaitPeriod
+	time.Sleep(pexRConfig.SeedDisconnectWaitPeriod + 1*time.Millisecond)
+
+	// 2. attemptDisconnects should not disconnect because the peer is persistent
+	pexR.attemptDisconnects()
+	assert.Equal(t, 1, sw.Peers().Size())
+}
+
+func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
 	pexR, book := createReactor(&PEXReactorConfig{SeedMode: true})
 	defer teardownReactor(book)
 
-	// Seed/Crawler mode uses data from the Switch
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
+	err = sw.Start()
+	require.NoError(t, err)
+	defer sw.Stop()
 
-	// Create a peer, add it to the peer set and the addrbook.
-	peer := p2p.CreateRandomPeer(false)
-	p2p.AddPeerToSwitch(pexR.Switch, peer)
-	addr1 := peer.NodeInfo().NetAddress()
-	pexR.book.AddAddress(addr1, addr1)
+	peer := mock.NewPeer(nil)
+	addr := peer.SocketAddr()
 
-	// Add a non-connected address to the book.
-	_, addr2 := p2p.CreateRoutableAddr()
-	pexR.book.AddAddress(addr2, addr1)
+	err = book.AddAddress(addr, addr)
+	require.NoError(t, err)
 
-	// Get some peerInfos to crawl
-	peerInfos := pexR.getPeersToCrawl()
+	assert.True(t, book.HasAddress(addr))
+	// imitate maxAttemptsToDial reached
+	pexR.attemptsToDial.Store(addr.DialString(), _attemptsToDial{maxAttemptsToDial + 1, time.Now()})
+	pexR.crawlPeers([]*p2p.NetAddress{addr})
+	assert.False(t, book.HasAddress(addr))
+}
 
-	// Make sure it has the proper number of elements
-	assert.Equal(t, 2, len(peerInfos))
+// connect a peer to a seed, wait a bit, then stop it.
+// this should give it time to request addrs and for the seed
+// to call FlushStop, and allows us to test calling Stop concurrently
+// with FlushStop. Before a fix, this non-deterministically reproduced
+// https://github.com/tendermint/tendermint/issues/3231.
+func TestPEXReactorSeedModeFlushStop(t *testing.T) {
+	N := 2
+	switches := make([]*p2p.Switch, N)
 
-	// TODO: test
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
+	books := make([]*addrBook, N)
+	logger := log.TestingLogger()
+
+	// create switches
+	for i := 0; i < N; i++ {
+		switches[i] = p2p.MakeSwitch(cfg, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
+			books[i].SetLogger(logger.With("pex", i))
+			sw.SetAddrBook(books[i])
+
+			sw.SetLogger(logger.With("pex", i))
+
+			config := &PEXReactorConfig{}
+			if i == 0 {
+				// first one is a seed node
+				config = &PEXReactorConfig{SeedMode: true}
+			}
+			r := NewPEXReactor(books[i], config)
+			r.SetLogger(logger.With("pex", i))
+			r.SetEnsurePeersPeriod(250 * time.Millisecond)
+			sw.AddReactor("pex", r)
+
+			return sw
+		})
+	}
+
+	for _, sw := range switches {
+		err := sw.Start() // start switch and reactors
+		require.Nil(t, err)
+	}
+
+	reactor := switches[0].Reactors()["pex"].(*PEXReactor)
+	peerID := switches[1].NodeInfo().ID()
+
+	err = switches[1].DialPeerWithAddress(switches[0].NetAddress())
+	assert.NoError(t, err)
+
+	// sleep up to a second while waiting for the peer to send us a message.
+	// this isn't perfect since it's possible the peer sends us a msg and we FlushStop
+	// before this loop catches it. but non-deterministically it works pretty well.
+	for i := 0; i < 1000; i++ {
+		v := reactor.lastReceivedRequests.Get(string(peerID))
+		if v != nil {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	// by now the FlushStop should have happened. Try stopping the peer.
+	// it should be safe to do this.
+	peers := switches[0].Peers().List()
+	for _, peer := range peers {
+		peer.Stop()
+	}
+
+	// stop the switches
+	for _, s := range switches {
+		s.Stop()
+	}
 }
 
 func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
@@ -327,7 +476,7 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	pexR.RequestAddrs(peer)
 
 	size := book.Size()
-	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
+	addrs := []*p2p.NetAddress{peer.SocketAddr()}
 	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
 	pexR.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size, book.Size())
@@ -343,8 +492,8 @@ func TestPEXReactorDialPeer(t *testing.T) {
 	sw := createSwitchAndAddReactors(pexR)
 	sw.SetAddrBook(book)
 
-	peer := newMockPeer()
-	addr := peer.NodeInfo().NetAddress()
+	peer := mock.NewPeer(nil)
+	addr := peer.SocketAddr()
 
 	assert.Equal(t, 0, pexR.AttemptsToDial(addr))
 
@@ -368,44 +517,6 @@ func TestPEXReactorDialPeer(t *testing.T) {
 		assert.Equal(t, 2, pexR.AttemptsToDial(addr))
 	}
 }
-
-type mockPeer struct {
-	*cmn.BaseService
-	pubKey               crypto.PubKey
-	addr                 *p2p.NetAddress
-	outbound, persistent bool
-}
-
-func newMockPeer() mockPeer {
-	_, netAddr := p2p.CreateRoutableAddr()
-	mp := mockPeer{
-		addr:   netAddr,
-		pubKey: ed25519.GenPrivKey().PubKey(),
-	}
-	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
-	mp.Start()
-	return mp
-}
-
-func (mp mockPeer) FlushStop()         { mp.Stop() }
-func (mp mockPeer) ID() p2p.ID         { return mp.addr.ID }
-func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
-func (mp mockPeer) IsPersistent() bool { return mp.persistent }
-func (mp mockPeer) NodeInfo() p2p.NodeInfo {
-	return p2p.DefaultNodeInfo{
-		ID_:        mp.addr.ID,
-		ListenAddr: mp.addr.DialString(),
-	}
-}
-func (mockPeer) RemoteIP() net.IP              { return net.ParseIP("127.0.0.1") }
-func (mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
-func (mockPeer) Send(byte, []byte) bool        { return false }
-func (mockPeer) TrySend(byte, []byte) bool     { return false }
-func (mockPeer) Set(string, interface{})       {}
-func (mockPeer) Get(string) interface{}        { return nil }
-func (mockPeer) OriginalAddr() *p2p.NetAddress { return nil }
-func (mockPeer) RemoteAddr() net.Addr          { return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8800} }
-func (mockPeer) CloseConn() error              { return nil }
 
 func assertPeersWithTimeout(
 	t *testing.T,
@@ -496,7 +607,7 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 			book.SetLogger(log.TestingLogger())
 			for j := 0; j < len(knownAddrs); j++ {
 				book.AddAddress(knownAddrs[j], srcAddrs[j])
-				book.MarkGood(knownAddrs[j])
+				book.MarkGood(knownAddrs[j].ID)
 			}
 			sw.SetAddrBook(book)
 
@@ -515,7 +626,7 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 // Starting and stopping the peer is left to the caller
 func testCreatePeerWithSeed(dir string, id int, seed *p2p.Switch) *p2p.Switch {
 	conf := &PEXReactorConfig{
-		Seeds: []string{seed.NodeInfo().NetAddress().String()},
+		Seeds: []string{seed.NetAddress().String()},
 	}
 	return testCreatePeerWithConfig(dir, id, conf)
 }

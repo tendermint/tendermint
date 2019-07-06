@@ -1,5 +1,5 @@
-FROM alpine:3.7
-MAINTAINER Greg Szabo <greg@tendermint.com>
+FROM alpine:3.9
+LABEL maintainer="hello@tendermint.com"
 
 # Tendermint will be looking for the genesis file in /tendermint/config/genesis.json
 # (unless you change `genesis_file` in config.toml). You can put your config.toml and

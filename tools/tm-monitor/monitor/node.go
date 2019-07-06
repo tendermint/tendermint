@@ -21,8 +21,8 @@ const maxRestarts = 25
 type Node struct {
 	rpcAddr string
 
-	IsValidator bool          `json:"is_validator"` // validator or non-validator?
-	pubKey      crypto.PubKey `json:"pub_key"`
+	IsValidator bool `json:"is_validator"` // validator or non-validator?
+	pubKey      crypto.PubKey
 
 	Name         string  `json:"name"`
 	Online       bool    `json:"online"`
@@ -55,13 +55,13 @@ func NewNode(rpcAddr string, options ...func(*Node)) *Node {
 
 func NewNodeWithEventMeterAndRpcClient(rpcAddr string, em eventMeter, rpcClient rpc_client.HTTPClient, options ...func(*Node)) *Node {
 	n := &Node{
-		rpcAddr:   rpcAddr,
-		em:        em,
-		rpcClient: rpcClient,
-		Name:      rpcAddr,
-		quit:      make(chan struct{}),
+		rpcAddr:                  rpcAddr,
+		em:                       em,
+		rpcClient:                rpcClient,
+		Name:                     rpcAddr,
+		quit:                     make(chan struct{}),
 		checkIsValidatorInterval: 5 * time.Second,
-		logger: log.NewNopLogger(),
+		logger:                   log.NewNopLogger(),
 	}
 
 	for _, option := range options {

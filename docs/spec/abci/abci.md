@@ -38,20 +38,58 @@ Finally, `Query`, `CheckTx`, and `DeliverTx` include a `Codespace string`, whose
 intended use is to disambiguate `Code` values returned by different domains of the
 application. The `Codespace` is a namespace for the `Code`.
 
-## Tags
+## Events
 
 Some methods (`CheckTx, BeginBlock, DeliverTx, EndBlock`)
-include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
-something about what happened during the methods execution.
+include an `Events` field in their `Response*`. Each event contains a type and a
+list of attributes, which are key-value pairs denoting something about what happened
+during the method's execution.
 
-Tags can be used to index transactions and blocks according to what happened
-during their execution. Note that the set of tags returned for a block from
+Events can be used to index transactions and blocks according to what happened
+during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
 tag, only the value defined in `EndBlock` is used.
 
-Keys and values in tags must be UTF-8 encoded strings (e.g.
-"account.owner": "Bob", "balance": "100.0",
-"time": "2018-01-02T12:30:00Z")
+Each event has a `type` which is meant to categorize the event for a particular
+`Response*` or tx. A `Response*` or tx may contain multiple events with duplicate
+`type` values, where each distinct entry is meant to categorize attributes for a
+particular event. Every key and value in an event's attributes must be UTF-8
+encoded strings along with the even type itself.
+
+Example:
+
+```go
+ abci.ResponseDeliverTx{
+ 	// ...
+	Events: []abci.Event{
+		{
+			Type: "validator.provisions",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			},
+		},
+		{
+			Type: "validator.provisions",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+			},
+		},
+		{
+			Type: "validator.slashed",
+			Attributes: cmn.KVPairs{
+				cmn.KVPair{Key: []byte("address"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+				cmn.KVPair{Key: []byte("reason"), Value: []byte("...")},
+			},
+		},		
+		// ...
+	},
+}
+```
 
 ## Determinism
 
@@ -103,7 +141,7 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 ## Block Execution
 
 The first time a new blockchain is started, Tendermint calls
-`InitChain`. From then on, the follow sequence of methods is executed for each
+`InitChain`. From then on, the following sequence of methods is executed for each
 block:
 
 `BeginBlock, [DeliverTx], EndBlock, Commit`
@@ -258,6 +296,12 @@ Commit are included in the header of the next block.
 
 - **Request**:
   - `Tx ([]byte)`: The request transaction bytes
+  - `Type (CheckTxType)`: What type of `CheckTx` request is this? At present,
+    there are two possible values: `CheckTx_Unchecked` (the default, which says
+    that a full check is required), and `CheckTx_Checked` (when the mempool is
+    initiating a normal recheck of a transaction).
+  - `AdditionalData ([]byte)`: Reserved for future use. See
+    [here](https://github.com/tendermint/tendermint/issues/2127#issuecomment-456661420).
 - **Response**:
   - `Code (uint32)`: Response code
   - `Data ([]byte)`: Result bytes, if any.
@@ -347,8 +391,10 @@ Commit are included in the header of the next block.
   - `Version (Version)`: Version of the blockchain and the application
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
-  - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
-    local time when block was created.
+  - `Time (google.protobuf.Timestamp)`: Time of the previous block.
+    For heights > 1, it's the weighted median of the timestamps of the valid
+    votes in the block.LastCommit.
+    For height == 1, it's genesis time.
   - `NumTxs (int32)`: Number of transactions in the block
   - `TotalTxs (int64)`: Total number of transactions in the blockchain until
     now
@@ -443,12 +489,12 @@ Commit are included in the header of the next block.
 ###  ConsensusParams
 
 - **Fields**:
-  - `BlockSize (BlockSizeParams)`: Parameters limiting the size of a block.
+  - `Block (BlockParams)`: Parameters limiting the size of a block and time between consecutive blocks.
   - `Evidence (EvidenceParams)`: Parameters limiting the validity of
     evidence of byzantine behaviour.
   - `Validator (ValidatorParams)`: Parameters limitng the types of pubkeys validators can use.
 
-### BlockSizeParams
+### BlockParams
 
 - **Fields**:
   - `MaxBytes (int64)`: Max size of a block, in bytes.

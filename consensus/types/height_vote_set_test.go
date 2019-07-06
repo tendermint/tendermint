@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -11,8 +12,11 @@ import (
 
 var config *cfg.Config // NOTE: must be reset for each _test.go file
 
-func init() {
+func TestMain(m *testing.M) {
 	config = cfg.ResetTestRoot("consensus_height_vote_set_test")
+	code := m.Run()
+	os.RemoveAll(config.RootDir)
+	os.Exit(code)
 }
 
 func TestPeerCatchupRounds(t *testing.T) {
@@ -58,13 +62,12 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivVali
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             types.PrecommitType,
-		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
+		BlockID:          types.BlockID{Hash: []byte("fakehash"), PartsHeader: types.PartSetHeader{}},
 	}
 	chainID := config.ChainID()
 	err := privVal.SignVote(chainID, vote)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
-		return nil
 	}
 	return vote
 }

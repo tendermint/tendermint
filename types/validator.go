@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -51,8 +52,7 @@ func (v *Validator) CompareProposerPriority(other *Validator) *Validator {
 		} else if result > 0 {
 			return other
 		} else {
-			cmn.PanicSanity("Cannot compare identical validators")
-			return nil
+			panic("Cannot compare identical validators")
 		}
 	}
 }
@@ -66,6 +66,16 @@ func (v *Validator) String() string {
 		v.PubKey,
 		v.VotingPower,
 		v.ProposerPriority)
+}
+
+// ValidatorListString returns a prettified validator list for logging purposes.
+func ValidatorListString(vals []*Validator) string {
+	chunks := make([]string, len(vals))
+	for i, val := range vals {
+		chunks[i] = fmt.Sprintf("%s:%d", val.Address, val.VotingPower)
+	}
+
+	return strings.Join(chunks, ",")
 }
 
 // Bytes computes the unique encoding of a validator with a given voting power.

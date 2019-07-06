@@ -21,9 +21,6 @@ type Part struct {
 	Index int                `json:"index"`
 	Bytes cmn.HexBytes       `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
-
-	// Cache
-	hash []byte
 }
 
 // ValidateBasic performs basic validation.
@@ -229,7 +226,7 @@ func (ps *PartSet) IsComplete() bool {
 
 func (ps *PartSet) GetReader() io.Reader {
 	if !ps.IsComplete() {
-		cmn.PanicSanity("Cannot GetReader() on incomplete PartSet")
+		panic("Cannot GetReader() on incomplete PartSet")
 	}
 	return NewPartSetReader(ps.parts)
 }

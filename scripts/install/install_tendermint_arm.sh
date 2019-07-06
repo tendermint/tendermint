@@ -5,7 +5,7 @@ REPO=github.com/tendermint/tendermint
 # change this to a specific release or branch
 BRANCH=master
 
-GO_VERSION=1.11.4
+GO_VERSION=1.12
 
 sudo apt-get update -y
 
@@ -32,7 +32,6 @@ git checkout $BRANCH
 # XXX: uncomment if branch isn't master
 # git fetch origin $BRANCH
 make get_tools
-make get_vendor_deps
 make install
 
 # the binary is located in $GOPATH/bin

@@ -48,7 +48,7 @@ func (evR *EvidenceReactor) SetLogger(l log.Logger) {
 // It returns the list of channels for this reactor.
 func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:       EvidenceChannel,
 			Priority: 5,
 		},
@@ -58,11 +58,6 @@ func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
 	go evR.broadcastEvidenceRoutine(peer)
-}
-
-// RemovePeer implements Reactor.
-func (evR *EvidenceReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	// nothing to do
 }
 
 // Receive implements Reactor.

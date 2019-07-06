@@ -1,6 +1,9 @@
 package core
 
 import (
+	"time"
+
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -8,7 +11,6 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
@@ -18,9 +20,11 @@ const (
 	// see README
 	defaultPerPage = 30
 	maxPerPage     = 100
-)
 
-var subscribeTimeout = rpcserver.WriteTimeout / 2
+	// SubscribeTimeout is the maximum time we wait to subscribe for an event.
+	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
+	SubscribeTimeout = 5 * time.Second
+)
 
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
@@ -40,7 +44,8 @@ type transport interface {
 }
 
 type peers interface {
-	DialPeersAsync(p2p.AddrBook, []string, bool) error
+	AddPersistentPeers([]string) error
+	DialPeersAsync([]string) error
 	NumPeers() (outbound, inbound, dialig int)
 	Peers() p2p.IPeerSet
 }
@@ -68,9 +73,11 @@ var (
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
-	mempool          *mempl.Mempool
+	mempool          mempl.Mempool
 
 	logger log.Logger
+
+	config cfg.RPCConfig
 )
 
 func SetStateDB(db dbm.DB) {
@@ -81,7 +88,7 @@ func SetBlockStore(bs sm.BlockStore) {
 	blockStore = bs
 }
 
-func SetMempool(mem *mempl.Mempool) {
+func SetMempool(mem mempl.Mempool) {
 	mempool = mem
 }
 
@@ -131,6 +138,11 @@ func SetLogger(l log.Logger) {
 
 func SetEventBus(b *types.EventBus) {
 	eventBus = b
+}
+
+// SetConfig sets an RPCConfig.
+func SetConfig(c cfg.RPCConfig) {
+	config = c
 }
 
 func validatePage(page, perPage, totalCount int) int {

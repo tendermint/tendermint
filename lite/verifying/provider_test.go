@@ -257,6 +257,7 @@ func TestConcurrentProvider(t *testing.T) {
 	cp := NewConcurrentProvider(vp)
 
 	err = source.SaveFullCommit(fcz[7])
+	require.Nil(err, "%+v", err)
 	err = source.SaveFullCommit(fcz[8])
 	require.NoError(err, "%+v", err)
 	sh := fcz[8].SignedHeader
