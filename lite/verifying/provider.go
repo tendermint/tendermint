@@ -59,7 +59,7 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 	vp := initProvider(chainID, rootDir, client, logger, cacheSize, options)
 
 	// Get the latest source commit, or the one provided in options.
-	trustCommit, err := getTrustCommit(client, options)
+	trustCommit, err := getTrustedCommit(client, options)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 	return vp, nil
 }
 
-// getTrustCommit returns a commit trusted with weak subjectivity. It either:
+// getTrustedCommit returns a commit trusted with weak subjectivity. It either:
 // 1. Fetches a commit at height provided in options and ensures the specified commit
 // 	is within the trust period of latest block
 // 2. Trusts the remote node and gets the latest commit
