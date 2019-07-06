@@ -100,7 +100,7 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 // 3. Returns an error if the height provided in trust option is too old to sync to latest.
 func getTrustedCommit(client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
 
-	// Get the lastest commit always
+	// Get the latest commit always
 	latestBlock, err := client.Commit(nil)
 	if err != nil {
 		return types.SignedHeader{}, err

@@ -16,10 +16,10 @@ import (
 //
 // You can set different weights of validators each time you call ToValidators,
 // and can optionally extend the validator set later with Extend.
-type privKeys []crypto.PrivKey
+type PrivKeys []crypto.PrivKey
 
 // genPrivKeys produces an array of private keys to generate commits.
-func genPrivKeys(n int) privKeys {
+func GenPrivKeys(n int) privKeys {
 	res := make(privKeys, n)
 	for i := range res {
 		res[i] = ed25519.GenPrivKey()

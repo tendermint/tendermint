@@ -10,17 +10,18 @@ import (
 
 	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/lite"
 	"github.com/tendermint/tendermint/types"
 )
 
 func TestProviderValidPath(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
+	require := require.New(t)
 	trust := lite.NewDBProvider("trust", dbm.NewMemDB())
 	source := lite.NewDBProvider("source", dbm.NewMemDB())
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
-	keys := genPrivKeys(5)
+	keys := lite.GenPrivKeys(5)
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
@@ -28,7 +29,7 @@ func TestProviderValidPath(t *testing.T) {
 	consHash := []byte("params")
 	resHash := []byte("results")
 	count := 50
-	fcz := make([]FullCommit, count)
+	fcz := make([]lite.FullCommit, count)
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(vote, 0)
 		nextVals := nkeys.ToValidators(vote, 0)
@@ -46,7 +47,7 @@ func TestProviderValidPath(t *testing.T) {
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
 	require.NoError(err)
-	vp := NewProvider(chainID, trust, source)
+	vp, _ := NewProvider(chainID, trust, source)
 	vp.SetLogger(log.TestingLogger())
 
 	// The latest commit is the first one.
@@ -64,7 +65,7 @@ func TestProviderValidPath(t *testing.T) {
 	fc, err = vp.LatestFullCommit(chainID, 0, fcz[count-1].SignedHeader.Height)
 	require.NoError(err)
 	require.NoError(fc.ValidateFull(chainID))
-	require.Equal(fcz[0].SignedHeader, fc.SignedHeeader)
+	require.Equal(fcz[0].SignedHeader, fc.SignedHeader)
 
 	// With more info, we succeed.
 	for i := 0; i < count; i++ {
@@ -74,7 +75,7 @@ func TestProviderValidPath(t *testing.T) {
 	fc, err = vp.LatestFullCommit(chainID, 0, fcz[count-1].SignedHeader.Height)
 	require.NoError(err)
 	require.NoError(fc.ValidateFull(chainID))
-	require.Equal(fcz[count-1].SignedHeader, fc.SignedHeeader)
+	require.Equal(fcz[count-1].SignedHeader, fc.SignedHeader)
 }
 
 func TestProviderDynamicVerification(t *testing.T) {
@@ -86,14 +87,14 @@ func TestProviderDynamicVerification(t *testing.T) {
 	n1, n2 := 10, 10
 	nCommits := n1 + n2 + 1
 	maxHeight := int64(nCommits)
-	fcz := make([]FullCommit, nCommits)
+	fcz := make([]lite.FullCommit, nCommits)
 
 	// gen the 2 val sets
 	chainID := "dynamic-verifier"
 	power := int64(10)
-	keys1 := genPrivKeys(5)
+	keys1 := lite.GenPrivKeys(5)
 	vals1 := keys1.ToValidators(power, 0)
-	keys2 := genPrivKeys(5)
+	keys2 := lite.GenPrivKeys(5)
 	vals2 := keys2.ToValidators(power, 0)
 
 	// make some commits with the first
@@ -117,7 +118,7 @@ func TestProviderDynamicVerification(t *testing.T) {
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
 	require.NoError(t, err)
-	vp := NewProvider(chainID, trust, source)
+	vp, _ := NewProvider(chainID, trust, source)
 	vp.SetLogger(log.TestingLogger())
 
 	// fetch the latest from the source
@@ -127,7 +128,7 @@ func TestProviderDynamicVerification(t *testing.T) {
 	require.Equal(fcz[nCommits-1].SignedHeader, latestFC.SignedHeader)
 }
 
-func makeFullCommit(height int64, keys privKeys, vals, nextVals *types.ValidatorSet, chainID string) FullCommit {
+func makeFullCommit(height int64, keys lite.PrivKeys, vals, nextVals *types.ValidatorSet, chainID string) lite.FullCommit {
 	height += 1
 	consHash := []byte("special-params")
 	appHash := []byte(fmt.Sprintf("h=%d", height))
@@ -145,14 +146,14 @@ func TestVerifingProviderHistorical(t *testing.T) {
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
-	keys := genPrivKeys(5)
+	keys := lite.GenPrivKeys(5)
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
 	chainID := "inquiry-test"
 	count := 10
 	consHash := []byte("special-params")
-	fcz := make([]FullCommit, count)
+	fcz := make([]lite.FullCommit, count)
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(vote, 0)
 		nextVals := nkeys.ToValidators(vote, 0)
@@ -171,7 +172,7 @@ func TestVerifingProviderHistorical(t *testing.T) {
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
 	require.NoError(err)
-	vp := NewProvider(chainID, trust, source)
+	vp, _ := NewProvider(chainID, trust, source)
 	vp.SetLogger(log.TestingLogger())
 
 	// Store a few full commits as trust.
@@ -186,7 +187,7 @@ func TestVerifingProviderHistorical(t *testing.T) {
 	assert.Equal(fcz[7].Height(), vp.LastTrustedHeight())
 	fc_, err := trust.LatestFullCommit(chainID, fcz[8].Height(), fcz[8].Height())
 	require.Error(err, "%+v", err)
-	assert.Equal((FullCommit{}), fc_)
+	assert.Equal((lite.FullCommit{}), fc_)
 
 	// With fcz[9] Verify will update last trusted height.
 	err = source.SaveFullCommit(fcz[9])
@@ -226,14 +227,14 @@ func TestConcurrentProvider(t *testing.T) {
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
-	keys := genPrivKeys(5)
+	keys := lite.GenPrivKeys(5)
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
 	chainID := "inquiry-test"
 	count := 10
 	consHash := []byte("special-params")
-	fcz := make([]FullCommit, count)
+	fcz := make([]lite.FullCommit, count)
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(vote, 0)
 		nextVals := nkeys.ToValidators(vote, 0)
@@ -252,15 +253,15 @@ func TestConcurrentProvider(t *testing.T) {
 	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
 	require.NoError(err)
-	vp := NewProvider(chainID, trust, source)
+	vp, _ := NewProvider(chainID, trust, source)
 	vp.SetLogger(log.TestingLogger())
-	cp := NewConcurrentProvider(vp)
+	cp := lite.NewConcurrentUpdatingProvider(vp)
 
 	err = source.SaveFullCommit(fcz[7])
 	require.Nil(err, "%+v", err)
 	err = source.SaveFullCommit(fcz[8])
 	require.NoError(err, "%+v", err)
-	sh := fcz[8].SignedHeader
+	// sh := fcz[8].SignedHeader unused
 
 	var wg sync.WaitGroup
 	count = 100
