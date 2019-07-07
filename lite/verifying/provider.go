@@ -263,7 +263,7 @@ func (vp *Provider) UpdateToHeight(chainID string, height int64) error {
 	}
 
 	// Fetch trusted FC at exactly height, while updating trust when possible.
-	_, err = vp.fetchAndVerifyToHeight(height)
+	_, err = vp.fetchAndVerifyToHeightBisecting(height)
 	if err != nil {
 		return err
 	}
@@ -335,11 +335,6 @@ func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader, valset,
 // Panics if trustedFC.Height() >= newFC.Height().
 func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 
-	//Locally validate the full commit before we can trust it.
-	if err := newFC.ValidateFull(vp.chainID); err != nil {
-		return err
-	}
-
 	// Shouldn't have trusted commits before the new commit height
 	if trustedFC.Height() >= newFC.Height() {
 		panic("should not happen")
@@ -355,17 +350,85 @@ func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 		return err
 	}
 
+	//Locally validate the full commit before we can trust it.
+	if newFC.Height() >= trustedFC.Height()+1 {
+		err := newFC.ValidateFull(vp.chainID)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	return vp.trusted.SaveFullCommit(newFC)
 }
 
-// fetchAndVerifyToHeight will use divide-and-conquer to find a path to h.
+func (vp *Provider) fetchAndVerifyToHeightLinear(h int64) (lite.FullCommit, error) {
+
+	// Fetch latest full commit from source.
+	sourceFC, err := vp.source.LatestFullCommit(vp.chainID, h, h)
+	if err != nil {
+		return lite.FullCommit{}, err
+	}
+
+	// If sourceFC.Height() != h, we can't do it.
+	if sourceFC.Height() != h {
+		return lite.FullCommit{}, lerr.ErrCommitNotFound()
+	}
+
+	// Validate the full commit.  This checks the cryptographic
+	// signatures of Commit against Validators.
+	if err := sourceFC.ValidateFull(vp.chainID); err != nil {
+		return lite.FullCommit{}, err
+	}
+
+	if h == sourceFC.Height()+1 {
+		trustedFC, err := vp.trusted.LatestFullCommit(vp.chainID, 1, h)
+		if err != nil {
+			return lite.FullCommit{}, err
+		}
+
+		err = vp.verifyAndSave(trustedFC, sourceFC)
+
+		if err != nil {
+			return lite.FullCommit{}, err
+		}
+		return sourceFC, nil
+	}
+
+	// Verify latest FullCommit against trusted FullCommits
+	// Use a loop rather than recursion to avoid stack overflows.
+	for {
+		// Fetch latest full commit from trusted.
+		trustedFC, err := vp.trusted.LatestFullCommit(vp.chainID, 1, h)
+		if err != nil {
+			return lite.FullCommit{}, err
+		}
+
+		// We have nothing to do.
+		if trustedFC.Height() == h {
+			return trustedFC, nil
+		}
+		sourceFC, err = vp.source.LatestFullCommit(vp.chainID, trustedFC.Height()+1, trustedFC.Height()+1)
+
+		if err != nil {
+			return lite.FullCommit{}, err
+		}
+		err = vp.verifyAndSave(trustedFC, sourceFC)
+
+		if err != nil {
+			return lite.FullCommit{}, err
+		}
+	}
+}
+
+// fetchAndVerifyToHeightBiscecting will use divide-and-conquer to find a path to h.
 // Returns nil error iff we successfully verify for height h, using repeated
 // applications of bisection if necessary.
 // Along the way, if a recent trust is used to verify a more recent header, the
 // more recent header becomes trusted.
 //
 // Returns ErrCommitNotFound if source Provider doesn't have the commit for h.
-func (vp *Provider) fetchAndVerifyToHeight(h int64) (lite.FullCommit, error) {
+func (vp *Provider) fetchAndVerifyToHeightBisecting(h int64) (lite.FullCommit, error) {
 
 	// Fetch latest full commit from source.
 	sourceFC, err := vp.source.LatestFullCommit(vp.chainID, h, h)
@@ -412,7 +475,7 @@ func (vp *Provider) fetchAndVerifyToHeight(h int64) (lite.FullCommit, error) {
 
 			// Recursive call back into fetchAndVerifyToHeight. Once you get to an inner
 			// call that succeeeds, the outer calls will succeed.
-			_, err = vp.fetchAndVerifyToHeight(mid)
+			_, err = vp.fetchAndVerifyToHeightBisecting(mid)
 			if err != nil {
 				return lite.FullCommit{}, err
 			}
