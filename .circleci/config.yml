@@ -347,6 +347,7 @@ jobs:
             bash -x ./scripts/gitian-build.sh all
             for os in darwin linux windows; do
               cp gitian-build-${os}/result/tendermint-${os}-res.yml .
+              cp gitian-build-${os}/build/out/tendermint-*.tar.gz .
               rm -rf gitian-build-${os}/
             done
       - store_artifacts:
@@ -355,6 +356,8 @@ jobs:
           path: /go/src/github.com/tendermint/tendermint/tendermint-linux-res.yml
       - store_artifacts:
           path: /go/src/github.com/tendermint/tendermint/tendermint-windows-res.yml
+      - store_artifacts:
+          path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
 
 workflows:
   version: 2
