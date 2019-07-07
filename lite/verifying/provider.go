@@ -335,6 +335,11 @@ func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader, valset,
 // Panics if trustedFC.Height() >= newFC.Height().
 func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 
+	//Locally validate the full commit before we can trust it.
+	if err := newFC.ValidateFull(vp.chainID); err != nil {
+		return err
+	}
+
 	// Shouldn't have trusted commits before the new commit height
 	if trustedFC.Height() >= newFC.Height() {
 		panic("should not happen")
@@ -345,7 +350,7 @@ func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 		return lerr.ErrCommitExpired()
 	}
 
-	// If the new full commit is the next block, verify it. Otherwise use the verify future commit function
+	// Validate the new commit in terms of validator set of last trusted commit.
 	if err := trustedFC.NextValidators.VerifyCommit(vp.chainID, newFC.SignedHeader.Commit.BlockID, newFC.SignedHeader.Height, newFC.SignedHeader.Commit); err != nil {
 		return err
 	}
