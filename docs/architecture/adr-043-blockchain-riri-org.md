@@ -156,9 +156,9 @@ func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
 }
 
 ```
-### Processor internals 
+### Processor Internals
 
-The processor is responsible for ordering, verifying and executing blocks. The Processor will maintain an internal cursor `height` of the last processed block. As a set of blocks arrive unordered, the Processor will check if it has `height+1` necessary to process the next block. The processor also maintains the map `blockPeers` of peers to height, to keep track of which peer provided the block at `height`. `blockPeers` can be used in`handleRemovePeer(...)` to reschedule all unprocessed blocks provided by a peer who has errored.
+The processor is responsible for ordering, verifying and executing blocks. The Processor will maintain an internal cursor `height` refering to the last processed block. As a set of blocks arrive unordered, the Processor will check if it has `height+1` necessary to process the next block. The processor also maintains the map `blockPeers` of peers to height, to keep track of which peer provided the block at `height`. `blockPeers` can be used in`handleRemovePeer(...)` to reschedule all unprocessed blocks provided by a peer who has errored.
 
 ```go
 type Proccesor struct {
@@ -170,8 +170,7 @@ type Proccesor struct {
 }
 
 func (proc *Processor) handleBlockResponse(peerID, block) {
-	if block.height < height {
-		// skip
+    if block.height <= height || block[block.height] {
 	} else if blocks[block.height] {
 		return errDuplicateBlock{}
 	} else  {
