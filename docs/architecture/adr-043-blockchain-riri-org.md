@@ -186,7 +186,7 @@ func (proc *Processor) handleBlockResponse(peerID, block) {
 			delete blocks[height]
 			height++
 			lastTouch = msg.time
-			return pcBlockProcessed{height}
+			return pcBlockProcessed{height-1}
 		} else {
 			... // Delete all unprocessed block from the peer
 			return pcBlockProcessError{peerID, height}
