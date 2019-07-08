@@ -2,11 +2,12 @@
 
 ## Changelog
 * 18-06-2019: Initial draft
+* 08-07-2019: Reviewed
 
 ## Context
 
-The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind.  The goal of [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up in go-channels into pure `handle*` functions.  While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there. 
-The following diagram illustrates the state of the [blockchain-reorg](https://github.com/tendermint/tendermint/pull/35610) reactor which will be refered to as `v1`.
+The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind.  The goal of [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up in go-channels into pure `handle*` functions.  While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there. 
+The following diagram illustrates the state of the [blockchain-reorg](https://github.com/tendermint/tendermint/pull/35610) reactor which will be referred to as `v1`.
 
 ![v1 Blockchain Reactor Architecture
 Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
@@ -18,7 +19,7 @@ While `v1` of the blockchain reactor has shown significant improvements in terms
 * Peer communication is spread over multiple components creating complex dependency graph which must be mocked out during testing.
 * Timeouts modeled as stateful tickers introduce non-determinism in tests
 
-This ADR is meant to specify the missing components and control nessesary to acheive [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md).
+This ADR is meant to specify the missing components and control necessary to achieve [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md).
 
 ## Decision
 
@@ -29,7 +30,8 @@ Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdad
 
 ### Reactor changes in detail
 
-The reactor will include a demultiplexing routine which will send each message to each sub routine for independant processing. Each sub routine will then select the messages it's interested in and call the handle specific function specified in [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md).
+The reactor will include a demultiplexing routine which will send each message to each sub routine for independent processing. Each sub routine will then select the messages it's interested in and call the handle specific function specified in [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md). The demuxRoutine acts as "pacemaker" setting the time in which events are expected to be handled.
+
 
 ```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
@@ -42,6 +44,9 @@ func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
 				processorMsgs <- now
 				ioMsgs <- now
 			case msg:= <- msgs:
+				msg.time = time.Now()
+				// These channels should produce backpressure before
+				// being full to avoid starving each other
 				schedulerMsgs <- msg
 				processorMsgs <- msg
 				ioMesgs <- msg
@@ -58,7 +63,7 @@ func processRoutine(input chan Message, output chan Message) {
 		msg := <- input
 		switch msg := msg.(type) {
 			case bcBlockRequestMessage:
-				output <- processor.handleBlockRequest(msg, time.Now())
+				output <- processor.handleBlockRequest(msg))
 			...
 			case stop:
 				processor.stop()
@@ -72,7 +77,7 @@ func scheduleRoutine(input chan Message, output chan Message) {
 		msg := <-msgs
 		switch msg := input.(type) {
 			case bcBlockResponseMessage:
-				output <- scheduler.handleBlockResponse(msg, time.Now())
+				output <- scheduler.handleBlockResponse(msg)
 			...
 			case stop:
 				schedule.stop()
@@ -84,7 +89,7 @@ func scheduleRoutine(input chan Message, output chan Message) {
 
 ## Lifecycle management
 
-A set of routines for individual processes allow processes to run in parallel with clear lifecycle management. `Start`, `Stop`, and `AddPeer` hooks currently present in the reactor will delegate to the sub-routines allowing them to manage internal state independant without further coupling to the reactor.
+A set of routines for individual processes allow processes to run in parallel with clear lifecycle management. `Start`, `Stop`, and `AddPeer` hooks currently present in the reactor will delegate to the sub-routines allowing them to manage internal state independent without further coupling to the reactor.
 
 ```go
 func (r *BlockChainReactor) Start() {
@@ -141,7 +146,7 @@ func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
 ```
 ### Processor internals 
 
-The processor will be responsible for validating and processing blocks. The Processor will maintain an internal cursor `height` of the last processed block. As a set of blocks arrive unordered, the the Processor will check if it has `height+1` nessary to process the next block. The processor also maintains the map `blockPeers` of peers to height, to keep track of which peer provided the block at `height`. `blockPeers` can be used in`handleRemovePeer(...)` to reschedule all unprocessed blocks provided by a peer who has errored.
+The processor is responsible for ordering, verifying and executing blocks. The Processor will maintain an internal cursor `height` of the last processed block. As a set of blocks arrive unordered, the Processor will check if it has `height+1` necessary to process the next block. The processor also maintains the map `blockPeers` of peers to height, to keep track of which peer provided the block at `height`. `blockPeers` can be used in`handleRemovePeer(...)` to reschedule all unprocessed blocks provided by a peer who has errored.
 
 ```go
 type Proccesor struct {
@@ -152,7 +157,7 @@ type Proccesor struct {
 	lastTouch timestamp
 }
 
-func (proc *Processor) handleBlockResponse(peerID, block, time) {
+func (proc *Processor) handleBlockResponse(peerID, block) {
 	if block.height < height {
 		// skip
 	} else if blocks[block.height] {
@@ -169,7 +174,7 @@ func (proc *Processor) handleBlockResponse(peerID, block, time) {
 		if err == nil {
 			delete blocks[height]
 			height++
-			lastTouch = time
+			lastTouch = msg.time
 			return pcBlockProcessed{height}
 		} else {
 			... // Delete all unprocessed block from the peer
@@ -283,7 +288,7 @@ type scPeer struct {
 The scheduler is configured to maintain a target `n` of in flight
 messages and will use feedback from `_blockResponseMessage`,
 `_statusResponseMessage` and `_peerError` produce an optimal assignment
-of scBlockRequestMessage at each `timeCheckEv`. 
+of scBlockRequestMessage at each `timeCheckEv`.
 
 ```
 
@@ -352,21 +357,21 @@ Work in progress
 
 * Test become deterministic
 * Simulation becomes a-termporal: no need wait for a wall-time timeout
-* Peer Selection can be independantly tested/simulated
+* Peer Selection can be independently tested/simulated
 * Develop a general approach to refactoring reactors
 
 ### Negative
 
 ### Neutral
 
-### Implementaiton Path
+### Implementation Path
 
 * Implement the scheduler, test the scheduler, review the rescheduler
 * Implement the processor, test the processor, review the processor
-* Implement the demuxer, write integration test, review integraiton tests
+* Implement the demuxer, write integration test, review integration tests
 
 ## References
 
 
-* [ADR-40](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-040-blockchain-reactor-refactor.md): The original blockchain reactor re-org proposal
+* [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md): The original blockchain reactor re-org proposal
 * [Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561): The current blockchain reactor re-org implementation (v1)
