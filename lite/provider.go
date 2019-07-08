@@ -136,5 +136,8 @@ func (cp *ConcurrentProvider) UpdateToHeight(chainID string, height int64) error
 	}
 
 	// Is not the first call, so return the error from previous concurrent calls.
+	if callback != nil {
+		panic("expected callback to be nil")
+	}
 	return pr.err
 }
