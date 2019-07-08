@@ -48,7 +48,7 @@ func TestMultiProvider(t *testing.T) {
 func checkProvider(t *testing.T, p PersistentProvider, chainID, app string) {
 	assert, require := assert.New(t), require.New(t)
 	appHash := []byte(app)
-	keys := genPrivKeys(5)
+	keys := GenPrivKeys(5)
 	count := 10
 
 	// Make a bunch of full commits.
@@ -113,7 +113,7 @@ func TestMultiLatestFullCommit(t *testing.T) {
 
 	chainID := "cache-best-height"
 	appHash := []byte("01234567")
-	keys := genPrivKeys(5)
+	keys := GenPrivKeys(5)
 	count := 10
 
 	// Set a bunch of full commits.

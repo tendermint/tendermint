@@ -12,7 +12,7 @@ import (
 func TestBaseVerifier(t *testing.T) {
 	assert := assert.New(t)
 
-	keys := genPrivKeys(4)
+	keys := GenPrivKeys(4)
 	// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
 	vals := keys.ToValidators(20, 10)
 	// and a Verifier based on our known set
@@ -20,7 +20,7 @@ func TestBaseVerifier(t *testing.T) {
 	cert := NewBaseVerifier(chainID, 2, vals)
 
 	cases := []struct {
-		keys        privKeys
+		keys        PrivKeys
 		vals        *types.ValidatorSet
 		height      int64
 		first, last int  // who actually signs
