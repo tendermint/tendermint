@@ -52,7 +52,7 @@ func (fc FullCommit) ValidateFull(chainID string) error {
 		return errors.New("need FullCommit.NextValidators")
 	}
 
-	// If the commit ValidatorHash doesn't match the block ValidatorHash return an error
+	// If the commit NextValidatorHash doesn't match the block Next ValidatorHash return an error
 	if !bytes.Equal(fc.SignedHeader.NextValidatorsHash, fc.NextValidators.Hash()) {
 		return fmt.Errorf("header has next vhash %X but next valset hash is %X",
 			fc.SignedHeader.NextValidatorsHash,

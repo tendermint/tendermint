@@ -249,7 +249,7 @@ func (vp *Provider) ChainID() string {
 // Implements UpdatingProvider
 //
 // On success, it will store the full commit (SignedHeader + Validators) in vp.trusted
-// NOTE: For concurrent usage, use concurrentProvider
+// NOTE: For concurrent usage, use ConcurrentProvider
 func (vp *Provider) UpdateToHeight(chainID string, height int64) error {
 
 	// If we alreedy have the commit, just return nil

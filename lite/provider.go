@@ -51,7 +51,7 @@ type UpdatingProvider interface {
 
 //----------------------------------------
 
-type concurrentProvider struct {
+type ConcurrentProvider struct {
 	UpdatingProvider
 
 	// pending map to synchronize concurrent verification requests
@@ -71,8 +71,8 @@ type pendingResult struct {
 	err  error // cached result.
 }
 
-func NewConcurrentUpdatingProvider(up UpdatingProvider) concurrentProvider {
-	return concurrentProvider{
+func NewConcurrentUpdatingProvider(up UpdatingProvider) ConcurrentProvider {
+	return ConcurrentProvider{
 		UpdatingProvider:     up,
 		pendingVerifications: make(map[pendingKey]*pendingResult),
 	}
@@ -84,7 +84,7 @@ func NewConcurrentUpdatingProvider(up UpdatingProvider) concurrentProvider {
 // The callback must be called, otherwise there will be memory leaks.
 // Other subsequent calls should just return uniq.err.
 // NOTE: This is a separate function, primarily to make mtx unlocking more obviously safe via defer.
-func (cp concurrentProvider) joinConcurrency(chainID string, height int64) (uniq *pendingResult, isFirstCall bool, callback func(error)) {
+func (cp ConcurrentProvider) joinConcurrency(chainID string, height int64) (uniq *pendingResult, isFirstCall bool, callback func(error)) {
 	cp.mtx.Lock()
 	defer cp.mtx.Unlock()
 
@@ -111,7 +111,7 @@ func (cp concurrentProvider) joinConcurrency(chainID string, height int64) (uniq
 	}
 }
 
-func (cp *concurrentProvider) UpdateToHeight(chainID string, height int64) error {
+func (cp *ConcurrentProvider) UpdateToHeight(chainID string, height int64) error {
 
 	// Performs synchronization for multi-threads verification at the same height.
 	var presult *pendingResult
