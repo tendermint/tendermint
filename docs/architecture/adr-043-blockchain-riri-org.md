@@ -133,16 +133,19 @@ func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 ```
 
 ## IO handling
-An io handling routine within the reactor will isolate peer communication.
+An io handling routine within the reactor will isolate peer communication. Message going through the ioRoutine will usually be one way, using `p2p` APIs. In the case in which the `p2p` API such as `trySend` return errors, the ioRoutine can funnel those message back to the demuxRoutine for distribution to the other routines. For instance errors from the ioRoutine can be consumed by the scheduler to inform better peer selection implementations.
 
 ```go
-func (r *BlockchainReacor) ioRoutine(chan ioMsgs, ...) {
+func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message) {
 	...
 	for {
 		msg := <-ioMsgs
 		switch msg := msg.(type) {
 			case scBlockRequestMessage:
-				r.sendBlockRequestToPeer(...)
+				queued := r.sendBlockRequestToPeer(...)
+				if queued {
+					outMsgs <- ioSendQueued{...}
+				}
 			case scStatusRequestMessage
 				r.sendStatusRequestToPeer(...)
 			case bcPeerError
