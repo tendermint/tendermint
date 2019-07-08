@@ -14,7 +14,7 @@
 - `0.8.0`, `0.8` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/bf64dd21fdb193e54d8addaaaa2ecf7ac371de8c/DOCKER/Dockerfile)
 - `develop` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/master/DOCKER/Dockerfile.develop)
 
-`develop` tag points to the [develop](https://github.com/tendermint/tendermint/tree/master) branch.
+`master` tag points to the [master](https://github.com/tendermint/tendermint/tree/master) branch.
 
 ## Quick reference
 
@@ -31,7 +31,7 @@
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language, and securely replicates it on many machines.
 
-For more background, see the [introduction](https://tendermint.com/docs/introduction/#quick-start).
+For more background, see the [the docs](https://tendermint.com/docs/introduction/#quick-start).
 
 To get started developing applications, see the [application developers guide](https://tendermint.com/docs/introduction/quick-start.html).
 
