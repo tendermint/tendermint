@@ -1,7 +1,8 @@
 /*
-Package client defines a provider that uses a rpcclient
-to get information, which is used to get new headers
-and validators directly from a Tendermint client.
+Package client defines a provider that uses an RPC client to get information
+like new headers and validators directly from a Tendermint node.
+
+Use either NewProvider or NewHTTPProvider to construct one.
 */
 package client
 
@@ -28,7 +29,8 @@ type provider struct {
 	client  SignStatusClient
 }
 
-// NewProvider implements Provider (but not PersistentProvider).
+// NewProvider creates a lite.Provider using the given chain ID and
+// SignStatusClient.
 func NewProvider(chainID string, client SignStatusClient) lite.Provider {
 	return &provider{
 		logger:  log.NewNopLogger(),
@@ -37,94 +39,59 @@ func NewProvider(chainID string, client SignStatusClient) lite.Provider {
 	}
 }
 
-// NewHTTPProvider can connect to a tendermint json-rpc endpoint
-// at the given url, and uses that as a read-only provider.
+// NewHTTPProvider creates a lite.Provider, which is using the rpcclient.HTTP
+// client under the hood.
 func NewHTTPProvider(chainID, remote string) lite.Provider {
 	return NewProvider(chainID, rpcclient.NewHTTP(remote, "/websocket"))
 }
 
-// Implements Provider.
+// SetLogger implements lite.Provider.
 func (p *provider) SetLogger(logger log.Logger) {
 	logger = logger.With("module", "lite/client")
 	p.logger = logger
 }
 
-// StatusClient returns the internal client as a StatusClient
-func (p *provider) StatusClient() rpcclient.StatusClient {
-	return p.client
-}
-
-// LatestFullCommit implements Provider.
+// LatestFullCommit implements lite.Provider.
 func (p *provider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (fc lite.FullCommit, err error) {
-	// If the chain-id is wrong, error
 	if chainID != p.chainID {
-		err = fmt.Errorf("expected chainID %s, got %s", p.chainID, chainID)
-		return
+		return fc, fmt.Errorf("expected chainID %s, got %s", p.chainID, chainID)
 	}
 
-	// if the heights are incorrect error
 	if maxHeight != 0 && maxHeight < minHeight {
-		err = fmt.Errorf("need maxHeight == 0 or minHeight <= maxHeight, got min %v and max %v",
+		return fc, fmt.Errorf("need maxHeight == 0 or minHeight <= maxHeight, got min %v and max %v",
 			minHeight, maxHeight)
-		return
 	}
 
-	// Fetch the latest block
 	commit, err := p.fetchLatestCommit(minHeight, maxHeight)
 	if err != nil {
-		return
+		return fc, err
 	}
 
-	// Make a lite.FullCommit out of the signed header
-	fc, err = p.fillFullCommit(commit.SignedHeader)
-	return
+	return p.fillFullCommit(commit.SignedHeader)
 }
 
-// fetchLatestCommit fetches the latest commit from the client.
 func (p *provider) fetchLatestCommit(minHeight int64, maxHeight int64) (*ctypes.ResultCommit, error) {
 	status, err := p.client.Status()
 	if err != nil {
 		return nil, err
 	}
+
 	if status.SyncInfo.LatestBlockHeight < minHeight {
-		err = fmt.Errorf("provider is at %v but require minHeight=%v",
+		return nil, fmt.Errorf("provider is at %d but require minHeight=%d",
 			status.SyncInfo.LatestBlockHeight, minHeight)
-		return nil, err
 	}
+
 	if maxHeight == 0 {
 		maxHeight = status.SyncInfo.LatestBlockHeight
 	} else if status.SyncInfo.LatestBlockHeight < maxHeight {
 		maxHeight = status.SyncInfo.LatestBlockHeight
 	}
+
 	return p.client.Commit(&maxHeight)
-}
-
-// Implements Provider.
-func (p *provider) ValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
-	return p.getValidatorSet(chainID, height)
-}
-
-func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
-	if chainID != p.chainID {
-		err = fmt.Errorf("expected chainID %s, got %s", p.chainID, chainID)
-		return
-	}
-	if height < 1 {
-		err = fmt.Errorf("expected height >= 1, got height %v", height)
-		return
-	}
-	res, err := p.client.Validators(&height)
-	if err != nil {
-		// TODO pass through other types of errors.
-		return nil, lerr.ErrUnknownValidators(chainID, height)
-	}
-	valset = types.NewValidatorSet(res.Validators)
-	return
 }
 
 // This does no validation.
 func (p *provider) fillFullCommit(signedHeader types.SignedHeader) (fc lite.FullCommit, err error) {
-
 	// Get the validators.
 	valset, err := p.getValidatorSet(signedHeader.ChainID, signedHeader.Height)
 	if err != nil {
@@ -138,4 +105,27 @@ func (p *provider) fillFullCommit(signedHeader types.SignedHeader) (fc lite.Full
 	}
 
 	return lite.NewFullCommit(signedHeader, valset, nextValset), nil
+}
+
+// ValidatorSet implements lite.Provider.
+func (p *provider) ValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
+	return p.getValidatorSet(chainID, height)
+}
+
+func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
+	if chainID != p.chainID {
+		return nil, fmt.Errorf("expected chainID %s, got %s", p.chainID, chainID)
+	}
+
+	if height < 1 {
+		return nil, fmt.Errorf("expected height >= 1, got height %d", height)
+	}
+
+	res, err := p.client.Validators(&height)
+	if err != nil {
+		// TODO pass through other types of errors.
+		return nil, lerr.ErrUnknownValidators(chainID, height)
+	}
+
+	return types.NewValidatorSet(res.Validators), nil
 }

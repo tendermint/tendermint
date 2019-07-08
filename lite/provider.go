@@ -15,6 +15,7 @@ type Provider interface {
 	// LatestFullCommit returns the latest commit with minHeight <= height <=
 	// maxHeight.
 	// If maxHeight is zero, returns the latest where minHeight <= height.
+	// If maxHeight is greater than the latest height, the latter one will be returned.
 	LatestFullCommit(chainID string, minHeight, maxHeight int64) (FullCommit, error)
 
 	// Get the valset that corresponds to chainID and height and return.
