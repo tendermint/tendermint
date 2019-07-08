@@ -13,8 +13,6 @@
 - `0.9.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/d474baeeea6c22b289e7402449572f7c89ee21da/DOCKER/Dockerfile)
 - `0.8.0`, `0.8` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/bf64dd21fdb193e54d8addaaaa2ecf7ac371de8c/DOCKER/Dockerfile)
 
-`master` tag points to the [master](https://github.com/tendermint/tendermint/tree/master) branch.
-
 ## Quick reference
 
 - **Where to get help:**
