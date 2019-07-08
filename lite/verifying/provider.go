@@ -182,7 +182,7 @@ type Provider struct {
 // NOTE: The external facing constructor is called NewVerifyingProivider.
 func makeProvider(chainID string, trustPeriod time.Duration, trusted lite.PersistentProvider, source lite.Provider, logger log.Logger) *Provider {
 	if trustPeriod == 0 {
-		panic("VerifyingProvider must have non-zero trust period")
+		panic("Provider must have non-zero trust period")
 	}
 	logger = logger.With("module", loggerPath)
 	trusted.SetLogger(logger)
