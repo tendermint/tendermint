@@ -640,7 +640,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 
 //-----------------
 
-// IsErrTooMuchChange 
+// IsErrTooMuchChange
 func IsErrTooMuchChange(err error) bool {
 	switch err_ := err.(type) {
 	case cmn.Error:
