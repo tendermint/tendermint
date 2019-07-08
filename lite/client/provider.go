@@ -1,6 +1,7 @@
 /*
-Package client defines a provider that uses an RPC client to get information
-like new headers and validators directly from a Tendermint node.
+Package client defines a provider that uses an RPC client (or SignStatusClient
+more generally) to get information like new headers and validators directly
+from a Tendermint node.
 
 Use either NewProvider or NewHTTPProvider to construct one.
 */

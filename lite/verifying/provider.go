@@ -20,8 +20,11 @@ const (
 	memDBFile  = "trusted.mem"
 	lvlDBFile  = "trusted.lvl"
 	dbName     = "trust-base"
+
+	sizeOfPendingMap = 1024
 )
 
+// TrustOptions are the trust parameters.
 type TrustOptions struct {
 	// Required: only trust commits up to this old.
 	TrustPeriod time.Duration `json:"trust-period"`
@@ -38,23 +41,41 @@ type TrustOptions struct {
 	Callback func(height int64, hash []byte) error
 }
 
-// initProvider sets up the databases and loggers and instantiates the Provider object
-func initProvider(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger, cacheSize int, options TrustOptions) *Provider {
-	logger = logger.With("module", loggerPath)
-	logger.Info(fmt.Sprintf("lite/verifying/NewProvider: chainID -> %s, rootDir -> %s, client -> %s", chainID, rootDir, client))
+// Provider implements a persistent caching Provider that auto-validates. It
+// uses a "source" Provider to obtain the needed FullCommits to securely sync
+// with validator set changes. It stores properly validated data on the
+// "trusted" local system.
+//
+// NOTE: This Provider can only work with one chainID, provided upon
+// instantiation.
+type Provider struct {
+	chainID     string
+	logger      log.Logger
+	trustPeriod time.Duration // e.g. the unbonding period, or something smaller.
+	now         nowFn
+	height      int64
 
-	trust := lite.NewMultiProvider(
-		lite.NewDBProvider(memDBFile, dbm.NewMemDB()).SetLimit(cacheSize),
-		lite.NewDBProvider(lvlDBFile, dbm.NewDB(dbName, dbm.GoLevelDBBackend, rootDir)),
-	)
+	// Already validated, stored locally
+	trusted lite.PersistentProvider
 
-	return makeProvider(chainID, options.TrustPeriod, trust, lclient.NewProvider(chainID, client), logger)
+	// New info, like a node rpc, or other import method.
+	source lite.Provider
+
+	// pending map to synchronize concurrent verification requests
+	mtx                  sync.Mutex
+	pendingVerifications map[int64]chan struct{}
 }
 
-// NOTE If you retain the resulting verifier in memory for a long time,
-// usage of the verifier may eventually error, but immediate usage should
-// not error like that, so that e.g. cli usage never errors unexpectedly.
-func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger, cacheSize int, options TrustOptions) (*Provider, error) {
+var _ lite.UpdatingProvider = (*Provider)(nil)
+
+type nowFn func() time.Time
+
+// NewProvider creates a
+// NOTE: If you retain the resulting verifier in memory for a long time, usage
+// of the verifier may eventually error, but immediate usage should not error
+// like that, so that e.g. cli usage never errors unexpectedly.
+func NewProvider(chainID, rootDir string, client lclient.SignStatusClient,
+	logger log.Logger, cacheSize int, options TrustOptions) (*Provider, error) {
 
 	vp := initProvider(chainID, rootDir, client, logger, cacheSize, options)
 
@@ -93,11 +114,51 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient, logge
 	return vp, nil
 }
 
+// initProvider sets up the databases and loggers and instantiates the Provider
+// object.
+func initProvider(chainID, rootDir string, client lclient.SignStatusClient,
+	logger log.Logger, cacheSize int, options TrustOptions) *Provider {
+
+	logger = logger.With("module", loggerPath)
+	logger.Info("lite/verifying/NewProvider", "chainID", chainID, "rootDir", rootDir, "client", client)
+
+	trust := lite.NewMultiProvider(
+		lite.NewDBProvider(memDBFile, dbm.NewMemDB()).SetLimit(cacheSize),
+		lite.NewDBProvider(lvlDBFile, dbm.NewDB(dbName, dbm.GoLevelDBBackend, rootDir)),
+	)
+
+	return makeProvider(chainID, options.TrustPeriod, trust, lclient.NewProvider(chainID, client), logger)
+}
+
+// makeProvider returns a new verifying Provider. It uses the trusted Provider
+// to store validated data and the source Provider to obtain missing data (e.g.
+// FullCommits).
+//
+// The trusted Provider should be a DBProvider.
+// The source Provider should be a client.HTTPProvider.
+func makeProvider(chainID string, trustPeriod time.Duration, trusted lite.PersistentProvider, source lite.Provider, logger log.Logger) *Provider {
+	if trustPeriod == 0 {
+		panic("Provider must have non-zero trust period")
+	}
+	logger = logger.With("module", loggerPath)
+	trusted.SetLogger(logger)
+	source.SetLogger(logger)
+	return &Provider{
+		logger:               logger,
+		chainID:              chainID,
+		trustPeriod:          trustPeriod,
+		trusted:              trusted,
+		source:               source,
+		pendingVerifications: make(map[int64]chan struct{}, sizeOfPendingMap),
+	}
+}
+
 // getTrustedCommit returns a commit trusted with weak subjectivity. It either:
-// 1. Fetches a commit at height provided in options and ensures the specified commit
-// 	is within the trust period of latest block
+// 1. Fetches a commit at height provided in options and ensures the specified
+// commit is within the trust period of latest block
 // 2. Trusts the remote node and gets the latest commit
-// 3. Returns an error if the height provided in trust option is too old to sync to latest.
+// 3. Returns an error if the height provided in trust option is too old to
+// sync to latest.
 func getTrustedCommit(client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
 
 	// Get the latest commit always
@@ -141,117 +202,53 @@ func getTrustedCommit(client lclient.SignStatusClient, options TrustOptions) (ty
 	}
 }
 
-//----------------------------------------
-
-type nowFn func() time.Time
-
-const sizeOfPendingMap = 1024
-
-var _ lite.UpdatingProvider = (*Provider)(nil)
-
-// Provider implements a persistent caching Provider that
-// auto-validates.  It uses a "source" Provider to obtain the needed
-// FullCommits to securely sync with validator set changes.  It stores properly
-// validated data on the "trusted" local system.
-// NOTE: This Provider can only work with one chainID, provided upon
-// instantiation.
-type Provider struct {
-	chainID     string
-	logger      log.Logger
-	trustPeriod time.Duration // e.g. the unbonding period, or something smaller.
-	now         nowFn
-	height      int64
-
-	// Already validated, stored locally
-	trusted lite.PersistentProvider
-
-	// New info, like a node rpc, or other import method.
-	source lite.Provider
-
-	// pending map to synchronize concurrent verification requests
-	mtx                  sync.Mutex
-	pendingVerifications map[int64]chan struct{}
-}
-
-// makeProvider returns a new verifying Provider. It uses the
-// trusted Provider to store validated data and the source Provider to
-// obtain missing data (e.g. FullCommits).
-//
-// The trusted Provider should be a DBProvider.
-// The source Provider should be a client.HTTPProvider.
-// NOTE: The external facing constructor is called NewVerifyingProivider.
-func makeProvider(chainID string, trustPeriod time.Duration, trusted lite.PersistentProvider, source lite.Provider, logger log.Logger) *Provider {
-	if trustPeriod == 0 {
-		panic("Provider must have non-zero trust period")
-	}
-	logger = logger.With("module", loggerPath)
-	trusted.SetLogger(logger)
-	source.SetLogger(logger)
-	return &Provider{
-		logger:               logger,
-		chainID:              chainID,
-		trustPeriod:          trustPeriod,
-		trusted:              trusted,
-		source:               source,
-		pendingVerifications: make(map[int64]chan struct{}, sizeOfPendingMap),
-	}
-}
-
-// Implements Verifier.
 func (vp *Provider) Verify(signedHeader types.SignedHeader) error {
-
-	// We can't verify commits for a different chain.
 	if signedHeader.ChainID != vp.chainID {
-		return cmn.NewError("BaseVerifier chainID is %v, cannot verify chainID %v",
-			vp.chainID, signedHeader.ChainID)
+		return fmt.Errorf("expected chainID %s, got %s", vp.chainID, signedHeader.ChainID)
 	}
 
 	valSet, err := vp.ValidatorSet(signedHeader.ChainID, signedHeader.Height)
-
 	if err != nil {
 		return err
 	}
 
-	// We can't verify commits older than bv.height.
 	if signedHeader.Height < vp.height {
-		return cmn.NewError("BaseVerifier height is %v, cannot verify height %v",
-			vp.height, signedHeader.Height)
+		return fmt.Errorf("expected height %d, got %d", vp.height, signedHeader.Height)
 	}
 
-	// We can't verify with the wrong validator set.
 	if !bytes.Equal(signedHeader.ValidatorsHash, valSet.Hash()) {
 		return lerr.ErrUnexpectedValidators(signedHeader.ValidatorsHash, valSet.Hash())
 	}
 
-	// Do basic sanity checks.
 	err = signedHeader.ValidateBasic(vp.chainID)
 	if err != nil {
-		return cmn.ErrorWrap(err, "in verify")
+		return err
 	}
 
 	// Check commit signatures.
-	err = valSet.VerifyCommit(
-		vp.chainID, signedHeader.Commit.BlockID,
-		signedHeader.Height, signedHeader.Commit)
+	err = valSet.VerifyCommit(vp.chainID, signedHeader.Commit.BlockID, signedHeader.Height, signedHeader.Commit)
 	if err != nil {
-		return cmn.ErrorWrap(err, "in verify")
+		return err
 	}
 
 	return nil
 }
 
-func (vp *Provider) SetLogger(logger log.Logger) {}
-
-func (vp *Provider) ChainID() string {
-	return vp.chainID
+// SetLogger implements lite.Provider.
+func (vp *Provider) SetLogger(logger log.Logger) {
+	vp.logger = logger
+	vp.trusted.SetLogger(logger)
+	vp.source.SetLogger(logger)
 }
 
-// Implements UpdatingProvider
-//
-// On success, it will store the full commit (SignedHeader + Validators) in vp.trusted
-// NOTE: For concurrent usage, use ConcurrentProvider
-func (vp *Provider) UpdateToHeight(chainID string, height int64) error {
+func (vp *Provider) ChainID() string { return vp.chainID }
 
+// UpdateToHeight implements lite.UpdatingProvider
+//
+// On success, it will store the full commit (SignedHeader + Validators) in
+// vp.trusted.
+// NOTE: For concurrent usage, use ConcurrentProvider.
+func (vp *Provider) UpdateToHeight(chainID string, height int64) error {
 	// If we alreedy have the commit, just return nil
 	_, err := vp.trusted.LatestFullCommit(vp.chainID, height, height)
 	if err == nil {
@@ -268,7 +265,6 @@ func (vp *Provider) UpdateToHeight(chainID string, height int64) error {
 		return err
 	}
 
-	//Store the height
 	vp.height = height
 
 	// Good!
@@ -276,8 +272,9 @@ func (vp *Provider) UpdateToHeight(chainID string, height int64) error {
 }
 
 // If valset or nextValset are nil, fetches them.
-// Then, validatees the full commit, then saves it.
-func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader, valset, nextValset *types.ValidatorSet) (err error) {
+// Then validates full commit, then saves it.
+func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader,
+	valset, nextValset *types.ValidatorSet) (err error) {
 
 	// If there is no valset passed, fetch it
 	if valset == nil {
