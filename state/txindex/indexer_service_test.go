@@ -43,14 +43,14 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Tx:     types.Tx("foo"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
-	eventBus.PublishEventTx(types.EventDataTx{*txResult1})
+	eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
 	txResult2 := &types.TxResult{
 		Height: 1,
 		Index:  uint32(1),
 		Tx:     types.Tx("bar"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
-	eventBus.PublishEventTx(types.EventDataTx{*txResult2})
+	eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
 
 	time.Sleep(100 * time.Millisecond)
 

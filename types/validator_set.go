@@ -594,10 +594,10 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		return err
 	}
 	if vals.Size() != len(commit.Precommits) {
-		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", vals.Size(), len(commit.Precommits))
+		return NewErrInvalidCommitPrecommits(vals.Size(), len(commit.Precommits))
 	}
 	if height != commit.Height() {
-		return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
+		return NewErrInvalidCommitHeight(height, commit.Height())
 	}
 	if !blockID.Equals(commit.BlockID) {
 		return fmt.Errorf("Invalid commit -- wrong block id: want %v got %v",

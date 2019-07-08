@@ -13,4 +13,4 @@ CMD ["node", "--proxy_app", "kvstore"]
 STOPSIGNAL SIGTERM
 
 COPY wrapper.sh /usr/bin/wrapper.sh
-
+COPY config-template.toml /etc/tendermint/config-template.toml
