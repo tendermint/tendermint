@@ -14,26 +14,26 @@
 - `0.8.0`, `0.8` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/bf64dd21fdb193e54d8addaaaa2ecf7ac371de8c/DOCKER/Dockerfile)
 - `develop` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/master/DOCKER/Dockerfile.develop)
 
-`develop` tag points to the [develop](https://github.com/tendermint/tendermint/tree/develop) branch.
+`develop` tag points to the [develop](https://github.com/tendermint/tendermint/tree/master) branch.
 
 ## Quick reference
 
-* **Where to get help:**
-  https://cosmos.network/community
+- **Where to get help:**
+  [cosmos.network/ecosystem](https://cosmos.network/ecosystem)
 
-* **Where to file issues:**
-  https://github.com/tendermint/tendermint/issues
+- **Where to file issues:**
+  [Tendermint Issues](https://github.com/tendermint/tendermint/issues)
 
-* **Supported Docker versions:**
+- **Supported Docker versions:**
   [the latest release](https://github.com/moby/moby/releases) (down to 1.6 on a best-effort basis)
 
 ## Tendermint
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language, and securely replicates it on many machines.
 
-For more background, see the [introduction](https://tendermint.readthedocs.io/en/master/introduction.html).
+For more background, see the [introduction](https://tendermint.com/docs/introduction/#quick-start).
 
-To get started developing applications, see the [application developers guide](https://tendermint.readthedocs.io/en/master/getting-started.html).
+To get started developing applications, see the [application developers guide](https://tendermint.com/docs/introduction/quick-start.html).
 
 ## How to use this image
 
@@ -48,7 +48,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app
 
 ## Local cluster
 
-To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/master/Makefile) and run:
+To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/master/Makefile) and run:
 
 ```
 make build-linux
@@ -60,7 +60,7 @@ Note that this will build and use a different image than the ones provided here.
 
 ## License
 
-- Tendermint's license is [Apache 2.0](https://github.com/tendermint/tendermint/master/LICENSE).
+- Tendermint's license is [Apache 2.0](https://github.com/tendermint/tendermint/blob/master/LICENSE).
 
 ## Contributing
 
