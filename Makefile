@@ -11,7 +11,8 @@ export GO111MODULE = on
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
-BUILD_FLAGS = -mod=readonly -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
+BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 
 all: check build test install
 
@@ -115,24 +116,31 @@ get_deps_bin_size:
 
 protoc_libs: libs/common/types.pb.go
 
+# generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs
-	## Generating certificates for TLS testing...
 	certstrap init --common-name "tendermint.com" --passphrase ""
-	certstrap request-cert -ip "::" --passphrase ""
-	certstrap sign "::" --CA "tendermint.com" --passphrase ""
-	mv out/::.crt out/::.key db/remotedb
-
-clean_certs:
-	## Cleaning TLS testing certificates...
+	certstrap request-cert --common-name "remotedb" -ip "127.0.0.1" --passphrase ""
+	certstrap sign "remotedb" --CA "tendermint.com" --passphrase ""
+	mv out/remotedb.crt libs/db/remotedb/test.crt
+	mv out/remotedb.key libs/db/remotedb/test.key
+	certstrap request-cert --common-name "server" -ip "127.0.0.1" --passphrase ""
+	certstrap sign "server" --CA "tendermint.com" --passphrase ""
+	mv out/server.crt rpc/lib/server/test.crt
+	mv out/server.key rpc/lib/server/test.key
 	rm -rf out
-	rm -f db/remotedb/::.crt db/remotedb/::.key
 
-test_libs: gen_certs
+# deletes generated certificates
+clean_certs:
+	rm -f libs/db/remotedb/test.crt
+	rm -f libs/db/remotedb/test.key
+	rm -f rpc/lib/server/test.crt
+	rm -f rpc/lib/server/test.key
+
+test_libs:
 	go test -tags clevedb boltdb $(PACKAGES)
-	make clean_certs
 
 grpc_dbserver:
-	protoc -I db/remotedb/proto/ db/remotedb/proto/defs.proto --go_out=plugins=grpc:db/remotedb/proto
+	protoc -I libs/db/remotedb/proto/ libs/db/remotedb/proto/defs.proto --go_out=plugins=grpc:libs/db/remotedb/proto
 
 protoc_grpc: rpc/grpc/types.pb.go
 
@@ -268,8 +276,8 @@ build-docker-localnode:
 	@cd networks/local && make
 
 # Run a 4-node testnet locally
-localnet-start: localnet-stop
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
+localnet-start: localnet-stop build-docker-localnode
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2; fi
 	docker-compose up
 
 # Stop testnet

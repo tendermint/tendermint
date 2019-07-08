@@ -141,7 +141,7 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 ## Block Execution
 
 The first time a new blockchain is started, Tendermint calls
-`InitChain`. From then on, the follow sequence of methods is executed for each
+`InitChain`. From then on, the following sequence of methods is executed for each
 block:
 
 `BeginBlock, [DeliverTx], EndBlock, Commit`
@@ -296,6 +296,12 @@ Commit are included in the header of the next block.
 
 - **Request**:
   - `Tx ([]byte)`: The request transaction bytes
+  - `Type (CheckTxType)`: What type of `CheckTx` request is this? At present,
+    there are two possible values: `CheckTx_Unchecked` (the default, which says
+    that a full check is required), and `CheckTx_Checked` (when the mempool is
+    initiating a normal recheck of a transaction).
+  - `AdditionalData ([]byte)`: Reserved for future use. See
+    [here](https://github.com/tendermint/tendermint/issues/2127#issuecomment-456661420).
 - **Response**:
   - `Code (uint32)`: Response code
   - `Data ([]byte)`: Result bytes, if any.
