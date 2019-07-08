@@ -111,7 +111,7 @@ instance, a change to the `Blockchain Protocol` that removes a field from the
 header should also be recorded under `CLI/RPC/Config` since the field will be
 removed from the header in rpc responses as well.
 
-If you are making a change to root level (Github Templates, CicrcleCI) please make a CHANGELOG entry under `Non-tendermint Changes`
+If you are making a change to root level (CircleCI, Docker, Github Templates) please make a CHANGELOG entry under `Non-tendermint Changes`
 
 ## Branching Model and Release
 
