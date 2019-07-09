@@ -78,10 +78,10 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	logger.Info("Connecting to source HTTP client...")
 	node := rpcclient.NewHTTP(nodeAddr, "/websocket")
 
-	logger.Info("Constructing Verifier...")
+	logger.Info("Constructing verifying provider...")
 	cert, err := verifying.NewProvider(chainID, home, node, logger, cacheSize, verifying.TrustOptions{})
 	if err != nil {
-		return cmn.ErrorWrap(err, "constructing Verifier")
+		return cmn.ErrorWrap(err, "constructing verifying provider")
 	}
 	cert.SetLogger(logger)
 	sc := proxy.SecureClient(node, cert)
