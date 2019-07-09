@@ -63,7 +63,8 @@ func TestWriteReadMessageSimple(t *testing.T) {
 func TestWriteReadMessage(t *testing.T) {
 	cases := []proto.Message{
 		&Header{
-			Height: 4,
+			Height:  4,
+			ChainID: "test",
 		},
 		// TODO: add the rest
 	}

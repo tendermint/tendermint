@@ -284,7 +284,6 @@ See below for more details on the message types and how they are used.
   - `Height (int64)`: Height of the block in the chain
   - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
     local time when block was created.
-  - `NumTxs (int32)`: Number of transactions in the block
   - `LastBlockID (BlockID)`: Hash of the previous (parent) block
   - `LastCommitHash ([]byte)`: Hash of the previous block's commit
   - `ValidatorsHash ([]byte)`: Hash of the validator set for this block

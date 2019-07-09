@@ -43,7 +43,6 @@ type Header struct {
 	ChainID  string
 	Height   int64
 	Time     Time
-	NumTxs   int64
 
 	// prev block info
 	LastBlockID BlockID
@@ -262,14 +261,6 @@ if block.Header.Height == 1 {
 ```
 
 See the section on [BFT time](../consensus/bft-time.md) for more details.
-
-### NumTxs
-
-```go
-block.Header.NumTxs == len(block.Txs.Txs)
-```
-
-Number of transactions included in the block.
 
 ### LastBlockID
 
