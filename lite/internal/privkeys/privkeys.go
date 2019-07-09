@@ -1,15 +1,14 @@
-package lite
+package privkeys
 
 import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// privKeys is a helper type for testing.
+// PrivKeys is a helper type for testing.
 //
 // It lets us simulate signing with many keys.  The main use case is to create
 // a set, and call GenSignedHeader to get properly signed header for testing.
@@ -18,7 +17,7 @@ import (
 // and can optionally extend the validator set later with Extend.
 type PrivKeys []crypto.PrivKey
 
-// genPrivKeys produces an array of private keys to generate commits.
+// GenPrivKeys produces an array of private keys to generate commits.
 func GenPrivKeys(n int) PrivKeys {
 	res := make(PrivKeys, n)
 	for i := range res {
@@ -84,6 +83,18 @@ func (pkz PrivKeys) signHeader(header *types.Header, first, last int) *types.Com
 	return types.NewCommit(blockID, commitSigs)
 }
 
+// GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
+func (pkz PrivKeys) GenSignedHeader(chainID string, height int64, txs types.Txs,
+	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) types.SignedHeader {
+
+	header := genHeader(chainID, height, txs, valset, nextValset, appHash, consHash, resHash)
+	check := types.SignedHeader{
+		Header: header,
+		Commit: pkz.signHeader(header, first, last),
+	}
+	return check
+}
+
 func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey) *types.Vote {
 	addr := key.PubKey().Address()
 	idx, _ := valset.GetByAddress(addr)
@@ -126,28 +137,4 @@ func genHeader(chainID string, height int64, txs types.Txs,
 		ConsensusHash:      consHash,
 		LastResultsHash:    resHash,
 	}
-}
-
-// GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
-func (pkz PrivKeys) GenSignedHeader(chainID string, height int64, txs types.Txs,
-	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) types.SignedHeader {
-
-	header := genHeader(chainID, height, txs, valset, nextValset, appHash, consHash, resHash)
-	check := types.SignedHeader{
-		Header: header,
-		Commit: pkz.signHeader(header, first, last),
-	}
-	return check
-}
-
-// GenFullCommit calls genHeader and signHeader and combines them into a FullCommit.
-func (pkz PrivKeys) GenFullCommit(chainID string, height int64, txs types.Txs,
-	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) FullCommit {
-
-	header := genHeader(chainID, height, txs, valset, nextValset, appHash, consHash, resHash)
-	commit := types.SignedHeader{
-		Header: header,
-		Commit: pkz.signHeader(header, first, last),
-	}
-	return NewFullCommit(commit, valset, nextValset)
 }

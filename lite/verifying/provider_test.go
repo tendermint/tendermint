@@ -35,10 +35,11 @@ func TestProviderValidPath(t *testing.T) {
 		nextVals := nkeys.ToValidators(vote, 0)
 		h := int64(1 + i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
-		fcz[i] = keys.GenFullCommit(
+		signedHeader := keys.GenSignedHeader(
 			chainID, h, nil,
 			vals, nextVals,
 			appHash, consHash, resHash, 0, len(keys))
+		fcz[i] = lite.NewFullCommit(signedHeader, vals, nextVals)
 		// Extend the keys by 1 each time.
 		keys = nkeys
 		nkeys = nkeys.Extend(1)
@@ -129,14 +130,15 @@ func TestProviderDynamicVerification(t *testing.T) {
 }
 
 func makeFullCommit(height int64, keys lite.PrivKeys, vals, nextVals *types.ValidatorSet, chainID string) lite.FullCommit {
-	height += 1
+	height++
 	consHash := []byte("special-params")
 	appHash := []byte(fmt.Sprintf("h=%d", height))
 	resHash := []byte(fmt.Sprintf("res=%d", height))
-	return keys.GenFullCommit(
+	signedHeader := keys.GenSignedHeader(
 		chainID, height, nil,
 		vals, nextVals,
 		appHash, consHash, resHash, 0, len(keys))
+	return lite.NewFullCommit(signedHeader, vals, nextVals)
 }
 
 func TestVerifingProviderHistorical(t *testing.T) {
@@ -160,10 +162,11 @@ func TestVerifingProviderHistorical(t *testing.T) {
 		h := int64(1 + i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		resHash := []byte(fmt.Sprintf("res=%d", h))
-		fcz[i] = keys.GenFullCommit(
+		signedHeader := keys.GenSignedHeader(
 			chainID, h, nil,
 			vals, nextVals,
 			appHash, consHash, resHash, 0, len(keys))
+		fcz[i] = lite.NewFullCommit(signedHeader, vals, nextVals)
 		// Extend the keys by 1 each time.
 		keys = nkeys
 		nkeys = nkeys.Extend(1)
@@ -241,10 +244,11 @@ func TestConcurrentProvider(t *testing.T) {
 		h := int64(1 + i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		resHash := []byte(fmt.Sprintf("res=%d", h))
-		fcz[i] = keys.GenFullCommit(
+		signedHeader := keys.GenSignedHeader(
 			chainID, h, nil,
 			vals, nextVals,
 			appHash, consHash, resHash, 0, len(keys))
+		fcz[i] = lite.NewFullCommit(signedHeader, vals, nextVals)
 		// Extend the keys by 1 each time.
 		keys = nkeys
 		nkeys = nkeys.Extend(1)

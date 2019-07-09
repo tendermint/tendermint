@@ -1,3 +1,6 @@
+/*
+Package verifying
+*/
 package verifying
 
 import (

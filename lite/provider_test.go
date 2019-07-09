@@ -10,6 +10,7 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
 	lerr "github.com/tendermint/tendermint/lite/errors"
+	pks "github.com/tendermint/tendermint/lite/internal/privkeys"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -48,7 +49,7 @@ func TestMultiProvider(t *testing.T) {
 func checkProvider(t *testing.T, p PersistentProvider, chainID, app string) {
 	assert, require := assert.New(t), require.New(t)
 	appHash := []byte(app)
-	keys := GenPrivKeys(5)
+	keys := pks.GenPrivKeys(5)
 	count := 10
 
 	// Make a bunch of full commits.
@@ -56,7 +57,9 @@ func checkProvider(t *testing.T, p PersistentProvider, chainID, app string) {
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(10, int64(count/2))
 		h := int64(20 + 10*i)
-		fcz[i] = keys.GenFullCommit(chainID, h, nil, vals, vals, appHash, []byte("params"), []byte("results"), 0, 5)
+		signedHeader := keys.GenSignedHeader(chainID, h, nil, vals, vals, appHash,
+			[]byte("params"), []byte("results"), 0, 5)
+		fcz[i] = NewFullCommit(signedHeader, vals, vals)
 	}
 
 	// Check that provider is initially empty.
@@ -113,14 +116,15 @@ func TestMultiLatestFullCommit(t *testing.T) {
 
 	chainID := "cache-best-height"
 	appHash := []byte("01234567")
-	keys := GenPrivKeys(5)
+	keys := pks.GenPrivKeys(5)
 	count := 10
 
 	// Set a bunch of full commits.
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(10, int64(count/2))
 		h := int64(10 * (i + 1))
-		fc := keys.GenFullCommit(chainID, h, nil, vals, vals, appHash, []byte("params"), []byte("results"), 0, 5)
+		signedHeader := keys.GenSignedHeader(chainID, h, nil, vals, vals, appHash, []byte("params"), []byte("results"), 0, 5)
+		fc := NewFullCommit(signedHeader, vals, vals)
 		err := p2.SaveFullCommit(fc)
 		require.NoError(err)
 	}
