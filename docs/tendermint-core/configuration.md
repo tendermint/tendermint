@@ -315,8 +315,7 @@ namespace = "tendermint"
 
 If `create_empty_blocks` is set to `true` in your config, blocks will be
 created ~ every second (with default consensus parameters). You can regulate
-the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit
-= "10s"` should result in ~ 10 second blocks.
+the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit = "10s"` should result in ~ 10 second blocks.
 
 **create_empty_blocks = false**
 
@@ -342,7 +341,7 @@ Tendermint will only create blocks if there are transactions, or after waiting
 ## Consensus timeouts explained
 
 There's a variety of information about timeouts in [Running in
-production](./running-in-production.html)
+production](./running-in-production.md)
 
 You can also find more detailed technical explanation in the spec: [The latest
 gossip on BFT consensus](https://arxiv.org/abs/1807.04938).

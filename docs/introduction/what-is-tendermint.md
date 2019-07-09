@@ -116,7 +116,7 @@ consensus engine, and provides a particular application state.
 ## ABCI Overview
 
 The [Application BlockChain Interface
-(ABCI)](https://github.com/tendermint/tendermint/tree/develop/abci)
+(ABCI)](https://github.com/tendermint/tendermint/tree/master/abci)
 allows for Byzantine Fault Tolerant replication of applications
 written in any programming language.
 
@@ -184,7 +184,7 @@ core to the application. The application replies with corresponding
 response messages.
 
 The messages are specified here: [ABCI Message
-Types](https://github.com/tendermint/tendermint/blob/develop/abci/README.md#message-types).
+Types](https://github.com/tendermint/tendermint/blob/master/abci/README.md#message-types).
 
 The **DeliverTx** message is the work horse of the application. Each
 transaction in the blockchain is delivered with this message. The
