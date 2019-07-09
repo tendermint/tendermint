@@ -65,7 +65,6 @@ func TestBlockValidateBasic(t *testing.T) {
 		{"Make Block", func(blk *Block) {}, false},
 		{"Make Block w/ proposer Addr", func(blk *Block) { blk.ProposerAddress = valSet.GetProposer().Address }, false},
 		{"Negative Height", func(blk *Block) { blk.Height = -1 }, true},
-		{"Increase NumTxs", func(blk *Block) { blk.NumTxs++ }, true},
 		{"Remove 1/2 the commits", func(blk *Block) {
 			blk.LastCommit.Precommits = commit.Precommits[:commit.Size()/2]
 			blk.LastCommit.hash = nil // clear hash or change wont be noticed
@@ -255,8 +254,6 @@ func TestMaxHeaderBytes(t *testing.T) {
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
 		Time:               timestamp,
-		NumTxs:             math.MaxInt64,
-		TotalTxs:           math.MaxInt64,
 		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt64, make([]byte, tmhash.Size)),
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
 		DataHash:           tmhash.Sum([]byte("data_hash")),
@@ -272,7 +269,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 	bz, err := cdc.MarshalBinaryLengthPrefixed(h)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, MaxHeaderBytes, len(bz))
+	assert.EqualValues(t, MaxHeaderBytes, int64(len(bz)))
 }
 
 func randCommit() *Commit {

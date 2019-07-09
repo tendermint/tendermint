@@ -285,8 +285,6 @@ See below for more details on the message types and how they are used.
   - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
     local time when block was created.
   - `NumTxs (int32)`: Number of transactions in the block
-  - `TotalTxs (int64)`: Total number of transactions in the blockchain until
-    now
   - `LastBlockID (BlockID)`: Hash of the previous (parent) block
   - `LastCommitHash ([]byte)`: Hash of the previous block's commit
   - `ValidatorsHash ([]byte)`: Hash of the validator set for this block

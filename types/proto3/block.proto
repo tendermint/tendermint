@@ -19,8 +19,6 @@ message Header {
   string ChainID = 2;
   int64 Height = 3;
   Timestamp Time = 4;
-  int64 NumTxs = 5;
-  int64 TotalTxs = 6;
 
   // prev block info
   BlockID LastBlockID = 7;

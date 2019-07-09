@@ -1280,8 +1280,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 		panic(fmt.Sprintf("+2/3 committed an invalid block: %v", err))
 	}
 
-	cs.Logger.Info(fmt.Sprintf("Finalizing commit of block with %d txs", block.NumTxs),
-		"height", block.Height, "hash", block.Hash(), "root", block.AppHash)
+	cs.Logger.Info("height", block.Height, "hash", block.Hash(), "root", block.AppHash)
 	cs.Logger.Info(fmt.Sprintf("%v", block))
 
 	fail.Fail() // XXX
@@ -1386,9 +1385,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 		)
 	}
 
-	cs.metrics.NumTxs.Set(float64(block.NumTxs))
 	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
-	cs.metrics.TotalTxs.Set(float64(block.TotalTxs))
 	cs.metrics.CommittedHeight.Set(float64(block.Height))
 
 }

@@ -34,8 +34,10 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	defer service.Stop()
 
 	// publish block with txs
-	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-		Header: types.Header{Height: 1, NumTxs: 2},
+	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+		Block: &types.Block{
+			Header: types.Header{Height: 1},
+		},
 	})
 	txResult1 := &types.TxResult{
 		Height: 1,

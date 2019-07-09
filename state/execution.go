@@ -215,7 +215,6 @@ func (blockExec *BlockExecutor) Commit(
 	blockExec.logger.Info(
 		"Committed state",
 		"height", block.Height,
-		"txs", block.NumTxs,
 		"appHash", fmt.Sprintf("%X", res.Data),
 	)
 
@@ -429,7 +428,6 @@ func updateState(
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
 		LastBlockHeight:                  header.Height,
-		LastBlockTotalTx:                 state.LastBlockTotalTx + header.NumTxs,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
 		NextValidators:                   nValSet,

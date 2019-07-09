@@ -131,7 +131,7 @@ func newBlockCallback(n *Node) em.EventCallbackFunc {
 		block := data.(tmtypes.TMEventData).(tmtypes.EventDataNewBlockHeader).Header
 
 		n.Height = block.Height
-		n.logger.Info("new block", "height", block.Height, "numTxs", block.NumTxs)
+		n.logger.Info("new block", "height", block.Height)
 
 		if n.blockCh != nil {
 			n.blockCh <- block
