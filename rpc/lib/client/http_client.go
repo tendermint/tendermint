@@ -72,9 +72,10 @@ func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (ne
 	}
 }
 
+// DefaultHTTPClient is used to create an http client with some default parameters.
 // We overwrite the http.Client.Dial so we can do http over tcp or unix.
 // remoteAddr should be fully featured (eg. with tcp:// or unix://)
-func makeHTTPClient(remoteAddr string) (string, *http.Client) {
+func DefaultHTTPClient(remoteAddr string) (string, *http.Client) {
 	protocol, address, dialer := makeHTTPDialer(remoteAddr)
 	return protocol + "://" + address, &http.Client{
 		Transport: &http.Transport{
@@ -124,7 +125,11 @@ var _ JSONRPCCaller = (*JSONRPCRequestBatch)(nil)
 
 // NewJSONRPCClient returns a JSONRPCClient pointed at the given address.
 func NewJSONRPCClient(remote string) *JSONRPCClient {
-	address, client := makeHTTPClient(remote)
+	return NewJSONRPCClientWithHTTPClient(DefaultHTTPClient(remote))
+}
+
+// NewJSONRPCClientWithHTTPClient returns a JSONRPCClient pointed at the given address using a custom http client
+func NewJSONRPCClientWithHTTPClient(address string, client *http.Client) *JSONRPCClient {
 	return &JSONRPCClient{
 		address: address,
 		client:  client,
@@ -260,7 +265,7 @@ type URIClient struct {
 }
 
 func NewURIClient(remote string) *URIClient {
-	address, client := makeHTTPClient(remote)
+	address, client := DefaultHTTPClient(remote)
 	return &URIClient{
 		address: address,
 		client:  client,
