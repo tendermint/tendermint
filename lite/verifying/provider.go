@@ -30,6 +30,7 @@ const (
 // TrustOptions are the trust parameters.
 type TrustOptions struct {
 	// Required: only trust commits up to this old.
+	// Should be equal to the unbonding period.
 	TrustPeriod time.Duration `json:"trust-period"`
 
 	// Option 1: TrustHeight and TrustHash can both be provided
@@ -42,6 +43,11 @@ type TrustOptions struct {
 	// Option 2: Callback can be set to implement a confirmation
 	// step if the trust store is uninitialized, or expired.
 	Callback func(height int64, hash []byte) error
+}
+
+// HeightAndHashPresent returns true if TrustHeight and TrustHash are present.
+func (opts TrustOptions) HeightAndHashPresent() bool {
+	return opts.TrustHeight > 0 && opts.TrustHash != 0
 }
 
 // Provider implements a persistent caching Provider that auto-validates. It
@@ -83,7 +89,7 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient,
 	vp := initProvider(chainID, rootDir, client, logger, cacheSize, options)
 
 	// Get the latest source commit, or the one provided in options.
-	trustCommit, err := getTrustedCommit(client, options)
+	trustCommit, err := getTrustedCommit(vp.logger, client, options)
 	if err != nil {
 		return nil, err
 	}
@@ -94,16 +100,19 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient,
 	}
 
 	// sanity check
-	if time.Now().Sub(trustCommit.Time) <= 0 {
-		panic(fmt.Sprintf("impossible time %v vs %v", time.Now(), trustCommit.Time))
+	// FIXME: Can't it happen that the local clock is a bit off and the
+	// trustCommit.Time is a few seconds in the future?
+	now := time.Now()
+	if now.Sub(trustCommit.Time) <= 0 {
+		panic(fmt.Sprintf("impossible time %v vs %v", now, trustCommit.Time))
 	}
 
 	// Otherwise we're syncing within the unbonding period.
 	// NOTE: There is a duplication of fetching this latest commit (since
 	// UpdateToHeight() will fetch it again, and latestCommit isn't used), but
-	// it's only once upon initialization of a validator so it's not a big
-	// deal.
-	if options.TrustHeight > 0 {
+	// it's only once upon initialization so it's not a big deal.
+	if options.HeightAndHashPresent() {
+		// Fetch latest commit (nil means latest height).
 		latestCommit, err := client.Commit(nil)
 		if err != nil {
 			return nil, err
@@ -139,7 +148,9 @@ func initProvider(chainID, rootDir string, client lclient.SignStatusClient,
 //
 // The trusted Provider should be a DBProvider.
 // The source Provider should be a client.HTTPProvider.
-func makeProvider(chainID string, trustPeriod time.Duration, trusted lite.PersistentProvider, source lite.Provider, logger log.Logger) *Provider {
+func makeProvider(chainID string, trustPeriod time.Duration,
+	trusted lite.PersistentProvider, source lite.Provider, logger log.Logger) *Provider {
+
 	if trustPeriod == 0 {
 		panic("Provider must have non-zero trust period")
 	}
@@ -162,47 +173,46 @@ func makeProvider(chainID string, trustPeriod time.Duration, trusted lite.Persis
 // 2. Trusts the remote node and gets the latest commit
 // 3. Returns an error if the height provided in trust option is too old to
 // sync to latest.
-func getTrustedCommit(client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
-
-	// Get the latest commit always
-	latestBlock, err := client.Commit(nil)
+func getTrustedCommit(logger log.Logger, client lclient.SignStatusClient, options TrustOptions) (types.SignedHeader, error) {
+	// Get the latest commit always.
+	latestCommit, err := client.Commit(nil)
 	if err != nil {
 		return types.SignedHeader{}, err
 	}
 
-	// If the user has set a root of trust, confirm it then update to newest
-	if options.TrustHeight != 0 && options.TrustHash != nil {
-		trustBlock, err := client.Commit(&options.TrustHeight)
+	// If the user has set a root of trust, confirm it then update to newest.
+	if options.HeightAndHashPresent() {
+		trustCommit, err := client.Commit(&options.TrustHeight)
 		if err != nil {
 			return types.SignedHeader{}, err
 		}
 
-		if latestBlock.Time.Sub(trustBlock.Time) > options.TrustPeriod {
-			return types.SignedHeader{}, fmt.Errorf("Your Trusted Block Height is older than the trust period from Latest Block")
+		if latestCommit.Time.Sub(trustCommit.Time) > options.TrustPeriod {
+			return types.SignedHeader{},
+				fmt.Errorf("your trusted block height is older than the trust period from latest block")
 		}
 
-		trustCommit := trustBlock.SignedHeader
-		if !bytes.Equal(trustCommit.Hash(), options.TrustHash) {
-			return types.SignedHeader{}, fmt.Errorf("WARNING!!! Expected height/hash %v/%X but got %X",
-				options.TrustHeight, options.TrustHash, trustCommit.Hash())
+		signedHeader := trustCommit.SignedHeader
+		if !bytes.Equal(signedHeader.Hash(), options.TrustHash) {
+			return types.SignedHeader{},
+				fmt.Errorf("WARNING: expected hash %X but got %X", options.TrustHash, signedHeader.Hash())
 		}
-		return trustCommit, nil
-	} else {
-
-		latestCommit := latestBlock.SignedHeader
-
-		// NOTE: This should really belong in the callback.
-		// WARN THE USER IN ALL CAPS THAT THE LITE CLIENT IS NEW,
-		// AND THAT WE WILL SYNC TO AND VERIFY LATEST COMMIT.
-		fmt.Printf("trusting source at height %v and hash %X...\n", latestCommit.Height, latestCommit.Hash())
-		if options.Callback != nil {
-			err := options.Callback(latestCommit.Height, latestCommit.Hash())
-			if err != nil {
-				return types.SignedHeader{}, err
-			}
-		}
-		return latestCommit, nil
+		return signedHeader, nil
 	}
+
+	signedHeader := latestCommit.SignedHeader
+
+	// NOTE: This should really belong in the callback.
+	// WARN THE USER IN ALL CAPS THAT THE LITE CLIENT IS NEW, AND THAT WE WILL
+	// SYNC TO AND VERIFY LATEST COMMIT.
+	logger.Info("WARNING: trusting source at height %d and hash %X...\n", signedHeader.Height, signedHeader.Hash())
+	if options.Callback != nil {
+		err := options.Callback(signedHeader.Height, signedHeader.Hash())
+		if err != nil {
+			return types.SignedHeader{}, err
+		}
+	}
+	return signedHeader, nil
 }
 
 func (vp *Provider) Verify(signedHeader types.SignedHeader) error {
@@ -258,7 +268,7 @@ func (vp *Provider) UpdateToHeight(chainID string, height int64) error {
 		return nil
 	} else if !lerr.IsErrCommitNotFound(err) {
 		// Return error if it is not CommitNotFound error
-		vp.logger.Info(fmt.Sprintf("Encountered unknown error in loading full commit at height %d.", height))
+		vp.logger.Error("Encountered unknown error while loading full commit", "height", height)
 		return err
 	}
 
