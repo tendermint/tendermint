@@ -24,10 +24,10 @@ func TestTxFilter(t *testing.T) {
 		isErr bool
 	}{
 		{types.Tx(cmn.RandBytes(250)), false},
-		{types.Tx(cmn.RandBytes(1809)), false},
-		{types.Tx(cmn.RandBytes(1810)), false},
-		{types.Tx(cmn.RandBytes(1811)), true},
-		{types.Tx(cmn.RandBytes(1812)), true},
+		{types.Tx(cmn.RandBytes(1811)), false},
+		{types.Tx(cmn.RandBytes(1831)), false},
+		{types.Tx(cmn.RandBytes(1838)), true},
+		{types.Tx(cmn.RandBytes(1839)), true},
 		{types.Tx(cmn.RandBytes(3000)), true},
 	}
 
