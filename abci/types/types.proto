@@ -256,7 +256,6 @@ message Header {
   string chain_id = 2 [(gogoproto.customname)="ChainID"];
   int64 height = 3;
   google.protobuf.Timestamp time = 4 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
-  int64 num_txs = 5;
 
   // prev block info
   BlockID last_block_id = 7 [(gogoproto.nullable)=false];

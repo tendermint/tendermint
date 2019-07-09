@@ -63,7 +63,7 @@ func TestWriteReadMessageSimple(t *testing.T) {
 func TestWriteReadMessage(t *testing.T) {
 	cases := []proto.Message{
 		&Header{
-			NumTxs: 4,
+			Height: 4,
 		},
 		// TODO: add the rest
 	}
