@@ -5,6 +5,7 @@ package verifying
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -189,7 +190,7 @@ func getTrustedCommit(logger log.Logger, client lclient.SignStatusClient, option
 
 		if latestCommit.Time.Sub(trustCommit.Time) > options.TrustPeriod {
 			return types.SignedHeader{},
-				fmt.Errorf("your trusted block height is older than the trust period from latest block")
+				errors.New("your trusted block height is older than the trust period from latest block")
 		}
 
 		signedHeader := trustCommit.SignedHeader

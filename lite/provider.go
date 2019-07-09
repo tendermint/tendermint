@@ -119,7 +119,7 @@ func (cp *ConcurrentProvider) joinConcurrency(chainID string, height int64) (pr 
 
 // UpdateToHeight implements UpdatingProvider.
 func (cp *ConcurrentProvider) UpdateToHeight(chainID string, height int64) error {
-	// Performs synchronization for multi-threads verification at the same height.
+	// Performs synchronization for multi-threads verifications at the same height.
 	pr, isFirstCall, callback := cp.joinConcurrency(chainID, height)
 
 	if isFirstCall {
