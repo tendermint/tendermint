@@ -47,7 +47,7 @@ type TrustOptions struct {
 
 // HeightAndHashPresent returns true if TrustHeight and TrustHash are present.
 func (opts TrustOptions) HeightAndHashPresent() bool {
-	return opts.TrustHeight > 0 && opts.TrustHash != 0
+	return opts.TrustHeight > 0 && len(opts.TrustHash) > 0
 }
 
 // Provider implements a persistent caching Provider that auto-validates. It

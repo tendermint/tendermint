@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite"
+	pks "github.com/tendermint/tendermint/lite/internal/privkeys"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -21,7 +22,7 @@ func TestProviderValidPath(t *testing.T) {
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
-	keys := lite.GenPrivKeys(5)
+	keys := pks.GenPrivKeys(5)
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
@@ -93,9 +94,9 @@ func TestProviderDynamicVerification(t *testing.T) {
 	// gen the 2 val sets
 	chainID := "dynamic-verifier"
 	power := int64(10)
-	keys1 := lite.GenPrivKeys(5)
+	keys1 := pks.GenPrivKeys(5)
 	vals1 := keys1.ToValidators(power, 0)
-	keys2 := lite.GenPrivKeys(5)
+	keys2 := pks.GenPrivKeys(5)
 	vals2 := keys2.ToValidators(power, 0)
 
 	// make some commits with the first
@@ -148,7 +149,7 @@ func TestVerifingProviderHistorical(t *testing.T) {
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
-	keys := lite.GenPrivKeys(5)
+	keys := pks.GenPrivKeys(5)
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
@@ -230,7 +231,7 @@ func TestConcurrentProvider(t *testing.T) {
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
-	keys := lite.GenPrivKeys(5)
+	keys := pks.GenPrivKeys(5)
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
