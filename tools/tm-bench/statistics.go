@@ -66,8 +66,8 @@ func calculateStatistics(
 		// increase number of blocks for that second
 		numBlocksPerSec[sec]++
 
-		// TODO: add tracking for tx/sec
 		// increase number of txs for that second
+		// TODO: add tracking for tx/sec
 		numTxsPerSec[sec] += 1
 		logger.Debug(fmt.Sprintf("%d txs at block height %d", 1, blockMeta.Header.Height))
 	}
