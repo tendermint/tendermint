@@ -21,7 +21,7 @@ program](https://hackerone.com/tendermint).
     mempool indicate to the ABCI app whether a CheckTx request is a recheck or
     not.
   - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
-  - [libs] Remove unused `Heap` file (@marbar3778)
+  - [libs] \#2432 Remove unused `common/heap.go` file (@marbar3778)
 
 - Blockchain Protocol
 
