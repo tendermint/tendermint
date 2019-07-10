@@ -1,38 +1,12 @@
 package common
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 )
-
-var gopath string
-
-// GoPath returns GOPATH env variable value. If it is not set, this function
-// will try to call `go env GOPATH` subcommand.
-func GoPath() string {
-	if gopath != "" {
-		return gopath
-	}
-
-	path := os.Getenv("GOPATH")
-	if len(path) == 0 {
-		goCmd := exec.Command("go", "env", "GOPATH")
-		out, err := goCmd.Output()
-		if err != nil {
-			panic(fmt.Sprintf("failed to determine gopath: %v", err))
-		}
-		path = string(out)
-	}
-	gopath = path
-	return path
-}
 
 type logger interface {
 	Info(msg string, keyvals ...interface{})
@@ -78,25 +52,6 @@ func EnsureDir(dir string, mode os.FileMode) error {
 	return nil
 }
 
-func IsDirEmpty(name string) (bool, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return true, err
-		}
-		// Otherwise perhaps a permission
-		// error or some other error.
-		return false, err
-	}
-	defer f.Close()
-
-	_, err = f.Readdirnames(1) // Or f.Readdir(1)
-	if err == io.EOF {
-		return true, nil
-	}
-	return false, err // Either not empty or error, suits both cases
-}
-
 func FileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
 	return !os.IsNotExist(err)
@@ -124,20 +79,4 @@ func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {
 	if err != nil {
 		Exit(fmt.Sprintf("MustWriteFile failed: %v", err))
 	}
-}
-
-//--------------------------------------------------------------------------------
-
-func Prompt(prompt string, defaultValue string) (string, error) {
-	fmt.Print(prompt)
-	reader := bufio.NewReader(os.Stdin)
-	line, err := reader.ReadString('\n')
-	if err != nil {
-		return defaultValue, err
-	}
-	line = strings.TrimSpace(line)
-	if line == "" {
-		return defaultValue, nil
-	}
-	return line, nil
 }
