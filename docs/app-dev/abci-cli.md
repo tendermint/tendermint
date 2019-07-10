@@ -62,7 +62,7 @@ as `abci-cli` above. The kvstore just stores transactions in a merkle
 tree.
 
 Its code can be found
-[here](https://github.com/tendermint/tendermint/blob/develop/abci/cmd/abci-cli/abci-cli.go)
+[here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
 ```
@@ -137,7 +137,7 @@ response.
 
 The server may be generic for a particular language, and we provide a
 [reference implementation in
-Golang](https://github.com/tendermint/tendermint/tree/develop/abci/server). See the
+Golang](https://github.com/tendermint/tendermint/tree/master/abci/server). See the
 [list of other ABCI implementations](./ecosystem.md) for servers in
 other languages.
 
@@ -324,7 +324,7 @@ But the ultimate flexibility comes from being able to write the
 application easily in any language.
 
 We have implemented the counter in a number of languages [see the
-example directory](https://github.com/tendermint/tendermint/tree/develop/abci/example).
+example directory](https://github.com/tendermint/tendermint/tree/master/abci/example).
 
 To run the Node.js version, fist download & install [the Javascript ABCI server](https://github.com/tendermint/js-abci):
 
