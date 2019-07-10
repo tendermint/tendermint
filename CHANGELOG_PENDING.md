@@ -22,6 +22,7 @@ program](https://hackerone.com/tendermint).
     not.
   - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
   - [libs] \#2432 Remove unused `common/heap.go` file (@marbar3778)
+  - [libs] Remove unused `date.go`, `io.go`. Remove `GoPath()`, `Prompt()` and `IsDirEmpty()` functions from `os.go` (@marbar3778)
 
 - Blockchain Protocol
 
