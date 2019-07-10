@@ -1385,10 +1385,10 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 		)
 	}
 
+	cs.metrics.NumTxs.Set(float64(len(block.Data.Txs)))
 	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
+	cs.metrics.TotalTxs.Add(float64(len(block.Data.Txs)))
 	cs.metrics.CommittedHeight.Set(float64(block.Height))
-	cs.metrics.TotalTxs.Set(float64(len(block.Data.Txs)))
-
 }
 
 //-----------------------------------------------------------------------------
