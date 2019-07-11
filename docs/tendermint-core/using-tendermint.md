@@ -43,6 +43,11 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 - `chain_id`: ID of the blockchain. This must be unique for
   every blockchain. If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
+- `consensus_params`
+  - `block`
+    - `time_iota_ms`: Minimum time increment between consecutive blocks (in
+      milliseconds). If the block header timestamp is ahead of the system clock,
+      decrease this value.
 - `validators`: List of initial validators. Note this may be overridden entirely by the
   application, and may be left empty to make explicit that the
   application will initialize the validator set with ResponseInitChain.
@@ -63,9 +68,10 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   "genesis_time": "2018-11-13T18:11:50.277637Z",
   "chain_id": "test-chain-s4ui7D",
   "consensus_params": {
-    "block_size": {
+    "block": {
       "max_bytes": "22020096",
-      "max_gas": "-1"
+      "max_gas": "-1",
+      "time_iota_ms": "1000"
     },
     "evidence": {
       "max_age": "100000"
@@ -202,8 +208,10 @@ Note that raw hex cannot be used in `POST` transactions.
 
 ## Reset
 
-**WARNING: UNSAFE** Only do this in development and only if you can
+::: warning
+**UNSAFE** Only do this in development and only if you can
 afford to lose all blockchain data!
+:::
 
 To reset a blockchain, stop the node and run:
 

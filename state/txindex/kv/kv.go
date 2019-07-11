@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
-
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
@@ -75,7 +75,10 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 	return txResult, nil
 }
 
-// AddBatch indexes a batch of transactions using the given list of tags.
+// AddBatch indexes a batch of transactions using the given list of events. Each
+// key that indexed from the tx's events is a composite of the event type and
+// the respective attribute's key delimited by a "." (eg. "account.number").
+// Any event with an empty type is not indexed.
 func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
 	defer storeBatch.Close()
@@ -83,12 +86,8 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	for _, result := range b.Ops {
 		hash := result.Tx.Hash()
 
-		// index tx by tags
-		for _, tag := range result.Result.Tags {
-			if txi.indexAllTags || cmn.StringInSlice(string(tag.Key), txi.tagsToIndex) {
-				storeBatch.Set(keyForTag(tag, result), hash)
-			}
-		}
+		// index tx by events
+		txi.indexEvents(result, hash, storeBatch)
 
 		// index tx by height
 		if txi.indexAllTags || cmn.StringInSlice(types.TxHeightKey, txi.tagsToIndex) {
@@ -107,19 +106,18 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	return nil
 }
 
-// Index indexes a single transaction using the given list of tags.
+// Index indexes a single transaction using the given list of events. Each key
+// that indexed from the tx's events is a composite of the event type and the
+// respective attribute's key delimited by a "." (eg. "account.number").
+// Any event with an empty type is not indexed.
 func (txi *TxIndex) Index(result *types.TxResult) error {
 	b := txi.store.NewBatch()
 	defer b.Close()
 
 	hash := result.Tx.Hash()
 
-	// index tx by tags
-	for _, tag := range result.Result.Tags {
-		if txi.indexAllTags || cmn.StringInSlice(string(tag.Key), txi.tagsToIndex) {
-			b.Set(keyForTag(tag, result), hash)
-		}
-	}
+	// index tx by events
+	txi.indexEvents(result, hash, b)
 
 	// index tx by height
 	if txi.indexAllTags || cmn.StringInSlice(types.TxHeightKey, txi.tagsToIndex) {
@@ -131,10 +129,31 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	if err != nil {
 		return err
 	}
-	b.Set(hash, rawBytes)
 
+	b.Set(hash, rawBytes)
 	b.Write()
+
 	return nil
+}
+
+func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.SetDeleter) {
+	for _, event := range result.Result.Events {
+		// only index events with a non-empty type
+		if len(event.Type) == 0 {
+			continue
+		}
+
+		for _, attr := range event.Attributes {
+			if len(attr.Key) == 0 {
+				continue
+			}
+
+			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
+				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
+			}
+		}
+	}
 }
 
 // Search performs a search using the given query. It breaks the query into
@@ -343,7 +362,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte) (hashes [][]byte
 		}
 	} else if c.Op == query.OpContains {
 		// XXX: startKey does not apply here.
-		// For example, if startKey = "account.owner/an/" and search query = "accoutn.owner CONTAINS an"
+		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
 		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
 		it := dbm.IteratePrefix(txi.store, startKey(c.Tag))
 		defer it.Close()
@@ -420,10 +439,10 @@ func extractValueFromKey(key []byte) string {
 	return parts[1]
 }
 
-func keyForTag(tag cmn.KVPair, result *types.TxResult) []byte {
+func keyForEvent(key string, value []byte, result *types.TxResult) []byte {
 	return []byte(fmt.Sprintf("%s/%s/%d/%d",
-		tag.Key,
-		tag.Value,
+		key,
+		value,
 		result.Height,
 		result.Index,
 	))

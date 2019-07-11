@@ -154,6 +154,72 @@ func TestRPCNotification(t *testing.T) {
 	require.Equal(t, len(blob), 0, "a notification SHOULD NOT be responded to by the server")
 }
 
+func TestRPCNotificationInBatch(t *testing.T) {
+	mux := testMux()
+	tests := []struct {
+		payload     string
+		expectCount int
+	}{
+		{
+			`[
+				{"jsonrpc": "2.0","id": ""},
+				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]}
+			 ]`,
+			1,
+		},
+		{
+			`[
+				{"jsonrpc": "2.0","id": ""},
+				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]},
+				{"jsonrpc": "2.0","id": ""},
+				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]}
+			 ]`,
+			2,
+		},
+	}
+	for i, tt := range tests {
+		req, _ := http.NewRequest("POST", "http://localhost/", strings.NewReader(tt.payload))
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		res := rec.Result()
+		// Always expecting back a JSONRPCResponse
+		assert.True(t, statusOK(res.StatusCode), "#%d: should always return 2XX", i)
+		blob, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			t.Errorf("#%d: err reading body: %v", i, err)
+			continue
+		}
+
+		var responses []types.RPCResponse
+		// try to unmarshal an array first
+		err = json.Unmarshal(blob, &responses)
+		if err != nil {
+			// if we were actually expecting an array, but got an error
+			if tt.expectCount > 1 {
+				t.Errorf("#%d: expected an array, couldn't unmarshal it\nblob: %s", i, blob)
+				continue
+			} else {
+				// we were expecting an error here, so let's unmarshal a single response
+				var response types.RPCResponse
+				err = json.Unmarshal(blob, &response)
+				if err != nil {
+					t.Errorf("#%d: expected successful parsing of an RPCResponse\nblob: %s", i, blob)
+					continue
+				}
+				// have a single-element result
+				responses = []types.RPCResponse{response}
+			}
+		}
+		if tt.expectCount != len(responses) {
+			t.Errorf("#%d: expected %d response(s), but got %d\nblob: %s", i, tt.expectCount, len(responses), blob)
+			continue
+		}
+		for _, response := range responses {
+			assert.NotEqual(t, response, new(types.RPCResponse), "#%d: not expecting a blank RPCResponse", i)
+		}
+	}
+}
+
 func TestUnknownRPCPath(t *testing.T) {
 	mux := testMux()
 	req, _ := http.NewRequest("GET", "http://localhost/unknownrpcpath", nil)

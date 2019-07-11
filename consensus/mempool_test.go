@@ -11,13 +11,15 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
 // for testing
-func assertMempool(txn txNotifier) sm.Mempool {
-	return txn.(sm.Mempool)
+func assertMempool(txn txNotifier) mempl.Mempool {
+	return txn.(mempl.Mempool)
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
@@ -106,7 +108,9 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
-	cs := newConsensusState(state, privVals[0], NewCounterApplication())
+	blockDB := dbm.NewMemDB()
+	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
+	sm.SaveState(blockDB, state)
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 
@@ -129,13 +133,15 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 func TestMempoolRmBadTx(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	app := NewCounterApplication()
-	cs := newConsensusState(state, privVals[0], app)
+	blockDB := dbm.NewMemDB()
+	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], app, blockDB)
+	sm.SaveState(blockDB, state)
 
 	// increment the counter by 1
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	resDeliver := app.DeliverTx(txBytes)
+	resDeliver := app.DeliverTx(abci.RequestDeliverTx{Tx: txBytes})
 	assert.False(t, resDeliver.IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
 
 	resCommit := app.Commit()
@@ -203,8 +209,8 @@ func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}
 }
 
-func (app *CounterApplication) DeliverTx(tx []byte) abci.ResponseDeliverTx {
-	txValue := txAsUint64(tx)
+func (app *CounterApplication) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
+	txValue := txAsUint64(req.Tx)
 	if txValue != uint64(app.txCount) {
 		return abci.ResponseDeliverTx{
 			Code: code.CodeTypeBadNonce,
@@ -214,8 +220,8 @@ func (app *CounterApplication) DeliverTx(tx []byte) abci.ResponseDeliverTx {
 	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) CheckTx(tx []byte) abci.ResponseCheckTx {
-	txValue := txAsUint64(tx)
+func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+	txValue := txAsUint64(req.Tx)
 	if txValue != uint64(app.mempoolTxCount) {
 		return abci.ResponseCheckTx{
 			Code: code.CodeTypeBadNonce,

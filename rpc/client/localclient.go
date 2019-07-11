@@ -182,7 +182,7 @@ func (c *Local) eventsRoutine(sub types.Subscription, subscriber string, q tmpub
 	for {
 		select {
 		case msg := <-sub.Out():
-			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Tags: msg.Tags()}
+			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Events: msg.Events()}
 			if cap(outc) == 0 {
 				outc <- result
 			} else {

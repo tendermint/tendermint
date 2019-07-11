@@ -22,6 +22,11 @@ func TestPrefixIteratorNoMatchNil(t *testing.T) {
 // Empty iterator for db populated after iterator created.
 func TestPrefixIteratorNoMatch1(t *testing.T) {
 	for backend := range backends {
+		if backend == BoltDBBackend {
+			t.Log("bolt does not support concurrent writes while iterating")
+			continue
+		}
+
 		t.Run(fmt.Sprintf("Prefix w/ backend %s", backend), func(t *testing.T) {
 			db, dir := newTempDB(t, backend)
 			defer os.RemoveAll(dir)

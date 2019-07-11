@@ -1,4 +1,4 @@
-FROM golang:1.10
+FROM golang:1.12
 
 # Add testing deps for curl
 RUN echo 'deb http://httpredir.debian.org/debian testing main non-free contrib' >> /etc/apt/sources.list
@@ -20,7 +20,6 @@ COPY . $REPO
 # Install the vendored dependencies
 # docker caching prevents reinstall on code change!
 RUN make get_tools
-RUN make get_vendor_deps
 
 # install ABCI CLI
 RUN make install_abci
@@ -28,7 +27,12 @@ RUN make install_abci
 # install Tendermint
 RUN make install
 
-RUN tendermint testnet --node-dir-prefix="mach" --v=4 --populate-persistent-peers=false --o=$REPO/test/p2p/data
+RUN tendermint testnet \
+        --config $REPO/test/docker/config-template.toml \
+        --node-dir-prefix="mach" \
+        --v=4 \
+        --populate-persistent-peers=false \
+        --o=$REPO/test/p2p/data
 
 # Now copy in the code
 # NOTE: this will overwrite whatever is in vendor/

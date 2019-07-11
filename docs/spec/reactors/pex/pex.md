@@ -21,17 +21,20 @@ inbound (they dialed our public address) or outbound (we dialed them).
 ## Discovery
 
 Peer discovery begins with a list of seeds.
-When we have no peers, or have been unable to find enough peers from existing ones,
-we dial a randomly selected seed to get a list of peers to dial.
+
+When we don't have enough peers, we
+
+1. ask existing peers
+2. dial seeds if we're not dialing anyone currently
 
 On startup, we will also immediately dial the given list of `persistent_peers`,
-and will attempt to maintain persistent connections with them. If the connections die, or we fail to dial,
-we will redial every 5s for a few minutes, then switch to an exponential backoff schedule,
-and after about a day of trying, stop dialing the peer.
+and will attempt to maintain persistent connections with them. If the
+connections die, or we fail to dial, we will redial every 5s for a few minutes,
+then switch to an exponential backoff schedule, and after about a day of
+trying, stop dialing the peer.
 
-So long as we have less than `MaxNumOutboundPeers`, we periodically request additional peers
-from each of our own. If sufficient time goes by and we still can't find enough peers,
-we try the seeds again.
+As long as we have less than `MaxNumOutboundPeers`, we periodically request
+additional peers from each of our own and try seeds.
 
 ## Listening
 

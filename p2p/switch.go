@@ -77,6 +77,8 @@ type Switch struct {
 	nodeInfo     NodeInfo // our node info
 	nodeKey      *NodeKey // our node privkey
 	addrBook     AddrBook
+	// peers addresses with whom we'll maintain constant connection
+	persistentPeersAddrs []*NetAddress
 
 	transport Transport
 
@@ -104,16 +106,17 @@ func NewSwitch(
 	options ...SwitchOption,
 ) *Switch {
 	sw := &Switch{
-		config:        cfg,
-		reactors:      make(map[string]Reactor),
-		chDescs:       make([]*conn.ChannelDescriptor, 0),
-		reactorsByCh:  make(map[byte]Reactor),
-		peers:         NewPeerSet(),
-		dialing:       cmn.NewCMap(),
-		reconnecting:  cmn.NewCMap(),
-		metrics:       NopMetrics(),
-		transport:     transport,
-		filterTimeout: defaultFilterTimeout,
+		config:               cfg,
+		reactors:             make(map[string]Reactor),
+		chDescs:              make([]*conn.ChannelDescriptor, 0),
+		reactorsByCh:         make(map[byte]Reactor),
+		peers:                NewPeerSet(),
+		dialing:              cmn.NewCMap(),
+		reconnecting:         cmn.NewCMap(),
+		metrics:              NopMetrics(),
+		transport:            transport,
+		filterTimeout:        defaultFilterTimeout,
+		persistentPeersAddrs: make([]*NetAddress, 0),
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
@@ -155,7 +158,7 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 	for _, chDesc := range reactorChannels {
 		chID := chDesc.ID
 		if sw.reactorsByCh[chID] != nil {
-			cmn.PanicSanity(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chID, sw.reactorsByCh[chID], reactor))
+			panic(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chID, sw.reactorsByCh[chID], reactor))
 		}
 		sw.chDescs = append(sw.chDescs, chDesc)
 		sw.reactorsByCh[chID] = reactor
@@ -218,11 +221,7 @@ func (sw *Switch) OnStart() error {
 func (sw *Switch) OnStop() {
 	// Stop peers
 	for _, p := range sw.peers.List() {
-		sw.transport.Cleanup(p)
-		p.Stop()
-		if sw.peers.Remove(p) {
-			sw.metrics.Peers.Add(float64(-1))
-		}
+		sw.stopAndRemovePeer(p, nil)
 	}
 
 	// Stop reactors
@@ -297,7 +296,19 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
-		go sw.reconnectToPeer(peer.SocketAddr())
+		var addr *NetAddress
+		if peer.IsOutbound() { // socket address for outbound peers
+			addr = peer.SocketAddr()
+		} else { // self-reported address for inbound peers
+			var err error
+			addr, err = peer.NodeInfo().NetAddress()
+			if err != nil {
+				sw.Logger.Error("Wanted to reconnect to inbound peer, but self-reported address is wrong",
+					"peer", peer, "err", err)
+				return
+			}
+		}
+		go sw.reconnectToPeer(addr)
 	}
 }
 
@@ -309,13 +320,19 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	if sw.peers.Remove(peer) {
-		sw.metrics.Peers.Add(float64(-1))
-	}
 	sw.transport.Cleanup(peer)
 	peer.Stop()
+
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
+	}
+
+	// Removing a peer should go last to avoid a situation where a peer
+	// reconnect to our node and the switch calls InitPeer before
+	// RemovePeer is finished.
+	// https://github.com/tendermint/tendermint/issues/3338
+	if sw.peers.Remove(peer) {
+		sw.metrics.Peers.Add(float64(-1))
 	}
 }
 
@@ -341,7 +358,7 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 			return
 		}
 
-		err := sw.DialPeerWithAddress(addr, true)
+		err := sw.DialPeerWithAddress(addr)
 		if err == nil {
 			return // success
 		} else if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
@@ -365,7 +382,7 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 		sleepIntervalSeconds := math.Pow(reconnectBackOffBaseSeconds, float64(i))
 		sw.randomSleep(time.Duration(sleepIntervalSeconds) * time.Second)
 
-		err := sw.DialPeerWithAddress(addr, true)
+		err := sw.DialPeerWithAddress(addr)
 		if err == nil {
 			return // success
 		} else if _, ok := err.(ErrCurrentlyDialingOrExistingAddress); ok {
@@ -401,28 +418,41 @@ func isPrivateAddr(err error) bool {
 	return ok && te.PrivateAddr()
 }
 
-// DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
+// DialPeersAsync dials a list of peers asynchronously in random order.
 // Used to dial peers from config on startup or from unsafe-RPC (trusted sources).
-// TODO: remove addrBook arg since it's now set on the switch
-func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
+// It ignores ErrNetAddressLookup. However, if there are other errors, first
+// encounter is returned.
+// Nop if there are no peers.
+func (sw *Switch) DialPeersAsync(peers []string) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
-	// only log errors, dial correct addresses
+	// report all the errors
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
+	// return first non-ErrNetAddressLookup error
+	for _, err := range errs {
+		if _, ok := err.(ErrNetAddressLookup); ok {
+			continue
+		}
+		return err
+	}
+	sw.dialPeersAsync(netAddrs)
+	return nil
+}
 
+func (sw *Switch) dialPeersAsync(netAddrs []*NetAddress) {
 	ourAddr := sw.NetAddress()
 
 	// TODO: this code feels like it's in the wrong place.
 	// The integration tests depend on the addrBook being saved
 	// right away but maybe we can change that. Recall that
 	// the addrBook is only written to disk every 2min
-	if addrBook != nil {
+	if sw.addrBook != nil {
 		// add peers to `addrBook`
 		for _, netAddr := range netAddrs {
 			// do not add our address or ID
 			if !netAddr.Same(ourAddr) {
-				if err := addrBook.AddAddress(netAddr, ourAddr); err != nil {
+				if err := sw.addrBook.AddAddress(netAddr, ourAddr); err != nil {
 					if isPrivateAddr(err) {
 						sw.Logger.Debug("Won't add peer's address to addrbook", "err", err)
 					} else {
@@ -433,7 +463,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 		}
 		// Persist some peers to disk right away.
 		// NOTE: integration tests depend on this
-		addrBook.Save()
+		sw.addrBook.Save()
 	}
 
 	// permute the list, dial them in random order.
@@ -450,7 +480,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 
 			sw.randomSleep(0)
 
-			err := sw.DialPeerWithAddress(addr, persistent)
+			err := sw.DialPeerWithAddress(addr)
 			if err != nil {
 				switch err.(type) {
 				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeerID, ErrCurrentlyDialingOrExistingAddress:
@@ -461,16 +491,13 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			}
 		}(i)
 	}
-	return nil
 }
 
 // DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects
 // and authenticates successfully.
-// If `persistent == true`, the switch will always try to reconnect to this
-// peer if the connection ever fails.
 // If we're currently dialing this address or it belongs to an existing peer,
 // ErrCurrentlyDialingOrExistingAddress is returned.
-func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
+func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 	if sw.IsDialingOrExistingAddress(addr) {
 		return ErrCurrentlyDialingOrExistingAddress{addr.String()}
 	}
@@ -478,7 +505,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
 
-	return sw.addOutboundPeerWithConfig(addr, sw.config, persistent)
+	return sw.addOutboundPeerWithConfig(addr, sw.config)
 }
 
 // sleep for interval plus some random amount of ms on [0, dialRandomizerIntervalMilliseconds]
@@ -495,6 +522,38 @@ func (sw *Switch) IsDialingOrExistingAddress(addr *NetAddress) bool {
 		(!sw.config.AllowDuplicateIP && sw.peers.HasIP(addr.IP))
 }
 
+// AddPersistentPeers allows you to set persistent peers. It ignores
+// ErrNetAddressLookup. However, if there are other errors, first encounter is
+// returned.
+func (sw *Switch) AddPersistentPeers(addrs []string) error {
+	sw.Logger.Info("Adding persistent peers", "addrs", addrs)
+	netAddrs, errs := NewNetAddressStrings(addrs)
+	// report all the errors
+	for _, err := range errs {
+		sw.Logger.Error("Error in peer's address", "err", err)
+	}
+	// return first non-ErrNetAddressLookup error
+	for _, err := range errs {
+		if _, ok := err.(ErrNetAddressLookup); ok {
+			continue
+		}
+		return err
+	}
+	sw.persistentPeersAddrs = netAddrs
+	return nil
+}
+
+func (sw *Switch) isPeerPersistentFn() func(*NetAddress) bool {
+	return func(na *NetAddress) bool {
+		for _, pa := range sw.persistentPeersAddrs {
+			if pa.Equals(na) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 func (sw *Switch) acceptRoutine() {
 	for {
 		p, err := sw.transport.Accept(peerConfig{
@@ -502,6 +561,7 @@ func (sw *Switch) acceptRoutine() {
 			onPeerError:  sw.StopPeerForError,
 			reactorsByCh: sw.reactorsByCh,
 			metrics:      sw.metrics,
+			isPersistent: sw.isPeerPersistentFn(),
 		})
 		if err != nil {
 			switch err := err.(type) {
@@ -581,13 +641,12 @@ func (sw *Switch) acceptRoutine() {
 
 // dial the peer; make secret connection; authenticate against the dialed ID;
 // add the peer.
-// if dialing fails, start the reconnect loop. If handhsake fails, its over.
-// If peer is started succesffuly, reconnectLoop will start when
-// StopPeerForError is called
+// if dialing fails, start the reconnect loop. If handshake fails, it's over.
+// If peer is started successfully, reconnectLoop will start when
+// StopPeerForError is called.
 func (sw *Switch) addOutboundPeerWithConfig(
 	addr *NetAddress,
 	cfg *config.P2PConfig,
-	persistent bool,
 ) error {
 	sw.Logger.Info("Dialing peer", "address", addr)
 
@@ -600,7 +659,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	p, err := sw.transport.Dial(*addr, peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
-		persistent:   persistent,
+		isPersistent: sw.isPeerPersistentFn(),
 		reactorsByCh: sw.reactorsByCh,
 		metrics:      sw.metrics,
 	})
@@ -619,7 +678,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 
 		// retry persistent peers after
 		// any dial error besides IsSelf()
-		if persistent {
+		if sw.isPeerPersistentFn()(addr) {
 			go sw.reconnectToPeer(addr)
 		}
 
@@ -680,6 +739,11 @@ func (sw *Switch) addPeer(p Peer) error {
 		// XXX should this return an error or just log and terminate?
 		sw.Logger.Error("Won't start a peer - switch is not running", "peer", p)
 		return nil
+	}
+
+	// Add some data to the peer, which is required by reactors.
+	for _, reactor := range sw.reactors {
+		p = reactor.InitPeer(p)
 	}
 
 	// Start the peer's send/recv routines.

@@ -342,3 +342,27 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 		}
 	}
 }
+
+func TestCommitToVoteSet(t *testing.T) {
+	lastID := makeBlockIDRandom()
+	h := int64(3)
+
+	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	assert.NoError(t, err)
+
+	chainID := voteSet.ChainID()
+	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
+
+	for i := 0; i < len(vals); i++ {
+		vote1 := voteSet.GetByIndex(i)
+		vote2 := voteSet2.GetByIndex(i)
+		vote3 := commit.GetVote(i)
+
+		vote1bz := cdc.MustMarshalBinaryBare(vote1)
+		vote2bz := cdc.MustMarshalBinaryBare(vote2)
+		vote3bz := cdc.MustMarshalBinaryBare(vote3)
+		assert.Equal(t, vote1bz, vote2bz)
+		assert.Equal(t, vote1bz, vote3bz)
+	}
+}
