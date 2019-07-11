@@ -7,7 +7,7 @@
 Special thanks to external contributors on this release: 
 @ParthDesai, @climber73, @jim380, @ashleyvega
 
-This release contains breaking changes to our build and release processes, ABCI namely:
+This release contains breaking changes to our libs folder and ABCI namely:
 - Add a "Recheck Tx" indicator 
 - Removal of `db/debugDB`, `common/colors.go`, `errors/errors.go`, `common/heap.go`, `date.go`, `io.go` and
   `GoPath()`, `Prompt()` and `IsDirEmpty()` functions from `os.go`
