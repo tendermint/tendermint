@@ -65,18 +65,40 @@ type SignedHeader struct {
     Commit        Commit
 }
 ```
+Locally, lite client manages the following state:
 
 ```golang
-// if successful returns time until valset can be trusted 
-Init(height int64, valSetHash Hash): (Time, error) {
+type LiteClientState struct {
+  ValSet            []Validator        // validator set at the given height
+  ValSetHash        []byte             // hash of the current validator set
+  NextValSet        []Validator        // next validator set
+  NextValSetHash    []byte             // hash of the next validator set
+  Height            int64              // current height
+  ValSetTime        int64              // time when the current and next validator set is initialized
+}
+```
+
+Initialization procedure is captured by the following pseudo code:
+
+```golang
+Init(height int64, valSetHash Hash): (LiteClientState, error) {
+  state = LiteClientState {}
   valSet = Validators(height).Validators
-  if Hash(valSet) != valSetHash then return (0, error)
+  if Hash(valSet) != valSetHash then return (nil, error)
 
   signedHeader = Commit(height)
-  if signedHeader.Header.Time + LITE_CLIENT_CERTIFICATE_PERIOD > Now() - BFT_TIME_DRIFT_BOUND then return (0, error)
-  if votingPower(signedHeader.Commit) <= 2/3 totalVotingPower(valSet) then return (0, error)
+  if signedHeader.Header.Time + LITE_CLIENT_CERTIFICATE_PERIOD > Now() - BFT_TIME_DRIFT_BOUND then return (nil, error)
+  if votingPower(signedHeader.Commit) <= 2/3 totalVotingPower(valSet) then return (nil, error)
   
-  return Now() - BFT_TIME_DRIFT_BOUND - signedHeader.Header.Time + LITE_CLIENT_CERTIFICATE_PERIOD, nil
+  nextValSet = Validators(height+1).Validators
+  if Hash(nextValSet) != signedHeader.Header.NextValSetHash then return (nil, error)
+
+  state.ValSet = nextValSet
+  state.ValSetHash = signedHeader.Header.NextValSetHash
+  state.Height = height
+  state.ValSetTime = signedHeader.Header.Time
+  
+  return state, nil
 }  
 ```
 
@@ -87,63 +109,33 @@ We assume that each validator set change is signed (committed) by the current va
 given a block `H` that contains transactions that are modifying the current validator set, the Merkle root hash of the next validator set (modified based on transactions from block H) are in block `H+1` (and signed by the current validator
 set), and then starting from the block `H+2`, it will be signed by the next validator set.
 
-Locally, lite client manages the following state:
+The core of the light client logic is captured by the VerifyAndUpdate function that is used to update
+trusted validator set to the one from the given height.
 
 ```golang
-valSet        []Validator    // current validator set (last known and verified validator set)
-valSetNumber  int64          // sequence number of the current validator set
-valSetHash    []byte         // hash of the current validator set
-valSetTime    int64          // time when the current validator set is initialised
-```
+VerifyAndUpdate(state LiteClientState, height int64): error {
+  if signedHeader.Header.Height <= height then return error
+  
+  // check if certification period of the current validator set is still secure
+  if state.ValSetTime + LITE_CLIENT_CERTIFICATE_PERIOD > Now() - BFT_TIME_DRIFT_BOUND then return error
 
-The core of the light client logic is captured by the VerifyAndUpdate function that is used to 1) verify if the given header is valid, and 2) update the validator set (when the given header is valid and it is more recent than the seen headers).
+  for i = state.Height+1; i < height; i++ {
+    signedHeader = Commit(i)
+    if votingPower(signedHeader.Commit) <= 2/3 totalVotingPower(state.ValSet) then return error
+    if signedHeader.Header.ValidatorsHash != state.ValSetHash then return error
 
-```golang
-VerifyAndUpdate(signedHeader SignedHeader):
-  assertThat signedHeader.valSetNumber >= valSetNumber
-  if isValid(signedHeader) and signedHeader.Header.Time <= valSetTime + UNBONDING_PERIOD then
-    setValidatorSet(signedHeader)
-    return true
-  else
-    updateValidatorSet(signedHeader.ValSetNumber)
-    return VerifyAndUpdate(signedHeader)
+    nextValSetHash = signedHeader.Header.NextValidatorsHash
 
-isValid(signedHeader SignedHeader):
-  valSetOfTheHeader = Validators(signedHeader.Header.Height)
-  assertThat Hash(valSetOfTheHeader) == signedHeader.Header.ValSetHash
-  assertThat signedHeader is passing basic validation
-  if votingPower(signedHeader.Commit) > 2/3 * votingPower(valSetOfTheHeader) then return true
-  else
-    return false
+    nextValSet = Validators(i+1).Validators
+    if Hash(nextValSet) != nextValSetHash then return (0, error)
 
-setValidatorSet(signedHeader SignedHeader):
-  nextValSet = Validators(signedHeader.Header.Height)
-  assertThat Hash(nextValSet) == signedHeader.Header.ValidatorsHash
-  valSet = nextValSet.Validators
-  valSetHash = signedHeader.Header.ValidatorsHash
-  valSetNumber = signedHeader.ValSetNumber
-  valSetTime = nextValSet.ValSetTime
-
-votingPower(commit Commit):
-  votingPower = 0
-  for each precommit in commit.Precommits do:
-    if precommit.ValidatorAddress is in valSet and signature of the precommit verifies then
-      votingPower += valSet[precommit.ValidatorAddress].VotingPower
-  return votingPower
-
-votingPower(validatorSet []Validator):
-  for each validator in validatorSet do:
-    votingPower += validator.VotingPower
-  return votingPower
-
-updateValidatorSet(valSetNumberOfTheHeader):
-  while valSetNumber != valSetNumberOfTheHeader do
-    signedHeader = LastHeader(valSetNumber)
-    if isValid(signedHeader) then
-      setValidatorSet(signedHeader)
-    else return error
-  return
-```
+    // at this point we can install new valset
+    state.ValSet = nextValSet
+    state.ValSetHash = nextValSetHash
+    state.Height = i
+    state.ValSetTime = signedHeader.Header.Time
+  }  
+}
 
 Note that in the logic above we assume that the lite client will always go upward with respect to header verifications,
 i.e., that it will always be used to verify more recent headers. Going backward is problematic as having trust in 
