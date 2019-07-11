@@ -1,9 +1,9 @@
 # Install Tendermint
 
 The fastest and easiest way to install the `tendermint` binary
-is to run [this script](https://github.com/tendermint/tendermint/blob/develop/scripts/install/install_tendermint_ubuntu.sh) on
+is to run [this script](https://github.com/tendermint/tendermint/blob/master/scripts/install/install_tendermint_ubuntu.sh) on
 a fresh Ubuntu instance,
-or [this script](https://github.com/tendermint/tendermint/blob/develop/scripts/install/install_tendermint_bsd.sh)
+or [this script](https://github.com/tendermint/tendermint/blob/master/scripts/install/install_tendermint_bsd.sh)
 on a fresh FreeBSD instance. Read the comments / instructions carefully (i.e., reset your terminal after running the script,
 make sure you are okay with the network connections being made).
 

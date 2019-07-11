@@ -3,7 +3,7 @@
 ## Overview
 
 The ABCI message types are defined in a [protobuf
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 
 ABCI methods are split across 3 separate ABCI _connections_:
 
@@ -505,9 +505,9 @@ Commit are included in the header of the next block.
 - **Fields**:
   - `MaxAge (int64)`: Max age of evidence, in blocks. Evidence older than this
     is considered stale and ignored.
-  - This should correspond with an app's "unbonding period" or other
-    similar mechanism for handling Nothing-At-Stake attacks.
-  - NOTE: this should change to time (instead of blocks)!
+    - This should correspond with an app's "unbonding period" or other
+      similar mechanism for handling Nothing-At-Stake attacks.
+    - NOTE: this should change to time (instead of blocks)!
 
 ### ValidatorParams
 
