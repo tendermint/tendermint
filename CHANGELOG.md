@@ -17,10 +17,6 @@ program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
-- CLI/RPC/Config
-
-- Apps
-
 - Go API
 
   - [abci] [\#2127](https://github.com/tendermint/tendermint/issues/2127) ABCI / mempool: Add a "Recheck Tx" indicator. Breaks the ABCI
@@ -31,10 +27,6 @@ program](https://hackerone.com/tendermint).
   - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
   - [libs] [\#2432](https://github.com/tendermint/tendermint/issues/2432) Remove unused `common/heap.go` file (@marbar3778)
   - [libs] Remove unused `date.go`, `io.go`. Remove `GoPath()`, `Prompt()` and `IsDirEmpty()` functions from `os.go` (@marbar3778)
-
-- Blockchain Protocol
-
-- P2P Protocol
 
 ### FEATURES:
 
@@ -50,7 +42,7 @@ program](https://hackerone.com/tendermint).
 
 - [p2p] [\#3338](https://github.com/tendermint/tendermint/issues/3338) Prevent "sent next PEX request too soon" errors by not calling
   ensurePeers outside of ensurePeersRoutine
-- [behaviour] Return correct reason in MessageOutOfOrder (@jim380)
+- [behaviour] [\3772](https://github.com/tendermint/tendermint/pull/3772) Return correct reason in MessageOutOfOrder (@jim380)
 - [config] [\#3723](https://github.com/tendermint/tendermint/issues/3723) Add consensus_params to testnet config generation; document time_iota_ms (@ashleyvega)
 
 

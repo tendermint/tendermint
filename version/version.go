@@ -23,7 +23,7 @@ const (
 	TMCoreSemVer = "0.32.1"
 
 	// ABCISemVer is the semantic version of the ABCI library
-	ABCISemVer  = "0.16.0"
+	ABCISemVer  = "0.16.1"
 	ABCIVersion = ABCISemVer
 )
 
