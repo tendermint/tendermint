@@ -14,6 +14,11 @@ type height int64
 
 // errors
 var (
+	// new
+	errDuplicatePeer = errors.New("fast sync tried to add a peer twice")
+	errPeerNotFound  = errors.New("Peer not found")
+	errPeerRemoved   = errors.New("try to remove a removed peer")
+
 	// internal to the package
 	errNoErrorFinished        = errors.New("fast sync is finished")
 	errInvalidEvent           = errors.New("invalid event in current state")
@@ -107,14 +112,14 @@ func newSchedule(minHeight int64, targetPending uint, targetReceived uint) *sche
 
 func (sc *schedule) addPeer(peerID p2p.ID) error {
 	if ok, _ := sc.peers[peerID]; ok {
-		return errors.New("duplicate peer")
+		return errDuplicatePeer
 	}
 	peers[peerID] = newScPeer(peerID)
 }
 
 func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
-	if ok, peer := sc.peers[peerID]; !ok {
-		return errors.New("peer not found")
+	if ok, peer := sc.peers[peerID]; !ok && peer.state == peerStateRemoved {
+		return errPeerNotFound
 	}
 
 	peer.lastTouch = time
@@ -122,11 +127,11 @@ func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
 
 func (sc *schedule) removePeer(peerID p2p.ID) error {
 	if ok, peer := sc.peers[peerID]; !ok {
-		return errors.New("peer not found")
+		return errPeerNotFound
 	}
 
 	if peer.state == peerStateRemoved {
-		return errors.New("try to remove a removed peer")
+		return errPeerRemoved
 	}
 
 	for height, pendingPeerID := range sc.pending {
@@ -186,18 +191,18 @@ func (sc *schedule) setStateAtHeight(height int64, state blockState) {
 
 func (sc *schedule) markReceived(peerID p2p.ID, height int64, size int64) error {
 	if ok, peer := sc.peers[peerID]; !ok || peer.state != peerStateReady {
-		return errors.New("received a block from an unknown peer")
+		return errPeerNotFound
 	}
 
 	if sc.getStateAtHeight(height) != blockStatePending {
-		return errors.New("received an unrequested block")
+		return errBadDataFromPeer
 	}
 
 	// TODO: download speed
 
 	// check if the block is pending from that peer
 	if sc.pending[height] != peerID {
-		return errors.New("Didn't request this block from this peer")
+		return errBadDataFromPeer
 	}
 
 	sc.setStateAtHeight(height, blockStateReceived)
@@ -213,7 +218,7 @@ func (sc *schedule) markPending(peerID p2p.ID, height int64, size int64) error {
 
 func (sc *schedule) markProcessed(height int64) error {
 	if sc.getStateAtHeight(height) != blockStateReceived {
-		return errors.New("Block was processed without being received")
+		return errBadDataFromPeer
 	}
 
 	sc.setStateAtHeight(height, blockStateProcessed)
@@ -258,7 +263,7 @@ func (sc *schedule) pendingFrom(peerID p2p.ID) {
 
 func (sc *schedule) resetBlocks(peerID p2p.ID) error {
 	if ok, peer := sc.peers[peerID]; !ok {
-		return errors.New("peer not found")
+		return errPeerNotFound
 	}
 
 	for _, height := range sc.pending[peerID] {
