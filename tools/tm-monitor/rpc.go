@@ -82,13 +82,13 @@ func RPCMonitor(m *monitor.Monitor) func(*rpctypes.Context, string) (*monitor.No
 }
 
 // RPCUnmonitor removes the given endpoint from under the monitor.
-func RPCUnmonitor(m *monitor.Monitor) interface{} {
-	return func(endpoint string) (bool, error) {
+func RPCUnmonitor(m *monitor.Monitor) func(*rpctypes.Context, string) (bool, error) {
+	return func(_ *rpctypes.Context, endpoint string) (bool, error) {
 		if i, n := m.NodeByName(endpoint); i != -1 {
 			m.Unmonitor(n)
 			return true, nil
 		}
-		return false, errors.New("Cannot find node with that name")
+		return false, errors.New("cannot find node with that name")
 	}
 }
 
