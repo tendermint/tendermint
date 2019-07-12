@@ -8,8 +8,8 @@ Special thanks to external contributors on this release:
 @ParthDesai, @climber73, @jim380, @ashleyvega
 
 This release contains breaking changes to our libs folder and ABCI namely:
-- Add a "Recheck Tx" indicator 
-- Removal of `db/debugDB`, `common/colors.go`, `errors/errors.go`, `common/heap.go`, `date.go`, `io.go` and
+- CheckTx requests include a `CheckTxType` enum that can be set to `Recheck` to indicate to the application that this transaction was already checked/validated and certain expensive operations (like checking signatures) can be skipped
+- Removed various functions from `libs` pkgs
   `GoPath()`, `Prompt()` and `IsDirEmpty()` functions from `os.go`
 
 Friendly reminder, we have a [bug bounty
@@ -38,8 +38,7 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
-- [node] Refactor `NewNode` to use functional options to make it more flexible
-  and extensible in the future.
+- [node] Add variadic argument to `NewNode` to support functional options, allowing the Node to be more easily customized. 
 - [node][\#3730](https://github.com/tendermint/tendermint/pull/3730) Add `CustomReactors` option to `NewNode` allowing caller to pass
   custom reactors to run inside Tendermint node (@ParthDesai)
 
