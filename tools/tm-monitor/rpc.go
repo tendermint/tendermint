@@ -2,9 +2,10 @@ package main
 
 import (
 	"errors"
-	"github.com/tendermint/tendermint/rpc/lib/types"
 	"net"
 	"net/http"
+
+	"github.com/tendermint/tendermint/rpc/lib/types"
 
 	"github.com/tendermint/tendermint/libs/log"
 	rpc "github.com/tendermint/tendermint/rpc/lib/server"
