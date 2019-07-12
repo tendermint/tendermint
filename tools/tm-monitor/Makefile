@@ -36,7 +36,7 @@ dist: build-all
 
 build-docker:
 	rm -f ./tm-monitor
-	docker run -it --rm -v "$(PWD)/../../:/go/src/github.com/tendermint/tendermint" -w "/go/src/github.com/tendermint/tendermint/tools/tm-monitor" -e "CGO_ENABLED=0" golang:alpine go build -ldflags "-s -w" -o tm-monitor
+	docker run -it --rm -v "$(PWD)/../../:/go/src/github.com/tendermint/tendermint" -w "/go/src/github.com/tendermint/tendermint/tools/tm-monitor" -e "GO111MODULE=on" -e "CGO_ENABLED=0" golang:1.12 go build -ldflags "-s -w" -o tm-monitor
 	docker build -t "tendermint/monitor" .
 
 clean:
