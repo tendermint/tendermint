@@ -23,7 +23,7 @@ program](https://hackerone.com/tendermint).
     client interface (`abcicli.Client`) to allow for supplying the ABCI
     `types.RequestCheckTx` and `types.RequestDeliverTx` structs, and lets the
     mempool indicate to the ABCI app whether a CheckTx request is a recheck or
-    not.
+    not. see [docs](https://github.com/tendermint/tendermint/blob/eddb433d7c082efbeaf8974413a36641519ee895/docs/spec/abci/apps.md#mempool-connection)
   - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
   - [libs] [\#2432](https://github.com/tendermint/tendermint/issues/2432) Remove unused `common/heap.go` file (@marbar3778)
   - [libs] Remove unused `date.go`, `io.go`. Remove `GoPath()`, `Prompt()` and `IsDirEmpty()` functions from `os.go` (@marbar3778)
