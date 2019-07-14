@@ -16,7 +16,6 @@ require (
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.3.0
-	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/google/gofuzz v1.0.0 // indirect
 	github.com/gorilla/websocket v1.2.0
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -41,7 +40,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.0.0
 	github.com/stretchr/testify v1.2.2
-	github.com/syndtr/goleveldb v0.0.0-20181012014443-6b91fda63f2e
+	github.com/syndtr/goleveldb v1.0.1-0.20190318030020-c3a204f8e965
 	github.com/tendermint/go-amino v0.14.1
 	go.etcd.io/bbolt v1.3.3 // indirect
 	golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25
