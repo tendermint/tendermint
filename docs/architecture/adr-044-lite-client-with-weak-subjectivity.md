@@ -1,16 +1,17 @@
 # Tendermint Lite Client with Weak Subjectivity ADR
 
-
+Changelog:
+- 13-07-2019: Initial Draft
 ## Context
-The concept of light clients was introduced in the Bitcoin white paper. It describes a watcher of distributed consensus process that only validates the consensus algorithm and no the state machine transactions within.
+The concept of light clients was introduced in the Bitcoin white paper. It describes a watcher of distributed consensus process that only validates the consensus algorithm and not the state machine transactions within.
 
 Tendermint light clients allow light weight devices and other blockchains to efficiently verify the consensus of a Tendermint blockchain. This forms the basic of safe and efficient state synchronization for new network nodes and InterBlockchain Communication.
 
-In a network that is expected to reliably punish validators for misbehavior through punishments or where the validator set is largely trusted and changes infrequently, clients can take advantage of this assumption to safety synchronize a lite client without downloading the intervening headers.
+In a network that is expected to reliably punish validators for misbehavior through punishments or where the validator set is largely trusted and changes infrequently, clients can take advantage of this assumption to safely synchronize a lite client without downloading the intervening headers.
 
 Light clients (and full nodes) operating in the Proof Of Stake context need a trusted block height from a trusted source that is no older than 1 unbending window. This is called “weak subjectivity”
 
-Currently, Tendermint provides a lite client implementation in the [tendermint/lite](https://github.com/tendermint/tendermint/tree/master/lite) directory. This light client implements an bisecting algorithm that tries to use a binary search to find the minimum number of block headers where the validator set voting power changes are less than <1/3rd. This interface does not support weak subjectivity at this time. The Cosmos SDK also does not support counterfactual slashing or does the lite client have any capacity to report evidence making these system theoretically unsafe.
+Currently, Tendermint provides a lite client implementation in the [tendermint/lite](https://github.com/tendermint/tendermint/tree/master/lite) directory. This lite client implements a bisecting algorithm that tries to use a binary search to find the minimum number of block headers where the validator set voting power changes are less than <1/3rd. This interface does not support weak subjectivity at this time. The Cosmos SDK also does not support counterfactual slashing or does the lite client have any capacity to report evidence making these systems theoretically unsafe.
 
 ## Decision 
 
