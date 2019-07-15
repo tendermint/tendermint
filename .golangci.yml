@@ -1,0 +1,13 @@
+run:
+  deadline: 1m
+
+linters:
+  enable-all: true
+  disable:
+    - scopelint
+    - gochecknoinits
+    - unconvert
+    - gochecknoglobals
+    - staticcheck
+    - golint
+    - unparam
