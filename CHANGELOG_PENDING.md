@@ -40,6 +40,7 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 - [rpc] \#3700 Make possible to set absolute paths for TLS cert and key (@climber73)
+- [abci] [\#3513](https://github.com/tendermint/tendermint/issues/3513) Call the reqRes callback after the resCb so they always happen in the same order
 
 ### BUG FIXES:
 
