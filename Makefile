@@ -31,7 +31,7 @@ build_race:
 	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
 
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+	CGO_ENABLED=0 go install  $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 
 install_c:
 	CGO_ENABLED=1 go install $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
@@ -61,7 +61,7 @@ build_abci:
 	@go build -mod=readonly -i ./abci/cmd/...
 
 install_abci:
-	@go install -mod=readonly ./abci/cmd/...
+	@go install -race -mod=readonly ./abci/cmd/...
 
 ########################################
 ### Distribution

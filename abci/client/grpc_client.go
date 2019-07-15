@@ -228,18 +228,15 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 	reqres.Done()         // Release waiters
 	reqres.SetDone()      // so reqRes.SetCallback will run the callback
 
-	// go routine for callbacks
-	go func() {
-		// Notify reqRes listener if set
-		if cb := reqres.GetCallback(); cb != nil {
-			cb(res)
-		}
+	// Notify reqRes listener if set
+	if cb := reqres.GetCallback(); cb != nil {
+		cb(res)
+	}
 
-		// Notify client listener if set
-		if cli.resCb != nil {
-			cli.resCb(reqres.Request, res)
-		}
-	}()
+	// Notify client listener if set
+	if cli.resCb != nil {
+		cli.resCb(reqres.Request, res)
+	}
 	return reqres
 }
 
