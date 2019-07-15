@@ -17,7 +17,7 @@ Currently, Tendermint provides a lite client implementation in the [tendermint/l
 
 ### The Weak Subjectivity Interface.
 
-Weak Subjectivity is required in Proof of Stake blockchains because it is costless for an attack to buy up voting keys that are no longer bonded and fork the network at some point it’s history. See Vitalik’s post at [Proof of Stake: How I Learned to Love Weak Subjectivity](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/)
+Weak Subjectivity is required in Proof of Stake blockchains because it is costless for an attacker to buy up voting keys that are no longer bonded and fork the network at some point in its prior history. See Vitalik’s post at [Proof of Stake: How I Learned to Love Weak Subjectivity](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/)
 
 This requires providing a user interface for when new nodes connect to the network or when a node that has been offline for longer than the unbending period connects to the network. 
 
@@ -26,7 +26,7 @@ Specifically, the node node needs to initialize the following structure before s
 ```
 type TrustOptions struct {
 // Required: only trust commits up to this old.
-// Should be equal to the unbonding period.
+// Should be equal to the unbonding period minus some delta for evidence reporting.
 TrustPeriod time.Duration `json:"trust-period"`
 
 // Option 1: TrustHeight and TrustHash can both be provided
