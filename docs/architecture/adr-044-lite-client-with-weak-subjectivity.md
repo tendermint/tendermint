@@ -5,7 +5,7 @@ Changelog:
 ## Context
 The concept of light clients was introduced in the Bitcoin white paper. It describes a watcher of distributed consensus process that only validates the consensus algorithm and not the state machine transactions within.
 
-Tendermint light clients allow light weight devices and other blockchains to efficiently verify the consensus of a Tendermint blockchain. This forms the basic of safe and efficient state synchronization for new network nodes and InterBlockchain Communication.
+Tendermint light clients allow light weight devices and other blockchains to efficiently verify the consensus of a Tendermint blockchain. This forms the basis of safe and efficient state synchronization for new network nodes and inter-blockchain communication (where a light client of one Tendermint instance runs in another chain's state machine).
 
 In a network that is expected to reliably punish validators for misbehavior through punishments or where the validator set is largely trusted and changes infrequently, clients can take advantage of this assumption to safely synchronize a lite client without downloading the intervening headers.
 
