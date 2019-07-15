@@ -1,6 +1,6 @@
-## v0.32.1
+## v0.32.2
 
-**
+\*\*
 
 Special thanks to external contributors on this release:
 
@@ -9,15 +9,11 @@ program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
-* CLI/RPC/Config
+- CLI/RPC/Config
 
-* Apps
+- Apps
 
-* Go API
-
-* Blockchain Protocol
-
-* P2P Protocol
+- Go API
 
 ### FEATURES:
 

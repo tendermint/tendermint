@@ -351,7 +351,8 @@ type RPCConfig struct {
 	// See https://github.com/tendermint/tendermint/issues/3435
 	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 
-	// The name of a file containing certificate that is used to create the HTTPS server.
+	// The path to a file containing certificate that is used to create the HTTPS server.
+	// Migth be either absolute path or path related to tendermint's config directory.
 	//
 	// If the certificate is signed by a certificate authority,
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
@@ -360,7 +361,8 @@ type RPCConfig struct {
 	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
 	TLSCertFile string `mapstructure:"tls_cert_file"`
 
-	// The name of a file containing matching private key that is used to create the HTTPS server.
+	// The path to a file containing matching private key that is used to create the HTTPS server.
+	// Migth be either absolute path or path related to tendermint's config directory.
 	//
 	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
@@ -424,11 +426,19 @@ func (cfg *RPCConfig) IsCorsEnabled() bool {
 }
 
 func (cfg RPCConfig) KeyFile() string {
-	return rootify(filepath.Join(defaultConfigDir, cfg.TLSKeyFile), cfg.RootDir)
+	path := cfg.TLSKeyFile
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return rootify(filepath.Join(defaultConfigDir, path), cfg.RootDir)
 }
 
 func (cfg RPCConfig) CertFile() string {
-	return rootify(filepath.Join(defaultConfigDir, cfg.TLSCertFile), cfg.RootDir)
+	path := cfg.TLSCertFile
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return rootify(filepath.Join(defaultConfigDir, path), cfg.RootDir)
 }
 
 func (cfg RPCConfig) IsTLSEnabled() bool {

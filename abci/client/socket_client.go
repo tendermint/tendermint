@@ -55,10 +55,6 @@ func NewSocketClient(addr string, mustConnect bool) *socketClient {
 }
 
 func (cli *socketClient) OnStart() error {
-	if err := cli.BaseService.OnStart(); err != nil {
-		return err
-	}
-
 	var err error
 	var conn net.Conn
 RETRY_LOOP:
@@ -82,15 +78,12 @@ RETRY_LOOP:
 }
 
 func (cli *socketClient) OnStop() {
-	cli.BaseService.OnStop()
-
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
 	if cli.conn != nil {
-		// does this really need a mutex?
 		cli.conn.Close()
 	}
 
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	cli.flushQueue()
 }
 
@@ -209,17 +202,16 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	reqres.Done()            // Release waiters
 	cli.reqSent.Remove(next) // Pop first item from linked list
 
-	// Notify reqRes listener if set (request specific callback).
-	// NOTE: it is possible this callback isn't set on the reqres object.
-	// at this point, in which case it will be called after, when it is set.
-	// TODO: should we move this after the resCb call so the order is always consistent?
-	if cb := reqres.GetCallback(); cb != nil {
-		cb(res)
-	}
-
 	// Notify client listener if set (global callback).
 	if cli.resCb != nil {
 		cli.resCb(reqres.Request, res)
+	}
+
+	// Notify reqRes listener if set (request specific callback).
+	// NOTE: it is possible this callback isn't set on the reqres object.
+	// at this point, in which case it will be called after, when it is set.
+	if cb := reqres.GetCallback(); cb != nil {
+		cb(res)
 	}
 
 	return nil
@@ -243,12 +235,12 @@ func (cli *socketClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
 	return cli.queueRequest(types.ToRequestSetOption(req))
 }
 
-func (cli *socketClient) DeliverTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestDeliverTx(tx))
+func (cli *socketClient) DeliverTxAsync(req types.RequestDeliverTx) *ReqRes {
+	return cli.queueRequest(types.ToRequestDeliverTx(req))
 }
 
-func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
-	return cli.queueRequest(types.ToRequestCheckTx(tx))
+func (cli *socketClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
+	return cli.queueRequest(types.ToRequestCheckTx(req))
 }
 
 func (cli *socketClient) QueryAsync(req types.RequestQuery) *ReqRes {
@@ -300,14 +292,14 @@ func (cli *socketClient) SetOptionSync(req types.RequestSetOption) (*types.Respo
 	return reqres.Response.GetSetOption(), cli.Error()
 }
 
-func (cli *socketClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
-	reqres := cli.queueRequest(types.ToRequestDeliverTx(tx))
+func (cli *socketClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
+	reqres := cli.queueRequest(types.ToRequestDeliverTx(req))
 	cli.FlushSync()
 	return reqres.Response.GetDeliverTx(), cli.Error()
 }
 
-func (cli *socketClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
-	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
+func (cli *socketClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	reqres := cli.queueRequest(types.ToRequestCheckTx(req))
 	cli.FlushSync()
 	return reqres.Response.GetCheckTx(), cli.Error()
 }
