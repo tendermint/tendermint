@@ -135,7 +135,7 @@ func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
 
 func (sc *schedule) removePeer(peerID p2p.ID) error {
 	var peer scPeer
-	if peer, ok := sc.peers[peerID]; !ok {
+	if peer, ok := sc.peers[peerID]; !ok || peer.state == peerStateRemoved {
 		return errPeerNotFound
 	}
 
@@ -188,7 +188,7 @@ func (sc *schedule) getStateAtHeight(height int64) blockState {
 
 func (sc *schedule) getPeersAtHeight(height int64) []*scPeer {
 	peers := []*scPeer{}
-	for perrID, peer := range sc.peers {
+	for _, peer := range sc.peers {
 		if peer.height >= height {
 			peers = append(peers, peer)
 		}
@@ -200,7 +200,7 @@ func (sc *schedule) getPeersAtHeight(height int64) []*scPeer {
 // XXX: probably needs a better name
 func (sc *schedule) peersSince(duration time.Duration, now time.Time) []*scPeer {
 	peers := []*scPeer{}
-	for id, peer := range sc.peers {
+	for _, peer := range sc.peers {
 		if now.Sub(peer.lastTouched) > duration {
 			peers = append(peers, peer)
 		}
@@ -276,7 +276,7 @@ func (sc *schedule) markProcessed(height int64) error {
 }
 
 func (sc *schedule) allBlocksProcessed() bool {
-	for height, state := range sc.blockStates {
+	for _, state := range sc.blockStates {
 		if state != blockStateProcessed {
 			return false
 		}
@@ -319,10 +319,10 @@ func (sc *schedule) pendingFrom(peerID p2p.ID) []int64 {
 	return heights
 }
 
+// XXX: What about pedingTime here?
 // XXX: Split up read and write paths here
 func (sc *schedule) resetBlocks(peerID p2p.ID) error {
-	var peer scPeer
-	if peer, ok := sc.peers[peerID]; !ok {
+	if _, ok := sc.peers[peerID]; !ok {
 		return errPeerNotFound
 	}
 
@@ -336,7 +336,7 @@ func (sc *schedule) resetBlocks(peerID p2p.ID) error {
 	return nil
 }
 
-func (sc *schedule) selectPeer(peers []scPeer) scPeer {
+func (sc *schedule) selectPeer(peers []*scPeer) *scPeer {
 	// FIXME: properPeerSelector
 	s := rand.NewSource(time.Now().Unix())
 	r := rand.New(s)
@@ -351,7 +351,7 @@ func (sc *schedule) prunablePeers(time time.Time, minSpeed int) []p2p.ID {
 
 func (sc *schedule) numBlockInState(targetState blockState) uint32 {
 	var num uint32 = 0
-	for height, state := range sc.blockStates {
+	for _, state := range sc.blockStates {
 		if state == targetState {
 			num++
 		}
@@ -361,12 +361,12 @@ func (sc *schedule) numBlockInState(targetState blockState) uint32 {
 
 type Scheduler struct {
 	sc             *schedule
-	targetPending  uint // the number of blocks we want in blockStatePending
-	targetReceived uint // the number of blocks we want in blockStateReceived
+	targetPending  uint32 // the number of blocks we want in blockStatePending
+	targetReceived uint32 // the number of blocks we want in blockStateReceived
 
 }
 
-func NewScheduler(minHeight int64, targetPending uint, targetReceived uint) *Scheduler {
+func NewScheduler(minHeight int64, targetPending uint32, targetReceived uint32) *Scheduler {
 	return &Scheduler{
 		sc:             newSchedule(minHeight),
 		targetPending:  targetPending,
@@ -463,7 +463,7 @@ func (sdr *Scheduler) handleBlockProcessError(peerID p2p.ID, height int64) Event
 	return Skip{}
 }
 
-func (sdr *Scheduler) handleTimeCheck(peerID p2p.ID) []Event {
+func (sdr *Scheduler) handleTimeCheck(peerID p2p.ID, now time.Time) interface{} {
 	// prune peers
 	// TODO
 
@@ -471,15 +471,15 @@ func (sdr *Scheduler) handleTimeCheck(peerID p2p.ID) []Event {
 	events := []scBlockRequestMessage{}
 	pendingBlocks := sdr.sc.numBlockInState(blockStatePending)
 	receivedBlocks := sdr.sc.numBlockInState(blockStateReceived)
-	todo := math.Min(sdr.targetPending-pendingBlocks, sdr.targetReceived-receivedBlocks)
+	todo := math.Min(float64(sdr.targetPending-pendingBlocks), float64(sdr.targetReceived-receivedBlocks))
 	for height := sdr.sc.minHeight(); height <= sdr.sc.maxHeight(); height++ {
 		if todo == 0 {
 			break
 		}
-		if sdr.sc.getStateAt(height) == blockStateNew {
+		if sdr.sc.getStateAtHeight(height) == blockStateNew {
 			allPeers := sdr.sc.getPeersAtHeight(height)
 			bestPeer := sdr.sc.selectPeer(allPeers)
-			err := sc.markPending(peerID, height)
+			err := sdr.sc.markPending(peerID, height, now)
 			if err != nil {
 				// TODO
 			}
