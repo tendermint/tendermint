@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	tst "github.com/tendermint/tendermint/libs/test"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -490,7 +491,7 @@ func TestMakeCommit(t *testing.T) {
 	}
 
 	// MakeCommit should fail.
-	tst.AssertPanics(t, "Doesn't have +2/3 majority", func() { voteSet.MakeCommit() })
+	assert.Panics(t, func() { voteSet.MakeCommit() }, "Doesn't have +2/3 majority")
 
 	// 7th voted for some other block.
 	{
