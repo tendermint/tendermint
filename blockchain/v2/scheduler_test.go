@@ -45,9 +45,9 @@ func TestTouchPeer(t *testing.T) {
 		"Touching a peer should return no error")
 
 	threshold := 10 * time.Second
-	assert.Equal(t, peerID, len(sc.peersSince(threshold, now.Add(9*time.Second))), 0,
+	assert.Equal(t, len(sc.peersSince(threshold, now.Add(9*time.Second))), 0,
 		"Expected no peers to have been touched over 9 seconds")
-	assert.Equal(t, peerID, sc.peersSince(threshold, now.Add(11*time.Second))[0].peerID, peerID,
+	assert.Equal(t, peerID, sc.peersSince(threshold, now.Add(11*time.Second))[0].peerID,
 		"Expected one peer to have been touched over 10 seconds ago")
 }
 
@@ -58,8 +58,9 @@ func TestPeerHeight(t *testing.T) {
 	for i := initHeight; i <= peerHeight; i++ {
 		assert.Equal(t, sc.getStateAtHeight(i), blockStateNew,
 			"Expected all blocks to be in blockStateNew")
-		assert.Equal(t, sc.getPeersAtHeight(i)[0].peerID, peerID,
-			"Expected the block to be registered to the correct peer")
+		assert.Equal(t, len(sc.getPeersAtHeight(i)), 1,
+			"Expected the block to be registered to the 1 peer")
+		//TODO check peerID
 	}
 }
 

@@ -81,9 +81,10 @@ type scPeer struct {
 
 func newScPeer(peerID p2p.ID) *scPeer {
 	return &scPeer{
-		peerID: peerID,
-		state:  peerStateNew,
-		height: -1,
+		peerID:      peerID,
+		state:       peerStateNew,
+		height:      -1,
+		lastTouched: time.Time{},
 	}
 }
 
@@ -105,7 +106,11 @@ type schedule struct {
 
 func newSchedule(initHeight int64) *schedule {
 	sc := schedule{
-		initHeight: initHeight,
+		initHeight:  initHeight,
+		blockStates: make(map[int64]blockState),
+		peers:       make(map[p2p.ID]*scPeer),
+		pending:     make(map[int64]p2p.ID),
+		pendingTime: make(map[int64]time.Time),
 	}
 
 	sc.setStateAtHeight(initHeight, blockStateNew)
@@ -124,7 +129,7 @@ func (sc *schedule) addPeer(peerID p2p.ID) error {
 
 func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
 	var peer scPeer
-	if peer, ok := sc.peers[peerID]; !ok && peer.state == peerStateRemoved {
+	if peer, ok := sc.peers[peerID]; !ok || peer.state == peerStateRemoved {
 		return errPeerNotFound
 	}
 
