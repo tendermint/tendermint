@@ -18,6 +18,6 @@ program](https://hackerone.com/tendermint).
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [abci] Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
+- [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
 
 ### BUG FIXES:
