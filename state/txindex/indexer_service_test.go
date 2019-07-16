@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/state/txindex"
@@ -35,11 +34,9 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	defer service.Stop()
 
 	// publish block with txs
-	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
-		Block: &types.Block{
-			Header: types.Header{Height: 1},
-			Data:   types.Data{Txs: types.Txs{cmn.RandBytes(123), cmn.RandBytes(124)}},
-		},
+	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+		Header: types.Header{Height: 1},
+		NumTxs: int64(2),
 	})
 	txResult1 := &types.TxResult{
 		Height: 1,

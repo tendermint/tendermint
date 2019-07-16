@@ -452,6 +452,7 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 	})
 	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
 		Header:           block.Header,
+		NumTxs:           int64(len(block.Txs)),
 		ResultBeginBlock: *abciResponses.BeginBlock,
 		ResultEndBlock:   *abciResponses.EndBlock,
 	})

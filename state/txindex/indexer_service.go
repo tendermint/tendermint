@@ -35,7 +35,7 @@ func (is *IndexerService) OnStart() error {
 	// cancelled due to not pulling messages fast enough. Cause this might
 	// sometimes happen when there are no other subscribers.
 
-	blocksSub, err := is.eventBus.SubscribeUnbuffered(context.Background(), subscriber, types.EventQueryNewBlock)
+	blocksHeaderSub, err := is.eventBus.SubscribeUnbuffered(context.Background(), subscriber, types.EventQueryNewBlockHeader)
 	if err != nil {
 		return err
 	}
@@ -47,23 +47,23 @@ func (is *IndexerService) OnStart() error {
 
 	go func() {
 		for {
-			msg := <-blocksSub.Out()
-			block := msg.Data().(types.EventDataNewBlock).Block
-			batch := NewBatch(int64(len(block.Data.Txs)))
-			for i := 0; i < len(block.Data.Txs); i++ {
+			msg := <-blocksHeaderSub.Out()
+			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
+			batch := NewBatch(eventDataHeader.NumTxs)
+			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
 				msg2 := <-txsSub.Out()
 				txResult := msg2.Data().(types.EventDataTx).TxResult
 				if err = batch.Add(&txResult); err != nil {
 					is.Logger.Error("Can't add tx to batch",
-						"height", block.Header.Height,
+						"height", eventDataHeader.Header.Height,
 						"index", txResult.Index,
 						"err", err)
 				}
 			}
 			if err = is.idr.AddBatch(batch); err != nil {
-				is.Logger.Error("Failed to index block", "height", block.Header.Height, "err", err)
+				is.Logger.Error("Failed to index block", "height", eventDataHeader.Header.Height, "err", err)
 			} else {
-				is.Logger.Info("Indexed block", "height", block.Header.Height)
+				is.Logger.Info("Indexed block", "height", eventDataHeader.Header.Height)
 			}
 		}
 	}()
