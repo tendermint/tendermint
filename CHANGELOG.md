@@ -1,5 +1,49 @@
 # Changelog
 
+## v0.32.1
+
+*July 15, 2019*
+
+Special thanks to external contributors on this release: 
+@ParthDesai, @climber73, @jim380, @ashleyvega
+
+This release contains a minor enhancement to the ABCI and some breaking changes to our libs folder, namely:
+- CheckTx requests include a `CheckTxType` enum that can be set to `Recheck` to indicate to the application that this transaction was already checked/validated and certain expensive operations (like checking signatures) can be skipped
+- Removed various functions from `libs` pkgs
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+
+  -  [abci] [\#2127](https://github.com/tendermint/tendermint/issues/2127) The CheckTx and DeliverTx methods in the ABCI `Application` interface now take structs  as arguments (RequestCheckTx and RequestDeliverTx, respectively), instead of just the raw tx bytes. This allows more information to be passed to these methods, for instance, indicating whether a tx has already been checked.
+  - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
+  - [libs] [\#2432](https://github.com/tendermint/tendermint/issues/2432) Remove unused `common/heap.go` file (@marbar3778)
+  - [libs] Remove unused `date.go`, `io.go`. Remove `GoPath()`, `Prompt()` and `IsDirEmpty()` functions from `os.go` (@marbar3778)
+  - [libs] Remove unused `FailRand()` func and minor clean up to `fail.go`(@marbar3778)
+
+### FEATURES:
+
+- [node] Add variadic argument to `NewNode` to support functional options, allowing the Node to be more easily customized. 
+- [node][\#3730](https://github.com/tendermint/tendermint/pull/3730) Add `CustomReactors` option to `NewNode` allowing caller to pass
+  custom reactors to run inside Tendermint node (@ParthDesai)
+- [abci] [\#2127](https://github.com/tendermint/tendermint/issues/2127)RequestCheckTx has a new field, `CheckTxType`, which can take values of `CheckTxType_New` and `CheckTxType_Recheck`, indicating whether this is a new tx being checked for the first time or whether this tx is being rechecked after a block commit. This allows applications to skip certain expensive operations, like signature checking, if they've already been done once. see [docs](https://github.com/tendermint/tendermint/blob/eddb433d7c082efbeaf8974413a36641519ee895/docs/spec/abci/apps.md#mempool-connection)
+
+### IMPROVEMENTS:
+
+- [rpc] [\#3700](https://github.com/tendermint/tendermint/issues/3700) Make possible to set absolute paths for TLS cert and key (@climber73)
+- [abci] [\#3513](https://github.com/tendermint/tendermint/issues/3513) Call the reqRes callback after the resCb so they always happen in the same order
+
+### BUG FIXES:
+
+- [p2p] [\#3338](https://github.com/tendermint/tendermint/issues/3338) Prevent "sent next PEX request too soon" errors by not calling
+  ensurePeers outside of ensurePeersRoutine
+- [behaviour] [\3772](https://github.com/tendermint/tendermint/pull/3772) Return correct reason in MessageOutOfOrder (@jim380)
+- [config] [\#3723](https://github.com/tendermint/tendermint/issues/3723) Add consensus_params to testnet config generation; document time_iota_ms (@ashleyvega)
+
+
 ## v0.32.0
 
 *June 25, 2019*
@@ -21,29 +65,29 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
-  - [cli] \#3613 Switch from golang/dep to Go Modules to resolve dependencies:
+  - [cli] [\#3613](https://github.com/tendermint/tendermint/issues/3613) Switch from golang/dep to Go Modules to resolve dependencies:
     It is recommended to switch to Go Modules if your project has tendermint as
     a dependency. Read more on Modules here:
     https://github.com/golang/go/wiki/Modules
   - [config] [\#3632](https://github.com/tendermint/tendermint/pull/3632) Removed `leveldb` as generic
     option for `db_backend`. Must be `goleveldb` or `cleveldb`.
-  - [rpc] \#3616 Fix field names for `/block_results` response (eg. `results.DeliverTx`
+  - [rpc] [\#3616](https://github.com/tendermint/tendermint/issues/3616) Fix field names for `/block_results` response (eg. `results.DeliverTx`
     -> `results.deliver_tx`). See docs for details.
-  - [rpc] \#3724 RPC now binds to `127.0.0.1` by default instead of `0.0.0.0`
+  - [rpc] [\#3724](https://github.com/tendermint/tendermint/issues/3724) RPC now binds to `127.0.0.1` by default instead of `0.0.0.0`
 
 * Apps
-  - [abci] \#1859 `ResponseCheckTx`, `ResponseDeliverTx`, `ResponseBeginBlock`,
+  - [abci] [\#1859](https://github.com/tendermint/tendermint/issues/1859) `ResponseCheckTx`, `ResponseDeliverTx`, `ResponseBeginBlock`,
     and `ResponseEndBlock` now include `Events` instead of `Tags`. Each `Event`
     contains a `type` and a list of `attributes` (list of key-value pairs)
     allowing for inclusion of multiple distinct events in each response.
 
 * Go API
-  - [abci] \#3193 Use RequestDeliverTx and RequestCheckTx in the ABCI
+  - [abci] [\#3193](https://github.com/tendermint/tendermint/issues/3193) Use RequestDeliverTx and RequestCheckTx in the ABCI
     Application interface
   - [libs/db] [\#3632](https://github.com/tendermint/tendermint/pull/3632) Removed deprecated `LevelDBBackend` const
     If you have `db_backend` set to `leveldb` in your config file, please
     change it to `goleveldb` or `cleveldb`.
-  - [p2p] \#3521 Remove NewNetAddressStringWithOptionalID
+  - [p2p] [\#3521](https://github.com/tendermint/tendermint/issues/3521) Remove NewNetAddressStringWithOptionalID
 
 * Blockchain Protocol
 
@@ -52,16 +96,16 @@ program](https://hackerone.com/tendermint).
 ### FEATURES:
 
 ### IMPROVEMENTS:
-- [abci/examples] \#3659 Change validator update tx format in the `persistent_kvstore` to use base64 for pubkeys instead of hex (@needkane)
-- [consensus] \#3656 Exit if SwitchToConsensus fails
-- [p2p] \#3666 Add per channel telemetry to improve reactor observability
+- [abci/examples] [\#3659](https://github.com/tendermint/tendermint/issues/3659) Change validator update tx format in the `persistent_kvstore` to use base64 for pubkeys instead of hex (@needkane)
+- [consensus] [\#3656](https://github.com/tendermint/tendermint/issues/3656) Exit if SwitchToConsensus fails
+- [p2p] [\#3666](https://github.com/tendermint/tendermint/issues/3666) Add per channel telemetry to improve reactor observability
 - [rpc] [\#3686](https://github.com/tendermint/tendermint/pull/3686) `HTTPClient#Call` returns wrapped errors, so a caller could use `errors.Cause` to retrieve an error code. (@wooparadog)
 
 ### BUG FIXES:
-- [libs/db] \#3717 Fixed the BoltDB backend's Batch.Delete implementation (@Yawning)
-- [libs/db] \#3718 Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
-- [node] \#3716 Fix a bug where `nil` is recorded as node's address
-- [node] \#3741 Fix profiler blocking the entire node
+- [libs/db] [\#3717](https://github.com/tendermint/tendermint/issues/3717) Fixed the BoltDB backend's Batch.Delete implementation (@Yawning)
+- [libs/db] [\#3718](https://github.com/tendermint/tendermint/issues/3718) Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
+- [node] [\#3716](https://github.com/tendermint/tendermint/issues/3716) Fix a bug where `nil` is recorded as node's address
+- [node] [\#3741](https://github.com/tendermint/tendermint/issues/3741) Fix profiler blocking the entire node
 
 ## v0.31.7
 
@@ -72,11 +116,11 @@ The regression caused the invalid committed txs to be proposed in blocks over an
 over again.
 
 ### BUG FIXES:
-- [mempool] \#3699 Remove all committed txs from the mempool.
+- [mempool] [\#3699](https://github.com/tendermint/tendermint/issues/3699) Remove all committed txs from the mempool.
     This reverts the change from v0.31.6 where we only remove valid txs from the mempool.
     Note this means malicious proposals can cause txs to be dropped from the
     mempools of other nodes by including them in blocks before they are valid.
-    See \#3322.
+    See [\#3322](https://github.com/tendermint/tendermint/issues/3322).
 
 ## v0.31.6
 
