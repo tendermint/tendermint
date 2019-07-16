@@ -144,15 +144,16 @@ func (s *SocketServer) waitForClose(closeConn chan error, connID int) {
 
 // Read requests from conn and deal with them
 func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, responses chan<- *types.Response) {
-	var panicVal interface{}
 	var count int
 	var bufReader = bufio.NewReader(conn)
 
 	defer func() {
 		// make sure to recover from any app-related panics to allow proper socket cleanup
-		panicVal = recover()
-		closeConn <- fmt.Errorf("recovered from panic: %v", panicVal)
-		s.appMtx.Unlock()
+		r := recover()
+		if r != nil {
+			closeConn <- fmt.Errorf("recovered from panic: %v", r)
+			s.appMtx.Unlock()
+		}
 	}()
 
 	for {
