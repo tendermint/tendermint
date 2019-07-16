@@ -18,5 +18,6 @@ program](https://hackerone.com/tendermint).
 ### FEATURES:
 
 ### IMPROVEMENTS:
+- Recover from application panics in `abci/server/socket_server.go` to allow socket cleanup.
 
 ### BUG FIXES:
