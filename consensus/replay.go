@@ -16,7 +16,7 @@ import (
 
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -258,8 +258,10 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	)
 
 	// Set AppVersion on the state.
-	h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
-	sm.SaveState(h.stateDB, h.initialState)
+	if h.initialState.Version.Consensus.App != version.Protocol(res.AppVersion) {
+		h.initialState.Version.Consensus.App = version.Protocol(res.AppVersion)
+		sm.SaveState(h.stateDB, h.initialState)
+	}
 
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
@@ -421,13 +423,12 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
-
 		// Extra check to ensure the app was not changed in a way it shouldn't have.
 		if len(appHash) > 0 {
 			assertAppHashEqualsOneFromBlock(appHash, block)
 		}
 
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, state.LastValidators, h.stateDB)
+		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateDB)
 		if err != nil {
 			return nil, err
 		}
@@ -453,7 +454,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, sm.MockMempool{}, sm.MockEvidencePool{})
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mock.Mempool{}, sm.MockEvidencePool{})
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
@@ -514,9 +515,12 @@ type mockProxyApp struct {
 	abciResponses *sm.ABCIResponses
 }
 
-func (mock *mockProxyApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
 	r := mock.abciResponses.DeliverTx[mock.txCount]
 	mock.txCount++
+	if r == nil { //it could be nil because of amino unMarshall, it will cause an empty ResponseDeliverTx to become nil
+		return abci.ResponseDeliverTx{}
+	}
 	return *r
 }
 

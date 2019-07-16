@@ -1,9 +1,9 @@
 # Install Tendermint
 
 The fastest and easiest way to install the `tendermint` binary
-is to run [this script](https://github.com/tendermint/tendermint/blob/develop/scripts/install/install_tendermint_ubuntu.sh) on
+is to run [this script](https://github.com/tendermint/tendermint/blob/master/scripts/install/install_tendermint_ubuntu.sh) on
 a fresh Ubuntu instance,
-or [this script](https://github.com/tendermint/tendermint/blob/develop/scripts/install/install_tendermint_bsd.sh)
+or [this script](https://github.com/tendermint/tendermint/blob/master/scripts/install/install_tendermint_bsd.sh)
 on a fresh FreeBSD instance. Read the comments / instructions carefully (i.e., reset your terminal after running the script,
 make sure you are okay with the network connections being made).
 
@@ -29,7 +29,6 @@ cd tendermint
 
 ```
 make get_tools
-make get_vendor_deps
 ```
 
 ### Compile
@@ -45,6 +44,8 @@ make build
 ```
 
 to put the binary in `./build`.
+
+_DISCLAIMER_ The binary of tendermint is build/installed without the DWARF symbol table. If you would like to build/install tendermint with the DWARF symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make file.
 
 The latest `tendermint version` is now installed.
 
@@ -71,7 +72,6 @@ To upgrade, run
 ```
 cd $GOPATH/src/github.com/tendermint/tendermint
 git pull origin master
-make get_vendor_deps
 make install
 ```
 
@@ -79,9 +79,7 @@ make install
 
 Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7).
 
-### Ubuntu
-
-Install LevelDB with snappy (optionally):
+Install LevelDB with snappy (optionally). Below are commands for Ubuntu:
 
 ```
 sudo apt-get update
@@ -100,23 +98,23 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
   rm -f v1.20.tar.gz
 ```
 
-Set database backend to cleveldb:
+Set a database backend to `cleveldb`:
 
 ```
 # config/config.toml
 db_backend = "cleveldb"
 ```
 
-To install Tendermint, run
+To install Tendermint, run:
 
 ```
 CGO_LDFLAGS="-lsnappy" make install_c
 ```
 
-or run
+or run:
 
 ```
 CGO_LDFLAGS="-lsnappy" make build_c
 ```
 
-to put the binary in `./build`.
+which puts the binary in `./build`.

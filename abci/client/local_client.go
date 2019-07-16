@@ -81,24 +81,24 @@ func (app *localClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
 	)
 }
 
-func (app *localClient) DeliverTxAsync(tx []byte) *ReqRes {
+func (app *localClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.DeliverTx(tx)
+	res := app.Application.DeliverTx(params)
 	return app.callback(
-		types.ToRequestDeliverTx(tx),
+		types.ToRequestDeliverTx(params),
 		types.ToResponseDeliverTx(res),
 	)
 }
 
-func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
+func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.CheckTx(tx)
+	res := app.Application.CheckTx(req)
 	return app.callback(
-		types.ToRequestCheckTx(tx),
+		types.ToRequestCheckTx(req),
 		types.ToResponseCheckTx(res),
 	)
 }
@@ -184,19 +184,19 @@ func (app *localClient) SetOptionSync(req types.RequestSetOption) (*types.Respon
 	return &res, nil
 }
 
-func (app *localClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
+func (app *localClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.DeliverTx(tx)
+	res := app.Application.DeliverTx(req)
 	return &res, nil
 }
 
-func (app *localClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
+func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.CheckTx(tx)
+	res := app.Application.CheckTx(req)
 	return &res, nil
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -21,8 +22,13 @@ func TestMarshalJSON(t *testing.T) {
 		Code:      1,
 		Data:      []byte("hello"),
 		GasWanted: 43,
-		Tags: []cmn.KVPair{
-			{Key: []byte("pho"), Value: []byte("bo")},
+		Events: []Event{
+			{
+				Type: "testEvent",
+				Attributes: []cmn.KVPair{
+					{Key: []byte("pho"), Value: []byte("bo")},
+				},
+			},
 		},
 	}
 	b, err = json.Marshal(&r1)
@@ -82,8 +88,13 @@ func TestWriteReadMessage2(t *testing.T) {
 			Data:      []byte(phrase),
 			Log:       phrase,
 			GasWanted: 10,
-			Tags: []cmn.KVPair{
-				{Key: []byte("abc"), Value: []byte("def")},
+			Events: []Event{
+				{
+					Type: "testEvent",
+					Attributes: []cmn.KVPair{
+						{Key: []byte("abc"), Value: []byte("def")},
+					},
+				},
 			},
 		},
 		// TODO: add the rest

@@ -192,7 +192,7 @@ func TestStateBadProposal(t *testing.T) {
 	stateHash[0] = byte((stateHash[0] + 1) % 255)
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
-	blockID := types.BlockID{propBlock.Hash(), propBlockParts.Header()}
+	blockID := types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(vs2.Height, round, -1, blockID)
 	if err := vs2.SignProposal(config.ChainID(), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -239,7 +239,7 @@ func TestStateFullRound1(t *testing.T) {
 	cs.SetEventBus(eventBus)
 	eventBus.Start()
 
-	voteCh := subscribe(cs.eventBus, types.EventQueryVote)
+	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
 	propCh := subscribe(cs.eventBus, types.EventQueryCompleteProposal)
 	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
 
@@ -267,7 +267,7 @@ func TestStateFullRoundNil(t *testing.T) {
 	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
-	voteCh := subscribe(cs.eventBus, types.EventQueryVote)
+	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
 
 	cs.enterPrevote(height, round)
 	cs.startRoutines(4)
@@ -286,7 +286,7 @@ func TestStateFullRound2(t *testing.T) {
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
 
-	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
+	voteCh := subscribeUnBuffered(cs1.eventBus, types.EventQueryVote)
 	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlock)
 
 	// start round and wait for propose and prevote
@@ -330,7 +330,7 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
-	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
+	voteCh := subscribeUnBuffered(cs1.eventBus, types.EventQueryVote)
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 
@@ -811,7 +811,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	_, propBlock0 := decideProposal(cs1, vss[0], height, round)
 	propBlockHash0 := propBlock0.Hash()
 	propBlockParts0 := propBlock0.MakePartSet(partSize)
-	propBlockID0 := types.BlockID{propBlockHash0, propBlockParts0.Header()}
+	propBlockID0 := types.BlockID{Hash: propBlockHash0, PartsHeader: propBlockParts0.Header()}
 
 	// the others sign a polka but we don't see it
 	prevotes := signVotes(types.PrevoteType, propBlockHash0, propBlockParts0.Header(), vs2, vs3, vs4)
@@ -1618,6 +1618,15 @@ func TestStateOutputVoteStats(t *testing.T) {
 // subscribe subscribes test client to the given query and returns a channel with cap = 1.
 func subscribe(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.Message {
 	sub, err := eventBus.Subscribe(context.Background(), testSubscriber, q)
+	if err != nil {
+		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
+	}
+	return sub.Out()
+}
+
+// subscribe subscribes test client to the given query and returns a channel with cap = 0.
+func subscribeUnBuffered(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.Message {
+	sub, err := eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, q)
 	if err != nil {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
 	}

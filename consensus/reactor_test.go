@@ -23,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/mock"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -51,6 +52,10 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
 		blocksSubs = append(blocksSubs, blocksSub)
+
+		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
+			sm.SaveState(css[i].blockExec.DB(), css[i].state)
+		}
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
@@ -136,7 +141,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 		// Make Mempool
-		mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
@@ -239,6 +244,49 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	}, css)
 }
 
+func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
+	N := 1
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	defer cleanup()
+	reactors, _, eventBuses := startConsensusNet(t, css, N)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	var (
+		reactor = reactors[0]
+		peer    = mock.NewPeer(nil)
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.PrevoteType})
+	)
+
+	reactor.InitPeer(peer)
+
+	// simulate switch calling Receive before AddPeer
+	assert.NotPanics(t, func() {
+		reactor.Receive(StateChannel, peer, msg)
+		reactor.AddPeer(peer)
+	})
+}
+
+func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
+	N := 1
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	defer cleanup()
+	reactors, _, eventBuses := startConsensusNet(t, css, N)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	var (
+		reactor = reactors[0]
+		peer    = mock.NewPeer(nil)
+		msg     = cdc.MustMarshalBinaryBare(&HasVoteMessage{Height: 1, Round: 1, Index: 1, Type: types.PrevoteType})
+	)
+
+	// we should call InitPeer here
+
+	// simulate switch calling Receive before AddPeer
+	assert.Panics(t, func() {
+		reactor.Receive(StateChannel, peer, msg)
+	})
+}
+
 // Test we record stats about votes and block parts from other peers.
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	N := 4
@@ -329,7 +377,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, cleanup := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	css, _, _, cleanup := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+
 	defer cleanup()
 	logger := log.TestingLogger()
 

@@ -32,18 +32,18 @@ import (
 // test.
 type cleanupFunc func()
 
-func newMempoolWithApp(cc proxy.ClientCreator) (*Mempool, cleanupFunc) {
+func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc) {
 	return newMempoolWithAppAndConfig(cc, cfg.ResetTestRoot("mempool_test"))
 }
 
-func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) (*Mempool, cleanupFunc) {
+func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) (*CListMempool, cleanupFunc) {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
 	if err != nil {
 		panic(err)
 	}
-	mempool := NewMempool(config.Mempool, appConnMem, 0)
+	mempool := NewCListMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger())
 	return mempool, func() { os.RemoveAll(config.RootDir) }
 }
@@ -66,9 +66,9 @@ func ensureFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	}
 }
 
-func checkTxs(t *testing.T, mempool *Mempool, count int, peerID uint16) types.Txs {
+func checkTxs(t *testing.T, mempool Mempool, count int, peerID uint16) types.Txs {
 	txs := make(types.Txs, count)
-	txInfo := TxInfo{PeerID: peerID}
+	txInfo := TxInfo{SenderID: peerID}
 	for i := 0; i < count; i++ {
 		txBytes := make([]byte, 20)
 		txs[i] = txBytes
@@ -99,7 +99,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	checkTxs(t, mempool, 1, UnknownPeerID)
 	tx0 := mempool.TxsFront().Value.(*mempoolTx)
 	// assert that kv store has gas wanted = 1.
-	require.Equal(t, app.CheckTx(tx0.tx).GasWanted, int64(1), "KVStore had a gas value neq to 1")
+	require.Equal(t, app.CheckTx(abci.RequestCheckTx{Tx: tx0.tx}).GasWanted, int64(1), "KVStore had a gas value neq to 1")
 	require.Equal(t, tx0.gasWanted, int64(1), "transactions gas was set incorrectly")
 	// ensure each tx is 20 bytes long
 	require.Equal(t, len(tx0.tx), 20, "Tx is longer than 20 bytes")
@@ -170,22 +170,45 @@ func TestMempoolFilters(t *testing.T) {
 		{10, PreCheckAminoMaxBytes(22), PostCheckMaxGas(0), 0},
 	}
 	for tcIndex, tt := range tests {
-		mempool.Update(1, emptyTxArr, tt.preFilter, tt.postFilter)
+		mempool.Update(1, emptyTxArr, abciResponses(len(emptyTxArr), abci.CodeTypeOK), tt.preFilter, tt.postFilter)
 		checkTxs(t, mempool, tt.numTxsToCreate, UnknownPeerID)
 		require.Equal(t, tt.expectedNumTxs, mempool.Size(), "mempool had the incorrect size, on test case %d", tcIndex)
 		mempool.Flush()
 	}
 }
 
-func TestMempoolUpdateAddsTxsToCache(t *testing.T) {
+func TestMempoolUpdate(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
-	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
-	err := mempool.CheckTx([]byte{0x01}, nil)
-	if assert.Error(t, err) {
-		assert.Equal(t, ErrTxInCache, err)
+
+	// 1. Adds valid txs to the cache
+	{
+		mempool.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+		err := mempool.CheckTx([]byte{0x01}, nil)
+		if assert.Error(t, err) {
+			assert.Equal(t, ErrTxInCache, err)
+		}
+	}
+
+	// 2. Removes valid txs from the mempool
+	{
+		err := mempool.CheckTx([]byte{0x02}, nil)
+		require.NoError(t, err)
+		mempool.Update(1, []types.Tx{[]byte{0x02}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+		assert.Zero(t, mempool.Size())
+	}
+
+	// 3. Removes invalid transactions from the cache and the mempool (if present)
+	{
+		err := mempool.CheckTx([]byte{0x03}, nil)
+		require.NoError(t, err)
+		mempool.Update(1, []types.Tx{[]byte{0x03}}, abciResponses(1, 1), nil, nil)
+		assert.Zero(t, mempool.Size())
+
+		err = mempool.CheckTx([]byte{0x03}, nil)
+		assert.NoError(t, err)
 	}
 }
 
@@ -210,7 +233,7 @@ func TestTxsAvailable(t *testing.T) {
 	// it should fire once now for the new height
 	// since there are still txs left
 	committedTxs, txs := txs[:50], txs[50:]
-	if err := mempool.Update(1, committedTxs, nil, nil); err != nil {
+	if err := mempool.Update(1, committedTxs, abciResponses(len(committedTxs), abci.CodeTypeOK), nil, nil); err != nil {
 		t.Error(err)
 	}
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
@@ -222,7 +245,7 @@ func TestTxsAvailable(t *testing.T) {
 
 	// now call update with all the txs. it should not fire as there are no txs left
 	committedTxs = append(txs, moreTxs...)
-	if err := mempool.Update(2, committedTxs, nil, nil); err != nil {
+	if err := mempool.Update(2, committedTxs, abciResponses(len(committedTxs), abci.CodeTypeOK), nil, nil); err != nil {
 		t.Error(err)
 	}
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
@@ -281,7 +304,7 @@ func TestSerialReap(t *testing.T) {
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			txs = append(txs, txBytes)
 		}
-		if err := mempool.Update(0, txs, nil, nil); err != nil {
+		if err := mempool.Update(0, txs, abciResponses(len(txs), abci.CodeTypeOK), nil, nil); err != nil {
 			t.Error(err)
 		}
 	}
@@ -291,7 +314,7 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res, err := appConnCon.DeliverTxSync(txBytes)
+			res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
 			if err != nil {
 				t.Errorf("Client error committing tx: %v", err)
 			}
@@ -348,7 +371,6 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// 1. Create the temporary directory for mempool and WAL testing.
 	rootDir, err := ioutil.TempDir("", "mempool-test")
 	require.Nil(t, err, "expecting successful tmpdir creation")
-	defer os.RemoveAll(rootDir)
 
 	// 2. Ensure that it doesn't contain any elements -- Sanity check
 	m1, err := filepath.Glob(filepath.Join(rootDir, "*"))
@@ -356,13 +378,13 @@ func TestMempoolCloseWAL(t *testing.T) {
 	require.Equal(t, 0, len(m1), "no matches yet")
 
 	// 3. Create the mempool
-	wcfg := cfg.DefaultMempoolConfig()
-	wcfg.RootDir = rootDir
-	defer os.RemoveAll(wcfg.RootDir)
+	wcfg := cfg.DefaultConfig()
+	wcfg.Mempool.RootDir = rootDir
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	appConnMem, _ := cc.NewABCIClient()
-	mempool := NewMempool(wcfg, appConnMem, 10)
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, wcfg)
+	defer cleanup()
+	mempool.height = 10
 	mempool.InitWAL()
 
 	// 4. Ensure that the directory contains the WAL file
@@ -463,7 +485,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	assert.EqualValues(t, 1, mempool.TxsBytes())
 
 	// 3. zero again after tx is removed by Update
-	mempool.Update(1, []types.Tx{[]byte{0x01}}, nil, nil)
+	mempool.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 	assert.EqualValues(t, 0, mempool.TxsBytes())
 
 	// 4. zero after Flush
@@ -500,7 +522,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	err = appConnCon.Start()
 	require.Nil(t, err)
 	defer appConnCon.Stop()
-	res, err := appConnCon.DeliverTxSync(txBytes)
+	res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Code)
 	res2, err := appConnCon.CommitSync()
@@ -508,7 +530,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	require.NotEmpty(t, res2.Data)
 
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
-	mempool.Update(1, []types.Tx{}, nil, nil)
+	mempool.Update(1, []types.Tx{}, abciResponses(0, abci.CodeTypeOK), nil, nil)
 	assert.EqualValues(t, 0, mempool.TxsBytes())
 }
 
@@ -542,7 +564,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 		tx := txs[int(txNum)]
 
 		// this will err with ErrTxInCache many times ...
-		mempool.CheckTxWithInfo(tx, nil, TxInfo{PeerID: uint16(peerID)})
+		mempool.CheckTxWithInfo(tx, nil, TxInfo{SenderID: uint16(peerID)})
 	}
 	err := mempool.FlushAppConn()
 	require.NoError(t, err)
@@ -570,4 +592,12 @@ func checksumFile(p string, t *testing.T) string {
 	data, err := ioutil.ReadFile(p)
 	require.Nil(t, err, "expecting successful read of %q", p)
 	return checksumIt(data)
+}
+
+func abciResponses(n int, code uint32) []*abci.ResponseDeliverTx {
+	responses := make([]*abci.ResponseDeliverTx, 0, n)
+	for i := 0; i < n; i++ {
+		responses = append(responses, &abci.ResponseDeliverTx{Code: code})
+	}
+	return responses
 }

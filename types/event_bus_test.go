@@ -22,10 +22,15 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	defer eventBus.Stop()
 
 	tx := Tx("foo")
-	result := abci.ResponseDeliverTx{Data: []byte("bar"), Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
+	result := abci.ResponseDeliverTx{
+		Data: []byte("bar"),
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
 
 	// PublishEventTx adds all these 3 tags, so the query below should work
-	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND baz=1", tx.Hash())
+	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
 	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
@@ -62,11 +67,19 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	defer eventBus.Stop()
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
-	resultEndBlock := abci.ResponseEndBlock{Tags: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}}
+	resultBeginBlock := abci.ResponseBeginBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
+	resultEndBlock := abci.ResponseEndBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+		},
+	}
 
 	// PublishEventNewBlock adds the tm.event tag, so the query below should work
-	query := "tm.event='NewBlock' AND baz=1 AND foz=2"
+	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
 	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
@@ -94,6 +107,106 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	}
 }
 
+func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
+	eventBus := NewEventBus()
+	err := eventBus.Start()
+	require.NoError(t, err)
+	defer eventBus.Stop()
+
+	tx := Tx("foo")
+	result := abci.ResponseDeliverTx{
+		Data: []byte("bar"),
+		Events: []abci.Event{
+			{
+				Type: "transfer",
+				Attributes: []cmn.KVPair{
+					{Key: []byte("sender"), Value: []byte("foo")},
+					{Key: []byte("recipient"), Value: []byte("bar")},
+					{Key: []byte("amount"), Value: []byte("5")},
+				},
+			},
+			{
+				Type: "transfer",
+				Attributes: []cmn.KVPair{
+					{Key: []byte("sender"), Value: []byte("baz")},
+					{Key: []byte("recipient"), Value: []byte("cat")},
+					{Key: []byte("amount"), Value: []byte("13")},
+				},
+			},
+			{
+				Type: "withdraw.rewards",
+				Attributes: []cmn.KVPair{
+					{Key: []byte("address"), Value: []byte("bar")},
+					{Key: []byte("source"), Value: []byte("iceman")},
+					{Key: []byte("amount"), Value: []byte("33")},
+				},
+			},
+		},
+	}
+
+	testCases := []struct {
+		query         string
+		expectResults bool
+	}{
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='DoesNotExist'",
+			false,
+		},
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='foo'",
+			true,
+		},
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='baz'",
+			true,
+		},
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='foo' AND transfer.sender='baz'",
+			true,
+		},
+		{
+			"tm.event='Tx' AND tx.height=1 AND transfer.sender='foo' AND transfer.sender='DoesNotExist'",
+			false,
+		},
+	}
+
+	for i, tc := range testCases {
+		sub, err := eventBus.Subscribe(context.Background(), fmt.Sprintf("client-%d", i), tmquery.MustParse(tc.query))
+		require.NoError(t, err)
+
+		done := make(chan struct{})
+
+		go func() {
+			msg := <-sub.Out()
+			data := msg.Data().(EventDataTx)
+			assert.Equal(t, int64(1), data.Height)
+			assert.Equal(t, uint32(0), data.Index)
+			assert.Equal(t, tx, data.Tx)
+			assert.Equal(t, result, data.Result)
+			close(done)
+		}()
+
+		err = eventBus.PublishEventTx(EventDataTx{TxResult{
+			Height: 1,
+			Index:  0,
+			Tx:     tx,
+			Result: result,
+		}})
+		assert.NoError(t, err)
+
+		select {
+		case <-done:
+			if !tc.expectResults {
+				require.Fail(t, "unexpected transaction result(s) from subscription")
+			}
+		case <-time.After(1 * time.Second):
+			if tc.expectResults {
+				require.Fail(t, "failed to receive a transaction after 1 second")
+			}
+		}
+	}
+}
+
 func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()
@@ -101,11 +214,19 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	defer eventBus.Stop()
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
-	resultEndBlock := abci.ResponseEndBlock{Tags: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}}
+	resultBeginBlock := abci.ResponseBeginBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+		},
+	}
+	resultEndBlock := abci.ResponseEndBlock{
+		Events: []abci.Event{
+			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+		},
+	}
 
 	// PublishEventNewBlockHeader adds the tm.event tag, so the query below should work
-	query := "tm.event='NewBlockHeader' AND baz=1 AND foz=2"
+	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
 	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 

@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"math"
 	"net"
 	"sync"
 	"time"
@@ -439,6 +440,11 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []
 // (little-endian in nonce[4:]).
 func incrNonce(nonce *[aeadNonceSize]byte) {
 	counter := binary.LittleEndian.Uint64(nonce[4:])
+	if counter == math.MaxUint64 {
+		// Terminates the session and makes sure the nonce would not re-used.
+		// See https://github.com/tendermint/tendermint/issues/3531
+		panic("can't increase nonce without overflow")
+	}
 	counter++
 	binary.LittleEndian.PutUint64(nonce[4:], counter)
 }

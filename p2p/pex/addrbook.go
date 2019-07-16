@@ -586,8 +586,8 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookNilAddr{addr, src}
 	}
 
-	if !addr.HasID() {
-		return ErrAddrBookInvalidAddrNoID{addr}
+	if err := addr.Valid(); err != nil {
+		return ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
 	}
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
@@ -605,10 +605,6 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if a.routabilityStrict && !addr.Routable() {
 		return ErrAddrBookNonRoutable{addr}
-	}
-
-	if !addr.Valid() {
-		return ErrAddrBookInvalidAddr{addr}
 	}
 
 	ka := a.addrLookup[addr.ID]

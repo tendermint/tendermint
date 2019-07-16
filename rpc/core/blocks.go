@@ -339,7 +339,8 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 // If no height is provided, it will fetch results for the latest block.
 //
 // Results are for the height of the block containing the txs.
-// Thus response.results[5] is the results of executing getBlock(h).Txs[5]
+// Thus response.results.deliver_tx[5] is the results of executing
+// getBlock(h).Txs[5]
 //
 // ```shell
 // curl 'localhost:26657/block_results?height=10'
@@ -360,17 +361,27 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 //
 // ```json
 // {
-//  "height": "10",
-//  "results": [
-//   {
-//    "code": "0",
-//    "data": "CAFE00F00D"
-//   },
-//   {
-//    "code": "102",
-//    "data": ""
+//   "jsonrpc": "2.0",
+//   "id": "",
+//   "result": {
+//     "height": "39",
+//     "results": {
+//       "deliver_tx": [
+//         {
+//           "tags": [
+//             {
+//               "key": "YXBwLmNyZWF0b3I=",
+//               "value": "Q29zbW9zaGkgTmV0b3dva28="
+//             }
+//           ]
+//         }
+//       ],
+//       "end_block": {
+//         "validator_updates": null
+//       },
+//       "begin_block": {}
+//     }
 //   }
-//  ]
 // }
 // ```
 func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockResults, error) {
@@ -380,7 +391,6 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 		return nil, err
 	}
 
-	// load the results
 	results, err := sm.LoadABCIResponses(stateDB, height)
 	if err != nil {
 		return nil, err

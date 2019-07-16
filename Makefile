@@ -1,6 +1,5 @@
 GOTOOLS = \
 	github.com/mitchellh/gox \
-	github.com/golang/dep/cmd/dep \
 	github.com/golangci/golangci-lint/cmd/golangci-lint \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/square/certstrap
@@ -8,13 +7,16 @@ GOBIN?=${GOPATH}/bin
 PACKAGES=$(shell go list ./...)
 OUTPUT?=build/tendermint
 
+export GO111MODULE = on
+
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
-BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
+BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 
 all: check build test install
 
-check: check_tools get_vendor_deps
+check: check_tools
 
 ########################################
 ### Build Tendermint
@@ -23,16 +25,16 @@ build:
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
 
 build_c:
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" -o $(OUTPUT) ./cmd/tendermint/
+	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
 
 build_race:
 	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
 
 install:
-	CGO_ENABLED=0 go install  $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 
 install_c:
-	CGO_ENABLED=1 go install  $(BUILD_FLAGS) -tags "$(BUILD_TAGS) gcc" ./cmd/tendermint
+	CGO_ENABLED=1 go install $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
 
 ########################################
 ### Protobuf
@@ -56,10 +58,10 @@ protoc_abci: abci/types/types.pb.go
 protoc_proto3types: types/proto3/block.pb.go
 
 build_abci:
-	@go build -i ./abci/cmd/...
+	@go build -mod=readonly -i ./abci/cmd/...
 
 install_abci:
-	@go install ./abci/cmd/...
+	@go install -mod=readonly ./abci/cmd/...
 
 ########################################
 ### Distribution
@@ -84,11 +86,6 @@ get_tools:
 update_tools:
 	@echo "--> Updating tools"
 	./scripts/get_tools.sh
-
-#Update dependencies
-get_vendor_deps:
-	@echo "--> Running dep"
-	@dep ensure
 
 #For ABCI and libs
 get_protoc:
@@ -119,24 +116,31 @@ get_deps_bin_size:
 
 protoc_libs: libs/common/types.pb.go
 
+# generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs
-	## Generating certificates for TLS testing...
 	certstrap init --common-name "tendermint.com" --passphrase ""
-	certstrap request-cert -ip "::" --passphrase ""
-	certstrap sign "::" --CA "tendermint.com" --passphrase ""
-	mv out/::.crt out/::.key db/remotedb
-
-clean_certs:
-	## Cleaning TLS testing certificates...
+	certstrap request-cert --common-name "remotedb" -ip "127.0.0.1" --passphrase ""
+	certstrap sign "remotedb" --CA "tendermint.com" --passphrase ""
+	mv out/remotedb.crt libs/db/remotedb/test.crt
+	mv out/remotedb.key libs/db/remotedb/test.key
+	certstrap request-cert --common-name "server" -ip "127.0.0.1" --passphrase ""
+	certstrap sign "server" --CA "tendermint.com" --passphrase ""
+	mv out/server.crt rpc/lib/server/test.crt
+	mv out/server.key rpc/lib/server/test.key
 	rm -rf out
-	rm -f db/remotedb/::.crt db/remotedb/::.key
 
-test_libs: gen_certs
-	go test -tags gcc $(PACKAGES)
-	make clean_certs
+# deletes generated certificates
+clean_certs:
+	rm -f libs/db/remotedb/test.crt
+	rm -f libs/db/remotedb/test.key
+	rm -f rpc/lib/server/test.crt
+	rm -f rpc/lib/server/test.key
+
+test_libs:
+	go test -tags clevedb boltdb $(PACKAGES)
 
 grpc_dbserver:
-	protoc -I db/remotedb/proto/ db/remotedb/proto/defs.proto --go_out=plugins=grpc:db/remotedb/proto
+	protoc -I libs/db/remotedb/proto/ libs/db/remotedb/proto/defs.proto --go_out=plugins=grpc:libs/db/remotedb/proto
 
 protoc_grpc: rpc/grpc/types.pb.go
 
@@ -192,7 +196,6 @@ test_p2p:
 test_integrations:
 	make build_docker_test_image
 	make get_tools
-	make get_vendor_deps
 	make install
 	make test_cover
 	make test_apps
@@ -254,10 +257,6 @@ rpc-docs:
 	cat rpc/core/slate_header.txt > $(DESTINATION)
 	godoc2md -template rpc/core/doc_template.txt github.com/tendermint/tendermint/rpc/core | grep -v -e "pipe.go" -e "routes.go" -e "dev.go" | sed 's,/src/target,https://github.com/tendermint/tendermint/tree/master/rpc/core,' >> $(DESTINATION)
 
-check_dep:
-	dep status >> /dev/null
-	!(grep -n branch Gopkg.toml)
-
 ###########################################################
 ### Docker image
 
@@ -270,15 +269,15 @@ build-docker:
 ### Local testnet using docker
 
 # Build linux binary on other platforms
-build-linux: get_tools get_vendor_deps
+build-linux: get_tools
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 
 build-docker-localnode:
 	@cd networks/local && make
 
 # Run a 4-node testnet locally
-localnet-start: localnet-stop
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
+localnet-start: localnet-stop build-docker-localnode
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2; fi
 	docker-compose up
 
 # Stop testnet
@@ -312,4 +311,4 @@ build-slate:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race build_abci dist install install_abci check_dep check_tools get_tools update_tools get_vendor_deps draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint
+.PHONY: check build build_race build_abci dist install install_abci check_tools get_tools update_tools draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint
