@@ -172,6 +172,7 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, respo
 
 		if panicVal != nil {
 			closeConn <- fmt.Errorf("recovered from panic: %v", panicVal)
+			return
 		}
 	}
 }
