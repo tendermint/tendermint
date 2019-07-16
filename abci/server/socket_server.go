@@ -151,6 +151,8 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, respo
 	defer func() {
 		// make sure to recover from any app-related panics to allow proper socket cleanup
 		panicVal = recover()
+		closeConn <- fmt.Errorf("recovered from panic: %v", panicVal)
+		s.appMtx.Unlock()
 	}()
 
 	for {
@@ -169,11 +171,6 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, respo
 		count++
 		s.handleRequest(req, responses)
 		s.appMtx.Unlock()
-
-		if panicVal != nil {
-			closeConn <- fmt.Errorf("recovered from panic: %v", panicVal)
-			return
-		}
 	}
 }
 
