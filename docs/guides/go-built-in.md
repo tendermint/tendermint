@@ -572,6 +572,8 @@ $ make install
 $ TMHOME="/tmp/example" tendermint init
 ```
 
+We are ready to start our application:
+
 ```sh
 $ ./example -config "/tmp/example/config/config.toml"
 ```
