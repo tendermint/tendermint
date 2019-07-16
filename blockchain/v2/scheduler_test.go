@@ -19,9 +19,9 @@ const (
 func TestScheduleInit(t *testing.T) {
 	sc := newSchedule(initHeight)
 
-	assert.Equal(t, sc.getStateAtHeight(initHeight), blockStateNew)
-	assert.Equal(t, sc.getStateAtHeight(initHeight+1), blockStateProcessed)
-	assert.Equal(t, sc.getStateAtHeight(initHeight-1), blockStateUnknown)
+	assert.Equal(t, blockStateNew, sc.getStateAtHeight(initHeight))
+	assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(initHeight-1))
+	assert.Equal(t, blockStateUnknown, sc.getStateAtHeight(initHeight+1))
 }
 
 func TestAddPeer(t *testing.T) {
@@ -44,8 +44,9 @@ func TestTouchPeer(t *testing.T) {
 	assert.Nil(t, sc.touchPeer(peerID, now),
 		"Touching a peer should return no error")
 
+	// the peer should
 	threshold := 10 * time.Second
-	assert.Equal(t, len(sc.peersSince(threshold, now.Add(9*time.Second))), 0,
+	assert.Equal(t, 0, len(sc.peersSince(threshold, now.Add(9*time.Second))),
 		"Expected no peers to have been touched over 9 seconds")
 	assert.Equal(t, peerID, sc.peersSince(threshold, now.Add(11*time.Second))[0].peerID,
 		"Expected one peer to have been touched over 10 seconds ago")
@@ -54,6 +55,8 @@ func TestTouchPeer(t *testing.T) {
 func TestPeerHeight(t *testing.T) {
 	sc := newSchedule(initHeight)
 
+	assert.Nil(t, sc.addPeer(peerID),
+		"Adding a peer should return no error")
 	assert.Nil(t, sc.setPeerHeight(peerID, peerHeight))
 	for i := initHeight; i <= peerHeight; i++ {
 		assert.Equal(t, sc.getStateAtHeight(i), blockStateNew,
@@ -82,17 +85,18 @@ func TestHeightFSM(t *testing.T) {
 
 	assert.Equal(t, blockStateUnknown, sc.getStateAtHeight(peerHeight+10),
 		"Expected the maximum height seen + 10 to be in blockStateUnknown")
+
 	assert.Equal(t, errBadSchedule, sc.markPending(peerID, peerHeight+10, now.Add(1*time.Second)),
 		"Expected markPending on block in blockStateUnknown height to fail")
-
 	assert.Nil(t, sc.markPending(peerID, initHeight, now.Add(1*time.Second)),
 		"Expected markPending on a known height with a known peer to return no error")
 	assert.Equal(t, blockStatePending, sc.getStateAtHeight(initHeight),
 		"Expected a the markedBlock to be in blockStatePending")
 
 	assert.Nil(t, sc.markReceived(peerID, initHeight, blockSize, now.Add(2*time.Second)),
-		"Expected a marking a pending block received to return no error")
+		"Expected marking markReceived on a pending block to return no error")
 
+	// here we are trying to reset blocks that were received
 	assert.Nil(t, sc.resetBlocks(peerID),
 		"Expected resetBlocks to return no error")
 	assert.Equal(t, blockStateNew, sc.getStateAtHeight(initHeight),
@@ -103,7 +107,7 @@ func TestHeightFSM(t *testing.T) {
 	assert.Equal(t, blockStatePending, sc.getStateAtHeight(initHeight),
 		"Expected block to be in blockStatePending")
 
-	assert.Nil(t, sc.markReceived(peerID, blockSize, initHeight, now.Add(2*time.Second)),
+	assert.Nil(t, sc.markReceived(peerID, initHeight, blockSize, now.Add(2*time.Second)),
 		"Expected marking a pending block as received to return no error")
 	assert.Equal(t, blockStateReceived, sc.getStateAtHeight(initHeight))
 
