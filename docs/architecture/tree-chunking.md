@@ -28,7 +28,7 @@ the tree.
 
 Note that for AVL trees, which are insertion-order dependent, that the
 depth-first approach must include all internal nodes in order to properly
-communicate the structure of the tree, which cannot be derrived from key-value
+communicate the structure of the tree, which cannot be derived from key-value
 pairs alone. Such nodes would be part of the proof structure.
 
 The chunker can assign to each chunk a unique index, and every chunker will
