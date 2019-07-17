@@ -493,7 +493,7 @@ $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 
 Response should contain the height where this transaction was committed.
 
-Now let's check if the given key now exists and it's value:
+Now let's check if the given key now exists and its value:
 
 ```
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
