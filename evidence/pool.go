@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
-	dbm "github.com/tendermint/tendermint/libs/db"
+	dbm "github.com/tendermint/tm-cmn/db"
 	"github.com/tendermint/tendermint/libs/log"
 
 	sm "github.com/tendermint/tendermint/state"
