@@ -130,3 +130,25 @@ func IsErrCommitExpired(err error) bool {
 	}
 	return false
 }
+
+type errValidatorChange struct {
+	change float64
+}
+
+func (e errValidatorChange) Error() string {
+	return fmt.Sprintf("%f is more than 1/3rd validator change", e.change)
+}
+
+func ErrValidatorChange(change float64) error {
+	return cmn.ErrorWrap(errValidatorChange{
+		change: change,
+	}, "")
+}
+
+func IsErrValidatorChange(err error) bool {
+	if err_, ok := err.(cmn.Error); ok {
+		_, ok := err_.Data().(errValidatorChange)
+		return ok
+	}
+	return false
+}

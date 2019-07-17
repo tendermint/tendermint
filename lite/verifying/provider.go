@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -369,8 +370,33 @@ func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 			return err
 		}
 	}
+	change := CompareVotingPowers(trustedFC, newFC)
+
+	if change > float64(1/3) {
+		return lerr.ErrValidatorChange(change)
+	}
 
 	return vp.trusted.SaveFullCommit(newFC)
+}
+
+func CompareVotingPowers(trustedFC, newFC lite.FullCommit) float64 {
+
+	var diffAccumulator float64
+
+	for _, val := range newFC.Validators.Validators {
+
+		newPowerRatio := float64(val.VotingPower) / float64(newFC.Validators.TotalVotingPower())
+
+		_, tval := trustedFC.NextValidators.GetByAddress(val.Address)
+
+		oldPowerRatio := float64(tval.VotingPower) / float64(trustedFC.NextValidators.TotalVotingPower())
+
+		diffAccumulator += math.Abs(newPowerRatio - oldPowerRatio)
+
+	}
+
+	return diffAccumulator
+
 }
 
 func (vp *Provider) fetchAndVerifyToHeightLinear(h int64) (lite.FullCommit, error) {
