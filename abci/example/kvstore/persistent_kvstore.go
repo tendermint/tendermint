@@ -9,8 +9,8 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	dbm "github.com/tendermint/tm-cmn/db"
 	"github.com/tendermint/tendermint/libs/log"
+	dbm "github.com/tendermint/tm-cmn/db"
 )
 
 const (
