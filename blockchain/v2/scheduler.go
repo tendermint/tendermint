@@ -223,12 +223,22 @@ func (sc *schedule) getPeersAtHeight(height int64) []*scPeer {
 	return peers
 }
 
-// XXX: probably needs a better name
-func (sc *schedule) peersSince(duration time.Duration, now time.Time) []*scPeer {
-	peers := []*scPeer{}
+func (sc *schedule) peersInactiveSince(duration time.Duration, now time.Time) []p2p.ID {
+	peers := []p2p.ID{}
 	for _, peer := range sc.peers {
 		if now.Sub(peer.lastTouched) > duration {
-			peers = append(peers, peer)
+			peers = append(peers, peer.peerID)
+		}
+	}
+
+	return peers
+}
+
+func (sc *schedule) peersSlowerThan(minSpeed int64) []p2p.ID {
+	peers := []p2p.ID{}
+	for _, peer := range sc.peers {
+		if peer.lastRate < minSpeed {
+			peers = append(peers, peer.peerID)
 		}
 	}
 
@@ -259,7 +269,7 @@ func (sc *schedule) markReceived(peerID p2p.ID, height int64, size int64, now ti
 	}
 
 	pendingTime, ok := sc.pendingTime[height]
-	if !ok || now.Sub(pendingTime) < 0 {
+	if !ok || now.Sub(pendingTime) <= 0 {
 		// xxx: better errors
 		return errBadSchedule
 	}
@@ -289,8 +299,8 @@ func (sc *schedule) markPending(peerID p2p.ID, height int64, time time.Time) err
 
 	sc.setStateAtHeight(height, blockStatePending)
 	sc.pendingBlocks[height] = peerID
-	// XXX: to make htis more accurate we can introduce a message from
-	// the IO rutine which indicates the time the request was put on the wire
+	// XXX: to make this more accurate we can introduce a message from
+	// the IO routine which indicates the time the request was put on the wire
 	sc.pendingTime[height] = time
 
 	return nil

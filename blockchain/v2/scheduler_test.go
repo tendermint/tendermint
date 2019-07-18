@@ -13,7 +13,7 @@ const (
 	peerID     p2p.ID = "1"
 	peerIDTwo  p2p.ID = "2"
 	peerHeight int64  = 20
-	blockSize  int64  = 10
+	blockSize  int64  = 1024
 )
 
 func TestScheduleInit(t *testing.T) {
@@ -46,10 +46,10 @@ func TestTouchPeer(t *testing.T) {
 
 	// the peer should
 	threshold := 10 * time.Second
-	assert.Equal(t, 0, len(sc.peersSince(threshold, now.Add(9*time.Second))),
+	assert.Equal(t, 0, len(sc.peersInactiveSince(threshold, now.Add(9*time.Second))),
 		"Expected no peers to have been touched over 9 seconds")
-	assert.Equal(t, peerID, sc.peersSince(threshold, now.Add(11*time.Second))[0].peerID,
-		"Expected one peer to have been touched over 10 seconds ago")
+	assert.Containsf(t, sc.peersInactiveSince(threshold, now.Add(11*time.Second)), peerID,
+		"Expected one %s to have been touched over 10 seconds ago", peerID)
 }
 
 func TestPeerHeight(t *testing.T) {
@@ -66,6 +66,9 @@ func TestPeerHeight(t *testing.T) {
 		//TODO check peerID
 	}
 }
+
+// TODO Split this into transitions
+// TODO: Use formatting to describe test failures
 
 func TestHeightFSM(t *testing.T) {
 	sc := newSchedule(initHeight)
@@ -146,8 +149,26 @@ func TestMinMaxHeight(t *testing.T) {
 		"Expected marking initHeight as pending to move minHeight forward")
 }
 
-func TestLatePeers(t *testing.T) {
-}
+func TestPeersSlowerThan(t *testing.T) {
+	sc := newSchedule(initHeight)
+	now := time.Now()
+	receivedAt := now.Add(1 * time.Second)
 
-func TestSlowPeers(t *testing.T) {
+	assert.Nil(t, sc.addPeer(peerID),
+		"Adding a peer should return no error")
+
+	assert.Nil(t, sc.setPeerHeight(peerID, peerHeight),
+		"Expected setPeerHeight to return no error")
+
+	assert.Nil(t, sc.markPending(peerID, peerHeight, now),
+		"Expected markingPending on to return no error")
+
+	assert.Nil(t, sc.markReceived(peerID, peerHeight, blockSize, receivedAt),
+		"Expected markingPending on to return no error")
+
+	assert.Empty(t, sc.peersSlowerThan(blockSize-1),
+		"expected no peers to be slower than blockSize-1 bytes/sec")
+
+	assert.Containsf(t, sc.peersSlowerThan(blockSize+1), peerID,
+		"expected %s to be slower than blockSize+1 bytes/sec", peerID)
 }
