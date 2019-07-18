@@ -99,7 +99,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	checkTxs(t, mempool, 1, UnknownPeerID)
 	tx0 := mempool.TxsFront().Value.(*mempoolTx)
 	// assert that kv store has gas wanted = 1.
-	require.Equal(t, app.CheckTx(tx0.tx).GasWanted, int64(1), "KVStore had a gas value neq to 1")
+	require.Equal(t, app.CheckTx(abci.RequestCheckTx{Tx: tx0.tx}).GasWanted, int64(1), "KVStore had a gas value neq to 1")
 	require.Equal(t, tx0.gasWanted, int64(1), "transactions gas was set incorrectly")
 	// ensure each tx is 20 bytes long
 	require.Equal(t, len(tx0.tx), 20, "Tx is longer than 20 bytes")
@@ -200,12 +200,15 @@ func TestMempoolUpdate(t *testing.T) {
 		assert.Zero(t, mempool.Size())
 	}
 
-	// 3. Removes invalid transactions from the cache, but leaves them in the mempool (if present)
+	// 3. Removes invalid transactions from the cache and the mempool (if present)
 	{
 		err := mempool.CheckTx([]byte{0x03}, nil)
 		require.NoError(t, err)
 		mempool.Update(1, []types.Tx{[]byte{0x03}}, abciResponses(1, 1), nil, nil)
-		assert.Equal(t, 1, mempool.Size())
+		assert.Zero(t, mempool.Size())
+
+		err = mempool.CheckTx([]byte{0x03}, nil)
+		assert.NoError(t, err)
 	}
 }
 
@@ -311,7 +314,7 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res, err := appConnCon.DeliverTxSync(txBytes)
+			res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
 			if err != nil {
 				t.Errorf("Client error committing tx: %v", err)
 			}
@@ -519,7 +522,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	err = appConnCon.Start()
 	require.Nil(t, err)
 	defer appConnCon.Stop()
-	res, err := appConnCon.DeliverTxSync(txBytes)
+	res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Code)
 	res2, err := appConnCon.CommitSync()

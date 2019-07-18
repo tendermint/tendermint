@@ -27,7 +27,7 @@ func (ni mockNodeInfo) NetAddress() (*NetAddress, error)    { return ni.addr, ni
 func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
-func AddPeerToSwitch(sw *Switch, peer Peer) {
+func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
 	sw.peers.Add(peer)
 }
 

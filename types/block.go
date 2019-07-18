@@ -198,7 +198,7 @@ func (b *Block) Hash() cmn.HexBytes {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
-	if b == nil || b.LastCommit == nil {
+	if b.LastCommit == nil {
 		return nil
 	}
 	b.fillHeader()
@@ -584,6 +584,7 @@ func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
 
 // memoizeHeightRound memoizes the height and round of the commit using
 // the first non-nil vote.
+// Should be called before any attempt to access `commit.height` or `commit.round`.
 func (commit *Commit) memoizeHeightRound() {
 	if len(commit.Precommits) == 0 {
 		return

@@ -60,11 +60,6 @@ func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
 	go evR.broadcastEvidenceRoutine(peer)
 }
 
-// RemovePeer implements Reactor.
-func (evR *EvidenceReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	// nothing to do
-}
-
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
 func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {

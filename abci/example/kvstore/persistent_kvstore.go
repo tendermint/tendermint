@@ -2,7 +2,7 @@ package kvstore
 
 import (
 	"bytes"
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -60,22 +60,22 @@ func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) t
 	return app.app.SetOption(req)
 }
 
-// tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
-func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+// tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
+func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set
-	// format is "val:pubkey/power"
-	if isValidatorTx(tx) {
+	// format is "val:pubkey!power"
+	if isValidatorTx(req.Tx) {
 		// update validators in the merkle tree
 		// and in app.ValUpdates
-		return app.execValidatorTx(tx)
+		return app.execValidatorTx(req.Tx)
 	}
 
 	// otherwise, update the key-value store
-	return app.app.DeliverTx(tx)
+	return app.app.DeliverTx(req)
 }
 
-func (app *PersistentKVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
-	return app.app.CheckTx(tx)
+func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	return app.app.CheckTx(req)
 }
 
 // Commit will panic if InitChain was not called
@@ -129,33 +129,34 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 }
 
 func MakeValSetChangeTx(pubkey types.PubKey, power int64) []byte {
-	return []byte(fmt.Sprintf("val:%X/%d", pubkey.Data, power))
+	pubStr := base64.StdEncoding.EncodeToString(pubkey.Data)
+	return []byte(fmt.Sprintf("val:%s!%d", pubStr, power))
 }
 
 func isValidatorTx(tx []byte) bool {
 	return strings.HasPrefix(string(tx), ValidatorSetChangePrefix)
 }
 
-// format is "val:pubkey/power"
-// pubkey is raw 32-byte ed25519 key
+// format is "val:pubkey!power"
+// pubkey is a base64-encoded 32-byte ed25519 key
 func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
 	//get the pubkey and power
-	pubKeyAndPower := strings.Split(string(tx), "/")
+	pubKeyAndPower := strings.Split(string(tx), "!")
 	if len(pubKeyAndPower) != 2 {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Expected 'pubkey/power'. Got %v", pubKeyAndPower)}
+			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)}
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
 
 	// decode the pubkey
-	pubkey, err := hex.DecodeString(pubkeyS)
+	pubkey, err := base64.StdEncoding.DecodeString(pubkeyS)
 	if err != nil {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Pubkey (%s) is invalid hex", pubkeyS)}
+			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
 	}
 
 	// decode the power
@@ -176,9 +177,10 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	if v.Power == 0 {
 		// remove validator
 		if !app.app.state.db.Has(key) {
+			pubStr := base64.StdEncoding.EncodeToString(v.PubKey.Data)
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeUnauthorized,
-				Log:  fmt.Sprintf("Cannot remove non-existent validator %X", key)}
+				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
 		}
 		app.app.state.db.Delete(key)
 	} else {

@@ -20,7 +20,7 @@ Initialize the root directory by running:
 tendermint init
 ```
 
-This will create a new private key (`priv_validator.json`), and a
+This will create a new private key (`priv_validator_key.json`), and a
 genesis file (`genesis.json`) containing the associated public key, in
 `$TMHOME/config`. This is all that's necessary to run a local testnet
 with one validator.
@@ -43,6 +43,11 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 - `chain_id`: ID of the blockchain. This must be unique for
   every blockchain. If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
+- `consensus_params`
+  - `block`
+    - `time_iota_ms`: Minimum time increment between consecutive blocks (in
+      milliseconds). If the block header timestamp is ahead of the system clock,
+      decrease this value.
 - `validators`: List of initial validators. Note this may be overridden entirely by the
   application, and may be left empty to make explicit that the
   application will initialize the validator set with ResponseInitChain.
@@ -63,9 +68,10 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   "genesis_time": "2018-11-13T18:11:50.277637Z",
   "chain_id": "test-chain-s4ui7D",
   "consensus_params": {
-    "block_size": {
+    "block": {
       "max_bytes": "22020096",
-      "max_gas": "-1"
+      "max_gas": "-1",
+      "time_iota_ms": "1000"
     },
     "evidence": {
       "max_age": "100000"
@@ -202,8 +208,10 @@ Note that raw hex cannot be used in `POST` transactions.
 
 ## Reset
 
-**WARNING: UNSAFE** Only do this in development and only if you can
+::: warning
+**UNSAFE** Only do this in development and only if you can
 afford to lose all blockchain data!
+:::
 
 To reset a blockchain, stop the node and run:
 
@@ -306,7 +314,7 @@ write-ahead-log](../tendermint-core/running-in-production.md#mempool-wal)
 ## Tendermint Networks
 
 When `tendermint init` is run, both a `genesis.json` and
-`priv_validator.json` are created in `~/.tendermint/config`. The
+`priv_validator_key.json` are created in `~/.tendermint/config`. The
 `genesis.json` might look like:
 
 ```
@@ -327,7 +335,7 @@ When `tendermint init` is run, both a `genesis.json` and
 }
 ```
 
-And the `priv_validator.json`:
+And the `priv_validator_key.json`:
 
 ```
 {
@@ -346,20 +354,20 @@ And the `priv_validator.json`:
 }
 ```
 
-The `priv_validator.json` actually contains a private key, and should
+The `priv_validator_key.json` actually contains a private key, and should
 thus be kept absolutely secret; for now we work with the plain text.
 Note the `last_` fields, which are used to prevent us from signing
 conflicting messages.
 
 Note also that the `pub_key` (the public key) in the
-`priv_validator.json` is also present in the `genesis.json`.
+`priv_validator_key.json` is also present in the `genesis.json`.
 
 The genesis file contains the list of public keys which may participate
 in the consensus, and their corresponding voting power. Greater than 2/3
 of the voting power must be active (i.e. the corresponding private keys
 must be producing signatures) for the consensus to make progress. In our
 case, the genesis file contains the public key of our
-`priv_validator.json`, so a Tendermint node started with the default
+`priv_validator_key.json`, so a Tendermint node started with the default
 root directory will be able to make progress. Voting power uses an int64
 but must be positive, thus the range is: 0 through 9223372036854775807.
 Because of how the current proposer selection algorithm works, we do not
@@ -445,16 +453,16 @@ not connected to the other peer.
 
 The easiest way to add new validators is to do it in the `genesis.json`,
 before starting the network. For instance, we could make a new
-`priv_validator.json`, and copy it's `pub_key` into the above genesis.
+`priv_validator_key.json`, and copy it's `pub_key` into the above genesis.
 
-We can generate a new `priv_validator.json` with the command:
+We can generate a new `priv_validator_key.json` with the command:
 
 ```
 tendermint gen_validator
 ```
 
 Now we can update our genesis file. For instance, if the new
-`priv_validator.json` looks like:
+`priv_validator_key.json` looks like:
 
 ```
 {
@@ -502,7 +510,7 @@ then the new `genesis.json` will be:
 ```
 
 Update the `genesis.json` in `~/.tendermint/config`. Copy the genesis
-file and the new `priv_validator.json` to the `~/.tendermint/config` on
+file and the new `priv_validator_key.json` to the `~/.tendermint/config` on
 a new machine.
 
 Now run `tendermint node` on both machines, and use either

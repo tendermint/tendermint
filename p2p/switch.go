@@ -221,11 +221,7 @@ func (sw *Switch) OnStart() error {
 func (sw *Switch) OnStop() {
 	// Stop peers
 	for _, p := range sw.peers.List() {
-		sw.transport.Cleanup(p)
-		p.Stop()
-		if sw.peers.Remove(p) {
-			sw.metrics.Peers.Add(float64(-1))
-		}
+		sw.stopAndRemovePeer(p, nil)
 	}
 
 	// Stop reactors
@@ -324,13 +320,19 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	if sw.peers.Remove(peer) {
-		sw.metrics.Peers.Add(float64(-1))
-	}
 	sw.transport.Cleanup(peer)
 	peer.Stop()
+
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
+	}
+
+	// Removing a peer should go last to avoid a situation where a peer
+	// reconnect to our node and the switch calls InitPeer before
+	// RemovePeer is finished.
+	// https://github.com/tendermint/tendermint/issues/3338
+	if sw.peers.Remove(peer) {
+		sw.metrics.Peers.Add(float64(-1))
 	}
 }
 
@@ -737,6 +739,11 @@ func (sw *Switch) addPeer(p Peer) error {
 		// XXX should this return an error or just log and terminate?
 		sw.Logger.Error("Won't start a peer - switch is not running", "peer", p)
 		return nil
+	}
+
+	// Add some data to the peer, which is required by reactors.
+	for _, reactor := range sw.reactors {
+		p = reactor.InitPeer(p)
 	}
 
 	// Start the peer's send/recv routines.

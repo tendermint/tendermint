@@ -87,7 +87,7 @@ func testStream(t *testing.T, app types.Application) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		reqRes := client.DeliverTxAsync([]byte("test"))
+		reqRes := client.DeliverTxAsync(types.RequestDeliverTx{Tx: []byte("test")})
 		_ = reqRes
 		// check err ?
 

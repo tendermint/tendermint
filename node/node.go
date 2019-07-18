@@ -47,6 +47,10 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
+// CustomReactorNamePrefix is a prefix for all custom reactors to prevent
+// clashes with built-in reactors.
+const CustomReactorNamePrefix = "CUSTOM_"
+
 //------------------------------------------------------------------------------
 
 // DBContext specifies config information for loading a new DB.
@@ -63,6 +67,19 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	dbType := dbm.DBBackendType(ctx.Config.DBBackend)
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
+}
+
+// GenesisDocProvider returns a GenesisDoc.
+// It allows the GenesisDoc to be pulled from sources other than the
+// filesystem, for instance from a distributed key-value store cluster.
+type GenesisDocProvider func() (*types.GenesisDoc, error)
+
+// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
+// the GenesisDoc from the config.GenesisFile() on the filesystem.
+func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
+	return func() (*types.GenesisDoc, error) {
+		return types.GenesisDocFromFile(config.GenesisFile())
+	}
 }
 
 // NodeProvider takes a config and a logger and returns a ready to go Node.
@@ -99,7 +116,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		privval.LoadOrGenFilePV(newPrivValKey, newPrivValState),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
-		sm.DefaultGenesisDocProviderFunc(config),
+		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
@@ -120,6 +137,18 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
+	}
+}
+
+// Option sets a parameter for the node.
+type Option func(*Node)
+
+// CustomReactors allows you to add custom reactors to the node's Switch.
+func CustomReactors(reactors map[string]p2p.Reactor) Option {
+	return func(n *Node) {
+		for name, reactor := range reactors {
+			n.sw.AddReactor(CustomReactorNamePrefix+name, reactor)
+		}
 	}
 }
 
@@ -420,6 +449,7 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
@@ -428,17 +458,30 @@ func createSwitch(config *cfg.Config,
 }
 
 func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
-	p2pLogger log.Logger) pex.AddrBook {
+	p2pLogger log.Logger, nodeKey *p2p.NodeKey) (pex.AddrBook, error) {
 
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 	// Add ourselves to addrbook to prevent dialing ourselves
-	addrBook.AddOurAddress(sw.NetAddress())
+	if config.P2P.ExternalAddress != "" {
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ExternalAddress))
+		if err != nil {
+			return nil, errors.Wrap(err, "p2p.external_address is incorrect")
+		}
+		addrBook.AddOurAddress(addr)
+	}
+	if config.P2P.ListenAddress != "" {
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ListenAddress))
+		if err != nil {
+			return nil, errors.Wrap(err, "p2p.laddr is incorrect")
+		}
+		addrBook.AddOurAddress(addr)
+	}
 
 	sw.SetAddrBook(addrBook)
 
-	return addrBook
+	return addrBook, nil
 }
 
 func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
@@ -466,17 +509,18 @@ func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
-	genesisDocProvider sm.GenesisDocProvider,
+	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
-	logger log.Logger) (*Node, error) {
+	logger log.Logger,
+	options ...Option) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
 		return nil, err
 	}
 
-	state, genDoc, err := sm.LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
+	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -581,7 +625,10 @@ func NewNode(config *cfg.Config,
 		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
 	}
 
-	addrBook := createAddrBookAndSetOnSwitch(config, sw, p2pLogger)
+	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create addrbook")
+	}
 
 	// Optionally, start the pex reactor
 	//
@@ -601,7 +648,9 @@ func NewNode(config *cfg.Config,
 	}
 
 	if config.ProfListenAddress != "" {
-		go logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+		go func() {
+			logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+		}()
 	}
 
 	node := &Node{
@@ -630,6 +679,11 @@ func NewNode(config *cfg.Config,
 		eventBus:         eventBus,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
+
+	for _, option := range options {
+		option(node)
+	}
+
 	return node, nil
 }
 
@@ -661,7 +715,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := p2p.NewNetAddressStringWithOptionalID(n.config.P2P.ListenAddress)
+	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID(), n.config.P2P.ListenAddress))
 	if err != nil {
 		return err
 	}
@@ -701,7 +755,6 @@ func (n *Node) OnStop() {
 	n.indexerService.Stop()
 
 	// now stop the reactors
-	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 
 	// stop mempool WAL
@@ -1001,6 +1054,56 @@ func makeNodeInfo(
 }
 
 //------------------------------------------------------------------------------
+
+var (
+	genesisDocKey = []byte("genesisDoc")
+)
+
+// LoadStateFromDBOrGenesisDocProvider attempts to load the state from the
+// database, or creates one using the given genesisDocProvider and persists the
+// result to the database. On success this also returns the genesis doc loaded
+// through the given provider.
+func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (sm.State, *types.GenesisDoc, error) {
+	// Get genesis doc
+	genDoc, err := loadGenesisDoc(stateDB)
+	if err != nil {
+		genDoc, err = genesisDocProvider()
+		if err != nil {
+			return sm.State{}, nil, err
+		}
+		// save genesis doc to prevent a certain class of user errors (e.g. when it
+		// was changed, accidentally or not). Also good for audit trail.
+		saveGenesisDoc(stateDB, genDoc)
+	}
+	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+	if err != nil {
+		return sm.State{}, nil, err
+	}
+	return state, genDoc, nil
+}
+
+// panics if failed to unmarshal bytes
+func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
+	b := db.Get(genesisDocKey)
+	if len(b) == 0 {
+		return nil, errors.New("Genesis doc not found")
+	}
+	var genDoc *types.GenesisDoc
+	err := cdc.UnmarshalJSON(b, &genDoc)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
+	}
+	return genDoc, nil
+}
+
+// panics if failed to marshal the given genesis document
+func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
+	b, err := cdc.MarshalJSON(genDoc)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
+	}
+	db.SetSync(genesisDocKey, b)
+}
 
 func createAndStartPrivValidatorSocketClient(
 	listenAddr string,
