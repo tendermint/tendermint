@@ -1,16 +1,15 @@
 package core
 
 import (
-	"fmt"
-
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Broadcast evidence of the misbehavior.
 //
 // ```shell
-// curl 'localhost:26657/broadcast_evidence?evidence='
+// curl 'localhost:26657/broadcast_evidence?evidence={amino-encoded DuplicateVoteEvidence}'
 // ```
 //
 // ```go
@@ -20,7 +19,10 @@ import (
 //   // handle error
 // }
 // defer client.Stop()
-// info, err := client.BroadcastEvidence(types.DuplicateVoteEvidenc{PubKey: ev.PubKey, VoteA: *ev.VoteA, VoteB: *ev.VoteB})
+// res, err := client.BroadcastEvidence(&types.DuplicateVoteEvidenc{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
+// if err != nil {
+//   // handle error
+// }
 // ```
 //
 // > The above command returns JSON structured like this:
@@ -31,10 +33,10 @@ import (
 // | Parameter | Type           | Default | Required | Description            |
 // |-----------+----------------+---------+----------+------------------------|
 // | evidence  | types.Evidence | nil     | true     | Amino-encoded evidence |
-func BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+func BroadcastEvidence(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	err := evidencePool.AddEvidence(ev)
 	if err != nil {
-		return nil, fmt.Errorf("Error broadcasting evidence, adding evidence: %v", err)
+		return nil, err
 	}
 	return &ctypes.ResultBroadcastEvidence{Hash: ev.Hash()}, nil
 }

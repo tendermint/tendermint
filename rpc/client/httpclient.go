@@ -335,9 +335,7 @@ func (c *baseRPCClient) Validators(height *int64) (*ctypes.ResultValidators, err
 
 func (c *baseRPCClient) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	result := new(ctypes.ResultBroadcastEvidence)
-	_, err := c.caller.Call("broadcast_duplicate_vote",
-		map[string]interface{}{"evidence": ev},
-		result)
+	_, err := c.caller.Call("broadcast_evidence", map[string]interface{}{"evidence": ev}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "BroadcastEvidence")
 	}

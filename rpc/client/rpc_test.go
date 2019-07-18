@@ -556,12 +556,11 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 
 		result, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
 		require.Nil(t, err)
-
-		info, err := c.BlockchainInfo(0, 0)
-		require.NoError(t, err)
-		client.WaitForHeight(c, info.LastHeight+1, nil)
-
 		require.Equal(t, ev.Hash(), result.Hash, "Invalid response, result %+v", result)
+
+		status, err := c.Status()
+		require.NoError(t, err)
+		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+1, nil)
 
 		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
 		rawpub := ed25519pub[:]
