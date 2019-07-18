@@ -70,12 +70,12 @@ func (s *Subscription) cancel(err error) {
 
 // Message glues data and tags together.
 type Message struct {
-	data interface{}
-	tags map[string]string
+	data   interface{}
+	events map[string][]string
 }
 
-func NewMessage(data interface{}, tags map[string]string) Message {
-	return Message{data, tags}
+func NewMessage(data interface{}, events map[string][]string) Message {
+	return Message{data, events}
 }
 
 // Data returns an original data published.
@@ -83,7 +83,7 @@ func (msg Message) Data() interface{} {
 	return msg.data
 }
 
-// Tags returns tags, which matched the client's query.
-func (msg Message) Tags() map[string]string {
-	return msg.tags
+// Events returns events, which matched the client's query.
+func (msg Message) Events() map[string][]string {
+	return msg.events
 }

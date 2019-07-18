@@ -2,7 +2,7 @@
 
 Tendermint emits different events, to which you can subscribe via
 [Websocket](https://en.wikipedia.org/wiki/WebSocket). This can be useful
-for third-party applications (for analysys) or inspecting state.
+for third-party applications (for analysis) or inspecting state.
 
 [List of events](https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants)
 

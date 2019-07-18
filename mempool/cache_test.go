@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -19,7 +20,7 @@ func TestCacheRemove(t *testing.T) {
 	for i := 0; i < numTxs; i++ {
 		// probability of collision is 2**-256
 		txBytes := make([]byte, 32)
-		rand.Read(txBytes)
+		rand.Read(txBytes) // nolint: gosec
 		txs[i] = txBytes
 		cache.Push(txBytes)
 		// make sure its added to both the linked list and the map
@@ -66,7 +67,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 			tx := types.Tx{byte(v)}
 			updateTxs = append(updateTxs, tx)
 		}
-		mempool.Update(int64(tcIndex), updateTxs, nil, nil)
+		mempool.Update(int64(tcIndex), updateTxs, abciResponses(len(updateTxs), abci.CodeTypeOK), nil, nil)
 
 		for _, v := range tc.reAddIndices {
 			tx := types.Tx{byte(v)}

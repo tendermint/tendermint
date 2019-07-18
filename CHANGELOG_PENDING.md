@@ -1,28 +1,23 @@
-## v0.32.0
+## v0.32.2
 
-**
+\*\*
+
+Special thanks to external contributors on this release:
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
-* CLI/RPC/Config
+- CLI/RPC/Config
 
-* Apps
+- Apps
 
-* Go API
-- [libs/common] Remove RepeatTimer (also TimerMaker and Ticker interface)
-- [rpc/client] \#3458 Include NetworkClient interface into Client interface
-
-* Blockchain Protocol
-
-* P2P Protocol
+- Go API
 
 ### FEATURES:
-- [rpc] \#3419 Start HTTPS server if `rpc.tls_cert_file` and `rpc.tls_key_file` are provided in the config (@guagualvcha)
 
 ### IMPROVEMENTS:
-
-- [mempool] \#2778 No longer send txs back to peers who sent it to you
+- [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
 
 ### BUG FIXES:
-
-- [blockchain] \#2699 update the maxHeight when a peer is removed
