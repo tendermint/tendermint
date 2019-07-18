@@ -554,7 +554,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
-		result, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{PubKey: ev.PubKey, VoteA: *ev.VoteA, VoteB: *ev.VoteB})
+		result, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
 		require.Nil(t, err)
 
 		info, err := c.BlockchainInfo(0, 0)
@@ -580,8 +580,8 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 		for _, fake := range fakes {
 			_, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{
 				PubKey: fake.PubKey,
-				VoteA:  *fake.VoteA,
-				VoteB:  *fake.VoteB})
+				VoteA:  fake.VoteA,
+				VoteB:  fake.VoteB})
 			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
 			require.True(t, strings.HasPrefix(err.Error(), "Error broadcasting evidence, adding evidence"),
 				"Broadcasting fake evidence failed on HTTP call: %s", fake.String())
