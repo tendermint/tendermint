@@ -88,6 +88,8 @@ func (app *PersistentKVStoreApplication) Commit() types.ResponseCommit {
 	return app.app.Commit()
 }
 
+// When path=/val and data={validator address}, returns the validator update (types.ValidatorUpdate) varint encoded.
+// For any other path, returns an associated value or nil if missing.
 func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	switch reqQuery.Path {
 	case "/val":
@@ -216,9 +218,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
 		}
 		app.app.state.db.Delete(key)
-
 		delete(app.valAddrToPubKeyMap, string(pubkey.Address()))
-
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
@@ -228,7 +228,6 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
 		app.app.state.db.Set(key, value.Bytes())
-
 		app.valAddrToPubKeyMap[string(pubkey.Address())] = v.PubKey
 	}
 

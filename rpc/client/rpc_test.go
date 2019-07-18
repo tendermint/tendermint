@@ -509,25 +509,25 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 	// different address
 	vote2 = deepcpVote(vote)
 	for i := 0; i < 10; i++ {
-		rand.Read(vote2.ValidatorAddress)
+		rand.Read(vote2.ValidatorAddress) // nolint: gosec
 		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
 	}
 	// different index
 	vote2 = deepcpVote(vote)
 	for i := 10; i < 20; i++ {
-		vote2.ValidatorIndex = rand.Int()%100 + 1
+		vote2.ValidatorIndex = rand.Int()%100 + 1 // nolint: gosec
 		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
 	}
 	// different height
 	vote2 = deepcpVote(vote)
 	for i := 20; i < 30; i++ {
-		vote2.Height = rand.Int63()%1000 + 100
+		vote2.Height = rand.Int63()%1000 + 100 // nolint: gosec
 		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
 	}
 	// different round
 	vote2 = deepcpVote(vote)
 	for i := 30; i < 40; i++ {
-		vote2.Round = rand.Int()%10 + 1
+		vote2.Round = rand.Int()%10 + 1 // nolint: gosec
 		fakes[i] = newEvidence(t, val, vote, vote2, chainID)
 	}
 	// different type
@@ -540,7 +540,7 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 	return
 }
 
-func TestBroadcastDuplicateVote(t *testing.T) {
+func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 	config := rpctest.GetConfig()
 	chainID := config.ChainID()
 	pvKeyFile := config.PrivValidatorKeyFile()
@@ -554,7 +554,7 @@ func TestBroadcastDuplicateVote(t *testing.T) {
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
-		result, err := c.BroadcastDuplicateVote(ev.PubKey, *ev.VoteA, *ev.VoteB)
+		result, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{PubKey: ev.PubKey, VoteA: *ev.VoteA, VoteB: *ev.VoteB})
 		require.Nil(t, err)
 
 		info, err := c.BlockchainInfo(0, 0)
@@ -578,11 +578,14 @@ func TestBroadcastDuplicateVote(t *testing.T) {
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
-			_, err := c.BroadcastDuplicateVote(fake.PubKey, *fake.VoteA, *fake.VoteB)
+			_, err := c.BroadcastEvidence(&types.DuplicateVoteEvidence{
+				PubKey: fake.PubKey,
+				VoteA:  *fake.VoteA,
+				VoteB:  *fake.VoteB})
 			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
-			require.True(t, strings.HasPrefix(err.Error(), "Error broadcasting evidence, adding evidence"), "Broadcasting fake evidence failed on HTTP call: %s", fake.String())
+			require.True(t, strings.HasPrefix(err.Error(), "Error broadcasting evidence, adding evidence"),
+				"Broadcasting fake evidence failed on HTTP call: %s", fake.String())
 		}
-
 	}
 }
 

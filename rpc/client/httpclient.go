@@ -10,7 +10,6 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 
-	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -334,16 +333,13 @@ func (c *baseRPCClient) Validators(height *int64) (*ctypes.ResultValidators, err
 	return result, nil
 }
 
-func (c *baseRPCClient) BroadcastDuplicateVote(pubkey crypto.PubKey, vote1 types.Vote, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error) {
-	result := new(ctypes.ResultBroadcastDuplicateVote)
+func (c *baseRPCClient) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	result := new(ctypes.ResultBroadcastEvidence)
 	_, err := c.caller.Call("broadcast_duplicate_vote",
-		map[string]interface{}{
-			"pubkey": pubkey,
-			"vote1":  vote1,
-			"vote2":  vote2},
+		map[string]interface{}{"evidence": ev},
 		result)
 	if err != nil {
-		return nil, errors.Wrap(err, "BroadcastDuplicateVote")
+		return nil, errors.Wrap(err, "BroadcastEvidence")
 	}
 	return result, nil
 }

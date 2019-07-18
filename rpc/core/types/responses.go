@@ -195,7 +195,7 @@ type ResultABCIQuery struct {
 }
 
 // Result of broadcasting evidence
-type ResultBroadcastDuplicateVote struct {
+type ResultBroadcastEvidence struct {
 	Hash []byte `json:"hash"`
 }
 

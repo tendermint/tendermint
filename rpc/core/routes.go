@@ -40,7 +40,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"abci_info":  rpc.NewRPCFunc(ABCIInfo, ""),
 
 	// evidence API
-	"broadcast_duplicate_vote": rpc.NewRPCFunc(BroadcastDuplicateVote, "pubkey,vote1,vote2"),
+	"broadcast_evidence": rpc.NewRPCFunc(BroadcastEvidence, "evidence"),
 }
 
 func AddUnsafeRoutes() {

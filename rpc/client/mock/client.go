@@ -17,7 +17,6 @@ want to directly call a tendermint node in process, you can use the
 import (
 	"reflect"
 
-	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
@@ -150,6 +149,6 @@ func (c Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
 	return core.Validators(&rpctypes.Context{}, height)
 }
 
-func (c Client) BroadcastEvidence(pubkey crypto.PubKey, vote1, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error) {
-	return core.BroadcastDuplicateVote(pubkey, vote1, vote2)
+func (c Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	return core.BroadcastEvidence(ev)
 }

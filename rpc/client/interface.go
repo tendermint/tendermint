@@ -23,15 +23,29 @@ implementation.
 import (
 	"context"
 
-	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-// ABCIClient groups together the functionality that principally
-// affects the ABCI app. In many cases this will be all we want,
-// so we can accept an interface which is easier to mock
+// Client wraps most important rpc calls a client would make if you want to
+// listen for events, test if it also implements events.EventSwitch.
+type Client interface {
+	cmn.Service
+	ABCIClient
+	EventsClient
+	HistoryClient
+	NetworkClient
+	SignClient
+	StatusClient
+	EvidenceClient
+}
+
+// ABCIClient groups together the functionality that principally affects the
+// ABCI app.
+//
+// In many cases this will be all we want, so we can accept an interface which
+// is easier to mock.
 type ABCIClient interface {
 	// Reading from abci app
 	ABCIInfo() (*ctypes.ResultABCIInfo, error)
@@ -45,8 +59,8 @@ type ABCIClient interface {
 	BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 }
 
-// SignClient groups together the interfaces need to get valid
-// signatures and prove anything about the chain
+// SignClient groups together the functionality needed to get valid signatures
+// and prove anything about the chain.
 type SignClient interface {
 	Block(height *int64) (*ctypes.ResultBlock, error)
 	BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
@@ -56,33 +70,19 @@ type SignClient interface {
 	TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error)
 }
 
-// HistoryClient shows us data from genesis to now in large chunks.
+// HistoryClient provides access to data from genesis to now in large chunks.
 type HistoryClient interface {
 	Genesis() (*ctypes.ResultGenesis, error)
 	BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
 }
 
+// StatusClient provides access to general chain info.
 type StatusClient interface {
-	// General chain info
 	Status() (*ctypes.ResultStatus, error)
 }
 
-// Client wraps most important rpc calls a client would make
-// if you want to listen for events, test if it also
-// implements events.EventSwitch
-type Client interface {
-	cmn.Service
-	ABCIClient
-	EventsClient
-	HistoryClient
-	NetworkClient
-	SignClient
-	StatusClient
-	EvidenceClient
-}
-
-// NetworkClient is general info about the network state.  May not
-// be needed usually.
+// NetworkClient is general info about the network state. May not be needed
+// usually.
 type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
@@ -113,7 +113,8 @@ type MempoolClient interface {
 	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
 }
 
-// EvidenceClient is used for submitting evidence for malicious behaviours
+// EvidenceClient is used for submitting an evidence of the malicious
+// behaviour.
 type EvidenceClient interface {
-	BroadcastDuplicateVote(pubkey crypto.PubKey, vote1 types.Vote, vote2 types.Vote) (*ctypes.ResultBroadcastDuplicateVote, error)
+	BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
 }
