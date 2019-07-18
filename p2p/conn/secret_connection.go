@@ -125,7 +125,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 		return nil, err
 	}
 
-	// generate the secret used for receiving, sending, challenge via HKDF-SHA2 
+	// generate the secret used for receiving, sending, challenge via HKDF-SHA2
 	// on the transcript state (which itself also uses HKDF-SHA2 to derive a key from the dhSecret)
 	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(hdkf_state, locIsLeast)
 
