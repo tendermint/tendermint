@@ -146,7 +146,7 @@ Additional documentation is found [here](/docs/tools).
 - [Amino](http://github.com/tendermint/go-amino), reflection-based proto3, with
   interfaces
 - [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
-- [TM-CMN](http://github.com/tendermint/tm-cmn), Commonly used libs across Tendermint & Cosmos repos
+- [Tm-cmn](http://github.com/tendermint/tm-cmn), Commonly used libs across Tendermint & Cosmos repos
 
 ### Applications
 
