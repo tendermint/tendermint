@@ -5,12 +5,12 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-cmn/db"
 )
 
 //-----------------------------------------------------------------------------
