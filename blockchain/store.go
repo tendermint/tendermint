@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
+	dbm "github.com/tendermint/tm-cmn/db"
 
 	"github.com/tendermint/tendermint/types"
 )
