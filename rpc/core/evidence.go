@@ -20,9 +20,6 @@ import (
 // }
 // defer client.Stop()
 // res, err := client.BroadcastEvidence(&types.DuplicateVoteEvidenc{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
-// if err != nil {
-//   // handle error
-// }
 // ```
 //
 // > The above command returns JSON structured like this:
@@ -30,9 +27,9 @@ import (
 // ```json
 // ```
 //
-// | Parameter | Type           | Default | Required | Description            |
-// |-----------+----------------+---------+----------+------------------------|
-// | evidence  | types.Evidence | nil     | true     | Amino-encoded evidence |
+// | Parameter | Type           | Default | Required | Description                 |
+// |-----------+----------------+---------+----------+-----------------------------|
+// | evidence  | types.Evidence | nil     | true     | Amino-encoded JSON evidence |
 func BroadcastEvidence(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	err := evidencePool.AddEvidence(ev)
 	if err != nil {
