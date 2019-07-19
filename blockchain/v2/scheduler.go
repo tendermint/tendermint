@@ -433,6 +433,8 @@ func (sdr *Scheduler) handleAddPeer(peerID p2p.ID) Event {
 	return Skip{}
 }
 
+type Events []Event
+
 func (sdr *Scheduler) handleRemovePeer(peerID p2p.ID) Event {
 	err := sdr.sc.removePeer(peerID)
 	if err != nil {
@@ -510,19 +512,28 @@ func (sdr *Scheduler) handleBlockProcessError(peerID p2p.ID, height int64) Event
 	return Skip{}
 }
 
-// XXX: Probably split this into two methods
-// + handlePurgePeers
-// + handleNextSchehedule
-func (sdr *Scheduler) handleTimeCheck(now time.Time) interface{} {
+type scPrunePeerEv struct {
+	peerID p2p.ID
+	reason error
+}
+
+type scSchedulerFailure struct {
+	peerID p2p.ID
+	time   time.Time
+	reason error
+}
+
+func (sdr *Scheduler) handleTimeCheck(now time.Time) Events {
 	prunablePeers := sdr.sc.prunablePeers(sdr.peerTimeout, sdr.minRecvRate, now)
 
+	events := []Event{}
 	for _, peerID := range prunablePeers {
-		// XXX: Emit these events
-		_ = sdr.sc.removePeer(peerID)
+		err := sdr.sc.removePeer(peerID)
+		if err != nil {
+			events = append(events, scPrunePeerEv{peerID: peerID, reason: err})
+		}
 	}
 
-	// produce new schedule
-	events := []scBlockRequestMessage{}
 	pendingBlocks := sdr.sc.numBlockInState(blockStatePending)
 	receivedBlocks := sdr.sc.numBlockInState(blockStateReceived)
 	todo := math.Min(float64(sdr.targetPending-pendingBlocks), float64(sdr.targetReceived-receivedBlocks))
@@ -535,7 +546,9 @@ func (sdr *Scheduler) handleTimeCheck(now time.Time) interface{} {
 			bestPeer := sdr.sc.selectPeer(allPeers)
 			err := sdr.sc.markPending(peerID, height, now)
 			if err != nil {
-				// TODO
+				// this should be fatal
+				events = append(events, scSchedulerFailure{peerID: peerID, time: now, reason: err})
+				return events
 			}
 			events = append(events, scBlockRequestMessage{peerID: bestPeer.peerID, height: height})
 			todo--
