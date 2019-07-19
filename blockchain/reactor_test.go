@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"fmt"
 	"os"
 	"sort"
 	"testing"
@@ -41,24 +42,6 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		ChainID:     config.ChainID(),
 		Validators:  validators,
 	}, privValidators
-}
-
-func makeVote(header *types.Header, blockID types.BlockID, valset *types.ValidatorSet, privVal types.PrivValidator) *types.Vote {
-	addr := privVal.GetPubKey().Address()
-	idx, _ := valset.GetByAddress(addr)
-	vote := &types.Vote{
-		ValidatorAddress: addr,
-		ValidatorIndex:   idx,
-		Height:           header.Height,
-		Round:            1,
-		Timestamp:        tmtime.Now(),
-		Type:             types.PrecommitType,
-		BlockID:          blockID,
-	}
-
-	privVal.SignVote(header.ChainID, vote)
-
-	return vote
 }
 
 type BlockchainReactorPair struct {
@@ -104,8 +87,12 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0]).CommitSig()
-			lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{vote})
+			vote, err := types.MakeVote(lastBlock.Header.Height, lastBlockMeta.BlockID, state.Validators, privVals[0], lastBlock.Header.ChainID)
+			if err != nil {
+				fmt.Println(err)
+			}
+			voteCommitSig := vote.CommitSig()
+			lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{voteCommitSig})
 		}
 
 		thisBlock := makeBlock(blockHeight, state, lastCommit)

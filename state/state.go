@@ -139,7 +139,7 @@ func (state State) MakeBlock(
 ) (*types.Block, *types.PartSet) {
 
 	// Build base block with block data.
-	block := types.MakeBlock(height, txs, commit, evidence)
+	block := types.MakeNewBlock(height, txs, commit, evidence)
 
 	// Set time.
 	var timestamp time.Time
