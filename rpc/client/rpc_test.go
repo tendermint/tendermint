@@ -15,6 +15,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
@@ -490,8 +491,11 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 		Round:            0,
 		Type:             types.PrevoteType,
 		BlockID: types.BlockID{
-			Hash:        []byte{0x00},
-			PartsHeader: types.PartSetHeader{},
+			Hash: tmhash.Sum([]byte("blockhash")),
+			PartsHeader: types.PartSetHeader{
+				Total: 1000,
+				Hash:  tmhash.Sum([]byte("partset")),
+			},
 		},
 	}
 
@@ -500,7 +504,7 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 	require.NoError(t, err)
 
 	vote2 := deepcpVote(vote)
-	vote2.BlockID.Hash = []byte{0x01}
+	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
 
 	ev = newEvidence(t, val, vote, vote2, chainID)
 
@@ -582,8 +586,6 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 				VoteA:  fake.VoteA,
 				VoteB:  fake.VoteB})
 			require.Error(t, err, "Broadcasting fake evidence succeed: %s", fake.String())
-			require.True(t, strings.HasPrefix(err.Error(), "Error broadcasting evidence, adding evidence"),
-				"Broadcasting fake evidence failed on HTTP call: %s", fake.String())
 		}
 	}
 }
