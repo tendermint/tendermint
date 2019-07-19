@@ -76,9 +76,15 @@ func TestHeightFSM(t *testing.T) {
 
 	assert.Nil(t, sc.addPeer(peerID),
 		"Adding a peer should return no error")
+
+	assert.Nil(t, sc.addPeer(peerIDTwo),
+		"Adding a peer should return no error")
 	assert.Error(t, sc.markPending(peerID, peerHeight, now),
 		"Expected markingPending on an unknown peer to return an error")
+
 	assert.Nil(t, sc.setPeerHeight(peerID, peerHeight),
+		"Expected setPeerHeight to return no error")
+	assert.Nil(t, sc.setPeerHeight(peerIDTwo, peerHeight),
 		"Expected setPeerHeight to return no error")
 
 	assert.Error(t, sc.markReceived(peerID, peerHeight, blockSize, now.Add(1*time.Second)),
@@ -99,18 +105,17 @@ func TestHeightFSM(t *testing.T) {
 	assert.Nil(t, sc.markReceived(peerID, initHeight, blockSize, now.Add(2*time.Second)),
 		"Expected marking markReceived on a pending block to return no error")
 
-	// here we are trying to reset blocks that were received
-	assert.NoError(t, sc.resetBlocks(peerID),
+	assert.NoError(t, sc.removePeer(peerID),
 		"Expected resetBlocks to return no error")
 	assert.Equal(t, blockStateNew, sc.getStateAtHeight(initHeight),
 		"Expected blocks to be in blockStateNew after being reset")
 
-	assert.NoError(t, sc.markPending(peerID, initHeight, now),
+	assert.NoError(t, sc.markPending(peerIDTwo, initHeight, now),
 		"Expected marking a reset block to pending to return no error")
 	assert.Equal(t, blockStatePending, sc.getStateAtHeight(initHeight),
 		"Expected block to be in blockStatePending")
 
-	assert.NoError(t, sc.markReceived(peerID, initHeight, blockSize, now.Add(2*time.Second)),
+	assert.NoError(t, sc.markReceived(peerIDTwo, initHeight, blockSize, now.Add(2*time.Second)),
 		"Expected marking a pending block as received to return no error")
 	assert.Equal(t, blockStateReceived, sc.getStateAtHeight(initHeight))
 

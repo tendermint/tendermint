@@ -145,6 +145,10 @@ func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
 }
 
 func (sc *schedule) removePeer(peerID p2p.ID) error {
+	if _, ok := sc.peers[peerID]; !ok {
+		return fmt.Errorf("Can't find peer %s", peerID)
+	}
+
 	peer, ok := sc.peers[peerID]
 	if !ok {
 		return fmt.Errorf("Couldn't find peer %s", peerID)
@@ -155,9 +159,17 @@ func (sc *schedule) removePeer(peerID p2p.ID) error {
 	}
 
 	for height, pendingPeerID := range sc.pendingBlocks {
-		if peerID == pendingPeerID {
+		if pendingPeerID == peerID {
+			sc.setStateAtHeight(height, blockStateNew)
+			delete(sc.pendingTime, height)
 			delete(sc.pendingBlocks, height)
-			sc.blockStates[height] = blockStateNew
+		}
+	}
+
+	for height, rcvPeerID := range sc.receivedBlocks {
+		if rcvPeerID == peerID {
+			sc.setStateAtHeight(height, blockStateNew)
+			delete(sc.receivedBlocks, height)
 		}
 	}
 
@@ -348,30 +360,6 @@ func (sc *schedule) pendingFrom(peerID p2p.ID) []int64 {
 	return heights
 }
 
-// XXX: What about pedingTime here?
-// XXX: Split up read and write paths here
-// set any blocks in blockStatePending or blockStateReceived by peerID to blockStateNew
-func (sc *schedule) resetBlocks(peerID p2p.ID) error {
-	if _, ok := sc.peers[peerID]; !ok {
-		return fmt.Errorf("Can't find peer %s", peerID)
-	}
-
-	// this should use pendingFrom
-	for height, pendingPeerID := range sc.pendingBlocks {
-		if pendingPeerID == peerID {
-			sc.setStateAtHeight(height, blockStateNew)
-		}
-	}
-
-	for height, pendingPeerID := range sc.receivedBlocks {
-		if pendingPeerID == peerID {
-			sc.setStateAtHeight(height, blockStateNew)
-		}
-	}
-
-	return nil
-}
-
 func (sc *schedule) selectPeer(peers []*scPeer) *scPeer {
 	// FIXME: properPeerSelector
 	s := rand.NewSource(time.Now().Unix())
@@ -498,23 +486,18 @@ func (sdr *Scheduler) handleBlockProcessed(peerID p2p.ID, height int64) Event {
 	return Skip{}
 }
 
-func (sdr *Scheduler) handleBlockProcessError(peerID p2p.ID, height int64) Event {
-	// remove the peer
-	sdr.sc.removePeer(peerID)
-	// reSchdule all the blocks we are waiting
-	/*
-		 XXX: This is wrong as we need to
-			foreach block where state != blockStateProcessed
-				state => blockStateNew
-	*/
-	sdr.sc.resetBlocks(peerID)
-
-	return Skip{}
-}
-
 type scPrunePeerEv struct {
 	peerID p2p.ID
 	reason error
+}
+
+func (sdr *Scheduler) handleBlockProcessError(peerID p2p.ID, height int64) Event {
+	err := sdr.sc.removePeer(peerID)
+	if err != nil {
+		return scPrunePeerEv{peerID: peerID, reason: fmt.Errorf("Failed to process block %d", height)}
+	}
+
+	return Skip{}
 }
 
 type scSchedulerFailure struct {
