@@ -55,15 +55,19 @@ func TestTouchPeer(t *testing.T) {
 func TestPeerHeight(t *testing.T) {
 	sc := newSchedule(initHeight)
 
-	assert.Nil(t, sc.addPeer(peerID),
+	assert.NoError(t, sc.addPeer(peerID),
 		"Adding a peer should return no error")
-	assert.Nil(t, sc.setPeerHeight(peerID, peerHeight))
+	assert.NoError(t, sc.setPeerHeight(peerID, peerHeight))
 	for i := initHeight; i <= peerHeight; i++ {
 		assert.Equal(t, sc.getStateAtHeight(i), blockStateNew,
 			"Expected all blocks to be in blockStateNew")
-		assert.Equal(t, len(sc.getPeersAtHeight(i)), 1,
-			"Expected the block to be registered to the 1 peer")
-		//TODO check peerID
+		peerIDs := []p2p.ID{}
+		for _, peer := range sc.getPeersAtHeight(i) {
+			peerIDs = append(peerIDs, peer.peerID)
+		}
+
+		assert.Containsf(t, peerIDs, peerID,
+			"Expected %s to have block %d", peerID, i)
 	}
 }
 
