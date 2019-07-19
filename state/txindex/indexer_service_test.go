@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-cmn/db"
 )
 
 func TestIndexerServiceIndexesBlocks(t *testing.T) {

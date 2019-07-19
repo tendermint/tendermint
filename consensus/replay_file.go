@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	dbm "github.com/tendermint/tm-cmn/db"
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
