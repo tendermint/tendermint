@@ -288,6 +288,11 @@ func (sc *schedule) markPending(peerID p2p.ID, height int64, time time.Time) err
 		return fmt.Errorf("Can't find peer %s", peerID)
 	}
 
+	state := sc.getStateAtHeight(height)
+	if state != blockStateNew {
+		return fmt.Errorf("Block %d should be in blockStateNew but was %s", height, state)
+	}
+
 	if peer.state != peerStateReady {
 		return fmt.Errorf("Cannot schedule %d from %s in %s", height, peerID, peer.state)
 	}

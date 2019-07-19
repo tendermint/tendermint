@@ -74,6 +74,46 @@ func TestPeerHeight(t *testing.T) {
 // TODO Split this into transitions
 // TODO: Use formatting to describe test failures
 
+func TestTransitionPending(t *testing.T) {
+	sc := newSchedule(initHeight)
+	now := time.Now()
+
+	assert.NoError(t, sc.addPeer(peerID),
+		"Adding a peer should return no error")
+	assert.Nil(t, sc.addPeer(peerIDTwo),
+		"Adding a peer should return no error")
+
+	assert.Error(t, sc.markPending(peerID, peerHeight, now),
+		"Expected scheduling a block from a peer in peerStateNew to fail")
+
+	assert.NoError(t, sc.setPeerHeight(peerID, peerHeight),
+		"Expected setPeerHeight to return no error")
+	assert.NoError(t, sc.setPeerHeight(peerIDTwo, peerHeight),
+		"Expected setPeerHeight to return no error")
+
+	assert.NoError(t, sc.markPending(peerID, peerHeight, now),
+		"Expected markingPending new block to succeed")
+	assert.Error(t, sc.markPending(peerIDTwo, peerHeight, now),
+		"Expected markingPending by a second peer to fail")
+
+	assert.Equal(t, blockStatePending, sc.getStateAtHeight(peerHeight),
+		"Expected the block to to be in blockStatePending")
+
+	assert.NoError(t, sc.removePeer(peerID),
+		"Expected removePeer to return no error")
+
+	assert.Equal(t, blockStateNew, sc.getStateAtHeight(peerHeight),
+		"Expected the block to to be in blockStateNew")
+
+	assert.Error(t, sc.markPending(peerID, peerHeight, now),
+		"Expected markingPending removed peer to fail")
+
+	assert.NoError(t, sc.markPending(peerIDTwo, peerHeight, now),
+		"Expected markingPending on a ready peer to succeed")
+
+	assert.Equal(t, blockStatePending, sc.getStateAtHeight(peerHeight),
+		"Expected the block to to be in blockStatePending")
+}
 func TestHeightFSM(t *testing.T) {
 	sc := newSchedule(initHeight)
 	now := time.Now()
