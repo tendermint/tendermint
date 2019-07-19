@@ -331,6 +331,9 @@ func TestErrUnexpectedResponse(t *testing.T) {
 			// we do not want to Start() the remote signer here and instead use the connection to
 			// reply with intentionally wrong replies below:
 			rsConn, err := serviceEndpoint.connect()
+			if err != nil {
+				fmt.Println(err)
+			}
 			defer rsConn.Close()
 			require.NoError(t, err)
 			require.NotNil(t, rsConn)

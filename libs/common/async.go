@@ -61,8 +61,6 @@ func (trs *TaskResultSet) Reap() *TaskResultSet {
 					TaskResult: result,
 					OK:         true,
 				}
-			} else {
-				// We already wrote it.
 			}
 		default:
 			// Do nothing.
