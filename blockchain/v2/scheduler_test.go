@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
+// XXX: can't use globals with parallel tests
 const (
 	initHeight int64  = 5
 	peerID     p2p.ID = "1"
@@ -44,9 +45,8 @@ func TestTouchPeer(t *testing.T) {
 	assert.Nil(t, sc.touchPeer(peerID, now),
 		"Touching a peer should return no error")
 
-	// the peer should
 	threshold := 10 * time.Second
-	assert.Equal(t, 0, len(sc.peersInactiveSince(threshold, now.Add(9*time.Second))),
+	assert.Empty(t, sc.peersInactiveSince(threshold, now.Add(9*time.Second)),
 		"Expected no peers to have been touched over 9 seconds")
 	assert.Containsf(t, sc.peersInactiveSince(threshold, now.Add(11*time.Second)), peerID,
 		"Expected one %s to have been touched over 10 seconds ago", peerID)
@@ -70,9 +70,6 @@ func TestPeerHeight(t *testing.T) {
 			"Expected %s to have block %d", peerID, i)
 	}
 }
-
-// TODO Split this into transitions
-// TODO: Use formatting to describe test failures
 
 func TestTransitionPending(t *testing.T) {
 	sc := newSchedule(initHeight)
@@ -114,59 +111,76 @@ func TestTransitionPending(t *testing.T) {
 	assert.Equal(t, blockStatePending, sc.getStateAtHeight(peerHeight),
 		"Expected the block to to be in blockStatePending")
 }
-func TestHeightFSM(t *testing.T) {
+
+func TestTransitionReceived(t *testing.T) {
 	sc := newSchedule(initHeight)
 	now := time.Now()
+	receivedAt := now.Add(1 * time.Second)
 
-	assert.Nil(t, sc.addPeer(peerID),
-		"Adding a peer should return no error")
-
-	assert.Nil(t, sc.addPeer(peerIDTwo),
-		"Adding a peer should return no error")
-	assert.Error(t, sc.markPending(peerID, peerHeight, now),
-		"Expected markingPending on an unknown peer to return an error")
-
-	assert.Nil(t, sc.setPeerHeight(peerID, peerHeight),
+	assert.NoError(t, sc.addPeer(peerID),
+		"Expected adding peer %s to succeed", peerID)
+	assert.NoError(t, sc.addPeer(peerIDTwo),
+		"Expected adding peer %s to succeed", peerIDTwo)
+	assert.NoError(t, sc.setPeerHeight(peerID, peerHeight),
 		"Expected setPeerHeight to return no error")
-	assert.Nil(t, sc.setPeerHeight(peerIDTwo, peerHeight),
-		"Expected setPeerHeight to return no error")
+	assert.NoErrorf(t, sc.setPeerHeight(peerIDTwo, peerHeight),
+		"Expected setPeerHeight on %s to %d to succeed", peerIDTwo, peerHeight)
+	assert.NoError(t, sc.markPending(peerID, initHeight, now),
+		"Expected markingPending new block to succeed")
 
-	assert.Error(t, sc.markReceived(peerID, peerHeight, blockSize, now.Add(1*time.Second)),
-		"Expecting transitioning from blockStateNew to blockStateReceived to fail")
-	assert.Error(t, sc.markProcessed(peerHeight),
-		"Expecting transitioning from blockStateNew to blockStateReceived to fail")
+	assert.Error(t, sc.markReceived(peerIDTwo, initHeight, blockSize, receivedAt),
+		"Expected marking markReceived from a non requesting peer to fail")
 
-	assert.Equal(t, blockStateUnknown, sc.getStateAtHeight(peerHeight+10),
-		"Expected the maximum height seen + 10 to be in blockStateUnknown")
+	assert.NoError(t, sc.markReceived(peerID, initHeight, blockSize, receivedAt),
+		"Expected marking markReceived on a pending block to succeed")
 
-	assert.Error(t, sc.markPending(peerID, peerHeight+10, now.Add(1*time.Second)),
-		"Expected markPending on block in blockStateUnknown height to fail")
-	assert.Nil(t, sc.markPending(peerID, initHeight, now.Add(1*time.Second)),
-		"Expected markPending on a known height with a known peer to return no error")
-	assert.Equal(t, blockStatePending, sc.getStateAtHeight(initHeight),
-		"Expected a the markedBlock to be in blockStatePending")
+	assert.Error(t, sc.markReceived(peerID, initHeight, blockSize, receivedAt),
+		"Expected marking markReceived on received block to fail")
 
-	assert.Nil(t, sc.markReceived(peerID, initHeight, blockSize, now.Add(2*time.Second)),
-		"Expected marking markReceived on a pending block to return no error")
+	assert.Equalf(t, blockStateReceived, sc.getStateAtHeight(initHeight),
+		"Expected block %d to be blockHeightReceived", initHeight)
+
+	assert.NoErrorf(t, sc.removePeer(peerID),
+		"Expected removePeer removing %s to succeed", peerID)
+
+	assert.Equalf(t, blockStateNew, sc.getStateAtHeight(initHeight),
+		"Expected block %d to be blockStateNew", initHeight)
+
+	assert.NoErrorf(t, sc.markPending(peerIDTwo, initHeight, now),
+		"Expected markingPending  %d from %s to succeed", initHeight, peerIDTwo)
+	assert.NoErrorf(t, sc.markReceived(peerIDTwo, initHeight, blockSize, receivedAt),
+		"Expected marking markReceived %d from %s to succeed", initHeight, peerIDTwo)
+	assert.Equalf(t, blockStateReceived, sc.getStateAtHeight(initHeight),
+		"Expected block %d to be blockStateReceived", initHeight)
+}
+
+func TestTransitionProcessed(t *testing.T) {
+	sc := newSchedule(initHeight)
+	now := time.Now()
+	receivedAt := now.Add(1 * time.Second)
+
+	assert.NoError(t, sc.addPeer(peerID),
+		"Expected adding peer %s to succeed", peerID)
+	assert.NoErrorf(t, sc.setPeerHeight(peerID, peerHeight),
+		"Expected setPeerHeight on %s to %d to succeed", peerID, peerHeight)
+	assert.NoError(t, sc.markPending(peerID, initHeight, now),
+		"Expected markingPending new block to succeed")
+	assert.NoError(t, sc.markReceived(peerID, initHeight, blockSize, receivedAt),
+		"Expected marking markReceived on a pending block to succeed")
+
+	assert.Error(t, sc.markProcessed(initHeight+1),
+		"Expected marking %d as processed to fail", initHeight+1)
+	assert.NoError(t, sc.markProcessed(initHeight),
+		"Expected marking %d as processed to succeed", initHeight)
+
+	assert.Equalf(t, blockStateProcessed, sc.getStateAtHeight(initHeight),
+		"Expected block %d to be blockStateProcessed", initHeight)
 
 	assert.NoError(t, sc.removePeer(peerID),
-		"Expected resetBlocks to return no error")
-	assert.Equal(t, blockStateNew, sc.getStateAtHeight(initHeight),
-		"Expected blocks to be in blockStateNew after being reset")
+		"Expected removing peer %s to succeed", peerID)
 
-	assert.NoError(t, sc.markPending(peerIDTwo, initHeight, now),
-		"Expected marking a reset block to pending to return no error")
-	assert.Equal(t, blockStatePending, sc.getStateAtHeight(initHeight),
-		"Expected block to be in blockStatePending")
-
-	assert.NoError(t, sc.markReceived(peerIDTwo, initHeight, blockSize, now.Add(2*time.Second)),
-		"Expected marking a pending block as received to return no error")
-	assert.Equal(t, blockStateReceived, sc.getStateAtHeight(initHeight))
-
-	assert.NoError(t, sc.markProcessed(initHeight),
-		"Expected marking a block as processed to success")
-	assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(initHeight),
-		"Expected the block to in blockStateProcessed")
+	assert.Equalf(t, blockStateProcessed, sc.getStateAtHeight(initHeight),
+		"Expected block %d to be blockStateProcessed", initHeight)
 }
 
 func TestMinMaxHeight(t *testing.T) {

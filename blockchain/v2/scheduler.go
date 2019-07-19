@@ -317,6 +317,8 @@ func (sc *schedule) markProcessed(height int64) error {
 		return fmt.Errorf("Can't mark height %d received from block state %s", height, state)
 	}
 
+	delete(sc.receivedBlocks, height)
+
 	sc.setStateAtHeight(height, blockStateProcessed)
 
 	return nil
