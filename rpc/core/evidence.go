@@ -19,7 +19,7 @@ import (
 //   // handle error
 // }
 // defer client.Stop()
-// res, err := client.BroadcastEvidence(&types.DuplicateVoteEvidenc{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
+// res, err := client.BroadcastEvidence(&types.DuplicateVoteEvidence{PubKey: ev.PubKey, VoteA: ev.VoteA, VoteB: ev.VoteB})
 // ```
 //
 // > The above command returns JSON structured like this:
