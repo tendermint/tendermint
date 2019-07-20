@@ -21,5 +21,6 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 - [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
+- [rpc] \#3818 Make `max_body_bytes` and `max_header_bytes` configurable
 
 ### BUG FIXES:

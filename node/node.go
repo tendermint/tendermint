@@ -820,6 +820,17 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		rpccore.AddUnsafeRoutes()
 	}
 
+	config := rpcserver.DefaultConfig()
+	config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+	config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+	config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+	// If necessary adjust global WriteTimeout to ensure it's greater than
+	// TimeoutBroadcastTxCommit.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+		config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
@@ -832,20 +843,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
 					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}
-			}))
+			}),
+			rpcserver.ReadLimit(config.MaxBodyBytes),
+		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-
-		config := rpcserver.DefaultConfig()
-		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
-		// If necessary adjust global WriteTimeout to ensure it's greater than
-		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
-		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-		}
-
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			config,
