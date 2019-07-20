@@ -192,6 +192,12 @@ max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
 # See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "{{ .RPC.TimeoutBroadcastTxCommit }}"
 
+# Maximum size of request body, in bytes
+max_body_bytes = {{ .RPC.MaxBodyBytes }}
+
+# Maximum size of request header, in bytes
+max_header_bytes = {{ .RPC.MaxHeaderBytes }}
+
 # The path to a file containing certificate that is used to create the HTTPS server.
 # Migth be either absolute path or path related to tendermint's config directory.
 # If the certificate is signed by a certificate authority,
