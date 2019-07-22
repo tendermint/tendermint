@@ -59,20 +59,20 @@ familiar with amino encoding.
 You can simply use below table and concatenate Prefix || Length (of raw bytes) || raw bytes
 ( while || stands for byte concatenation here).
 
-| Type               | Name                          | Prefix     | Length   | Notes |
-| ------------------ | ----------------------------- | ---------- | -------- | ----- |
-| PubKeyEd25519      | tendermint/PubKeyEd25519      | 0x1624DE64 | 0x20     |       |
-| PubKeySecp256k1    | tendermint/PubKeySecp256k1    | 0xEB5AE987 | 0x21     |       |
-| PrivKeyEd25519     | tendermint/PrivKeyEd25519     | 0xA3288910 | 0x40     |       |
-| PrivKeySecp256k1   | tendermint/PrivKeySecp256k1   | 0xE1B0F79B | 0x20     |       |
-| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
+| Type                    | Name                               | Prefix     | Length   | Notes |
+| ----------------------- | ---------------------------------- | ---------- | -------- | ----- |
+| PubKeyEd25519           | tendermint/PubKeyEd25519           | 0x1624DE64 | 0x20     |       |
+| PubKeySecp256k1         | tendermint/PubKeySecp256k1         | 0xEB5AE987 | 0x21     |       |
+| PrivKeyEd25519          | tendermint/PrivKeyEd25519          | 0xA3288910 | 0x40     |       |
+| PrivKeySecp256k1        | tendermint/PrivKeySecp256k1        | 0xE1B0F79B | 0x20     |       |
+| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |       |
 
 ### Example
 
 For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
-   `020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
-   would be encoded as
-   `EB5AE98721020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
+`020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
+would be encoded as
+`EB5AE98721020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
 
 ### Key Types
 
@@ -170,11 +170,11 @@ We use the RFC 6962 specification of a merkle tree, with sha256 as the hash func
 Merkle trees are used throughout Tendermint to compute a cryptographic digest of a data structure.
 The differences between RFC 6962 and the simplest form a merkle tree are that:
 
-1) leaf nodes and inner nodes have different hashes.
+1. leaf nodes and inner nodes have different hashes.
    This is for "second pre-image resistance", to prevent the proof to an inner node being valid as the proof of a leaf.
    The leaf nodes are `SHA256(0x00 || leaf_data)`, and inner nodes are `SHA256(0x01 || left_hash || right_hash)`.
 
-2) When the number of items isn't a power of two, the left half of the tree is as big as it could be.
+2. When the number of items isn't a power of two, the left half of the tree is as big as it could be.
    (The largest power of two less than the number of items) This allows new leaves to be added with less
    recomputation. For example:
 
@@ -290,7 +290,7 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 
 ### IAVL+ Tree
 
-Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/develop/docs/sdk/core/multistore.md)
+Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/master/docs/clients/lite/specification.md)
 
 ## JSON
 

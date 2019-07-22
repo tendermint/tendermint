@@ -350,22 +350,8 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	}
 
 	for _, netAddr := range addrs {
-		// Validate netAddr. Disconnect from a peer if it sends us invalid data.
-		if netAddr == nil {
-			return errors.New("nil address in pexAddrsMessage")
-		}
-		// TODO: extract validating logic from NewNetAddressString
-		// and put it in netAddr#Valid (#2722)
-		na, err := p2p.NewNetAddressString(netAddr.String())
-		if err != nil {
-			return fmt.Errorf("%s address in pexAddrsMessage is invalid: %v",
-				netAddr.String(),
-				err,
-			)
-		}
-
 		// NOTE: we check netAddr validity and routability in book#AddAddress.
-		err = r.book.AddAddress(na, srcAddr)
+		err = r.book.AddAddress(netAddr, srcAddr)
 		if err != nil {
 			r.logErrAddrBook(err)
 			// XXX: should we be strict about incoming data and disconnect from a

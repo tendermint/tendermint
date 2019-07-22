@@ -1,6 +1,6 @@
-## v0.32.1
+## v0.32.2
 
-**
+\*\*
 
 Special thanks to external contributors on this release:
 
@@ -9,33 +9,19 @@ program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
-* CLI/RPC/Config
+- CLI/RPC/Config
 
-* Apps
+- Apps
 
-* Go API
-  - [abci] \#2127 ABCI / mempool: Add a "Recheck Tx" indicator. Breaks the ABCI
-    client interface (`abcicli.Client`) to allow for supplying the ABCI
-    `types.RequestCheckTx` and `types.RequestDeliverTx` structs, and lets the
-    mempool indicate to the ABCI app whether a CheckTx request is a recheck or
-    not.
-  - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
-
-* Blockchain Protocol
-
-* P2P Protocol
+- Go API
+- [libs] \#3811 Remove `db` from libs in favor of `https://github.com/tendermint/tm-cmn`
 
 ### FEATURES:
-- [node] Refactor `NewNode` to use functional options to make it more flexible
-  and extensible in the future.
-- [node] [\#3730](https://github.com/tendermint/tendermint/pull/3730) Add `CustomReactors` option to `NewNode` allowing caller to pass
-  custom reactors to run inside Tendermint node (@ParthDesai)
 
 ### IMPROVEMENTS:
-  - [rpc] \#3700 Make possible to set absolute paths for TLS cert and key (@climber73)
+
+- [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
+- [rpc] \#3818 Make `max_body_bytes` and `max_header_bytes` configurable
+- [p2p] \#3664 p2p/conn: reuse buffer when write/read from secret connection
 
 ### BUG FIXES:
-- [p2p] \#3338 Prevent "sent next PEX request too soon" errors by not calling
-  ensurePeers outside of ensurePeersRoutine
-- [behaviour] Return correct reason in MessageOutOfOrder (@jim380)
-  
