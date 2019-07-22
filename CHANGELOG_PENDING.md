@@ -26,3 +26,5 @@ program](https://hackerone.com/tendermint).
 - [p2p] \#3664 p2p/conn: reuse buffer when write/read from secret connection
 
 ### BUG FIXES:
+
+- [rpc] \#3813 Return err if page is incorrect (less than 0 or greater than total pages)
