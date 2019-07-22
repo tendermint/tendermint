@@ -351,6 +351,12 @@ type RPCConfig struct {
 	// See https://github.com/tendermint/tendermint/issues/3435
 	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 
+	// Maximum size of request body, in bytes
+	MaxBodyBytes int64 `mapstructure:"max_body_bytes"`
+
+	// Maximum size of request header, in bytes
+	MaxHeaderBytes int `mapstructure:"max_header_bytes"`
+
 	// The path to a file containing certificate that is used to create the HTTPS server.
 	// Migth be either absolute path or path related to tendermint's config directory.
 	//
@@ -385,6 +391,9 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxSubscriptionsPerClient: 5,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
 
+		MaxBodyBytes:   int64(1000000), // 1MB
+		MaxHeaderBytes: 1 << 20,        // same as the net/http default
+
 		TLSCertFile: "",
 		TLSKeyFile:  "",
 	}
@@ -416,6 +425,12 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout_broadcast_tx_commit can't be negative")
+	}
+	if cfg.MaxBodyBytes < 0 {
+		return errors.New("max_body_bytes can't be negative")
+	}
+	if cfg.MaxHeaderBytes < 0 {
+		return errors.New("max_header_bytes can't be negative")
 	}
 	return nil
 }

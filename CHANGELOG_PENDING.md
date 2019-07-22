@@ -22,5 +22,6 @@ program](https://hackerone.com/tendermint).
 
 - [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
 - [rpc] \#2252 Add `/broadcast_evidence` endpoint to submit double signing and other types of evidence
+- [rpc] \#3818 Make `max_body_bytes` and `max_header_bytes` configurable
 
 ### BUG FIXES:
