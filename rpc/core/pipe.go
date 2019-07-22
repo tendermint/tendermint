@@ -151,13 +151,16 @@ func validatePage(page, perPage, totalCount int) (int, error) {
 		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
 	}
 
-	pages := ((totalCount - 1) / perPage) + 1
-	if page < 0 || page > pages {
-		return 1, fmt.Errorf("page should be within [0, %d] range, given %d", pages, page)
+	if page == 0 {
+		return 1, nil // default
 	}
 
-	if page == 0 {
-		return 1, nil
+	pages := ((totalCount - 1) / perPage) + 1
+	if pages == 0 {
+		pages = 1 // one page (even if it's empty)
+	}
+	if page < 0 || page > pages {
+		return 1, fmt.Errorf("page should be within [0, %d] range, given %d", pages, page)
 	}
 
 	return page, nil
