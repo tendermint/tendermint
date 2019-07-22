@@ -196,7 +196,7 @@ will need implement:
     * convert manifests into chunkRequest ABCI messages
 * Implement SnapshotFormat for cosmos-hub with concrete implementation for:
     * read/write chunks in a way which can be:
-        * parallelized accros peers
+        * parallelized across peers
         * validated on receipt
     * read/write to/from IAVL+ tree
 
