@@ -26,3 +26,5 @@ program](https://hackerone.com/tendermint).
 - [p2p] \#3664 p2p/conn: reuse buffer when write/read from secret connection
 
 ### BUG FIXES:
+
+- [p2p] [\#3644](https://github.com/tendermint/tendermint/pull/3644) Fix error logging for connection stop (@defunctzombie)
