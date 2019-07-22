@@ -26,7 +26,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -45,7 +44,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+	dbm "github.com/tendermint/tm-cmn/db"
 )
+
+// CustomReactorNamePrefix is a prefix for all custom reactors to prevent
+// clashes with built-in reactors.
+const CustomReactorNamePrefix = "CUSTOM_"
 
 //------------------------------------------------------------------------------
 
@@ -133,6 +137,18 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
+	}
+}
+
+// Option sets a parameter for the node.
+type Option func(*Node)
+
+// CustomReactors allows you to add custom reactors to the node's Switch.
+func CustomReactors(reactors map[string]p2p.Reactor) Option {
+	return func(n *Node) {
+		for name, reactor := range reactors {
+			n.sw.AddReactor(CustomReactorNamePrefix+name, reactor)
+		}
 	}
 }
 
@@ -430,6 +446,7 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
@@ -438,17 +455,30 @@ func createSwitch(config *cfg.Config,
 }
 
 func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
-	p2pLogger log.Logger) pex.AddrBook {
+	p2pLogger log.Logger, nodeKey *p2p.NodeKey) (pex.AddrBook, error) {
 
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 	// Add ourselves to addrbook to prevent dialing ourselves
-	addrBook.AddOurAddress(sw.NetAddress())
+	if config.P2P.ExternalAddress != "" {
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ExternalAddress))
+		if err != nil {
+			return nil, errors.Wrap(err, "p2p.external_address is incorrect")
+		}
+		addrBook.AddOurAddress(addr)
+	}
+	if config.P2P.ListenAddress != "" {
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ListenAddress))
+		if err != nil {
+			return nil, errors.Wrap(err, "p2p.laddr is incorrect")
+		}
+		addrBook.AddOurAddress(addr)
+	}
 
 	sw.SetAddrBook(addrBook)
 
-	return addrBook
+	return addrBook, nil
 }
 
 func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
@@ -479,7 +509,8 @@ func NewNode(config *cfg.Config,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
-	logger log.Logger) (*Node, error) {
+	logger log.Logger,
+	options ...Option) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
@@ -597,7 +628,10 @@ func NewNode(config *cfg.Config,
 		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
 	}
 
-	addrBook := createAddrBookAndSetOnSwitch(config, sw, p2pLogger)
+	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create addrbook")
+	}
 
 	// Optionally, start the pex reactor
 	//
@@ -617,7 +651,9 @@ func NewNode(config *cfg.Config,
 	}
 
 	if config.ProfListenAddress != "" {
-		go logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+		go func() {
+			logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+		}()
 	}
 
 	node := &Node{
@@ -646,6 +682,11 @@ func NewNode(config *cfg.Config,
 		eventBus:         eventBus,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
+
+	for _, option := range options {
+		option(node)
+	}
+
 	return node, nil
 }
 
@@ -717,7 +758,6 @@ func (n *Node) OnStop() {
 	n.indexerService.Stop()
 
 	// now stop the reactors
-	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 
 	// stop mempool WAL
@@ -783,6 +823,17 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		rpccore.AddUnsafeRoutes()
 	}
 
+	config := rpcserver.DefaultConfig()
+	config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+	config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+	config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+	// If necessary adjust global WriteTimeout to ensure it's greater than
+	// TimeoutBroadcastTxCommit.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+		config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
@@ -795,20 +846,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
 					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}
-			}))
+			}),
+			rpcserver.ReadLimit(config.MaxBodyBytes),
+		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-
-		config := rpcserver.DefaultConfig()
-		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
-		// If necessary adjust global WriteTimeout to ensure it's greater than
-		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
-		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-		}
-
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			config,

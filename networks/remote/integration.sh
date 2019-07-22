@@ -31,7 +31,6 @@ cd $GOPATH/src/$REPO
 
 ## build
 make get_tools
-make get_vendor_deps
 make build
 
 # generate an ssh key

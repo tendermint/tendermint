@@ -2,10 +2,7 @@
 
 ## Changelog
 
-016-08-2018: Follow up from review:
-    - Revert changes to commit round
-    - Remind about justification for removing pubkey
-    - Update pros/cons
+016-08-2018: Follow up from review: - Revert changes to commit round - Remind about justification for removing pubkey - Update pros/cons
 05-08-2018: Initial draft
 
 ## Context
@@ -35,11 +32,11 @@ message ValidatorUpdate {
 }
 ```
 
-As noted in ADR-009[https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-009-ABCI-design.md],
+As noted in ADR-009[https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-009-ABCI-design.md],
 the `Validator` does not contain a pubkey because quantum public keys are
 quite large and it would be wasteful to send them all over ABCI with every block.
 Thus, applications that want to take advantage of the information in BeginBlock
-are *required* to store pubkeys in state (or use much less efficient lazy means
+are _required_ to store pubkeys in state (or use much less efficient lazy means
 of verifying BeginBlock data).
 
 ### RequestBeginBlock

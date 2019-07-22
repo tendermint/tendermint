@@ -194,6 +194,11 @@ type ResultABCIQuery struct {
 	Response abci.ResponseQuery `json:"response"`
 }
 
+// Result of broadcasting evidence
+type ResultBroadcastEvidence struct {
+	Hash []byte `json:"hash"`
+}
+
 // empty results
 type (
 	ResultUnsafeFlushMempool struct{}
@@ -205,7 +210,7 @@ type (
 
 // Event data from a subscription
 type ResultEvent struct {
-	Query string            `json:"query"`
-	Data  types.TMEventData `json:"data"`
-	Tags  map[string]string `json:"tags"`
+	Query  string              `json:"query"`
+	Data   types.TMEventData   `json:"data"`
+	Events map[string][]string `json:"events"`
 }

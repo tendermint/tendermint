@@ -22,26 +22,83 @@ import (
 // string (escaped with single quotes), number, date or time.
 //
 // Examples:
-//		tm.event = 'NewBlock'								# new blocks
-//		tm.event = 'CompleteProposal'				# node got a complete proposal
+//		tm.event = 'NewBlock'               # new blocks
+//		tm.event = 'CompleteProposal'       # node got a complete proposal
 //		tm.event = 'Tx' AND tx.hash = 'XYZ' # single transaction
-//		tm.event = 'Tx' AND tx.height = 5		# all txs of the fifth block
-//		tx.height = 5												# all txs of the fifth block
+//		tm.event = 'Tx' AND tx.height = 5   # all txs of the fifth block
+//		tx.height = 5                       # all txs of the fifth block
 //
 // Tendermint provides a few predefined keys: tm.event, tx.hash and tx.height.
-// Note for transactions, you can define additional keys by providing tags with
+// Note for transactions, you can define additional keys by providing events with
 // DeliverTx response.
 //
-//		DeliverTx{
-//			Tags: []*KVPair{
-//				"agent.name": "K",
-//			}
-//	  }
+//  import (
+//	  abci "github.com/tendermint/tendermint/abci/types"
+// 	  "github.com/tendermint/tendermint/libs/pubsub/query"
+//  )
 //
-//		tm.event = 'Tx' AND agent.name = 'K'
-//		tm.event = 'Tx' AND account.created_at >= TIME 2013-05-03T14:45:00Z
-//		tm.event = 'Tx' AND contract.sign_date = DATE 2017-01-01
-//		tm.event = 'Tx' AND account.owner CONTAINS 'Igor'
+//  abci.ResponseDeliverTx{
+// 	Events: []abci.Event{
+// 		{
+// 			Type: "rewards.withdraw",
+// 			Attributes: cmn.KVPairs{
+// 				cmn.KVPair{Key: []byte("address"), Value: []byte("AddrA")},
+// 				cmn.KVPair{Key: []byte("source"), Value: []byte("SrcX")},
+// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+// 				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+// 			},
+// 		},
+// 		{
+// 			Type: "rewards.withdraw",
+// 			Attributes: cmn.KVPairs{
+// 				cmn.KVPair{Key: []byte("address"), Value: []byte("AddrB")},
+// 				cmn.KVPair{Key: []byte("source"), Value: []byte("SrcY")},
+// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+// 				cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+// 			},
+// 		},
+// 		{
+// 			Type: "transfer",
+// 			Attributes: cmn.KVPairs{
+// 				cmn.KVPair{Key: []byte("sender"), Value: []byte("AddrC")},
+// 				cmn.KVPair{Key: []byte("recipient"), Value: []byte("AddrD")},
+// 				cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+// 			},
+// 		},
+// 	},
+//  }
+//
+// All events are indexed by a composite key of the form {eventType}.{evenAttrKey}.
+// In the above examples, the following keys would be indexed:
+//     - rewards.withdraw.address
+//     - rewards.withdraw.source
+//     - rewards.withdraw.amount
+//     - rewards.withdraw.balance
+//     - transfer.sender
+//     - transfer.recipient
+//     - transfer.amount
+//
+// Multiple event types with duplicate keys are allowed and are meant to
+// categorize unique and distinct events. In the above example, all events
+// indexed under the key `rewards.withdraw.address` will have the following
+// values stored and queryable:
+//
+//     - AddrA
+//     - AddrB
+//
+// To create a query for txs where address AddrA withdrew rewards:
+//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA'")
+//
+// To create a query for txs where address AddrA withdrew rewards from source Y:
+//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA' AND rewards.withdraw.source = 'Y'")
+//
+// To create a query for txs where AddrA transferred funds:
+//  query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrA'")
+//
+// The following queries would return no results:
+//  query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrZ'")
+//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrZ'")
+//  query.MustParse("tm.event = 'Tx' AND rewards.withdraw.source = 'W'")
 //
 // See list of all possible events here
 // https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants
@@ -106,8 +163,10 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse query")
 	}
+
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
+
 	sub, err := eventBus.Subscribe(subCtx, addr, q)
 	if err != nil {
 		return nil, err
@@ -117,7 +176,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 		for {
 			select {
 			case msg := <-sub.Out():
-				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Tags: msg.Tags()}
+				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Events: msg.Events()}
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						ctx.WSConn.Codec(),

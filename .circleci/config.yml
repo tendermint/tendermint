@@ -26,17 +26,12 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v3-pkg-cache
+            - v4-pkg-cache
       - run:
           name: tools
           command: |
             export PATH="$GOBIN:$PATH"
             make get_tools
-      - run:
-          name: dependencies
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_vendor_deps
       - run:
           name: binaries
           command: |
@@ -48,7 +43,7 @@ jobs:
             - bin
             - profiles
       - save_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
           paths:
             - /go/pkg
       - save_cache:
@@ -62,7 +57,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -72,35 +67,13 @@ jobs:
             export PATH="$GOBIN:$PATH"
             make build-slate
 
-  lint:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: v3-pkg-cache
-      - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: metalinter
-          command: |
-            set -ex
-            export PATH="$GOBIN:$PATH"
-            make lint
-      - run:
-          name: check_dep
-          command: |
-            set -ex
-            export PATH="$GOBIN:$PATH"
-            make check_dep
-
   test_abci_apps:
     <<: *defaults
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -109,15 +82,15 @@ jobs:
             export PATH="$GOBIN:$PATH"
             bash abci/tests/test_app/test.sh
 
-# if this test fails, fix it and update the docs at:
-# https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.md
+  # if this test fails, fix it and update the docs at:
+  # https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.md
   test_abci_cli:
     <<: *defaults
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -132,7 +105,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
@@ -147,7 +120,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: mkdir -p /tmp/logs
@@ -157,7 +130,7 @@ jobs:
             for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
 
-              go test -v -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+              GO111MODULE=on go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
@@ -172,7 +145,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -180,24 +153,24 @@ jobs:
           command: bash test/persist/test_failure_indices.sh
 
   localnet:
-      working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
-      machine:
-        image: circleci/classic:latest
-      environment:
-        GOBIN: /home/circleci/.go_workspace/bin
-        GOPATH: /home/circleci/.go_workspace/
-        GOOS: linux
-        GOARCH: amd64
-      parallelism: 1
-      steps:
-        - checkout
-        - run:
-            name: run localnet and exit on failure
-            command: |
-              set -x
-              docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux
-              make localnet-start &
-              ./scripts/localnet-blocks-test.sh 40 5 10 localhost
+    working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
+    machine:
+      image: circleci/classic:latest
+    environment:
+      GOBIN: /home/circleci/.go_workspace/bin
+      GOPATH: /home/circleci/.go_workspace/
+      GOOS: linux
+      GOARCH: amd64
+    parallelism: 1
+    steps:
+      - checkout
+      - run:
+          name: run localnet and exit on failure
+          command: |
+            set -x
+            docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux
+            make localnet-start &
+            ./scripts/localnet-blocks-test.sh 40 5 10 localhost
 
   test_p2p:
     environment:
@@ -219,7 +192,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v3-pkg-cache
+          key: v4-pkg-cache
       - restore_cache:
           key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -278,15 +251,15 @@ jobs:
       - run:
           name: Build dependencies
           command: |
-            make get_tools get_vendor_deps
+            make get_tools
       - persist_to_workspace:
           root: .
           paths:
             - "release-version.source"
       - save_cache:
-          key: v1-release-deps-{{ .Branch }}-{{ .Revision }}
+          key: v2-release-deps-{{ checksum "go.sum" }}
           paths:
-            - "vendor"
+            - "/go/pkg/mod"
 
   build_artifacts:
     <<: *defaults
@@ -295,7 +268,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-release-deps-{{ .Branch }}-{{ .Revision }}
+            - v2-release-deps-{{ checksum "go.sum" }}
       - attach_workspace:
           at: /tmp/workspace
       - run:
@@ -358,6 +331,34 @@ jobs:
             docker push "tendermint/tendermint"
             docker logout
 
+  reproducible_builds:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build tendermint
+          no_output_timeout: 20m
+          command: |
+            sudo apt-get install -y ruby
+            bash -x ./scripts/gitian-build.sh all
+            for os in darwin linux windows; do
+              cp gitian-build-${os}/result/tendermint-${os}-res.yml .
+              cp gitian-build-${os}/build/out/tendermint-*.tar.gz .
+              rm -rf gitian-build-${os}/
+            done
+      - store_artifacts:
+          path: /go/src/github.com/tendermint/tendermint/tendermint-darwin-res.yml
+      - store_artifacts:
+          path: /go/src/github.com/tendermint/tendermint/tendermint-linux-res.yml
+      - store_artifacts:
+          path: /go/src/github.com/tendermint/tendermint/tendermint-windows-res.yml
+      - store_artifacts:
+          path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
+
 workflows:
   version: 2
   test-suite:
@@ -367,11 +368,7 @@ workflows:
             branches:
               only:
                 - master
-                - develop
       - setup_dependencies
-      - lint:
-          requires:
-            - setup_dependencies
       - test_abci_apps:
           requires:
             - setup_dependencies
@@ -394,6 +391,12 @@ workflows:
       - upload_coverage:
           requires:
             - test_cover
+      - reproducible_builds:
+          filters:
+            branches:
+              only:
+                - master
+                - /v[0-9]+\.[0-9]+/
   release:
     jobs:
       - prepare_build
