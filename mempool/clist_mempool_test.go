@@ -426,10 +426,8 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
-	var (
-		maxMsgSize = 1024 * 1024
-		maxTxSize  = maxMsgSize - aminoOverheadForTxMessage
-	)
+	maxMsgSize := mempl.config.MaxMsgBytes
+	maxTxSize := calcMaxTxSize(mempl.config.MaxMsgBytes)
 
 	testCases := []struct {
 		len int

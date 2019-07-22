@@ -281,3 +281,9 @@ type TxMessage struct {
 func (m *TxMessage) String() string {
 	return fmt.Sprintf("[TxMessage %v]", m.Tx)
 }
+
+// calcMaxTxSize returns the max size of Tx
+// account for amino overhead of TxMessage
+func calcMaxTxSize(maxMsgSize int) int {
+	return maxMsgSize - aminoOverheadForTxMessage
+}
