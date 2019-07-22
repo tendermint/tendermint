@@ -564,7 +564,7 @@ func TestBroadcastEvidenceDuplicateVote(t *testing.T) {
 
 		status, err := c.Status()
 		require.NoError(t, err)
-		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+1, nil)
+		client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
 
 		ed25519pub := ev.PubKey.(ed25519.PubKeyEd25519)
 		rawpub := ed25519pub[:]
