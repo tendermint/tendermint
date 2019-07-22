@@ -157,6 +157,10 @@ func (c *Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.R
 	return core.TxSearch(c.ctx, query, prove, page, perPage)
 }
 
+func (c *Local) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	return core.BroadcastEvidence(c.ctx, ev)
+}
+
 func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
