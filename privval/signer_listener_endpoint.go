@@ -3,10 +3,7 @@ package privval
 import (
 	"fmt"
 	"net"
-	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -18,44 +15,45 @@ type SignerValidatorEndpointOption func(*SignerListenerEndpoint)
 // SignerListenerEndpoint listens for an external process to dial in
 // and keeps the connection alive by dropping and reconnecting
 type SignerListenerEndpoint struct {
-	cmn.BaseService
+	signerEndpoint
 
-	mtx      sync.Mutex
 	listener net.Listener
-	conn     net.Conn
+	connectCh   chan struct{}
+	connectedCh chan net.Conn
 
-	timeoutAccept    time.Duration
-	timeoutReadWrite time.Duration
+	timeoutAccept time.Duration
 
-	stopCh, stoppedCh chan struct{}
-	connectCh         chan struct{}
-	connectedCh       chan net.Conn
+	// TODO: Unify
+	stopServiceLoopCh    chan struct{}
+	stoppedServiceLoopCh chan struct{}
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
-func NewSignerListenerEndpoint(logger log.Logger, listener net.Listener) *SignerListenerEndpoint {
-
+func NewSignerListenerEndpoint(
+	logger log.Logger,
+	listener net.Listener,
+) *SignerListenerEndpoint {
 	sc := &SignerListenerEndpoint{
-		listener:         listener,
-		timeoutAccept:    defaultTimeoutAcceptSeconds * time.Second,
-		timeoutReadWrite: defaultTimeoutReadWriteSeconds * time.Second,
+		listener:      listener,
+		timeoutAccept: defaultTimeoutAcceptSeconds * time.Second,
 	}
 
 	sc.BaseService = *cmn.NewBaseService(logger, "SignerListenerEndpoint", sc)
-
+	sc.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
 	return sc
 }
 
 // OnStart implements cmn.Service.
 func (sl *SignerListenerEndpoint) OnStart() error {
-	sl.stopCh = make(chan struct{})
-	sl.stoppedCh = make(chan struct{})
+	sl.stopServiceLoopCh = make(chan struct{})
+	sl.stoppedServiceLoopCh = make(chan struct{})
 
+	/// FIXME: Specific
 	sl.connectCh = make(chan struct{})
 	sl.connectedCh = make(chan net.Conn)
-
 	go sl.serviceLoop()
 	sl.connectCh <- struct{}{}
+	////
 
 	return nil
 }
@@ -72,24 +70,8 @@ func (sl *SignerListenerEndpoint) OnStop() {
 	}
 
 	// Stop service loop
-	close(sl.stopCh)
-	<-sl.stoppedCh
-}
-
-// Close closes the connection
-func (sl *SignerListenerEndpoint) Close() error {
-	sl.mtx.Lock()
-	defer sl.mtx.Unlock()
-
-	sl.dropConnection()
-	return nil
-}
-
-// IsConnected indicates if there is an active connection
-func (sl *SignerListenerEndpoint) IsConnected() bool {
-	sl.mtx.Lock()
-	defer sl.mtx.Unlock()
-	return sl.isConnected()
+	close(sl.stopServiceLoopCh)
+	<-sl.stoppedServiceLoopCh
 }
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
@@ -120,55 +102,6 @@ func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 	}
 
 	return res, nil
-}
-
-func (sl *SignerListenerEndpoint) isConnected() bool {
-	return sl.IsRunning() && sl.conn != nil
-}
-
-func (sl *SignerListenerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
-	if !sl.isConnected() {
-		return nil, errors.Wrap(ErrListenerNoConnection, "endpoint is not connected")
-	}
-
-	// Reset read deadline
-	deadline := time.Now().Add(sl.timeoutReadWrite)
-
-	err = sl.conn.SetReadDeadline(deadline)
-	if err != nil {
-		return
-	}
-
-	const maxRemoteSignerMsgSize = 1024 * 10
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(sl.conn, &msg, maxRemoteSignerMsgSize)
-	if _, ok := err.(timeoutError); ok {
-		err = errors.Wrap(ErrListenerTimeout, err.Error())
-		sl.dropConnection()
-	}
-
-	return
-}
-
-func (sl *SignerListenerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
-	if !sl.isConnected() {
-		return errors.Wrap(ErrListenerNoConnection, "endpoint is not connected")
-	}
-
-	// Reset read deadline
-	deadline := time.Now().Add(sl.timeoutReadWrite)
-
-	err = sl.conn.SetWriteDeadline(deadline)
-	if err != nil {
-		return
-	}
-
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(sl.conn, msg)
-	if _, ok := err.(timeoutError); ok {
-		err = errors.Wrap(ErrListenerTimeout, err.Error())
-		sl.dropConnection()
-	}
-
-	return
 }
 
 func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
@@ -215,17 +148,8 @@ func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
 	return conn, nil
 }
 
-func (sl *SignerListenerEndpoint) dropConnection() {
-	if sl.conn != nil {
-		if err := sl.conn.Close(); err != nil {
-			sl.Logger.Error("SignerListenerEndpoint::dropConnection", "err", err)
-		}
-		sl.conn = nil
-	}
-}
-
 func (sl *SignerListenerEndpoint) serviceLoop() {
-	defer close(sl.stoppedCh)
+	defer close(sl.stoppedServiceLoopCh)
 
 	for {
 		select {
@@ -241,7 +165,7 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 					select {
 					case sl.connectedCh <- conn:
 						break
-					case <-sl.stopCh:
+					case <-sl.stopServiceLoopCh:
 						return
 					}
 				}
@@ -251,7 +175,7 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 				default:
 				}
 			}
-		case <-sl.stopCh:
+		case <-sl.stopServiceLoopCh:
 			return
 		}
 	}

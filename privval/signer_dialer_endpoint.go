@@ -1,13 +1,8 @@
 package privval
 
 import (
-	"fmt"
 	"io"
-	"net"
-	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -36,21 +31,18 @@ func SignerDialerEndpointConnRetries(retries int) SignerServiceEndpointOption {
 // SignerDialerEndpoint dials using its dialer and responds to any
 // signature requests using its privVal.
 type SignerDialerEndpoint struct {
-	cmn.BaseService
+	signerEndpoint
 
-	mtx    sync.Mutex
 	dialer SocketDialer
-	conn   net.Conn
-
-	timeoutReadWrite time.Duration
-	retryWait        time.Duration
-	maxConnRetries   int
-
 	chainID string
 	privVal types.PrivValidator
 
-	stopCh    chan struct{}
-	stoppedCh chan struct{}
+	retryWait      time.Duration
+	maxConnRetries int
+
+	// TODO: Unify
+	stopServiceLoopCh    chan struct{}
+	stoppedServiceLoopCh chan struct{}
 }
 
 // NewSignerDialerEndpoint returns a SignerDialerEndpoint that will dial using the given
@@ -64,25 +56,22 @@ func NewSignerDialerEndpoint(
 ) *SignerDialerEndpoint {
 
 	se := &SignerDialerEndpoint{
-		dialer:           dialer,
-		timeoutReadWrite: defaultTimeoutReadWriteSeconds * time.Second,
-		retryWait:        defaultRetryWaitMilliseconds * time.Millisecond,
-		maxConnRetries:   defaultMaxDialRetries,
-
-		chainID: chainID,
-		privVal: privVal,
+		dialer:         dialer,
+		retryWait:      defaultRetryWaitMilliseconds * time.Millisecond,
+		maxConnRetries: defaultMaxDialRetries,
+		chainID:        chainID,
+		privVal:        privVal,
 	}
 
 	se.BaseService = *cmn.NewBaseService(logger, "SignerDialerEndpoint", se)
+	se.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
 	return se
 }
 
 // OnStart implements cmn.Service.
 func (sd *SignerDialerEndpoint) OnStart() error {
-	sd.Logger.Debug("SignerDialerEndpoint: OnStart")
-
-	sd.stopCh = make(chan struct{})
-	sd.stoppedCh = make(chan struct{})
+	sd.stopServiceLoopCh = make(chan struct{})
+	sd.stoppedServiceLoopCh = make(chan struct{})
 
 	go sd.serviceLoop()
 
@@ -94,27 +83,10 @@ func (sd *SignerDialerEndpoint) OnStop() {
 	sd.Logger.Debug("SignerDialerEndpoint: OnStop calling Close")
 
 	// Stop service loop
-	close(sd.stopCh)
-	<-sd.stoppedCh
+	close(sd.stopServiceLoopCh)
+	<-sd.stoppedServiceLoopCh
 
 	_ = sd.Close()
-}
-
-// Close closes the underlying net.Conn.
-func (sd *SignerDialerEndpoint) Close() error {
-	sd.mtx.Lock()
-	defer sd.mtx.Unlock()
-	sd.Logger.Debug("SignerDialerEndpoint: Close")
-
-	sd.dropConnection()
-	return nil
-}
-
-// IsConnected indicates if there is an active connection
-func (sd *SignerDialerEndpoint) IsConnected() bool {
-	sd.mtx.Lock()
-	defer sd.mtx.Unlock()
-	return sd.isConnected()
 }
 
 func (sd *SignerDialerEndpoint) handleRequest() {
@@ -132,6 +104,7 @@ func (sd *SignerDialerEndpoint) handleRequest() {
 		return
 	}
 
+	sd.Logger.Error("Before handling request")
 	res, err := HandleValidatorRequest(req, sd.chainID, sd.privVal)
 
 	if err != nil {
@@ -139,6 +112,7 @@ func (sd *SignerDialerEndpoint) handleRequest() {
 		sd.Logger.Error("handleMessage handleMessage", "err", err)
 	}
 
+	sd.Logger.Error("calling write")
 	err = sd.writeMessage(res)
 	if err != nil {
 		sd.Logger.Error("handleMessage writeMessage", "err", err)
@@ -146,71 +120,8 @@ func (sd *SignerDialerEndpoint) handleRequest() {
 	}
 }
 
-func (sd *SignerDialerEndpoint) isConnected() bool {
-	return sd.IsRunning() && sd.conn != nil
-}
-
-func (sd *SignerDialerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
-	if !sd.isConnected() {
-		return nil, fmt.Errorf("not connected")
-	}
-
-	// Reset read deadline
-	deadline := time.Now().Add(sd.timeoutReadWrite)
-	sd.Logger.Debug(
-		"SignerDialerEndpoint: readMessage",
-		"timeout", sd.timeoutReadWrite,
-		"deadline", deadline)
-
-	err = sd.conn.SetReadDeadline(deadline)
-	if err != nil {
-		return
-	}
-
-	const maxRemoteSignerMsgSize = 1024 * 10
-	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(sd.conn, &msg, maxRemoteSignerMsgSize)
-	if _, ok := err.(timeoutError); ok {
-		err = errors.Wrap(ErrDialerReadTimeout, err.Error())
-	}
-
-	return
-}
-
-func (sd *SignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
-	if !sd.isConnected() {
-		return errors.Wrap(ErrListenerNoConnection, "endpoint is not connected")
-	}
-
-	// Reset read deadline
-	deadline := time.Now().Add(sd.timeoutReadWrite)
-	sd.Logger.Debug("SignerDialerEndpoint: readMessage",
-		"timeout", sd.timeoutReadWrite,
-		"deadline", deadline)
-
-	err = sd.conn.SetWriteDeadline(deadline)
-	if err != nil {
-		return
-	}
-
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(sd.conn, msg)
-	if _, ok := err.(timeoutError); ok {
-		err = errors.Wrap(ErrDialerWriteTimeout, err.Error())
-	}
-
-	return
-}
-
-func (sd *SignerDialerEndpoint) dropConnection() {
-	if sd.conn != nil {
-		if err := sd.conn.Close(); err != nil {
-			sd.Logger.Error("SignerDialerEndpoint::dropConnection", "err", err)
-		}
-		sd.conn = nil
-	}
-}
-
 func (sd *SignerDialerEndpoint) serviceLoop() {
-	defer close(sd.stoppedCh)
+	defer close(sd.stoppedServiceLoopCh)
 
 	retries := 0
 	var err error
@@ -241,7 +152,7 @@ func (sd *SignerDialerEndpoint) serviceLoop() {
 			retries = 0
 			sd.handleRequest()
 
-		case <-sd.stopCh:
+		case <-sd.stopServiceLoopCh:
 			return
 		}
 	}

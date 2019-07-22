@@ -17,6 +17,7 @@ var (
 	ErrListenerTimeout      = ListenerTimeoutError{}
 	ErrListenerNoConnection = fmt.Errorf("signer listening endpoint is not connected")
 	ErrDialerTimeout        = fmt.Errorf("signer dialer endpoint timed out")
+
 	ErrDialerReadTimeout    = fmt.Errorf("signer dialer endpoint read timed out")
 	ErrDialerWriteTimeout   = fmt.Errorf("signer dialer endpoint write timed out")
 )

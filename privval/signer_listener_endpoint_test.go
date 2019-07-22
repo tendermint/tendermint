@@ -17,8 +17,8 @@ import (
 var (
 	testTimeoutAccept = defaultTimeoutAcceptSeconds * time.Second
 
-	testTimeoutReadWrite    = 100 * time.Millisecond
-	testTimeoutReadWrite2o3 = 66 * time.Millisecond // 2/3 of the other one
+	testTimeoutReadWrite    = 10 * time.Millisecond
+	testTimeoutReadWrite2o3 = 6 * time.Millisecond // 2/3 of the other one
 )
 
 type dialerTestCase struct {
@@ -173,13 +173,14 @@ func getMockEndpoints(
 	privValidator types.PrivValidator,
 	addr string,
 	socketDialer SocketDialer,
+	startDialer bool,
 ) (*SignerListenerEndpoint, *SignerDialerEndpoint) {
 
 	var (
-		logger          = log.TestingLogger()
-		privVal         = privValidator
-		readyCh         = make(chan struct{})
-		serviceEndpoint = NewSignerDialerEndpoint(
+		logger         = log.TestingLogger()
+		privVal        = privValidator
+		readyCh        = make(chan struct{})
+		dialerEndpoint = NewSignerDialerEndpoint(
 			logger,
 			chainID,
 			privVal,
@@ -189,15 +190,17 @@ func getMockEndpoints(
 		validatorEndpoint = newSignerValidatorEndpoint(logger, addr, testTimeoutReadWrite)
 	)
 
-	SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
-	SignerDialerEndpointConnRetries(1e6)(serviceEndpoint)
+	SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(dialerEndpoint)
+	SignerDialerEndpointConnRetries(1e6)(dialerEndpoint)
 
 	getStartEndpoint(t, readyCh, validatorEndpoint)
 
-	require.NoError(t, serviceEndpoint.Start())
-	assert.True(t, serviceEndpoint.IsRunning())
+	if startDialer {
+		require.NoError(t, dialerEndpoint.Start())
+		assert.True(t, dialerEndpoint.IsRunning())
+	}
 
 	<-readyCh
 
-	return validatorEndpoint, serviceEndpoint
+	return validatorEndpoint, dialerEndpoint
 }

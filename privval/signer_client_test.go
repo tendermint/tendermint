@@ -19,13 +19,17 @@ type signerTestCase struct {
 }
 
 func getSignerTestCases(t *testing.T) []signerTestCase {
+	return getSignerTestCasesCustom(t, true)
+}
+
+func getSignerTestCasesCustom(t *testing.T, startDialer bool) []signerTestCase {
 	testCases := make([]signerTestCase, 0)
 
 	for _, dtc := range getDialerTestCases(t) {
 		chainID := common.RandStr(12)
 		mockPV := types.NewMockPV()
 
-		ve, se := getMockEndpoints(t, chainID, mockPV, dtc.addr, dtc.dialer)
+		ve, se := getMockEndpoints(t, chainID, mockPV, dtc.addr, dtc.dialer, startDialer)
 		sr, err := NewSignerClient(ve)
 		require.NoError(t, err)
 
@@ -208,28 +212,25 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	}
 }
 
-type brokenSignerDialerEndpoint struct {
+type BrokenSignerDialerEndpoint struct {
 	*SignerDialerEndpoint
 }
 
-func (ss *brokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+func (ss BrokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, PubKeyResponse{})
+	ss.Logger.Info("Writing bad response!")
 	return
 }
 
 func TestSignerUnexpectedResponse(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	for _, tc := range getSignerTestCasesCustom(t, false) {
 		func() {
-			// TODO(jleni): This test is actually not working. Fails for a different reason
+			tc.signerService.privVal = types.NewMockPV()
+			tc.mockPV = types.NewMockPV()
 
-			tc.signerService.privVal = types.NewErroringMockPV()
-			tc.mockPV = types.NewErroringMockPV()
-
-			// Replace signer service with a broken one
-			tc.signerService.Stop()
-			tmp := brokenSignerDialerEndpoint{tc.signerService}
-			tmp.Start()
-
+			tmp := BrokenSignerDialerEndpoint{tc.signerService}
+			err := tmp.Start()
+			require.NoError(t, err)
 			defer tmp.Stop()
 			defer tc.signer.Close()
 
