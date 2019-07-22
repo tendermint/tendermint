@@ -90,7 +90,7 @@ type MConnection struct {
 	quitSendRoutine chan struct{}
 	doneSendRoutine chan struct{}
 
-	// Closing quitRecvRouting will cause the recvRouting to evnetually quit.
+	// Closing quitRecvRouting will cause the recvRouting to eventually quit.
 	quitRecvRoutine chan struct{}
 
 	// used to ensure FlushStop and OnStop
@@ -255,6 +255,7 @@ func (c *MConnection) FlushStop() {
 		// so we dont race on calling sendSomePacketMsgs
 		<-c.doneSendRoutine
 
+		// Send and flush all pending msgs.
 		// Since sendRoutine has exited, we can call this
 		// safely
 		eof := c.sendSomePacketMsgs()
