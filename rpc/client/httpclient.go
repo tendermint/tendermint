@@ -333,6 +333,15 @@ func (c *baseRPCClient) Validators(height *int64) (*ctypes.ResultValidators, err
 	return result, nil
 }
 
+func (c *baseRPCClient) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	result := new(ctypes.ResultBroadcastEvidence)
+	_, err := c.caller.Call("broadcast_evidence", map[string]interface{}{"evidence": ev}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "BroadcastEvidence")
+	}
+	return result, nil
+}
+
 //-----------------------------------------------------------------------------
 // WSEvents
 
