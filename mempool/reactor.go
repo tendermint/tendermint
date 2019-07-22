@@ -263,8 +263,8 @@ func RegisterMempoolMessages(cdc *amino.Codec) {
 }
 
 func (memR *Reactor) decodeMsg(bz []byte) (msg MempoolMessage, err error) {
-	if len(bz) > memR.config.MaxMsgBytes {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), memR.config.MaxMsgBytes)
+	if l := len(bz); l > memR.config.MaxMsgBytes {
+		return msg, ErrTxTooLarge{memR.config.MaxMsgBytes, l}
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return

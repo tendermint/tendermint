@@ -465,7 +465,7 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 			require.NoError(t, err, caseString)
 		} else {
 			require.True(t, len(encoded) > maxMsgSize, caseString)
-			require.Equal(t, err, ErrTxTooLarge{maxTxSize}, caseString)
+			require.Equal(t, err, ErrTxTooLarge{maxTxSize, testCase.len}, caseString)
 		}
 	}
 
