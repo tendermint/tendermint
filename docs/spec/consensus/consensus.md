@@ -73,11 +73,11 @@ parameters over each successive round.
       |(When +2/3 Precommits for block found)                  |
       v                                                        |
 +--------------------------------------------------------------------+
-       |  Commit                                                            |
-       |                                                                    |
-       |  * Set CommitTime = now;                                           |
-       |  * Wait for block, then stage/save/commit block;                   |
-       +--------------------------------------------------------------------+
+|  Commit                                                            |
+|                                                                    |
+|  * Set CommitTime = now;                                           |
+|  * Wait for block, then stage/save/commit block;                   |
++--------------------------------------------------------------------+
 ```
 
 # Background Gossip
@@ -120,7 +120,7 @@ A proposal is signed and published by the designated proposer at each
 round. The proposer is chosen by a deterministic and non-choking round
 robin selection algorithm that selects proposers in proportion to their
 voting power (see
-[implementation](https://github.com/tendermint/tendermint/blob/develop/types/validator_set.go)).
+[implementation](https://github.com/tendermint/tendermint/blob/master/types/validator_set.go)).
 
 A proposal at `(H,R)` is composed of a block and an optional latest
 `PoLC-Round < R` which is included iff the proposer knows of one. This
@@ -131,13 +131,15 @@ liveness property.
 
 ### Propose Step (height:H,round:R)
 
-Upon entering `Propose`: - The designated proposer proposes a block at
-`(H,R)`.
+Upon entering `Propose`:
+- The designated proposer proposes a block at `(H,R)`.
 
-The `Propose` step ends: - After `timeoutProposeR` after entering
-`Propose`. --> goto `Prevote(H,R)` - After receiving proposal block
-and all prevotes at `PoLC-Round`. --> goto `Prevote(H,R)` - After
-[common exit conditions](#common-exit-conditions)
+The `Propose` step ends:
+- After `timeoutProposeR` after entering `Propose`. --> goto
+  `Prevote(H,R)`
+- After receiving proposal block and all prevotes at `PoLC-Round`. -->
+  goto `Prevote(H,R)`
+- After [common exit conditions](#common-exit-conditions)
 
 ### Prevote Step (height:H,round:R)
 
@@ -152,10 +154,12 @@ Upon entering `Prevote`, each validator broadcasts its prevote vote.
 - Else, if the proposal is invalid or wasn't received on time, it
   prevotes `<nil>`.
 
-The `Prevote` step ends: - After +2/3 prevotes for a particular block or
-`<nil>`. -->; goto `Precommit(H,R)` - After `timeoutPrevote` after
-receiving any +2/3 prevotes. --> goto `Precommit(H,R)` - After
-[common exit conditions](#common-exit-conditions)
+The `Prevote` step ends:
+- After +2/3 prevotes for a particular block or `<nil>`. -->; goto
+  `Precommit(H,R)`
+- After `timeoutPrevote` after receiving any +2/3 prevotes. --> goto
+  `Precommit(H,R)`
+- After [common exit conditions](#common-exit-conditions)
 
 ### Precommit Step (height:H,round:R)
 
@@ -163,17 +167,19 @@ Upon entering `Precommit`, each validator broadcasts its precommit vote.
 
 - If the validator has a PoLC at `(H,R)` for a particular block `B`, it
   (re)locks (or changes lock to) and precommits `B` and sets
-  `LastLockRound = R`. - Else, if the validator has a PoLC at `(H,R)` for
-  `<nil>`, it unlocks and precommits `<nil>`. - Else, it keeps the lock
-  unchanged and precommits `<nil>`.
+  `LastLockRound = R`.
+- Else, if the validator has a PoLC at `(H,R)` for `<nil>`, it unlocks
+  and precommits `<nil>`.
+- Else, it keeps the lock unchanged and precommits `<nil>`.
 
 A precommit for `<nil>` means "I didn’t see a PoLC for this round, but I
 did get +2/3 prevotes and waited a bit".
 
-The Precommit step ends: - After +2/3 precommits for `<nil>`. -->
-goto `Propose(H,R+1)` - After `timeoutPrecommit` after receiving any
-+2/3 precommits. --> goto `Propose(H,R+1)` - After [common exit
-conditions](#common-exit-conditions)
+The Precommit step ends:
+- After +2/3 precommits for `<nil>`. --> goto `Propose(H,R+1)`
+- After `timeoutPrecommit` after receiving any +2/3 precommits. --> goto
+  `Propose(H,R+1)`
+- After [common exit conditions](#common-exit-conditions)
 
 ### Common exit conditions
 

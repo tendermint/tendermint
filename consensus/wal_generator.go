@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
@@ -22,6 +21,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-cmn/db"
 )
 
 // WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
