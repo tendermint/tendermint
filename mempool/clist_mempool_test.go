@@ -426,6 +426,11 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
+	var (
+		maxMsgSize = 1024 * 1024
+		maxTxSize  = maxMsgSize - aminoOverheadForTxMessage
+	)
+
 	testCases := []struct {
 		len int
 		err bool
@@ -462,7 +467,7 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 			require.NoError(t, err, caseString)
 		} else {
 			require.True(t, len(encoded) > maxMsgSize, caseString)
-			require.Equal(t, err, ErrTxTooLarge, caseString)
+			require.Equal(t, err, ErrTxTooLarge{maxTxSize}, caseString)
 		}
 	}
 

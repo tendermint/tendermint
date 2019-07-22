@@ -294,6 +294,9 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
 
+# Limit the size of TxMessage
+max_msg_bytes = {{ .Mempool.MaxMsgBytes }}
+
 ##### consensus configuration options #####
 [consensus]
 
