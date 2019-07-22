@@ -14,9 +14,9 @@ facilitate setting up a new node as quickly as possible.
 
 ## Considerations
 Because Tendermint doesn't know anything about the application state,
-the goal of StateSync of to broker messages between nodes and through
-the ABCI. The implementation will have multiple touch points on both the
-tendermint code base and ABCI application.
+StateSync will broker messages between nodes and through
+the ABCI to an opaque applicaton. The implementation will have multiple
+touch points on both the tendermint code base and ABCI application.
 
 * A StateSync reactor to facilitate peer communication - Tendermint
 * A Set of ABCI messages to transmit application state to the reactor - Tendermint
@@ -33,7 +33,6 @@ across different criteria:
 * Effort: How much effort does an implementation require
 
 ### Implementation Question
-
 * What is the format of a snapshot
     * Complete snapshot 
     * Ordered IAVL key ranges
@@ -58,6 +57,18 @@ solution would use the existing data structure.
 request time. This solution would create an auxiliary data structure
 optimized for batch read/writes.
 
+Additionally the propsosals tend to vary on how they provide safety
+properties. 
+
+**LightClient** Where a client can aquire the merkle root from the block
+headers synchronized from a trusted validator set. Subsets of the application state,
+called chunks can therefore be validated on receipt to ensure each chunk
+is part of the merkle root.
+
+**Majority of Peers** Where manifests of chunks along with checksums are
+downloaded and compared against versions provided by a majority of
+peers.
+
 #### Lazy StateSync
 An [initial specification](https://docs.google.com/document/d/15MFsQtNA0MGBv7F096FFWRDzQ1vR6_dics5Y49vF8JU/edit?ts=5a0f3629) was published by Alexis Sellier.
 In this design, the state has a given `size` of primitive elements (like
@@ -67,23 +78,6 @@ and chunks consists of a range of such elements.  Ackratos raised
 about this design, somewhat specific to the IAVL tree, and mainly concerning
 performance of random reads and of iterating through the tree to determine element numbers
 (ie. elements aren't indexed by the element number).
-
-This design could be generalized to have numbered chunks instead of
-elements, where chunks are indexed by their chunk number and determined
-by some algorithm for grouping the elements in the tree. This would
-allow pre-computation and persistence of the chunks that could alleviate
-the concerns about real-time iteration and random reads.  However, there
-seems to be a larger issue with the "numbered chunks" approach: it does
-not seem possible, in general, to verify that the chunk corresponds to
-the chunk number, even if it can be verified that the chunk is a valid
-set of nodes in the tree. A malicious peer could provide a chunk that
-contains valid nodes from the tree but does not actually match the
-alleged chunk number. This could make it difficult for nodes to figure
-out which parts of the tree they have and which parts they still need.
-Hence, to go with this chunking approach to state sync, information
-about how state is chunked would need to be hashed into the state
-itself, or into the block header, so that chunk numbers could be
-directly verified.
 
 An alternative design was suggested by Jae Kwon in
 [#3639](https://github.com/tendermint/tendermint/issues/3639) where chunking
@@ -96,6 +90,12 @@ This way a node can start by requesting the entire tree from one peer,
 and that peer can respond with say the first few keys, and the ranges to request
 from other peers.
 
+Additionally, per chink validation tends to come more naturally to the
+Lazy approach since it tends to use the existing structure of the tree
+(ie. keys or nodes) rather than state-sync specific chunks. Such a
+design for tendermint was originally tracked in
+[#828](https://github.com/tendermint/tendermint/issues/828).
+
 #### Eager StateSync
 Warp Sync as implemented in Parity
 ["Warp Sync"](https://wiki.parity.io/Warp-Sync-Snapshot-Format.html) to rapidly
@@ -104,7 +104,7 @@ chunks and snappy compressed. Hashes of snappy compressed chunks are stored in a
 manifest file which co-ordinates the state-sync. Obtaining a correct manifest
 file seems to require an honest majority of peers. This means you may not find
 out the state is incorrect until you download the whole thing and compare it
-with a verified block header.
+with a verified block header. 
 
 A similar solution was implemented by Binance in
 [#3594](https://github.com/tendermint/tendermint/pull/3594)
@@ -114,58 +114,68 @@ and [some learnings](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip
 Note this still requires the honest majority peer assumption.
 One major advantage of the warp-sync approach is that chunks can be compressed before sending.
 
-Ideally State Sync in Tendermint would not require an honest majority of
-peers, and instead would rely on the standard light client security,
-meaning state chunks would be verifiable against the merkle root of the
-state. This property tends to come more naturally to the Lazy approach
-since it tends to use the existing structure of the tree (ie. keys or
-nodes) rather than state-sync specific chunks. Such a design for
-tendermint was originally tracked in
-[#828](https://github.com/tendermint/tendermint/issues/828).
-
 ### Analysis of Lazy vs Eager
-
 Lazy vs Eager have more in common than they differ. They all require
 reactors on the tendermint side, a set of ABCI messages and a method for
 serializing/deserializing snapshots facilitated by a SnapshotFormat.
 
 The biggest difference between Lazy and Eager proposals is in the
-read/write patterns necessitated by when serving a snapshot chunk.
-Specifically, Lazy State Sync random reads to the underlying data
+read/write patterns necessitated by serving a snapshot chunk.
+Specifically, Lazy State Sync performs random reads to the underlying data
 structure while Eager can optimize for sequential reads.
 
-This distinctin between approaches was demonstrated by Binance's [ackratos](https://github.com/ackratos) in their
-implementation of [Lazy State sync](https://github.com/tendermint/tendermint/pull/3243), The [analysis](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/) of the performance, and
-follow up implementation of [Warp Sync](http://github.com/tendermint/tendermint/pull/3594).
+This distinctin between approaches was demonstrated by Binance's
+[ackratos](https://github.com/ackratos) in their implementation of [Lazy
+State sync](https://github.com/tendermint/tendermint/pull/3243), The
+[analysis](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/)
+of the performance, and follow up implementation of [Warp
+Sync](http://github.com/tendermint/tendermint/pull/3594).
 
 #### Compairing Security Models
-One proposed difference between Lazy and Eager state sync is the
-security model. It had been suggested that Lazy State Sync could use
-light client validation while Warp Sync was unsuitable for public
-networks as it relies on the majority of peers to produce a manifest.
-This manifest would require complete syncing before validation of the
-data against the merkle root were possible. This could create DDOS
-attack vector in which a peer publishes an invalid manifest and making
-peers download invalid data. For this reason, WarpSync is faster but
-less safety-efficient; It as it takes longer to realize that data is
-invalid.
+There are several different security models which have been
+discussed/proposed in the past but generally fall into two categories.
 
-However, upon analysis of the approaches with the orthogonal axis of
-eager/lazy and chunk/snapshot validation suggest that a version of
-WarpSync with per chunk light client validation might get the optimal
-performance and safety.
+Light client validation: In which the node receiving data is expected to
+first perform a light client sync and have all the nessesary block
+headers. Within the trusted block header (trusted in terms of from a
+validator set subject to [weak
+subjectivity](https://github.com/tendermint/tendermint/pull/3795)) and
+can compare any subset of keys called a chunk against the merkle root.
+The advantage of light client validation is that the block headers are
+signed by validators which have something to lose for malicious
+behaviour. If a validator were to provide an invalid proof, they can be
+slashed.
 
-## Decision: Eager StateSync With Per Chunk Light Client Validation
+Majority of peer validation: A manifest file containing a list of chunks
+along with checksums of each chunk is downloaded from a
+trusted source. That source can be a community resource similar to
+[sum.golang.org](https://sum.golang.org) or downloaded from the majority
+of peers. One disadantage of the majority of peer security model is the
+vuliberability to eclipse attacks in which a malicious users looks to
+saturate a target node's peer list and produce a manufactured picture of
+majority.
 
-The conclusion after thorough concideration of the
-advantages/disadvances of eager/lazy is to produce a state sync which
-replicates the performance IO characteristic of WarpSync and the security of
-per chunk validation. Manifests would be queries from nodes but be
-static across peers, providing a mapping state to pre-computed chunks
-allowing the snapshot to be downloaded in parallel.
+A third option would be to include snapshot related data in the
+block header. This could include the manifest with related checksums and be
+secured through consensus. One challenge of this approach is to
+ensure that creating snapshots does not put undo burden on block
+propsers by synchronizing snapshot creation and block creation. One
+approach to minimizing the burden is for snapshots for height
+`H` to be included in block `H+n` where `n` is some `n` block away,
+giving the block propser enough time to complete the snapshot
+asynchronousy.
+
+## Proposal: Eager StateSync With Per Chunk Light Client Validation
+The conclusion after some concideration of the advantages/disadvances of
+eager/lazy and different security models is to produce a state sync
+which eagerly produces snapshots and uses light client validation. This
+approach has the performance advantages of pre-computing efficient
+snapshots which can streamed to new nodes on demand using sequential IO.
+Secondly, by using light client validation we cna validate each chunk on
+receipt and avoid the potential eclipse attack of majority of peer based
+security.
 
 ### Implementation
-
 Tendermint is responsible for downloading and verifying chunks of
 AppState from peers. ABCI Application is responsible for taking
 AppStateChunk objects from TM and constructing a valid state tree whose
@@ -189,7 +199,6 @@ will need implement:
 ![StateSync Architecture Diagram](img/state-sync.png)
 
 ## Implementation Path
-
 * Create StateSync reactor based on  [#3753](https://github.com/tendermint/tendermint/pull/3753)
 * Design SnapshotFormat with an eye towards cosmos-hub implementation
 * ABCI message to send/receive SnapshotFormat
@@ -221,5 +230,6 @@ Proposed
 [proposal 2 implementation](https://github.com/tendermint/tendermint/pull/3243)  - ackratos implementation
 [WIP General/Lazy State-Sync pseudo-spec](https://github.com/tendermint/tendermint/issues/3639) - Jae Proposal
 [Warp Sync Implementation](https://github.com/tendermint/tendermint/pull/3594) - ackratos
+[Chunk Proposal](https://github.com/tendermint/tendermint/pull/3799) - Bucky proposed
 
 
