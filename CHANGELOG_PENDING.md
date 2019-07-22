@@ -24,5 +24,6 @@ program](https://hackerone.com/tendermint).
 - [rpc] \#2252 Add `/broadcast_evidence` endpoint to submit double signing and other types of evidence
 - [rpc] \#3818 Make `max_body_bytes` and `max_header_bytes` configurable
 - [p2p] \#3664 p2p/conn: reuse buffer when write/read from secret connection
+- [mempool] \#3826 Make `max_msg_bytes` configurable
 
 ### BUG FIXES:
