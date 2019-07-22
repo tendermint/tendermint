@@ -112,7 +112,11 @@ based on their initial implementation in
 [PR #3243](https://github.com/tendermint/tendermint/pull/3243)
 and [some learnings](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit).
 Note this still requires the honest majority peer assumption.
-One major advantage of the warp-sync approach is that chunks can be compressed before sending.
+
+As an eager protocol, warp-sync can efficiently compress larger, more
+predicatable chunks once per snapshot and service many new peers. By
+comparison lazy chunkers would have to compress each chunk at request
+time.
 
 ### Analysis of Lazy vs Eager
 Lazy vs Eager have more in common than they differ. They all require
