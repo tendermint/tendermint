@@ -81,9 +81,10 @@ func (trs *TaskResultSet) Wait() *TaskResultSet {
 				TaskResult: result,
 				OK:         true,
 			}
-		} else {
-			// We already wrote it.
 		}
+		// else {
+		// We already wrote it.
+		// }
 	}
 	return trs
 }

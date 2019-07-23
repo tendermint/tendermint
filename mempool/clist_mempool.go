@@ -250,11 +250,11 @@ func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), t
 		// so we only record the sender for txs still in the mempool.
 		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
 			memTx := e.(*clist.CElement).Value.(*mempoolTx)
-			if _, loaded := memTx.senders.LoadOrStore(txInfo.SenderID, true); loaded {
-				// TODO: consider punishing peer for dups,
-				// its non-trivial since invalid txs can become valid,
-				// but they can spam the same tx with little cost to them atm.
-			}
+			memTx.senders.LoadOrStore(txInfo.SenderID, true)
+			// TODO: consider punishing peer for dups,
+			// its non-trivial since invalid txs can become valid,
+			// but they can spam the same tx with little cost to them atm.
+
 		}
 
 		return ErrTxInCache
