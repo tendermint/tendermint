@@ -19,7 +19,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String("priv_validator_laddr", config.PrivValidatorListenAddr, "Socket address to listen on for connections from external priv_validator process")
 
 	// node flags
-	cmd.Flags().Bool("fast_sync", config.FastSync, "Fast blockchain syncing")
+	cmd.Flags().Bool("fast_sync", config.FastSyncMode, "Fast blockchain syncing")
 
 	// abci flags
 	cmd.Flags().String("proxy_app", config.ProxyApp, "Proxy app address, or one of: 'kvstore', 'persistent_kvstore', 'counter', 'counter_serial' or 'noop' for local testing.")

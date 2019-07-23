@@ -1,4 +1,4 @@
-package blockchain
+package v0
 
 import (
 	"errors"
@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -60,7 +61,7 @@ type BlockchainReactor struct {
 	initialState sm.State
 
 	blockExec *sm.BlockExecutor
-	store     *BlockStore
+	store     *store.BlockStore
 	pool      *BlockPool
 	fastSync  bool
 
@@ -69,7 +70,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore,
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {
@@ -378,6 +379,7 @@ type BlockchainMessage interface {
 	ValidateBasic() error
 }
 
+// RegisterBlockchainMessages registers the fast sync messages for amino encoding.
 func RegisterBlockchainMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*BlockchainMessage)(nil), nil)
 	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/blockchain/BlockRequest", nil)
@@ -425,8 +427,8 @@ func (m *bcNoBlockResponseMessage) ValidateBasic() error {
 	return nil
 }
 
-func (brm *bcNoBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", brm.Height)
+func (m *bcNoBlockResponseMessage) String() string {
+	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", m.Height)
 }
 
 //-------------------------------------
