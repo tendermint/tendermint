@@ -332,7 +332,7 @@ func TestErrUnexpectedResponse(t *testing.T) {
 			// reply with intentionally wrong replies below:
 			rsConn, err := serviceEndpoint.connect()
 			if err != nil {
-				fmt.Println(err)
+				t.Error(err)
 			}
 			defer rsConn.Close()
 			require.NoError(t, err)

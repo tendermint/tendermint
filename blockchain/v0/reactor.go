@@ -141,8 +141,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
-	_ = peer.Send(BlockchainChannel, msgBytes)
-	// doing nothing, will try later in `poolRoutine`
+	peer.Send(BlockchainChannel, msgBytes)
 
 	// peer is added to the pool once we receive the first
 	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
@@ -192,8 +191,6 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
 		bcR.respondToPeer(msg, src)
-		// Unfortunately not queued since the queue is full.
-
 	case *bcBlockResponseMessage:
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
