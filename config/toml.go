@@ -302,6 +302,9 @@ cache_size = {{ .Mempool.CacheSize }}
 #   2) "v1" - refactor of v0 version for better testability
 version = "{{ .FastSync.Version }}"
 
+# Limit the size of TxMessage
+max_msg_bytes = {{ .Mempool.MaxMsgBytes }}
+
 ##### consensus configuration options #####
 [consensus]
 

@@ -248,6 +248,9 @@ cache_size = 10000
 #   2) "v1" - refactor of v0 version for better testability
 version = "v0"
 
+# Limit the size of TxMessage
+max_msg_bytes = 1048576
+
 ##### consensus configuration options #####
 [consensus]
 

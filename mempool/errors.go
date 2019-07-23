@@ -9,10 +9,17 @@ import (
 var (
 	// ErrTxInCache is returned to the client if we saw tx earlier
 	ErrTxInCache = errors.New("Tx already exists in cache")
-
-	// ErrTxTooLarge means the tx is too big to be sent in a message to other peers
-	ErrTxTooLarge = fmt.Errorf("Tx too large. Max size is %d", maxTxSize)
 )
+
+// ErrTxTooLarge means the tx is too big to be sent in a message to other peers
+type ErrTxTooLarge struct {
+	max    int
+	actual int
+}
+
+func (e ErrTxTooLarge) Error() string {
+	return fmt.Sprintf("Tx too large. Max size is %d, but got %d", e.max, e.actual)
+}
 
 // ErrMempoolIsFull means Tendermint & an application can't handle that much load
 type ErrMempoolIsFull struct {
