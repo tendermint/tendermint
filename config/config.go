@@ -64,6 +64,7 @@ type Config struct {
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -76,6 +77,7 @@ func DefaultConfig() *Config {
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
+		FastSync:        DefaultFastSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -89,6 +91,7 @@ func TestConfig() *Config {
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
+		FastSync:        TestFastSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -119,6 +122,9 @@ func (cfg *Config) ValidateBasic() error {
 	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [mempool] section")
+	}
+	if err := cfg.FastSync.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [fastsync] section")
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [consensus] section")
@@ -151,7 +157,7 @@ type BaseConfig struct {
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
-	FastSync bool `mapstructure:"fast_sync"`
+	FastSyncMode bool `mapstructure:"fast_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -216,7 +222,7 @@ func DefaultBaseConfig() BaseConfig {
 		LogLevel:           DefaultPackageLogLevels(),
 		LogFormat:          LogFormatPlain,
 		ProfListenAddress:  "",
-		FastSync:           true,
+		FastSyncMode:       true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
@@ -228,7 +234,7 @@ func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
 	cfg.ProxyApp = "kvstore"
-	cfg.FastSync = false
+	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
 	return cfg
 }
@@ -682,6 +688,38 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 		return errors.New("max_msg_bytes can't be negative")
 	}
 	return nil
+}
+
+//-----------------------------------------------------------------------------
+// FastSyncConfig
+
+// FastSyncConfig defines the configuration for the Tendermint fast sync service
+type FastSyncConfig struct {
+	Version string `mapstructure:"version"`
+}
+
+// DefaultFastSyncConfig returns a default configuration for the fast sync service
+func DefaultFastSyncConfig() *FastSyncConfig {
+	return &FastSyncConfig{
+		Version: "v0",
+	}
+}
+
+// TestFastSyncConfig returns a default configuration for the fast sync.
+func TestFastSyncConfig() *FastSyncConfig {
+	return DefaultFastSyncConfig()
+}
+
+// ValidateBasic performs basic validation.
+func (cfg *FastSyncConfig) ValidateBasic() error {
+	switch cfg.Version {
+	case "v0":
+		return nil
+	case "v1":
+		return nil
+	default:
+		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
+	}
 }
 
 //-----------------------------------------------------------------------------
