@@ -220,9 +220,10 @@ func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), t
 	var (
 		memSize  = mem.Size()
 		txsBytes = mem.TxsBytes()
+		txSize   = len(tx)
 	)
 	if memSize >= mem.config.Size ||
-		int64(len(tx))+txsBytes > mem.config.MaxTxsBytes {
+		int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
 		return ErrMempoolIsFull{
 			memSize, mem.config.Size,
 			txsBytes, mem.config.MaxTxsBytes}
@@ -231,8 +232,8 @@ func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), t
 	// The size of the corresponding amino-encoded TxMessage
 	// can't be larger than the maxMsgSize, otherwise we can't
 	// relay it to peers.
-	if len(tx) > maxTxSize {
-		return ErrTxTooLarge
+	if max := calcMaxTxSize(mem.config.MaxMsgBytes); txSize > max {
+		return ErrTxTooLarge{max, txSize}
 	}
 
 	if mem.preCheck != nil {
