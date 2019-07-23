@@ -24,6 +24,6 @@ program](https://hackerone.com/tendermint).
 - [rpc] \#2252 Add `/broadcast_evidence` endpoint to submit double signing and other types of evidence
 - [rpc] \#3818 Make `max_body_bytes` and `max_header_bytes` configurable
 - [p2p] \#3664 p2p/conn: reuse buffer when write/read from secret connection
-- [blockchain] \#3561 Blockchain Reorg Refactor, the new reactor currently sits under a feature flag, see [here](https://github.com/tendermint/tendermint/blob/master/config/toml.go#L297) on how to use it, for further information about the versions please see: [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-043-blockchain-riri-org.md)
+- [blockchain] \#3561 Add early version of the new blockchain reactor, which is supposed to be more modular and testable compared to the old version. To try it, you'll have to change `version` in the config file, [here](https://github.com/tendermint/tendermint/blob/master/config/toml.go#L303) NOTE: It's not ready for a production yet. For further information, see [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-043-blockchain-riri-org.md)
 
 ### BUG FIXES:
