@@ -18,6 +18,8 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
+- [blockchain] \#3561 Blockchain Reorg Refactor, the new reactor currently sits under a feature flag, see [here](https://github.com/tendermint/tendermint/blob/master/config/toml.go#L297) on how to use it, for further information about the versions please see: [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-043-blockchain-riri-org.md)
+
 ### IMPROVEMENTS:
 
 - [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
