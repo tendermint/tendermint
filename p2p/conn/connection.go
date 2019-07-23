@@ -563,13 +563,6 @@ FOR_LOOP:
 		c.recvMonitor.Update(int(_n))
 
 		if err != nil {
-			// connection is closed (likely by the other side)
-			// shut down our side
-			if err == io.EOF {
-				c.Stop()
-				break FOR_LOOP
-			}
-
 			// stopServices was invoked and we are shutting down
 			// receiving is excpected to fail since we will close the connection
 			select {
@@ -579,7 +572,11 @@ FOR_LOOP:
 			}
 
 			if c.IsRunning() {
-				c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
+				if err == io.EOF {
+					c.Logger.Info("Connection is closed @ recvRoutine (likely by the other side)", "conn", c)
+				} else {
+					c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
+				}
 				c.stopForError(err)
 			}
 			break FOR_LOOP
