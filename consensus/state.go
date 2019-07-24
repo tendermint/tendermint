@@ -709,11 +709,11 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		return
 	}
 
-	if err != nil {
+	if err != nil { // nolint:staticcheck
 		// Causes TestReactorValidatorSetChanges to timeout
 		// https://github.com/tendermint/tendermint/issues/3406
-		cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
-			"peer", peerID, "err", err, "msg", msg)
+		// cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
+		// 	"peer", peerID, "err", err, "msg", msg)
 	}
 }
 
