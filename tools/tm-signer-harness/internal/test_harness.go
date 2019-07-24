@@ -335,7 +335,7 @@ func newTestHarnessListener(logger log.Logger, cfg TestHarnessConfig) (*privval.
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("Listening at", "proto", proto, "addr", addr)
+	logger.Info("Listening", "proto", proto, "addr", addr)
 	var svln net.Listener
 	switch proto {
 	case "unix":

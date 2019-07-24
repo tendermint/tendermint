@@ -17,7 +17,9 @@ func RegisterRemoteSignerMsg(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&SignedVoteResponse{}, "tendermint/remotesigner/SignedVoteResponse", nil)
 	cdc.RegisterConcrete(&SignProposalRequest{}, "tendermint/remotesigner/SignProposalRequest", nil)
 	cdc.RegisterConcrete(&SignedProposalResponse{}, "tendermint/remotesigner/SignedProposalResponse", nil)
-}
+
+	cdc.RegisterConcrete(&PingRequest{}, "tendermint/remotesigner/PingRequest", nil)
+	cdc.RegisterConcrete(&PingResponse{}, "tendermint/remotesigner/PingResponse", nil)}
 
 // TODO: Add ChainIDRequest
 
@@ -50,4 +52,12 @@ type SignProposalRequest struct {
 type SignedProposalResponse struct {
 	Proposal *types.Proposal
 	Error    *RemoteSignerError
+}
+
+// PingRequest is a request to confirm that the connection is alive.
+type PingRequest struct {
+}
+
+// PingResponse is a response to confirm that the connection is alive.
+type PingResponse struct {
 }

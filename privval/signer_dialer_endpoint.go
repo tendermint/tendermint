@@ -80,7 +80,7 @@ func (sd *SignerDialerEndpoint) OnStart() error {
 
 // OnStop implements cmn.Service.
 func (sd *SignerDialerEndpoint) OnStop() {
-	sd.Logger.Debug("SignerDialerEndpoint: OnStop calling Close")
+	sd.Logger.Debug("SignerDialer: OnStop calling Close")
 
 	// Stop service loop
 	close(sd.stopServiceLoopCh)
@@ -94,25 +94,20 @@ func (sd *SignerDialerEndpoint) handleRequest() {
 		return // Ignore error from listener closing.
 	}
 
-	sd.Logger.Info("SignerDialerEndpoint: connected", "timeout", sd.timeoutReadWrite)
-
 	req, err := sd.readMessage()
 	if err != nil {
 		if err != io.EOF {
-			sd.Logger.Error("SignerDialerEndpoint handleMessage", "err", err)
+			sd.Logger.Error("SignerDialer: HandleMessage", "err", err)
 		}
 		return
 	}
 
-	sd.Logger.Error("Before handling request")
 	res, err := HandleValidatorRequest(req, sd.chainID, sd.privVal)
-
 	if err != nil {
 		// only log the error; we'll reply with an error in res
 		sd.Logger.Error("handleMessage handleMessage", "err", err)
 	}
 
-	sd.Logger.Error("calling write")
 	err = sd.writeMessage(res)
 	if err != nil {
 		sd.Logger.Error("handleMessage writeMessage", "err", err)
@@ -129,17 +124,16 @@ func (sd *SignerDialerEndpoint) serviceLoop() {
 	for {
 		select {
 		default:
-			sd.Logger.Debug("Try connect", "retries", retries, "max", sd.maxConnRetries)
-
 			if retries > sd.maxConnRetries {
 				sd.Logger.Error("Maximum retries reached", "retries", retries)
 				return
 			}
 
 			if sd.conn == nil {
+				sd.Logger.Debug("SignerDialer: Trying to reconnect", "retries", retries, "max", sd.maxConnRetries)
 				sd.conn, err = sd.dialer()
 				if err != nil {
-					sd.Logger.Info("Try connect", "err", err)
+					sd.Logger.Error("SignerDialer: Failed connecting", "err", err)
 					sd.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
 					retries++
 

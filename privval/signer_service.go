@@ -33,6 +33,9 @@ func HandleValidatorRequest(req RemoteSignerMsg, chainID string, privVal types.P
 			res = &SignedProposalResponse{r.Proposal, nil}
 		}
 
+	case *PingRequest:
+		err, res = nil, &PingResponse{};
+
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)
 	}
