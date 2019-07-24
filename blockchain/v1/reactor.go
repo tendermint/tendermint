@@ -170,7 +170,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
 	peer.Send(BlockchainChannel, msgBytes)
-	// doing nothing, will try later in `poolRoutine`
+	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
 	// bcStatusResponseMessage from the peer and call pool.updatePeer()
