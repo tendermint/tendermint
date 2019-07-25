@@ -621,8 +621,6 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
-	rs = cs1.GetRoundState()
-
 	// add precommits from the rest
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs4)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
@@ -1317,8 +1315,6 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
-	rs = cs1.GetRoundState()
-
 	// add precommits
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
 	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
@@ -1369,8 +1365,6 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
-
-	rs = cs1.GetRoundState()
 
 	// add precommits
 	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)

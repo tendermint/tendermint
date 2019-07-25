@@ -25,6 +25,7 @@ program](https://hackerone.com/tendermint).
 - [rpc] \#3818 Make `max_body_bytes` and `max_header_bytes` configurable
 - [p2p] \#3664 p2p/conn: reuse buffer when write/read from secret connection
 - [mempool] \#3826 Make `max_msg_bytes` configurable
+- [blockchain] \#3561 Add early version of the new blockchain reactor, which is supposed to be more modular and testable compared to the old version. To try it, you'll have to change `version` in the config file, [here](https://github.com/tendermint/tendermint/blob/master/config/toml.go#L303) NOTE: It's not ready for a production yet. For further information, see [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-043-blockchain-riri-org.md)
 
 ### BUG FIXES:
 

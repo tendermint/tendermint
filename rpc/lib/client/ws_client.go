@@ -369,10 +369,11 @@ func (c *WSClient) writeRoutine() {
 
 	defer func() {
 		ticker.Stop()
-		if err := c.conn.Close(); err != nil {
-			// ignore error; it will trigger in tests
-			// likely because it's closing an already closed connection
-		}
+		c.conn.Close()
+		// err != nil {
+		// ignore error; it will trigger in tests
+		// likely because it's closing an already closed connection
+		// }
 		c.wg.Done()
 	}()
 
@@ -421,10 +422,11 @@ func (c *WSClient) writeRoutine() {
 // executing all reads from this goroutine.
 func (c *WSClient) readRoutine() {
 	defer func() {
-		if err := c.conn.Close(); err != nil {
-			// ignore error; it will trigger in tests
-			// likely because it's closing an already closed connection
-		}
+		c.conn.Close()
+		// err != nil {
+		// ignore error; it will trigger in tests
+		// likely because it's closing an already closed connection
+		// }
 		c.wg.Done()
 	}()
 

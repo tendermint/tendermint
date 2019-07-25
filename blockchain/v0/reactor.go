@@ -1,4 +1,4 @@
-package blockchain
+package v0
 
 import (
 	"errors"
@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -60,7 +61,7 @@ type BlockchainReactor struct {
 	initialState sm.State
 
 	blockExec *sm.BlockExecutor
-	store     *BlockStore
+	store     *store.BlockStore
 	pool      *BlockPool
 	fastSync  bool
 
@@ -69,7 +70,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore,
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {
@@ -140,9 +141,9 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
-	if !peer.Send(BlockchainChannel, msgBytes) {
-		// doing nothing, will try later in `poolRoutine`
-	}
+	peer.Send(BlockchainChannel, msgBytes)
+	// it's OK if send fails. will try later in poolRoutine
+
 	// peer is added to the pool once we receive the first
 	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
 }
@@ -190,18 +191,13 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
-		if queued := bcR.respondToPeer(msg, src); !queued {
-			// Unfortunately not queued since the queue is full.
-		}
+		bcR.respondToPeer(msg, src)
 	case *bcBlockResponseMessage:
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
-		queued := src.TrySend(BlockchainChannel, msgBytes)
-		if !queued {
-			// sorry
-		}
+		src.TrySend(BlockchainChannel, msgBytes)
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerHeight(src.ID(), msg.Height)
@@ -273,9 +269,10 @@ FOR_LOOP:
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced)
-				} else {
-					// should only happen during testing
 				}
+				// else {
+				// should only happen during testing
+				// }
 
 				break FOR_LOOP
 			}
@@ -378,6 +375,7 @@ type BlockchainMessage interface {
 	ValidateBasic() error
 }
 
+// RegisterBlockchainMessages registers the fast sync messages for amino encoding.
 func RegisterBlockchainMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*BlockchainMessage)(nil), nil)
 	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/blockchain/BlockRequest", nil)
@@ -425,8 +423,8 @@ func (m *bcNoBlockResponseMessage) ValidateBasic() error {
 	return nil
 }
 
-func (brm *bcNoBlockResponseMessage) String() string {
-	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", brm.Height)
+func (m *bcNoBlockResponseMessage) String() string {
+	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", m.Height)
 }
 
 //-------------------------------------
