@@ -40,9 +40,10 @@ func TestParallel(t *testing.T) {
 		} else if !assert.Equal(t, -1*i, taskResult.Value.(int)) {
 			assert.Fail(t, "Task should have returned %v but got %v", -1*i, taskResult.Value.(int))
 			failedTasks++
-		} else {
-			// Good!
 		}
+		// else {
+		// Good!
+		// }
 	}
 	assert.Equal(t, failedTasks, 0, "No task should have failed")
 	assert.Nil(t, trs.FirstError(), "There should be no errors")
