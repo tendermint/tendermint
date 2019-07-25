@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	stdprometheus "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -348,7 +348,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 }
 
 func TestSwitchStopPeerForError(t *testing.T) {
-	s := httptest.NewServer(stdprometheus.UninstrumentedHandler())
+	s := httptest.NewServer(promhttp.Handler())
 	defer s.Close()
 
 	scrapeMetrics := func() string {

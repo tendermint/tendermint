@@ -169,9 +169,9 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
-	if !peer.Send(BlockchainChannel, msgBytes) {
-		// doing nothing, will try later in `poolRoutine`
-	}
+	peer.Send(BlockchainChannel, msgBytes)
+	// it's OK if send fails. will try later in poolRoutine
+
 	// peer is added to the pool once we receive the first
 	// bcStatusResponseMessage from the peer and call pool.updatePeer()
 }
@@ -381,10 +381,11 @@ ForLoop:
 							err:    msg.data.err,
 						},
 					})
-				} else {
-					// For slow peers, or errors due to blocks received from wrong peer
-					// the FSM had already removed the peers
 				}
+				// else {
+				// For slow peers, or errors due to blocks received from wrong peer
+				// the FSM had already removed the peers
+				// }
 			default:
 				bcR.Logger.Error("Event from FSM not supported", "type", msg.event)
 			}
@@ -465,9 +466,10 @@ func (bcR *BlockchainReactor) switchToConsensus() {
 	if ok {
 		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced)
 		bcR.eventsFromFSMCh <- bcFsmMessage{event: syncFinishedEv}
-	} else {
-		// Should only happen during testing.
 	}
+	// else {
+	// Should only happen during testing.
+	// }
 }
 
 // Implements bcRNotifier
