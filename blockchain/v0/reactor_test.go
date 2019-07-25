@@ -1,7 +1,6 @@
 package v0
 
 import (
-	"fmt"
 	"os"
 	"sort"
 	"testing"
@@ -91,7 +90,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 			vote, err := types.MakeVote(lastBlock.Header.Height, lastBlockMeta.BlockID, state.Validators, privVals[0], lastBlock.Header.ChainID)
 			if err != nil {
-				fmt.Println(err)
+				panic(err)
 			}
 			voteCommitSig := vote.CommitSig()
 			lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{voteCommitSig})

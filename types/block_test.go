@@ -37,7 +37,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
-	block := MakeNewBlock(h, txs, commit, evList)
+	block := MakeBlock(h, txs, commit, evList)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence.Evidence))
 	require.NotNil(t, block.EvidenceHash)
@@ -84,7 +84,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
-			block := MakeNewBlock(h, txs, commit, evList)
+			block := MakeBlock(h, txs, commit, evList)
 			block.ProposerAddress = valSet.GetProposer().Address
 			tc.malleateBlock(block)
 			err = block.ValidateBasic()
@@ -95,13 +95,13 @@ func TestBlockValidateBasic(t *testing.T) {
 
 func TestBlockHash(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).Hash())
-	assert.Nil(t, MakeNewBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Hash())
+	assert.Nil(t, MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Hash())
 }
 
 func TestBlockMakePartSet(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).MakePartSet(2))
 
-	partSet := MakeNewBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
+	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
 	assert.Equal(t, 1, partSet.Total())
 }
@@ -119,7 +119,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
-	partSet := MakeNewBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(1024)
+	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(1024)
 	assert.NotNil(t, partSet)
 	assert.Equal(t, 3, partSet.Total())
 }
@@ -136,7 +136,7 @@ func TestBlockHashesTo(t *testing.T) {
 	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
-	block := MakeNewBlock(h, []Tx{Tx("Hello World")}, commit, evList)
+	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
 	block.ValidatorsHash = valSet.Hash()
 	assert.False(t, block.HashesTo([]byte{}))
 	assert.False(t, block.HashesTo([]byte("something else")))
@@ -144,7 +144,7 @@ func TestBlockHashesTo(t *testing.T) {
 }
 
 func TestBlockSize(t *testing.T) {
-	size := MakeNewBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Size()
+	size := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Size()
 	if size <= 0 {
 		t.Fatal("Size of the block is zero or negative")
 	}
@@ -155,7 +155,7 @@ func TestBlockString(t *testing.T) {
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringIndented(""))
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringShort())
 
-	block := MakeNewBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil)
+	block := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil)
 	assert.NotEqual(t, "nil-Block", block.String())
 	assert.NotEqual(t, "nil-Block", block.StringIndented(""))
 	assert.NotEqual(t, "nil-Block", block.StringShort())

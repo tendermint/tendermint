@@ -66,7 +66,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	require.NoError(t, err)
 	defer eventBus.Stop()
 
-	block := MakeNewBlock(0, []Tx{}, nil, []Evidence{})
+	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
@@ -213,7 +213,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	require.NoError(t, err)
 	defer eventBus.Stop()
 
-	block := MakeNewBlock(0, []Tx{}, nil, []Evidence{})
+	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},

@@ -58,7 +58,7 @@ func MakeVote(height int64, blockID BlockID, valSet *ValidatorSet, privVal PrivV
 // MakeBlock returns a new block with an empty header, except what can be
 // computed from itself.
 // It populates the same set of fields validated by ValidateBasic.
-func MakeNewBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
+func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
 	block := &Block{
 		Header: Header{
 			Height: height,
