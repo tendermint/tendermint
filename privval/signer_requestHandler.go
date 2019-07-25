@@ -34,7 +34,7 @@ func DefaultValidationRequestHandler(privVal types.PrivValidator, req RemoteSign
 		}
 
 	case *PingRequest:
-		err, res = nil, &PingResponse{};
+		err, res = nil, &PingResponse{}
 
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)

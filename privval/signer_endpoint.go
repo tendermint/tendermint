@@ -18,8 +18,8 @@ const (
 type signerEndpoint struct {
 	cmn.BaseService
 
-	mtx  sync.Mutex
-	conn net.Conn
+	connMtx sync.Mutex
+	conn    net.Conn
 
 	timeoutReadWrite time.Duration
 	//retryWait        time.Duration
@@ -30,26 +30,29 @@ type signerEndpoint struct {
 }
 
 // Close closes the underlying net.Conn.
-func (sd *signerEndpoint) Close() error {
-	sd.mtx.Lock()
-	defer sd.mtx.Unlock()
-
-	sd.dropConnection()
+func (se *signerEndpoint) Close() error {
+	se.DropConnection()
 	return nil
 }
 
 // IsConnected indicates if there is an active connection
-func (sl *signerEndpoint) IsConnected() bool {
-	sl.mtx.Lock()
-	defer sl.mtx.Unlock()
-	return sl.isConnected()
+func (se *signerEndpoint) IsConnected() bool {
+	se.connMtx.Lock()
+	defer se.connMtx.Unlock()
+	return se.isConnected()
 }
 
-func (se *signerEndpoint) isConnected() bool {
-	return se.IsRunning() && se.conn != nil
+// IsConnected indicates if there is an active connection
+func (se *signerEndpoint) DropConnection() {
+	se.connMtx.Lock()
+	defer se.connMtx.Unlock()
+	se.dropConnection()
 }
 
-func (se *signerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
+func (se *signerEndpoint) ReadMessage() (msg RemoteSignerMsg, err error) {
+	se.connMtx.Lock()
+	defer se.connMtx.Unlock()
+
 	if !se.isConnected() {
 		return nil, fmt.Errorf("endpoint is not connected")
 	}
@@ -65,20 +68,29 @@ func (se *signerEndpoint) readMessage() (msg RemoteSignerMsg, err error) {
 	const maxRemoteSignerMsgSize = 1024 * 10
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(se.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
-		err = errors.Wrap(ErrDialerReadTimeout, err.Error())
+		if err != nil {
+			err = errors.Wrap(ErrDialerReadTimeout, err.Error())
+		} else {
+			err = errors.Wrap(ErrDialerReadTimeout, "Empty error")
+		}
+		se.Logger.Debug("Dropping [read]", "obj", se)
 		se.dropConnection()
 	}
 
 	return
 }
 
-func (se *signerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
+func (se *signerEndpoint) WriteMessage(msg RemoteSignerMsg) (err error) {
+	se.connMtx.Lock()
+	defer se.connMtx.Unlock()
+
 	if !se.isConnected() {
 		return errors.Wrap(ErrListenerNoConnection, "endpoint is not connected")
 	}
 
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
+	se.Logger.Debug("Write::Error Resetting deadline", "obj", se)
 
 	err = se.conn.SetWriteDeadline(deadline)
 	if err != nil {
@@ -87,18 +99,26 @@ func (se *signerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
 
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(se.conn, msg)
 	if _, ok := err.(timeoutError); ok {
-		err = errors.Wrap(ErrDialerWriteTimeout, err.Error())
+		if err != nil {
+			err = errors.Wrap(ErrDialerWriteTimeout, err.Error())
+		} else {
+			err = errors.Wrap(ErrDialerWriteTimeout, "Empty error")
+		}
 		se.dropConnection()
 	}
 
 	return
 }
 
-func (sd *signerEndpoint) dropConnection() {
-	if sd.conn != nil {
-		if err := sd.conn.Close(); err != nil {
-			sd.Logger.Error("signerEndpoint::dropConnection", "err", err)
+func (se *signerEndpoint) isConnected() bool {
+	return se.IsRunning() && se.conn != nil
+}
+
+func (se *signerEndpoint) dropConnection() {
+	if se.conn != nil {
+		if err := se.conn.Close(); err != nil {
+			se.Logger.Error("signerEndpoint::dropConnection", "err", err)
 		}
-		sd.conn = nil
+		se.conn = nil
 	}
 }

@@ -3,6 +3,7 @@ package privval
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -22,12 +23,13 @@ type SignerListenerEndpoint struct {
 	connectedCh chan net.Conn
 
 	timeoutAccept time.Duration
+	mtx           sync.Mutex
 
 	// TODO: Unify
 	stopServiceLoopCh    chan struct{}
 	stoppedServiceLoopCh chan struct{}
-	stoppedPingLoopCh chan struct{}
-	pingTimer         *time.Ticker
+	stoppedPingLoopCh    chan struct{}
+	pingTimer            *time.Ticker
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
@@ -103,13 +105,15 @@ func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 	}
 
 	sl.Logger.Debug("SignerListener::Write")
-	err = sl.writeMessage(request)
+	err = sl.WriteMessage(request)
 	if err != nil {
+		sl.Logger.Debug("SignerListener::Write error")
 		return nil, err
 	}
+	sl.Logger.Debug("SignerListener::WriteFinished")
 
 	sl.Logger.Debug("SignerListener::Read")
-	res, err := sl.readMessage()
+	res, err := sl.ReadMessage()
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +182,6 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 					select {
 					case sl.connectedCh <- conn:
 						sl.Logger.Debug("SignerListener: Returned connection")
-						break
 					case <-sl.stopServiceLoopCh:
 						sl.Logger.Debug("SignerListener: Stopping service")
 						return
@@ -189,6 +192,8 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 				case sl.connectCh <- struct{}{}:
 				default:
 				}
+
+				sl.Logger.Debug("SignerListener: service loop end ")
 			}
 		case <-sl.stopServiceLoopCh:
 			return
@@ -209,7 +214,7 @@ func (sl *SignerListenerEndpoint) pingLoop() {
 				if err != nil {
 					sl.Logger.Error("SignerListener: Ping timeout")
 					// Drop and try to reconnect
-					sl.dropConnection()
+					sl.DropConnection()
 					sl.connectCh <- struct{}{}
 				} else {
 					sl.Logger.Info("Pong!")

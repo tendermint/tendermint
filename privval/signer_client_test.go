@@ -241,7 +241,7 @@ func brokenHandler(privVal types.PrivValidator, req RemoteSignerMsg, chainID str
 		res = &PubKeyResponse{nil, nil}
 
 	case *PingRequest:
-		err, res = nil, &PingResponse{};
+		err, res = nil, &PingResponse{}
 
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)

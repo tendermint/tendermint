@@ -31,21 +31,19 @@ func SignerDialerEndpointConnRetries(retries int) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.maxConnRetries = retries }
 }
 
-
-
 // SignerDialerEndpoint dials using its dialer and responds to any
 // signature requests using its privVal.
 type SignerDialerEndpoint struct {
 	signerEndpoint
 
-	dialer SocketDialer
+	dialer  SocketDialer
 	chainID string
 	privVal types.PrivValidator
 
 	retryWait      time.Duration
 	maxConnRetries int
 
-	mtx  sync.Mutex
+	mtx                      sync.Mutex
 	validationRequestHandler ValidationRequestHandlerFunc
 
 	stopServiceLoopCh    chan struct{}
@@ -102,7 +100,7 @@ func (sd *SignerDialerEndpoint) OnStop() {
 func (sd *SignerDialerEndpoint) SetRequestHandler(validationRequestHandler ValidationRequestHandlerFunc) {
 	sd.mtx.Lock()
 	defer sd.mtx.Unlock()
-	sd.validationRequestHandler = validationRequestHandler;
+	sd.validationRequestHandler = validationRequestHandler
 }
 
 func (sd *SignerDialerEndpoint) servicePendingRequest() {
@@ -110,7 +108,7 @@ func (sd *SignerDialerEndpoint) servicePendingRequest() {
 		return // Ignore error from listener closing.
 	}
 
-	req, err := sd.readMessage()
+	req, err := sd.ReadMessage()
 	if err != nil {
 		if err != io.EOF {
 			sd.Logger.Error("SignerDialer: HandleMessage", "err", err)
@@ -131,7 +129,7 @@ func (sd *SignerDialerEndpoint) servicePendingRequest() {
 	}
 
 	if res != nil {
-		err = sd.writeMessage(res)
+		err = sd.WriteMessage(res)
 		if err != nil {
 			sd.Logger.Error("handleMessage writeMessage", "err", err)
 		}
