@@ -395,7 +395,7 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 			}
 
 			// otherwise, we need to skip the next one too
-			i += 1
+			i++
 			continue
 		}
 
