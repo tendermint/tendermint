@@ -173,7 +173,6 @@ func getMockEndpoints(
 	privValidator types.PrivValidator,
 	addr string,
 	socketDialer SocketDialer,
-	startDialer bool,
 ) (*SignerListenerEndpoint, *SignerDialerEndpoint) {
 
 	var (
@@ -196,10 +195,8 @@ func getMockEndpoints(
 
 	startListenerEndpointAsync(t, listenerEndpoint, endpointIsOpenCh)
 
-	if startDialer {
-		require.NoError(t, dialerEndpoint.Start())
-		assert.True(t, dialerEndpoint.IsRunning())
-	}
+	require.NoError(t, dialerEndpoint.Start())
+	assert.True(t, dialerEndpoint.IsRunning())
 
 	<-endpointIsOpenCh
 

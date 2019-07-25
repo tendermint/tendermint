@@ -2,6 +2,7 @@ package privval
 
 import (
 	"io"
+	"sync"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -17,6 +18,8 @@ const (
 // SignerServiceEndpointOption sets an optional parameter on the SignerDialerEndpoint.
 type SignerServiceEndpointOption func(*SignerDialerEndpoint)
 
+type ValidationRequestHandlerFunc func(privVal types.PrivValidator, req RemoteSignerMsg, chainID string) (RemoteSignerMsg, error)
+
 // SignerDialerEndpointTimeoutReadWrite sets the read and write timeout for connections
 // from external signing processes.
 func SignerDialerEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceEndpointOption {
@@ -27,6 +30,8 @@ func SignerDialerEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceEn
 func SignerDialerEndpointConnRetries(retries int) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.maxConnRetries = retries }
 }
+
+
 
 // SignerDialerEndpoint dials using its dialer and responds to any
 // signature requests using its privVal.
@@ -40,7 +45,9 @@ type SignerDialerEndpoint struct {
 	retryWait      time.Duration
 	maxConnRetries int
 
-	// TODO: Unify
+	mtx  sync.Mutex
+	validationRequestHandler ValidationRequestHandlerFunc
+
 	stopServiceLoopCh    chan struct{}
 	stoppedServiceLoopCh chan struct{}
 }
@@ -65,6 +72,8 @@ func NewSignerDialerEndpoint(
 
 	se.BaseService = *cmn.NewBaseService(logger, "SignerDialerEndpoint", se)
 	se.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
+	se.validationRequestHandler = DefaultValidationRequestHandler
+
 	return se
 }
 
@@ -89,7 +98,14 @@ func (sd *SignerDialerEndpoint) OnStop() {
 	_ = sd.Close()
 }
 
-func (sd *SignerDialerEndpoint) handleRequest() {
+// SetRequestHandler override the default function that is used to service requests
+func (sd *SignerDialerEndpoint) SetRequestHandler(validationRequestHandler ValidationRequestHandlerFunc) {
+	sd.mtx.Lock()
+	defer sd.mtx.Unlock()
+	sd.validationRequestHandler = validationRequestHandler;
+}
+
+func (sd *SignerDialerEndpoint) servicePendingRequest() {
 	if !sd.IsRunning() {
 		return // Ignore error from listener closing.
 	}
@@ -102,16 +118,23 @@ func (sd *SignerDialerEndpoint) handleRequest() {
 		return
 	}
 
-	res, err := HandleValidatorRequest(req, sd.chainID, sd.privVal)
-	if err != nil {
-		// only log the error; we'll reply with an error in res
-		sd.Logger.Error("handleMessage handleMessage", "err", err)
+	var res RemoteSignerMsg
+	{
+		// limit the scope of the lock
+		sd.mtx.Lock()
+		defer sd.mtx.Unlock()
+		res, err = sd.validationRequestHandler(sd.privVal, req, sd.chainID)
+		if err != nil {
+			// only log the error; we'll reply with an error in res
+			sd.Logger.Error("handleMessage handleMessage", "err", err)
+		}
 	}
 
-	err = sd.writeMessage(res)
-	if err != nil {
-		sd.Logger.Error("handleMessage writeMessage", "err", err)
-		return
+	if res != nil {
+		err = sd.writeMessage(res)
+		if err != nil {
+			sd.Logger.Error("handleMessage writeMessage", "err", err)
+		}
 	}
 }
 
@@ -144,7 +167,7 @@ func (sd *SignerDialerEndpoint) serviceLoop() {
 			}
 
 			retries = 0
-			sd.handleRequest()
+			sd.servicePendingRequest()
 
 		case <-sd.stopServiceLoopCh:
 			return

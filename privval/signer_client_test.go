@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,10 +20,6 @@ type signerTestCase struct {
 }
 
 func getSignerTestCases(t *testing.T) []signerTestCase {
-	return getSignerTestCasesCustom(t, true)
-}
-
-func getSignerTestCasesCustom(t *testing.T, startDialer bool) []signerTestCase {
 	testCases := make([]signerTestCase, 0)
 
 	// Get test cases for each possible dialer (DialTCP / DialUnix / etc)
@@ -31,7 +28,7 @@ func getSignerTestCasesCustom(t *testing.T, startDialer bool) []signerTestCase {
 		mockPV := types.NewMockPV()
 
 		// get a pair of signer listener, signer dialer endpoints
-		sl, sd := getMockEndpoints(t, chainID, mockPV, dtc.addr, dtc.dialer, startDialer)
+		sl, sd := getMockEndpoints(t, chainID, mockPV, dtc.addr, dtc.dialer)
 		sc, err := NewSignerClient(sl)
 		require.NoError(t, err)
 
@@ -229,36 +226,46 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	}
 }
 
-type BrokenSignerDialerEndpoint struct {
-	*SignerDialerEndpoint
-}
+func brokenHandler(privVal types.PrivValidator, req RemoteSignerMsg, chainID string) (RemoteSignerMsg, error) {
+	var res RemoteSignerMsg
+	var err error
 
-func (ss BrokenSignerDialerEndpoint) writeMessage(msg RemoteSignerMsg) (err error) {
-	_, err = cdc.MarshalBinaryLengthPrefixedWriter(ss.conn, PubKeyResponse{})
-	ss.Logger.Info("Writing bad response!")
-	return
+	switch r := req.(type) {
+
+	// This is broken and will answer most requests with a pubkey response
+	case *PubKeyRequest:
+		res = &PubKeyResponse{nil, nil}
+	case *SignVoteRequest:
+		res = &PubKeyResponse{nil, nil}
+	case *SignProposalRequest:
+		res = &PubKeyResponse{nil, nil}
+
+	case *PingRequest:
+		err, res = nil, &PingResponse{};
+
+	default:
+		err = fmt.Errorf("unknown msg: %v", r)
+	}
+
+	return res, err
 }
 
 func TestSignerUnexpectedResponse(t *testing.T) {
-	for _, tc := range getSignerTestCasesCustom(t, false) {
+	for _, tc := range getSignerTestCases(t) {
 		func() {
 			tc.signerDialer.privVal = types.NewMockPV()
 			tc.mockPV = types.NewMockPV()
 
-			tmp := BrokenSignerDialerEndpoint{tc.signerDialer}
-			err := tmp.Start()
-			require.NoError(t, err)
-			defer tmp.Stop()
+			tc.signerDialer.SetRequestHandler(brokenHandler)
+
+			defer tc.signerDialer.Stop()
 			defer tc.signerClient.Close()
 
 			ts := time.Now()
 			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
 			e := tc.signerClient.SignVote(tc.chainID, want)
-			assert.Error(t, e)
-			if e != nil {
-				t.Log(e.Error())
-			}
+			assert.EqualError(t, e, "received unexpected response")
 		}()
 	}
 }
