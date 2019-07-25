@@ -22,11 +22,6 @@ type signerEndpoint struct {
 	conn    net.Conn
 
 	timeoutReadWrite time.Duration
-	//retryWait        time.Duration
-	//maxConnRetries   int
-
-	stopServiceLoopCh    chan struct{}
-	stoppedServiceLoopCh chan struct{}
 }
 
 // Close closes the underlying net.Conn.
