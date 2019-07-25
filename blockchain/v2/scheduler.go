@@ -93,17 +93,18 @@ type schedule struct {
 	// a list of blocks in which blockState
 	blockStates map[int64]blockState
 
-	// a map of peerID to schedule specific peer struct `scPeer`
+	// a map of peerID to schedule specific peer struct `scPeer` used to keep
+	// track of peer specific state
 	peers map[p2p.ID]*scPeer
 
 	// a map of heights to the peer we are waiting for a response from
 	pendingBlocks map[int64]p2p.ID
-	pendingTime   map[int64]time.Time
 
+	// the time at which a block was put in blockStatePending
+	pendingTime map[int64]time.Time
+
+	// the peerID of the peer which put the block in blockStateReceived
 	receivedBlocks map[int64]p2p.ID
-
-	peerTimeout  uint
-	peerMinSpeed uint
 }
 
 func newSchedule(initHeight int64) *schedule {
@@ -145,10 +146,6 @@ func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
 }
 
 func (sc *schedule) removePeer(peerID p2p.ID) error {
-	if _, ok := sc.peers[peerID]; !ok {
-		return fmt.Errorf("Can't find peer %s", peerID)
-	}
-
 	peer, ok := sc.peers[peerID]
 	if !ok {
 		return fmt.Errorf("Couldn't find peer %s", peerID)
@@ -475,6 +472,7 @@ func (sdr *Scheduler) handleBlockResponse(peerID p2p.ID, msg *bcBlockResponseEv,
 		return schedulerErrorEv{peerID, err}
 	}
 
+	// TODO: pass all the fields nesseary to process the block
 	return scBlockReceivedEv{peerID}
 }
 
@@ -527,7 +525,8 @@ func (sdr *Scheduler) handleTimeCheck(now time.Time) Events {
 	pendingBlocks := sdr.sc.numBlockInState(blockStatePending)
 	receivedBlocks := sdr.sc.numBlockInState(blockStateReceived)
 	todo := math.Min(float64(sdr.targetPending-pendingBlocks), float64(sdr.targetReceived-receivedBlocks))
-	for height := sdr.sc.minHeight(); height <= sdr.sc.maxHeight(); height++ {
+	maxHeight := sdr.sc.maxHeight()
+	for height := sdr.sc.minHeight(); height <= maxHeight; height++ {
 		if todo == 0 {
 			break
 		}
@@ -537,7 +536,7 @@ func (sdr *Scheduler) handleTimeCheck(now time.Time) Events {
 			err := sdr.sc.markPending(peerID, height, now)
 			if err != nil {
 				// this should be fatal
-				events = append(events, scSchedulerFailure{peerID: peerID, time: now, reason: err})
+				events = append(events, scSchedulerFailure{peerID: bestPeer, time: now, reason: err})
 				return events
 			}
 			events = append(events, scBlockRequestMessage{peerID: bestPeer.peerID, height: height})
