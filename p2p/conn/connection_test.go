@@ -57,7 +57,8 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 		msgB := make([]byte, aminoMsgLength)
 		_, err := server.Read(msgB)
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 		errCh <- err
 	}()
