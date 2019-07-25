@@ -536,7 +536,7 @@ func (sdr *Scheduler) handleTimeCheck(now time.Time) Events {
 			err := sdr.sc.markPending(peerID, height, now)
 			if err != nil {
 				// this should be fatal
-				events = append(events, scSchedulerFailure{peerID: bestPeer, time: now, reason: err})
+				events = append(events, scSchedulerFailure{peerID: bestPeer.peerID, time: now, reason: err})
 				return events
 			}
 			events = append(events, scBlockRequestMessage{peerID: bestPeer.peerID, height: height})
