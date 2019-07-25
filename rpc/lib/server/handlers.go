@@ -735,12 +735,10 @@ func (wsc *wsConnection) writeRoutine() {
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-			} else {
-				if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-					wsc.Logger.Error("Failed to write response", "err", err)
-					wsc.Stop()
-					return
-				}
+			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
+				wsc.Logger.Error("Failed to write response", "err", err)
+				wsc.Stop()
+				return
 			}
 		case <-wsc.Quit():
 			return

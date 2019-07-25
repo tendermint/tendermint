@@ -924,10 +924,8 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 		}
 		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
 		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
-	} else {
-		if !cs.replayMode {
-			cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
-		}
+	} else if !cs.replayMode {
+		cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 	}
 }
 

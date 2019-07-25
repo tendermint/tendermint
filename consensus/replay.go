@@ -320,11 +320,9 @@ func (h *Handshaker) ReplayBlocks(
 				}
 				state.Validators = types.NewValidatorSet(vals)
 				state.NextValidators = types.NewValidatorSet(vals)
-			} else {
+			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
-				if len(h.genDoc.Validators) == 0 {
-					return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
-				}
+				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
 			}
 
 			if res.ConsensusParams != nil {
