@@ -29,4 +29,5 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
+- [p2p] [\#3644](https://github.com/tendermint/tendermint/pull/3644) Fix error logging for connection stop (@defunctzombie)
 - [rpc] \#3813 Return err if page is incorrect (less than 0 or greater than total pages)
