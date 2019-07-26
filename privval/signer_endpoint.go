@@ -37,6 +37,34 @@ func (se *signerEndpoint) IsConnected() bool {
 	return se.isConnected()
 }
 
+// TryGetConnection retrieves a connection if it is already available
+func (se *signerEndpoint) GetAvailableConnection(connectionAvailableCh chan net.Conn) bool {
+	se.connMtx.Lock()
+	defer se.connMtx.Unlock()
+
+	// Is there a connection ready?
+	select {
+	case se.conn = <-connectionAvailableCh:
+		return true
+	default:
+	}
+	return false
+}
+
+// TryGetConnection retrieves a connection if it is already available
+func (se *signerEndpoint) WaitConnection(connectionAvailableCh chan net.Conn, maxWait time.Duration) error {
+	se.connMtx.Lock()
+	defer se.connMtx.Unlock()
+
+	select {
+	case se.conn = <-connectionAvailableCh:
+	case <-time.After(maxWait):
+		return ErrListenerTimeout
+	}
+
+	return nil
+}
+
 // IsConnected indicates if there is an active connection
 func (se *signerEndpoint) DropConnection() {
 	se.connMtx.Lock()
@@ -44,6 +72,7 @@ func (se *signerEndpoint) DropConnection() {
 	se.dropConnection()
 }
 
+// ReadMessage reads a message from the endpoint
 func (se *signerEndpoint) ReadMessage() (msg RemoteSignerMsg, err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
@@ -75,6 +104,7 @@ func (se *signerEndpoint) ReadMessage() (msg RemoteSignerMsg, err error) {
 	return
 }
 
+// WriteMessage writes a message from the endpoint
 func (se *signerEndpoint) WriteMessage(msg RemoteSignerMsg) (err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()

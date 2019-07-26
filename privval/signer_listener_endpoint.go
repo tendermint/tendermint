@@ -18,9 +18,9 @@ type SignerValidatorEndpointOption func(*SignerListenerEndpoint)
 type SignerListenerEndpoint struct {
 	signerEndpoint
 
-	listener    net.Listener
-	connectCh   chan struct{}
-	connectedCh chan net.Conn
+	listener              net.Listener
+	connectRequestCh      chan struct{}
+	connectionAvailableCh chan net.Conn
 
 	timeoutAccept time.Duration
 	mtx           sync.Mutex
@@ -51,14 +51,15 @@ func (sl *SignerListenerEndpoint) OnStart() error {
 	sl.stopLoopsCh = make(chan struct{})
 	sl.stoppedServiceLoopCh = make(chan struct{})
 	sl.stoppedPingLoopCh = make(chan struct{})
+	sl.connectRequestCh = make(chan struct{})
+	sl.connectionAvailableCh = make(chan net.Conn)
 
 	sl.pingTimer = time.NewTicker(defaultPingPeriodMilliseconds * time.Millisecond)
 
-	sl.connectCh = make(chan struct{})
-	sl.connectedCh = make(chan net.Conn)
 	go sl.serviceLoop()
 	go sl.pingLoop()
-	sl.connectCh <- struct{}{}
+
+	sl.connectRequestCh <- struct{}{}
 
 	return nil
 }
@@ -114,32 +115,23 @@ func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 }
 
 func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
-	if sl.isConnected() {
+	if sl.IsConnected() {
 		return nil
 	}
 
-	// Is there a connection ready?
-	select {
-	case sl.conn = <-sl.connectedCh:
+	// Is there a connection ready? then use it
+	if sl.GetAvailableConnection(sl.connectionAvailableCh) {
 		return nil
-	default:
-	}
-
-	// should we trigger a reconnect?
-	select {
-	case sl.connectCh <- struct{}{}:
-		break
-	default:
-		break
 	}
 
 	// block until connected or timeout
-	select {
-	case sl.conn = <-sl.connectedCh:
-		break
-	case <-time.After(maxWait):
-		return ErrListenerTimeout
+	sl.triggerConnect()
+	err := sl.WaitConnection(sl.connectionAvailableCh, maxWait)
+	if err != nil {
+		return err
 	}
+
+	return nil
 }
 
 func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
@@ -156,9 +148,18 @@ func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
 	return conn, nil
 }
 
+func (sl *SignerListenerEndpoint) triggerConnect() {
+	select {
+	case sl.connectRequestCh <- struct{}{}:
+		break
+	default:
+		break
+	}
+}
+
 func (sl *SignerListenerEndpoint) triggerReconnect() {
 	sl.DropConnection()
-	sl.connectCh <- struct{}{}
+	sl.triggerConnect()
 }
 
 func (sl *SignerListenerEndpoint) serviceLoop() {
@@ -166,7 +167,7 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 
 	for {
 		select {
-		case <-sl.connectCh:
+		case <-sl.connectRequestCh:
 			{
 				sl.Logger.Info("SignerListener: Listening for new connection")
 
@@ -176,14 +177,14 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 
 					// We have a good connection, wait for someone that needs one otherwise cancellation
 					select {
-					case sl.connectedCh <- conn:
+					case sl.connectionAvailableCh <- conn:
 					case <-sl.stopLoopsCh:
 						return
 					}
 				}
 
 				select {
-				case sl.connectCh <- struct{}{}:
+				case sl.connectRequestCh <- struct{}{}:
 				default:
 				}
 			}
