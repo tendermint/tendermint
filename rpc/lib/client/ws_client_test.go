@@ -212,7 +212,8 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 		select {
 		case resp := <-c.ResponsesCh:
 			if resp.Error != nil {
-				t.Fatalf("unexpected error: %v", resp.Error)
+				t.Errorf("unexpected error: %v", resp.Error)
+				return
 			}
 			if resp.Result != nil {
 				wg.Done()

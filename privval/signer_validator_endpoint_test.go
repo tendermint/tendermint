@@ -331,9 +331,10 @@ func TestErrUnexpectedResponse(t *testing.T) {
 			// we do not want to Start() the remote signer here and instead use the connection to
 			// reply with intentionally wrong replies below:
 			rsConn, err := serviceEndpoint.connect()
-			defer rsConn.Close()
 			require.NoError(t, err)
 			require.NotNil(t, rsConn)
+			defer rsConn.Close()
+
 			// send over public key to get the remote signer running:
 			go testReadWriteResponse(t, &PubKeyResponse{}, rsConn)
 			<-readyCh

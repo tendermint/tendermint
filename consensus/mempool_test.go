@@ -11,10 +11,10 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-cmn/db"
 )
 
 // for testing
@@ -155,12 +155,14 @@ func TestMempoolRmBadTx(t *testing.T) {
 		// and the tx should get removed from the pool
 		err := assertMempool(cs.txNotifier).CheckTx(txBytes, func(r *abci.Response) {
 			if r.GetCheckTx().Code != code.CodeTypeBadNonce {
-				t.Fatalf("expected checktx to return bad nonce, got %v", r)
+				t.Errorf("expected checktx to return bad nonce, got %v", r)
+				return
 			}
 			checkTxRespCh <- struct{}{}
 		})
 		if err != nil {
-			t.Fatalf("Error after CheckTx: %v", err)
+			t.Errorf("Error after CheckTx: %v", err)
+			return
 		}
 
 		// check for the tx
@@ -180,7 +182,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-checkTxRespCh:
 		// success
 	case <-ticker:
-		t.Fatalf("Timed out waiting for tx to return")
+		t.Errorf("Timed out waiting for tx to return")
+		return
 	}
 
 	// Wait until the tx is removed
@@ -189,7 +192,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-emptyMempoolCh:
 		// success
 	case <-ticker:
-		t.Fatalf("Timed out waiting for tx to be removed")
+		t.Errorf("Timed out waiting for tx to be removed")
+		return
 	}
 }
 
