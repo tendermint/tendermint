@@ -588,7 +588,7 @@ func NewNode(config *cfg.Config,
 
 	pubKey := privValidator.GetPubKey()
 	if pubKey == nil {
-		// TODO: planned for next PR. GetPubKey should return errors
+		// TODO: GetPubKey should return errors - https://github.com/tendermint/tendermint/issues/3602
 		return nil, errors.New("could not retrieve public key from private validator")
 	}
 

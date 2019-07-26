@@ -18,7 +18,11 @@ const (
 // SignerServiceEndpointOption sets an optional parameter on the SignerDialerEndpoint.
 type SignerServiceEndpointOption func(*SignerDialerEndpoint)
 
-type ValidationRequestHandlerFunc func(privVal types.PrivValidator, req RemoteSignerMsg, chainID string) (RemoteSignerMsg, error)
+// ValidationRequestHandlerFunc handles different remoteSigner requests
+type ValidationRequestHandlerFunc func(
+	privVal types.PrivValidator,
+	req RemoteSignerMsg,
+	chainID string) (RemoteSignerMsg, error)
 
 // SignerDialerEndpointTimeoutReadWrite sets the read and write timeout for connections
 // from external signing processes.

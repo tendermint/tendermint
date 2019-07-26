@@ -57,172 +57,156 @@ func TestSignerClose(t *testing.T) {
 
 func TestSignerPing(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			err := tc.signerClient.Ping()
-			assert.NoError(t, err)
-		}()
+		err := tc.signerClient.Ping()
+		assert.NoError(t, err)
 	}
 }
 
 func TestSignerGetPubKey(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			pubKey := tc.signerClient.GetPubKey()
-			expectedPubKey := tc.mockPV.GetPubKey()
+		pubKey := tc.signerClient.GetPubKey()
+		expectedPubKey := tc.mockPV.GetPubKey()
 
-			assert.Equal(t, expectedPubKey, pubKey)
+		assert.Equal(t, expectedPubKey, pubKey)
 
-			addr := tc.signerClient.GetPubKey().Address()
-			expectedAddr := tc.mockPV.GetPubKey().Address()
+		addr := tc.signerClient.GetPubKey().Address()
+		expectedAddr := tc.mockPV.GetPubKey().Address()
 
-			assert.Equal(t, expectedAddr, addr)
-		}()
+		assert.Equal(t, expectedAddr, addr)
 	}
 }
 
 func TestSignerProposal(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			ts := time.Now()
-			want := &types.Proposal{Timestamp: ts}
-			have := &types.Proposal{Timestamp: ts}
+		ts := time.Now()
+		want := &types.Proposal{Timestamp: ts}
+		have := &types.Proposal{Timestamp: ts}
 
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			require.NoError(t, tc.mockPV.SignProposal(tc.chainID, want))
-			require.NoError(t, tc.signerClient.SignProposal(tc.chainID, have))
+		require.NoError(t, tc.mockPV.SignProposal(tc.chainID, want))
+		require.NoError(t, tc.signerClient.SignProposal(tc.chainID, have))
 
-			assert.Equal(t, want.Signature, have.Signature)
-		}()
+		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
 
 func TestSignerVote(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			ts := time.Now()
-			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
-			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		ts := time.Now()
+		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
-			require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
 
-			assert.Equal(t, want.Signature, have.Signature)
-		}()
+		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
 
 func TestSignerVoteResetDeadline(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			ts := time.Now()
-			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
-			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		ts := time.Now()
+		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			time.Sleep(testTimeoutReadWrite2o3)
+		time.Sleep(testTimeoutReadWrite2o3)
 
-			require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
-			require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
-			assert.Equal(t, want.Signature, have.Signature)
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
+		assert.Equal(t, want.Signature, have.Signature)
 
-			// TODO(jleni): Clarify what is actually being tested
+		// TODO(jleni): Clarify what is actually being tested
 
-			// This would exceed the deadline if it was not extended by the previous message
-			time.Sleep(testTimeoutReadWrite2o3)
+		// This would exceed the deadline if it was not extended by the previous message
+		time.Sleep(testTimeoutReadWrite2o3)
 
-			require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
-			require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
-			assert.Equal(t, want.Signature, have.Signature)
-		}()
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
+		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
 
 func TestSignerVoteKeepAlive(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			ts := time.Now()
-			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
-			have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		ts := time.Now()
+		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		have := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			// Check that even if the client does not request a
-			// signature for a long time. The service is still available
+		// Check that even if the client does not request a
+		// signature for a long time. The service is still available
 
-			// in this particular case, we use the dialer logger to ensure that
-			// test messages are properly interleaved in the test logs
-			tc.signerDialer.Logger.Debug("TEST: Forced Wait -------------------------------------------------")
-			time.Sleep(testTimeoutReadWrite * 3)
-			tc.signerDialer.Logger.Debug("TEST: Forced Wait DONE---------------------------------------------")
+		// in this particular case, we use the dialer logger to ensure that
+		// test messages are properly interleaved in the test logs
+		tc.signerDialer.Logger.Debug("TEST: Forced Wait -------------------------------------------------")
+		time.Sleep(testTimeoutReadWrite * 3)
+		tc.signerDialer.Logger.Debug("TEST: Forced Wait DONE---------------------------------------------")
 
-			require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
-			require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, want))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, have))
 
-			assert.Equal(t, want.Signature, have.Signature)
-		}()
+		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
 
 func TestSignerSignProposalErrors(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			// Replace service with a mock that always fails
-			tc.signerDialer.privVal = types.NewErroringMockPV()
-			tc.mockPV = types.NewErroringMockPV()
+		// Replace service with a mock that always fails
+		tc.signerDialer.privVal = types.NewErroringMockPV()
+		tc.mockPV = types.NewErroringMockPV()
 
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			ts := time.Now()
-			proposal := &types.Proposal{Timestamp: ts}
-			err := tc.signerClient.SignProposal(tc.chainID, proposal)
-			require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
+		ts := time.Now()
+		proposal := &types.Proposal{Timestamp: ts}
+		err := tc.signerClient.SignProposal(tc.chainID, proposal)
+		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-			err = tc.mockPV.SignProposal(tc.chainID, proposal)
-			require.Error(t, err)
+		err = tc.mockPV.SignProposal(tc.chainID, proposal)
+		require.Error(t, err)
 
-			err = tc.signerClient.SignProposal(tc.chainID, proposal)
-			require.Error(t, err)
-		}()
+		err = tc.signerClient.SignProposal(tc.chainID, proposal)
+		require.Error(t, err)
 	}
 }
 
 func TestSignerSignVoteErrors(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			ts := time.Now()
-			vote := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		ts := time.Now()
+		vote := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			// Replace signer service privval with one that always fails
-			tc.signerDialer.privVal = types.NewErroringMockPV()
-			tc.mockPV = types.NewErroringMockPV()
+		// Replace signer service privval with one that always fails
+		tc.signerDialer.privVal = types.NewErroringMockPV()
+		tc.mockPV = types.NewErroringMockPV()
 
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			err := tc.signerClient.SignVote(tc.chainID, vote)
-			require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
+		err := tc.signerClient.SignVote(tc.chainID, vote)
+		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-			err = tc.mockPV.SignVote(tc.chainID, vote)
-			require.Error(t, err)
+		err = tc.mockPV.SignVote(tc.chainID, vote)
+		require.Error(t, err)
 
-			err = tc.signerClient.SignVote(tc.chainID, vote)
-			require.Error(t, err)
-		}()
+		err = tc.signerClient.SignVote(tc.chainID, vote)
+		require.Error(t, err)
 	}
 }
 
@@ -252,20 +236,18 @@ func brokenHandler(privVal types.PrivValidator, req RemoteSignerMsg, chainID str
 
 func TestSignerUnexpectedResponse(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		func() {
-			tc.signerDialer.privVal = types.NewMockPV()
-			tc.mockPV = types.NewMockPV()
+		tc.signerDialer.privVal = types.NewMockPV()
+		tc.mockPV = types.NewMockPV()
 
-			tc.signerDialer.SetRequestHandler(brokenHandler)
+		tc.signerDialer.SetRequestHandler(brokenHandler)
 
-			defer tc.signerDialer.Stop()
-			defer tc.signerClient.Close()
+		defer tc.signerDialer.Stop()
+		defer tc.signerClient.Close()
 
-			ts := time.Now()
-			want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
+		ts := time.Now()
+		want := &types.Vote{Timestamp: ts, Type: types.PrecommitType}
 
-			e := tc.signerClient.SignVote(tc.chainID, want)
-			assert.EqualError(t, e, "received unexpected response")
-		}()
+		e := tc.signerClient.SignVote(tc.chainID, want)
+		assert.EqualError(t, e, "received unexpected response")
 	}
 }

@@ -25,8 +25,7 @@ type SignerListenerEndpoint struct {
 	timeoutAccept time.Duration
 	mtx           sync.Mutex
 
-	// TODO: Unify
-	stopServiceLoopCh    chan struct{}
+	stopLoopsCh          chan struct{}
 	stoppedServiceLoopCh chan struct{}
 	stoppedPingLoopCh    chan struct{}
 	pingTimer            *time.Ticker
@@ -49,19 +48,17 @@ func NewSignerListenerEndpoint(
 
 // OnStart implements cmn.Service.
 func (sl *SignerListenerEndpoint) OnStart() error {
-	sl.stopServiceLoopCh = make(chan struct{})
+	sl.stopLoopsCh = make(chan struct{})
 	sl.stoppedServiceLoopCh = make(chan struct{})
 	sl.stoppedPingLoopCh = make(chan struct{})
 
 	sl.pingTimer = time.NewTicker(defaultPingPeriodMilliseconds * time.Millisecond)
 
-	/// FIXME: Specific
 	sl.connectCh = make(chan struct{})
 	sl.connectedCh = make(chan net.Conn)
 	go sl.serviceLoop()
 	go sl.pingLoop()
 	sl.connectCh <- struct{}{}
-	////
 
 	return nil
 }
@@ -80,7 +77,7 @@ func (sl *SignerListenerEndpoint) OnStop() {
 	sl.pingTimer.Stop()
 
 	// Stop service/ping loops
-	close(sl.stopServiceLoopCh)
+	close(sl.stopLoopsCh)
 
 	<-sl.stoppedServiceLoopCh
 	<-sl.stoppedPingLoopCh
@@ -98,21 +95,16 @@ func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 	sl.mtx.Lock()
 	defer sl.mtx.Unlock()
 
-	sl.Logger.Debug("SignerListener::EnsureConnection")
 	err := sl.ensureConnection(sl.timeoutAccept)
 	if err != nil {
 		return nil, err
 	}
 
-	sl.Logger.Debug("SignerListener::Write")
 	err = sl.WriteMessage(request)
 	if err != nil {
-		sl.Logger.Debug("SignerListener::Write error")
 		return nil, err
 	}
-	sl.Logger.Debug("SignerListener::WriteFinished")
 
-	sl.Logger.Debug("SignerListener::Read")
 	res, err := sl.ReadMessage()
 	if err != nil {
 		return nil, err
@@ -122,32 +114,32 @@ func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSi
 }
 
 func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
-	if !sl.isConnected() {
-		// Is there a connection ready?
-		select {
-		case sl.conn = <-sl.connectedCh:
-			return nil
-		default:
-		}
-
-		// should we trigger a reconnect?
-		select {
-		case sl.connectCh <- struct{}{}:
-			break
-		default:
-			break
-		}
-
-		// block until connected or timeout
-		select {
-		case sl.conn = <-sl.connectedCh:
-			break
-		case <-time.After(maxWait):
-			return ErrListenerTimeout
-		}
+	if sl.isConnected() {
+		return nil
 	}
 
-	return nil
+	// Is there a connection ready?
+	select {
+	case sl.conn = <-sl.connectedCh:
+		return nil
+	default:
+	}
+
+	// should we trigger a reconnect?
+	select {
+	case sl.connectCh <- struct{}{}:
+		break
+	default:
+		break
+	}
+
+	// block until connected or timeout
+	select {
+	case sl.conn = <-sl.connectedCh:
+		break
+	case <-time.After(maxWait):
+		return ErrListenerTimeout
+	}
 }
 
 func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
@@ -161,8 +153,12 @@ func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
 		return nil, err
 	}
 
-	sl.Logger.Info("SignerListener: New connection")
 	return conn, nil
+}
+
+func (sl *SignerListenerEndpoint) triggerReconnect() {
+	sl.DropConnection()
+	sl.connectCh <- struct{}{}
 }
 
 func (sl *SignerListenerEndpoint) serviceLoop() {
@@ -178,12 +174,10 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 				if err == nil {
 					sl.Logger.Info("SignerListener: Connected")
 
-					// We have a good connection, wait for someone that needs one or cancellation
+					// We have a good connection, wait for someone that needs one otherwise cancellation
 					select {
 					case sl.connectedCh <- conn:
-						sl.Logger.Debug("SignerListener: Returned connection")
-					case <-sl.stopServiceLoopCh:
-						sl.Logger.Debug("SignerListener: Stopping service")
+					case <-sl.stopLoopsCh:
 						return
 					}
 				}
@@ -192,10 +186,8 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 				case sl.connectCh <- struct{}{}:
 				default:
 				}
-
-				sl.Logger.Debug("SignerListener: service loop end ")
 			}
-		case <-sl.stopServiceLoopCh:
+		case <-sl.stopLoopsCh:
 			return
 		}
 	}
@@ -208,19 +200,13 @@ func (sl *SignerListenerEndpoint) pingLoop() {
 		select {
 		case <-sl.pingTimer.C:
 			{
-				sl.Logger.Info("Ping!")
 				_, err := sl.SendRequest(&PingRequest{})
-
 				if err != nil {
 					sl.Logger.Error("SignerListener: Ping timeout")
-					// Drop and try to reconnect
-					sl.DropConnection()
-					sl.connectCh <- struct{}{}
-				} else {
-					sl.Logger.Info("Pong!")
+					sl.triggerReconnect()
 				}
 			}
-		case <-sl.stopServiceLoopCh:
+		case <-sl.stopLoopsCh:
 			return
 		}
 	}

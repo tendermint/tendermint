@@ -1,6 +1,8 @@
 package privval
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
@@ -11,19 +13,19 @@ import (
 
 func getDialerTestCases(t *testing.T) []dialerTestCase {
 	tcpAddr := GetFreeLocalhostAddrPort()
-	//unixFilePath, err := testUnixAddr()
-	//require.NoError(t, err)
-	//unixAddr := fmt.Sprintf("unix://%s", unixFilePath)
+	unixFilePath, err := testUnixAddr()
+	require.NoError(t, err)
+	unixAddr := fmt.Sprintf("unix://%s", unixFilePath)
 
 	return []dialerTestCase{
 		{
 			addr:   tcpAddr,
 			dialer: DialTCPFn(tcpAddr, testTimeoutReadWrite, ed25519.GenPrivKey()),
 		},
-		//{
-		//	addr:   unixAddr,
-		//	dialer: DialUnixFn(unixFilePath),
-		//},
+		{
+			addr:   unixAddr,
+			dialer: DialUnixFn(unixFilePath),
+		},
 	}
 }
 

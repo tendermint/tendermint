@@ -15,7 +15,6 @@ type SignerClient struct {
 	endpoint *SignerListenerEndpoint
 }
 
-// Check that SignerClient implements PrivValidator.
 var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
@@ -50,21 +49,18 @@ func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
 
 // Ping sends a ping request to the remote signer
 func (sc *SignerClient) Ping() error {
-	sc.endpoint.Logger.Info("Sending ping request")
 	response, err := sc.endpoint.SendRequest(&PingRequest{})
 
 	if err != nil {
-		sc.endpoint.Logger.Error("error sending ping request", "err", err)
+		sc.endpoint.Logger.Error("SignerClient::Ping", "err", err)
 		return nil
 	}
 
 	_, ok := response.(*PingResponse)
 	if !ok {
-		sc.endpoint.Logger.Error("response is not PingResponse")
+		sc.endpoint.Logger.Error("SignerClient::Ping", "err", "response != PingResponse")
 		return err
 	}
-
-	sc.endpoint.Logger.Info("Received ping response")
 
 	return nil
 }
@@ -73,13 +69,13 @@ func (sc *SignerClient) Ping() error {
 func (sc *SignerClient) GetPubKey() crypto.PubKey {
 	response, err := sc.endpoint.SendRequest(&PubKeyRequest{})
 	if err != nil {
-		sc.endpoint.Logger.Error("error sending request", "err", err)
+		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", err)
 		return nil
 	}
 
 	pubKeyResp, ok := response.(*PubKeyResponse)
 	if !ok {
-		sc.endpoint.Logger.Error("response is not PubKeyResponse")
+		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != PubKeyResponse")
 		return nil
 	}
 
@@ -93,8 +89,6 @@ func (sc *SignerClient) GetPubKey() crypto.PubKey {
 
 // SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
-	sc.endpoint.Logger.Debug("SignerClient::SignVote")
-
 	response, err := sc.endpoint.SendRequest(&SignVoteRequest{Vote: vote})
 	if err != nil {
 		sc.endpoint.Logger.Error("SignerClient::SignVote", "err", err)
@@ -103,6 +97,7 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 
 	resp, ok := response.(*SignedVoteResponse)
 	if !ok {
+		sc.endpoint.Logger.Error("SignerClient::GetPubKey", "err", "response != SignedVoteResponse")
 		return ErrUnexpectedResponse
 	}
 
@@ -118,11 +113,13 @@ func (sc *SignerClient) SignVote(chainID string, vote *types.Vote) error {
 func (sc *SignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
 	response, err := sc.endpoint.SendRequest(&SignProposalRequest{Proposal: proposal})
 	if err != nil {
+		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", err)
 		return err
 	}
 
 	resp, ok := response.(*SignedProposalResponse)
 	if !ok {
+		sc.endpoint.Logger.Error("SignerClient::SignProposal", "err", "response != SignedProposalResponse")
 		return ErrUnexpectedResponse
 	}
 	if resp.Error != nil {
