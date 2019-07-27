@@ -31,7 +31,7 @@ func SignerDialerEndpointConnRetries(retries int) SignerServiceEndpointOption {
 type SignerDialerEndpoint struct {
 	signerEndpoint
 
-	dialer  SocketDialer
+	dialer SocketDialer
 
 	retryWait      time.Duration
 	retries        int

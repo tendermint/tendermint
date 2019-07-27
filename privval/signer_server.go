@@ -18,8 +18,8 @@ type SignerServer struct {
 	cmn.BaseService
 
 	endpoint *SignerDialerEndpoint
-	chainID string
-	privVal types.PrivValidator
+	chainID  string
+	privVal  types.PrivValidator
 
 	handlerMtx               sync.Mutex
 	validationRequestHandler ValidationRequestHandlerFunc
@@ -28,8 +28,8 @@ type SignerServer struct {
 func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, privVal types.PrivValidator) *SignerServer {
 	ss := &SignerServer{
 		endpoint: endpoint,
-		chainID: chainID,
-		privVal: privVal,
+		chainID:  chainID,
+		privVal:  privVal,
 	}
 
 	ss.BaseService = *cmn.NewBaseService(endpoint.Logger, "SignerServer", ss)

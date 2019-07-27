@@ -13,9 +13,9 @@ func (e EndpointTimeoutError) Temporary() bool { return true }
 
 // Socket errors.
 var (
-	ErrUnexpectedResponse   = fmt.Errorf("received unexpected response")
-	ErrNoConnection    = fmt.Errorf("endpoint is not connected")
-	ErrConnectionTimeout = EndpointTimeoutError{}
+	ErrUnexpectedResponse = fmt.Errorf("received unexpected response")
+	ErrNoConnection       = fmt.Errorf("endpoint is not connected")
+	ErrConnectionTimeout  = EndpointTimeoutError{}
 
 	ErrReadTimeout  = fmt.Errorf("endpoint read timed out")
 	ErrWriteTimeout = fmt.Errorf("endpoint write timed out")
