@@ -89,7 +89,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			var (
 				logger           = log.TestingLogger()
 				chainID          = common.RandStr(12)
-				mockPV = types.NewMockPV()
+				mockPV           = types.NewMockPV()
 				endpointIsOpenCh = make(chan struct{})
 				thisConnTimeout  = testTimeoutReadWrite
 				listenerEndpoint = newSignerListenerEndpoint(logger, tc.addr, thisConnTimeout)

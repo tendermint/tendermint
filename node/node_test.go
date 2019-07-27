@@ -136,21 +136,25 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	config.BaseConfig.PrivValidatorListenAddr = addr
 
 	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
-	pvsc := privval.NewSignerDialerEndpoint(
+	dialerEndpoint := privval.NewSignerDialerEndpoint(
 		log.TestingLogger(),
-		config.ChainID(),
-		types.NewMockPV(),
 		dialer,
 	)
-	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
+	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
+
+	signerServer := privval.NewSignerServer(
+		dialerEndpoint,
+		config.ChainID(),
+		types.NewMockPV(),
+	)
 
 	go func() {
-		err := pvsc.Start()
+		err := signerServer.Start()
 		if err != nil {
 			panic(err)
 		}
 	}()
-	defer pvsc.Stop()
+	defer signerServer.Stop()
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -178,13 +182,17 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
 	dialer := privval.DialUnixFn(tmpfile)
-	pvsc := privval.NewSignerDialerEndpoint(
+	dialerEndpoint := privval.NewSignerDialerEndpoint(
 		log.TestingLogger(),
-		config.ChainID(),
-		types.NewMockPV(),
 		dialer,
 	)
-	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(pvsc)
+	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
+
+	pvsc := privval.NewSignerServer(
+		dialerEndpoint,
+		config.ChainID(),
+		types.NewMockPV(),
+	)
 
 	go func() {
 		err := pvsc.Start()

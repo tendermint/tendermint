@@ -128,6 +128,7 @@ func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
 	}
 
 	// wait for a new conn
+	sl.Logger.Info("SignerListener: Listening for new connection")
 	conn, err := sl.listener.Accept()
 	if err != nil {
 		return nil, err
@@ -155,8 +156,6 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 		select {
 		case <-sl.connectRequestCh:
 			{
-				sl.Logger.Info("SignerListener: Listening for new connection")
-
 				conn, err := sl.acceptNewConnection()
 				if err == nil {
 					sl.Logger.Info("SignerListener: Connected")

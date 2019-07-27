@@ -76,6 +76,7 @@ func (sd *SignerDialerEndpoint) ensureConnection() error {
 			time.Sleep(sd.retryWait)
 		} else {
 			sd.SetConnection(conn)
+			sd.Logger.Debug("SignerDialer: Connection Ready")
 			sd.retries = 0
 			return nil
 		}

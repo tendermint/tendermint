@@ -143,7 +143,7 @@ func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
 }
 
 func (se *signerEndpoint) isConnected() bool {
-	return se.IsRunning() && se.conn != nil
+	return se.conn != nil
 }
 
 func (se *signerEndpoint) dropConnection() {
