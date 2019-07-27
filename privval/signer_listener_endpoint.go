@@ -80,7 +80,7 @@ func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error
 }
 
 // SendRequest ensures there is a connection, sends a request and waits for a response
-func (sl *SignerListenerEndpoint) SendRequest(request RemoteSignerMsg) (RemoteSignerMsg, error) {
+func (sl *SignerListenerEndpoint) SendRequest(request SignerMessage) (SignerMessage, error) {
 	sl.mtx.Lock()
 	defer sl.mtx.Unlock()
 

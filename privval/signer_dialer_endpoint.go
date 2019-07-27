@@ -1,13 +1,10 @@
 package privval
 
 import (
-	"io"
-	"sync"
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -17,12 +14,6 @@ const (
 
 // SignerServiceEndpointOption sets an optional parameter on the SignerDialerEndpoint.
 type SignerServiceEndpointOption func(*SignerDialerEndpoint)
-
-// ValidationRequestHandlerFunc handles different remoteSigner requests
-type ValidationRequestHandlerFunc func(
-	privVal types.PrivValidator,
-	req RemoteSignerMsg,
-	chainID string) (RemoteSignerMsg, error)
 
 // SignerDialerEndpointTimeoutReadWrite sets the read and write timeout for connections
 // from external signing processes.
@@ -41,17 +32,10 @@ type SignerDialerEndpoint struct {
 	signerEndpoint
 
 	dialer  SocketDialer
-	chainID string
-	privVal types.PrivValidator
 
 	retryWait      time.Duration
+	retries        int
 	maxConnRetries int
-
-	mtx                      sync.Mutex
-	validationRequestHandler ValidationRequestHandlerFunc
-
-	stopServiceLoopCh    chan struct{}
-	stoppedServiceLoopCh chan struct{}
 }
 
 // NewSignerDialerEndpoint returns a SignerDialerEndpoint that will dial using the given
@@ -59,120 +43,45 @@ type SignerDialerEndpoint struct {
 // using the given privVal.
 func NewSignerDialerEndpoint(
 	logger log.Logger,
-	chainID string,
-	privVal types.PrivValidator,
 	dialer SocketDialer,
 ) *SignerDialerEndpoint {
 
-	se := &SignerDialerEndpoint{
+	sd := &SignerDialerEndpoint{
 		dialer:         dialer,
 		retryWait:      defaultRetryWaitMilliseconds * time.Millisecond,
 		maxConnRetries: defaultMaxDialRetries,
-		chainID:        chainID,
-		privVal:        privVal,
 	}
 
-	se.BaseService = *cmn.NewBaseService(logger, "SignerDialerEndpoint", se)
-	se.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
-	se.validationRequestHandler = DefaultValidationRequestHandler
+	sd.BaseService = *cmn.NewBaseService(logger, "SignerDialerEndpoint", sd)
+	sd.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
 
-	return se
+	return sd
 }
 
-// OnStart implements cmn.Service.
-func (sd *SignerDialerEndpoint) OnStart() error {
-	sd.stopServiceLoopCh = make(chan struct{})
-	sd.stoppedServiceLoopCh = make(chan struct{})
-
-	go sd.serviceLoop()
-
-	return nil
-}
-
-// OnStop implements cmn.Service.
-func (sd *SignerDialerEndpoint) OnStop() {
-	sd.Logger.Debug("SignerDialer: OnStop calling Close")
-
-	// Stop service loop
-	close(sd.stopServiceLoopCh)
-	<-sd.stoppedServiceLoopCh
-
-	_ = sd.Close()
-}
-
-// SetRequestHandler override the default function that is used to service requests
-func (sd *SignerDialerEndpoint) SetRequestHandler(validationRequestHandler ValidationRequestHandlerFunc) {
-	sd.mtx.Lock()
-	defer sd.mtx.Unlock()
-	sd.validationRequestHandler = validationRequestHandler
-}
-
-func (sd *SignerDialerEndpoint) servicePendingRequest() {
-	if !sd.IsRunning() {
-		return // Ignore error from listener closing.
+func (sd *SignerDialerEndpoint) ensureConnection() error {
+	if sd.IsConnected() {
+		return nil
 	}
 
-	req, err := sd.ReadMessage()
-	if err != nil {
-		if err != io.EOF {
-			sd.Logger.Error("SignerDialer: HandleMessage", "err", err)
-		}
-		return
-	}
+	sd.retries = 0
+	sd.SetConnection(nil)
 
-	var res RemoteSignerMsg
-	{
-		// limit the scope of the lock
-		sd.mtx.Lock()
-		defer sd.mtx.Unlock()
-		res, err = sd.validationRequestHandler(sd.privVal, req, sd.chainID)
+	for sd.retries < sd.maxConnRetries {
+		conn, err := sd.dialer()
+
 		if err != nil {
-			// only log the error; we'll reply with an error in res
-			sd.Logger.Error("handleMessage handleMessage", "err", err)
+			sd.retries++
+			sd.Logger.Debug("SignerDialer: Reconnection failed", "retries", sd.retries, "max", sd.maxConnRetries, "err", err)
+			// Wait between retries
+			time.Sleep(sd.retryWait)
+		} else {
+			sd.SetConnection(conn)
+			sd.retries = 0
+			return nil
 		}
 	}
 
-	if res != nil {
-		err = sd.WriteMessage(res)
-		if err != nil {
-			sd.Logger.Error("handleMessage writeMessage", "err", err)
-		}
-	}
-}
+	sd.Logger.Debug("SignerDialer: Max retries exceeded", "retries", sd.retries, "max", sd.maxConnRetries)
 
-func (sd *SignerDialerEndpoint) serviceLoop() {
-	defer close(sd.stoppedServiceLoopCh)
-
-	retries := 0
-	var err error
-
-	for {
-		select {
-		default:
-			if retries > sd.maxConnRetries {
-				sd.Logger.Error("Maximum retries reached", "retries", retries)
-				return
-			}
-
-			if sd.conn == nil {
-				sd.Logger.Debug("SignerDialer: Trying to reconnect", "retries", retries, "max", sd.maxConnRetries)
-				sd.conn, err = sd.dialer()
-				if err != nil {
-					sd.Logger.Error("SignerDialer: Failed connecting", "err", err)
-					sd.conn = nil // Explicitly set to nil because dialer returns an interface (https://golang.org/doc/faq#nil_error)
-					retries++
-
-					// Wait between retries
-					time.Sleep(sd.retryWait)
-					continue
-				}
-			}
-
-			retries = 0
-			sd.servicePendingRequest()
-
-		case <-sd.stopServiceLoopCh:
-			return
-		}
-	}
+	return ErrNoConnection
 }

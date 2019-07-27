@@ -6,11 +6,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// RemoteSignerMsg is sent between SignerDialerEndpoint and the SignerDialerEndpoint client.
-type RemoteSignerMsg interface{}
+// SignerMessage is sent between Signer Clients and Servers.
+type SignerMessage interface{}
 
 func RegisterRemoteSignerMsg(cdc *amino.Codec) {
-	cdc.RegisterInterface((*RemoteSignerMsg)(nil), nil)
+	cdc.RegisterInterface((*SignerMessage)(nil), nil)
 	cdc.RegisterConcrete(&PubKeyRequest{}, "tendermint/remotesigner/PubKeyRequest", nil)
 	cdc.RegisterConcrete(&PubKeyResponse{}, "tendermint/remotesigner/PubKeyResponse", nil)
 	cdc.RegisterConcrete(&SignVoteRequest{}, "tendermint/remotesigner/SignVoteRequest", nil)

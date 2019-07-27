@@ -7,8 +7,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func DefaultValidationRequestHandler(privVal types.PrivValidator, req RemoteSignerMsg, chainID string) (RemoteSignerMsg, error) {
-	var res RemoteSignerMsg
+func DefaultValidationRequestHandler(privVal types.PrivValidator, req SignerMessage, chainID string) (SignerMessage, error) {
+	var res SignerMessage
 	var err error
 
 	switch r := req.(type) {

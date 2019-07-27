@@ -59,18 +59,20 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 		}
 	}(ln, attemptCh)
 
-	serviceEndpoint := NewSignerDialerEndpoint(
+	dialerEndpoint := NewSignerDialerEndpoint(
 		log.TestingLogger(),
-		common.RandStr(12),
-		types.NewMockPV(),
 		DialTCPFn(ln.Addr().String(), testTimeoutReadWrite, ed25519.GenPrivKey()),
 	)
-	defer serviceEndpoint.Stop()
+	SignerDialerEndpointTimeoutReadWrite(time.Millisecond)(dialerEndpoint)
+	SignerDialerEndpointConnRetries(retries)(dialerEndpoint)
 
-	SignerDialerEndpointTimeoutReadWrite(time.Millisecond)(serviceEndpoint)
-	SignerDialerEndpointConnRetries(retries)(serviceEndpoint)
+	chainId := common.RandStr(12)
+	mockPV := types.NewMockPV()
+	signerServer := NewSignerServer(dialerEndpoint, chainId, mockPV)
 
-	err = serviceEndpoint.Start()
+	err = signerServer.Start()
+	defer signerServer.Stop()
+
 	assert.NoError(t, err)
 
 	select {
@@ -87,39 +89,39 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			var (
 				logger           = log.TestingLogger()
 				chainID          = common.RandStr(12)
+				mockPV = types.NewMockPV()
 				endpointIsOpenCh = make(chan struct{})
-
-				serviceEndpoint = NewSignerDialerEndpoint(
-					logger,
-					chainID,
-					types.NewMockPV(),
-					tc.dialer,
-				)
 				thisConnTimeout  = testTimeoutReadWrite
 				listenerEndpoint = newSignerListenerEndpoint(logger, tc.addr, thisConnTimeout)
 			)
 
-			SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(serviceEndpoint)
-			SignerDialerEndpointConnRetries(10)(serviceEndpoint)
+			dialerEndpoint := NewSignerDialerEndpoint(
+				logger,
+				tc.dialer,
+			)
+			SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(dialerEndpoint)
+			SignerDialerEndpointConnRetries(10)(dialerEndpoint)
+
+			signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
 
 			startListenerEndpointAsync(t, listenerEndpoint, endpointIsOpenCh)
 			defer listenerEndpoint.Stop()
-			require.NoError(t, serviceEndpoint.Start())
-			assert.True(t, serviceEndpoint.IsRunning())
 
+			require.NoError(t, signerServer.Start())
+			assert.True(t, signerServer.IsRunning())
 			<-endpointIsOpenCh
+			signerServer.Stop()
 
-			serviceEndpoint.Stop()
-			sd2 := NewSignerDialerEndpoint(
+			dialerEndpoint2 := NewSignerDialerEndpoint(
 				logger,
-				chainID,
-				types.NewMockPV(),
 				tc.dialer,
 			)
+			signerServer2 := NewSignerServer(dialerEndpoint2, chainID, mockPV)
+
 			// let some pings pass
-			require.NoError(t, sd2.Start())
-			assert.True(t, sd2.IsRunning())
-			defer sd2.Stop()
+			require.NoError(t, signerServer2.Start())
+			assert.True(t, signerServer2.IsRunning())
+			defer signerServer2.Stop()
 
 			// give the client some time to re-establish the conn to the remote signer
 			// should see sth like this in the logs:
@@ -169,21 +171,16 @@ func startListenerEndpointAsync(t *testing.T, sle *SignerListenerEndpoint, endpo
 
 func getMockEndpoints(
 	t *testing.T,
-	chainID string,
-	privValidator types.PrivValidator,
 	addr string,
 	socketDialer SocketDialer,
 ) (*SignerListenerEndpoint, *SignerDialerEndpoint) {
 
 	var (
 		logger           = log.TestingLogger()
-		privVal          = privValidator
 		endpointIsOpenCh = make(chan struct{})
 
 		dialerEndpoint = NewSignerDialerEndpoint(
 			logger,
-			chainID,
-			privVal,
 			socketDialer,
 		)
 

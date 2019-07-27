@@ -59,10 +59,17 @@ func (se *signerEndpoint) WaitConnection(connectionAvailableCh chan net.Conn, ma
 	select {
 	case se.conn = <-connectionAvailableCh:
 	case <-time.After(maxWait):
-		return ErrListenerTimeout
+		return ErrConnectionTimeout
 	}
 
 	return nil
+}
+
+// SetConnection replaces the current connection object
+func (se *signerEndpoint) SetConnection(newConnection net.Conn) {
+	se.connMtx.Lock()
+	defer se.connMtx.Unlock()
+	se.conn = newConnection
 }
 
 // IsConnected indicates if there is an active connection
@@ -73,7 +80,7 @@ func (se *signerEndpoint) DropConnection() {
 }
 
 // ReadMessage reads a message from the endpoint
-func (se *signerEndpoint) ReadMessage() (msg RemoteSignerMsg, err error) {
+func (se *signerEndpoint) ReadMessage() (msg SignerMessage, err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
@@ -93,9 +100,9 @@ func (se *signerEndpoint) ReadMessage() (msg RemoteSignerMsg, err error) {
 	_, err = cdc.UnmarshalBinaryLengthPrefixedReader(se.conn, &msg, maxRemoteSignerMsgSize)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
-			err = errors.Wrap(ErrDialerReadTimeout, err.Error())
+			err = errors.Wrap(ErrReadTimeout, err.Error())
 		} else {
-			err = errors.Wrap(ErrDialerReadTimeout, "Empty error")
+			err = errors.Wrap(ErrReadTimeout, "Empty error")
 		}
 		se.Logger.Debug("Dropping [read]", "obj", se)
 		se.dropConnection()
@@ -105,12 +112,12 @@ func (se *signerEndpoint) ReadMessage() (msg RemoteSignerMsg, err error) {
 }
 
 // WriteMessage writes a message from the endpoint
-func (se *signerEndpoint) WriteMessage(msg RemoteSignerMsg) (err error) {
+func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
 	if !se.isConnected() {
-		return errors.Wrap(ErrListenerNoConnection, "endpoint is not connected")
+		return errors.Wrap(ErrNoConnection, "endpoint is not connected")
 	}
 
 	// Reset read deadline
@@ -125,9 +132,9 @@ func (se *signerEndpoint) WriteMessage(msg RemoteSignerMsg) (err error) {
 	_, err = cdc.MarshalBinaryLengthPrefixedWriter(se.conn, msg)
 	if _, ok := err.(timeoutError); ok {
 		if err != nil {
-			err = errors.Wrap(ErrDialerWriteTimeout, err.Error())
+			err = errors.Wrap(ErrWriteTimeout, err.Error())
 		} else {
-			err = errors.Wrap(ErrDialerWriteTimeout, "Empty error")
+			err = errors.Wrap(ErrWriteTimeout, "Empty error")
 		}
 		se.dropConnection()
 	}
