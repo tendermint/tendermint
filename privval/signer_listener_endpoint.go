@@ -25,10 +25,7 @@ type SignerListenerEndpoint struct {
 	timeoutAccept time.Duration
 	mtx           sync.Mutex
 
-	stopLoopsCh          chan struct{}
-	stoppedServiceLoopCh chan struct{}
-	stoppedPingLoopCh    chan struct{}
-	pingTimer            *time.Ticker
+	pingTimer *time.Ticker
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
@@ -48,9 +45,6 @@ func NewSignerListenerEndpoint(
 
 // OnStart implements cmn.Service.
 func (sl *SignerListenerEndpoint) OnStart() error {
-	sl.stopLoopsCh = make(chan struct{})
-	sl.stoppedServiceLoopCh = make(chan struct{})
-	sl.stoppedPingLoopCh = make(chan struct{})
 	sl.connectRequestCh = make(chan struct{})
 	sl.connectionAvailableCh = make(chan net.Conn)
 
@@ -76,12 +70,6 @@ func (sl *SignerListenerEndpoint) OnStop() {
 	}
 
 	sl.pingTimer.Stop()
-
-	// Stop service/ping loops
-	close(sl.stopLoopsCh)
-
-	<-sl.stoppedServiceLoopCh
-	<-sl.stoppedPingLoopCh
 }
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
@@ -163,8 +151,6 @@ func (sl *SignerListenerEndpoint) triggerReconnect() {
 }
 
 func (sl *SignerListenerEndpoint) serviceLoop() {
-	defer close(sl.stoppedServiceLoopCh)
-
 	for {
 		select {
 		case <-sl.connectRequestCh:
@@ -178,7 +164,7 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 					// We have a good connection, wait for someone that needs one otherwise cancellation
 					select {
 					case sl.connectionAvailableCh <- conn:
-					case <-sl.stopLoopsCh:
+					case <-sl.Quit():
 						return
 					}
 				}
@@ -188,15 +174,13 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 				default:
 				}
 			}
-		case <-sl.stopLoopsCh:
+		case <-sl.Quit():
 			return
 		}
 	}
 }
 
 func (sl *SignerListenerEndpoint) pingLoop() {
-	defer close(sl.stoppedPingLoopCh)
-
 	for {
 		select {
 		case <-sl.pingTimer.C:
@@ -207,7 +191,7 @@ func (sl *SignerListenerEndpoint) pingLoop() {
 					sl.triggerReconnect()
 				}
 			}
-		case <-sl.stopLoopsCh:
+		case <-sl.Quit():
 			return
 		}
 	}
