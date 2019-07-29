@@ -62,9 +62,6 @@ func (sd *SignerDialerEndpoint) ensureConnection() error {
 		return nil
 	}
 
-	// Clear the connection, it is necessary for 'isConnected' to work
-	sd.SetConnection(nil)
-
 	retries := 0
 	for retries < sd.maxConnRetries {
 		conn, err := sd.dialer()
@@ -77,7 +74,6 @@ func (sd *SignerDialerEndpoint) ensureConnection() error {
 		} else {
 			sd.SetConnection(conn)
 			sd.Logger.Debug("SignerDialer: Connection Ready")
-			retries = 0
 			return nil
 		}
 	}
