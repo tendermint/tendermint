@@ -1,4 +1,6 @@
-# 1 Guide Assumptions
+# Creating an application in Go
+
+## Guide Assumptions
 
 This guide is designed for beginners who want to get started with a Tendermint
 Core application from scratch. It does not assume that you have any prior
@@ -17,7 +19,7 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
-# 1 Creating an application in Go
+## Built-in app vs external app
 
 To get maximum performance it is better to run your application alongside
 Tendermint Core. [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written
@@ -512,3 +514,10 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 
 "dGVuZGVybWludA==" and "cm9ja3M=" are the base64-encoding of the ASCII of
 "tendermint" and "rocks" accordingly.
+
+## Outro
+
+I hope everything went smoothly and your first, but hopefully not the last,
+Tendermint Core application is up and running. If not, please [open an issue on
+Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
+deeper, read [the docs](https://tendermint.com/docs/).

@@ -143,13 +143,13 @@ func TestTxProofs(t *testing.T) {
 
 	// First let's make sure a bogus transaction hash returns a valid non-existence proof.
 	key := types.Tx([]byte("bogus")).Hash()
-	res, err := cl.Tx(key, true)
+	_, err = cl.Tx(key, true)
 	require.NotNil(err)
 	require.Contains(err.Error(), "not found")
 
 	// Now let's check with the real tx root hash.
 	key = types.Tx(tx).Hash()
-	res, err = cl.Tx(key, true)
+	res, err := cl.Tx(key, true)
 	require.NoError(err, "%#v", err)
 	require.NotNil(res)
 	keyHash := merkle.SimpleHashFromByteSlices([][]byte{key})

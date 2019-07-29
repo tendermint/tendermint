@@ -235,7 +235,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 	// send a tx
 	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil); err != nil {
-		//t.Fatal(err)
+		t.Error(err)
 	}
 
 	// wait till everyone makes the first new block
