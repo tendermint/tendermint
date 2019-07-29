@@ -68,7 +68,7 @@ func TestGenesisGood(t *testing.T) {
 	genDoc.ConsensusParams.Block.MaxBytes = 0
 	genDocBytes, err = cdc.MarshalJSON(genDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
-	genDoc, err = GenesisDocFromJSON(genDocBytes)
+	_, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
 
 	// Genesis doc from raw json

@@ -1,4 +1,4 @@
-## v0.32.1
+## v0.32.2
 
 \*\*
 
@@ -14,35 +14,22 @@ program](https://hackerone.com/tendermint).
 - Apps
 
 - Go API
-
-  - [abci] \#2127 ABCI / mempool: Add a "Recheck Tx" indicator. Breaks the ABCI
-    client interface (`abcicli.Client`) to allow for supplying the ABCI
-    `types.RequestCheckTx` and `types.RequestDeliverTx` structs, and lets the
-    mempool indicate to the ABCI app whether a CheckTx request is a recheck or
-    not.
-  - [libs] Remove unused `db/debugDB` and `common/colors.go` & `errors/errors.go` files (@marbar3778)
-  - [libs] \#2432 Remove unused `common/heap.go` file (@marbar3778)
-  - [libs] Remove unused `date.go`, `io.go`. Remove `GoPath()`, `Prompt()` and `IsDirEmpty()` functions from `os.go` (@marbar3778)
-
-- Blockchain Protocol
-
-- P2P Protocol
+  - [libs] \#3811 Remove `db` from libs in favor of `https://github.com/tendermint/tm-cmn`
 
 ### FEATURES:
-
-- [node] Refactor `NewNode` to use functional options to make it more flexible
-  and extensible in the future.
-- [node][\#3730](https://github.com/tendermint/tendermint/pull/3730) Add `CustomReactors` option to `NewNode` allowing caller to pass
-  custom reactors to run inside Tendermint node (@ParthDesai)
 
 ### IMPROVEMENTS:
 Fixing rpc api's documentation
 
-- [rpc] \#3700 Make possible to set absolute paths for TLS cert and key (@climber73)
+- [p2p] \#3834 Do not write 'Couldn't connect to any seeds' error log if there are no seeds in config file
+- [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
+- [rpc] \#2252 Add `/broadcast_evidence` endpoint to submit double signing and other types of evidence
+- [rpc] \#3818 Make `max_body_bytes` and `max_header_bytes` configurable
+- [p2p] \#3664 p2p/conn: reuse buffer when write/read from secret connection
+- [mempool] \#3826 Make `max_msg_bytes` configurable
+- [blockchain] \#3561 Add early version of the new blockchain reactor, which is supposed to be more modular and testable compared to the old version. To try it, you'll have to change `version` in the config file, [here](https://github.com/tendermint/tendermint/blob/master/config/toml.go#L303) NOTE: It's not ready for a production yet. For further information, see [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-043-blockchain-riri-org.md)
 
 ### BUG FIXES:
 
-- [p2p] \#3338 Prevent "sent next PEX request too soon" errors by not calling
-  ensurePeers outside of ensurePeersRoutine
-- [behaviour] Return correct reason in MessageOutOfOrder (@jim380)
-- [config] \#3723 Add consensus_params to testnet config generation; document time_iota_ms (@ashleyvega)
+- [p2p] [\#3644](https://github.com/tendermint/tendermint/pull/3644) Fix error logging for connection stop (@defunctzombie)
+- [rpc] \#3813 Return err if page is incorrect (less than 0 or greater than total pages)

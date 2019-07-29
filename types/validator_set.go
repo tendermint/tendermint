@@ -619,10 +619,11 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
 			talliedVotingPower += val.VotingPower
-		} else {
-			// It's OK that the BlockID doesn't match.  We include stray
-			// precommits to measure validator availability.
 		}
+		// else {
+		// It's OK that the BlockID doesn't match.  We include stray
+		// precommits to measure validator availability.
+		// }
 	}
 
 	if talliedVotingPower > vals.TotalVotingPower()*2/3 {
@@ -703,10 +704,11 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
 			oldVotingPower += val.VotingPower
-		} else {
-			// It's OK that the BlockID doesn't match.  We include stray
-			// precommits to measure validator availability.
 		}
+		// else {
+		// It's OK that the BlockID doesn't match.  We include stray
+		// precommits to measure validator availability.
+		// }
 	}
 
 	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {

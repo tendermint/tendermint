@@ -192,7 +192,8 @@ func writeLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, txt string, n in
 	for i := 0; i < n; i++ {
 		_, err := conn.Write([]byte(txt))
 		if err != nil {
-			t.Fatalf("Failed to write to fooSecConn: %v", err)
+			t.Errorf("Failed to write to fooSecConn: %v", err)
+			return
 		}
 	}
 }
@@ -383,10 +384,23 @@ func createGoldenTestVectors(t *testing.T) string {
 	return data
 }
 
-func BenchmarkSecretConnection(b *testing.B) {
+func BenchmarkWriteSecretConnection(b *testing.B) {
 	b.StopTimer()
+	b.ReportAllocs()
 	fooSecConn, barSecConn := makeSecretConnPair(b)
-	fooWriteText := cmn.RandStr(dataMaxSize)
+	randomMsgSizes := []int{
+		dataMaxSize / 10,
+		dataMaxSize / 3,
+		dataMaxSize / 2,
+		dataMaxSize,
+		dataMaxSize * 3 / 2,
+		dataMaxSize * 2,
+		dataMaxSize * 7 / 2,
+	}
+	fooWriteBytes := make([][]byte, 0, len(randomMsgSizes))
+	for _, size := range randomMsgSizes {
+		fooWriteBytes = append(fooWriteBytes, cmn.RandBytes(size))
+	}
 	// Consume reads from bar's reader
 	go func() {
 		readBuffer := make([]byte, dataMaxSize)
@@ -395,16 +409,19 @@ func BenchmarkSecretConnection(b *testing.B) {
 			if err == io.EOF {
 				return
 			} else if err != nil {
-				b.Fatalf("Failed to read from barSecConn: %v", err)
+				b.Errorf("Failed to read from barSecConn: %v", err)
+				return
 			}
 		}
 	}()
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := fooSecConn.Write([]byte(fooWriteText))
+		idx := cmn.RandIntn(len(fooWriteBytes))
+		_, err := fooSecConn.Write(fooWriteBytes[idx])
 		if err != nil {
-			b.Fatalf("Failed to write to fooSecConn: %v", err)
+			b.Errorf("Failed to write to fooSecConn: %v", err)
+			return
 		}
 	}
 	b.StopTimer()
@@ -413,4 +430,46 @@ func BenchmarkSecretConnection(b *testing.B) {
 		b.Error(err)
 	}
 	//barSecConn.Close() race condition
+}
+
+func BenchmarkReadSecretConnection(b *testing.B) {
+	b.StopTimer()
+	b.ReportAllocs()
+	fooSecConn, barSecConn := makeSecretConnPair(b)
+	randomMsgSizes := []int{
+		dataMaxSize / 10,
+		dataMaxSize / 3,
+		dataMaxSize / 2,
+		dataMaxSize,
+		dataMaxSize * 3 / 2,
+		dataMaxSize * 2,
+		dataMaxSize * 7 / 2,
+	}
+	fooWriteBytes := make([][]byte, 0, len(randomMsgSizes))
+	for _, size := range randomMsgSizes {
+		fooWriteBytes = append(fooWriteBytes, cmn.RandBytes(size))
+	}
+	go func() {
+		for i := 0; i < b.N; i++ {
+			idx := cmn.RandIntn(len(fooWriteBytes))
+			_, err := fooSecConn.Write(fooWriteBytes[idx])
+			if err != nil {
+				b.Errorf("Failed to write to fooSecConn: %v, %v,%v", err, i, b.N)
+				return
+			}
+		}
+	}()
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		readBuffer := make([]byte, dataMaxSize)
+		_, err := barSecConn.Read(readBuffer)
+
+		if err == io.EOF {
+			return
+		} else if err != nil {
+			b.Fatalf("Failed to read from barSecConn: %v", err)
+		}
+	}
+	b.StopTimer()
 }

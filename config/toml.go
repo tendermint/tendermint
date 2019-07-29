@@ -79,7 +79,7 @@ moniker = "{{ .BaseConfig.Moniker }}"
 # If this node is many blocks behind the tip of the chain, FastSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
-fast_sync = {{ .BaseConfig.FastSync }}
+fast_sync = {{ .BaseConfig.FastSyncMode }}
 
 # Database backend: goleveldb | cleveldb | boltdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -192,6 +192,12 @@ max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
 # See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "{{ .RPC.TimeoutBroadcastTxCommit }}"
 
+# Maximum size of request body, in bytes
+max_body_bytes = {{ .RPC.MaxBodyBytes }}
+
+# Maximum size of request header, in bytes
+max_header_bytes = {{ .RPC.MaxHeaderBytes }}
+
 # The path to a file containing certificate that is used to create the HTTPS server.
 # Migth be either absolute path or path related to tendermint's config directory.
 # If the certificate is signed by a certificate authority,
@@ -287,6 +293,17 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
+
+##### fast sync configuration options #####
+[fastsync]
+
+# Fast Sync version to use:
+#   1) "v0" (default) - the legacy fast sync implementation
+#   2) "v1" - refactor of v0 version for better testability
+version = "{{ .FastSync.Version }}"
+
+# Limit the size of TxMessage
+max_msg_bytes = {{ .Mempool.MaxMsgBytes }}
 
 ##### consensus configuration options #####
 [consensus]

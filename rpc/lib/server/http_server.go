@@ -26,6 +26,11 @@ type Config struct {
 	ReadTimeout time.Duration
 	// mirrors http.Server#WriteTimeout
 	WriteTimeout time.Duration
+	// MaxBodyBytes controls the maximum number of bytes the
+	// server will read parsing the request body.
+	MaxBodyBytes int64
+	// mirrors http.Server#MaxHeaderBytes
+	MaxHeaderBytes int
 }
 
 // DefaultConfig returns a default configuration.
@@ -34,17 +39,10 @@ func DefaultConfig() *Config {
 		MaxOpenConnections: 0, // unlimited
 		ReadTimeout:        10 * time.Second,
 		WriteTimeout:       10 * time.Second,
+		MaxBodyBytes:       int64(1000000), // 1MB
+		MaxHeaderBytes:     1 << 20,        // same as the net/http default
 	}
 }
-
-const (
-	// maxBodyBytes controls the maximum number of bytes the
-	// server will read parsing the request body.
-	maxBodyBytes = int64(1000000) // 1MB
-
-	// same as the net/http default
-	maxHeaderBytes = 1 << 20
-)
 
 // StartHTTPServer takes a listener and starts an HTTP server with the given handler.
 // It wraps handler with RecoverAndLogHandler.
@@ -52,10 +50,10 @@ const (
 func StartHTTPServer(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
-		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
-		MaxHeaderBytes: maxHeaderBytes,
+		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
 	err := s.Serve(listener)
 	logger.Info("RPC HTTP server stopped", "err", err)
@@ -75,10 +73,10 @@ func StartHTTPAndTLSServer(
 	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
 		listener.Addr(), certFile, keyFile))
 	s := &http.Server{
-		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
+		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
-		MaxHeaderBytes: maxHeaderBytes,
+		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
 	err := s.ServeTLS(listener, certFile, keyFile)
 

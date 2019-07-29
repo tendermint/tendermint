@@ -8,7 +8,6 @@ linters:
     - golint
     - maligned
     - errcheck
-    - staticcheck
     - interfacer
     - unconvert
     - goconst

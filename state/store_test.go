@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cfg "github.com/tendermint/tendermint/config"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-cmn/db"
 )
 
 func TestStoreLoadValidators(t *testing.T) {
