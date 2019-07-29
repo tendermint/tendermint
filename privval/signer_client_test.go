@@ -33,7 +33,8 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 		require.NoError(t, err)
 		ss := NewSignerServer(sd, chainID, mockPV)
 
-		ss.Start()
+		err = ss.Start()
+		require.NoError(t, err)
 
 		tc := signerTestCase{
 			chainID:      chainID,
