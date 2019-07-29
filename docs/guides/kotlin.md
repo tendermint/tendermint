@@ -14,7 +14,7 @@ By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store. The application (which should
 implementing the blockchain interface (ABCI)) will be written in Kotlin.
 
-This guide assumes that you are not new to JVM world. If you are new please please see [JVM Minimal Survival Guide](https://hadihariri.com/2013/12/29/jvm-minimal-survival-guide-for-the-dotnet-developer/#java-the-language-java-the-ecosystem-java-the-jvm) and [Gradle Docs](https://docs.gradle.org/current/userguide/userguide.html).
+This guide assumes that you are not new to JVM world. If you are new please see [JVM Minimal Survival Guide](https://hadihariri.com/2013/12/29/jvm-minimal-survival-guide-for-the-dotnet-developer/#java-the-language-java-the-ecosystem-java-the-jvm) and [Gradle Docs](https://docs.gradle.org/current/userguide/userguide.html).
 
 ## Built-in app vs external app
 
