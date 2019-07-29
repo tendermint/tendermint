@@ -22,7 +22,7 @@ If you use Golang, you can run your app and Tendermint Core in the same process 
 [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written this way.
 Please refer to [Writing a built-in Tendermint Core application in Go](./go-built-in.md) guide for details.
 
-If you choose another language like we do in this guide you have to write a separate app using
+If you choose another language, like we did in this guide, you have to write a separate app using
 either plain socket or gRPC. This guide will show you how to build external applicationg
 using RPC server.
 
