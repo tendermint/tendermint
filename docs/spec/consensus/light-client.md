@@ -1,113 +1,281 @@
-# Light Client
+# Lite client
 
-A light client is a process that connects to the Tendermint Full Node(s) and then tries to verify the Merkle proofs
-about the blockchain application. In this document we describe mechanisms that ensures that the Tendermint light client
-has the same level of security as Full Node processes (without being itself a Full Node).
+A lite client is a process that connects to Tendermint full nodes and then tries to verify application data using the Merkle proofs.
 
-To be able to validate a Merkle proof, a light client needs to validate the blockchain header that contains the root app hash.
-Validating a blockchain header in Tendermint consists in verifying that the header is committed (signed) by >2/3 of the
-voting power of the corresponding validator set. As the validator set is a dynamic set (it is changing), one of the
-core functionality of the light client is updating the current validator set, that is then used to verify the
-blockchain header, and further the corresponding Merkle proofs.
+We assume that the lite client knows a (base) header *inithead* it trusts (by social consensus or because the lite client has decided to trust the header before). Now the goal is to check whether another header *newhead* can be trusted based on the data in *inithead*.
 
-For the purpose of this light client specification, we assume that the Tendermint Full Node exposes the following functions over
-Tendermint RPC:
+## Definitions
 
-```golang
-Header(height int64) (SignedHeader, error) // returns signed header for the given height
-Validators(height int64) (ResultValidators, error) // returns validator set for the given height
-LastHeader(valSetNumber int64) (SignedHeader, error)   // returns last header signed by the validator set with the given validator set number
+In the following I only give the details of the data structures needed for this specification.
 
-type SignedHeader struct {
-    Header        Header
-    Commit        Commit
-    ValSetNumber  int64
-}
+  * header fields
+    - *height*
+    - *bfttime*: the chain time when the header (block) was generated
+    - *V*: validator set containing validators.
+    - *NextV*: validator set for next block.
+    - *commit*: evidence that block with height *height* - 1 was committed by a set of validators (canonic commit). We will use ```signers(commit)``` to refer to the set of validators that committed the block.
 
-type ResultValidators struct {
-    BlockHeight   int64
-    Validators    []Validator
-    // time the current validator set is initialised, i.e, time of the last validator change before header BlockHeight
-    ValSetTime    int64
-}
+  * signed header fields: contains a header and a  *commit* for the current header; a "seen commit". In the Tendermint blockchain the "canonic commit" is stored in header *height* + 1.
+
+* For the purpose of this lite client specification, we assume that the Tendermint Full Node exposes the following function over Tendermint RPC:
+```go
+    func Commit(height int64) (SignedHeader, error)
+      // returns signed header: header (with the fields from
+      // above) with Commit that include signatures of
+      // validators that signed the header
+
+
+    type SignedHeader struct {
+      Header        Header
+      Commit        Commit
+    }
 ```
 
-We assume that Tendermint keeps track of the validator set changes and that each time a validator set is changed it is
-being assigned the next sequence number. We can call this number the validator set sequence number. Tendermint also remembers
-the Time from the header when the next validator set is initialised (starts to be in power), and we refer to this time
-as validator set init time.
-Furthermore, we assume that each validator set change is signed (committed) by the current validator set. More precisely,
-given a block `H` that contains transactions that are modifying the current validator set, the Merkle root hash of the next
-validator set (modified based on transactions from block H) will be in block `H+1` (and signed by the current validator
-set), and then starting from the block `H+2`, it will be signed by the next validator set.
+  * *tp*: trusting period   
+  * for realtime *t*, the predicate *correct(v,t)* is true if the validator *v*
+    follows the protocol until time *t* (we will see about recovery later).
+    Similarly we define *faulty(v,t)*.
+  * For each header *h* it has locally stored, the lite client stores whether
+    it trusts *h*. We write *trust(h) = true*, if this is the case.
+  * Validator fields. We will write a validator as a tuple *(v,p)* such that
+    + *v* is the identifier (we assume identifiers are unique in each validator set)
+    + *p* is its voting power
 
-Note that the real Tendermint RPC API is slightly different (for example, response messages contain more data and function
-names are slightly different); we shortened (and modified) it for the purpose of this document to make the spec more
-clear and simple. Furthermore, note that in case of the third function, the returned header has `ValSetNumber` equals to
-`valSetNumber+1`.
 
-Locally, light client manages the following state:
+### Tendermint Failure Model
 
-```golang
-valSet        []Validator    // current validator set (last known and verified validator set)
-valSetNumber  int64          // sequence number of the current validator set
-valSetHash    []byte         // hash of the current validator set
-valSetTime    int64          // time when the current validator set is initialised
-```
+If a block *h* is generated at time *bfttime* (and this time is stored in the block), then validators that are correct until time *h.Header.bfttime + tp* have more than two thirds of the voting power in *h.Header.V*.
 
-The light client is initialised with the trusted validator set, for example based on the known validator set hash,
-validator set sequence number and the validator set init time.
-The core of the light client logic is captured by the VerifyAndUpdate function that is used to 1) verify if the given header is valid,
-and 2) update the validator set (when the given header is valid and it is more recent than the seen headers).
+Formally,
+\[
+\sum_{(v,p) \in h.Header.NextV \wedge correct(v,h.Header.bfttime + tp)} p >
+2/3 \sum_{(v,p) \in h.Header.NextV} p
+\]
 
-```golang
-VerifyAndUpdate(signedHeader SignedHeader):
-  assertThat signedHeader.valSetNumber >= valSetNumber
-  if isValid(signedHeader) and signedHeader.Header.Time <= valSetTime + UNBONDING_PERIOD then
-    setValidatorSet(signedHeader)
+*Assumption*: "correct" and "faulty" are defined w.r.t. realtime (some Newtonian global notion of time, i.e., wall time), while *bfttime* corresponds to the reading of the local clock of a validator (how this time is computed may change when the Tendermint consensus is modified). In this note, we assume that all clocks are synchronized to realtime. We can make this more precise eventually (incorporating clock drift, accuracy, precision, etc.). Right now, we consider this assumption sufficient, as clock synchronization (under NTP) is in the order of milliseconds and *tp* is in the order of weeks.  
+
+*Remark*: This failure model might change to a hybrid version that takes heights into account in the future.
+
+The specification in this document considers an implementation of the lite client under this assumption. Issues like *counter-factual signing* and *fork accountability* and *evidence submission* are mechanisms to enforce this assumption, that is, incentivize validators to follow the protocol.
+If they don't, and we have more that 1/3 faults, safety may be violated. Our approach then is to *detect* these cases (after the fact), and take suitable repair actions (automatic and social). This is discussed in an upcoming document on "Fork accountability". (These safety violations include the lite client wrongly trusting a header, a fork in the blockchain, etc.)
+
+
+## Lite Client Trusting Spec
+
+The lite client communicates with a full node and learns new headers. The goal is to locally decide whether to trust a header. Our implementation needs to ensure the following two properties:
+
+- Lite Client Completeness: If header *h* was correctly generated by the Tendermint blockchain (and its age is less than the trusting period), then the lite client should eventually set *trust(h)* to true.
+
+- Lite Client Accuracy:  If header *h* was *not generated* by the Tendermint blockchain, then the lite client should never set *trust(h)* to true.
+
+*Remark*: If in the course of the computation, the lite client obtains certainty that some headers were forged by adversaries, it may submit (a subset of) the headers it has seen as evidence of misbehavior.
+
+*Remark*: In Completeness we use "eventually", while in practice *trust(h)* should be set to true before *h.Header.bfttime + tp*. If not, the block cannot be trusted because it is too old.
+
+*Assumption*: Initially, the lite client has a header *inithead* that it trusts correctly, that is, *inithead* was correctly generated by the Tendermint blockchain.
+
+To reason about the correctness, we may prove the following invariant.
+
+*Lite Client Invariant.*
+ For each lite client *l* and each header *h*:
+if *l* has set *trust(h) = true*,
+  then validators that are correct until time *h.Header.bfttime + tp* have more than two thirds of the voting power in *h.Header.NextV*.
+
+  Formally,
+  \[
+  \sum_{(v,p) \in h.Header.NextV \wedge correct(v,h.Header.bfttime + tp)} p >
+  2/3 \sum_{(v,p) \in h.Header.NextV} p
+  \]
+
+  Equivalently,
+  \[
+  \sum_{(v,p) \in h.Header.NextV \wedge faulty(v,h.Header.bfttime + tp)} p <
+  1/3 \sum_{(v,p) \in h.Header.NextV} p
+  \]
+
+
+## High Level Solution
+
+Upon initialization, the lite client is given a header *inithead* it trusts (by
+social consensus). It is assumed that *inithead* satisfies the lite client invariant. (If *inithead* has been correctly generated by the Tendermint blockchain, the invariant follows from the Tendermint Failure Model.)
+
+When a lite clients sees a signed new header *snh*, it has to decide whether to trust the new
+header. Trust can be obtained by (possibly) the combination of three methods.
+
+1. **Uninterrupted sequence of proof.** If a block is appended to the chain, where the last block
+is trusted (and properly committed by the old validator set in the next block),
+and the new block contains a new validator set, the new block is trusted if the lite client knows all headers in the prefix.
+Intuitively, a trusted validator set is assumed to not chose a new validator set
+that violates the Tendermint Failure Model.
+
+2. **Trusting period.** Based on a trusted block *h*, and the lite client
+invariant, which ensures the fault assumption during the trusting period, we can check whether at least one  validator, that has been continuously correct from *h.Header.bfttime* until now, has signed *snh*.
+If this is the case, similarly to above, the chosen validator set in *snh* does not violate the Tendermint Failure Model.
+
+3. **Bisection.** If a check according to the trusting period fails, the lite client can try to obtain a header *hp* whose height lies between *h* and *snh* in order to check whether *h* can be used to get trust for *hp* and *hp* can be used to get trust for *snh*. If this is the case we can trust *snh*; if not, we may continue recursively.
+
+## How to use it
+
+We consider the following use case:
+ the lite client wants to verify a header for some given height *k*. Thus:
+  - it requests the signed header for height *k* from a full node
+  - it tries to verify this header with the methods described here.
+
+This can be used in several settings
+  - someone tells the lite client that application data that is relevant for it can be read in the block of height *k*.
+  - the lite clients wants the latest state. It asks a full nude for the current height, and uses the response for *k*.
+
+
+## Details
+
+*Assumptions*
+
+1. *tp < unbonding period*.
+2. *snh.Header.bfttime < now*
+3. *snh.Header.bfttime < h.Header.bfttime+tp*
+4. *trust(h)=true*
+
+
+**Observation 1.** If *h.Header.bfttime + tp > now*, we trust the old
+validator set *h.Header.NextV*.
+
+When we say we trust *h.Header.NextV* we do *not* trust that each individual validator in *h.Header.NextV* is correct, but we only trust the fact that at most 1/3 of them is faulty (more precisely, the faulty ones have less than 1/3 of the total voting power).
+
+In the following, let's assume *h* is trusted and sufficiently new.
+
+
+### Functions
+
+The function *Bisection* checks whether to trust header *h2* based on the trusted header *h1*. It does so by calling
+the function *CheckSupport* in the process of
+bisection/recursion. *CheckSupport* implements the trusted period method and, for two adjacent headers (in term of heights), it checks uninterrupted sequence of proof.
+
+*Assumption*: In the following, we assume that *h2.Header.height > h1.Header.height*. We will quickly discuss the other case in the next section.
+
+We consider the following set-up:
+- the lite client communicates with one full node
+- the lite client locally stores all the signed headers it obtained (trusted or not). In the pseudo code below we write *Store(header)* for this.
+- If *Bisection* returns *false*, then the lite client has seen a  forged header.
+  * However, it does not know which header(s) is/are the problematic one(s).
+  * In this case, the lite client can submit (some of) the headers it has seen as evidence. As the lite client communicates with one full node only when executing Bisection, it is safe to assume that this full node is faulty.
+- the lite client must retry to retrieve correct headers from another full node
+  * it picks a new full node
+  * it restarts *Bisection*
+  * there might be optimizations; a lite client may not need to call *Commit(k)*, for a height *k* for which it already has a signed header it trusts.
+
+**Auxiliary Functions.** We will use the  function ```votingpower_in(V1,V2)``` to compute the voting power the validators in set V1 have according to their voting power in set V2;
+ ```votingpower_in(V,V)``` returns the total voting power in V.
+We further use the function ```signers(Commit)``` that returns the set of validators that signed the Commit.
+
+**CheckSupport.** The following function checks whether we can trust the header h2 based on header h1 following the trusting period method.
+
+```go
+  func CheckSupport(h1,h2,trustlevel) bool {
+    if h1.Header.bfttime + unbonding_period < now { // Observation 1
+      return false // old header was once trusted but it is expired
+    }  
+    vp_all := votingpower_in(h1.Header.NextV,h1.Header.NextV)
+      // total sum of voting power in h1
+
+    if h2.Header.height == h1.Header.height + 1 {
+      // specific check for adjacent headers; everything must be
+      // properly signed.
+      // Plus the following check that 2/3 of the voting power
+      // in h1 signed h2
+      return (votingpower_in(signers(h2.Commit),h1.Header.NextV) > 2/3 * vp_all)
+        // signing validators are more than two third in h1
+    }
+
+    s := intersection(h1.Header.NextV,signers(h2.Commit))
+      // get validators in h1 that signed h2
+    vps := votingpower_in(s,h1.Header.NextV)
+      // sum of voting powers in h1 of
+      // validators that signed h2
+    return (vps > max(1/3,trustlevel) * vp_all)
+      // signing validators are more than a third in h1
+  }
+  ```  
+  *Remark*: Basic header validation should be done for *h2*.
+
+  *Remark*: There are some sanity checks which are not in the code:
+  *h2.Header.height > h1.Header.height* and *h2.Header.bfttime > h1.Header.bfttime* and *h2.Header.bfttime < now*.
+
+
+
+*Correctness arguments*
+
+Towards Lite Client Accuracy:
+- Assume by contradiction that *h2* was not generated correctly and the lite client sets trust to true because *CheckSupport* returns true.
+- h1 is trusted and sufficiently new
+- by Tendermint Fault Model, less than 1/3 of voting power held by faulty validators => at least one correct validator *v* has signed *h2*.
+- as *v* is correct up to now, it followed the Tendermint consensus protocol at least up to signing *h2* => *h2* was correctly generated, we arrive at the required contradiction.
+
+
+Towards Lite Client Completeness:
+- The check is successful if sufficiently many validators of *h1* are still validators in *h2* and signed *h2*.
+- If *h2.Header.height = h1.Header.height + 1*, and both headers were generated correctly, the test passes
+
+*Assumption*: We may need a Tendermint invariant stating that if *h2.Header.height = h1.Header.height + 1* then *signers(h2.Commit) \subseteq h1.Header.NextV*.
+
+*Remark*: The variable *trustlevel* can be used if we believe that relying on one correct validator is not sufficient. However, in case of (frequent) changes in the validator set, the higher the *trustlevel* is chosen, the more unlikely it becomes that CheckSupport returns true for non-adjacent headers.
+
+**Bisection.** The following function uses CheckSupport in a recursion to find intermediate headers that allow to establish a sequence of trust.
+
+
+
+
+```go
+func Bisection(h1,h2,trustlevel) bool{
+  if CheckSupport(h1,h2,trustlevel) {
     return true
-  else
-    updateValidatorSet(signedHeader.ValSetNumber)
-    return VerifyAndUpdate(signedHeader)
-
-isValid(signedHeader SignedHeader):
-  valSetOfTheHeader = Validators(signedHeader.Header.Height)
-  assertThat Hash(valSetOfTheHeader) == signedHeader.Header.ValSetHash
-  assertThat signedHeader is passing basic validation
-  if votingPower(signedHeader.Commit) > 2/3 * votingPower(valSetOfTheHeader) then return true
-  else
+  }
+  if h2.Header.height == h1.Header.height + 1 {
+    // we have adjacent headers that are not matching (failed
+    // the CheckSupport)
+    // we could submit evidence here
     return false
+  }
+  pivot := (h1.Header.height + h2.Header.height) / 2
+  hp := Commit(pivot)
+    // ask a full node for header of height pivot
+  Store(hp)  
+    // store header hp locally
+  return (Bisection(h1,hp,trustlevel) && Bisection(hp,h2,trustlevel))
+}
+```  
 
-setValidatorSet(signedHeader SignedHeader):
-  nextValSet = Validators(signedHeader.Header.Height)
-  assertThat Hash(nextValSet) == signedHeader.Header.ValidatorsHash
-  valSet = nextValSet.Validators
-  valSetHash = signedHeader.Header.ValidatorsHash
-  valSetNumber = signedHeader.ValSetNumber
-  valSetTime = nextValSet.ValSetTime
 
-votingPower(commit Commit):
-  votingPower = 0
-  for each precommit in commit.Precommits do:
-    if precommit.ValidatorAddress is in valSet and signature of the precommit verifies then
-      votingPower += valSet[precommit.ValidatorAddress].VotingPower
-  return votingPower
 
-votingPower(validatorSet []Validator):
-  for each validator in validatorSet do:
-    votingPower += validator.VotingPower
-  return votingPower
 
-updateValidatorSet(valSetNumberOfTheHeader):
-  while valSetNumber != valSetNumberOfTheHeader do
-    signedHeader = LastHeader(valSetNumber)
-    if isValid(signedHeader) then
-      setValidatorSet(signedHeader)
-    else return error
-  return
+*Correctness arguments (sketch)*
+
+Lite Client Accuracy:
+- Assume by contradiction that *h2* was not generated correctly and the lite client sets trust to true because Bisection returns true.
+- Bisection returns true only if all calls to CheckSupport in the recursion return true.
+- Thus we have a sequence of headers that all satisfied the CheckSupport
+- again a contradiction
+
+Lite Client Completeness:
+
+This is only ensured if upon *Commit(pivot)* the lite client is always provided with a correctly generated header.
+
+
+### The case *h2.Header.height < h1.Header.height*
+
+We iterate down the heights and check the hashes in each step.
+
+```go
+func Backwards(h1,h2) bool {
+  assert (h2.Header.height < h1.Header.height)
+  old := h1
+  for i := h1.Header.height - 1; h2.Header.height < i; i-- {
+    new := Commit(i)
+    Store(new)
+    if (hash(new) != old.Header.hash) {
+      return false
+    }
+    old := new
+  }
+  return (hash(h2) == old.Header.hash)
+ }
 ```
-
-Note that in the logic above we assume that the light client will always go upward with respect to header verifications,
-i.e., that it will always be used to verify more recent headers. In case a light client needs to be used to verify older
-headers (go backward) the same mechanisms and similar logic can be used. In case a call to the FullNode or subsequent
-checks fail, a light client need to implement some recovery strategy, for example connecting to other FullNode.
