@@ -1,5 +1,17 @@
 # Changelog
 
+*July 29, 2019*
+
+This releases fixes one bug in the PEX reactor and adds a `recover` to the Go's
+ABCI server, which allows it to properly cleanup.
+
+### IMPROVEMENTS:
+- [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
+
+### BUG FIXES:
+- [p2p] \#3338 Prevent "sent next PEX request too soon" errors by not calling
+  ensurePeers outside of ensurePeersRoutine
+
 ## v0.31.7
 
 *June 3, 2019*
