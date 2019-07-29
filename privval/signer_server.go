@@ -27,14 +27,13 @@ type SignerServer struct {
 
 func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, privVal types.PrivValidator) *SignerServer {
 	ss := &SignerServer{
-		endpoint: endpoint,
-		chainID:  chainID,
-		privVal:  privVal,
+		endpoint:                 endpoint,
+		chainID:                  chainID,
+		privVal:                  privVal,
+		validationRequestHandler: DefaultValidationRequestHandler,
 	}
 
 	ss.BaseService = *cmn.NewBaseService(endpoint.Logger, "SignerServer", ss)
-	ss.validationRequestHandler = DefaultValidationRequestHandler
-	ss.endpoint.retries = 0
 
 	return ss
 }

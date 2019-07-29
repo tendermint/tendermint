@@ -34,7 +34,6 @@ type SignerDialerEndpoint struct {
 	dialer SocketDialer
 
 	retryWait      time.Duration
-	retries        int
 	maxConnRetries int
 }
 
@@ -63,26 +62,27 @@ func (sd *SignerDialerEndpoint) ensureConnection() error {
 		return nil
 	}
 
-	sd.retries = 0
+	// Clear the connection, it is necessary for 'isConnected' to work
 	sd.SetConnection(nil)
 
-	for sd.retries < sd.maxConnRetries {
+	retries := 0
+	for retries < sd.maxConnRetries {
 		conn, err := sd.dialer()
 
 		if err != nil {
-			sd.retries++
-			sd.Logger.Debug("SignerDialer: Reconnection failed", "retries", sd.retries, "max", sd.maxConnRetries, "err", err)
+			retries++
+			sd.Logger.Debug("SignerDialer: Reconnection failed", "retries", retries, "max", sd.maxConnRetries, "err", err)
 			// Wait between retries
 			time.Sleep(sd.retryWait)
 		} else {
 			sd.SetConnection(conn)
 			sd.Logger.Debug("SignerDialer: Connection Ready")
-			sd.retries = 0
+			retries = 0
 			return nil
 		}
 	}
 
-	sd.Logger.Debug("SignerDialer: Max retries exceeded", "retries", sd.retries, "max", sd.maxConnRetries)
+	sd.Logger.Debug("SignerDialer: Max retries exceeded", "retries", retries, "max", sd.maxConnRetries)
 
 	return ErrNoConnection
 }

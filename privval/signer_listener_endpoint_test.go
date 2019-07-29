@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/libs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
@@ -66,14 +66,13 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	SignerDialerEndpointTimeoutReadWrite(time.Millisecond)(dialerEndpoint)
 	SignerDialerEndpointConnRetries(retries)(dialerEndpoint)
 
-	chainId := common.RandStr(12)
+	chainId := cmn.RandStr(12)
 	mockPV := types.NewMockPV()
 	signerServer := NewSignerServer(dialerEndpoint, chainId, mockPV)
 
 	err = signerServer.Start()
+	require.NoError(t, err)
 	defer signerServer.Stop()
-
-	assert.NoError(t, err)
 
 	select {
 	case attempts := <-attemptCh:
@@ -85,58 +84,56 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 
 func TestRetryConnToRemoteSigner(t *testing.T) {
 	for _, tc := range getDialerTestCases(t) {
-		func() {
-			var (
-				logger           = log.TestingLogger()
-				chainID          = common.RandStr(12)
-				mockPV           = types.NewMockPV()
-				endpointIsOpenCh = make(chan struct{})
-				thisConnTimeout  = testTimeoutReadWrite
-				listenerEndpoint = newSignerListenerEndpoint(logger, tc.addr, thisConnTimeout)
-			)
+		var (
+			logger           = log.TestingLogger()
+			chainID          = cmn.RandStr(12)
+			mockPV           = types.NewMockPV()
+			endpointIsOpenCh = make(chan struct{})
+			thisConnTimeout  = testTimeoutReadWrite
+			listenerEndpoint = newSignerListenerEndpoint(logger, tc.addr, thisConnTimeout)
+		)
 
-			dialerEndpoint := NewSignerDialerEndpoint(
-				logger,
-				tc.dialer,
-			)
-			SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(dialerEndpoint)
-			SignerDialerEndpointConnRetries(10)(dialerEndpoint)
+		dialerEndpoint := NewSignerDialerEndpoint(
+			logger,
+			tc.dialer,
+		)
+		SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(dialerEndpoint)
+		SignerDialerEndpointConnRetries(10)(dialerEndpoint)
 
-			signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
+		signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
 
-			startListenerEndpointAsync(t, listenerEndpoint, endpointIsOpenCh)
-			defer listenerEndpoint.Stop()
+		startListenerEndpointAsync(t, listenerEndpoint, endpointIsOpenCh)
+		defer listenerEndpoint.Stop()
 
-			require.NoError(t, signerServer.Start())
-			assert.True(t, signerServer.IsRunning())
-			<-endpointIsOpenCh
-			signerServer.Stop()
+		require.NoError(t, signerServer.Start())
+		assert.True(t, signerServer.IsRunning())
+		<-endpointIsOpenCh
+		signerServer.Stop()
 
-			dialerEndpoint2 := NewSignerDialerEndpoint(
-				logger,
-				tc.dialer,
-			)
-			signerServer2 := NewSignerServer(dialerEndpoint2, chainID, mockPV)
+		dialerEndpoint2 := NewSignerDialerEndpoint(
+			logger,
+			tc.dialer,
+		)
+		signerServer2 := NewSignerServer(dialerEndpoint2, chainID, mockPV)
 
-			// let some pings pass
-			require.NoError(t, signerServer2.Start())
-			assert.True(t, signerServer2.IsRunning())
-			defer signerServer2.Stop()
+		// let some pings pass
+		require.NoError(t, signerServer2.Start())
+		assert.True(t, signerServer2.IsRunning())
+		defer signerServer2.Stop()
 
-			// give the client some time to re-establish the conn to the remote signer
-			// should see sth like this in the logs:
-			//
-			// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
-			// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=SocketVal
-			time.Sleep(testTimeoutReadWrite * 2)
-		}()
+		// give the client some time to re-establish the conn to the remote signer
+		// should see sth like this in the logs:
+		//
+		// E[10016-01-10|17:12:46.128] Ping                                         err="remote signer timed out"
+		// I[10016-01-10|17:16:42.447] Re-created connection to remote signer       impl=SocketVal
+		time.Sleep(testTimeoutReadWrite * 2)
 	}
 }
 
 ///////////////////////////////////
 
 func newSignerListenerEndpoint(logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerListenerEndpoint {
-	proto, address := common.ProtocolAndAddress(addr)
+	proto, address := cmn.ProtocolAndAddress(addr)
 
 	ln, err := net.Listen(proto, address)
 	logger.Info("SignerListener: Listening", "proto", proto, "address", address)

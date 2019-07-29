@@ -23,9 +23,9 @@ type SignerListenerEndpoint struct {
 	connectionAvailableCh chan net.Conn
 
 	timeoutAccept time.Duration
-	mtx           sync.Mutex
+	pingTimer     *time.Ticker
 
-	pingTimer *time.Ticker
+	instanceMtx sync.Mutex // Ensures instance public methods access, i.e. SendRequest
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
@@ -60,12 +60,15 @@ func (sl *SignerListenerEndpoint) OnStart() error {
 
 // OnStop implements cmn.Service
 func (sl *SignerListenerEndpoint) OnStop() {
+	sl.instanceMtx.Lock()
+	defer sl.instanceMtx.Unlock()
 	_ = sl.Close()
 
 	// Stop listening
 	if sl.listener != nil {
 		if err := sl.listener.Close(); err != nil {
 			sl.Logger.Error("Closing Listener", "err", err)
+			sl.listener = nil
 		}
 	}
 
@@ -74,15 +77,15 @@ func (sl *SignerListenerEndpoint) OnStop() {
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
 func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error {
-	sl.mtx.Lock()
-	defer sl.mtx.Unlock()
+	sl.instanceMtx.Lock()
+	defer sl.instanceMtx.Unlock()
 	return sl.ensureConnection(maxWait)
 }
 
 // SendRequest ensures there is a connection, sends a request and waits for a response
 func (sl *SignerListenerEndpoint) SendRequest(request SignerMessage) (SignerMessage, error) {
-	sl.mtx.Lock()
-	defer sl.mtx.Unlock()
+	sl.instanceMtx.Lock()
+	defer sl.instanceMtx.Unlock()
 
 	err := sl.ensureConnection(sl.timeoutAccept)
 	if err != nil {
@@ -140,9 +143,7 @@ func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
 func (sl *SignerListenerEndpoint) triggerConnect() {
 	select {
 	case sl.connectRequestCh <- struct{}{}:
-		break
 	default:
-		break
 	}
 }
 
