@@ -53,7 +53,7 @@ $ echo $JAVA_HOME
 /Library/Java/JavaVirtualMachines/jdk1.8.0_162.jdk/Contents/Home
 ```
 
-For Gradle installation please refer to [their official guide](https://gradle.org/install/).
+For Gradle installation, please refer to [their official guide](https://gradle.org/install/).
 
 ## 1.2 Creating a new Kotlin project
 
