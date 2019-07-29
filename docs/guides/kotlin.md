@@ -18,7 +18,7 @@ This guide assumes that you are not new to JVM world. If you are new please plea
 
 ## Built-in app vs external app
 
-If you use Golang you can write built-in app. It is better option to get maximum performance.
+If you use Golang, you can run your app and Tendermint Core in the same process to get maximum performance.
 [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written this way.
 Please refer to [Writing a built-in Tendermint Core application in Go](./go-built-in.md) guide for details.
 
