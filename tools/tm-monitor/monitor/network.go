@@ -69,7 +69,7 @@ func NewNetwork() *Network {
 	}
 }
 
-func (n *Network) NewBlock(b tmtypes.Header) {
+func (n *Network) NewBlock(b *tmtypes.Block) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -85,7 +85,7 @@ func (n *Network) NewBlock(b tmtypes.Header) {
 	} else {
 		n.AvgBlockTime = 0.0
 	}
-	// n.txThroughputMeter.Mark(int64(b.NumTxs)) TODO:
+	n.txThroughputMeter.Mark(int64(len(b.Data.Txs)))
 	n.AvgTxThroughput = n.txThroughputMeter.Rate1()
 }
 
