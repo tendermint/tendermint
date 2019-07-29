@@ -13,7 +13,7 @@ import (
 func TestNetworkNewBlock(t *testing.T) {
 	n := monitor.NewNetwork()
 
-	n.NewBlock(tmtypes.Block{
+	n.NewBlock(&tmtypes.Block{
 		Header: tmtypes.Header{Height: 5},
 	})
 	assert.Equal(t, int64(5), n.Height)
