@@ -288,6 +288,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	cr := p2pmock.NewReactor()
+	customBlockchainReactor := p2pmock.NewReactor()
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
@@ -300,7 +301,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		log.TestingLogger(),
-		CustomReactors(map[string]p2p.Reactor{"FOO": cr}),
+		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
 	)
 	require.NoError(t, err)
 
@@ -310,35 +311,9 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	assert.True(t, cr.IsRunning())
 	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
-}
 
-func TestNodeNewNodeCustomReactorsReplacingExistingOne(t *testing.T) {
-	config := cfg.ResetTestRoot("node_new_node_custom_reactors_replacing_existing_one_test")
-	defer os.RemoveAll(config.RootDir)
-
-	cr := p2pmock.NewReactor()
-
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
-	require.NoError(t, err)
-
-	n, err := NewNode(config,
-		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
-		nodeKey,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
-		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
-		DefaultMetricsProvider(config.Instrumentation),
-		log.TestingLogger(),
-		CustomReactors(map[string]p2p.Reactor{"BLOCKCHAIN": cr}),
-	)
-	require.NoError(t, err)
-
-	err = n.Start()
-	require.NoError(t, err)
-	defer n.Stop()
-
-	assert.True(t, cr.IsRunning())
-	assert.Equal(t, cr, n.Switch().Reactor("BLOCKCHAIN"))
+	assert.True(t, customBlockchainReactor.IsRunning())
+	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB) {
