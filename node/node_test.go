@@ -309,6 +309,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	defer n.Stop()
 
 	assert.True(t, cr.IsRunning())
+	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
 }
 
 func TestNodeNewNodeCustomReactorsReplacingExistingOne(t *testing.T) {
