@@ -48,10 +48,6 @@ import (
 	dbm "github.com/tendermint/tm-cmn/db"
 )
 
-// CustomReactorNamePrefix is a prefix for all custom reactors to prevent
-// clashes with built-in reactors.
-const CustomReactorNamePrefix = "CUSTOM_"
-
 //------------------------------------------------------------------------------
 
 // DBContext specifies config information for loading a new DB.
@@ -144,11 +140,26 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 // Option sets a parameter for the node.
 type Option func(*Node)
 
-// CustomReactors allows you to add custom reactors to the node's Switch.
+// CustomReactors allows you to add custom reactors (name -> p2p.Reactor) to
+// the node's Switch.
+//
+// WARNING: using any name from the below list of the existing reactors will
+// result in replacing it with the custom one.
+//
+//  - MEMPOOL
+//  - BLOCKCHAIN
+//  - CONSENSUS
+//  - EVIDENCE
+//  - PEX
 func CustomReactors(reactors map[string]p2p.Reactor) Option {
 	return func(n *Node) {
 		for name, reactor := range reactors {
-			n.sw.AddReactor(CustomReactorNamePrefix+name, reactor)
+			if existingReactor := n.sw.Reactor(name); existingReactor != nil {
+				n.sw.Logger.Info("Replacing existing reactor with a custom one",
+					"name", name, "existing", existingReactor, "custom", reactor)
+				n.sw.RemoveReactor(name, existingReactor)
+			}
+			n.sw.AddReactor(name, reactor)
 		}
 	}
 }
