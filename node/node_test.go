@@ -311,6 +311,35 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	assert.True(t, cr.IsRunning())
 }
 
+func TestNodeNewNodeCustomReactorsReplacingExistingOne(t *testing.T) {
+	config := cfg.ResetTestRoot("node_new_node_custom_reactors_replacing_existing_one_test")
+	defer os.RemoveAll(config.RootDir)
+
+	cr := p2pmock.NewReactor()
+
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	require.NoError(t, err)
+
+	n, err := NewNode(config,
+		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
+		nodeKey,
+		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		DefaultGenesisDocProviderFunc(config),
+		DefaultDBProvider,
+		DefaultMetricsProvider(config.Instrumentation),
+		log.TestingLogger(),
+		CustomReactors(map[string]p2p.Reactor{"BLOCKCHAIN": cr}),
+	)
+	require.NoError(t, err)
+
+	err = n.Start()
+	require.NoError(t, err)
+	defer n.Stop()
+
+	assert.True(t, cr.IsRunning())
+	assert.Equal(t, cr, n.Switch().Reactor("BLOCKCHAIN"))
+}
+
 func state(nVals int, height int64) (sm.State, dbm.DB) {
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
