@@ -73,7 +73,12 @@ func TestCountDown(t *testing.T) {
 		// In test case, 100ms is far enough for index
 		time.Sleep(100 * time.Millisecond)
 		assert.Equal(t, int64(h), indexHub.GetIndexedHeight())
+		assert.Equal(t, int64(h), indexHub.GetHeight())
 		// test no memory leak
 		assert.Equal(t, len(indexHub.indexTaskCounter), 0)
 	}
+}
+
+func TestCountDownRegisterIndexSvc(t *testing.T) {
+
 }
