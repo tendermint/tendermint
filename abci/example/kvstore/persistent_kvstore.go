@@ -121,8 +121,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 
 	for _, ev := range req.ByzantineValidators {
-		switch ev.Type {
-		case tmtypes.ABCIEvidenceTypeDuplicateVote:
+		if ev.Type == tmtypes.ABCIEvidenceTypeDuplicateVote {
 			// decrease voting power by 1
 			if ev.TotalVotingPower == 0 {
 				continue

@@ -231,10 +231,8 @@ func (pb *playback) replayConsoleLoop() int {
 					fmt.Println("back takes an integer argument")
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
-				} else {
-					if err := pb.replayReset(i, newStepSub); err != nil {
-						pb.cs.Logger.Error("Replay reset error", "err", err)
-					}
+				} else if err := pb.replayReset(i, newStepSub); err != nil {
+					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
 			}
 

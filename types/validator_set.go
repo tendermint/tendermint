@@ -121,7 +121,7 @@ func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	ratio := (diff + diffMax - 1) / diffMax
 	if diff > diffMax {
 		for _, val := range vals.Validators {
-			val.ProposerPriority = val.ProposerPriority / ratio
+			val.ProposerPriority /= ratio
 		}
 	}
 }
@@ -525,7 +525,7 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 // The 'allowDeletes' flag is set to false by NewValidatorSet() and to true by UpdateWithChangeSet().
 func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool) error {
 
-	if len(changes) <= 0 {
+	if len(changes) == 0 {
 		return nil
 	}
 

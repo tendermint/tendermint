@@ -178,11 +178,11 @@ func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
 	return ok
 }
 
-func (a *addrBook) AddPrivateIDs(IDs []string) {
+func (a *addrBook) AddPrivateIDs(ids []string) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	for _, id := range IDs {
+	for _, id := range ids {
 		a.privateIDs[p2p.ID(id)] = struct{}{}
 	}
 }
@@ -643,7 +643,7 @@ func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddre
 	}
 	total := 0
 	for _, bucket := range buckets {
-		total = total + len(bucket)
+		total += len(bucket)
 	}
 	addresses := make([]*knownAddress, 0, total)
 	for _, bucket := range buckets {
