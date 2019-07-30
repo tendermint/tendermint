@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 
-	cmn "github.com/tendermint/tm-cmn/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestGoLevelDBNewGoLevelDB(t *testing.T) {

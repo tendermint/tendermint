@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tm-cmn/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestBoltDBNewBoltDB(t *testing.T) {

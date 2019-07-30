@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	cmn "github.com/tendermint/tm-cmn/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 const (
