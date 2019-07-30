@@ -76,6 +76,8 @@ func newScPeer(peerID p2p.ID) *scPeer {
 	}
 }
 
+// The schedule is a composit data structure which allows a scheduler to keep
+// track of which blocks have been scheduled into which state.
 type schedule struct {
 	initHeight int64
 	// a list of blocks in which blockState
@@ -266,7 +268,6 @@ func (sc *schedule) markReceived(peerID p2p.ID, height int64, size int64, now ti
 	return nil
 }
 
-// todo keep track of when i requested this block
 func (sc *schedule) markPending(peerID p2p.ID, height int64, time time.Time) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
@@ -309,6 +310,8 @@ func (sc *schedule) markProcessed(height int64) error {
 	return nil
 }
 
+// allBlockProcessed returns true if all blocks are in blockStateProcessed and
+// determines if the schedule has been completed
 func (sc *schedule) allBlocksProcessed() bool {
 	for _, state := range sc.blockStates {
 		if state != blockStateProcessed {
@@ -318,7 +321,7 @@ func (sc *schedule) allBlocksProcessed() bool {
 	return true
 }
 
-// heighter block | state == blockStateNew
+// heighest block | state == blockStateNew
 func (sc *schedule) maxHeight() int64 {
 	var max int64 = 0
 	for height, state := range sc.blockStates {
