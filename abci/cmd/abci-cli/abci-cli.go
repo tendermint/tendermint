@@ -174,9 +174,7 @@ where example.file looks something like:
     info
 `,
 	Args: cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdBatch(cmd, args)
-	},
+	RunE: cmdBatch,
 }
 
 var consoleCmd = &cobra.Command{
@@ -189,9 +187,7 @@ without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
 	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdConsole(cmd, args)
-	},
+	RunE:      cmdConsole,
 }
 
 var echoCmd = &cobra.Command{
@@ -199,27 +195,21 @@ var echoCmd = &cobra.Command{
 	Short: "have the application echo a message",
 	Long:  "have the application echo a message",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdEcho(cmd, args)
-	},
+	RunE:  cmdEcho,
 }
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "get some info about the application",
 	Long:  "get some info about the application",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdInfo(cmd, args)
-	},
+	RunE:  cmdInfo,
 }
 var setOptionCmd = &cobra.Command{
 	Use:   "set_option",
 	Short: "set an option on the application",
 	Long:  "set an option on the application",
 	Args:  cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdSetOption(cmd, args)
-	},
+	RunE:  cmdSetOption,
 }
 
 var deliverTxCmd = &cobra.Command{
@@ -227,9 +217,7 @@ var deliverTxCmd = &cobra.Command{
 	Short: "deliver a new transaction to the application",
 	Long:  "deliver a new transaction to the application",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdDeliverTx(cmd, args)
-	},
+	RunE:  cmdDeliverTx,
 }
 
 var checkTxCmd = &cobra.Command{
@@ -237,9 +225,7 @@ var checkTxCmd = &cobra.Command{
 	Short: "validate a transaction",
 	Long:  "validate a transaction",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdCheckTx(cmd, args)
-	},
+	RunE:  cmdCheckTx,
 }
 
 var commitCmd = &cobra.Command{
@@ -247,9 +233,7 @@ var commitCmd = &cobra.Command{
 	Short: "commit the application state and return the Merkle root hash",
 	Long:  "commit the application state and return the Merkle root hash",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdCommit(cmd, args)
-	},
+	RunE:  cmdCommit,
 }
 
 var versionCmd = &cobra.Command{
@@ -268,9 +252,7 @@ var queryCmd = &cobra.Command{
 	Short: "query the application state",
 	Long:  "query the application state",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdQuery(cmd, args)
-	},
+	RunE:  cmdQuery,
 }
 
 var counterCmd = &cobra.Command{
@@ -278,9 +260,7 @@ var counterCmd = &cobra.Command{
 	Short: "ABCI demo example",
 	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdCounter(cmd, args)
-	},
+	RunE:  cmdCounter,
 }
 
 var kvstoreCmd = &cobra.Command{
@@ -288,9 +268,7 @@ var kvstoreCmd = &cobra.Command{
 	Short: "ABCI demo example",
 	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdKVStore(cmd, args)
-	},
+	RunE:  cmdKVStore,
 }
 
 var testCmd = &cobra.Command{
@@ -298,9 +276,7 @@ var testCmd = &cobra.Command{
 	Short: "run integration tests",
 	Long:  "run integration tests",
 	Args:  cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdTest(cmd, args)
-	},
+	RunE:  cmdTest,
 }
 
 // Generates new Args array based off of previous call args to maintain flag persistence
@@ -419,7 +395,7 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 			}
 
 			// otherwise, we need to skip the next one too
-			i += 1
+			i++
 			continue
 		}
 

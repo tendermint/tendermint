@@ -72,10 +72,8 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	if genDoc.ConsensusParams == nil {
 		genDoc.ConsensusParams = DefaultConsensusParams()
-	} else {
-		if err := genDoc.ConsensusParams.Validate(); err != nil {
-			return err
-		}
+	} else if err := genDoc.ConsensusParams.Validate(); err != nil {
+		return err
 	}
 
 	for i, v := range genDoc.Validators {
