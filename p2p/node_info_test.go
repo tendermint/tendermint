@@ -19,7 +19,7 @@ func TestNodeInfoValidate(t *testing.T) {
 		channels[i] = byte(i)
 	}
 	dupChannels := make([]byte, 5)
-	copy(dupChannels[:], channels[:5])
+	copy(dupChannels, channels[:5])
 	dupChannels = append(dupChannels, testCh)
 
 	nonAscii := "¢§µ"
