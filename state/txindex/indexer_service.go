@@ -19,6 +19,8 @@ type IndexerService struct {
 
 	idr      TxIndexer
 	eventBus *types.EventBus
+
+	onIndex func(int64)
 }
 
 // NewIndexerService returns a new service instance.
@@ -65,6 +67,9 @@ func (is *IndexerService) OnStart() error {
 			} else {
 				is.Logger.Info("Indexed block", "height", header.Height)
 			}
+			if is.onIndex != nil {
+				is.onIndex(header.Height)
+			}
 		}
 	}()
 	return nil
@@ -75,4 +80,8 @@ func (is *IndexerService) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
 	}
+}
+
+func (is *IndexerService) SetOnIndex(callback func(int64)) {
+	is.onIndex = callback
 }

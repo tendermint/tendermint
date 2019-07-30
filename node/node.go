@@ -188,6 +188,7 @@ type Node struct {
 	rpcListeners     []net.Listener         // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
+	indexHub         *sm.IndexHub
 	prometheusSrv    *http.Server
 }
 
@@ -252,6 +253,18 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 		return nil, nil, err
 	}
 	return indexerService, txIndexer, nil
+}
+
+func createAndStartIndexHub(initialHeight int64, stateDB dbm.DB, blockStore sm.BlockStore, eventBus types.BlockEventPublisher, logger log.Logger, metrics *sm.Metrics, indexSvcs ...sm.IndexService) (*sm.IndexHub, error) {
+	indexHub := sm.NewIndexHub(initialHeight, stateDB, blockStore, eventBus, sm.IndexHubWithMetrics(metrics))
+	for _, svc := range indexSvcs {
+		indexHub.RegisterIndexSvc(svc)
+	}
+	indexHub.SetLogger(logger.With("module", "indexer_hub"))
+	if err := indexHub.Start(); err != nil {
+		return nil, err
+	}
+	return indexHub, nil
 }
 
 func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
@@ -567,6 +580,13 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+
+	indexHub, err := createAndStartIndexHub(state.LastBlockHeight, stateDB, blockStore, eventBus, logger, smMetrics, indexerService)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
@@ -594,8 +614,6 @@ func NewNode(config *cfg.Config,
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, privValidator)
-
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
 	// Make MempoolReactor
 	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
@@ -699,6 +717,7 @@ func NewNode(config *cfg.Config,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
 		indexerService:   indexerService,
+		indexHub:         indexHub,
 		eventBus:         eventBus,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
@@ -776,6 +795,7 @@ func (n *Node) OnStop() {
 	// first stop the non-reactor services
 	n.eventBus.Stop()
 	n.indexerService.Stop()
+	n.indexHub.Stop()
 
 	// now stop the reactors
 	n.sw.Stop()
@@ -827,6 +847,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
+	rpccore.SetIndexHub(n.indexHub)
 	rpccore.SetConsensusReactor(n.consensusReactor)
 	rpccore.SetEventBus(n.eventBus)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))

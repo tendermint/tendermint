@@ -63,6 +63,7 @@ type SyncInfo struct {
 	LatestBlockHeight int64        `json:"latest_block_height"`
 	LatestBlockTime   time.Time    `json:"latest_block_time"`
 	CatchingUp        bool         `json:"catching_up"`
+	IndexHeight       int64        `json:"index_height"`
 }
 
 // Info about the node's validator

@@ -106,6 +106,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			LatestBlockHeight: latestHeight,
 			LatestBlockTime:   latestBlockTime,
 			CatchingUp:        consensusReactor.FastSync(),
+			IndexHeight:       indexerHub.GetHeight(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     pubKey.Address(),

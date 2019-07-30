@@ -75,6 +75,7 @@ var (
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
 	mempool          mempl.Mempool
+	indexerHub       *sm.IndexHub
 
 	logger log.Logger
 
@@ -139,6 +140,10 @@ func SetLogger(l log.Logger) {
 
 func SetEventBus(b *types.EventBus) {
 	eventBus = b
+}
+
+func SetIndexHub(hub *sm.IndexHub) {
+	indexerHub = hub
 }
 
 // SetConfig sets an RPCConfig.
