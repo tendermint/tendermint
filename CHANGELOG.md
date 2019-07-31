@@ -64,7 +64,7 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
-- [node] Add variadic argument to `NewNode` to support functional options, allowing the Node to be more easily customized.
+- [node] Add variadic argument to `NewNode` to support functional options, allowing the Node to be more easily customized. 
 - [node][\#3730](https://github.com/tendermint/tendermint/pull/3730) Add `CustomReactors` option to `NewNode` allowing caller to pass
   custom reactors to run inside Tendermint node (@ParthDesai)
 - [abci] [\#2127](https://github.com/tendermint/tendermint/issues/2127)RequestCheckTx has a new field, `CheckTxType`, which can take values of `CheckTxType_New` and `CheckTxType_Recheck`, indicating whether this is a new tx being checked for the first time or whether this tx is being rechecked after a block commit. This allows applications to skip certain expensive operations, like signature checking, if they've already been done once. see [docs](https://github.com/tendermint/tendermint/blob/eddb433d7c082efbeaf8974413a36641519ee895/docs/spec/abci/apps.md#mempool-connection)
