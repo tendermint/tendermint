@@ -14,9 +14,10 @@ program](https://hackerone.com/tendermint).
 - Apps
 
 - Go API
-  - [libs] \#3811 Remove `db` from libs in favor of `https://github.com/tendermint/tm-cmn`
+  - [libs] \#3811 Remove `db` from libs in favor of `https://github.com/tendermint/tm-db`
 
 ### FEATURES:
+
 - [node] Allow replacing existing p2p.Reactor(s) using [`CustomReactors`
   option](https://godoc.org/github.com/tendermint/tendermint/node#CustomReactors).
   Warning: beware of accidental name clashes. Here is the list of existing
@@ -35,5 +36,5 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
-- [p2p] [\#3644](https://github.com/tendermint/tendermint/pull/3644) Fix error logging for connection stop (@defunctzombie)
+- [p2p][\#3644](https://github.com/tendermint/tendermint/pull/3644) Fix error logging for connection stop (@defunctzombie)
 - [rpc] \#3813 Return err if page is incorrect (less than 0 or greater than total pages)
