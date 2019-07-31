@@ -373,7 +373,7 @@ func isRangeOperation(op query.Operator) bool {
 func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes map[string][]byte, firstRun bool) map[string][]byte {
 	// A previous match was attempted but resulted in no matches, so we return
 	// no matches (assuming AND operand).
-	if !init && len(filteredHashes) == 0 {
+	if !firstRun && len(filteredHashes) == 0 {
 		return filteredHashes
 	}
 
@@ -407,7 +407,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 		panic("other operators should be handled already")
 	}
 
-	if len(tmpHashes) == 0 || (init && len(filteredHashes) == 0) {
+	if len(tmpHashes) == 0 || (firstRun && len(filteredHashes) == 0) {
 		// Either:
 		//
 		// 1. Regardless if a previous match was attempted, which may have had
@@ -434,10 +434,10 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 // any non-intersecting matches are removed.
 //
 // NOTE: filteredHashes may be empty if no previous condition has matched.
-func (txi *TxIndex) matchRange(r queryRange, startKey []byte, filteredHashes map[string][]byte, init bool) map[string][]byte {
+func (txi *TxIndex) matchRange(r queryRange, startKey []byte, filteredHashes map[string][]byte, firstRun bool) map[string][]byte {
 	// A previous match was attempted but resulted in no matches, so we return
 	// no matches (assuming AND operand).
-	if !init && len(filteredHashes) == 0 {
+	if !firstRun && len(filteredHashes) == 0 {
 		return filteredHashes
 	}
 
@@ -483,7 +483,7 @@ LOOP:
 		}
 	}
 
-	if len(tmpHashes) == 0 || (init && len(filteredHashes) == 0) {
+	if len(tmpHashes) == 0 || (firstRun && len(filteredHashes) == 0) {
 		// Either:
 		//
 		// 1. Regardless if a previous match was attempted, which may have had
