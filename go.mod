@@ -38,9 +38,8 @@ require (
 	github.com/spf13/viper v1.0.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tendermint/go-amino v0.14.1
-	github.com/tendermint/tm-cmn v0.0.0-20190716080004-dfcde30d5acb
+	github.com/tendermint/tm-db v0.0.0-20190731085305-94017c88bf1d
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
-	google.golang.org/genproto v0.0.0-20181029155118-b69ba1387ce2 // indirect
 	google.golang.org/grpc v1.22.0
 )
