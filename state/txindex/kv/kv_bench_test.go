@@ -39,7 +39,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		}
 
 		txBz := make([]byte, 8)
-		rand.Read(txBz)
+		_, _ = rand.Read(txBz)
 
 		txResult := &types.TxResult{
 			Height: int64(i),
