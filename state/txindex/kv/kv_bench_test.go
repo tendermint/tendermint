@@ -39,7 +39,9 @@ func BenchmarkTxSearch(b *testing.B) {
 		}
 
 		txBz := make([]byte, 8)
-		_, _ = rand.Read(txBz)
+		if _, err := rand.Read(txBz); err != nil {
+			b.Errorf("failed produce random bytes: %s", err)
+		}
 
 		txResult := &types.TxResult{
 			Height: int64(i),
