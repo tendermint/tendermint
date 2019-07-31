@@ -57,7 +57,7 @@ func TestBackendsGetSetDelete(t *testing.T) {
 }
 
 func withDB(t *testing.T, creator dbCreator, fn func(DB)) {
-	name := fmt.Sprintf("test_%x", RandStr(12))
+	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
 	db, err := creator(name, dir)
 	require.Nil(t, err)
@@ -147,7 +147,7 @@ func TestBackendsNilKeys(t *testing.T) {
 }
 
 func TestGoLevelDBBackend(t *testing.T) {
-	name := fmt.Sprintf("test_%x", RandStr(12))
+	name := fmt.Sprintf("test_%x", randStr(12))
 	db := NewDB(name, GoLevelDBBackend, "")
 	defer cleanupDBDir("", name)
 
@@ -164,7 +164,7 @@ func TestDBIterator(t *testing.T) {
 }
 
 func testDBIterator(t *testing.T, backend DBBackendType) {
-	name := fmt.Sprintf("test_%x", RandStr(12))
+	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
 	db := NewDB(name, backend, dir)
 	defer cleanupDBDir(dir, name)

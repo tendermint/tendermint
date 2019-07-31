@@ -11,7 +11,7 @@ import (
 )
 
 func TestBoltDBNewBoltDB(t *testing.T) {
-	name := fmt.Sprintf("test_%x", RandStr(12))
+	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
 	defer cleanupDBDir(dir, name)
 
@@ -21,7 +21,7 @@ func TestBoltDBNewBoltDB(t *testing.T) {
 }
 
 func BenchmarkBoltDBRandomReadsWrites(b *testing.B) {
-	name := fmt.Sprintf("test_%x", RandStr(12))
+	name := fmt.Sprintf("test_%x", randStr(12))
 	db, err := NewBoltDB(name, "")
 	if err != nil {
 		b.Fatal(err)

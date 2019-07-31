@@ -20,7 +20,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	for i := 0; i < int(numItems); i++ {
 		internal[int64(i)] = int64(0)
 	}
-	db, err := NewCLevelDB(fmt.Sprintf("test_%x", RandStr(12)), "")
+	db, err := NewCLevelDB(fmt.Sprintf("test_%x", randStr(12)), "")
 	if err != nil {
 		b.Fatal(err.Error())
 		return
@@ -88,7 +88,7 @@ func bytes2Int64(buf []byte) int64 {
 */
 
 func TestCLevelDBBackend(t *testing.T) {
-	name := fmt.Sprintf("test_%x", RandStr(12))
+	name := fmt.Sprintf("test_%x", randStr(12))
 	// Can't use "" (current directory) or "./" here because levigo.Open returns:
 	// "Error initializing DB: IO error: test_XXX.db: Invalid argument"
 	dir := os.TempDir()
@@ -100,7 +100,7 @@ func TestCLevelDBBackend(t *testing.T) {
 }
 
 func TestCLevelDBStats(t *testing.T) {
-	name := fmt.Sprintf("test_%x", RandStr(12))
+	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
 	db := NewDB(name, CLevelDBBackend, dir)
 	defer cleanupDBDir(dir, name)
