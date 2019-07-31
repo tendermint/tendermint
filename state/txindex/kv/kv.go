@@ -407,7 +407,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 		panic("other operators should be handled already")
 	}
 
-	if len(tmpHashes) == 0 || (firstRun && len(filteredHashes) == 0) {
+	if len(tmpHashes) == 0 || firstRun {
 		// Either:
 		//
 		// 1. Regardless if a previous match was attempted, which may have had
@@ -483,7 +483,7 @@ LOOP:
 		}
 	}
 
-	if len(tmpHashes) == 0 || (firstRun && len(filteredHashes) == 0) {
+	if len(tmpHashes) == 0 || firstRun {
 		// Either:
 		//
 		// 1. Regardless if a previous match was attempted, which may have had
