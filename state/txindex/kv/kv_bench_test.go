@@ -58,9 +58,11 @@ func BenchmarkTxSearch(b *testing.B) {
 		}
 	}
 
-	for i := 0; i < b.N; i++ {
-		txQuery := query.MustParse("transfer.address = 'address_43' AND transfer.amount = 50")
+	txQuery := query.MustParse("transfer.address = 'address_43' AND transfer.amount = 50")
 
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
 		if _, err := indexer.Search(txQuery); err != nil {
 			b.Errorf("failed to query for txs: %s", err)
 		}

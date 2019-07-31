@@ -232,21 +232,13 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		}
 	}
 
-	// Convert map of filtered hashes to a slice of hashes in preparation for
-	// retrieval.
-	hashes := make([][]byte, len(filteredHashes))
-	i := 0
+	results := make([]*types.TxResult, 0, len(filteredHashes))
 	for _, h := range filteredHashes {
-		hashes[i] = h
-		i++
-	}
-
-	results := make([]*types.TxResult, len(hashes))
-	for i, h := range hashes {
-		results[i], err = txi.Get(h)
+		res, err := txi.Get(h)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get Tx{%X}", h)
 		}
+		results = append(results, res)
 	}
 
 	// sort by height & index by default

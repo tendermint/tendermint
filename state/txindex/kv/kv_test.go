@@ -311,7 +311,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	}
 	defer os.RemoveAll(dir) // nolint: errcheck
 
-	store := db.NewDB("tx_index", "leveldb", dir)
+	store := db.NewDB("tx_index", "goleveldb", dir)
 	indexer := NewTxIndex(store)
 
 	batch := txindex.NewBatch(txsCount)
