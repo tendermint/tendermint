@@ -10,7 +10,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db/db"
+	dbm "github.com/tendermint/tm-db"
 )
 
 func TestTxFilter(t *testing.T) {
