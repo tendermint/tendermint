@@ -370,7 +370,7 @@ func isRangeOperation(op query.Operator) bool {
 // non-intersecting matches are removed.
 //
 // NOTE: filteredHashes may be empty if no previous condition has matched.
-func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes map[string][]byte, init bool) map[string][]byte {
+func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes map[string][]byte, firstRun bool) map[string][]byte {
 	// A previous match was attempted but resulted in no matches, so we return
 	// no matches (assuming AND operand).
 	if !init && len(filteredHashes) == 0 {
