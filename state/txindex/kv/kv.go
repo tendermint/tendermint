@@ -194,17 +194,16 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 		for _, r := range ranges {
 			if !hashesInitialized {
-				filteredHashes = txi.matchRange(r, startKey(r.key), filteredHashes)
+				filteredHashes = txi.matchRange(r, startKey(r.key), filteredHashes, true)
+				hashesInitialized = true
 
 				// Ignore any remaining conditions if the first condition resulted
 				// in no matches (assuming implicit AND operand).
 				if len(filteredHashes) == 0 {
 					break
-				} else {
-					hashesInitialized = true
 				}
 			} else {
-				filteredHashes = txi.matchRange(r, startKey(r.key), filteredHashes)
+				filteredHashes = txi.matchRange(r, startKey(r.key), filteredHashes, false)
 			}
 		}
 	}
@@ -219,17 +218,16 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		}
 
 		if !hashesInitialized {
-			filteredHashes = txi.match(c, startKeyForCondition(c, height), filteredHashes)
+			filteredHashes = txi.match(c, startKeyForCondition(c, height), filteredHashes, true)
+			hashesInitialized = true
 
 			// Ignore any remaining conditions if the first condition resulted
 			// in no matches (assuming implicit AND operand).
 			if len(filteredHashes) == 0 {
 				break
-			} else {
-				hashesInitialized = true
 			}
 		} else {
-			filteredHashes = txi.match(c, startKeyForCondition(c, height), filteredHashes)
+			filteredHashes = txi.match(c, startKeyForCondition(c, height), filteredHashes, false)
 		}
 	}
 
@@ -372,7 +370,13 @@ func isRangeOperation(op query.Operator) bool {
 // non-intersecting matches are removed.
 //
 // NOTE: filteredHashes may be empty if no previous condition has matched.
-func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes map[string][]byte) map[string][]byte {
+func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes map[string][]byte, init bool) map[string][]byte {
+	// A previous match was attempted but resulted in no matches, so we return
+	// no matches (assuming AND operand).
+	if !init && len(filteredHashes) == 0 {
+		return filteredHashes
+	}
+
 	tmpHashes := make(map[string][]byte)
 
 	if c.Op == query.OpEqual {
@@ -403,18 +407,22 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 		panic("other operators should be handled already")
 	}
 
-	if len(filteredHashes) == 0 || len(tmpHashes) == 0 {
-		// Return empty results as no matches were found. If filteredHashes is
-		// not empty but tmpHashes is, then that indicates that the intersection
-		// (assuming AND operand) is empty.
+	if len(tmpHashes) == 0 || (init && len(filteredHashes) == 0) {
+		// Either:
+		//
+		// 1. Regardless if a previous match was attempted, which may have had
+		// results, but no match was found for the current condition, then we
+		// return no matches (assuming AND operand).
+		//
+		// 2. A previous match was not attempted, so we return all results.
 		return tmpHashes
-	} else {
-		// Remove/reduce matches in filteredHashes that were not found in this
-		// match (tmpHashes).
-		for k := range filteredHashes {
-			if tmpHashes[k] == nil {
-				delete(filteredHashes, k)
-			}
+	}
+
+	// Remove/reduce matches in filteredHashes that were not found in this
+	// match (tmpHashes).
+	for k := range filteredHashes {
+		if tmpHashes[k] == nil {
+			delete(filteredHashes, k)
 		}
 	}
 
@@ -426,7 +434,13 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 // any non-intersecting matches are removed.
 //
 // NOTE: filteredHashes may be empty if no previous condition has matched.
-func (txi *TxIndex) matchRange(r queryRange, startKey []byte, filteredHashes map[string][]byte) map[string][]byte {
+func (txi *TxIndex) matchRange(r queryRange, startKey []byte, filteredHashes map[string][]byte, init bool) map[string][]byte {
+	// A previous match was attempted but resulted in no matches, so we return
+	// no matches (assuming AND operand).
+	if !init && len(filteredHashes) == 0 {
+		return filteredHashes
+	}
+
 	tmpHashes := make(map[string][]byte)
 	lowerBound := r.lowerBoundValue()
 	upperBound := r.upperBoundValue()
@@ -469,18 +483,22 @@ LOOP:
 		}
 	}
 
-	if len(filteredHashes) == 0 || len(tmpHashes) == 0 {
-		// Return empty results as no matches were found. If filteredHashes is
-		// not empty but tmpHashes is, then that indicates that the intersection
-		// (assuming AND operand) is empty.
+	if len(tmpHashes) == 0 || (init && len(filteredHashes) == 0) {
+		// Either:
+		//
+		// 1. Regardless if a previous match was attempted, which may have had
+		// results, but no match was found for the current condition, then we
+		// return no matches (assuming AND operand).
+		//
+		// 2. A previous match was not attempted, so we return all results.
 		return tmpHashes
-	} else {
-		// Remove/reduce matches in filteredHashes that were not found in this
-		// match (tmpHashes).
-		for k := range filteredHashes {
-			if tmpHashes[k] == nil {
-				delete(filteredHashes, k)
-			}
+	}
+
+	// Remove/reduce matches in filteredHashes that were not found in this
+	// match (tmpHashes).
+	for k := range filteredHashes {
+		if tmpHashes[k] == nil {
+			delete(filteredHashes, k)
 		}
 	}
 
