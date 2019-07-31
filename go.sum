@@ -119,6 +119,7 @@ github.com/syndtr/goleveldb v1.0.1-0.20190318030020-c3a204f8e965 h1:1oFLiOyVl+W7
 github.com/syndtr/goleveldb v1.0.1-0.20190318030020-c3a204f8e965/go.mod h1:9OrXJhf154huy1nPWmuSrkgjPUtUNhA+Zmy+6AESzuA=
 github.com/tendermint/go-amino v0.14.1 h1:o2WudxNfdLNBwMyl2dqOJxiro5rfrEaU0Ugs6offJMk=
 github.com/tendermint/go-amino v0.14.1/go.mod h1:i/UKE5Uocn+argJJBb12qTZsCDBcAYMbR92AaJVmKso=
+github.com/tendermint/tm-cmn v0.0.0-20190731085305-94017c88bf1d h1:NFUXtN4BcT3g7o4dqXbSMz+jy1JqgAlxPjxVHk23sGA=
 github.com/tendermint/tm-db v0.0.0-20190731085305-94017c88bf1d h1:yCHL2COLGLNfb4sA9AlzIHpapb8UATvAQyJulS6Eg6Q=
 github.com/tendermint/tm-db v0.0.0-20190731085305-94017c88bf1d/go.mod h1:0cPKWu2Mou3IlxecH+MEUSYc1Ch537alLe6CpFrKzgw=
 github.com/tendermint/tm-db v0.1.1 h1:G3Xezy3sOk9+ekhjZ/kjArYIs1SmwV+1OUgNkj7RgV0=

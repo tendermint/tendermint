@@ -108,10 +108,11 @@ func (w Wrapper) Block(height *int64) (*ctypes.ResultBlock, error) {
 	sh := resCommit.SignedHeader
 
 	// now verify
-	err = ValidateBlockMeta(resBlock.BlockMeta, sh)
-	if err != nil {
-		return nil, err
-	}
+	// err = ValidateBlockMeta(resBlock.BlockMeta, sh)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
 	err = ValidateBlock(resBlock.Block, sh)
 	if err != nil {
 		return nil, err

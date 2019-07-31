@@ -196,37 +196,19 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 //         "validators_hash": "9365FC80F234C967BD233F5A3E2AB2F1E4B0E5AA"
 //       }
 //     },
-//     "block_meta": {
-//       "header": {
-//         "app_hash": "",
-//         "chain_id": "test-chain-6UTNIN",
-//         "height": "10",
-//         "time": "2017-05-29T15:05:53.877Z",
-//         "num_txs": "0",
-//         "last_block_id": {
-//           "parts": {
-//             "hash": "3C78F00658E06744A88F24FF97A0A5011139F34A",
-//             "total": "1"
-//           },
-//           "hash": "F70588DAB36BDA5A953D548A16F7D48C6C2DFD78"
-//         },
-//         "last_commit_hash": "F31CC4282E50B3F2A58D763D233D76F26D26CABE",
-//         "data_hash": "",
-//         "validators_hash": "9365FC80F234C967BD233F5A3E2AB2F1E4B0E5AA"
-//       },
 //       "block_id": {
 //         "parts": {
 //           "hash": "277A4DBEF91483A18B85F2F5677ABF9694DFA40F",
 //           "total": "1"
 //         },
 //         "hash": "96B1D2F2D201BA4BC383EB8224139DB1294944E5"
-//       }
 //     }
 //   },
 //   "id": "",
 //   "jsonrpc": "2.0"
 // }
 // ```
+
 func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
@@ -235,8 +217,9 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 	}
 
 	blockMeta := blockStore.LoadBlockMeta(height)
+	blockId := &blockMeta.BlockID
 	block := blockStore.LoadBlock(height)
-	return &ctypes.ResultBlock{BlockMeta: blockMeta, Block: block}, nil
+	return &ctypes.ResultBlock{BlockID: blockId, Block: block}, nil
 }
 
 // Get block commit at a given height.
