@@ -384,7 +384,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
-			tmpHashes[fmt.Sprintf("%X", it.Value())] = it.Value()
+			tmpHashes[string(it.Value())] = it.Value()
 		}
 
 	} else if c.Op == query.OpContains {
@@ -400,7 +400,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 			}
 
 			if strings.Contains(extractValueFromKey(it.Key()), c.Operand.(string)) {
-				tmpHashes[fmt.Sprintf("%X", it.Value())] = it.Value()
+				tmpHashes[string(it.Value())] = it.Value()
 			}
 		}
 	} else {
@@ -471,7 +471,7 @@ LOOP:
 			}
 
 			if include {
-				tmpHashes[fmt.Sprintf("%X", it.Value())] = it.Value()
+				tmpHashes[string(it.Value())] = it.Value()
 			}
 
 			// XXX: passing time in a ABCI Tags is not yet implemented
