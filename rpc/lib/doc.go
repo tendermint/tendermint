@@ -1,4 +1,5 @@
-// HTTP RPC server supporting calls via uri params, jsonrpc, and jsonrpc over websockets
+// HTTP RPC server supporting calls via uri params, jsonrpc over HTTP, and jsonrpc over
+// websockets
 //
 // Client Requests
 //
