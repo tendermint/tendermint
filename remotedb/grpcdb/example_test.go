@@ -5,8 +5,8 @@ import (
 	"context"
 	"log"
 
-	grpcdb "github.com/tendermint/tm-cmn/db/remotedb/grpcdb"
-	protodb "github.com/tendermint/tm-cmn/db/remotedb/proto"
+	grpcdb "github.com/tendermint/tm-db/remotedb/grpcdb"
+	protodb "github.com/tendermint/tm-db/remotedb/proto"
 )
 
 func Example() {

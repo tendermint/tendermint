@@ -5,12 +5,11 @@ package db
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	cmn "github.com/tendermint/tm-cmn/libs/common"
 )
 
 func BenchmarkRandomReadsWrites2(b *testing.B) {
@@ -21,7 +20,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	for i := 0; i < int(numItems); i++ {
 		internal[int64(i)] = int64(0)
 	}
-	db, err := NewCLevelDB(fmt.Sprintf("test_%x", cmn.RandStr(12)), "")
+	db, err := NewCLevelDB(fmt.Sprintf("test_%x", RandStr(12)), "")
 	if err != nil {
 		b.Fatal(err.Error())
 		return
@@ -33,7 +32,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Write something
 		{
-			idx := (int64(cmn.RandInt()) % numItems)
+			idx := (int64(rand.Int()) % numItems)
 			internal[idx]++
 			val := internal[idx]
 			idxBytes := int642Bytes(int64(idx))
@@ -46,7 +45,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 		}
 		// Read something
 		{
-			idx := (int64(cmn.RandInt()) % numItems)
+			idx := (int64(rand.Int()) % numItems)
 			val := internal[idx]
 			idxBytes := int642Bytes(int64(idx))
 			valBytes := db.Get(idxBytes)
@@ -89,7 +88,7 @@ func bytes2Int64(buf []byte) int64 {
 */
 
 func TestCLevelDBBackend(t *testing.T) {
-	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
+	name := fmt.Sprintf("test_%x", RandStr(12))
 	// Can't use "" (current directory) or "./" here because levigo.Open returns:
 	// "Error initializing DB: IO error: test_XXX.db: Invalid argument"
 	dir := os.TempDir()
@@ -101,7 +100,7 @@ func TestCLevelDBBackend(t *testing.T) {
 }
 
 func TestCLevelDBStats(t *testing.T) {
-	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
+	name := fmt.Sprintf("test_%x", RandStr(12))
 	dir := os.TempDir()
 	db := NewDB(name, CLevelDBBackend, dir)
 	defer cleanupDBDir(dir, name)

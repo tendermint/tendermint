@@ -10,8 +10,6 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 const (
@@ -66,7 +64,7 @@ func (db *FSDB) Has(key []byte) bool {
 	key = escapeKey(key)
 
 	path := db.nameToPath(key)
-	return cmn.FileExists(path)
+	return FileExists(path)
 }
 
 func (db *FSDB) Set(key []byte, value []byte) {

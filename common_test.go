@@ -5,12 +5,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 //----------------------------------------
@@ -208,7 +208,7 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 	for i := 0; i < b.N; i++ {
 		// Write something
 		{
-			idx := int64(cmn.RandInt()) % numItems
+			idx := int64(rand.Int()) % numItems // nolint:gosec testing file, so accepting weak random number generator
 			internal[idx]++
 			val := internal[idx]
 			idxBytes := int642Bytes(int64(idx))
@@ -219,7 +219,7 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 
 		// Read something
 		{
-			idx := int64(cmn.RandInt()) % numItems
+			idx := int64(rand.Int()) % numItems // nolint:gosec testing file, so accepting weak random number generator
 			valExp := internal[idx]
 			idxBytes := int642Bytes(int64(idx))
 			valBytes := db.Get(idxBytes)

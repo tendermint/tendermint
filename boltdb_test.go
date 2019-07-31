@@ -8,12 +8,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestBoltDBNewBoltDB(t *testing.T) {
-	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
+	name := fmt.Sprintf("test_%x", RandStr(12))
 	dir := os.TempDir()
 	defer cleanupDBDir(dir, name)
 
@@ -23,7 +21,7 @@ func TestBoltDBNewBoltDB(t *testing.T) {
 }
 
 func BenchmarkBoltDBRandomReadsWrites(b *testing.B) {
-	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
+	name := fmt.Sprintf("test_%x", RandStr(12))
 	db, err := NewBoltDB(name, "")
 	if err != nil {
 		b.Fatal(err)

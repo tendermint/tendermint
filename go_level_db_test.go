@@ -6,12 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestGoLevelDBNewGoLevelDB(t *testing.T) {
-	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
+	name := fmt.Sprintf("test_%x", RandStr(12))
 	defer cleanupDBDir("", name)
 
 	// Test we can't open the db twice for writing
@@ -31,7 +29,7 @@ func TestGoLevelDBNewGoLevelDB(t *testing.T) {
 }
 
 func BenchmarkGoLevelDBRandomReadsWrites(b *testing.B) {
-	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
+	name := fmt.Sprintf("test_%x", RandStr(12))
 	db, err := NewGoLevelDB(name, "")
 	if err != nil {
 		b.Fatal(err)
