@@ -29,7 +29,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(nil, errors.Wrap(err, "error reading request body")))
 			return
 		}
-		defer r.Body.Close() // nolint: errcheck
+		r.Body.Close() // nolint: errcheck
 
 		// if its an empty request (like from a browser),
 		// just display a list of functions

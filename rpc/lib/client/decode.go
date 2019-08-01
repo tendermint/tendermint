@@ -25,7 +25,7 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte,
 		return nil, errors.Wrap(response.Error, "response error")
 	}
 
-	if err = assertResponseIDEqual(response, expectedID); err != nil {
+	if err = validateAndVerifyID(response, expectedID); err != nil {
 		return nil, errors.Wrap(err, "error in response ID")
 	}
 
@@ -96,7 +96,7 @@ func validateResponseIDs(ids, expectedIDs []types.JSONRPCIntID) error {
 
 // From the JSON-RPC 2.0 spec:
 //  id: It MUST be the same as the value of the id member in the Request Object.
-func assertResponseIDEqual(res *types.RPCResponse, expectedID types.JSONRPCIntID) error {
+func validateAndVerifyID(res *types.RPCResponse, expectedID types.JSONRPCIntID) error {
 	// URIClient does not have ID in response
 	if expectedID == -1 {
 		return nil
@@ -116,7 +116,7 @@ func validateResponseID(id interface{}) error {
 	}
 	_, ok := id.(types.JSONRPCIntID)
 	if !ok {
-		return errors.Errorf("expected int, but got: %T", id)
+		return errors.Errorf("expected JSONRPCIntID, but got: %T", id)
 	}
 	return nil
 }

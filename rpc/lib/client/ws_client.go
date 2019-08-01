@@ -486,13 +486,14 @@ func (c *WSClient) readRoutine() {
 			continue
 		}
 
-		c.mtx.RLock()
+		c.mtx.Lock()
 		if _, ok := c.sentIDs[response.ID.(types.JSONRPCIntID)]; !ok {
 			c.Logger.Error("unsolicited response ID", "id", response.ID, "expected", c.sentIDs)
-			c.mtx.RUnlock()
+			c.mtx.Unlock()
 			continue
 		}
-		c.mtx.RUnlock()
+		delete(c.sentIDs, response.ID.(types.JSONRPCIntID))
+		c.mtx.Unlock()
 
 		c.Logger.Info("got response", "id", response.ID, "result", fmt.Sprintf("%X", response.Result))
 		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh to avoid blocking
