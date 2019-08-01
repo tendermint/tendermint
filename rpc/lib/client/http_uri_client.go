@@ -10,6 +10,11 @@ import (
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
+const (
+	// URIClientRequestID in a request ID used by URIClient
+	URIClientRequestID = types.JSONRPCIntID(-1)
+)
+
 // URIClient is a JSON-RPC client, which sends POST form HTTP requests to the
 // remote server.
 //
@@ -53,7 +58,7 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 		return nil, errors.Wrap(err, "failed to read response body")
 	}
 
-	return unmarshalResponseBytes(c.cdc, responseBytes, types.JSONRPCIntID(-1), result)
+	return unmarshalResponseBytes(c.cdc, responseBytes, URIClientRequestID, result)
 }
 
 func (c *URIClient) Codec() *amino.Codec       { return c.cdc }

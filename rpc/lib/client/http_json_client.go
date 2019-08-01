@@ -27,7 +27,7 @@ const (
 
 //-------------------------------------------------------------
 
-// HTTPClient is a common interface for JSON-RPC clients.
+// HTTPClient is a common interface for JSON-RPC HTTP clients.
 type HTTPClient interface {
 	// Call calls the given method with the params and returns a result.
 	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)

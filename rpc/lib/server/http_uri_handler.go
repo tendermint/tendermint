@@ -20,8 +20,8 @@ import (
 
 // convert from a function name to the http handler
 func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func(http.ResponseWriter, *http.Request) {
-	// Always return 0 as there's no ID here.
-	dummyID := types.JSONRPCIntID(0)
+	// Always return -1 as there's no ID here.
+	dummyID := types.JSONRPCIntID(-1) // URIClientRequestID
 
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
