@@ -23,7 +23,7 @@ type jsonrpcid interface {
 type JSONRPCStringID string
 
 func (JSONRPCStringID) isJSONRPCID()      {}
-func (id JSONRPCStringID) String() string { return fmt.Sprintf("%s", id) }
+func (id JSONRPCStringID) String() string { return string(id) }
 
 // JSONRPCIntID a wrapper for JSON-RPC integer IDs
 type JSONRPCIntID int

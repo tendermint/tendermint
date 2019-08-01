@@ -91,7 +91,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	}
 
 	c := &WSClient{
-		sentIds:              make(map[types.JSONRPCIntID]bool, 0),
+		sentIds:              make(map[types.JSONRPCIntID]bool),
 		cdc:                  amino.NewCodec(),
 		Address:              addr,
 		Dialer:               dialer,
