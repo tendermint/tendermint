@@ -49,11 +49,14 @@ type JSONRPCCaller interface {
 //
 // Request values are amino encoded. Response is expected to be amino encoded.
 // New amino codec is used if no other codec was set using SetCodec.
+//
+// JSONRPCClient is safe for concurrent use by multiple goroutines.
 type JSONRPCClient struct {
 	address string
 	client  *http.Client
 	cdc     *amino.Codec
 
+	mtx       sync.Mutex
 	nextReqID int
 }
 
@@ -150,8 +153,10 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 }
 
 func (c *JSONRPCClient) nextRequestID() types.JSONRPCIntID {
+	c.mtx.Lock()
 	id := c.nextReqID
 	c.nextReqID++
+	c.mtx.Unlock()
 	return types.JSONRPCIntID(id)
 }
 
@@ -215,9 +220,7 @@ func (b *JSONRPCRequestBatch) Send() ([]interface{}, error) {
 // Call enqueues a request to call the given RPC method with the specified
 // parameters, in the same way that the `JSONRPCClient.Call` function would.
 func (b *JSONRPCRequestBatch) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	b.mtx.Lock()
 	id := b.client.nextRequestID()
-	b.mtx.Unlock()
 
 	request, err := types.MapToRequest(b.client.cdc, id, method, params)
 	if err != nil {

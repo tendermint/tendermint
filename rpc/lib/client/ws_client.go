@@ -28,14 +28,13 @@ const (
 
 // WSClient is a JSON-RPC client, which uses WebSocket for communication with
 // the remote server.
+//
+// WSClient is safe for concurrent use by multiple goroutines.
 type WSClient struct {
 	cmn.BaseService
 
 	conn *websocket.Conn
 	cdc  *amino.Codec
-
-	nextReqID int
-	sentIds   map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
 
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
@@ -63,6 +62,8 @@ type WSClient struct {
 	mtx            sync.RWMutex
 	sentLastPingAt time.Time
 	reconnecting   bool
+	nextReqID      int
+	sentIDs        map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
 
 	// Maximum reconnect attempts (0 or greater; default: 25).
 	maxReconnectAttempts int
@@ -91,7 +92,6 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	}
 
 	c := &WSClient{
-		sentIds:              make(map[types.JSONRPCIntID]bool),
 		cdc:                  amino.NewCodec(),
 		Address:              addr,
 		Dialer:               dialer,
@@ -103,6 +103,8 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 		writeWait:            defaultWriteWait,
 		pingPeriod:           defaultPingPeriod,
 		protocol:             protocol,
+
+		sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
 	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
 	for _, option := range options {
@@ -212,7 +214,9 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 	select {
 	case c.send <- request:
 		c.Logger.Info("sent a request", "req", request)
-		c.sentIds[request.ID.(types.JSONRPCIntID)] = true
+		c.mtx.Lock()
+		c.sentIDs[request.ID.(types.JSONRPCIntID)] = true
+		c.mtx.Unlock()
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -245,8 +249,10 @@ func (c *WSClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 // Private methods
 
 func (c *WSClient) nextRequestID() types.JSONRPCIntID {
+	c.mtx.Lock()
 	id := c.nextReqID
 	c.nextReqID++
+	c.mtx.Unlock()
 	return types.JSONRPCIntID(id)
 }
 
@@ -479,10 +485,14 @@ func (c *WSClient) readRoutine() {
 			c.Logger.Error("error in response ID", "id", response.ID, "err", err)
 			continue
 		}
-		if _, ok := c.sentIds[response.ID.(types.JSONRPCIntID)]; !ok {
-			c.Logger.Error("unsolicited response ID", "id", response.ID, "expected", c.sentIds)
+
+		c.mtx.RLock()
+		if _, ok := c.sentIDs[response.ID.(types.JSONRPCIntID)]; !ok {
+			c.Logger.Error("unsolicited response ID", "id", response.ID, "expected", c.sentIDs)
+			c.mtx.RUnlock()
 			continue
 		}
+		c.mtx.RUnlock()
 
 		c.Logger.Info("got response", "id", response.ID, "result", fmt.Sprintf("%X", response.Result))
 		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh to avoid blocking

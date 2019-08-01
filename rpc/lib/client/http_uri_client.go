@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
+	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 // URIClient is a JSON-RPC client, which sends POST form HTTP requests to the
@@ -14,6 +15,8 @@ import (
 //
 // Request values are amino encoded. Response is expected to be amino encoded.
 // New amino codec is used if no other codec was set using SetCodec.
+//
+// URIClient is safe for concurrent use by multiple goroutines.
 type URIClient struct {
 	address string
 	client  *http.Client
@@ -50,7 +53,7 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 		return nil, errors.Wrap(err, "failed to read response body")
 	}
 
-	return unmarshalResponseBytes(c.cdc, responseBytes, -1, result)
+	return unmarshalResponseBytes(c.cdc, responseBytes, types.JSONRPCIntID(-1), result)
 }
 
 func (c *URIClient) Codec() *amino.Codec       { return c.cdc }
