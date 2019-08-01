@@ -63,7 +63,7 @@ type WSClient struct {
 	sentLastPingAt time.Time
 	reconnecting   bool
 	nextReqID      int
-	sentIDs        map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
+	// sentIDs        map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
 
 	// Maximum reconnect attempts (0 or greater; default: 25).
 	maxReconnectAttempts int
@@ -104,7 +104,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 		pingPeriod:           defaultPingPeriod,
 		protocol:             protocol,
 
-		sentIDs: make(map[types.JSONRPCIntID]bool),
+		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
 	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
 	for _, option := range options {
@@ -214,9 +214,9 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 	select {
 	case c.send <- request:
 		c.Logger.Info("sent a request", "req", request)
-		c.mtx.Lock()
-		c.sentIDs[request.ID.(types.JSONRPCIntID)] = true
-		c.mtx.Unlock()
+		// c.mtx.Lock()
+		// c.sentIDs[request.ID.(types.JSONRPCIntID)] = true
+		// c.mtx.Unlock()
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -486,14 +486,19 @@ func (c *WSClient) readRoutine() {
 			continue
 		}
 
-		c.mtx.Lock()
-		if _, ok := c.sentIDs[response.ID.(types.JSONRPCIntID)]; !ok {
-			c.Logger.Error("unsolicited response ID", "id", response.ID, "expected", c.sentIDs)
-			c.mtx.Unlock()
-			continue
-		}
-		delete(c.sentIDs, response.ID.(types.JSONRPCIntID))
-		c.mtx.Unlock()
+		// TODO: events resulting from /subscribe do not work with ->
+		// because they are implemented as responses with the subscribe request's
+		// ID. According to the spec, they should be notifications (requests
+		// without IDs).
+		// https://github.com/tendermint/tendermint/issues/2949
+		// c.mtx.Lock()
+		// if _, ok := c.sentIDs[response.ID.(types.JSONRPCIntID)]; !ok {
+		// 	c.Logger.Error("unsolicited response ID", "id", response.ID, "expected", c.sentIDs)
+		// 	c.mtx.Unlock()
+		// 	continue
+		// }
+		// delete(c.sentIDs, response.ID.(types.JSONRPCIntID))
+		// c.mtx.Unlock()
 
 		c.Logger.Info("got response", "id", response.ID, "result", fmt.Sprintf("%X", response.Result))
 		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh to avoid blocking
