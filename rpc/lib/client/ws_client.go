@@ -14,6 +14,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 
 	amino "github.com/tendermint/go-amino"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -25,14 +26,16 @@ const (
 	defaultPingPeriod           = 0
 )
 
-// WSClient is a WebSocket client. The methods of WSClient are safe for use by
-// multiple goroutines.
+// WSClient is a JSON-RPC client, which uses WebSocket for communication with
+// the remote server.
 type WSClient struct {
 	cmn.BaseService
 
-	id   types.JSONRPCStringID
 	conn *websocket.Conn
 	cdc  *amino.Codec
+
+	nextReqID uint
+	sentIds   map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
 
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
@@ -42,7 +45,8 @@ type WSClient struct {
 	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
 	PingPongLatencyTimer metrics.Timer
 
-	// Single user facing channel to read RPCResponses from, closed only when the client is being stopped.
+	// Single user facing channel to read RPCResponses from, closed only when the
+	// client is being stopped.
 	ResponsesCh chan types.RPCResponse
 
 	// Callback, which will be called each time after successful reconnect.
@@ -87,8 +91,8 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	}
 
 	c := &WSClient{
+		sentIds:              make(map[types.JSONRPCIntID]bool, 0),
 		cdc:                  amino.NewCodec(),
-		id:                   types.JSONRPCStringID("ws-client-" + cmn.RandStr(8)),
 		Address:              addr,
 		Dialer:               dialer,
 		Endpoint:             endpoint,
@@ -208,41 +212,43 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 	select {
 	case c.send <- request:
 		c.Logger.Info("sent a request", "req", request)
+		c.sentIds[request.ID.(types.JSONRPCIntID)] = true
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
 }
 
-// Call the given method. See Send description.
+// Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := types.MapToRequest(c.cdc, c.id, method, params)
+	request, err := types.MapToRequest(c.cdc, c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
 	return c.Send(ctx, request)
 }
 
-// CallWithArrayParams the given method with params in a form of array. See
-// Send description.
+// CallWithArrayParams enqueues a call request onto the Send queue. Params are
+// in a form of array (e.g. []interface{}{"abcd"}). Requests are JSON encoded.
 func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
-	request, err := types.ArrayToRequest(c.cdc, c.id, method, params)
+	request, err := types.ArrayToRequest(c.cdc, c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
 	return c.Send(ctx, request)
 }
 
-func (c *WSClient) Codec() *amino.Codec {
-	return c.cdc
-}
-
-func (c *WSClient) SetCodec(cdc *amino.Codec) {
-	c.cdc = cdc
-}
+func (c *WSClient) Codec() *amino.Codec       { return c.cdc }
+func (c *WSClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Private methods
+
+func (c *WSClient) nextRequestID() types.JSONRPCIntID {
+	id := c.nextReqID
+	c.nextReqID++
+	return types.JSONRPCIntID(id)
+}
 
 func (c *WSClient) dial() error {
 	dialer := &websocket.Dialer{
@@ -468,7 +474,17 @@ func (c *WSClient) readRoutine() {
 			c.Logger.Error("failed to parse response", "err", err, "data", string(data))
 			continue
 		}
-		c.Logger.Info("got response", "resp", response.Result)
+
+		if err = validateResponseID(response.ID); err != nil {
+			c.Logger.Error("error in response ID", "id", response.ID, "err", err)
+			continue
+		}
+		if _, ok := c.sentIds[response.ID.(types.JSONRPCIntID)]; !ok {
+			c.Logger.Error("unsolicited response ID", "id", response.ID, "expected", c.sentIds)
+			continue
+		}
+
+		c.Logger.Info("got response", "id", response.ID, "resp", response.Result)
 		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh to avoid blocking
 		// c.wg.Wait() in c.Stop(). Note we rely on Quit being closed so that it sends unlimited Quit signals to stop
 		// both readRoutine and writeRoutine

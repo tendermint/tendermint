@@ -22,12 +22,14 @@ type jsonrpcid interface {
 // JSONRPCStringID a wrapper for JSON-RPC string IDs
 type JSONRPCStringID string
 
-func (JSONRPCStringID) isJSONRPCID() {}
+func (JSONRPCStringID) isJSONRPCID()      {}
+func (id JSONRPCStringID) String() string { return fmt.Sprintf("%s", id) }
 
 // JSONRPCIntID a wrapper for JSON-RPC integer IDs
 type JSONRPCIntID int
 
-func (JSONRPCIntID) isJSONRPCID() {}
+func (JSONRPCIntID) isJSONRPCID()      {}
+func (id JSONRPCIntID) String() string { return fmt.Sprintf("%d", id) }
 
 func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
 	switch id := idInterface.(type) {

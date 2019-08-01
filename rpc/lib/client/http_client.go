@@ -107,12 +107,6 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 func (c *JSONRPCClient) Codec() *amino.Codec       { return c.cdc }
 func (c *JSONRPCClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 
-func (c *JSONRPCClient) nextRequestID() types.JSONRPCIntID {
-	id := c.nextReqID
-	c.nextReqID++
-	return types.JSONRPCIntID(id)
-}
-
 // NewRequestBatch starts a batch of requests for this client.
 func (c *JSONRPCClient) NewRequestBatch() *JSONRPCRequestBatch {
 	return &JSONRPCRequestBatch{
@@ -153,6 +147,12 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 	}
 
 	return unmarshalResponseBytesArray(c.cdc, responseBytes, ids, results)
+}
+
+func (c *JSONRPCClient) nextRequestID() types.JSONRPCIntID {
+	id := c.nextReqID
+	c.nextReqID++
+	return types.JSONRPCIntID(id)
 }
 
 //-------------------------------------------------------------
