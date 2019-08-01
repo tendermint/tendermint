@@ -61,7 +61,7 @@ type RPCRequest struct {
 func (request *RPCRequest) UnmarshalJSON(data []byte) error {
 	unsafeReq := &struct {
 		JSONRPC string          `json:"jsonrpc"`
-		ID      interface{}     `json:"id"`
+		ID      interface{}     `json:"id,omitempty"`
 		Method  string          `json:"method"`
 		Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 	}{}
@@ -93,7 +93,7 @@ func NewRPCRequest(id jsonrpcid, method string, params json.RawMessage) RPCReque
 }
 
 func (req RPCRequest) String() string {
-	return fmt.Sprintf("[%s %s]", req.ID, req.Method)
+	return fmt.Sprintf("RPCRequest{%s %s/%X}", req.ID, req.Method, req.Params)
 }
 
 func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
@@ -205,9 +205,9 @@ func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCRes
 
 func (resp RPCResponse) String() string {
 	if resp.Error == nil {
-		return fmt.Sprintf("[%s %v]", resp.ID, resp.Result)
+		return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Result)
 	}
-	return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
+	return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Error)
 }
 
 // From the JSON-RPC 2.0 spec:

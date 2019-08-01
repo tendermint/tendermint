@@ -11,6 +11,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
@@ -99,6 +100,10 @@ func NewHTTP(remote, wsEndpoint string) *HTTP {
 }
 
 var _ Client = (*HTTP)(nil)
+
+func (c *HTTP) SetLogger(l log.Logger) {
+	c.WSEvents.SetLogger(l)
+}
 
 // NewBatch creates a new batch client for this HTTP client.
 func (c *HTTP) NewBatch() *BatchHTTP {
@@ -376,6 +381,7 @@ func (w *WSEvents) OnStart() error {
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
 	w.ws.SetCodec(w.cdc)
+	w.ws.SetLogger(w.Logger)
 
 	err := w.ws.Start()
 	if err != nil {

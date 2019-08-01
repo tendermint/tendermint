@@ -276,6 +276,8 @@ func (wsc *wsConnection) Context() context.Context {
 
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
+	var request types.RPCRequest
+
 	defer func() {
 		if r := recover(); r != nil {
 			err, ok := r.(error)
@@ -283,7 +285,7 @@ func (wsc *wsConnection) readRoutine() {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			wsc.WriteRPCResponse(types.RPCInternalError(types.JSONRPCIntID(0), err))
+			wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
 			go wsc.readRoutine()
 		} else {
 			wsc.baseConn.Close() // nolint: errcheck
@@ -315,7 +317,6 @@ func (wsc *wsConnection) readRoutine() {
 				return
 			}
 
-			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
 				wsc.WriteRPCResponse(types.RPCParseError(errors.Wrap(err, "error unmarshalling request")))
@@ -324,8 +325,8 @@ func (wsc *wsConnection) readRoutine() {
 
 			// A Notification is a Request object without an "id" member.
 			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
-			if request.ID == types.JSONRPCIntID(0) {
-				wsc.Logger.Debug("WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
+			if request.ID == nil {
+				wsc.Logger.Debug("WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)", "req", request)
 				continue
 			}
 
@@ -402,7 +403,7 @@ func (wsc *wsConnection) writeRoutine() {
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-				wsc.Logger.Error("Failed to write response", "err", err)
+				wsc.Logger.Error("Failed to write response", "msg", msg, "err", err)
 				wsc.Stop()
 				return
 			}

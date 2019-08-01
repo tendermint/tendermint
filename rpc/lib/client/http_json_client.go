@@ -215,7 +215,9 @@ func (b *JSONRPCRequestBatch) Send() ([]interface{}, error) {
 // Call enqueues a request to call the given RPC method with the specified
 // parameters, in the same way that the `JSONRPCClient.Call` function would.
 func (b *JSONRPCRequestBatch) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+	b.mtx.Lock()
 	id := b.client.nextRequestID()
+	b.mtx.Unlock()
 
 	request, err := types.MapToRequest(b.client.cdc, id, method, params)
 	if err != nil {

@@ -153,7 +153,7 @@ func OnReconnect(cb func()) func(*WSClient) {
 
 // String returns WS client full address.
 func (c *WSClient) String() string {
-	return fmt.Sprintf("%s (%s)", c.Address, c.Endpoint)
+	return fmt.Sprintf("WSClient{%s (%s)}", c.Address, c.Endpoint)
 }
 
 // OnStart implements cmn.Service by dialing a server and creating read and
@@ -484,7 +484,7 @@ func (c *WSClient) readRoutine() {
 			continue
 		}
 
-		c.Logger.Info("got response", "id", response.ID, "resp", response.Result)
+		c.Logger.Info("got response", "id", response.ID, "result", fmt.Sprintf("%X", response.Result))
 		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh to avoid blocking
 		// c.wg.Wait() in c.Stop(). Note we rely on Quit being closed so that it sends unlimited Quit signals to stop
 		// both readRoutine and writeRoutine

@@ -57,7 +57,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			// A Notification is a Request object without an "id" member.
 			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
 			if request.ID == nil {
-				logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
+				logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)", "req", request)
 				continue
 			}
 			if len(r.URL.Path) > 1 {
