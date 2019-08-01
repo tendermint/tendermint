@@ -31,9 +31,6 @@ XC_EXCLUDE=${XC_EXCLUDE:-" darwin/arm solaris/amd64 solaris/386 solaris/arm free
 # Make sure build tools are available.
 make get_tools
 
-# Get VENDORED dependencies
-make get_vendor_deps
-
 # Build!
 # ldflags: -s Omit the symbol table and debug information.
 #	         -w Omit the DWARF symbol table.

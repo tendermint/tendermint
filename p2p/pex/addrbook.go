@@ -178,11 +178,11 @@ func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
 	return ok
 }
 
-func (a *addrBook) AddPrivateIDs(IDs []string) {
+func (a *addrBook) AddPrivateIDs(ids []string) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	for _, id := range IDs {
+	for _, id := range ids {
 		a.privateIDs[p2p.ID(id)] = struct{}{}
 	}
 }
@@ -586,8 +586,8 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return ErrAddrBookNilAddr{addr, src}
 	}
 
-	if !addr.HasID() {
-		return ErrAddrBookInvalidAddrNoID{addr}
+	if err := addr.Valid(); err != nil {
+		return ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
 	}
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
@@ -605,10 +605,6 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if a.routabilityStrict && !addr.Routable() {
 		return ErrAddrBookNonRoutable{addr}
-	}
-
-	if !addr.Valid() {
-		return ErrAddrBookInvalidAddr{addr}
 	}
 
 	ka := a.addrLookup[addr.ID]
@@ -647,7 +643,7 @@ func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddre
 	}
 	total := 0
 	for _, bucket := range buckets {
-		total = total + len(bucket)
+		total += len(bucket)
 	}
 	addresses := make([]*knownAddress, 0, total)
 	for _, bucket := range buckets {

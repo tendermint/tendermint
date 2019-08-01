@@ -42,10 +42,10 @@ func mempoolLogger() log.Logger {
 }
 
 // connect N mempool reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, N int) []*Reactor {
-	reactors := make([]*Reactor, N)
+func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
+	reactors := make([]*Reactor, n)
 	logger := mempoolLogger()
-	for i := 0; i < N; i++ {
+	for i := 0; i < n; i++ {
 		app := kvstore.NewKVStoreApplication()
 		cc := proxy.NewLocalClientCreator(app)
 		mempool, cleanup := newMempoolWithApp(cc)
@@ -55,7 +55,7 @@ func makeAndConnectReactors(config *cfg.Config, N int) []*Reactor {
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("MEMPOOL", reactors[i])
 		return s
 

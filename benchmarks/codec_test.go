@@ -14,7 +14,7 @@ import (
 
 func testNodeInfo(id p2p.ID) p2p.DefaultNodeInfo {
 	return p2p.DefaultNodeInfo{
-		ProtocolVersion: p2p.ProtocolVersion{1, 2, 3},
+		ProtocolVersion: p2p.ProtocolVersion{P2P: 1, Block: 2, App: 3},
 		ID_:             id,
 		Moniker:         "SOMENAME",
 		Network:         "SOMENAME",

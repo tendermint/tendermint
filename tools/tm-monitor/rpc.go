@@ -5,9 +5,11 @@ import (
 	"net"
 	"net/http"
 
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+
 	"github.com/tendermint/tendermint/libs/log"
 	rpc "github.com/tendermint/tendermint/rpc/lib/server"
-	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
+	"github.com/tendermint/tendermint/tools/tm-monitor/monitor"
 )
 
 func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) net.Listener {
@@ -41,33 +43,33 @@ func routes(m *monitor.Monitor) map[string]*rpc.RPCFunc {
 }
 
 // RPCStatus returns common statistics for the network and statistics per node.
-func RPCStatus(m *monitor.Monitor) interface{} {
-	return func() (networkAndNodes, error) {
+func RPCStatus(m *monitor.Monitor) func(*rpctypes.Context) (networkAndNodes, error) {
+	return func(_ *rpctypes.Context) (networkAndNodes, error) {
 		return networkAndNodes{m.Network, m.Nodes}, nil
 	}
 }
 
 // RPCNetworkStatus returns common statistics for the network.
-func RPCNetworkStatus(m *monitor.Monitor) interface{} {
-	return func() (*monitor.Network, error) {
+func RPCNetworkStatus(m *monitor.Monitor) func(*rpctypes.Context) (*monitor.Network, error) {
+	return func(_ *rpctypes.Context) (*monitor.Network, error) {
 		return m.Network, nil
 	}
 }
 
 // RPCNodeStatus returns statistics for the given node.
-func RPCNodeStatus(m *monitor.Monitor) interface{} {
-	return func(name string) (*monitor.Node, error) {
+func RPCNodeStatus(m *monitor.Monitor) func(*rpctypes.Context, string) (*monitor.Node, error) {
+	return func(_ *rpctypes.Context, name string) (*monitor.Node, error) {
 		if i, n := m.NodeByName(name); i != -1 {
 			return n, nil
 		}
-		return nil, errors.New("Cannot find node with that name")
+		return nil, errors.New("cannot find node with that name")
 	}
 }
 
 // RPCMonitor allows to dynamically add a endpoint to under the monitor. Safe
 // to call multiple times.
-func RPCMonitor(m *monitor.Monitor) interface{} {
-	return func(endpoint string) (*monitor.Node, error) {
+func RPCMonitor(m *monitor.Monitor) func(*rpctypes.Context, string) (*monitor.Node, error) {
+	return func(_ *rpctypes.Context, endpoint string) (*monitor.Node, error) {
 		i, n := m.NodeByName(endpoint)
 		if i == -1 {
 			n = monitor.NewNode(endpoint)
@@ -80,13 +82,13 @@ func RPCMonitor(m *monitor.Monitor) interface{} {
 }
 
 // RPCUnmonitor removes the given endpoint from under the monitor.
-func RPCUnmonitor(m *monitor.Monitor) interface{} {
-	return func(endpoint string) (bool, error) {
+func RPCUnmonitor(m *monitor.Monitor) func(*rpctypes.Context, string) (bool, error) {
+	return func(_ *rpctypes.Context, endpoint string) (bool, error) {
 		if i, n := m.NodeByName(endpoint); i != -1 {
 			m.Unmonitor(n)
 			return true, nil
 		}
-		return false, errors.New("Cannot find node with that name")
+		return false, errors.New("cannot find node with that name")
 	}
 }
 

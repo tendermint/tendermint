@@ -40,7 +40,7 @@ Response:
 ```
 {
     "jsonrpc": "2.0",
-    "id": "0#event",
+    "id": 0,
     "result": {
         "query": "tm.event='ValidatorSetUpdates'",
         "data": {

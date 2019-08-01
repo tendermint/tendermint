@@ -115,7 +115,7 @@ little overview what they do.
 - `abci-client` As mentioned in [Application Development Guide](../app-dev/app-development.md), Tendermint acts as an ABCI
   client with respect to the application and maintains 3 connections:
   mempool, consensus and query. The code used by Tendermint Core can
-  be found [here](https://github.com/tendermint/tendermint/tree/develop/abci/client).
+  be found [here](https://github.com/tendermint/tendermint/tree/master/abci/client).
 - `blockchain` Provides storage, pool (a group of peers), and reactor
   for both storing and exchanging blocks between peers.
 - `consensus` The heart of Tendermint core, which is the

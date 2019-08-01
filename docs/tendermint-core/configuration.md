@@ -138,14 +138,22 @@ max_subscriptions_per_client = 5
 # See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "10s"
 
-# The name of a file containing certificate that is used to create the HTTPS server.
+# Maximum size of request body, in bytes
+max_body_bytes = {{ .RPC.MaxBodyBytes }}
+
+# Maximum size of request header, in bytes
+max_header_bytes = {{ .RPC.MaxHeaderBytes }}
+
+# The path to a file containing certificate that is used to create the HTTPS server.
+# Migth be either absolute path or path related to tendermint's config directory.
 # If the certificate is signed by a certificate authority,
 # the certFile should be the concatenation of the server's certificate, any intermediates,
 # and the CA's certificate.
 # NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
 tls_cert_file = ""
 
-# The name of a file containing matching private key that is used to create the HTTPS server.
+# The path to a file containing matching private key that is used to create the HTTPS server.
+# Migth be either absolute path or path related to tendermint's config directory.
 # NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
 tls_key_file = ""
 
@@ -232,6 +240,17 @@ max_txs_bytes = 1073741824
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = 10000
 
+##### fast sync configuration options #####
+[fastsync]
+
+# Fast Sync version to use:
+#   1) "v0" (default) - the legacy fast sync implementation
+#   2) "v1" - refactor of v0 version for better testability
+version = "v0"
+
+# Limit the size of TxMessage
+max_msg_bytes = 1048576
+
 ##### consensus configuration options #####
 [consensus]
 
@@ -313,8 +332,7 @@ namespace = "tendermint"
 
 If `create_empty_blocks` is set to `true` in your config, blocks will be
 created ~ every second (with default consensus parameters). You can regulate
-the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit
-= "10s"` should result in ~ 10 second blocks.
+the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit = "10s"` should result in ~ 10 second blocks.
 
 **create_empty_blocks = false**
 
@@ -340,7 +358,7 @@ Tendermint will only create blocks if there are transactions, or after waiting
 ## Consensus timeouts explained
 
 There's a variety of information about timeouts in [Running in
-production](./running-in-production.html)
+production](./running-in-production.md)
 
 You can also find more detailed technical explanation in the spec: [The latest
 gossip on BFT consensus](https://arxiv.org/abs/1807.04938).

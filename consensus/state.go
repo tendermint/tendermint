@@ -690,13 +690,13 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 			cs.statsMsgQueue <- mi
 		}
 
-		if err == ErrAddingVote {
-			// TODO: punish peer
-			// We probably don't want to stop the peer here. The vote does not
-			// necessarily comes from a malicious peer but can be just broadcasted by
-			// a typical peer.
-			// https://github.com/tendermint/tendermint/issues/1281
-		}
+		// if err == ErrAddingVote {
+		// TODO: punish peer
+		// We probably don't want to stop the peer here. The vote does not
+		// necessarily comes from a malicious peer but can be just broadcasted by
+		// a typical peer.
+		// https://github.com/tendermint/tendermint/issues/1281
+		// }
 
 		// NOTE: the vote is broadcast to peers by the reactor listening
 		// for vote events
@@ -709,7 +709,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		return
 	}
 
-	if err != nil {
+	if err != nil { // nolint:staticcheck
 		// Causes TestReactorValidatorSetChanges to timeout
 		// https://github.com/tendermint/tendermint/issues/3406
 		// cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
@@ -924,10 +924,8 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 		}
 		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
 		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
-	} else {
-		if !cs.replayMode {
-			cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
-		}
+	} else if !cs.replayMode {
+		cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 	}
 }
 
@@ -1227,9 +1225,10 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 			cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent())
 			cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
-		} else {
-			// We just need to keep waiting.
 		}
+		// else {
+		// We just need to keep waiting.
+		// }
 	}
 }
 

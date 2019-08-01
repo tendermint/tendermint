@@ -121,7 +121,7 @@ func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	ratio := (diff + diffMax - 1) / diffMax
 	if diff > diffMax {
 		for _, val := range vals.Validators {
-			val.ProposerPriority = val.ProposerPriority / ratio
+			val.ProposerPriority /= ratio
 		}
 	}
 }
@@ -525,7 +525,7 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 // The 'allowDeletes' flag is set to false by NewValidatorSet() and to true by UpdateWithChangeSet().
 func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool) error {
 
-	if len(changes) <= 0 {
+	if len(changes) == 0 {
 		return nil
 	}
 
@@ -594,10 +594,10 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		return err
 	}
 	if vals.Size() != len(commit.Precommits) {
-		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", vals.Size(), len(commit.Precommits))
+		return NewErrInvalidCommitPrecommits(vals.Size(), len(commit.Precommits))
 	}
 	if height != commit.Height() {
-		return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
+		return NewErrInvalidCommitHeight(height, commit.Height())
 	}
 	if !blockID.Equals(commit.BlockID) {
 		return fmt.Errorf("Invalid commit -- wrong block id: want %v got %v",
@@ -619,10 +619,11 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
 			talliedVotingPower += val.VotingPower
-		} else {
-			// It's OK that the BlockID doesn't match.  We include stray
-			// precommits to measure validator availability.
 		}
+		// else {
+		// It's OK that the BlockID doesn't match.  We include stray
+		// precommits to measure validator availability.
+		// }
 	}
 
 	if talliedVotingPower > vals.TotalVotingPower()*2/3 {
@@ -703,10 +704,11 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
 			oldVotingPower += val.VotingPower
-		} else {
-			// It's OK that the BlockID doesn't match.  We include stray
-			// precommits to measure validator availability.
 		}
+		// else {
+		// It's OK that the BlockID doesn't match.  We include stray
+		// precommits to measure validator availability.
+		// }
 	}
 
 	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {

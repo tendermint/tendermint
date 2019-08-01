@@ -13,8 +13,8 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	//auto "github.com/tendermint/tendermint/libs/autofile"
+	dbm "github.com/tendermint/tm-db"
 
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
@@ -320,11 +320,9 @@ func (h *Handshaker) ReplayBlocks(
 				}
 				state.Validators = types.NewValidatorSet(vals)
 				state.NextValidators = types.NewValidatorSet(vals)
-			} else {
+			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
-				if len(h.genDoc.Validators) == 0 {
-					return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
-				}
+				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
 			}
 
 			if res.ConsensusParams != nil {
@@ -515,7 +513,7 @@ type mockProxyApp struct {
 	abciResponses *sm.ABCIResponses
 }
 
-func (mock *mockProxyApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
 	r := mock.abciResponses.DeliverTx[mock.txCount]
 	mock.txCount++
 	if r == nil { //it could be nil because of amino unMarshall, it will cause an empty ResponseDeliverTx to become nil

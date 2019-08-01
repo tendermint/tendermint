@@ -36,9 +36,15 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close() // nolint: errcheck
 	for {
-		messageType, _, err := conn.ReadMessage()
+		messageType, in, err := conn.ReadMessage()
 		if err != nil {
 			return
+		}
+
+		var req types.RPCRequest
+		err = json.Unmarshal(in, &req)
+		if err != nil {
+			panic(err)
 		}
 
 		h.mtx.RLock()
@@ -50,7 +56,7 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.mtx.RUnlock()
 
 		res := json.RawMessage(`{}`)
-		emptyRespBytes, _ := json.Marshal(types.RPCResponse{Result: res})
+		emptyRespBytes, _ := json.Marshal(types.RPCResponse{Result: res, ID: req.ID})
 		if err := conn.WriteMessage(messageType, emptyRespBytes); err != nil {
 			return
 		}
@@ -212,7 +218,8 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 		select {
 		case resp := <-c.ResponsesCh:
 			if resp.Error != nil {
-				t.Fatalf("unexpected error: %v", resp.Error)
+				t.Errorf("unexpected error: %v", resp.Error)
+				return
 			}
 			if resp.Result != nil {
 				wg.Done()

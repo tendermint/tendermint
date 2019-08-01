@@ -116,8 +116,13 @@ func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int
 	}
 	err := conR.conS.Start()
 	if err != nil {
-		conR.Logger.Error("Error starting conS", "err", err)
-		return
+		panic(fmt.Sprintf(`Failed to start consensus state: %v
+
+conS:
+%+v
+
+conR:
+%+v`, err, conR.conS, conR))
 	}
 }
 
@@ -350,10 +355,6 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	default:
 		conR.Logger.Error(fmt.Sprintf("Unknown chId %X", chID))
-	}
-
-	if err != nil {
-		conR.Logger.Error("Error in Receive()", "err", err)
 	}
 }
 
