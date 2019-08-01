@@ -54,7 +54,7 @@ type JSONRPCClient struct {
 	client  *http.Client
 	cdc     *amino.Codec
 
-	nextReqID uint
+	nextReqID int
 }
 
 var _ HTTPClient = (*JSONRPCClient)(nil)

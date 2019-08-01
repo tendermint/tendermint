@@ -34,7 +34,7 @@ type WSClient struct {
 	conn *websocket.Conn
 	cdc  *amino.Codec
 
-	nextReqID uint
+	nextReqID int
 	sentIds   map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
 
 	Address  string // IP:PORT or /path/to/socket

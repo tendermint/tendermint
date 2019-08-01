@@ -52,7 +52,7 @@ func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
 
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      jsonrpcid       `json:"id"`
+	ID      jsonrpcid       `json:"id,omitempty"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
@@ -210,10 +210,16 @@ func (resp RPCResponse) String() string {
 	return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
 }
 
-func RPCParseError(id jsonrpcid, err error) RPCResponse {
-	return NewRPCErrorResponse(id, -32700, "Parse error. Invalid JSON", err.Error())
+// From the JSON-RPC 2.0 spec:
+//	If there was an error in detecting the id in the Request object (e.g. Parse
+// 	error/Invalid Request), it MUST be Null.
+func RPCParseError(err error) RPCResponse {
+	return NewRPCErrorResponse(nil, -32700, "Parse error. Invalid JSON", err.Error())
 }
 
+// From the JSON-RPC 2.0 spec:
+//	If there was an error in detecting the id in the Request object (e.g. Parse
+// 	error/Invalid Request), it MUST be Null.
 func RPCInvalidRequestError(id jsonrpcid, err error) RPCResponse {
 	return NewRPCErrorResponse(id, -32600, "Invalid Request", err.Error())
 }
