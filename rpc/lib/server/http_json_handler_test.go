@@ -100,7 +100,7 @@ func TestJSONRPCID(t *testing.T) {
 		{`{"jsonrpc": "2.0", "method": "c", "id": -1, "params": ["a", "10"]}`, false, types.JSONRPCIntID(-1)},
 
 		// no ID - notification
-		{`{"jsonrpc": "2.0", "method": "c", "params": ["a", "10"]}`, false, nil},
+		// {`{"jsonrpc": "2.0", "method": "c", "params": ["a", "10"]}`, false, nil},
 
 		// bad id
 		{`{"jsonrpc": "2.0", "method": "c", "id": {}, "params": ["a", "10"]}`, true, nil},
@@ -135,7 +135,7 @@ func TestJSONRPCID(t *testing.T) {
 
 func TestRPCNotification(t *testing.T) {
 	mux := testMux()
-	body := strings.NewReader(`{"jsonrpc": "2.0", "id": ""}`)
+	body := strings.NewReader(`{"jsonrpc": "2.0"}`)
 	req, _ := http.NewRequest("POST", "http://localhost/", body)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -156,16 +156,16 @@ func TestRPCNotificationInBatch(t *testing.T) {
 	}{
 		{
 			`[
-				{"jsonrpc": "2.0","id": ""},
+				{"jsonrpc": "2.0"},
 				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]}
 			 ]`,
 			1,
 		},
 		{
 			`[
-				{"jsonrpc": "2.0","id": ""},
+				{"jsonrpc": "2.0"},
 				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]},
-				{"jsonrpc": "2.0","id": ""},
+				{"jsonrpc": "2.0"},
 				{"jsonrpc": "2.0","method":"c","id":"abc","params":["a","10"]}
 			 ]`,
 			2,
