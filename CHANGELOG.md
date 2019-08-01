@@ -31,7 +31,7 @@ program](https://hackerone.com/tendermint).
 - [abci] [\#3809](https://github.com/tendermint/tendermint/issues/3809) Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
 - [rpc] [\#2252](https://github.com/tendermint/tendermint/issues/2252) Add `/broadcast_evidence` endpoint to submit double signing and other types of evidence
 - [p2p] [\#3664](https://github.com/tendermint/tendermint/issues/3664) p2p/conn: reuse buffer when write/read from secret connection(@guagualvcha)
-- [rpc] [\#3076](https://github.com/tendermint/tendermint/issues/3076) Replace the previous intersect call, which was called at each query condition, with a map intersection, improves `tx_search` query time
+- [rpc] [\#3076](https://github.com/tendermint/tendermint/issues/3076) Improve transaction search performance
 
 ### BUG FIXES:
 
