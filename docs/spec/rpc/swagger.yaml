@@ -38,7 +38,7 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/EmptyResult'
+            $ref: '#/definitions/EmptyResponse'
         500:
           description: empty error
           schema:
@@ -91,22 +91,24 @@ definitions:
       jsonrpc:
         type: string
         example: "2.0"
-  EmptyResult:
-    type: object
-    additionalProperties:
-      $ref: '#/definitions/JSONRPC'
-    properties:
-      result:
-        type: object
-        additionalProperties: {}
+  EmptyResponse:
+    description: Empty Response
+    allOf:
+      - $ref: '#/definitions/JSONRPC'
+      - type: object
+        properties:
+          result:
+            type: object
+            additionalProperties: {}
   Error:
-    type: object
-    additionalProperties:
-      $ref: '#/definitions/JSONRPC'
-    properties:
-      error:
-        type: string
-        example: "Description of failure"
+    description: Error Response
+    allOf:
+      - $ref: '#/definitions/JSONRPC'
+      - type: object
+        properties:
+          error:
+            type: string
+            example: "Description of failure"
   ProtocolVersion:
     type: object
     properties:
@@ -191,14 +193,17 @@ definitions:
         type: string
         example: "0"
   Status:
-    type: object
-    properties:
-      node_info:
-        $ref: '#/definitions/NodeInfo'
-      sync_info:
-        $ref: '#/definitions/SyncInfo'
-      validator_info:
-        $ref: '#/definitions/ValidatorInfo'
+    description: Status Response
+    allOf:
+      - $ref: '#/definitions/JSONRPC'
+      - type: object
+        properties:
+          node_info:
+            $ref: '#/definitions/NodeInfo'
+          sync_info:
+            $ref: '#/definitions/SyncInfo'
+          validator_info:
+            $ref: '#/definitions/ValidatorInfo'
   Monitor:
     type: object
     properties:
@@ -288,23 +293,28 @@ definitions:
         example: "95.179.155.35"
 
   NetInfo:
-    type: object
-    properties:
-      listening:
-        type: boolean
-        example: true
-      listeners:
-        type: array
-        items:
-          type: string
-          example: "Listener(@)"
-      n_peers:
-        type: integer
-        example: "1"
-      peers:
-        type: array
-        items:
-          $ref: '#/definitions/Peer'
+    description: NetInfo Response
+    allOf:
+      - $ref: '#/definitions/JSONRPC'
+      - type: object
+        properties:
+          listening:
+            type: boolean
+            example: true
+          listeners:
+            type: array
+            items:
+              type: string
+              example: "Listener(@)"
+          n_peers:
+            type: integer
+            example: "1"
+          peers:
+            type: array
+            items:
+              $ref: '#/definitions/Peer'
+
+
 
 
 
