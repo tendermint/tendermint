@@ -339,13 +339,14 @@ func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Val
 func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error, bool) {
 	if rt.Kind() == reflect.Ptr {
 		rv_, err, ok := nonJSONStringToArg(cdc, rt.Elem(), arg)
-		if err != nil {
+		switch {
+		case err != nil:
 			return reflect.Value{}, err, false
-		} else if ok {
+		case ok:
 			rv := reflect.New(rt.Elem())
 			rv.Elem().Set(rv_)
 			return rv, nil, true
-		} else {
+		default:
 			return reflect.Value{}, nil, false
 		}
 	} else {
