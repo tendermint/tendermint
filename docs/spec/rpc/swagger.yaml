@@ -1,0 +1,342 @@
+swagger: "2.0"
+info:
+  version: "0.32.1"
+  title: RPC client for Tendermint
+  description: A REST interface for state queries, transaction generation and broadcasting.
+  license:
+    name: Apache 2.0
+    url: https://github.com/tendermint/tendermint/blob/master/LICENSE
+tags:
+  - name: Websocket
+    description: Subscribe/unsubscribe are reserved for websocket events.
+  - name: Info
+    description: Informations about the node APIs
+  - name: Tx
+    description: Transactions broadcast APIs
+  - name: ABCI
+    description: ABCI APIs
+  - name: Evidence
+    description: Evidence APIs
+schemes:
+  - https
+host: stargate.cosmos.network:26657
+securityDefinitions:
+  kms:
+    type: basic
+paths:
+  /health:
+    get:
+      summary: Node heartbeat
+      tags:
+        - Info
+      operationId: health
+      description: |
+        Get node health. Returns empty result (200 OK) on success, no response - in case of an error.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: '#/definitions/EmptyResult'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/Error'
+  /status:
+    get:
+      summary: Node Status
+      operationId: status
+      tags:
+        - Info
+      description: |
+        Get Tendermint status including node info, pubkey, latest block hash, app hash, block height and time.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Status of the node
+          schema:
+            $ref: '#/definitions/Status'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/Error'
+  /net_info:
+    get:
+      summary: Network informations
+      operationId: net_info
+      tags:
+        - Info
+      description: |
+        Get network info.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: '#/definitions/NetInfo'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/Error'
+definitions:
+  JSONRPC:
+    type: object
+    properties:
+      id:
+        type: string
+        example: ""
+      jsonrpc:
+        type: string
+        example: "2.0"
+  EmptyResult:
+    type: object
+    additionalProperties:
+      $ref: '#/definitions/JSONRPC'
+    properties:
+      result:
+        type: object
+        additionalProperties: {}
+  Error:
+    type: object
+    additionalProperties:
+      $ref: '#/definitions/JSONRPC'
+    properties:
+      error:
+        type: string
+        example: "Description of failure"
+  ProtocolVersion:
+    type: object
+    properties:
+      p2p:
+        type: string
+        example: "7"
+      block:
+        type: string
+        example: "10"
+      app:
+        type: string
+        example: "0"
+  PubKey:
+    type: object
+    properties:
+      type:
+        type: string
+        example: "tendermint/PubKeyEd25519"
+      value:
+        type: string
+        example: "A6DoBUypNtUAyEHWtQ9bFjfNg8Bo9CrnkUGl6k6OHN4="
+  NodeInfo:
+    type: object
+    properties:
+      protocol_version:
+        $ref: '#/definitions/ProtocolVersion'
+      id:
+        type: string
+        example: "5576458aef205977e18fd50b274e9b5d9014525a"
+      listen_addr:
+        type: string
+        example: "tcp://0.0.0.0:26656"
+      network:
+        type: string
+        example: "cosmoshub-2"
+      version:
+        type: string
+        example: "0.32.1"
+      channels:
+        type: string
+        example: "4020212223303800"
+      moniker:
+        type: string
+        example: "moniker-node"
+      other:
+        type: object
+        properties:
+          tx_index:
+            type: string
+            example: "on"
+          rpc_address:
+            type: string
+            example: "tcp://0.0.0.0:26657"
+        example: "moniker-node"
+  SyncInfo:
+    type: object
+    properties:
+      latest_block_hash:
+        type: string
+        example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+      latest_app_hash:
+        type: string
+        example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+      latest_block_height:
+        type: string
+        example: "1262196"
+      latest_block_time:
+        type: string
+        example: "2019-08-01T11:52:22.818762194Z"
+      catching_up:
+        type: boolean
+        example: false
+  ValidatorInfo:
+    type: object
+    properties:
+      address:
+        type: string
+        example: "5D6A51A8E9899C44079C6AF90618BA0369070E6E"
+      pub_key:
+        $ref: '#/definitions/PubKey'
+      voting_power:
+        type: string
+        example: "0"
+  Status:
+    type: object
+    properties:
+      node_info:
+        $ref: '#/definitions/NodeInfo'
+      sync_info:
+        $ref: '#/definitions/SyncInfo'
+      validator_info:
+        $ref: '#/definitions/ValidatorInfo'
+  Monitor:
+    type: object
+    properties:
+      Active:
+        type: boolean
+        example: true
+      Start:
+        type: string
+        example: "2019-07-31T14:31:28.66Z"
+      Duration:
+        type: string
+        example: "168901060000000"
+      Idle:
+        type: string
+        example: "168901040000000"
+      Bytes:
+        type: string
+        example: "5"
+      Samples:
+        type: string
+        example: "1"
+      InstRate:
+        type: string
+        example: "0"
+      CurRate:
+        type: string
+        example: "0"
+      AvgRate:
+        type: string
+        example: "0"
+      PeakRate:
+        type: string
+        example: "0"
+      BytesRem:
+        type: string
+        example: "0"
+      TimeRem:
+        type: string
+        example: "0"
+      Progress:
+        type: integer
+        example: 0
+  Channel:
+    type: object
+    properties:
+      ID:
+        type: integer
+        example: 48
+      SendQueueCapacity:
+        type: string
+        example: "1"
+      SendQueueSize:
+        type: string
+        example: "0"
+      Priority:
+        type: string
+        example: "5"
+      RecentlySent:
+        type: string
+        example: "0"
+  ConnectionStatus:
+    type: object
+    properties:
+      Duration:
+        type: string
+        example: "168901057956119"
+      SendMonitor:
+        $ref: '#/definitions/Monitor'
+      RecvMonitor:
+        $ref: '#/definitions/Monitor'
+      Channels:
+        type: array
+        items:
+          $ref: '#/definitions/Channel'
+  Peer:
+    type: object
+    properties:
+      node_info:
+        $ref: '#/definitions/NodeInfo'
+      is_outbound:
+        type: boolean
+        example: true
+      connection_status:
+        $ref: '#/definitions/ConnectionStatus'
+      remote_ip:
+        type: string
+        example: "95.179.155.35"
+
+  NetInfo:
+    type: object
+    properties:
+      listening:
+        type: boolean
+        example: true
+      listeners:
+        type: array
+        items:
+          type: string
+          example: "Listener(@)"
+      n_peers:
+        type: integer
+        example: "1"
+      peers:
+        type: array
+        items:
+          $ref: '#/definitions/Peer'
+
+
+
+
+#  // subscribe/unsubscribe are reserved for websocket events.
+#  "subscribe":       rpc.NewWSRPCFunc(Subscribe, "query"),
+#  "unsubscribe":     rpc.NewWSRPCFunc(Unsubscribe, "query"),
+#  "unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
+#
+#  // info API
+#  "blockchain":           rpc.NewRPCFunc(BlockchainInfo, "minHeight,maxHeight"),
+#  "genesis":              rpc.NewRPCFunc(Genesis, ""),
+#  "block":                rpc.NewRPCFunc(Block, "height"),
+#  "block_results":        rpc.NewRPCFunc(BlockResults, "height"),
+#  "commit":               rpc.NewRPCFunc(Commit, "height"),
+#  "tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
+#  "tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page"),
+#  "validators":           rpc.NewRPCFunc(Validators, "height"),
+#  "dump_consensus_state": rpc.NewRPCFunc(DumpConsensusState, ""),
+#  "consensus_state":      rpc.NewRPCFunc(ConsensusState, ""),
+#  "consensus_params":     rpc.NewRPCFunc(ConsensusParams, "height"),
+#  "unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, "limit"),
+#  "num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxs, ""),
+#
+#  // tx broadcast API
+#  "broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommit, "tx"),
+#  "broadcast_tx_sync":   rpc.NewRPCFunc(BroadcastTxSync, "tx"),
+#  "broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsync, "tx"),
+#
+#  // abci API
+#  "abci_query": rpc.NewRPCFunc(ABCIQuery, "path,data,height,prove"),
+#  "abci_info":  rpc.NewRPCFunc(ABCIInfo, ""),
+#
+#  // evidence API
+#  "broadcast_evidence": rpc.NewRPCFunc(BroadcastEvidence, "evidence"),
