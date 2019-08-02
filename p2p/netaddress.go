@@ -250,36 +250,39 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		Ipv4
 		Ipv6_strong
 	)
-	if !na.Routable() {
+	switch {
+	case !na.Routable():
 		return Unreachable
-	} else if na.RFC4380() {
-		if !o.Routable() {
+	case na.RFC4380():
+		switch {
+		case !o.Routable():
 			return Default
-		} else if o.RFC4380() {
+		case o.RFC4380():
 			return Teredo
-		} else if o.IP.To4() != nil {
+		case o.IP.To4() != nil:
 			return Ipv4
-		} else { // ipv6
+		default: // ipv6
 			return Ipv6_weak
 		}
-	} else if na.IP.To4() != nil {
+	case na.IP.To4() != nil:
 		if o.Routable() && o.IP.To4() != nil {
 			return Ipv4
 		}
 		return Default
-	} else /* ipv6 */ {
+	default: /* ipv6 */
 		var tunnelled bool
 		// Is our v6 is tunnelled?
 		if o.RFC3964() || o.RFC6052() || o.RFC6145() {
 			tunnelled = true
 		}
-		if !o.Routable() {
+		switch {
+		case !o.Routable():
 			return Default
-		} else if o.RFC4380() {
+		case o.RFC4380():
 			return Teredo
-		} else if o.IP.To4() != nil {
+		case o.IP.To4() != nil:
 			return Ipv4
-		} else if tunnelled {
+		case tunnelled:
 			// only prioritise ipv6 if we aren't tunnelling it.
 			return Ipv6_weak
 		}
