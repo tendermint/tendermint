@@ -294,6 +294,9 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
 
+# Limit the size of TxMessage
+max_msg_bytes = {{ .Mempool.MaxMsgBytes }}
+
 ##### fast sync configuration options #####
 [fastsync]
 
@@ -301,9 +304,6 @@ cache_size = {{ .Mempool.CacheSize }}
 #   1) "v0" (default) - the legacy fast sync implementation
 #   2) "v1" - refactor of v0 version for better testability
 version = "{{ .FastSync.Version }}"
-
-# Limit the size of TxMessage
-max_msg_bytes = {{ .Mempool.MaxMsgBytes }}
 
 ##### consensus configuration options #####
 [consensus]

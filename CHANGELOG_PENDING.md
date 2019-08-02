@@ -20,3 +20,4 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- [config] \#3868 move misplaced `max_msg_bytes` into mempool section
