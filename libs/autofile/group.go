@@ -472,8 +472,7 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 	for {
 		nn, err = gr.curReader.Read(p[n:])
 		n += nn
-		switch {
-		case err == io.EOF:
+		if err == io.EOF {
 			if n >= lenP {
 				return n, nil
 			}
@@ -481,9 +480,9 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 			if err1 := gr.openFile(gr.curIndex + 1); err1 != nil {
 				return n, err1
 			}
-		case err != nil:
+		} else if err != nil {
 			return n, err
-		case nn == 0: // empty file
+		} else if nn == 0 { // empty file
 			return n, err
 		}
 	}

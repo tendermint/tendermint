@@ -9,7 +9,7 @@ import (
 // Convenience method.
 
 func ErrorWrap(cause interface{}, format string, args ...interface{}) Error {
-	if causeCmnError, ok := cause.(*cmnError); ok { //nolint:gocritic
+	if causeCmnError, ok := cause.(*cmnError); ok {
 		msg := fmt.Sprintf(format, args...)
 		return causeCmnError.Stacktrace().Trace(1, msg)
 	} else if cause == nil {

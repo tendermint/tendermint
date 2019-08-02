@@ -679,7 +679,8 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		metrics:      sw.metrics,
 	})
 	if err != nil {
-		if e, ok := err.(ErrRejected); ok {
+		switch e := err.(type) {
+		case ErrRejected:
 			if e.IsSelf() {
 				// Remove the given address from the address book and add to our addresses
 				// to avoid dialing in the future.

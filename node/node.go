@@ -246,12 +246,11 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 		if err != nil {
 			return nil, nil, err
 		}
-		switch {
-		case config.TxIndex.IndexTags != "":
+		if config.TxIndex.IndexTags != "" {
 			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
-		case config.TxIndex.IndexAllTags:
+		} else if config.TxIndex.IndexAllTags {
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
-		default:
+		} else {
 			txIndexer = kv.NewTxIndex(store)
 		}
 	default:

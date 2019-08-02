@@ -117,15 +117,14 @@ func (fc *FuzzedConnection) fuzz() bool {
 	case config.FuzzModeDrop:
 		// randomly drop the r/w, drop the conn, or sleep
 		r := cmn.RandFloat64()
-		switch {
-		case r <= fc.config.ProbDropRW:
+		if r <= fc.config.ProbDropRW {
 			return true
-		case r < fc.config.ProbDropRW+fc.config.ProbDropConn:
+		} else if r < fc.config.ProbDropRW+fc.config.ProbDropConn {
 			// XXX: can't this fail because machine precision?
 			// XXX: do we need an error?
 			fc.Close() // nolint: errcheck, gas
 			return true
-		case r < fc.config.ProbDropRW+fc.config.ProbDropConn+fc.config.ProbSleep:
+		} else if r < fc.config.ProbDropRW+fc.config.ProbDropConn+fc.config.ProbSleep {
 			time.Sleep(fc.randomDuration())
 		}
 	case config.FuzzModeDelay:

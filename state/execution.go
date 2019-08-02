@@ -249,7 +249,8 @@ func execBlockOnProxyApp(
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
-		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
+		switch r := res.Value.(type) {
+		case *abci.Response_DeliverTx:
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.

@@ -31,14 +31,13 @@ func TestParallel(t *testing.T) {
 	var failedTasks int
 	for i := 0; i < len(tasks); i++ {
 		taskResult, ok := trs.LatestResult(i)
-		switch {
-		case !ok:
+		if !ok {
 			assert.Fail(t, "Task #%v did not complete.", i)
 			failedTasks++
-		case taskResult.Error != nil:
+		} else if taskResult.Error != nil {
 			assert.Fail(t, "Task should not have errored but got %v", taskResult.Error)
 			failedTasks++
-		case !assert.Equal(t, -1*i, taskResult.Value.(int)):
+		} else if !assert.Equal(t, -1*i, taskResult.Value.(int)) {
 			assert.Fail(t, "Task should have returned %v but got %v", -1*i, taskResult.Value.(int))
 			failedTasks++
 		}
@@ -134,12 +133,11 @@ func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int, val inte
 	taskName := fmt.Sprintf("Task #%v", index)
 	assert.True(t, ok, "TaskResultCh unexpectedly closed for %v", taskName)
 	assert.Equal(t, val, taskResult.Value, taskName)
-	switch {
-	case err != nil:
+	if err != nil {
 		assert.Equal(t, err, taskResult.Error, taskName)
-	case pnk != nil:
+	} else if pnk != nil {
 		assert.Equal(t, pnk, taskResult.Error.(Error).Data(), taskName)
-	default:
+	} else {
 		assert.Nil(t, taskResult.Error, taskName)
 	}
 }

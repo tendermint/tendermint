@@ -379,8 +379,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 
 	tmpHashes := make(map[string][]byte)
 
-	switch {
-	case c.Op == query.OpEqual:
+	if c.Op == query.OpEqual {
 		it := dbm.IteratePrefix(txi.store, startKeyBz)
 		defer it.Close()
 
@@ -388,7 +387,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 			tmpHashes[string(it.Value())] = it.Value()
 		}
 
-	case c.Op == query.OpContains:
+	} else if c.Op == query.OpContains {
 		// XXX: startKey does not apply here.
 		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
 		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
@@ -404,7 +403,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 				tmpHashes[string(it.Value())] = it.Value()
 			}
 		}
-	default:
+	} else {
 		panic("other operators should be handled already")
 	}
 
@@ -455,7 +454,8 @@ LOOP:
 			continue
 		}
 
-		if _, ok := r.AnyBound().(int64); ok {
+		switch r.AnyBound().(type) {
+		case int64:
 			v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
 			if err != nil {
 				continue LOOP

@@ -60,10 +60,9 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 
 	for i := 0; i < len(keyvals)-1; i += 2 {
 		// Extract level
-		switch keyvals[i] {
-		case kitlevel.Key():
+		if keyvals[i] == kitlevel.Key() {
 			excludeIndexes = append(excludeIndexes, i)
-			switch keyvals[i+1].(type) { // nolint:gocritic
+			switch keyvals[i+1].(type) {
 			case string:
 				lvl = keyvals[i+1].(string)
 			case kitlevel.Value:
@@ -72,11 +71,11 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 				panic(fmt.Sprintf("level value of unknown type %T", keyvals[i+1]))
 			}
 			// and message
-		case msgKey:
+		} else if keyvals[i] == msgKey {
 			excludeIndexes = append(excludeIndexes, i)
 			msg = keyvals[i+1].(string)
 			// and module (could be multiple keyvals; if such case last keyvalue wins)
-		case moduleKey:
+		} else if keyvals[i] == moduleKey {
 			excludeIndexes = append(excludeIndexes, i)
 			module = keyvals[i+1].(string)
 		}

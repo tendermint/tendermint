@@ -42,13 +42,12 @@ func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (ne
 
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
-	switch {
-	case len(parts) == 1:
+	if len(parts) == 1 {
 		// default to tcp if nothing specified
 		protocol, address = protoTCP, remoteAddr
-	case len(parts) == 2:
+	} else if len(parts) == 2 {
 		protocol, address = parts[0], parts[1]
-	default:
+	} else {
 		// return a invalid message
 		msg := fmt.Sprintf("Invalid addr: %s", remoteAddr)
 		return clientProtocol, msg, func(_ string, _ string) (net.Conn, error) {
