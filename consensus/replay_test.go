@@ -545,8 +545,7 @@ func TestMockProxyApp(t *testing.T) {
 		abciRes.DeliverTx = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTx))
 		// Execute transactions and get hash.
 		proxyCb := func(req *abci.Request, res *abci.Response) {
-			switch r := res.Value.(type) {
-			case *abci.Response_DeliverTx:
+			if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
 				// TODO: make use of res.Log
 				// TODO: make use of this info
 				// Blocks may include invalid txs.
