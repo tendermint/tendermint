@@ -19,6 +19,8 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [consensus] \#3839 Reduce "Error attempting to add vote" message severity (Error -> Info)
+
 ### BUG FIXES:
 
 - [config] \#3868 move misplaced `max_msg_bytes` into mempool section
