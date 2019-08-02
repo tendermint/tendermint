@@ -141,12 +141,12 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 	var msg *TimedWALMessage
 	dec := WALDecoder{gr}
 
-Loop:
+LOOP:
 	for {
 		msg, err = dec.Decode()
 		switch {
 		case err == io.EOF:
-			break Loop
+			break LOOP
 		case IsDataCorruptionError(err):
 			cs.Logger.Error("data has been corrupted in last height of consensus WAL", "err", err, "height", csHeight)
 			return err

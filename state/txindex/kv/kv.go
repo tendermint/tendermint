@@ -456,7 +456,6 @@ LOOP:
 		}
 
 		if _, ok := r.AnyBound().(int64); ok {
-			// case int64:
 			v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
 			if err != nil {
 				continue LOOP

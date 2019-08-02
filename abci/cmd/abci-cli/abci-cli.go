@@ -332,7 +332,7 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 
 func cmdBatch(cmd *cobra.Command, args []string) error {
 	bufReader := bufio.NewReader(os.Stdin)
-Loop:
+LOOP:
 	for {
 
 		line, more, err := bufReader.ReadLine()
@@ -340,7 +340,7 @@ Loop:
 		case more:
 			return errors.New("Input line is too long")
 		case err == io.EOF:
-			break Loop
+			break LOOP
 		case len(line) == 0:
 			continue
 		case err != nil:
