@@ -240,6 +240,9 @@ max_txs_bytes = 1073741824
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = 10000
 
+# Limit the size of TxMessage
+max_msg_bytes = 1048576
+
 ##### fast sync configuration options #####
 [fastsync]
 
@@ -247,9 +250,6 @@ cache_size = 10000
 #   1) "v0" (default) - the legacy fast sync implementation
 #   2) "v1" - refactor of v0 version for better testability
 version = "v0"
-
-# Limit the size of TxMessage
-max_msg_bytes = 1048576
 
 ##### consensus configuration options #####
 [consensus]
