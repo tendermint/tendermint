@@ -11,10 +11,12 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
+	cfg "github.com/tendermint/tendermint/config"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -75,12 +77,14 @@ func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (ne
 // remoteAddr should be fully featured (eg. with tcp:// or unix://)
 func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 	protocol, address, dialer := makeHTTPDialer(remoteAddr)
+	clientTimeout := cfg.DefaultRPCConfig().ClientTimeout * time.Second
 	return protocol + "://" + address, &http.Client{
 		Transport: &http.Transport{
 			// Set to true to prevent GZIP-bomb DoS attacks
 			DisableCompression: true,
 			Dial:               dialer,
 		},
+		Timeout: clientTimeout,
 	}
 }
 

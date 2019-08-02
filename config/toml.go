@@ -211,6 +211,10 @@ tls_cert_file = "{{ .RPC.TLSCertFile }}"
 # NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
+# ClientTimeout specifies a time limit for requests made by the client.
+# A ClientTimeout of zero means no timeout
+client_timeout = {{ .RPC.ClientTimeout }}
+
 ##### peer to peer configuration options #####
 [p2p]
 

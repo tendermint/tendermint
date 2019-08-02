@@ -378,6 +378,10 @@ type RPCConfig struct {
 	//
 	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
+
+	// ClientTimeout specifies a time limit for requests made by the client.
+	// A ClientTimeout of zero means no timeout
+	ClientTimeout time.Duration `mapstrucutre:"client_timeout"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -402,6 +406,8 @@ func DefaultRPCConfig() *RPCConfig {
 
 		TLSCertFile: "",
 		TLSKeyFile:  "",
+
+		ClientTimeout: 0,
 	}
 }
 
