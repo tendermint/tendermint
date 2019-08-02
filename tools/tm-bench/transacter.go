@@ -194,7 +194,7 @@ func (t *transacter) sendLoop(connIndex int) {
 				c.SetWriteDeadline(now.Add(sendTimeout))
 				err = c.WriteJSON(rpctypes.RPCRequest{
 					JSONRPC: "2.0",
-					ID:      rpctypes.JSONRPCIntID((connIndex * 10000) + i),
+					ID:      rpctypes.JSONRPCIntID((connIndex * t.Rate) + i),
 					Method:  t.BroadcastTxMethod,
 					Params:  rawParamsJSON,
 				})
