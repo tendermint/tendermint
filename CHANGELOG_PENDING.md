@@ -20,6 +20,7 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 - [consensus] \#3839 Reduce "Error attempting to add vote" message severity (Error -> Info)
+- [mempool] \#3877 Make `max_tx_bytes` configurable instead of `max_msg_bytes`
 
 ### BUG FIXES:
 
