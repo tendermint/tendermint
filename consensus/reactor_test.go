@@ -831,3 +831,43 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
+	)
+
+	validBlockID := types.BlockID{}
+	invalidBlockID := types.BlockID{cmn.HexBytes{}, types.PartSetHeader{-1, cmn.HexBytes{}}}
+
+	testCases := []struct {
+		testName       string
+		messageHeight  int64
+		messageRound   int
+		messageType    types.SignedMsgType
+		messageBlockID types.BlockID
+		// messageVotes   *cmn.BitArray
+		expectErr bool
+	}{
+		{"Valid Message", 0, 0, validSignedMsgType, validBlockID, false},
+		{"Invalid Message", -1, 0, validSignedMsgType, validBlockID, true},
+		{"Invalid Message", 0, -1, validSignedMsgType, validBlockID, true},
+		{"Invalid Message", 0, 0, invalidSignedMsgType, validBlockID, true},
+		{"Invalid Message", 0, 0, validSignedMsgType, invalidBlockID, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := VoteSetBitsMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Type:   tc.messageType,
+				// Votes:   tc.messageVotes,
+				BlockID: tc.messageBlockID,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
