@@ -698,3 +698,31 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestProposalPOLMessageValidateBasic(t *testing.T) {
+	testBitArray := cmn.NewBitArray(1)
+	testCases := []struct {
+		testName                string
+		messageHeight           int64
+		messageProposalPOLRound int
+		messageProposalPOL      *cmn.BitArray
+		expectErr               bool
+	}{
+		{"Valid Message", 0, 0, testBitArray, false},
+		{"Invalid Message", -1, 0, testBitArray, true},
+		{"Invalid Message", 0, -1, testBitArray, true},
+		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := ProposalPOLMessage{
+				Height:           tc.messageHeight,
+				ProposalPOLRound: tc.messageProposalPOLRound,
+				ProposalPOL:      tc.messageProposalPOL,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
