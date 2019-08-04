@@ -163,3 +163,15 @@ func TestMempoolConfigValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestFastSyncConfigValidateBasic(t *testing.T) {
+	cfg := TestFastSyncConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	// tamper with version
+	cfg.Version = "v1"
+	assert.NoError(t, cfg.ValidateBasic())
+
+	cfg.Version = "invalid"
+	assert.Error(t, cfg.ValidateBasic())
+}
