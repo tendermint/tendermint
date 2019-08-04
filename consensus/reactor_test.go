@@ -667,3 +667,27 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestNewValidBlockMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName      string
+		messageHeight int64
+		messageRound  int
+		expectErr     bool
+	}{
+		{"Valid Message", 0, 0, false},
+		{"Invalid Message", -1, 0, true},
+		{"Invalid Message", 0, -1, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewValidBlockMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
