@@ -213,6 +213,7 @@ tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
 # ClientTimeout specifies a time limit for requests made by the client.
 # A ClientTimeout of zero means no timeout
+# Define the timeout in seconds
 client_timeout = {{ .RPC.ClientTimeout }}
 
 ##### peer to peer configuration options #####

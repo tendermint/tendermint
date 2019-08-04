@@ -381,6 +381,7 @@ type RPCConfig struct {
 
 	// ClientTimeout specifies a time limit for requests made by the client.
 	// A ClientTimeout of zero means no timeout
+	// Define the timeout in seconds
 	ClientTimeout time.Duration `mapstrucutre:"client_timeout"`
 }
 
@@ -443,6 +444,9 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.MaxHeaderBytes < 0 {
 		return errors.New("max_header_bytes can't be negative")
+	}
+	if cfg.ClientTimeout < 0 {
+		return errors.New("client_timeout can't be negative")
 	}
 	return nil
 }
