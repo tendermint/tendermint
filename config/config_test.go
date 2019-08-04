@@ -61,3 +61,41 @@ func TestBaseConfigValidateBasic(t *testing.T) {
 	cfg.LogFormat = "invalid"
 	assert.Error(t, cfg.ValidateBasic())
 }
+
+func TestRPCConfigValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName                     string
+		cfgGRPCMaxOpenConnections    int
+		cfgMaxOpenConnections        int
+		cfgMaxSubscriptionClients    int
+		cfgMaxSubscriptionsPerClient int
+		cfgTimeoutBroadcastTxCommit  time.Duration
+		cfgMaxBodyBytes              int64
+		cfgMaxHeaderBytes            int
+		expectErr                    bool
+	}{
+		{"Valid RPC Config", 1, 1, 1, 1, 1, 1, 1, false},
+		{"Invalid RPC Config", -1, 1, 1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, -1, 1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, -1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, -1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, -1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, 1, -1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, -1, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			cfg := RPCConfig{
+				GRPCMaxOpenConnections:    tc.cfgGRPCMaxOpenConnections,
+				MaxOpenConnections:        tc.cfgMaxOpenConnections,
+				MaxSubscriptionClients:    tc.cfgMaxSubscriptionClients,
+				MaxSubscriptionsPerClient: tc.cfgMaxSubscriptionsPerClient,
+				TimeoutBroadcastTxCommit:  tc.cfgTimeoutBroadcastTxCommit,
+				MaxBodyBytes:              tc.cfgMaxBodyBytes,
+				MaxHeaderBytes:            tc.cfgMaxHeaderBytes,
+			}
+			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
