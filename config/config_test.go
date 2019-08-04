@@ -52,3 +52,12 @@ func TestTLSConfiguration(t *testing.T) {
 	cfg.RPC.TLSKeyFile = "/abs/path/to/file.key"
 	assert.Equal("/abs/path/to/file.key", cfg.RPC.KeyFile())
 }
+
+func TestBaseConfigValidateBasic(t *testing.T) {
+	cfg := TestBaseConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	// tamper with log format
+	cfg.LogFormat = "invalid"
+	assert.Error(t, cfg.ValidateBasic())
+}
