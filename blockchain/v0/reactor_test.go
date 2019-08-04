@@ -246,7 +246,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
 }
 
-func TestBlockRequestMessageValidateBasic(t *testing.T) {
+func TestBcBlockRequestMessageValidateBasic(t *testing.T) {
 	testCases := []struct {
 		testName      string
 		requestHeight int64
@@ -261,6 +261,25 @@ func TestBlockRequestMessageValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			request := bcBlockRequestMessage{Height: tc.requestHeight}
 			assert.Equal(t, tc.expectErr, request.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestBcNoBlockResponseMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName          string
+		nonResponseHeight int64
+		expectErr         bool
+	}{
+		{"Valid Non-Response Message", 0, false},
+		{"Valid Non-Response Message", 1, false},
+		{"Invalid Non-Response Message", -1, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			nonResponse := bcNoBlockResponseMessage{Height: tc.nonResponseHeight}
+			assert.Equal(t, tc.expectErr, nonResponse.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
 }
