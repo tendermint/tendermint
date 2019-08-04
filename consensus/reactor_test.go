@@ -801,7 +801,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	)
 
 	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{cmn.HexBytes{}, types.PartSetHeader{-1, cmn.HexBytes{}}}
+	invalidBlockID := types.BlockID{Hash: cmn.HexBytes{}, PartsHeader: types.PartSetHeader{Total: -1, Hash: cmn.HexBytes{}}}
 
 	testCases := []struct {
 		testName       string
@@ -839,7 +839,8 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 	)
 
 	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{cmn.HexBytes{}, types.PartSetHeader{-1, cmn.HexBytes{}}}
+	invalidBlockID := types.BlockID{Hash: cmn.HexBytes{}, PartsHeader: types.PartSetHeader{Total: -1, Hash: cmn.HexBytes{}}}
+	testBitArray := cmn.NewBitArray(1)
 
 	testCases := []struct {
 		testName       string
@@ -847,14 +848,14 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		messageRound   int
 		messageType    types.SignedMsgType
 		messageBlockID types.BlockID
-		// messageVotes   *cmn.BitArray
-		expectErr bool
+		messageVotes   *cmn.BitArray
+		expectErr      bool
 	}{
-		{"Valid Message", 0, 0, validSignedMsgType, validBlockID, false},
-		{"Invalid Message", -1, 0, validSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, -1, validSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, 0, invalidSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, 0, validSignedMsgType, invalidBlockID, true},
+		{"Valid Message", 0, 0, validSignedMsgType, validBlockID, testBitArray, false},
+		{"Invalid Message", -1, 0, validSignedMsgType, validBlockID, testBitArray, true},
+		{"Invalid Message", 0, -1, validSignedMsgType, validBlockID, testBitArray, true},
+		{"Invalid Message", 0, 0, invalidSignedMsgType, validBlockID, testBitArray, true},
+		{"Invalid Message", 0, 0, validSignedMsgType, invalidBlockID, testBitArray, true},
 	}
 
 	for _, tc := range testCases {
