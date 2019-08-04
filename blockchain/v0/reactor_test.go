@@ -303,6 +303,25 @@ func TestBcStatusRequestMessageValidateBasic(t *testing.T) {
 	}
 }
 
+func TestBcStatusResponseMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName       string
+		responseHeight int64
+		expectErr      bool
+	}{
+		{"Valid Response Message", 0, false},
+		{"Valid Response Message", 1, false},
+		{"Invalid Response Message", -1, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			response := bcStatusResponseMessage{Height: tc.responseHeight}
+			assert.Equal(t, tc.expectErr, response.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
 //----------------------------------------------
 // utility funcs
 
