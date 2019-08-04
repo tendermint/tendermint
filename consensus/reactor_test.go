@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -631,4 +632,38 @@ func capture() {
 	trace := make([]byte, 10240000)
 	count := runtime.Stack(trace, true)
 	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
+}
+
+//-------------------------------------------------------------
+// Ensure basic validation of structs is functioning
+
+func TestNewRoundStepMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName               string
+		messageHeight          int64
+		messageRound           int
+		messageStep            cstypes.RoundStepType
+		messageLastCommitRound int
+		expectErr              bool
+	}{
+		{"Valid Message", 0, 0, 0x01, 1, false},
+		{"Invalid Message", -1, 0, 0x01, 1, true},
+		{"Invalid Message", 0, -1, 0x01, 1, true},
+		{"Invalid Message", 0, 0, 0x00, 1, true},
+		{"Invalid Message", 0, 0, 0x00, 0, true},
+		{"Invalid Message", 1, 0, 0x01, 0, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewRoundStepMessage{
+				Height:          tc.messageHeight,
+				Round:           tc.messageRound,
+				Step:            tc.messageStep,
+				LastCommitRound: tc.messageLastCommitRound,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }
