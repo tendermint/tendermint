@@ -222,3 +222,12 @@ func TestConsensusConfigValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestInstrumentationConfigValidateBasic(t *testing.T) {
+	cfg := TestInstrumentationConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	// tamper with maximum open connections
+	cfg.MaxOpenConnections = -1
+	assert.Error(t, cfg.ValidateBasic())
+}
