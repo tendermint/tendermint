@@ -339,13 +339,14 @@ func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Val
 func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error, bool) {
 	if rt.Kind() == reflect.Ptr {
 		rv_, err, ok := nonJSONStringToArg(cdc, rt.Elem(), arg)
-		if err != nil {
+		switch {
+		case err != nil:
 			return reflect.Value{}, err, false
-		} else if ok {
+		case ok:
 			rv := reflect.New(rt.Elem())
 			rv.Elem().Set(rv_)
 			return rv, nil, true
-		} else {
+		default:
 			return reflect.Value{}, nil, false
 		}
 	} else {
@@ -448,6 +449,9 @@ type wsConnection struct {
 	// Send pings to server with this period. Must be less than readWait, but greater than zero.
 	pingPeriod time.Duration
 
+	// Maximum message size.
+	readLimit int64
+
 	// callback which is called upon disconnect
 	onDisconnect func(remoteAddr string)
 
@@ -467,7 +471,6 @@ func NewWSConnection(
 	cdc *amino.Codec,
 	options ...func(*wsConnection),
 ) *wsConnection {
-	baseConn.SetReadLimit(maxBodyBytes)
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,
@@ -481,6 +484,7 @@ func NewWSConnection(
 	for _, option := range options {
 		option(wsc)
 	}
+	wsc.baseConn.SetReadLimit(wsc.readLimit)
 	wsc.BaseService = *cmn.NewBaseService(nil, "wsConnection", wsc)
 	return wsc
 }
@@ -522,6 +526,14 @@ func ReadWait(readWait time.Duration) func(*wsConnection) {
 func PingPeriod(pingPeriod time.Duration) func(*wsConnection) {
 	return func(wsc *wsConnection) {
 		wsc.pingPeriod = pingPeriod
+	}
+}
+
+// ReadLimit sets the maximum size for reading message.
+// It should only be used in the constructor - not Goroutine-safe.
+func ReadLimit(readLimit int64) func(*wsConnection) {
+	return func(wsc *wsConnection) {
+		wsc.readLimit = readLimit
 	}
 }
 
@@ -724,12 +736,10 @@ func (wsc *wsConnection) writeRoutine() {
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-			} else {
-				if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-					wsc.Logger.Error("Failed to write response", "err", err)
-					wsc.Stop()
-					return
-				}
+			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
+				wsc.Logger.Error("Failed to write response", "err", err)
+				wsc.Stop()
+				return
 			}
 		case <-wsc.Quit():
 			return

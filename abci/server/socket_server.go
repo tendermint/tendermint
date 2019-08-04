@@ -127,11 +127,12 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 
 func (s *SocketServer) waitForClose(closeConn chan error, connID int) {
 	err := <-closeConn
-	if err == io.EOF {
+	switch {
+	case err == io.EOF:
 		s.Logger.Error("Connection was closed by client")
-	} else if err != nil {
+	case err != nil:
 		s.Logger.Error("Connection error", "error", err)
-	} else {
+	default:
 		// never happens
 		s.Logger.Error("Connection was closed.")
 	}
@@ -146,6 +147,16 @@ func (s *SocketServer) waitForClose(closeConn chan error, connID int) {
 func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, responses chan<- *types.Response) {
 	var count int
 	var bufReader = bufio.NewReader(conn)
+
+	defer func() {
+		// make sure to recover from any app-related panics to allow proper socket cleanup
+		r := recover()
+		if r != nil {
+			closeConn <- fmt.Errorf("recovered from panic: %v", r)
+			s.appMtx.Unlock()
+		}
+	}()
+
 	for {
 
 		var req = &types.Request{}
@@ -154,7 +165,7 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, respo
 			if err == io.EOF {
 				closeConn <- err
 			} else {
-				closeConn <- fmt.Errorf("Error reading message: %v", err.Error())
+				closeConn <- fmt.Errorf("error reading message: %v", err)
 			}
 			return
 		}

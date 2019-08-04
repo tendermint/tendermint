@@ -11,9 +11,13 @@ import (
 func TestNewNetAddress(t *testing.T) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.Nil(t, err)
-	addr := NewNetAddress("", tcpAddr)
 
-	assert.Equal(t, "127.0.0.1:8080", addr.String())
+	assert.Panics(t, func() {
+		NewNetAddress("", tcpAddr)
+	})
+
+	addr := NewNetAddress("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", tcpAddr)
+	assert.Equal(t, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", addr.String())
 
 	assert.NotPanics(t, func() {
 		NewNetAddress("", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8000})
@@ -106,7 +110,12 @@ func TestNetAddressProperties(t *testing.T) {
 		addr, err := NewNetAddressString(tc.addr)
 		require.Nil(t, err)
 
-		assert.Equal(t, tc.valid, addr.Valid())
+		err = addr.Valid()
+		if tc.valid {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
 		assert.Equal(t, tc.local, addr.Local())
 		assert.Equal(t, tc.routable, addr.Routable())
 	}

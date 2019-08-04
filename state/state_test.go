@@ -13,8 +13,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	sm "github.com/tendermint/tendermint/state"
+	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
@@ -185,11 +185,11 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 
 	// Can't load anything for height 0.
-	v, err := sm.LoadValidators(stateDB, 0)
+	_, err := sm.LoadValidators(stateDB, 0)
 	assert.IsType(sm.ErrNoValSetForHeight{}, err, "expected err at height 0")
 
 	// Should be able to load for height 1.
-	v, err = sm.LoadValidators(stateDB, 1)
+	v, err := sm.LoadValidators(stateDB, 1)
 	assert.Nil(err, "expected no err at height 1")
 	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
@@ -440,13 +440,13 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	// 3. Center - with avg, resulting val2:-61, val1:62
 	avg := big.NewInt(0).Add(big.NewInt(wantVal1Prio), big.NewInt(wantVal2Prio))
 	avg.Div(avg, big.NewInt(2))
-	wantVal2Prio = wantVal2Prio - avg.Int64() // -61
-	wantVal1Prio = wantVal1Prio - avg.Int64() // 62
+	wantVal2Prio -= avg.Int64() // -61
+	wantVal1Prio -= avg.Int64() // 62
 
 	// 4. Steps from IncrementProposerPriority
-	wantVal1Prio = wantVal1Prio + val1VotingPower // 72
-	wantVal2Prio = wantVal2Prio + val2VotingPower // 39
-	wantVal1Prio = wantVal1Prio - totalPowerAfter // -38 as val1 is proposer
+	wantVal1Prio += val1VotingPower // 72
+	wantVal2Prio += val2VotingPower // 39
+	wantVal1Prio -= totalPowerAfter // -38 as val1 is proposer
 
 	assert.Equal(t, wantVal1Prio, updatedVal1.ProposerPriority)
 	assert.Equal(t, wantVal2Prio, addedVal2.ProposerPriority)
@@ -563,9 +563,9 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	expectedVal2Prio := v2PrioWhenAddedVal2 - avg.Int64()      // -11
 	expectedVal1Prio := oldVal1.ProposerPriority - avg.Int64() // 11
 	// 4. Increment
-	expectedVal2Prio = expectedVal2Prio + val2VotingPower // -11 + 10 = -1
-	expectedVal1Prio = expectedVal1Prio + val1VotingPower // 11 + 10 == 21
-	expectedVal1Prio = expectedVal1Prio - totalPower      // 1, val1 proposer
+	expectedVal2Prio += val2VotingPower // -11 + 10 = -1
+	expectedVal1Prio += val1VotingPower // 11 + 10 == 21
+	expectedVal1Prio -= totalPower      // 1, val1 proposer
 
 	assert.EqualValues(t, expectedVal1Prio, updatedVal1.ProposerPriority)
 	assert.EqualValues(t, expectedVal2Prio, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
@@ -589,7 +589,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// Increment
 	expectedVal2Prio2 := expectedVal2Prio + val2VotingPower // -1 + 10 = 9
 	expectedVal1Prio2 := expectedVal1Prio + val1VotingPower // 1 + 10 == 11
-	expectedVal1Prio2 = expectedVal1Prio2 - totalPower      // -9, val1 proposer
+	expectedVal1Prio2 -= totalPower                         // -9, val1 proposer
 
 	assert.EqualValues(t, expectedVal1Prio2, updatedVal1.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
 	assert.EqualValues(t, expectedVal2Prio2, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)

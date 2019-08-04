@@ -78,9 +78,9 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 rm -rf ./build/node*
 ```
 
-## Configuring abci containers 
+## Configuring abci containers
 
-To use your own abci applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/develop/docker-compose.yml) file and add image to your abci application.
+To use your own abci applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) file and add image to your abci application.
 
 ```
  abci0:
@@ -129,7 +129,7 @@ To use your own abci applications with 4-node setup edit the [docker-compose.yam
 
 ```
 
-Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's abci. 
+Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's abci.
 
 ```
   node0:

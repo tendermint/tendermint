@@ -18,15 +18,14 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/blockchain"
-	bc "github.com/tendermint/tendermint/blockchain"
+	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
+	bcv1 "github.com/tendermint/tendermint/blockchain/v1"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -42,14 +41,12 @@ import (
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+	dbm "github.com/tendermint/tm-db"
 )
-
-// CustomReactorNamePrefix is a prefix for all custom reactors to prevent
-// clashes with built-in reactors.
-const CustomReactorNamePrefix = "CUSTOM_"
 
 //------------------------------------------------------------------------------
 
@@ -143,11 +140,26 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 // Option sets a parameter for the node.
 type Option func(*Node)
 
-// CustomReactors allows you to add custom reactors to the node's Switch.
+// CustomReactors allows you to add custom reactors (name -> p2p.Reactor) to
+// the node's Switch.
+//
+// WARNING: using any name from the below list of the existing reactors will
+// result in replacing it with the custom one.
+//
+//  - MEMPOOL
+//  - BLOCKCHAIN
+//  - CONSENSUS
+//  - EVIDENCE
+//  - PEX
 func CustomReactors(reactors map[string]p2p.Reactor) Option {
 	return func(n *Node) {
 		for name, reactor := range reactors {
-			n.sw.AddReactor(CustomReactorNamePrefix+name, reactor)
+			if existingReactor := n.sw.Reactor(name); existingReactor != nil {
+				n.sw.Logger.Info("Replacing existing reactor with a custom one",
+					"name", name, "existing", existingReactor, "custom", reactor)
+				n.sw.RemoveReactor(name, existingReactor)
+			}
+			n.sw.AddReactor(name, reactor)
 		}
 	}
 }
@@ -175,9 +187,9 @@ type Node struct {
 	// services
 	eventBus         *types.EventBus // pub/sub for services
 	stateDB          dbm.DB
-	blockStore       *bc.BlockStore        // store the blockchain to disk
-	bcReactor        *bc.BlockchainReactor // for fast-syncing
-	mempoolReactor   *mempl.Reactor        // for gossipping transactions
+	blockStore       *store.BlockStore // store the blockchain to disk
+	bcReactor        p2p.Reactor       // for fast-syncing
+	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
@@ -190,13 +202,13 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
-func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *bc.BlockStore, stateDB dbm.DB, err error) {
+func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
 	if err != nil {
 		return
 	}
-	blockStore = bc.NewBlockStore(blockStoreDB)
+	blockStore = store.NewBlockStore(blockStoreDB)
 
 	stateDB, err = dbProvider(&DBContext{"state", config})
 	if err != nil {
@@ -234,11 +246,12 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 		if err != nil {
 			return nil, nil, err
 		}
-		if config.TxIndex.IndexTags != "" {
+		switch {
+		case config.TxIndex.IndexTags != "":
 			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
-		} else if config.TxIndex.IndexAllTags {
+		case config.TxIndex.IndexAllTags:
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
-		} else {
+		default:
 			txIndexer = kv.NewTxIndex(store)
 		}
 	default:
@@ -337,6 +350,26 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	return evidenceReactor, evidencePool, nil
 }
 
+func createBlockchainReactor(config *cfg.Config,
+	state sm.State,
+	blockExec *sm.BlockExecutor,
+	blockStore *store.BlockStore,
+	fastSync bool,
+	logger log.Logger) (bcReactor p2p.Reactor, err error) {
+
+	switch config.FastSync.Version {
+	case "v0":
+		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	case "v1":
+		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	default:
+		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+	}
+
+	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	return bcReactor, nil
+}
+
 func createConsensusReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
@@ -431,7 +464,7 @@ func createSwitch(config *cfg.Config,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
-	bcReactor *blockchain.BlockchainReactor,
+	bcReactor p2p.Reactor,
 	consensusReactor *consensus.ConsensusReactor,
 	evidenceReactor *evidence.EvidenceReactor,
 	nodeInfo p2p.NodeInfo,
@@ -572,7 +605,7 @@ func NewNode(config *cfg.Config,
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
-	fastSync := config.FastSync && !onlyValidatorIsUs(state, privValidator)
+	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, privValidator)
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
@@ -596,8 +629,10 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync, logger)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create blockchain reactor")
+	}
 
 	// Make ConsensusReactor
 	consensusReactor, consensusState := createConsensusReactor(
@@ -820,6 +855,17 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		rpccore.AddUnsafeRoutes()
 	}
 
+	config := rpcserver.DefaultConfig()
+	config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+	config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+	config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+	// If necessary adjust global WriteTimeout to ensure it's greater than
+	// TimeoutBroadcastTxCommit.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+		config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
@@ -832,20 +878,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
 					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}
-			}))
+			}),
+			rpcserver.ReadLimit(config.MaxBodyBytes),
+		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-
-		config := rpcserver.DefaultConfig()
-		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
-		// If necessary adjust global WriteTimeout to ensure it's greater than
-		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
-		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-		}
-
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			config,
@@ -927,7 +965,7 @@ func (n *Node) Switch() *p2p.Switch {
 }
 
 // BlockStore returns the Node's BlockStore.
-func (n *Node) BlockStore() *bc.BlockStore {
+func (n *Node) BlockStore() *store.BlockStore {
 	return n.blockStore
 }
 
@@ -1015,6 +1053,17 @@ func makeNodeInfo(
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
+
+	var bcChannel byte
+	switch config.FastSync.Version {
+	case "v0":
+		bcChannel = bcv0.BlockchainChannel
+	case "v1":
+		bcChannel = bcv1.BlockchainChannel
+	default:
+		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+	}
+
 	nodeInfo := p2p.DefaultNodeInfo{
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
@@ -1025,7 +1074,7 @@ func makeNodeInfo(
 		Network: genDoc.ChainID,
 		Version: version.TMCoreSemVer,
 		Channels: []byte{
-			bc.BlockchainChannel,
+			bcChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
 			mempl.MempoolChannel,
 			evidence.EvidenceChannel,
