@@ -382,7 +382,7 @@ type RPCConfig struct {
 	// ClientTimeout specifies a time limit for requests made by the client.
 	// A ClientTimeout of zero means no timeout
 	// Define the timeout in seconds
-	ClientTimeout time.Duration `mapstrucutre:"client_timeout"`
+	ClientTimeout time.Duration `mapstructure:"client_timeout"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
