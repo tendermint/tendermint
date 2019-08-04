@@ -134,3 +134,32 @@ func TestP2PConfigValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestMempoolConfigValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName       string
+		cfgSize        int
+		cfgMaxTxsBytes int64
+		cfgCacheSize   int
+		cfgMaxMsgBytes int
+		expectErr      bool
+	}{
+		{"Valid RPC Config", 1, 1, 1, 1, false},
+		{"Invalid RPC Config", -1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, -1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, -1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, -1, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			cfg := MempoolConfig{
+				Size:        tc.cfgSize,
+				MaxTxsBytes: tc.cfgMaxTxsBytes,
+				CacheSize:   tc.cfgCacheSize,
+				MaxMsgBytes: tc.cfgMaxMsgBytes,
+			}
+			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
