@@ -175,3 +175,50 @@ func TestFastSyncConfigValidateBasic(t *testing.T) {
 	cfg.Version = "invalid"
 	assert.Error(t, cfg.ValidateBasic())
 }
+
+func TestConsensusConfigValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName                       string
+		cfgTimeoutPropose              time.Duration
+		cfgTimeoutProposeDelta         time.Duration
+		cfgTimeoutPrevote              time.Duration
+		cfgTimeoutPrevoteDelta         time.Duration
+		cfgTimeoutPrecommit            time.Duration
+		cfgTimeoutPrecommitDelta       time.Duration
+		cfgTimeoutCommit               time.Duration
+		cfgCreateEmptyBlocksInterval   time.Duration
+		cfgPeerGossipSleepDuration     time.Duration
+		cfgPeerQueryMaj23SleepDuration time.Duration
+		expectErr                      bool
+	}{
+		{"Valid RPC Config", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, false},
+		{"Invalid RPC Config", -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, -1, 1, 1, 1, 1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, -1, 1, 1, 1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, -1, 1, 1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, -1, 1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, 1, -1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, -1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, 1, -1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, 1, 1, -1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			cfg := ConsensusConfig{
+				TimeoutPropose:              tc.cfgTimeoutPropose,
+				TimeoutProposeDelta:         tc.cfgTimeoutProposeDelta,
+				TimeoutPrevote:              tc.cfgTimeoutPrevote,
+				TimeoutPrevoteDelta:         tc.cfgTimeoutPrevoteDelta,
+				TimeoutPrecommit:            tc.cfgTimeoutPrecommit,
+				TimeoutPrecommitDelta:       tc.cfgTimeoutPrecommitDelta,
+				TimeoutCommit:               tc.cfgTimeoutCommit,
+				CreateEmptyBlocksInterval:   tc.cfgCreateEmptyBlocksInterval,
+				PeerGossipSleepDuration:     tc.cfgPeerGossipSleepDuration,
+				PeerQueryMaj23SleepDuration: tc.cfgPeerQueryMaj23SleepDuration,
+			}
+			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
