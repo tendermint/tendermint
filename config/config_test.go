@@ -99,3 +99,38 @@ func TestRPCConfigValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestP2PConfigValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName                   string
+		cfgMaxNumInboundPeers      int
+		cfgMaxNumOutboundPeers     int
+		cfgFlushThrottleTimeout    time.Duration
+		cfgMaxPacketMsgPayloadSize int
+		cfgSendRate                int64
+		cfgRecvRate                int64
+		expectErr                  bool
+	}{
+		{"Valid RPC Config", 1, 1, 1, 1, 1, 1, false},
+		{"Invalid RPC Config", -1, 1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, -1, 1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, -1, 1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, -1, 1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, -1, 1, true},
+		{"Invalid RPC Config", 1, 1, 1, 1, 1, -1, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			cfg := P2PConfig{
+				MaxNumInboundPeers:      tc.cfgMaxNumInboundPeers,
+				MaxNumOutboundPeers:     tc.cfgMaxNumOutboundPeers,
+				FlushThrottleTimeout:    tc.cfgFlushThrottleTimeout,
+				MaxPacketMsgPayloadSize: tc.cfgMaxPacketMsgPayloadSize,
+				SendRate:                tc.cfgSendRate,
+				RecvRate:                tc.cfgRecvRate,
+			}
+			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
