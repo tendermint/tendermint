@@ -801,7 +801,13 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	)
 
 	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{Hash: cmn.HexBytes{}, PartsHeader: types.PartSetHeader{Total: -1, Hash: cmn.HexBytes{}}}
+	invalidBlockID := types.BlockID{
+		Hash: cmn.HexBytes{},
+		PartsHeader: types.PartSetHeader{
+			Total: -1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
 
 	testCases := []struct {
 		testName       string
@@ -839,7 +845,13 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 	)
 
 	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{Hash: cmn.HexBytes{}, PartsHeader: types.PartSetHeader{Total: -1, Hash: cmn.HexBytes{}}}
+	invalidBlockID := types.BlockID{
+		Hash: cmn.HexBytes{},
+		PartsHeader: types.PartSetHeader{
+			Total: -1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
 	testBitArray := cmn.NewBitArray(1)
 
 	testCases := []struct {
