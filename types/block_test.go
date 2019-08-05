@@ -366,3 +366,42 @@ func TestCommitToVoteSet(t *testing.T) {
 		assert.Equal(t, vote1bz, vote3bz)
 	}
 }
+
+func TestBlockIDValidateBasic(t *testing.T) {
+	validBlockID := BlockID{
+		Hash: cmn.HexBytes{},
+		PartsHeader: PartSetHeader{
+			Total: 1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
+
+	invalidBlockID := BlockID{
+		Hash: []byte{0},
+		PartsHeader: PartSetHeader{
+			Total: -1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
+
+	testCases := []struct {
+		testName           string
+		blockIDHash        cmn.HexBytes
+		blockIDPartsHeader PartSetHeader
+		expectErr          bool
+	}{
+		{"Valid BlockID", validBlockID.Hash, validBlockID.PartsHeader, false},
+		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartsHeader, true},
+		{"Invalid BlockID", validBlockID.Hash, invalidBlockID.PartsHeader, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			blockID := BlockID{
+				Hash:        tc.blockIDHash,
+				PartsHeader: tc.blockIDPartsHeader,
+			}
+			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
