@@ -127,11 +127,12 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 
 func (s *SocketServer) waitForClose(closeConn chan error, connID int) {
 	err := <-closeConn
-	if err == io.EOF {
+	switch {
+	case err == io.EOF:
 		s.Logger.Error("Connection was closed by client")
-	} else if err != nil {
+	case err != nil:
 		s.Logger.Error("Connection error", "error", err)
-	} else {
+	default:
 		// never happens
 		s.Logger.Error("Connection was closed.")
 	}

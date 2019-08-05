@@ -112,17 +112,18 @@ func (pool *BlockPool) makeRequestersRoutine() {
 		}
 
 		_, numPending, lenRequesters := pool.GetStatus()
-		if numPending >= maxPendingRequests {
+		switch {
+		case numPending >= maxPendingRequests:
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
-		} else if lenRequesters >= maxTotalRequesters {
+		case lenRequesters >= maxTotalRequesters:
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
-		} else {
+		default:
 			// request for more blocks.
 			pool.makeNextRequester()
 		}

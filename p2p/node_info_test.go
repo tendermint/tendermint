@@ -19,7 +19,7 @@ func TestNodeInfoValidate(t *testing.T) {
 		channels[i] = byte(i)
 	}
 	dupChannels := make([]byte, 5)
-	copy(dupChannels[:], channels[:5])
+	copy(dupChannels, channels[:5])
 	dupChannels = append(dupChannels, testCh)
 
 	nonAscii := "¢§µ"
@@ -31,7 +31,7 @@ func TestNodeInfoValidate(t *testing.T) {
 		malleateNodeInfo func(*DefaultNodeInfo)
 		expectErr        bool
 	}{
-		{"Too Many Channels", func(ni *DefaultNodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, true},
+		{"Too Many Channels", func(ni *DefaultNodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, true}, // nolint: gocritic
 		{"Duplicate Channel", func(ni *DefaultNodeInfo) { ni.Channels = dupChannels }, true},
 		{"Good Channels", func(ni *DefaultNodeInfo) { ni.Channels = ni.Channels[:5] }, false},
 
