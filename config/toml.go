@@ -294,8 +294,9 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
 
-# Limit the size of TxMessage
-max_msg_bytes = {{ .Mempool.MaxMsgBytes }}
+# Maximum size of a single transaction.
+# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
+max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
 ##### fast sync configuration options #####
 [fastsync]

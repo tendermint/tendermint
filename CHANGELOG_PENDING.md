@@ -21,6 +21,7 @@ program](https://hackerone.com/tendermint).
 
 - [privval] \#3370 Refactors and simplifies validator/kms connection handling. Please refer to thttps://github.com/tendermint/tendermint/pull/3370#issue-257360971
 - [consensus] \#3839 Reduce "Error attempting to add vote" message severity (Error -> Info)
+- [mempool] \#3877 Make `max_tx_bytes` configurable instead of `max_msg_bytes`
 
 ### BUG FIXES:
 
