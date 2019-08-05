@@ -42,7 +42,7 @@ paths:
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
   /status:
     get:
       summary: Node Status
@@ -57,11 +57,11 @@ paths:
         200:
           description: Status of the node
           schema:
-            $ref: '#/definitions/Status'
+            $ref: '#/definitions/StatusResponse'
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
   /net_info:
     get:
       summary: Network informations
@@ -76,21 +76,80 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/NetInfo'
+            $ref: '#/definitions/NetInfoResponse'
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
+  /blockchain:
+    get:
+      summary: Get block headers for minHeight <= height <= maxHeight.
+      operationId: blockchain
+      parameters:
+        - in: query
+          name: minHeight
+          type: number
+          description: Minimum block height to return
+          x-example: 1
+        - in: query
+          name: maxHeight
+          type: number
+          description: Maximum block height to return
+          x-example: 2
+      tags:
+        - Info
+      description: |
+        Get Blockchain info.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Block headers, returned in descending order (highest first).
+          schema:
+            $ref: '#/definitions/BlockchainResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /block:
+    get:
+      summary: Get block at a specified height
+      operationId: block
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch the latest block
+          default: latest
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get Block.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Block informations.
+          schema:
+            $ref: '#/definitions/BlockResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+
+
 definitions:
   JSONRPC:
     type: object
     properties:
       id:
         type: string
-        example: ""
+        x-example: ""
       jsonrpc:
         type: string
-        example: "2.0"
+        x-example: "2.0"
   EmptyResponse:
     description: Empty Response
     allOf:
@@ -100,7 +159,7 @@ definitions:
           result:
             type: object
             additionalProperties: {}
-  Error:
+  ErrorResponse:
     description: Error Response
     allOf:
       - $ref: '#/definitions/JSONRPC'
@@ -108,28 +167,28 @@ definitions:
         properties:
           error:
             type: string
-            example: "Description of failure"
+            x-example: "Description of failure"
   ProtocolVersion:
     type: object
     properties:
       p2p:
         type: string
-        example: "7"
+        x-example: "7"
       block:
         type: string
-        example: "10"
+        x-example: "10"
       app:
         type: string
-        example: "0"
+        x-example: "0"
   PubKey:
     type: object
     properties:
       type:
         type: string
-        example: "tendermint/PubKeyEd25519"
+        x-example: "tendermint/PubKeyEd25519"
       value:
         type: string
-        example: "A6DoBUypNtUAyEHWtQ9bFjfNg8Bo9CrnkUGl6k6OHN4="
+        x-example: "A6DoBUypNtUAyEHWtQ9bFjfNg8Bo9CrnkUGl6k6OHN4="
   NodeInfo:
     type: object
     properties:
@@ -137,139 +196,145 @@ definitions:
         $ref: '#/definitions/ProtocolVersion'
       id:
         type: string
-        example: "5576458aef205977e18fd50b274e9b5d9014525a"
+        x-example: "5576458aef205977e18fd50b274e9b5d9014525a"
       listen_addr:
         type: string
-        example: "tcp://0.0.0.0:26656"
+        x-example: "tcp://0.0.0.0:26656"
       network:
         type: string
-        example: "cosmoshub-2"
+        x-example: "cosmoshub-2"
       version:
         type: string
-        example: "0.32.1"
+        x-example: "0.32.1"
       channels:
         type: string
-        example: "4020212223303800"
+        x-example: "4020212223303800"
       moniker:
         type: string
-        example: "moniker-node"
+        x-example: "moniker-node"
       other:
         type: object
         properties:
           tx_index:
             type: string
-            example: "on"
+            x-example: "on"
           rpc_address:
             type: string
-            example: "tcp://0.0.0.0:26657"
-        example: "moniker-node"
+            x-example: "tcp://0.0.0.0:26657"
+        x-example: "moniker-node"
   SyncInfo:
     type: object
     properties:
       latest_block_hash:
         type: string
-        example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
+        x-example: "790BA84C3545FCCC49A5C629CEE6EA58A6E875C3862175BDC11EE7AF54703501"
       latest_app_hash:
         type: string
-        example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
+        x-example: "C9AEBB441B787D9F1D846DE51F3826F4FD386108B59B08239653ABF59455C3F8"
       latest_block_height:
         type: string
-        example: "1262196"
+        x-example: "1262196"
       latest_block_time:
         type: string
-        example: "2019-08-01T11:52:22.818762194Z"
+        x-example: "2019-08-01T11:52:22.818762194Z"
       catching_up:
         type: boolean
-        example: false
+        x-example: false
   ValidatorInfo:
     type: object
     properties:
       address:
         type: string
-        example: "5D6A51A8E9899C44079C6AF90618BA0369070E6E"
+        x-example: "5D6A51A8E9899C44079C6AF90618BA0369070E6E"
       pub_key:
         $ref: '#/definitions/PubKey'
       voting_power:
         type: string
-        example: "0"
+        x-example: "0"
   Status:
+    description: Status Response
+    type: object
+    properties:
+      node_info:
+        $ref: '#/definitions/NodeInfo'
+      sync_info:
+        $ref: '#/definitions/SyncInfo'
+      validator_info:
+        $ref: '#/definitions/ValidatorInfo'
+  StatusResponse:
     description: Status Response
     allOf:
       - $ref: '#/definitions/JSONRPC'
       - type: object
         properties:
-          node_info:
-            $ref: '#/definitions/NodeInfo'
-          sync_info:
-            $ref: '#/definitions/SyncInfo'
-          validator_info:
-            $ref: '#/definitions/ValidatorInfo'
+          result:
+            $ref: '#/definitions/Status'
   Monitor:
     type: object
     properties:
       Active:
         type: boolean
-        example: true
+        x-example: true
       Start:
         type: string
-        example: "2019-07-31T14:31:28.66Z"
+        x-example: "2019-07-31T14:31:28.66Z"
       Duration:
         type: string
-        example: "168901060000000"
+        x-example: "168901060000000"
       Idle:
         type: string
-        example: "168901040000000"
+        x-example: "168901040000000"
       Bytes:
         type: string
-        example: "5"
+        x-example: "5"
       Samples:
         type: string
-        example: "1"
+        x-example: "1"
       InstRate:
         type: string
-        example: "0"
+        x-example: "0"
       CurRate:
         type: string
-        example: "0"
+        x-example: "0"
       AvgRate:
         type: string
-        example: "0"
+        x-example: "0"
       PeakRate:
         type: string
-        example: "0"
+        x-example: "0"
       BytesRem:
         type: string
-        example: "0"
+        x-example: "0"
       TimeRem:
         type: string
-        example: "0"
+        x-example: "0"
       Progress:
-        type: integer
-        example: 0
+        type: number
+        x-example: 0
   Channel:
     type: object
     properties:
       ID:
-        type: integer
-        example: 48
+        type: number
+        x-example: 48
       SendQueueCapacity:
         type: string
-        example: "1"
+        x-example: "1"
       SendQueueSize:
         type: string
-        example: "0"
+        x-example: "0"
       Priority:
         type: string
-        example: "5"
+        x-example: "5"
       RecentlySent:
         type: string
-        example: "0"
+        x-example: "0"
   ConnectionStatus:
     type: object
     properties:
       Duration:
         type: string
-        example: "168901057956119"
+        x-example: "168901057956119"
       SendMonitor:
         $ref: '#/definitions/Monitor'
       RecvMonitor:
@@ -285,34 +350,278 @@ definitions:
         $ref: '#/definitions/NodeInfo'
       is_outbound:
         type: boolean
-        example: true
+        x-example: true
       connection_status:
         $ref: '#/definitions/ConnectionStatus'
       remote_ip:
         type: string
-        example: "95.179.155.35"
-
+        x-example: "95.179.155.35"
   NetInfo:
+    type: object
+    properties:
+      listening:
+        type: boolean
+        x-example: true
+      listeners:
+        type: array
+        items:
+          type: string
+          x-example: "Listener(@)"
+      n_peers:
+        type: number
+        x-example: "1"
+      peers:
+        type: array
+        items:
+          $ref: '#/definitions/Peer'
+  NetInfoResponse:
     description: NetInfo Response
     allOf:
       - $ref: '#/definitions/JSONRPC'
       - type: object
         properties:
-          listening:
-            type: boolean
-            example: true
-          listeners:
+          result:
+            $ref: '#/definitions/NetInfo'
+  BlockID:
+    required:
+      - "hash"
+      - "parts"
+    properties:
+      hash:
+        type: string
+        x-example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
+      parts:
+        required:
+          - "total"
+          - "hash"
+        properties:
+          total:
+            type: string
+            x-example: "1"
+          hash:
+            type: string
+            x-example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
+        type: object
+    type: object
+  BlockMetaHeader:
+    required:
+      - "version"
+      - "chain_id"
+      - "height"
+      - "time"
+      - "num_txs"
+      - "total_txs"
+      - "last_block_id"
+      - "last_commit_hash"
+      - "data_hash"
+      - "validators_hash"
+      - "next_validators_hash"
+      - "consensus_hash"
+      - "app_hash"
+      - "last_results_hash"
+      - "evidence_hash"
+      - "proposer_address"
+    properties:
+      version:
+        required:
+          - "block"
+          - "app"
+        properties:
+          block:
+            type: string
+            x-example: "10"
+          app:
+            type: string
+            x-example: "0"
+        type: object
+      chain_id:
+        type: string
+        x-example: "cosmoshub-2"
+      height:
+        type: string
+        x-example: "12"
+      time:
+        type: string
+        x-example: "2019-04-22T17:01:51.701356223Z"
+      num_txs:
+        type: string
+        x-example: "2"
+      total_txs:
+        type: string
+        x-example: "3"
+      last_block_id:
+        $ref: '#/definitions/BlockID'
+      last_commit_hash:
+        type: string
+        x-example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
+      data_hash:
+        type: string
+        x-example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
+      validators_hash:
+        type: string
+        x-example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+      next_validators_hash:
+        type: string
+        x-example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+      consensus_hash:
+        type: string
+        x-example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
+      app_hash:
+        type: string
+        x-example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
+      last_results_hash:
+        type: string
+        x-example: ""
+      evidence_hash:
+        type: string
+        x-example: ""
+      proposer_address:
+        type: string
+        x-example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
+    type: object
+  BlockMetaId:
+    required:
+      - "hash"
+      - "parts"
+    properties:
+      hash:
+        type: string
+        x-example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
+      parts:
+        required:
+          - "total"
+          - "hash"
+        properties:
+          total:
+            type: string
+            x-example: "1"
+          hash:
+            type: string
+            x-example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
+        type: object
+    type: object
+  BlockMeta:
+    type: object
+    properties:
+      block_id:
+        $ref: '#/definitions/BlockMetaId'
+      header:
+        $ref: '#/definitions/BlockMetaHeader'
+  Blockchain:
+    type: object
+    required:
+      - "last_height"
+      - "block_metas"
+    properties:
+      last_height:
+        type: string
+        x-example: "1276718"
+      block_metas:
+        type: "array"
+        items:
+          $ref: '#/definitions/BlockMeta'
+  BlockchainResponse:
+    description:  Blockchain info
+    allOf:
+      - $ref: '#/definitions/JSONRPC'
+      - type: object
+        properties:
+          result:
+            $ref: '#/definitions/Blockchain'
+  Commit:
+    required:
+      - "type"
+      - "height"
+      - "round"
+      - "block_id"
+      - "timestamp"
+      - "validator_address"
+      - "validator_index"
+      - "signature"
+    properties:
+      type:
+        type: number
+        x-example: 2
+      height:
+        type: string
+        x-example: "1262085"
+      round:
+        type: string
+        x-example: "0"
+      block_id:
+        $ref: '#/definitions/BlockID'
+      timestamp:
+        type: string
+        x-example: "2019-08-01T11:39:38.867269833Z"
+      validator_address:
+        type: string
+        x-example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+      validator_index:
+        type: string
+        x-example: "0"
+      signature:
+        type: string
+        x-example: "DBchvucTzAUEJnGYpNvMdqLhBAHG4Px8BsOBB3J3mAFCLGeuG7uJqy+nVngKzZdPhPi8RhmE/xcw/M9DOJjEDg=="
+  Block:
+    type: object
+    properties:
+      header:
+        $ref: '#/definitions/BlockMetaHeader'
+      data:
+        type: array
+        items:
+          type: string
+          x-example: 'yQHwYl3uCkKoo2GaChRnd+THLQ2RM87nEZrE19910Z28ABIUWW/t8AtIMwcyU0sT32RcMDI9GF0aEAoFdWF0b20SBzEwMDAwMDASEwoNCgV1YXRvbRIEMzEwMRCd8gEaagom61rphyEDoJPxlcjRoNDtZ9xMdvs+lRzFaHe2dl2P5R2yVCWrsHISQKkqX5H1zXAIJuC57yw0Yb03Fwy75VRip0ZBtLiYsUqkOsPUoQZAhDNP+6LY+RUwz/nVzedkF0S29NZ32QXdGv0='
+      evidence:
+        type: array
+        items:
+          $ref: '#/definitions/Evidence'
+      last_commit:
+        type: object
+        properties:
+          block_id:
+            $ref: '#/definitions/BlockID'
+          precommits:
             type: array
             items:
-              type: string
-              example: "Listener(@)"
-          n_peers:
-            type: integer
-            example: "1"
-          peers:
-            type: array
-            items:
-              $ref: '#/definitions/Peer'
+              $ref: '#/definitions/Commit'
+  Validator:
+    type: object
+    properties:
+      pub_key:
+        $ref: '#/definitions/PubKey'
+      voting_power:
+        type: number
+      address:
+        type: string
+  Evidence:
+    type: object
+    properties:
+      type:
+        type: string
+      height:
+        type: number
+      time:
+        type: number
+      total_voting_power:
+        type: number
+      validator:
+        $ref:  '#/definitions/Validator'
+  BlockComplete:
+    type: object
+    properties:
+      block_meta:
+        $ref: '#/definitions/BlockMeta'
+      block:
+        $ref: '#/definitions/Block'
+  BlockResponse:
+    description:  Blockc info
+    allOf:
+      - $ref: '#/definitions/JSONRPC'
+      - type: object
+        properties:
+          result:
+            $ref: '#/definitions/BlockComplete'
 
 
 
@@ -325,9 +634,7 @@ definitions:
 #  "unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
 #
 #  // info API
-#  "blockchain":           rpc.NewRPCFunc(BlockchainInfo, "minHeight,maxHeight"),
 #  "genesis":              rpc.NewRPCFunc(Genesis, ""),
-#  "block":                rpc.NewRPCFunc(Block, "height"),
 #  "block_results":        rpc.NewRPCFunc(BlockResults, "height"),
 #  "commit":               rpc.NewRPCFunc(Commit, "height"),
 #  "tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
