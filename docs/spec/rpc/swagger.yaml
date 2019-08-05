@@ -298,6 +298,45 @@ paths:
           description: Error
           schema:
             $ref: '#/definitions/ErrorResponse'
+  /unconfirmed_txs:
+    get:
+      summary: Get the list of unconfirmed transactions
+      operationId: unconfirmed_txs
+      tags:
+        - Info
+      description: |
+        Get list of unconfirmed transactions
+      produces:
+        - application/json
+      responses:
+        200:
+          description: List of unconfirmed transactions
+          schema:
+            $ref: '#/definitions/UnconfirmedTransactionsResult'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /num_unconfirmed_txs:
+    get:
+      summary: Get data about unconfirmed transactions
+      operationId: num_unconfirmed_txs
+      tags:
+        - Info
+      description: |
+        Get data about unconfirmed transactions
+      produces:
+        - application/json
+      responses:
+        200:
+          description: status about unconfirmed transactions
+          schema:
+            $ref: '#/definitions/NumUnconfirmedTransactionsResult'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
 definitions:
   JSONRPC:
     type: object
@@ -1673,6 +1712,72 @@ definitions:
                       - "ed25519"
                 type: "object"
             type: "object"
+        type: "object"
+  UnconfirmedTransactionsResult:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "n_txs"
+          - "total"
+          - "total_bytes"
+          - "txs"
+        properties:
+          n_txs:
+            type: "string"
+            example: "31"
+          total:
+            type: "string"
+            example: "82"
+          total_bytes:
+            type: "string"
+            example: "19974"
+          txs:
+            type: "array"
+            items:
+              type: "string"
+            example:
+              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
+        type: "object"
+  NumUnconfirmedTransactionsResult:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "n_txs"
+          - "total"
+          - "total_bytes"
+          - "txs"
+        properties:
+          n_txs:
+            type: "string"
+            example: "82"
+          total:
+            type: "string"
+            example: "82"
+          total_bytes:
+            type: "string"
+            example: "19974"
         type: "object"
 
 
