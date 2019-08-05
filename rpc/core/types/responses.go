@@ -26,8 +26,8 @@ type ResultGenesis struct {
 
 // Single block (with meta)
 type ResultBlock struct {
-	BlockID *types.BlockID `json:"block_id"`
-	Block   *types.Block   `json:"block"`
+	BlockID types.BlockID `json:"block_id"`
+	Block   *types.Block  `json:"block"`
 }
 
 // Commit and Header

@@ -58,7 +58,8 @@ import (
 // 						"total": "1"
 // 					},
 // 					"hash": "96B1D2F2D201BA4BC383EB8224139DB1294944E5"
-// 				}
+// 				},
+// 				"block_size": "10000"
 // 			}
 // 		],
 // 		"last_height": "5493"
@@ -217,7 +218,7 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 	}
 
 	blockMeta := blockStore.LoadBlockMeta(height)
-	blockId := &blockMeta.BlockID
+	blockId := blockMeta.BlockID
 	block := blockStore.LoadBlock(height)
 	return &ctypes.ResultBlock{BlockID: blockId, Block: block}, nil
 }
