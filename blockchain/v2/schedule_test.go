@@ -8,17 +8,11 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// XXX: can't use globals with parallel tests
-const (
-	initHeight int64  = 5
-	peerID     p2p.ID = "1"
-	peerIDTwo  p2p.ID = "2"
-	peerHeight int64  = 20
-	blockSize  int64  = 1024
-)
-
 func TestScheduleInit(t *testing.T) {
-	sc := newSchedule(initHeight)
+	var (
+		initHeight int64 = 5
+		sc               = newSchedule(initHeight)
+	)
 
 	assert.Equal(t, blockStateNew, sc.getStateAtHeight(initHeight))
 	assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(initHeight-1))
@@ -26,7 +20,12 @@ func TestScheduleInit(t *testing.T) {
 }
 
 func TestAddPeer(t *testing.T) {
-	sc := newSchedule(initHeight)
+	var (
+		initHeight int64  = 5
+		peerID     p2p.ID = "1"
+		peerIDTwo  p2p.ID = "2"
+		sc                = newSchedule(initHeight)
+	)
 
 	assert.Nil(t, sc.addPeer(peerID))
 	assert.Nil(t, sc.addPeer(peerIDTwo))
@@ -34,8 +33,12 @@ func TestAddPeer(t *testing.T) {
 }
 
 func TestTouchPeer(t *testing.T) {
-	sc := newSchedule(initHeight)
-	now := time.Now()
+	var (
+		initHeight int64  = 5
+		peerID     p2p.ID = "1"
+		sc                = newSchedule(initHeight)
+		now               = time.Now()
+	)
 
 	assert.Error(t, sc.touchPeer(peerID, now),
 		"Touching an unknown peer should return errPeerNotFound")
@@ -53,7 +56,12 @@ func TestTouchPeer(t *testing.T) {
 }
 
 func TestPeerHeight(t *testing.T) {
-	sc := newSchedule(initHeight)
+	var (
+		initHeight int64  = 5
+		peerID     p2p.ID = "1"
+		peerHeight int64  = 20
+		sc                = newSchedule(initHeight)
+	)
 
 	assert.NoError(t, sc.addPeer(peerID),
 		"Adding a peer should return no error")
@@ -72,8 +80,14 @@ func TestPeerHeight(t *testing.T) {
 }
 
 func TestTransitionPending(t *testing.T) {
-	sc := newSchedule(initHeight)
-	now := time.Now()
+	var (
+		initHeight int64  = 5
+		peerID     p2p.ID = "1"
+		peerIDTwo  p2p.ID = "2"
+		peerHeight int64  = 20
+		sc                = newSchedule(initHeight)
+		now               = time.Now()
+	)
 
 	assert.NoError(t, sc.addPeer(peerID),
 		"Adding a peer should return no error")
@@ -113,9 +127,16 @@ func TestTransitionPending(t *testing.T) {
 }
 
 func TestTransitionReceived(t *testing.T) {
-	sc := newSchedule(initHeight)
-	now := time.Now()
-	receivedAt := now.Add(1 * time.Second)
+	var (
+		initHeight int64  = 5
+		peerID     p2p.ID = "1"
+		peerIDTwo  p2p.ID = "2"
+		peerHeight int64  = 20
+		blockSize  int64  = 1024
+		sc                = newSchedule(initHeight)
+		now               = time.Now()
+		receivedAt        = now.Add(1 * time.Second)
+	)
 
 	assert.NoError(t, sc.addPeer(peerID),
 		"Expected adding peer %s to succeed", peerID)
@@ -155,9 +176,15 @@ func TestTransitionReceived(t *testing.T) {
 }
 
 func TestTransitionProcessed(t *testing.T) {
-	sc := newSchedule(initHeight)
-	now := time.Now()
-	receivedAt := now.Add(1 * time.Second)
+	var (
+		initHeight int64  = 5
+		peerID     p2p.ID = "1"
+		peerHeight int64  = 20
+		blockSize  int64  = 1024
+		sc                = newSchedule(initHeight)
+		now               = time.Now()
+		receivedAt        = now.Add(1 * time.Second)
+	)
 
 	assert.NoError(t, sc.addPeer(peerID),
 		"Expected adding peer %s to succeed", peerID)
@@ -184,8 +211,13 @@ func TestTransitionProcessed(t *testing.T) {
 }
 
 func TestMinMaxHeight(t *testing.T) {
-	sc := newSchedule(initHeight)
-	now := time.Now()
+	var (
+		initHeight int64  = 5
+		peerID     p2p.ID = "1"
+		peerHeight int64  = 20
+		sc                = newSchedule(initHeight)
+		now               = time.Now()
+	)
 
 	assert.Equal(t, initHeight, sc.minHeight(),
 		"Expected min height to be the initialized height")
@@ -210,9 +242,15 @@ func TestMinMaxHeight(t *testing.T) {
 }
 
 func TestPeersSlowerThan(t *testing.T) {
-	sc := newSchedule(initHeight)
-	now := time.Now()
-	receivedAt := now.Add(1 * time.Second)
+	var (
+		initHeight int64  = 5
+		peerID     p2p.ID = "1"
+		peerHeight int64  = 20
+		blockSize  int64  = 1024
+		sc                = newSchedule(initHeight)
+		now               = time.Now()
+		receivedAt        = now.Add(1 * time.Second)
+	)
 
 	assert.NoError(t, sc.addPeer(peerID),
 		"Adding a peer should return no error")
