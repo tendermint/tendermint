@@ -272,7 +272,25 @@ paths:
           description: Error
           schema:
             $ref: '#/definitions/ErrorResponse'
-
+  /consensus_params:
+    get:
+      summary: Get consensus parameters
+      operationId: consensus_params
+      tags:
+        - Info
+      description: |
+        Get consensus parameters.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: consensus parameters results.
+          schema:
+            $ref: '#/definitions/ConsensusParamsResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
 definitions:
   JSONRPC:
     type: object
@@ -1585,6 +1603,70 @@ definitions:
                       example: "BA{100:xxxxxx_xxxxx_xxxx_x_xxx_xx_xx_xx__x_x_x__xxxxxxxxxxxxxx_xxxx_xx_xxxxxx_xxxxxxxx_xxxx_xxx_x_xxxx__xxx} 118726247/170151262 = 0.70"
             type: "object"
         type: "object"
+ConsensusParamsResponse:
+  type: object
+  required:
+    - "jsonrpc"
+    - "id"
+    - "result"
+  properties:
+    jsonrpc:
+      type: "string"
+      example: "2.0"
+    id:
+      type: "string"
+      example: ""
+    result:
+      required:
+        - "block_height"
+        - "consensus_params"
+      properties:
+        block_height:
+          type: "string"
+          example: "1313448"
+        consensus_params:
+          required:
+            - "block"
+            - "evidence"
+            - "validator"
+          properties:
+            block:
+              required:
+                - "max_bytes"
+                - "max_gas"
+                - "time_iota_ms"
+              properties:
+                max_bytes:
+                  type: "string"
+                  example: "200000"
+                max_gas:
+                  type: "string"
+                  example: "2000000"
+                time_iota_ms:
+                  type: "string"
+                  example: "1000"
+              type: "object"
+            evidence:
+              required:
+                - "max_age"
+              properties:
+                max_age:
+                  type: "string"
+                  example: "1000000"
+              type: "object"
+            validator:
+              required:
+                - "pub_key_types"
+              properties:
+                pub_key_types:
+                  type: "array"
+                  items:
+                    type: "string"
+                  example:
+                    - "ed25519"
+              type: "object"
+          type: "object"
+      type: "object"
 
 
 
