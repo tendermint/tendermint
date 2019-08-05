@@ -276,6 +276,13 @@ paths:
     get:
       summary: Get consensus parameters
       operationId: consensus_params
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block
+          default: latest
+          x-example: 1
       tags:
         - Info
       description: |
@@ -1680,7 +1687,6 @@ definitions:
 #  // info API
 #  "tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
 #  "tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page"),
-#  "consensus_params":     rpc.NewRPCFunc(ConsensusParams, "height"),
 #  "unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, "limit"),
 #  "num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxs, ""),
 #
