@@ -741,6 +741,7 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 	// Check Hash.
 	hhash := sh.Hash()
 	chash := sh.Commit.BlockID.Hash
+	fmt.Print(hhash, chash)
 	if !bytes.Equal(hhash, chash) {
 		return fmt.Errorf("SignedHeader commit signs block %X, header is block %X",
 			chash, hhash)
