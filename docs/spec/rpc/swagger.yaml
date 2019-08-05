@@ -302,6 +302,12 @@ paths:
     get:
       summary: Get the list of unconfirmed transactions
       operationId: unconfirmed_txs
+      parameters:
+        - in: query
+          name: limit
+          type: number
+          description: Maximum number of unconfirmed transactions to return
+          x-example: 1
       tags:
         - Info
       description: |
@@ -1792,8 +1798,6 @@ definitions:
 #  // info API
 #  "tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
 #  "tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page"),
-#  "unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, "limit"),
-#  "num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxs, ""),
 #
 #  // tx broadcast API
 #  "broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommit, "tx"),
