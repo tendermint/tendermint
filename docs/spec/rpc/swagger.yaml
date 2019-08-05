@@ -318,7 +318,7 @@ paths:
         200:
           description: List of unconfirmed transactions
           schema:
-            $ref: '#/definitions/UnconfirmedTransactionsResult'
+            $ref: '#/definitions/UnconfirmedTransactionsResponse'
         500:
           description: Error
           schema:
@@ -337,12 +337,156 @@ paths:
         200:
           description: status about unconfirmed transactions
           schema:
-            $ref: '#/definitions/NumUnconfirmedTransactionsResult'
+            $ref: '#/definitions/NumUnconfirmedTransactionsResponse'
         500:
           description: Error
           schema:
             $ref: '#/definitions/ErrorResponse'
-
+  /tx_search:
+    get:
+      summary: Search for transactions
+      operationId: tx_search
+      parameters:
+        - in: query
+          name: query
+          type: string
+          description: Query
+          required: true
+          x-example: "tx.height=1000"
+        - in: query
+          name: prove
+          type: boolean
+          description: Include proofs of the transactions inclusion in the block
+          required: false
+          x-example: true
+          default: false
+        - in: query
+          name: page
+          type: number
+          description: "Page number (1-based)"
+          required: false
+          x-example: 1
+          default: 1
+        - in: query
+          name: per_page
+          type: number
+          description: "Number of entries per page (max: 100)"
+          required: false
+          x-example: 30
+          default: 30
+      tags:
+        - Info
+      description: |
+        Get list of unconfirmed transactions
+      produces:
+        - application/json
+      responses:
+        200:
+          description: List of unconfirmed transactions
+          schema:
+            $ref: '#/definitions/TxSearchResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /tx:
+    get:
+      summary: Get transactions by hash
+      operationId: tx
+      parameters:
+        - in: query
+          name: hash
+          type: string
+          description: transaction Hash to retrive
+          required: true
+          x-example: 0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED
+        - in: query
+          name: prove
+          type: boolean
+          description: Include proofs of the transactions inclusion in the block
+          required: false
+          x-example: true
+          default: false
+      tags:
+        - Info
+      description: |
+        Get a trasasction
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Get a transaction
+          schema:
+            $ref: '#/definitions/TxResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /abci_info:
+    get:
+      summary: Get some info about the application.
+      operationId: abci_info
+      tags:
+        - ABCI
+      description: |
+        Get some info about the application.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Get some info about the application.
+          schema:
+            $ref: '#/definitions/ABCIInfoResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /abci_query:
+    get:
+      summary: Query the application for some information.
+      operationId: abci_query
+      parameters:
+        - in: query
+          name: path
+          type: string
+          description: Path to the data ("/a/b/c")
+          required: true
+          x-example: "/a/b/c"
+        - in: query
+          name: data
+          type: string
+          description: Data
+          required: true
+          x-example: "IHAVENOIDEA"
+        - in: query
+          name: height
+          type: number
+          description: Height (0 means latest)
+          required: false
+          x-example: true
+          default: 0
+        - in: query
+          name: prove
+          type: boolean
+          description: Include proofs of the transactions inclusion in the block
+          required: false
+          x-example: true
+          default: false
+      tags:
+        - ABCI
+      description: |
+        Query the application for some information.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Response of the submitted query
+          schema:
+            $ref: '#/definitions/ABCIQueryResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
 definitions:
   JSONRPC:
     type: object
@@ -1719,7 +1863,7 @@ definitions:
                 type: "object"
             type: "object"
         type: "object"
-  UnconfirmedTransactionsResult:
+  UnconfirmedTransactionsResponse:
     type: object
     required:
       - "jsonrpc"
@@ -1755,7 +1899,7 @@ definitions:
             example:
               - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
         type: "object"
-  NumUnconfirmedTransactionsResult:
+  NumUnconfirmedTransactionsResponse:
     type: object
     required:
       - "jsonrpc"
@@ -1785,6 +1929,259 @@ definitions:
             type: "string"
             example: "19974"
         type: "object"
+  TxSearchResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "txs"
+          - "total_count"
+        properties:
+          txs:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                hash:
+                  type: "string"
+                  example: "D70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+                height:
+                  type: "string"
+                  example: "1000"
+                index:
+                  type: "number"
+                  example: 0
+                tx_result:
+                  required:
+                    - "log"
+                    - "gasWanted"
+                    - "gasUsed"
+                    - "tags"
+                  properties:
+                    log:
+                      type: "string"
+                      example: "[{\"msg_index\":\"0\",\"success\":true,\"log\":\"\"}]"
+                    gasWanted:
+                      type: "string"
+                      example: "200000"
+                    gasUsed:
+                      type: "string"
+                      example: "28596"
+                    tags:
+                      type: "array"
+                      items:
+                        type: "object"
+                        properties:
+                          key:
+                            type: "string"
+                            example: "YWN0aW9u"
+                          value:
+                            type: "string"
+                            example: "c2VuZA=="
+                  type: "object"
+                tx:
+                  type: "string"
+                  example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
+                proof:
+                  required:
+                    - "RootHash"
+                    - "Data"
+                    - "Proof"
+                  properties:
+                    RootHash:
+                      type: "string"
+                      example: "72FE6BF6D4109105357AECE0A82E99D0F6288854D16D8767C5E72C57F876A14D"
+                    Data:
+                      type: "string"
+                      example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
+                    Proof:
+                      required:
+                        - "total"
+                        - "index"
+                        - "leaf_hash"
+                        - "aunts"
+                      properties:
+                        total:
+                          type: "string"
+                          example: "2"
+                        index:
+                          type: "string"
+                          example: "0"
+                        leaf_hash:
+                          type: "string"
+                          example: "eoJxKCzF3m72Xiwb/Q43vJ37/2Sx8sfNS9JKJohlsYI="
+                        aunts:
+                          type: "array"
+                          items:
+                            type: "string"
+                          example:
+                            - "eWb+HG/eMmukrQj4vNGyFYb3nKQncAWacq4HF5eFzDY="
+                      type: "object"
+                  type: "object"
+          total_count:
+            type: "string"
+            example: "2"
+        type: "object"
+  TxResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "hash"
+          - "height"
+          - "index"
+          - "tx_result"
+          - "tx"
+        properties:
+          hash:
+            type: "string"
+            example: "D70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+          height:
+            type: "string"
+            example: "1000"
+          index:
+            type: "number"
+            example: 0
+          tx_result:
+            required:
+              - "log"
+              - "gasWanted"
+              - "gasUsed"
+              - "tags"
+            properties:
+              log:
+                type: "string"
+                example: "[{\"msg_index\":\"0\",\"success\":true,\"log\":\"\"}]"
+              gasWanted:
+                type: "string"
+                example: "200000"
+              gasUsed:
+                type: "string"
+                example: "28596"
+              tags:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    key:
+                      type: "string"
+                      example: "YWN0aW9u"
+                    value:
+                      type: "string"
+                      example: "c2VuZA=="
+            type: "object"
+          tx:
+            type: "string"
+            example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
+        type: "object"
+  ABCIInfoResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "response"
+        properties:
+          response:
+            required:
+              - "data"
+              - "last_block_height"
+              - "last_block_app_hash"
+            properties:
+              data:
+                type: "string"
+                example: "GaiaApp"
+              last_block_height:
+                type: "string"
+                example: "1314126"
+              last_block_app_hash:
+                type: "string"
+                example: "/Zg6ilrG37Q5vFSEsNYCQ/wUXlHMo8ZTscGMeHjJ+t8="
+            type: "object"
+        type: "object"
+  ABCIQueryResponse:
+    type: object
+    required:
+      - "error"
+      - "result"
+      - "id"
+      - "jsonrpc"
+    properties:
+      error:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "response"
+        properties:
+          response:
+            required:
+              - "log"
+              - "height"
+              - "proof"
+              - "value"
+              - "key"
+              - "index"
+              - "code"
+            properties:
+              log:
+                type: "string"
+                example: "exists"
+              height:
+                type: "string"
+                example: "0"
+              proof:
+                type: "string"
+                example: "010114FED0DAD959F36091AD761C922ABA3CBF1D8349990101020103011406AA2262E2F448242DF2C2607C3CDC705313EE3B0001149D16177BC71E445476174622EA559715C293740C"
+              value:
+                type: "string"
+                example: "61626364"
+              key:
+                type: "string"
+                example: "61626364"
+              index:
+                type: "string"
+                example: "-1"
+              code:
+                type: "string"
+                example: "0"
+            type: "object"
+        type: "object"
+      id:
+        type: "string"
+        example: ""
+      jsonrpc:
+        type: "string"
+        example: "2.0"
 
 
 
@@ -1795,14 +2192,9 @@ definitions:
 #  "unsubscribe":     rpc.NewWSRPCFunc(Unsubscribe, "query"),
 #  "unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
 #
-#  // info API
-#  "tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
-#  "tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page"),
-#
 #  // tx broadcast API
 #  "broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommit, "tx"),
 #  "broadcast_tx_sync":   rpc.NewRPCFunc(BroadcastTxSync, "tx"),
-
 #  "broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsync, "tx"),
 #
 #  // abci API
