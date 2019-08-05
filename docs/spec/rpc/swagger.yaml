@@ -137,9 +137,84 @@ paths:
           description: Error
           schema:
             $ref: '#/definitions/ErrorResponse'
-
-
-
+  /block_results:
+    get:
+      summary: Get block results at a specified height
+      operationId: block_results
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch informations regarding the latest block
+          default: latest
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get block_results.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Block results.
+          schema:
+            $ref: '#/definitions/BlockResultsResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /commit:
+    get:
+      summary: Get commit results at a specified height
+      operationId: commit
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block
+          default: latest
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get Commit.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Commit results.
+          schema:
+            $ref: '#/definitions/CommitResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /validators:
+    get:
+      summary: Get validator set at a specified height
+      operationId: validators
+      parameters:
+        - in: query
+          name: height
+          type: number
+          description: height to return. If no height is provided, it will fetch validato set at the latest block
+          default: latest
+          x-example: 1
+      tags:
+        - Info
+      description: |
+        Get Validators.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Commit results.
+          schema:
+            $ref: '#/definitions/ValidatorsResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
 definitions:
   JSONRPC:
     type: object
@@ -622,7 +697,323 @@ definitions:
         properties:
           result:
             $ref: '#/definitions/BlockComplete'
-
+  Tag:
+    type: object
+    properties:
+      key:
+        type: string
+        example: 'YWN0aW9u'
+      value:
+        type: string
+        example: 'c2VuZA=='
+  ################## FROM NOW ON NEEDS REFACTOR ##################
+  BlockResultsResponse:
+    type: "object"
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "height"
+          - "results"
+        properties:
+          height:
+            type: "string"
+            example: "12"
+          results:
+            required:
+              - "DeliverTx"
+              - "EndBlock"
+              - "BeginBlock"
+            properties:
+              DeliverTx:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    log:
+                      type: "string"
+                      example: "[{\"msg_index\":\"0\",\"success\":true,\"log\":\"\"}]"
+                    gasWanted:
+                      type: "string"
+                      example: "25629"
+                    gasUsed:
+                      type: "string"
+                      example: "25629"
+                    tags:
+                      type: "array"
+                      items:
+                        type: "object"
+                        properties:
+                          key:
+                            type: "string"
+                            example: "YWN0aW9u"
+                          value:
+                            type: "string"
+                            example: "c2VuZA=="
+              EndBlock:
+                required:
+                  - "validator_updates"
+                properties: {}
+                type: "object"
+              BeginBlock:
+                properties: {}
+                type: "object"
+            type: "object"
+        type: "object"
+  CommitResponse:
+    type: "object"
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "signed_header"
+          - "canonical"
+        properties:
+          signed_header:
+            required:
+              - "header"
+              - "commit"
+            properties:
+              header:
+                required:
+                  - "version"
+                  - "chain_id"
+                  - "height"
+                  - "time"
+                  - "num_txs"
+                  - "total_txs"
+                  - "last_block_id"
+                  - "last_commit_hash"
+                  - "data_hash"
+                  - "validators_hash"
+                  - "next_validators_hash"
+                  - "consensus_hash"
+                  - "app_hash"
+                  - "last_results_hash"
+                  - "evidence_hash"
+                  - "proposer_address"
+                properties:
+                  version:
+                    required:
+                      - "block"
+                      - "app"
+                    properties:
+                      block:
+                        type: "string"
+                        example: "10"
+                      app:
+                        type: "string"
+                        example: "0"
+                    type: "object"
+                  chain_id:
+                    type: "string"
+                    example: "cosmoshub-2"
+                  height:
+                    type: "string"
+                    example: "12"
+                  time:
+                    type: "string"
+                    example: "2019-04-22T17:01:51.701356223Z"
+                  num_txs:
+                    type: "string"
+                    example: "2"
+                  total_txs:
+                    type: "string"
+                    example: "3"
+                  last_block_id:
+                    required:
+                      - "hash"
+                      - "parts"
+                    properties:
+                      hash:
+                        type: "string"
+                        example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
+                      parts:
+                        required:
+                          - "total"
+                          - "hash"
+                        properties:
+                          total:
+                            type: "string"
+                            example: "1"
+                          hash:
+                            type: "string"
+                            example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
+                        type: "object"
+                    type: "object"
+                  last_commit_hash:
+                    type: "string"
+                    example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
+                  data_hash:
+                    type: "string"
+                    example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
+                  validators_hash:
+                    type: "string"
+                    example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+                  next_validators_hash:
+                    type: "string"
+                    example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+                  consensus_hash:
+                    type: "string"
+                    example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
+                  app_hash:
+                    type: "string"
+                    example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
+                  last_results_hash:
+                    type: "string"
+                    example: ""
+                  evidence_hash:
+                    type: "string"
+                    example: ""
+                  proposer_address:
+                    type: "string"
+                    example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
+                type: "object"
+              commit:
+                required:
+                  - "block_id"
+                  - "precommits"
+                properties:
+                  block_id:
+                    required:
+                      - "hash"
+                      - "parts"
+                    properties:
+                      hash:
+                        type: "string"
+                        example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
+                      parts:
+                        required:
+                          - "total"
+                          - "hash"
+                        properties:
+                          total:
+                            type: "string"
+                            example: "1"
+                          hash:
+                            type: "string"
+                            example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
+                        type: "object"
+                    type: "object"
+                  precommits:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        type:
+                          type: "number"
+                          example: 2
+                        height:
+                          type: "string"
+                          example: "12"
+                        round:
+                          type: "string"
+                          example: "0"
+                        block_id:
+                          required:
+                            - "hash"
+                            - "parts"
+                          properties:
+                            hash:
+                              type: "string"
+                              example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
+                            parts:
+                              required:
+                                - "total"
+                                - "hash"
+                              properties:
+                                total:
+                                  type: "string"
+                                  example: "1"
+                                hash:
+                                  type: "string"
+                                  example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
+                              type: "object"
+                          type: "object"
+                        timestamp:
+                          type: "string"
+                          example: "2019-04-22T17:01:58.376629719Z"
+                        validator_address:
+                          type: "string"
+                          example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+                        validator_index:
+                          type: "string"
+                          example: "0"
+                        signature:
+                          type: "string"
+                          example: "14jaTQXYRt8kbLKEhdHq7AXycrFImiLuZx50uOjs2+Zv+2i7RTG/jnObD07Jo2ubZ8xd7bNBJMqkgtkd0oQHAw=="
+                type: "object"
+            type: "object"
+          canonical:
+            type: "boolean"
+            example: true
+        type: "object"
+  ValidatorsResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "block_height"
+          - "validators"
+        properties:
+          block_height:
+            type: "string"
+            example: "55"
+          validators:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                address:
+                  type: "string"
+                  example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+                pub_key:
+                  required:
+                    - "type"
+                    - "value"
+                  properties:
+                    type:
+                      type: "string"
+                      example: "tendermint/PubKeyEd25519"
+                    value:
+                      type: "string"
+                      example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
+                  type: "object"
+                voting_power:
+                  type: "string"
+                  example: "250353"
+                proposer_priority:
+                  type: "string"
+                  example: "13769415"
+        type: "object"
 
 
 
@@ -635,11 +1026,8 @@ definitions:
 #
 #  // info API
 #  "genesis":              rpc.NewRPCFunc(Genesis, ""),
-#  "block_results":        rpc.NewRPCFunc(BlockResults, "height"),
-#  "commit":               rpc.NewRPCFunc(Commit, "height"),
 #  "tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
 #  "tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page"),
-#  "validators":           rpc.NewRPCFunc(Validators, "height"),
 #  "dump_consensus_state": rpc.NewRPCFunc(DumpConsensusState, ""),
 #  "consensus_state":      rpc.NewRPCFunc(ConsensusState, ""),
 #  "consensus_params":     rpc.NewRPCFunc(ConsensusParams, "height"),
