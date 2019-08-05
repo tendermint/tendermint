@@ -1,3 +1,4 @@
+// nolint:unused
 package v2
 
 import (
@@ -76,7 +77,7 @@ func newScPeer(peerID p2p.ID) *scPeer {
 	}
 }
 
-// The schedule is a composit data structure which allows a scheduler to keep
+// The schedule is a composite data structure which allows a scheduler to keep
 // track of which blocks have been scheduled into which state.
 type schedule struct {
 	initHeight int64
@@ -321,7 +322,7 @@ func (sc *schedule) allBlocksProcessed() bool {
 	return true
 }
 
-// heighest block | state == blockStateNew
+// highest block | state == blockStateNew
 func (sc *schedule) maxHeight() int64 {
 	var max int64 = 0
 	for height, state := range sc.blockStates {
