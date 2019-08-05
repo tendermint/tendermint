@@ -3,19 +3,18 @@ package internal
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -85,8 +84,8 @@ func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
 func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.SignerServiceEndpoint {
-			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, false, false)
+		func(th *TestHarness) *privval.SignerServer {
+			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, false, false)
 		},
 		NoError,
 	)
@@ -95,8 +94,8 @@ func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.SignerServiceEndpoint {
-			return newMockRemoteSigner(t, th, ed25519.GenPrivKey(), false, false)
+		func(th *TestHarness) *privval.SignerServer {
+			return newMockSignerServer(t, th, ed25519.GenPrivKey(), false, false)
 		},
 		ErrTestPublicKeyFailed,
 	)
@@ -105,8 +104,8 @@ func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.SignerServiceEndpoint {
-			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, true, false)
+		func(th *TestHarness) *privval.SignerServer {
+			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, true, false)
 		},
 		ErrTestSignProposalFailed,
 	)
@@ -115,28 +114,30 @@ func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 func TestRemoteSignerVoteSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
-		func(th *TestHarness) *privval.SignerServiceEndpoint {
-			return newMockRemoteSigner(t, th, th.fpv.Key.PrivKey, false, true)
+		func(th *TestHarness) *privval.SignerServer {
+			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, false, true)
 		},
 		ErrTestSignVoteFailed,
 	)
 }
 
-func newMockRemoteSigner(t *testing.T, th *TestHarness, privKey crypto.PrivKey, breakProposalSigning bool, breakVoteSigning bool) *privval.SignerServiceEndpoint {
-	return privval.NewSignerServiceEndpoint(
+func newMockSignerServer(t *testing.T, th *TestHarness, privKey crypto.PrivKey, breakProposalSigning bool, breakVoteSigning bool) *privval.SignerServer {
+	mockPV := types.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning)
+
+	dialerEndpoint := privval.NewSignerDialerEndpoint(
 		th.logger,
-		th.chainID,
-		types.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning),
 		privval.DialTCPFn(
 			th.addr,
 			time.Duration(defaultConnDeadline)*time.Millisecond,
 			ed25519.GenPrivKey(),
 		),
 	)
+
+	return privval.NewSignerServer(dialerEndpoint, th.chainID, mockPV)
 }
 
 // For running relatively standard tests.
-func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.SignerServiceEndpoint, expectedExitCode int) {
+func harnessTest(t *testing.T, signerServerMaker func(th *TestHarness) *privval.SignerServer, expectedExitCode int) {
 	cfg := makeConfig(t, 100, 3)
 	defer cleanup(cfg)
 
@@ -148,10 +149,10 @@ func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.SignerServ
 		th.Run()
 	}()
 
-	rs := rsMaker(th)
-	require.NoError(t, rs.Start())
-	assert.True(t, rs.IsRunning())
-	defer rs.Stop()
+	ss := signerServerMaker(th)
+	require.NoError(t, ss.Start())
+	assert.True(t, ss.IsRunning())
+	defer ss.Stop()
 
 	<-donec
 	assert.Equal(t, expectedExitCode, th.exitCode)
@@ -159,7 +160,7 @@ func harnessTest(t *testing.T, rsMaker func(th *TestHarness) *privval.SignerServ
 
 func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConfig {
 	return TestHarnessConfig{
-		BindAddr:         testFreeTCPAddr(t),
+		BindAddr:         privval.GetFreeLocalhostAddrPort(),
 		KeyFile:          makeTempFile("tm-testharness-keyfile", keyFileContents),
 		StateFile:        makeTempFile("tm-testharness-statefile", stateFileContents),
 		GenesisFile:      makeTempFile("tm-testharness-genesisfile", genesisFileContents),
@@ -190,13 +191,4 @@ func makeTempFile(name, content string) string {
 		panic(err)
 	}
 	return tempFile.Name()
-}
-
-// testFreeTCPAddr claims a free port so we don't block on listener being ready.
-func testFreeTCPAddr(t *testing.T) string {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer ln.Close()
-
-	return fmt.Sprintf("127.0.0.1:%d", ln.Addr().(*net.TCPAddr).Port)
 }
