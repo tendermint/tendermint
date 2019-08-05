@@ -244,7 +244,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// now call update with all the txs. it should not fire as there are no txs left
-	committedTxs = append(txs, moreTxs...)
+	committedTxs = append(txs, moreTxs...) //nolint: gocritic
 	if err := mempool.Update(2, committedTxs, abciResponses(len(committedTxs), abci.CodeTypeOK), nil, nil); err != nil {
 		t.Error(err)
 	}
@@ -426,8 +426,8 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
-	maxMsgSize := mempl.config.MaxMsgBytes
-	maxTxSize := calcMaxTxSize(mempl.config.MaxMsgBytes)
+	maxTxSize := mempl.config.MaxTxBytes
+	maxMsgSize := calcMaxMsgSize(maxTxSize)
 
 	testCases := []struct {
 		len int

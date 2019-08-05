@@ -263,8 +263,9 @@ func RegisterMempoolMessages(cdc *amino.Codec) {
 }
 
 func (memR *Reactor) decodeMsg(bz []byte) (msg MempoolMessage, err error) {
-	if l := len(bz); l > memR.config.MaxMsgBytes {
-		return msg, ErrTxTooLarge{memR.config.MaxMsgBytes, l}
+	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
+	if l := len(bz); l > maxMsgSize {
+		return msg, ErrTxTooLarge{maxMsgSize, l}
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -282,8 +283,8 @@ func (m *TxMessage) String() string {
 	return fmt.Sprintf("[TxMessage %v]", m.Tx)
 }
 
-// calcMaxTxSize returns the max size of Tx
+// calcMaxMsgSize returns the max size of TxMessage
 // account for amino overhead of TxMessage
-func calcMaxTxSize(maxMsgSize int) int {
-	return maxMsgSize - aminoOverheadForTxMessage
+func calcMaxMsgSize(maxTxSize int) int {
+	return maxTxSize + aminoOverheadForTxMessage
 }

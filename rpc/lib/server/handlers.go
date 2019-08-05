@@ -339,13 +339,14 @@ func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Val
 func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error, bool) {
 	if rt.Kind() == reflect.Ptr {
 		rv_, err, ok := nonJSONStringToArg(cdc, rt.Elem(), arg)
-		if err != nil {
+		switch {
+		case err != nil:
 			return reflect.Value{}, err, false
-		} else if ok {
+		case ok:
 			rv := reflect.New(rt.Elem())
 			rv.Elem().Set(rv_)
 			return rv, nil, true
-		} else {
+		default:
 			return reflect.Value{}, nil, false
 		}
 	} else {
@@ -735,12 +736,10 @@ func (wsc *wsConnection) writeRoutine() {
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-			} else {
-				if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-					wsc.Logger.Error("Failed to write response", "err", err)
-					wsc.Stop()
-					return
-				}
+			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
+				wsc.Logger.Error("Failed to write response", "err", err)
+				wsc.Stop()
+				return
 			}
 		case <-wsc.Quit():
 			return

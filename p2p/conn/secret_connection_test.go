@@ -192,7 +192,8 @@ func writeLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, txt string, n in
 	for i := 0; i < n; i++ {
 		_, err := conn.Write([]byte(txt))
 		if err != nil {
-			t.Fatalf("Failed to write to fooSecConn: %v", err)
+			t.Errorf("Failed to write to fooSecConn: %v", err)
+			return
 		}
 	}
 }
@@ -408,7 +409,8 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 			if err == io.EOF {
 				return
 			} else if err != nil {
-				b.Fatalf("Failed to read from barSecConn: %v", err)
+				b.Errorf("Failed to read from barSecConn: %v", err)
+				return
 			}
 		}
 	}()
@@ -418,7 +420,8 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 		idx := cmn.RandIntn(len(fooWriteBytes))
 		_, err := fooSecConn.Write(fooWriteBytes[idx])
 		if err != nil {
-			b.Fatalf("Failed to write to fooSecConn: %v", err)
+			b.Errorf("Failed to write to fooSecConn: %v", err)
+			return
 		}
 	}
 	b.StopTimer()
@@ -451,7 +454,8 @@ func BenchmarkReadSecretConnection(b *testing.B) {
 			idx := cmn.RandIntn(len(fooWriteBytes))
 			_, err := fooSecConn.Write(fooWriteBytes[idx])
 			if err != nil {
-				b.Fatalf("Failed to write to fooSecConn: %v, %v,%v", err, i, b.N)
+				b.Errorf("Failed to write to fooSecConn: %v, %v,%v", err, i, b.N)
+				return
 			}
 		}
 	}()
