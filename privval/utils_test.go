@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
