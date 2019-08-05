@@ -1514,77 +1514,77 @@ definitions:
                       type: "object"
                   type: "object"
         type: "object"
-ConsensusStateResponse:
-  type: object
-  required:
-    - "jsonrpc"
-    - "id"
-    - "result"
-  properties:
-    jsonrpc:
-      type: "string"
-      example: "2.0"
-    id:
-      type: "string"
-      example: ""
-    result:
-      required:
-        - "round_state"
-      properties:
-        round_state:
-          required:
-            - "height/round/step"
-            - "start_time"
-            - "proposal_block_hash"
-            - "locked_block_hash"
-            - "valid_block_hash"
-            - "height_vote_set"
-          properties:
-            height/round/step:
-              type: "string"
-              example: "1262197/0/8"
-            start_time:
-              type: "string"
-              example: "2019-08-01T11:52:38.962730289Z"
-            proposal_block_hash:
-              type: "string"
-              example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
-            locked_block_hash:
-              type: "string"
-              example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
-            valid_block_hash:
-              type: "string"
-              example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
-            height_vote_set:
-              type: "array"
-              items:
-                type: "object"
-                properties:
-                  round:
-                    type: "string"
-                    example: "0"
-                  prevotes:
-                    type: "array"
-                    items:
+  ConsensusStateResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "round_state"
+        properties:
+          round_state:
+            required:
+              - "height/round/step"
+              - "start_time"
+              - "proposal_block_hash"
+              - "locked_block_hash"
+              - "valid_block_hash"
+              - "height_vote_set"
+            properties:
+              height/round/step:
+                type: "string"
+                example: "1262197/0/8"
+              start_time:
+                type: "string"
+                example: "2019-08-01T11:52:38.962730289Z"
+              proposal_block_hash:
+                type: "string"
+                example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
+              locked_block_hash:
+                type: "string"
+                example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
+              valid_block_hash:
+                type: "string"
+                example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
+              height_vote_set:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    round:
                       type: "string"
-                    example:
-                      - "Vote{0:000001E443FD 1262197/00/1(Prevote) 634ADAF1F402 7BB974E1BA40 @ 2019-08-01T11:52:35.513572509Z}"
-                      - "nil-Vote"
-                  prevotes_bit_array:
-                    type: "string"
-                    example: "BA{100:xxxxxxxxxxxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx} 169753436/170151262 = 1.00"
-                  precommits:
-                    type: "array"
-                    items:
+                      example: "0"
+                    prevotes:
+                      type: "array"
+                      items:
+                        type: "string"
+                      example:
+                        - "Vote{0:000001E443FD 1262197/00/1(Prevote) 634ADAF1F402 7BB974E1BA40 @ 2019-08-01T11:52:35.513572509Z}"
+                        - "nil-Vote"
+                    prevotes_bit_array:
                       type: "string"
-                    example:
-                      - "Vote{5:18C78D135C9D 1262197/00/2(Precommit) 634ADAF1F402 8B5EFFFEABCD @ 2019-08-01T11:52:36.25600005Z}"
-                      - "nil-Vote"
-                  precommits_bit_array:
-                    type: "string"
-                    example: "BA{100:xxxxxx_xxxxx_xxxx_x_xxx_xx_xx_xx__x_x_x__xxxxxxxxxxxxxx_xxxx_xx_xxxxxx_xxxxxxxx_xxxx_xxx_x_xxxx__xxx} 118726247/170151262 = 0.70"
-          type: "object"
-      type: "object"
+                      example: "BA{100:xxxxxxxxxxxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx} 169753436/170151262 = 1.00"
+                    precommits:
+                      type: "array"
+                      items:
+                        type: "string"
+                      example:
+                        - "Vote{5:18C78D135C9D 1262197/00/2(Precommit) 634ADAF1F402 8B5EFFFEABCD @ 2019-08-01T11:52:36.25600005Z}"
+                        - "nil-Vote"
+                    precommits_bit_array:
+                      type: "string"
+                      example: "BA{100:xxxxxx_xxxxx_xxxx_x_xxx_xx_xx_xx__x_x_x__xxxxxxxxxxxxxx_xxxx_xx_xxxxxx_xxxxxxxx_xxxx_xxx_x_xxxx__xxx} 118726247/170151262 = 0.70"
+            type: "object"
+        type: "object"
 
 
 
