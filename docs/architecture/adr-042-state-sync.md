@@ -90,7 +90,7 @@ This way a node can start by requesting the entire tree from one peer,
 and that peer can respond with say the first few keys, and the ranges to request
 from other peers.
 
-Additionally, per chink validation tends to come more naturally to the
+Additionally, per chunk validation tends to come more naturally to the
 Lazy approach since it tends to use the existing structure of the tree
 (ie. keys or nodes) rather than state-sync specific chunks. Such a
 design for tendermint was originally tracked in
