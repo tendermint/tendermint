@@ -3,6 +3,8 @@ package v2
 import (
 	"fmt"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 func schedulerHandle(event Event) (Events, error) {
@@ -31,7 +33,6 @@ func processorHandle(event Event) (Events, error) {
 
 // reactor
 type Reactor struct {
-	events        chan Event
 	demuxer       *demuxer
 	scheduler     *Routine
 	processor     *Routine
@@ -40,11 +41,14 @@ type Reactor struct {
 }
 
 func (r *Reactor) Start() {
-	bufferSize := 10
-	events := make(chan Event, bufferSize)
+	logger := log.TestingLogger()
 
-	r.scheduler = newRoutine("scheduler", events, schedulerHandle)
-	r.processor = newRoutine("processor", events, processorHandle)
+	// what is the best way to get the events out of the routine
+	r.scheduler = newRoutine("scheduler", schedulerHandle)
+	r.scheduler.setLogger(logger)
+	r.processor = newRoutine("processor", processorHandle)
+	r.processor.setLogger(logger)
+	// so actually the demuxer only needs to read from events
 	r.demuxer = newDemuxer(r.scheduler, r.processor)
 	r.tickerStopped = make(chan struct{})
 
@@ -52,12 +56,20 @@ func (r *Reactor) Start() {
 	go r.processor.run()
 	go r.demuxer.run()
 
+	for {
+		if r.scheduler.isRunning() && r.processor.isRunning() && r.demuxer.isRunning() {
+			fmt.Println("routines running")
+			break
+		}
+		fmt.Println("waiting")
+		time.Sleep(1 * time.Second)
+	}
+
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		for {
 			select {
 			case <-ticker.C:
-				// xxx: what if !sent?
 				r.demuxer.send(timeCheck{})
 			case <-r.tickerStopped:
 				fmt.Println("ticker stopped")
@@ -89,7 +101,7 @@ func (r *Reactor) Receive(event Event) {
 	fmt.Println("receive event")
 	sent := r.demuxer.send(event)
 	if !sent {
-		panic("demuxer is full")
+		fmt.Println("demuxer is full")
 	}
 }
 

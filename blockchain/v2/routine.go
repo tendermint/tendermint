@@ -10,17 +10,16 @@ import (
 // TODO
 // * revisit panic conditions
 // * audit log levels
-// * maybe routine should be an interface and the concret tpe should be handlerRoutine
+// * Convert routine to an interface with concrete implmentation
+// * determine the public interface
 
-// Adding Metrics
-// we need a metrics definition
 type handleFunc = func(event Event) (Events, error)
 
 type Routine struct {
 	name     string
 	input    chan Event
 	errors   chan error
-	output   chan Event
+	out      chan Event
 	stopped  chan struct{}
 	finished chan error
 	running  *uint32
@@ -29,13 +28,13 @@ type Routine struct {
 	metrics  *Metrics
 }
 
-func newRoutine(name string, output chan Event, handleFunc handleFunc) *Routine {
+func newRoutine(name string, handleFunc handleFunc) *Routine {
 	return &Routine{
 		name:     name,
 		input:    make(chan Event, 1),
 		handle:   handleFunc,
 		errors:   make(chan error, 1),
-		output:   output,
+		out:      make(chan Event, 1),
 		stopped:  make(chan struct{}, 1),
 		finished: make(chan error, 1),
 		running:  new(uint32),
@@ -72,6 +71,7 @@ func (rt *Routine) run() {
 				}
 				rt.logger.Info(fmt.Sprintf("%s: stopping\n", rt.name))
 				rt.stopped <- struct{}{}
+				rt.terminate(fmt.Errorf("stopped"))
 				return
 			}
 			oEvents, err := rt.handle(iEvent)
@@ -84,7 +84,7 @@ func (rt *Routine) run() {
 			rt.logger.Info(fmt.Sprintf("%s handled %d events\n", rt.name, len(oEvents)))
 			for _, event := range oEvents {
 				rt.logger.Info(fmt.Sprintln("writting back to output"))
-				rt.output <- event
+				rt.out <- event
 			}
 		case iEvent, ok := <-rt.errors:
 			rt.metrics.ErrorsIn.With("routine", rt.name).Add(1)
@@ -101,18 +101,23 @@ func (rt *Routine) run() {
 			}
 			rt.metrics.ErrorsOut.With("routine", rt.name).Add(float64(len(oEvents)))
 			for _, event := range oEvents {
-				rt.output <- event
+				rt.out <- event
 			}
 		}
 	}
 }
 func (rt *Routine) feedback() {
-	for event := range rt.output {
+	for event := range rt.out {
 		rt.send(event)
 	}
 }
 
+// XXX: this should be called trySend for consistency
 func (rt *Routine) send(event Event) bool {
+	if !rt.isRunning() {
+		return false
+	}
+	rt.logger.Info(fmt.Sprintf("%s: sending %+v", rt.name, event))
 	if err, ok := event.(error); ok {
 		select {
 		case rt.errors <- err:
@@ -140,14 +145,18 @@ func (rt *Routine) isRunning() bool {
 	return atomic.LoadUint32(rt.running) == 1
 }
 
-// rename flush?
+func (rt *Routine) output() chan Event {
+	return rt.out
+}
+
 func (rt *Routine) stop() {
-	// XXX: what if already stopped?
+	if !rt.isRunning() {
+		return
+	}
 	rt.logger.Info(fmt.Sprintf("%s: stop\n", rt.name))
 	close(rt.input)
 	close(rt.errors)
 	<-rt.stopped
-	rt.terminate(fmt.Errorf("routine stopped"))
 }
 
 func (rt *Routine) terminate(reason error) {

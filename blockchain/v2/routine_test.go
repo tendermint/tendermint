@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type eventA struct{}
@@ -22,15 +24,47 @@ func simpleHandler(event Event) (Events, error) {
 }
 
 func TestRoutine(t *testing.T) {
-	events := make(chan Event, 10)
-	routine := newRoutine("simpleRoutine", events, simpleHandler)
+	routine := newRoutine("simpleRoutine", simpleHandler)
 
+	assert.False(t, routine.isRunning(),
+		"expected an initialized routine to not be running")
 	go routine.run()
 	go routine.feedback()
+	for {
+		if routine.isRunning() {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 
 	routine.send(eventA{})
 
-	routine.wait()
+	routine.stop()
+}
+
+func TesRoutineSend(t *testing.T) {
+	routine := newRoutine("simpleRoutine", simpleHandler)
+
+	assert.False(t, routine.send(eventA{}),
+		"expected sending to an unstarted routine to fail")
+
+	go routine.run()
+
+	go routine.feedback()
+	for {
+		if routine.isRunning() {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	assert.True(t, routine.send(eventA{}),
+		"expected sending to a running routine to succeed")
+
+	routine.stop()
+
+	assert.False(t, routine.send(eventA{}),
+		"expected sending to a stopped routine to fail")
 }
 
 func genStatefulHandler(maxCount int) handleFunc {
@@ -50,16 +84,22 @@ func genStatefulHandler(maxCount int) handleFunc {
 }
 
 func TestStatefulRoutine(t *testing.T) {
-	events := make(chan Event, 10)
 	handler := genStatefulHandler(10)
-	routine := newRoutine("statefulRoutine", events, handler)
+	routine := newRoutine("statefulRoutine", handler)
 
 	go routine.run()
 	go routine.feedback()
 
+	for {
+		if routine.isRunning() {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	go routine.send(eventA{})
 
-	routine.wait()
+	routine.stop()
 }
 
 func handleWithErrors(event Event) (Events, error) {
@@ -73,8 +113,7 @@ func handleWithErrors(event Event) (Events, error) {
 }
 
 func TestErrorSaturation(t *testing.T) {
-	events := make(chan Event, 10)
-	routine := newRoutine("errorRoutine", events, handleWithErrors)
+	routine := newRoutine("errorRoutine", handleWithErrors)
 
 	go routine.run()
 	go func() {
@@ -83,7 +122,15 @@ func TestErrorSaturation(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 		}
 	}()
-	routine.send(errEvent{})
+
+	for {
+		if routine.isRunning() {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	assert.True(t, routine.send(errEvent{}),
+		"expected send to succeed even when saturated")
 
 	routine.wait()
 }

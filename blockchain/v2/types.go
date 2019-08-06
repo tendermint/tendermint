@@ -2,6 +2,9 @@ package v2
 
 import "time"
 
+type Event interface{}
+
+type Events []Event
 type testEvent struct {
 	msg  string
 	time time.Time
