@@ -487,6 +487,33 @@ paths:
           description: Error
           schema:
             $ref: '#/definitions/ErrorResponse'
+
+  /broadcast_evidence:
+    get:
+      summary: Broadcast evidence of the misbehavior.
+      operationId: broadcast_evidence
+      parameters:
+        - in: query
+          name: evidence
+          type: string
+          description: Amino-encoded JSON evidence
+          required: true
+          x-example: "JSON_EVIDENCE_Amino_encoded"
+      tags:
+        - Info
+      description: |
+        Broadcast evidence of the misbehavior.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Broadcast evidence of the misbehavior.
+          schema:
+            $ref: '#/definitions/BroadcastEvidenceResponse'
+        500:
+          description: Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
 definitions:
   JSONRPC:
     type: object
@@ -2182,7 +2209,24 @@ definitions:
       jsonrpc:
         type: "string"
         example: "2.0"
-
+  BroadcastEvidenceResponse:
+    type: object
+    required:
+      - "id"
+      - "jsonrpc"
+    properties:
+      error:
+        type: "string"
+        example: ""
+      result:
+        type: "string"
+        example: ""
+      id:
+        type: "string"
+        example: ""
+      jsonrpc:
+        type: "string"
+        example: "2.0"
 
 
 
@@ -2197,9 +2241,3 @@ definitions:
 #  "broadcast_tx_sync":   rpc.NewRPCFunc(BroadcastTxSync, "tx"),
 #  "broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsync, "tx"),
 #
-#  // abci API
-#  "abci_query": rpc.NewRPCFunc(ABCIQuery, "path,data,height,prove"),
-#  "abci_info":  rpc.NewRPCFunc(ABCIInfo, ""),
-#
-#  // evidence API
-#  "broadcast_evidence": rpc.NewRPCFunc(BroadcastEvidence, "evidence"),
