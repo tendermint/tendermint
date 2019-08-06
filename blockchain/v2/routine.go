@@ -26,6 +26,7 @@ type Routine struct {
 	handle   handleFunc
 	logger   log.Logger
 	metrics  *Metrics
+	stopping *uint32
 }
 
 func newRoutine(name string, handleFunc handleFunc) *Routine {
@@ -38,6 +39,7 @@ func newRoutine(name string, handleFunc handleFunc) *Routine {
 		stopped:  make(chan struct{}, 1),
 		finished: make(chan error, 1),
 		running:  new(uint32),
+		stopping: new(uint32),
 		logger:   log.NewNopLogger(),
 		metrics:  NopMetrics(),
 	}
@@ -60,6 +62,7 @@ func (rt *Routine) run() {
 	errorsDrained := false
 	for {
 		if !rt.isRunning() {
+			rt.logger.Info(fmt.Sprintf("%s: breaking because not running\n", rt.name))
 			break
 		}
 		select {
@@ -67,6 +70,8 @@ func (rt *Routine) run() {
 			rt.metrics.EventsIn.With("routine", rt.name).Add(1)
 			if !ok {
 				if !errorsDrained {
+					rt.logger.Info(fmt.Sprintf("%s: waiting for errors to drain\n", rt.name))
+
 					continue // wait for errors to be drainned
 				}
 				rt.logger.Info(fmt.Sprintf("%s: stopping\n", rt.name))
@@ -112,11 +117,11 @@ func (rt *Routine) feedback() {
 	}
 }
 
-// XXX: this should be called trySend for consistency
 func (rt *Routine) send(event Event) bool {
-	if !rt.isRunning() {
+	if !rt.isRunning() || rt.isStopping() {
 		return false
 	}
+
 	rt.logger.Info(fmt.Sprintf("%s: sending %+v", rt.name, event))
 	if err, ok := event.(error); ok {
 		select {
@@ -145,6 +150,10 @@ func (rt *Routine) isRunning() bool {
 	return atomic.LoadUint32(rt.running) == 1
 }
 
+func (rt *Routine) isStopping() bool {
+	return atomic.LoadUint32(rt.stopping) == 1
+}
+
 func (rt *Routine) output() chan Event {
 	return rt.out
 }
@@ -153,7 +162,13 @@ func (rt *Routine) stop() {
 	if !rt.isRunning() {
 		return
 	}
+
 	rt.logger.Info(fmt.Sprintf("%s: stop\n", rt.name))
+	stopping := atomic.CompareAndSwapUint32(rt.stopping, uint32(0), uint32(1))
+	if !stopping {
+		panic("Routine has already stopped")
+	}
+
 	close(rt.input)
 	close(rt.errors)
 	<-rt.stopped
@@ -172,3 +187,8 @@ func (rt *Routine) terminate(reason error) {
 func (rt *Routine) wait() error {
 	return <-rt.finished
 }
+
+/*
+	Problem:
+		We can't write to channels from one thread and close channels from another thread
+*/

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type eventA struct{}
@@ -86,6 +87,7 @@ func genStatefulHandler(maxCount int) handleFunc {
 func TestStatefulRoutine(t *testing.T) {
 	handler := genStatefulHandler(10)
 	routine := newRoutine("statefulRoutine", handler)
+	routine.setLogger(log.TestingLogger())
 
 	go routine.run()
 	go routine.feedback()
@@ -97,7 +99,7 @@ func TestStatefulRoutine(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	go routine.send(eventA{})
+	routine.send(eventA{})
 
 	routine.stop()
 }
@@ -114,7 +116,6 @@ func handleWithErrors(event Event) (Events, error) {
 
 func TestErrorSaturation(t *testing.T) {
 	routine := newRoutine("errorRoutine", handleWithErrors)
-
 	go routine.run()
 	go func() {
 		for {

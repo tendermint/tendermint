@@ -3,8 +3,6 @@ package v2
 import (
 	"fmt"
 	"time"
-
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 func schedulerHandle(event Event) (Events, error) {
@@ -40,14 +38,11 @@ type Reactor struct {
 	tickerStopped chan struct{}
 }
 
+// TODO: setLogger should set loggers of the routines
 func (r *Reactor) Start() {
-	logger := log.TestingLogger()
-
 	// what is the best way to get the events out of the routine
 	r.scheduler = newRoutine("scheduler", schedulerHandle)
-	r.scheduler.setLogger(logger)
 	r.processor = newRoutine("processor", processorHandle)
-	r.processor.setLogger(logger)
 	// so actually the demuxer only needs to read from events
 	r.demuxer = newDemuxer(r.scheduler, r.processor)
 	r.tickerStopped = make(chan struct{})
