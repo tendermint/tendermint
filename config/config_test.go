@@ -141,7 +141,7 @@ func TestMempoolConfigValidateBasic(t *testing.T) {
 		cfgSize        int
 		cfgMaxTxsBytes int64
 		cfgCacheSize   int
-		cfgMaxMsgBytes int
+		cfgMaxTxBytes  int
 		expectErr      bool
 	}{
 		{"Valid RPC Config", 1, 1, 1, 1, false},
@@ -157,7 +157,7 @@ func TestMempoolConfigValidateBasic(t *testing.T) {
 				Size:        tc.cfgSize,
 				MaxTxsBytes: tc.cfgMaxTxsBytes,
 				CacheSize:   tc.cfgCacheSize,
-				MaxMsgBytes: tc.cfgMaxMsgBytes,
+				MaxTxBytes:  tc.cfgMaxTxBytes,
 			}
 			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
