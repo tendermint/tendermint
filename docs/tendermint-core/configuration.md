@@ -240,8 +240,9 @@ max_txs_bytes = 1073741824
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = 10000
 
-# Limit the size of TxMessage
-max_msg_bytes = 1048576
+# Maximum size of a single transaction.
+# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
+max_tx_bytes = 1048576
 
 ##### fast sync configuration options #####
 [fastsync]
