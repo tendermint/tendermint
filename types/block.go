@@ -41,25 +41,6 @@ type Block struct {
 	LastCommit *Commit      `json:"last_commit"`
 }
 
-// MakeBlock returns a new block with an empty header, except what can be
-// computed from itself.
-// It populates the same set of fields validated by ValidateBasic.
-func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
-	block := &Block{
-		Header: Header{
-			Height: height,
-			NumTxs: int64(len(txs)),
-		},
-		Data: Data{
-			Txs: txs,
-		},
-		Evidence:   EvidenceData{Evidence: evidence},
-		LastCommit: lastCommit,
-	}
-	block.fillHeader()
-	return block
-}
-
 // ValidateBasic performs basic validation that doesn't involve state data.
 // It checks the internal consistency of the block.
 // Further validation is done using state#ValidateBlock.

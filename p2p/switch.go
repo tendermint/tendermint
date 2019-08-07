@@ -152,11 +152,9 @@ func WithMetrics(metrics *Metrics) SwitchOption {
 // AddReactor adds the given reactor to the switch.
 // NOTE: Not goroutine safe.
 func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
-	// Validate the reactor.
-	// No two reactors can share the same channel.
-	reactorChannels := reactor.GetChannels()
-	for _, chDesc := range reactorChannels {
+	for _, chDesc := range reactor.GetChannels() {
 		chID := chDesc.ID
+		// No two reactors can share the same channel.
 		if sw.reactorsByCh[chID] != nil {
 			panic(fmt.Sprintf("Channel %X has multiple reactors %v & %v", chID, sw.reactorsByCh[chID], reactor))
 		}
@@ -166,6 +164,23 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 	sw.reactors[name] = reactor
 	reactor.SetSwitch(sw)
 	return reactor
+}
+
+// RemoveReactor removes the given Reactor from the Switch.
+// NOTE: Not goroutine safe.
+func (sw *Switch) RemoveReactor(name string, reactor Reactor) {
+	for _, chDesc := range reactor.GetChannels() {
+		// remove channel description
+		for i := 0; i < len(sw.chDescs); i++ {
+			if chDesc.ID == sw.chDescs[i].ID {
+				sw.chDescs = append(sw.chDescs[:i], sw.chDescs[i+1:]...)
+				break
+			}
+		}
+		delete(sw.reactorsByCh, chDesc.ID)
+	}
+	delete(sw.reactors, name)
+	reactor.SetSwitch(nil)
 }
 
 // Reactors returns a map of reactors registered on the switch.
@@ -664,8 +679,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		metrics:      sw.metrics,
 	})
 	if err != nil {
-		switch e := err.(type) {
-		case ErrRejected:
+		if e, ok := err.(ErrRejected); ok {
 			if e.IsSelf() {
 				// Remove the given address from the address book and add to our addresses
 				// to avoid dialing in the future.

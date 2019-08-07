@@ -9,8 +9,8 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/version"
+	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -115,6 +115,7 @@ func (app *KVStoreApplication) Commit() types.ResponseCommit {
 	return types.ResponseCommit{Data: appHash}
 }
 
+// Returns an associated value or nil if missing.
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
 		value := app.state.db.Get(prefixKey(reqQuery.Data))

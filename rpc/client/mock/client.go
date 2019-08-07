@@ -36,6 +36,7 @@ type Client struct {
 	client.HistoryClient
 	client.StatusClient
 	client.EventsClient
+	client.EvidenceClient
 	cmn.Service
 }
 
@@ -146,4 +147,8 @@ func (c Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 
 func (c Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
 	return core.Validators(&rpctypes.Context{}, height)
+}
+
+func (c Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	return core.BroadcastEvidence(&rpctypes.Context{}, ev)
 }

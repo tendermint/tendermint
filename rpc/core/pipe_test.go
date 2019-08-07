@@ -14,33 +14,39 @@ func TestPaginationPage(t *testing.T) {
 		perPage    int
 		page       int
 		newPage    int
+		expErr     bool
 	}{
-		{0, 0, 1, 1},
+		{0, 10, 1, 1, false},
 
-		{0, 10, 0, 1},
-		{0, 10, 1, 1},
-		{0, 10, 2, 1},
+		{0, 10, 0, 1, false},
+		{0, 10, 1, 1, false},
+		{0, 10, 2, 0, true},
 
-		{5, 10, -1, 1},
-		{5, 10, 0, 1},
-		{5, 10, 1, 1},
-		{5, 10, 2, 1},
-		{5, 10, 2, 1},
+		{5, 10, -1, 0, true},
+		{5, 10, 0, 1, false},
+		{5, 10, 1, 1, false},
+		{5, 10, 2, 0, true},
+		{5, 10, 2, 0, true},
 
-		{5, 5, 1, 1},
-		{5, 5, 2, 1},
-		{5, 5, 3, 1},
+		{5, 5, 1, 1, false},
+		{5, 5, 2, 0, true},
+		{5, 5, 3, 0, true},
 
-		{5, 3, 2, 2},
-		{5, 3, 3, 2},
+		{5, 3, 2, 2, false},
+		{5, 3, 3, 0, true},
 
-		{5, 2, 2, 2},
-		{5, 2, 3, 3},
-		{5, 2, 4, 3},
+		{5, 2, 2, 2, false},
+		{5, 2, 3, 3, false},
+		{5, 2, 4, 0, true},
 	}
 
 	for _, c := range cases {
-		p := validatePage(c.page, c.perPage, c.totalCount)
+		p, err := validatePage(c.page, c.perPage, c.totalCount)
+		if c.expErr {
+			assert.Error(t, err)
+			continue
+		}
+
 		assert.Equal(t, c.newPage, p, fmt.Sprintf("%v", c))
 	}
 
