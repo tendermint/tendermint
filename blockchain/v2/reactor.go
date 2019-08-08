@@ -47,9 +47,9 @@ func (r *Reactor) Start() {
 	r.demuxer = newDemuxer(r.scheduler, r.processor)
 	r.tickerStopped = make(chan struct{})
 
-	go r.scheduler.run()
-	go r.processor.run()
-	go r.demuxer.run()
+	go r.scheduler.start()
+	go r.processor.start()
+	go r.demuxer.start()
 
 	for {
 		if r.scheduler.isRunning() && r.processor.isRunning() && r.demuxer.isRunning() {
@@ -57,7 +57,7 @@ func (r *Reactor) Start() {
 			break
 		}
 		fmt.Println("waiting")
-		time.Sleep(1 * time.Second)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	go func() {
@@ -65,7 +65,7 @@ func (r *Reactor) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				r.demuxer.send(timeCheck{})
+				r.demuxer.trySend(timeCheck{})
 			case <-r.tickerStopped:
 				fmt.Println("ticker stopped")
 				return
@@ -94,7 +94,7 @@ func (r *Reactor) Stop() {
 
 func (r *Reactor) Receive(event Event) {
 	fmt.Println("receive event")
-	sent := r.demuxer.send(event)
+	sent := r.demuxer.trySend(event)
 	if !sent {
 		fmt.Println("demuxer is full")
 	}

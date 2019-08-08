@@ -9,7 +9,7 @@ type demuxer struct {
 	input     chan Event
 	scheduler *Routine
 	processor *Routine
-	finished  chan error
+	fin       chan error
 	stopped   chan struct{}
 	running   *uint32
 }
@@ -26,12 +26,12 @@ func newDemuxer(scheduler *Routine, processor *Routine) *demuxer {
 		scheduler: scheduler,
 		processor: processor,
 		stopped:   make(chan struct{}, 1),
-		finished:  make(chan error, 1),
+		fin:       make(chan error, 1),
 		running:   new(uint32),
 	}
 }
 
-func (dm *demuxer) run() {
+func (dm *demuxer) start() {
 	starting := atomic.CompareAndSwapUint32(dm.running, uint32(0), uint32(1))
 	if !starting {
 		panic("Routine has already started")
@@ -57,7 +57,7 @@ func (dm *demuxer) run() {
 			for _, event := range oEvents {
 				dm.input <- event
 			}
-		case event, ok := <-dm.scheduler.output():
+		case event, ok := <-dm.scheduler.next():
 			if !ok {
 				fmt.Printf("demuxer: scheduler output closed\n")
 				continue
@@ -70,7 +70,7 @@ func (dm *demuxer) run() {
 			for _, event := range oEvents {
 				dm.input <- event
 			}
-		case event, ok := <-dm.processor.output():
+		case event, ok := <-dm.processor.next():
 			if !ok {
 				fmt.Printf("demuxer: processor output closed\n")
 				continue
@@ -88,12 +88,12 @@ func (dm *demuxer) run() {
 }
 
 func (dm *demuxer) handle(event Event) (Events, error) {
-	received := dm.scheduler.send(event)
+	received := dm.scheduler.trySend(event)
 	if !received {
 		return Events{scFull{}}, nil // backpressure
 	}
 
-	received = dm.processor.send(event)
+	received = dm.processor.trySend(event)
 	if !received {
 		return Events{pcFull{}}, nil // backpressure
 	}
@@ -101,7 +101,7 @@ func (dm *demuxer) handle(event Event) (Events, error) {
 	return Events{}, nil
 }
 
-func (dm *demuxer) send(event Event) bool {
+func (dm *demuxer) trySend(event Event) bool {
 	if !dm.isRunning() {
 		fmt.Println("dummuxer isn't running")
 		return false
@@ -133,9 +133,9 @@ func (dm *demuxer) terminate(reason error) {
 	if !stopped {
 		panic("called terminate but already terminated")
 	}
-	dm.finished <- reason
+	dm.fin <- reason
 }
 
-func (dm *demuxer) wait() error {
-	return <-dm.finished
+func (dm *demuxer) final() chan error {
+	return dm.fin
 }

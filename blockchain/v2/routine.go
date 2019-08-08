@@ -11,7 +11,6 @@ import (
 // * revisit panic conditions
 // * audit log levels
 // * Convert routine to an interface with concrete implmentation
-// * determine the public interface
 
 type handleFunc = func(event Event) (Events, error)
 
@@ -21,7 +20,8 @@ type Routine struct {
 	errors   chan error
 	out      chan Event
 	stopped  chan struct{}
-	finished chan error
+	rdy      chan struct{}
+	fin      chan error
 	running  *uint32
 	handle   handleFunc
 	logger   log.Logger
@@ -37,7 +37,8 @@ func newRoutine(name string, handleFunc handleFunc) *Routine {
 		errors:   make(chan error, 1),
 		out:      make(chan Event, 1),
 		stopped:  make(chan struct{}, 1),
-		finished: make(chan error, 1),
+		rdy:      make(chan struct{}, 1),
+		fin:      make(chan error, 1),
 		running:  new(uint32),
 		stopping: new(uint32),
 		logger:   log.NewNopLogger(),
@@ -53,12 +54,13 @@ func (rt *Routine) setMetrics(metrics *Metrics) {
 	rt.metrics = metrics
 }
 
-func (rt *Routine) run() {
+func (rt *Routine) start() {
 	rt.logger.Info(fmt.Sprintf("%s: run\n", rt.name))
 	starting := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))
 	if !starting {
 		panic("Routine has already started")
 	}
+	rt.rdy <- struct{}{}
 	errorsDrained := false
 	for {
 		if !rt.isRunning() {
@@ -113,11 +115,11 @@ func (rt *Routine) run() {
 }
 func (rt *Routine) feedback() {
 	for event := range rt.out {
-		rt.send(event)
+		rt.trySend(event)
 	}
 }
 
-func (rt *Routine) send(event Event) bool {
+func (rt *Routine) trySend(event Event) bool {
 	if !rt.isRunning() || rt.isStopping() {
 		return false
 	}
@@ -154,7 +156,11 @@ func (rt *Routine) isStopping() bool {
 	return atomic.LoadUint32(rt.stopping) == 1
 }
 
-func (rt *Routine) output() chan Event {
+func (rt *Routine) ready() chan struct{} {
+	return rt.rdy
+}
+
+func (rt *Routine) next() chan Event {
 	return rt.out
 }
 
@@ -174,21 +180,14 @@ func (rt *Routine) stop() {
 	<-rt.stopped
 }
 
+func (rt *Routine) final() chan error {
+	return rt.fin
+}
+
 func (rt *Routine) terminate(reason error) {
 	stopped := atomic.CompareAndSwapUint32(rt.running, uint32(1), uint32(0))
 	if !stopped {
 		panic("called stop but already stopped")
 	}
-	rt.finished <- reason
+	rt.fin <- reason
 }
-
-// XXX: this should probably produced the finished
-// channel and let the caller deicde how long to wait
-func (rt *Routine) wait() error {
-	return <-rt.finished
-}
-
-/*
-	Problem:
-		We can't write to channels from one thread and close channels from another thread
-*/
