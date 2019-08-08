@@ -24,6 +24,334 @@ securityDefinitions:
   kms:
     type: basic
 paths:
+  /broadcast_tx_sync:
+    get:
+      summary: Returns with the response from CheckTx. Does not wait for DeliverTx result.
+      tags:
+        - Tx
+      operationId: broadcast_tx_sync
+      description: |
+        If you want to be sure that the transaction is included in a block, you can
+        subscribe for the result using JSONRPC via a websocket. See
+        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+        If you haven't received anything after a couple of blocks, resend it. If the
+        same happens again, send it to some other node. A few reasons why it could
+        happen:
+        
+        1. malicious node can drop or pretend it had committed your tx
+        2. malicious proposer (not necessary the one you're communicating with) can
+        drop transactions, which might become valid in the future
+        (https://github.com/tendermint/tendermint/issues/3322)
+        
+
+        Please refer to
+        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          type: string
+          required: true
+          description: The transaction
+          x-example: 456
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: '#/definitions/BroadcastTxResponse'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /broadcast_tx_async:
+    get:
+      summary: Returns right away, with no response. Does not wait for CheckTx nor DeliverTx results.
+      tags:
+        - Tx
+      operationId: broadcast_tx_async
+      description: |
+        If you want to be sure that the transaction is included in a block, you can
+        subscribe for the result using JSONRPC via a websocket. See
+        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+        If you haven't received anything after a couple of blocks, resend it. If the
+        same happens again, send it to some other node. A few reasons why it could
+        happen:
+
+        1. malicious node can drop or pretend it had committed your tx
+        2. malicious proposer (not necessary the one you're communicating with) can
+        drop transactions, which might become valid in the future
+        (https://github.com/tendermint/tendermint/issues/3322)
+        3. node can be offline
+
+        Please refer to
+        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          type: string
+          required: true
+          description: The transaction
+          x-example: 123
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: '#/definitions/BroadcastTxResponse'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /broadcast_tx_commit:
+    get:
+      summary: Returns with the responses from CheckTx and DeliverTx.
+      tags:
+        - Tx
+      operationId: broadcast_tx_commit
+      description: |
+        IMPORTANT: use only for testing and development. In production, use
+        BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
+        result using JSONRPC via a websocket. See
+        https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
+
+        CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
+        waiting for tx to commit.
+
+        If CheckTx or DeliverTx fail, no error will be returned, but the returned result
+        will contain a non-OK ABCI code.
+
+        Please refer to
+        https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          type: string
+          required: true
+          description: The transaction
+          x-example: 785
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: '#/definitions/BroadcastTxCommitResponse'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /subscribe:
+    get:
+      summary: Subscribe for events via WebSocket.
+      tags:
+        - Websocket
+      operationId: subscribe
+      description: |
+        To tell which events you want, you need to provide a query. query is a
+        string, which has a form: "condition AND condition ..." (no OR at the
+        moment). condition has a form: "key operation operand". key is a string with
+        a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
+        operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
+        string (escaped with single quotes), number, date or time.
+
+        Examples:
+              tm.event = 'NewBlock'               # new blocks
+              tm.event = 'CompleteProposal'       # node got a complete proposal
+              tm.event = 'Tx' AND tx.hash = 'XYZ' # single transaction
+              tm.event = 'Tx' AND tx.height = 5   # all txs of the fifth block
+              tx.height = 5                       # all txs of the fifth block
+
+        Tendermint provides a few predefined keys: tm.event, tx.hash and tx.height.
+        Note for transactions, you can define additional keys by providing events with
+        DeliverTx response.
+
+        import (
+            abci "github.com/tendermint/tendermint/abci/types"
+            "github.com/tendermint/tendermint/libs/pubsub/query"
+        )
+
+        abci.ResponseDeliverTx{
+          Events: []abci.Event{
+              {
+                  Type: "rewards.withdraw",
+                  Attributes: cmn.KVPairs{
+                      cmn.KVPair{Key: []byte("address"), Value: []byte("AddrA")},
+                      cmn.KVPair{Key: []byte("source"), Value: []byte("SrcX")},
+                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                      cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+                  },
+              },
+              {
+                  Type: "rewards.withdraw",
+                  Attributes: cmn.KVPairs{
+                      cmn.KVPair{Key: []byte("address"), Value: []byte("AddrB")},
+                      cmn.KVPair{Key: []byte("source"), Value: []byte("SrcY")},
+                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                      cmn.KVPair{Key: []byte("balance"), Value: []byte("...")},
+                  },
+              },
+              {
+                  Type: "transfer",
+                  Attributes: cmn.KVPairs{
+                      cmn.KVPair{Key: []byte("sender"), Value: []byte("AddrC")},
+                      cmn.KVPair{Key: []byte("recipient"), Value: []byte("AddrD")},
+                      cmn.KVPair{Key: []byte("amount"), Value: []byte("...")},
+                  },
+              },
+          },
+        }
+
+        All events are indexed by a composite key of the form {eventType}.{evenAttrKey}.
+        In the above examples, the following keys would be indexed:
+           - rewards.withdraw.address
+           - rewards.withdraw.source
+           - rewards.withdraw.amount
+           - rewards.withdraw.balance
+           - transfer.sender
+           - transfer.recipient
+           - transfer.amount
+
+        Multiple event types with duplicate keys are allowed and are meant to
+        categorize unique and distinct events. In the above example, all events
+        indexed under the key `rewards.withdraw.address` will have the following
+        values stored and queryable:
+
+           - AddrA
+           - AddrB
+
+        To create a query for txs where address AddrA withdrew rewards:
+        query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA'")
+
+        To create a query for txs where address AddrA withdrew rewards from source Y:
+        query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA' AND rewards.withdraw.source = 'Y'")
+
+        To create a query for txs where AddrA transferred funds:
+        query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrA'")
+
+        The following queries would return no results:
+        query.MustParse("tm.event = 'Tx' AND transfer.sender = 'AddrZ'")
+        query.MustParse("tm.event = 'Tx' AND rewards.withdraw.address = 'AddrZ'")
+        query.MustParse("tm.event = 'Tx' AND rewards.withdraw.source = 'W'")
+
+        See list of all possible events here
+        https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants
+
+        For complete query syntax, check out
+        https://godoc.org/github.com/tendermint/tendermint/libs/pubsub/query.
+
+        ```go
+        import "github.com/tendermint/tendermint/types"
+
+        client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+        err := client.Start()
+        if err != nil {
+          handle error
+        }
+        defer client.Stop()
+        ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+        defer cancel()
+        query := "tm.event = 'Tx' AND tx.height = 3"
+        txs, err := client.Subscribe(ctx, "test-client", query)
+        if err != nil {
+          handle error
+        }
+
+        go func() {
+         for e := range txs {
+           fmt.Println("got ", e.Data.(types.EventDataTx))
+           }
+        }()
+        ```
+      parameters:
+        - in: query
+          name: query
+          type: string
+          required: true
+          description: |
+            query is a string, which has a form: "condition AND condition ..." (no OR at the
+            moment). condition has a form: "key operation operand". key is a string with
+            a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
+            operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
+            string (escaped with single quotes), number, date or time.
+          x-example: tm.event = 'Tx' AND tx.height = 5
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: '#/definitions/EmptyResponse'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /unsubscribe:
+    get:
+      summary: Unsubscribe from event on Websocket
+      tags:
+        - Websocket
+      operationId: unsubscribe
+      description: |
+         ```go
+         client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+         err := client.Start()
+         if err != nil {
+            handle error
+         }
+         defer client.Stop()
+         query := "tm.event = 'Tx' AND tx.height = 3"
+         err = client.Unsubscribe(context.Background(), "test-client", query)
+         if err != nil {
+            handle error
+         }
+         ```
+      parameters:
+        - in: query
+          name: query
+          type: string
+          required: true
+          description: |
+            query is a string, which has a form: "condition AND condition ..." (no OR at the
+            moment). condition has a form: "key operation operand". key is a string with
+            a restricted set of possible symbols ( \t\n\r\\()"'=>< are not allowed).
+            operation can be "=", "<", "<=", ">", ">=", "CONTAINS". operand can be a
+            string (escaped with single quotes), number, date or time.
+          x-example: tm.event = 'Tx' AND tx.height = 5
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: '#/definitions/EmptyResponse'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /unsubscribe_all:
+    get:
+      summary: Unsubscribe from all events via WebSocket
+      tags:
+        - Websocket
+      operationId: unsubscribe_all
+      description: |
+        Unsubscribe from all events via WebSocket
+      produces:
+        - application/json
+      responses:
+        200:
+          description: empty answer
+          schema:
+            $ref: '#/definitions/EmptyResponse'
+        500:
+          description: empty error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
   /health:
     get:
       summary: Node heartbeat
@@ -514,6 +842,8 @@ paths:
           description: Error
           schema:
             $ref: '#/definitions/ErrorResponse'
+
+
 definitions:
   JSONRPC:
     type: object
@@ -573,7 +903,7 @@ definitions:
         x-example: "5576458aef205977e18fd50b274e9b5d9014525a"
       listen_addr:
         type: string
-        x-example: "tcp://0.0.0.0:26656"
+        x-example: "tcp:0.0.0.0:26656"
       network:
         type: string
         x-example: "cosmoshub-2"
@@ -594,7 +924,7 @@ definitions:
             x-example: "on"
           rpc_address:
             type: string
-            x-example: "tcp://0.0.0.0:26657"
+            x-example: "tcp:0.0.0.0:26657"
         x-example: "moniker-node"
   SyncInfo:
     type: object
@@ -2227,17 +2557,103 @@ definitions:
       jsonrpc:
         type: "string"
         example: "2.0"
-
-
-
-
-#  // subscribe/unsubscribe are reserved for websocket events.
-#  "subscribe":       rpc.NewWSRPCFunc(Subscribe, "query"),
-#  "unsubscribe":     rpc.NewWSRPCFunc(Unsubscribe, "query"),
-#  "unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
-#
-#  // tx broadcast API
-#  "broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommit, "tx"),
-#  "broadcast_tx_sync":   rpc.NewRPCFunc(BroadcastTxSync, "tx"),
-#  "broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsync, "tx"),
-#
+  BroadcastTxCommitResponse:
+    type: object
+    required:
+      - "error"
+      - "result"
+      - "id"
+      - "jsonrpc"
+    properties:
+      error:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "height"
+          - "hash"
+          - "deliver_tx"
+          - "check_tx"
+        properties:
+          height:
+            type: "string"
+            example: "26682"
+          hash:
+            type: "string"
+            example: "75CA0F856A4DA078FC4911580360E70CEFB2EBEE"
+          deliver_tx:
+            required:
+              - "log"
+              - "data"
+              - "code"
+            properties:
+              log:
+                type: "string"
+                example: ""
+              data:
+                type: "string"
+                example: ""
+              code:
+                type: "string"
+                example: "0"
+            type: "object"
+          check_tx:
+            required:
+              - "log"
+              - "data"
+              - "code"
+            properties:
+              log:
+                type: "string"
+                example: ""
+              data:
+                type: "string"
+                example: ""
+              code:
+                type: "string"
+                example: "0"
+            type: "object"
+        type: "object"
+      id:
+        type: "string"
+        example: ""
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+  BroadcastTxResponse:
+    type: object
+    required:
+      - "jsonrpc"
+      - "id"
+      - "result"
+      - "error"
+    properties:
+      jsonrpc:
+        type: "string"
+        example: "2.0"
+      id:
+        type: "string"
+        example: ""
+      result:
+        required:
+          - "code"
+          - "data"
+          - "log"
+          - "hash"
+        properties:
+          code:
+            type: "string"
+            example: "0"
+          data:
+            type: "string"
+            example: ""
+          log:
+            type: "string"
+            example: ""
+          hash:
+            type: "string"
+            example: "0D33F2F03A5234F38706E43004489E061AC40A2E"
+        type: "object"
+      error:
+        type: "string"
+        example: ""
