@@ -11,6 +11,7 @@ import (
 
 type eventA struct{}
 type eventB struct{}
+type errEvent struct{}
 
 var done = fmt.Errorf("done")
 

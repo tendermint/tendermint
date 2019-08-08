@@ -5,6 +5,9 @@ import (
 	"sync/atomic"
 )
 
+type scFull struct{}
+type pcFull struct{}
+
 type demuxer struct {
 	input     chan Event
 	scheduler *Routine

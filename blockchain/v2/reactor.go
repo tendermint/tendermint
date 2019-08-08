@@ -5,13 +5,16 @@ import (
 	"time"
 )
 
+type timeCheck struct {
+	time time.Time
+}
+
 func schedulerHandle(event Event) (Events, error) {
 	switch event.(type) {
 	case timeCheck:
 		fmt.Println("scheduler handle timeCheck")
-	case testEvent:
+	case Event:
 		fmt.Println("scheduler handle testEvent")
-		return Events{scTestEvent{}}, nil
 	}
 	return Events{}, nil
 }
@@ -20,11 +23,8 @@ func processorHandle(event Event) (Events, error) {
 	switch event.(type) {
 	case timeCheck:
 		fmt.Println("processor handle timeCheck")
-	case testEvent:
-		fmt.Println("processor handle testEvent")
-	case scTestEvent:
-		fmt.Println("processor handle scTestEvent")
-		return Events{}, fmt.Errorf("processor done")
+	case Event:
+		fmt.Println("processor handle event")
 	}
 	return Events{}, nil
 }
@@ -40,10 +40,8 @@ type Reactor struct {
 
 // TODO: setLogger should set loggers of the routines
 func (r *Reactor) Start() {
-	// what is the best way to get the events out of the routine
 	r.scheduler = newRoutine("scheduler", schedulerHandle)
 	r.processor = newRoutine("processor", processorHandle)
-	// so actually the demuxer only needs to read from events
 	r.demuxer = newDemuxer(r.scheduler, r.processor)
 	r.tickerStopped = make(chan struct{})
 
