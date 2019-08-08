@@ -90,7 +90,7 @@ func (rt *Routine) start() {
 			rt.metrics.EventsOut.With("routine", rt.name).Add(float64(len(oEvents)))
 			rt.logger.Info(fmt.Sprintf("%s handled %d events\n", rt.name, len(oEvents)))
 			for _, event := range oEvents {
-				rt.logger.Info(fmt.Sprintln("writting back to output"))
+				rt.logger.Info(fmt.Sprintln("writing back to output"))
 				rt.out <- event
 			}
 		case iEvent, ok := <-rt.errors:
