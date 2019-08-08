@@ -1,3 +1,4 @@
+// nolint:unused
 package v2
 
 import (
@@ -46,6 +47,7 @@ func (dm *demuxer) start() {
 		panic("Routine has already started")
 	}
 	dm.logger.Info("demuxer: run")
+	dm.rdy <- struct{}{}
 	for {
 		if !dm.isRunning() {
 			break

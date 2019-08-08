@@ -41,7 +41,7 @@ func TestRoutine(t *testing.T) {
 		"expected the final event to be done")
 }
 
-func TesRoutineSend(t *testing.T) {
+func TestRoutineSend(t *testing.T) {
 	routine := newRoutine("simpleRoutine", simpleHandler)
 
 	assert.False(t, routine.trySend(eventA{}),
@@ -81,6 +81,8 @@ func genStatefulHandler(maxCount int) handleFunc {
 			}
 
 			return Events{eventA{}}, nil
+		case eventB:
+			return Events{}, nil
 		}
 		return Events{}, nil
 	}

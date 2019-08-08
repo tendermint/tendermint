@@ -8,7 +8,6 @@ import (
 )
 
 type timeCheck struct {
-	time time.Time
 }
 
 func schedulerHandle(event Event) (Events, error) {
@@ -31,15 +30,14 @@ func processorHandle(event Event) (Events, error) {
 	return Events{}, nil
 }
 
-// reactor
 type Reactor struct {
 	demuxer       *demuxer
 	scheduler     *Routine
 	processor     *Routine
-	ticker        *time.Ticker
 	tickerStopped chan struct{}
 }
 
+// nolint:unused
 func (r *Reactor) setLogger(logger log.Logger) {
 	r.scheduler.setLogger(logger)
 	r.processor.setLogger(logger)
@@ -56,14 +54,9 @@ func (r *Reactor) Start() {
 	go r.processor.start()
 	go r.demuxer.start()
 
-	for {
-		if r.scheduler.isRunning() && r.processor.isRunning() && r.demuxer.isRunning() {
-			fmt.Println("routines running")
-			break
-		}
-		fmt.Println("waiting")
-		time.Sleep(10 * time.Millisecond)
-	}
+	<-r.scheduler.ready()
+	<-r.processor.ready()
+	<-r.demuxer.ready()
 
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
