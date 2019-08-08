@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -233,7 +234,7 @@ func testPeerConn(
 	// Encrypt connection
 	conn, err = upgradeSecretConn(conn, cfg.HandshakeTimeout, ourNodePrivKey)
 	if err != nil {
-		return pc, cmn.ErrorWrap(err, "Error creating peer")
+		return pc, errors.Wrap(err, "Error creating peer")
 	}
 
 	// Only the information we already have

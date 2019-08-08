@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -64,10 +66,10 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 // and fills in defaults for optional fields left empty
 func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	if genDoc.ChainID == "" {
-		return cmn.NewError("Genesis doc must include non-empty chain_id")
+		return errors.New("Genesis doc must include non-empty chain_id")
 	}
 	if len(genDoc.ChainID) > MaxChainIDLen {
-		return cmn.NewError("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen)
+		return errors.Errorf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen)
 	}
 
 	if genDoc.ConsensusParams == nil {
@@ -78,10 +80,10 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	for i, v := range genDoc.Validators {
 		if v.Power == 0 {
-			return cmn.NewError("The genesis file cannot contain validators with no voting power: %v", v)
+			return errors.Errorf("The genesis file cannot contain validators with no voting power: %v", v)
 		}
 		if len(v.Address) > 0 && !bytes.Equal(v.PubKey.Address(), v.Address) {
-			return cmn.NewError("Incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
+			return errors.Errorf("Incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
 		}
 		if len(v.Address) == 0 {
 			genDoc.Validators[i].Address = v.PubKey.Address()
@@ -117,11 +119,11 @@ func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		return nil, cmn.ErrorWrap(err, "Couldn't read GenesisDoc file")
+		return nil, errors.Wrap(err, "Couldn't read GenesisDoc file")
 	}
 	genDoc, err := GenesisDocFromJSON(jsonBlob)
 	if err != nil {
-		return nil, cmn.ErrorWrap(err, fmt.Sprintf("Error reading GenesisDoc at %v", genDocFile))
+		return nil, errors.Wrap(err, fmt.Sprintf("Error reading GenesisDoc at %v", genDocFile))
 	}
 	return genDoc, nil
 }
