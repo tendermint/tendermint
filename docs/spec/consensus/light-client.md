@@ -201,6 +201,7 @@ We further use the function ```signers(Commit)``` that returns the set of valida
     if h2.Header.height == h1.Header.height + 1 {
       // specific check for adjacent headers; everything must be
       // properly signed.
+      // also check that h2.Header.V == h1.Header.NextV
       // Plus the following check that 2/3 of the voting power
       // in h1 signed h2
       return (votingpower_in(signers(h2.Commit),h1.Header.NextV) >
