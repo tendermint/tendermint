@@ -2,12 +2,13 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -681,13 +682,13 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 			continue
 		}
 		if precommit.Height != height {
-			return cmn.NewError("Blocks don't match - %d vs %d", round, precommit.Round)
+			return errors.Errorf("Blocks don't match - %d vs %d", round, precommit.Round)
 		}
 		if precommit.Round != round {
-			return cmn.NewError("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
+			return errors.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
 		if precommit.Type != PrecommitType {
-			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
+			return errors.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
 		// See if this validator is in oldVals.
 		oldIdx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
@@ -699,7 +700,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// Validate signature.
 		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return cmn.NewError("Invalid commit -- invalid signature: %v", precommit)
+			return errors.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
