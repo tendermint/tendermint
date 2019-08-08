@@ -49,7 +49,7 @@ func (r ResponseQuery) IsErr() bool {
 var (
 	jsonpbMarshaller = jsonpb.Marshaler{
 		EnumsAsInts:  true,
-		EmitDefaults: false,
+		EmitDefaults: true,
 	}
 	jsonpbUnmarshaller = jsonpb.Unmarshaler{}
 )

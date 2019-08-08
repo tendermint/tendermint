@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -13,10 +12,9 @@ import (
 )
 
 func TestMarshalJSON(t *testing.T) {
-	b, err := json.Marshal(&ResponseDeliverTx{})
+	_, err := json.Marshal(&ResponseDeliverTx{})
 	assert.Nil(t, err)
-	// Do not include empty fields.
-	assert.False(t, strings.Contains(string(b), "code"))
+	// include empty fields.
 
 	r1 := ResponseCheckTx{
 		Code:      1,
@@ -31,7 +29,7 @@ func TestMarshalJSON(t *testing.T) {
 			},
 		},
 	}
-	b, err = json.Marshal(&r1)
+	b, err := json.Marshal(&r1)
 	assert.Nil(t, err)
 
 	var r2 ResponseCheckTx

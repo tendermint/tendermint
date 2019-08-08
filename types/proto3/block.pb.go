@@ -19,8 +19,8 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type PartSetHeader struct {
-	Total                int32    `protobuf:"varint,1,opt,name=Total,proto3" json:"Total,omitempty"`
-	Hash                 []byte   `protobuf:"bytes,2,opt,name=Hash,proto3" json:"Hash,omitempty"`
+	Total                int32    `protobuf:"varint,1,opt,name=Total,proto3" json:"Total"`
+	Hash                 []byte   `protobuf:"bytes,2,opt,name=Hash,proto3" json:"Hash"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -65,8 +65,8 @@ func (m *PartSetHeader) GetHash() []byte {
 }
 
 type BlockID struct {
-	Hash                 []byte         `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	PartsHeader          *PartSetHeader `protobuf:"bytes,2,opt,name=PartsHeader" json:"PartsHeader,omitempty"`
+	Hash                 []byte         `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash"`
+	PartsHeader          *PartSetHeader `protobuf:"bytes,2,opt,name=PartsHeader" json:"PartsHeader"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -112,26 +112,26 @@ func (m *BlockID) GetPartsHeader() *PartSetHeader {
 
 type Header struct {
 	// basic block info
-	Version  *Version   `protobuf:"bytes,1,opt,name=Version" json:"Version,omitempty"`
-	ChainID  string     `protobuf:"bytes,2,opt,name=ChainID,proto3" json:"ChainID,omitempty"`
-	Height   int64      `protobuf:"varint,3,opt,name=Height,proto3" json:"Height,omitempty"`
-	Time     *Timestamp `protobuf:"bytes,4,opt,name=Time" json:"Time,omitempty"`
-	NumTxs   int64      `protobuf:"varint,5,opt,name=NumTxs,proto3" json:"NumTxs,omitempty"`
-	TotalTxs int64      `protobuf:"varint,6,opt,name=TotalTxs,proto3" json:"TotalTxs,omitempty"`
+	Version  *Version   `protobuf:"bytes,1,opt,name=Version" json:"Version"`
+	ChainID  string     `protobuf:"bytes,2,opt,name=ChainID,proto3" json:"ChainID"`
+	Height   int64      `protobuf:"varint,3,opt,name=Height,proto3" json:"Height"`
+	Time     *Timestamp `protobuf:"bytes,4,opt,name=Time" json:"Time"`
+	NumTxs   int64      `protobuf:"varint,5,opt,name=NumTxs,proto3" json:"NumTxs"`
+	TotalTxs int64      `protobuf:"varint,6,opt,name=TotalTxs,proto3" json:"TotalTxs"`
 	// prev block info
-	LastBlockID *BlockID `protobuf:"bytes,7,opt,name=LastBlockID" json:"LastBlockID,omitempty"`
+	LastBlockID *BlockID `protobuf:"bytes,7,opt,name=LastBlockID" json:"LastBlockID"`
 	// hashes of block data
-	LastCommitHash []byte `protobuf:"bytes,8,opt,name=LastCommitHash,proto3" json:"LastCommitHash,omitempty"`
-	DataHash       []byte `protobuf:"bytes,9,opt,name=DataHash,proto3" json:"DataHash,omitempty"`
+	LastCommitHash []byte `protobuf:"bytes,8,opt,name=LastCommitHash,proto3" json:"LastCommitHash"`
+	DataHash       []byte `protobuf:"bytes,9,opt,name=DataHash,proto3" json:"DataHash"`
 	// hashes from the app output from the prev block
-	ValidatorsHash     []byte `protobuf:"bytes,10,opt,name=ValidatorsHash,proto3" json:"ValidatorsHash,omitempty"`
-	NextValidatorsHash []byte `protobuf:"bytes,11,opt,name=NextValidatorsHash,proto3" json:"NextValidatorsHash,omitempty"`
-	ConsensusHash      []byte `protobuf:"bytes,12,opt,name=ConsensusHash,proto3" json:"ConsensusHash,omitempty"`
-	AppHash            []byte `protobuf:"bytes,13,opt,name=AppHash,proto3" json:"AppHash,omitempty"`
-	LastResultsHash    []byte `protobuf:"bytes,14,opt,name=LastResultsHash,proto3" json:"LastResultsHash,omitempty"`
+	ValidatorsHash     []byte `protobuf:"bytes,10,opt,name=ValidatorsHash,proto3" json:"ValidatorsHash"`
+	NextValidatorsHash []byte `protobuf:"bytes,11,opt,name=NextValidatorsHash,proto3" json:"NextValidatorsHash"`
+	ConsensusHash      []byte `protobuf:"bytes,12,opt,name=ConsensusHash,proto3" json:"ConsensusHash"`
+	AppHash            []byte `protobuf:"bytes,13,opt,name=AppHash,proto3" json:"AppHash"`
+	LastResultsHash    []byte `protobuf:"bytes,14,opt,name=LastResultsHash,proto3" json:"LastResultsHash"`
 	// consensus info
-	EvidenceHash         []byte   `protobuf:"bytes,15,opt,name=EvidenceHash,proto3" json:"EvidenceHash,omitempty"`
-	ProposerAddress      []byte   `protobuf:"bytes,16,opt,name=ProposerAddress,proto3" json:"ProposerAddress,omitempty"`
+	EvidenceHash         []byte   `protobuf:"bytes,15,opt,name=EvidenceHash,proto3" json:"EvidenceHash"`
+	ProposerAddress      []byte   `protobuf:"bytes,16,opt,name=ProposerAddress,proto3" json:"ProposerAddress"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -274,8 +274,8 @@ func (m *Header) GetProposerAddress() []byte {
 }
 
 type Version struct {
-	Block                uint64   `protobuf:"varint,1,opt,name=Block,proto3" json:"Block,omitempty"`
-	App                  uint64   `protobuf:"varint,2,opt,name=App,proto3" json:"App,omitempty"`
+	Block                uint64   `protobuf:"varint,1,opt,name=Block,proto3" json:"Block"`
+	App                  uint64   `protobuf:"varint,2,opt,name=App,proto3" json:"App"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -325,8 +325,8 @@ func (m *Version) GetApp() uint64 {
 // https://github.com/google/protobuf/blob/d2980062c859649523d5fd51d6b55ab310e47482/src/google/protobuf/timestamp.proto#L123-L135
 // NOTE/XXX: nanos do not get skipped if they are zero in amino.
 type Timestamp struct {
-	Seconds              int64    `protobuf:"varint,1,opt,name=seconds,proto3" json:"seconds,omitempty"`
-	Nanos                int32    `protobuf:"varint,2,opt,name=nanos,proto3" json:"nanos,omitempty"`
+	Seconds              int64    `protobuf:"varint,1,opt,name=seconds,proto3" json:"seconds"`
+	Nanos                int32    `protobuf:"varint,2,opt,name=nanos,proto3" json:"nanos"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

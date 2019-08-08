@@ -496,7 +496,7 @@ func _Request_OneofSizer(msg proto.Message) (n int) {
 }
 
 type RequestEcho struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -582,9 +582,9 @@ func (m *RequestFlush) XXX_DiscardUnknown() {
 var xxx_messageInfo_RequestFlush proto.InternalMessageInfo
 
 type RequestInfo struct {
-	Version              string   `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	BlockVersion         uint64   `protobuf:"varint,2,opt,name=block_version,json=blockVersion,proto3" json:"block_version,omitempty"`
-	P2PVersion           uint64   `protobuf:"varint,3,opt,name=p2p_version,json=p2pVersion,proto3" json:"p2p_version,omitempty"`
+	Version              string   `protobuf:"bytes,1,opt,name=version,proto3" json:"version"`
+	BlockVersion         uint64   `protobuf:"varint,2,opt,name=block_version,json=blockVersion,proto3" json:"block_version"`
+	P2PVersion           uint64   `protobuf:"varint,3,opt,name=p2p_version,json=p2pVersion,proto3" json:"p2p_version"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -646,8 +646,8 @@ func (m *RequestInfo) GetP2PVersion() uint64 {
 
 // nondeterministic
 type RequestSetOption struct {
-	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value                string   `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Key                  string   `protobuf:"bytes,1,opt,name=key,proto3" json:"key"`
+	Value                string   `protobuf:"bytes,2,opt,name=value,proto3" json:"value"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -702,10 +702,10 @@ func (m *RequestSetOption) GetValue() string {
 
 type RequestInitChain struct {
 	Time                 time.Time         `protobuf:"bytes,1,opt,name=time,stdtime" json:"time"`
-	ChainId              string            `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
-	ConsensusParams      *ConsensusParams  `protobuf:"bytes,3,opt,name=consensus_params,json=consensusParams" json:"consensus_params,omitempty"`
+	ChainId              string            `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id"`
+	ConsensusParams      *ConsensusParams  `protobuf:"bytes,3,opt,name=consensus_params,json=consensusParams" json:"consensus_params"`
 	Validators           []ValidatorUpdate `protobuf:"bytes,4,rep,name=validators" json:"validators"`
-	AppStateBytes        []byte            `protobuf:"bytes,5,opt,name=app_state_bytes,json=appStateBytes,proto3" json:"app_state_bytes,omitempty"`
+	AppStateBytes        []byte            `protobuf:"bytes,5,opt,name=app_state_bytes,json=appStateBytes,proto3" json:"app_state_bytes"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -780,10 +780,10 @@ func (m *RequestInitChain) GetAppStateBytes() []byte {
 }
 
 type RequestQuery struct {
-	Data                 []byte   `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Height               int64    `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
-	Prove                bool     `protobuf:"varint,4,opt,name=prove,proto3" json:"prove,omitempty"`
+	Data                 []byte   `protobuf:"bytes,1,opt,name=data,proto3" json:"data"`
+	Path                 string   `protobuf:"bytes,2,opt,name=path,proto3" json:"path"`
+	Height               int64    `protobuf:"varint,3,opt,name=height,proto3" json:"height"`
+	Prove                bool     `protobuf:"varint,4,opt,name=prove,proto3" json:"prove"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -851,7 +851,7 @@ func (m *RequestQuery) GetProve() bool {
 }
 
 type RequestBeginBlock struct {
-	Hash                 []byte         `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
+	Hash                 []byte         `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash"`
 	Header               Header         `protobuf:"bytes,2,opt,name=header" json:"header"`
 	LastCommitInfo       LastCommitInfo `protobuf:"bytes,3,opt,name=last_commit_info,json=lastCommitInfo" json:"last_commit_info"`
 	ByzantineValidators  []Evidence     `protobuf:"bytes,4,rep,name=byzantine_validators,json=byzantineValidators" json:"byzantine_validators"`
@@ -922,8 +922,8 @@ func (m *RequestBeginBlock) GetByzantineValidators() []Evidence {
 }
 
 type RequestCheckTx struct {
-	Tx                   []byte      `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
-	Type                 CheckTxType `protobuf:"varint,2,opt,name=type,proto3,enum=types.CheckTxType" json:"type,omitempty"`
+	Tx                   []byte      `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx"`
+	Type                 CheckTxType `protobuf:"varint,2,opt,name=type,proto3,enum=types.CheckTxType" json:"type"`
 	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
 	XXX_unrecognized     []byte      `json:"-"`
 	XXX_sizecache        int32       `json:"-"`
@@ -977,7 +977,7 @@ func (m *RequestCheckTx) GetType() CheckTxType {
 }
 
 type RequestDeliverTx struct {
-	Tx                   []byte   `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
+	Tx                   []byte   `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1024,7 +1024,7 @@ func (m *RequestDeliverTx) GetTx() []byte {
 }
 
 type RequestEndBlock struct {
-	Height               int64    `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
+	Height               int64    `protobuf:"varint,1,opt,name=height,proto3" json:"height"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1576,7 +1576,7 @@ func _Response_OneofSizer(msg proto.Message) (n int) {
 
 // nondeterministic
 type ResponseException struct {
-	Error                string   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Error                string   `protobuf:"bytes,1,opt,name=error,proto3" json:"error"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1623,7 +1623,7 @@ func (m *ResponseException) GetError() string {
 }
 
 type ResponseEcho struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1709,11 +1709,11 @@ func (m *ResponseFlush) XXX_DiscardUnknown() {
 var xxx_messageInfo_ResponseFlush proto.InternalMessageInfo
 
 type ResponseInfo struct {
-	Data                 string   `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	AppVersion           uint64   `protobuf:"varint,3,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
-	LastBlockHeight      int64    `protobuf:"varint,4,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height,omitempty"`
-	LastBlockAppHash     []byte   `protobuf:"bytes,5,opt,name=last_block_app_hash,json=lastBlockAppHash,proto3" json:"last_block_app_hash,omitempty"`
+	Data                 string   `protobuf:"bytes,1,opt,name=data,proto3" json:"data"`
+	Version              string   `protobuf:"bytes,2,opt,name=version,proto3" json:"version"`
+	AppVersion           uint64   `protobuf:"varint,3,opt,name=app_version,json=appVersion,proto3" json:"app_version"`
+	LastBlockHeight      int64    `protobuf:"varint,4,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height"`
+	LastBlockAppHash     []byte   `protobuf:"bytes,5,opt,name=last_block_app_hash,json=lastBlockAppHash,proto3" json:"last_block_app_hash"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1789,10 +1789,10 @@ func (m *ResponseInfo) GetLastBlockAppHash() []byte {
 
 // nondeterministic
 type ResponseSetOption struct {
-	Code uint32 `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Code uint32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// bytes data = 2;
-	Log                  string   `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
-	Info                 string   `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
+	Log                  string   `protobuf:"bytes,3,opt,name=log,proto3" json:"log"`
+	Info                 string   `protobuf:"bytes,4,opt,name=info,proto3" json:"info"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1853,7 +1853,7 @@ func (m *ResponseSetOption) GetInfo() string {
 }
 
 type ResponseInitChain struct {
-	ConsensusParams      *ConsensusParams  `protobuf:"bytes,1,opt,name=consensus_params,json=consensusParams" json:"consensus_params,omitempty"`
+	ConsensusParams      *ConsensusParams  `protobuf:"bytes,1,opt,name=consensus_params,json=consensusParams" json:"consensus_params"`
 	Validators           []ValidatorUpdate `protobuf:"bytes,2,rep,name=validators" json:"validators"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
@@ -1908,16 +1908,16 @@ func (m *ResponseInitChain) GetValidators() []ValidatorUpdate {
 }
 
 type ResponseQuery struct {
-	Code uint32 `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Code uint32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// bytes data = 2; // use "value" instead.
-	Log                  string        `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
-	Info                 string        `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
-	Index                int64         `protobuf:"varint,5,opt,name=index,proto3" json:"index,omitempty"`
-	Key                  []byte        `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
-	Value                []byte        `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
-	Proof                *merkle.Proof `protobuf:"bytes,8,opt,name=proof" json:"proof,omitempty"`
-	Height               int64         `protobuf:"varint,9,opt,name=height,proto3" json:"height,omitempty"`
-	Codespace            string        `protobuf:"bytes,10,opt,name=codespace,proto3" json:"codespace,omitempty"`
+	Log                  string        `protobuf:"bytes,3,opt,name=log,proto3" json:"log"`
+	Info                 string        `protobuf:"bytes,4,opt,name=info,proto3" json:"info"`
+	Index                int64         `protobuf:"varint,5,opt,name=index,proto3" json:"index"`
+	Key                  []byte        `protobuf:"bytes,6,opt,name=key,proto3" json:"key"`
+	Value                []byte        `protobuf:"bytes,7,opt,name=value,proto3" json:"value"`
+	Proof                *merkle.Proof `protobuf:"bytes,8,opt,name=proof" json:"proof"`
+	Height               int64         `protobuf:"varint,9,opt,name=height,proto3" json:"height"`
+	Codespace            string        `protobuf:"bytes,10,opt,name=codespace,proto3" json:"codespace"`
 	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
 	XXX_unrecognized     []byte        `json:"-"`
 	XXX_sizecache        int32         `json:"-"`
@@ -2020,7 +2020,7 @@ func (m *ResponseQuery) GetCodespace() string {
 }
 
 type ResponseBeginBlock struct {
-	Events               []Event  `protobuf:"bytes,1,rep,name=events" json:"events,omitempty"`
+	Events               []Event  `protobuf:"bytes,1,rep,name=events" json:"events"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2067,14 +2067,14 @@ func (m *ResponseBeginBlock) GetEvents() []Event {
 }
 
 type ResponseCheckTx struct {
-	Code                 uint32   `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
-	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	Log                  string   `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
-	Info                 string   `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
-	GasWanted            int64    `protobuf:"varint,5,opt,name=gas_wanted,json=gasWanted,proto3" json:"gas_wanted,omitempty"`
-	GasUsed              int64    `protobuf:"varint,6,opt,name=gas_used,json=gasUsed,proto3" json:"gas_used,omitempty"`
-	Events               []Event  `protobuf:"bytes,7,rep,name=events" json:"events,omitempty"`
-	Codespace            string   `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
+	Code                 uint32   `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data"`
+	Log                  string   `protobuf:"bytes,3,opt,name=log,proto3" json:"log"`
+	Info                 string   `protobuf:"bytes,4,opt,name=info,proto3" json:"info"`
+	GasWanted            int64    `protobuf:"varint,5,opt,name=gas_wanted,json=gasWanted,proto3" json:"gas_wanted"`
+	GasUsed              int64    `protobuf:"varint,6,opt,name=gas_used,json=gasUsed,proto3" json:"gas_used"`
+	Events               []Event  `protobuf:"bytes,7,rep,name=events" json:"events"`
+	Codespace            string   `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2170,14 +2170,14 @@ func (m *ResponseCheckTx) GetCodespace() string {
 }
 
 type ResponseDeliverTx struct {
-	Code                 uint32   `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
-	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	Log                  string   `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
-	Info                 string   `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
-	GasWanted            int64    `protobuf:"varint,5,opt,name=gas_wanted,json=gasWanted,proto3" json:"gas_wanted,omitempty"`
-	GasUsed              int64    `protobuf:"varint,6,opt,name=gas_used,json=gasUsed,proto3" json:"gas_used,omitempty"`
-	Events               []Event  `protobuf:"bytes,7,rep,name=events" json:"events,omitempty"`
-	Codespace            string   `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
+	Code                 uint32   `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data"`
+	Log                  string   `protobuf:"bytes,3,opt,name=log,proto3" json:"log"`
+	Info                 string   `protobuf:"bytes,4,opt,name=info,proto3" json:"info"`
+	GasWanted            int64    `protobuf:"varint,5,opt,name=gas_wanted,json=gasWanted,proto3" json:"gas_wanted"`
+	GasUsed              int64    `protobuf:"varint,6,opt,name=gas_used,json=gasUsed,proto3" json:"gas_used"`
+	Events               []Event  `protobuf:"bytes,7,rep,name=events" json:"events"`
+	Codespace            string   `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2274,8 +2274,8 @@ func (m *ResponseDeliverTx) GetCodespace() string {
 
 type ResponseEndBlock struct {
 	ValidatorUpdates      []ValidatorUpdate `protobuf:"bytes,1,rep,name=validator_updates,json=validatorUpdates" json:"validator_updates"`
-	ConsensusParamUpdates *ConsensusParams  `protobuf:"bytes,2,opt,name=consensus_param_updates,json=consensusParamUpdates" json:"consensus_param_updates,omitempty"`
-	Events                []Event           `protobuf:"bytes,3,rep,name=events" json:"events,omitempty"`
+	ConsensusParamUpdates *ConsensusParams  `protobuf:"bytes,2,opt,name=consensus_param_updates,json=consensusParamUpdates" json:"consensus_param_updates"`
+	Events                []Event           `protobuf:"bytes,3,rep,name=events" json:"events"`
 	XXX_NoUnkeyedLiteral  struct{}          `json:"-"`
 	XXX_unrecognized      []byte            `json:"-"`
 	XXX_sizecache         int32             `json:"-"`
@@ -2337,7 +2337,7 @@ func (m *ResponseEndBlock) GetEvents() []Event {
 
 type ResponseCommit struct {
 	// reserve 1
-	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2386,9 +2386,9 @@ func (m *ResponseCommit) GetData() []byte {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 type ConsensusParams struct {
-	Block                *BlockParams     `protobuf:"bytes,1,opt,name=block" json:"block,omitempty"`
-	Evidence             *EvidenceParams  `protobuf:"bytes,2,opt,name=evidence" json:"evidence,omitempty"`
-	Validator            *ValidatorParams `protobuf:"bytes,3,opt,name=validator" json:"validator,omitempty"`
+	Block                *BlockParams     `protobuf:"bytes,1,opt,name=block" json:"block"`
+	Evidence             *EvidenceParams  `protobuf:"bytes,2,opt,name=evidence" json:"evidence"`
+	Validator            *ValidatorParams `protobuf:"bytes,3,opt,name=validator" json:"validator"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -2451,9 +2451,9 @@ func (m *ConsensusParams) GetValidator() *ValidatorParams {
 // BlockParams contains limits on the block size.
 type BlockParams struct {
 	// Note: must be greater than 0
-	MaxBytes int64 `protobuf:"varint,1,opt,name=max_bytes,json=maxBytes,proto3" json:"max_bytes,omitempty"`
+	MaxBytes int64 `protobuf:"varint,1,opt,name=max_bytes,json=maxBytes,proto3" json:"max_bytes"`
 	// Note: must be greater or equal to -1
-	MaxGas               int64    `protobuf:"varint,2,opt,name=max_gas,json=maxGas,proto3" json:"max_gas,omitempty"`
+	MaxGas               int64    `protobuf:"varint,2,opt,name=max_gas,json=maxGas,proto3" json:"max_gas"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2509,7 +2509,7 @@ func (m *BlockParams) GetMaxGas() int64 {
 // EvidenceParams contains limits on the evidence.
 type EvidenceParams struct {
 	// Note: must be greater than 0
-	MaxAge               int64    `protobuf:"varint,1,opt,name=max_age,json=maxAge,proto3" json:"max_age,omitempty"`
+	MaxAge               int64    `protobuf:"varint,1,opt,name=max_age,json=maxAge,proto3" json:"max_age"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2557,7 +2557,7 @@ func (m *EvidenceParams) GetMaxAge() int64 {
 
 // ValidatorParams contains limits on validators.
 type ValidatorParams struct {
-	PubKeyTypes          []string `protobuf:"bytes,1,rep,name=pub_key_types,json=pubKeyTypes" json:"pub_key_types,omitempty"`
+	PubKeyTypes          []string `protobuf:"bytes,1,rep,name=pub_key_types,json=pubKeyTypes" json:"pub_key_types"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2604,7 +2604,7 @@ func (m *ValidatorParams) GetPubKeyTypes() []string {
 }
 
 type LastCommitInfo struct {
-	Round                int32      `protobuf:"varint,1,opt,name=round,proto3" json:"round,omitempty"`
+	Round                int32      `protobuf:"varint,1,opt,name=round,proto3" json:"round"`
 	Votes                []VoteInfo `protobuf:"bytes,2,rep,name=votes" json:"votes"`
 	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
 	XXX_unrecognized     []byte     `json:"-"`
@@ -2659,8 +2659,8 @@ func (m *LastCommitInfo) GetVotes() []VoteInfo {
 }
 
 type Event struct {
-	Type                 string          `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Attributes           []common.KVPair `protobuf:"bytes,2,rep,name=attributes" json:"attributes,omitempty"`
+	Type                 string          `protobuf:"bytes,1,opt,name=type,proto3" json:"type"`
+	Attributes           []common.KVPair `protobuf:"bytes,2,rep,name=attributes" json:"attributes"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -2716,25 +2716,25 @@ func (m *Event) GetAttributes() []common.KVPair {
 type Header struct {
 	// basic block info
 	Version  Version   `protobuf:"bytes,1,opt,name=version" json:"version"`
-	ChainID  string    `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
-	Height   int64     `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
+	ChainID  string    `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id"`
+	Height   int64     `protobuf:"varint,3,opt,name=height,proto3" json:"height"`
 	Time     time.Time `protobuf:"bytes,4,opt,name=time,stdtime" json:"time"`
-	NumTxs   int64     `protobuf:"varint,5,opt,name=num_txs,json=numTxs,proto3" json:"num_txs,omitempty"`
-	TotalTxs int64     `protobuf:"varint,6,opt,name=total_txs,json=totalTxs,proto3" json:"total_txs,omitempty"`
+	NumTxs   int64     `protobuf:"varint,5,opt,name=num_txs,json=numTxs,proto3" json:"num_txs"`
+	TotalTxs int64     `protobuf:"varint,6,opt,name=total_txs,json=totalTxs,proto3" json:"total_txs"`
 	// prev block info
 	LastBlockId BlockID `protobuf:"bytes,7,opt,name=last_block_id,json=lastBlockId" json:"last_block_id"`
 	// hashes of block data
-	LastCommitHash []byte `protobuf:"bytes,8,opt,name=last_commit_hash,json=lastCommitHash,proto3" json:"last_commit_hash,omitempty"`
-	DataHash       []byte `protobuf:"bytes,9,opt,name=data_hash,json=dataHash,proto3" json:"data_hash,omitempty"`
+	LastCommitHash []byte `protobuf:"bytes,8,opt,name=last_commit_hash,json=lastCommitHash,proto3" json:"last_commit_hash"`
+	DataHash       []byte `protobuf:"bytes,9,opt,name=data_hash,json=dataHash,proto3" json:"data_hash"`
 	// hashes from the app output from the prev block
-	ValidatorsHash     []byte `protobuf:"bytes,10,opt,name=validators_hash,json=validatorsHash,proto3" json:"validators_hash,omitempty"`
-	NextValidatorsHash []byte `protobuf:"bytes,11,opt,name=next_validators_hash,json=nextValidatorsHash,proto3" json:"next_validators_hash,omitempty"`
-	ConsensusHash      []byte `protobuf:"bytes,12,opt,name=consensus_hash,json=consensusHash,proto3" json:"consensus_hash,omitempty"`
-	AppHash            []byte `protobuf:"bytes,13,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
-	LastResultsHash    []byte `protobuf:"bytes,14,opt,name=last_results_hash,json=lastResultsHash,proto3" json:"last_results_hash,omitempty"`
+	ValidatorsHash     []byte `protobuf:"bytes,10,opt,name=validators_hash,json=validatorsHash,proto3" json:"validators_hash"`
+	NextValidatorsHash []byte `protobuf:"bytes,11,opt,name=next_validators_hash,json=nextValidatorsHash,proto3" json:"next_validators_hash"`
+	ConsensusHash      []byte `protobuf:"bytes,12,opt,name=consensus_hash,json=consensusHash,proto3" json:"consensus_hash"`
+	AppHash            []byte `protobuf:"bytes,13,opt,name=app_hash,json=appHash,proto3" json:"app_hash"`
+	LastResultsHash    []byte `protobuf:"bytes,14,opt,name=last_results_hash,json=lastResultsHash,proto3" json:"last_results_hash"`
 	// consensus info
-	EvidenceHash         []byte   `protobuf:"bytes,15,opt,name=evidence_hash,json=evidenceHash,proto3" json:"evidence_hash,omitempty"`
-	ProposerAddress      []byte   `protobuf:"bytes,16,opt,name=proposer_address,json=proposerAddress,proto3" json:"proposer_address,omitempty"`
+	EvidenceHash         []byte   `protobuf:"bytes,15,opt,name=evidence_hash,json=evidenceHash,proto3" json:"evidence_hash"`
+	ProposerAddress      []byte   `protobuf:"bytes,16,opt,name=proposer_address,json=proposerAddress,proto3" json:"proposer_address"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2886,8 +2886,8 @@ func (m *Header) GetProposerAddress() []byte {
 }
 
 type Version struct {
-	Block                uint64   `protobuf:"varint,1,opt,name=Block,proto3" json:"Block,omitempty"`
-	App                  uint64   `protobuf:"varint,2,opt,name=App,proto3" json:"App,omitempty"`
+	Block                uint64   `protobuf:"varint,1,opt,name=Block,proto3" json:"Block"`
+	App                  uint64   `protobuf:"varint,2,opt,name=App,proto3" json:"App"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2941,7 +2941,7 @@ func (m *Version) GetApp() uint64 {
 }
 
 type BlockID struct {
-	Hash                 []byte        `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
+	Hash                 []byte        `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash"`
 	PartsHeader          PartSetHeader `protobuf:"bytes,2,opt,name=parts_header,json=partsHeader" json:"parts_header"`
 	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
 	XXX_unrecognized     []byte        `json:"-"`
@@ -2996,8 +2996,8 @@ func (m *BlockID) GetPartsHeader() PartSetHeader {
 }
 
 type PartSetHeader struct {
-	Total                int32    `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
-	Hash                 []byte   `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	Total                int32    `protobuf:"varint,1,opt,name=total,proto3" json:"total"`
+	Hash                 []byte   `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3052,9 +3052,9 @@ func (m *PartSetHeader) GetHash() []byte {
 
 // Validator
 type Validator struct {
-	Address []byte `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	Address []byte `protobuf:"bytes,1,opt,name=address,proto3" json:"address"`
 	// PubKey pub_key = 2 [(gogoproto.nullable)=false];
-	Power                int64    `protobuf:"varint,3,opt,name=power,proto3" json:"power,omitempty"`
+	Power                int64    `protobuf:"varint,3,opt,name=power,proto3" json:"power"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3110,7 +3110,7 @@ func (m *Validator) GetPower() int64 {
 // ValidatorUpdate
 type ValidatorUpdate struct {
 	PubKey               PubKey   `protobuf:"bytes,1,opt,name=pub_key,json=pubKey" json:"pub_key"`
-	Power                int64    `protobuf:"varint,2,opt,name=power,proto3" json:"power,omitempty"`
+	Power                int64    `protobuf:"varint,2,opt,name=power,proto3" json:"power"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3166,7 +3166,7 @@ func (m *ValidatorUpdate) GetPower() int64 {
 // VoteInfo
 type VoteInfo struct {
 	Validator            Validator `protobuf:"bytes,1,opt,name=validator" json:"validator"`
-	SignedLastBlock      bool      `protobuf:"varint,2,opt,name=signed_last_block,json=signedLastBlock,proto3" json:"signed_last_block,omitempty"`
+	SignedLastBlock      bool      `protobuf:"varint,2,opt,name=signed_last_block,json=signedLastBlock,proto3" json:"signed_last_block"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
@@ -3220,8 +3220,8 @@ func (m *VoteInfo) GetSignedLastBlock() bool {
 }
 
 type PubKey struct {
-	Type                 string   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Type                 string   `protobuf:"bytes,1,opt,name=type,proto3" json:"type"`
+	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3275,11 +3275,11 @@ func (m *PubKey) GetData() []byte {
 }
 
 type Evidence struct {
-	Type                 string    `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Type                 string    `protobuf:"bytes,1,opt,name=type,proto3" json:"type"`
 	Validator            Validator `protobuf:"bytes,2,opt,name=validator" json:"validator"`
-	Height               int64     `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
+	Height               int64     `protobuf:"varint,3,opt,name=height,proto3" json:"height"`
 	Time                 time.Time `protobuf:"bytes,4,opt,name=time,stdtime" json:"time"`
-	TotalVotingPower     int64     `protobuf:"varint,5,opt,name=total_voting_power,json=totalVotingPower,proto3" json:"total_voting_power,omitempty"`
+	TotalVotingPower     int64     `protobuf:"varint,5,opt,name=total_voting_power,json=totalVotingPower,proto3" json:"total_voting_power"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`

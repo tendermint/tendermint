@@ -27,9 +27,9 @@ const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 // The data could be arbitrary format, providing nessecary data
 // for example neighbouring node hash
 type ProofOp struct {
-	Type                 string   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Key                  []byte   `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	Data                 []byte   `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	Type                 string   `protobuf:"bytes,1,opt,name=type,proto3" json:"type"`
+	Key                  []byte   `protobuf:"bytes,2,opt,name=key,proto3" json:"key"`
+	Data                 []byte   `protobuf:"bytes,3,opt,name=data,proto3" json:"data"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
