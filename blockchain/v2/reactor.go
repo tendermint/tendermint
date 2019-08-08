@@ -3,6 +3,8 @@ package v2
 import (
 	"fmt"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type timeCheck struct {
@@ -38,7 +40,12 @@ type Reactor struct {
 	tickerStopped chan struct{}
 }
 
-// TODO: setLogger should set loggers of the routines
+func (r *Reactor) setLogger(logger log.Logger) {
+	r.scheduler.setLogger(logger)
+	r.processor.setLogger(logger)
+	r.demuxer.setLogger(logger)
+}
+
 func (r *Reactor) Start() {
 	r.scheduler = newRoutine("scheduler", schedulerHandle)
 	r.processor = newRoutine("processor", processorHandle)
