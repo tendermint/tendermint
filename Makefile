@@ -308,6 +308,16 @@ sentry-stop:
 build-slate:
 	bash scripts/slate.sh
 
+build-contract-tests-hooks:
+ifeq ($(OS),Windows_NT)
+	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests.exe ./cmd/contract_tests
+else
+	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests ./cmd/contract_tests
+endif
+
+contract-tests: build-contract-tests-hooks
+	dredd
+
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html

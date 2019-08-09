@@ -359,6 +359,27 @@ jobs:
       - store_artifacts:
           path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
 
+  # Get Node.js and test REST implementation against the swagger documentation of the SDK version used
+  contract_tests:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v4-pkg-cache
+      - restore_cache:
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Contract tests
+          command: |
+            go get github.com/snikch/goodman/cmd/goodman
+            make contract-test
+            export PATH=~/.local/bin:$PATH
+            ./scripts/get_nodejs.sh && make contract-tests
+
 workflows:
   version: 2
   test-suite:
@@ -419,3 +440,11 @@ workflows:
             branches:
               only:
                 - /v[0-9]+\.[0-9]+/
+      - contract_tests:
+          requires:
+            - prepare_build
+            - build_artifacts
+          filters:
+            branches:
+              only:
+                - 2880-static-swagger

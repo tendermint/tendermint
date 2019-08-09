@@ -53,7 +53,7 @@ paths:
           type: string
           required: true
           description: The transaction
-          x-example: 456
+          x-example: "456"
       produces:
         - application/json
       responses:
@@ -94,7 +94,7 @@ paths:
           type: string
           required: true
           description: The transaction
-          x-example: 123
+          x-example: "123"
       produces:
         - application/json
       responses:
@@ -133,7 +133,7 @@ paths:
           type: string
           required: true
           description: The transaction
-          x-example: 785
+          x-example: "785"
       produces:
         - application/json
       responses:
@@ -447,8 +447,8 @@ paths:
         - in: query
           name: height
           type: number
-          description: height to return. If no height is provided, it will fetch the latest block
-          default: latest
+          description: height to return. If no height is provided, it will fetch the latest block. 0 means latest
+          default: 0
           x-example: 1
       tags:
         - Info
@@ -473,8 +473,8 @@ paths:
         - in: query
           name: height
           type: number
-          description: height to return. If no height is provided, it will fetch informations regarding the latest block
-          default: latest
+          description: height to return. If no height is provided, it will fetch informations regarding the latest block. 0 means latest
+          default: 0
           x-example: 1
       tags:
         - Info
@@ -499,8 +499,8 @@ paths:
         - in: query
           name: height
           type: number
-          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block
-          default: latest
+          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block. 0 means latest
+          default: 0
           x-example: 1
       tags:
         - Info
@@ -525,8 +525,8 @@ paths:
         - in: query
           name: height
           type: number
-          description: height to return. If no height is provided, it will fetch validato set at the latest block
-          default: latest
+          description: height to return. If no height is provided, it will fetch validato set at the latest block. 0 means latest
+          default: 0
           x-example: 1
       tags:
         - Info
@@ -608,8 +608,8 @@ paths:
         - in: query
           name: height
           type: number
-          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block
-          default: latest
+          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block. 0 means latest
+          default: 0
           x-example: 1
       tags:
         - Info
@@ -727,7 +727,7 @@ paths:
           type: string
           description: transaction Hash to retrive
           required: true
-          x-example: 0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED
+          x-example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
         - in: query
           name: prove
           type: boolean
@@ -791,7 +791,7 @@ paths:
           type: number
           description: Height (0 means latest)
           required: false
-          x-example: true
+          x-example: 1
           default: 0
         - in: query
           name: prove
@@ -1359,12 +1359,13 @@ definitions:
             example: "12"
           results:
             required:
-              - "DeliverTx"
-              - "EndBlock"
-              - "BeginBlock"
+              - "deliver_tx"
+              - "end_block"
+              - "begin_block"
             properties:
-              DeliverTx:
+              deliver_tx:
                 type: "array"
+                x-nullable: true
                 items:
                   type: "object"
                   properties:
@@ -1388,12 +1389,12 @@ definitions:
                           value:
                             type: "string"
                             example: "c2VuZA=="
-              EndBlock:
+              end_block:
                 required:
                   - "validator_updates"
                 properties: {}
                 type: "object"
-              BeginBlock:
+              begin_block:
                 properties: {}
                 type: "object"
             type: "object"
@@ -1667,7 +1668,6 @@ definitions:
               - "consensus_params"
               - "validators"
               - "app_hash"
-              - "app_state"
             properties:
               genesis_time:
                 type: "string"
@@ -1884,6 +1884,7 @@ definitions:
                       example: "0"
                     prevotes:
                       type: "array"
+                      x-nullable: true
                       items:
                         type: "string"
                       example:
@@ -1894,6 +1895,7 @@ definitions:
                       example: "BA{100:___________________x________________________________________________________________________________} 209706/170220253 = 0.00"
                     precommits:
                       type: "array"
+                      x-nullable: true
                       items:
                         type: "string"
                       example:
@@ -1905,6 +1907,7 @@ definitions:
                 type: "string"
                 example: "-1"
               last_commit:
+                x-nullable: true
                 required:
                   - "votes"
                   - "votes_bit_array"
@@ -2047,27 +2050,35 @@ definitions:
                               example: ""
                           type: "object"
                         proposal_pol_round:
+                          x-nullable: true
                           type: "string"
                           example: "-1"
                         proposal_pol:
+                          x-nullable: true
                           type: "string"
                           example: "____________________________________________________________________________________________________"
                         prevotes:
+                          x-nullable: true
                           type: "string"
                           example: "___________________x________________________________________________________________________________"
                         precommits:
+                          x-nullable: true
                           type: "string"
                           example: "____________________________________________________________________________________________________"
                         last_commit_round:
+                          x-nullable: true
                           type: "string"
                           example: "0"
                         last_commit:
+                          x-nullable: true
                           type: "string"
                           example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                         catchup_commit_round:
                           type: "string"
+                          x-nullable: true
                           example: "-1"
                         catchup_commit:
+                          x-nullable: true
                           type: "string"
                           example: "____________________________________________________________________________________________________"
                       type: "object"
@@ -2238,7 +2249,7 @@ definitions:
           - "n_txs"
           - "total"
           - "total_bytes"
-          - "txs"
+#          - "txs"
         properties:
           n_txs:
             type: "string"
@@ -2249,12 +2260,14 @@ definitions:
           total_bytes:
             type: "string"
             example: "19974"
-          txs:
-            type: "array"
-            items:
-              type: "string"
-            example:
-              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
+#          txs:
+#            type: "array"
+#            x-nullable: true
+#            items:
+#              type: "string"
+#              x-nullable: true
+#            example:
+#              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
         type: "object"
   NumUnconfirmedTransactionsResponse:
     type: object
@@ -2285,6 +2298,15 @@ definitions:
           total_bytes:
             type: "string"
             example: "19974"
+          txs:
+            type: array
+            x-nullable: true
+            items:
+              type: string
+              x-nullable: true
+            example:
+              - null
+              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
         type: "object"
   TxSearchResponse:
     type: object
@@ -2456,7 +2478,6 @@ definitions:
     required:
       - "jsonrpc"
       - "id"
-      - "result"
     properties:
       jsonrpc:
         type: "string"
@@ -2471,18 +2492,18 @@ definitions:
           response:
             required:
               - "data"
-              - "last_block_height"
-              - "last_block_app_hash"
+              - "app_version"
+              - "version"
             properties:
               data:
                 type: "string"
-                example: "GaiaApp"
-              last_block_height:
+                example: "{\"size\":0}"
+              version:
+                type: string
+                example: "0.16.1"
+              app_version:
                 type: "string"
                 example: "1314126"
-              last_block_app_hash:
-                type: "string"
-                example: "/Zg6ilrG37Q5vFSEsNYCQ/wUXlHMo8ZTscGMeHjJ+t8="
             type: "object"
         type: "object"
   ABCIQueryResponse:
