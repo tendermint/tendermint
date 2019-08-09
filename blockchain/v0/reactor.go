@@ -141,9 +141,9 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
-	if !peer.Send(BlockchainChannel, msgBytes) {
-		// doing nothing, will try later in `poolRoutine`
-	}
+	peer.Send(BlockchainChannel, msgBytes)
+	// it's OK if send fails. will try later in poolRoutine
+
 	// peer is added to the pool once we receive the first
 	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
 }
@@ -191,18 +191,13 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
-		if queued := bcR.respondToPeer(msg, src); !queued {
-			// Unfortunately not queued since the queue is full.
-		}
+		bcR.respondToPeer(msg, src)
 	case *bcBlockResponseMessage:
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
-		queued := src.TrySend(BlockchainChannel, msgBytes)
-		if !queued {
-			// sorry
-		}
+		src.TrySend(BlockchainChannel, msgBytes)
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerHeight(src.ID(), msg.Height)
@@ -274,9 +269,10 @@ FOR_LOOP:
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced)
-				} else {
-					// should only happen during testing
 				}
+				// else {
+				// should only happen during testing
+				// }
 
 				break FOR_LOOP
 			}

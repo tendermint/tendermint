@@ -35,6 +35,14 @@ module.exports = {
         ]
       },
       {
+        title: "Guides",
+        collapsable: false,
+        children: [
+          "/guides/go-built-in",
+          "/guides/go"
+        ]
+      },
+      {
         title: "Apps",
         collapsable: false,
         children: [
