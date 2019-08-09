@@ -376,7 +376,6 @@ jobs:
           name: Contract tests
           command: |
             go get github.com/snikch/goodman/cmd/goodman
-            make contract-test
             export PATH=~/.local/bin:$PATH
             ./scripts/get_nodejs.sh && make contract-tests
 
