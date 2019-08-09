@@ -2,7 +2,7 @@ package conn
 
 import (
 	"bufio"
-	"errors"
+
 	"fmt"
 	"io"
 	"math"
@@ -11,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -310,11 +312,20 @@ func (c *MConnection) flush() {
 	}
 }
 
+// err is an error wrapper type for internal use only.
+// Panics with errors are wrapped in err so that the top-level recover
+// can distinguish intentional panics from this package.
+type err struct{ error }
+
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		err := cmn.ErrorWrap(r, "recovered panic in MConnection")
-		c.stopForError(err)
+		if e, ok := r.(err); ok {
+			err := e.error
+			c.stopForError(err)
+		} else {
+			errors.Errorf("recovered from: %s", r)
+		}
 	}
 }
 

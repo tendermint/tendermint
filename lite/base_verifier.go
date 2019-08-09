@@ -2,6 +2,7 @@ package lite
 
 import (
 	"bytes"
+	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	lerr "github.com/tendermint/tendermint/lite/errors"
@@ -63,7 +64,7 @@ func (bv *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
 	// Do basic sanity checks.
 	err := signedHeader.ValidateBasic(bv.chainID)
 	if err != nil {
-		return cmn.ErrorWrap(err, "in verify")
+		return errors.Wrap(err, "in verify")
 	}
 
 	// Check commit signatures.
@@ -71,7 +72,7 @@ func (bv *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
 		bv.chainID, signedHeader.Commit.BlockID,
 		signedHeader.Height, signedHeader.Commit)
 	if err != nil {
-		return cmn.ErrorWrap(err, "in verify")
+		return errors.Wrap(err, "in verify")
 	}
 
 	return nil

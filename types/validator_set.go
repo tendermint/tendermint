@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // MaxTotalVotingPower - the maximum allowed total voting power.
@@ -722,10 +721,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 // ErrTooMuchChange
 
 func IsErrTooMuchChange(err error) bool {
-	switch err_ := err.(type) {
-	case cmn.Error:
-		_, ok := err_.Data().(errTooMuchChange)
-		return ok
+	switch errors.Cause(err).(type) {
 	case errTooMuchChange:
 		return true
 	default:
