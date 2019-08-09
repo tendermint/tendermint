@@ -420,12 +420,8 @@ workflows:
                 - /v[0-9]+\.[0-9]+/
       - contract_tests:
           requires:
-            - prepare_build
-            - build_artifacts
-          filters:
-            branches:
-              only:
-                - 2880-static-swagger
+            - setup_dependencies
+
   release:
     jobs:
       - prepare_build
