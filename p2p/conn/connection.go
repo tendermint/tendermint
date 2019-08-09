@@ -313,8 +313,6 @@ func (c *MConnection) flush() {
 }
 
 // err is an error wrapper type for internal use only.
-// Panics with errors are wrapped in err so that the top-level recover
-// can distinguish intentional panics from this package.
 type err struct{ error }
 
 // Catch panics, usually caused by remote disconnects.
