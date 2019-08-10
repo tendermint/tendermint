@@ -1,6 +1,7 @@
 package config
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -63,104 +64,61 @@ func TestBaseConfigValidateBasic(t *testing.T) {
 }
 
 func TestRPCConfigValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName                     string
-		cfgGRPCMaxOpenConnections    int
-		cfgMaxOpenConnections        int
-		cfgMaxSubscriptionClients    int
-		cfgMaxSubscriptionsPerClient int
-		cfgTimeoutBroadcastTxCommit  time.Duration
-		cfgMaxBodyBytes              int64
-		cfgMaxHeaderBytes            int
-		expectErr                    bool
-	}{
-		{"Valid RPC Config", 1, 1, 1, 1, 1, 1, 1, false},
-		{"Invalid RPC Config", -1, 1, 1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, -1, 1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, -1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, -1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, -1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, 1, -1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, -1, true},
+	cfg := TestRPCConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	fieldsToTest := []string{
+		"GRPCMaxOpenConnections",
+		"MaxOpenConnections",
+		"MaxSubscriptionClients",
+		"MaxSubscriptionsPerClient",
+		"TimeoutBroadcastTxCommit",
+		"MaxBodyBytes",
+		"MaxHeaderBytes",
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.testName, func(t *testing.T) {
-			cfg := RPCConfig{
-				GRPCMaxOpenConnections:    tc.cfgGRPCMaxOpenConnections,
-				MaxOpenConnections:        tc.cfgMaxOpenConnections,
-				MaxSubscriptionClients:    tc.cfgMaxSubscriptionClients,
-				MaxSubscriptionsPerClient: tc.cfgMaxSubscriptionsPerClient,
-				TimeoutBroadcastTxCommit:  tc.cfgTimeoutBroadcastTxCommit,
-				MaxBodyBytes:              tc.cfgMaxBodyBytes,
-				MaxHeaderBytes:            tc.cfgMaxHeaderBytes,
-			}
-			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
+	for _, fieldName := range fieldsToTest {
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
+		assert.Error(t, cfg.ValidateBasic())
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
 	}
 }
 
 func TestP2PConfigValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName                   string
-		cfgMaxNumInboundPeers      int
-		cfgMaxNumOutboundPeers     int
-		cfgFlushThrottleTimeout    time.Duration
-		cfgMaxPacketMsgPayloadSize int
-		cfgSendRate                int64
-		cfgRecvRate                int64
-		expectErr                  bool
-	}{
-		{"Valid RPC Config", 1, 1, 1, 1, 1, 1, false},
-		{"Invalid RPC Config", -1, 1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, -1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, -1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, -1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, -1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, 1, -1, true},
+	cfg := TestP2PConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	fieldsToTest := []string{
+		"MaxNumInboundPeers",
+		"MaxNumOutboundPeers",
+		"FlushThrottleTimeout",
+		"MaxPacketMsgPayloadSize",
+		"SendRate",
+		"RecvRate",
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.testName, func(t *testing.T) {
-			cfg := P2PConfig{
-				MaxNumInboundPeers:      tc.cfgMaxNumInboundPeers,
-				MaxNumOutboundPeers:     tc.cfgMaxNumOutboundPeers,
-				FlushThrottleTimeout:    tc.cfgFlushThrottleTimeout,
-				MaxPacketMsgPayloadSize: tc.cfgMaxPacketMsgPayloadSize,
-				SendRate:                tc.cfgSendRate,
-				RecvRate:                tc.cfgRecvRate,
-			}
-			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
+	for _, fieldName := range fieldsToTest {
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
+		assert.Error(t, cfg.ValidateBasic())
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
 	}
 }
 
 func TestMempoolConfigValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName       string
-		cfgSize        int
-		cfgMaxTxsBytes int64
-		cfgCacheSize   int
-		cfgMaxTxBytes  int
-		expectErr      bool
-	}{
-		{"Valid RPC Config", 1, 1, 1, 1, false},
-		{"Invalid RPC Config", -1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, -1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, -1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, -1, true},
+	cfg := TestMempoolConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	fieldsToTest := []string{
+		"Size",
+		"MaxTxsBytes",
+		"CacheSize",
+		"MaxTxBytes",
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.testName, func(t *testing.T) {
-			cfg := MempoolConfig{
-				Size:        tc.cfgSize,
-				MaxTxsBytes: tc.cfgMaxTxsBytes,
-				CacheSize:   tc.cfgCacheSize,
-				MaxTxBytes:  tc.cfgMaxTxBytes,
-			}
-			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
+	for _, fieldName := range fieldsToTest {
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
+		assert.Error(t, cfg.ValidateBasic())
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
 	}
 }
 
@@ -177,49 +135,26 @@ func TestFastSyncConfigValidateBasic(t *testing.T) {
 }
 
 func TestConsensusConfigValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName                       string
-		cfgTimeoutPropose              time.Duration
-		cfgTimeoutProposeDelta         time.Duration
-		cfgTimeoutPrevote              time.Duration
-		cfgTimeoutPrevoteDelta         time.Duration
-		cfgTimeoutPrecommit            time.Duration
-		cfgTimeoutPrecommitDelta       time.Duration
-		cfgTimeoutCommit               time.Duration
-		cfgCreateEmptyBlocksInterval   time.Duration
-		cfgPeerGossipSleepDuration     time.Duration
-		cfgPeerQueryMaj23SleepDuration time.Duration
-		expectErr                      bool
-	}{
-		{"Valid RPC Config", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, false},
-		{"Invalid RPC Config", -1, 1, 1, 1, 1, 1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, -1, 1, 1, 1, 1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, -1, 1, 1, 1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, -1, 1, 1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, -1, 1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, 1, -1, 1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, -1, 1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, 1, -1, 1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, 1, 1, -1, 1, true},
-		{"Invalid RPC Config", 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, true},
+	cfg := TestConsensusConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	fieldsToTest := []string{
+		"TimeoutPropose",
+		"TimeoutProposeDelta",
+		"TimeoutPrevote",
+		"TimeoutPrevoteDelta",
+		"TimeoutPrecommit",
+		"TimeoutPrecommitDelta",
+		"TimeoutCommit",
+		"CreateEmptyBlocksInterval",
+		"PeerGossipSleepDuration",
+		"PeerQueryMaj23SleepDuration",
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.testName, func(t *testing.T) {
-			cfg := ConsensusConfig{
-				TimeoutPropose:              tc.cfgTimeoutPropose,
-				TimeoutProposeDelta:         tc.cfgTimeoutProposeDelta,
-				TimeoutPrevote:              tc.cfgTimeoutPrevote,
-				TimeoutPrevoteDelta:         tc.cfgTimeoutPrevoteDelta,
-				TimeoutPrecommit:            tc.cfgTimeoutPrecommit,
-				TimeoutPrecommitDelta:       tc.cfgTimeoutPrecommitDelta,
-				TimeoutCommit:               tc.cfgTimeoutCommit,
-				CreateEmptyBlocksInterval:   tc.cfgCreateEmptyBlocksInterval,
-				PeerGossipSleepDuration:     tc.cfgPeerGossipSleepDuration,
-				PeerQueryMaj23SleepDuration: tc.cfgPeerQueryMaj23SleepDuration,
-			}
-			assert.Equal(t, tc.expectErr, cfg.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
+	for _, fieldName := range fieldsToTest {
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
+		assert.Error(t, cfg.ValidateBasic())
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
 	}
 }
 
