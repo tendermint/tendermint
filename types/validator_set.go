@@ -721,12 +721,8 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 // ErrTooMuchChange
 
 func IsErrTooMuchChange(err error) bool {
-	switch errors.Cause(err).(type) {
-	case errTooMuchChange:
-		return true
-	default:
-		return false
-	}
+	_, ok := errors.Cause(err).(errTooMuchChange)
+	return ok
 }
 
 type errTooMuchChange struct {

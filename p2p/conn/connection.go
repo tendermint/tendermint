@@ -318,12 +318,7 @@ type err struct{ error }
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		if e, ok := r.(err); ok {
-			err := e.error
-			c.stopForError(err)
-		} else {
-			errors.Errorf("recovered from: %s", r)
-		}
+		c.stopForError(errors.Errorf("recovered from panic: %v", r))
 	}
 }
 

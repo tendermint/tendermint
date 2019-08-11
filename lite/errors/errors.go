@@ -53,12 +53,8 @@ func ErrCommitNotFound() error {
 }
 
 func IsErrCommitNotFound(err error) bool {
-	switch errors.Cause(err).(type) {
-	case errCommitNotFound:
-		return true
-	default:
-		return false
-	}
+	_, ok := errors.Cause(err).(errCommitNotFound)
+	return ok
 }
 
 //-----------------
@@ -73,12 +69,8 @@ func ErrUnexpectedValidators(got, want []byte) error {
 }
 
 func IsErrUnexpectedValidators(err error) bool {
-	switch errors.Cause(err).(type) {
-	case errUnexpectedValidators:
-		return true
-	default:
-		return false
-	}
+	_, ok := errors.Cause(err).(errUnexpectedValidators)
+	return ok
 }
 
 //-----------------
@@ -90,12 +82,8 @@ func ErrUnknownValidators(chainID string, height int64) error {
 }
 
 func IsErrUnknownValidators(err error) bool {
-	switch errors.Cause(err).(type) {
-	case errUnknownValidators:
-		return true
-	default:
-		return false
-	}
+	_, ok := errors.Cause(err).(errUnknownValidators)
+	return ok
 }
 
 //-----------------
@@ -106,10 +94,6 @@ func ErrEmptyTree() error {
 }
 
 func IsErrEmptyTree(err error) bool {
-	switch errors.Cause(err).(type) {
-	case errEmptyTree:
-		return true
-	default:
-		return false
-	}
+	_, ok := errors.Cause(err).(errEmptyTree)
+	return ok
 }

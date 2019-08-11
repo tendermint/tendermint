@@ -12,12 +12,8 @@ func (e errNoData) Error() string {
 
 // IsErrNoData checks whether an error is due to a query returning empty data
 func IsErrNoData(err error) bool {
-	switch errors.Cause(err).(type) {
-	case errNoData:
-		return true
-	default:
-		return false
-	}
+	_, ok := errors.Cause(err).(errNoData)
+	return ok
 }
 
 func ErrNoData() error {
