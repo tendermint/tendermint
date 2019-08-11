@@ -222,7 +222,7 @@ func (sw *Switch) OnStart() error {
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
 		if err != nil {
-			return cmn.ErrorWrap(err, "failed to start %v", reactor)
+			return errors.Wrapf(err, "failed to start %v", reactor)
 		}
 	}
 

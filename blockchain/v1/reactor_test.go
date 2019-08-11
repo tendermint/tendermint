@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
@@ -78,7 +78,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {
-		panic(cmn.ErrorWrap(err, "error start app"))
+		panic(errors.Wrap(err, "error start app"))
 	}
 
 	blockDB := dbm.NewMemDB()
@@ -87,7 +87,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
+		panic(errors.Wrap(err, "error constructing state from genesis file"))
 	}
 
 	// Make the BlockchainReactor itself.
@@ -117,7 +117,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
-			panic(cmn.ErrorWrap(err, "error apply block"))
+			panic(errors.Wrap(err, "error apply block"))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
