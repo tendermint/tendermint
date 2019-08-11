@@ -2,6 +2,7 @@ package lite
 
 import (
 	"bytes"
+
 	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"

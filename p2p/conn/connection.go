@@ -2,6 +2,7 @@ package conn
 
 import (
 	"bufio"
+	"runtime/debug"
 
 	"fmt"
 	"io"
@@ -312,12 +313,10 @@ func (c *MConnection) flush() {
 	}
 }
 
-// err is an error wrapper type for internal use only.
-type err struct{ error }
-
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
+		c.Logger.Error("MConnection panicked", "err", r, "stack", string(debug.Stack()))
 		c.stopForError(errors.Errorf("recovered from panic: %v", r))
 	}
 }
