@@ -22,7 +22,7 @@ The correctness of the protocol is based on the assumption that *inithead* was g
 
 ### Data structures
 
-In the following, I only give the details of the data structures needed for this specification.
+In the following, only the details of the data structures needed for this specification are given.
 
   * header fields
     - *height*
