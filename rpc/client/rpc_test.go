@@ -228,7 +228,7 @@ func TestAppCalls(t *testing.T) {
 			assert.EqualValues(apph, lastMeta.Header.Height)
 			blockData := block.Block
 			assert.Equal(blockData.Header.AppHash, lastMeta.Header.AppHash)
-			assert.Equal(*block.BlockID, lastMeta.BlockID)
+			assert.Equal(block.BlockID, lastMeta.BlockID)
 		}
 
 		// and get the corresponding commit with the same apphash
