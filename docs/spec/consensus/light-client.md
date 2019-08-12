@@ -27,7 +27,7 @@ In the following, only the details of the data structures needed for this specif
   * header fields
     - *height*
     - *bfttime*: the chain time when the header (block) was generated
-    - *V*: validator set containing validators.
+    - *V*: validator set containing validators for this block.
     - *NextV*: validator set for next block.
     - *commit*: evidence that block with height *height* - 1 was committed by a set of validators (canonical commit). We will use ```signers(commit)``` to refer to the set of validators that committed the block.
 
