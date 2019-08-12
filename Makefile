@@ -315,7 +315,10 @@ else
 	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests ./cmd/contract_tests
 endif
 
-contract-tests: build-linux build-contract-tests-hooks
+build-for-network:
+    OUTPUT=networks/local/localnode/tendermint $(MAKE) build-linux
+
+contract-tests: build-for-network build-contract-tests-hooks
 	dredd
 
 # To avoid unintended conflicts with file names, always add to .PHONY

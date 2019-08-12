@@ -14,4 +14,4 @@ STOPSIGNAL SIGTERM
 
 COPY wrapper.sh /usr/bin/wrapper.sh
 COPY config-template.toml /etc/tendermint/config-template.toml
-COPY ../../../build/tendermint /tendermint/tendermint
+COPY tendermint /tendermint/tendermint
