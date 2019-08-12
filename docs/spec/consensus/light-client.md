@@ -300,7 +300,7 @@ We iterate down the heights and check the hashes in each step.
 func Backwards(h1,h2) bool {
   assert (h2.Header.height < h1.Header.height)
   old := h1
-  for i := h1.Header.height - 1; h2.Header.height < i; i-- {
+  for i := h1.Header.height - 1; i > h2.Header.height; i-- {
     new := Commit(i)
     Store(new)
     if (hash(new) != old.Header.hash) {
