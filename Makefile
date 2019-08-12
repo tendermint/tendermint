@@ -315,7 +315,7 @@ else
 	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests ./cmd/contract_tests
 endif
 
-contract-tests: build build-contract-tests-hooks
+contract-tests: build-linux build-contract-tests-hooks
 	dredd
 
 # To avoid unintended conflicts with file names, always add to .PHONY

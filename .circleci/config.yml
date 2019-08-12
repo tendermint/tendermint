@@ -359,7 +359,7 @@ jobs:
       - store_artifacts:
           path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
 
-  # Get Node.js and test REST implementation against the swagger documentation of the SDK version used
+  # Test RPC implementation against the swagger documented specs
   contract_tests:
     <<: *defaults
     steps:
@@ -373,9 +373,8 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
-          name: Contract tests
+          name: RPC contract tests
           command: |
-            go get github.com/snikch/goodman/cmd/goodman
             export PATH=~/.local/bin:$PATH
             ./scripts/get_nodejs.sh && make contract-tests
 

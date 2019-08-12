@@ -183,3 +183,15 @@ If they have `.go` files in the root directory, they will be automatically
 tested by circle using `go test -v -race ./...`. If not, they will need a
 `circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
 includes its continuous integration status using a badge in the `README.md`.
+
+### RPC Testing
+
+If you contribute to the RPC endpoints it's important to document your changes in the [Swagger file](./docs/spec/rpc/swagger.yaml)
+To test your changes you should install `nodejs` version `v11.15.*` and run:
+
+```bash
+npm i -g dredd
+make contract-tests
+``` 
+
+This command will popup a network and check every endpoint against what has been documented
