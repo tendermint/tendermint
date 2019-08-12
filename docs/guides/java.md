@@ -1,4 +1,4 @@
-# Creating an application in Kotlin
+# Creating an application in Java
 
 ## Guide Assumptions
 
@@ -12,7 +12,7 @@ replicates it on many machines.
 
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store. The application (which should
-implementing the blockchain interface (ABCI)) will be written in Kotlin.
+implementing the blockchain interface (ABCI)) will be written in Java.
 
 This guide assumes that you are not new to JVM world. If you are new please see [JVM Minimal Survival Guide](https://hadihariri.com/2013/12/29/jvm-minimal-survival-guide-for-the-dotnet-developer/#java-the-language-java-the-ecosystem-java-the-jvm) and [Gradle Docs](https://docs.gradle.org/current/userguide/userguide.html).
 
@@ -38,24 +38,24 @@ Verify that you have installed Java successfully:
 
 ```sh
 $ java -version
-java version "1.8.0_162"
-Java(TM) SE Runtime Environment (build 1.8.0_162-b12)
-Java HotSpot(TM) 64-Bit Server VM (build 25.162-b12, mixed mode)
+java version "12.0.2" 2019-07-16
+Java(TM) SE Runtime Environment (build 12.0.2+10)
+Java HotSpot(TM) 64-Bit Server VM (build 12.0.2+10, mixed mode, sharing)
 ```
 
 You can choose any version of Java higher or equal to 8.
-In my case it is Java SE Development Kit 8.
+This guide is written using Java SE Development Kit 12.
 
 Make sure you have `$JAVA_HOME` environment variable set:
 
 ```sh
 $ echo $JAVA_HOME
-/Library/Java/JavaVirtualMachines/jdk1.8.0_162.jdk/Contents/Home
+/Library/Java/JavaVirtualMachines/jdk-12.0.2.jdk/Contents/Home
 ```
 
 For Gradle installation, please refer to [their official guide](https://gradle.org/install/).
 
-## 1.2 Creating a new Kotlin project
+## 1.2 Creating a new Java project
 
 We'll start by creating a new Gradle project.
 
@@ -67,7 +67,7 @@ $ cd $KVSTORE_HOME
 
 Inside the example directory run:
 ```sh
-gradle init --dsl groovy --package io.example --project-name example --type kotlin-application
+gradle init --dsl groovy --package io.example --project-name example --type java-application --test-framework junit
 ```
 This will create a new project for you. The tree of files should look like:
 ```sh
@@ -83,16 +83,16 @@ $ tree
 |-- settings.gradle
 `-- src
     |-- main
-    |   |-- kotlin
+    |   |-- java
     |   |   `-- io
     |   |       `-- example
-    |   |           `-- App.kt
+    |   |           `-- App.java
     |   `-- resources
     `-- test
-        |-- kotlin
+        |-- java
         |   `-- io
         |       `-- example
-        |           `-- AppTest.kt
+        |           `-- AppTest.java
         `-- resources
 ```
 
@@ -190,23 +190,23 @@ To verify that everything went smoothly, you can inspect the `build/generated/` 
 ```sh
 $ tree build/generated/
 build/generated/
-`-- source
-    `-- proto
-        `-- main
-            |-- grpc
-            |   `-- types
-            |       `-- ABCIApplicationGrpc.java
-            `-- java
-                |-- com
-                |   `-- google
-                |       `-- protobuf
-                |           `-- GoGoProtos.java
-                |-- common
-                |   `-- Types.java
-                |-- merkle
-                |   `-- Merkle.java
-                `-- types
-                    `-- Types.java
+|-- source
+|   `-- proto
+|       `-- main
+|           |-- grpc
+|           |   `-- types
+|           |       `-- ABCIApplicationGrpc.java
+|           `-- java
+|               |-- com
+|               |   `-- google
+|               |       `-- protobuf
+|               |           `-- GoGoProtos.java
+|               |-- common
+|               |   `-- Types.java
+|               |-- merkle
+|               |   `-- Merkle.java
+|               `-- types
+|                   `-- Types.java
 ```
 
 ### 1.3.2 Implementing ABCI
@@ -214,15 +214,15 @@ build/generated/
 The resulting `$KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIApplicationGrpc.java` file
 contains the abstract class `ABCIApplicationImplBase`, which is an interface we'll need to implement.
 
-Create `$KVSTORE_HOME/src/main/kotlin/io/example/KVStoreApp.kt` file with the following content:
-```kotlin
-package io.example
+Create `$KVSTORE_HOME/src/main/java/io/example/KVStoreApp.java` file with the following content:
+```java
+package io.example;
 
-import io.grpc.stub.StreamObserver
-import types.ABCIApplicationGrpc
-import types.Types.*
+import io.grpc.stub.StreamObserver;
+import types.ABCIApplicationGrpc;
+import types.Types.*;
 
-class KVStoreApp : ABCIApplicationGrpc.ABCIApplicationImplBase() {
+class KVStoreApp extends ABCIApplicationGrpc.ABCIApplicationImplBase {
     
     // methods implementation
 
@@ -237,42 +237,51 @@ required business logic.
 When a new transaction is added to the Tendermint Core, it will ask the
 application to check it (validate the format, signatures, etc.).
 
-```kotlin
-override fun checkTx(req: RequestCheckTx, responseObserver: StreamObserver<ResponseCheckTx>) {
-    val code = req.tx.validate()
-    val resp = ResponseCheckTx.newBuilder()
+```java
+@Override
+public void checkTx(RequestCheckTx req, StreamObserver<ResponseCheckTx> responseObserver) {
+    var tx = req.getTx();
+    int code = validate(tx);
+    var resp = ResponseCheckTx.newBuilder()
             .setCode(code)
             .setGasWanted(1)
-            .build()
-    responseObserver.onNext(resp)
-    responseObserver.onCompleted()
+            .build();
+    responseObserver.onNext(resp);
+    responseObserver.onCompleted();
 }
 
-private fun ByteString.validate(): Int {
-    val parts = this.split('=')
-    if (parts.size != 2) {
-        return 1
+private int validate(ByteString tx) {
+    List<byte[]> parts = split(tx, '=');
+    if (parts.size() != 2) {
+        return 1;
     }
-    val key = parts[0]
-    val value = parts[1]
+    byte[] key = parts.get(0);
+    byte[] value = parts.get(1);
 
     // check if the same key=value already exists
-    val stored = getPersistedValue(key)
-    if (stored != null && stored.contentEquals(value)) {
-        return 2
+    var stored = getPersistedValue(key);
+    if (stored != null && Arrays.equals(stored, value)) {
+        return 2;
     }
 
-    return 0
+    return 0;
 }
 
-private fun ByteString.split(separator: Char): List<ByteArray> {
-    val arr = this.toByteArray()
-    val i = (0 until this.size()).firstOrNull { arr[it] == separator.toByte() }
-            ?: return emptyList()
-    return listOf(
-            this.substring(0, i).toByteArray(),
-            this.substring(i + 1).toByteArray()
-    )
+private List<byte[]> split(ByteString tx, char separator) {
+    var arr = tx.toByteArray();
+    int i;
+    for (i = 0; i < tx.size(); i++) {
+        if (arr[i] == (byte)separator) {
+            break;
+        }
+    }
+    if (i == tx.size()) {
+        return Collections.emptyList();
+    }
+    return List.of(
+            tx.substring(0, i).toByteArray(),
+            tx.substring(i + 1).toByteArray()
+    );
 }
 ```
 
@@ -299,28 +308,35 @@ dependencies {
 }
 ```
 
-```kotlin
+```java
 ...
-import jetbrains.exodus.ArrayByteIterable
-import jetbrains.exodus.env.Environment
-import jetbrains.exodus.env.Store
-import jetbrains.exodus.env.StoreConfig
-import jetbrains.exodus.env.Transaction
+import jetbrains.exodus.ArrayByteIterable;
+import jetbrains.exodus.ByteIterable;
+import jetbrains.exodus.env.Environment;
+import jetbrains.exodus.env.Store;
+import jetbrains.exodus.env.StoreConfig;
+import jetbrains.exodus.env.Transaction;
 
-class KVStoreApp(
-    private val env: Environment
-) : ABCIApplicationGrpc.ABCIApplicationImplBase() {
+class KVStoreApp extends ABCIApplicationGrpc.ABCIApplicationImplBase {
+    private Environment env;
+    private Transaction txn = null;
+    private Store store = null;
 
-    private var txn: Transaction? = null
-    private var store: Store? = null
+    KVStoreApp(Environment env) {
+        this.env = env;
+    }
 
     ...
 
-    private fun getPersistedValue(k: ByteArray): ByteArray? {
-        return env.computeInReadonlyTransaction { txn ->
-            val store = env.openStore("store", StoreConfig.WITHOUT_DUPLICATES, txn)
-            store.get(txn, ArrayByteIterable(k))?.bytesUnsafe
-        }
+    private byte[] getPersistedValue(byte[] k) {
+        return env.computeInReadonlyTransaction(txn -> {
+            var store = env.openStore("store", StoreConfig.WITHOUT_DUPLICATES, txn);
+            ByteIterable byteIterable = store.get(txn, new ArrayByteIterable(k));
+            if (byteIterable == null) {
+                return null;
+            }
+            return byteIterable.getBytesUnsafe();
+        });
     }
 }
 ```
@@ -332,31 +348,34 @@ application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
 `EndBlock` in the end. `DeliverTx` are being transferred  asynchronously, but the
 responses are expected to come in order.
 
-```kotlin
-override fun beginBlock(req: RequestBeginBlock, responseObserver: StreamObserver<ResponseBeginBlock>) {
-    txn = env.beginTransaction()
-    store = env.openStore("store", StoreConfig.WITHOUT_DUPLICATES, txn!!)
-    val resp = ResponseBeginBlock.newBuilder().build()
-    responseObserver.onNext(resp)
-    responseObserver.onCompleted()
+```java
+@Override
+public void beginBlock(RequestBeginBlock req, StreamObserver<ResponseBeginBlock> responseObserver) {
+    txn = env.beginTransaction();
+    store = env.openStore("store", StoreConfig.WITHOUT_DUPLICATES, txn);
+    var resp = ResponseBeginBlock.newBuilder().build();
+    responseObserver.onNext(resp);
+    responseObserver.onCompleted();
 }
 ```
 Here we begin a new transaction, which will accumulate the block's transactions and open the corresponding store.
 
-```kotlin
-override fun deliverTx(req: RequestDeliverTx, responseObserver: StreamObserver<ResponseDeliverTx>) {
-    val code = req.tx.validate()
+```java
+@Override
+public void deliverTx(RequestDeliverTx req, StreamObserver<ResponseDeliverTx> responseObserver) {
+    var tx = req.getTx();
+    int code = validate(tx);
     if (code == 0) {
-        val parts = req.tx.split('=')
-        val key = ArrayByteIterable(parts[0])
-        val value = ArrayByteIterable(parts[1])
-        store!!.put(txn!!, key, value)
+        List<byte[]> parts = split(tx, '=');
+        var key = new ArrayByteIterable(parts.get(0));
+        var value = new ArrayByteIterable(parts.get(1));
+        store.put(txn, key, value);
     }
-    val resp = ResponseDeliverTx.newBuilder()
+    var resp = ResponseDeliverTx.newBuilder()
             .setCode(code)
-            .build()
-    responseObserver.onNext(resp)
-    responseObserver.onCompleted()
+            .build();
+    responseObserver.onNext(resp);
+    responseObserver.onCompleted();
 }
 ```
 
@@ -374,14 +393,15 @@ yet committed).
 
 `Commit` instructs the application to persist the new state.
 
-```kotlin
-override fun commit(req: RequestCommit, responseObserver: StreamObserver<ResponseCommit>) {
-    txn!!.commit()
-    val resp = ResponseCommit.newBuilder()
-            .setData(ByteString.copyFrom(ByteArray(8)))
-            .build()
-    responseObserver.onNext(resp)
-    responseObserver.onCompleted()
+```java
+@Override
+public void commit(RequestCommit req, StreamObserver<ResponseCommit> responseObserver) {
+    txn.commit();
+    var resp = ResponseCommit.newBuilder()
+            .setData(ByteString.copyFrom(new byte[8]))
+            .build();
+    responseObserver.onNext(resp);
+    responseObserver.onCompleted();
 }
 ```
 
@@ -399,20 +419,21 @@ otherwise separate Tendermint Core API for additional proofs.
 
 Note we don't include a proof here.
 
-```kotlin
-override fun query(req: RequestQuery, responseObserver: StreamObserver<ResponseQuery>) {
-    val k = req.data.toByteArray()
-    val v = getPersistedValue(k)
-    val builder = ResponseQuery.newBuilder()
+```java
+@Override
+public void query(RequestQuery req, StreamObserver<ResponseQuery> responseObserver) {
+    var k = req.getData().toByteArray();
+    var v = getPersistedValue(k);
+    var builder = ResponseQuery.newBuilder();
     if (v == null) {
-        builder.log = "does not exist"
+        builder.setLog("does not exist");
     } else {
-        builder.log = "exists"
-        builder.key = ByteString.copyFrom(k)
-        builder.value = ByteString.copyFrom(v)
+        builder.setLog("exists");
+        builder.setKey(ByteString.copyFrom(k));
+        builder.setValue(ByteString.copyFrom(v));
     }
-    responseObserver.onNext(builder.build())
-    responseObserver.onCompleted()
+    responseObserver.onNext(builder.build());
+    responseObserver.onCompleted();
 }
 ```
 
@@ -421,19 +442,24 @@ The complete specification can be found
 
 ## 1.4 Starting an application and a Tendermint Core instances
 
-Put the following code into the `$KVSTORE_HOME/src/main/kotlin/io/example/App.kt` file:
+Put the following code into the `$KVSTORE_HOME/src/main/java/io/example/App.java` file:
 
-```kotlin
-package io.example
+```java
+package io.example;
 
-import jetbrains.exodus.env.Environments
+import jetbrains.exodus.env.Environment;
+import jetbrains.exodus.env.Environments;
 
-fun main() {
-    Environments.newInstance("tmp/storage").use { env ->
-        val app = KVStoreApp(env)
-        val server = GrpcServer(app, 26658)
-        server.start()
-        server.blockUntilShutdown()
+import java.io.IOException;
+
+public class App {
+    public static void main(String[] args) throws IOException, InterruptedException {
+        try (Environment env = Environments.newInstance("tmp/storage")) {
+            var app = new KVStoreApp(env);
+            var server = new GrpcServer(app, 26658);
+            server.start();
+            server.blockUntilShutdown();
+        }
     }
 }
 ```
@@ -442,45 +468,45 @@ It is the entry point of the application.
 Here we create a special object `Environment`, which knows where to store the application state.
 Then we create and start the gRPC server to handle Tendermint Core requests.
 
-Create `$KVSTORE_HOME/src/main/kotlin/io/example/GrpcServer.kt` file with the following content:
-```kotlin
-package io.example
+Create the `$KVSTORE_HOME/src/main/java/io/example/GrpcServer.java` file with the following content:
+```java
+package io.example;
 
-import io.grpc.BindableService
-import io.grpc.ServerBuilder
+import io.grpc.BindableService;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
 
-class GrpcServer(
-        private val service: BindableService,
-        private val port: Int
-) {
-    private val server = ServerBuilder
-            .forPort(port)
-            .addService(service)
-            .build()
+import java.io.IOException;
 
-    fun start() {
-        server.start()
-        println("gRPC server started, listening on $port")
-        Runtime.getRuntime().addShutdownHook(object : Thread() {
-            override fun run() {
-                println("shutting down gRPC server since JVM is shutting down")
-                this@GrpcServer.stop()
-                println("server shut down")
-            }
-        })
+class GrpcServer {
+    private Server server;
+
+    GrpcServer(BindableService service, int port) {
+        this.server = ServerBuilder.forPort(port)
+                .addService(service)
+                .build();
     }
 
-    fun stop() {
-        server.shutdown()
+    void start() throws IOException {
+        server.start();
+        System.out.println("gRPC server started, listening on $port");
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("shutting down gRPC server since JVM is shutting down");
+            GrpcServer.this.stop();
+            System.out.println("server shut down");
+        }));
+    }
+
+    private void stop() {
+        server.shutdown();
     }
 
     /**
      * Await termination on the main thread since the grpc library uses daemon threads.
      */
-    fun blockUntilShutdown() {
-        server.awaitTermination()
+    void blockUntilShutdown() throws InterruptedException {
+        server.awaitTermination();
     }
-
 }
 ```
 
@@ -571,4 +597,4 @@ Tendermint Core application is up and running. If not, please [open an issue on
 Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
 deeper, read [the docs](https://tendermint.com/docs/).
 
-The full source code of this example project can be found [here](https://github.com/climber73/tendermint-abci-grpc-kotlin).
+The full source code of this example project can be found [here](https://github.com/climber73/tendermint-abci-grpc-java).
