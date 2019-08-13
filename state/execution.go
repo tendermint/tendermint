@@ -442,6 +442,26 @@ func updateState(
 	}, nil
 }
 
+func revertState(
+	state State,
+	reverted *types.Block,
+	newHead *types.Block,
+) State {
+	var lastValidators *types.ValidatorSet
+	lastValidators, _ := LoadValidators(blockExec.db, lastValidatorsInfo.LastHeightChanged)
+	return State{
+		Version:          state.Version,
+		ChainID:          state.ChainID,
+		LastBlockHeight:  state.LastBlockHeight - 1,
+		LastBlockTotalTx: state.LastBlockTotalTx - len(reverted.Data.Txs),
+		LastBlockID:      reverted.Header.LastBlockID,
+		LastBlockTime:    newHead.Header.LastBlockTime,
+		NextValidators:   state.Validators.Copy(),
+		Validators:       state.LastValidators.Copy(),
+		LastValidators:   lastValidators.Copy(),
+	}
+}
+
 // Fire NewBlock, NewBlockHeader.
 // Fire TxEvent for every tx.
 // NOTE: if Tendermint crashes before commit, some or all of these events may be published again.

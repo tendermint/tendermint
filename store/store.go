@@ -195,6 +195,45 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
 
+// RevertBlock reverts the store changes from the latest SaveBlock.
+// Only modifies blockstore, does not change TM state
+// For now, seenCommit for reverted block remains in db
+// Returns the block that got reverted and the newest lastBlock
+func (bs *BlockStore) RevertBlock() (reverted *types.Block, newHead *types.Block) {
+	bs.mtx.RLock()
+	latest := bs.height
+	bs.mtx.RUnlock()
+
+	// Load block to return later
+	reverted = bs.LoadBlock(latest)
+	newHead = bs.LoadBlock(latest - 1)
+
+	// Delete block meta
+	blockMeta := bs.LoadBlockMeta(latest)
+	blockID = blockMeta.BlockID
+	bs.db.Delete(calcBlockMetaKey(latest))
+
+	// Delete block parts
+	for i := 0; i < blockID.PartsHeader.Total; i++ {
+		bs.db.Delete(calcBlockPartKey(latest, i))
+	}
+
+	// Delete block commit
+	bs.db.Delete(calcBlockCommitKey(latest - 1))
+
+	// Update BlockStateStateJSON descriptor
+	BlockStateStateJSON{Height: latest - 1}.Save(bs.db)
+
+	// Update height
+	bs.mtx.Lock()
+	bs.height = latest - 1
+	bs.mtx.Unlock()
+
+	// Flush
+	bs.db.SetSync(nil, nil)
+
+}
+
 //-----------------------------------------------------------------------------
 
 func calcBlockMetaKey(height int64) []byte {
