@@ -136,22 +136,73 @@ func TestDifferentClients(t *testing.T) {
 	ctx := context.Background()
 	subscription1, err := s.Subscribe(ctx, "client-1", query.MustParse("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Iceman", map[string]string{"tm.events.type": "NewBlock"})
+	err = s.PublishWithEvents(ctx, "Iceman", map[string][]string{"tm.events.type": {"NewBlock"}})
 	require.NoError(t, err)
 	assertReceive(t, "Iceman", subscription1.Out())
 
 	subscription2, err := s.Subscribe(ctx, "client-2", query.MustParse("tm.events.type='NewBlock' AND abci.account.name='Igor'"))
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Ultimo", map[string]string{"tm.events.type": "NewBlock", "abci.account.name": "Igor"})
+	err = s.PublishWithEvents(ctx, "Ultimo", map[string][]string{"tm.events.type": {"NewBlock"}, "abci.account.name": {"Igor"}})
 	require.NoError(t, err)
 	assertReceive(t, "Ultimo", subscription1.Out())
 	assertReceive(t, "Ultimo", subscription2.Out())
 
 	subscription3, err := s.Subscribe(ctx, "client-3", query.MustParse("tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10"))
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Valeria Richards", map[string]string{"tm.events.type": "NewRoundStep"})
+	err = s.PublishWithEvents(ctx, "Valeria Richards", map[string][]string{"tm.events.type": {"NewRoundStep"}})
 	require.NoError(t, err)
 	assert.Zero(t, len(subscription3.Out()))
+}
+
+func TestSubscribeDuplicateKeys(t *testing.T) {
+	ctx := context.Background()
+	s := pubsub.NewServer()
+	s.SetLogger(log.TestingLogger())
+	require.NoError(t, s.Start())
+	defer s.Stop()
+
+	testCases := []struct {
+		query    string
+		expected interface{}
+	}{
+		{
+			"withdraw.rewards='17'",
+			"Iceman",
+		},
+		{
+			"withdraw.rewards='22'",
+			"Iceman",
+		},
+		{
+			"withdraw.rewards='1' AND withdraw.rewards='22'",
+			"Iceman",
+		},
+		{
+			"withdraw.rewards='100'",
+			nil,
+		},
+	}
+
+	for i, tc := range testCases {
+		sub, err := s.Subscribe(ctx, fmt.Sprintf("client-%d", i), query.MustParse(tc.query))
+		require.NoError(t, err)
+
+		err = s.PublishWithEvents(
+			ctx,
+			"Iceman",
+			map[string][]string{
+				"transfer.sender":  {"foo", "bar", "baz"},
+				"withdraw.rewards": {"1", "17", "22"},
+			},
+		)
+		require.NoError(t, err)
+
+		if tc.expected != nil {
+			assertReceive(t, tc.expected, sub.Out())
+		} else {
+			require.Zero(t, len(sub.Out()))
+		}
+	}
 }
 
 func TestClientSubscribesTwice(t *testing.T) {
@@ -165,7 +216,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 
 	subscription1, err := s.Subscribe(ctx, clientID, q)
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Goblin Queen", map[string]string{"tm.events.type": "NewBlock"})
+	err = s.PublishWithEvents(ctx, "Goblin Queen", map[string][]string{"tm.events.type": {"NewBlock"}})
 	require.NoError(t, err)
 	assertReceive(t, "Goblin Queen", subscription1.Out())
 
@@ -173,7 +224,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, subscription2)
 
-	err = s.PublishWithTags(ctx, "Spider-Man", map[string]string{"tm.events.type": "NewBlock"})
+	err = s.PublishWithEvents(ctx, "Spider-Man", map[string][]string{"tm.events.type": {"NewBlock"}})
 	require.NoError(t, err)
 	assertReceive(t, "Spider-Man", subscription1.Out())
 }
@@ -222,11 +273,11 @@ func TestResubscribe(t *testing.T) {
 	defer s.Stop()
 
 	ctx := context.Background()
-	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
+	_, err := s.Subscribe(ctx, clientID, query.Empty{})
 	require.NoError(t, err)
 	err = s.Unsubscribe(ctx, clientID, query.Empty{})
 	require.NoError(t, err)
-	subscription, err = s.Subscribe(ctx, clientID, query.Empty{})
+	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
 	require.NoError(t, err)
 
 	err = s.Publish(ctx, "Cable")
@@ -312,7 +363,7 @@ func benchmarkNClients(n int, b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.PublishWithTags(ctx, "Gamora", map[string]string{"abci.Account.Owner": "Ivan", "abci.Invoices.Number": string(i)})
+		s.PublishWithEvents(ctx, "Gamora", map[string][]string{"abci.Account.Owner": {"Ivan"}, "abci.Invoices.Number": {string(i)}})
 	}
 }
 
@@ -343,7 +394,7 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.PublishWithTags(ctx, "Gamora", map[string]string{"abci.Account.Owner": "Ivan", "abci.Invoices.Number": "1"})
+		s.PublishWithEvents(ctx, "Gamora", map[string][]string{"abci.Account.Owner": {"Ivan"}, "abci.Invoices.Number": {"1"}})
 	}
 }
 

@@ -20,19 +20,19 @@ import (
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -86,7 +86,7 @@ func (vs *validatorStub) signVote(voteType types.SignedMsgType, hash []byte, hea
 		Round:            vs.Round,
 		Timestamp:        tmtime.Now(),
 		Type:             voteType,
-		BlockID:          types.BlockID{hash, header},
+		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
 	}
 	err := vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
@@ -159,7 +159,7 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	}
 
 	// Make proposal
-	polRound, propBlockID := validRound, types.BlockID{block.Hash(), blockParts.Header()}
+	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, round, polRound, propBlockID)
 	if err := vs.SignProposal(chainID, proposal); err != nil {
 		panic(err)
@@ -280,7 +280,7 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state sm.State, pv type
 
 func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.State, pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
 	// Get BlockStore
-	blockStore := bc.NewBlockStore(blockDB)
+	blockStore := store.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
 	mtx := new(sync.Mutex)

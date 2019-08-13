@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	dbm "github.com/tendermint/tm-db"
 
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"

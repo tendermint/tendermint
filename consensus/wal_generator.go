@@ -12,16 +12,16 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	db "github.com/tendermint/tm-db"
 )
 
 // WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
@@ -55,7 +55,8 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
 	sm.SaveState(stateDB, state)
-	blockStore := bc.NewBlockStore(blockStoreDB)
+	blockStore := store.NewBlockStore(blockStoreDB)
+
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {

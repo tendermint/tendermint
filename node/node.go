@@ -18,15 +18,14 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/blockchain"
-	bc "github.com/tendermint/tendermint/blockchain"
+	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
+	bcv1 "github.com/tendermint/tendermint/blockchain/v1"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -42,9 +41,11 @@ import (
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+	dbm "github.com/tendermint/tm-db"
 )
 
 //------------------------------------------------------------------------------
@@ -136,6 +137,33 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 	}
 }
 
+// Option sets a parameter for the node.
+type Option func(*Node)
+
+// CustomReactors allows you to add custom reactors (name -> p2p.Reactor) to
+// the node's Switch.
+//
+// WARNING: using any name from the below list of the existing reactors will
+// result in replacing it with the custom one.
+//
+//  - MEMPOOL
+//  - BLOCKCHAIN
+//  - CONSENSUS
+//  - EVIDENCE
+//  - PEX
+func CustomReactors(reactors map[string]p2p.Reactor) Option {
+	return func(n *Node) {
+		for name, reactor := range reactors {
+			if existingReactor := n.sw.Reactor(name); existingReactor != nil {
+				n.sw.Logger.Info("Replacing existing reactor with a custom one",
+					"name", name, "existing", existingReactor, "custom", reactor)
+				n.sw.RemoveReactor(name, existingReactor)
+			}
+			n.sw.AddReactor(name, reactor)
+		}
+	}
+}
+
 //------------------------------------------------------------------------------
 
 // Node is the highest level interface to a full Tendermint node.
@@ -159,9 +187,9 @@ type Node struct {
 	// services
 	eventBus         *types.EventBus // pub/sub for services
 	stateDB          dbm.DB
-	blockStore       *bc.BlockStore        // store the blockchain to disk
-	bcReactor        *bc.BlockchainReactor // for fast-syncing
-	mempoolReactor   *mempl.Reactor        // for gossipping transactions
+	blockStore       *store.BlockStore // store the blockchain to disk
+	bcReactor        p2p.Reactor       // for fast-syncing
+	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
 	consensusState   *cs.ConsensusState     // latest consensus state
 	consensusReactor *cs.ConsensusReactor   // for participating in the consensus
@@ -174,13 +202,13 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
-func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *bc.BlockStore, stateDB dbm.DB, err error) {
+func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
 	if err != nil {
 		return
 	}
-	blockStore = bc.NewBlockStore(blockStoreDB)
+	blockStore = store.NewBlockStore(blockStoreDB)
 
 	stateDB, err = dbProvider(&DBContext{"state", config})
 	if err != nil {
@@ -218,11 +246,12 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 		if err != nil {
 			return nil, nil, err
 		}
-		if config.TxIndex.IndexTags != "" {
+		switch {
+		case config.TxIndex.IndexTags != "":
 			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
-		} else if config.TxIndex.IndexAllTags {
+		case config.TxIndex.IndexAllTags:
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
-		} else {
+		default:
 			txIndexer = kv.NewTxIndex(store)
 		}
 	default:
@@ -249,9 +278,7 @@ func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logger,
-	consensusLogger log.Logger) {
-
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -267,7 +294,6 @@ func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logge
 		)
 	}
 
-	pubKey := privValidator.GetPubKey()
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
 	if state.Validators.HasAddress(addr) {
@@ -319,6 +345,26 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 	return evidenceReactor, evidencePool, nil
+}
+
+func createBlockchainReactor(config *cfg.Config,
+	state sm.State,
+	blockExec *sm.BlockExecutor,
+	blockStore *store.BlockStore,
+	fastSync bool,
+	logger log.Logger) (bcReactor p2p.Reactor, err error) {
+
+	switch config.FastSync.Version {
+	case "v0":
+		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	case "v1":
+		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	default:
+		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+	}
+
+	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	return bcReactor, nil
 }
 
 func createConsensusReactor(config *cfg.Config,
@@ -415,7 +461,7 @@ func createSwitch(config *cfg.Config,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
-	bcReactor *blockchain.BlockchainReactor,
+	bcReactor p2p.Reactor,
 	consensusReactor *consensus.ConsensusReactor,
 	evidenceReactor *evidence.EvidenceReactor,
 	nodeInfo p2p.NodeInfo,
@@ -433,6 +479,7 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
@@ -441,17 +488,30 @@ func createSwitch(config *cfg.Config,
 }
 
 func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
-	p2pLogger log.Logger) pex.AddrBook {
+	p2pLogger log.Logger, nodeKey *p2p.NodeKey) (pex.AddrBook, error) {
 
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 	// Add ourselves to addrbook to prevent dialing ourselves
-	addrBook.AddOurAddress(sw.NetAddress())
+	if config.P2P.ExternalAddress != "" {
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ExternalAddress))
+		if err != nil {
+			return nil, errors.Wrap(err, "p2p.external_address is incorrect")
+		}
+		addrBook.AddOurAddress(addr)
+	}
+	if config.P2P.ListenAddress != "" {
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ListenAddress))
+		if err != nil {
+			return nil, errors.Wrap(err, "p2p.laddr is incorrect")
+		}
+		addrBook.AddOurAddress(addr)
+	}
 
 	sw.SetAddrBook(addrBook)
 
-	return addrBook
+	return addrBook, nil
 }
 
 func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
@@ -482,7 +542,8 @@ func NewNode(config *cfg.Config,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
-	logger log.Logger) (*Node, error) {
+	logger log.Logger,
+	options ...Option) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
@@ -537,11 +598,17 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
-	logNodeStartupInfo(state, privValidator, logger, consensusLogger)
+	pubKey := privValidator.GetPubKey()
+	if pubKey == nil {
+		// TODO: GetPubKey should return errors - https://github.com/tendermint/tendermint/issues/3602
+		return nil, errors.New("could not retrieve public key from private validator")
+	}
+
+	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
-	fastSync := config.FastSync && !onlyValidatorIsUs(state, privValidator)
+	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, privValidator)
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
@@ -565,8 +632,10 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync, logger)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create blockchain reactor")
+	}
 
 	// Make ConsensusReactor
 	consensusReactor, consensusState := createConsensusReactor(
@@ -594,7 +663,10 @@ func NewNode(config *cfg.Config,
 		return nil, errors.Wrap(err, "could not add peers from persistent_peers field")
 	}
 
-	addrBook := createAddrBookAndSetOnSwitch(config, sw, p2pLogger)
+	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create addrbook")
+	}
 
 	// Optionally, start the pex reactor
 	//
@@ -614,7 +686,9 @@ func NewNode(config *cfg.Config,
 	}
 
 	if config.ProfListenAddress != "" {
-		go logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+		go func() {
+			logger.Error("Profile server", "err", http.ListenAndServe(config.ProfListenAddress, nil))
+		}()
 	}
 
 	node := &Node{
@@ -643,6 +717,11 @@ func NewNode(config *cfg.Config,
 		eventBus:         eventBus,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
+
+	for _, option := range options {
+		option(node)
+	}
+
 	return node, nil
 }
 
@@ -674,7 +753,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := p2p.NewNetAddressStringWithOptionalID(n.config.P2P.ListenAddress)
+	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID(), n.config.P2P.ListenAddress))
 	if err != nil {
 		return err
 	}
@@ -714,7 +793,6 @@ func (n *Node) OnStop() {
 	n.indexerService.Stop()
 
 	// now stop the reactors
-	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 
 	// stop mempool WAL
@@ -780,6 +858,17 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		rpccore.AddUnsafeRoutes()
 	}
 
+	config := rpcserver.DefaultConfig()
+	config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+	config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+	config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+	// If necessary adjust global WriteTimeout to ensure it's greater than
+	// TimeoutBroadcastTxCommit.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+		config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
@@ -792,20 +881,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
 					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}
-			}))
+			}),
+			rpcserver.ReadLimit(config.MaxBodyBytes),
+		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-
-		config := rpcserver.DefaultConfig()
-		config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
-		// If necessary adjust global WriteTimeout to ensure it's greater than
-		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
-		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-		}
-
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			config,
@@ -887,7 +968,7 @@ func (n *Node) Switch() *p2p.Switch {
 }
 
 // BlockStore returns the Node's BlockStore.
-func (n *Node) BlockStore() *bc.BlockStore {
+func (n *Node) BlockStore() *store.BlockStore {
 	return n.blockStore
 }
 
@@ -975,6 +1056,17 @@ func makeNodeInfo(
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
+
+	var bcChannel byte
+	switch config.FastSync.Version {
+	case "v0":
+		bcChannel = bcv0.BlockchainChannel
+	case "v1":
+		bcChannel = bcv1.BlockchainChannel
+	default:
+		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+	}
+
 	nodeInfo := p2p.DefaultNodeInfo{
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
@@ -985,7 +1077,7 @@ func makeNodeInfo(
 		Network: genDoc.ChainID,
 		Version: version.TMCoreSemVer,
 		Channels: []byte{
-			bc.BlockchainChannel,
+			bcChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
 			mempl.MempoolChannel,
 			evidence.EvidenceChannel,
@@ -1069,29 +1161,13 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	var listener net.Listener
-
-	protocol, address := cmn.ProtocolAndAddress(listenAddr)
-	ln, err := net.Listen(protocol, address)
+	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
-		return nil, err
-	}
-	switch protocol {
-	case "unix":
-		listener = privval.NewUnixListener(ln)
-	case "tcp":
-		// TODO: persist this key so external signer
-		// can actually authenticate us
-		listener = privval.NewTCPListener(ln, ed25519.GenPrivKey())
-	default:
-		return nil, fmt.Errorf(
-			"wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
-			protocol,
-		)
+		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 
-	pvsc := privval.NewSignerValidatorEndpoint(logger.With("module", "privval"), listener)
-	if err := pvsc.Start(); err != nil {
+	pvsc, err := privval.NewSignerClient(pve)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 

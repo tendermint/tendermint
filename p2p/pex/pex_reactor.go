@@ -340,23 +340,18 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	if err != nil {
 		return err
 	}
-	for _, netAddr := range addrs {
-		// Validate netAddr. Disconnect from a peer if it sends us invalid data.
-		if netAddr == nil {
-			return errors.New("nil address in pexAddrsMessage")
-		}
-		// TODO: extract validating logic from NewNetAddressStringWithOptionalID
-		// and put it in netAddr#Valid (#2722)
-		na, err := p2p.NewNetAddressString(netAddr.String())
-		if err != nil {
-			return fmt.Errorf("%s address in pexAddrsMessage is invalid: %v",
-				netAddr.String(),
-				err,
-			)
-		}
 
+	srcIsSeed := false
+	for _, seedAddr := range r.seedAddrs {
+		if seedAddr.Equals(srcAddr) {
+			srcIsSeed = true
+			break
+		}
+	}
+
+	for _, netAddr := range addrs {
 		// NOTE: we check netAddr validity and routability in book#AddAddress.
-		err = r.book.AddAddress(na, srcAddr)
+		err = r.book.AddAddress(netAddr, srcAddr)
 		if err != nil {
 			r.logErrAddrBook(err)
 			// XXX: should we be strict about incoming data and disconnect from a
@@ -365,13 +360,23 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		}
 
 		// If this address came from a seed node, try to connect to it without
-		// waiting.
-		for _, seedAddr := range r.seedAddrs {
-			if seedAddr.Equals(srcAddr) {
-				r.ensurePeers()
-			}
+		// waiting (#2093)
+		if srcIsSeed {
+			r.Logger.Info("Will dial address, which came from seed", "addr", netAddr, "seed", srcAddr)
+			go func(addr *p2p.NetAddress) {
+				err := r.dialPeer(addr)
+				if err != nil {
+					switch err.(type) {
+					case errMaxAttemptsToDial, errTooEarlyToDial:
+						r.Logger.Debug(err.Error(), "addr", addr)
+					default:
+						r.Logger.Error(err.Error(), "addr", addr)
+					}
+				}
+			}(netAddr)
 		}
 	}
+
 	return nil
 }
 
@@ -589,7 +594,10 @@ func (r *PEXReactor) dialSeeds() {
 		}
 		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
 	}
-	r.Switch.Logger.Error("Couldn't connect to any seeds")
+	// do not write error message if there were no seeds specified in config
+	if len(r.seedAddrs) > 0 {
+		r.Switch.Logger.Error("Couldn't connect to any seeds")
+	}
 }
 
 // AttemptsToDial returns the number of attempts to dial specific address. It

@@ -54,7 +54,7 @@ func (c *RpcClient) Call(method string, params map[string]interface{}, result in
 	}
 
 	rv, rt := reflect.ValueOf(result), reflect.TypeOf(result)
-	rv, rt = rv.Elem(), rt.Elem()
+	rv, _ = rv.Elem(), rt.Elem()
 	rv.Set(reflect.ValueOf(s))
 
 	return s, nil

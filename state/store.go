@@ -5,8 +5,8 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -115,9 +115,9 @@ func saveState(db dbm.DB, state State, key []byte) {
 // of the various ABCI calls during block processing.
 // It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
-	DeliverTx  []*abci.ResponseDeliverTx
-	EndBlock   *abci.ResponseEndBlock
-	BeginBlock *abci.ResponseBeginBlock
+	DeliverTx  []*abci.ResponseDeliverTx `json:"deliver_tx"`
+	EndBlock   *abci.ResponseEndBlock    `json:"end_block"`
+	BeginBlock *abci.ResponseBeginBlock  `json:"begin_block"`
 }
 
 // NewABCIResponses returns a new ABCIResponses

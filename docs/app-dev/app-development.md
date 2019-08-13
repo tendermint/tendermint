@@ -48,9 +48,9 @@ open ABCI connection with the application, which hosts an ABCI server.
 Shown are the request and response types sent on each connection.
 
 Most of the examples below are from [kvstore
-application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/kvstore.go),
+application](https://github.com/tendermint/tendermint/blob/master/abci/example/kvstore/kvstore.go),
 which is a part of the abci repo. [persistent_kvstore
-application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/persistent_kvstore.go)
+application](https://github.com/tendermint/tendermint/blob/master/abci/example/kvstore/persistent_kvstore.go)
 is used to show `BeginBlock`, `EndBlock` and `InitChain` example
 implementations.
 
@@ -101,8 +101,8 @@ mempool state (this behaviour can be turned off with
 In go:
 
 ```
-func (app *KVStoreApplication) CheckTx(tx []byte) types.Result {
-  return types.OK
+func (app *KVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 ```
 
@@ -133,8 +133,8 @@ the mempool. If Tendermint is just started or the clients sent more than
 100k transactions, old transactions may be sent to the application. So
 it is important CheckTx implements some logic to handle them.
 
-There are cases where a transaction will (or may) become valid in some
-future state, in which case you probably want to disable Tendermint's
+If there are cases in your application where a transaction may become invalid in some
+future state, you probably want to disable Tendermint's
 cache. You can do that by setting `[mempool] cache_size = 0` in the
 config.
 
@@ -168,14 +168,29 @@ In go:
 
 ```
 // tx is either "key=value" or just arbitrary bytes
-func (app *KVStoreApplication) DeliverTx(tx []byte) types.Result {
-  parts := strings.Split(string(tx), "=")
-  if len(parts) == 2 {
-    app.state.Set([]byte(parts[0]), []byte(parts[1]))
-  } else {
-    app.state.Set(tx, tx)
-  }
-  return types.OK
+func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+	var key, value []byte
+	parts := bytes.Split(req.Tx, []byte("="))
+	if len(parts) == 2 {
+		key, value = parts[0], parts[1]
+	} else {
+		key, value = req.Tx, req.Tx
+	}
+
+	app.state.db.Set(prefixKey(key), value)
+	app.state.Size += 1
+
+	events := []types.Event{
+		{
+			Type: "app",
+			Attributes: []cmn.KVPair{
+				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko")},
+				{Key: []byte("key"), Value: key},
+			},
+		},
+	}
+
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
 }
 ```
 
@@ -205,7 +220,7 @@ Once all processing of the block is complete, Tendermint sends the
 Commit request and blocks waiting for a response. While the mempool may
 run concurrently with block processing (the BeginBlock, DeliverTxs, and
 EndBlock), it is locked for the Commit request so that its state can be
-safely reset during Commit. This means the app _MUST NOT_ do any
+safely updated during Commit. This means the app _MUST NOT_ do any
 blocking communication with the mempool (ie. broadcast_tx) during
 Commit, or there will be deadlock. Note also that all remaining
 transactions in the mempool are replayed on the mempool connection
@@ -223,9 +238,14 @@ job of the [Handshake](#handshake).
 In go:
 
 ```
-func (app *KVStoreApplication) Commit() types.Result {
-  hash := app.state.Hash()
-  return types.NewResultOK(hash, "")
+func (app *KVStoreApplication) Commit() types.ResponseCommit {
+	// Using a memdb - just return the big endian size of the db
+	appHash := make([]byte, 8)
+	binary.PutVarint(appHash, app.state.Size)
+	app.state.AppHash = appHash
+	app.state.Height += 1
+	saveState(app.state)
+	return types.ResponseCommit{Data: appHash}
 }
 ```
 
@@ -256,12 +276,10 @@ In go:
 
 ```
 // Track the block hash and header information
-func (app *PersistentKVStoreApplication) BeginBlock(params types.RequestBeginBlock) {
-  // update latest block info
-  app.blockHeader = params.Header
-
-  // reset valset changes
-  app.changes = make([]*types.Validator, 0)
+func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+	// reset valset changes
+	app.ValUpdates = make([]types.ValidatorUpdate, 0)
+	return types.ResponseBeginBlock{}
 }
 ```
 
@@ -303,7 +321,7 @@ In go:
 ```
 // Update the validator set
 func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
-  return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
+	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 ```
 
@@ -347,43 +365,29 @@ Note: these query formats are subject to change!
 In go:
 
 ```
-    func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-      if reqQuery.Prove {
-        value, proof, exists := app.state.GetWithProof(reqQuery.Data)
-        resQuery.Index = -1 // TODO make Proof return index
-        resQuery.Key = reqQuery.Data
-        resQuery.Value = value
-        resQuery.Proof = proof
-        if exists {
-          resQuery.Log = "exists"
-        } else {
-          resQuery.Log = "does not exist"
-        }
-        return
-      } else {
-        index, value, exists := app.state.Get(reqQuery.Data)
-        resQuery.Index = int64(index)
-        resQuery.Value = value
-        if exists {
-          resQuery.Log = "exists"
-        } else {
-          resQuery.Log = "does not exist"
-        }
-        return
-      }
-    }
-    return
-  } else {
-    index, value, exists := app.state.Get(reqQuery.Data)
-    resQuery.Index = int64(index)
-    resQuery.Value = value
-    if exists {
-      resQuery.Log = "exists"
-    } else {
-      resQuery.Log = "does not exist"
-    }
-    return
-  }
+func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+	if reqQuery.Prove {
+		value := app.state.db.Get(prefixKey(reqQuery.Data))
+		resQuery.Index = -1 // TODO make Proof return index
+		resQuery.Key = reqQuery.Data
+		resQuery.Value = value
+		if value != nil {
+			resQuery.Log = "exists"
+		} else {
+			resQuery.Log = "does not exist"
+		}
+		return
+	} else {
+		resQuery.Key = reqQuery.Data
+		value := app.state.db.Get(prefixKey(reqQuery.Data))
+		resQuery.Value = value
+		if value != nil {
+			resQuery.Log = "exists"
+		} else {
+			resQuery.Log = "does not exist"
+		}
+		return
+	}
 }
 ```
 
@@ -439,7 +443,11 @@ In go:
 
 ```
 func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-  return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
+	return types.ResponseInfo{
+		Data:       fmt.Sprintf("{\"size\":%v}", app.state.Size),
+		Version:    version.ABCIVersion,
+		AppVersion: ProtocolVersion.Uint64(),
+	}
 }
 ```
 
@@ -463,13 +471,14 @@ In go:
 
 ```
 // Save the validators in the merkle tree
-func (app *PersistentKVStoreApplication) InitChain(params types.RequestInitChain) {
-  for _, v := range params.Validators {
-    r := app.updateValidator(v)
-    if r.IsErr() {
-      app.logger.Error("Error updating validators", "r", r)
-    }
-  }
+func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
+	for _, v := range req.Validators {
+		r := app.updateValidator(v)
+		if r.IsErr() {
+			app.logger.Error("Error updating validators", "r", r)
+		}
+	}
+	return types.ResponseInitChain{}
 }
 ```
 

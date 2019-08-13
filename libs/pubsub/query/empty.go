@@ -5,7 +5,7 @@ type Empty struct {
 }
 
 // Matches always returns true.
-func (Empty) Matches(tags map[string]string) bool {
+func (Empty) Matches(tags map[string][]string) bool {
 	return true
 }
 

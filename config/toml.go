@@ -79,7 +79,7 @@ moniker = "{{ .BaseConfig.Moniker }}"
 # If this node is many blocks behind the tip of the chain, FastSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
-fast_sync = {{ .BaseConfig.FastSync }}
+fast_sync = {{ .BaseConfig.FastSyncMode }}
 
 # Database backend: goleveldb | cleveldb | boltdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -192,14 +192,22 @@ max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
 # See https://github.com/tendermint/tendermint/issues/3435
 timeout_broadcast_tx_commit = "{{ .RPC.TimeoutBroadcastTxCommit }}"
 
-# The name of a file containing certificate that is used to create the HTTPS server.
+# Maximum size of request body, in bytes
+max_body_bytes = {{ .RPC.MaxBodyBytes }}
+
+# Maximum size of request header, in bytes
+max_header_bytes = {{ .RPC.MaxHeaderBytes }}
+
+# The path to a file containing certificate that is used to create the HTTPS server.
+# Migth be either absolute path or path related to tendermint's config directory.
 # If the certificate is signed by a certificate authority,
 # the certFile should be the concatenation of the server's certificate, any intermediates,
 # and the CA's certificate.
 # NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
 tls_cert_file = "{{ .RPC.TLSCertFile }}"
 
-# The name of a file containing matching private key that is used to create the HTTPS server.
+# The path to a file containing matching private key that is used to create the HTTPS server.
+# Migth be either absolute path or path related to tendermint's config directory.
 # NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
@@ -285,6 +293,18 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
+
+# Maximum size of a single transaction.
+# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
+max_tx_bytes = {{ .Mempool.MaxTxBytes }}
+
+##### fast sync configuration options #####
+[fastsync]
+
+# Fast Sync version to use:
+#   1) "v0" (default) - the legacy fast sync implementation
+#   2) "v1" - refactor of v0 version for better testability
+version = "{{ .FastSync.Version }}"
 
 ##### consensus configuration options #####
 [consensus]
