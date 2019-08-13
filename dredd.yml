@@ -4,7 +4,7 @@ hookfiles: build/contract_tests
 language: go
 require: null
 server: make localnet-start
-server-wait: 100
+server-wait: 30
 init: false
 custom: {}
 names: false

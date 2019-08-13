@@ -7,9 +7,6 @@ BINARY=/tendermint/${BINARY:-tendermint}
 ID=${ID:-0}
 LOG=${LOG:-tendermint.log}
 
-pwd
-ls -lah
-
 ##
 ## Assert linux binary
 ##
