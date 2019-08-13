@@ -56,6 +56,7 @@ func (rt *Routine) setMetrics(metrics *Metrics) {
 }
 
 func (rt *Routine) start() {
+	// what if we call baseService.start
 	rt.logger.Info(fmt.Sprintf("%s: run\n", rt.name))
 	starting := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))
 	if !starting {
@@ -78,7 +79,7 @@ func (rt *Routine) start() {
 					continue // wait for errors to be drainned
 				}
 				rt.logger.Info(fmt.Sprintf("%s: stopping\n", rt.name))
-				rt.stopped <- struct{}{}
+				close(rt.stopped)
 				rt.terminate(fmt.Errorf("stopped"))
 				return
 			}

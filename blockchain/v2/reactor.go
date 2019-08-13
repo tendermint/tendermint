@@ -8,6 +8,7 @@ import (
 )
 
 type timeCheck struct {
+	time time.Time
 }
 
 func schedulerHandle(event Event) (Events, error) {
@@ -31,10 +32,10 @@ func processorHandle(event Event) (Events, error) {
 }
 
 type Reactor struct {
-	demuxer       *demuxer
-	scheduler     *Routine
-	processor     *Routine
-	tickerStopped chan struct{}
+	demuxer   *demuxer
+	scheduler *Routine
+	processor *Routine
+	ticker    *time.Ticker
 }
 
 // nolint:unused
@@ -48,7 +49,7 @@ func (r *Reactor) Start() {
 	r.scheduler = newRoutine("scheduler", schedulerHandle)
 	r.processor = newRoutine("processor", processorHandle)
 	r.demuxer = newDemuxer(r.scheduler, r.processor)
-	r.tickerStopped = make(chan struct{})
+	r.ticker = time.NewTicker(1 * time.Second)
 
 	go r.scheduler.start()
 	go r.processor.start()
@@ -59,15 +60,8 @@ func (r *Reactor) Start() {
 	<-r.demuxer.ready()
 
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		for {
-			select {
-			case <-ticker.C:
-				r.demuxer.trySend(timeCheck{})
-			case <-r.tickerStopped:
-				fmt.Println("ticker stopped")
-				return
-			}
+		for t := range r.ticker.C {
+			r.demuxer.trySend(timeCheck{t})
 		}
 	}()
 }
@@ -80,7 +74,7 @@ func (r *Reactor) Wait() {
 func (r *Reactor) Stop() {
 	fmt.Println("reactor stopping")
 
-	r.tickerStopped <- struct{}{}
+	r.ticker.Stop()
 	r.demuxer.stop()
 	r.scheduler.stop()
 	r.processor.stop()

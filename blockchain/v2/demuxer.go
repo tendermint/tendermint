@@ -11,6 +11,8 @@ import (
 type scFull struct{}
 type pcFull struct{}
 
+const demuxerBufferSize = 10
+
 type demuxer struct {
 	input     chan Event
 	scheduler *Routine
@@ -25,7 +27,7 @@ type demuxer struct {
 
 func newDemuxer(scheduler *Routine, processor *Routine) *demuxer {
 	return &demuxer{
-		input:     make(chan Event, 10),
+		input:     make(chan Event, demuxerBufferSize),
 		scheduler: scheduler,
 		processor: processor,
 		stopped:   make(chan struct{}, 1),
