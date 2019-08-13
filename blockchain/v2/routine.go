@@ -14,6 +14,12 @@ import (
 
 type handleFunc = func(event Event) (Events, error)
 
+// Routines are a structure which model a finite state machine as serialized
+// stream of events processed by a handle function. This Routine structure
+// handles the concurrency and messaging guarantees. Events are sent via
+// `trySend` are handled by the `handle` function to produce an iterator
+// `next()`. Calling `close()` on a routine will conclude processing of all
+// sent events and produce `last()` event representing the terminal state.
 type Routine struct {
 	name     string
 	input    chan Event
@@ -56,7 +62,6 @@ func (rt *Routine) setMetrics(metrics *Metrics) {
 }
 
 func (rt *Routine) start() {
-	// what if we call baseService.start
 	rt.logger.Info(fmt.Sprintf("%s: run\n", rt.name))
 	starting := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))
 	if !starting {
