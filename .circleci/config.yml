@@ -373,30 +373,20 @@ jobs:
     steps:
       - checkout
       - run:
-          name: run localnet and exit on failure
+          name: Test RPC endpoints agsainst swagger documentation
           command: |
             set -x
             export PATH=~/.local/bin:$PATH
+
+            # install node 11.15 and dredd
             ./scripts/get_nodejs.sh
+
+            # build the binaries with a proper version of Go
             docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
+
+            # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
             go get github.com/snikch/goodman/cmd/goodman
             make contract-tests
-
-#    steps:
-#      - attach_workspace:
-#          at: /tmp/workspace
-#      - restore_cache:
-#          key: v4-pkg-cache
-#      - restore_cache:
-#          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-#      - checkout
-#      - setup_remote_docker:
-#          docker_layer_caching: true
-#      - run:
-#          name: RPC contract tests
-#          command: |
-#            export PATH=~/.local/bin:$PATH
-#            ./scripts/get_nodejs.sh && make contract-tests
 
 workflows:
   version: 2

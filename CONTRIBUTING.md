@@ -191,6 +191,7 @@ To test your changes you should install `nodejs` version `v11.15.*` and run:
 
 ```bash
 npm i -g dredd
+make build-linux build-contract-tests-hooks
 make contract-tests
 ``` 
 

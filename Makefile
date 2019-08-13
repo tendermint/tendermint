@@ -308,6 +308,7 @@ sentry-stop:
 build-slate:
 	bash scripts/slate.sh
 
+# Build hooks for dredd, to skip or add information on some steps
 build-contract-tests-hooks:
 ifeq ($(OS),Windows_NT)
 	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests.exe ./cmd/contract_tests
@@ -315,6 +316,8 @@ else
 	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests ./cmd/contract_tests
 endif
 
+# Run a nodejs tool to test endpoints against a localnet
+# The command takes care of starting and stopping the network
 # prerequisits: build-contract-tests-hooks build-linux
 # if the command runs from a container that does not support go, it can use the binaries produced by another container
 contract-tests:
