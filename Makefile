@@ -317,7 +317,7 @@ endif
 
 # prerequisits: build-contract-tests-hooks build-linux
 # if the command runs from a container that does not support go, it can use the binaries produced by another container
-contract-tests: build-linux build-contract-tests-hooks
+contract-tests:
 	dredd
 
 # To avoid unintended conflicts with file names, always add to .PHONY
