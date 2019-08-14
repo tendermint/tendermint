@@ -60,7 +60,7 @@ Some correct validators might have decided on *v* in *r*, and other correct vali
 
 
 * F3. Correct Flip-flopping (Back to the past): There are some precommit messages signed by (correct) validators for value *v* in  round *r*. Still, *v* is not decided upon, and all processes move on to the next round. Then correct validators (correctly) lock and decide a different value *v'* in some round *r' > r*. And the correct validators continue; there is no branching on the main chain.
-However, faulty validators may use the correct precommit messages from round *r* together with a posteriori generated faulty precommit messages for round *r* to forge a block for a value that was not decided on the main chain.
+However, faulty validators may use the correct precommit messages from round *r* together with a posteriori generated faulty precommit messages for round *r* to forge a block for a value that was not decided on the main chain (Fork-Lite).
 
 
 
