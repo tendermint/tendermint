@@ -113,7 +113,7 @@ The following table gives an overview of how the different attacks may affect di
 **Q:** Lite clients are more vulnerable than full nodes, because the former do only verify headers but do not execute transactions. What kind of certainty is gained by a full node that executes a transaction?
 
 As a full node verifies all transactions, it can only be
-contaminated by an attack, if the blockchain itself violates its invariant (one block per height), that is, in case of a fork that leads to branching.
+contaminated by an attack if the blockchain itself violates its invariant (one block per height), that is, in case of a fork that leads to branching.
 
 
 
