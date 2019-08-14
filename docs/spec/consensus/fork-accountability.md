@@ -56,7 +56,7 @@ In subsequent rounds, *p* only sends prevote messages for a value it had previou
 
 
 * F2. Faulty Flip-flopping (Amnesia): faulty validators precommit some value *v* in round *r* (value *v* is locked in round *r*) and then prevote for different value *v'* in higher round *r' > r* without previously correctly unlocking value *v*. In this case faulty processes "forget" that they have locked value *v* and prevote some other value in the following rounds.
-Some correct validators might have decided on *v* in *r*, and other correct validators decide on *v'* in *r'*. Here we can have branching on the main chain.
+Some correct validators might have decided on *v* in *r*, and other correct validators decide on *v'* in *r'*. Here we can have branching on the main chain (Fork-Full).
 
 
 * F3. Correct Flip-flopping (Back to the past): There are some precommit messages signed by (correct) validators for value *v* in  round *r*. Still, *v* is not decided upon, and all processes move on to the next round. Then correct validators (correctly) lock and decide a different value *v'* in some round *r' > r*. And the correct validators continue; there is no branching on the main chain.
