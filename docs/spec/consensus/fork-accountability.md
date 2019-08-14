@@ -33,7 +33,7 @@ We say that a fork is a case in which there are two commits for different block 
 
 As in this case we have two different blocks (both having the same right/no right to exist), a central system invariant (one block per height decided by correct validators) is violated. As full nodes are contaminated in this case, the contamination can spread also to lite clients. However, even without breaking this system invariant, lite clients can be subject to a fork:
 
-* Fork-Lite. All correct validators decide in the same block for height *h*, but faulty processes (validators or not), forge a different block for that height, in order to fool users (who use the lite client).
+* Fork-Lite. All correct validators decide on the same block for height *h*, but faulty processes (validators or not), forge a different block for that height, in order to fool users (who use the lite client).
 
 
 ## Fork scenarios
