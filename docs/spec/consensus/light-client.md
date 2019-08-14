@@ -102,7 +102,7 @@ The lite client communicates with a full node and learns new headers. The goal i
 
 To reason about the correctness, we may prove the following invariant.
 
-*Lite Client Invariant.*
+*Verification Condition: Lite Client Invariant.*
  For each lite client *l* and each header *h*:
 if *l* has set *trust(h) = true*,
   then validators that are correct until time *h.Header.bfttime + tp* have more than two thirds of the voting power in *h.Header.NextV*.
@@ -219,7 +219,7 @@ We further use the function ```signers(Commit)``` that returns the set of valida
     return (vps > max(1/3,trustlevel) * vp_all)
       // signing validators are more than a third in h1
   }
-  ```  
+
   *Remark*: Basic header validation must be done for *h2*.
 
   *Remark*: There are some sanity checks which are not in the code:
@@ -240,7 +240,7 @@ Towards Lite Client Completeness:
 - The check is successful if sufficiently many validators of *h1* are still validators in *h2* and signed *h2*.
 - If *h2.Header.height = h1.Header.height + 1*, and both headers were generated correctly, the test passes
 
-*Assumption*: We may need a Tendermint invariant stating that if *h2.Header.height = h1.Header.height + 1* then *signers(h2.Commit) \subseteq h1.Header.NextV*.
+*Verification Condition:* We may need a Tendermint invariant stating that if *h2.Header.height = h1.Header.height + 1* then *signers(h2.Commit) \subseteq h1.Header.NextV*.
 
 *Remark*: The variable *trustlevel* can be used if we believe that relying on one correct validator is not sufficient. However, in case of (frequent) changes in the validator set, the higher the *trustlevel* is chosen, the more unlikely it becomes that CheckSupport returns true for non-adjacent headers.
 
