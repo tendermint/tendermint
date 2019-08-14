@@ -12,12 +12,12 @@ import (
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite"
 	lclient "github.com/tendermint/tendermint/lite/client"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const (

@@ -2,15 +2,15 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // MaxTotalVotingPower - the maximum allowed total voting power.
@@ -121,7 +121,7 @@ func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	ratio := (diff + diffMax - 1) / diffMax
 	if diff > diffMax {
 		for _, val := range vals.Validators {
-			val.ProposerPriority = val.ProposerPriority / ratio
+			val.ProposerPriority /= ratio
 		}
 	}
 }
@@ -525,7 +525,7 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 // The 'allowDeletes' flag is set to false by NewValidatorSet() and to true by UpdateWithChangeSet().
 func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool) error {
 
-	if len(changes) <= 0 {
+	if len(changes) == 0 {
 		return nil
 	}
 
@@ -626,9 +626,10 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		if blockID.Equals(precommit.BlockID) {
 			talliedVotingPower += val.VotingPower
 		}
-
+		// else {
 		// It's OK that the BlockID doesn't match.  We include stray
 		// precommits to measure validator availability.
+		// }
 	}
 
 	if talliedVotingPower > vals.TotalVotingPower()*2/3 {
@@ -642,15 +643,8 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 
 // IsErrTooMuchChange
 func IsErrTooMuchChange(err error) bool {
-	switch err_ := err.(type) {
-	case cmn.Error:
-		_, ok := err_.Data().(errTooMuchChange)
-		return ok
-	case errTooMuchChange:
-		return true
-	default:
-		return false
-	}
+	_, ok := errors.Cause(err).(errTooMuchChange)
+	return ok
 }
 
 type errTooMuchChange struct {

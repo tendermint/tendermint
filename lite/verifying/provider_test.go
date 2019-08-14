@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite"
 	pks "github.com/tendermint/tendermint/lite/internal/privkeys"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 func TestProviderValidPath(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -81,7 +82,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	logger.Info("Constructing verifying provider...")
 	cert, err := verifying.NewProvider(chainID, home, node, logger, cacheSize, verifying.TrustOptions{})
 	if err != nil {
-		return cmn.ErrorWrap(err, "constructing verifying provider")
+		return errors.Wrap(err, "constructing verifying provider")
 	}
 	cert.SetLogger(logger)
 	sc := proxy.SecureClient(node, cert)
@@ -89,7 +90,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	logger.Info("Starting proxy...")
 	err = proxy.StartProxy(sc, listenAddr, logger, maxOpenConnections)
 	if err != nil {
-		return cmn.ErrorWrap(err, "starting proxy")
+		return errors.Wrap(err, "starting proxy")
 	}
 
 	// Run forever
