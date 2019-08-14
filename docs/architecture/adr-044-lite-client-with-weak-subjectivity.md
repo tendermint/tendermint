@@ -114,7 +114,7 @@ minimize network usage.
 
 ## Status
 
-Draft.
+Accepted.
 
 ## Consequences
 
