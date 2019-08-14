@@ -8,7 +8,7 @@ In order to make sure that full nodes have the incentive to follow the protocol,
 
 1) The lite clients needs a method to verify header it obtains from full nodes -- addressed in this document)
 2) Detect conflicts/forged headers -- when the verification method of this document fails, then a conflict is detected. However, this document does not address to do this in an efficient way, or with special attacks in mind. This will be treated in fork accountability.
-3) How can evidence for conflicts be reported, and to whom.
+3) How can evidence for conflicts be reported, and to whom. This will be treated in a future specification.
 
 ## Problem statement
 
@@ -185,7 +185,7 @@ We consider the following set-up:
   * there might be optimizations; a lite client may not need to call *Commit(k)*, for a height *k* for which it already has a signed header it trusts.
 
 **Auxiliary Functions.** We will use the  function ```votingpower_in(V1,V2)``` to compute the voting power the validators in set V1 have according to their voting power in set V2;
- ```votingpower_in(V,V)``` returns the total voting power in V.
+we will write ```totalVotingPower(V)``` for ```votingpower_in(V,V)```, which returns the total voting power in V.
 We further use the function ```signers(Commit)``` that returns the set of validators that signed the Commit.
 
 **CheckSupport.** The following function checks whether we can trust the header h2 based on header h1 following the trusting period method.
@@ -294,7 +294,9 @@ With Bisection, a faulty full node could stall a lite client by creating a long 
 
 ### The case *h2.Header.height < h1.Header.height*
 
-We iterate down the heights and check the hashes in each step.
+In the use case where someone tells the lite client that application data that is relevant for it can be read in the block of height *k* and the lite client trusts a more recent header, we can use the hashes to verify headers "down the chain." That is, we iterate down the heights and check the hashes in each step.
+
+*Remark.* For the case were the lite client trusts two headers *i* and *j* with *i < k < j*, we should discuss/experiment whether the forward or the backward method is more effective.
 
 ```go
 func Backwards(h1,h2) bool {
