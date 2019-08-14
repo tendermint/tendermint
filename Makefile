@@ -319,7 +319,8 @@ endif
 # Run a nodejs tool to test endpoints against a localnet
 # The command takes care of starting and stopping the network
 # prerequisits: build-contract-tests-hooks build-linux
-# if the command runs from a container that does not support go, it can use the binaries produced by another container
+# the two build commands were not added to let this command run from generic containers or machines.
+# The binaries should be built beforehand
 contract-tests:
 	dredd
 
