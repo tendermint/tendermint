@@ -160,7 +160,7 @@ Consequences:
 * It extends also to the lite clients,
 * For both we need a detection and recovery mechanism.
 
-####Scenario 2: Equivocation to a lite client (LCS)
+#### Scenario 2: Equivocation to a lite client (LCS)
 
 
 Validators:
