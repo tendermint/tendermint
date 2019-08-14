@@ -125,7 +125,7 @@ contaminated by an attack if the blockchain itself violates its invariant (one b
 In case of equivocation based attacks, faulty validators sign multiple votes (prevote and/or precommit) in the same
 round of some height. This attack can be executed on both full nodes and lite clients. It requires more than 1/3 of voting power to be executed.
 
-####Scenario 1: Equivocation on the main chain
+#### Scenario 1: Equivocation on the main chain
 
 Validators:
 * CA - a set of correct validators with less than 1/3 of the voting power
