@@ -37,7 +37,9 @@ As in this case we have two different blocks (both having the same right/no righ
 * Fork-Lite. All correct validators decide on the same block for height *h*, but faulty processes (validators or not), forge a different block for that height, in order to fool users (who use the lite client).
 
 
-## Fork scenarios
+## Attack scenarios
+
+### On-chain attacks
 
 ### Equivocation (one round)
 
