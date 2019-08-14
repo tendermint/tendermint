@@ -195,7 +195,7 @@ We further use the function ```signers(Commit)``` that returns the set of valida
     if h1.Header.bfttime + tp < now { // Observation 1
       return false // old header was once trusted but it is expired
     }  
-    vp_all := votingpower_in(h1.Header.NextV,h1.Header.NextV)
+    vp_all := totalVotingPower(h1.Header.NextV)
       // total sum of voting power in h1
 
     if h2.Header.height == h1.Header.height + 1 {
