@@ -196,7 +196,7 @@ We further use the function ```signers(Commit)``` that returns the set of valida
       return false // old header was once trusted but it is expired
     }  
     vp_all := totalVotingPower(h1.Header.NextV)
-      // total sum of voting power in h1
+      // total sum of voting power of validators in h2
 
     if h2.Header.height == h1.Header.height + 1 {
       // specific check for adjacent headers; everything must be
