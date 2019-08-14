@@ -6,6 +6,7 @@ Tendermint consensus guarantees the specifications
 * agreement
 * validity, and
 * termination,
+
 if the
 faulty validators have at most 1/3 of voting power in the current validator set. In the case where this assumption
 does not hold, each of the specification may be violated.
