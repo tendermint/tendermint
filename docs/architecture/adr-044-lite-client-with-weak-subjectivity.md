@@ -48,10 +48,10 @@ client if they have two-thirds of the private keys from the last root-of-trust.
 
 ### The Weak Subjectivity Interface
 
-Add the weak subjectivity interface for when new nodes connect to the network
-or when a node that has been offline for longer than the unbonding period
-connects to the network. Specifically, the node needs to initialize the
-following structure before syncing from user input:
+Add the weak subjectivity interface for when a new light client connect to the
+network or when a light client that has been offline for longer than the
+unbonding period connects to the network. Specifically, the node needs to
+initialize the following structure before syncing from user input:
 
 ```
 type TrustOptions struct {
@@ -95,8 +95,8 @@ headers to come into synchronization.
 
 The Bisection algorithm proceeds in the following fashion. The client downloads
 and verifies the full block header for `TrustHeight` and then  fetches
-`LastestHeight` blocker header.  The client then verifies the `LatestHeight`
-header.  Finally the client attempts to verify the `LatestHeight` header with
+`LastestHeight` blocker header. The client then verifies the `LatestHeight`
+header. Finally the client attempts to verify the `LatestHeight` header with
 voting powers taken from `NextValdiatorSet` in the `TrustHeight` header. This
 verification will succeed if the validators from `TrustHeight` still have > 2/3
 +1 of voting power in the `LatestHeight`. If this succeeds, the client is fully
@@ -120,6 +120,11 @@ Draft.
 
 ### Positive
 
+* light client which is safe to use (it can go offline, but not for too long)
+
 ### Negative
+
+* social consensus can be prone to errors (for cases where a new light client
+  joins a network or it has been offline for too long)
 
 ### Neutral
