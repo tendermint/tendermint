@@ -6,17 +6,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var _ PersistentProvider = (*multiProvider)(nil)
-
 // multiProvider allows you to place one or more caches in front of a source
-// Provider.  It runs through them in order until a match is found.
+// Provider. It runs through them in order until a match is found.
 type multiProvider struct {
 	logger    log.Logger
 	providers []PersistentProvider
 }
 
 // NewMultiProvider returns a new provider which wraps multiple other providers.
-func NewMultiProvider(providers ...PersistentProvider) *multiProvider {
+func NewMultiProvider(providers ...PersistentProvider) PersistentProvider {
 	return &multiProvider{
 		logger:    log.NewNopLogger(),
 		providers: providers,
@@ -47,8 +45,8 @@ func (mc *multiProvider) SaveFullCommit(fc FullCommit) (err error) {
 // Returns the first error encountered.
 func (mc *multiProvider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (fc FullCommit, err error) {
 	for _, p := range mc.providers {
-		var fc_ FullCommit
-		fc_, err = p.LatestFullCommit(chainID, minHeight, maxHeight)
+		var pfc FullCommit
+		pfc, err = p.LatestFullCommit(chainID, minHeight, maxHeight)
 		if lerr.IsErrCommitNotFound(err) {
 			err = nil
 			continue
@@ -56,18 +54,20 @@ func (mc *multiProvider) LatestFullCommit(chainID string, minHeight, maxHeight i
 			return
 		}
 		if fc == (FullCommit{}) {
-			fc = fc_
-		} else if fc_.Height() > fc.Height() {
-			fc = fc_
+			fc = pfc
+		} else if pfc.Height() > fc.Height() {
+			fc = pfc
 		}
 		if fc.Height() == maxHeight {
 			return
 		}
 	}
+
 	if fc == (FullCommit{}) {
 		err = lerr.ErrCommitNotFound()
 		return
 	}
+
 	return
 }
 
@@ -76,10 +76,11 @@ func (mc *multiProvider) LatestFullCommit(chainID string, minHeight, maxHeight i
 func (mc *multiProvider) ValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
 	for _, p := range mc.providers {
 		valset, err = p.ValidatorSet(chainID, height)
-		if err == nil {
-			// TODO Log unexpected types of errors.
-			return valset, nil
+		if lerr.IsErrUnknownValidators(err) {
+			err = nil
+			continue
 		}
+		return
 	}
 	return nil, lerr.ErrUnknownValidators(chainID, height)
 }
