@@ -1,6 +1,3 @@
-/*
-Package verifying
-*/
 package verifying
 
 import (
@@ -29,10 +26,20 @@ const (
 	sizeOfPendingMap = 1024
 )
 
-// TrustOptions are the trust parameters.
+// TrustOptions are the trust parameters needed for when a new light client
+// connects to the network or when a light client that has been offline for
+// longer than the unbonding period connects to the network.
+//
+// The expectation is the user will get this information from a trusted source
+// like a validator, a friend, or a secure website. A more user friendly
+// solution with trust tradeoffs is that we establish an https based protocol
+// with a default end point that populates this information. Also an on-chain
+// registry of roots-of-trust (e.g. on the Cosmos Hub) seems likely in the
+// future.
 type TrustOptions struct {
 	// Required: only trust commits up to this old.
-	// Should be equal to the unbonding period.
+	// Should be equal to the unbonding period minus a configurable evidence
+	// submission synchrony bound.
 	TrustPeriod time.Duration `json:"trust-period"`
 
 	// Option 1: TrustHeight and TrustHash can both be provided

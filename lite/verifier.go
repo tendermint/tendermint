@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// verifier lets us check the validity of SignedHeaders at height or later,
+// verifier lets us check the validity of SignedHeaders at the given height or later,
 // requiring sufficient votes (> 2/3) from the given valset. To verify blocks
 // produced by a blockchain with mutable validator sets, use the
 // DynamicVerifier.

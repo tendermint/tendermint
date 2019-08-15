@@ -10,7 +10,7 @@ import (
 
 // FullCommit contains a SignedHeader (the block's header and a commit that
 // signs it), the validator set which signed the commit, and the next validator
-// set. 
+// set.
 // The next validator set (which is proven from the block header) allows us to
 // revert to block-by-block updating of lite Verifier's latest validator set,
 // even in the face of arbitrarily large power changes.
