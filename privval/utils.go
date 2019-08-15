@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -13,15 +15,14 @@ import (
 // report that a connection timeout occurred. This detects both fundamental
 // network timeouts, as well as ErrConnTimeout errors.
 func IsConnTimeout(err error) bool {
-	if cmnErr, ok := err.(cmn.Error); ok {
-		if cmnErr.Data() == ErrConnectionTimeout {
-			return true
-		}
-	}
-	if _, ok := err.(timeoutError); ok {
+	switch errors.Cause(err).(type) {
+	case EndpointTimeoutError:
 		return true
+	case timeoutError:
+		return true
+	default:
+		return false
 	}
-	return false
 }
 
 // NewSignerListener creates a new SignerListenerEndpoint using the corresponding listen address
