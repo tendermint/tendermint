@@ -260,7 +260,7 @@ func TestConcurrentProvider(t *testing.T) {
 	require.NoError(err)
 	vp, _ := NewProvider(chainID, trust, source)
 	vp.SetLogger(log.TestingLogger())
-	cp := lite.NewConcurrentUpdatingProvider(vp)
+	cp := lite.NewConcurrentProvider(vp)
 
 	err = source.SaveFullCommit(fcz[7])
 	require.Nil(err, "%+v", err)
