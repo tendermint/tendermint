@@ -105,12 +105,21 @@ executed.
 
 The Client tries to download the block at the mid-point block between
 `LatestHeight` and `TrustHeight` and attempts that same algorithm as above
-using `MidPointHeight` instead of `LatestHeight`. In the case the of failure,
+using `MidPointHeight` instead of `LatestHeight` and a different threshold -
+1/3 +1 of voting power for *non-adjacent headers*. In the case the of failure,
 recursively perform the `MidPoint` verification until success then start over
 with an updated `NextValidatorSet` and `TrustHeight`.
 
-An optimal client will cache headers from previous iterations of recursion to
-minimize network usage.
+If the client encounters a forged header, it should submit the header along
+with some other intermediate headers as the evidence of misbehavior to other
+full nodes. After that, it can retry the bisection using another full node. An
+optimal client will cache trusted headers from the previous run to minimize
+network usage.
+
+---
+
+Check out the formal specification
+[here](https://github.com/tendermint/tendermint/blob/master/docs/spec/consensus/light-client.md).
 
 ## Status
 
@@ -124,7 +133,9 @@ Accepted.
 
 ### Negative
 
-* social consensus can be prone to errors (for cases where a new light client
-  joins a network or it has been offline for too long)
+* complexity of bisection
 
 ### Neutral
+
+* social consensus can be prone to errors (for cases where a new light client
+  joins a network or it has been offline for too long)
