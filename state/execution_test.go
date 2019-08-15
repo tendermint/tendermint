@@ -2,7 +2,6 @@ package state_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -68,7 +67,7 @@ func TestRevertBlock(t *testing.T) {
 	require.Nil(t, err)
 
 	revertedState, _ := blockExec.RevertBlock(state2, block2, block1)
-	require.True(t, state1.Equals(revertedState), fmt.Sprintf("Expected:\n %v\n\nActual:\n%v", state1, revertedState))
+	require.True(t, state1.Equals(revertedState), "Expected:\n%v\n\nActual:\n%v", state1, revertedState)
 
 	// TODO: check changes in ValSet and ConsensusParams
 }
