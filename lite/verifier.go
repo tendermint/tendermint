@@ -10,53 +10,43 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var _ Verifier = (*BaseVerifier)(nil)
-
-// BaseVerifier lets us check the validity of SignedHeaders at height or
-// later, requiring sufficient votes (> 2/3) from the given valset.
-// To verify blocks produced by a blockchain with mutable validator sets,
-// use the DynamicVerifier.
-//
-// NOTE: Verifier as a supported interface is deprecated, it may be reasonable
-// to rename this to simply "verifier" and to remove that interface
-// declaration.  See also Provider, which is not a Verifier, but is a
-// Provider.
-type BaseVerifier struct {
+// verifier lets us check the validity of SignedHeaders at height or later,
+// requiring sufficient votes (> 2/3) from the given valset. To verify blocks
+// produced by a blockchain with mutable validator sets, use the
+// DynamicVerifier.
+type verifier struct {
 	chainID string
 	height  int64
 	valset  *types.ValidatorSet
 }
 
-// NewBaseVerifier returns a new Verifier initialized with a validator set at
+// NewVerifier returns a new Verifier initialized with a validator set at
 // some height.
-func NewBaseVerifier(chainID string, height int64, valset *types.ValidatorSet) *BaseVerifier {
+func NewVerifier(chainID string, height int64, valset *types.ValidatorSet) *verifier {
 	if valset.IsNilOrEmpty() {
-		panic("NewBaseVerifier requires a valid valset")
+		panic("NewVerifier requires a valid valset")
 	}
-	return &BaseVerifier{
+	return &verifier{
 		chainID: chainID,
 		height:  height,
 		valset:  valset,
 	}
 }
 
-// Implements Verifier.
-func (bv *BaseVerifier) ChainID() string {
+func (bv *verifier) ChainID() string {
 	return bv.chainID
 }
 
-// Implements Verifier.
-func (bv *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
-
+func (bv *verifier) Verify(signedHeader types.SignedHeader) error {
 	// We can't verify commits for a different chain.
 	if signedHeader.ChainID != bv.chainID {
-		return cmn.NewError("BaseVerifier chainID is %v, cannot verify chainID %v",
+		return cmn.NewError("verifier chainID is %v, cannot verify chainID %v",
 			bv.chainID, signedHeader.ChainID)
 	}
 
 	// We can't verify commits older than bv.height.
 	if signedHeader.Height < bv.height {
-		return cmn.NewError("BaseVerifier height is %v, cannot verify height %v",
+		return cmn.NewError("verifier height is %v, cannot verify height %v",
 			bv.height, signedHeader.Height)
 	}
 

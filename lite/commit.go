@@ -10,9 +10,10 @@ import (
 
 // FullCommit contains a SignedHeader (the block's header and a commit that
 // signs it), the validator set which signed the commit, and the next validator
-// set. The next validator set (which is proven from the block header) allows
-// us to revert to block-by-block updating of lite Verifier's latest validator
-// set, even in the face of arbitrarily large power changes.
+// set. 
+// The next validator set (which is proven from the block header) allows us to
+// revert to block-by-block updating of lite Verifier's latest validator set,
+// even in the face of arbitrarily large power changes.
 type FullCommit struct {
 	SignedHeader   types.SignedHeader  `json:"signed_header"`
 	Validators     *types.ValidatorSet `json:"validator_set"`
@@ -34,22 +35,22 @@ func NewFullCommit(signedHeader types.SignedHeader, valset, nextValset *types.Va
 // commit!
 func (fc FullCommit) ValidateFull(chainID string) error {
 	if fc.Validators.Size() == 0 {
-		return errors.New("empty FullCommit.Validators")
+		return errors.New("empty Validators")
 	}
 
 	if !bytes.Equal(fc.SignedHeader.ValidatorsHash, fc.Validators.Hash()) {
-		return fmt.Errorf("header has ValidatorsHash %X but valset hash is %X",
+		return fmt.Errorf("header has ValidatorsHash %X, but valset hash is %X",
 			fc.SignedHeader.ValidatorsHash,
 			fc.Validators.Hash(),
 		)
 	}
 
 	if fc.NextValidators.Size() == 0 {
-		return errors.New("empty FullCommit.NextValidators")
+		return errors.New("empty NextValidators")
 	}
 
 	if !bytes.Equal(fc.SignedHeader.NextValidatorsHash, fc.NextValidators.Hash()) {
-		return fmt.Errorf("header has next ValidatorsHash %X but next valset hash is %X",
+		return fmt.Errorf("header has next ValidatorsHash %X, but next valset hash is %X",
 			fc.SignedHeader.NextValidatorsHash,
 			fc.NextValidators.Hash(),
 		)

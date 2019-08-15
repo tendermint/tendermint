@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestBaseVerifier(t *testing.T) {
+func TestVerifier(t *testing.T) {
 	assert := assert.New(t)
 
 	keys := pks.GenPrivKeys(4)
@@ -18,7 +18,7 @@ func TestBaseVerifier(t *testing.T) {
 	vals := keys.ToValidators(20, 10)
 	// and a Verifier based on our known set
 	chainID := "test-static"
-	cert := NewBaseVerifier(chainID, 2, vals)
+	cert := NewVerifier(chainID, 2, vals)
 
 	cases := []struct {
 		keys        pks.PrivKeys

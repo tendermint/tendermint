@@ -42,13 +42,13 @@ ValidatorSets.
 
 Verifier
 
-A Verifier validates a new SignedHeader given the currently known state. There
-are two different types of Verifiers provided.
+ Verifier validates a new SignedHeader given the currently known state. There
+re two different types of Verifiers provided.
 
-BaseVerifier - given a validator set and a height, this Verifier verifies
-that > 2/3 of the voting power of the given validator set had signed the
-SignedHeader, and that the SignedHeader was to be signed by the exact given
-validator set, and that the height of the commit is at least height (or
+erifier - given a validator set and a height, this Verifier verifies
+hat > 2/3 of the voting power of the given validator set had signed the
+ignedHeader, and that the SignedHeader was to be signed by the exact given
+alidator set, and that the height of the commit is at least height (or
 greater).
 
 DynamicVerifier - this Verifier implements an auto-update and persistence
