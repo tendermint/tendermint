@@ -9,8 +9,9 @@ import (
 // multiProvider allows you to place one or more caches in front of a source
 // Provider. It runs through them in order until a match is found.
 type multiProvider struct {
-	logger    log.Logger
 	providers []PersistentProvider
+
+	logger log.Logger
 }
 
 // NewMultiProvider returns a new provider which wraps multiple other providers.
