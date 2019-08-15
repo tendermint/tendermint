@@ -257,6 +257,22 @@ func (b *Block) StringShort() string {
 	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
+// Equals returns whether two blocks are equal. Useful for testing
+func (b *Block) Equals(b2 *Block) bool {
+	if b2 == nil {
+		return false
+	}
+	bz1, err := b.Marshal()
+	if err != nil {
+		return false
+	}
+	bz2, err := b2.Marshal()
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(bz1, bz2)
+}
+
 //-----------------------------------------------------------
 // These methods are for Protobuf Compatibility
 

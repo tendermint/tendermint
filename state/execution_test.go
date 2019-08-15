@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -45,6 +46,31 @@ func TestApplyBlock(t *testing.T) {
 	require.Nil(t, err)
 
 	// TODO check state and mempool
+}
+
+func TestRevertBlock(t *testing.T) {
+	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	state, stateDB, privVals := makeState(3, 1)
+
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
+		mock.Mempool{}, sm.MockEvidencePool{})
+
+	//nolint:ineffassign
+	state1, block1, _, commit, err := makeAndCommitGoodBlock(state, 1, &types.Commit{}, state.Validators.GetProposer().Address, blockExec, privVals, nil)
+	require.Nil(t, err)
+
+	state2, block2, _, _, err := makeAndCommitGoodBlock(state1, 2, commit, state1.Validators.GetProposer().Address, blockExec, privVals, nil)
+	require.Nil(t, err)
+
+	revertedState, _ := blockExec.RevertBlock(state2, block2, block1)
+	require.True(t, state1.Equals(revertedState), fmt.Sprintf("Expected:\n %v\n\nActual:\n%v", state1, revertedState))
+
+	// TODO: check changes in ValSet and ConsensusParams
 }
 
 // TestBeginBlockValidators ensures we send absent validators list.

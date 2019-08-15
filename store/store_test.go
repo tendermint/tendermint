@@ -29,7 +29,7 @@ type cleanupFunc func()
 
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
-	commitSigs := []*types.CommitSig{{Height: height, Timestamp: timestamp}}
+	commitSigs := []*types.CommitSig{{Type: types.PrecommitType, Height: height, Timestamp: timestamp}}
 	return types.NewCommit(types.BlockID{}, commitSigs)
 }
 
@@ -319,6 +319,56 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 				"erased the commit in the DB hence we should get back a nil commit")
 		}
 	}
+}
+
+func TestRevertBlock(t *testing.T) {
+	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
+	defer cleanup()
+	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
+
+	// Create and Save first block
+	block1 := makeBlock(1, state, &types.Commit{})
+	partset1 := block1.MakePartSet(2)
+	seenCommit1 := makeTestCommit(1, tmtime.Now())
+
+	bs.SaveBlock(block1, partset1, seenCommit1)
+
+	// Sanity check: Loading first block returns correct value
+	recovered := bs.LoadBlock(1)
+	recovered.Data.Hash()
+	require.True(t, block1.Equals(recovered), fmt.Sprintf("Expected:\n%v\n\nActual:\n%v", block1, recovered))
+
+	// Create and save second block
+	header2 := types.Header{
+		Height:         2,
+		NumTxs:         100,
+		ChainID:        "block_test",
+		Time:           tmtime.Now(),
+		LastCommitHash: seenCommit1.Hash(),
+	}
+	block2 := newBlock(header2, seenCommit1)
+	partSet2 := block2.MakePartSet(2)
+	seenCommit2 := makeTestCommit(2, tmtime.Now())
+
+	bs.SaveBlock(block2, partSet2, seenCommit2)
+
+	// Check height is updated correctly
+	height := bs.Height()
+	require.Equal(t, int64(2), height)
+
+	// Revert latest block: block2
+	b2, b1 := bs.RevertBlock()
+
+	// Check height updated correctly
+	height = bs.Height()
+	require.Equal(t, int64(1), height)
+
+	b2.Data.Hash()
+	b1.Data.Hash()
+
+	// Check returned blocks are correct
+	require.True(t, block2.Equals(b2), "Expected:\n%v\n\nActual:%v\n", block2, b2)
+	require.True(t, block1.Equals(b1), "Expected:\n%v\nActual:%v\n", block1, b1)
 }
 
 func TestLoadBlockPart(t *testing.T) {

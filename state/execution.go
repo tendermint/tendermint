@@ -179,6 +179,25 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	return state, nil
 }
 
+// RevertBlock takes in a reverted block and the new latest block and returns the state
+// to its previous State before reverted block got applied
+// reverted block must be the LastBlockHeight of current state or will return error
+// Will not revert changes to mempool or evpool
+func (blockExec *BlockExecutor) RevertBlock(state State, reverted, newHead *types.Block) (State, error) {
+	if reverted.Header.Height != state.LastBlockHeight {
+		return state, fmt.Errorf("Can only revert latest block. Expected reverted block %d, got %d", state.LastBlockHeight, reverted.Header.Height)
+	}
+	prevState := blockExec.revertState(state, reverted, newHead)
+	// revert state to previous version
+	SaveState(blockExec.db, prevState)
+	// delete peripheral state info for reverted height
+	oldHeight := reverted.Header.Height
+	deleteABCIResponses(blockExec.db, oldHeight)
+	deleteConsensusParamsInfo(blockExec.db, oldHeight+1)
+	deleteValidatorsInfo(blockExec.db, oldHeight+2)
+	return prevState, nil
+}
+
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
 // mempool.
 // It returns the result of calling abci.Commit (the AppHash), and an error.
@@ -442,23 +461,37 @@ func updateState(
 	}, nil
 }
 
-func revertState(
+func (blockExec *BlockExecutor) revertState(
 	state State,
 	reverted *types.Block,
 	newHead *types.Block,
 ) State {
-	var lastValidators *types.ValidatorSet
+
+	lastValidatorsInfo := loadValidatorsInfo(blockExec.db, state.LastBlockHeight-1)
 	lastValidators, _ := LoadValidators(blockExec.db, lastValidatorsInfo.LastHeightChanged)
+	lastHeightValsChanged := lastValidatorsInfo.LastHeightChanged
+
+	lastConsParamsInfo := loadConsensusParamsInfo(blockExec.db, state.LastBlockHeight-1)
+	consParams, _ := LoadConsensusParams(blockExec.db, lastConsParamsInfo.LastHeightChanged)
+	lastHeightConsChanged := lastConsParamsInfo.LastHeightChanged
+
+	abciResponses, _ := LoadABCIResponses(blockExec.db, state.LastBlockHeight-1)
+
 	return State{
-		Version:          state.Version,
-		ChainID:          state.ChainID,
-		LastBlockHeight:  state.LastBlockHeight - 1,
-		LastBlockTotalTx: state.LastBlockTotalTx - len(reverted.Data.Txs),
-		LastBlockID:      reverted.Header.LastBlockID,
-		LastBlockTime:    newHead.Header.LastBlockTime,
-		NextValidators:   state.Validators.Copy(),
-		Validators:       state.LastValidators.Copy(),
-		LastValidators:   lastValidators.Copy(),
+		Version:                          state.Version,
+		ChainID:                          state.ChainID,
+		LastBlockHeight:                  state.LastBlockHeight - 1,
+		LastBlockTotalTx:                 state.LastBlockTotalTx - int64(len(reverted.Data.Txs)),
+		LastBlockID:                      reverted.Header.LastBlockID,
+		LastBlockTime:                    newHead.Header.Time,
+		NextValidators:                   state.Validators.Copy(),
+		Validators:                       state.LastValidators.Copy(),
+		LastValidators:                   lastValidators.Copy(),
+		LastHeightValidatorsChanged:      lastHeightValsChanged,
+		ConsensusParams:                  consParams,
+		LastHeightConsensusParamsChanged: lastHeightConsChanged,
+		LastResultsHash:                  abciResponses.ResultsHash(),
+		AppHash:                          reverted.Header.AppHash,
 	}
 }
 

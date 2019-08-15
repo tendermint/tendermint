@@ -40,33 +40,33 @@ func makeAndCommitGoodBlock(
 	proposerAddr []byte,
 	blockExec *sm.BlockExecutor,
 	privVals map[string]types.PrivValidator,
-	evidence []types.Evidence) (sm.State, types.BlockID, *types.Commit, error) {
+	evidence []types.Evidence) (sm.State, *types.Block, types.BlockID, *types.Commit, error) {
 	// A good block passes
-	state, blockID, err := makeAndApplyGoodBlock(state, height, lastCommit, proposerAddr, blockExec, evidence)
+	state, block, blockID, err := makeAndApplyGoodBlock(state, height, lastCommit, proposerAddr, blockExec, evidence)
 	if err != nil {
-		return state, types.BlockID{}, nil, err
+		return state, nil, types.BlockID{}, nil, err
 	}
 
 	// Simulate a lastCommit for this block from all validators for the next height
 	commit, err := makeValidCommit(height, blockID, state.Validators, privVals)
 	if err != nil {
-		return state, types.BlockID{}, nil, err
+		return state, nil, types.BlockID{}, nil, err
 	}
-	return state, blockID, commit, nil
+	return state, block, blockID, commit, nil
 }
 
 func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
-	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, error) {
+	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, *types.Block, types.BlockID, error) {
 	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 	if err := blockExec.ValidateBlock(state, block); err != nil {
-		return state, types.BlockID{}, err
+		return state, nil, types.BlockID{}, err
 	}
 	blockID := types.BlockID{Hash: block.Hash(), PartsHeader: types.PartSetHeader{}}
 	state, err := blockExec.ApplyBlock(state, blockID, block)
 	if err != nil {
-		return state, types.BlockID{}, err
+		return state, nil, types.BlockID{}, err
 	}
-	return state, blockID, nil
+	return state, block, blockID, nil
 }
 
 func makeValidCommit(height int64, blockID types.BlockID, vals *types.ValidatorSet, privVals map[string]types.PrivValidator) (*types.Commit, error) {

@@ -170,6 +170,12 @@ func saveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
 	db.SetSync(calcABCIResponsesKey(height), abciResponses.Bytes())
 }
 
+// DeleteABCIResponses should delete previously persisted ABCIResponses from database.
+// Should only be called by RevertBlock
+fund deleteABCIResponses(db dbm.DB, height int64) {
+	db.DeleteSync(calcABCIResponsesKey(height))
+}
+
 //-----------------------------------------------------------------------------
 
 // ValidatorsInfo represents the latest validator set, or the last height it changed
@@ -261,6 +267,12 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 	db.Set(calcValidatorsKey(height), valInfo.Bytes())
 }
 
+// DeleteValidatorsInfp should delete previously persisted ValidatorsInfo from database.
+// Should only be called by RevertBlock
+fund deleteABCIResponses(db dbm.DB, height int64) {
+	db.DeleteSync(calcValidatorsKey(height))
+}
+
 //-----------------------------------------------------------------------------
 
 // ConsensusParamsInfo represents the latest consensus params, or the last height it changed
@@ -330,4 +342,10 @@ func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params t
 		paramsInfo.ConsensusParams = params
 	}
 	db.Set(calcConsensusParamsKey(nextHeight), paramsInfo.Bytes())
+}
+
+// DeleteConsensusParamsInfo should delete previously persisted ConsesnsusParamsInfo from database.
+// Should only be called by RevertBlock
+fund deleteABCIResponses(db dbm.DB, nextHeight int64) {
+	db.DeleteSync(calcConensusParamsKey(nextHeight))
 }

@@ -210,7 +210,7 @@ func (bs *BlockStore) RevertBlock() (reverted *types.Block, newHead *types.Block
 
 	// Delete block meta
 	blockMeta := bs.LoadBlockMeta(latest)
-	blockID = blockMeta.BlockID
+	blockID := blockMeta.BlockID
 	bs.db.Delete(calcBlockMetaKey(latest))
 
 	// Delete block parts
@@ -221,8 +221,8 @@ func (bs *BlockStore) RevertBlock() (reverted *types.Block, newHead *types.Block
 	// Delete block commit
 	bs.db.Delete(calcBlockCommitKey(latest - 1))
 
-	// Update BlockStateStateJSON descriptor
-	BlockStateStateJSON{Height: latest - 1}.Save(bs.db)
+	// Update BlockStoreStateJSON descriptor
+	BlockStoreStateJSON{Height: latest - 1}.Save(bs.db)
 
 	// Update height
 	bs.mtx.Lock()
@@ -231,6 +231,7 @@ func (bs *BlockStore) RevertBlock() (reverted *types.Block, newHead *types.Block
 
 	// Flush
 	bs.db.SetSync(nil, nil)
+	return
 
 }
 
@@ -259,6 +260,11 @@ var blockStoreKey = []byte("blockStore")
 // BlockStoreStateJSON is the block store state JSON structure.
 type BlockStoreStateJSON struct {
 	Height int64 `json:"height"`
+}
+
+// Returns blockStoreKey for testing purposes
+func BlockStoreKey() []byte {
+	return blockStoreKey
 }
 
 // Save persists the blockStore state to the database as JSON.
