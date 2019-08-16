@@ -62,16 +62,18 @@ func (opts TrustOptions) HeightAndHashPresent() bool {
 // Provider implements a persistent caching Provider that auto-validates. It
 // uses a "source" Provider to obtain the needed FullCommits to securely sync
 // with validator set changes. It stores properly validated data on the
-// "trusted" local system.
+// "trusted" local system using a "trusted" Provider.
 //
-// NOTE: This Provider can only work with one chainID, provided upon
-// instantiation.
+// NOTE:
+//	- This Provider can only work with one chainID, provided upon
+// instantiation;
+//  - For concurrent usage, use ConcurrentProvider.
 type Provider struct {
 	chainID     string
-	logger      log.Logger
-	trustPeriod time.Duration // e.g. the unbonding period, or something smaller.
+	trustPeriod time.Duration // see TrustOptions above
 	now         nowFn
 	height      int64
+	logger      log.Logger
 
 	// Already validated, stored locally
 	trusted lite.PersistentProvider
@@ -88,10 +90,11 @@ var _ lite.UpdatingProvider = (*Provider)(nil)
 
 type nowFn func() time.Time
 
-// NewProvider creates a
-// NOTE: If you retain the resulting verifier in memory for a long time, usage
-// of the verifier may eventually error, but immediate usage should not error
-// like that, so that e.g. cli usage never errors unexpectedly.
+// NewProvider creates a Provider.
+//
+// NOTE: If you retain the resulting struct in memory for a long time, usage of
+// it may eventually error, but immediate usage should not error like that, so
+// that e.g. cli usage never errors unexpectedly.
 func NewProvider(chainID, rootDir string, client lclient.SignStatusClient,
 	logger log.Logger, cacheSize int, options TrustOptions) (*Provider, error) {
 
@@ -135,43 +138,35 @@ func NewProvider(chainID, rootDir string, client lclient.SignStatusClient,
 	return vp, nil
 }
 
-// initProvider sets up the databases and loggers and instantiates the Provider
-// object.
 func initProvider(chainID, rootDir string, client lclient.SignStatusClient,
 	logger log.Logger, cacheSize int, options TrustOptions) *Provider {
 
+	// Validate TrustOptions.
+	if options.TrustPeriod == 0 {
+		panic("Provider must have non-zero trust period")
+	}
+
+	// Init logger.
 	logger = logger.With("module", loggerPath)
 	logger.Info("lite/verifying/NewProvider", "chainID", chainID, "rootDir", rootDir, "client", client)
 
-	trust := lite.NewMultiProvider(
+	// The trusted Provider should be a DBProvider.
+	trusted := lite.NewMultiProvider(
 		lite.NewDBProvider(memDBFile, dbm.NewMemDB()).SetLimit(cacheSize),
 		lite.NewDBProvider(lvlDBFile, dbm.NewDB(dbName, dbm.GoLevelDBBackend, rootDir)),
 	)
-
-	return makeProvider(chainID, options.TrustPeriod, trust, lclient.NewProvider(chainID, client), logger)
-}
-
-// makeProvider returns a new verifying Provider. It uses the trusted Provider
-// to store validated data and the source Provider to obtain missing data (e.g.
-// FullCommits).
-//
-// The trusted Provider should be a DBProvider.
-// The source Provider should be a client.HTTPProvider.
-func makeProvider(chainID string, trustPeriod time.Duration,
-	trusted lite.PersistentProvider, source lite.Provider, logger log.Logger) *Provider {
-
-	if trustPeriod == 0 {
-		panic("Provider must have non-zero trust period")
-	}
-	logger = logger.With("module", loggerPath)
 	trusted.SetLogger(logger)
+
+	// The source Provider should be a client.HTTPProvider.
+	source := lclient.NewProvider(chainID, client)
 	source.SetLogger(logger)
+
 	return &Provider{
-		logger:               logger,
 		chainID:              chainID,
-		trustPeriod:          trustPeriod,
+		trustPeriod:          options.TrustPeriod,
 		trusted:              trusted,
 		source:               source,
+		logger:               logger,
 		pendingVerifications: make(map[int64]chan struct{}, sizeOfPendingMap),
 	}
 }
@@ -256,7 +251,6 @@ func (vp *Provider) Verify(signedHeader types.SignedHeader) error {
 	return nil
 }
 
-// SetLogger implements lite.Provider.
 func (vp *Provider) SetLogger(logger log.Logger) {
 	vp.logger = logger
 	vp.trusted.SetLogger(logger)
@@ -265,19 +259,16 @@ func (vp *Provider) SetLogger(logger log.Logger) {
 
 func (vp *Provider) ChainID() string { return vp.chainID }
 
-// UpdateToHeight implements lite.UpdatingProvider
-//
-// On success, it will store the full commit (SignedHeader + Validators) in
+// UpdateToHeight ... stores the full commit (SignedHeader + Validators) in
 // vp.trusted.
-// NOTE: For concurrent usage, use ConcurrentProvider.
 func (vp *Provider) UpdateToHeight(chainID string, height int64) error {
-	// If we alreedy have the commit, just return nil
 	_, err := vp.trusted.LatestFullCommit(vp.chainID, height, height)
+	// If we alreedy have the commit, just return nil.
 	if err == nil {
 		return nil
 	} else if !lerr.IsErrCommitNotFound(err) {
-		// Return error if it is not CommitNotFound error
-		vp.logger.Error("Encountered unknown error while loading full commit", "height", height)
+		// Return error if it is not CommitNotFound error.
+		vp.logger.Error("Encountered unknown error while loading full commit", "height", height, "err", err)
 		return err
 	}
 
@@ -387,23 +378,16 @@ func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 }
 
 func CompareVotingPowers(trustedFC, newFC lite.FullCommit) float64 {
-
 	var diffAccumulator float64
 
 	for _, val := range newFC.Validators.Validators {
-
 		newPowerRatio := float64(val.VotingPower) / float64(newFC.Validators.TotalVotingPower())
-
 		_, tval := trustedFC.NextValidators.GetByAddress(val.Address)
-
 		oldPowerRatio := float64(tval.VotingPower) / float64(trustedFC.NextValidators.TotalVotingPower())
-
 		diffAccumulator += math.Abs(newPowerRatio - oldPowerRatio)
-
 	}
 
 	return diffAccumulator
-
 }
 
 func (vp *Provider) fetchAndVerifyToHeightLinear(h int64) (lite.FullCommit, error) {
