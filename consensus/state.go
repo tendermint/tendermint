@@ -1672,7 +1672,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		}
 
 	default:
-		panic(fmt.Sprintf("Unexpected vote type %X", vote.Type)) // go-wire should prevent this.
+		panic(fmt.Sprintf("Unexpected vote type %X", vote.Type)) // go-amino should prevent this.
 	}
 
 	return
