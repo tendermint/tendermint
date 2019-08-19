@@ -219,7 +219,7 @@ We further use the function ```signers(Commit)``` that returns the set of valida
     return (vps > max(1/3,trustlevel) * vp_all)
       // signing validators are more than a third in h1
   }
-
+```
   *Remark*: Basic header verification must be done for *h2*. Similar checks are done in:  
   https://github.com/tendermint/tendermint/blob/master/types/validator_set.go#L591-L633
 
