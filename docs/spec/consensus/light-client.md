@@ -6,9 +6,9 @@ A lite client is a process that connects to Tendermint full nodes and then tries
 
 In order to make sure that full nodes have the incentive to follow the protocol, we have to address the following three Issues
 
-1) The lite clients needs a method to verify header it obtains from full nodes -- addressed in this document)
+1) The lite client needs a method to verify headers it obtains from full nodes according to some trust assumptions -- this document.
 2) Detect conflicts/forged headers -- when the verification method of this document fails, then a conflict is detected. However, this document does not address to do this in an efficient way, or with special attacks in mind. This will be treated in fork accountability.
-3) How can evidence for conflicts be reported, and to whom. This will be treated in a future specification.
+3) In the event the trust assumption fails (ie. a lite client is fooled by a conflicting header), the Tendermint fork accountability protocol must account for the evidence -- see #3840
 
 ## Problem statement
 
@@ -220,7 +220,6 @@ We further use the function ```signers(Commit)``` that returns the set of valida
       // signing validators are more than a third in h1
   }
 ```
-
   *Remark*: Basic header verification must be done for *h2*. Similar checks are done in:  
   https://github.com/tendermint/tendermint/blob/master/types/validator_set.go#L591-L633
 
