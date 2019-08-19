@@ -6,7 +6,7 @@ A lite client is a process that connects to Tendermint full nodes and then tries
 
 In order to make sure that full nodes have the incentive to follow the protocol, we have to address the following three Issues
 
-1) The lite client needs a method to verify headers it obtains from full nodes according to some trust assumptions -- this document.
+1) The lite client needs a method to verify headers it obtains from full nodes according to trust assumptions -- this document.
 
 2) Detect conflicts/forged headers -- when the verification method of this document fails, then a conflict is detected. However, this document does not address to do this in an efficient way, or with special attacks in mind. This will be treated in fork accountability. The lite client must be able to connect to one correct full node to detect and report on failures in the trust assumptions (i.e., conflicting headers) -- a future document.
 
@@ -245,7 +245,7 @@ Towards Lite Client Completeness:
 
 *Verification Condition:* We may need a Tendermint invariant stating that if *h2.Header.height = h1.Header.height + 1* then *signers(h2.Commit) \subseteq h1.Header.NextV*.
 
-*Remark*: The variable *trustlevel* can be used if we believe that relying on one correct validator is not sufficient. However, in case of (frequent) changes in the validator set, the higher the *trustlevel* is chosen, the more unlikely it becomes that CheckSupport returns true for non-adjacent headers.
+*Remark*: The variable *trustlevel* can be used if the user believes that relying on one correct validator is not sufficient. However, in case of (frequent) changes in the validator set, the higher the *trustlevel* is chosen, the more unlikely it becomes that CheckSupport returns true for non-adjacent headers.
 
 **Bisection.** The following function uses CheckSupport in a recursion to find intermediate headers that allow to establish a sequence of trust.
 
