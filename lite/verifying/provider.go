@@ -2,13 +2,13 @@ package verifying
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pkg/errors"
+
 	log "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite"
 	lclient "github.com/tendermint/tendermint/lite/client"
@@ -199,7 +199,7 @@ func getTrustedCommit(logger log.Logger, client lclient.SignStatusClient, option
 		signedHeader := trustCommit.SignedHeader
 		if !bytes.Equal(signedHeader.Hash(), options.TrustHash) {
 			return types.SignedHeader{},
-				fmt.Errorf("WARNING: expected hash %X but got %X", options.TrustHash, signedHeader.Hash())
+				fmt.Errorf("WARNING: expected hash %X, but got %X", options.TrustHash, signedHeader.Hash())
 		}
 		return signedHeader, nil
 	}
@@ -293,7 +293,7 @@ func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader,
 	if valset == nil {
 		valset, err = vp.source.ValidatorSet(vp.chainID, signedHeader.Height)
 		if err != nil {
-			return cmn.ErrorWrap(err, "fetching the valset")
+			return errors.Wrap(err, "fetching the valset")
 		}
 	}
 
@@ -305,10 +305,10 @@ func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader,
 			nextValset, err = vp.source.ValidatorSet(vp.chainID, signedHeader.Height+1)
 			if lerr.IsErrUnknownValidators(err) {
 				// try again until we get it.
-				fmt.Printf("fetching validatorset for height %v...\n", signedHeader.Height+1)
+				vp.Logger.Debug("fetching valset for height %d...\n", signedHeader.Height+1)
 				continue
 			} else if err != nil {
-				return cmn.ErrorWrap(err, "fetching the next valset")
+				return errors.Wrap(err, "fetching the next valset")
 			} else if nextValset != nil {
 				break
 			}
@@ -325,13 +325,13 @@ func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader,
 	// Validate the full commit.  This checks the cryptographic
 	// signatures of Commit against Validators.
 	if err := fc.ValidateFull(vp.chainID); err != nil {
-		return cmn.ErrorWrap(err, "verifying validators from source")
+		return errors.Wrap(err, "verifying validators from source")
 	}
 
 	// Trust it.
 	err = vp.trusted.SaveFullCommit(fc)
 	if err != nil {
-		return cmn.ErrorWrap(err, "saving full commit")
+		return errors.Wrap(err, "saving full commit")
 	}
 
 	return nil
@@ -344,13 +344,12 @@ func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader,
 // Returns ErrCommitExpired when trustedFC is too old.
 // Panics if trustedFC.Height() >= newFC.Height().
 func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
-
-	// Shouldn't have trusted commits before the new commit height
+	// Shouldn't have trusted commits before the new commit height.
 	if trustedFC.Height() >= newFC.Height() {
 		panic("should not happen")
 	}
 
-	// Check that the latest commit isn't beyond the vp.trustPeriod
+	// Check that the latest commit isn't beyond the vp.trustPeriod.
 	if vp.now().Sub(trustedFC.SignedHeader.Time) > vp.trustPeriod {
 		return lerr.ErrCommitExpired()
 	}
@@ -360,7 +359,7 @@ func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 		return err
 	}
 
-	//Locally validate the full commit before we can trust it.
+	// Locally validate the full commit before we can trust it.
 	if newFC.Height() >= trustedFC.Height()+1 {
 		err := newFC.ValidateFull(vp.chainID)
 
@@ -368,8 +367,8 @@ func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 			return err
 		}
 	}
-	change := CompareVotingPowers(trustedFC, newFC)
 
+	change := compareVotingPowers(trustedFC, newFC)
 	if change > float64(1/3) {
 		return lerr.ErrValidatorChange(change)
 	}
@@ -377,7 +376,7 @@ func (vp *Provider) verifyAndSave(trustedFC, newFC lite.FullCommit) error {
 	return vp.trusted.SaveFullCommit(newFC)
 }
 
-func CompareVotingPowers(trustedFC, newFC lite.FullCommit) float64 {
+func compareVotingPowers(trustedFC, newFC lite.FullCommit) float64 {
 	var diffAccumulator float64
 
 	for _, val := range newFC.Validators.Validators {
@@ -391,7 +390,6 @@ func CompareVotingPowers(trustedFC, newFC lite.FullCommit) float64 {
 }
 
 func (vp *Provider) fetchAndVerifyToHeightLinear(h int64) (lite.FullCommit, error) {
-
 	// Fetch latest full commit from source.
 	sourceFC, err := vp.source.LatestFullCommit(vp.chainID, h, h)
 	if err != nil {
@@ -457,7 +455,6 @@ func (vp *Provider) fetchAndVerifyToHeightLinear(h int64) (lite.FullCommit, erro
 //
 // Returns ErrCommitNotFound if source Provider doesn't have the commit for h.
 func (vp *Provider) fetchAndVerifyToHeightBisecting(h int64) (lite.FullCommit, error) {
-
 	// Fetch latest full commit from source.
 	sourceFC, err := vp.source.LatestFullCommit(vp.chainID, h, h)
 	if err != nil {
