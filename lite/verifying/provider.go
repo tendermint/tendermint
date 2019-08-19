@@ -305,7 +305,7 @@ func (vp *Provider) fillValsetAndSaveFC(signedHeader types.SignedHeader,
 			nextValset, err = vp.source.ValidatorSet(vp.chainID, signedHeader.Height+1)
 			if lerr.IsErrUnknownValidators(err) {
 				// try again until we get it.
-				vp.Logger.Debug("fetching valset for height %d...\n", signedHeader.Height+1)
+				vp.logger.Debug("fetching valset for height %d...\n", signedHeader.Height+1)
 				continue
 			} else if err != nil {
 				return errors.Wrap(err, "fetching the next valset")
