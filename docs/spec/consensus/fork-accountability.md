@@ -2,10 +2,10 @@
 
 ## Problem Statement
 
-Tendermint consensus guarantees the specifications
-* agreement
-* validity, and
-* termination,
+Tendermint consensus guarantees the following specifications for all heights:
+* agreement -- no two full nodes decide differently.
+* validity -- the decided block satisfies the predefined predicate *valid()*.
+* termination -- all correct full nodes eventually decide.
 
 if the
 faulty validators have at most 1/3 of voting power in the current validator set. In the case where this assumption
