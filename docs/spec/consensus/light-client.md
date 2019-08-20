@@ -8,7 +8,7 @@ In order to make sure that full nodes have the incentive to follow the protocol,
 
 1) The lite client needs a method to verify headers it obtains from full nodes according to trust assumptions -- this document.
 
-2) Detect conflicts/forged headers -- when the verification method of this document fails, then a conflict is detected. However, this document does not address to do this in an efficient way, or with special attacks in mind. This will be treated in fork accountability. The lite client must be able to connect to one correct full node to detect and report on failures in the trust assumptions (i.e., conflicting headers) -- a future document.
+2) The lite client must be able to connect to one correct full node to detect and report on failures in the trust assumptions (i.e., conflicting headers) -- a future document.
 
 3) In the event the trust assumption fails (i.e., a lite client is fooled by a conflicting header), the Tendermint fork accountability protocol must account for the evidence -- see #3840
 
