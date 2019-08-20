@@ -22,6 +22,11 @@ type pcBlockProcessed struct {
 	peerID p2p.ID
 }
 
+type processBlock struct {
+	height int64
+	peerID p2p.ID
+}
+
 type peerError struct {
 	peerID p2p.ID
 }
@@ -52,6 +57,10 @@ func (bq *blockQueue) nextTwo() (*queueItem, *queueItem, error) {
 	return nil, nil, fmt.Errorf("not found")
 }
 
+func (bq *blockQueue) empty() bool {
+	return len(bq.queue) == 0
+}
+
 func (bq *blockQueue) advance() {
 	delete(bq.queue, bq.height)
 	bq.height++
@@ -73,11 +82,19 @@ func (bq *blockQueue) remove(peerID p2p.ID) {
 	}
 }
 
-// TODO: The processor will need to
+type pcStop struct{}
+type pcFinished struct{}
+type scFinished struct{}
+
+func (p pcFinished) Error() string {
+	return "finished"
+}
+
 // * accept the initial state from the blockchain reactior initialization
 // * produce the final state from `SwitchToConsensus`
 func newProcessor(initHeight int64, state state.State, chainID string, context processorContext) *Routine {
-	bq := newBlockQueue(0) // TODO: will need an initial heigh
+	bq := newBlockQueue(initHeight)
+	draining := false
 	handlerFunc := func(event Event) (Events, error) {
 		switch event := event.(type) {
 		case *bcBlockResponse:
@@ -85,7 +102,8 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 			if err != nil {
 				return Events{pcDuplicateBlock{}}, nil
 			}
-
+			return Events{processBlock{}}, nil
+		case *processBlock:
 			firstItem, secondItem, err := bq.nextTwo()
 			if err != nil {
 				// We need both to sync the first block.
@@ -109,11 +127,21 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 			}
 			bq.advance()
-			return Events{pcBlockProcessed{event.height, event.peerID}}, nil
+			if bq.empty() && draining {
+				return Events{pcBlockProcessed{event.height, event.peerID}, pcStop{}}, nil
+			} else {
+				return Events{processBlock{}, pcBlockProcessed{event.height, event.peerID}}, nil
+			}
 		case *peerError:
 			bq.remove(event.peerID)
 			return Events{}, nil
+		case *scFinished:
+			draining = true
+			return Events{processBlock{}}, nil
+		case pcStop:
+			return Events{}, pcFinished{}
 		}
+
 		return Events{}, nil
 	}
 
