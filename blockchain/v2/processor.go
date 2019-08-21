@@ -23,8 +23,6 @@ type pcBlockProcessed struct {
 }
 
 type processBlock struct {
-	height int64
-	peerID p2p.ID
 }
 
 type peerError struct {
@@ -83,12 +81,16 @@ func (bq *blockQueue) remove(peerID p2p.ID) {
 }
 
 type pcStop struct{}
-type pcFinished struct{}
+type pcFinished struct {
+	height int64
+}
 type scFinished struct{}
 
 func (p pcFinished) Error() string {
 	return "finished"
 }
+
+// XXX: this assumes that feedback will be in play here
 
 // * accept the initial state from the blockchain reactior initialization
 // * produce the final state from `SwitchToConsensus`
@@ -128,9 +130,9 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 			}
 			bq.advance()
 			if bq.empty() && draining {
-				return Events{pcBlockProcessed{event.height, event.peerID}, pcStop{}}, nil
+				return Events{pcBlockProcessed{first.Height, firstItem.peerID}, pcStop{}}, nil
 			} else {
-				return Events{processBlock{}, pcBlockProcessed{event.height, event.peerID}}, nil
+				return Events{pcBlockProcessed{first.Height, firstItem.peerID}, processBlock{}}, nil
 			}
 		case *peerError:
 			bq.remove(event.peerID)
@@ -139,7 +141,7 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 			draining = true
 			return Events{processBlock{}}, nil
 		case pcStop:
-			return Events{}, pcFinished{}
+			return Events{}, pcFinished{height: bq.height}
 		}
 
 		return Events{}, nil

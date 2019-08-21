@@ -38,10 +38,10 @@ type Routine struct {
 func newRoutine(name string, handleFunc handleFunc) *Routine {
 	return &Routine{
 		name:     name,
-		input:    make(chan Event, 1),
+		input:    make(chan Event, 10),
 		handle:   handleFunc,
-		errors:   make(chan error, 1),
-		out:      make(chan Event, 1),
+		errors:   make(chan error, 10),
+		out:      make(chan Event, 10),
 		stopped:  make(chan struct{}, 1),
 		rdy:      make(chan struct{}, 1),
 		fin:      make(chan error, 1),
@@ -131,7 +131,7 @@ func (rt *Routine) trySend(event Event) bool {
 		return false
 	}
 
-	rt.logger.Info(fmt.Sprintf("%s: sending %+v", rt.name, event))
+	rt.logger.Info(fmt.Sprintf("%s: sending %#v", rt.name, event))
 	if err, ok := event.(error); ok {
 		select {
 		case rt.errors <- err:
