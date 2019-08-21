@@ -67,7 +67,7 @@ func (rt *Routine) start() {
 	if !starting {
 		panic("Routine has already started")
 	}
-	rt.rdy <- struct{}{}
+	close(rt.rdy)
 	errorsDrained := false
 	for {
 		if !rt.isRunning() {
