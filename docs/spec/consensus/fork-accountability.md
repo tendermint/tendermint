@@ -36,6 +36,7 @@ As in this case we have two different blocks (both having the same right/no righ
 
 * Fork-Lite. All correct validators decide on the same block for height *h*, but faulty processes (validators or not), forge a different block for that height, in order to fool users (who use the lite client).
 
+**Question:** Currently, this document focuses on punishing nodes for forks. There are deviations from Tendermint consensus that are also detectable and punishable. For instance, if a faulty proposer proposes different blocks in the same round. This behavior might be an enabler for Equivocation below. Should we punish such behavior? Or is it enough to punish when the proposer signs conflicting blocks?
 
 ## Attack scenarios
 
