@@ -162,9 +162,8 @@ This can be used in several settings:
 **Observation 1.** If *h.Header.bfttime + tp > now*, we trust the old
 validator set *h.Header.NextV*.
 
-When we say we trust *h.Header.NextV* we do *not* trust that each individual validator in *h.Header.NextV* is correct, but we only trust the fact that at most 1/3 of them are faulty (more precisely, the faulty ones have less than 1/3 of the total voting power).
+When we say we trust *h.Header.NextV* we do *not* trust that each individual validator in *h.Header.NextV* is correct, but we only trust the fact that at most 1/3 of them are faulty (more precisely, the faulty ones have at most 1/3 of the total voting power).
 
-In the following, let's assume *h* is trusted and sufficiently new.
 
 
 ### Functions
@@ -180,11 +179,15 @@ We consider the following set-up:
 - the lite client locally stores all the signed headers it obtained (trusted or not). In the pseudo code below we write *Store(header)* for this.
 - If *Bisection* returns *false*, then the lite client has seen a  forged header.
   * However, it does not know which header(s) is/are the problematic one(s).
-  * In this case, the lite client can submit (some of) the headers it has seen as evidence. As the lite client communicates with one full node only when executing Bisection, it is safe to assume that this full node is faulty.
+  * In this case, the lite client can submit (some of) the headers it has seen as evidence. As the lite client communicates with one full node only when executing Bisection, there are two cases
+    - the full node is faulty
+    - the full node is correct and there was a fork in Tendermint consensus. Header *h1* is from a different branch than the one taken by the full node. This case is not focus of this document, but will be treated in the document on fork accountability.
+
 - the lite client must retry to retrieve correct headers from another full node
   * it picks a new full node
   * it restarts *Bisection*
   * there might be optimizations; a lite client may not need to call *Commit(k)*, for a height *k* for which it already has a signed header it trusts.
+  * how to make sure that a lite client can communicate with a correct full node will be the focus of a separate document (recall Issue 3 from "Context of this document").
 
 **Auxiliary Functions.** We will use the  function ```votingpower_in(V1,V2)``` to compute the voting power the validators in set V1 have according to their voting power in set V2;
 we will write ```totalVotingPower(V)``` for ```votingpower_in(V,V)```, which returns the total voting power in V.
