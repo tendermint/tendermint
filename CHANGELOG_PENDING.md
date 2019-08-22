@@ -28,3 +28,4 @@ program](https://hackerone.com/tendermint).
 
 - [config] \#3868 move misplaced `max_msg_bytes` into mempool section
 - [store] \#3893 register block amino, not just crypto
+- [rpc] protect subscription access from race conditions
