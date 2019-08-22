@@ -71,7 +71,7 @@ func (m *RequestPing) XXX_DiscardUnknown() {
 var xxx_messageInfo_RequestPing proto.InternalMessageInfo
 
 type RequestBroadcastTx struct {
-	Tx                   []byte   `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx"`
+	Tx                   []byte   `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -157,8 +157,8 @@ func (m *ResponsePing) XXX_DiscardUnknown() {
 var xxx_messageInfo_ResponsePing proto.InternalMessageInfo
 
 type ResponseBroadcastTx struct {
-	CheckTx              *types.ResponseCheckTx   `protobuf:"bytes,1,opt,name=check_tx,json=checkTx" json:"check_tx"`
-	DeliverTx            *types.ResponseDeliverTx `protobuf:"bytes,2,opt,name=deliver_tx,json=deliverTx" json:"deliver_tx"`
+	CheckTx              *types.ResponseCheckTx   `protobuf:"bytes,1,opt,name=check_tx,json=checkTx" json:"check_tx,omitempty"`
+	DeliverTx            *types.ResponseDeliverTx `protobuf:"bytes,2,opt,name=deliver_tx,json=deliverTx" json:"deliver_tx,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
 	XXX_unrecognized     []byte                   `json:"-"`
 	XXX_sizecache        int32                    `json:"-"`
