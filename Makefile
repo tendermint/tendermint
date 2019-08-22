@@ -40,7 +40,6 @@ install_c:
 ### Protobuf
 
 protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
-	@ls **/**/**.pb.go | xargs -n1 -IX bash -c 'sed s/,omitempty// X > X.tmp && mv X{.tmp,}'
 
 %.pb.go: %.proto
 	## If you get the following error,
