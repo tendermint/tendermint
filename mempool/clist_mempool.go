@@ -29,7 +29,7 @@ import (
 // mempool uses a concurrent list structure for storing transactions that can
 // be efficiently accessed by multiple concurrent readers.
 type CListMempool struct {
-	config *cfg.MempoolConfig
+	config *cfg.Config
 
 	proxyMtx     sync.Mutex
 	proxyAppConn proxy.AppConnMempool
@@ -75,7 +75,7 @@ type CListMempoolOption func(*CListMempool)
 
 // NewCListMempool returns a new mempool with the given configuration and connection to an application.
 func NewCListMempool(
-	config *cfg.MempoolConfig,
+	config *cfg.Config,
 	proxyAppConn proxy.AppConnMempool,
 	height int64,
 	options ...CListMempoolOption,
@@ -91,8 +91,8 @@ func NewCListMempool(
 		logger:        log.NewNopLogger(),
 		metrics:       NopMetrics(),
 	}
-	if config.CacheSize > 0 {
-		mempool.cache = newMapTxCache(config.CacheSize)
+	if config.Mempool.CacheSize > 0 {
+		mempool.cache = newMapTxCache(config.Mempool.CacheSize)
 	} else {
 		mempool.cache = nopTxCache{}
 	}
@@ -133,7 +133,7 @@ func WithMetrics(metrics *Metrics) CListMempoolOption {
 // *panics* if can't create directory or open file.
 // *not thread safe*
 func (mem *CListMempool) InitWAL() {
-	walDir := mem.config.WalDir()
+	walDir := mem.config.Mempool.WalDir()
 	err := cmn.EnsureDir(walDir, 0700)
 	if err != nil {
 		panic(errors.Wrap(err, "Error ensuring WAL dir"))
@@ -222,18 +222,18 @@ func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), t
 		txsBytes = mem.TxsBytes()
 		txSize   = len(tx)
 	)
-	if memSize >= mem.config.Size ||
-		int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
+	if memSize >= mem.config.Mempool.Size ||
+		int64(txSize)+txsBytes > mem.config.Mempool.MaxTxsBytes {
 		return ErrMempoolIsFull{
-			memSize, mem.config.Size,
-			txsBytes, mem.config.MaxTxsBytes}
+			memSize, mem.config.Mempool.Size,
+			txsBytes, mem.config.Mempool.MaxTxsBytes}
 	}
 
 	// The size of the corresponding amino-encoded TxMessage
 	// can't be larger than the maxMsgSize, otherwise we can't
 	// relay it to peers.
-	if txSize > mem.config.MaxTxBytes {
-		return ErrTxTooLarge{mem.config.MaxTxBytes, txSize}
+	if txSize > mem.config.Mempool.MaxTxBytes {
+		return ErrTxTooLarge{mem.config.Mempool.MaxTxBytes, txSize}
 	}
 
 	if mem.preCheck != nil {
@@ -446,17 +446,22 @@ func (mem *CListMempool) TxsAvailable() <-chan struct{} {
 }
 
 func (mem *CListMempool) notifyTxsAvailable() {
-	if mem.Size() == 0 {
-		panic("notified txs available but mempool is empty!")
-	}
-	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
-		// channel cap is 1, so this will send once
-		mem.notifiedTxsAvailable = true
-		select {
-		case mem.txsAvailable <- struct{}{}:
-		default:
+	go func() {
+		if mem.Size() == 0 {
+			mem.logger.Error("notified txs available but mempool is empty!")
+			return
 		}
-	}
+		if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
+			// channel cap is 1, so this will send once
+			mem.notifiedTxsAvailable = true
+			time.Sleep(mem.config.Consensus.TimeoutCommit)
+
+			select {
+			case mem.txsAvailable <- struct{}{}:
+			default:
+			}
+		}
+	}()
 }
 
 func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
@@ -562,7 +567,7 @@ func (mem *CListMempool) Update(
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
-		if mem.config.Recheck {
+		if mem.config.Mempool.Recheck {
 			mem.logger.Info("Recheck txs", "numtxs", mem.Size(), "height", height)
 			mem.recheckTxs()
 			// At this point, mem.txs are being rechecked.
