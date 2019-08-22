@@ -222,6 +222,18 @@ require.NoError(t, err)
 assert.Equal(t, chainID, commit.ChainID)
 ```
 
+`lite.Client` here is a `struct`, which uses `Verifier` and exposes
+`rpcclient.Client` API.
+
+```go
+type Client struct {
+	verifier *Verifier
+	clients  []rpcclient.Client
+}
+
+var rpcclient.Client = (*Client)(nil)
+```
+
 **Minimal test for (2)**
 
 ```go
