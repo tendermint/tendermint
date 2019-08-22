@@ -3,6 +3,7 @@
 ## Changelog
 * 13-07-2019: Initial draft
 * 14-08-2019: Address cwgoes comments
+* 22-08-2019: Second version
 
 ## Context
 
@@ -120,6 +121,124 @@ network usage.
 
 Check out the formal specification
 [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/consensus/light-client.md).
+
+### Implementation
+
+There are two primary modes of usage right now:
+
+1) Trusted RPC proxy (wrapping multiple RPC clients + verification)
+2) Part of the IBC light client (only verification bit, no RPC) [spec](https://github.com/cosmos/ics/tree/master/spec/ics-002-client-semantics)
+
+First, we'll need something, which will provide us secure headers & validator sets.
+
+```go
+type Provider interface {
+	// 0 - latest
+	GetFullCommit(height int64) (FullCommit, error)
+}
+```
+
+In case of the proxy it will be a `http` provider (wrapping RPC client). For
+IBC, it will be a `ibc` provider, receiving information from IBC transactions.
+
+Once we have the information, we need to verify it.
+
+```go
+type Verifier struct {
+	chainID            string
+	options            TrustOptions
+	lastVerifiedHeight int64
+	logger             log.Logger
+
+	// Already validated, stored locally
+	trusted PersistentProvider
+
+	// New info, like a node rpc, or other import method.
+	sources Provider
+}
+```
+
+Since providers themselves don't know when they have received a new header
+(or may choose to do so upon a request), we must add a new function to
+`Verifier` - `Verify(height int64) error`.
+
+It should also provide `AutoVerify(period)` option to try & verify new headers
+in the background (optional).
+
+**Sequential vs bisecting verifier**
+
+Verifier should use bisection by default, but provide options to choose a
+different mode OR tweak bisection.
+
+```go
+func LinearVerification() Option {
+	return func(v *Verifier) {
+		v.mode = LINEAR
+	}
+}
+
+func BisectingVerification(trustLevel, trustLevelAdj float) Option {
+	if trustLevel > 1 || trustLevel < 1/3 || trustLevelAdj > 1 || trustLevelAdj < 1/3 {
+		panic(fmt.Sprintf("trustLevel, trustLevelAdj must be within [1/3, 1], given %v, %v", trustLevel, trustLevelAdj))
+	}
+
+	return func(v *Verifier) {
+		v.mode = BISECTION
+		v.trustLevel = trustLevel
+		v.trustLevelAdj = trustLevelAdj
+	}
+}
+```
+
+Once we verified the header, we will need to store it somewhere.
+
+```
+type PersistentProvider interface {
+  Provider
+
+	SaveFullCommit(fc FullCommit) error
+}
+```
+
+In case of the proxy it will be a `db` provider (levelDB + in-memory cache in
+front). For IBC, it will be a `keeper` provider.
+
+**Minimal test for (1)**
+
+```go
+sources = []rpcclient.Client{
+	rpcclient.NewHTTP(remote1, "/websocket"),
+	rpcclient.NewHTTP(remote2, "/websocket"),
+}
+c, err := lite.NewClient(
+	chainID,
+	lite.TrustOptions{TrustPeriod: 336 * time.Hour},
+	sources,
+)
+require.NoError(t, err)
+
+commit, err := c.Commit()
+require.NoError(t, err)
+assert.Equal(t, chainID, commit.ChainID)
+```
+
+**Minimal test for (2)**
+
+```go
+sources = []lite.Provider{
+	ibc.New(chainID),
+}
+c, err := lite.NewVerifier(
+	chainID,
+	lite.TrustOptions{TrustPeriod: 24 * time.Hour},
+	sources,
+	Trusted(ibcKeeper{}),
+)
+require.NoError(t, err)
+
+err = c.Verify(height)
+require.NoError(t, err)
+```
 
 ## Status
 
