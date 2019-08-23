@@ -27,7 +27,7 @@ We say that a fork is a case in which there are two commits for different block 
 
 ## Prerequisites
 
-Forks are the result of faulty validators deviating from the protocol. In principle several such deviations can be detected without a fork actually occuring:
+Forks are the result of faulty validators deviating from the protocol. In principle several such deviations can be detected without a fork actually occurring:
 
 1. double proposal: A faulty proposer proposes to different values (blocks) for the same height and the same round in Tendermint consensus.
 
@@ -35,7 +35,10 @@ Forks are the result of faulty validators deviating from the protocol. In princi
 
 3. lunatic validator: Tendermint consensus forces correct validators to prevote and precommit only for values *v* that satisfy *valid(v)*. If faulty validators prevote and precommit for *v* although *valid(v)=false* this is misbehavior.
 
-*Remark 3.* In isolation, Point 3 violates validity (rather than agreement).
+*Remark.* In isolation, Point 3 violates validity (rather than agreement).
+
+
+Independently of a fork happening, punishing this behavior might be important to prevent forks altogether. This should keep attackers from misbehaving: if at most 1/3 of the voting power is faulty, this misbehavior is detectable but will not lead to a safety violation. Thus, unless they have more than 1/3 (or in some cases more than 2/3) of the voting power attackers have the incentive to not misbehave. If attackers control too much voting power, we have to deal with forks, as discussed in this document.   
 
 
 ## Two types of forks
