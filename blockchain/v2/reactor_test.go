@@ -6,7 +6,7 @@ import "testing"
 func TestReactor(t *testing.T) {
 	reactor := Reactor{}
 	reactor.Start()
-	script := Events{
+	script := []Event{
 		struct{}{},
 	}
 

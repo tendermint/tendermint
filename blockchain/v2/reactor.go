@@ -11,24 +11,24 @@ type timeCheck struct {
 	time time.Time
 }
 
-func schedulerHandle(event Event) (Events, error) {
+func schedulerHandle(event Event) (Event, error) {
 	switch event.(type) {
 	case timeCheck:
 		fmt.Println("scheduler handle timeCheck")
 	case Event:
 		fmt.Println("scheduler handle testEvent")
 	}
-	return Events{}, nil
+	return NoOp{}, nil
 }
 
-func processorHandle(event Event) (Events, error) {
+func processorHandle(event Event) (Event, error) {
 	switch event.(type) {
 	case timeCheck:
 		fmt.Println("processor handle timeCheck")
 	case Event:
 		fmt.Println("processor handle event")
 	}
-	return Events{}, nil
+	return NoOp{}, nil
 }
 
 type Reactor struct {

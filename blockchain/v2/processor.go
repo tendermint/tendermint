@@ -97,19 +97,20 @@ func (p pcFinished) Error() string {
 func newProcessor(initHeight int64, state state.State, chainID string, context processorContext) *Routine {
 	bq := newBlockQueue(initHeight)
 	draining := false
-	handlerFunc := func(event Event) (Events, error) {
+	handlerFunc := func(event Event) (Event, error) {
 		switch event := event.(type) {
 		case *bcBlockResponse:
 			err := bq.add(event.peerID, event.block, event.height)
 			if err != nil {
-				return Events{pcDuplicateBlock{}}, nil
+				return pcDuplicateBlock{}, nil
 			}
-			return Events{processBlock{}}, nil
-		case *processBlock:
+			return processBlock{}, nil
+		case processBlock:
+			fmt.Println("processing block")
 			firstItem, secondItem, err := bq.nextTwo()
 			if err != nil {
 				// We need both to sync the first block.
-				return Events{}, nil
+				return NoOp{}, nil
 			}
 			first, second := firstItem.block, secondItem.block
 
@@ -119,7 +120,8 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 
 			err = context.verifyCommit(chainID, firstID, first.Height, second.LastCommit)
 			if err != nil {
-				return Events{pcBlockVerificationFailure{}}, nil
+				// XXX: maybe add peer and height fiields
+				return pcBlockVerificationFailure{}, nil
 			}
 
 			context.saveBlock(first, firstParts, second.LastCommit)
@@ -129,22 +131,26 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 			}
 			bq.advance()
-			if bq.empty() && draining {
-				return Events{pcBlockProcessed{first.Height, firstItem.peerID}, pcStop{}}, nil
-			} else {
-				return Events{pcBlockProcessed{first.Height, firstItem.peerID}, processBlock{}}, nil
-			}
+			return pcBlockProcessed{first.Height, firstItem.peerID}, nil
 		case *peerError:
 			bq.remove(event.peerID)
-			return Events{}, nil
-		case *scFinished:
-			draining = true
-			return Events{processBlock{}}, nil
+			return NoOp{}, nil
+		case pcBlockProcessed:
+			if bq.empty() && draining {
+				return NoOp{}, pcFinished{height: bq.height}
+			}
+			return processBlock{}, nil
 		case pcStop:
-			return Events{}, pcFinished{height: bq.height}
+			if bq.empty() {
+				return NoOp{}, pcFinished{height: bq.height}
+			}
+			draining = true
+			return processBlock{}, nil
+		case NoOp:
+			return NoOp{}, fmt.Errorf("failed")
 		}
 
-		return Events{}, nil
+		return NoOp{}, nil
 	}
 
 	return newRoutine("processor", handlerFunc)

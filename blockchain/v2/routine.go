@@ -12,7 +12,7 @@ import (
 // * audit log levels
 // * Convert routine to an interface with concrete implmentation
 
-type handleFunc = func(event Event) (Events, error)
+type handleFunc = func(event Event) (Event, error)
 
 // Routines are a structure which model a finite state machine as serialized
 // stream of events processed by a handle function. This Routine structure
@@ -80,7 +80,6 @@ func (rt *Routine) start() {
 			if !ok {
 				if !errorsDrained {
 					rt.logger.Info(fmt.Sprintf("%s: waiting for errors to drain\n", rt.name))
-
 					continue // wait for errors to be drainned
 				}
 				rt.logger.Info(fmt.Sprintf("%s: stopping\n", rt.name))
@@ -88,18 +87,15 @@ func (rt *Routine) start() {
 				rt.terminate(fmt.Errorf("stopped"))
 				return
 			}
-			oEvents, err := rt.handle(iEvent)
+			oEvent, err := rt.handle(iEvent)
 			rt.metrics.EventsHandled.With("routine", rt.name).Add(1)
 			if err != nil {
 				rt.terminate(err)
 				return
 			}
-			rt.metrics.EventsOut.With("routine", rt.name).Add(float64(len(oEvents)))
-			rt.logger.Info(fmt.Sprintf("%s handled %d events\n", rt.name, len(oEvents)))
-			for _, event := range oEvents {
-				rt.logger.Info(fmt.Sprintln("writing back to output"))
-				rt.out <- event
-			}
+			rt.metrics.EventsOut.With("routine", rt.name).Add(1)
+			rt.logger.Info(fmt.Sprintf("%s produced event: %#v\n", rt.name, oEvent))
+			rt.out <- oEvent
 		case iEvent, ok := <-rt.errors:
 			rt.metrics.ErrorsIn.With("routine", rt.name).Add(1)
 			if !ok {
@@ -107,16 +103,14 @@ func (rt *Routine) start() {
 				errorsDrained = true
 				continue
 			}
-			oEvents, err := rt.handle(iEvent)
+			oEvent, err := rt.handle(iEvent)
 			rt.metrics.ErrorsHandled.With("routine", rt.name).Add(1)
 			if err != nil {
 				rt.terminate(err)
 				return
 			}
-			rt.metrics.ErrorsOut.With("routine", rt.name).Add(float64(len(oEvents)))
-			for _, event := range oEvents {
-				rt.out <- event
-			}
+			rt.metrics.ErrorsOut.With("routine", rt.name).Add(1)
+			rt.out <- oEvent
 		}
 	}
 }
@@ -127,6 +121,8 @@ func (rt *Routine) feedback() {
 }
 
 func (rt *Routine) trySend(event Event) bool {
+	// XXX: need a mutex here
+	// with a mutex, do we need is running?
 	if !rt.isRunning() || rt.isStopping() {
 		return false
 	}
@@ -144,7 +140,7 @@ func (rt *Routine) trySend(event Event) bool {
 		}
 	} else {
 		select {
-		case rt.input <- event:
+		case rt.input <- event: // here
 			rt.metrics.EventsSent.With("routine", rt.name).Add(1)
 			return true
 		default:
@@ -171,6 +167,7 @@ func (rt *Routine) next() chan Event {
 	return rt.out
 }
 
+// we need to ensure that no try send does not run while stop is running
 func (rt *Routine) stop() {
 	if !rt.isRunning() {
 		return
@@ -182,7 +179,7 @@ func (rt *Routine) stop() {
 		panic("Routine has already stopped")
 	}
 
-	close(rt.input)
+	close(rt.input) // here
 	close(rt.errors)
 	<-rt.stopped
 }

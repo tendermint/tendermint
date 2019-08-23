@@ -15,14 +15,14 @@ type errEvent struct{}
 
 var done = fmt.Errorf("done")
 
-func simpleHandler(event Event) (Events, error) {
+func simpleHandler(event Event) (Event, error) {
 	switch event.(type) {
 	case eventA:
-		return Events{eventB{}}, nil
+		return eventB{}, nil
 	case eventB:
-		return Events{}, done
+		return NoOp{}, done
 	}
-	return Events{}, nil
+	return NoOp{}, nil
 }
 
 func TestRoutine(t *testing.T) {
@@ -71,20 +71,20 @@ func (f finalCount) Error() string {
 
 func genStatefulHandler(maxCount int) handleFunc {
 	counter := 0
-	return func(event Event) (Events, error) {
+	return func(event Event) (Event, error) {
 		// golint fixme
 		switch event.(type) {
 		case eventA:
 			counter += 1
 			if counter >= maxCount {
-				return Events{}, finalCount{counter}
+				return NoOp{}, finalCount{counter}
 			}
 
-			return Events{eventA{}}, nil
+			return eventA{}, nil
 		case eventB:
-			return Events{}, nil
+			return NoOp{}, nil
 		}
-		return Events{}, nil
+		return NoOp{}, nil
 	}
 }
 
@@ -112,14 +112,14 @@ func TestStatefulRoutine(t *testing.T) {
 	}
 }
 
-func handleWithErrors(event Event) (Events, error) {
+func handleWithErrors(event Event) (Event, error) {
 	switch event.(type) {
 	case eventA:
-		return Events{}, nil
+		return NoOp{}, nil
 	case errEvent:
-		return Events{}, done
+		return NoOp{}, done
 	}
-	return Events{}, nil
+	return NoOp{}, nil
 }
 
 func TestErrorSaturation(t *testing.T) {
