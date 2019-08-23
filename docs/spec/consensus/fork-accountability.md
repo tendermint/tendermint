@@ -25,7 +25,17 @@ We say that a fork is a case in which there are two commits for different block 
 *Remark.* In the case more than 1/3 of the voting power belongs to faulty validators, also validity and termination can be broken. Termination can be broken if faulty processes just do not send the messages that are needed to make progress. Due to asynchrony, this is not punishable, because faulty validators can always claim they never received the messages that would have forced them to send messages.
 
 
-**Q:** Something to say about validity here?
+## Prerequisites
+
+Forks are the result of faulty validators deviating from the protocol. In principle several such deviations can be detected without a fork actually occuring:
+
+1. double proposal: A faulty proposer proposes to different values (blocks) for the same height and the same round in Tendermint consensus.
+
+2. double signing: Tendermint consensus forces correct validators to prevote and precommit for one value per round. In case a faulty proposer proposed mutliple values, faulty validators can prevote and precommit multiple values.
+
+3. lunatic validator: Tendermint consensus forces correct validators to prevote and precommit only for values *v* that satisfy *valid(v)*. If faulty validators prevote and precommit for *v* although *valid(v)=false* this is misbehavior.
+
+*Remark 3.* In isolation, Point 3 violates validity (rather than agreement).
 
 
 ## Two types of forks
