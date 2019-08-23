@@ -106,7 +106,6 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 			}
 			return processBlock{}, nil
 		case processBlock:
-			fmt.Println("processing block")
 			firstItem, secondItem, err := bq.nextTwo()
 			if err != nil {
 				// We need both to sync the first block.

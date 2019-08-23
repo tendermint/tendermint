@@ -14,6 +14,8 @@ import (
 
 type handleFunc = func(event Event) (Event, error)
 
+type stopEv struct{}
+
 // Routines are a structure which model a finite state machine as serialized
 // stream of events processed by a handle function. This Routine structure
 // handles the concurrency and messaging guarantees. Events are sent via
@@ -23,7 +25,7 @@ type handleFunc = func(event Event) (Event, error)
 type Routine struct {
 	name     string
 	input    chan Event
-	errors   chan error
+	errors   chan Event
 	out      chan Event
 	stopped  chan struct{}
 	rdy      chan struct{}
@@ -40,7 +42,7 @@ func newRoutine(name string, handleFunc handleFunc) *Routine {
 		name:     name,
 		input:    make(chan Event, 10),
 		handle:   handleFunc,
-		errors:   make(chan error, 10),
+		errors:   make(chan Event, 10),
 		out:      make(chan Event, 10),
 		stopped:  make(chan struct{}, 1),
 		rdy:      make(chan struct{}, 1),
@@ -69,18 +71,20 @@ func (rt *Routine) start() {
 	}
 	rt.rdy <- struct{}{}
 	errorsDrained := false
+	eventsDrained := false
 	for {
 		if !rt.isRunning() {
 			rt.logger.Info(fmt.Sprintf("%s: breaking because not running\n", rt.name))
 			break
 		}
 		select {
-		case iEvent, ok := <-rt.input:
+		case iEvent := <-rt.input:
 			rt.metrics.EventsIn.With("routine", rt.name).Add(1)
-			if !ok {
+			if _, ok := iEvent.(stopEv); ok {
+				eventsDrained = true
 				if !errorsDrained {
 					rt.logger.Info(fmt.Sprintf("%s: waiting for errors to drain\n", rt.name))
-					continue // wait for errors to be drainned
+					continue
 				}
 				rt.logger.Info(fmt.Sprintf("%s: stopping\n", rt.name))
 				close(rt.stopped)
@@ -96,12 +100,18 @@ func (rt *Routine) start() {
 			rt.metrics.EventsOut.With("routine", rt.name).Add(1)
 			rt.logger.Info(fmt.Sprintf("%s produced event: %#v\n", rt.name, oEvent))
 			rt.out <- oEvent
-		case iEvent, ok := <-rt.errors:
+		case iEvent := <-rt.errors:
 			rt.metrics.ErrorsIn.With("routine", rt.name).Add(1)
-			if !ok {
-				rt.logger.Info(fmt.Sprintf("%s: errors closed\n", rt.name))
+			if _, ok := iEvent.(stopEv); ok {
 				errorsDrained = true
-				continue
+				if !eventsDrained {
+					rt.logger.Info(fmt.Sprintf("%s: waiting for events to drain\n", rt.name))
+					continue
+				}
+				rt.logger.Info(fmt.Sprintf("%s: stopping\n", rt.name))
+				close(rt.stopped)
+				rt.terminate(fmt.Errorf("stopped"))
+				return
 			}
 			oEvent, err := rt.handle(iEvent)
 			rt.metrics.ErrorsHandled.With("routine", rt.name).Add(1)
@@ -121,8 +131,6 @@ func (rt *Routine) feedback() {
 }
 
 func (rt *Routine) trySend(event Event) bool {
-	// XXX: need a mutex here
-	// with a mutex, do we need is running?
 	if !rt.isRunning() || rt.isStopping() {
 		return false
 	}
@@ -167,7 +175,6 @@ func (rt *Routine) next() chan Event {
 	return rt.out
 }
 
-// we need to ensure that no try send does not run while stop is running
 func (rt *Routine) stop() {
 	if !rt.isRunning() {
 		return
@@ -179,8 +186,8 @@ func (rt *Routine) stop() {
 		panic("Routine has already stopped")
 	}
 
-	close(rt.input) // here
-	close(rt.errors)
+	rt.input <- stopEv{}
+	rt.errors <- stopEv{}
 	<-rt.stopped
 }
 

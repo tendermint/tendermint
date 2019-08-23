@@ -75,10 +75,9 @@ func (r *Reactor) Stop() {
 	fmt.Println("reactor stopping")
 
 	r.ticker.Stop()
-	r.demuxer.stop()
 	r.scheduler.stop()
 	r.processor.stop()
-	// todo: accumulator
+	r.demuxer.stop()
 	// todo: io
 
 	fmt.Println("reactor stopped")

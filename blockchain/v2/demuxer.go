@@ -55,8 +55,8 @@ func (dm *demuxer) start() {
 			break
 		}
 		select {
-		case event, ok := <-dm.input:
-			if !ok {
+		case event := <-dm.input:
+			if _, ok := event.(stopEv); ok {
 				dm.logger.Info("demuxer: stopping")
 				dm.terminate(fmt.Errorf("stopped"))
 				dm.stopped <- struct{}{}
@@ -148,7 +148,7 @@ func (dm *demuxer) stop() {
 		panic("Demuxer has already stopped")
 	}
 	dm.logger.Info("demuxer stop")
-	close(dm.input) // HERE
+	dm.input <- stopEv{}
 	<-dm.stopped
 }
 
