@@ -363,7 +363,7 @@ jobs:
   contract_tests:
     working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
     machine:
-      image: circleci/node:latest
+      image: circleci/classic:latest
     environment:
       GOBIN: /home/circleci/.go_workspace/bin
       GOPATH: /home/circleci/.go_workspace/
@@ -378,10 +378,8 @@ jobs:
             set -x
             export PATH=~/.local/bin:$PATH
 
-            # install node 11.15 and dredd
-            # ./scripts/get_nodejs.sh
-            # install dredd
-            npm i -g dredd
+            # install node and dredd
+            ./scripts/get_nodejs.sh
 
             # build the binaries with a proper version of Go
             docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
