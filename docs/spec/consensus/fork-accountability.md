@@ -39,7 +39,7 @@ Forks are the result of faulty validators deviating from the protocol. In princi
 
 4. amnesia: Tendermint consensus has a locking mechanism. Validators may only prevote/precommit a value if they have not locked a different value before.
 
-5. spurious messages: In Tendermint consensus most of the message send instructions are guarded by threshold guards, e.g., one needs to receive *2f + 1* prevote messages to send precommit. Faulty validators may send precommit without having received the prevote messages. 
+5. spurious messages: In Tendermint consensus most of the message send instructions are guarded by threshold guards, e.g., one needs to receive *2f + 1* prevote messages to send precommit. Faulty validators may send precommit without having received the prevote messages.
 
 
 Independently of a fork happening, punishing this behavior might be important to prevent forks altogether. This should keep attackers from misbehaving: if at most 1/3 of the voting power is faulty, this misbehavior is detectable but will not lead to a safety violation. Thus, unless they have more than 1/3 (or in some cases more than 2/3) of the voting power attackers have the incentive to not misbehave. If attackers control too much voting power, we have to deal with forks, as discussed in this document.   
@@ -53,11 +53,10 @@ As in this case we have two different blocks (both having the same right/no righ
 
 * Fork-Lite. All correct validators decide on the same block for height *h*, but faulty processes (validators or not), forge a different block for that height, in order to fool users (who use the lite client).
 
-**Question:** Currently, this document focuses on punishing nodes for forks. There are deviations from Tendermint consensus that are also detectable and punishable. For instance, if a faulty proposer proposes different blocks in the same round. This behavior might be an enabler for Equivocation below. Should we punish such behavior? Or is it enough to punish when the proposer signs conflicting blocks?
 
-## Attack scenarios
+# Attack scenarios
 
-### On-chain attacks
+## On-chain attacks
 
 ### Equivocation (one round)
 
@@ -84,7 +83,7 @@ However, faulty validators may use the correct precommit messages from round *r*
 
 
 
-### Off-chain attacks
+## Off-chain attacks
 
 F1-F3 may contaminate the state of full nodes (and even validators). Contaminated (but otherwise correct) full nodes may thus communicate faulty blocks to lite clients.
 Similarly, without actually interfering with the main chain, we can have the following:
@@ -116,7 +115,9 @@ F4 cannot fool correct full nodes as they know the current validator set. Simila
 
 
 
-The following table gives an overview of how the different attacks may affect different nodes.
+The following table gives an overview of how the different attacks may affect different nodes. F1-F3 are *on-chain* attacks so they can corrupt the state of full nodes. Then if a lite client (LCS or LCB) contacts a full node to obtain headers (or blocks), the corrupted state may propagate to the lite client.  
+
+F4 and F5 are *off-chain*, that is, these attacks cannot be used to corrupt the state of full nodes (which have sufficient knowledge on the state of the chain to not be fooled). 
 
 
 | Attack |  FN | LCS | LCB |
@@ -125,6 +126,7 @@ The following table gives an overview of how the different attacks may affect di
 | F2 |   direct | FN |     FN |
 | F3 |  direct  | FN |     FN |
 | F4 |          |    | direct |
+| F5 |          |    | direct |
 
 
 
