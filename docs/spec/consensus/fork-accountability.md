@@ -25,17 +25,21 @@ We say that a fork is a case in which there are two commits for different block 
 *Remark.* In the case more than 1/3 of the voting power belongs to faulty validators, also validity and termination can be broken. Termination can be broken if faulty processes just do not send the messages that are needed to make progress. Due to asynchrony, this is not punishable, because faulty validators can always claim they never received the messages that would have forced them to send messages.
 
 
-## Prerequisites
+## The Misbehavior of Faulty Validators
 
 Forks are the result of faulty validators deviating from the protocol. In principle several such deviations can be detected without a fork actually occurring:
 
-1. double proposal: A faulty proposer proposes to different values (blocks) for the same height and the same round in Tendermint consensus.
+1. double proposal: A faulty proposer proposes two different values (blocks) for the same height and the same round in Tendermint consensus.
 
-2. double signing: Tendermint consensus forces correct validators to prevote and precommit for one value per round. In case a faulty proposer proposed mutliple values, faulty validators can prevote and precommit multiple values.
+2. double signing: Tendermint consensus forces correct validators to prevote and precommit for at most one value per round. In case a faulty proposer proposed mutliple values, faulty validators can prevote and precommit multiple values.
 
 3. lunatic validator: Tendermint consensus forces correct validators to prevote and precommit only for values *v* that satisfy *valid(v)*. If faulty validators prevote and precommit for *v* although *valid(v)=false* this is misbehavior.
 
-*Remark.* In isolation, Point 3 violates validity (rather than agreement).
+*Remark.* In isolation, Point 3 is an attack on validity (rather than agreement). However, the prevotes and precommits can then also be used to forge blocks
+
+4. amnesia: Tendermint consensus has a locking mechanism. Validators may only prevote/precommit a value if they have not locked a different value before.
+
+5. spurious messages: In Tendermint consensus most of the message send instructions are guarded by threshold guards, e.g., one needs to receive *2f + 1* prevote messages to send precommit. Faulty validators may send precommit without having received the prevote messages. 
 
 
 Independently of a fork happening, punishing this behavior might be important to prevent forks altogether. This should keep attackers from misbehaving: if at most 1/3 of the voting power is faulty, this misbehavior is detectable but will not lead to a safety violation. Thus, unless they have more than 1/3 (or in some cases more than 2/3) of the voting power attackers have the incentive to not misbehave. If attackers control too much voting power, we have to deal with forks, as discussed in this document.   
