@@ -14,10 +14,8 @@ require (
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.3.2
 	github.com/google/gofuzz v1.0.0 // indirect
-	github.com/google/pprof v0.0.0-20190723021845-34ac40c74b70 // indirect
 	github.com/gorilla/websocket v1.2.0
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515 // indirect
 	github.com/libp2p/go-buffer-pool v0.0.1
@@ -32,6 +30,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/rs/cors v1.6.0
+	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/afero v1.1.2 // indirect
 	github.com/spf13/cast v1.3.0 // indirect
 	github.com/spf13/cobra v0.0.1
@@ -41,7 +40,6 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/tendermint/go-amino v0.14.1
 	github.com/tendermint/tm-db v0.1.1
-	golang.org/x/arch v0.0.0-20190312162104-788fe5ffcd8c // indirect
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
 	google.golang.org/grpc v1.22.0
