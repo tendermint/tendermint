@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION=12.9.0
+VERSION=v12.9.0
 NODE_FULL=node-${VERSION}-linux-x64
 
 mkdir -p ~/.local/bin
