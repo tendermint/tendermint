@@ -144,11 +144,23 @@ IBC, it will be a `ibc` provider, receiving information from IBC transactions.
 Once we have the information, we need to verify it.
 
 ```go
+type mode int
+
+const (
+	sequential mode = iota
+	bisecting
+)
+
+// default mode - DefaultBisectingVerification
 type Verifier struct {
 	chainID            string
 	options            TrustOptions
 	lastVerifiedHeight int64
 	logger             log.Logger
+
+	mode          mode
+	trustLevel    float
+	trustLevelAdj float
 
 	// Already validated, stored locally
 	trusted PersistentProvider
@@ -171,22 +183,40 @@ Verifier should use bisection by default, but provide options to choose a
 different mode OR tweak bisection.
 
 ```go
-func LinearVerification() Option {
+// trustLevelAdj - maximum change between two consequitive headers in terms of
+// validators & their respective voting power, required to trust a new header.
+func SequentialVerification(trustLevelAdj float) Option {
+	if trustLevelAdj > 1 || trustLevelAdj < 1/3 {
+		panic(fmt.Sprintf("trustLevelAdj must be within [1/3, 1], given %v, %v", trustLevel, trustLevelAdj))
+	}
+
 	return func(v *Verifier) {
-		v.mode = LINEAR
+		v.mode = sequential
+		v.trustLevelAdj = trustLevelAdj
 	}
 }
 
+// trustLevel - maximum change between two headers in terms of validators &
+// their respective voting power, required to trust a new header (default:
+// 1/3).
+//
+// trustLevelAdj - maximum change between two consequitive headers in terms of
+// validators & their respective voting power, required to trust a new header
+// (default: 2/3).
 func BisectingVerification(trustLevel, trustLevelAdj float) Option {
 	if trustLevel > 1 || trustLevel < 1/3 || trustLevelAdj > 1 || trustLevelAdj < 1/3 {
 		panic(fmt.Sprintf("trustLevel, trustLevelAdj must be within [1/3, 1], given %v, %v", trustLevel, trustLevelAdj))
 	}
 
 	return func(v *Verifier) {
-		v.mode = BISECTION
+		v.mode = bisecting
 		v.trustLevel = trustLevel
 		v.trustLevelAdj = trustLevelAdj
 	}
+}
+
+var DefaultBisectingVerification = func() Option {
+	return BisectingVerification(1/3, 2/3)
 }
 ```
 
