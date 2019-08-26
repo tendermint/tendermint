@@ -1,6 +1,6 @@
 swagger: "2.0"
 info:
-  version: "0.32.1"
+  version: "Master"
   title: RPC client for Tendermint
   description: A REST interface for state queries, transaction generation and broadcasting.
   license:
@@ -37,12 +37,12 @@ paths:
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
-        
+
         1. malicious node can drop or pretend it had committed your tx
         2. malicious proposer (not necessary the one you're communicating with) can
         drop transactions, which might become valid in the future
         (https://github.com/tendermint/tendermint/issues/3322)
-        
+
 
         Please refer to
         https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
@@ -60,11 +60,11 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/BroadcastTxResponse'
+            $ref: "#/definitions/BroadcastTxResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /broadcast_tx_async:
     get:
       summary: Returns right away, with no response. Does not wait for CheckTx nor DeliverTx results.
@@ -101,11 +101,11 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/BroadcastTxResponse'
+            $ref: "#/definitions/BroadcastTxResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /broadcast_tx_commit:
     get:
       summary: Returns with the responses from CheckTx and DeliverTx.
@@ -140,11 +140,11 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/BroadcastTxCommitResponse'
+            $ref: "#/definitions/BroadcastTxCommitResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /subscribe:
     get:
       summary: Subscribe for events via WebSocket.
@@ -285,11 +285,11 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/EmptyResponse'
+            $ref: "#/definitions/EmptyResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /unsubscribe:
     get:
       summary: Unsubscribe from event on Websocket
@@ -297,19 +297,19 @@ paths:
         - Websocket
       operationId: unsubscribe
       description: |
-         ```go
-         client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
-         err := client.Start()
-         if err != nil {
-            handle error
-         }
-         defer client.Stop()
-         query := "tm.event = 'Tx' AND tx.height = 3"
-         err = client.Unsubscribe(context.Background(), "test-client", query)
-         if err != nil {
-            handle error
-         }
-         ```
+        ```go
+        client := client.NewHTTP("tcp:0.0.0.0:26657", "/websocket")
+        err := client.Start()
+        if err != nil {
+           handle error
+        }
+        defer client.Stop()
+        query := "tm.event = 'Tx' AND tx.height = 3"
+        err = client.Unsubscribe(context.Background(), "test-client", query)
+        if err != nil {
+           handle error
+        }
+        ```
       parameters:
         - in: query
           name: query
@@ -328,11 +328,11 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/EmptyResponse'
+            $ref: "#/definitions/EmptyResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /unsubscribe_all:
     get:
       summary: Unsubscribe from all events via WebSocket
@@ -347,11 +347,11 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/EmptyResponse'
+            $ref: "#/definitions/EmptyResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /health:
     get:
       summary: Node heartbeat
@@ -366,11 +366,11 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/EmptyResponse'
+            $ref: "#/definitions/EmptyResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /status:
     get:
       summary: Node Status
@@ -385,11 +385,11 @@ paths:
         200:
           description: Status of the node
           schema:
-            $ref: '#/definitions/StatusResponse'
+            $ref: "#/definitions/StatusResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /net_info:
     get:
       summary: Network informations
@@ -404,11 +404,11 @@ paths:
         200:
           description: empty answer
           schema:
-            $ref: '#/definitions/NetInfoResponse'
+            $ref: "#/definitions/NetInfoResponse"
         500:
           description: empty error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /blockchain:
     get:
       summary: Get block headers for minHeight <= height <= maxHeight.
@@ -434,11 +434,11 @@ paths:
         200:
           description: Block headers, returned in descending order (highest first).
           schema:
-            $ref: '#/definitions/BlockchainResponse'
+            $ref: "#/definitions/BlockchainResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /block:
     get:
       summary: Get block at a specified height
@@ -460,11 +460,11 @@ paths:
         200:
           description: Block informations.
           schema:
-            $ref: '#/definitions/BlockResponse'
+            $ref: "#/definitions/BlockResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /block_results:
     get:
       summary: Get block results at a specified height
@@ -486,11 +486,11 @@ paths:
         200:
           description: Block results.
           schema:
-            $ref: '#/definitions/BlockResultsResponse'
+            $ref: "#/definitions/BlockResultsResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /commit:
     get:
       summary: Get commit results at a specified height
@@ -512,11 +512,11 @@ paths:
         200:
           description: Commit results.
           schema:
-            $ref: '#/definitions/CommitResponse'
+            $ref: "#/definitions/CommitResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /validators:
     get:
       summary: Get validator set at a specified height
@@ -538,11 +538,11 @@ paths:
         200:
           description: Commit results.
           schema:
-            $ref: '#/definitions/ValidatorsResponse'
+            $ref: "#/definitions/ValidatorsResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /genesis:
     get:
       summary: Get Genesis
@@ -557,11 +557,11 @@ paths:
         200:
           description: Genesis results.
           schema:
-            $ref: '#/definitions/GenesisResponse'
+            $ref: "#/definitions/GenesisResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /dump_consensus_state:
     get:
       summary: Get consensus state
@@ -576,11 +576,11 @@ paths:
         200:
           description: consensus state results.
           schema:
-            $ref: '#/definitions/DumpConsensusResponse'
+            $ref: "#/definitions/DumpConsensusResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /consensus_state:
     get:
       summary: Get consensus state
@@ -595,11 +595,11 @@ paths:
         200:
           description: consensus state results.
           schema:
-            $ref: '#/definitions/ConsensusStateResponse'
+            $ref: "#/definitions/ConsensusStateResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /consensus_params:
     get:
       summary: Get consensus parameters
@@ -621,11 +621,11 @@ paths:
         200:
           description: consensus parameters results.
           schema:
-            $ref: '#/definitions/ConsensusParamsResponse'
+            $ref: "#/definitions/ConsensusParamsResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /unconfirmed_txs:
     get:
       summary: Get the list of unconfirmed transactions
@@ -646,11 +646,11 @@ paths:
         200:
           description: List of unconfirmed transactions
           schema:
-            $ref: '#/definitions/UnconfirmedTransactionsResponse'
+            $ref: "#/definitions/UnconfirmedTransactionsResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /num_unconfirmed_txs:
     get:
       summary: Get data about unconfirmed transactions
@@ -665,11 +665,11 @@ paths:
         200:
           description: status about unconfirmed transactions
           schema:
-            $ref: '#/definitions/NumUnconfirmedTransactionsResponse'
+            $ref: "#/definitions/NumUnconfirmedTransactionsResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /tx_search:
     get:
       summary: Search for transactions
@@ -712,11 +712,11 @@ paths:
         200:
           description: List of unconfirmed transactions
           schema:
-            $ref: '#/definitions/TxSearchResponse'
+            $ref: "#/definitions/TxSearchResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /tx:
     get:
       summary: Get transactions by hash
@@ -745,11 +745,11 @@ paths:
         200:
           description: Get a transaction
           schema:
-            $ref: '#/definitions/TxResponse'
+            $ref: "#/definitions/TxResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /abci_info:
     get:
       summary: Get some info about the application.
@@ -764,11 +764,11 @@ paths:
         200:
           description: Get some info about the application.
           schema:
-            $ref: '#/definitions/ABCIInfoResponse'
+            $ref: "#/definitions/ABCIInfoResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
   /abci_query:
     get:
       summary: Query the application for some information.
@@ -810,11 +810,11 @@ paths:
         200:
           description: Response of the submitted query
           schema:
-            $ref: '#/definitions/ABCIQueryResponse'
+            $ref: "#/definitions/ABCIQueryResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
+            $ref: "#/definitions/ErrorResponse"
 
   /broadcast_evidence:
     get:
@@ -837,12 +837,11 @@ paths:
         200:
           description: Broadcast evidence of the misbehavior.
           schema:
-            $ref: '#/definitions/BroadcastEvidenceResponse'
+            $ref: "#/definitions/BroadcastEvidenceResponse"
         500:
           description: Error
           schema:
-            $ref: '#/definitions/ErrorResponse'
-
+            $ref: "#/definitions/ErrorResponse"
 
 definitions:
   JSONRPC:
@@ -857,7 +856,7 @@ definitions:
   EmptyResponse:
     description: Empty Response
     allOf:
-      - $ref: '#/definitions/JSONRPC'
+      - $ref: "#/definitions/JSONRPC"
       - type: object
         properties:
           result:
@@ -866,7 +865,7 @@ definitions:
   ErrorResponse:
     description: Error Response
     allOf:
-      - $ref: '#/definitions/JSONRPC'
+      - $ref: "#/definitions/JSONRPC"
       - type: object
         properties:
           error:
@@ -897,7 +896,7 @@ definitions:
     type: object
     properties:
       protocol_version:
-        $ref: '#/definitions/ProtocolVersion'
+        $ref: "#/definitions/ProtocolVersion"
       id:
         type: string
         x-example: "5576458aef205977e18fd50b274e9b5d9014525a"
@@ -951,7 +950,7 @@ definitions:
         type: string
         x-example: "5D6A51A8E9899C44079C6AF90618BA0369070E6E"
       pub_key:
-        $ref: '#/definitions/PubKey'
+        $ref: "#/definitions/PubKey"
       voting_power:
         type: string
         x-example: "0"
@@ -960,19 +959,19 @@ definitions:
     type: object
     properties:
       node_info:
-        $ref: '#/definitions/NodeInfo'
+        $ref: "#/definitions/NodeInfo"
       sync_info:
-        $ref: '#/definitions/SyncInfo'
+        $ref: "#/definitions/SyncInfo"
       validator_info:
-        $ref: '#/definitions/ValidatorInfo'
+        $ref: "#/definitions/ValidatorInfo"
   StatusResponse:
     description: Status Response
     allOf:
-      - $ref: '#/definitions/JSONRPC'
+      - $ref: "#/definitions/JSONRPC"
       - type: object
         properties:
           result:
-            $ref: '#/definitions/Status'
+            $ref: "#/definitions/Status"
   Monitor:
     type: object
     properties:
@@ -1040,23 +1039,23 @@ definitions:
         type: string
         x-example: "168901057956119"
       SendMonitor:
-        $ref: '#/definitions/Monitor'
+        $ref: "#/definitions/Monitor"
       RecvMonitor:
-        $ref: '#/definitions/Monitor'
+        $ref: "#/definitions/Monitor"
       Channels:
         type: array
         items:
-          $ref: '#/definitions/Channel'
+          $ref: "#/definitions/Channel"
   Peer:
     type: object
     properties:
       node_info:
-        $ref: '#/definitions/NodeInfo'
+        $ref: "#/definitions/NodeInfo"
       is_outbound:
         type: boolean
         x-example: true
       connection_status:
-        $ref: '#/definitions/ConnectionStatus'
+        $ref: "#/definitions/ConnectionStatus"
       remote_ip:
         type: string
         x-example: "95.179.155.35"
@@ -1077,15 +1076,15 @@ definitions:
       peers:
         type: array
         items:
-          $ref: '#/definitions/Peer'
+          $ref: "#/definitions/Peer"
   NetInfoResponse:
     description: NetInfo Response
     allOf:
-      - $ref: '#/definitions/JSONRPC'
+      - $ref: "#/definitions/JSONRPC"
       - type: object
         properties:
           result:
-            $ref: '#/definitions/NetInfo'
+            $ref: "#/definitions/NetInfo"
   BlockID:
     required:
       - "hash"
@@ -1154,7 +1153,7 @@ definitions:
         type: string
         x-example: "3"
       last_block_id:
-        $ref: '#/definitions/BlockID'
+        $ref: "#/definitions/BlockID"
       last_commit_hash:
         type: string
         x-example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
@@ -1208,9 +1207,9 @@ definitions:
     type: object
     properties:
       block_id:
-        $ref: '#/definitions/BlockMetaId'
+        $ref: "#/definitions/BlockMetaId"
       header:
-        $ref: '#/definitions/BlockMetaHeader'
+        $ref: "#/definitions/BlockMetaHeader"
   Blockchain:
     type: object
     required:
@@ -1223,15 +1222,15 @@ definitions:
       block_metas:
         type: "array"
         items:
-          $ref: '#/definitions/BlockMeta'
+          $ref: "#/definitions/BlockMeta"
   BlockchainResponse:
-    description:  Blockchain info
+    description: Blockchain info
     allOf:
-      - $ref: '#/definitions/JSONRPC'
+      - $ref: "#/definitions/JSONRPC"
       - type: object
         properties:
           result:
-            $ref: '#/definitions/Blockchain'
+            $ref: "#/definitions/Blockchain"
   Commit:
     required:
       - "type"
@@ -1253,7 +1252,7 @@ definitions:
         type: string
         x-example: "0"
       block_id:
-        $ref: '#/definitions/BlockID'
+        $ref: "#/definitions/BlockID"
       timestamp:
         type: string
         x-example: "2019-08-01T11:39:38.867269833Z"
@@ -1270,30 +1269,30 @@ definitions:
     type: object
     properties:
       header:
-        $ref: '#/definitions/BlockMetaHeader'
+        $ref: "#/definitions/BlockMetaHeader"
       data:
         type: array
         items:
           type: string
-          x-example: 'yQHwYl3uCkKoo2GaChRnd+THLQ2RM87nEZrE19910Z28ABIUWW/t8AtIMwcyU0sT32RcMDI9GF0aEAoFdWF0b20SBzEwMDAwMDASEwoNCgV1YXRvbRIEMzEwMRCd8gEaagom61rphyEDoJPxlcjRoNDtZ9xMdvs+lRzFaHe2dl2P5R2yVCWrsHISQKkqX5H1zXAIJuC57yw0Yb03Fwy75VRip0ZBtLiYsUqkOsPUoQZAhDNP+6LY+RUwz/nVzedkF0S29NZ32QXdGv0='
+          x-example: "yQHwYl3uCkKoo2GaChRnd+THLQ2RM87nEZrE19910Z28ABIUWW/t8AtIMwcyU0sT32RcMDI9GF0aEAoFdWF0b20SBzEwMDAwMDASEwoNCgV1YXRvbRIEMzEwMRCd8gEaagom61rphyEDoJPxlcjRoNDtZ9xMdvs+lRzFaHe2dl2P5R2yVCWrsHISQKkqX5H1zXAIJuC57yw0Yb03Fwy75VRip0ZBtLiYsUqkOsPUoQZAhDNP+6LY+RUwz/nVzedkF0S29NZ32QXdGv0="
       evidence:
         type: array
         items:
-          $ref: '#/definitions/Evidence'
+          $ref: "#/definitions/Evidence"
       last_commit:
         type: object
         properties:
           block_id:
-            $ref: '#/definitions/BlockID'
+            $ref: "#/definitions/BlockID"
           precommits:
             type: array
             items:
-              $ref: '#/definitions/Commit'
+              $ref: "#/definitions/Commit"
   Validator:
     type: object
     properties:
       pub_key:
-        $ref: '#/definitions/PubKey'
+        $ref: "#/definitions/PubKey"
       voting_power:
         type: number
       address:
@@ -1310,31 +1309,31 @@ definitions:
       total_voting_power:
         type: number
       validator:
-        $ref:  '#/definitions/Validator'
+        $ref: "#/definitions/Validator"
   BlockComplete:
     type: object
     properties:
       block_meta:
-        $ref: '#/definitions/BlockMeta'
+        $ref: "#/definitions/BlockMeta"
       block:
-        $ref: '#/definitions/Block'
+        $ref: "#/definitions/Block"
   BlockResponse:
-    description:  Blockc info
+    description: Blockc info
     allOf:
-      - $ref: '#/definitions/JSONRPC'
+      - $ref: "#/definitions/JSONRPC"
       - type: object
         properties:
           result:
-            $ref: '#/definitions/BlockComplete'
+            $ref: "#/definitions/BlockComplete"
   Tag:
     type: object
     properties:
       key:
         type: string
-        example: 'YWN0aW9u'
+        example: "YWN0aW9u"
       value:
         type: string
-        example: 'c2VuZA=='
+        example: "c2VuZA=="
   ################## FROM NOW ON NEEDS REFACTOR ##################
   BlockResultsResponse:
     type: "object"
@@ -1371,7 +1370,7 @@ definitions:
                   properties:
                     log:
                       type: "string"
-                      example: "[{\"msg_index\":\"0\",\"success\":true,\"log\":\"\"}]"
+                      example: '[{"msg_index":"0","success":true,"log":""}]'
                     gasWanted:
                       type: "string"
                       example: "25629"
@@ -2249,7 +2248,7 @@ definitions:
           - "n_txs"
           - "total"
           - "total_bytes"
-#          - "txs"
+        #          - "txs"
         properties:
           n_txs:
             type: "string"
@@ -2260,14 +2259,14 @@ definitions:
           total_bytes:
             type: "string"
             example: "19974"
-#          txs:
-#            type: "array"
-#            x-nullable: true
-#            items:
-#              type: "string"
-#              x-nullable: true
-#            example:
-#              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
+        #          txs:
+        #            type: "array"
+        #            x-nullable: true
+        #            items:
+        #              type: "string"
+        #              x-nullable: true
+        #            example:
+        #              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
         type: "object"
   NumUnconfirmedTransactionsResponse:
     type: object
@@ -2349,7 +2348,7 @@ definitions:
                   properties:
                     log:
                       type: "string"
-                      example: "[{\"msg_index\":\"0\",\"success\":true,\"log\":\"\"}]"
+                      example: '[{"msg_index":"0","success":true,"log":""}]'
                     gasWanted:
                       type: "string"
                       example: "200000"
@@ -2450,7 +2449,7 @@ definitions:
             properties:
               log:
                 type: "string"
-                example: "[{\"msg_index\":\"0\",\"success\":true,\"log\":\"\"}]"
+                example: '[{"msg_index":"0","success":true,"log":""}]'
               gasWanted:
                 type: "string"
                 example: "200000"
@@ -2497,7 +2496,7 @@ definitions:
             properties:
               data:
                 type: "string"
-                example: "{\"size\":0}"
+                example: '{"size":0}'
               version:
                 type: string
                 example: "0.16.1"
