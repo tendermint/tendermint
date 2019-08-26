@@ -637,7 +637,7 @@ type MempoolConfig struct {
 	Size        int    `mapstructure:"size"`
 	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
 	CacheSize   int    `mapstructure:"cache_size"`
-	MaxMsgBytes int    `mapstructure:"max_msg_bytes"`
+	MaxTxBytes  int    `mapstructure:"max_tx_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -651,7 +651,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Size:        5000,
 		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
 		CacheSize:   10000,
-		MaxMsgBytes: 1024 * 1024, // 1MB
+		MaxTxBytes:  1024 * 1024, // 1MB
 	}
 }
 
@@ -684,8 +684,8 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.CacheSize < 0 {
 		return errors.New("cache_size can't be negative")
 	}
-	if cfg.MaxMsgBytes < 0 {
-		return errors.New("max_msg_bytes can't be negative")
+	if cfg.MaxTxBytes < 0 {
+		return errors.New("max_tx_bytes can't be negative")
 	}
 	return nil
 }

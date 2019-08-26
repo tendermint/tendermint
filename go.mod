@@ -30,6 +30,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/rs/cors v1.6.0
+	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/afero v1.1.2 // indirect
 	github.com/spf13/cast v1.3.0 // indirect
 	github.com/spf13/cobra v0.0.1
@@ -38,9 +39,8 @@ require (
 	github.com/spf13/viper v1.0.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tendermint/go-amino v0.14.1
-	github.com/tendermint/tm-cmn v0.0.0-20190716080004-dfcde30d5acb
+	github.com/tendermint/tm-db v0.1.1
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
-	google.golang.org/genproto v0.0.0-20181029155118-b69ba1387ce2 // indirect
 	google.golang.org/grpc v1.22.0
 )

@@ -51,11 +51,12 @@ func IsASCIIText(s string) bool {
 func ASCIITrim(s string) string {
 	r := make([]byte, 0, len(s))
 	for _, b := range []byte(s) {
-		if b == 32 {
+		switch {
+		case b == 32:
 			continue // skip space
-		} else if 32 < b && b <= 126 {
+		case 32 < b && b <= 126:
 			r = append(r, b)
-		} else {
+		default:
 			panic(fmt.Sprintf("non-ASCII (non-tab) char 0x%X", b))
 		}
 	}

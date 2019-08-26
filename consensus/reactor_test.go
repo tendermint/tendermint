@@ -18,6 +18,8 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	cstypes "github.com/tendermint/tendermint/consensus/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -25,21 +27,21 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-cmn/db"
+	dbm "github.com/tendermint/tm-db"
 )
 
 //----------------------------------------------
 // in-process testnets
 
-func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
+func startConsensusNet(t *testing.T, css []*ConsensusState, n int) (
 	[]*ConsensusReactor,
 	[]types.Subscription,
 	[]*types.EventBus,
 ) {
-	reactors := make([]*ConsensusReactor, N)
+	reactors := make([]*ConsensusReactor, n)
 	blocksSubs := make([]types.Subscription, 0)
-	eventBuses := make([]*types.EventBus, N)
-	for i := 0; i < N; i++ {
+	eventBuses := make([]*types.EventBus, n)
+	for i := 0; i < n; i++ {
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
@@ -58,7 +60,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 		}
 	}
 	// make connected switches and start all reactors
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("CONSENSUS", reactors[i])
 		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
 		return s
@@ -68,7 +70,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) (
 	// If we started the state machines before everyone was connected,
 	// we'd block when the cs fires NewBlockEvent and the peers are trying to start their reactors
 	// TODO: is this still true with new pubsub?
-	for i := 0; i < N; i++ {
+	for i := 0; i < n; i++ {
 		s := reactors[i].conS.GetState()
 		reactors[i].SwitchToConsensus(s, 0)
 	}
@@ -631,4 +633,254 @@ func capture() {
 	trace := make([]byte, 10240000)
 	count := runtime.Stack(trace, true)
 	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
+}
+
+//-------------------------------------------------------------
+// Ensure basic validation of structs is functioning
+
+func TestNewRoundStepMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName               string
+		messageHeight          int64
+		messageRound           int
+		messageStep            cstypes.RoundStepType
+		messageLastCommitRound int
+		expectErr              bool
+	}{
+		{"Valid Message", 0, 0, 0x01, 1, false},
+		{"Invalid Message", -1, 0, 0x01, 1, true},
+		{"Invalid Message", 0, -1, 0x01, 1, true},
+		{"Invalid Message", 0, 0, 0x00, 1, true},
+		{"Invalid Message", 0, 0, 0x00, 0, true},
+		{"Invalid Message", 1, 0, 0x01, 0, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewRoundStepMessage{
+				Height:          tc.messageHeight,
+				Round:           tc.messageRound,
+				Step:            tc.messageStep,
+				LastCommitRound: tc.messageLastCommitRound,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestNewValidBlockMessageValidateBasic(t *testing.T) {
+	testBitArray := cmn.NewBitArray(1)
+	testCases := []struct {
+		testName          string
+		messageHeight     int64
+		messageRound      int
+		messageBlockParts *cmn.BitArray
+		expectErr         bool
+	}{
+		{"Valid Message", 0, 0, testBitArray, false},
+		{"Invalid Message", -1, 0, testBitArray, true},
+		{"Invalid Message", 0, -1, testBitArray, true},
+		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewValidBlockMessage{
+				Height:     tc.messageHeight,
+				Round:      tc.messageRound,
+				BlockParts: tc.messageBlockParts,
+			}
+
+			message.BlockPartsHeader.Total = 1
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestProposalPOLMessageValidateBasic(t *testing.T) {
+	testBitArray := cmn.NewBitArray(1)
+	testCases := []struct {
+		testName                string
+		messageHeight           int64
+		messageProposalPOLRound int
+		messageProposalPOL      *cmn.BitArray
+		expectErr               bool
+	}{
+		{"Valid Message", 0, 0, testBitArray, false},
+		{"Invalid Message", -1, 0, testBitArray, true},
+		{"Invalid Message", 0, -1, testBitArray, true},
+		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := ProposalPOLMessage{
+				Height:           tc.messageHeight,
+				ProposalPOLRound: tc.messageProposalPOLRound,
+				ProposalPOL:      tc.messageProposalPOL,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestBlockPartMessageValidateBasic(t *testing.T) {
+	testPart := new(types.Part)
+	testCases := []struct {
+		testName      string
+		messageHeight int64
+		messageRound  int
+		messagePart   *types.Part
+		expectErr     bool
+	}{
+		{"Valid Message", 0, 0, testPart, false},
+		{"Invalid Message", -1, 0, testPart, true},
+		{"Invalid Message", 0, -1, testPart, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := BlockPartMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Part:   tc.messagePart,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+
+	message := BlockPartMessage{Height: 0, Round: 0, Part: new(types.Part)}
+	message.Part.Index = -1
+
+	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+}
+
+func TestHasVoteMessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
+	)
+
+	testCases := []struct {
+		testName      string
+		messageHeight int64
+		messageRound  int
+		messageType   types.SignedMsgType
+		messageIndex  int
+		expectErr     bool
+	}{
+		{"Valid Message", 0, 0, validSignedMsgType, 0, false},
+		{"Invalid Message", -1, 0, validSignedMsgType, 0, true},
+		{"Invalid Message", 0, -1, validSignedMsgType, 0, true},
+		{"Invalid Message", 0, 0, invalidSignedMsgType, 0, true},
+		{"Invalid Message", 0, 0, validSignedMsgType, -1, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := HasVoteMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Type:   tc.messageType,
+				Index:  tc.messageIndex,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
+	)
+
+	validBlockID := types.BlockID{}
+	invalidBlockID := types.BlockID{
+		Hash: cmn.HexBytes{},
+		PartsHeader: types.PartSetHeader{
+			Total: -1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
+
+	testCases := []struct {
+		testName       string
+		messageHeight  int64
+		messageRound   int
+		messageType    types.SignedMsgType
+		messageBlockID types.BlockID
+		expectErr      bool
+	}{
+		{"Valid Message", 0, 0, validSignedMsgType, validBlockID, false},
+		{"Invalid Message", -1, 0, validSignedMsgType, validBlockID, true},
+		{"Invalid Message", 0, -1, validSignedMsgType, validBlockID, true},
+		{"Invalid Message", 0, 0, invalidSignedMsgType, validBlockID, true},
+		{"Invalid Message", 0, 0, validSignedMsgType, invalidBlockID, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := VoteSetMaj23Message{
+				Height:  tc.messageHeight,
+				Round:   tc.messageRound,
+				Type:    tc.messageType,
+				BlockID: tc.messageBlockID,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
+	)
+
+	validBlockID := types.BlockID{}
+	invalidBlockID := types.BlockID{
+		Hash: cmn.HexBytes{},
+		PartsHeader: types.PartSetHeader{
+			Total: -1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
+	testBitArray := cmn.NewBitArray(1)
+
+	testCases := []struct {
+		testName       string
+		messageHeight  int64
+		messageRound   int
+		messageType    types.SignedMsgType
+		messageBlockID types.BlockID
+		messageVotes   *cmn.BitArray
+		expectErr      bool
+	}{
+		{"Valid Message", 0, 0, validSignedMsgType, validBlockID, testBitArray, false},
+		{"Invalid Message", -1, 0, validSignedMsgType, validBlockID, testBitArray, true},
+		{"Invalid Message", 0, -1, validSignedMsgType, validBlockID, testBitArray, true},
+		{"Invalid Message", 0, 0, invalidSignedMsgType, validBlockID, testBitArray, true},
+		{"Invalid Message", 0, 0, validSignedMsgType, invalidBlockID, testBitArray, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			message := VoteSetBitsMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Type:   tc.messageType,
+				// Votes:   tc.messageVotes,
+				BlockID: tc.messageBlockID,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }
