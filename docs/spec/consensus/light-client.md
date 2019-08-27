@@ -214,7 +214,8 @@ We further use the function ```signers(Commit)``` that returns the set of valida
         // signing validators are more than two third in h1.
     }
 
-    return (votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all)
+    return (votingpower_in(signers(h2.Commit),h1.Header.NextV) >
+            max(1/3,trustlevel) * vp_all)
       // get validators in h1 that signed h2
       // sum of voting powers in h1 of
       // validators that signed h2
@@ -273,6 +274,7 @@ func Bisection(h1,h2,trustlevel) bool{
     // store header hp locally
   if Bisection(h1,hp,trustlevel) {
     // only check right branch if hp is trusted
+    // (otherwise a lot of unnecessary computation may be done)
     return Bisection(hp,h2,trustlevel)
   }
   else {
