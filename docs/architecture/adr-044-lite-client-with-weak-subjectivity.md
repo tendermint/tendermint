@@ -158,24 +158,24 @@ type Verifier struct {
 	lastVerifiedHeight int64
 	logger             log.Logger
 
-	mode          mode
-	trustLevel    float
-	trustLevelAdj float
+	mode       mode
+	trustLevel float
 
-	// Already validated, stored locally
+	// Source of new FullCommit(s).
+	source Provider
+
+	// Where trusted FullCommit(s) are stored.
 	trusted PersistentProvider
-
-	// New info, like a node rpc, or other import method.
-	sources Provider
 }
 ```
 
-Since providers themselves don't know when they have received a new header
-(or may choose to do so upon a request), we must add a new function to
-`Verifier` - `Verify(height int64) error`.
+Since providers themselves don't know when they have received a new header (or
+may choose to do so upon a request), we must add a new function to `Verifier` -
+`Verify(height int64) error`. It will try to fetch a new header & validator set
+and verify it.
 
-It should also provide `AutoVerify(period)` option to try & verify new headers
-in the background (optional).
+`Verifier` should also have `AutoVerify(period)` option to execute
+`Verify(currentHeight + 1)` in the background periodically (optional).
 
 **Sequential vs bisecting verifier**
 
@@ -190,8 +190,8 @@ func SequentialVerification() Option {
 }
 
 // trustLevel - maximum change between two not consequitive headers in terms of
-// validators & // their respective voting power, required to trust a new header
-// (default: // 1/3).
+// validators & their respective voting power, required to trust a new header
+// (default: 1/3).
 func BisectingVerification(trustLevel float) Option {
 	if trustLevel > 1 || trustLevel < 1/3 {
 		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
@@ -212,7 +212,7 @@ Once we verified the header, we will need to store it somewhere.
 
 ```
 type PersistentProvider interface {
-  Provider
+	Provider
 
 	SaveFullCommit(fc FullCommit) error
 }
@@ -224,14 +224,10 @@ front). For IBC, it will be a `keeper` provider.
 **Minimal test for (1)**
 
 ```go
-sources = []rpcclient.Client{
-	rpcclient.NewHTTP(remote1, "/websocket"),
-	rpcclient.NewHTTP(remote2, "/websocket"),
-}
 c, err := lite.NewClient(
 	chainID,
 	lite.TrustOptions{TrustPeriod: 336 * time.Hour},
-	sources,
+	rpcclient.NewHTTP(remote1, "/websocket"),
 )
 require.NoError(t, err)
 
@@ -246,7 +242,7 @@ assert.Equal(t, chainID, commit.ChainID)
 ```go
 type Client struct {
 	verifier *Verifier
-	clients  []rpcclient.Client
+	client   rpcclient.Client
 }
 
 var rpcclient.Client = (*Client)(nil)
@@ -255,13 +251,10 @@ var rpcclient.Client = (*Client)(nil)
 **Minimal test for (2)**
 
 ```go
-sources = []lite.Provider{
-	ibc.New(chainID),
-}
 c, err := lite.NewVerifier(
 	chainID,
 	lite.TrustOptions{TrustPeriod: 24 * time.Hour},
-	sources,
+	ibc.New(chainID),
 	Trusted(ibcKeeper{}),
 )
 require.NoError(t, err)
@@ -269,6 +262,11 @@ require.NoError(t, err)
 err = c.Verify(height)
 require.NoError(t, err)
 ```
+
+**Evidence Handling and Reporting**
+
+light client should also be able to submit evidence of malfeasance and handle
+evidence coming from a full node or another source.
 
 ## Status
 
