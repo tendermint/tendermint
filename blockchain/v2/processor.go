@@ -36,19 +36,24 @@ type queueItem struct {
 
 type blockQueue struct {
 	queue  map[int64]*queueItem
-	height int64
+	height int64 // Height is the last validated block
 }
 
-func newBlockQueue(initHeight int64) *blockQueue {
+// we initialize the block queue with block stored on the node
+func newBlockQueue(initBlock *types.Block) *blockQueue {
+	var myID p2p.ID = "thispeersid" // XXX: make this real
+	initItem := &queueItem{block: initBlock, peerID: myID}
+
 	return &blockQueue{
-		queue:  map[int64]*queueItem{},
-		height: initHeight,
+		queue:  map[int64]*queueItem{initBlock.Height: initItem},
+		height: initBlock.Height,
 	}
 }
 
+// nextTwo returns the next two unverified blocks
 func (bq *blockQueue) nextTwo() (*queueItem, *queueItem, error) {
-	if first, ok := bq.queue[bq.height]; ok {
-		if second, ok := bq.queue[bq.height+1]; ok {
+	if first, ok := bq.queue[bq.height+1]; ok {
+		if second, ok := bq.queue[bq.height+2]; ok {
 			return first, second, nil
 		}
 	}
@@ -85,17 +90,16 @@ type pcFinished struct {
 	height int64
 }
 type scFinished struct{}
+type pcWaitingForBlock struct{}
 
 func (p pcFinished) Error() string {
 	return "finished"
 }
 
-// XXX: this assumes that feedback will be in play here
-
 // * accept the initial state from the blockchain reactior initialization
 // * produce the final state from `SwitchToConsensus`
-func newProcessor(initHeight int64, state state.State, chainID string, context processorContext) *Routine {
-	bq := newBlockQueue(initHeight)
+func newProcessor(initBlock *types.Block, state state.State, chainID string, context processorContext) *Routine {
+	bq := newBlockQueue(initBlock)
 	draining := false
 	handlerFunc := func(event Event) (Event, error) {
 		switch event := event.(type) {
@@ -108,8 +112,7 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 		case processBlock:
 			firstItem, secondItem, err := bq.nextTwo()
 			if err != nil {
-				// We need both to sync the first block.
-				return NoOp{}, nil
+				return pcWaitingForBlock{}, nil
 			}
 			first, second := firstItem.block, secondItem.block
 
@@ -135,7 +138,7 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 			bq.remove(event.peerID)
 			return NoOp{}, nil
 		case pcBlockProcessed:
-			if bq.empty() && draining {
+			if bq.empty() {
 				return NoOp{}, pcFinished{height: bq.height}
 			}
 			return processBlock{}, nil
@@ -145,8 +148,11 @@ func newProcessor(initHeight int64, state state.State, chainID string, context p
 			}
 			draining = true
 			return processBlock{}, nil
-		case NoOp:
-			return NoOp{}, fmt.Errorf("failed")
+		case pcWaitingForBlock:
+			if draining {
+				return NoOp{}, pcFinished{height: bq.height}
+			}
+			return NoOp{}, nil
 		}
 
 		return NoOp{}, nil

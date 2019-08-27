@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -38,12 +39,13 @@ import (
 func TestProcessorStop(t *testing.T) {
 	var (
 		initHeight     int64 = 0
+		initBlock            = types.Block{Header: types.Header{Height: initHeight}}
 		state                = state.State{}
 		chainID              = "TestChain"
 		applicationBL        = []types.BlockID{}
 		verificationBL       = []types.BlockID{}
 		context              = newMockProcessorContext(verificationBL, applicationBL)
-		processor            = newProcessor(initHeight, state, chainID, context)
+		processor            = newProcessor(&initBlock, state, chainID, context)
 	)
 	processor.setLogger(log.TestingLogger())
 
@@ -64,18 +66,19 @@ func TestProcessorStop(t *testing.T) {
 // 1. we used synchronous `send` method
 // 2. Each even produced at most one event
 
-/*
+// what should the correct behaviour be here?
+
 func TestProcessorBlockReceived(t *testing.T) {
 	var (
 		initHeight     int64  = 0
+		initBlock             = types.Block{Header: types.Header{Height: initHeight}}
 		state                 = state.State{}
 		chainID               = "TestChain"
 		applicationBL         = []types.BlockID{}
 		verificationBL        = []types.BlockID{}
 		context               = newMockProcessorContext(verificationBL, applicationBL)
-		processor             = newProcessor(initHeight, state, chainID, context)
+		processor             = newProcessor(&initBlock, state, chainID, context)
 		peerID         p2p.ID = "1"
-		block                 = types.Block{}
 	)
 	processor.setLogger(log.TestingLogger())
 
@@ -85,17 +88,20 @@ func TestProcessorBlockReceived(t *testing.T) {
 	go processor.feedback()
 	<-processor.ready()
 
-	assert.True(t, processor.trySend(&bcBlockResponse{peerID: peerID, height: initHeight, block: &block}),
+	// XXX: Blocks have a Height field
+	firstHeader := types.Header{Height: initHeight + 1}
+	firstBlock := types.Block{Header: firstHeader}
+	assert.True(t, processor.trySend(&bcBlockResponse{peerID: peerID, height: initHeight + 1, block: &firstBlock}),
 		"expected sending a block to succeed")
 
-	assert.True(t, processor.trySend(&bcBlockResponse{peerID: peerID, height: initHeight + 1, block: &block}),
-		"expected sending a second block to succeed")
+	secondHeader := types.Header{Height: initHeight + 2}
+	secondBlock := types.Block{Header: secondHeader}
+	assert.True(t, processor.trySend(&bcBlockResponse{peerID: peerID, height: initHeight + 2, block: &secondBlock}),
+		"expected sending a block to succeed")
 
 	assert.True(t, processor.trySend(pcStop{}),
 		"expected stopping to a ready processor to succeed")
 
-	// TODO: final height
-	assert.Equal(t, pcFinished{height: initHeight}, <-processor.final(),
+	assert.Equal(t, pcFinished{height: initHeight + 1}, <-processor.final(),
 		"expected the final event to be done")
 }
-*/
