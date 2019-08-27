@@ -8,23 +8,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type pcDuplicateBlock struct{}
-type bcBlockResponse struct {
-	peerID p2p.ID
-	block  *types.Block
-	height int64
-}
-
-type pcBlockVerificationFailure struct{}
-
-type pcBlockProcessed struct {
-	height int64
-	peerID p2p.ID
-}
-
-type processBlock struct {
-}
-
 type peerError struct {
 	peerID p2p.ID
 }
@@ -85,22 +68,46 @@ func (bq *blockQueue) remove(peerID p2p.ID) {
 	}
 }
 
-type pcStop struct{}
-type pcFinished struct {
+type pcDuplicateBlock struct{}
+
+type bcBlockResponse struct {
+	peerID p2p.ID
+	block  *types.Block
 	height int64
 }
-type scFinished struct{}
-type pcWaitingForBlock struct{}
+
+type pcBlockVerificationFailure struct{}
+
+type pcBlockProcessed struct {
+	height int64
+	peerID p2p.ID
+}
+
+type pcProcessBlock struct{}
+
+type pcStop struct{}
+
+type pcFinished struct {
+	height       int64
+	blocksSynced int
+	state        state.State
+}
 
 func (p pcFinished) Error() string {
 	return "finished"
 }
 
+var noOp struct{} = struct{}{}
+
 // * accept the initial state from the blockchain reactior initialization
 // * produce the final state from `SwitchToConsensus`
+// TODO: timeouts
+// TODO: wrap in a FSMHandler(with state)
 func newProcessor(initBlock *types.Block, state state.State, chainID string, context processorContext) *Routine {
 	bq := newBlockQueue(initBlock)
 	draining := false
+	processessing := false
+	blocksSynced := 0
 	handlerFunc := func(event Event) (Event, error) {
 		switch event := event.(type) {
 		case *bcBlockResponse:
@@ -108,11 +115,19 @@ func newProcessor(initBlock *types.Block, state state.State, chainID string, con
 			if err != nil {
 				return pcDuplicateBlock{}, nil
 			}
-			return processBlock{}, nil
-		case processBlock:
+
+			if !processessing {
+				processessing = true
+				return pcProcessBlock{}, nil
+			}
+		case pcProcessBlock:
+			processessing = false
 			firstItem, secondItem, err := bq.nextTwo()
 			if err != nil {
-				return pcWaitingForBlock{}, nil
+				if draining {
+					return noOp, pcFinished{height: bq.height}
+				}
+				return noOp, nil
 			}
 			first, second := firstItem.block, secondItem.block
 
@@ -133,29 +148,30 @@ func newProcessor(initBlock *types.Block, state state.State, chainID string, con
 				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 			}
 			bq.advance()
+			blocksSynced++
 			return pcBlockProcessed{first.Height, firstItem.peerID}, nil
 		case *peerError:
 			bq.remove(event.peerID)
-			return NoOp{}, nil
 		case pcBlockProcessed:
 			if bq.empty() {
-				return NoOp{}, pcFinished{height: bq.height}
+				return noOp, pcFinished{height: bq.height, blocksSynced: blocksSynced}
 			}
-			return processBlock{}, nil
+			if !processessing {
+				processessing = true
+				return pcProcessBlock{}, nil
+			}
 		case pcStop:
 			if bq.empty() {
-				return NoOp{}, pcFinished{height: bq.height}
+				return noOp, pcFinished{height: bq.height, blocksSynced: blocksSynced}
 			}
 			draining = true
-			return processBlock{}, nil
-		case pcWaitingForBlock:
-			if draining {
-				return NoOp{}, pcFinished{height: bq.height}
+			if !processessing {
+				processessing = true
+				return pcProcessBlock{}, nil
 			}
-			return NoOp{}, nil
 		}
 
-		return NoOp{}, nil
+		return noOp, nil
 	}
 
 	return newRoutine("processor", handlerFunc)
