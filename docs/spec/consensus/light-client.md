@@ -300,9 +300,10 @@ This is only ensured if upon *Commit(pivot)* the lite client is always provided 
 
 *Stalling*
 
-With Bisection, a faulty full node could stall a lite client by creating a long sequence of headers that are queried one-by-one by the lite client and look OK, before the lite client eventually detects a problem. There are two ways to address this:
+With Bisection, a faulty full node could stall a lite client by creating a long sequence of headers that are queried one-by-one by the lite client and look OK, before the lite client eventually detects a problem. There are several ways to address this:
 * Each call to ```Commit``` could be issued to a different full node
 * Instead of querying header by header, the lite client tells a full node which header it trusts, and the height of the header it needs. The full node responds with the header along with a proof consisting of intermediate headers that the light client can use to verify. Roughly, Bisection would then be executed at the full node.
+* We may set a timeout how long bisection may take.
 
 
 ### The case *h2.Header.height < h1.Header.height*
