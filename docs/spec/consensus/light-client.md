@@ -219,7 +219,7 @@ We further use the function ```signers(Commit)``` that returns the set of valida
       // get validators in h1 that signed h2
       // sum of voting powers in h1 of
       // validators that signed h2
-      // signing validators are more than a third in h1
+      // is more than a third in h1
   }
 ```
 
