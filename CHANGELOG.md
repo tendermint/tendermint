@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.32.3
+
+*August 27, 2019*
+
+Special thanks to external contributors on this release:
+@gchaincl, @bluele
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS:
+
+- [consensus] [\#3839](https://github.com/tendermint/tendermint/issues/3839) Reduce "Error attempting to add vote" message severity (Error -> Info)
+- [mempool] [\#3877](https://github.com/tendermint/tendermint/pull/3877) Make `max_tx_bytes` configurable instead of `max_msg_bytes` (@bluele)
+- [privval] [\#3370](https://github.com/tendermint/tendermint/issues/3370) Refactor and simplify validator/kms connection handling. Please refer to [this comment](https://github.com/tendermint/tendermint/pull/3370#issue-257360971) for details
+- [rpc] [\#3880](https://github.com/tendermint/tendermint/issues/3880) Document endpoints with `swagger`, introduce contract tests of implementation against documentation
+
+### BUG FIXES:
+
+- [config] [\#3868](https://github.com/tendermint/tendermint/issues/3868) Move misplaced `max_msg_bytes` into mempool section (@bluele)
+- [rpc] [\#3910](https://github.com/tendermint/tendermint/pull/3910) Fix DATA RACE in HTTP client (@gchaincl)
+- [store] [\#3893](https://github.com/tendermint/tendermint/issues/3893) Fix "Unregistered interface types.Evidence" panic
+
 ## v0.32.2
 
 *July 31, 2019*
