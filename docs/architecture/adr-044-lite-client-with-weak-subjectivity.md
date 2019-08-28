@@ -167,8 +167,9 @@ type Verifier struct {
 	// Source of new FullCommit(s).
 	source Provider
 
-	// Backup sources for checking the primary for misbehavior by comparing data
-	backup []Provider
+	// Alternative sources for checking the primary for misbehavior by comparing data.
+	// If the primary misbehaves, we report the evidence to them.
+	verifiers []ProviderAndEvidenceReporter
 
 	// Where trusted FullCommit(s) are stored.
 	trusted PersistentProvider
@@ -177,8 +178,8 @@ type Verifier struct {
 
 Since providers themselves don't know when they have received a new header (or
 may choose to do so upon a request), we must add a new function to `Verifier` -
-`Verify(height int64) error`. It will try to fetch a new header & validator set
-and verify it.
+`Verify(height int64) error` (0 - latest). It will try to fetch a new header &
+validator set and verify it. nop if already verified.
 
 **Sequential vs bisecting verifier**
 
@@ -285,10 +286,20 @@ type FullCommit struct {
 When/if evidence is received, client should check it and disconnect from the
 node if `evidence.Address == TrustOptions.ValidatorAddress`. It's unwise to
 think that a node will send an evidence of its misbehavior. That's why we
-should also check `backup` sources in the background.
+should also check `verifiers` sources in the background.
 
-Submitting an evidence comes down to calling `BroadcastEvidence` on the backup
-sources.
+_Evidence handling can be implemented in the second version._
+
+Submitting an evidence comes down to calling `ReportEvidence(ev types.Evidence)
+error` on the `verifiers` sources.
+
+```go
+type ProviderAndEvidenceReporter interface {
+	Provider
+
+	ReportEvidence(ev types.Evidence) error
+}
+```
 
 ## Status
 
