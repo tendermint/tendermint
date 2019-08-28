@@ -76,7 +76,7 @@ func checkTxs(t *testing.T, mempool Mempool, count int, peerID uint16) types.Txs
 		if err != nil {
 			t.Error(err)
 		}
-		if err := mempool.CheckTxWithInfo(txBytes, nil, txInfo); err != nil {
+		if err := mempool.CheckTxWithInfo(txBytes, false, nil, txInfo); err != nil {
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
 			// returned.
