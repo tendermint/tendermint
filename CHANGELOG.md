@@ -4,8 +4,12 @@
 
 *August 27, 2019*
 
+@climber73 wrote the [Writing a Tendermint Core application in Java
+(gRPC)](https://github.com/tendermint/tendermint/blob/master/docs/guides/java.md)
+guide.
+
 Special thanks to external contributors on this release:
-@gchaincl, @bluele
+@gchaincl, @bluele, @climber73
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
