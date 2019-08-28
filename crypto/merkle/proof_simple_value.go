@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 const ProofOpSimpleValue = "simple:v"
@@ -39,12 +40,12 @@ func NewSimpleValueOp(key []byte, proof *SimpleProof) SimpleValueOp {
 
 func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
 	if pop.Type != ProofOpSimpleValue {
-		return nil, cmn.NewError("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpSimpleValue)
+		return nil, errors.Errorf("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpSimpleValue)
 	}
 	var op SimpleValueOp // a bit strange as we'll discard this, but it works.
 	err := cdc.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
 	if err != nil {
-		return nil, cmn.ErrorWrap(err, "decoding ProofOp.Data into SimpleValueOp")
+		return nil, errors.Wrap(err, "decoding ProofOp.Data into SimpleValueOp")
 	}
 	return NewSimpleValueOp(pop.Key, op.Proof), nil
 }
@@ -64,7 +65,7 @@ func (op SimpleValueOp) String() string {
 
 func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 	if len(args) != 1 {
-		return nil, cmn.NewError("expected 1 arg, got %v", len(args))
+		return nil, errors.Errorf("expected 1 arg, got %v", len(args))
 	}
 	value := args[0]
 	hasher := tmhash.New()
@@ -78,7 +79,7 @@ func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 	kvhash := leafHash(bz.Bytes())
 
 	if !bytes.Equal(kvhash, op.Proof.LeafHash) {
-		return nil, cmn.NewError("leaf hash mismatch: want %X got %X", op.Proof.LeafHash, kvhash)
+		return nil, errors.Errorf("leaf hash mismatch: want %X got %X", op.Proof.LeafHash, kvhash)
 	}
 
 	return [][]byte{

@@ -216,11 +216,11 @@ jobs:
           name: Trigger website build
           command: |
             curl --silent \
-                 --show-error \
-                 -X POST \
-                 --header "Content-Type: application/json" \
-                 -d "{\"branch\": \"$CIRCLE_BRANCH\"}" \
-                 "https://circleci.com/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$WEBSITE_REPO_NAME/build?circle-token=$TENDERBOT_API_TOKEN" > response.json
+                --show-error \
+                -X POST \
+                --header "Content-Type: application/json" \
+                -d "{\"branch\": \"$CIRCLE_BRANCH\"}" \
+                "https://circleci.com/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$WEBSITE_REPO_NAME/build?circle-token=$TENDERBOT_API_TOKEN" > response.json
 
             RESULT=`jq -r '.status' response.json`
             MESSAGE=`jq -r '.message' response.json`
@@ -359,6 +359,35 @@ jobs:
       - store_artifacts:
           path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
 
+  # Test RPC implementation against the swagger documented specs
+  contract_tests:
+    working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
+    machine:
+      image: circleci/classic:latest
+    environment:
+      GOBIN: /home/circleci/.go_workspace/bin
+      GOPATH: /home/circleci/.go_workspace/
+      GOOS: linux
+      GOARCH: amd64
+    parallelism: 1
+    steps:
+      - checkout
+      - run:
+          name: Test RPC endpoints against swagger documentation
+          command: |
+            set -x
+            export PATH=~/.local/bin:$PATH
+
+            # install node and dredd
+            ./scripts/get_nodejs.sh
+
+            # build the binaries with a proper version of Go
+            docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
+
+            # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
+            go get github.com/snikch/goodman/cmd/goodman
+            make contract-tests
+
 workflows:
   version: 2
   test-suite:
@@ -397,6 +426,10 @@ workflows:
               only:
                 - master
                 - /v[0-9]+\.[0-9]+/
+      - contract_tests:
+          requires:
+            - setup_dependencies
+
   release:
     jobs:
       - prepare_build
