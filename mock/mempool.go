@@ -18,7 +18,10 @@ func (Mempool) Size() int { return 0 }
 func (Mempool) CheckTx(_ types.Tx, _ func(*abci.Response)) error {
 	return nil
 }
-func (Mempool) CheckTxWithInfo(_ types.Tx, _ func(*abci.Response),
+func (Mempool) CheckTxLocal(_ types.Tx, _ func(*abci.Response)) error {
+	return nil
+}
+func (Mempool) CheckTxWithInfo(_ types.Tx, _ bool, _ func(*abci.Response),
 	_ mempl.TxInfo) error {
 	return nil
 }
