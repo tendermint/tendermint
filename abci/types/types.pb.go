@@ -41,8 +41,8 @@ const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 type CheckTxType int32
 
 const (
-	CheckTxType_Local   CheckTxType = 0
-	CheckTxType_Remote  CheckTxType = 1
+	CheckTxType_Remote  CheckTxType = 0
+	CheckTxType_Local   CheckTxType = 1
 	CheckTxType_Recheck CheckTxType = 2
 )
 
