@@ -453,6 +453,8 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (w *WSEvents) redoSubscriptionsAfter(d time.Duration) {
 	time.Sleep(d)
 
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
 	for q := range w.subscriptions {
 		err := w.ws.Subscribe(context.Background(), q)
 		if err != nil {

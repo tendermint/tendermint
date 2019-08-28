@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/lite"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -83,7 +84,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
 		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, kp.String(), resp.Value)
 		if err != nil {
-			return nil, cmn.ErrorWrap(err, "Couldn't verify value proof")
+			return nil, errors.Wrap(err, "Couldn't verify value proof")
 		}
 		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	} else {
@@ -92,7 +93,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		// XXX How do we encode the key into a string...
 		err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
 		if err != nil {
-			return nil, cmn.ErrorWrap(err, "Couldn't verify absence proof")
+			return nil, errors.Wrap(err, "Couldn't verify absence proof")
 		}
 		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	}

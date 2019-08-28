@@ -23,7 +23,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -246,11 +246,12 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 		if err != nil {
 			return nil, nil, err
 		}
-		if config.TxIndex.IndexTags != "" {
+		switch {
+		case config.TxIndex.IndexTags != "":
 			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
-		} else if config.TxIndex.IndexAllTags {
+		case config.TxIndex.IndexAllTags:
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
-		} else {
+		default:
 			txIndexer = kv.NewTxIndex(store)
 		}
 	default:
@@ -277,9 +278,7 @@ func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logger,
-	consensusLogger log.Logger) {
-
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -295,7 +294,6 @@ func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logge
 		)
 	}
 
-	pubKey := privValidator.GetPubKey()
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
 	if state.Validators.HasAddress(addr) {
@@ -600,7 +598,13 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
-	logNodeStartupInfo(state, privValidator, logger, consensusLogger)
+	pubKey := privValidator.GetPubKey()
+	if pubKey == nil {
+		// TODO: GetPubKey should return errors - https://github.com/tendermint/tendermint/issues/3602
+		return nil, errors.New("could not retrieve public key from private validator")
+	}
+
+	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -1157,29 +1161,13 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	var listener net.Listener
-
-	protocol, address := cmn.ProtocolAndAddress(listenAddr)
-	ln, err := net.Listen(protocol, address)
+	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
-		return nil, err
-	}
-	switch protocol {
-	case "unix":
-		listener = privval.NewUnixListener(ln)
-	case "tcp":
-		// TODO: persist this key so external signer
-		// can actually authenticate us
-		listener = privval.NewTCPListener(ln, ed25519.GenPrivKey())
-	default:
-		return nil, fmt.Errorf(
-			"wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
-			protocol,
-		)
+		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 
-	pvsc := privval.NewSignerValidatorEndpoint(logger.With("module", "privval"), listener)
-	if err := pvsc.Start(); err != nil {
+	pvsc, err := privval.NewSignerClient(pve)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 

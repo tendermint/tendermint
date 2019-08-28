@@ -222,7 +222,7 @@ func (sw *Switch) OnStart() error {
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
 		if err != nil {
-			return cmn.ErrorWrap(err, "failed to start %v", reactor)
+			return errors.Wrapf(err, "failed to start %v", reactor)
 		}
 	}
 
@@ -679,8 +679,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		metrics:      sw.metrics,
 	})
 	if err != nil {
-		switch e := err.(type) {
-		case ErrRejected:
+		if e, ok := err.(ErrRejected); ok {
 			if e.IsSelf() {
 				// Remove the given address from the address book and add to our addresses
 				// to avoid dialing in the future.
