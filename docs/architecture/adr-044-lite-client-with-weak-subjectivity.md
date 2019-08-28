@@ -54,22 +54,25 @@ network or when a light client that has been offline for longer than the
 unbonding period connects to the network. Specifically, the node needs to
 initialize the following structure before syncing from user input:
 
-```
+```go
 type TrustOptions struct {
-    // Required: only trust commits up to this old.
-    // Should be equal to the unbonding period minus some delta for evidence reporting.
-    TrustPeriod time.Duration `json:"trust-period"`
+	// Required: only trust commits up to this old.
+	// Should be equal to the unbonding period minus some delta for evidence reporting.
+	TrustPeriod time.Duration `json:"trust-period"`
 
-    // Option 1: TrustHeight and TrustHash can both be provided
-    // to force the trusting of a particular height and hash.
-    // If the latest trusted height/hash is more recent, then this option is
-    // ignored.
-    TrustHeight int64  `json:"trust-height"`
-    TrustHash   []byte `json:"trust-hash"`
+	// Required: validator whom we've got the TrustHeight/Hash from
+	ValidatorAddress types.Address `json:"validator-address"`
 
-    // Option 2: Callback can be set to implement a confirmation
-    // step if the trust store is uninitialized, or expired.
-    Callback func(height int64, hash []byte) error
+	// Option 1: TrustHeight and TrustHash can both be provided
+	// to force the trusting of a particular height and hash.
+	// If the latest trusted height/hash is more recent, then this option is
+	// ignored.
+	TrustHeight int64  `json:"trust-height"`
+	TrustHash   []byte `json:"trust-hash"`
+
+	// Option 2: Callback can be set to implement a confirmation
+	// step if the trust store is uninitialized, or expired.
+	Callback func(height int64, hash []byte) error
 }
 ```
 
@@ -163,6 +166,9 @@ type Verifier struct {
 
 	// Source of new FullCommit(s).
 	source Provider
+
+	// Backup sources for checking the primary for misbehavior by comparing data
+	backup []Provider
 
 	// Where trusted FullCommit(s) are stored.
 	trusted PersistentProvider
@@ -267,6 +273,22 @@ require.NoError(t, err)
 
 light client should also be able to submit evidence of malfeasance and handle
 evidence coming from a full node or another source.
+
+We'll need to add evidence to `FullCommit`.
+
+```go
+type FullCommit struct {
+	SignedHeader   types.SignedHeader  `json:"signed_header"`
+	Validators     *types.ValidatorSet `json:"validator_set"`
+	NextValidators *types.ValidatorSet `json:"next_validator_set"`
+	Evidence       types.EvidenceList  `json:"evidence"`
+}
+```
+
+When/if evidence is received, client should check it and disconnect from the
+node if `evidence.Address == TrustOptions.ValidatorAddress`. It's unwise to
+think that a node will send an evidence of its misbehavior. That's why we
+should also check `backup` sources in the background.
 
 ## Status
 
