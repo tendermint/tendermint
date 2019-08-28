@@ -82,8 +82,9 @@ message RequestBeginBlock {
 }
 
 enum CheckTxType {
-  New = 0;
-  Recheck = 1;
+  Local = 0;
+  Remote = 1;
+  Recheck = 2;
 }
 
 message RequestCheckTx {
