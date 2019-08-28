@@ -2,7 +2,7 @@
 
 ## v0.32.3
 
-*August 27, 2019*
+*August 28, 2019*
 
 @climber73 wrote the [Writing a Tendermint Core application in Java
 (gRPC)](https://github.com/tendermint/tendermint/blob/master/docs/guides/java.md)
