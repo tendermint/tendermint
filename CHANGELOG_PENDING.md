@@ -20,3 +20,5 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+- [consensus] \#3908 Wait `timeout_commit` to pass even if `create_empty_blocks` is `false`
