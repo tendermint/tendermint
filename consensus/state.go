@@ -537,7 +537,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 		// We add timeoutCommit to allow transactions
 		// to be gathered for the first block.
 		// And alternative solution that relies on clocks:
-		//  cs.StartTime = state.LastBlockTime.Add(timeoutCommit)
+		// cs.StartTime = state.LastBlockTime.Add(timeoutCommit)
 		cs.StartTime = cs.config.Commit(tmtime.Now())
 	} else {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
@@ -757,8 +757,19 @@ func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
-	if (cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll()) ||
-		tmtime.Now().After(cs.StartTime) { // timeoutCommit has passed
+	if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
+		// we only need to do this for round 0
+		cs.enterNewRound(cs.Height, 0)
+		cs.enterPropose(cs.Height, 0)
+		return
+	}
+
+	now := tmtime.Now()
+	if cs.StartTime.After(now) {
+		timeoutCommit := cs.StartTime.Sub(now)
+		cs.scheduleTimeout(timeoutCommit, cs.Height, 0, cstypes.RoundStepNewHeight)
+		cs.scheduleTimeout(timeoutCommit, cs.Height, 0, cstypes.RoundStepNewRound)
+	} else {
 		// we only need to do this for round 0
 		cs.enterNewRound(cs.Height, 0)
 		cs.enterPropose(cs.Height, 0)
