@@ -756,9 +756,13 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	// we only need to do this for round 0
-	cs.enterNewRound(cs.Height, 0)
-	cs.enterPropose(cs.Height, 0)
+
+	if (cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll()) ||
+		tmtime.Now().After(cs.StartTime) { // timeoutCommit has passed
+		// we only need to do this for round 0
+		cs.enterNewRound(cs.Height, 0)
+		cs.enterPropose(cs.Height, 0)
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -766,7 +770,7 @@ func (cs *ConsensusState) handleTxsAvailable() {
 // Used internally by handleTimeout and handleMsg to make state transitions
 
 // Enter: `timeoutNewHeight` by startTime (commitTime+timeoutCommit),
-// 	or, if SkipTimeout==true, after receiving all precommits from (height,round-1)
+// 	or, if SkipTimeoutCommit==true, after receiving all precommits from (height,round-1)
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
 // Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
