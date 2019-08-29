@@ -298,6 +298,9 @@ cache_size = {{ .Mempool.CacheSize }}
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
+# How long to wait for block creation after receiving a tx when the create_empty_blocks set to false.
+pool_timeout = {{ .Consensus.TimeoutCommit }}
+
 ##### fast sync configuration options #####
 [fastsync]
 

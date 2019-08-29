@@ -630,14 +630,15 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
-	RootDir     string `mapstructure:"home"`
-	Recheck     bool   `mapstructure:"recheck"`
-	Broadcast   bool   `mapstructure:"broadcast"`
-	WalPath     string `mapstructure:"wal_dir"`
-	Size        int    `mapstructure:"size"`
-	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
-	CacheSize   int    `mapstructure:"cache_size"`
-	MaxTxBytes  int    `mapstructure:"max_tx_bytes"`
+	RootDir     string        `mapstructure:"home"`
+	Recheck     bool          `mapstructure:"recheck"`
+	Broadcast   bool          `mapstructure:"broadcast"`
+	WalPath     string        `mapstructure:"wal_dir"`
+	Size        int           `mapstructure:"size"`
+	MaxTxsBytes int64         `mapstructure:"max_txs_bytes"`
+	CacheSize   int           `mapstructure:"cache_size"`
+	MaxTxBytes  int           `mapstructure:"max_tx_bytes"`
+	PoolTimeOut time.Duration `mapstructure:"pool_timeout"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -686,6 +687,9 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	}
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max_tx_bytes can't be negative")
+	}
+	if cfg.PoolTimeOut < 0 {
+		return errors.New("pool_timeout can't be negative")
 	}
 	return nil
 }

@@ -26,6 +26,7 @@ program](https://hackerone.com/tendermint).
 - [config] [\#3868](https://github.com/tendermint/tendermint/issues/3868) Move misplaced `max_msg_bytes` into mempool section (@bluele)
 - [rpc] [\#3910](https://github.com/tendermint/tendermint/pull/3910) Fix DATA RACE in HTTP client (@gchaincl)
 - [store] [\#3893](https://github.com/tendermint/tendermint/issues/3893) Fix "Unregistered interface types.Evidence" panic
+- [mempool] [\#3908](https://github.com/tendermint/tendermint/issues/3908) Fix "Creating 1 block per Tx when create_empty_block flag set to false"
 
 ## v0.32.2
 
