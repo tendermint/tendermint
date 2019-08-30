@@ -12,7 +12,7 @@ func ValidateBlockMeta(meta *types.BlockMeta, sh types.SignedHeader) error {
 		return errors.New("expecting a non-nil BlockMeta")
 	}
 	// TODO: check the BlockID??
-	return ValidateHeader(&meta.Header, sh)
+	return nil
 }
 
 func ValidateBlock(meta *types.Block, sh types.SignedHeader) error {

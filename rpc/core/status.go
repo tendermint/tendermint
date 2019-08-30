@@ -79,16 +79,18 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		latestHeight = consensusState.GetLastHeight()
 	}
 	var (
+		latestBlock         *types.Block
 		latestBlockMeta     *types.BlockMeta
 		latestBlockHash     cmn.HexBytes
 		latestAppHash       cmn.HexBytes
 		latestBlockTimeNano int64
 	)
 	if latestHeight != 0 {
+		latestBlock = blockStore.LoadBlock(latestHeight)
 		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
 		latestBlockHash = latestBlockMeta.BlockID.Hash
-		latestAppHash = latestBlockMeta.Header.AppHash
-		latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
+		latestAppHash = latestBlock.Header.AppHash
+		latestBlockTimeNano = latestBlock.Header.Time.UnixNano()
 	}
 
 	latestBlockTime := time.Unix(0, latestBlockTimeNano)

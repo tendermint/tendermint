@@ -80,7 +80,7 @@ func (w Wrapper) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 	// go and verify every blockmeta in the result....
 	for _, meta := range r.BlockMetas {
 		// get a checkpoint to verify from
-		res, err := w.Commit(&meta.Header.Height)
+		res, err := w.Commit(&meta.Block.Header.Height)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func (w Wrapper) Block(height *int64) (*ctypes.ResultBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = ValidateBlock(resBlock.Block, sh)
+	err = ValidateBlock(resBlock.BlockMeta.Block, sh)
 	if err != nil {
 		return nil, err
 	}

@@ -235,8 +235,7 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 	}
 
 	blockMeta := blockStore.LoadBlockMeta(height)
-	block := blockStore.LoadBlock(height)
-	return &ctypes.ResultBlock{BlockMeta: blockMeta, Block: block}, nil
+	return &ctypes.ResultBlock{BlockMeta: blockMeta}, nil
 }
 
 // Get block commit at a given height.
@@ -321,7 +320,7 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 		return nil, err
 	}
 
-	header := blockStore.LoadBlockMeta(height).Header
+	header := blockStore.LoadBlock(height).Header
 
 	// If the next block has not been committed yet,
 	// use a non-canonical commit

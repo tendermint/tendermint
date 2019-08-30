@@ -834,8 +834,8 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 		return true
 	}
 
-	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
+	lastBlock := cs.blockStore.LoadBlock(height - 1)
+	return !bytes.Equal(cs.state.AppHash, lastBlock.Header.AppHash)
 }
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)
@@ -1380,9 +1380,9 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.ByzantineValidatorsPower.Set(float64(byzantineValidatorsPower))
 
 	if height > 1 {
-		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
+		lastBlock := cs.blockStore.LoadBlock(height - 1)
 		cs.metrics.BlockIntervalSeconds.Set(
-			block.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
+			block.Time.Sub(lastBlock.Header.Time).Seconds(),
 		)
 	}
 
