@@ -245,7 +245,7 @@ cache_size = 10000
 max_tx_bytes = 1048576
 
 # How long to wait for block creation after receiving a tx when the create_empty_blocks set to false.
-pool_timeout = 1s
+pool_timeout = "3s"
 
 ##### fast sync configuration options #####
 [fastsync]
