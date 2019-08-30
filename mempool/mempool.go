@@ -16,7 +16,7 @@ type Mempool interface {
 	// its validity and whether it should be added to the mempool.
 	CheckTx(tx types.Tx, callback func(*abci.Response)) error
 
-	// The same meaning with CheckTx, except that the application can avoid some duplicate signature checks
+	// Call CheckTxWithInfo with local==true, to let the application know it is a checkTx triggered by itself
 	CheckTxLocal(tx types.Tx, callback func(*abci.Response)) error
 
 	// CheckTxWithInfo performs the same operation as CheckTx, but with extra
