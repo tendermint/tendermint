@@ -3,9 +3,9 @@
 ## Problem Statement
 
 Tendermint consensus guarantees the following specifications for all heights:
-* agreement -- no two full nodes decide differently.
+* agreement -- no two correct full nodes decide differently.
 * validity -- the decided block satisfies the predefined predicate *valid()*.
-* termination -- all correct full nodes eventually decide.
+* termination -- all correct full nodes eventually decide,
 
 if the
 faulty validators have at most 1/3 of voting power in the current validator set. In the case where this assumption
@@ -16,7 +16,7 @@ The agreement property says that for a given height, any two correct validators 
 
 However, faulty nodes may forge blocks and try to convince users (lite clients) that the blocks had been correctly generated. In addition, Tendermint agreement might be violated in the case where more than 1/3 of the voting power belongs to faulty validators: Two correct validators decide on different blocks. The latter case motivates the term "fork": as Tendermint consensus also agrees on the next validator set, correct validators may have decided on disjoint next validator sets, and the chain branches into two or more partitions (possibly having faulty validators in common) and each branch continues to generate blocks independently of the other.
 
-We say that a fork is a case in which there are two commits for different block at the same height of the blockchain. The proplem is to ensure that in those cases we are able to detect faulty validators (and not mistakenly accuse correct validators), and incentivize therefore validators to behave according to the protocol specification.
+We say that a fork is a case in which there are two commits for different blocks at the same height of the blockchain. The proplem is to ensure that in those cases we are able to detect faulty validators (and not mistakenly accuse correct validators), and incentivize therefore validators to behave according to the protocol specification.
 
 **Conceptual Limit.** In order to prove misbehavior of a node, we have to show that the behavior deviates from correct behavior with respect to a given algorithm. Thus, an algorithm that detects misbehavior of nodes executing some algorithm *A* must be defined with respect to algorithm *A*. In our case, *A* is Tendermint consensus (+ other protocols in the infrastructure; e.g.,full nodes and the Lite Client). If the consensus algorithm is changed/updated/optimized in the future, we have to check whether changes to the accountability algorithm are also required. All the discussions in this document are thus inherently specific to Tendermint consensus and the Lite Client specification.
 
@@ -31,15 +31,15 @@ Forks are the result of faulty validators deviating from the protocol. In princi
 
 1. double proposal: A faulty proposer proposes two different values (blocks) for the same height and the same round in Tendermint consensus.
 
-2. double signing: Tendermint consensus forces correct validators to prevote and precommit for at most one value per round. In case a faulty proposer proposed mutliple values, faulty validators can prevote and precommit multiple values.
+2. double signing: Tendermint consensus forces correct validators to prevote and precommit for at most one value per round. In case a faulty validator sends multiple prevote and/or precommit messages for different values for the same height/round, this is a misbehavior.
 
 3. lunatic validator: Tendermint consensus forces correct validators to prevote and precommit only for values *v* that satisfy *valid(v)*. If faulty validators prevote and precommit for *v* although *valid(v)=false* this is misbehavior.
 
-*Remark.* In isolation, Point 3 is an attack on validity (rather than agreement). However, the prevotes and precommits can then also be used to forge blocks
+*Remark.* In isolation, Point 3 is an attack on validity (rather than agreement). However, the prevotes and precommits can then also be used to forge blocks.
 
-4. amnesia: Tendermint consensus has a locking mechanism. Validators may only prevote/precommit a value if they have not locked a different value before.
+1. amnesia: Tendermint consensus has a locking mechanism. If a validator has some value v locked, then it can only prevote/precommit for v or nil. Sending prevote/precomit message for a different value v' (that is not nil) while holding lock on value v is misbehavior.   
 
-5. spurious messages: In Tendermint consensus most of the message send instructions are guarded by threshold guards, e.g., one needs to receive *2f + 1* prevote messages to send precommit. Faulty validators may send precommit without having received the prevote messages.
+2. spurious messages: In Tendermint consensus most of the message send instructions are guarded by threshold guards, e.g., one needs to receive *2f + 1* prevote messages to send precommit. Faulty validators may send precommit without having received the prevote messages.
 
 
 Independently of a fork happening, punishing this behavior might be important to prevent forks altogether. This should keep attackers from misbehaving: if at most 1/3 of the voting power is faulty, this misbehavior is detectable but will not lead to a safety violation. Thus, unless they have more than 1/3 (or in some cases more than 2/3) of the voting power attackers have the incentive to not misbehave. If attackers control too much voting power, we have to deal with forks, as discussed in this document.   
@@ -67,16 +67,16 @@ There are several scenarios in which forks might happen. The first is double sig
 
 ### Flip-flopping
 
-Tendermint consensus implements a locking mechanism: If a correct validator *p* receives *2f + 1* prevotes for a value *v* in round *r*, it locks *v* and remembers *r*. In this case, *p* also sends a precommit message for *v*, which later may serve as proof that *p* signed *v*.
-In subsequent rounds, *p* only sends prevote messages for a value it had previously locked. However, it is possible to change the locked value if in a future round *r' > r*, if the process receives *2f + 1* prevotes for a different value *v'*. In this case, *p* sends a precommit for *v'*. This algorithmic feature can be exploited in two ways:
+Tendermint consensus implements a locking mechanism: If a correct validator *p* receives proposal for value v and *2f + 1* prevotes for a value *id(v)* in round *r*, it locks *v* and remembers *r*. In this case, *p* also sends a precommit message for *id(v)*, which later may serve as proof that *p* locked *v*.
+In subsequent rounds, *p* only sends prevote messages for a value it had previously locked. However, it is possible to change the locked value if in a future round *r' > r*, if the process receives proposal and *2f + 1* prevotes for a different value *v'*. In this case, *p* could send a prevote/precommit for *id(v')*. This algorithmic feature can be exploited in two ways:
 
 
 
-* F2. Faulty Flip-flopping (Amnesia): faulty validators precommit some value *v* in round *r* (value *v* is locked in round *r*) and then prevote for different value *v'* in higher round *r' > r* without previously correctly unlocking value *v*. In this case faulty processes "forget" that they have locked value *v* and prevote some other value in the following rounds.
+* F2. Faulty Flip-flopping (Amnesia): faulty validators precommit some value *id(v)* in round *r* (value *v* is locked in round *r*) and then prevote for different value *id(v')* in higher round *r' > r* without previously correctly unlocking value *v*. In this case faulty processes "forget" that they have locked value *v* and prevote some other value in the following rounds.
 Some correct validators might have decided on *v* in *r*, and other correct validators decide on *v'* in *r'*. Here we can have branching on the main chain (Fork-Full).
 
 
-* F3. Correct Flip-flopping (Back to the past): There are some precommit messages signed by (correct) validators for value *v* in  round *r*. Still, *v* is not decided upon, and all processes move on to the next round. Then correct validators (correctly) lock and decide a different value *v'* in some round *r' > r*. And the correct validators continue; there is no branching on the main chain.
+* F3. Correct Flip-flopping (Back to the past): There are some precommit messages signed by (correct) validators for value *id(v)* in  round *r*. Still, *v* is not decided upon, and all processes move on to the next round. Then correct validators (correctly) lock and decide a different value *v'* in some round *r' > r*. And the correct validators continue; there is no branching on the main chain.
 However, faulty validators may use the correct precommit messages from round *r* together with a posteriori generated faulty precommit messages for round *r* to forge a block for a value that was not decided on the main chain (Fork-Lite).
 
 
@@ -94,7 +94,7 @@ Similarly, without actually interfering with the main chain, we can have the fol
 
 ## Types of victims
 
-We consider four types of potential attack victims:
+We consider three types of potential attack victims:
 
 
 - FN: full node
@@ -174,8 +174,6 @@ Consequences:
 
 * We have to ensure that these different messages reach a correct process (full node, monitor?), which can submit evidence.
 
-* If the underlying communication ensures that every message exchanged between correct full nodes is eventually received, this attack is easily detected at the main chain level
-
 * This is an attack on the full node level (Fork-Full).
 * It extends also to the lite clients,
 * For both we need a detection and recovery mechanism.
@@ -217,11 +215,12 @@ Validators:
 
 Execution:
 
-* More than 2/3 of voting power (containing correct and faulty validators) commit a block A in round *r*.
-* All reach a round *r' > r*.
-* The correct validators in C do not lock any value before round *r'*.
+* Faulty validators commit (without exposing it on the main chain) a block A in round *r* by collecting more than 2/3 of the 
+  voting power (containing correct and faulty validators).
+* All validators (correct and faulty) reach a round *r' > r*.
+* Some correct validators in C do not lock any value before round *r'*.
 * The faulty validators in F deviate from Tendermint consensus by ignoring that they locked A in *r*, and propose a different block B in *r'*.
-* As the validators in C have not locked any value, they accept the proposal for B and commit a block B.
+* As the validators in C that have not locked any value find B acceptable, they accept the proposal for B and commit a block B.
 
 *Remark.* In this case, the more than 1/3 of faulty validators do not need to commit an equivocation (F1) as they only vote once per round in the execution.
 
