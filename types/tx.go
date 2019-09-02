@@ -133,6 +133,6 @@ type TxResult struct {
 // fieldNum is also 1 (see BinFieldNum in amino.MarshalBinaryBare).
 func ComputeAminoOverhead(tx Tx, fieldNum int) int64 {
 	fnum := uint64(fieldNum)
-	typ3AndFieldNum := (uint64(fnum) << 3) | uint64(amino.Typ3_ByteLength)
+	typ3AndFieldNum := (uint64(fnum) << 3) | uint64(amino.Typ3ByteLength)
 	return int64(amino.UvarintSize(typ3AndFieldNum)) + int64(amino.UvarintSize(uint64(len(tx))))
 }
