@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/state"
+	bcState "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -90,7 +90,7 @@ type pcStop struct{}
 type pcFinished struct {
 	height       int64
 	blocksSynced int
-	state        state.State
+	state        bcState.State
 }
 
 func (p pcFinished) Error() string {
@@ -99,79 +99,118 @@ func (p pcFinished) Error() string {
 
 var noOp struct{} = struct{}{}
 
-// * accept the initial state from the blockchain reactior initialization
-// * produce the final state from `SwitchToConsensus`
 // TODO: timeouts
-// TODO: wrap in a FSMHandler(with state)
-func newProcessor(initBlock *types.Block, state state.State, chainID string, context processorContext) *Routine {
-	bq := newBlockQueue(initBlock)
-	draining := false
-	processessing := false
-	blocksSynced := 0
-	handlerFunc := func(event Event) (Event, error) {
-		switch event := event.(type) {
-		case *bcBlockResponse:
-			err := bq.add(event.peerID, event.block, event.height)
-			if err != nil {
-				return pcDuplicateBlock{}, nil
-			}
 
-			if !processessing {
-				processessing = true
-				return pcProcessBlock{}, nil
-			}
-		case pcProcessBlock:
-			processessing = false
-			firstItem, secondItem, err := bq.nextTwo()
-			if err != nil {
-				if draining {
-					return noOp, pcFinished{height: bq.height}
-				}
-				return noOp, nil
-			}
-			first, second := firstItem.block, secondItem.block
+// XXX: the last error doesn't need to be an error just a termination
+// XXX: Maybe merge this with the blockQueue structure
+type pcState struct {
+	chainID      string
+	blocksSynced int
+	draining     bool
+	processing   bool
+	bq           *blockQueue
+	bcState      bcState.State
+	context      processorContext
+	rounds       int
+}
 
-			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
-			firstPartsHeader := firstParts.Header()
-			firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
+func (ps *pcState) String() string {
+	return fmt.Sprintf("queue: %d draining: %v, processing: %v\n", len(ps.bq.queue), ps.draining, ps.processing)
+}
 
-			err = context.verifyCommit(chainID, firstID, first.Height, second.LastCommit)
-			if err != nil {
-				// XXX: maybe add peer and height fiields
-				return pcBlockVerificationFailure{}, nil
-			}
-
-			context.saveBlock(first, firstParts, second.LastCommit)
-
-			state, err = context.applyBlock(state, firstID, first)
-			if err != nil {
-				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
-			}
-			bq.advance()
-			blocksSynced++
-			return pcBlockProcessed{first.Height, firstItem.peerID}, nil
-		case *peerError:
-			bq.remove(event.peerID)
-		case pcBlockProcessed:
-			if bq.empty() {
-				return noOp, pcFinished{height: bq.height, blocksSynced: blocksSynced}
-			}
-			if !processessing {
-				processessing = true
-				return pcProcessBlock{}, nil
-			}
-		case pcStop:
-			if bq.empty() {
-				return noOp, pcFinished{height: bq.height, blocksSynced: blocksSynced}
-			}
-			draining = true
-			if !processessing {
-				processessing = true
-				return pcProcessBlock{}, nil
-			}
+func handleFSM(event Event, state *pcState) (Event, *pcState, error) {
+	switch event := event.(type) {
+	case *bcBlockResponse:
+		if state.rounds > 0 {
+			state.rounds--
+		}
+		err := state.bq.add(event.peerID, event.block, event.height)
+		if err != nil {
+			return pcDuplicateBlock{}, state, nil
 		}
 
-		return noOp, nil
+		if !state.processing {
+			state.processing = true
+			return pcProcessBlock{}, state, nil
+		}
+	case pcProcessBlock:
+		if state.rounds > 0 {
+			state.rounds--
+		}
+		state.processing = false
+		firstItem, secondItem, err := state.bq.nextTwo()
+		if err != nil {
+			if state.draining {
+				return noOp, state, pcFinished{height: state.bq.height}
+			}
+			return noOp, state, nil
+		}
+		first, second := firstItem.block, secondItem.block
+
+		firstParts := first.MakePartSet(types.BlockPartSizeBytes)
+		firstPartsHeader := firstParts.Header()
+		firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
+
+		err = state.context.verifyCommit(state.chainID, firstID, first.Height, second.LastCommit)
+		if err != nil {
+			// XXX: maybe add peer and height fiields
+			return pcBlockVerificationFailure{}, state, nil
+		}
+
+		state.context.saveBlock(first, firstParts, second.LastCommit)
+
+		state.bcState, err = state.context.applyBlock(state.bcState, firstID, first)
+		if err != nil {
+			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+		}
+		state.bq.advance()
+		state.blocksSynced++
+		return pcBlockProcessed{first.Height, firstItem.peerID}, state, nil
+	case *peerError:
+		state.bq.remove(event.peerID)
+	case pcBlockProcessed:
+		if state.rounds > 0 {
+			state.rounds--
+		}
+		if state.bq.empty() {
+			return noOp, state, pcFinished{height: state.bq.height, blocksSynced: state.blocksSynced}
+		}
+		if !state.processing {
+			state.processing = true
+			return pcProcessBlock{}, state, nil
+		}
+	case pcStop:
+		if state.bq.empty() {
+			return noOp, state, pcFinished{height: state.bq.height, blocksSynced: state.blocksSynced}
+		}
+		state.draining = true
+		if !state.processing {
+			state.processing = true
+			return pcProcessBlock{}, state, nil
+		}
+	}
+	state.rounds++
+	if state.rounds > 5 {
+		return noOp, state, fmt.Errorf("lack of progress")
+	}
+
+	return noOp, state, nil
+}
+
+func newProcessor(initBlock *types.Block, bcState bcState.State, chainID string, context processorContext) *Routine {
+	state := &pcState{
+		bq:           newBlockQueue(initBlock),
+		draining:     false,
+		processing:   false,
+		blocksSynced: 0,
+		context:      context,
+		bcState:      bcState,
+	}
+
+	handlerFunc := func(event Event) (Event, error) {
+		event, nextState, err := handleFSM(event, state)
+		state = nextState
+		return event, err
 	}
 
 	return newRoutine("processor", handlerFunc)
