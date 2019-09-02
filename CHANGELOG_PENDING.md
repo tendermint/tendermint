@@ -20,3 +20,4 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+- Change the variable name from `Typ3_ByteLength` to `Typ3ByteLength` in [types/tx.go](https://github.com/tendermint/tendermint/blob/master/types/tx.go#L136) according to [go-amino](https://github.com/tendermint/go-amino/blob/master/amino.go#L102) package.
