@@ -1,4 +1,4 @@
-package core
+`package core
 
 import (
 	"fmt"
@@ -218,9 +218,8 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 	}
 
 	blockMeta := blockStore.LoadBlockMeta(height)
-	blockId := blockMeta.BlockID
 	block := blockStore.LoadBlock(height)
-	return &ctypes.ResultBlock{BlockID: blockId, Block: block}, nil
+	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
 // Get block commit at a given height.
