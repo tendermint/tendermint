@@ -44,7 +44,7 @@ func GetClients() []client.Client {
 
 func TestNilCustomHTTPClient(t *testing.T) {
 	require.Panics(t, func() {
-		client.NewHTTPWithClient("http://example.com", "/websocket", nil)
+		client.NewHTTPWithClient("http://example.com", "http://example.com", "/websocket", nil)
 	})
 	require.Panics(t, func() {
 		rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
@@ -52,8 +52,9 @@ func TestNilCustomHTTPClient(t *testing.T) {
 }
 
 func TestCustomHTTPClient(t *testing.T) {
-	rpcAddr := strings.Replace(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http", -1)
-	c := client.NewHTTPWithClient(rpcAddr, "/websocket", http.DefaultClient)
+	remote := rpctest.GetConfig().RPC.ListenAddress
+	rpcAddr := strings.Replace(remote, "tcp", "http", -1)
+	c := client.NewHTTPWithClient(remote, rpcAddr, "/websocket", http.DefaultClient)
 	status, err := c.Status()
 	require.NoError(t, err)
 	require.NotNil(t, status)
