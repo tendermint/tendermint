@@ -11,7 +11,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// randVoteSet returns a
 // NOTE: privValidators are in order
 func randVoteSet(height int64, round int, type_ SignedMsgType, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
