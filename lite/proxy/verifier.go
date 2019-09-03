@@ -1,11 +1,12 @@
 package proxy
 
 import (
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pkg/errors"
+
 	log "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite"
 	lclient "github.com/tendermint/tendermint/lite/client"
-	dbm "github.com/tendermint/tm-cmn/db"
+	dbm "github.com/tendermint/tm-db"
 )
 
 func NewVerifier(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger, cacheSize int) (*lite.DynamicVerifier, error) {
@@ -29,11 +30,11 @@ func NewVerifier(chainID, rootDir string, client lclient.SignStatusClient, logge
 		logger.Info("lite/proxy/NewVerifier found no trusted full commit, initializing from source from height 1...")
 		fc, err := source.LatestFullCommit(chainID, 1, 1)
 		if err != nil {
-			return nil, cmn.ErrorWrap(err, "fetching source full commit @ height 1")
+			return nil, errors.Wrap(err, "fetching source full commit @ height 1")
 		}
 		err = trust.SaveFullCommit(fc)
 		if err != nil {
-			return nil, cmn.ErrorWrap(err, "saving full commit to trusted")
+			return nil, errors.Wrap(err, "saving full commit to trusted")
 		}
 	}
 

@@ -67,11 +67,11 @@ func assertEqualPV(t *testing.T, oldPV *privval.OldFilePV, newPV *privval.FilePV
 }
 
 func initTmpOldFile(t *testing.T) string {
-	tmpfile, err := ioutil.TempFile("", "priv_validator_*.json")
+	tmpFile, err := ioutil.TempFile("", "priv_validator_*.json")
 	require.NoError(t, err)
-	t.Logf("created test file %s", tmpfile.Name())
-	_, err = tmpfile.WriteString(oldPrivvalContent)
+	t.Logf("created test file %s", tmpFile.Name())
+	_, err = tmpFile.WriteString(oldPrivvalContent)
 	require.NoError(t, err)
 
-	return tmpfile.Name()
+	return tmpFile.Name()
 }

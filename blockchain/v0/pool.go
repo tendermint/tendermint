@@ -1,4 +1,4 @@
-package blockchain
+package v0
 
 import (
 	"errors"
@@ -59,6 +59,7 @@ var peerTimeout = 15 * time.Second // not const so we can override with tests
 	are not at peer limits, we can probably switch to consensus reactor
 */
 
+// BlockPool keeps track of the fast sync peers, block requests and block responses.
 type BlockPool struct {
 	cmn.BaseService
 	startTime time.Time
@@ -111,17 +112,18 @@ func (pool *BlockPool) makeRequestersRoutine() {
 		}
 
 		_, numPending, lenRequesters := pool.GetStatus()
-		if numPending >= maxPendingRequests {
+		switch {
+		case numPending >= maxPendingRequests:
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
-		} else if lenRequesters >= maxTotalRequesters {
+		case lenRequesters >= maxTotalRequesters:
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
-		} else {
+		default:
 			// request for more blocks.
 			pool.makeNextRequester()
 		}
@@ -184,6 +186,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	return isCaughtUp
 }
 
+// PeekTwoBlocks returns blocks at pool.height and pool.height+1.
 // We need to see the second block's Commit to validate the first block.
 // So we peek two blocks at a time.
 // The caller will verify the commit.
@@ -200,7 +203,7 @@ func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block)
 	return
 }
 
-// Pop the first block at pool.height
+// PopRequest pops the first block at pool.height.
 // It must have been validated by 'second'.Commit from PeekTwoBlocks().
 func (pool *BlockPool) PopRequest() {
 	pool.mtx.Lock()
@@ -220,7 +223,7 @@ func (pool *BlockPool) PopRequest() {
 	}
 }
 
-// Invalidates the block at pool.height,
+// RedoRequest invalidates the block at pool.height,
 // Remove the peer and redo request from others.
 // Returns the ID of the removed peer.
 func (pool *BlockPool) RedoRequest(height int64) p2p.ID {
@@ -236,6 +239,7 @@ func (pool *BlockPool) RedoRequest(height int64) p2p.ID {
 	return peerID
 }
 
+// AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
 // TODO: ensure that blocks come in order for each peer.
 func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int) {
 	pool.mtx.Lock()
@@ -565,9 +569,9 @@ func (bpr *bpRequester) reset() {
 // Tells bpRequester to pick another peer and try again.
 // NOTE: Nonblocking, and does nothing if another redo
 // was already requested.
-func (bpr *bpRequester) redo(peerId p2p.ID) {
+func (bpr *bpRequester) redo(peerID p2p.ID) {
 	select {
-	case bpr.redoCh <- peerId:
+	case bpr.redoCh <- peerID:
 	default:
 	}
 }
@@ -622,8 +626,8 @@ OUTER_LOOP:
 	}
 }
 
-//-------------------------------------
-
+// BlockRequest stores a block request identified by the block Height and the PeerID responsible for
+// delivering the block
 type BlockRequest struct {
 	Height int64
 	PeerID p2p.ID

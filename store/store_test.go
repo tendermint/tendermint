@@ -1,4 +1,4 @@
-package blockchain
+package store
 
 import (
 	"bytes"
@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tm-cmn/db"
-	dbm "github.com/tendermint/tm-cmn/db"
+	db "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
 
@@ -33,6 +33,18 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	return types.NewCommit(types.BlockID{}, commitSigs)
 }
 
+func makeTxs(height int64) (txs []types.Tx) {
+	for i := 0; i < 10; i++ {
+		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
+	}
+	return txs
+}
+
+func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+	return block
+}
+
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
@@ -41,7 +53,7 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 	stateDB := dbm.NewMemDB()
 	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	if err != nil {
-		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
+		panic(errors.Wrap(err, "error constructing state from genesis file"))
 	}
 	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
 }

@@ -1,10 +1,75 @@
 # Changelog
 
+## v0.32.3
+
+*August 28, 2019*
+
+@climber73 wrote the [Writing a Tendermint Core application in Java
+(gRPC)](https://github.com/tendermint/tendermint/blob/master/docs/guides/java.md)
+guide.
+
+Special thanks to external contributors on this release:
+@gchaincl, @bluele, @climber73
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS:
+
+- [consensus] [\#3839](https://github.com/tendermint/tendermint/issues/3839) Reduce "Error attempting to add vote" message severity (Error -> Info)
+- [mempool] [\#3877](https://github.com/tendermint/tendermint/pull/3877) Make `max_tx_bytes` configurable instead of `max_msg_bytes` (@bluele)
+- [privval] [\#3370](https://github.com/tendermint/tendermint/issues/3370) Refactor and simplify validator/kms connection handling. Please refer to [this comment](https://github.com/tendermint/tendermint/pull/3370#issue-257360971) for details
+- [rpc] [\#3880](https://github.com/tendermint/tendermint/issues/3880) Document endpoints with `swagger`, introduce contract tests of implementation against documentation
+
+### BUG FIXES:
+
+- [config] [\#3868](https://github.com/tendermint/tendermint/issues/3868) Move misplaced `max_msg_bytes` into mempool section (@bluele)
+- [rpc] [\#3910](https://github.com/tendermint/tendermint/pull/3910) Fix DATA RACE in HTTP client (@gchaincl)
+- [store] [\#3893](https://github.com/tendermint/tendermint/issues/3893) Fix "Unregistered interface types.Evidence" panic
+
+## v0.32.2
+
+*July 31, 2019*
+
+Special thanks to external contributors on this release:
+@ruseinov, @bluele, @guagualvcha
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+  - [libs] [\#3811](https://github.com/tendermint/tendermint/issues/3811) Remove `db` from libs in favor of `https://github.com/tendermint/tm-db`
+
+### FEATURES:
+
+- [blockchain] [\#3561](https://github.com/tendermint/tendermint/issues/3561) Add early version of the new blockchain reactor, which is supposed to be more modular and testable compared to the old version. To try it, you'll have to change `version` in the config file, [here](https://github.com/tendermint/tendermint/blob/master/config/toml.go#L303) NOTE: It's not ready for a production yet. For further information, see [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-043-blockchain-riri-org.md)
+- [mempool] [\#3826](https://github.com/tendermint/tendermint/issues/3826) Make `max_msg_bytes` configurable(@bluele)
+- [node] [\#3846](https://github.com/tendermint/tendermint/pull/3846) Allow replacing existing p2p.Reactor(s) using [`CustomReactors`
+  option](https://godoc.org/github.com/tendermint/tendermint/node#CustomReactors).
+  Warning: beware of accidental name clashes. Here is the list of existing
+  reactors: MEMPOOL, BLOCKCHAIN, CONSENSUS, EVIDENCE, PEX.
+- [rpc] [\#3818](https://github.com/tendermint/tendermint/issues/3818) Make `max_body_bytes` and `max_header_bytes` configurable(@bluele)
+- [rpc] [\#2252](https://github.com/tendermint/tendermint/issues/2252) Add `/broadcast_evidence` endpoint to submit double signing and other types of evidence
+
+### IMPROVEMENTS:
+
+- [abci] [\#3809](https://github.com/tendermint/tendermint/issues/3809) Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
+- [p2p] [\#3664](https://github.com/tendermint/tendermint/issues/3664) p2p/conn: reuse buffer when write/read from secret connection(@guagualvcha)
+- [p2p] [\#3834](https://github.com/tendermint/tendermint/issues/3834) Do not write 'Couldn't connect to any seeds' error log if there are no seeds in config file
+- [rpc] [\#3076](https://github.com/tendermint/tendermint/issues/3076) Improve transaction search performance
+
+### BUG FIXES:
+
+- [p2p] [\#3644](https://github.com/tendermint/tendermint/issues/3644) Fix error logging for connection stop (@defunctzombie)
+- [rpc] [\#3813](https://github.com/tendermint/tendermint/issues/3813) Return err if page is incorrect (less than 0 or greater than total pages)
+
 ## v0.32.1
 
 *July 15, 2019*
 
-Special thanks to external contributors on this release: 
+Special thanks to external contributors on this release:
 @ParthDesai, @climber73, @jim380, @ashleyvega
 
 This release contains a minor enhancement to the ABCI and some breaking changes to our libs folder, namely:
@@ -26,7 +91,7 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
-- [node] Add variadic argument to `NewNode` to support functional options, allowing the Node to be more easily customized. 
+- [node] Add variadic argument to `NewNode` to support functional options, allowing the Node to be more easily customized.
 - [node][\#3730](https://github.com/tendermint/tendermint/pull/3730) Add `CustomReactors` option to `NewNode` allowing caller to pass
   custom reactors to run inside Tendermint node (@ParthDesai)
 - [abci] [\#2127](https://github.com/tendermint/tendermint/issues/2127)RequestCheckTx has a new field, `CheckTxType`, which can take values of `CheckTxType_New` and `CheckTxType_Recheck`, indicating whether this is a new tx being checked for the first time or whether this tx is being rechecked after a block commit. This allows applications to skip certain expensive operations, like signature checking, if they've already been done once. see [docs](https://github.com/tendermint/tendermint/blob/eddb433d7c082efbeaf8974413a36641519ee895/docs/spec/abci/apps.md#mempool-connection)

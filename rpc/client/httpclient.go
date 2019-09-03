@@ -333,6 +333,15 @@ func (c *baseRPCClient) Validators(height *int64) (*ctypes.ResultValidators, err
 	return result, nil
 }
 
+func (c *baseRPCClient) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	result := new(ctypes.ResultBroadcastEvidence)
+	_, err := c.caller.Call("broadcast_evidence", map[string]interface{}{"evidence": ev}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "BroadcastEvidence")
+	}
+	return result, nil
+}
+
 //-----------------------------------------------------------------------------
 // WSEvents
 
@@ -444,6 +453,8 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (w *WSEvents) redoSubscriptionsAfter(d time.Duration) {
 	time.Sleep(d)
 
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
 	for q := range w.subscriptions {
 		err := w.ws.Subscribe(context.Background(), q)
 		if err != nil {
