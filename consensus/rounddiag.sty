@@ -1,4 +1,4 @@
-% ROUNDDIAG STYLE 
+% ROUNDDIAG STYLE
 %    for LaTeX version 2e
 % by -- 2008 Martin Hutle <martin.hutle@epfl.ch>
 %
@@ -34,28 +34,29 @@
 \newenvironment{rounddiag}[2]{
 \begin{center}
 \begin{tikzpicture}
-\foreach \i in {1,...,#1}
+\foreach \i in {1,...,#1}{
   \draw[procline] (0,#1-\i) node[xshift=-1em]{$p_{\i}$} -- (#2*\rdstretch+1,#1-\i);
-\foreach \i in {0,...,#2}
+}
+\foreach \i in {0,...,#2}{
   \draw[rndline] (\i*\rdstretch+0.5,0) -- (\i*\rdstretch+0.5,#1-1);
+}
 \newcommand{\rdat}[2]{
   (##2*\rdstretch+0.5,#1-##1)
 }%
 \newcommand{\round}[2]{%
   \def\rdround{##1}
   \ifthenelse{\equal{##2}{}}{}{
-    \node[yshift=-1em] at ({##1*\rdstretch+0.5-{0.5*\rdstretch}},0) {##2};
+    \node[yshift=-1em] at ({##1*\rdstretch+0.5-0.5*\rdstretch},0) {##2};
   }
 }%
 \newcommand{\rdmessage}[3]{\draw[msg]
   (\rdround*\rdstretch-\rdstretch+0.5,#1-##1)  -- node[yshift=1.2ex]{##3}
   (\rdround*\rdstretch+0.5,#1-##2);}%
 \newcommand{\rdalltoall}{%
-  \foreach \i in {1,...,#1}
-    \foreach \j in {1,...,#1}
-    {  \rdmessage{\i}{\j}{}}}%
+  \foreach \i in {1,...,#1}{
+    \foreach \j in {1,...,#1}{
+    {  \rdmessage{\i}{\j}{}}}}}%
 }{%
 \end{tikzpicture}
 \end{center}
 }
-
