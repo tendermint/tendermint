@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -365,6 +366,104 @@ func TestCommitToVoteSet(t *testing.T) {
 		assert.Equal(t, vote1bz, vote2bz)
 		assert.Equal(t, vote1bz, vote3bz)
 	}
+}
+
+func TestCommitToVoteSetWithBadVotes(t *testing.T) {
+	lastID := makeBlockIDRandom()
+	height := int64(3)
+	round := 1
+	numValidators := 10
+
+	voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, numValidators, 1)
+
+	// > 2/3 sign for this block
+	numBlockValidators := numValidators*2/3 + 1
+	for i := 0; i < numBlockValidators; i++ {
+		addr := vals[i].GetPubKey().Address()
+		vote := &Vote{
+			ValidatorAddress: addr,
+			ValidatorIndex:   i,
+			Height:           height - 1,
+			Round:            round,
+			Type:             PrecommitType,
+			BlockID:          lastID,
+			Timestamp:        tmtime.Now(),
+		}
+
+		_, err := signAddVote(vals[i], vote, voteSet)
+		assert.NoError(t, err)
+	}
+
+	// 1/3 vote for a different block
+	for i := numBlockValidators; i < numValidators; i++ {
+		addr := vals[i].GetPubKey().Address()
+		vote := &Vote{
+			ValidatorAddress: addr,
+			ValidatorIndex:   i,
+			Height:           height - 1,
+			Round:            round,
+			Type:             PrecommitType,
+			BlockID:          makeBlockIDRandom(),
+			Timestamp:        tmtime.Now(),
+		}
+
+		_, err := signAddVote(vals[i], vote, voteSet)
+		assert.NoError(t, err)
+	}
+	commit := voteSet.MakeCommit()
+
+	chainID := voteSet.ChainID()
+	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
+	assert.NotNil(t, voteSet2)
+}
+
+func TestCommitToVoteSetWithNil(t *testing.T) {
+	lastID := makeBlockIDRandom()
+	height := int64(3)
+	round := 1
+	numValidators := 10
+
+	voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, numValidators, 1)
+
+	// > 2/3 sign for this block
+	numBlockValidators := numValidators*2/3 + 1
+	for i := 0; i < numBlockValidators; i++ {
+		addr := vals[i].GetPubKey().Address()
+		vote := &Vote{
+			ValidatorAddress: addr,
+			ValidatorIndex:   i,
+			Height:           height - 1,
+			Round:            round,
+			Type:             PrecommitType,
+			BlockID:          lastID,
+			Timestamp:        tmtime.Now(),
+		}
+
+		_, err := signAddVote(vals[i], vote, voteSet)
+		assert.NoError(t, err)
+	}
+
+	// 1/3 vote for a nil block
+	for i := numBlockValidators; i < numValidators; i++ {
+		addr := vals[i].GetPubKey().Address()
+		vote := &Vote{
+			ValidatorAddress: addr,
+			ValidatorIndex:   i,
+			Height:           height - 1,
+			Round:            round,
+			Type:             PrecommitType,
+			BlockID:          BlockID{}, // "nil"
+			Timestamp:        tmtime.Now(),
+		}
+
+		_, err := signAddVote(vals[i], vote, voteSet)
+		assert.NoError(t, err)
+	}
+	commit := voteSet.MakeCommit()
+
+	chainID := voteSet.ChainID()
+	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
+	assert.NotNil(t, voteSet2)
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {
