@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -39,6 +40,23 @@ func GetClients() []client.Client {
 		getHTTPClient(),
 		getLocalClient(),
 	}
+}
+
+func TestNilCustomHTTPClient(t *testing.T) {
+	require.Panics(t, func() {
+		client.NewHTTPWithClient("http://example.com", "/websocket", nil)
+	})
+	require.Panics(t, func() {
+		rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
+	})
+}
+
+func TestCustomHTTPClient(t *testing.T) {
+	rpcAddr := strings.Replace(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http", -1)
+	c := client.NewHTTPWithClient(rpcAddr, "/websocket", http.DefaultClient)
+	status, err := c.Status()
+	require.NoError(t, err)
+	require.NotNil(t, status)
 }
 
 func TestCorsEnabled(t *testing.T) {

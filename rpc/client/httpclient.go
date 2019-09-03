@@ -86,11 +86,15 @@ var _ rpcClient = (*baseRPCClient)(nil)
 // NewHTTP takes a remote endpoint in the form <protocol>://<host>:<port> and
 // the websocket path (which always seems to be "/websocket")
 func NewHTTP(remote, wsEndpoint string) *HTTP {
-	return NewHTTPWithClient(remote, wsEndpoint, nil)
+	remote, httpClient := rpcclient.DefaultHTTPClient(remote)
+	return NewHTTPWithClient(remote, wsEndpoint, httpClient)
 }
 
 // NewHTTPWithClient allows for setting a custom http client. See NewHTTP
 func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) *HTTP {
+	if client == nil {
+		panic("nil http.Client provided")
+	}
 	rc := rpcclient.NewJSONRPCClientWithHTTPClient(remote, client)
 	cdc := rc.Codec()
 	ctypes.RegisterAmino(cdc)

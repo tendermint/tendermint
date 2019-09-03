@@ -130,6 +130,9 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 
 // NewJSONRPCClientWithHTTPClient returns a JSONRPCClient pointed at the given address using a custom http client
 func NewJSONRPCClientWithHTTPClient(address string, client *http.Client) *JSONRPCClient {
+	if client == nil {
+		panic("nil http.Client provided")
+	}
 	return &JSONRPCClient{
 		address: address,
 		client:  client,
