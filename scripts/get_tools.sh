@@ -49,19 +49,25 @@ installFromGithub() {
 }
 
 ######################## DEVELOPER TOOLS #####################################
-installFromGithub gogo/protobuf 61dbc136cf5d2f08d68a011382652244990a53a9 protoc-gen-gogo
+## protobuf v1.3.0
+installFromGithub gogo/protobuf 0ca988a254f991240804bf9821f3450d87ccbb1b protoc-gen-gogo
 
-installFromGithub square/certstrap e27060a3643e814151e65b9807b6b06d169580a7
+installFromGithub square/certstrap 338204a88c4349b1c135eac1e8c14c693ad007da
 
 # used to build tm-monitor & tm-bench binaries
-installFromGithub mitchellh/gox 51ed453898ca5579fea9ad1f08dff6b121d9f2e8
+## gox v1.0.1
+installFromGithub mitchellh/gox d8caaff5a9dc98f4cfa1fcce6e7265a04689f641
 
-## golangci-lint v1.13.2
-installFromGithub golangci/golangci-lint 7b2421d55194c9dc385eff7720a037aa9244ca3c cmd/golangci-lint
+## Trying to install golangci with Go 1.13 gives:
+## go: github.com/go-critic/go-critic@v0.0.0-20181204210945-1df300866540: invalid pseudo-version: does not match version-control timestamp (2019-05-26T07:48:19Z)
+## golangci-lint v1.17.1
+# installFromGithub golangci/golangci-lint 4ba2155996359eabd8800d1fbf3e3a9777c80490 cmd/golangci-lint
 
+## Trying to install golangci with Go 1.13 gives:
+## go: cannot find main module, but found .git/config in /go/src/github.com/petermattis/goid
 ## make test_with_deadlock
 ## XXX: https://github.com/tendermint/tendermint/issues/3242
-installFromGithub petermattis/goid b0b1615b78e5ee59739545bb38426383b2cda4c9
-installFromGithub sasha-s/go-deadlock d68e2bc52ae3291765881b9056f2c1527f245f1e
-go get golang.org/x/tools/cmd/goimports
-installFromGithub snikch/goodman 10e37e294daa3c9a90abded60ff9924bafab3888 cmd/goodman
+# installFromGithub petermattis/goid b0b1615b78e5ee59739545bb38426383b2cda4c9
+# installFromGithub sasha-s/go-deadlock d68e2bc52ae3291765881b9056f2c1527f245f1e
+# go get golang.org/x/tools/cmd/goimports
+# installFromGithub snikch/goodman 10e37e294daa3c9a90abded60ff9924bafab3888 cmd/goodman
