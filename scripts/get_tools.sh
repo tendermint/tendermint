@@ -55,7 +55,8 @@ installFromGithub gogo/protobuf 0ca988a254f991240804bf9821f3450d87ccbb1b protoc-
 installFromGithub square/certstrap 338204a88c4349b1c135eac1e8c14c693ad007da
 
 # used to build tm-monitor & tm-bench binaries
-installFromGithub mitchellh/gox 51ed453898ca5579fea9ad1f08dff6b121d9f2e8
+## gox v1.0.1
+installFromGithub mitchellh/gox d8caaff5a9dc98f4cfa1fcce6e7265a04689f641
 
 ## golangci-lint v1.17.1
 installFromGithub golangci/golangci-lint 4ba2155996359eabd8800d1fbf3e3a9777c80490 cmd/golangci-lint
