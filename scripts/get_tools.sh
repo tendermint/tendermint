@@ -49,7 +49,8 @@ installFromGithub() {
 }
 
 ######################## DEVELOPER TOOLS #####################################
-installFromGithub gogo/protobuf 61dbc136cf5d2f08d68a011382652244990a53a9 protoc-gen-gogo
+## protobuf v1.3.0
+installFromGithub gogo/protobuf 0ca988a254f991240804bf9821f3450d87ccbb1b protoc-gen-gogo
 
 installFromGithub square/certstrap e27060a3643e814151e65b9807b6b06d169580a7
 
