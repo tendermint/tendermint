@@ -11,7 +11,7 @@ require (
 	github.com/go-kit/kit v0.6.0
 	github.com/go-logfmt/logfmt v0.3.0
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/gogo/protobuf v1.2.1
+	github.com/gogo/protobuf v1.3.0
 	github.com/golang/protobuf v1.3.2
 	github.com/google/gofuzz v1.0.0 // indirect
 	github.com/gorilla/websocket v1.2.0
@@ -19,7 +19,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515 // indirect
 	github.com/libp2p/go-buffer-pool v0.0.1
-	github.com/magiconair/properties v1.8.0
+	github.com/magiconair/properties v1.8.1
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
