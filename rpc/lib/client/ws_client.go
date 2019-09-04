@@ -79,7 +79,7 @@ type WSClient struct {
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
-	protocol, addr, err := clientAddressParts(remoteAddr)
+	protocol, addr, err := toClientAddrAndParse(remoteAddr)
 	if err != nil {
 		panic(fmt.Sprintf("invalid remote %s: %s", remoteAddr, err))
 	}

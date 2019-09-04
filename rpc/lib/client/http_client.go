@@ -35,21 +35,22 @@ type HTTPClient interface {
 	SetCodec(*amino.Codec)
 }
 
-// TODO: Deprecate support for IP:PORT or /path/to/socket
-func clientAddressParts(remoteAddr string) (string, string, error) {
-	protocol, address, err := remoteParts(remoteAddr)
+// protocol - client's protocol (for example, "http", "https", "wss", "ws", "tcp")
+// trimmedS - rest of the address (for example, "192.0.2.1:25", "[2001:db8::1]:80") with "/" replaced with "."
+func toClientAddrAndParse(remoteAddr string) (network string, trimmedS string, err error) {
+	protocol, address, err := parseRemoteAddr(remoteAddr)
 	if err != nil {
 		return "", "", err
 	}
 
 	// protocol to use for http operations, to support both http and https
-	clientProtocol := protoHTTP
-	// accept http as an alias for tcp and set the client protocol
+	var clientProtocol string
+	// default to http for unknown protocols (ex. tcp)
 	switch protocol {
-	case protoHTTP, protoHTTPS:
+	case protoHTTP, protoHTTPS, protoWS, protoWSS:
 		clientProtocol = protocol
-	case protoWS, protoWSS:
-		clientProtocol = protocol
+	default:
+		clientProtocol = protoHTTP
 	}
 
 	// replace / with . for http requests (kvstore domain)
@@ -57,15 +58,18 @@ func clientAddressParts(remoteAddr string) (string, string, error) {
 	return clientProtocol, trimmedAddress, nil
 }
 
-func clientAddress(remoteAddr string) (string, error) {
-	clientProtocol, trimmedAddress, err := clientAddressParts(remoteAddr)
+func toClientAddress(remoteAddr string) (string, error) {
+	clientProtocol, trimmedAddress, err := toClientAddrAndParse(remoteAddr)
 	if err != nil {
 		return "", err
 	}
 	return clientProtocol + "://" + trimmedAddress, nil
 }
 
-func remoteParts(remoteAddr string) (string, string, error) {
+// network - name of the network (for example, "tcp", "unix")
+// s - rest of the address (for example, "192.0.2.1:25", "[2001:db8::1]:80")
+// TODO: Deprecate support for IP:PORT or /path/to/socket
+func parseRemoteAddr(remoteAddr string) (network string, s string, err error) {
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
 	switch {
@@ -75,10 +79,10 @@ func remoteParts(remoteAddr string) (string, string, error) {
 	case len(parts) == 2:
 		protocol, address = parts[0], parts[1]
 	default:
-		return "", "", fmt.Errorf("Invalid addr: %s", remoteAddr)
+		return "", "", fmt.Errorf("invalid addr: %s", remoteAddr)
 	}
 
-	// accept http as an alias for tcp and set the client protocol
+	// accept http(s) as an alias for tcp
 	switch protocol {
 	case protoHTTP, protoHTTPS:
 		protocol = protoTCP
@@ -94,7 +98,7 @@ func makeErrorDialer(err error) func(string, string) (net.Conn, error) {
 }
 
 func makeHTTPDialer(remoteAddr string) func(string, string) (net.Conn, error) {
-	protocol, address, err := remoteParts(remoteAddr)
+	protocol, address, err := parseRemoteAddr(remoteAddr)
 	if err != nil {
 		return makeErrorDialer(err)
 	}
@@ -165,7 +169,7 @@ func NewJSONRPCClientWithHTTPClient(remote string, client *http.Client) *JSONRPC
 		panic("nil http.Client provided")
 	}
 
-	clientAddress, err := clientAddress(remote)
+	clientAddress, err := toClientAddress(remote)
 	if err != nil {
 		panic(fmt.Sprintf("invalid remote %s: %s", remote, err))
 	}
@@ -305,7 +309,7 @@ type URIClient struct {
 }
 
 func NewURIClient(remote string) *URIClient {
-	clientAddress, err := clientAddress(remote)
+	clientAddress, err := toClientAddress(remote)
 	if err != nil {
 		panic(fmt.Sprintf("invalid remote %s: %s", remote, err))
 	}
