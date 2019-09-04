@@ -63,9 +63,11 @@ installFromGithub mitchellh/gox d8caaff5a9dc98f4cfa1fcce6e7265a04689f641
 ## golangci-lint v1.17.1
 # installFromGithub golangci/golangci-lint 4ba2155996359eabd8800d1fbf3e3a9777c80490 cmd/golangci-lint
 
+## Trying to install golangci with Go 1.13 gives:
+## go: cannot find main module, but found .git/config in /go/src/github.com/petermattis/goid
 ## make test_with_deadlock
 ## XXX: https://github.com/tendermint/tendermint/issues/3242
-installFromGithub petermattis/goid b0b1615b78e5ee59739545bb38426383b2cda4c9
-installFromGithub sasha-s/go-deadlock d68e2bc52ae3291765881b9056f2c1527f245f1e
-go get golang.org/x/tools/cmd/goimports
-installFromGithub snikch/goodman 10e37e294daa3c9a90abded60ff9924bafab3888 cmd/goodman
+# installFromGithub petermattis/goid b0b1615b78e5ee59739545bb38426383b2cda4c9
+# installFromGithub sasha-s/go-deadlock d68e2bc52ae3291765881b9056f2c1527f245f1e
+# go get golang.org/x/tools/cmd/goimports
+# installFromGithub snikch/goodman 10e37e294daa3c9a90abded60ff9924bafab3888 cmd/goodman
