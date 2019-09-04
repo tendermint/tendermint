@@ -51,22 +51,6 @@ jobs:
           paths:
             - /go/src/github.com/tendermint/tendermint
 
-  build_slate:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: v4-pkg-cache
-      - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: slate docs
-          command: |
-            set -ex
-            export PATH="$GOBIN:$PATH"
-            make build-slate
-
   test_abci_apps:
     <<: *defaults
     steps:
