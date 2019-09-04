@@ -9,7 +9,7 @@ require (
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a
 	github.com/fortytw2/leaktest v1.2.0
 	github.com/go-kit/kit v0.6.0
-	github.com/go-logfmt/logfmt v0.3.0
+	github.com/go-logfmt/logfmt v0.4.0
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.0
 	github.com/golang/protobuf v1.3.2
