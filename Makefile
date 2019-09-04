@@ -16,6 +16,9 @@ BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 
 all: check build test install
 
+# The below include contains the tools.
+include scripts/Makefile
+
 check: check_tools
 
 ########################################
@@ -79,13 +82,13 @@ check_tools:
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
 
-get_tools:
-	@echo "--> Installing tools"
-	./scripts/get_tools.sh
+# get_tools:
+# 	@echo "--> Installing tools"
+# 	./scripts/get_tools.sh
 
-update_tools:
-	@echo "--> Updating tools"
-	./scripts/get_tools.sh
+# update_tools:
+# 	@echo "--> Updating tools"
+# 	./scripts/get_tools.sh
 
 #For ABCI and libs
 get_protoc:
