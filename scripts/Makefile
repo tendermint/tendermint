@@ -46,9 +46,9 @@ GOLANGCI_LINT = $(TOOLS_DESTDIR)/golangci-lint
 GOIMPORTS     = $(TOOLS_DESTDIR)/goimports
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
-GOX						=  $(TOOLS_DESTDIR)/gox
+GOX						= $(TOOLS_DESTDIR)/gox
 
-all: tools
+all: get_tools
 
 get_tools: golangci-lint goimports certstrap protobuf gox 
 
@@ -85,4 +85,4 @@ tools-clean:
 	rm -f $(CERTSTRAP) $(GOIMPORTS) $(GOLANGCI_LINT) $(PROTOBUF) $(GOX)
 	rm -f tools-stamp
 
-.PHONY: all tools tools-clean
+.PHONY: all get_tools tools-clean
