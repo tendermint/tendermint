@@ -58,8 +58,10 @@ installFromGithub square/certstrap 338204a88c4349b1c135eac1e8c14c693ad007da
 ## gox v1.0.1
 installFromGithub mitchellh/gox d8caaff5a9dc98f4cfa1fcce6e7265a04689f641
 
+## Trying to install golangci with Go 1.13 gives:
+## go: github.com/go-critic/go-critic@v0.0.0-20181204210945-1df300866540: invalid pseudo-version: does not match version-control timestamp (2019-05-26T07:48:19Z)
 ## golangci-lint v1.17.1
-installFromGithub golangci/golangci-lint 4ba2155996359eabd8800d1fbf3e3a9777c80490 cmd/golangci-lint
+# installFromGithub golangci/golangci-lint 4ba2155996359eabd8800d1fbf3e3a9777c80490 cmd/golangci-lint
 
 ## make test_with_deadlock
 ## XXX: https://github.com/tendermint/tendermint/issues/3242
