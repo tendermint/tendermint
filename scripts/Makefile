@@ -47,10 +47,11 @@ GOIMPORTS     = $(TOOLS_DESTDIR)/goimports
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
 GOX						= $(TOOLS_DESTDIR)/gox
+GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: get_tools
 
-get_tools: golangci-lint goimports certstrap protobuf gox 
+get_tools: golangci-lint goimports certstrap protobuf gox go-deadlock goodman goid
 
 golangci-lint: $(GOLANGCI_LINT)
 $(GOLANGCI_LINT): $(mkfile_dir)/install-golangci-lint.sh
@@ -79,10 +80,23 @@ $(GOX):
 	## gox v1.0.1
 	@go get github.com/mitchellh/gox@d8caaff5a9dc98f4cfa1fcce6e7265a04689f641
 
+## make test_with_deadlock
+## XXX: https://github.com/tendermint/tendermint/issues/3242
+go-deadlock:
+	@echo "Get Go-Deadlock"
+	@go get github.com/sasha-s/go-deadlock
 
+goid:
+	@echo "Get Goid"
+	@ go get github.com/petermattis/goid
+
+goodman: $(GOODMAN)
+$(GOODMAN):
+	@echo "Get Goodman"
+	@go get github.com/snikch/goodman/cmd/goodman
 
 tools-clean:
-	rm -f $(CERTSTRAP) $(GOIMPORTS) $(GOLANGCI_LINT) $(PROTOBUF) $(GOX)
+	rm -f $(CERTSTRAP) $(GOIMPORTS) $(GOLANGCI_LINT) $(PROTOBUF) $(GOX) $(GOODMAN)
 	rm -f tools-stamp
 
 .PHONY: all get_tools tools-clean
