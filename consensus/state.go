@@ -757,7 +757,7 @@ func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
-	if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
+	if cs.config.SkipTimeoutCommit && cs.LastCommit != nil && cs.LastCommit.HasAll() {
 		// we only need to do this for round 0
 		cs.enterNewRound(cs.Height, 0)
 		cs.enterPropose(cs.Height, 0)
