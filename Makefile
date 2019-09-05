@@ -82,14 +82,6 @@ check_tools:
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
 
-# get_tools:
-# 	@echo "--> Installing tools"
-# 	./scripts/get_tools.sh
-
-# update_tools:
-# 	@echo "--> Updating tools"
-# 	./scripts/get_tools.sh
-
 #For ABCI and libs
 get_protoc:
 	@# https://github.com/google/protobuf/releases
@@ -234,6 +226,10 @@ test_with_deadlock:
 	make cleanup_after_test_with_deadlock
 
 set_with_deadlock:
+	@echo "Get Goid"
+	@go get github.com/petermattis/goid@b0b1615b78e5ee59739545bb38426383b2cda4c9
+	@echo "Get Go-Deadlock"
+	@go get github.com/sasha-s/go-deadlock@d68e2bc52ae3291765881b9056f2c1527f245f1e
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.RWMutex/deadlock.RWMutex/'
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.Mutex/deadlock.Mutex/'
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 goimports -w
@@ -243,6 +239,8 @@ cleanup_after_test_with_deadlock:
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/deadlock.RWMutex/sync.RWMutex/'
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/deadlock.Mutex/sync.Mutex/'
 	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 goimports -w
+	# cleans up the deps to not include the need libs
+	go mod tidy 
 
 ########################################
 ### Formatting, linting, and vetting
