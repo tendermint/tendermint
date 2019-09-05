@@ -19,6 +19,6 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [rpc] [\#3779](https://github.com/tendermint/tendermint/pull/3779) Allow using a custom http client in rpc client
+- [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
 
 ### BUG FIXES:
