@@ -74,9 +74,8 @@ and the [contributing guidelines](CONTRIBUTING.md) when submitting code.
 Join the larger community on the [forum](https://forum.cosmos.network/) and the [chat](https://riot.im/app/#/room/#tendermint:matrix.org).
 
 To learn more about the structure of the software, watch the [Developer
-Sessions](https://www.youtube.com/playlist?list=PLdQIb0qr3pnBbG5ZG-0gr3zM86_s8Rpqv)
-and read some [Architectural
-Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
+Sessions](/docs/DEV_SESSIONS.md) and read some [Architectural Decision
+Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
 
 Learn more by reading the code and comparing it to the
 [specification](https://github.com/tendermint/tendermint/tree/develop/docs/spec).
