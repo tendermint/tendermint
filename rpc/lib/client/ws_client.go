@@ -78,6 +78,7 @@ type WSClient struct {
 // NewWSClient returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
+// The function panics if the provided address is invalid.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
 	protocol, addr, err := toClientAddrAndParse(remoteAddr)
 	if err != nil {

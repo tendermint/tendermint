@@ -164,6 +164,7 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 }
 
 // NewJSONRPCClientWithHTTPClient returns a JSONRPCClient pointed at the given address using a custom http client
+// The function panics if the provided client is nil or remote is invalid.
 func NewJSONRPCClientWithHTTPClient(remote string, client *http.Client) *JSONRPCClient {
 	if client == nil {
 		panic("nil http.Client provided")
@@ -308,6 +309,7 @@ type URIClient struct {
 	cdc     *amino.Codec
 }
 
+// The function panics if the provided remote is invalid.
 func NewURIClient(remote string) *URIClient {
 	clientAddress, err := toClientAddress(remote)
 	if err != nil {
