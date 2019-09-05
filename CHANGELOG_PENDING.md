@@ -19,4 +19,6 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [rpc] [\#3779](https://github.com/tendermint/tendermint/pull/3779) Allow using a custom http client in rpc client
+
 ### BUG FIXES:
