@@ -64,7 +64,8 @@ func TestBeginBlockValidators(t *testing.T) {
 
 	now := tmtime.Now()
 	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
-	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now, Type: types.PrecommitType}).CommitSig()
+	// TODO: why the Type is not set here? It shows a panic on %+v; REMOVE THIS ON REVIEW
+	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
 
 	testCases := []struct {
 		desc                     string
@@ -138,6 +139,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 
 	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
+	// TODO: why the Type is not set here? It shows a panic on %+v; REMOVE THIS ON REVIEW
 	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
 	commitSigs := []*types.CommitSig{commitSig0, commitSig1}
 	lastCommit := types.NewCommit(prevBlockID, commitSigs)
