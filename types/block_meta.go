@@ -3,7 +3,7 @@ package types
 // BlockMeta contains meta information about a block - ID, Size, and Header.
 type BlockMeta struct {
 	BlockID   BlockID `json:"block_id"`   // the block hash and partsethash
-	BlockSize int     `json:"block_size"` // The size of the block
+	BlockSize uint    `json:"block_size"` // The size of the block
 	Header    Header  `json:"header"`     // The block's Header
 }
 

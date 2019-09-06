@@ -218,12 +218,12 @@ func (b *Block) HashesTo(hash []byte) bool {
 }
 
 // Size returns size of the block in bytes.
-func (b *Block) Size() int {
+func (b *Block) Size() uint {
 	bz, err := cdc.MarshalBinaryBare(b)
 	if err != nil {
 		return 0
 	}
-	return len(bz)
+	return uint(len(bz))
 }
 
 // String returns a string representation of the block
