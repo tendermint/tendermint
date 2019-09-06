@@ -314,7 +314,7 @@ message VoteInfo {
   Vote full_vote = 3;
 }
 
-// Vote from LastCommit
+// Validator's vote for a block
 message Vote {
     int32 type = 1;
     // TODO: maybe remove height cause it could be derived from BeginBlock?
