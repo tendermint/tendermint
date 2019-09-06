@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 
 defaults: &defaults
   working_directory: /go/src/github.com/tendermint/tendermint
@@ -6,6 +6,11 @@ defaults: &defaults
     - image: circleci/golang
   environment:
     GOBIN: /tmp/workspace/bin
+
+executors:
+  golang:
+    docker:
+      - image: circleci/golang
 
 docs_update_config: &docs_update_config
   working_directory: ~/repo
@@ -19,47 +24,44 @@ release_management_docker: &release_management_docker
 
 jobs:
   setup_dependencies:
-    <<: *defaults
+    executor: golang
     steps:
-      - run: mkdir -p /tmp/workspace/bin
-      - run: mkdir -p /tmp/workspace/profiles
       - checkout
       - restore_cache:
+          name: "Restore go modules cache"
           keys:
-            - v4-pkg-cache
+            - go-mod-v2-{{ checksum "go.sum" }}
+      - run:
+          name: Cache go modules
+          command: make go-mod-cache
       - run:
           name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
+          command: make tools
       - run:
           name: binaries
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make install install_abci
-      - persist_to_workspace:
-          root: /tmp/workspace
-          paths:
-            - bin
-            - profiles
+          command: make install install_abci
       - save_cache:
-          key: v4-pkg-cache
+          name: "Save go modules cache"
+          key: go-mod-v2-{{ checksum "go.sum" }}
           paths:
-            - /go/pkg
+            - "/go/pkg/mod"
       - save_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+          name: "Save source code cache"
+          key: go-src-v1-{{ .Revision }}
           paths:
-            - /go/src/github.com/tendermint/tendermint
+            - ".git"
 
   test_abci_apps:
-    <<: *defaults
+    executor: golang
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v4-pkg-cache
+          key:
+            - go-mod-v2-{{ checksum "go.sum" }
       - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+          keys:
+            - go-src-v1-{{ .Revision }
       - run:
           name: Run abci apps tests
           command: |
@@ -69,14 +71,16 @@ jobs:
   # if this test fails, fix it and update the docs at:
   # https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.md
   test_abci_cli:
-    <<: *defaults
+    executor: golang
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v4-pkg-cache
+          key:
+            - go-mod-v2-{{ checksum "go.sum" }
       - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+          keys:
+            - go-src-v1-{{ .Revision }
       - run:
           name: Run abci-cli tests
           command: |
@@ -84,37 +88,37 @@ jobs:
             bash abci/tests/test_cli/test.sh
 
   test_apps:
-    <<: *defaults
+    executor: golang
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
+      - checkout
       - restore_cache:
-          key: v4-pkg-cache
+          key:
+            - go-mod-v2-{{ checksum "go.sum" }
       - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key:
+            - go-src-v1-{{ .Revision }
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
       - run:
           name: Run tests
           command: bash test/app/test.sh
 
   test_cover:
-    <<: *defaults
+    executor: golang
     parallelism: 4
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
+      - checkout
       - restore_cache:
-          key: v4-pkg-cache
-      - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run: mkdir -p /tmp/logs
+          key:
+            - go-mod-v2-{{ checksum "go.sum" }
       - run:
           name: Run tests
           command: |
+            export VERSION="$(git describe --tags --long | sed 's/v\(.*\)/\1/')"
+            export GO111MODULE=on
+            mkdir -p /tmp/logs /tmp/workspace/profiles
             for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
-
-              GO111MODULE=on go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+              go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
@@ -124,14 +128,16 @@ jobs:
           path: /tmp/logs
 
   test_persistence:
-    <<: *defaults
+    executor: golang
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v4-pkg-cache
+          key:
+            - go-mod-v2-{{ checksum "go.sum" }
       - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key:
+            - go-src-v1-{{ .Revision }}
       - run:
           name: Run tests
           command: bash test/persist/test_failure_indices.sh
@@ -171,14 +177,16 @@ jobs:
           path: /home/circleci/project/test/p2p/logs
 
   upload_coverage:
-    <<: *defaults
+    executor: golang
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v4-pkg-cache
+          key:
+            - go-mod-v2-{{ checksum "go.sum" }e
       - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key:
+            - go-src-v1-{{ .Revision }}
       - run:
           name: gather
           command: |
@@ -187,6 +195,15 @@ jobs:
             echo "mode: atomic" > coverage.txt
             for prof in $(ls /tmp/workspace/profiles/); do
               tail -n +2 /tmp/workspace/profiles/"$prof" >> coverage.txt
+            done
+      - run:
+          name: filter out DONTCOVER
+          command: |
+            excludelist="$(find ./ -type f -name '*.go' | xargs grep -l 'DONTCOVER')"
+            for filename in ${excludelist}; do
+              filename=$(echo $filename | sed 's/^./github.com\/cosmos\/cosmos-sdk/g')
+              echo "Excluding ${filename} from coverage report..."
+              sed -i.bak "/$(echo $filename | sed 's/\//\\\//g')/d" coverage.txt
             done
       - run:
           name: upload
@@ -217,7 +234,7 @@ jobs:
             fi
 
   prepare_build:
-    <<: *defaults
+    executor: golang
     steps:
       - checkout
       - run:
@@ -234,8 +251,7 @@ jobs:
             echo "export CIRCLE_TAG=\"${NEXT_TAG}\"" > release-version.source
       - run:
           name: Build dependencies
-          command: |
-            make get_tools
+          command: make tools
       - persist_to_workspace:
           root: .
           paths:
@@ -246,7 +262,7 @@ jobs:
             - "/go/pkg/mod"
 
   build_artifacts:
-    <<: *defaults
+    executor: golang
     parallelism: 4
     steps:
       - checkout
@@ -271,7 +287,7 @@ jobs:
             - "tendermint_linux_amd64"
 
   release_artifacts:
-    <<: *defaults
+    executor: golangs
     steps:
       - checkout
       - attach_workspace:
@@ -316,7 +332,7 @@ jobs:
             docker logout
 
   reproducible_builds:
-    <<: *defaults
+    executor: golang
     steps:
       - attach_workspace:
           at: /tmp/workspace

@@ -49,9 +49,9 @@ PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
 GOX						= $(TOOLS_DESTDIR)/gox
 GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
-all: get_tools
+all: tools
 
-get_tools: golangci-lint goimports certstrap protobuf gox goodman
+tools: golangci-lint goimports certstrap protobuf gox goodman
 
 golangci-lint: $(GOLANGCI_LINT)
 $(GOLANGCI_LINT): $(mkfile_dir)/install-golangci-lint.sh
@@ -89,4 +89,4 @@ tools-clean:
 	rm -f $(CERTSTRAP) $(GOIMPORTS) $(GOLANGCI_LINT) $(PROTOBUF) $(GOX) $(GOODMAN)
 	rm -f tools-stamp
 
-.PHONY: all get_tools tools-clean
+.PHONY: all tools tools-clean

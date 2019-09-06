@@ -17,7 +17,7 @@ BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 all: check build test install
 
 # The below include contains the tools.
-include scripts/Makefile
+include scripts/devtools/Makefile
 
 check: check_tools
 
@@ -94,6 +94,16 @@ get_protoc:
 		sudo ldconfig && \
 		cd .. && \
 		rm -rf protobuf-3.6.1
+
+go-mod-cache: go.sum
+	@echo "--> Download go modules to local cache"
+	@go mod download
+.PHONY: go-mod-cache
+
+go.sum: go.mod
+	@echo "--> Ensure dependencies have not been modified"
+	@go mod verify
+	@go mod tidy
 
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
@@ -190,7 +200,7 @@ test_p2p:
 
 test_integrations:
 	make build_docker_test_image
-	make get_tools
+	make tools
 	make install
 	make test_cover
 	make test_apps
@@ -270,7 +280,7 @@ build-docker:
 ### Local testnet using docker
 
 # Build linux binary on other platforms
-build-linux: get_tools
+build-linux: tools
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 
 build-docker-localnode:
@@ -324,4 +334,4 @@ contract-tests:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race build_abci dist install install_abci check_tools get_tools update_tools draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests
+.PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests
