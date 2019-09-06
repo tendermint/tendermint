@@ -1,4 +1,4 @@
-## v0.32.3
+## v0.32.4
 
 \*\*
 
@@ -19,13 +19,6 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [privval] \#3370 Refactors and simplifies validator/kms connection handling. Please refer to thttps://github.com/tendermint/tendermint/pull/3370#issue-257360971
-- [consensus] \#3839 Reduce "Error attempting to add vote" message severity (Error -> Info)
-- [mempool] \#3877 Make `max_tx_bytes` configurable instead of `max_msg_bytes`
-- [rpc] \#3880 Document endpoints with `swagger`, introduce contract tests of implementation against documentation
+- [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
 
 ### BUG FIXES:
-
-- [config] \#3868 move misplaced `max_msg_bytes` into mempool section
-- [store] \#3893 register block amino, not just crypto
-- [rpc] [\#3910](https://github.com/tendermint/tendermint/pull/3910) protect subscription access from race conditions (@gchaincl)
