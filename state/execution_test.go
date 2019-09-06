@@ -64,7 +64,7 @@ func TestBeginBlockValidators(t *testing.T) {
 
 	now := tmtime.Now()
 	commitSig0 := (&types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.PrecommitType}).CommitSig()
-	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now}).CommitSig()
+	commitSig1 := (&types.Vote{ValidatorIndex: 1, Timestamp: now, Type: types.PrecommitType}).CommitSig()
 
 	testCases := []struct {
 		desc                     string
@@ -97,7 +97,7 @@ func TestBeginBlockValidators(t *testing.T) {
 			} else {
 				assert.True(t, v.SignedLastBlock)
 				assert.NotNil(t, v.FullVote)
-				assert.Equal(t, *v.FullVote, types.Vote(*tc.lastCommitPrecommits[i]))
+				assert.Equal(t, v.FullVote, types.TM2PB.Vote(tc.lastCommitPrecommits[i]))
 			}
 		}
 	}

@@ -222,6 +222,10 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 }
 
 func (tm2pb) Vote(vote *CommitSig) *abci.Vote {
+	if vote == nil {
+		return nil
+	}
+
 	blockID := TM2PB.BlockID(vote.BlockID)
 
 	return &abci.Vote{
