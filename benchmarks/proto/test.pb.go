@@ -34,11 +34,11 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type ResultStatus struct {
-	NodeInfo          *NodeInfo `protobuf:"bytes,1,opt,name=nodeInfo" json:"nodeInfo"`
-	PubKey            *PubKey   `protobuf:"bytes,2,req,name=pubKey" json:"pubKey"`
-	LatestBlockHash   []byte    `protobuf:"bytes,3,req,name=latestBlockHash" json:"latestBlockHash"`
-	LatestBlockHeight *int64    `protobuf:"varint,4,req,name=latestBlockHeight" json:"latestBlockHeight"`
-	LatestBlocktime   *int64    `protobuf:"varint,5,req,name=latestBlocktime" json:"latestBlocktime"`
+	NodeInfo          *NodeInfo `protobuf:"bytes,1,opt,name=nodeInfo" json:"nodeInfo,omitempty"`
+	PubKey            *PubKey   `protobuf:"bytes,2,req,name=pubKey" json:"pubKey,omitempty"`
+	LatestBlockHash   []byte    `protobuf:"bytes,3,req,name=latestBlockHash" json:"latestBlockHash,omitempty"`
+	LatestBlockHeight *int64    `protobuf:"varint,4,req,name=latestBlockHeight" json:"latestBlockHeight,omitempty"`
+	LatestBlocktime   *int64    `protobuf:"varint,5,req,name=latestBlocktime" json:"latestBlocktime,omitempty"`
 	XXX_unrecognized  []byte    `json:"-"`
 }
 
@@ -83,13 +83,13 @@ func (m *ResultStatus) GetLatestBlocktime() int64 {
 }
 
 type NodeInfo struct {
-	Id               *ID      `protobuf:"bytes,1,req,name=id" json:"id"`
-	Moniker          *string  `protobuf:"bytes,2,req,name=moniker" json:"moniker"`
-	Network          *string  `protobuf:"bytes,3,req,name=network" json:"network"`
-	RemoteAddr       *string  `protobuf:"bytes,4,req,name=remoteAddr" json:"remoteAddr"`
-	ListenAddr       *string  `protobuf:"bytes,5,req,name=listenAddr" json:"listenAddr"`
-	Version          *string  `protobuf:"bytes,6,req,name=version" json:"version"`
-	Other            []string `protobuf:"bytes,7,rep,name=other" json:"other"`
+	Id               *ID      `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	Moniker          *string  `protobuf:"bytes,2,req,name=moniker" json:"moniker,omitempty"`
+	Network          *string  `protobuf:"bytes,3,req,name=network" json:"network,omitempty"`
+	RemoteAddr       *string  `protobuf:"bytes,4,req,name=remoteAddr" json:"remoteAddr,omitempty"`
+	ListenAddr       *string  `protobuf:"bytes,5,req,name=listenAddr" json:"listenAddr,omitempty"`
+	Version          *string  `protobuf:"bytes,6,req,name=version" json:"version,omitempty"`
+	Other            []string `protobuf:"bytes,7,rep,name=other" json:"other,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -148,7 +148,7 @@ func (m *NodeInfo) GetOther() []string {
 }
 
 type ID struct {
-	Id               *string `protobuf:"bytes,1,req,name=id" json:"id"`
+	Id               *string `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -165,7 +165,7 @@ func (m *ID) GetId() string {
 }
 
 type PubKey struct {
-	Ed25519          *PubKeyEd25519 `protobuf:"bytes,1,opt,name=ed25519" json:"ed25519"`
+	Ed25519          *PubKeyEd25519 `protobuf:"bytes,1,opt,name=ed25519" json:"ed25519,omitempty"`
 	XXX_unrecognized []byte         `json:"-"`
 }
 
@@ -182,7 +182,7 @@ func (m *PubKey) GetEd25519() *PubKeyEd25519 {
 }
 
 type PubKeyEd25519 struct {
-	Bytes            []byte `protobuf:"bytes,1,req,name=bytes" json:"bytes"`
+	Bytes            []byte `protobuf:"bytes,1,req,name=bytes" json:"bytes,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
