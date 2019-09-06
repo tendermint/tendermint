@@ -1,3 +1,5 @@
+// nolint: dupl
+// dupl is reading this as the same file as crypto/merkle/result.go
 package common
 
 import (
