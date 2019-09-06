@@ -157,3 +157,13 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestMockGoodEvidenceValidateBasic(t *testing.T) {
+	goodEvidence := NewMockGoodEvidence(int64(1), 1, []byte{1})
+	assert.Nil(t, goodEvidence.ValidateBasic())
+}
+
+func TestMockBadEvidenceValidateBasic(t *testing.T) {
+	badEvidence := MockBadEvidence{MockGoodEvidence: NewMockGoodEvidence(int64(1), 1, []byte{1})}
+	assert.Nil(t, badEvidence.ValidateBasic())
+}

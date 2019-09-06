@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -84,8 +85,19 @@ var _ rpcClient = (*baseRPCClient)(nil)
 
 // NewHTTP takes a remote endpoint in the form <protocol>://<host>:<port> and
 // the websocket path (which always seems to be "/websocket")
+// The function panics if the provided remote is invalid.<Paste>
 func NewHTTP(remote, wsEndpoint string) *HTTP {
-	rc := rpcclient.NewJSONRPCClient(remote)
+	httpClient := rpcclient.DefaultHTTPClient(remote)
+	return NewHTTPWithClient(remote, wsEndpoint, httpClient)
+}
+
+// NewHTTPWithClient allows for setting a custom http client. See NewHTTP
+// The function panics if the provided client is nil or remote is invalid.
+func NewHTTPWithClient(remote, wsEndpoint string, client *http.Client) *HTTP {
+	if client == nil {
+		panic("nil http.Client provided")
+	}
+	rc := rpcclient.NewJSONRPCClientWithHTTPClient(remote, client)
 	cdc := rc.Codec()
 	ctypes.RegisterAmino(cdc)
 	rc.SetCodec(cdc)
@@ -453,6 +465,8 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (w *WSEvents) redoSubscriptionsAfter(d time.Duration) {
 	time.Sleep(d)
 
+	w.mtx.RLock()
+	defer w.mtx.RUnlock()
 	for q := range w.subscriptions {
 		err := w.ws.Subscribe(context.Background(), q)
 		if err != nil {

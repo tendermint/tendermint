@@ -2,10 +2,9 @@ package merkle
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/pkg/errors"
 )
 
 // SimpleProof represents a simple Merkle proof.
@@ -75,11 +74,11 @@ func (sp *SimpleProof) Verify(rootHash []byte, leaf []byte) error {
 		return errors.New("Proof index cannot be negative")
 	}
 	if !bytes.Equal(sp.LeafHash, leafHash) {
-		return cmn.NewError("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
+		return errors.Errorf("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
 	}
 	computedHash := sp.ComputeRootHash()
 	if !bytes.Equal(computedHash, rootHash) {
-		return cmn.NewError("invalid root hash: wanted %X got %X", rootHash, computedHash)
+		return errors.Errorf("invalid root hash: wanted %X got %X", rootHash, computedHash)
 	}
 	return nil
 }

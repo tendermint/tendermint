@@ -346,7 +346,7 @@ func UnconfirmedTxs(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmed
 // client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // err := client.Start()
 // if err != nil {
-//   // handle error
+// // handle error
 // }
 // defer client.Stop()
 // result, err := client.UnconfirmedTxs()
@@ -361,8 +361,8 @@ func UnconfirmedTxs(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmed
 //   "result" : {
 //     "n_txs" : "0",
 //     "total_bytes" : "0",
-//     "txs" : null,
 //     "total" : "0"
+//     "txs" : null,
 //   }
 // }
 // ```

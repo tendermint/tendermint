@@ -366,3 +366,91 @@ func TestCommitToVoteSet(t *testing.T) {
 		assert.Equal(t, vote1bz, vote3bz)
 	}
 }
+
+func TestSignedHeaderValidateBasic(t *testing.T) {
+	commit := randCommit()
+	chainID := "𠜎"
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+	h := Header{
+		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
+		ChainID:            chainID,
+		Height:             commit.Height(),
+		Time:               timestamp,
+		NumTxs:             math.MaxInt64,
+		TotalTxs:           math.MaxInt64,
+		LastBlockID:        commit.BlockID,
+		LastCommitHash:     commit.Hash(),
+		DataHash:           commit.Hash(),
+		ValidatorsHash:     commit.Hash(),
+		NextValidatorsHash: commit.Hash(),
+		ConsensusHash:      commit.Hash(),
+		AppHash:            commit.Hash(),
+		LastResultsHash:    commit.Hash(),
+		EvidenceHash:       commit.Hash(),
+		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+	}
+
+	validSignedHeader := SignedHeader{Header: &h, Commit: commit}
+	validSignedHeader.Commit.BlockID.Hash = validSignedHeader.Hash()
+	invalidSignedHeader := SignedHeader{}
+
+	testCases := []struct {
+		testName  string
+		shHeader  *Header
+		shCommit  *Commit
+		expectErr bool
+	}{
+		{"Valid Signed Header", validSignedHeader.Header, validSignedHeader.Commit, false},
+		{"Invalid Signed Header", invalidSignedHeader.Header, validSignedHeader.Commit, true},
+		{"Invalid Signed Header", validSignedHeader.Header, invalidSignedHeader.Commit, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			sh := SignedHeader{
+				Header: tc.shHeader,
+				Commit: tc.shCommit,
+			}
+			assert.Equal(t, tc.expectErr, sh.ValidateBasic(validSignedHeader.Header.ChainID) != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestBlockIDValidateBasic(t *testing.T) {
+	validBlockID := BlockID{
+		Hash: cmn.HexBytes{},
+		PartsHeader: PartSetHeader{
+			Total: 1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
+
+	invalidBlockID := BlockID{
+		Hash: []byte{0},
+		PartsHeader: PartSetHeader{
+			Total: -1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
+
+	testCases := []struct {
+		testName           string
+		blockIDHash        cmn.HexBytes
+		blockIDPartsHeader PartSetHeader
+		expectErr          bool
+	}{
+		{"Valid BlockID", validBlockID.Hash, validBlockID.PartsHeader, false},
+		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartsHeader, true},
+		{"Invalid BlockID", validBlockID.Hash, invalidBlockID.PartsHeader, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			blockID := BlockID{
+				Hash:        tc.blockIDHash,
+				PartsHeader: tc.blockIDPartsHeader,
+			}
+			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
