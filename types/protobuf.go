@@ -220,3 +220,18 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 	}
 	return tmVals, nil
 }
+
+func (tm2pb) Vote(vote *CommitSig) *abci.Vote {
+	blockID := TM2PB.BlockID(vote.BlockID)
+
+	return &abci.Vote{
+		Type:             int32(vote.Type),
+		Height:           vote.Height,
+		Round:            int32(vote.Round),
+		BlockId:          &blockID,
+		Timestamp:        vote.Timestamp,
+		ValidatorAddress: vote.ValidatorAddress,
+		ValidatorIndex:   int32(vote.ValidatorIndex),
+		Signature:        vote.Signature,
+	}
+}

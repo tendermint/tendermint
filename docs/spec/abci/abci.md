@@ -449,6 +449,7 @@ Commit are included in the header of the next block.
   - `Validator (Validator)`: A validator
   - `SignedLastBlock (bool)`: Indicates whether or not the validator signed
     the last block
+  - `FullVote (Vote)`: Validator's vote
 - **Usage**:
   - Indicates whether a validator signed the last block, allowing for rewards
     based on validator availability
@@ -482,7 +483,7 @@ Commit are included in the header of the next block.
 - **Fields**:
   - `Round (int32)`: Commit round.
   - `Votes ([]VoteInfo)`: List of validators addresses in the last validator set
-    with their voting power and whether or not they signed a vote.
+    with their voting power, votes and whether or not they signed a vote.
 
 ### ConsensusParams
 

@@ -265,8 +265,7 @@ ResponseCommit requestCommit(RequestCommit requestCommit) {
 ### BeginBlock
 
 The BeginBlock request can be used to run some code at the beginning of
-every block. It also allows Tendermint to send the current block hash
-and header to the application, before it sends any of the transactions.
+every block. It also allows Tendermint to send the current block hash, header and commit of the last block to the application, before it sends any of the transactions.
 
 The app should remember the latest height and header (ie. from which it
 has run a successful Commit) so that it can tell Tendermint where to

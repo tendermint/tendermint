@@ -311,6 +311,22 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator = 1 [(gogoproto.nullable)=false];
   bool signed_last_block = 2;
+  Vote full_vote = 3;
+}
+
+// Vote from LastCommit
+message Vote {
+    int32 type = 1;
+    // TODO: maybe remove height cause it could be derived from BeginBlock?
+    int64 height = 2;
+    int32 round = 3;
+    // TODO: maybe remove block id cause it's already in the header as last_block_id?
+    BlockID block_id = 4 [json_name = "block_id"];
+    google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
+    // TODO: maybe remove validator address cause it's already in VoteInfo.validator?
+    bytes validator_address = 6 [json_name = "validator_address"];
+    int32 validator_index = 7 [json_name = "validator_index"];
+    bytes signature = 8;
 }
 
 message PubKey {

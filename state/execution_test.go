@@ -92,9 +92,12 @@ func TestBeginBlockValidators(t *testing.T) {
 				tc.expectedAbsentValidators[ctr] == i {
 
 				assert.False(t, v.SignedLastBlock)
+				assert.Nil(t, v.FullVote)
 				ctr++
 			} else {
 				assert.True(t, v.SignedLastBlock)
+				assert.NotNil(t, v.FullVote)
+				assert.Equal(t, *v.FullVote, types.Vote(*tc.lastCommitPrecommits[i]))
 			}
 		}
 	}

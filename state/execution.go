@@ -334,6 +334,8 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 		voteInfo := abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
 			SignedLastBlock: vote != nil,
+			// TODO: maybe make it optional, set by config, disabled by default?
+			FullVote: types.TM2PB.Vote(vote),
 		}
 		voteInfos[i] = voteInfo
 	}
