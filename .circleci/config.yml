@@ -327,7 +327,7 @@ jobs:
             source /tmp/workspace/release-version.source
             cp /tmp/workspace/tendermint_linux_amd64 DOCKER/tendermint
             docker build --label="tendermint" --tag="tendermint/tendermint:${CIRCLE_TAG}" --tag="tendermint/tendermint:latest" "DOCKER"
-            docker login -u "${DOCKERHUB_USER}" --password-stdin << "${DOCKERHUB_PASS}"
+            docker login -u "${DOCKERHUB_USER}" --password-stdin \<<< "${DOCKERHUB_PASS}"
             docker push "tendermint/tendermint"
             docker logout
 
