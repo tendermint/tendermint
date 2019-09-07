@@ -50,6 +50,13 @@ all: tools
 
 tools: goimports certstrap protobuf gox goodman
 
+check: check_tools
+
+check_tools:
+	@# https://stackoverflow.com/a/25668869
+	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
+        $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
+
 goimports: $(GOIMPORTS)
 $(GOIMPORTS):
 	@echo "Get goimports@v0.0.0-20190628034336-212fb13d595e"

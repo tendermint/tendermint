@@ -19,8 +19,6 @@ all: check build test install
 # The below include contains the tools.
 include scripts/devtools/Makefile
 
-check: check_tools
-
 ########################################
 ### Build Tendermint
 
@@ -73,14 +71,6 @@ install_abci:
 # TODO add abci to these scripts
 dist:
 	@BUILD_TAGS=$(BUILD_TAGS) sh -c "'$(CURDIR)/scripts/dist.sh'"
-
-########################################
-### Tools & dependencies
-
-check_tools:
-	@# https://stackoverflow.com/a/25668869
-	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
-        $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
 
 #For ABCI and libs
 get_protoc:
