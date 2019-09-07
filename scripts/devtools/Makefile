@@ -17,8 +17,6 @@ endif
 
 GOPATH ?= $(shell $(GO) env GOPATH)
 GITHUBDIR := $(GOPATH)$(FS)src$(FS)github.com
-GOLANGCI_LINT_VERSION := v1.17.1
-GOLANGCI_LINT_HASHSUM := f5fa647a12f658924d9f7d6b9628d505ab118e8e049e43272de6526053ebe08d
 
 ###
 # Functions
@@ -42,7 +40,6 @@ mkfile_dir := $(shell cd $(shell dirname $(mkfile_path)); pwd)
 
 TOOLS_DESTDIR  ?= $(GOPATH)/bin
 
-GOLANGCI_LINT = $(TOOLS_DESTDIR)/golangci-lint
 GOIMPORTS     = $(TOOLS_DESTDIR)/goimports
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
@@ -51,11 +48,7 @@ GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: tools
 
-tools: golangci-lint goimports certstrap protobuf gox goodman
-
-golangci-lint: $(GOLANGCI_LINT)
-$(GOLANGCI_LINT): $(mkfile_dir)/install-golangci-lint.sh
-	bash $(mkfile_dir)/install-golangci-lint.sh $(TOOLS_DESTDIR) $(GOLANGCI_LINT_VERSION) $(GOLANGCI_LINT_HASHSUM)
+tools: goimports certstrap protobuf gox goodman
 
 goimports: $(GOIMPORTS)
 $(GOIMPORTS):
@@ -86,7 +79,7 @@ $(GOODMAN):
 	@go get github.com/snikch/goodman/cmd/goodman@10e37e294daa3c9a90abded60ff9924bafab3888
 
 tools-clean:
-	rm -f $(CERTSTRAP) $(GOIMPORTS) $(GOLANGCI_LINT) $(PROTOBUF) $(GOX) $(GOODMAN)
+	rm -f $(CERTSTRAP) $(GOIMPORTS) $(PROTOBUF) $(GOX) $(GOODMAN)
 	rm -f tools-stamp
 
 .PHONY: all tools tools-clean
