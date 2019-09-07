@@ -190,11 +190,11 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	// Get the first ReqRes
 	next := cli.reqSent.Front()
 	if next == nil {
-		return fmt.Errorf("Unexpected result type %v when nothing expected", reflect.TypeOf(res.Value))
+		return fmt.Errorf("unexpected result type %v when nothing expected", reflect.TypeOf(res.Value))
 	}
 	reqres := next.Value.(*ReqRes)
 	if !resMatchesReq(reqres.Request, res) {
-		return fmt.Errorf("Unexpected result type %v when response to %v expected",
+		return fmt.Errorf("unexpected result type %v when response to %v expected",
 			reflect.TypeOf(res.Value), reflect.TypeOf(reqres.Request.Value))
 	}
 

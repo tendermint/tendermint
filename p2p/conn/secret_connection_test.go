@@ -52,35 +52,35 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 
 	// Make connections from both sides in parallel.
 	var trs, ok = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
 			if err != nil {
 				tb.Errorf("Failed to establish SecretConnection for foo: %v", err)
-				return nil, err, true
+				return nil, true, err
 			}
 			remotePubBytes := fooSecConn.RemotePubKey()
 			if !remotePubBytes.Equals(barPubKey) {
 				err = fmt.Errorf("Unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
 					barPubKey, fooSecConn.RemotePubKey())
 				tb.Error(err)
-				return nil, err, false
+				return nil, false, err
 			}
-			return nil, nil, false
+			return nil, false, nil
 		},
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			barSecConn, err = MakeSecretConnection(barConn, barPrvKey)
 			if barSecConn == nil {
 				tb.Errorf("Failed to establish SecretConnection for bar: %v", err)
-				return nil, err, true
+				return nil, true, err
 			}
 			remotePubBytes := barSecConn.RemotePubKey()
 			if !remotePubBytes.Equals(fooPubKey) {
 				err = fmt.Errorf("Unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
 					fooPubKey, barSecConn.RemotePubKey())
 				tb.Error(err)
-				return nil, nil, false
+				return nil, false, nil
 			}
-			return nil, nil, false
+			return nil, false, nil
 		},
 	)
 
@@ -111,21 +111,21 @@ func TestShareLowOrderPubkey(t *testing.T) {
 	// all blacklisted low order points:
 	for _, remLowOrderPubKey := range blacklist {
 		_, _ = cmn.Parallel(
-			func(_ int) (val interface{}, err error, abort bool) {
+			func(_ int) (val interface{}, abort bool, err error) {
 				_, err = shareEphPubKey(fooConn, locEphPub)
 
 				require.Error(t, err)
 				require.Equal(t, err, ErrSmallOrderRemotePubKey)
 
-				return nil, nil, false
+				return nil, false, nil
 			},
-			func(_ int) (val interface{}, err error, abort bool) {
+			func(_ int) (val interface{}, abort bool, err error) {
 				readRemKey, err := shareEphPubKey(barConn, &remLowOrderPubKey)
 
 				require.NoError(t, err)
 				require.Equal(t, locEphPub, readRemKey)
 
-				return nil, nil, false
+				return nil, false, nil
 			})
 	}
 }
@@ -220,37 +220,37 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 
 	// A helper that will run with (fooConn, fooWrites, fooReads) and vice versa
 	genNodeRunner := func(id string, nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) cmn.Task {
-		return func(_ int) (interface{}, error, bool) {
+		return func(_ int) (interface{}, bool, error) {
 			// Initiate cryptographic private key and secret connection trhough nodeConn.
 			nodePrvKey := ed25519.GenPrivKey()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
 				t.Errorf("Failed to establish SecretConnection for node: %v", err)
-				return nil, err, true
+				return nil, true, err
 			}
 			// In parallel, handle some reads and writes.
 			var trs, ok = cmn.Parallel(
-				func(_ int) (interface{}, error, bool) {
+				func(_ int) (interface{}, bool, error) {
 					// Node writes:
 					for _, nodeWrite := range nodeWrites {
 						n, err := nodeSecretConn.Write([]byte(nodeWrite))
 						if err != nil {
 							t.Errorf("Failed to write to nodeSecretConn: %v", err)
-							return nil, err, true
+							return nil, true, err
 						}
 						if n != len(nodeWrite) {
 							err = fmt.Errorf("Failed to write all bytes. Expected %v, wrote %v", len(nodeWrite), n)
 							t.Error(err)
-							return nil, err, true
+							return nil, true, err
 						}
 					}
 					if err := nodeConn.PipeWriter.Close(); err != nil {
 						t.Error(err)
-						return nil, err, true
+						return nil, true, err
 					}
-					return nil, nil, false
+					return nil, false, nil
 				},
-				func(_ int) (interface{}, error, bool) {
+				func(_ int) (interface{}, bool, error) {
 					// Node reads:
 					readBuffer := make([]byte, dataMaxSize)
 					for {
@@ -258,12 +258,12 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 						if err == io.EOF {
 							if err := nodeConn.PipeReader.Close(); err != nil {
 								t.Error(err)
-								return nil, err, true
+								return nil, true, err
 							}
-							return nil, nil, false
+							return nil, false, nil
 						} else if err != nil {
 							t.Errorf("Failed to read from nodeSecretConn: %v", err)
-							return nil, err, true
+							return nil, true, err
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
 					}
@@ -273,11 +273,11 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 
 			// If error:
 			if trs.FirstError() != nil {
-				return nil, trs.FirstError(), true
+				return nil, true, trs.FirstError()
 			}
 
 			// Otherwise:
-			return nil, nil, false
+			return nil, false, nil
 		}
 	}
 

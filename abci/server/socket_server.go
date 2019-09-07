@@ -88,7 +88,7 @@ func (s *SocketServer) rmConn(connID int) error {
 
 	conn, ok := s.conns[connID]
 	if !ok {
-		return fmt.Errorf("Connection %d does not exist", connID)
+		return fmt.Errorf("connection %d does not exist", connID)
 	}
 
 	delete(s.conns, connID)
@@ -222,7 +222,7 @@ func (s *SocketServer) handleResponses(closeConn chan error, conn net.Conn, resp
 		var res = <-responses
 		err := types.WriteMessage(res, bufWriter)
 		if err != nil {
-			closeConn <- fmt.Errorf("Error writing message: %v", err.Error())
+			closeConn <- fmt.Errorf("error writing message: %v", err.Error())
 			return
 		}
 		if _, ok := res.Value.(*types.Response_Flush); ok {

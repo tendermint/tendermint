@@ -266,23 +266,23 @@ func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[3
 
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(conn, locEphPub)
 			if err1 != nil {
-				return nil, err1, true // abort
+				return nil, false, err1 // abort
 			}
-			return nil, nil, false
+			return nil, false, nil
 		},
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			var _remEphPub [32]byte
 			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(conn, &_remEphPub, 1024*1024) // TODO
 			if err2 != nil {
-				return nil, err2, true // abort
+				return nil, true, err2 // abort
 			}
 			if hasSmallOrder(_remEphPub) {
-				return nil, ErrSmallOrderRemotePubKey, true
+				return nil, true, ErrSmallOrderRemotePubKey
 			}
-			return _remEphPub, nil, false
+			return _remEphPub, false, nil
 		},
 	)
 
@@ -420,20 +420,20 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []
 
 	// Send our info and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(sc, authSigMessage{pubKey, signature})
 			if err1 != nil {
-				return nil, err1, true // abort
+				return nil, true, err1 // abort
 			}
-			return nil, nil, false
+			return nil, false, nil
 		},
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
 			var _recvMsg authSigMessage
 			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(sc, &_recvMsg, 1024*1024) // TODO
 			if err2 != nil {
-				return nil, err2, true // abort
+				return nil, true, err2 // abort
 			}
-			return _recvMsg, nil, false
+			return _recvMsg, false, nil
 		},
 	)
 
