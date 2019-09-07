@@ -111,10 +111,11 @@ is for. The only options are:
     - `Commit` - validator voted for this block
 
 Note this means we don't allow votes for any other blockIDs. If a signature is
-included in a commit, it is either for nil or the correct blockIDs. According to
+included in a commit, it is either for nil or the correct blockID. According to
 the Tendermint protocol and assumptions, there is no way for a correct validator to
 precommit for a conflicting blockID in the same round an actual commit was
-created.
+created. This was the consensus from
+[#3485](https://github.com/tendermint/tendermint/issues/3485)
 
 We may want to consider supporting other blockIDs later, as a way to capture
 evidence that might be helpful. We should clarify if/when/how doing so would
