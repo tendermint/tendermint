@@ -316,19 +316,19 @@ func TestSerialReap(t *testing.T) {
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
 			if err != nil {
-				t.Errorf("Client error committing tx: %v", err)
+				t.Errorf("client error committing tx: %v", err)
 			}
 			if res.IsErr() {
-				t.Errorf("Error committing tx. Code:%v result:%X log:%v",
+				t.Errorf("error committing tx. Code:%v result:%X log:%v",
 					res.Code, res.Data, res.Log)
 			}
 		}
 		res, err := appConnCon.CommitSync()
 		if err != nil {
-			t.Errorf("Client error committing: %v", err)
+			t.Errorf("client error committing: %v", err)
 		}
 		if len(res.Data) != 8 {
-			t.Errorf("Error committing. Hash:%X", res.Data)
+			t.Errorf("error committing. Hash:%X", res.Data)
 		}
 	}
 

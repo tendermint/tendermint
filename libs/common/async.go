@@ -10,7 +10,7 @@ import (
 // val: the value returned after task execution.
 // err: the error returned during task completion.
 // abort: tells Parallel to return, whether or not all tasks have completed.
-type Task func(i int) (val interface{}, err error, abort bool)
+type Task func(i int) (val interface{}, abort bool, err error)
 
 type TaskResult struct {
 	Value interface{}
@@ -150,7 +150,7 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 				}
 			}()
 			// Run the task.
-			var val, err, abort = task(i)
+			var val, abort, err = task(i)
 			// Send val/err to taskResultCh.
 			// NOTE: Below this line, nothing must panic/
 			taskResultCh <- TaskResult{val, err}

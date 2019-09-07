@@ -97,17 +97,17 @@ func (tp TxProof) Leaf() []byte {
 // and if the proof is internally consistent. Otherwise, it returns a sensible error.
 func (tp TxProof) Validate(dataHash []byte) error {
 	if !bytes.Equal(dataHash, tp.RootHash) {
-		return errors.New("Proof matches different data hash")
+		return errors.New("proof matches different data hash")
 	}
 	if tp.Proof.Index < 0 {
-		return errors.New("Proof index cannot be negative")
+		return errors.New("proof index cannot be negative")
 	}
 	if tp.Proof.Total <= 0 {
-		return errors.New("Proof total must be positive")
+		return errors.New("proof total must be positive")
 	}
 	valid := tp.Proof.Verify(tp.RootHash, tp.Leaf())
 	if valid != nil {
-		return errors.New("Proof is not internally consistent")
+		return errors.New("proof is not internally consistent")
 	}
 	return nil
 }

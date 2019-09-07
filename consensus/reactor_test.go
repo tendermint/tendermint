@@ -608,14 +608,14 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	if block.LastCommit.Size() != len(activeVals) {
 		return fmt.Errorf(
-			"Commit size doesn't match number of active validators. Got %d, expected %d",
+			"commit size doesn't match number of active validators. Got %d, expected %d",
 			block.LastCommit.Size(),
 			len(activeVals))
 	}
 
 	for _, vote := range block.LastCommit.Precommits {
 		if _, ok := activeVals[string(vote.ValidatorAddress)]; !ok {
-			return fmt.Errorf("Found vote for unactive validator %X", vote.ValidatorAddress)
+			return fmt.Errorf("found vote for unactive validator %X", vote.ValidatorAddress)
 		}
 	}
 	return nil

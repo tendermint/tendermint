@@ -39,7 +39,7 @@ func TestProposalString(t *testing.T) {
 	str := testProposal.String()
 	expected := `Proposal{12345/23456 (010203:111:626C6F636B70, -1) 000000000000 @ 2018-02-11T07:09:22.765Z}`
 	if str != expected {
-		t.Errorf("Got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", expected, str)
+		t.Errorf("got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 }
 

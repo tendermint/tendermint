@@ -605,7 +605,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		return NewErrInvalidCommitHeight(height, commit.Height())
 	}
 	if !blockID.Equals(commit.BlockID) {
-		return fmt.Errorf("Invalid commit -- wrong block id: want %v got %v",
+		return fmt.Errorf("invalid commit -- wrong block id: want %v got %v",
 			blockID, commit.BlockID)
 	}
 
@@ -619,7 +619,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		// Validate signature.
 		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
+			return fmt.Errorf("invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
@@ -686,13 +686,13 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 			continue
 		}
 		if precommit.Height != height {
-			return errors.Errorf("Blocks don't match - %d vs %d", round, precommit.Round)
+			return errors.Errorf("blocks don't match - %d vs %d", round, precommit.Round)
 		}
 		if precommit.Round != round {
-			return errors.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
+			return errors.Errorf("invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
 		if precommit.Type != PrecommitType {
-			return errors.Errorf("Invalid commit -- not precommit @ index %v", idx)
+			return errors.Errorf("invalid commit -- not precommit @ index %v", idx)
 		}
 		// See if this validator is in oldVals.
 		oldIdx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
@@ -704,7 +704,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// Validate signature.
 		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return errors.Errorf("Invalid commit -- invalid signature: %v", precommit)
+			return errors.Errorf("invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
