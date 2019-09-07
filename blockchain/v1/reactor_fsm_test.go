@@ -140,7 +140,7 @@ func sBlockRespEv(current, expected string, peerID p2p.ID, height int64, prevBlo
 		data: bReactorEventData{
 			peerID: peerID,
 			height: height,
-			block:  types.MakeBlock(int64(height), txs, nil, nil),
+			block:  types.MakeBlock(height, txs, nil, nil),
 			length: 100},
 		wantState:     expected,
 		wantNewBlocks: append(prevBlocks, height),
@@ -157,7 +157,7 @@ func sBlockRespEvErrored(current, expected string,
 		data: bReactorEventData{
 			peerID: peerID,
 			height: height,
-			block:  types.MakeBlock(int64(height), txs, nil, nil),
+			block:  types.MakeBlock(height, txs, nil, nil),
 			length: 100},
 		wantState:        expected,
 		wantErr:          wantErr,
@@ -769,7 +769,7 @@ forLoop:
 	for i := 0; i < int(numBlocks); i++ {
 
 		// Add the makeRequestEv step periodically.
-		if i%int(maxRequestsPerPeer) == 0 {
+		if maxRequestsPerPeer == 0 {
 			testSteps = append(
 				testSteps,
 				sMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
@@ -786,7 +786,7 @@ forLoop:
 		numBlocksReceived++
 
 		// Add the processedBlockEv step periodically.
-		if numBlocksReceived >= int(maxRequestsPerPeer) || height >= numBlocks {
+		if numBlocksReceived >= maxRequestsPerPeer || height >= numBlocks {
 			for j := int(height) - numBlocksReceived; j < int(height); j++ {
 				if j >= int(numBlocks) {
 					// This is the last block that is processed, we should be in "finished" state.
@@ -829,7 +829,7 @@ func makeCorrectTransitionSequenceWithRandomParameters() testFields {
 	maxRequestsPerPeer := cmn.RandIntn(maxRequestsPerPeerTest) + 1
 
 	// Generate the maximum number of total pending requests, >= maxRequestsPerPeer.
-	maxPendingRequests := cmn.RandIntn(maxTotalPendingRequestsTest-int(maxRequestsPerPeer)) + maxRequestsPerPeer
+	maxPendingRequests := cmn.RandIntn(maxTotalPendingRequestsTest-maxRequestsPerPeer) + maxRequestsPerPeer
 
 	// Generate the number of blocks to be synced.
 	numBlocks := int64(cmn.RandIntn(maxNumBlocksInChainTest)) + startingHeight

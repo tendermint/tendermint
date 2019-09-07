@@ -90,7 +90,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	height = int64(1)
 	hash := []byte("foo")
 	header := types.Header{
-		Height: int64(height),
+		Height: height,
 	}
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
 	kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
