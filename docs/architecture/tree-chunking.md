@@ -34,8 +34,8 @@ pairs alone. Such nodes would be part of the proof structure.
 The chunker can assign to each chunk a unique index, and every chunker will
 compute the same index for each chunk, assuming they follow the same
 strategy. However, it is not clear that, in general, a chunkee can verify the
-chunk index, as there is no explicit map from chunk index to chunk or vice
-versa.
+chunk index, as there is no inherent map from chunk index to chunk or vice
+versa. Such mappings may need to be provided externally and trusted, like in the case of Warp-Sync.
 
 This raises two concerns for a state sync protocol:
 - how to handle mis-indexed chunks (ie. requesting chunk 3 and receiving chunk
