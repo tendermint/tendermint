@@ -141,6 +141,15 @@ func (cfg *Config) ValidateBasic() error {
 
 // BaseConfig defines the base configuration for a Tendermint node
 type BaseConfig struct {
+	// If this node is many blocks behind the tip of the chain, FastSync
+	// allows them to catchup quickly by downloading blocks in parallel
+	// and verifying their commits
+	FastSyncMode bool `mapstructure:"fast_sync"`
+
+	// If true, query the ABCI app on connecting to a new peer
+	// so the app can decide if we should keep the connection or not
+	FilterPeers bool `mapstructure:"filter_peers"` // false
+
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -154,11 +163,6 @@ type BaseConfig struct {
 
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
-
-	// If this node is many blocks behind the tip of the chain, FastSync
-	// allows them to catchup quickly by downloading blocks in parallel
-	// and verifying their commits
-	FastSyncMode bool `mapstructure:"fast_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -204,10 +208,6 @@ type BaseConfig struct {
 
 	// TCP or UNIX socket address for the profiling server to listen on
 	ProfListenAddress string `mapstructure:"prof_laddr"`
-
-	// If true, query the ABCI app on connecting to a new peer
-	// so the app can decide if we should keep the connection or not
-	FilterPeers bool `mapstructure:"filter_peers"` // false
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -472,30 +472,31 @@ func (cfg RPCConfig) IsTLSEnabled() bool {
 
 // P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
 type P2PConfig struct {
-	RootDir string `mapstructure:"home"`
-
-	// Address to listen for incoming connections
-	ListenAddress string `mapstructure:"laddr"`
-
-	// Address to advertise to peers for them to dial
-	ExternalAddress string `mapstructure:"external_address"`
-
-	// Comma separated list of seed nodes to connect to
-	// We only use these if we can’t connect to peers in the addrbook
-	Seeds string `mapstructure:"seeds"`
-
-	// Comma separated list of nodes to keep persistent connections to
-	PersistentPeers string `mapstructure:"persistent_peers"`
-
 	// UPNP port forwarding
 	UPNP bool `mapstructure:"upnp"`
-
-	// Path to address book
-	AddrBook string `mapstructure:"addr_book_file"`
 
 	// Set true for strict address routability rules
 	// Set false for private or local networks
 	AddrBookStrict bool `mapstructure:"addr_book_strict"`
+
+	// Set true to enable the peer-exchange reactor
+	PexReactor bool `mapstructure:"pex"`
+
+	// Seed mode, in which node constantly crawls the network and looks for
+	// peers. If another node asks it for addresses, it responds and disconnects.
+	//
+	// Does not work if the peer-exchange reactor is disabled.
+	SeedMode bool `mapstructure:"seed_mode"`
+
+	// Toggle to disable guard against peers connecting from the same ip.
+	AllowDuplicateIP bool `mapstructure:"allow_duplicate_ip"`
+
+	// Testing params.
+	// Force dial to fail
+	TestDialFail bool `mapstructure:"test_dial_fail"`
+
+	// FUzz connection
+	TestFuzz bool `mapstructure:"test_fuzz"`
 
 	// Maximum number of inbound peers
 	MaxNumInboundPeers int `mapstructure:"max_num_inbound_peers"`
@@ -515,31 +516,32 @@ type P2PConfig struct {
 	// Rate at which packets can be received, in bytes/second
 	RecvRate int64 `mapstructure:"recv_rate"`
 
-	// Set true to enable the peer-exchange reactor
-	PexReactor bool `mapstructure:"pex"`
+	RootDir string `mapstructure:"home"`
 
-	// Seed mode, in which node constantly crawls the network and looks for
-	// peers. If another node asks it for addresses, it responds and disconnects.
-	//
-	// Does not work if the peer-exchange reactor is disabled.
-	SeedMode bool `mapstructure:"seed_mode"`
+	// Address to listen for incoming connections
+	ListenAddress string `mapstructure:"laddr"`
+
+	// Address to advertise to peers for them to dial
+	ExternalAddress string `mapstructure:"external_address"`
+
+	// Comma separated list of seed nodes to connect to
+	// We only use these if we can’t connect to peers in the addrbook
+	Seeds string `mapstructure:"seeds"`
+
+	// Comma separated list of nodes to keep persistent connections to
+	PersistentPeers string `mapstructure:"persistent_peers"`
+
+	// Path to address book
+	AddrBook string `mapstructure:"addr_book_file"`
 
 	// Comma separated list of peer IDs to keep private (will not be gossiped to
 	// other peers)
 	PrivatePeerIDs string `mapstructure:"private_peer_ids"`
 
-	// Toggle to disable guard against peers connecting from the same ip.
-	AllowDuplicateIP bool `mapstructure:"allow_duplicate_ip"`
-
 	// Peer connection configuration.
 	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
 
-	// Testing params.
-	// Force dial to fail
-	TestDialFail bool `mapstructure:"test_dial_fail"`
-	// FUzz connection
-	TestFuzz       bool            `mapstructure:"test_fuzz"`
 	TestFuzzConfig *FuzzConnConfig `mapstructure:"test_fuzz_config"`
 }
 

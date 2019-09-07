@@ -364,8 +364,8 @@ func TestTx(t *testing.T) {
 
 	cases := []struct {
 		valid bool
-		hash  []byte
 		prove bool
+		hash  []byte
 	}{
 		// only valid if correct hash provided
 		{true, txHash, false},

@@ -79,11 +79,6 @@ var _ AddrBook = (*addrBook)(nil)
 type addrBook struct {
 	cmn.BaseService
 
-	// immutable after creation
-	filePath          string
-	routabilityStrict bool
-	key               string // random prefix for bucket placement
-
 	// accessed concurrently
 	mtx        sync.Mutex
 	rand       *cmn.Rand
@@ -94,6 +89,11 @@ type addrBook struct {
 	bucketsNew []map[string]*knownAddress
 	nOld       int
 	nNew       int
+
+	// immutable after creation
+	filePath          string
+	key               string // random prefix for bucket placement
+	routabilityStrict bool
 
 	wg sync.WaitGroup
 }
