@@ -3,7 +3,7 @@ package rpcclient
 import (
 	"context"
 	"encoding/json"
-	"net"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -194,7 +194,7 @@ func TestNotBlockingOnStop(t *testing.T) {
 	}
 }
 
-func startClient(t *testing.T, addr net.Addr) *WSClient {
+func startClient(t *testing.T, addr fmt.Stringer) *WSClient {
 	c := NewWSClient(addr.String(), "/websocket")
 	err := c.Start()
 	require.Nil(t, err)
