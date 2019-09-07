@@ -1,16 +1,13 @@
 version: 2.1
 
-defaults: &defaults
-  working_directory: /go/src/github.com/tendermint/tendermint
-  docker:
-    - image: circleci/golang
-  environment:
-    GOBIN: /tmp/workspace/bin
-
 executors:
   golang:
     docker:
       - image: circleci/golang
+    environment:
+      GOBIN: /go/bin
+  release:
+    machine: true
 
 docs_update_config: &docs_update_config
   working_directory: ~/repo
@@ -18,9 +15,6 @@ docs_update_config: &docs_update_config
     - image: tendermintdev/jq_curl
   environment:
     AWS_REGION: us-east-1
-
-release_management_docker: &release_management_docker
-  machine: true
 
 jobs:
   setup_dependencies:
@@ -38,13 +32,14 @@ jobs:
           name: tools
           command: make tools
       - run:
-          name: binaries
+          name: "Build binaries"
           command: make install install_abci
       - save_cache:
-          name: "Save go modules cache"
+          name: "Save go modules and binaries cache"
           key: go-mod-v2-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
+            - "/go/bin"
       - save_cache:
           name: "Save source code cache"
           key: go-src-v1-{{ .Revision }}
@@ -54,13 +49,11 @@ jobs:
   test_abci_apps:
     executor: golang
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: go-mod-v2-{{ checksum "go.sum" }}
       - restore_cache:
           keys:
-            - go-src-v1-{{ .Revision }
+            - go-mod-v2-{{ checksum "go.sum" }}
+            - go-src-v1-{{ .Revision }}
+      - checkout
       - run:
           name: Run abci apps tests
           command: |
@@ -72,13 +65,11 @@ jobs:
   test_abci_cli:
     executor: golang
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: go-mod-v2-{{ checksum "go.sum" }}
       - restore_cache:
           keys:
-            - go-src-v1-{{ .Revision }
+            - go-mod-v2-{{ checksum "go.sum" }}
+            - go-src-v1-{{ .Revision }}
+      - checkout
       - run:
           name: Run abci-cli tests
           command: |
@@ -90,22 +81,24 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: go-mod-v2-{{ checksum "go.sum" }}
-      - restore_cache:
           keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
             - go-src-v1-{{ .Revision }}
+      - checkout
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
       - run:
-          name: Run tests
+          name: "Run tests"
           command: bash test/app/test.sh
 
   test_cover:
     executor: golang
     parallelism: 4
     steps:
-      - checkout
       - restore_cache:
-          key: go-mod-v2-{{ checksum "go.sum" }}
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
+            - go-src-v1-{{ .Revision }}
+      - checkout
       - run:
           name: Run tests
           command: |
@@ -126,13 +119,11 @@ jobs:
   test_persistence:
     executor: golang
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: go-mod-v2-{{ checksum "go.sum" }}
       - restore_cache:
           keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
             - go-src-v1-{{ .Revision }}
+      - checkout
       - run:
           name: Run tests
           command: bash test/persist/test_failure_indices.sh
@@ -309,7 +300,8 @@ jobs:
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
 
   release_docker:
-    <<: *release_management_docker
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       - attach_workspace:
