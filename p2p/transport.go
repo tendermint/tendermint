@@ -85,7 +85,7 @@ func ConnDuplicateIPFilter() ConnFilterFunc {
 			if cs.HasIP(ip) {
 				return ErrRejected{
 					conn:        c,
-					err:         fmt.Errorf("IP<%v> already connected", ip),
+					err:         fmt.Errorf("iP<%v> already connected", ip),
 					isDuplicate: true,
 				}
 			}

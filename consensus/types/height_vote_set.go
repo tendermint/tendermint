@@ -180,7 +180,7 @@ func (hvs *HeightVoteSet) SetPeerMaj23(round int, voteType types.SignedMsgType, 
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if !types.IsVoteTypeValid(voteType) {
-		return fmt.Errorf("SetPeerMaj23: Invalid vote type %v", voteType)
+		return fmt.Errorf("setPeerMaj23: Invalid vote type %v", voteType)
 	}
 	voteSet := hvs.getVoteSet(round, voteType)
 	if voteSet == nil {

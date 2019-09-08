@@ -228,7 +228,7 @@ func (s *SocketServer) handleResponses(closeConn chan error, conn net.Conn, resp
 		if _, ok := res.Value.(*types.Response_Flush); ok {
 			err = bufWriter.Flush()
 			if err != nil {
-				closeConn <- fmt.Errorf("Error flushing write buffer: %v", err.Error())
+				closeConn <- fmt.Errorf("error flushing write buffer: %v", err.Error())
 				return
 			}
 		}

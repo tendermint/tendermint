@@ -1572,7 +1572,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 
 	select {
 	case <-cs.statsMsgQueue:
-		t.Errorf("Should not output stats message after receiving the known block part!")
+		t.Errorf("should not output stats message after receiving the known block part!")
 	case <-time.After(50 * time.Millisecond):
 	}
 
@@ -1603,7 +1603,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 	select {
 	case <-cs.statsMsgQueue:
-		t.Errorf("Should not output stats message after receiving the known vote or vote from bigger height")
+		t.Errorf("should not output stats message after receiving the known vote or vote from bigger height")
 	case <-time.After(50 * time.Millisecond):
 	}
 

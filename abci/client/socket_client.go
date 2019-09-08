@@ -136,14 +136,14 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 			cli.willSendReq(reqres)
 			err := types.WriteMessage(reqres.Request, w)
 			if err != nil {
-				cli.StopForError(fmt.Errorf("Error writing msg: %v", err))
+				cli.StopForError(fmt.Errorf("error writing msg: %v", err))
 				return
 			}
 			// cli.Logger.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
 			if _, ok := reqres.Request.Value.(*types.Request_Flush); ok {
 				err = w.Flush()
 				if err != nil {
-					cli.StopForError(fmt.Errorf("Error flushing writer: %v", err))
+					cli.StopForError(fmt.Errorf("error flushing writer: %v", err))
 					return
 				}
 			}

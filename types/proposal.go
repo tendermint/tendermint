@@ -58,11 +58,11 @@ func (p *Proposal) ValidateBasic() error {
 		return errors.New("Negative POLRound (exception: -1)")
 	}
 	if err := p.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	// ValidateBasic above would pass even if the BlockID was empty:
 	if !p.BlockID.IsComplete() {
-		return fmt.Errorf("Expected a complete, non-empty BlockID, got: %v", p.BlockID)
+		return fmt.Errorf("expected a complete, non-empty BlockID, got: %v", p.BlockID)
 	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
@@ -71,7 +71,7 @@ func (p *Proposal) ValidateBasic() error {
 		return errors.New("Signature is missing")
 	}
 	if len(p.Signature) > MaxSignatureSize {
-		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
 }

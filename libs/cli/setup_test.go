@@ -213,7 +213,7 @@ func TestSetupTrace(t *testing.T) {
 		trace := &cobra.Command{
 			Use: "trace",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return errors.Errorf("Trace flag = %t", viper.GetBool(TraceFlag))
+				return errors.Errorf("trace flag = %t", viper.GetBool(TraceFlag))
 			},
 		}
 		cmd := PrepareBaseCmd(trace, "DBG", "/qwerty/asdfgh") // some missing dir..

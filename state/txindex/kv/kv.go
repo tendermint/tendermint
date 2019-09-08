@@ -70,7 +70,7 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 	txResult := new(types.TxResult)
 	err := cdc.UnmarshalBinaryBare(rawBytes, &txResult)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading TxResult: %v", err)
+		return nil, fmt.Errorf("error reading TxResult: %v", err)
 	}
 
 	return txResult, nil

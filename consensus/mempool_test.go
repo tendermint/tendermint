@@ -161,7 +161,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 			checkTxRespCh <- struct{}{}
 		})
 		if err != nil {
-			t.Errorf("Error after CheckTx: %v", err)
+			t.Errorf("error after CheckTx: %v", err)
 			return
 		}
 
@@ -182,7 +182,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-checkTxRespCh:
 		// success
 	case <-ticker:
-		t.Errorf("Timed out waiting for tx to return")
+		t.Errorf("timed out waiting for tx to return")
 		return
 	}
 
@@ -192,7 +192,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-emptyMempoolCh:
 		// success
 	case <-ticker:
-		t.Errorf("Timed out waiting for tx to be removed")
+		t.Errorf("timed out waiting for tx to be removed")
 		return
 	}
 }

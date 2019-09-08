@@ -1384,7 +1384,7 @@ func RegisterConsensusMessages(cdc *amino.Codec) {
 
 func decodeMsg(bz []byte) (msg ConsensusMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -1451,10 +1451,10 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 		return errors.New("Negative Round")
 	}
 	if err := m.BlockPartsHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
+		return fmt.Errorf("wrong BlockPartsHeader: %v", err)
 	}
 	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
-		return fmt.Errorf("BlockParts bit array size %d not equal to BlockPartsHeader.Total %d",
+		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartsHeader.Total %d",
 			m.BlockParts.Size(),
 			m.BlockPartsHeader.Total)
 	}
@@ -1530,7 +1530,7 @@ func (m *BlockPartMessage) ValidateBasic() error {
 		return errors.New("Negative Round")
 	}
 	if err := m.Part.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong Part: %v", err)
+		return fmt.Errorf("wrong Part: %v", err)
 	}
 	return nil
 }
@@ -1611,7 +1611,7 @@ func (m *VoteSetMaj23Message) ValidateBasic() error {
 		return errors.New("Invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	return nil
 }
@@ -1644,7 +1644,7 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 		return errors.New("Invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	// NOTE: Votes.Size() can be zero if the node does not have any
 	return nil

@@ -285,7 +285,7 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
 	if length > maxMsgSizeBytes {
-		return fmt.Errorf("Msg is too big: %d bytes, max: %d bytes", length, maxMsgSizeBytes)
+		return fmt.Errorf("msg is too big: %d bytes, max: %d bytes", length, maxMsgSizeBytes)
 	}
 	totalLength := 8 + int(length)
 

@@ -328,7 +328,7 @@ func _Request_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 		}
 	case nil:
 	default:
-		return fmt.Errorf("Request.Value has unexpected type %T", x)
+		return fmt.Errorf("request.Value has unexpected type %T", x)
 	}
 	return nil
 }
@@ -1394,7 +1394,7 @@ func _Response_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 		}
 	case nil:
 	default:
-		return fmt.Errorf("Response.Value has unexpected type %T", x)
+		return fmt.Errorf("response.Value has unexpected type %T", x)
 	}
 	return nil
 }

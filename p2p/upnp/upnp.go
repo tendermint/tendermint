@@ -334,7 +334,7 @@ func (n *upnpNAT) GetExternalAddress() (addr net.IP, err error) {
 	}
 	addr = net.ParseIP(info.externalIpAddress)
 	if addr == nil {
-		err = fmt.Errorf("Failed to parse IP: %v", info.externalIpAddress)
+		err = fmt.Errorf("failed to parse IP: %v", info.externalIpAddress)
 	}
 	return
 }

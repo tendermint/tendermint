@@ -135,15 +135,15 @@ func (vote *Vote) ValidateBasic() error {
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	if err := vote.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
 	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
-		return fmt.Errorf("BlockID must be either empty or complete, got: %v", vote.BlockID)
+		return fmt.Errorf("blockID must be either empty or complete, got: %v", vote.BlockID)
 	}
 	if len(vote.ValidatorAddress) != crypto.AddressSize {
-		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
+		return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
 			crypto.AddressSize,
 			len(vote.ValidatorAddress),
 		)
@@ -155,7 +155,7 @@ func (vote *Vote) ValidateBasic() error {
 		return errors.New("Signature is missing")
 	}
 	if len(vote.Signature) > MaxSignatureSize {
-		return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
+		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
 }

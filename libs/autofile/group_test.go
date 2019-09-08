@@ -118,14 +118,14 @@ func TestRotateFile(t *testing.T) {
 	body1, err := ioutil.ReadFile(g.Head.Path + ".000")
 	assert.NoError(t, err, "Failed to read first rolled file")
 	if string(body1) != "Line 1\nLine 2\nLine 3\n" {
-		t.Errorf("Got unexpected contents: [%v]", string(body1))
+		t.Errorf("got unexpected contents: [%v]", string(body1))
 	}
 
 	// Read g.Head.Path
 	body2, err := ioutil.ReadFile(g.Head.Path)
 	assert.NoError(t, err, "Failed to read first rolled file")
 	if string(body2) != "Line 4\nLine 5\nLine 6\n" {
-		t.Errorf("Got unexpected contents: [%v]", string(body2))
+		t.Errorf("got unexpected contents: [%v]", string(body2))
 	}
 
 	// Cleanup

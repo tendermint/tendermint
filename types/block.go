@@ -52,7 +52,7 @@ func (b *Block) ValidateBasic() error {
 	defer b.mtx.Unlock()
 
 	if len(b.ChainID) > MaxChainIDLen {
-		return fmt.Errorf("ChainID is too long. Max is %d, got %d", MaxChainIDLen, len(b.ChainID))
+		return fmt.Errorf("chainID is too long. Max is %d, got %d", MaxChainIDLen, len(b.ChainID))
 	}
 
 	if b.Height < 0 {
@@ -65,7 +65,7 @@ func (b *Block) ValidateBasic() error {
 
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
-		return fmt.Errorf("Wrong Header.NumTxs. Expected %v, got %v",
+		return fmt.Errorf("wrong Header.NumTxs. Expected %v, got %v",
 			newTxs,
 			b.NumTxs,
 		)
@@ -73,14 +73,14 @@ func (b *Block) ValidateBasic() error {
 
 	// TODO: fix tests so we can do this
 	/*if b.TotalTxs < b.NumTxs {
-		return fmt.Errorf("Header.TotalTxs (%d) is less than Header.NumTxs (%d)", b.TotalTxs, b.NumTxs)
+		return fmt.Errorf("header.TotalTxs (%d) is less than Header.NumTxs (%d)", b.TotalTxs, b.NumTxs)
 	}*/
 	if b.TotalTxs < 0 {
 		return errors.New("Negative Header.TotalTxs")
 	}
 
 	if err := b.LastBlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong Header.LastBlockID: %v", err)
+		return fmt.Errorf("wrong Header.LastBlockID: %v", err)
 	}
 
 	// Validate the last commit and its hash.
@@ -89,14 +89,14 @@ func (b *Block) ValidateBasic() error {
 			return errors.New("nil LastCommit")
 		}
 		if err := b.LastCommit.ValidateBasic(); err != nil {
-			return fmt.Errorf("Wrong LastCommit")
+			return fmt.Errorf("wrong LastCommit")
 		}
 	}
 	if err := ValidateHash(b.LastCommitHash); err != nil {
-		return fmt.Errorf("Wrong Header.LastCommitHash: %v", err)
+		return fmt.Errorf("wrong Header.LastCommitHash: %v", err)
 	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
-		return fmt.Errorf("Wrong Header.LastCommitHash. Expected %v, got %v",
+		return fmt.Errorf("wrong Header.LastCommitHash. Expected %v, got %v",
 			b.LastCommit.Hash(),
 			b.LastCommitHash,
 		)
@@ -106,7 +106,7 @@ func (b *Block) ValidateBasic() error {
 	// NOTE: b.Data.Txs may be nil, but b.Data.Hash()
 	// still works fine
 	if err := ValidateHash(b.DataHash); err != nil {
-		return fmt.Errorf("Wrong Header.DataHash: %v", err)
+		return fmt.Errorf("wrong Header.DataHash: %v", err)
 	}
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
 		return fmt.Errorf(
@@ -119,38 +119,38 @@ func (b *Block) ValidateBasic() error {
 	// Basic validation of hashes related to application data.
 	// Will validate fully against state in state#ValidateBlock.
 	if err := ValidateHash(b.ValidatorsHash); err != nil {
-		return fmt.Errorf("Wrong Header.ValidatorsHash: %v", err)
+		return fmt.Errorf("wrong Header.ValidatorsHash: %v", err)
 	}
 	if err := ValidateHash(b.NextValidatorsHash); err != nil {
-		return fmt.Errorf("Wrong Header.NextValidatorsHash: %v", err)
+		return fmt.Errorf("wrong Header.NextValidatorsHash: %v", err)
 	}
 	if err := ValidateHash(b.ConsensusHash); err != nil {
-		return fmt.Errorf("Wrong Header.ConsensusHash: %v", err)
+		return fmt.Errorf("wrong Header.ConsensusHash: %v", err)
 	}
 	// NOTE: AppHash is arbitrary length
 	if err := ValidateHash(b.LastResultsHash); err != nil {
-		return fmt.Errorf("Wrong Header.LastResultsHash: %v", err)
+		return fmt.Errorf("wrong Header.LastResultsHash: %v", err)
 	}
 
 	// Validate evidence and its hash.
 	if err := ValidateHash(b.EvidenceHash); err != nil {
-		return fmt.Errorf("Wrong Header.EvidenceHash: %v", err)
+		return fmt.Errorf("wrong Header.EvidenceHash: %v", err)
 	}
 	// NOTE: b.Evidence.Evidence may be nil, but we're just looping.
 	for i, ev := range b.Evidence.Evidence {
 		if err := ev.ValidateBasic(); err != nil {
-			return fmt.Errorf("Invalid evidence (#%d): %v", i, err)
+			return fmt.Errorf("invalid evidence (#%d): %v", i, err)
 		}
 	}
 	if !bytes.Equal(b.EvidenceHash, b.Evidence.Hash()) {
-		return fmt.Errorf("Wrong Header.EvidenceHash. Expected %v, got %v",
+		return fmt.Errorf("wrong Header.EvidenceHash. Expected %v, got %v",
 			b.EvidenceHash,
 			b.Evidence.Hash(),
 		)
 	}
 
 	if len(b.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("Expected len(Header.ProposerAddress) to be %d, got %d",
+		return fmt.Errorf("expected len(Header.ProposerAddress) to be %d, got %d",
 			crypto.AddressSize, len(b.ProposerAddress))
 	}
 
@@ -651,17 +651,17 @@ func (commit *Commit) ValidateBasic() error {
 		}
 		// Ensure that all votes are precommits.
 		if precommit.Type != PrecommitType {
-			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
+			return fmt.Errorf("invalid commit vote. Expected precommit, got %v",
 				precommit.Type)
 		}
 		// Ensure that all heights are the same.
 		if precommit.Height != height {
-			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",
+			return fmt.Errorf("invalid commit precommit height. Expected %v, got %v",
 				height, precommit.Height)
 		}
 		// Ensure that all rounds are the same.
 		if precommit.Round != round {
-			return fmt.Errorf("Invalid commit precommit round. Expected %v, got %v",
+			return fmt.Errorf("invalid commit precommit round. Expected %v, got %v",
 				round, precommit.Round)
 		}
 	}
@@ -730,19 +730,19 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 
 	// Check ChainID.
 	if sh.ChainID != chainID {
-		return fmt.Errorf("Header belongs to another chain '%s' not '%s'",
+		return fmt.Errorf("header belongs to another chain '%s' not '%s'",
 			sh.ChainID, chainID)
 	}
 	// Check Height.
 	if sh.Commit.Height() != sh.Height {
-		return fmt.Errorf("SignedHeader header and commit height mismatch: %v vs %v",
+		return fmt.Errorf("signedHeader header and commit height mismatch: %v vs %v",
 			sh.Height, sh.Commit.Height())
 	}
 	// Check Hash.
 	hhash := sh.Hash()
 	chash := sh.Commit.BlockID.Hash
 	if !bytes.Equal(hhash, chash) {
-		return fmt.Errorf("SignedHeader commit signs block %X, header is block %X",
+		return fmt.Errorf("signedHeader commit signs block %X, header is block %X",
 			chash, hhash)
 	}
 	// ValidateBasic on the Commit.
@@ -878,10 +878,10 @@ func (blockID BlockID) Key() string {
 func (blockID BlockID) ValidateBasic() error {
 	// Hash can be empty in case of POLBlockID in Proposal.
 	if err := ValidateHash(blockID.Hash); err != nil {
-		return fmt.Errorf("Wrong Hash")
+		return fmt.Errorf("wrong Hash")
 	}
 	if err := blockID.PartsHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong PartsHeader: %v", err)
+		return fmt.Errorf("wrong PartsHeader: %v", err)
 	}
 	return nil
 }

@@ -55,12 +55,12 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 		func(_ int) (val interface{}, abort bool, err error) {
 			fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
 			if err != nil {
-				tb.Errorf("Failed to establish SecretConnection for foo: %v", err)
+				tb.Errorf("failed to establish SecretConnection for foo: %v", err)
 				return nil, true, err
 			}
 			remotePubBytes := fooSecConn.RemotePubKey()
 			if !remotePubBytes.Equals(barPubKey) {
-				err = fmt.Errorf("Unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
+				err = fmt.Errorf("unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
 					barPubKey, fooSecConn.RemotePubKey())
 				tb.Error(err)
 				return nil, false, err
@@ -70,12 +70,12 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 		func(_ int) (val interface{}, abort bool, err error) {
 			barSecConn, err = MakeSecretConnection(barConn, barPrvKey)
 			if barSecConn == nil {
-				tb.Errorf("Failed to establish SecretConnection for bar: %v", err)
+				tb.Errorf("failed to establish SecretConnection for bar: %v", err)
 				return nil, true, err
 			}
 			remotePubBytes := barSecConn.RemotePubKey()
 			if !remotePubBytes.Equals(fooPubKey) {
-				err = fmt.Errorf("Unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
+				err = fmt.Errorf("unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
 					fooPubKey, barSecConn.RemotePubKey())
 				tb.Error(err)
 				return nil, false, nil
@@ -192,7 +192,7 @@ func writeLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, txt string, n in
 	for i := 0; i < n; i++ {
 		_, err := conn.Write([]byte(txt))
 		if err != nil {
-			t.Errorf("Failed to write to fooSecConn: %v", err)
+			t.Errorf("failed to write to fooSecConn: %v", err)
 			return
 		}
 	}
@@ -225,7 +225,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 			nodePrvKey := ed25519.GenPrivKey()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
-				t.Errorf("Failed to establish SecretConnection for node: %v", err)
+				t.Errorf("failed to establish SecretConnection for node: %v", err)
 				return nil, true, err
 			}
 			// In parallel, handle some reads and writes.
@@ -235,11 +235,11 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 					for _, nodeWrite := range nodeWrites {
 						n, err := nodeSecretConn.Write([]byte(nodeWrite))
 						if err != nil {
-							t.Errorf("Failed to write to nodeSecretConn: %v", err)
+							t.Errorf("failed to write to nodeSecretConn: %v", err)
 							return nil, true, err
 						}
 						if n != len(nodeWrite) {
-							err = fmt.Errorf("Failed to write all bytes. Expected %v, wrote %v", len(nodeWrite), n)
+							err = fmt.Errorf("failed to write all bytes. Expected %v, wrote %v", len(nodeWrite), n)
 							t.Error(err)
 							return nil, true, err
 						}
@@ -262,7 +262,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 							}
 							return nil, false, nil
 						} else if err != nil {
-							t.Errorf("Failed to read from nodeSecretConn: %v", err)
+							t.Errorf("failed to read from nodeSecretConn: %v", err)
 							return nil, true, err
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
@@ -308,7 +308,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 			}
 			// Compare
 			if write != read {
-				t.Errorf("Expected to read %X, got %X", write, read)
+				t.Errorf("expected to read %X, got %X", write, read)
 			}
 			// Iterate
 			writes = writes[1:]
@@ -409,7 +409,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 			if err == io.EOF {
 				return
 			} else if err != nil {
-				b.Errorf("Failed to read from barSecConn: %v", err)
+				b.Errorf("failed to read from barSecConn: %v", err)
 				return
 			}
 		}
@@ -420,7 +420,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 		idx := cmn.RandIntn(len(fooWriteBytes))
 		_, err := fooSecConn.Write(fooWriteBytes[idx])
 		if err != nil {
-			b.Errorf("Failed to write to fooSecConn: %v", err)
+			b.Errorf("failed to write to fooSecConn: %v", err)
 			return
 		}
 	}
@@ -454,7 +454,7 @@ func BenchmarkReadSecretConnection(b *testing.B) {
 			idx := cmn.RandIntn(len(fooWriteBytes))
 			_, err := fooSecConn.Write(fooWriteBytes[idx])
 			if err != nil {
-				b.Errorf("Failed to write to fooSecConn: %v, %v,%v", err, i, b.N)
+				b.Errorf("failed to write to fooSecConn: %v, %v,%v", err, i, b.N)
 				return
 			}
 		}

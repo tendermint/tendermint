@@ -29,7 +29,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	go evsw.FireEvent("event", "data")
 	received := <-messages
 	if received != "data" {
-		t.Errorf("Message received does not match: %v", received)
+		t.Errorf("message received does not match: %v", received)
 	}
 }
 
@@ -57,7 +57,7 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	close(numbers)
 	eventSum := <-doneSum
 	if checkSum != eventSum {
-		t.Errorf("Not all messages sent were received.\n")
+		t.Errorf("not all messages sent were received.\n")
 	}
 }
 
@@ -101,7 +101,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	close(numbers)
 	eventSum := <-doneSum
 	if checkSum != eventSum {
-		t.Errorf("Not all messages sent were received.\n")
+		t.Errorf("not all messages sent were received.\n")
 	}
 }
 
@@ -162,7 +162,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	eventSum2 := <-doneSum2
 	if checkSum1 != eventSum1 ||
 		checkSum2 != eventSum2 {
-		t.Errorf("Not all messages sent were received for different listeners to different events.\n")
+		t.Errorf("not all messages sent were received for different listeners to different events.\n")
 	}
 }
 
@@ -255,7 +255,7 @@ func TestAddAndRemoveListener(t *testing.T) {
 		// correct value asserted by preceding tests, suffices to be non-zero
 		checkSumEvent2 == uint64(0) ||
 		eventSum2 != uint64(0) {
-		t.Errorf("Not all messages sent were received or unsubscription did not register.\n")
+		t.Errorf("not all messages sent were received or unsubscription did not register.\n")
 	}
 }
 
@@ -390,7 +390,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 	eventSum2 := <-doneSum2
 	if checkSum != eventSum1 ||
 		checkSum != eventSum2 {
-		t.Errorf("Not all messages sent were received.\n")
+		t.Errorf("not all messages sent were received.\n")
 	}
 }
 

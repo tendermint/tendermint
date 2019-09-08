@@ -29,7 +29,7 @@ func (part *Part) ValidateBasic() error {
 		return errors.New("Negative Index")
 	}
 	if len(part.Bytes) > BlockPartSizeBytes {
-		return fmt.Errorf("Too big (max: %d)", BlockPartSizeBytes)
+		return fmt.Errorf("too big (max: %d)", BlockPartSizeBytes)
 	}
 	return nil
 }
