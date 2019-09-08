@@ -20,7 +20,7 @@ func TestBaseCert(t *testing.T) {
 	cert := NewBaseVerifier(chainID, 2, vals)
 
 	cases := []struct {
-		keys        PrivKeys
+		keys        privKeys
 		vals        *types.ValidatorSet
 		height      int64
 		first, last int  // who actually signs

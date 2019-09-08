@@ -22,7 +22,7 @@ type Provider interface {
 	SetLogger(logger log.Logger)
 }
 
-// PersistentProvider A provider that can also persist new information.
+// A provider that can also persist new information.
 // Examples: MemProvider, files.Provider, CacheProvider.
 type PersistentProvider interface {
 	Provider

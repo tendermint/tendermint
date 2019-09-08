@@ -29,12 +29,12 @@ type Pool struct {
 }
 
 func NewPool(stateDB, evidenceDB dbm.DB) *Pool {
-	Store := NewStore(evidenceDB)
+	store := NewStore(evidenceDB)
 	evpool := &Pool{
 		stateDB:      stateDB,
 		state:        sm.LoadState(stateDB),
 		logger:       log.NewNopLogger(),
-		store:        Store,
+		store:        store,
 		evidenceList: clist.New(),
 	}
 	return evpool

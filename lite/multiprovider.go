@@ -6,25 +6,25 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var _ PersistentProvider = (*MultiProvider)(nil)
+var _ PersistentProvider = (*multiProvider)(nil)
 
-// MultiProvider allows you to place one or more caches in front of a source
+// multiProvider allows you to place one or more caches in front of a source
 // Provider.  It runs through them in order until a match is found.
-type MultiProvider struct {
+type multiProvider struct {
 	logger    log.Logger
 	providers []PersistentProvider
 }
 
 // NewMultiProvider returns a new provider which wraps multiple other providers.
-func NewMultiProvider(providers ...PersistentProvider) *MultiProvider {
-	return &MultiProvider{
+func NewMultiProvider(providers ...PersistentProvider) *multiProvider {
+	return &multiProvider{
 		logger:    log.NewNopLogger(),
 		providers: providers,
 	}
 }
 
 // SetLogger sets logger on self and all subproviders.
-func (mc *MultiProvider) SetLogger(logger log.Logger) {
+func (mc *multiProvider) SetLogger(logger log.Logger) {
 	mc.logger = logger
 	for _, p := range mc.providers {
 		p.SetLogger(logger)
@@ -32,7 +32,7 @@ func (mc *MultiProvider) SetLogger(logger log.Logger) {
 }
 
 // SaveFullCommit saves on all providers, and aborts on the first error.
-func (mc *MultiProvider) SaveFullCommit(fc FullCommit) (err error) {
+func (mc *multiProvider) SaveFullCommit(fc FullCommit) (err error) {
 	for _, p := range mc.providers {
 		err = p.SaveFullCommit(fc)
 		if err != nil {
@@ -45,7 +45,7 @@ func (mc *MultiProvider) SaveFullCommit(fc FullCommit) (err error) {
 // LatestFullCommit loads the latest from all providers and provides
 // the latest FullCommit that satisfies the conditions.
 // Returns the first error encountered.
-func (mc *MultiProvider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (fc FullCommit, err error) {
+func (mc *multiProvider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (fc FullCommit, err error) {
 	for _, p := range mc.providers {
 		var commit FullCommit
 		commit, err = p.LatestFullCommit(chainID, minHeight, maxHeight)
@@ -73,7 +73,7 @@ func (mc *MultiProvider) LatestFullCommit(chainID string, minHeight, maxHeight i
 
 // ValidatorSet returns validator set at height as provided by the first
 // provider which has it, or an error otherwise.
-func (mc *MultiProvider) ValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
+func (mc *multiProvider) ValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
 	for _, p := range mc.providers {
 		valset, err = p.ValidatorSet(chainID, height)
 		if err == nil {

@@ -28,7 +28,7 @@ func NewFullCommit(signedHeader types.SignedHeader, valset, nextValset *types.Va
 	}
 }
 
-// ValidateFull Validate the components and check for consistency.
+// Validate the components and check for consistency.
 // This also checks to make sure that Validators actually
 // signed the SignedHeader.Commit.
 // If > 2/3 did not sign the Commit from fc.Validators, it

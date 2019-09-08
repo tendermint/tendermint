@@ -24,7 +24,6 @@ type DBProvider struct {
 	limit  int
 }
 
-// NewDBProvider ...
 func NewDBProvider(label string, db dbm.DB) *DBProvider {
 
 	// NOTE: when debugging, this type of construction might be useful.
@@ -41,18 +40,16 @@ func NewDBProvider(label string, db dbm.DB) *DBProvider {
 	return dbp
 }
 
-// SetLogger ...
 func (dbp *DBProvider) SetLogger(logger log.Logger) {
 	dbp.logger = logger.With("label", dbp.label)
 }
 
-// SetLimit ...
 func (dbp *DBProvider) SetLimit(limit int) *DBProvider {
 	dbp.limit = limit
 	return dbp
 }
 
-// SaveFullCommit Implements PersistentProvider.
+// Implements PersistentProvider.
 func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
 	dbp.logger.Info("DBProvider.SaveFullCommit()...", "fc", fc)
@@ -97,7 +94,7 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 	return nil
 }
 
-// LatestFullCommit Implements Provider.
+// Implements Provider.
 func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (
 	FullCommit, error) {
 
@@ -148,7 +145,6 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 	return FullCommit{}, lerr.ErrCommitNotFound()
 }
 
-// ValidatorSet ...
 func (dbp *DBProvider) ValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
 	return dbp.getValidatorSet(chainID, height)
 }

@@ -16,11 +16,11 @@ import (
 //
 // You can set different weights of validators each time you call ToValidators,
 // and can optionally extend the validator set later with Extend.
-type PrivKeys []crypto.PrivKey
+type privKeys []crypto.PrivKey
 
 // genPrivKeys produces an array of private keys to generate commits.
-func genPrivKeys(n int) PrivKeys {
-	res := make(PrivKeys, n)
+func genPrivKeys(n int) privKeys {
+	res := make(privKeys, n)
 	for i := range res {
 		res[i] = ed25519.GenPrivKey()
 	}
@@ -28,22 +28,22 @@ func genPrivKeys(n int) PrivKeys {
 }
 
 // Change replaces the key at index i.
-func (pkz PrivKeys) Change(i int) PrivKeys {
-	res := make(PrivKeys, len(pkz))
+func (pkz privKeys) Change(i int) privKeys {
+	res := make(privKeys, len(pkz))
 	copy(res, pkz)
 	res[i] = ed25519.GenPrivKey()
 	return res
 }
 
 // Extend adds n more keys (to remove, just take a slice).
-func (pkz PrivKeys) Extend(n int) PrivKeys {
+func (pkz privKeys) Extend(n int) privKeys {
 	extra := genPrivKeys(n)
 	return append(pkz, extra...)
 }
 
 // GenSecpPrivKeys produces an array of secp256k1 private keys to generate commits.
-func GenSecpPrivKeys(n int) PrivKeys {
-	res := make(PrivKeys, n)
+func GenSecpPrivKeys(n int) privKeys {
+	res := make(privKeys, n)
 	for i := range res {
 		res[i] = secp256k1.GenPrivKey()
 	}
@@ -51,7 +51,7 @@ func GenSecpPrivKeys(n int) PrivKeys {
 }
 
 // ExtendSecp adds n more secp256k1 keys (to remove, just take a slice).
-func (pkz PrivKeys) ExtendSecp(n int) PrivKeys {
+func (pkz privKeys) ExtendSecp(n int) privKeys {
 	extra := GenSecpPrivKeys(n)
 	return append(pkz, extra...)
 }
@@ -60,7 +60,7 @@ func (pkz PrivKeys) ExtendSecp(n int) PrivKeys {
 // The first key has weight `init` and it increases by `inc` every step
 // so we can have all the same weight, or a simple linear distribution
 // (should be enough for testing).
-func (pkz PrivKeys) ToValidators(init, inc int64) *types.ValidatorSet {
+func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 	res := make([]*types.Validator, len(pkz))
 	for i, k := range pkz {
 		res[i] = types.NewValidator(k.PubKey(), init+int64(i)*inc)
@@ -69,7 +69,7 @@ func (pkz PrivKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 }
 
 // signHeader properly signs the header with all keys from first to last exclusive.
-func (pkz PrivKeys) signHeader(header *types.Header, first, last int) *types.Commit {
+func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Commit {
 	commitSigs := make([]*types.CommitSig, len(pkz))
 
 	// We need this list to keep the ordering.
@@ -129,7 +129,7 @@ func genHeader(chainID string, height int64, txs types.Txs,
 }
 
 // GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
-func (pkz PrivKeys) GenSignedHeader(chainID string, height int64, txs types.Txs,
+func (pkz privKeys) GenSignedHeader(chainID string, height int64, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) types.SignedHeader {
 
 	header := genHeader(chainID, height, txs, valset, nextValset, appHash, consHash, resHash)
@@ -141,7 +141,7 @@ func (pkz PrivKeys) GenSignedHeader(chainID string, height int64, txs types.Txs,
 }
 
 // GenFullCommit calls genHeader and signHeader and combines them into a FullCommit.
-func (pkz PrivKeys) GenFullCommit(chainID string, height int64, txs types.Txs,
+func (pkz privKeys) GenFullCommit(chainID string, height int64, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) FullCommit {
 
 	header := genHeader(chainID, height, txs, valset, nextValset, appHash, consHash, resHash)
