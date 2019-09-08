@@ -175,11 +175,11 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 		line = strings.TrimRight(line, "\n")
 		parts := strings.Split(line, " ")
 		if len(parts) != 2 {
-			return -1, errors.New("Line did not have 2 parts")
+			return -1, errors.New("line did not have 2 parts")
 		}
 		i, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return -1, errors.New("Failed to parse INFO: " + err.Error())
+			return -1, errors.New("failed to parse INFO: " + err.Error())
 		}
 		if height < i {
 			return 1, nil

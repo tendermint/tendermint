@@ -180,7 +180,7 @@ func (n *Node) RestartEventMeterBackoff() error {
 		attempt++
 
 		if attempt > maxRestarts {
-			return errors.New("Reached max restarts")
+			return errors.New("reached max restarts")
 		}
 	}
 }

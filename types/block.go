@@ -56,9 +56,9 @@ func (b *Block) ValidateBasic() error {
 	}
 
 	if b.Height < 0 {
-		return errors.New("Negative Header.Height")
+		return errors.New("negative Header.Height")
 	} else if b.Height == 0 {
-		return errors.New("Zero Header.Height")
+		return errors.New("zero Header.Height")
 	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
@@ -76,7 +76,7 @@ func (b *Block) ValidateBasic() error {
 		return fmt.Errorf("header.TotalTxs (%d) is less than Header.NumTxs (%d)", b.TotalTxs, b.NumTxs)
 	}*/
 	if b.TotalTxs < 0 {
-		return errors.New("Negative Header.TotalTxs")
+		return errors.New("negative Header.TotalTxs")
 	}
 
 	if err := b.LastBlockID.ValidateBasic(); err != nil {
@@ -110,7 +110,7 @@ func (b *Block) ValidateBasic() error {
 	}
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
 		return fmt.Errorf(
-			"Wrong Header.DataHash. Expected %v, got %v",
+			"wrong Header.DataHash. Expected %v, got %v",
 			b.Data.Hash(),
 			b.DataHash,
 		)
@@ -636,10 +636,10 @@ func (commit *Commit) IsCommit() bool {
 // Does not actually check the cryptographic signatures.
 func (commit *Commit) ValidateBasic() error {
 	if commit.BlockID.IsZero() {
-		return errors.New("Commit cannot be for nil block")
+		return errors.New("commit cannot be for nil block")
 	}
 	if len(commit.Precommits) == 0 {
-		return errors.New("No precommits in commit")
+		return errors.New("no precommits in commit")
 	}
 	height, round := commit.Height(), commit.Round()
 
@@ -722,10 +722,10 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 
 	// Make sure the header is consistent with the commit.
 	if sh.Header == nil {
-		return errors.New("SignedHeader missing header.")
+		return errors.New("signedHeader missing header.")
 	}
 	if sh.Commit == nil {
-		return errors.New("SignedHeader missing commit (precommit votes).")
+		return errors.New("signedHeader missing commit (precommit votes).")
 	}
 
 	// Check ChainID.

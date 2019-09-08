@@ -27,10 +27,10 @@ import (
 // Errors
 
 var (
-	ErrInvalidProposalSignature = errors.New("Error invalid proposal signature")
-	ErrInvalidProposalPOLRound  = errors.New("Error invalid proposal POL round")
-	ErrAddingVote               = errors.New("Error adding vote")
-	ErrVoteHeightMismatch       = errors.New("Error vote height mismatch")
+	ErrInvalidProposalSignature = errors.New("error invalid proposal signature")
+	ErrInvalidProposalPOLRound  = errors.New("error invalid proposal POL round")
+	ErrAddingVote               = errors.New("error adding vote")
+	ErrVoteHeightMismatch       = errors.New("error vote height mismatch")
 )
 
 //-----------------------------------------------------------------------------

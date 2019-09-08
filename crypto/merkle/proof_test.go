@@ -50,7 +50,7 @@ func (dop DominoOp) ProofOp() ProofOp {
 
 func (dop DominoOp) Run(input [][]byte) (output [][]byte, err error) {
 	if len(input) != 1 {
-		return nil, errors.New("Expected input of length 1")
+		return nil, errors.New("expected input of length 1")
 	}
 	if string(input[0]) != dop.Input {
 		return nil, errors.Errorf("expected input %v, got %v",

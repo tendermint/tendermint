@@ -41,7 +41,7 @@ func TestResponses(t *testing.T) {
 		s := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)
 		assert.Equal(string(s), string(b))
 
-		d := RPCParseError(jsonid, errors.New("Hello world"))
+		d := RPCParseError(jsonid, errors.New("hello world"))
 		e, _ := json.Marshal(d)
 		f := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32700,"message":"Parse error. Invalid JSON","data":"Hello world"}}`, tt.expected)
 		assert.Equal(string(f), string(e))

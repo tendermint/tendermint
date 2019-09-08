@@ -99,7 +99,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if _, err := os.Stat(oldPrivVal); !os.IsNotExist(err) {
 		oldPV, err := privval.LoadOldFilePV(oldPrivVal)
 		if err != nil {
-			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v\n", oldPrivVal, err)
+			return nil, fmt.Errorf("error reading OldPrivValidator from %v: %v", oldPrivVal, err)
 		}
 		logger.Info("Upgrading PrivValidator file",
 			"old", oldPrivVal,
@@ -1138,7 +1138,7 @@ func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider Gene
 func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	b := db.Get(genesisDocKey)
 	if len(b) == 0 {
-		return nil, errors.New("Genesis doc not found")
+		return nil, errors.New("genesis doc not found")
 	}
 	var genDoc *types.GenesisDoc
 	err := cdc.UnmarshalJSON(b, &genDoc)
