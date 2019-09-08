@@ -64,7 +64,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	val = randValidator(vset.TotalVotingPower())
 	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
 	_, val = vset.GetByAddress(val.Address)
-	val.VotingPower += 00
+	val.VotingPower += 100
 	proposerPriority := val.ProposerPriority
 
 	val.ProposerPriority = 0
