@@ -72,7 +72,7 @@ var (
 	genDoc           *types.GenesisDoc // cache the genesis structure
 	addrBook         p2p.AddrBook
 	txIndexer        txindex.TxIndexer
-	consensusReactor *consensus.ConsensusReactor
+	consensusReactor *consensus.Reactor
 	eventBus         *types.EventBus // thread safe
 	mempool          mempl.Mempool
 
@@ -129,7 +129,7 @@ func SetTxIndexer(indexer txindex.TxIndexer) {
 	txIndexer = indexer
 }
 
-func SetConsensusReactor(conR *consensus.ConsensusReactor) {
+func SetConsensusReactor(conR *consensus.Reactor) {
 	consensusReactor = conR
 }
 
