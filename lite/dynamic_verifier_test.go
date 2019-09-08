@@ -124,7 +124,7 @@ func TestDynamicVerify(t *testing.T) {
 
 }
 
-func makeFullCommit(height int64, keys privKeys, vals, nextVals *types.ValidatorSet, chainID string) FullCommit {
+func makeFullCommit(height int64, keys PrivKeys, vals, nextVals *types.ValidatorSet, chainID string) FullCommit {
 	height++
 	consHash := []byte("special-params")
 	appHash := []byte(fmt.Sprintf("h=%d", height))

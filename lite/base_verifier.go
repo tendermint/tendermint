@@ -36,12 +36,12 @@ func NewBaseVerifier(chainID string, height int64, valset *types.ValidatorSet) *
 	}
 }
 
-// Implements Verifier.
+// ChainID Implements Verifier.
 func (bv *BaseVerifier) ChainID() string {
 	return bv.chainID
 }
 
-// Implements Verifier.
+// Verify Implements Verifier.
 func (bv *BaseVerifier) Verify(signedHeader types.SignedHeader) error {
 
 	// We can't verify commits for a different chain.

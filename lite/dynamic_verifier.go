@@ -52,6 +52,7 @@ func NewDynamicVerifier(chainID string, trusted PersistentProvider, source Provi
 	}
 }
 
+// SetLogger ...
 func (dv *DynamicVerifier) SetLogger(logger log.Logger) {
 	logger = logger.With("module", "lite")
 	dv.logger = logger
@@ -59,12 +60,12 @@ func (dv *DynamicVerifier) SetLogger(logger log.Logger) {
 	dv.source.SetLogger(logger)
 }
 
-// Implements Verifier.
+// ChainID Implements Verifier.
 func (dv *DynamicVerifier) ChainID() string {
 	return dv.chainID
 }
 
-// Implements Verifier.
+// Verify Implements Verifier.
 //
 // If the validators have changed since the last known time, it looks to
 // dv.trusted and dv.source to prove the new validators.  On success, it will
@@ -266,6 +267,7 @@ FOR_LOOP:
 	}
 }
 
+// LastTrustedHeight ...
 func (dv *DynamicVerifier) LastTrustedHeight() int64 {
 	fc, err := dv.trusted.LatestFullCommit(dv.chainID, 1, 1<<63-1)
 	if err != nil {
