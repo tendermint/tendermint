@@ -79,7 +79,7 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 }
 
 // NodeProvider takes a config and a logger and returns a ready to go Node.
-type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
+type Provider func(*cfg.Config, log.Logger) (*Node, error)
 
 // DefaultNewNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
@@ -190,12 +190,12 @@ type Node struct {
 	bcReactor        p2p.Reactor       // for fast-syncing
 	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
-	consensusState   *cs.ConsensusState   // latest consensus state
-	consensusReactor *cs.ConsensusReactor // for participating in the consensus
-	pexReactor       *pex.PEXReactor      // for exchanging peer addresses
-	evidencePool     *evidence.Pool       // tracking evidence
-	proxyApp         proxy.AppConns       // connection to the application
-	rpcListeners     []net.Listener       // rpc servers
+	consensusState   *cs.State       // latest consensus state
+	consensusReactor *cs.Reactor     // for participating in the consensus
+	pexReactor       *pex.PEXReactor // for exchanging peer addresses
+	evidencePool     *evidence.Pool  // tracking evidence
+	proxyApp         proxy.AppConns  // connection to the application
+	rpcListeners     []net.Listener  // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
 	prometheusSrv    *http.Server
@@ -332,7 +332,7 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 }
 
 func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
-	stateDB dbm.DB, logger log.Logger) (*evidence.EvidenceReactor, *evidence.Pool, error) {
+	stateDB dbm.DB, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
 
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
@@ -341,7 +341,7 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	evidenceLogger := logger.With("module", "evidence")
 	evidencePool := evidence.NewPool(stateDB, evidenceDB)
 	evidencePool.SetLogger(evidenceLogger)
-	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
+	evidenceReactor := evidence.NewReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 	return evidenceReactor, evidencePool, nil
 }
@@ -376,9 +376,9 @@ func createConsensusReactor(config *cfg.Config,
 	csMetrics *cs.Metrics,
 	fastSync bool,
 	eventBus *types.EventBus,
-	consensusLogger log.Logger) (*consensus.ConsensusReactor, *consensus.ConsensusState) {
+	consensusLogger log.Logger) (*consensus.Reactor, *consensus.State) {
 
-	consensusState := cs.NewConsensusState(
+	consensusState := cs.NewState(
 		config.Consensus,
 		state.Copy(),
 		blockExec,
@@ -391,7 +391,7 @@ func createConsensusReactor(config *cfg.Config,
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
+	consensusReactor := cs.NewReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 	// services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor
@@ -461,8 +461,8 @@ func createSwitch(config *cfg.Config,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
 	bcReactor p2p.Reactor,
-	consensusReactor *consensus.ConsensusReactor,
-	evidenceReactor *evidence.EvidenceReactor,
+	consensusReactor *consensus.Reactor,
+	evidenceReactor *evidence.Reactor,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
@@ -972,12 +972,12 @@ func (n *Node) BlockStore() *store.BlockStore {
 }
 
 // ConsensusState returns the Node's ConsensusState.
-func (n *Node) ConsensusState() *cs.ConsensusState {
+func (n *Node) ConsensusState() *cs.State {
 	return n.consensusState
 }
 
 // ConsensusReactor returns the Node's ConsensusReactor.
-func (n *Node) ConsensusReactor() *cs.ConsensusReactor {
+func (n *Node) ConsensusReactor() *cs.Reactor {
 	return n.consensusReactor
 }
 
