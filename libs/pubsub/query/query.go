@@ -19,7 +19,7 @@ import (
 // Query holds the query string and the query parser.
 type Query struct {
 	str    string
-	parser *QueryParser
+	parser *Parser
 }
 
 // Condition represents a single condition within a query and consists of tag
@@ -33,7 +33,7 @@ type Condition struct {
 // New parses the given string and returns a query or error if the string is
 // invalid.
 func New(s string) (*Query, error) {
-	p := &QueryParser{Buffer: fmt.Sprintf(`"%s"`, s)}
+	p := &Parser{Buffer: fmt.Sprintf(`"%s"`, s)}
 	p.Init()
 	if err := p.Parse(); err != nil {
 		return nil, err

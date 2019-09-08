@@ -170,7 +170,7 @@ func (t *tokens32) Tokens() []token32 {
 	return t.tree
 }
 
-type QueryParser struct {
+type Parser struct {
 	Buffer string
 	buffer []rune
 	rules  [20]func() bool
@@ -180,11 +180,11 @@ type QueryParser struct {
 	tokens32
 }
 
-func (p *QueryParser) Parse(rule ...int) error {
+func (p *Parser) Parse(rule ...int) error {
 	return p.parse(rule...)
 }
 
-func (p *QueryParser) Reset() {
+func (p *Parser) Reset() {
 	p.reset()
 }
 
@@ -220,7 +220,7 @@ search:
 }
 
 type parseError struct {
-	p   *QueryParser
+	p   *Parser
 	max token32
 }
 
@@ -248,7 +248,7 @@ func (e *parseError) Error() string {
 	return error
 }
 
-func (p *QueryParser) PrintSyntaxTree() {
+func (p *Parser) PrintSyntaxTree() {
 	if p.Pretty {
 		p.tokens32.PrettyPrintSyntaxTree(p.Buffer)
 	} else {
@@ -256,7 +256,7 @@ func (p *QueryParser) PrintSyntaxTree() {
 	}
 }
 
-func (p *QueryParser) Init() {
+func (p *Parser) Init() {
 	var (
 		max                  token32
 		position, tokenIndex uint32
