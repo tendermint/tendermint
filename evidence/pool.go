@@ -17,7 +17,7 @@ import (
 type Pool struct {
 	logger log.Logger
 
-	Store        *Store
+	store        *Store
 	evidenceList *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
@@ -34,7 +34,7 @@ func NewPool(stateDB, evidenceDB dbm.DB) *Pool {
 		stateDB:      stateDB,
 		state:        sm.LoadState(stateDB),
 		logger:       log.NewNopLogger(),
-		Store:        Store,
+		store:        Store,
 		evidenceList: clist.New(),
 	}
 	return evpool
@@ -55,13 +55,13 @@ func (evpool *Pool) SetLogger(l log.Logger) {
 
 // PriorityEvidence returns the priority evidence.
 func (evpool *Pool) PriorityEvidence() []types.Evidence {
-	return evpool.Store.PriorityEvidence()
+	return evpool.store.PriorityEvidence()
 }
 
 // PendingEvidence returns up to maxNum uncommitted evidence.
 // If maxNum is -1, all evidence is returned.
 func (evpool *Pool) PendingEvidence(maxNum int64) []types.Evidence {
-	return evpool.Store.PendingEvidence(maxNum)
+	return evpool.store.PendingEvidence(maxNum)
 }
 
 // State returns the current state of the evpool.
@@ -104,7 +104,7 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) (err error) {
 	_, val := valset.GetByAddress(evidence.Address())
 	priority := val.VotingPower
 
-	added := evpool.Store.AddNewEvidence(evidence, priority)
+	added := evpool.store.AddNewEvidence(evidence, priority)
 	if !added {
 		// evidence already known, just ignore
 		return
@@ -123,7 +123,7 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, evidence []types.Evide
 	// make a map of committed evidence to remove from the clist
 	blockEvidenceMap := make(map[string]struct{})
 	for _, ev := range evidence {
-		evpool.Store.MarkEvidenceAsCommitted(ev)
+		evpool.store.MarkEvidenceAsCommitted(ev)
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
 
@@ -135,7 +135,7 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, evidence []types.Evide
 
 // IsCommitted returns true if we have already seen this exact evidence and it is already marked as committed.
 func (evpool *Pool) IsCommitted(evidence types.Evidence) bool {
-	ei := evpool.Store.getInfo(evidence)
+	ei := evpool.store.getInfo(evidence)
 	return ei.Evidence != nil && ei.Committed
 }
 
