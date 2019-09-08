@@ -62,12 +62,12 @@ func TestMain(m *testing.M) {
 // and which ones we need the wal for - then we'd also be able to only flush the
 // wal writer when we need to, instead of with every message.
 
-func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
+func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
 	lastBlockHeight int64, blockDB dbm.DB, stateDB dbm.DB) {
 	logger := log.TestingLogger()
 	state, _ := sm.LoadStateFromDBOrGenesisFile(stateDB, consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
-	cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewKVStoreApplication(), blockDB)
+	cs := newStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewApplication(), blockDB)
 	cs.SetLogger(logger)
 
 	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
@@ -92,7 +92,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, consensusReplayConfig *
 	}
 }
 
-func sendTxs(ctx context.Context, cs *ConsensusState) {
+func sendTxs(ctx context.Context, cs *State) {
 	for i := 0; i < 256; i++ {
 		select {
 		case <-ctx.Done():
@@ -109,14 +109,14 @@ func sendTxs(ctx context.Context, cs *ConsensusState) {
 func TestWALCrash(t *testing.T) {
 	testCases := []struct {
 		name         string
-		initFn       func(dbm.DB, *ConsensusState, context.Context)
+		initFn       func(dbm.DB, *State, context.Context)
 		heightToStop int64
 	}{
 		{"empty block",
-			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {},
+			func(stateDB dbm.DB, cs *State, ctx context.Context) {},
 			1},
 		{"many non-empty blocks",
-			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
+			func(stateDB dbm.DB, cs *State, ctx context.Context) {
 				go sendTxs(ctx, cs)
 			},
 			3},
@@ -131,7 +131,7 @@ func TestWALCrash(t *testing.T) {
 }
 
 func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
-	initFn func(dbm.DB, *ConsensusState, context.Context), heightToStop int64) {
+	initFn func(dbm.DB, *State, context.Context), heightToStop int64) {
 	walPanicked := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
 
@@ -146,7 +146,7 @@ LOOP:
 		stateDB := blockDB
 		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		privValidator := loadPrivValidator(consensusReplayConfig)
-		cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewKVStoreApplication(), blockDB)
+		cs := newStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewApplication(), blockDB)
 		cs.SetLogger(logger)
 
 		// start sending transactions
@@ -176,7 +176,7 @@ LOOP:
 			t.Logf("WAL panicked: %v", err)
 
 			// make sure we can make blocks after a crash
-			startNewConsensusStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateDB)
+			startNewStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateDB)
 
 			// stop consensus state and transactions sender (initFn)
 			cs.Stop()
