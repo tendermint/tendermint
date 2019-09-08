@@ -54,20 +54,20 @@ func prefixKey(key []byte) []byte {
 
 //---------------------------------------------------
 
-var _ types.Application = (*KVStoreApplication)(nil)
+var _ types.Application = (*Application)(nil)
 
-type KVStoreApplication struct {
+type Application struct {
 	types.BaseApplication
 
 	state State
 }
 
-func NewKVStoreApplication() *KVStoreApplication {
+func NewApplication() *Application {
 	state := loadState(dbm.NewMemDB())
-	return &KVStoreApplication{state: state}
+	return &Application{state: state}
 }
 
-func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{
 		Data:       fmt.Sprintf("{\"size\":%v}", app.state.Size),
 		Version:    version.ABCIVersion,
@@ -76,7 +76,7 @@ func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.Respon
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	var key, value []byte
 	parts := bytes.Split(req.Tx, []byte("="))
 	if len(parts) == 2 {
@@ -101,11 +101,11 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Respo
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
 }
 
-func (app *KVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
-func (app *KVStoreApplication) Commit() types.ResponseCommit {
+func (app *Application) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)
 	binary.PutVarint(appHash, app.state.Size)
@@ -116,7 +116,7 @@ func (app *KVStoreApplication) Commit() types.ResponseCommit {
 }
 
 // Returns an associated value or nil if missing.
-func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
 		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Index = -1 // TODO make Proof return index
@@ -127,16 +127,18 @@ func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery type
 		} else {
 			resQuery.Log = "does not exist"
 		}
-		return
-	} else {
-		resQuery.Key = reqQuery.Data
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
-		resQuery.Value = value
-		if value != nil {
-			resQuery.Log = "exists"
-		} else {
-			resQuery.Log = "does not exist"
-		}
+
 		return
 	}
+
+	resQuery.Key = reqQuery.Data
+	value := app.state.db.Get(prefixKey(reqQuery.Data))
+	resQuery.Value = value
+	if value != nil {
+		resQuery.Log = "exists"
+	} else {
+		resQuery.Log = "does not exist"
+	}
+
+	return
 }
