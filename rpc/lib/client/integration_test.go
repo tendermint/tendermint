@@ -47,7 +47,7 @@ func TestWSClientReconnectWithJitter(t *testing.T) {
 	for key, c := range clientMap {
 		if !c.IsActive() {
 			delete(clientMap, key)
-			stopCount += 1
+			stopCount++
 		}
 	}
 	require.Equal(t, stopCount, n, "expecting all clients to have been stopped")

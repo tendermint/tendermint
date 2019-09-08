@@ -490,14 +490,14 @@ func deepcpVote(vote *types.Vote) (res *types.Vote) {
 
 func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *types.Vote, chainID string) types.DuplicateVoteEvidence {
 	var err error
-	vote2_ := deepcpVote(vote2)
-	vote2_.Signature, err = val.Key.PrivKey.Sign(vote2_.SignBytes(chainID))
+	deepcpVote2 := deepcpVote(vote2)
+	deepcpVote2.Signature, err = val.Key.PrivKey.Sign(deepcpVote2.SignBytes(chainID))
 	require.NoError(t, err)
 
 	return types.DuplicateVoteEvidence{
 		PubKey: val.Key.PubKey,
 		VoteA:  vote,
-		VoteB:  vote2_,
+		VoteB:  deepcpVote2,
 	}
 }
 

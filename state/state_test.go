@@ -367,7 +367,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 	for i := 0; i < runs; i++ {
 		prop := valSet.GetProposer()
 		idx, _ := valSet.GetByAddress(prop.Address)
-		freqs[idx] += 1
+		freqs[idx]++
 		valSet.IncrementProposerPriority(1)
 	}
 

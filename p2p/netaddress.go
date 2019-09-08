@@ -246,9 +246,9 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		Unreachable = 0
 		Default     = iota
 		Teredo
-		Ipv6_weak
+		Ipv6Weak
 		Ipv4
-		Ipv6_strong
+		Ipv6Strong
 	)
 	switch {
 	case !na.Routable():
@@ -262,7 +262,7 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		case o.IP.To4() != nil:
 			return Ipv4
 		default: // ipv6
-			return Ipv6_weak
+			return Ipv6Weak
 		}
 	case na.IP.To4() != nil:
 		if o.Routable() && o.IP.To4() != nil {
@@ -284,9 +284,9 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 			return Ipv4
 		case tunnelled:
 			// only prioritise ipv6 if we aren't tunnelling it.
-			return Ipv6_weak
+			return Ipv6Weak
 		}
-		return Ipv6_strong
+		return Ipv6Strong
 	}
 }
 

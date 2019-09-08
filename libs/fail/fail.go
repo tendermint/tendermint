@@ -34,7 +34,7 @@ func Fail() {
 		Exit()
 	}
 
-	callIndex += 1
+	callIndex++
 }
 
 func Exit() {

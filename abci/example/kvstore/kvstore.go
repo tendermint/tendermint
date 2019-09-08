@@ -86,7 +86,7 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Respo
 	}
 
 	app.state.db.Set(prefixKey(key), value)
-	app.state.Size += 1
+	app.state.Size++
 
 	events := []types.Event{
 		{
@@ -110,7 +110,7 @@ func (app *KVStoreApplication) Commit() types.ResponseCommit {
 	appHash := make([]byte, 8)
 	binary.PutVarint(appHash, app.state.Size)
 	app.state.AppHash = appHash
-	app.state.Height += 1
+	app.state.Height++
 	saveState(app.state)
 	return types.ResponseCommit{Data: appHash}
 }

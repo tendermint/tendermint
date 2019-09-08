@@ -1,4 +1,4 @@
-package cryptoAmino
+package cryptoamino
 
 import (
 	"os"

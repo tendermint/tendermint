@@ -6,7 +6,6 @@ It contains two server implementation:
  * socket server
 
 */
-
 package server
 
 import (

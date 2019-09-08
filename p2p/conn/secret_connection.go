@@ -107,11 +107,11 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 
 	sendAead, err := chacha20poly1305.New(sendSecret[:])
 	if err != nil {
-		return nil, errors.New("Invalid send SecretConnection Key")
+		return nil, errors.New("invalid send SecretConnection Key")
 	}
 	recvAead, err := chacha20poly1305.New(recvSecret[:])
 	if err != nil {
-		return nil, errors.New("Invalid receive SecretConnection Key")
+		return nil, errors.New("invalid receive SecretConnection Key")
 	}
 	// Construct SecretConnection.
 	sc := &SecretConnection{
@@ -134,7 +134,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
 	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
-		return nil, errors.New("Challenge verification failed")
+		return nil, errors.New("challenge verification failed")
 	}
 
 	// We've authorized.
@@ -217,7 +217,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	defer pool.Put(frame)
 	_, err = sc.recvAead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
 	if err != nil {
-		return n, errors.New("Failed to decrypt SecretConnection")
+		return n, errors.New("failed to decrypt SecretConnection")
 	}
 	incrNonce(sc.recvNonce)
 	// end decryption

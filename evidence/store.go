@@ -20,12 +20,12 @@ Impl:
 
 Schema for indexing evidence (note you need both height and hash to find a piece of evidence):
 
-"evidence-lookup"/<evidence-height>/<evidence-hash> -> EvidenceInfo
-"evidence-outqueue"/<priority>/<evidence-height>/<evidence-hash> -> EvidenceInfo
-"evidence-pending"/<evidence-height>/<evidence-hash> -> EvidenceInfo
+"evidence-lookup"/<evidence-height>/<evidence-hash> -> Info
+"evidence-outqueue"/<priority>/<evidence-height>/<evidence-hash> -> Info
+"evidence-pending"/<evidence-height>/<evidence-hash> -> Info
 */
 
-type EvidenceInfo struct {
+type Info struct {
 	Committed bool
 	Priority  int64
 	Evidence  types.Evidence
@@ -58,25 +58,25 @@ func keyPending(evidence types.Evidence) []byte {
 	return _key("%s/%s/%X", baseKeyPending, bE(evidence.Height()), evidence.Hash())
 }
 
-func _key(fmt_ string, o ...interface{}) []byte {
-	return []byte(fmt.Sprintf(fmt_, o...))
+func _key(format string, o ...interface{}) []byte {
+	return []byte(fmt.Sprintf(format, o...))
 }
 
-// EvidenceStore is a store of all the evidence we've seen, including
+// Store is a store of all the evidence we've seen, including
 // evidence that has been committed, evidence that has been verified but not broadcast,
 // and evidence that has been broadcast but not yet committed.
-type EvidenceStore struct {
+type Store struct {
 	db dbm.DB
 }
 
-func NewEvidenceStore(db dbm.DB) *EvidenceStore {
-	return &EvidenceStore{
+func NewStore(db dbm.DB) *Store {
+	return &Store{
 		db: db,
 	}
 }
 
 // PriorityEvidence returns the evidence from the outqueue, sorted by highest priority.
-func (store *EvidenceStore) PriorityEvidence() (evidence []types.Evidence) {
+func (store *Store) PriorityEvidence() (evidence []types.Evidence) {
 	// reverse the order so highest priority is first
 	l := store.listEvidence(baseKeyOutqueue, -1)
 	for i, j := 0, len(l)-1; i < j; i, j = i+1, j-1 {
@@ -88,14 +88,14 @@ func (store *EvidenceStore) PriorityEvidence() (evidence []types.Evidence) {
 
 // PendingEvidence returns up to maxNum known, uncommitted evidence.
 // If maxNum is -1, all evidence is returned.
-func (store *EvidenceStore) PendingEvidence(maxNum int64) (evidence []types.Evidence) {
+func (store *Store) PendingEvidence(maxNum int64) (evidence []types.Evidence) {
 	return store.listEvidence(baseKeyPending, maxNum)
 }
 
 // listEvidence lists up to maxNum pieces of evidence for the given prefix key.
 // It is wrapped by PriorityEvidence and PendingEvidence for convenience.
 // If maxNum is -1, there's no cap on the size of returned evidence.
-func (store *EvidenceStore) listEvidence(prefixKey string, maxNum int64) (evidence []types.Evidence) {
+func (store *Store) listEvidence(prefixKey string, maxNum int64) (evidence []types.Evidence) {
 	var count int64
 	iter := dbm.IteratePrefix(store.db, []byte(prefixKey))
 	defer iter.Close()
@@ -107,7 +107,7 @@ func (store *EvidenceStore) listEvidence(prefixKey string, maxNum int64) (eviden
 		}
 		count++
 
-		var ei EvidenceInfo
+		var ei Info
 		err := cdc.UnmarshalBinaryBare(val, &ei)
 		if err != nil {
 			panic(err)
@@ -117,16 +117,16 @@ func (store *EvidenceStore) listEvidence(prefixKey string, maxNum int64) (eviden
 	return evidence
 }
 
-// GetEvidenceInfo fetches the EvidenceInfo with the given height and hash.
+// GetInfo fetches the Info with the given height and hash.
 // If not found, ei.Evidence is nil.
-func (store *EvidenceStore) GetEvidenceInfo(height int64, hash []byte) EvidenceInfo {
+func (store *Store) GetInfo(height int64, hash []byte) Info {
 	key := keyLookupFromHeightAndHash(height, hash)
 	val := store.db.Get(key)
 
 	if len(val) == 0 {
-		return EvidenceInfo{}
+		return Info{}
 	}
-	var ei EvidenceInfo
+	var ei Info
 	err := cdc.UnmarshalBinaryBare(val, &ei)
 	if err != nil {
 		panic(err)
@@ -136,14 +136,14 @@ func (store *EvidenceStore) GetEvidenceInfo(height int64, hash []byte) EvidenceI
 
 // AddNewEvidence adds the given evidence to the database.
 // It returns false if the evidence is already stored.
-func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int64) bool {
+func (store *Store) AddNewEvidence(evidence types.Evidence, priority int64) bool {
 	// check if we already have seen it
-	ei := store.getEvidenceInfo(evidence)
+	ei := store.getInfo(evidence)
 	if ei.Evidence != nil {
 		return false
 	}
 
-	ei = EvidenceInfo{
+	ei = Info{
 		Committed: false,
 		Priority:  priority,
 		Evidence:  evidence,
@@ -164,8 +164,8 @@ func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int
 }
 
 // MarkEvidenceAsBroadcasted removes evidence from Outqueue.
-func (store *EvidenceStore) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
-	ei := store.getEvidenceInfo(evidence)
+func (store *Store) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
+	ei := store.getInfo(evidence)
 	if ei.Evidence == nil {
 		// nothing to do; we did not store the evidence yet (AddNewEvidence):
 		return
@@ -176,15 +176,15 @@ func (store *EvidenceStore) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
 }
 
 // MarkEvidenceAsCommitted removes evidence from pending and outqueue and sets the state to committed.
-func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
+func (store *Store) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	// if its committed, its been broadcast
 	store.MarkEvidenceAsBroadcasted(evidence)
 
 	pendingKey := keyPending(evidence)
 	store.db.Delete(pendingKey)
 
-	// committed EvidenceInfo doens't need priority
-	ei := EvidenceInfo{
+	// committed Info doens't need priority
+	ei := Info{
 		Committed: true,
 		Evidence:  evidence,
 		Priority:  0,
@@ -197,7 +197,7 @@ func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
 //---------------------------------------------------
 // utils
 
-// getEvidenceInfo is convenience for calling GetEvidenceInfo if we have the full evidence.
-func (store *EvidenceStore) getEvidenceInfo(evidence types.Evidence) EvidenceInfo {
-	return store.GetEvidenceInfo(evidence.Height(), evidence.Hash())
+// getInfo is convenience for calling GetInfo if we have the full evidence.
+func (store *Store) getInfo(evidence types.Evidence) Info {
+	return store.GetInfo(evidence.Height(), evidence.Hash())
 }

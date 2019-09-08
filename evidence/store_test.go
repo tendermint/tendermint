@@ -14,7 +14,7 @@ func TestStoreAddDuplicate(t *testing.T) {
 	assert := assert.New(t)
 
 	db := dbm.NewMemDB()
-	store := NewEvidenceStore(db)
+	store := NewStore(db)
 
 	priority := int64(10)
 	ev := types.NewMockGoodEvidence(2, 1, []byte("val1"))
@@ -31,7 +31,7 @@ func TestStoreCommitDuplicate(t *testing.T) {
 	assert := assert.New(t)
 
 	db := dbm.NewMemDB()
-	store := NewEvidenceStore(db)
+	store := NewStore(db)
 
 	priority := int64(10)
 	ev := types.NewMockGoodEvidence(2, 1, []byte("val1"))
@@ -46,7 +46,7 @@ func TestStoreMark(t *testing.T) {
 	assert := assert.New(t)
 
 	db := dbm.NewMemDB()
-	store := NewEvidenceStore(db)
+	store := NewStore(db)
 
 	// before we do anything, priority/pending are empty
 	priorityEv := store.PriorityEvidence()
@@ -61,7 +61,7 @@ func TestStoreMark(t *testing.T) {
 	assert.True(added)
 
 	// get the evidence. verify. should be uncommitted
-	ei := store.GetEvidenceInfo(ev.Height(), ev.Hash())
+	ei := store.GetInfo(ev.Height(), ev.Hash())
 	assert.Equal(ev, ei.Evidence)
 	assert.Equal(priority, ei.Priority)
 	assert.False(ei.Committed)
@@ -88,7 +88,7 @@ func TestStoreMark(t *testing.T) {
 
 	// evidence should show committed
 	newPriority := int64(0)
-	ei = store.GetEvidenceInfo(ev.Height(), ev.Hash())
+	ei = store.GetInfo(ev.Height(), ev.Hash())
 	assert.Equal(ev, ei.Evidence)
 	assert.Equal(newPriority, ei.Priority)
 	assert.True(ei.Committed)
@@ -98,7 +98,7 @@ func TestStorePriority(t *testing.T) {
 	assert := assert.New(t)
 
 	db := dbm.NewMemDB()
-	store := NewEvidenceStore(db)
+	store := NewStore(db)
 
 	// sorted by priority and then height
 	cases := []struct {

@@ -298,14 +298,14 @@ func persistentArgs(line []byte) []string {
 func compose(fs []func() error) error {
 	if len(fs) == 0 {
 		return nil
-	} else {
-		err := fs[0]()
-		if err == nil {
-			return compose(fs[1:])
-		} else {
-			return err
-		}
 	}
+
+	err := fs[0]()
+	if err == nil {
+		return compose(fs[1:])
+	}
+
+	return err
 }
 
 func cmdTest(cmd *cobra.Command, args []string) error {
@@ -338,7 +338,7 @@ LOOP:
 		line, more, err := bufReader.ReadLine()
 		switch {
 		case more:
-			return errors.New("Input line is too long")
+			return errors.New("input line is too long")
 		case err == io.EOF:
 			break LOOP
 		case len(line) == 0:
@@ -362,7 +362,7 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			return errors.New("Input is too long")
+			return errors.New("input is too long")
 		} else if err != nil {
 			return err
 		}

@@ -187,7 +187,7 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 // ValidateBasic performs basic validation.
 func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	if len(dve.PubKey.Bytes()) == 0 {
-		return errors.New("Empty PubKey")
+		return errors.New("empty PubKey")
 	}
 	if dve.VoteA == nil || dve.VoteB == nil {
 		return fmt.Errorf("One or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)

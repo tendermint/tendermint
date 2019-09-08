@@ -66,7 +66,7 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 // and fills in defaults for optional fields left empty
 func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	if genDoc.ChainID == "" {
-		return errors.New("Genesis doc must include non-empty chain_id")
+		return errors.New("genesis doc must include non-empty chain_id")
 	}
 	if len(genDoc.ChainID) > MaxChainIDLen {
 		return errors.Errorf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen)

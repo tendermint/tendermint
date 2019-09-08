@@ -133,7 +133,7 @@ func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 	// We must construct BlockID from ProposalBlock and ProposalBlockParts
 	// cs.Proposal is not guaranteed to be set when this function is called
-	blockId := types.BlockID{
+	blockID := types.BlockID{
 		Hash:        rs.ProposalBlock.Hash(),
 		PartsHeader: rs.ProposalBlockParts.Header(),
 	}
@@ -142,7 +142,7 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 		Height:  rs.Height,
 		Round:   rs.Round,
 		Step:    rs.Step.String(),
-		BlockID: blockId,
+		BlockID: blockID,
 	}
 }
 

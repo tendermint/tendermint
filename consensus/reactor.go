@@ -893,8 +893,8 @@ func ReactorMetrics(metrics *Metrics) ReactorOption {
 //-----------------------------------------------------------------------------
 
 var (
-	ErrPeerStateHeightRegression = errors.New("Error peer state height regression")
-	ErrPeerStateInvalidStartTime = errors.New("Error peer state invalid startTime")
+	ErrPeerStateHeightRegression = errors.New("error peer state height regression")
+	ErrPeerStateInvalidStartTime = errors.New("error peer state invalid startTime")
 )
 
 // PeerState contains the known state of a peer, including its connection and
@@ -1046,7 +1046,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false
 	}
 
-	height, round, type_, size := votes.Height(), votes.Round(), types.SignedMsgType(votes.Type()), votes.Size()
+	height, round, msgType, size := votes.Height(), votes.Round(), types.SignedMsgType(votes.Type()), votes.Size()
 
 	// Lazily set data using 'votes'.
 	if votes.IsCommit() {
@@ -1054,7 +1054,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	}
 	ps.ensureVoteBitArrays(height, size)
 
-	psVotes := ps.getVoteBitArray(height, round, type_)
+	psVotes := ps.getVoteBitArray(height, round, msgType)
 	if psVotes == nil {
 		return nil, false // Not something worth sending
 	}
@@ -1064,14 +1064,14 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	return nil, false
 }
 
-func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.SignedMsgType) *cmn.BitArray {
-	if !types.IsVoteTypeValid(type_) {
+func (ps *PeerState) getVoteBitArray(height int64, round int, msgType types.SignedMsgType) *cmn.BitArray {
+	if !types.IsVoteTypeValid(msgType) {
 		return nil
 	}
 
 	if ps.PRS.Height == height {
 		if ps.PRS.Round == round {
-			switch type_ {
+			switch msgType {
 			case types.PrevoteType:
 				return ps.PRS.Prevotes
 			case types.PrecommitType:
@@ -1079,7 +1079,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 			}
 		}
 		if ps.PRS.CatchupCommitRound == round {
-			switch type_ {
+			switch msgType {
 			case types.PrevoteType:
 				return nil
 			case types.PrecommitType:
@@ -1087,7 +1087,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 			}
 		}
 		if ps.PRS.ProposalPOLRound == round {
-			switch type_ {
+			switch msgType {
 			case types.PrevoteType:
 				return ps.PRS.ProposalPOL
 			case types.PrecommitType:
@@ -1098,7 +1098,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 	}
 	if ps.PRS.Height == height+1 {
 		if ps.PRS.LastCommitRound == round {
-			switch type_ {
+			switch msgType {
 			case types.PrevoteType:
 				return nil
 			case types.PrecommitType:
@@ -1210,12 +1210,12 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int, type_ types.SignedMsgType, index int) {
+func (ps *PeerState) setHasVote(height int64, round int, msgType types.SignedMsgType, index int) {
 	logger := ps.logger.With("peerH/R", fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round), "H/R", fmt.Sprintf("%d/%d", height, round))
-	logger.Debug("setHasVote", "type", type_, "index", index)
+	logger.Debug("setHasVote", "type", msgType, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
-	psVotes := ps.getVoteBitArray(height, round, type_)
+	psVotes := ps.getVoteBitArray(height, round, msgType)
 	if psVotes != nil {
 		psVotes.SetIndex(index, true)
 	}
@@ -1405,20 +1405,20 @@ type NewRoundStepMessage struct {
 // ValidateBasic performs basic validation.
 func (m *NewRoundStepMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if !m.Step.IsValid() {
-		return errors.New("Invalid Step")
+		return errors.New("invalid Step")
 	}
 
 	// NOTE: SecondsSinceStartTime may be negative
 
 	if (m.Height == 1 && m.LastCommitRound != -1) ||
 		(m.Height > 1 && m.LastCommitRound < -1) { // TODO: #2737 LastCommitRound should always be >= 0 for heights > 1
-		return errors.New("Invalid LastCommitRound (for 1st block: -1, for others: >= 0)")
+		return errors.New("invalid LastCommitRound (for 1st block: -1, for others: >= 0)")
 	}
 	return nil
 }
@@ -1445,10 +1445,10 @@ type NewValidBlockMessage struct {
 // ValidateBasic performs basic validation.
 func (m *NewValidBlockMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if err := m.BlockPartsHeader.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
@@ -1496,13 +1496,13 @@ type ProposalPOLMessage struct {
 // ValidateBasic performs basic validation.
 func (m *ProposalPOLMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.ProposalPOLRound < 0 {
-		return errors.New("Negative ProposalPOLRound")
+		return errors.New("negative ProposalPOLRound")
 	}
 	if m.ProposalPOL.Size() == 0 {
-		return errors.New("Empty ProposalPOL bit array")
+		return errors.New("empty ProposalPOL bit array")
 	}
 	return nil
 }
@@ -1524,10 +1524,10 @@ type BlockPartMessage struct {
 // ValidateBasic performs basic validation.
 func (m *BlockPartMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if err := m.Part.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong Part: %v", err)
@@ -1570,16 +1570,16 @@ type HasVoteMessage struct {
 // ValidateBasic performs basic validation.
 func (m *HasVoteMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
 	if m.Index < 0 {
-		return errors.New("Negative Index")
+		return errors.New("negative Index")
 	}
 	return nil
 }
@@ -1602,13 +1602,13 @@ type VoteSetMaj23Message struct {
 // ValidateBasic performs basic validation.
 func (m *VoteSetMaj23Message) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)
@@ -1635,13 +1635,13 @@ type VoteSetBitsMessage struct {
 // ValidateBasic performs basic validation.
 func (m *VoteSetBitsMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	if m.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockID: %v", err)

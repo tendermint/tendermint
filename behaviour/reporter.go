@@ -78,7 +78,7 @@ func (mpbr *MockReporter) GetBehaviours(peerID p2p.ID) []PeerBehaviour {
 		copy(result, items)
 
 		return result
-	} else {
-		return []PeerBehaviour{}
 	}
+
+	return []PeerBehaviour{}
 }

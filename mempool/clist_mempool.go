@@ -630,10 +630,10 @@ type txCache interface {
 // mapTxCache maintains a LRU cache of transactions. This only stores the hash
 // of the tx, due to memory concerns.
 type mapTxCache struct {
-	mtx  sync.Mutex
-	size int
-	map_ map[[sha256.Size]byte]*list.Element
-	list *list.List
+	mtx      sync.Mutex
+	size     int
+	cacheMap map[[sha256.Size]byte]*list.Element
+	list     *list.List
 }
 
 var _ txCache = (*mapTxCache)(nil)
@@ -641,16 +641,16 @@ var _ txCache = (*mapTxCache)(nil)
 // newMapTxCache returns a new mapTxCache.
 func newMapTxCache(cacheSize int) *mapTxCache {
 	return &mapTxCache{
-		size: cacheSize,
-		map_: make(map[[sha256.Size]byte]*list.Element, cacheSize),
-		list: list.New(),
+		size:     cacheSize,
+		cacheMap: make(map[[sha256.Size]byte]*list.Element, cacheSize),
+		list:     list.New(),
 	}
 }
 
 // Reset resets the cache to an empty state.
 func (cache *mapTxCache) Reset() {
 	cache.mtx.Lock()
-	cache.map_ = make(map[[sha256.Size]byte]*list.Element, cache.size)
+	cache.cacheMap = make(map[[sha256.Size]byte]*list.Element, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
 }
@@ -663,7 +663,7 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 
 	// Use the tx hash in the cache
 	txHash := txKey(tx)
-	if moved, exists := cache.map_[txHash]; exists {
+	if moved, exists := cache.cacheMap[txHash]; exists {
 		cache.list.MoveToBack(moved)
 		return false
 	}
@@ -671,13 +671,13 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	if cache.list.Len() >= cache.size {
 		popped := cache.list.Front()
 		poppedTxHash := popped.Value.([sha256.Size]byte)
-		delete(cache.map_, poppedTxHash)
+		delete(cache.cacheMap, poppedTxHash)
 		if popped != nil {
 			cache.list.Remove(popped)
 		}
 	}
 	e := cache.list.PushBack(txHash)
-	cache.map_[txHash] = e
+	cache.cacheMap[txHash] = e
 	return true
 }
 
@@ -685,8 +685,8 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
 	txHash := txKey(tx)
-	popped := cache.map_[txHash]
-	delete(cache.map_, txHash)
+	popped := cache.cacheMap[txHash]
+	delete(cache.cacheMap, txHash)
 	if popped != nil {
 		cache.list.Remove(popped)
 	}

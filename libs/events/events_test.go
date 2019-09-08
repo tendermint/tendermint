@@ -94,7 +94,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	go fireEvents(evsw, "event1", doneSending1, uint64(1))
 	go fireEvents(evsw, "event2", doneSending2, uint64(1))
 	go fireEvents(evsw, "event3", doneSending3, uint64(1))
-	var checkSum uint64 = 0
+	var checkSum uint64
 	checkSum += <-doneSending1
 	checkSum += <-doneSending2
 	checkSum += <-doneSending3
