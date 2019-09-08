@@ -25,7 +25,7 @@ import (
 
 func TestKVStore(t *testing.T) {
 	fmt.Println("### Testing KVStore")
-	testStream(t, kvstore.NewKVStoreApplication())
+	testStream(t, kvstore.NewApplication())
 }
 
 func TestBaseApp(t *testing.T) {
