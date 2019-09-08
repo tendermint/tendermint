@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 )
 
-type CounterApplication struct {
+type Application struct {
 	types.BaseApplication
 
 	hashCount int
@@ -16,15 +16,15 @@ type CounterApplication struct {
 	serial    bool
 }
 
-func NewCounterApplication(serial bool) *CounterApplication {
-	return &CounterApplication{serial: serial}
+func NewApplication(serial bool) *Application {
+	return &Application{serial: serial}
 }
 
-func (app *CounterApplication) Info(req types.RequestInfo) types.ResponseInfo {
+func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{Data: fmt.Sprintf("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
 }
 
-func (app *CounterApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
+func (app *Application) SetOption(req types.RequestSetOption) types.ResponseSetOption {
 	key, value := req.Key, req.Value
 	if key == "serial" && value == "on" {
 		app.serial = true
@@ -42,7 +42,7 @@ func (app *CounterApplication) SetOption(req types.RequestSetOption) types.Respo
 	return types.ResponseSetOption{}
 }
 
-func (app *CounterApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	if app.serial {
 		if len(req.Tx) > 8 {
 			return types.ResponseDeliverTx{
@@ -62,7 +62,7 @@ func (app *CounterApplication) DeliverTx(req types.RequestDeliverTx) types.Respo
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	if app.serial {
 		if len(req.Tx) > 8 {
 			return types.ResponseCheckTx{
@@ -81,7 +81,7 @@ func (app *CounterApplication) CheckTx(req types.RequestCheckTx) types.ResponseC
 	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
+func (app *Application) Commit() (resp types.ResponseCommit) {
 	app.hashCount++
 	if app.txCount == 0 {
 		return types.ResponseCommit{}
@@ -91,7 +91,7 @@ func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
 	return types.ResponseCommit{Data: hash}
 }
 
-func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 	switch reqQuery.Path {
 	case "hash":
 		return types.ResponseQuery{Value: []byte(fmt.Sprintf("%v", app.hashCount))}
