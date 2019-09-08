@@ -324,7 +324,7 @@ func (sc *schedule) allBlocksProcessed() bool {
 
 // highest block | state == blockStateNew
 func (sc *schedule) maxHeight() int64 {
-	var max int64 = 0
+	var max int64
 	for height, state := range sc.blockStates {
 		if state == blockStateNew && height > max {
 			max = height
@@ -377,7 +377,7 @@ func (sc *schedule) prunablePeers(peerTimout time.Duration, minRecvRate int64, n
 }
 
 func (sc *schedule) numBlockInState(targetState blockState) uint32 {
-	var num uint32 = 0
+	var num uint32
 	for _, state := range sc.blockStates {
 		if state == targetState {
 			num++
