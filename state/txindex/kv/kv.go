@@ -171,7 +171,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 	conditions := q.Conditions()
 
 	// if there is a hash condition, return the result immediately
-	hash, err, ok := lookForHash(conditions)
+	hash, ok, err := lookForHash(conditions)
 	if err != nil {
 		return nil, errors.Wrap(err, "error during searching for a hash in the query")
 	} else if ok {
@@ -251,11 +251,11 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 	return results, nil
 }
 
-func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool) {
+func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error) {
 	for _, c := range conditions {
 		if c.Tag == types.TxHashKey {
 			decoded, err := hex.DecodeString(c.Operand.(string))
-			return decoded, err, true
+			return decoded, true, err
 		}
 	}
 	return

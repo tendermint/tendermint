@@ -871,9 +871,9 @@ func RegisterPacket(cdc *amino.Codec) {
 	cdc.RegisterConcrete(PacketMsg{}, "tendermint/p2p/PacketMsg", nil)
 }
 
-func (_ PacketPing) AssertIsPacket() {}
-func (_ PacketPong) AssertIsPacket() {}
-func (_ PacketMsg) AssertIsPacket()  {}
+func (PacketPing) AssertIsPacket() {}
+func (PacketPong) AssertIsPacket() {}
+func (PacketMsg) AssertIsPacket()  {}
 
 type PacketPing struct {
 }
