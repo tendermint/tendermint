@@ -211,6 +211,7 @@ type testFields struct {
 
 func executeFSMTests(t *testing.T, tests []testFields, matchRespToReq bool) {
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test reactor
 			testBcR := newTestReactor(tt.startingHeight)
@@ -220,6 +221,7 @@ func executeFSMTests(t *testing.T, tests []testFields, matchRespToReq bool) {
 			}
 
 			for _, step := range tt.steps {
+				step := step
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
 
 				var heightBefore int64
@@ -862,6 +864,7 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test reactor
 			testBcR := newTestReactor(tt.startingHeight)
@@ -871,6 +874,7 @@ func TestFSMCorrectTransitionSequences(t *testing.T) {
 			}
 
 			for _, step := range tt.steps {
+				step := step
 				assert.Equal(t, step.currentState, testBcR.fsm.state.name)
 
 				oldNumStatusRequests := testBcR.numStatusRequests
