@@ -5,7 +5,7 @@ var (
 	GitCommit string
 
 	// Version is the built softwares version.
-	Version string = TMCoreSemVer
+	Version = TMCoreSemVer
 )
 
 func init() {
