@@ -190,12 +190,12 @@ type Node struct {
 	bcReactor        p2p.Reactor       // for fast-syncing
 	mempoolReactor   *mempl.Reactor    // for gossipping transactions
 	mempool          mempl.Mempool
-	consensusState   *cs.State       // latest consensus state
-	consensusReactor *cs.Reactor     // for participating in the consensus
-	pexReactor       *pex.PEXReactor // for exchanging peer addresses
-	evidencePool     *evidence.Pool  // tracking evidence
-	proxyApp         proxy.AppConns  // connection to the application
-	rpcListeners     []net.Listener  // rpc servers
+	consensusState   *cs.State      // latest consensus state
+	consensusReactor *cs.Reactor    // for participating in the consensus
+	pexReactor       *pex.Reactor   // for exchanging peer addresses
+	evidencePool     *evidence.Pool // tracking evidence
+	proxyApp         proxy.AppConns // connection to the application
+	rpcListeners     []net.Listener // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
 	prometheusSrv    *http.Server
@@ -514,11 +514,11 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 }
 
 func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
-	sw *p2p.Switch, logger log.Logger) *pex.PEXReactor {
+	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	// TODO persistent peers ? so we can have their DNS addrs saved
-	pexReactor := pex.NewPEXReactor(addrBook,
-		&pex.PEXReactorConfig{
+	pexReactor := pex.NewReactor(addrBook,
+		&pex.ReactorConfig{
 			Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 			SeedMode: config.P2P.SeedMode,
 			// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
@@ -679,7 +679,7 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
-	var pexReactor *pex.PEXReactor
+	var pexReactor *pex.Reactor
 	if config.P2P.PexReactor {
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
@@ -992,7 +992,7 @@ func (n *Node) Mempool() mempl.Mempool {
 }
 
 // PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
-func (n *Node) PEXReactor() *pex.PEXReactor {
+func (n *Node) PEXReactor() *pex.Reactor {
 	return n.pexReactor
 }
 
