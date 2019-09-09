@@ -171,7 +171,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 	conditions := q.Conditions()
 
 	// if there is a hash condition, return the result immediately
-	hash, err, ok := lookForHash(conditions)
+	hash, ok, err := lookForHash(conditions)
 	if err != nil {
 		return nil, errors.Wrap(err, "error during searching for a hash in the query")
 	} else if ok {
@@ -251,11 +251,11 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 	return results, nil
 }
 
-func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool) {
+func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error) {
 	for _, c := range conditions {
 		if c.Tag == types.TxHashKey {
 			decoded, err := hex.DecodeString(c.Operand.(string))
-			return decoded, err, true
+			return decoded, true, err
 		}
 	}
 	return
@@ -290,24 +290,24 @@ func (r queryRange) lowerBoundValue() interface{} {
 
 	if r.includeLowerBound {
 		return r.lowerBound
-	} else {
-		switch t := r.lowerBound.(type) {
-		case int64:
-			return t + 1
-		case time.Time:
-			return t.Unix() + 1
-		default:
-			panic("not implemented")
-		}
+	}
+
+	switch t := r.lowerBound.(type) {
+	case int64:
+		return t + 1
+	case time.Time:
+		return t.Unix() + 1
+	default:
+		panic("not implemented")
 	}
 }
 
 func (r queryRange) AnyBound() interface{} {
 	if r.lowerBound != nil {
 		return r.lowerBound
-	} else {
-		return r.upperBound
 	}
+
+	return r.upperBound
 }
 
 func (r queryRange) upperBoundValue() interface{} {
@@ -317,15 +317,15 @@ func (r queryRange) upperBoundValue() interface{} {
 
 	if r.includeUpperBound {
 		return r.upperBound
-	} else {
-		switch t := r.upperBound.(type) {
-		case int64:
-			return t - 1
-		case time.Time:
-			return t.Unix() - 1
-		default:
-			panic("not implemented")
-		}
+	}
+
+	switch t := r.upperBound.(type) {
+	case int64:
+		return t - 1
+	case time.Time:
+		return t.Unix() - 1
+	default:
+		panic("not implemented")
 	}
 }
 
