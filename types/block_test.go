@@ -374,7 +374,7 @@ func TestCommitToVoteSetWithVotesForAnotherBlock(t *testing.T) {
 	round := 1
 	numValidators := 10
 
-	voteSet, _, vals := randVoteSet(height-1, 1, PrecommitType, numValidators, 1)
+	voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, numValidators, 1)
 
 	// > 2/3 sign for this block
 	numBlockValidators := numValidators*2/3 + 1
@@ -394,7 +394,7 @@ func TestCommitToVoteSetWithVotesForAnotherBlock(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// 1/3 vote for a different block
+	// 1/3 vote for different blocks
 	for i := numBlockValidators; i < numValidators; i++ {
 		addr := vals[i].GetPubKey().Address()
 		vote := &Vote{
@@ -412,6 +412,9 @@ func TestCommitToVoteSetWithVotesForAnotherBlock(t *testing.T) {
 	}
 	commit := voteSet.MakeCommit()
 	assert.NotNil(t, commit)
+
+	err := valSet.VerifyCommit(voteSet.ChainID(), lastID, height-1, commit)
+	assert.Nil(t, err)
 }
 
 func TestCommitWithNilVotes(t *testing.T) {
@@ -420,7 +423,7 @@ func TestCommitWithNilVotes(t *testing.T) {
 	round := 1
 	numValidators := 10
 
-	voteSet, _, vals := randVoteSet(height-1, 1, PrecommitType, numValidators, 1)
+	voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, numValidators, 1)
 
 	// > 2/3 sign for this block
 	numBlockValidators := numValidators*2/3 + 1
@@ -458,6 +461,9 @@ func TestCommitWithNilVotes(t *testing.T) {
 	}
 	commit := voteSet.MakeCommit()
 	assert.NotNil(t, commit)
+
+	err := valSet.VerifyCommit(voteSet.ChainID(), lastID, height-1, commit)
+	assert.Nil(t, err)
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {
