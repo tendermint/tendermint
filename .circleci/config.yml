@@ -52,6 +52,8 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-v2-{{ checksum "go.sum" }}
+      - restore_cache:
+          keys:
             - go-src-v1-{{ .Revision }}
       - checkout
       - run:
@@ -68,6 +70,8 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-v2-{{ checksum "go.sum" }}
+      - restore_cache:
+          keys:
             - go-src-v1-{{ .Revision }}
       - checkout
       - run:
@@ -83,6 +87,8 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-v2-{{ checksum "go.sum" }}
+      - restore_cache:
+          keys:
             - go-src-v1-{{ .Revision }}
       - checkout
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
@@ -97,6 +103,8 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-v2-{{ checksum "go.sum" }}
+      - restore_cache:
+          keys:
             - go-src-v1-{{ .Revision }}
       - checkout
       - run:
@@ -122,6 +130,8 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-v2-{{ checksum "go.sum" }}
+      - restore_cache:
+          keys:
             - go-src-v1-{{ .Revision }}
       - checkout
       - run:
@@ -168,7 +178,8 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: go-mod-v2-{{ checksum "go.sum" }}
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
       - restore_cache:
           keys:
             - go-src-v1-{{ .Revision }}
