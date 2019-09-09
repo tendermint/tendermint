@@ -49,14 +49,16 @@ jobs:
   test_abci_apps:
     executor: golang
     steps:
-      - restore_cache:
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - restore_cache:
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - run:
+     - restore_cache:
+         name: "Restore source code cache"
+         keys:
+           - go-src-v1-{{ .Revision }}
+     - checkout
+     - restore_cache:
+         name: "Restore go module cache"
+         keys:
+           - go-mod-v2-{{ checksum "go.sum" }}
+     - run:
           name: Run abci apps tests
           command: |
             export PATH="$GOBIN:$PATH"
@@ -68,12 +70,14 @@ jobs:
     executor: golang
     steps:
       - restore_cache:
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - restore_cache:
+          name: "Restore source code cache"
           keys:
             - go-src-v1-{{ .Revision }}
       - checkout
+      - restore_cache:
+          name: "Restore go module cache"
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
       - run:
           name: Run abci-cli tests
           command: |
@@ -83,32 +87,35 @@ jobs:
   test_apps:
     executor: golang
     steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - restore_cache:
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
-      - run:
-          name: "Run tests"
-          command: bash test/app/test.sh
+     - restore_cache:
+         name: "Restore source code cache"
+         keys:
+           - go-src-v1-{{ .Revision }}
+     - checkout
+     - restore_cache:
+         name: "Restore go module cache"
+         keys:
+           - go-mod-v2-{{ checksum "go.sum" }}
+     - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
+     - run:
+         name: "Run tests"
+         command: bash test/app/test.sh
 
   test_cover:
     executor: golang
     parallelism: 4
     steps:
       - restore_cache:
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - restore_cache:
+          name: "Restore source code cache"
           keys:
             - go-src-v1-{{ .Revision }}
       - checkout
+      - restore_cache:
+          name: "Restore go module cache"
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
       - run:
-          name: Run tests
+          name: "Run tests"
           command: |
             export VERSION="$(git describe --tags --long | sed 's/v\(.*\)/\1/')"
             export GO111MODULE=on
@@ -128,12 +135,14 @@ jobs:
     executor: golang
     steps:
       - restore_cache:
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - restore_cache:
+          name: "Restore source code cache"
           keys:
             - go-src-v1-{{ .Revision }}
       - checkout
+      - restore_cache:
+          name: "Restore go module cache"
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
       - run:
           name: Run tests
           command: bash test/persist/test_failure_indices.sh
@@ -165,6 +174,10 @@ jobs:
     machine:
       image: circleci/classic:latest
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - run: mkdir -p $GOPATH/src/github.com/tendermint
       - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
@@ -178,16 +191,17 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - restore_cache:
+          name: "Restore source code cache"
           keys:
             - go-src-v1-{{ .Revision }}
+      - checkout
+      - restore_cache:
+          name: "Restore go module cache"
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
       - run:
           name: gather
           command: |
-            set -ex
-
             echo "mode: atomic" > coverage.txt
             for prof in $(ls /tmp/workspace/profiles/); do
               tail -n +2 /tmp/workspace/profiles/"$prof" >> coverage.txt
@@ -208,6 +222,10 @@ jobs:
   deploy_docs:
     <<: *docs_update_config
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - run:
           name: Trigger website build
@@ -232,6 +250,10 @@ jobs:
   prepare_build:
     executor: golang
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - run:
           name: Get next release number
@@ -261,8 +283,13 @@ jobs:
     executor: golang
     parallelism: 4
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - restore_cache:
+          name: "Restore release dependencies cache"
           keys:
             - v2-release-deps-{{ checksum "go.sum" }}
       - attach_workspace:
@@ -285,11 +312,15 @@ jobs:
   release_artifacts:
     executor: golang
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - attach_workspace:
           at: /tmp/workspace
       - run:
-          name: Deploy to GitHub
+          name: "Deploy to GitHub"
           command: |
             # Setting CIRCLE_TAG because we do not tag the release ourselves.
             source /tmp/workspace/release-version.source
@@ -314,11 +345,15 @@ jobs:
     machine:
       image: ubuntu-1604:201903-01
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - attach_workspace:
           at: /tmp/workspace
       - run:
-          name: Deploy to Docker Hub
+          name: "Deploy to Docker Hub"
           command: |
             # Setting CIRCLE_TAG because we do not tag the release ourselves.
             source /tmp/workspace/release-version.source
@@ -333,6 +368,10 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
