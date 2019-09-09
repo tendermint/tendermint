@@ -90,7 +90,7 @@ func checkTxs(t *testing.T, mempool Mempool, count int, peerID uint16) types.Txs
 }
 
 func TestReapMaxBytesMaxGas(t *testing.T) {
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -139,7 +139,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 }
 
 func TestMempoolFilters(t *testing.T) {
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -178,7 +178,7 @@ func TestMempoolFilters(t *testing.T) {
 }
 
 func TestMempoolUpdate(t *testing.T) {
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -213,7 +213,7 @@ func TestMempoolUpdate(t *testing.T) {
 }
 
 func TestTxsAvailable(t *testing.T) {
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -257,7 +257,7 @@ func TestTxsAvailable(t *testing.T) {
 }
 
 func TestSerialReap(t *testing.T) {
-	app := counter.NewCounterApplication(true)
+	app := counter.NewApplication(true)
 	app.SetOption(abci.RequestSetOption{Key: "serial", Value: "on"})
 	cc := proxy.NewLocalClientCreator(app)
 
@@ -380,7 +380,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// 3. Create the mempool
 	wcfg := cfg.DefaultConfig()
 	wcfg.Mempool.RootDir = rootDir
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithAppAndConfig(cc, wcfg)
 	defer cleanup()
@@ -421,7 +421,7 @@ func txMessageSize(tx types.Tx) int {
 }
 
 func TestMempoolMaxMsgSize(t *testing.T) {
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -472,7 +472,7 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 }
 
 func TestMempoolTxsBytes(t *testing.T) {
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	config := cfg.ResetTestRoot("mempool_test")
 	config.Mempool.MaxTxsBytes = 10
@@ -508,7 +508,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	}
 
 	// 6. zero after tx is rechecked and removed due to not being valid anymore
-	app2 := counter.NewCounterApplication(true)
+	app2 := counter.NewApplication(true)
 	cc = proxy.NewLocalClientCreator(app2)
 	mempool, cleanup = newMempoolWithApp(cc)
 	defer cleanup()
@@ -543,7 +543,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 // since otherwise we're not actually testing the concurrency of the mempool here!
 func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	cc, server := newRemoteApp(t, sockPath, app)
 	defer server.Stop()
 	config := cfg.ResetTestRoot("mempool_test")
