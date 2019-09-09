@@ -80,7 +80,7 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 func TestTrustMetricStoreConfig(t *testing.T) {
 	historyDB := dbm.NewDB("", "memdb", "")
 
-	config := TrustMetricConfig{
+	config := MetricConfig{
 		ProportionalWeight: 0.5,
 		IntegralWeight:     0.5,
 	}
