@@ -53,12 +53,11 @@ type WSClient struct {
 	// Support both ws and wss protocols
 	protocol string
 
-	reconnecting bool
-
 	wg sync.WaitGroup
 
 	mtx            sync.RWMutex
 	sentLastPingAt time.Time
+	reconnecting   bool
 
 	// Time allowed to write a message to the server. 0 means block until operation succeeds.
 	writeWait time.Duration
