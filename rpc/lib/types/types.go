@@ -90,20 +90,20 @@ func NewRPCRequest(id jsonrpcid, method string, params json.RawMessage) RPCReque
 	}
 }
 
-func (req RPCRequest) String() string {
-	return fmt.Sprintf("[%s %s]", req.ID, req.Method)
+func (request RPCRequest) String() string {
+	return fmt.Sprintf("[%s %s]", request.ID, request.Method)
 }
 
 func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
-	var params_ = make(map[string]json.RawMessage, len(params))
+	var rawParams = make(map[string]json.RawMessage, len(params))
 	for name, value := range params {
 		valueJSON, err := cdc.MarshalJSON(value)
 		if err != nil {
 			return RPCRequest{}, err
 		}
-		params_[name] = valueJSON
+		rawParams[name] = valueJSON
 	}
-	payload, err := json.Marshal(params_) // NOTE: Amino doesn't handle maps yet.
+	payload, err := json.Marshal(rawParams) // NOTE: Amino doesn't handle maps yet.
 	if err != nil {
 		return RPCRequest{}, err
 	}
@@ -112,15 +112,15 @@ func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[stri
 }
 
 func ArrayToRequest(cdc *amino.Codec, id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
-	var params_ = make([]json.RawMessage, len(params))
+	var rawParams = make([]json.RawMessage, len(params))
 	for i, value := range params {
 		valueJSON, err := cdc.MarshalJSON(value)
 		if err != nil {
 			return RPCRequest{}, err
 		}
-		params_[i] = valueJSON
+		rawParams[i] = valueJSON
 	}
-	payload, err := json.Marshal(params_) // NOTE: Amino doesn't handle maps yet.
+	payload, err := json.Marshal(rawParams) // NOTE: Amino doesn't handle maps yet.
 	if err != nil {
 		return RPCRequest{}, err
 	}
@@ -201,11 +201,11 @@ func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCRes
 	}
 }
 
-func (resp RPCResponse) String() string {
-	if resp.Error == nil {
-		return fmt.Sprintf("[%s %v]", resp.ID, resp.Result)
+func (response RPCResponse) String() string {
+	if response.Error == nil {
+		return fmt.Sprintf("[%s %v]", response.ID, response.Result)
 	}
-	return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
+	return fmt.Sprintf("[%s %s]", response.ID, response.Error)
 }
 
 func RPCParseError(id jsonrpcid, err error) RPCResponse {
