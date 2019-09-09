@@ -174,9 +174,9 @@ func computeMaxMinPriorityDiff(vals *ValidatorSet) int64 {
 	diff := max - min
 	if diff < 0 {
 		return -1 * diff
-	} else {
-		return diff
 	}
+
+	return diff
 }
 
 func (vals *ValidatorSet) getValWithMostPriority() *Validator {
