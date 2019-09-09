@@ -79,6 +79,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		if err != nil {
 			return nil, err
 		}
+
 		kp := merkle.KeyPath{}
 		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
 		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
@@ -86,17 +87,19 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 		if err != nil {
 			return nil, errors.Wrap(err, "Couldn't verify value proof")
 		}
-		return &ctypes.ResultABCIQuery{Response: resp}, nil
-	} else {
-		// Value absent
-		// Validate the proof against the certified header to ensure data integrity.
-		// XXX How do we encode the key into a string...
-		err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
-		if err != nil {
-			return nil, errors.Wrap(err, "Couldn't verify absence proof")
-		}
+
 		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	}
+
+	// Value absent
+	// Validate the proof against the certified header to ensure data integrity.
+	// XXX How do we encode the key into a string...
+	err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
+	if err != nil {
+		return nil, errors.Wrap(err, "Couldn't verify absence proof")
+	}
+
+	return &ctypes.ResultABCIQuery{Response: resp}, nil
 }
 
 func parseQueryStorePath(path string) (storeName string, err error) {
