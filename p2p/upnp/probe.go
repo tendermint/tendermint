@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-type UPNPCapabilities struct {
+type Capabilities struct {
 	PortMapping bool
 	Hairpin     bool
 }
@@ -81,7 +81,7 @@ func testHairpin(listener net.Listener, extAddr string, logger log.Logger) (supp
 	return
 }
 
-func Probe(logger log.Logger) (caps UPNPCapabilities, err error) {
+func Probe(logger log.Logger) (caps Capabilities, err error) {
 	logger.Info("Probing for UPnP!")
 
 	intPort, extPort := 8001, 8001
