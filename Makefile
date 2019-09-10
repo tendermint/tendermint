@@ -27,6 +27,10 @@ build:
 build_c:
 	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
 
+build_c-amazonlinux:
+	$(MAKE) -C ./DOCKER build_amazonlinux_buildimage
+	docker run --rm -it -v `pwd`:/tendermint tendermint/tendermint:build_c-amazonlinux
+
 build_race:
 	CGO_ENABLED=1 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
 
