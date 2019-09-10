@@ -146,7 +146,11 @@ func (s *Server) BufferCapacity() int {
 // outCapacity can be used to set a capacity for Subscription#Out channel (1 by
 // default). Panics if outCapacity is less than or equal to zero. If you want
 // an unbuffered channel, use SubscribeUnbuffered.
-func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, outCapacity ...int) (*Subscription, error) {
+func (s *Server) Subscribe(
+	ctx context.Context,
+	clientID string,
+	query Query,
+	outCapacity ...int) (*Subscription, error) {
 	outCap := 1
 	if len(outCapacity) > 0 {
 		if outCapacity[0] <= 0 {
