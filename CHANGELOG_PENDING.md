@@ -23,4 +23,4 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
-- [mempool] \#3968 `mempool` Memory Loading Error on 32-bit Ubuntu 16.04 Machine.
+- [mempool] \#3968 Fix memory loading error on 32-bit machines (@jon-certik)
