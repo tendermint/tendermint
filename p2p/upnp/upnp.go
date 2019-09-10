@@ -105,7 +105,7 @@ func Discover() (nat NAT, err error) {
 		}
 	}
 	err = errors.New("UPnP port discovery failed")
-	return
+	return nat, err
 }
 
 type Envelope struct {
@@ -241,7 +241,7 @@ func getServiceURL(rootURL string) (url, urnDomain string, err error) {
 	// Extract the domain name, which isn't always 'schemas-upnp-org'
 	urnDomain = strings.Split(d.ServiceType, ":")[1]
 	url = combineURL(rootURL, d.ControlURL)
-	return
+	return url, urnDomain, err
 }
 
 func combineURL(rootURL, subURL string) string {
@@ -285,7 +285,7 @@ func soapRequest(url, function, message, domain string) (r *http.Response, err e
 		r = nil
 		return
 	}
-	return
+	return r, err
 }
 
 type statusInfo struct {
@@ -322,7 +322,7 @@ func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
 		return
 	}
 
-	return
+	return info, err
 }
 
 // GetExternalAddress returns an external IP. If GetExternalIPAddress action
