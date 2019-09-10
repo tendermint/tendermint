@@ -22,3 +22,5 @@ program](https://hackerone.com/tendermint).
 - [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
 
 ### BUG FIXES:
+
+- [mempool] \#3968 `mempool` Memory Loading Error on 32-bit Ubuntu 16.04 Machine.
