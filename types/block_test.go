@@ -368,102 +368,64 @@ func TestCommitToVoteSet(t *testing.T) {
 	}
 }
 
-func TestCommitToVoteSetWithVotesForAnotherBlock(t *testing.T) {
-	lastID := makeBlockIDRandom()
+func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
+	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
+	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
+	blockID3 := makeBlockID([]byte("blockhash3"), 10000, []byte("partshash"))
+
 	height := int64(3)
 	round := 1
-	numValidators := 10
 
-	voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, numValidators, 1)
-
-	// > 2/3 sign for this block
-	numBlockValidators := numValidators*2/3 + 1
-	for i := 0; i < numBlockValidators; i++ {
-		addr := vals[i].GetPubKey().Address()
-		vote := &Vote{
-			ValidatorAddress: addr,
-			ValidatorIndex:   i,
-			Height:           height - 1,
-			Round:            round,
-			Type:             PrecommitType,
-			BlockID:          lastID,
-			Timestamp:        tmtime.Now(),
-		}
-
-		_, err := signAddVote(vals[i], vote, voteSet)
-		assert.NoError(t, err)
+	type commitVoteTest struct {
+		blockIDs      []BlockID
+		numVotes      []int // must sum to numValidators
+		numValidators int
+		valid         bool
 	}
 
-	// 1/3 vote for different blocks
-	for i := numBlockValidators; i < numValidators; i++ {
-		addr := vals[i].GetPubKey().Address()
-		vote := &Vote{
-			ValidatorAddress: addr,
-			ValidatorIndex:   i,
-			Height:           height - 1,
-			Round:            round,
-			Type:             PrecommitType,
-			BlockID:          makeBlockIDRandom(),
-			Timestamp:        tmtime.Now(),
-		}
-
-		_, err := signAddVote(vals[i], vote, voteSet)
-		assert.NoError(t, err)
-	}
-	commit := voteSet.MakeCommit()
-	assert.NotNil(t, commit)
-
-	err := valSet.VerifyCommit(voteSet.ChainID(), lastID, height-1, commit)
-	assert.Nil(t, err)
-}
-
-func TestCommitWithNilVotes(t *testing.T) {
-	lastID := makeBlockIDRandom()
-	height := int64(3)
-	round := 1
-	numValidators := 10
-
-	voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, numValidators, 1)
-
-	// > 2/3 sign for this block
-	numBlockValidators := numValidators*2/3 + 1
-	for i := 0; i < numBlockValidators; i++ {
-		addr := vals[i].GetPubKey().Address()
-		vote := &Vote{
-			ValidatorAddress: addr,
-			ValidatorIndex:   i,
-			Height:           height - 1,
-			Round:            round,
-			Type:             PrecommitType,
-			BlockID:          lastID,
-			Timestamp:        tmtime.Now(),
-		}
-
-		_, err := signAddVote(vals[i], vote, voteSet)
-		assert.NoError(t, err)
+	testCases := []commitVoteTest{
+		commitVoteTest{
+			[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true,
+		}, commitVoteTest{
+			[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true,
+		}, commitVoteTest{
+			[]BlockID{blockID, BlockID{}}, []int{67, 33}, 100, true, // nil votes
+		},
+		// NOTE: testing the "false" cases is challenging because MakeCommit() panics without > 2/3 valid votes
 	}
 
-	// 1/3 vote for a nil block
-	for i := numBlockValidators; i < numValidators; i++ {
-		addr := vals[i].GetPubKey().Address()
-		vote := &Vote{
-			ValidatorAddress: addr,
-			ValidatorIndex:   i,
-			Height:           height - 1,
-			Round:            round,
-			Type:             PrecommitType,
-			BlockID:          BlockID{}, // "nil"
-			Timestamp:        tmtime.Now(),
+	for _, tc := range testCases {
+		voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, tc.numValidators, 1)
+
+		vi := 0
+		for n := range tc.blockIDs {
+			for i := 0; i < tc.numVotes[n]; i++ {
+				addr := vals[vi].GetPubKey().Address()
+				vote := &Vote{
+					ValidatorAddress: addr,
+					ValidatorIndex:   vi,
+					Height:           height - 1,
+					Round:            round,
+					Type:             PrecommitType,
+					BlockID:          tc.blockIDs[n],
+					Timestamp:        tmtime.Now(),
+				}
+
+				_, err := signAddVote(vals[vi], vote, voteSet)
+				assert.NoError(t, err)
+				vi++
+			}
+		}
+		commit := voteSet.MakeCommit() // panics without > 2/3 valid votes
+		if tc.valid {
+			assert.NotNil(t, commit)
 		}
 
-		_, err := signAddVote(vals[i], vote, voteSet)
-		assert.NoError(t, err)
+		err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, commit)
+		if tc.valid {
+			assert.Nil(t, err)
+		}
 	}
-	commit := voteSet.MakeCommit()
-	assert.NotNil(t, commit)
-
-	err := valSet.VerifyCommit(voteSet.ChainID(), lastID, height-1, commit)
-	assert.Nil(t, err)
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {
