@@ -384,14 +384,12 @@ func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
 	}
 
 	testCases := []commitVoteTest{
-		{
-			[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true,
-		}, {
-			[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true,
-		}, {
-			[]BlockID{blockID, {}}, []int{67, 33}, 100, true, // nil votes
-		},
-		// NOTE: testing the "false" cases is challenging because MakeCommit() panics without > 2/3 valid votes
+		{[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true},
+		{[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true},
+		{[]BlockID{blockID, blockID2, blockID3}, []int{1, 1, 1}, 3, false},
+		{[]BlockID{blockID, blockID2, blockID3}, []int{3, 1, 1}, 5, false},
+		{[]BlockID{blockID, {}}, []int{67, 33}, 100, true},
+		{[]BlockID{blockID, blockID2, {}}, []int{10, 5, 5}, 20, false},
 	}
 
 	for _, tc := range testCases {
@@ -416,14 +414,13 @@ func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
 				vi++
 			}
 		}
-		commit := voteSet.MakeCommit() // panics without > 2/3 valid votes
 		if tc.valid {
+			commit := voteSet.MakeCommit() // panics without > 2/3 valid votes
 			assert.NotNil(t, commit)
-		}
-
-		err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, commit)
-		if tc.valid {
+			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, commit)
 			assert.Nil(t, err)
+		} else {
+			assert.Panics(t, func() { voteSet.MakeCommit() })
 		}
 	}
 }
