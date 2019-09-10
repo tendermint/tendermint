@@ -559,7 +559,7 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 	// exactly same vote
 	vote2 = deepcpVote(vote)
 	fakes[41] = newEvidence(t, val, vote, vote2, chainID)
-	return
+	return ev, fakes
 }
 
 func TestBroadcastEvidenceDuplicateVote(t *testing.T) {

@@ -564,7 +564,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	for i := 0; i < N; i++ {
 		peerID := mrand.Intn(maxPeers)
 		txNum := mrand.Intn(nTxs)
-		tx := txs[int(txNum)]
+		tx := txs[txNum]
 
 		// this will err with ErrTxInCache many times ...
 		mempool.CheckTxWithInfo(tx, nil, TxInfo{SenderID: uint16(peerID)})
