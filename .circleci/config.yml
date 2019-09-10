@@ -32,8 +32,7 @@ commands:
       - run:
           name: "Running test"
           command: |
-            export BINDIR=/tmp/bin
-            bash << parameters.script_path >>
+            bash export BINDIR=/tmp/bin && << parameters.script_path >>
 
 jobs:
   setup_dependencies:
@@ -71,6 +70,7 @@ jobs:
           root: "/tmp/bin"
           paths:
             - "."
+
   test_abci_apps:
     executor: golang
     steps:
