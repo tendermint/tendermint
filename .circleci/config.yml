@@ -4,6 +4,7 @@ executors:
   golang:
     docker:
       - image: circleci/golang
+    working_directory: /go/src/github.com/tendermint/tendermint
     environment:
       GOBIN: /tmp/bin
   release:
