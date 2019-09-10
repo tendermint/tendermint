@@ -97,7 +97,7 @@ does increase the block size unecessarily (20-bytes per validator), it has some 
 - Easy to see directly in a commit which validators signed what without having
   to fetch the validator set
 
-If and when we change the CommitSig again, for instance to remove the timestamp,
+If and when we change the `CommitSig` again, for instance to remove the timestamp,
 we can reconsider whether the ValidatorAddress should be removed.
 
 **Absent Votes**: we include absent votes explicitly with no Signature or
