@@ -18,6 +18,11 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 )
 
+const (
+	testKey   = "abc"
+	testValue = "def"
+)
+
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
 	req := types.RequestDeliverTx{Tx: tx}
 	ar := app.DeliverTx(req)
@@ -46,12 +51,12 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 
 func TestKVStoreKV(t *testing.T) {
 	kvstore := NewKVStoreApplication()
-	key := "abc"
+	key := testKey
 	value := key
 	tx := []byte(key)
 	testKVStore(t, kvstore, tx, key, value)
 
-	value = "def"
+	value = testValue
 	tx = []byte(key + "=" + value)
 	testKVStore(t, kvstore, tx, key, value)
 }
@@ -62,12 +67,12 @@ func TestPersistentKVStoreKV(t *testing.T) {
 		t.Fatal(err)
 	}
 	kvstore := NewPersistentKVStoreApplication(dir)
-	key := "abc"
+	key := testKey
 	value := key
 	tx := []byte(key)
 	testKVStore(t, kvstore, tx, key, value)
 
-	value = "def"
+	value = testValue
 	tx = []byte(key + "=" + value)
 	testKVStore(t, kvstore, tx, key, value)
 }
@@ -90,7 +95,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	height = int64(1)
 	hash := []byte("foo")
 	header := types.Header{
-		Height: int64(height),
+		Height: height,
 	}
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
 	kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
@@ -272,12 +277,12 @@ func TestClientServer(t *testing.T) {
 
 func runClientTests(t *testing.T, client abcicli.Client) {
 	// run some tests....
-	key := "abc"
+	key := testKey
 	value := key
 	tx := []byte(key)
 	testClient(t, client, tx, key, value)
 
-	value = "def"
+	value = testValue
 	tx = []byte(key + "=" + value)
 	testClient(t, client, tx, key, value)
 }
