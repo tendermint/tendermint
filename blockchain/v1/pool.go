@@ -191,7 +191,7 @@ func (pool *BlockPool) makeRequestBatch(maxNumRequests int) []int {
 	// - FSM timed out on waiting to advance the block execution due to missing blocks at h or h+1
 	// Determine the number of requests needed by subtracting the number of requests already made from the maximum
 	// allowed
-	numNeeded := int(maxNumRequests) - len(pool.blocks)
+	numNeeded := maxNumRequests - len(pool.blocks)
 	for len(pool.plannedRequests) < numNeeded {
 		if pool.nextRequestHeight > pool.MaxPeerHeight {
 			break

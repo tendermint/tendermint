@@ -74,8 +74,8 @@ func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 
 	bz := new(bytes.Buffer)
 	// Wrap <op.Key, vhash> to hash the KVPair.
-	encodeByteSlice(bz, []byte(op.key)) // does not error
-	encodeByteSlice(bz, []byte(vhash))  // does not error
+	encodeByteSlice(bz, op.key) // does not error
+	encodeByteSlice(bz, vhash)  // does not error
 	kvhash := leafHash(bz.Bytes())
 
 	if !bytes.Equal(kvhash, op.Proof.LeafHash) {

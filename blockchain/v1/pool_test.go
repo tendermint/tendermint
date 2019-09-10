@@ -77,10 +77,10 @@ func makeBlockPool(bcr *testBcR, height int64, peers []BpPeer, blocks map[int64]
 	bPool.MaxPeerHeight = maxH
 	for h, p := range blocks {
 		bPool.blocks[h] = p.id
-		bPool.peers[p.id].RequestSent(int64(h))
+		bPool.peers[p.id].RequestSent(h)
 		if p.create {
 			// simulate that a block at height h has been received
-			_ = bPool.peers[p.id].AddBlock(types.MakeBlock(int64(h), txs, nil, nil), 100)
+			_ = bPool.peers[p.id].AddBlock(types.MakeBlock(h, txs, nil, nil), 100)
 		}
 	}
 	return bPool
