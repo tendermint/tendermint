@@ -384,7 +384,7 @@ func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
 	}
 
 	testCases := []commitVoteTest{
-		commitVoteTest{
+		{
 			[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true,
 		}, commitVoteTest{
 			[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true,
