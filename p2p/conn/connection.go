@@ -803,7 +803,7 @@ func (ch *Channel) isSendPending() bool {
 // Not goroutine-safe
 func (ch *Channel) nextPacketMsg() PacketMsg {
 	packet := PacketMsg{}
-	packet.ChannelID = byte(ch.desc.ID)
+	packet.ChannelID = ch.desc.ID
 	maxSize := ch.maxPacketMsgPayloadSize
 	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
