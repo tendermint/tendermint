@@ -111,7 +111,7 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return cmn.Connect(addr)
 }
 
-func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
+func testGRPCSync(t *testing.T, app types.Application) {
 	numDeliverTxs := 2000
 
 	// Start the listener
