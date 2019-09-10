@@ -4,17 +4,36 @@ executors:
   golang:
     docker:
       - image: circleci/golang
-    environment:
-      GOBIN: /go/bin
   release:
     machine: true
+  docs:
+    docker:
+      - image: tendermintdev/jq_curl
+    environment:
+      AWS_REGION: us-east-1
 
-docs_update_config: &docs_update_config
-  working_directory: ~/repo
-  docker:
-    - image: tendermintdev/jq_curl
-  environment:
-    AWS_REGION: us-east-1
+commands:
+  run_test:
+    parameters:
+      script_path:
+        type: string
+    steps:
+      - attach_workspace:
+          at: /tmp/bin
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
+      - checkout
+      - restore_cache:
+          name: "Restore go modules cache"
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
+      - run:
+          name: "Running test"
+          command: |
+            export BINDIR=/tmp/bin
+            bash << parameters.script_path >>
 
 jobs:
   setup_dependencies:
@@ -24,7 +43,7 @@ jobs:
       - restore_cache:
           name: "Restore go modules cache"
           keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
+            - go-mod-v1-{{ checksum "go.sum" }}
       - run:
           name: Cache go modules
           command: make go-mod-cache
@@ -35,71 +54,48 @@ jobs:
           name: "Build binaries"
           command: make install install_abci
       - save_cache:
-          name: "Save go modules and binaries cache"
-          key: go-mod-v2-{{ checksum "go.sum" }}
+          name: "Save go modules cache"
+          key: go-mod-v1-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
-            - "/go/bin"
       - save_cache:
           name: "Save source code cache"
           key: go-src-v1-{{ .Revision }}
           paths:
             - ".git"
-
+      - run:
+          command: |
+            mkdir -p /tmp/bin
+            cp -r /go/bin/* /tmp/bin
+      - persist_to_workspace:
+          root: "/tmp/bin"
+          paths:
+            - "."
   test_abci_apps:
     executor: golang
     steps:
-     - restore_cache:
-         name: "Restore source code cache"
-         keys:
-           - go-src-v1-{{ .Revision }}
-     - checkout
-     - restore_cache:
-         name: "Restore go module cache"
-         keys:
-           - go-mod-v2-{{ checksum "go.sum" }}
-     - run:
-          name: Run abci apps tests
-          command: |
-            export PATH="$GOBIN:$PATH"
-            bash abci/tests/test_app/test.sh
+      - run_test:
+          script_path: abci/tests/test_app/test.sh
 
   # if this test fails, fix it and update the docs at:
   # https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.md
   test_abci_cli:
     executor: golang
     steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - restore_cache:
-          name: "Restore go module cache"
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - run:
-          name: Run abci-cli tests
-          command: |
-            export PATH="$GOBIN:$PATH"
-            bash abci/tests/test_cli/test.sh
+      - run_test:
+          script_path: abci/tests/test_cli/test.sh
 
   test_apps:
     executor: golang
     steps:
-     - restore_cache:
-         name: "Restore source code cache"
-         keys:
-           - go-src-v1-{{ .Revision }}
-     - checkout
-     - restore_cache:
-         name: "Restore go module cache"
-         keys:
-           - go-mod-v2-{{ checksum "go.sum" }}
-     - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
-     - run:
-         name: "Run tests"
-         command: bash test/app/test.sh
+      - run_test:
+          script_path: test/app/test.sh
+
+  test_persistence:
+    executor: golang
+    steps:
+      - run_test:
+          script_path: test/persist/test_failure_indices.sh
 
   test_cover:
     executor: golang
@@ -130,22 +126,6 @@ jobs:
             - "profiles/*"
       - store_artifacts:
           path: /tmp/logs
-
-  test_persistence:
-    executor: golang
-    steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - restore_cache:
-          name: "Restore go module cache"
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - run:
-          name: Run tests
-          command: bash test/persist/test_failure_indices.sh
 
   localnet:
     working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
@@ -220,7 +200,7 @@ jobs:
           command: bash .circleci/codecov.sh -f coverage.txt
 
   deploy_docs:
-    <<: *docs_update_config
+    executor: docs
     steps:
       - restore_cache:
           name: "Restore source code cache"
