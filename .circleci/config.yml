@@ -4,6 +4,8 @@ executors:
   golang:
     docker:
       - image: circleci/golang
+    environment:
+      BINDIR: /tmp/bin
   release:
     machine: true
   docs:
@@ -32,7 +34,7 @@ commands:
       - run:
           name: "Running test"
           command: |
-            bash export BINDIR=/tmp/bin && << parameters.script_path >>
+            bash << parameters.script_path >>
 
 jobs:
   setup_dependencies:
