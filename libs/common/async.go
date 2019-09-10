@@ -148,14 +148,14 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 				}
 			}()
 			// Run the task.
-			var val, err, abort = task(i)
+			var val, abort, err = task(i)
 			// Send val/err to taskResultCh.
 			// NOTE: Below this line, nothing must panic/
-			taskResultCh <- TaskResult{val, abort}
+			taskResultCh <- TaskResult{val, err}
 			// Closing taskResultCh lets trs.Wait() work.
 			close(taskResultCh)
 			// Decrement waitgroup.
-			taskDoneCh <- err
+			taskDoneCh <- abort
 		}(i, task, taskResultCh)
 	}
 
