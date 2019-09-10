@@ -16,7 +16,7 @@ type UPNPCapabilities struct {
 func makeUPNPListener(intPort int, extPort int, logger log.Logger) (NAT, net.Listener, net.IP, error) {
 	nat, err := Discover()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("nAT upnp could not be discovered: %v", err)
+		return nil, nil, nil, fmt.Errorf("nat upnp could not be discovered: %v", err)
 	}
 	logger.Info(fmt.Sprintf("ourIP: %v", nat.(*upnpNAT).ourIP))
 

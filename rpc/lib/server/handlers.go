@@ -615,7 +615,7 @@ func (wsc *wsConnection) readRoutine() {
 		if r := recover(); r != nil {
 			err, ok := r.(error)
 			if !ok {
-				err = fmt.Errorf("wSJSONRPC: %v", r)
+				err = fmt.Errorf("ws json-rpc: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
 			wsc.WriteRPCResponse(types.RPCInternalError(types.JSONRPCStringID("unknown"), err))

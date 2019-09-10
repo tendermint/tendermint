@@ -41,7 +41,7 @@ func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
 		return JSONRPCIntID(int(id)), nil
 	default:
 		typ := reflect.TypeOf(id)
-		return nil, fmt.Errorf("jSON-RPC ID (%v) is of unknown type (%v)", id, typ)
+		return nil, fmt.Errorf("json-rpc ID (%v) is of unknown type (%v)", id, typ)
 	}
 }
 
