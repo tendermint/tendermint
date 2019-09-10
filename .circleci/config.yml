@@ -5,7 +5,7 @@ executors:
     docker:
       - image: circleci/golang
     environment:
-      BINDIR: /tmp/bin
+      GOBIN: /tmp/bin
   release:
     machine: true
   docs:
@@ -46,6 +46,9 @@ jobs:
           keys:
             - go-mod-v1-{{ checksum "go.sum" }}
       - run:
+          command: |
+            mkdir -p /tmp/bin
+      - run:
           name: Cache go modules
           command: make go-mod-cache
       - run:
@@ -64,10 +67,6 @@ jobs:
           key: go-src-v1-{{ .Revision }}
           paths:
             - ".git"
-      - run:
-          command: |
-            mkdir -p /tmp/bin
-            cp -r /go/bin/* /tmp/bin
       - persist_to_workspace:
           root: "/tmp/bin"
           paths:
