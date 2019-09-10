@@ -9,12 +9,6 @@ executors:
       GOBIN: /tmp/bin
   release:
     machine: true
-  p2p:
-    machine:
-      image: circleci/classic:latest
-    environment:
-      GOBIN: /tmp/bin
-      GOPATH: /go
   docs:
     docker:
       - image: tendermintdev/jq_curl
@@ -156,7 +150,11 @@ jobs:
             ./scripts/localnet-blocks-test.sh 40 5 10 localhost
 
   test_p2p:
-    executor: p2p
+    environment:
+      GOBIN: /home/circleci/.go_workspace/bin
+      GOPATH: /home/circleci/.go_workspace
+    machine:
+      image: circleci/classic:latest
     steps:
       - restore_cache:
           name: "Restore source code cache"
@@ -164,6 +162,7 @@ jobs:
             - go-src-v1-{{ .Revision }}
       - checkout
       - run: mkdir -p $GOPATH/src/github.com/tendermint
+      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
       - run: bash test/p2p/circleci.sh
       - store_artifacts:
           path: /home/circleci/project/test/p2p/logs
