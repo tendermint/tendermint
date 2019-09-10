@@ -28,7 +28,8 @@ build_c:
 	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
 
 # Runs `make build_c` from within an Amazon Linux (v2)-based Docker build
-# container in order to build an Amazon Linux-compatible binary.
+# container in order to build an Amazon Linux-compatible binary. Produces a
+# compatible binary at ./build/tendermint
 build_c-amazonlinux:
 	$(MAKE) -C ./DOCKER build_amazonlinux_buildimage
 	docker run --rm -it -v `pwd`:/tendermint tendermint/tendermint:build_c-amazonlinux
