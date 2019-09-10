@@ -769,7 +769,7 @@ forLoop:
 	for i := 0; i < int(numBlocks); i++ {
 
 		// Add the makeRequestEv step periodically.
-		if maxRequestsPerPeer == 0 {
+		if i%maxRequestsPerPeer == 0 {
 			testSteps = append(
 				testSteps,
 				sMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
