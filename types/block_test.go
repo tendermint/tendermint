@@ -388,8 +388,8 @@ func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
 			[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true,
 		}, {
 			[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true,
-		}, commitVoteTest{
-			[]BlockID{blockID, BlockID{}}, []int{67, 33}, 100, true, // nil votes
+		}, {
+			[]BlockID{blockID, {}}, []int{67, 33}, 100, true, // nil votes
 		},
 		// NOTE: testing the "false" cases is challenging because MakeCommit() panics without > 2/3 valid votes
 	}
