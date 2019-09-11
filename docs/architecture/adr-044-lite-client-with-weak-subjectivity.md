@@ -305,7 +305,7 @@ Accepted.
 
 ### Positive
 
-* light client which is safe to use (it can go offline, but not for too long)
+* light client which is safe to use
 
 ### Negative
 
@@ -313,5 +313,7 @@ Accepted.
 
 ### Neutral
 
-* social consensus can be prone to errors (for cases where a new light client
-  joins a network or it has been offline for too long)
+* if the light client has been offline for `duration > TrustPeriod`, a user
+  will have to reinitialize it
+* evidence propagation delay prevents the light client from immediately
+  trusting the new header
