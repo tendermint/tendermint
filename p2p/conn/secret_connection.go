@@ -188,7 +188,7 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 			return n, err
 		}
 	}
-	return
+	return n, err
 }
 
 // CONTRACT: data smaller than dataMaxSize is read atomically.
@@ -234,7 +234,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 		sc.recvBuffer = make([]byte, len(chunk)-n)
 		copy(sc.recvBuffer, chunk[n:])
 	}
-	return
+	return n, err
 }
 
 // Implements net.Conn

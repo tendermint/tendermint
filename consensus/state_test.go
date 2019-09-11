@@ -189,7 +189,7 @@ func TestStateBadProposal(t *testing.T) {
 	if len(stateHash) == 0 {
 		stateHash = make([]byte, 32)
 	}
-	stateHash[0] = byte((stateHash[0] + 1) % 255)
+	stateHash[0] = (stateHash[0] + 1) % 255
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
@@ -364,7 +364,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	// lets add one for a different block
 	hash := make([]byte, len(theBlockHash))
 	copy(hash, theBlockHash)
-	hash[0] = byte((hash[0] + 1) % 255)
+	hash[0] = (hash[0] + 1) % 255
 	signAddVotes(cs1, types.PrecommitType, hash, thePartSetHeader, vs2)
 	ensurePrecommit(voteCh, height, round) // precommit
 
