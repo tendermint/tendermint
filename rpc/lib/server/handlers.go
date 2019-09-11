@@ -377,9 +377,9 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 		rv, err := jsonStringToArg(cdc, rt, qarg)
 		if err != nil {
 			return rv, err, false
-		} else {
-			return rv, nil, true
 		}
+
+		return rv, nil, true
 	}
 
 	if isHexString {
@@ -397,7 +397,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 		if rt.Kind() == reflect.String {
 			return reflect.ValueOf(string(value)), nil, true
 		}
-		return reflect.ValueOf([]byte(value)), nil, true
+		return reflect.ValueOf(value), nil, true
 	}
 
 	if isQuotedString && expectingByteSlice {
