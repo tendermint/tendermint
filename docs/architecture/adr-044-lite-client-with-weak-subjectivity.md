@@ -62,9 +62,6 @@ type TrustOptions struct {
 	// Should be equal to the unbonding period minus some delta for evidence reporting.
 	TrustPeriod time.Duration `json:"trust-period"`
 
-	// Required: validator whom we've got the TrustHeight/Hash from
-	ValidatorPubKey crypto.PubKey `json:"validator-pubkey"`
-
 	// Option 1: TrustHeight and TrustHash can both be provided
 	// to force the trusting of a particular height and hash.
 	// If the latest trusted height/hash is more recent, then this option is
