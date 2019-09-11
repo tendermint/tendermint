@@ -19,4 +19,9 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
+
 ### BUG FIXES:
+
+- [consensus] \#3908 Wait `timeout_commit` to pass even if `create_empty_blocks` is `false`
+- [mempool] \#3968 Fix memory loading error on 32-bit machines (@jon-certik)

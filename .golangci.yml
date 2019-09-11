@@ -9,14 +9,10 @@ linters:
     - maligned
     - errcheck
     - interfacer
-    - unconvert
-    - goconst
     - unparam
-    - nakedret
     - lll
     - gochecknoglobals
     - gochecknoinits
-    - scopelint
     - stylecheck
 # linters-settings:
 #   govet:
@@ -29,9 +25,6 @@ linters:
 #     suggest-new: true
 #   dupl:
 #     threshold: 100
-#   goconst:
-#     min-len: 2
-#     min-occurrences: 2
 #   depguard:
 #     list-type: blacklist
 #     packages:
