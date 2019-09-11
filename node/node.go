@@ -996,8 +996,8 @@ func (n *Node) PEXReactor() *pex.Reactor {
 	return n.pexReactor
 }
 
-// Pool returns the Node's Pool.
-func (n *Node) Pool() *evidence.Pool {
+// EvidencePool returns the Node's EvidencePool.
+func (n *Node) EvidencePool() *evidence.Pool {
 	return n.evidencePool
 }
 

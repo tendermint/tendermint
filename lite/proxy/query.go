@@ -96,7 +96,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 	// XXX How do we encode the key into a string...
 	err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
 	if err != nil {
-		return nil, errors.Wrap(err, "Couldn't verify absence proof")
+		return nil, errors.Wrap(err, "couldn't verify absence proof")
 	}
 
 	return &ctypes.ResultABCIQuery{Response: resp}, nil

@@ -1,5 +1,5 @@
 syntax = "proto3";
-package core_grpc;
+package coregrpc;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/tendermint/tendermint/abci/types/types.proto";

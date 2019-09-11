@@ -104,7 +104,7 @@ func Discover() (nat NAT, err error) {
 			return
 		}
 	}
-	err = errors.New("uPnP port discovery failed")
+	err = errors.New("upnp port discovery failed")
 	return
 }
 
