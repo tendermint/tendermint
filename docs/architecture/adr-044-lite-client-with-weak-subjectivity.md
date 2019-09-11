@@ -11,11 +11,12 @@ The concept of light clients was introduced in the Bitcoin white paper. It
 describes a watcher of distributed consensus process that only validates the
 consensus algorithm and not the state machine transactions within.
 
-Tendermint light clients allow bandwidth & compute-constrained devices, such as smartphones, low-power embedded chips, or other blockchains to
-efficiently verify the consensus of a Tendermint blockchain. This forms the
-basis of safe and efficient state synchronization for new network nodes and
-inter-blockchain communication (where a light client of one Tendermint instance
-runs in another chain's state machine).
+Tendermint light clients allow bandwidth & compute-constrained devices, such as
+smartphones, low-power embedded chips, or other blockchains to efficiently
+verify the consensus of a Tendermint blockchain. This forms the basis of safe
+and efficient state synchronization for new network nodes and inter-blockchain
+communication (where a light client of one Tendermint instance runs in another
+chain's state machine).
 
 In a network that is expected to reliably punish validators for misbehavior
 by slashing bonded stake and where the validator set changes
@@ -24,7 +25,8 @@ synchronize a lite client without downloading the intervening headers.
 
 Light clients (and full nodes) operating in the Proof Of Stake context need a
 trusted block height from a trusted source that is no older than 1 unbonding
-window plus a configurable evidence submission synchrony bound. This is called “weak subjectivity”.
+window plus a configurable evidence submission synchrony bound. This is called
+“weak subjectivity”.
 
 Weak subjectivity is required in Proof of Stake blockchains because it is
 costless for an attacker to buy up voting keys that are no longer bonded and
@@ -61,7 +63,7 @@ type TrustOptions struct {
 	TrustPeriod time.Duration `json:"trust-period"`
 
 	// Required: validator whom we've got the TrustHeight/Hash from
-	ValidatorAddress types.Address `json:"validator-address"`
+	ValidatorPubKey crypto.PubKey `json:"validator-pubkey"`
 
 	// Option 1: TrustHeight and TrustHash can both be provided
 	// to force the trusting of a particular height and hash.
@@ -129,7 +131,7 @@ Check out the formal specification
 
 There are two primary modes of usage right now:
 
-1) Trusted RPC proxy (wrapping multiple RPC clients + verification)
+1) Trusted RPC proxy (wrapping an RPC client + verification)
 2) Part of the IBC light client (only verification bit, no RPC) [spec](https://github.com/cosmos/ics/tree/master/spec/ics-002-client-semantics)
 
 First, we'll need something, which will provide us secure headers & validator sets.
@@ -137,7 +139,10 @@ First, we'll need something, which will provide us secure headers & validator se
 ```go
 type Provider interface {
 	// 0 - latest
-	GetFullCommit(height int64) (FullCommit, error)
+	SignedHeader(height int64) (SignedHeader, error)
+
+  // 0 - latest
+  Validators(height int64) (ValidatorSet, error)
 }
 ```
 
@@ -164,14 +169,14 @@ type Verifier struct {
 	mode       mode
 	trustLevel float
 
-	// Source of new FullCommit(s).
+	// Source of new headers.
 	source Provider
 
 	// Alternative sources for checking the primary for misbehavior by comparing data.
 	// If the primary misbehaves, we report the evidence to them.
 	verifiers []ProviderAndEvidenceReporter
 
-	// Where trusted FullCommit(s) are stored.
+	// Where trusted headers are stored.
 	trusted PersistentProvider
 }
 ```
@@ -272,16 +277,7 @@ require.NoError(t, err)
 light client should also be able to submit evidence of malfeasance and handle
 evidence coming from a full node or another source.
 
-We'll need to add evidence to `FullCommit`.
-
-```go
-type FullCommit struct {
-	SignedHeader   types.SignedHeader  `json:"signed_header"`
-	Validators     *types.ValidatorSet `json:"validator_set"`
-	NextValidators *types.ValidatorSet `json:"next_validator_set"`
-	Evidence       types.EvidenceList  `json:"evidence"`
-}
-```
+We'll need to add `Evidence(height int64)` func to `Provider` interface.
 
 When/if evidence is received, client should check it and disconnect from the
 node if `evidence.Address == TrustOptions.ValidatorAddress`. It's unwise to
