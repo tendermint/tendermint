@@ -86,7 +86,7 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 	require.Nil(tb, trs.FirstError())
 	require.True(tb, ok, "Unexpected task abortion")
 
-	return
+	return fooSecConn, barSecConn
 }
 
 func TestSecretConnectionHandshake(t *testing.T) {
