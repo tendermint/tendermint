@@ -53,8 +53,8 @@ type CListMempool struct {
 
 	// Atomic integers
 	height     int64 // the last block Update()'d to
-	rechecking int32 // for re-checking filtered txs on Update()
 	txsBytes   int64 // total size of mempool, in bytes
+	rechecking int32 // for re-checking filtered txs on Update()
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.

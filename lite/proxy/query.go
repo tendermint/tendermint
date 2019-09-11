@@ -29,7 +29,7 @@ func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rp
 	}
 
 	res, err := GetWithProofOptions(prt, "/key", key,
-		rpcclient.ABCIQueryOptions{Height: int64(reqHeight), Prove: true},
+		rpcclient.ABCIQueryOptions{Height: reqHeight, Prove: true},
 		node, cert)
 	if err != nil {
 		return

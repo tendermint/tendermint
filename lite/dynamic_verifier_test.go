@@ -13,6 +13,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
+const testChainID = "inquiry-test"
+
 func TestInquirerValidPath(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	trust := NewDBProvider("trust", dbm.NewMemDB())
@@ -24,7 +26,7 @@ func TestInquirerValidPath(t *testing.T) {
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
-	chainID := "inquiry-test"
+	chainID := testChainID
 	consHash := []byte("params")
 	resHash := []byte("results")
 	count := 50
@@ -146,7 +148,7 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
-	chainID := "inquiry-test"
+	chainID := testChainID
 	count := 10
 	consHash := []byte("special-params")
 	fcz := make([]FullCommit, count)
@@ -229,7 +231,7 @@ func TestConcurrencyInquirerVerify(t *testing.T) {
 	nkeys := keys.Extend(1)
 
 	// Construct a bunch of commits, each with one more height than the last.
-	chainID := "inquiry-test"
+	chainID := testChainID
 	count := 10
 	consHash := []byte("special-params")
 	fcz := make([]FullCommit, count)
