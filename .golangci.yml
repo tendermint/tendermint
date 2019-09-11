@@ -16,7 +16,6 @@ linters:
     - lll
     - gochecknoglobals
     - gochecknoinits
-    - scopelint
     - stylecheck
 # linters-settings:
 #   govet:
