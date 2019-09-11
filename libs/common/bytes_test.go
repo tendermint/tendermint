@@ -40,6 +40,7 @@ func TestJSONMarshal(t *testing.T) {
 	}
 
 	for i, tc := range cases {
+		tc := tc
 		t.Run(fmt.Sprintf("Case %d", i), func(t *testing.T) {
 			ts := TestStruct{B1: tc.input, B2: tc.input}
 
