@@ -175,6 +175,13 @@ build-linux: tools
 build-docker-localnode:
 	@cd networks/local && make
 
+# Runs `make build_c` from within an Amazon Linux (v2)-based Docker build
+# container in order to build an Amazon Linux-compatible binary. Produces a
+# compatible binary at ./build/tendermint
+build_c-amazonlinux:
+	$(MAKE) -C ./DOCKER build_amazonlinux_buildimage
+	docker run --rm -it -v `pwd`:/tendermint tendermint/tendermint:build_c-amazonlinux
+
 # Run a 4-node testnet locally
 localnet-start: localnet-stop build-docker-localnode
 	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2; fi
@@ -226,4 +233,5 @@ contract-tests:
 .PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
  	get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt rpc-docs build-linux localnet-start \
  	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all \
- 	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests
+ 	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
+	build_c-amazonlinux
