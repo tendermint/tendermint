@@ -17,11 +17,11 @@ type GRPCServer struct {
 	listener net.Listener
 	server   *grpc.Server
 
-	app types.Application
+	app types.ABCIApplicationServer
 }
 
 // NewGRPCServer returns a new gRPC ABCI server
-func NewGRPCServer(protoAddr string, app types.Application) cmn.Service {
+func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) cmn.Service {
 	proto, addr := cmn.ProtocolAndAddress(protoAddr)
 	s := &GRPCServer{
 		proto:    proto,
