@@ -27,6 +27,13 @@ build:
 build_c:
 	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
 
+# Runs `make build_c` from within an Amazon Linux (v2)-based Docker build
+# container in order to build an Amazon Linux-compatible binary. Produces a
+# compatible binary at ./build/tendermint
+build_c-amazonlinux:
+	$(MAKE) -C ./DOCKER build_amazonlinux_buildimage
+	docker run --rm -it -v `pwd`:/tendermint tendermint/tendermint:build_c-amazonlinux
+
 build_race:
 	CGO_ENABLED=1 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
 
@@ -327,4 +334,4 @@ contract-tests:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race build_abci dist install install_abci check_tools get_tools update_tools draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests
+.PHONY: check build build_race build_abci dist install install_abci check_tools get_tools update_tools draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests build_c-amazonlinux
