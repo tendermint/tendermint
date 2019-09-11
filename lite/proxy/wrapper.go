@@ -58,7 +58,7 @@ func (w Wrapper) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	if !prove || err != nil {
 		return res, err
 	}
-	h := int64(res.Height)
+	h := res.Height
 	sh, err := GetCertifiedCommit(h, w.Client, w.cert)
 	if err != nil {
 		return res, err
