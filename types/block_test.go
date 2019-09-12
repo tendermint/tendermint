@@ -84,6 +84,8 @@ func TestBlockValidateBasic(t *testing.T) {
 		}, true},
 	}
 	for i, tc := range testCases {
+		tc := tc
+		i := i
 		t.Run(tc.testName, func(t *testing.T) {
 			block := MakeBlock(h, txs, commit, evList)
 			block.ProposerAddress = valSet.GetProposer().Address
@@ -229,6 +231,7 @@ func TestCommitValidateBasic(t *testing.T) {
 		{"Incorrect round", func(com *Commit) { com.Precommits[0].Round = 100 }, true},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			com := randCommit()
 			tc.malleateCommit(com)
@@ -303,6 +306,7 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
 				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount)
@@ -331,6 +335,7 @@ func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
 				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount)
@@ -464,6 +469,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			sh := SignedHeader{
 				Header: tc.shHeader,
@@ -503,6 +509,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			blockID := BlockID{
 				Hash:        tc.blockIDHash,
