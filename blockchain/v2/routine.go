@@ -23,12 +23,12 @@ type handleFunc = func(event Event) (Event, error)
 // sent events and produce `last()` event representing the terminal state.
 type Routine struct {
 	name    string
+	handle  handleFunc
 	queue   *queue.PriorityQueue
-	out     chan Event // XXX: actually item
+	out     chan Event
 	fin     chan error
 	rdy     chan struct{}
 	running *uint32
-	handle  handleFunc
 	logger  log.Logger
 	metrics *Metrics
 }
@@ -38,8 +38,8 @@ var queueSize int = 10
 func newRoutine(name string, handleFunc handleFunc) *Routine {
 	return &Routine{
 		name:    name,
-		queue:   queue.NewPriorityQueue(queueSize, true),
 		handle:  handleFunc,
+		queue:   queue.NewPriorityQueue(queueSize, true),
 		out:     make(chan Event, queueSize),
 		rdy:     make(chan struct{}, 1),
 		fin:     make(chan error, 1),

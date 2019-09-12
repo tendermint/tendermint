@@ -143,8 +143,12 @@ func TestPriority(t *testing.T) {
 	}()
 	time.Sleep(10 * time.Millisecond)
 
+	assert.True(t, routine.isRunning(),
+		"expected an started routine")
 	assert.True(t, routine.trySend(highPriorityEvent{}),
 		"expected send to succeed even when saturated")
 
 	assert.Equal(t, done, <-routine.final())
+	assert.False(t, routine.isRunning(),
+		"expected an started routine")
 }
