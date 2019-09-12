@@ -8,8 +8,12 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-type scFull struct{}
-type pcFull struct{}
+type scFull struct {
+	priorityHigh
+}
+type pcFull struct {
+	priorityHigh
+}
 
 const demuxerBufferSize = 10
 
@@ -62,56 +66,50 @@ func (dm *demuxer) start() {
 				dm.stopped <- struct{}{}
 				return
 			}
-			oEvents, err := dm.handle(event)
+			oEvent, err := dm.handle(event)
 			if err != nil {
 				dm.terminate(err)
 				return
 			}
-			for _, event := range oEvents {
-				dm.input <- event
-			}
+			dm.input <- oEvent
 		case event, ok := <-dm.scheduler.next():
 			if !ok {
 				dm.logger.Info("demuxer: scheduler output closed")
 				continue
 			}
-			oEvents, err := dm.handle(event)
+			oEvent, err := dm.handle(event)
 			if err != nil {
 				dm.terminate(err)
 				return
 			}
-			for _, event := range oEvents {
-				dm.input <- event
-			}
+			dm.input <- oEvent
 		case event, ok := <-dm.processor.next():
 			if !ok {
 				dm.logger.Info("demuxer: processor output closed")
 				continue
 			}
-			oEvents, err := dm.handle(event)
+			oEvent, err := dm.handle(event)
 			if err != nil {
 				dm.terminate(err)
 				return
 			}
-			for _, event := range oEvents {
-				dm.input <- event
-			}
+			dm.input <- oEvent
 		}
 	}
 }
 
-func (dm *demuxer) handle(event Event) (Events, error) {
+func (dm *demuxer) handle(event Event) (Event, error) {
 	received := dm.scheduler.trySend(event)
 	if !received {
-		return Events{scFull{}}, nil // backpressure
+		return scFull{}, nil // backpressure
 	}
 
 	received = dm.processor.trySend(event)
 	if !received {
-		return Events{pcFull{}}, nil // backpressure
+		return pcFull{}, nil // backpressure
 	}
 
-	return Events{}, nil
+	return noOp, nil
 }
 
 func (dm *demuxer) trySend(event Event) bool {

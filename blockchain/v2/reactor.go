@@ -8,27 +8,28 @@ import (
 )
 
 type timeCheck struct {
+	priorityHigh
 	time time.Time
 }
 
-func schedulerHandle(event Event) (Events, error) {
+func schedulerHandle(event Event) (Event, error) {
 	switch event.(type) {
 	case timeCheck:
 		fmt.Println("scheduler handle timeCheck")
 	case Event:
 		fmt.Println("scheduler handle testEvent")
 	}
-	return Events{}, nil
+	return noOp, nil
 }
 
-func processorHandle(event Event) (Events, error) {
+func processorHandle(event Event) (Event, error) {
 	switch event.(type) {
 	case timeCheck:
 		fmt.Println("processor handle timeCheck")
 	case Event:
 		fmt.Println("processor handle event")
 	}
-	return Events{}, nil
+	return noOp, nil
 }
 
 type Reactor struct {
@@ -61,7 +62,7 @@ func (r *Reactor) Start() {
 
 	go func() {
 		for t := range r.ticker.C {
-			r.demuxer.trySend(timeCheck{t})
+			r.demuxer.trySend(timeCheck{time: t})
 		}
 	}()
 }

@@ -9,47 +9,47 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-type eventA struct{}
-type eventB struct{}
-type errEvent struct{}
+type eventA struct {
+	priorityNormal
+}
 
 var done = fmt.Errorf("done")
 
-func simpleHandler(event Event) (Events, error) {
+func simpleHandler(event Event) (Event, error) {
 	switch event.(type) {
 	case eventA:
-		return Events{eventB{}}, nil
-	case eventB:
-		return Events{}, done
+		return noOp, done
 	}
-	return Events{}, nil
+	return noOp, nil
 }
 
-func TestRoutine(t *testing.T) {
+func TestRoutineFinal(t *testing.T) {
 	routine := newRoutine("simpleRoutine", simpleHandler)
 
 	assert.False(t, routine.isRunning(),
 		"expected an initialized routine to not be running")
 	go routine.start()
-	go routine.feedback()
 	<-routine.ready()
+	assert.True(t, routine.isRunning(),
+		"expected an started routine")
 
 	assert.True(t, routine.trySend(eventA{}),
 		"expected sending to a ready routine to succeed")
 
 	assert.Equal(t, done, <-routine.final(),
 		"expected the final event to be done")
+
+	assert.False(t, routine.isRunning(),
+		"expected an completed routine to no longer be running")
 }
 
-func TestRoutineSend(t *testing.T) {
+func TestRoutineStop(t *testing.T) {
 	routine := newRoutine("simpleRoutine", simpleHandler)
 
 	assert.False(t, routine.trySend(eventA{}),
 		"expected sending to an unstarted routine to fail")
 
 	go routine.start()
-
-	go routine.feedback()
 	<-routine.ready()
 
 	assert.True(t, routine.trySend(eventA{}),
@@ -71,20 +71,22 @@ func (f finalCount) Error() string {
 
 func genStatefulHandler(maxCount int) handleFunc {
 	counter := 0
-	return func(event Event) (Events, error) {
-		// golint fixme
-		switch event.(type) {
-		case eventA:
+	return func(event Event) (Event, error) {
+		if _, ok := event.(eventA); ok {
 			counter += 1
 			if counter >= maxCount {
-				return Events{}, finalCount{counter}
+				return noOp, finalCount{counter}
 			}
 
-			return Events{eventA{}}, nil
-		case eventB:
-			return Events{}, nil
+			return eventA{}, nil
 		}
-		return Events{}, nil
+		return noOp, nil
+	}
+}
+
+func feedback(r *Routine) {
+	for event := range r.next() {
+		r.trySend(event)
 	}
 }
 
@@ -95,16 +97,14 @@ func TestStatefulRoutine(t *testing.T) {
 	routine.setLogger(log.TestingLogger())
 
 	go routine.start()
-	go routine.feedback()
-
+	go feedback(routine)
 	<-routine.ready()
 
 	assert.True(t, routine.trySend(eventA{}),
 		"expected sending to a started routine to succeed")
 
 	final := <-routine.final()
-	fnl, ok := final.(finalCount)
-	if ok {
+	if fnl, ok := final.(finalCount); ok {
 		assert.Equal(t, count, fnl.count,
 			"expected the routine to count to 10")
 	} else {
@@ -112,28 +112,38 @@ func TestStatefulRoutine(t *testing.T) {
 	}
 }
 
-func handleWithErrors(event Event) (Events, error) {
-	switch event.(type) {
-	case eventA:
-		return Events{}, nil
-	case errEvent:
-		return Events{}, done
-	}
-	return Events{}, nil
+type lowPriorityEvent struct {
+	priorityLow
 }
 
-func TestErrorSaturation(t *testing.T) {
-	routine := newRoutine("errorRoutine", handleWithErrors)
+type highPriorityEvent struct {
+	priorityHigh
+}
+
+func handleWithPriority(event Event) (Event, error) {
+	switch event.(type) {
+	case lowPriorityEvent:
+		return noOp, nil
+	case highPriorityEvent:
+		return noOp, done
+	}
+	return noOp, nil
+}
+
+func TestPriority(t *testing.T) {
+	// XXX: align with buffer size
+	routine := newRoutine("priorityRoutine", handleWithPriority)
 	go routine.start()
 	<-routine.ready()
 	go func() {
 		for {
-			routine.trySend(eventA{})
-			time.Sleep(10 * time.Millisecond)
+			routine.trySend(lowPriorityEvent{})
+			time.Sleep(1 * time.Millisecond)
 		}
 	}()
+	time.Sleep(10 * time.Millisecond)
 
-	assert.True(t, routine.trySend(errEvent{}),
+	assert.True(t, routine.trySend(highPriorityEvent{}),
 		"expected send to succeed even when saturated")
 
 	assert.Equal(t, done, <-routine.final())
