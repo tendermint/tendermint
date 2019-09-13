@@ -18,7 +18,7 @@ type handleFunc = func(event Event) (Event, error)
 // Routines are a structure which model a finite state machine as serialized
 // stream of events processed by a handle function. This Routine structure
 // handles the concurrency and messaging guarantees. Events are sent via
-// `trySend` are handled by the `handle` function to produce an iterator
+// `send` are handled by the `handle` function to produce an iterator
 // `next()`. Calling `close()` on a routine will conclude processing of all
 // sent events and produce `final()` event representing the terminal state.
 type Routine struct {
@@ -92,9 +92,8 @@ func (rt *Routine) start() {
 	}
 }
 
-// XXX: rename send
 // XXX: look into returning OpError in the net package
-func (rt *Routine) trySend(event Event) bool {
+func (rt *Routine) send(event Event) bool {
 	rt.logger.Info(fmt.Sprintf("%s: sending %+v", rt.name, event))
 	if !rt.isRunning() {
 		return false
@@ -102,7 +101,7 @@ func (rt *Routine) trySend(event Event) bool {
 	err := rt.queue.Put(event)
 	if err != nil {
 		rt.metrics.EventsShed.With("routine", rt.name).Add(1)
-		rt.logger.Info(fmt.Sprintf("%s: trySend fail, queue was full/stopped \n", rt.name))
+		rt.logger.Info(fmt.Sprintf("%s: send failed, queue was full/stopped \n", rt.name))
 		return false
 	}
 	rt.metrics.EventsSent.With("routine", rt.name).Add(1)

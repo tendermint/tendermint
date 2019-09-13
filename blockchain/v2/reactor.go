@@ -80,15 +80,15 @@ func (r *Reactor) demux() {
 		select {
 		case event := <-r.events:
 			// XXX: check for backpressure
-			r.scheduler.trySend(event)
-			r.processor.trySend(event)
+			r.scheduler.send(event)
+			r.processor.send(event)
 		case _ = <-r.stopDemux:
 			r.logger.Info("demuxing stopped")
 			return
 		case event := <-r.scheduler.next():
-			r.processor.trySend(event)
+			r.processor.send(event)
 		case event := <-r.processor.next():
-			r.scheduler.trySend(event)
+			r.scheduler.send(event)
 		case err := <-r.scheduler.final():
 			r.logger.Info(fmt.Sprintf("scheduler final %s", err))
 		case err := <-r.processor.final():

@@ -33,7 +33,7 @@ func TestRoutineFinal(t *testing.T) {
 	assert.True(t, routine.isRunning(),
 		"expected an started routine")
 
-	assert.True(t, routine.trySend(eventA{}),
+	assert.True(t, routine.send(eventA{}),
 		"expected sending to a ready routine to succeed")
 
 	assert.Equal(t, done, <-routine.final(),
@@ -46,18 +46,18 @@ func TestRoutineFinal(t *testing.T) {
 func TestRoutineStop(t *testing.T) {
 	routine := newRoutine("simpleRoutine", simpleHandler)
 
-	assert.False(t, routine.trySend(eventA{}),
+	assert.False(t, routine.send(eventA{}),
 		"expected sending to an unstarted routine to fail")
 
 	go routine.start()
 	<-routine.ready()
 
-	assert.True(t, routine.trySend(eventA{}),
+	assert.True(t, routine.send(eventA{}),
 		"expected sending to a running routine to succeed")
 
 	routine.stop()
 
-	assert.False(t, routine.trySend(eventA{}),
+	assert.False(t, routine.send(eventA{}),
 		"expected sending to a stopped routine to fail")
 }
 
@@ -86,7 +86,7 @@ func genStatefulHandler(maxCount int) handleFunc {
 
 func feedback(r *Routine) {
 	for event := range r.next() {
-		r.trySend(event)
+		r.send(event)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestStatefulRoutine(t *testing.T) {
 	go feedback(routine)
 	<-routine.ready()
 
-	assert.True(t, routine.trySend(eventA{}),
+	assert.True(t, routine.send(eventA{}),
 		"expected sending to a started routine to succeed")
 
 	final := <-routine.final()
@@ -137,7 +137,7 @@ func TestPriority(t *testing.T) {
 	<-routine.ready()
 	go func() {
 		for {
-			routine.trySend(lowPriorityEvent{})
+			routine.send(lowPriorityEvent{})
 			time.Sleep(1 * time.Millisecond)
 		}
 	}()
@@ -145,7 +145,7 @@ func TestPriority(t *testing.T) {
 
 	assert.True(t, routine.isRunning(),
 		"expected an started routine")
-	assert.True(t, routine.trySend(highPriorityEvent{}),
+	assert.True(t, routine.send(highPriorityEvent{}),
 		"expected send to succeed even when saturated")
 
 	assert.Equal(t, done, <-routine.final())
