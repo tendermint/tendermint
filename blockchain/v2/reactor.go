@@ -73,11 +73,12 @@ func (r *Reactor) Start() {
 	}()
 }
 
+// Would it be possible here to provide some kind of type safety for the types
+// of events that each routine can produce and consume?
 func (r *Reactor) demux() {
 	for {
 		select {
 		case event := <-r.events:
-
 			// XXX: check for backpressure
 			r.scheduler.trySend(event)
 			r.processor.trySend(event)
@@ -85,9 +86,9 @@ func (r *Reactor) demux() {
 			r.logger.Info("demuxing stopped")
 			return
 		case event := <-r.scheduler.next():
-			r.events <- event
+			r.processor.trySend(event)
 		case event := <-r.processor.next():
-			r.events <- event
+			r.scheduler.trySend(event)
 		case err := <-r.scheduler.final():
 			r.logger.Info(fmt.Sprintf("scheduler final %s", err))
 		case err := <-r.processor.final():

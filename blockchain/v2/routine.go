@@ -92,6 +92,8 @@ func (rt *Routine) start() {
 	}
 }
 
+// XXX: rename send
+// XXX: look into returning OpError in the net package
 func (rt *Routine) trySend(event Event) bool {
 	rt.logger.Info(fmt.Sprintf("%s: sending %+v", rt.name, event))
 	if !rt.isRunning() {
