@@ -90,6 +90,9 @@ jobs:
   test_apps:
     executor: golang
     steps:
+      - run:
+          command: |
+            apt-get bsdmainutils -y
       - run_test:
           script_path: test/app/test.sh
 
