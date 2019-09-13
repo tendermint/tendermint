@@ -92,7 +92,7 @@ jobs:
     steps:
       - run:
           command: |
-            apt-get bsdmainutils -y
+            sudo apt-get install bsdmainutils -y
       - run_test:
           script_path: test/app/test.sh
 
