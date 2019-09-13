@@ -3,7 +3,7 @@ version: 2.1
 executors:
   golang:
     docker:
-      - image: circleci/golang
+      - image: tendermintdev/docker-tendermint-build
     working_directory: /go/src/github.com/tendermint/tendermint
     environment:
       GOBIN: /tmp/bin
@@ -90,9 +90,6 @@ jobs:
   test_apps:
     executor: golang
     steps:
-      - run:
-          command: |
-            sudo apt-get install bsdmainutils -y
       - run_test:
           script_path: test/app/test.sh
 
