@@ -86,6 +86,8 @@ func TestWALEncoderDecoder(t *testing.T) {
 	b := new(bytes.Buffer)
 
 	for _, msg := range msgs {
+		msg := msg
+
 		b.Reset()
 
 		enc := NewWALEncoder(b)

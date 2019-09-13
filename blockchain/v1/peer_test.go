@@ -125,6 +125,7 @@ func TestPeerGetAndRemoveBlock(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// try to get the block
 			b, err := peer.BlockAtHeight(tt.height)
@@ -167,6 +168,7 @@ func TestPeerAddBlock(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// try to get the block
 			err := peer.AddBlock(makeSmallBlock(int(tt.height)), 10)
