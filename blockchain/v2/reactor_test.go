@@ -1,11 +1,15 @@
 package v2
 
-import "testing"
+import (
+	"testing"
 
-// XXX: This makes assumptions about the message routing
+	"github.com/tendermint/tendermint/libs/log"
+)
+
 func TestReactor(t *testing.T) {
-	reactor := Reactor{}
+	reactor := NewReactor()
 	reactor.Start()
+	reactor.setLogger(log.TestingLogger())
 	script := []Event{
 		// TODO
 	}
@@ -13,5 +17,5 @@ func TestReactor(t *testing.T) {
 	for _, event := range script {
 		reactor.Receive(event)
 	}
-	reactor.Wait()
+	reactor.Stop()
 }

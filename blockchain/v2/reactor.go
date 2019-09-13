@@ -16,8 +16,6 @@ func schedulerHandle(event Event) (Event, error) {
 	switch event.(type) {
 	case timeCheck:
 		fmt.Println("scheduler handle timeCheck")
-	case Event:
-		fmt.Println("scheduler handle testEvent")
 	}
 	return noOp, nil
 }
@@ -26,71 +24,94 @@ func processorHandle(event Event) (Event, error) {
 	switch event.(type) {
 	case timeCheck:
 		fmt.Println("processor handle timeCheck")
-	case Event:
-		fmt.Println("processor handle event")
 	}
 	return noOp, nil
+
 }
 
 type Reactor struct {
-	demuxer   *demuxer
+	events    chan Event
+	stopDemux chan struct{}
 	scheduler *Routine
 	processor *Routine
 	ticker    *time.Ticker
+	logger    log.Logger
+}
+
+var bufferSize int = 10
+
+func NewReactor() *Reactor {
+	return &Reactor{
+		events:    make(chan Event, bufferSize),
+		stopDemux: make(chan struct{}),
+		scheduler: newRoutine("scheduler", schedulerHandle),
+		processor: newRoutine("processor", processorHandle),
+		ticker:    time.NewTicker(1 * time.Second),
+		logger:    log.NewNopLogger(),
+	}
 }
 
 // nolint:unused
 func (r *Reactor) setLogger(logger log.Logger) {
+	r.logger = logger
 	r.scheduler.setLogger(logger)
 	r.processor.setLogger(logger)
-	r.demuxer.setLogger(logger)
 }
 
 func (r *Reactor) Start() {
-	r.scheduler = newRoutine("scheduler", schedulerHandle)
-	r.processor = newRoutine("processor", processorHandle)
-	r.demuxer = newDemuxer(r.scheduler, r.processor)
-	r.ticker = time.NewTicker(1 * time.Second)
-
 	go r.scheduler.start()
 	go r.processor.start()
-	go r.demuxer.start()
+	go r.demux()
 
 	<-r.scheduler.ready()
 	<-r.processor.ready()
-	<-r.demuxer.ready()
 
 	go func() {
 		for t := range r.ticker.C {
-			r.demuxer.trySend(timeCheck{time: t})
+			r.events <- timeCheck{time: t}
 		}
 	}()
 }
 
-func (r *Reactor) Wait() {
-	fmt.Println("completed routines")
-	r.Stop()
+func (r *Reactor) demux() {
+	for {
+		select {
+		case event := <-r.events:
+
+			// XXX: check for backpressure
+			r.scheduler.trySend(event)
+			r.processor.trySend(event)
+		case _ = <-r.stopDemux:
+			r.logger.Info("demuxing stopped")
+			return
+		case event := <-r.scheduler.next():
+			r.events <- event
+		case event := <-r.processor.next():
+			r.events <- event
+		case err := <-r.scheduler.final():
+			r.logger.Info(fmt.Sprintf("scheduler final %s", err))
+		case err := <-r.processor.final():
+			r.logger.Info(fmt.Sprintf("processor final %s", err))
+			// XXX: switch to consensus
+		}
+	}
 }
 
 func (r *Reactor) Stop() {
-	fmt.Println("reactor stopping")
+	r.logger.Info("reactor stopping")
 
 	r.ticker.Stop()
-	r.demuxer.stop()
 	r.scheduler.stop()
 	r.processor.stop()
-	// todo: accumulator
-	// todo: io
+	close(r.stopDemux)
+	close(r.events)
 
-	fmt.Println("reactor stopped")
+	r.logger.Info("reactor stopped")
 }
 
 func (r *Reactor) Receive(event Event) {
-	fmt.Println("receive event")
-	sent := r.demuxer.trySend(event)
-	if !sent {
-		fmt.Println("demuxer is full")
-	}
+	// XXX: decode and serialize write events
+	r.events <- event
 }
 
 func (r *Reactor) AddPeer() {

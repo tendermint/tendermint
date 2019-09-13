@@ -20,7 +20,7 @@ type handleFunc = func(event Event) (Event, error)
 // handles the concurrency and messaging guarantees. Events are sent via
 // `trySend` are handled by the `handle` function to produce an iterator
 // `next()`. Calling `close()` on a routine will conclude processing of all
-// sent events and produce `last()` event representing the terminal state.
+// sent events and produce `final()` event representing the terminal state.
 type Routine struct {
 	name    string
 	handle  handleFunc
