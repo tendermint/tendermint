@@ -8,11 +8,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-// TODO
-// * revisit panic conditions
-// * audit log levels
-// * Convert routine to an interface with concrete implmentation
-
 type handleFunc = func(event Event) (Event, error)
 
 // Routines are a structure which model a finite state machine as serialized
@@ -79,14 +74,14 @@ func (rt *Routine) start() {
 			rt.terminate(fmt.Errorf("stopped"))
 			return
 		}
-		oEvent, err := rt.handle(events[0])
+		oEvent, err := rt.handle(events[0].(Event))
 		rt.metrics.EventsHandled.With("routine", rt.name).Add(1)
 		if err != nil {
 			rt.terminate(err)
 			return
 		}
 		rt.metrics.EventsOut.With("routine", rt.name).Add(1)
-		rt.logger.Debug(fmt.Sprintf("%s produced %+v event\n", rt.name, oEvent))
+		rt.logger.Debug(fmt.Sprintf("%s produced %T %+v\n", rt.name, oEvent, oEvent))
 
 		rt.out <- oEvent
 	}
@@ -94,7 +89,7 @@ func (rt *Routine) start() {
 
 // XXX: look into returning OpError in the net package
 func (rt *Routine) send(event Event) bool {
-	rt.logger.Info(fmt.Sprintf("%s: sending %+v", rt.name, event))
+	rt.logger.Debug(fmt.Sprintf("%s: received %T %+v", rt.name, event, event))
 	if !rt.isRunning() {
 		return false
 	}
