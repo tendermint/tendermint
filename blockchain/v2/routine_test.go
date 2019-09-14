@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 type eventA struct {
@@ -24,7 +23,10 @@ func simpleHandler(event Event) (Event, error) {
 }
 
 func TestRoutineFinal(t *testing.T) {
-	routine := newRoutine("simpleRoutine", simpleHandler)
+	var (
+		bufferSize = 10
+		routine    = newRoutine("simpleRoutine", simpleHandler, bufferSize)
+	)
 
 	assert.False(t, routine.isRunning(),
 		"expected an initialized routine to not be running")
@@ -44,7 +46,10 @@ func TestRoutineFinal(t *testing.T) {
 }
 
 func TestRoutineStop(t *testing.T) {
-	routine := newRoutine("simpleRoutine", simpleHandler)
+	var (
+		bufferSize = 10
+		routine    = newRoutine("simpleRoutine", simpleHandler, bufferSize)
+	)
 
 	assert.False(t, routine.send(eventA{}),
 		"expected sending to an unstarted routine to fail")
@@ -91,10 +96,12 @@ func feedback(r *Routine) {
 }
 
 func TestStatefulRoutine(t *testing.T) {
-	count := 10
-	handler := genStatefulHandler(count)
-	routine := newRoutine("statefulRoutine", handler)
-	routine.setLogger(log.TestingLogger())
+	var (
+		count      = 10
+		handler    = genStatefulHandler(count)
+		bufferSize = 20
+		routine    = newRoutine("statefulRoutine", handler, bufferSize)
+	)
 
 	go routine.start()
 	go feedback(routine)
@@ -131,8 +138,11 @@ func handleWithPriority(event Event) (Event, error) {
 }
 
 func TestPriority(t *testing.T) {
-	// XXX: align with buffer size
-	routine := newRoutine("priorityRoutine", handleWithPriority)
+	var (
+		bufferSize = 20
+		routine    = newRoutine("priorityRoutine", handleWithPriority, bufferSize)
+	)
+
 	go routine.start()
 	<-routine.ready()
 	go func() {

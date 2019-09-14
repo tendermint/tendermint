@@ -28,14 +28,12 @@ type Routine struct {
 	metrics *Metrics
 }
 
-var queueSize int = 10
-
-func newRoutine(name string, handleFunc handleFunc) *Routine {
+func newRoutine(name string, handleFunc handleFunc, bufferSize int) *Routine {
 	return &Routine{
 		name:    name,
 		handle:  handleFunc,
-		queue:   queue.NewPriorityQueue(queueSize, true),
-		out:     make(chan Event, queueSize),
+		queue:   queue.NewPriorityQueue(bufferSize, true),
+		out:     make(chan Event, bufferSize),
 		rdy:     make(chan struct{}, 1),
 		fin:     make(chan error, 1),
 		running: new(uint32),

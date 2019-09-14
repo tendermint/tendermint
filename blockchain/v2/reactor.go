@@ -42,10 +42,10 @@ var bufferSize int = 10
 
 func NewReactor() *Reactor {
 	return &Reactor{
-		events:    make(chan Event, bufferSize),
+		events:    make(chan Event, bufferSize*2),
 		stopDemux: make(chan struct{}),
-		scheduler: newRoutine("scheduler", schedulerHandle),
-		processor: newRoutine("processor", processorHandle),
+		scheduler: newRoutine("scheduler", schedulerHandle, bufferSize),
+		processor: newRoutine("processor", processorHandle, bufferSize),
 		ticker:    time.NewTicker(1 * time.Second),
 		logger:    log.NewNopLogger(),
 	}
