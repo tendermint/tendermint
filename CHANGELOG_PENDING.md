@@ -20,6 +20,7 @@ program](https://hackerone.com/tendermint).
 ### IMPROVEMENTS:
 
 - [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
+- [rpc] \#3984 Add mempoolclient interface to client interface
 
 ### BUG FIXES:
 

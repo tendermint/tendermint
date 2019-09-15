@@ -37,6 +37,7 @@ type Client struct {
 	client.StatusClient
 	client.EventsClient
 	client.EvidenceClient
+	client.MempoolClient
 	cmn.Service
 }
 
