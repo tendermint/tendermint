@@ -27,7 +27,7 @@ Then run
 ```
 go get github.com/tendermint/tendermint
 cd $GOPATH/src/github.com/tendermint/tendermint
-make get_tools
+make tools
 make install_abci
 ```
 
