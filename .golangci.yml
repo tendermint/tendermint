@@ -14,7 +14,6 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - stylecheck
-    - funlen
 # linters-settings:
 #   govet:
 #     check-shadowing: true
