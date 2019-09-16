@@ -587,30 +587,28 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 	return vals.updateWithChangeSet(changes, true)
 }
 
-// Verify that +2/3 of the set had signed the given signBytes.
+// VerifyCommit verifies that +2/3 of the validator set signed this commit.
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *Commit) error {
-
-	if err := commit.ValidateBasic(); err != nil {
-		return err
-	}
 	if vals.Size() != len(commit.Precommits) {
 		return NewErrInvalidCommitPrecommits(vals.Size(), len(commit.Precommits))
 	}
-	if height != commit.Height() {
-		return NewErrInvalidCommitHeight(height, commit.Height())
-	}
-	if !blockID.Equals(commit.BlockID) {
-		return fmt.Errorf("Invalid commit -- wrong block id: want %v got %v",
-			blockID, commit.BlockID)
+	if err := vals.verifyCommitBasic(commit, height, blockID); err != nil {
+		return err
 	}
 
 	talliedVotingPower := int64(0)
-
 	for idx, precommit := range commit.Precommits {
+		// skip absent and nil votes
+		// NOTE: do we want to check the validity of votes
+		// for nil?
 		if precommit == nil {
 			continue // OK, some precommits can be missing.
 		}
-		_, val := vals.GetByIndex(idx)
+
+		// The vals and commit have a 1-to-1 correspondance.
+		// This means we don't need the validator address or to do any lookup.
+		val := vals.Validators[idx]
+
 		// Validate signature.
 		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
@@ -715,6 +713,71 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		return errTooMuchChange{oldVotingPower, oldVals.TotalVotingPower()*2/3 + 1}
 	}
 	return nil
+}
+
+// VerifyCommitTrusting verifies that trustLevel ([1/3, 1]) of the validator
+// set signed this commit.
+// NOTE the given validators do not necessarily correspond to the validator set
+// for this commit, but there may be some intersection.
+func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
+	height int64, commit *Commit, trustLevel float) error {
+
+	if trustLevel > 1 || trustLevel < 1/3 {
+		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
+	}
+
+	if err := vals.verifyCommitBasic(commit, height, blockID); err != nil {
+		return err
+	}
+
+	talliedVotingPower := int64(0)
+	for idx, precommit := range commit.Precommits {
+		// skip absent and nil votes
+		// NOTE: do we want to check the validity of votes
+		// for nil?
+		if precommit == nil {
+			continue
+		}
+
+		// We don't know the validators that committed this block, so we have to
+		// check for each vote if its validator is already known.
+		_, val := vals.GetByAddress(precommit.ValidatorAddress)
+		if val != nil {
+			// Validate signature.
+			precommitSignBytes := commit.VoteSignBytes(chainID, idx)
+			if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
+				return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
+			}
+
+			// Good precommit!
+			if blockID.Equals(precommit.BlockID) {
+				talliedVotingPower += val.VotingPower
+			}
+			// else {
+			// It's OK that the BlockID doesn't match.  We include stray
+			// precommits to measure validator availability.
+			// }
+		}
+	}
+
+	if talliedVotingPower > vals.TotalVotingPower()*trustLevel {
+		return nil
+	}
+
+	return errTooMuchChange{talliedVotingPower, vals.TotalVotingPower()*trustLevel + 1}
+}
+
+func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
+	if err := commit.ValidateBasic(); err != nil {
+		return err
+	}
+	if height != commit.Height() {
+		return NewErrInvalidCommitHeight(height, commit.Height())
+	}
+	if !blockID.Equals(commit.BlockID) {
+		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
+			blockID, commit.BlockID)
+	}
 }
 
 //-----------------
