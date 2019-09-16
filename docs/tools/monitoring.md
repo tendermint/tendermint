@@ -87,6 +87,6 @@ websocket.
 ## Development
 
 ```
-make get_tools
+make tools
 make test
 ```
