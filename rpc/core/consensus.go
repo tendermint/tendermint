@@ -2,6 +2,7 @@ package core
 
 import (
 	cm "github.com/tendermint/tendermint/consensus"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -50,7 +51,7 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Validators(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultValidators, error) {
+func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the
 	// NextValidator of the last block.
 	height := consensusState.GetState().LastBlockHeight + 1
@@ -63,9 +64,28 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultValidato
 	if err != nil {
 		return nil, err
 	}
+	totalCount := len(validators.Validators)
+	perPage = validatePerPage(perPage)
+	page, err = validatePage(page, perPage, totalCount)
+	if err != nil {
+		return nil, err
+	}
+	skipCount := validateSkipCount(page, perPage)
+	apiResults := make([]*types.Validator, cmn.MinInt(perPage, totalCount-skipCount))
+
+	for i := 0; i < len(apiResults); i++ {
+		v := validators.Validators[skipCount+1]
+		apiResults[i] = &types.Validator{
+			Address:          v.Address,
+			PubKey:           v.PubKey,
+			VotingPower:      v.VotingPower,
+			ProposerPriority: v.ProposerPriority,
+		}
+	}
+
 	return &ctypes.ResultValidators{
 		BlockHeight: height,
-		Validators:  validators.Validators}, nil
+		Validators:  apiResults}, nil
 }
 
 // DumpConsensusState dumps consensus state.

@@ -126,7 +126,7 @@ func makeTxFunc(c rpcclient.Client) func(ctx *rpctypes.Context, hash []byte, pro
 
 func makeValidatorsFunc(c rpcclient.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultValidators, error) {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultValidators, error) {
-		return c.Validators(height)
+		return c.Validators(height, 0, 0)
 	}
 }
 

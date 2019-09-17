@@ -336,9 +336,13 @@ func (c *baseRPCClient) TxSearch(query string, prove bool, page, perPage int) (*
 	return result, nil
 }
 
-func (c *baseRPCClient) Validators(height *int64) (*ctypes.ResultValidators, error) {
+func (c *baseRPCClient) Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
-	_, err := c.caller.Call("validators", map[string]interface{}{"height": height}, result)
+	_, err := c.caller.Call("validators", map[string]interface{}{
+		"height":   height,
+		"page":     page,
+		"per_page": perPage,
+	}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Validators")
 	}
