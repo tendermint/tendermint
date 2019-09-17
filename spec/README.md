@@ -3,3 +3,7 @@
 This folder houses the spec of Tendermint the Protocol.
 
 **Note: We are currently working on expanding the spec and will slowly be migrating it from Tendermint the repo**
+
+### Table of Contents
+
+- [ABCI Spec](./abci/README.md)
