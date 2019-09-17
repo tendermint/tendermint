@@ -528,6 +528,20 @@ paths:
           description: height to return. If no height is provided, it will fetch validato set at the latest block. 0 means latest
           default: 0
           x-example: 1
+        - in: query
+          name: page
+          type: number
+          description: "Page number (1-based)"
+          required: false
+          x-example: 1
+          default: 0
+        - in: query
+          name: per_page
+          type: number
+          description: "Number of entries per page (max: 100)"
+          required: false
+          x-example: 30
+          default: 0
       tags:
         - Info
       description: |

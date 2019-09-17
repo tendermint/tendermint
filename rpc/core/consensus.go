@@ -51,6 +51,12 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
+// | Parameter | Type   | Default | Required | Description                                    |
+// |-----------+--------+---------+----------+------------------------------------------------|
+// | height    | int64  | 0       | false    | Height (0 means latest)                        |
+// | page      | int    | 0       | false    | Page number (1-based)                          |
+// | per_page  | int    | 0       | false    | Number of entries per page (max: 100)          |
+
 func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the
 	// NextValidator of the last block.
@@ -64,6 +70,14 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 	if err != nil {
 		return nil, err
 	}
+	// page & perPage === 0 then all validators are returned, no pagination
+	if page == 0 && perPage == 0 {
+		return &ctypes.ResultValidators{
+			BlockHeight: height,
+			Validators:  validators.Validators,
+		}, nil
+	}
+
 	totalCount := len(validators.Validators)
 	perPage = validatePerPage(perPage)
 	page, err = validatePage(page, perPage, totalCount)
@@ -74,7 +88,8 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 	apiResults := make([]*types.Validator, cmn.MinInt(perPage, totalCount-skipCount))
 
 	for i := 0; i < len(apiResults); i++ {
-		v := validators.Validators[skipCount+1]
+		v := validators.Validators[skipCount+i]
+
 		apiResults[i] = &types.Validator{
 			Address:          v.Address,
 			PubKey:           v.PubKey,
