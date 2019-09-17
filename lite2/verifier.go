@@ -20,41 +20,19 @@ func Verify(chainID string,
 		return err
 	}
 
-	if !bytes.Equal(newHeader.ValidatorsHash, lastVals.Hash()) {
-		return errors.Errorf("expected our validators (%X) to match those from new header (%X)",
-			lastVals.Hash(),
-			newHeader.ValidatorsHash,
-		)
-	}
-
-	// Ensure that +2/3 of current validators signed correctly.
-	err := vals.VerifyCommit(chainID, newHeader.Commit.BlockID, newHeader.Height, newHeader.Commit)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-type ValidatorsLookup interface {
-	HasAddress(addr []byte) bool
-}
-
-func VerifyTrusting(chainID string,
-	lastHeader *types.SignedHeader,
-	lastVals *types.ValidatorSet,
-	newHeader *types.SignedHeader,
-	newVals *types.ValidatorSet,
-	now time.Time) error {
-
-	if err := verifyNewHeaderAndVals(chainID, newHeader, newVals, lastHeader, now); err != nil {
-		return err
-	}
-
-	// Ensure that +1/3 of last trusted validators signed correctly.
-	err := lastVals.VerifyCommitTrusting(chainID, newHeader.Commit.BlockID, newHeader.Height, newHeader.Commit, v.trustLevel)
-	if err != nil {
-		return err
+	if newHeader.Height == c.state.Header.Height+1 {
+		if !bytes.Equal(newHeader.ValidatorsHash, lastVals.Hash()) {
+			return errors.Errorf("expected our validators (%X) to match those from new header (%X)",
+				lastVals.Hash(),
+				newHeader.ValidatorsHash,
+			)
+		}
+	} else {
+		// Ensure that +1/3 of last trusted validators signed correctly.
+		err := lastVals.VerifyCommitTrusting(chainID, newHeader.Commit.BlockID, newHeader.Height, newHeader.Commit, v.trustLevel)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Ensure that +2/3 of current validators signed correctly.

@@ -10,30 +10,10 @@ import (
 type Client struct {
 	chainID        string
 	trustingPeriod time.Duration
-}
 
-func (c *Client) Bisection(newHeader *types.SignedHeader, vals *types.ValidatorSet, now time.Time) error {
-	if err := c.Verify(newHeader, vals); err == nil {
-		return nil
-	}
-
-	if newHeader.Height == v.state.LastHeader.Height+1 {
-		// we have adjacent headers that are not matching.
-		// TODO: submit evidence here
-		return false
-	}
-
-	pivot := (v.state.LastHeader.Height + newHeader.Header.Height) / 2
-	pivotHeader := c.commit(pivot)
-
-	// ??
-	c.store(pivotHeader)
-
-	if err := c.Bisection(pivotHeader); err != nil {
-		return Bisection(pivotHeader, newHeader)
-	}
-
-	return errors.New("bisection failed. restart with different full-node?")
+	// trusted state
+	trustedHeader *types.SignedHeader
+	trustedVals   *types.ValidatorSet
 }
 
 func (c *Client) Verify(
@@ -45,15 +25,7 @@ func (c *Client) Verify(
 		return erros.New("trusted header expired. reset light client subjectvely")
 	}
 
-	if !c.canNewHeaderBeTrusted(now) {
-		return errors.New("newHeader cannot be trusted")
-	}
-
-	if newHeader.Height == c.state.Header.Height+1 {
-		return Verify(c.chainID, c.state.Header, c.state.Vals, newHeader, newVals, now)
-	}
-
-	return VerifyTrusting(c.chainID, c.state.Header, c.state.Vals, newHeader, newVals, now)
+	return c.bisection(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
 }
 
 func (c *Client) trustedHeaderExpired(now time.Time) error {
@@ -61,7 +33,30 @@ func (c *Client) trustedHeaderExpired(now time.Time) error {
 	return expirationTime.Before(now)
 }
 
-func (c *Client) canNewHeaderBeTrusted(now time.Time) error {
-	trustedHeaderExpirationTime := c.trustedHeader.Time.Add(c.trustingPeriod)
-	return newHeader.Time.Before(trustedHeaderExpirationTime)
+func (c *Client) bisection(lastHeader *types.SignedHeader,
+	lastVals *types.ValidatorSet,
+	newHeader *types.SignedHeader,
+	newVals *types.ValidatorSet,
+	now time.Time) error {
+
+	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, now)
+	if err != nil && IsErrTooMuchChange(err) {
+		return err
+	}
+
+	if newHeader.Height == v.state.LastHeader.Height+1 {
+		// TODO: submit evidence here
+		return errors.New("adjacent headers that are not matching")
+	}
+
+	pivot := (v.state.LastHeader.Height + newHeader.Header.Height) / 2
+	pivotHeader := c.signedHeader(pivot)
+
+	c.store(pivotHeader)
+
+	if err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now); err != nil {
+		return c.bisection(pivotHeader, pivotVals, newHeader, newVals, now)
+	}
+
+	return errors.New("bisection failed. restart with different full-node?")
 }
