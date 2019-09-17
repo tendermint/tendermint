@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -39,6 +40,23 @@ func GetClients() []client.Client {
 		getHTTPClient(),
 		getLocalClient(),
 	}
+}
+
+func TestNilCustomHTTPClient(t *testing.T) {
+	require.Panics(t, func() {
+		client.NewHTTPWithClient("http://example.com", "/websocket", nil)
+	})
+	require.Panics(t, func() {
+		rpcclient.NewJSONRPCClientWithHTTPClient("http://example.com", nil)
+	})
+}
+
+func TestCustomHTTPClient(t *testing.T) {
+	remote := rpctest.GetConfig().RPC.ListenAddress
+	c := client.NewHTTPWithClient(remote, "/websocket", http.DefaultClient)
+	status, err := c.Status()
+	require.NoError(t, err)
+	require.NotNil(t, status)
 }
 
 func TestCorsEnabled(t *testing.T) {
@@ -541,7 +559,7 @@ func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.
 	// exactly same vote
 	vote2 = deepcpVote(vote)
 	fakes[41] = newEvidence(t, val, vote, vote2, chainID)
-	return
+	return ev, fakes
 }
 
 func TestBroadcastEvidenceDuplicateVote(t *testing.T) {

@@ -426,8 +426,8 @@ func TestMempoolMaxMsgSize(t *testing.T) {
 	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
-	maxMsgSize := mempl.config.MaxMsgBytes
-	maxTxSize := calcMaxTxSize(mempl.config.MaxMsgBytes)
+	maxTxSize := mempl.config.MaxTxBytes
+	maxMsgSize := calcMaxMsgSize(maxTxSize)
 
 	testCases := []struct {
 		len int
@@ -564,7 +564,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	for i := 0; i < N; i++ {
 		peerID := mrand.Intn(maxPeers)
 		txNum := mrand.Intn(nTxs)
-		tx := txs[int(txNum)]
+		tx := txs[txNum]
 
 		// this will err with ErrTxInCache many times ...
 		mempool.CheckTxWithInfo(tx, nil, TxInfo{SenderID: uint16(peerID)})

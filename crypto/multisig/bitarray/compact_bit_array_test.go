@@ -21,7 +21,7 @@ func randCompactBitArray(bits int) (*CompactBitArray, []byte) {
 		}
 	}
 	// Set remaining bits
-	for i := uint8(0); i < 8-uint8(bA.ExtraBitsStored); i++ {
+	for i := uint8(0); i < 8-bA.ExtraBitsStored; i++ {
 		bA.SetIndex(numBytes*8+int(i), src[numBytes-1]&(uint8(1)<<(8-i)) > 0)
 	}
 	return bA, src
@@ -72,6 +72,7 @@ func TestJSONMarshalUnmarshal(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.bA.String(), func(t *testing.T) {
 			bz, err := json.Marshal(tc.bA)
 			require.NoError(t, err)
@@ -131,6 +132,7 @@ func TestCompactMarshalUnmarshal(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.bA.String(), func(t *testing.T) {
 			bz := tc.bA.CompactMarshal()
 
@@ -165,12 +167,15 @@ func TestCompactBitArrayNumOfTrueBitsBefore(t *testing.T) {
 		{`"______________xx"`, []int{14, 15}, []int{0, 1}},
 	}
 	for tcIndex, tc := range testCases {
+		tc := tc
+		tcIndex := tcIndex
 		t.Run(tc.marshalledBA, func(t *testing.T) {
 			var bA *CompactBitArray
 			err := json.Unmarshal([]byte(tc.marshalledBA), &bA)
 			require.NoError(t, err)
 
 			for i := 0; i < len(tc.bAIndex); i++ {
+
 				require.Equal(t, tc.trueValueIndex[i], bA.NumTrueBitsBefore(tc.bAIndex[i]), "tc %d, i %d", tcIndex, i)
 			}
 		})

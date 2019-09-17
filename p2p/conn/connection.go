@@ -2,7 +2,8 @@ package conn
 
 import (
 	"bufio"
-	"errors"
+	"runtime/debug"
+
 	"fmt"
 	"io"
 	"math"
@@ -11,6 +12,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -313,8 +316,8 @@ func (c *MConnection) flush() {
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		err := cmn.ErrorWrap(r, "recovered panic in MConnection")
-		c.stopForError(err)
+		c.Logger.Error("MConnection panicked", "err", r, "stack", string(debug.Stack()))
+		c.stopForError(errors.Errorf("recovered from panic: %v", r))
 	}
 }
 
@@ -800,7 +803,7 @@ func (ch *Channel) isSendPending() bool {
 // Not goroutine-safe
 func (ch *Channel) nextPacketMsg() PacketMsg {
 	packet := PacketMsg{}
-	packet.ChannelID = byte(ch.desc.ID)
+	packet.ChannelID = ch.desc.ID
 	maxSize := ch.maxPacketMsgPayloadSize
 	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {

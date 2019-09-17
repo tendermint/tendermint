@@ -1,136 +1,126 @@
-version: 2
+version: 2.1
 
-defaults: &defaults
-  working_directory: /go/src/github.com/tendermint/tendermint
-  docker:
-    - image: circleci/golang
-  environment:
-    GOBIN: /tmp/workspace/bin
+executors:
+  golang:
+    docker:
+      - image: tendermintdev/docker-tendermint-build
+    working_directory: /go/src/github.com/tendermint/tendermint
+    environment:
+      GOBIN: /tmp/bin
+  release:
+    machine: true
+  docs:
+    docker:
+      - image: tendermintdev/jq_curl
+    environment:
+      AWS_REGION: us-east-1
 
-docs_update_config: &docs_update_config
-  working_directory: ~/repo
-  docker:
-    - image: tendermintdev/jq_curl
-  environment:
-    AWS_REGION: us-east-1
-
-release_management_docker: &release_management_docker
-  machine: true
+commands:
+  run_test:
+    parameters:
+      script_path:
+        type: string
+    steps:
+      - attach_workspace:
+          at: /tmp/bin
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
+      - checkout
+      - restore_cache:
+          name: "Restore go modules cache"
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
+      - run:
+          name: "Running test"
+          command: |
+            bash << parameters.script_path >>
 
 jobs:
   setup_dependencies:
-    <<: *defaults
+    executor: golang
     steps:
-      - run: mkdir -p /tmp/workspace/bin
-      - run: mkdir -p /tmp/workspace/profiles
       - checkout
       - restore_cache:
+          name: "Restore go modules cache"
           keys:
-            - v4-pkg-cache
+            - go-mod-v1-{{ checksum "go.sum" }}
+      - run:
+          command: |
+            mkdir -p /tmp/bin
+      - run:
+          name: Cache go modules
+          command: make go-mod-cache
       - run:
           name: tools
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make get_tools
+          command: make tools
       - run:
-          name: binaries
-          command: |
-            export PATH="$GOBIN:$PATH"
-            make install install_abci
+          name: "Build binaries"
+          command: make install install_abci
+      - save_cache:
+          name: "Save go modules cache"
+          key: go-mod-v1-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+      - save_cache:
+          name: "Save source code cache"
+          key: go-src-v1-{{ .Revision }}
+          paths:
+            - ".git"
       - persist_to_workspace:
-          root: /tmp/workspace
+          root: "/tmp/bin"
           paths:
-            - bin
-            - profiles
-      - save_cache:
-          key: v4-pkg-cache
-          paths:
-            - /go/pkg
-      - save_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - /go/src/github.com/tendermint/tendermint
-
-  build_slate:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: v4-pkg-cache
-      - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: slate docs
-          command: |
-            set -ex
-            export PATH="$GOBIN:$PATH"
-            make build-slate
+            - "."
 
   test_abci_apps:
-    <<: *defaults
+    executor: golang
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: v4-pkg-cache
-      - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Run abci apps tests
-          command: |
-            export PATH="$GOBIN:$PATH"
-            bash abci/tests/test_app/test.sh
+      - run_test:
+          script_path: abci/tests/test_app/test.sh
 
   # if this test fails, fix it and update the docs at:
   # https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.md
   test_abci_cli:
-    <<: *defaults
+    executor: golang
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: v4-pkg-cache
-      - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Run abci-cli tests
-          command: |
-            export PATH="$GOBIN:$PATH"
-            bash abci/tests/test_cli/test.sh
+      - run_test:
+          script_path: abci/tests/test_cli/test.sh
 
   test_apps:
-    <<: *defaults
+    executor: golang
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: v4-pkg-cache
-      - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
-      - run:
-          name: Run tests
-          command: bash test/app/test.sh
+      - run_test:
+          script_path: test/app/test.sh
+
+  test_persistence:
+    executor: golang
+    steps:
+      - run_test:
+          script_path: test/persist/test_failure_indices.sh
 
   test_cover:
-    <<: *defaults
+    executor: golang
     parallelism: 4
     steps:
-      - attach_workspace:
-          at: /tmp/workspace
       - restore_cache:
-          key: v4-pkg-cache
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
+      - checkout
       - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run: mkdir -p /tmp/logs
+          name: "Restore go module cache"
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
       - run:
-          name: Run tests
+          name: "Run tests"
           command: |
+            export VERSION="$(git describe --tags --long | sed 's/v\(.*\)/\1/')"
+            export GO111MODULE=on
+            mkdir -p /tmp/logs /tmp/workspace/profiles
             for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
-
-              GO111MODULE=on go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+              go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
@@ -138,19 +128,6 @@ jobs:
             - "profiles/*"
       - store_artifacts:
           path: /tmp/logs
-
-  test_persistence:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: v4-pkg-cache
-      - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Run tests
-          command: bash test/persist/test_failure_indices.sh
 
   localnet:
     working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
@@ -187,19 +164,22 @@ jobs:
           path: /home/circleci/project/test/p2p/logs
 
   upload_coverage:
-    <<: *defaults
+    executor: golang
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v4-pkg-cache
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
+      - checkout
       - restore_cache:
-          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
+          name: "Restore go module cache"
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
       - run:
           name: gather
           command: |
-            set -ex
-
             echo "mode: atomic" > coverage.txt
             for prof in $(ls /tmp/workspace/profiles/); do
               tail -n +2 /tmp/workspace/profiles/"$prof" >> coverage.txt
@@ -209,18 +189,22 @@ jobs:
           command: bash .circleci/codecov.sh -f coverage.txt
 
   deploy_docs:
-    <<: *docs_update_config
+    executor: docs
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - run:
           name: Trigger website build
           command: |
             curl --silent \
-                 --show-error \
-                 -X POST \
-                 --header "Content-Type: application/json" \
-                 -d "{\"branch\": \"$CIRCLE_BRANCH\"}" \
-                 "https://circleci.com/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$WEBSITE_REPO_NAME/build?circle-token=$TENDERBOT_API_TOKEN" > response.json
+                --show-error \
+                -X POST \
+                --header "Content-Type: application/json" \
+                -d "{\"branch\": \"$CIRCLE_BRANCH\"}" \
+                "https://circleci.com/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$WEBSITE_REPO_NAME/build?circle-token=$TENDERBOT_API_TOKEN" > response.json
 
             RESULT=`jq -r '.status' response.json`
             MESSAGE=`jq -r '.message' response.json`
@@ -233,8 +217,12 @@ jobs:
             fi
 
   prepare_build:
-    <<: *defaults
+    executor: golang
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - run:
           name: Get next release number
@@ -250,8 +238,7 @@ jobs:
             echo "export CIRCLE_TAG=\"${NEXT_TAG}\"" > release-version.source
       - run:
           name: Build dependencies
-          command: |
-            make get_tools
+          command: make tools
       - persist_to_workspace:
           root: .
           paths:
@@ -262,11 +249,16 @@ jobs:
             - "/go/pkg/mod"
 
   build_artifacts:
-    <<: *defaults
+    executor: golang
     parallelism: 4
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - restore_cache:
+          name: "Restore release dependencies cache"
           keys:
             - v2-release-deps-{{ checksum "go.sum" }}
       - attach_workspace:
@@ -287,13 +279,17 @@ jobs:
             - "tendermint_linux_amd64"
 
   release_artifacts:
-    <<: *defaults
+    executor: golang
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - attach_workspace:
           at: /tmp/workspace
       - run:
-          name: Deploy to GitHub
+          name: "Deploy to GitHub"
           command: |
             # Setting CIRCLE_TAG because we do not tag the release ourselves.
             source /tmp/workspace/release-version.source
@@ -315,27 +311,36 @@ jobs:
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
 
   release_docker:
-    <<: *release_management_docker
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - attach_workspace:
           at: /tmp/workspace
       - run:
-          name: Deploy to Docker Hub
+          name: "Deploy to Docker Hub"
           command: |
             # Setting CIRCLE_TAG because we do not tag the release ourselves.
             source /tmp/workspace/release-version.source
             cp /tmp/workspace/tendermint_linux_amd64 DOCKER/tendermint
             docker build --label="tendermint" --tag="tendermint/tendermint:${CIRCLE_TAG}" --tag="tendermint/tendermint:latest" "DOCKER"
-            docker login -u "${DOCKERHUB_USER}" --password-stdin <<< "${DOCKERHUB_PASS}"
+            docker login -u "${DOCKERHUB_USER}" --password-stdin \<<< "${DOCKERHUB_PASS}"
             docker push "tendermint/tendermint"
             docker logout
 
   reproducible_builds:
-    <<: *defaults
+    executor: golang
     steps:
       - attach_workspace:
           at: /tmp/workspace
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
@@ -358,6 +363,35 @@ jobs:
           path: /go/src/github.com/tendermint/tendermint/tendermint-windows-res.yml
       - store_artifacts:
           path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
+
+  # Test RPC implementation against the swagger documented specs
+  contract_tests:
+    working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
+    machine:
+      image: circleci/classic:latest
+    environment:
+      GOBIN: /home/circleci/.go_workspace/bin
+      GOPATH: /home/circleci/.go_workspace/
+      GOOS: linux
+      GOARCH: amd64
+    parallelism: 1
+    steps:
+      - checkout
+      - run:
+          name: Test RPC endpoints against swagger documentation
+          command: |
+            set -x
+            export PATH=~/.local/bin:$PATH
+
+            # install node and dredd
+            ./scripts/get_nodejs.sh
+
+            # build the binaries with a proper version of Go
+            docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
+
+            # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
+            go get github.com/snikch/goodman/cmd/goodman
+            make contract-tests
 
 workflows:
   version: 2
@@ -397,6 +431,10 @@ workflows:
               only:
                 - master
                 - /v[0-9]+\.[0-9]+/
+      - contract_tests:
+          requires:
+            - setup_dependencies
+
   release:
     jobs:
       - prepare_build

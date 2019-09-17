@@ -388,6 +388,12 @@ defer db.Close()
 app := NewKVStoreApplication(db)
 ```
 
+For **Windows** users, restarting this app will make badger throw an error as it requires value log to be truncated. For more information on this, visit [here](https://github.com/dgraph-io/badger/issues/744). 
+This can be avoided by setting the truncate option to true, like this:
+```go
+db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
+```
+
 Then we start the ABCI server and add some signal handling to gracefully stop
 it upon receiving SIGTERM or Ctrl-C. Tendermint Core will act as a client,
 which connects to our server and send us transactions and other messages.

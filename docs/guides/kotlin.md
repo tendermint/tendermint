@@ -22,9 +22,9 @@ If you use Golang, you can run your app and Tendermint Core in the same process 
 [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written this way.
 Please refer to [Writing a built-in Tendermint Core application in Go](./go-built-in.md) guide for details.
 
-If you choose another language, like we did in this guide, you have to write a separate app using
-either plain socket or gRPC. This guide will show you how to build external applicationg
-using RPC server.
+If you choose another language, like we did in this guide, you have to write a separate app,
+which will communicate with Tendermint Core via a socket (UNIX or TCP) or gRPC.
+This guide will show you how to build external application using RPC server.
 
 Having a separate application might give you better security guarantees as two
 processes would be communicating via established binary protocol. Tendermint
@@ -34,7 +34,7 @@ Core will not have access to application's state.
 
 Please refer to [the Oracle's guide for installing JDK](https://www.oracle.com/technetwork/java/javase/downloads/index.html).
 
-Verify that you have installed Java successully:
+Verify that you have installed Java successfully:
 
 ```sh
 $ java -version
@@ -69,7 +69,7 @@ Inside the example directory run:
 ```sh
 gradle init --dsl groovy --package io.example --project-name example --type kotlin-application
 ```
-That Gradle command will create project structure for you:
+This will create a new project for you. The tree of files should look like:
 ```sh
 $ tree
 .
@@ -114,7 +114,7 @@ language.
 
 ### 1.3.1 Compile .proto files
 
-Add folowing to the top of `build.gradle`:
+Add the following piece to the top of the `build.gradle`:
 ```groovy
 buildscript {
     repositories {
@@ -126,14 +126,14 @@ buildscript {
 }
 ```
 
-Enable protobuf plugin in `plugins` section of `build.gradle`:
+Enable the protobuf plugin in the `plugins` section of the `build.gradle`:
 ```groovy
 plugins {
     id 'com.google.protobuf' version '0.8.8'
 }
 ```
 
-Add following to `build.gradle`:
+Add the following code to `build.gradle`:
 ```groovy
 protobuf {
     protoc {
@@ -152,10 +152,10 @@ protobuf {
 }
 ```
 
-Now your project is ready to compile `*.proto` files.
+Now we should be ready to compile the `*.proto` files.
 
 
-Copy necessary .proto files to your project:
+Copy the necessary `.proto` files to your project:
 ```sh
 mkdir -p \
   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types \
@@ -173,7 +173,7 @@ cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
 
-Add dependency to `build.gradle`:
+Add these dependencies to `build.gradle`:
 ```groovy
 dependencies {
     implementation 'io.grpc:grpc-protobuf:1.22.1'
@@ -186,7 +186,7 @@ To generate all protobuf-type classes run:
 ```sh
 ./gradlew generateProto
 ```
-It will produce java classes to `build/generated/`:
+To verify that everything went smoothly, you can inspect the `build/generated/` directory:
 ```sh
 $ tree build/generated/
 build/generated/
@@ -211,11 +211,10 @@ build/generated/
 
 ### 1.3.2 Implementing ABCI
 
-As you can see there is a generated file `$KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIApplicationGrpc.java`.
-which contains an abstract class `ABCIApplicationImplBase`. This class fully describes the ABCI interface.
-All you need is implement this interface.
+The resulting `$KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIApplicationGrpc.java` file
+contains the abstract class `ABCIApplicationImplBase`, which is an interface we'll need to implement.
 
-Create file `$KVSTORE_HOME/src/main/kotlin/io/example/KVStoreApp.kt` with following context:
+Create `$KVSTORE_HOME/src/main/kotlin/io/example/KVStoreApp.kt` file with the following content:
 ```kotlin
 package io.example
 
@@ -296,7 +295,7 @@ For the underlying key-value store we'll use
 `build.gradle`:
 ```groovy
 dependencies {
-    implementation "org.jetbrains.xodus:xodus-environment:1.3.91"
+    implementation 'org.jetbrains.xodus:xodus-environment:1.3.91'
 }
 ```
 
@@ -316,14 +315,21 @@ class KVStoreApp(
     private var store: Store? = null
 
     ...
+
+    private fun getPersistedValue(k: ByteArray): ByteArray? {
+        return env.computeInReadonlyTransaction { txn ->
+            val store = env.openStore("store", StoreConfig.WITHOUT_DUPLICATES, txn)
+            store.get(txn, ArrayByteIterable(k))?.bytesUnsafe
+        }
+    }
 }
 ```
 
 ### 1.3.4 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transfered to the
+When Tendermint Core has decided on the block, it's transferred to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered  asynchronously, but the
+`EndBlock` in the end. `DeliverTx` are being transferred  asynchronously, but the
 responses are expected to come in order.
 
 ```kotlin
@@ -335,7 +341,7 @@ override fun beginBlock(req: RequestBeginBlock, responseObserver: StreamObserver
     responseObserver.onCompleted()
 }
 ```
-Here we start new transaction, which will store block's transactions, and open corresponding store.
+Here we begin a new transaction, which will accumulate the block's transactions and open the corresponding store.
 
 ```kotlin
 override fun deliverTx(req: RequestDeliverTx, responseObserver: StreamObserver<ResponseDeliverTx>) {
@@ -355,10 +361,10 @@ override fun deliverTx(req: RequestDeliverTx, responseObserver: StreamObserver<R
 ```
 
 If the transaction is badly formatted or the same key=value already exist, we
-again return the non-zero code. Otherwise, we add it to the storage.
+again return the non-zero code. Otherwise, we add it to the store.
 
 In the current design, a block can include incorrect transactions (those who
-passed CheckTx, but failed DeliverTx or transactions included by the proposer
+passed `CheckTx`, but failed `DeliverTx` or transactions included by the proposer
 directly). This is done for performance reasons.
 
 Note we can't commit transactions inside the `DeliverTx` because in such case
@@ -408,13 +414,6 @@ override fun query(req: RequestQuery, responseObserver: StreamObserver<ResponseQ
     responseObserver.onNext(builder.build())
     responseObserver.onCompleted()
 }
-
-private fun getPersistedValue(k: ByteArray): ByteArray? {
-    return env.computeInReadonlyTransaction { txn ->
-        val store = env.openStore("store", StoreConfig.WITHOUT_DUPLICATES, txn)
-        store.get(txn, ArrayByteIterable(k))?.bytesUnsafe
-    }
-}
 ```
 
 The complete specification can be found
@@ -440,10 +439,10 @@ fun main() {
 ```
 
 It is the entry point of the application.
-Here we create special object `Environment` which knows where to store state of the application.
-Then we create and srart gRPC server to handle Tendermint's requests.
+Here we create a special object `Environment`, which knows where to store the application state.
+Then we create and start the gRPC server to handle Tendermint Core requests.
 
-Create file `$KVSTORE_HOME/src/main/kotlin/io/example/GrpcServer.kt`:
+Create `$KVSTORE_HOME/src/main/kotlin/io/example/GrpcServer.kt` file with the following content:
 ```kotlin
 package io.example
 

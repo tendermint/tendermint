@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
@@ -78,7 +78,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {
-		panic(cmn.ErrorWrap(err, "error start app"))
+		panic(errors.Wrap(err, "error start app"))
 	}
 
 	blockDB := dbm.NewMemDB()
@@ -87,7 +87,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 	if err != nil {
-		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
+		panic(errors.Wrap(err, "error constructing state from genesis file"))
 	}
 
 	// Make the BlockchainReactor itself.
@@ -117,7 +117,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
-			panic(cmn.ErrorWrap(err, "error apply block"))
+			panic(errors.Wrap(err, "error apply block"))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
@@ -315,6 +315,86 @@ outerFor:
 	}
 
 	assert.True(t, lastReactorPair.bcR.Switch.Peers().Size() < len(reactorPairs)-1)
+}
+
+func TestBcBlockRequestMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName      string
+		requestHeight int64
+		expectErr     bool
+	}{
+		{"Valid Request Message", 0, false},
+		{"Valid Request Message", 1, false},
+		{"Invalid Request Message", -1, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			request := bcBlockRequestMessage{Height: tc.requestHeight}
+			assert.Equal(t, tc.expectErr, request.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestBcNoBlockResponseMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName          string
+		nonResponseHeight int64
+		expectErr         bool
+	}{
+		{"Valid Non-Response Message", 0, false},
+		{"Valid Non-Response Message", 1, false},
+		{"Invalid Non-Response Message", -1, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			nonResponse := bcNoBlockResponseMessage{Height: tc.nonResponseHeight}
+			assert.Equal(t, tc.expectErr, nonResponse.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestBcStatusRequestMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName      string
+		requestHeight int64
+		expectErr     bool
+	}{
+		{"Valid Request Message", 0, false},
+		{"Valid Request Message", 1, false},
+		{"Invalid Request Message", -1, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			request := bcStatusRequestMessage{Height: tc.requestHeight}
+			assert.Equal(t, tc.expectErr, request.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestBcStatusResponseMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName       string
+		responseHeight int64
+		expectErr      bool
+	}{
+		{"Valid Response Message", 0, false},
+		{"Valid Response Message", 1, false},
+		{"Invalid Response Message", -1, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			response := bcStatusResponseMessage{Height: tc.responseHeight}
+			assert.Equal(t, tc.expectErr, response.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }
 
 //----------------------------------------------

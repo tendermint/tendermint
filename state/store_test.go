@@ -70,6 +70,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 	sm.SaveState(stateDB, state)
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
+		i := i
 		sm.SaveValidatorsInfo(stateDB, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
