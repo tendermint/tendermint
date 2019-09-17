@@ -9,6 +9,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	defaultTrustLevel = 1 / 3
+)
+
 // TrustedState stores the latest state trusted by a lite client, including the
 // last header and the validator set to use to verify the next header.
 type TrustedState struct {
@@ -19,28 +23,47 @@ type TrustedState struct {
 // Verifier is the core of the light client performing validation of the
 // headers.
 type Verifier struct {
-	chainID        string
+	chainID string
+
 	trustingPeriod time.Duration
 	trustLevel     float
+	state          TrustedState
+}
 
-	state TrustedState
+// TrustLevel can be used to change the default trust level (1/3) if the user
+// believes that relying on one correct validator is not sufficient.
+//
+// However, in case of (frequent) changes in the validator set, the higher the
+// trustlevel is chosen, the more unlikely it becomes that Verify returns true
+// for a non-adjacent header.
+func TrustLevel(lvl float) func(*Verifier) {
+	return func(v *Verifier) {
+		v.trustLevel = lvl
+	}
 }
 
 func NewVerifier(chainID string,
 	trustingPeriod time.Duration,
-	trustLevel float,
-	trustedState *TrustedState) *Verifier {
+	trustedState *TrustedState,
+	options ...func(*Verifier)) *Verifier {
 
-	return &Verifier{
-		chainID:        chainID,
+	v := &Verifier{
+		chainID: chainID,
+
 		trustingPeriod: trustingPeriod,
-		trustLevel:     trustLevel,
-		TrustedState:   trustedState,
+		trustLevel:     defaultTrustLevel,
+		state:          trustedState,
 	}
+
+	for _, o := range options {
+		o(v)
+	}
+
+	return v
 }
 
 func (v *Verifier) Verify(newHeader *types.SignedHeader, vals *types.ValidatorSet, now time.Time) error {
-	if err := v.expired(); err != nil {
+	if err := v.expired(now); err != nil {
 		return err
 	}
 
@@ -80,7 +103,7 @@ func (v *Verifier) Verify(newHeader *types.SignedHeader, vals *types.ValidatorSe
 	return nil
 }
 
-func (v *Verifier) expired() error {
+func (v *Verifier) expired(now time.Time) error {
 	expired := v.state.LastHeader.Time.Add(v.trustingPeriod)
 	if expired.Before(now) {
 		return errors.Errorf("last header expired at %v and too old to be trusted now %v. Verifier must be reset subjectively", expired, now)
@@ -88,9 +111,21 @@ func (v *Verifier) expired() error {
 	return nil
 }
 
-func verifyNewHeaderAndVals(newHeader *types.SignedHeader, vals *types.ValidatorSet) error {
+func (v *Verifier) verifyNewHeaderAndVals(newHeader *types.SignedHeader, vals *types.ValidatorSet) error {
 	if err := newHeader.ValidateBasic(v.chainID); err != nil {
 		return errors.Wrap(err, "newHeader.ValidateBasic failed")
+	}
+
+	if newHeader.Height <= v.state.LastHeader.Height {
+		return fmt.Errorf("expected new header height %d to be greater than one of last header %d",
+			newHeader.Height,
+			v.state.LastHeader.Height)
+	}
+
+	if newHeader.Time.Before(v.state.LastHeader.Time) || newHeader.Time == v.state.LastHeader.Time {
+		return fmt.Errorf("expected new header time %v to be after last header time %v",
+			newHeader.Time,
+			v.state.LastHeader.Time)
 	}
 
 	if !bytes.Equal(newHeader.ValidatorsHash, vals.Hash()) {
