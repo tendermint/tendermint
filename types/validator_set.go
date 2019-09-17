@@ -796,7 +796,7 @@ type errTooMuchChange struct {
 }
 
 func (e errTooMuchChange) Error() string {
-	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %.2f, needed %.2f", e.got, e.needed)
+	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %.2f, needed more than %.2f", e.got, e.needed)
 }
 
 //----------------

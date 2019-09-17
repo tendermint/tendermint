@@ -67,7 +67,7 @@ func (v *Verifier) Verify(newHeader *types.SignedHeader, vals *types.ValidatorSe
 		return err
 	}
 
-	if err := v.verifyNewHeaderAndVals(newHeader, vals); err != nil {
+	if err := v.verifyNewHeaderAndVals(newHeader, vals, now); err != nil {
 		return err
 	}
 
@@ -111,7 +111,7 @@ func (v *Verifier) expired(now time.Time) error {
 	return nil
 }
 
-func (v *Verifier) verifyNewHeaderAndVals(newHeader *types.SignedHeader, vals *types.ValidatorSet) error {
+func (v *Verifier) verifyNewHeaderAndVals(newHeader *types.SignedHeader, vals *types.ValidatorSet, now time.Time) error {
 	if err := newHeader.ValidateBasic(v.chainID); err != nil {
 		return errors.Wrap(err, "newHeader.ValidateBasic failed")
 	}
@@ -122,10 +122,22 @@ func (v *Verifier) verifyNewHeaderAndVals(newHeader *types.SignedHeader, vals *t
 			v.state.LastHeader.Height)
 	}
 
-	if newHeader.Time.Before(v.state.LastHeader.Time) || newHeader.Time == v.state.LastHeader.Time {
+	if !newHeader.Time.After(v.state.LastHeader.Time) {
 		return errors.Errorf("expected new header time %v to be after last header time %v",
 			newHeader.Time,
 			v.state.LastHeader.Time)
+	}
+
+	if !newHeader.Time.Before(now) {
+		return errors.Errorf("new header has a time from the future %v (now: %v)",
+			newHeader.Time,
+			now)
+	}
+
+	if !newHeader.Time.Before(v.state.LastHeader.Time.Add(v.trustingPeriod)) {
+		return errors.Errorf("new header is too far %v into the future to trust it. trusted period ended at %v",
+			newHeader.Time,
+			v.state.LastHeader.Time.Add(v.trustingPeriod))
 	}
 
 	if !bytes.Equal(newHeader.ValidatorsHash, vals.Hash()) {
