@@ -5,7 +5,11 @@ import (
 )
 
 func TestReactor(t *testing.T) {
-	reactor := NewReactor()
+	var (
+		bufferSize = 10
+		reactor    = NewReactor(bufferSize)
+	)
+
 	reactor.Start()
 	script := []Event{
 		// TODO

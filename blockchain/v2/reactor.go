@@ -38,11 +38,9 @@ type Reactor struct {
 	logger    log.Logger
 }
 
-var bufferSize int = 10
-
-func NewReactor() *Reactor {
+func NewReactor(bufferSize int) *Reactor {
 	return &Reactor{
-		events:    make(chan Event, bufferSize*2),
+		events:    make(chan Event, bufferSize),
 		stopDemux: make(chan struct{}),
 		scheduler: newRoutine("scheduler", schedulerHandle, bufferSize),
 		processor: newRoutine("processor", processorHandle, bufferSize),
@@ -73,7 +71,7 @@ func (r *Reactor) Start() {
 	}()
 }
 
-// Would it be possible here to provide some kind of type safety for the types
+// XXX: Would it be possible here to provide some kind of type safety for the types
 // of events that each routine can produce and consume?
 func (r *Reactor) demux() {
 	for {
@@ -82,7 +80,7 @@ func (r *Reactor) demux() {
 			// XXX: check for backpressure
 			r.scheduler.send(event)
 			r.processor.send(event)
-		case _ = <-r.stopDemux:
+		case <-r.stopDemux:
 			r.logger.Info("demuxing stopped")
 			return
 		case event := <-r.scheduler.next():
@@ -112,6 +110,7 @@ func (r *Reactor) Stop() {
 
 func (r *Reactor) Receive(event Event) {
 	// XXX: decode and serialize write events
+	// TODO: backpressure
 	r.events <- event
 }
 
