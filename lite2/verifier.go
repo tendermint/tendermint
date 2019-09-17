@@ -2,10 +2,10 @@ package lite
 
 import (
 	"bytes"
-	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/lite/errors"
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -26,8 +26,8 @@ type Verifier struct {
 	chainID string
 
 	trustingPeriod time.Duration
-	trustLevel     float
-	state          TrustedState
+	trustLevel     float32
+	state          *TrustedState
 }
 
 // TrustLevel can be used to change the default trust level (1/3) if the user
@@ -36,7 +36,7 @@ type Verifier struct {
 // However, in case of (frequent) changes in the validator set, the higher the
 // trustlevel is chosen, the more unlikely it becomes that Verify returns true
 // for a non-adjacent header.
-func TrustLevel(lvl float) func(*Verifier) {
+func TrustLevel(lvl float32) func(*Verifier) {
 	return func(v *Verifier) {
 		v.trustLevel = lvl
 	}
@@ -73,20 +73,20 @@ func (v *Verifier) Verify(newHeader *types.SignedHeader, vals *types.ValidatorSe
 
 	if newHeader.Height == v.state.LastHeader.Height+1 {
 		if !bytes.Equal(newHeader.ValidatorsHash, v.state.Validators.Hash()) {
-			return fmt.Errorf("expected our validators (%X) to match those from new header (%X)",
+			return errors.Errorf("expected our validators (%X) to match those from new header (%X)",
 				v.state.Validators.Hash(),
 				newHeader.ValidatorsHash,
 			)
 		}
 
 		// Ensure that +2/3 of current validators signed correctly.
-		err = vals.VerifyCommit(v.chainID, newHeader.Commit.BlockID, newHeader.Height, newHeader.Commit)
+		err := vals.VerifyCommit(v.chainID, newHeader.Commit.BlockID, newHeader.Height, newHeader.Commit)
 		if err != nil {
 			return err
 		}
 	} else {
 		// Ensure that +1/3 of last trusted validators signed correctly.
-		err = v.state.Validators.VerifyCommitTrusting(v.chainID, newHeader.Commit.BlockID,
+		err := v.state.Validators.VerifyCommitTrusting(v.chainID, newHeader.Commit.BlockID,
 			newHeader.Height, newHeader.Commit, v.trustLevel)
 		if err != nil {
 			return err
@@ -117,21 +117,23 @@ func (v *Verifier) verifyNewHeaderAndVals(newHeader *types.SignedHeader, vals *t
 	}
 
 	if newHeader.Height <= v.state.LastHeader.Height {
-		return fmt.Errorf("expected new header height %d to be greater than one of last header %d",
+		return errors.Errorf("expected new header height %d to be greater than one of last header %d",
 			newHeader.Height,
 			v.state.LastHeader.Height)
 	}
 
 	if newHeader.Time.Before(v.state.LastHeader.Time) || newHeader.Time == v.state.LastHeader.Time {
-		return fmt.Errorf("expected new header time %v to be after last header time %v",
+		return errors.Errorf("expected new header time %v to be after last header time %v",
 			newHeader.Time,
 			v.state.LastHeader.Time)
 	}
 
 	if !bytes.Equal(newHeader.ValidatorsHash, vals.Hash()) {
-		return fmt.Errorf("expected validators (%X) to match those from new header (%X)",
+		return errors.Errorf("expected validators (%X) to match those from new header (%X)",
 			vals.Hash(),
 			newHeader.NextValidatorsHash,
 		)
 	}
+
+	return nil
 }

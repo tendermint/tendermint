@@ -624,10 +624,11 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		// }
 	}
 
-	if talliedVotingPower > vals.TotalVotingPower()*2/3 {
-		return nil
+	if got, needed := float32(talliedVotingPower), float32(vals.TotalVotingPower()*2/3); got <= needed {
+		return errTooMuchChange{got, needed}
 	}
-	return errTooMuchChange{talliedVotingPower, vals.TotalVotingPower()*2/3 + 1}
+
+	return nil
 }
 
 // VerifyFutureCommit will check to see if the set would be valid with a different
@@ -709,8 +710,8 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// }
 	}
 
-	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
-		return errTooMuchChange{oldVotingPower, oldVals.TotalVotingPower()*2/3 + 1}
+	if got, needed := float32(oldVotingPower), float32(oldVals.TotalVotingPower()*2/3); got <= needed {
+		return errTooMuchChange{got, needed}
 	}
 	return nil
 }
@@ -720,7 +721,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 // NOTE the given validators do not necessarily correspond to the validator set
 // for this commit, but there may be some intersection.
 func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
-	height int64, commit *Commit, trustLevel float) error {
+	height int64, commit *Commit, trustLevel float32) error {
 
 	if trustLevel > 1 || trustLevel < 1/3 {
 		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
@@ -760,11 +761,11 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		}
 	}
 
-	if talliedVotingPower > vals.TotalVotingPower()*trustLevel {
-		return nil
+	if got, needed := float32(talliedVotingPower), float32(vals.TotalVotingPower())*trustLevel; got <= needed {
+		return errTooMuchChange{got, needed}
 	}
 
-	return errTooMuchChange{talliedVotingPower, vals.TotalVotingPower()*trustLevel + 1}
+	return nil
 }
 
 func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockID BlockID) error {
@@ -778,6 +779,7 @@ func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockI
 		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
 			blockID, commit.BlockID)
 	}
+	return nil
 }
 
 //-----------------
@@ -789,12 +791,12 @@ func IsErrTooMuchChange(err error) bool {
 }
 
 type errTooMuchChange struct {
-	got    int64
-	needed int64
+	got    float32
+	needed float32
 }
 
 func (e errTooMuchChange) Error() string {
-	return fmt.Sprintf("Invalid commit -- insufficient old voting power: got %v, needed %v", e.got, e.needed)
+	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %.2f, needed %.2f", e.got, e.needed)
 }
 
 //----------------
