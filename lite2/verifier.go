@@ -36,7 +36,7 @@ func Verify(chainID string,
 	}
 
 	// Ensure that +2/3 of current validators signed correctly.
-	err = newVals.VerifyCommit(v.chainID, newHeader.Commit.BlockID, newHeader.Height, newHeader.Commit)
+	err = newVals.VerifyCommit(chainID, newHeader.Commit.BlockID, newHeader.Height, newHeader.Commit)
 	if err != nil {
 		return err
 	}

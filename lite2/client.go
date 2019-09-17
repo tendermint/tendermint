@@ -28,9 +28,14 @@ func (c *Client) Verify(
 	return c.bisection(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
 }
 
-func (c *Client) trustedHeaderExpired(now time.Time) error {
+func (c *Client) trustedHeaderExpired(now time.Time) bool {
 	expirationTime := c.state.Header.Time.Add(c.trustingPeriod)
 	return expirationTime.Before(now)
+}
+
+func (c *Client) newHeaderWithinTrustingPeriod(newHeader *types.SignedHeader) bool {
+	trustedHeaderExpirationTime := c.trustedHeader.Time.Add(c.trustingPeriod)
+	return newHeader.Time.Before(trustedHeaderExpirationTime)
 }
 
 func (c *Client) bisection(lastHeader *types.SignedHeader,
@@ -40,7 +45,14 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 	now time.Time) error {
 
 	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, now)
-	if err != nil && IsErrTooMuchChange(err) {
+	switch {
+	case err == nil:
+		if !c.newHeaderWithinTrustingPeriod(newHeader) {
+			// TODO: continue bisection
+			// if adjused headers, fail?
+		}
+		return nil
+	case err != nil && !IsErrTooMuchChange(err):
 		return err
 	}
 
@@ -52,11 +64,20 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 	pivot := (v.state.LastHeader.Height + newHeader.Header.Height) / 2
 	pivotHeader := c.signedHeader(pivot)
 
-	c.store(pivotHeader)
+	c.storeSignedHeader(pivotHeader)
 
 	if err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now); err != nil {
 		return c.bisection(pivotHeader, pivotVals, newHeader, newVals, now)
 	}
 
 	return errors.New("bisection failed. restart with different full-node?")
+}
+
+func (c *Client) storeSignedHeader(h *types.SignedHeader) {
+	// TODO: save to DB
+}
+
+func (c *Client) signedHeader(height int64) *types.SignedHeader {
+	// TODO: use provider
+	return nil
 }
