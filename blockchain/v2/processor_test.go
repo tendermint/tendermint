@@ -4,11 +4,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/state"
+	tdState "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
+
+// TODO
+// * Implement tests using the new FSM API
+// * Create a new PR
 
 /*
 # Processor tests
@@ -36,6 +39,70 @@ import (
 * multiple peers, remove peer for block at H+1
 **/
 
+func TestBlockResponse(t *testing.T) {
+	var (
+		peerID         p2p.ID = "peer"
+		initHeight     int64  = 0
+		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
+		tdState               = tdState.State{}
+		applicationBL         = []types.BlockID{}
+		verificationBL        = []types.BlockID{}
+		context               = newMockProcessorContext(verificationBL, applicationBL)
+		state                 = &pcState{
+			bq:           newBlockQueue(initBlock),
+			draining:     false,
+			blocksSynced: 0,
+			context:      context,
+			tdState:      tdState,
+		}
+	)
+
+	event, nextState, err := pcHandle(&bcBlockResponse{
+		peerID: peerID,
+		block:  initBlock,
+		height: initHeight,
+	}, state)
+
+	assert.Equal(t, pcDuplicateBlock{}, event, "expected duplicate block error")
+	assert.Equal(t, state, nextState, "expected state to go unchanged")
+
+	nextHeight := initHeight + 1
+	nextBlock := &types.Block{Header: types.Header{Height: nextHeight}}
+	nextEvent := &bcBlockResponse{
+		peerID: peerID,
+		height: nextHeight,
+		block:  nextBlock,
+	}
+
+	event, state, err = pcHandle(nextEvent, state)
+	assert.NoError(t, err)
+	assert.Equal(t, state, &pcState{
+		draining: false,
+		bq: &blockQueue{
+			height: nextHeight,
+			queue: map[int64]*queueItem{
+				initHeight: &queueItem{block: initBlock, peerID: peerID},
+				nextHeight: &queueItem{block: nextBlock, peerID: peerID},
+			},
+		},
+		context: context,
+		tdState: tdState,
+	})
+}
+
+func TestProcessBlock(t *testing.T) {
+}
+
+func TestPeerError(t *testing.T) {
+}
+
+func TestBlockProcessed(t *testing.T) {
+}
+
+func TestStop(t *testing.T) {
+}
+
+/*
 func TestProcessorStop(t *testing.T) {
 	var (
 		initHeight     int64 = 0
@@ -105,3 +172,4 @@ func TestProcessorBlockReceived(t *testing.T) {
 	assert.Equal(t, pcFinished{height: initHeight + 1}, <-processor.final(),
 		"expected the final event to be done")
 }
+*/
