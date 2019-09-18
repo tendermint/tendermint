@@ -17,6 +17,7 @@ type queueItem struct {
 	peerID p2p.ID
 }
 
+// maybe embed the queue
 type blockQueue struct {
 	queue  map[int64]*queueItem
 	height int64 // Height is the last validated block
@@ -24,7 +25,7 @@ type blockQueue struct {
 
 // we initialize the block queue with block stored on the node
 func newBlockQueue(initBlock *types.Block) *blockQueue {
-	var myID p2p.ID = "thispeersid" // XXX: make this real
+	var myID p2p.ID = "thispeersid" // XXX: this should be the nodes peerID
 	initItem := &queueItem{block: initBlock, peerID: myID}
 
 	return &blockQueue{
@@ -153,10 +154,6 @@ func pcHandle(event Event, state *pcState) (Event, *pcState, error) {
 		return pcBlockProcessed{first.Height, firstItem.peerID}, state, nil
 	case *peerError:
 		state.bq.remove(event.peerID)
-	case pcBlockProcessed:
-		if state.bq.empty() {
-			return noOp, state, pcFinished{height: state.bq.height, blocksSynced: state.blocksSynced}
-		}
 	case pcStop:
 		if state.bq.empty() {
 			return noOp, state, pcFinished{height: state.bq.height, blocksSynced: state.blocksSynced}

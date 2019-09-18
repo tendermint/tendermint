@@ -9,37 +9,57 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// TODO
-// * Implement tests using the new FSM API
-// * Create a new PR
+// Block Response
+func TestBlockAddition(t *testing.T) {
+	var (
+		peerID         p2p.ID = "peer"
+		initHeight     int64  = 0
+		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
+		nextHeight            = initHeight + 1
+		nextBlock             = &types.Block{Header: types.Header{Height: nextHeight}}
+		tdState               = tdState.State{}
+		applicationBL         = []types.BlockID{}
+		verificationBL        = []types.BlockID{}
+		context               = newMockProcessorContext(verificationBL, applicationBL)
+		state                 = &pcState{
+			bq: &blockQueue{
+				height: initHeight,
+				queue: map[int64]*queueItem{
+					initHeight: &queueItem{block: initBlock, peerID: peerID},
+				},
+			},
+			draining:     false,
+			blocksSynced: 0,
+			context:      context,
+			tdState:      tdState,
+		}
+		event = &bcBlockResponse{
+			peerID: peerID,
+			block:  nextBlock,
+			height: nextHeight,
+		}
+	)
 
-/*
-# Processor tests
+	nextEvent, nextState, err := pcHandle(event, state)
+	assert.NoError(t, err, "expected no error")
 
-## TestBlockPoolFirstTwoBlocksAndPeers
-* both blocks missing
-* second block missing
-* first block missing
-* both blocks present
+	assert.Equal(t, nextState, &pcState{
+		draining:     false,
+		blocksSynced: 0,
+		bq: &blockQueue{
+			height: initHeight,
+			queue: map[int64]*queueItem{
+				initHeight: &queueItem{block: initBlock, peerID: peerID},
+				nextHeight: &queueItem{block: nextBlock, peerID: peerID},
+			},
+		},
+		context: context,
+		tdState: tdState,
+	}, "expected the addition of a new block to the queue")
+	assert.Equal(t, noOp, nextEvent, "expected noOp event")
+}
 
-## TestBlockPoolInvalidateFirstTwoBlocks
-* both blocks missing
-* second block missing
-* first block missing
-* both blocks present
-
-## TestProcessedCurrentHeightBlock
-* one peer
-* multiple peers
-
-## TestRemovePeerAtCurrentHeight
-* one peer, remove peer for block at H
-* one peer, remove peer for block at H+1
-* multiple peers, remove peer for block at H
-* multiple peers, remove peer for block at H+1
-**/
-
-func TestBlockResponse(t *testing.T) {
+func TestProcessDuplicateBlock(t *testing.T) {
 	var (
 		peerID         p2p.ID = "peer"
 		initHeight     int64  = 0
@@ -49,7 +69,76 @@ func TestBlockResponse(t *testing.T) {
 		verificationBL        = []types.BlockID{}
 		context               = newMockProcessorContext(verificationBL, applicationBL)
 		state                 = &pcState{
+			bq: &blockQueue{
+				queue: map[int64]*queueItem{
+					initHeight: &queueItem{block: initBlock, peerID: peerID},
+				},
+			},
+			draining:     false,
+			blocksSynced: 0,
+			context:      context,
+			tdState:      tdState,
+		}
+		event = &bcBlockResponse{
+			peerID: peerID,
+			block:  initBlock,
+			height: initHeight,
+		}
+	)
+
+	nextEvent, nextState, err := pcHandle(event, state)
+
+	assert.NoError(t, err, "expected no error")
+	assert.Equal(t, state, nextState, "expected state to go unchanged")
+	assert.Equal(t, pcDuplicateBlock{}, nextEvent, "expected duplicate block event")
+	assert.Equal(t, state, nextState, "expected state to go unchanged")
+}
+
+// Process
+func TestProcessSingleBlock(t *testing.T) {
+	var (
+		initHeight     int64 = 0
+		initBlock            = &types.Block{Header: types.Header{Height: initHeight}}
+		tdState              = tdState.State{}
+		applicationBL        = []types.BlockID{}
+		verificationBL       = []types.BlockID{}
+		context              = newMockProcessorContext(verificationBL, applicationBL)
+		state                = &pcState{
 			bq:           newBlockQueue(initBlock),
+			draining:     false,
+			blocksSynced: 0,
+			context:      context,
+			tdState:      tdState,
+		}
+		event = &pcProcessBlock{}
+	)
+
+	nextEvent, nextState, err := pcHandle(event, state)
+	assert.NoError(t, err, "expected no error")
+	assert.Equal(t, noOp, nextEvent, "expected noOp event")
+	assert.Equal(t, state, nextState, "expected state to go unchanged")
+}
+
+func TestProcessBlockEmptyBlock(t *testing.T) {
+	var (
+		peerID         p2p.ID = "peer"
+		initHeight     int64  = 0
+		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
+		tdState               = tdState.State{}
+		applicationBL         = []types.BlockID{}
+		verificationBL        = []types.BlockID{}
+		context               = newMockProcessorContext(verificationBL, applicationBL)
+		nextNextHeight        = initHeight + 2
+		nextNextBlock         = &types.Block{Header: types.Header{Height: nextNextHeight}}
+		event                 = pcProcessBlock{}
+		state                 = &pcState{
+			bq: &blockQueue{
+				height: initHeight,
+				queue: map[int64]*queueItem{
+					initHeight:     &queueItem{block: initBlock, peerID: peerID},
+					nextNextHeight: &queueItem{block: nextNextBlock, peerID: peerID},
+				},
+			},
 			draining:     false,
 			blocksSynced: 0,
 			context:      context,
@@ -57,119 +146,73 @@ func TestBlockResponse(t *testing.T) {
 		}
 	)
 
-	event, nextState, err := pcHandle(&bcBlockResponse{
-		peerID: peerID,
-		block:  initBlock,
-		height: initHeight,
-	}, state)
+	nextEvent, nextState, err := pcHandle(event, state)
 
-	assert.Equal(t, pcDuplicateBlock{}, event, "expected duplicate block error")
+	assert.NoError(t, err, "expected no error")
+	assert.Equal(t, noOp, nextEvent, "expected noOp event")
 	assert.Equal(t, state, nextState, "expected state to go unchanged")
-
-	nextHeight := initHeight + 1
-	nextBlock := &types.Block{Header: types.Header{Height: nextHeight}}
-	nextEvent := &bcBlockResponse{
-		peerID: peerID,
-		height: nextHeight,
-		block:  nextBlock,
-	}
-
-	event, state, err = pcHandle(nextEvent, state)
-	assert.NoError(t, err)
-	assert.Equal(t, state, &pcState{
-		draining: false,
-		bq: &blockQueue{
-			height: nextHeight,
-			queue: map[int64]*queueItem{
-				initHeight: &queueItem{block: initBlock, peerID: peerID},
-				nextHeight: &queueItem{block: nextBlock, peerID: peerID},
-			},
-		},
-		context: context,
-		tdState: tdState,
-	})
 }
 
-func TestProcessBlock(t *testing.T) {
-}
-
-func TestPeerError(t *testing.T) {
-}
-
-func TestBlockProcessed(t *testing.T) {
-}
-
-func TestStop(t *testing.T) {
-}
+// Test with verificationBL
+// Test with applicationBL
 
 /*
-func TestProcessorStop(t *testing.T) {
+The problem here is that the deep difference will compare the poiters and not the values
+*/
+func TestProcessAdvance(t *testing.T) {
 	var (
-		initHeight     int64 = 0
-		initBlock            = types.Block{Header: types.Header{Height: initHeight}}
-		state                = state.State{}
-		chainID              = "TestChain"
-		applicationBL        = []types.BlockID{}
-		verificationBL       = []types.BlockID{}
-		context              = newMockProcessorContext(verificationBL, applicationBL)
-		processor            = newProcessor(&initBlock, state, chainID, context)
-	)
-	processor.setLogger(log.TestingLogger())
-
-	assert.False(t, processor.isRunning(),
-		"expected an initialized processor to not be running")
-	go processor.start()
-	go processor.feedback()
-	<-processor.ready()
-
-	assert.True(t, processor.trySend(pcStop{}),
-		"expected stopping to a ready processor to succeed")
-
-	assert.Equal(t, pcFinished{}, <-processor.final(),
-		"expected the final event to be done")
-}
-
-// XXX: It would be much better here if:
-// 1. we used synchronous `send` method
-// 2. Each even produced at most one event
-
-// what should the correct behaviour be here?
-
-func TestProcessorBlockReceived(t *testing.T) {
-	var (
+		peerID         p2p.ID = "peer"
 		initHeight     int64  = 0
-		initBlock             = types.Block{Header: types.Header{Height: initHeight}}
-		state                 = state.State{}
-		chainID               = "TestChain"
+		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
+		tdState               = tdState.State{}
 		applicationBL         = []types.BlockID{}
 		verificationBL        = []types.BlockID{}
 		context               = newMockProcessorContext(verificationBL, applicationBL)
-		processor             = newProcessor(&initBlock, state, chainID, context)
-		peerID         p2p.ID = "1"
+		nextHeight            = initHeight + 1
+		nextBlock             = &types.Block{Header: types.Header{Height: nextHeight}}
+		nextNextHeight        = initHeight + 2
+		nextNextBlock         = &types.Block{Header: types.Header{Height: nextNextHeight}}
+		state                 = &pcState{
+			bq: &blockQueue{
+				height: initHeight,
+				queue: map[int64]*queueItem{
+					initHeight:     &queueItem{block: initBlock, peerID: peerID},
+					nextHeight:     &queueItem{block: nextBlock, peerID: peerID},
+					nextNextHeight: &queueItem{block: nextNextBlock, peerID: peerID},
+				},
+			},
+			draining:     false,
+			blocksSynced: 0,
+			context:      context,
+			tdState:      tdState,
+		}
+		event = pcProcessBlock{}
 	)
-	processor.setLogger(log.TestingLogger())
 
-	assert.False(t, processor.isRunning(),
-		"expected an initialized processor to not be running")
-	go processor.start()
-	go processor.feedback()
-	<-processor.ready()
+	nextEvent, nextState, err := pcHandle(event, state)
 
-	// XXX: Blocks have a Height field
-	firstHeader := types.Header{Height: initHeight + 1}
-	firstBlock := types.Block{Header: firstHeader}
-	assert.True(t, processor.trySend(&bcBlockResponse{peerID: peerID, height: initHeight + 1, block: &firstBlock}),
-		"expected sending a block to succeed")
-
-	secondHeader := types.Header{Height: initHeight + 2}
-	secondBlock := types.Block{Header: secondHeader}
-	assert.True(t, processor.trySend(&bcBlockResponse{peerID: peerID, height: initHeight + 2, block: &secondBlock}),
-		"expected sending a block to succeed")
-
-	assert.True(t, processor.trySend(pcStop{}),
-		"expected stopping to a ready processor to succeed")
-
-	assert.Equal(t, pcFinished{height: initHeight + 1}, <-processor.final(),
-		"expected the final event to be done")
+	assert.NoError(t, err, "expected no error")
+	assert.Equal(t, pcBlockProcessed{nextHeight, peerID}, nextEvent, "expected the correct bcBlockProcessed event")
+	assert.Equal(t, &pcState{
+		bq: &blockQueue{
+			height: nextHeight,
+			queue: map[int64]*queueItem{
+				nextHeight:     &queueItem{block: nextBlock, peerID: peerID},
+				nextNextHeight: &queueItem{block: nextNextBlock, peerID: peerID},
+			},
+		},
+		draining:     false,
+		blocksSynced: 1,
+		context:      context,
+		tdState:      tdState,
+	}, nextState, "expected the state to have advanced")
 }
-*/
+
+func TestPeerError(t *testing.T) {
+	// Test queue removal
+}
+
+func TestStop(t *testing.T) {
+	// test with empty queue
+	// test with non empty queue
+}
