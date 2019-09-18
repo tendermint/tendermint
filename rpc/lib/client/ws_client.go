@@ -253,6 +253,7 @@ func (c *WSClient) dial() error {
 	}
 	rHeader := http.Header{}
 	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader)
+	defer conn.Close()
 	if err != nil {
 		return err
 	}

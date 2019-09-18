@@ -70,13 +70,6 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 	if err != nil {
 		return nil, err
 	}
-	// page & perPage === 0 then all validators are returned, no pagination
-	if page == 0 && perPage == 0 {
-		return &ctypes.ResultValidators{
-			BlockHeight: height,
-			Validators:  validators.Validators,
-		}, nil
-	}
 
 	totalCount := len(validators.Validators)
 	perPage = validatePerPage(perPage)
@@ -84,23 +77,14 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ct
 	if err != nil {
 		return nil, err
 	}
+
 	skipCount := validateSkipCount(page, perPage)
-	apiResults := make([]*types.Validator, cmn.MinInt(perPage, totalCount-skipCount))
 
-	for i := 0; i < len(apiResults); i++ {
-		v := validators.Validators[skipCount+i]
-
-		apiResults[i] = &types.Validator{
-			Address:          v.Address,
-			PubKey:           v.PubKey,
-			VotingPower:      v.VotingPower,
-			ProposerPriority: v.ProposerPriority,
-		}
-	}
+	v := validators.Validators[skipCount : skipCount+cmn.MinInt(perPage, totalCount-skipCount)]
 
 	return &ctypes.ResultValidators{
 		BlockHeight: height,
-		Validators:  apiResults}, nil
+		Validators:  v}, nil
 }
 
 // DumpConsensusState dumps consensus state.
