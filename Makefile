@@ -15,7 +15,7 @@ BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 all: check build test install
 
 # The below include contains the tools.
-include scripts/devtools/Makefile
+include tools.mk
 include tests.mk
 
 ########################################
@@ -152,10 +152,6 @@ lint:
 	@golangci-lint run
 
 DESTINATION = ./index.html.md
-
-rpc-docs:
-	cat rpc/core/slate_header.txt > $(DESTINATION)
-	godoc2md -template rpc/core/doc_template.txt github.com/tendermint/tendermint/rpc/core | grep -v -e "pipe.go" -e "routes.go" -e "dev.go" | sed 's,/src/target,https://github.com/tendermint/tendermint/tree/master/rpc/core,' >> $(DESTINATION)
 
 ###########################################################
 ### Docker image
