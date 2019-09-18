@@ -40,7 +40,6 @@ mkfile_dir := $(shell cd $(shell dirname $(mkfile_path)); pwd)
 
 TOOLS_DESTDIR  ?= $(GOPATH)/bin
 
-GOIMPORTS     = $(TOOLS_DESTDIR)/goimports
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
 GOX						= $(TOOLS_DESTDIR)/gox
@@ -48,7 +47,7 @@ GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: tools
 
-tools: goimports certstrap protobuf gox goodman
+tools: certstrap protobuf gox goodman
 
 check: check_tools
 
@@ -56,11 +55,6 @@ check_tools:
 	@# https://stackoverflow.com/a/25668869
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
-
-goimports: $(GOIMPORTS)
-$(GOIMPORTS):
-	@echo "Get goimports@v0.0.0-20190628034336-212fb13d595e"
-	@go get golang.org/x/tools/cmd/goimports@v0.0.0-20190628034336-212fb13d595e
 
 certstrap: $(CERTSTRAP)
 $(CERTSTRAP):
@@ -86,7 +80,7 @@ $(GOODMAN):
 	@go get github.com/snikch/goodman/cmd/goodman@10e37e294daa3c9a90abded60ff9924bafab3888
 
 tools-clean:
-	rm -f $(CERTSTRAP) $(GOIMPORTS) $(PROTOBUF) $(GOX) $(GOODMAN)
+	rm -f $(CERTSTRAP) $(PROTOBUF) $(GOX) $(GOODMAN)
 	rm -f tools-stamp
 
 .PHONY: all tools tools-clean
