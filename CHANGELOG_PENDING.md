@@ -10,6 +10,7 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 - CLI/RPC/Config
+  - [rpc] \#3471 Paginate `/validator` response, default returns all validators with no limit
 
 - Apps
 
@@ -21,7 +22,7 @@ program](https://hackerone.com/tendermint).
 
 - [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
 - [rpc] \#3984 Add `MempoolClient` interface to `Client` interface
-- [rpc] \#3471 Paginate `/validator` response, default returns all validators with no limit
+- [rpc] \#3882 Add custom marshalers to proto messages to disable `omitempty`
 
 ### BUG FIXES:
 

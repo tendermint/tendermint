@@ -432,7 +432,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Validators:     %v
 %s  NextValidators: %v
 %s  App:            %v
-%s  Consensus:       %v
+%s  Consensus:      %v
 %s  Results:        %v
 %s  Evidence:       %v
 %s  Proposer:       %v
