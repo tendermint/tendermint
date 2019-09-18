@@ -133,7 +133,7 @@ func TestMConnectionReceive(t *testing.T) {
 
 	select {
 	case receivedBytes := <-receivedCh:
-		assert.Equal(t, []byte(msg), receivedBytes)
+		assert.Equal(t, msg, receivedBytes)
 	case err := <-errorsCh:
 		t.Fatalf("Expected %s, got %+v", msg, err)
 	case <-time.After(500 * time.Millisecond):

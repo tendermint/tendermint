@@ -106,7 +106,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 	return &ctypes.ResultTx{
 		Hash:     hash,
 		Height:   height,
-		Index:    uint32(index),
+		Index:    index,
 		TxResult: r.Result,
 		Tx:       r.Tx,
 		Proof:    proof,

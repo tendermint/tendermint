@@ -33,6 +33,8 @@ const (
 	unixAddr   = "unix://" + unixSocket
 
 	websocketEndpoint = "/websocket/endpoint"
+
+	testVal = "acbd"
 )
 
 type ResultEcho struct {
@@ -189,7 +191,7 @@ func echoDataBytesViaHTTP(cl client.HTTPClient, bytes cmn.HexBytes) (cmn.HexByte
 }
 
 func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
-	val := "acbd"
+	val := testVal
 	got, err := echoViaHTTP(cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
@@ -255,7 +257,7 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 }
 
 func testWithWSClient(t *testing.T, cl *client.WSClient) {
-	val := "acbd"
+	val := testVal
 	got, err := echoViaWS(cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
@@ -314,7 +316,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	require.Nil(t, err)
 	defer cl.Stop()
 
-	val := "acbd"
+	val := testVal
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -339,7 +341,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	require.Nil(t, err)
 	defer cl.Stop()
 
-	val := "acbd"
+	val := testVal
 	params := []interface{}{val}
 	err = cl.CallWithArrayParams(context.Background(), "echo_ws", params)
 	require.Nil(t, err)
