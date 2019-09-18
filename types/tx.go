@@ -83,9 +83,9 @@ func (txs Txs) Proof(i int) TxProof {
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
-	RootHash cmn.HexBytes
-	Data     Tx
-	Proof    merkle.SimpleProof
+	RootHash cmn.HexBytes       `json:"root_hash"`
+	Data     Tx                 `json:"data"`
+	Proof    merkle.SimpleProof `json:"proof"`
 }
 
 // Leaf returns the hash(tx), which is the leaf in the merkle tree which this proof refers to.
@@ -133,6 +133,6 @@ type TxResult struct {
 // fieldNum is also 1 (see BinFieldNum in amino.MarshalBinaryBare).
 func ComputeAminoOverhead(tx Tx, fieldNum int) int64 {
 	fnum := uint64(fieldNum)
-	typ3AndFieldNum := (uint64(fnum) << 3) | uint64(amino.Typ3_ByteLength)
+	typ3AndFieldNum := (fnum << 3) | uint64(amino.Typ3_ByteLength)
 	return int64(amino.UvarintSize(typ3AndFieldNum)) + int64(amino.UvarintSize(uint64(len(tx))))
 }
