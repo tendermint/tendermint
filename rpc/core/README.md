@@ -1,15 +1,5 @@
 # Tendermint RPC
 
-We are using [Slate](https://github.com/lord/slate) to power our RPC
-documentation. For generating markdown use:
-
-```shell
-go get github.com/davecheney/godoc2md
-
-# from root of this repo
-make rpc-docs
-```
-
 ## Pagination
 
 Requests that return multiple items will be paginated to 30 items by default.
