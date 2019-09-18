@@ -21,6 +21,7 @@ program](https://hackerone.com/tendermint).
 
 - [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
 - [rpc] \#3984 Add `MempoolClient` interface to `Client` interface
+- [rpc] \#3882 Add custom marshalers to proto messages to disable `omitempty`
 
 ### BUG FIXES:
 
