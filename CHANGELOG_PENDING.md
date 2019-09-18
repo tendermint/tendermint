@@ -23,6 +23,9 @@ program](https://hackerone.com/tendermint).
 - [rpc] \#3984 Add `MempoolClient` interface to `Client` interface
 - [rpc] \#3882 Add custom marshalers to proto messages to disable `omitempty`
 
+
+- [protobuf] regenerated protobuf Go files with newer gogo/protobuf so compatible with those generated with newer protobuf
+
 ### BUG FIXES:
 
 - [consensus] \#3908 Wait `timeout_commit` to pass even if `create_empty_blocks` is `false`
