@@ -541,7 +541,7 @@ paths:
           description: "Number of entries per page (max: 100)"
           required: false
           x-example: 30
-          default: 0
+          default: 30
       tags:
         - Info
       description: |

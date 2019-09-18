@@ -55,7 +55,7 @@ import (
 // |-----------+--------+---------+----------+------------------------------------------------|
 // | height    | int64  | 0       | false    | Height (0 means latest)                        |
 // | page      | int    | 0       | false    | Page number (1-based)                          |
-// | per_page  | int    | 0       | false    | Number of entries per page (max: 100)          |
+// | per_page  | int    | 30      | false    | Number of entries per page (max: 100)          |
 
 func Validators(ctx *rpctypes.Context, heightPtr *int64, page, perPage int) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the
