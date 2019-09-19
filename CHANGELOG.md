@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.32.4
+
+*September 19, 2019*
+
+Special thanks to external contributors on this release: @jon-certik
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS:
+
+- [rpc] [\#2010](https://github.com/tendermint/tendermint/issues/2010) Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
+- [rpc] [\#3984](https://github.com/tendermint/tendermint/issues/3984) Add `MempoolClient` interface to `Client` interface
+- [rpc] [\#3882](https://github.com/tendermint/tendermint/issues/3882) Add custom marshalers to proto messages to disable `omitempty`
+
+### BUG FIXES:
+
+- [consensus] [\#3908](https://github.com/tendermint/tendermint/issues/3908) Wait `timeout_commit` to pass even if `create_empty_blocks` is `false`
+- [mempool] [\#3968](https://github.com/tendermint/tendermint/issues/3968) Fix memory loading error on 32-bit machines (@jon-certik)
+
 ## v0.32.3
 
 *August 28, 2019*
