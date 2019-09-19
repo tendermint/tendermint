@@ -4,15 +4,19 @@
 
 *September 19, 2019*
 
-Special thanks to external contributors on this release: @jon-certik
+Special thanks to external contributors on this release: @jon-certik, @gracenoah
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
 
+### BREAKING CHANGES:
+
+- CLI/RPC/Config
+  - [rpc] [\#3984](https://github.com/tendermint/tendermint/issues/3984) Add `MempoolClient` interface to `Client` interface
+
 ### IMPROVEMENTS:
 
 - [rpc] [\#2010](https://github.com/tendermint/tendermint/issues/2010) Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
-- [rpc] [\#3984](https://github.com/tendermint/tendermint/issues/3984) Add `MempoolClient` interface to `Client` interface
 - [rpc] [\#3882](https://github.com/tendermint/tendermint/issues/3882) Add custom marshalers to proto messages to disable `omitempty`
 
 ### BUG FIXES:
