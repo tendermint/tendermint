@@ -116,10 +116,6 @@ jobs:
           name: "Run tests"
           command: |
             make test
-      - persist_to_workspace:
-          root: /tmp/workspace
-          paths:
-            - "profiles/*"
       - store_artifacts:
           path: /tmp/logs
 
