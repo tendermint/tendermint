@@ -115,14 +115,7 @@ jobs:
       - run:
           name: "Run tests"
           command: |
-            export VERSION="$(git describe --tags --long | sed 's/v\(.*\)/\1/')"
-            export GO111MODULE=on
-            echo test
-            mkdir -p /tmp/logs /tmp/workspace/profiles
-            for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
-              id=$(basename "$pkg")
-              go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
-            done
+            make test
       - persist_to_workspace:
           root: /tmp/workspace
           paths:
