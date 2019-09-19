@@ -101,7 +101,7 @@ jobs:
 
   test_cover:
     executor: golang
-    # parallelism: 4
+    parallelism: 4
     steps:
       - restore_cache:
           name: "Restore source code cache"
