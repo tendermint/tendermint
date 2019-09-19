@@ -42,6 +42,7 @@ func newRoutine(name string, handleFunc handleFunc, bufferSize int) *Routine {
 	}
 }
 
+// nolint: unused
 func (rt *Routine) setLogger(logger log.Logger) {
 	rt.logger = logger
 }
