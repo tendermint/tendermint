@@ -77,10 +77,10 @@ func makeBlockPool(bcr *testBcR, height int64, peers []BpPeer, blocks map[int64]
 	bPool.MaxPeerHeight = maxH
 	for h, p := range blocks {
 		bPool.blocks[h] = p.id
-		bPool.peers[p.id].RequestSent(int64(h))
+		bPool.peers[p.id].RequestSent(h)
 		if p.create {
 			// simulate that a block at height h has been received
-			_ = bPool.peers[p.id].AddBlock(types.MakeBlock(int64(h), txs, nil, nil), 100)
+			_ = bPool.peers[p.id].AddBlock(types.MakeBlock(h, txs, nil, nil), 100)
 		}
 	}
 	return bPool
@@ -159,6 +159,7 @@ func TestBlockPoolUpdatePeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			pool := tt.pool
 			err := pool.UpdatePeer(tt.args.id, tt.args.height)
@@ -232,6 +233,7 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tt.pool.RemovePeer(tt.args.peerID, tt.args.err)
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)
@@ -272,6 +274,7 @@ func TestBlockPoolRemoveShortPeers(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			pool := tt.pool
 			pool.removeShortPeers()
@@ -317,6 +320,7 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			resetPoolTestResults()
 
@@ -421,6 +425,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.pool.AddBlock(tt.args.peerID, tt.args.block, tt.args.blockSize)
 			assert.Equal(t, tt.errWanted, err)
@@ -473,6 +478,7 @@ func TestBlockPoolFirstTwoBlocksAndPeers(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			pool := tt.pool
 			gotFirst, gotSecond, err := pool.FirstTwoBlocksAndPeers()
@@ -544,6 +550,7 @@ func TestBlockPoolInvalidateFirstTwoBlocks(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tt.pool.InvalidateFirstTwoBlocks(errNoPeerResponse)
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)
@@ -584,6 +591,7 @@ func TestProcessedCurrentHeightBlock(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tt.pool.ProcessedCurrentHeightBlock()
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)
@@ -642,6 +650,7 @@ func TestRemovePeerAtCurrentHeight(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			tt.pool.RemovePeerAtCurrentHeights(errNoPeerResponse)
 			assertBlockPoolEquivalent(t, tt.poolWanted, tt.pool)

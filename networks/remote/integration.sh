@@ -30,7 +30,7 @@ go get $REPO
 cd $GOPATH/src/$REPO
 
 ## build
-make get_tools
+make tools
 make build
 
 # generate an ssh key

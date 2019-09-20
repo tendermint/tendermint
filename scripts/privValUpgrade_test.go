@@ -75,6 +75,7 @@ func TestLoadAndUpgrade(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// need to re-write the file everytime because upgrading renames it
 			err := ioutil.WriteFile(oldFilePath, []byte(oldPrivvalContent), 0600)

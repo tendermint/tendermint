@@ -31,7 +31,7 @@ cd "$GOPATH/src/$REPO"
 git checkout $BRANCH
 # XXX: uncomment if branch isn't master
 # git fetch origin $BRANCH
-make get_tools
+make tools
 make install
 
 # the binary is located in $GOPATH/bin

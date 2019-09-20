@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.32.4
+
+*September 19, 2019*
+
+Special thanks to external contributors on this release: @jon-certik, @gracenoah, @PSalant726, @gchaincl
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- CLI/RPC/Config
+  - [rpc] [\#3984](https://github.com/tendermint/tendermint/issues/3984) Add `MempoolClient` interface to `Client` interface
+
+### IMPROVEMENTS:
+
+- [rpc] [\#2010](https://github.com/tendermint/tendermint/issues/2010) Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
+- [rpc] [\#3882](https://github.com/tendermint/tendermint/issues/3882) Add custom marshalers to proto messages to disable `omitempty`
+- [deps] [\#3952](https://github.com/tendermint/tendermint/pull/3952) bump github.com/go-kit/kit from 0.6.0 to 0.9.0
+- [deps] [\#3951](https://github.com/tendermint/tendermint/pull/3951) bump github.com/stretchr/testify from 1.3.0 to 1.4.0
+- [deps] [\#3945](https://github.com/tendermint/tendermint/pull/3945) bump github.com/gorilla/websocket from 1.2.0 to 1.4.1
+- [deps] [\#3948](https://github.com/tendermint/tendermint/pull/3948) bump github.com/libp2p/go-buffer-pool from 0.0.1 to 0.0.2
+- [deps] [\#3943](https://github.com/tendermint/tendermint/pull/3943) bump github.com/fortytw2/leaktest from 1.2.0 to 1.3.0 
+- [deps] [\#3939](https://github.com/tendermint/tendermint/pull/3939) bump github.com/rs/cors from 1.6.0 to 1.7.0 
+- [deps] [\#3937](https://github.com/tendermint/tendermint/pull/3937) bump github.com/magiconair/properties from 1.8.0 to 1.8.1 
+- [deps] [\#3947](https://github.com/tendermint/tendermint/pull/3947) update gogo/protobuf version from v1.2.1 to v1.3.0
+- [deps] [\#4001](https://github.com/tendermint/tendermint/pull/4001) bump github.com/tendermint/tm-db from 0.1.1 to 0.2.0
+
+### BUG FIXES:
+
+- [consensus] [\#3908](https://github.com/tendermint/tendermint/issues/3908) Wait `timeout_commit` to pass even if `create_empty_blocks` is `false`
+- [mempool] [\#3968](https://github.com/tendermint/tendermint/issues/3968) Fix memory loading error on 32-bit machines (@jon-certik)
+
 ## v0.32.3
 
 *August 28, 2019*
