@@ -15,6 +15,8 @@ program](https://hackerone.com/tendermint).
 
 - Go API
 
+- \#3986 Prefix protobuf types. ABCI types are prefixed with `tendermint`. API endpoint changes from `/types.ABCIApplication/SERVICE` to `/tendermint.types.ABCIApplication/SERVICE`.
+
 ### FEATURES:
 
 ### IMPROVEMENTS:
