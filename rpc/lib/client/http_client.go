@@ -394,6 +394,7 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expecte
 	}
 
 	for i, response := range responses {
+		response := response
 		// From the JSON-RPC 2.0 spec:
 		//  id: It MUST be the same as the value of the id member in the Request Object.
 		if err := validateResponseID(&response, expectedID); err != nil {

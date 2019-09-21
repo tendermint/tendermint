@@ -46,7 +46,7 @@ cd "$GOPATH/src/$REPO"
 
 # build & install master
 git checkout $BRANCH
-gmake get_tools
+gmake tools
 gmake install
 
 # the binary is located in $GOPATH/bin

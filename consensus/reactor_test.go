@@ -683,6 +683,7 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			message := NewRoundStepMessage{
 				Height:          tc.messageHeight,
@@ -712,6 +713,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			message := NewValidBlockMessage{
 				Height:     tc.messageHeight,
@@ -742,6 +744,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			message := ProposalPOLMessage{
 				Height:           tc.messageHeight,
@@ -769,6 +772,7 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			message := BlockPartMessage{
 				Height: tc.messageHeight,
@@ -808,6 +812,7 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			message := HasVoteMessage{
 				Height: tc.messageHeight,
@@ -852,6 +857,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			message := VoteSetMaj23Message{
 				Height:  tc.messageHeight,
@@ -898,6 +904,7 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			message := VoteSetBitsMessage{
 				Height: tc.messageHeight,
