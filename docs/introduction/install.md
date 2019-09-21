@@ -28,7 +28,7 @@ cd tendermint
 ### Get Tools & Dependencies
 
 ```
-make get_tools
+make tools
 ```
 
 ### Compile
