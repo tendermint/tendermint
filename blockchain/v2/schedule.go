@@ -10,8 +10,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-type Event interface{}
-
 type blockState int
 
 const (

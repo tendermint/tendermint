@@ -57,6 +57,6 @@ Vagrant.configure("2") do |config|
 
     # get all deps and tools, ready to install/test
     su - vagrant  -c 'source /home/vagrant/.bash_profile'
-    su - vagrant -c 'cd /home/vagrant/go/src/github.com/tendermint/tendermint && make get_tools'
+    su - vagrant -c 'cd /home/vagrant/go/src/github.com/tendermint/tendermint && make tools'
   SHELL
 end
