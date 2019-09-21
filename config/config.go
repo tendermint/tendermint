@@ -141,15 +141,6 @@ func (cfg *Config) ValidateBasic() error {
 
 // BaseConfig defines the base configuration for a Tendermint node
 type BaseConfig struct {
-	// If this node is many blocks behind the tip of the chain, FastSync
-	// allows them to catchup quickly by downloading blocks in parallel
-	// and verifying their commits
-	FastSyncMode bool `mapstructure:"fast_sync"`
-
-	// If true, query the ABCI app on connecting to a new peer
-	// so the app can decide if we should keep the connection or not
-	FilterPeers bool `mapstructure:"filter_peers"` // false
-
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -163,6 +154,11 @@ type BaseConfig struct {
 
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
+
+	// If this node is many blocks behind the tip of the chain, FastSync
+	// allows them to catchup quickly by downloading blocks in parallel
+	// and verifying their commits
+	FastSyncMode bool `mapstructure:"fast_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -208,6 +204,10 @@ type BaseConfig struct {
 
 	// TCP or UNIX socket address for the profiling server to listen on
 	ProfListenAddress string `mapstructure:"prof_laddr"`
+
+	// If true, query the ABCI app on connecting to a new peer
+	// so the app can decide if we should keep the connection or not
+	FilterPeers bool `mapstructure:"filter_peers"` // false
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
