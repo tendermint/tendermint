@@ -30,7 +30,9 @@ arbitrary bytes) and let the application handle it (including all the signature
 checking).
 
 Currently, evidence verification is handled by Tendermint. Once committed,
-evidence is passed over ABCI in BeginBlock in a reduced form that includes only
+[evidence is passed over
+ABCI](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto#L321)
+in BeginBlock in a reduced form that includes only
 the type of evidence, its height and timestamp, the validator it's from, and the
 total voting power of the validator set at the height. The app trusts Tendermint
 to perform the evidence verification, as the ABCI evidence does not contain the
