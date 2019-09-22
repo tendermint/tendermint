@@ -26,8 +26,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	clientGRPC := core_grpc.StartGRPCClient(grpcAddr)
-	res, err := clientGRPC.BroadcastTx(context.Background(), &core_grpc.RequestBroadcastTx{Tx: txBytes})
+	clientGRPC := coregrpc.StartGRPCClient(grpcAddr)
+	res, err := clientGRPC.BroadcastTx(context.Background(), &coregrpc.RequestBroadcastTx{Tx: txBytes})
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
