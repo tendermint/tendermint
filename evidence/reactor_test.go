@@ -203,6 +203,7 @@ func TestListMessageValidationBasic(t *testing.T) {
 		}, true},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			evListMsg := &ListMessage{}
 			n := 3
