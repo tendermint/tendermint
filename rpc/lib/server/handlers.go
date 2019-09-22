@@ -397,7 +397,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 		if rt.Kind() == reflect.String {
 			return reflect.ValueOf(string(value)), true, nil
 		}
-		return reflect.ValueOf([]byte(value)), true, nil
+		return reflect.ValueOf(value), true, nil
 	}
 
 	if isQuotedString && expectingByteSlice {
