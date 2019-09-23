@@ -19,7 +19,6 @@ type queueItem struct {
 
 type blockQueue map[int64]queueItem
 
-// maybe embed the queue
 type pcState struct {
 	height       int64
 	queue        blockQueue
