@@ -14,6 +14,11 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - stylecheck
+issues:
+  exclude-rules:
+  - linters:
+      - lll
+    source: "https://"
 # linters-settings:
 #   govet:
 #     check-shadowing: true
@@ -45,4 +50,3 @@ linters:
 #     disabled-checks:
 #       - wrapperFunc
 #       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
-
