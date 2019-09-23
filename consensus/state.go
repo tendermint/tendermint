@@ -456,7 +456,6 @@ func (cs *ConsensusState) scheduleRound0(rs *cstypes.RoundState) {
 	//cs.Logger.Info("scheduleRound0", "now", tmtime.Now(), "startTime", cs.StartTime)
 	sleepDuration := rs.StartTime.Sub(tmtime.Now())
 	cs.scheduleTimeout(sleepDuration, rs.Height, 0, cstypes.RoundStepNewHeight)
-	cs.Logger.Error("scheduled timeout commit")
 }
 
 // Attempt to schedule a timeout (by sending timeoutInfo on the tickChan)
