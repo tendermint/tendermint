@@ -203,3 +203,27 @@ In other words, a vote should only be signed if it's:
 
 This means that once a validator signs a prevote for a given height and round, the only other message it can sign for that height and round is a precommit.
 And once a validator signs a precommit for a given height and round, it must not sign any other message for that same height and round.
+
+Note this includes votes for `nil`, ie. where `BlockID.IsZero()` is true. If a
+signer has already signed a vote where `BlockID.IsZero()` is true, it cannot
+sign another vote with the same type for the same height and round where
+`BlockID.IsComplete()` is true. Thus only a single vote of a particular type
+(ie. 0x01 or 0x02) can be signed for the same height and round.
+
+### Other Rules
+
+According to the rules of Tendermint consensus, once a validator precommits for
+a block, they become "locked" on that block, which means they can't prevote for
+another block unless they see sufficient justification (ie. a polka from a
+higher round). For more details, see the [consensus
+spec](https://arxiv.org/abs/1807.04938).
+
+Violating this rule is known as "amnesia". In contrast to equivocation,
+which is easy to detect, amnesia is difficult to detect without access to votes
+from all the validators, as this is what constitutes the justification for
+"unlocking". Hence, amnesia is not punished within the protocol, and cannot
+easily be prevented by a signer. If enough validators simultaneously commit an
+amnesia attack, they may cause a fork of the blockchain, at which point an
+off-chain protocol must be engaged to collect votes from all the validators and
+determine who misbehaved. For more details, see [fork
+detection](https://github.com/tendermint/tendermint/pull/3978).
