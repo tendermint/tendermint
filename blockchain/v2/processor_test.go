@@ -22,11 +22,9 @@ func TestBlockAddition(t *testing.T) {
 		verificationBL        = []types.BlockID{}
 		context               = newMockProcessorContext(verificationBL, applicationBL)
 		state                 = &pcState{
-			bq: &blockQueue{
-				height: initHeight,
-				queue: map[int64]*queueItem{
-					initHeight: &queueItem{block: initBlock, peerID: peerID},
-				},
+			height: initHeight,
+			queue: blockQueue{
+				initHeight: queueItem{block: initBlock, peerID: peerID},
 			},
 			draining:     false,
 			blocksSynced: 0,
@@ -46,12 +44,10 @@ func TestBlockAddition(t *testing.T) {
 	assert.Equal(t, nextState, &pcState{
 		draining:     false,
 		blocksSynced: 0,
-		bq: &blockQueue{
-			height: initHeight,
-			queue: map[int64]*queueItem{
-				initHeight: &queueItem{block: initBlock, peerID: peerID},
-				nextHeight: &queueItem{block: nextBlock, peerID: peerID},
-			},
+		height:       initHeight,
+		queue: blockQueue{
+			initHeight: queueItem{block: initBlock, peerID: peerID},
+			nextHeight: queueItem{block: nextBlock, peerID: peerID},
 		},
 		context: context,
 		tdState: tdState,
@@ -69,10 +65,9 @@ func TestProcessDuplicateBlock(t *testing.T) {
 		verificationBL        = []types.BlockID{}
 		context               = newMockProcessorContext(verificationBL, applicationBL)
 		state                 = &pcState{
-			bq: &blockQueue{
-				queue: map[int64]*queueItem{
-					initHeight: &queueItem{block: initBlock, peerID: peerID},
-				},
+			height: initHeight,
+			queue: blockQueue{
+				initHeight: queueItem{block: initBlock, peerID: peerID},
 			},
 			draining:     false,
 			blocksSynced: 0,
@@ -91,20 +86,23 @@ func TestProcessDuplicateBlock(t *testing.T) {
 	assert.NoError(t, err, "expected no error")
 	assert.Equal(t, state, nextState, "expected state to go unchanged")
 	assert.Equal(t, pcDuplicateBlock{}, nextEvent, "expected duplicate block event")
-	assert.Equal(t, state, nextState, "expected state to go unchanged")
 }
 
 // Process
 func TestProcessSingleBlock(t *testing.T) {
 	var (
-		initHeight     int64 = 0
-		initBlock            = &types.Block{Header: types.Header{Height: initHeight}}
-		tdState              = tdState.State{}
-		applicationBL        = []types.BlockID{}
-		verificationBL       = []types.BlockID{}
-		context              = newMockProcessorContext(verificationBL, applicationBL)
-		state                = &pcState{
-			bq:           newBlockQueue(initBlock),
+		peerID         p2p.ID = "peer"
+		initHeight     int64  = 0
+		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
+		tdState               = tdState.State{}
+		applicationBL         = []types.BlockID{}
+		verificationBL        = []types.BlockID{}
+		context               = newMockProcessorContext(verificationBL, applicationBL)
+		state                 = &pcState{
+			height: initHeight,
+			queue: blockQueue{
+				initHeight: queueItem{block: initBlock, peerID: peerID},
+			},
 			draining:     false,
 			blocksSynced: 0,
 			context:      context,
@@ -132,12 +130,10 @@ func TestProcessBlockEmptyBlock(t *testing.T) {
 		nextNextBlock         = &types.Block{Header: types.Header{Height: nextNextHeight}}
 		event                 = pcProcessBlock{}
 		state                 = &pcState{
-			bq: &blockQueue{
-				height: initHeight,
-				queue: map[int64]*queueItem{
-					initHeight:     &queueItem{block: initBlock, peerID: peerID},
-					nextNextHeight: &queueItem{block: nextNextBlock, peerID: peerID},
-				},
+			height: initHeight,
+			queue: blockQueue{
+				initHeight:     queueItem{block: initBlock, peerID: peerID},
+				nextNextHeight: queueItem{block: nextNextBlock, peerID: peerID},
 			},
 			draining:     false,
 			blocksSynced: 0,
@@ -173,13 +169,11 @@ func TestProcessAdvance(t *testing.T) {
 		nextNextHeight        = initHeight + 2
 		nextNextBlock         = &types.Block{Header: types.Header{Height: nextNextHeight}}
 		state                 = &pcState{
-			bq: &blockQueue{
-				height: initHeight,
-				queue: map[int64]*queueItem{
-					initHeight:     &queueItem{block: initBlock, peerID: peerID},
-					nextHeight:     &queueItem{block: nextBlock, peerID: peerID},
-					nextNextHeight: &queueItem{block: nextNextBlock, peerID: peerID},
-				},
+			height: initHeight,
+			queue: blockQueue{
+				initHeight:     queueItem{block: initBlock, peerID: peerID},
+				nextHeight:     queueItem{block: nextBlock, peerID: peerID},
+				nextNextHeight: queueItem{block: nextNextBlock, peerID: peerID},
 			},
 			draining:     false,
 			blocksSynced: 0,
@@ -194,12 +188,10 @@ func TestProcessAdvance(t *testing.T) {
 	assert.NoError(t, err, "expected no error")
 	assert.Equal(t, pcBlockProcessed{nextHeight, peerID}, nextEvent, "expected the correct bcBlockProcessed event")
 	assert.Equal(t, &pcState{
-		bq: &blockQueue{
-			height: nextHeight,
-			queue: map[int64]*queueItem{
-				nextHeight:     &queueItem{block: nextBlock, peerID: peerID},
-				nextNextHeight: &queueItem{block: nextNextBlock, peerID: peerID},
-			},
+		height: nextHeight,
+		queue: blockQueue{
+			nextHeight:     queueItem{block: nextBlock, peerID: peerID},
+			nextNextHeight: queueItem{block: nextNextBlock, peerID: peerID},
 		},
 		draining:     false,
 		blocksSynced: 1,

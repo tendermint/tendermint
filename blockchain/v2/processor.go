@@ -17,54 +17,74 @@ type queueItem struct {
 	peerID p2p.ID
 }
 
+type blockQueue map[int64]queueItem
+
 // maybe embed the queue
-type blockQueue struct {
-	queue  map[int64]*queueItem
-	height int64 // Height is the last validated block
+type pcState struct {
+	height       int64
+	queue        blockQueue
+	chainID      string
+	blocksSynced int
+	draining     bool
+	tdState      tdState.State
+	context      processorContext
 }
 
-// we initialize the block queue with block stored on the node
-func newBlockQueue(initBlock *types.Block) *blockQueue {
-	var myID p2p.ID = "thispeersid" // XXX: this should be the nodes peerID
-	initItem := &queueItem{block: initBlock, peerID: myID}
+func (ps *pcState) String() string {
+	return fmt.Sprintf("queue: %d draining: %v, \n", len(ps.queue), ps.draining)
+}
 
-	return &blockQueue{
-		queue:  map[int64]*queueItem{initBlock.Height: initItem},
-		height: initBlock.Height,
+// newPcState returns a pcState initialized with the last verified block enqueued
+func newPcState(initBlock *types.Block, tdState tdState.State, chainID string, context processorContext) *pcState {
+	var myID p2p.ID = "thispeersid" // XXX: this should be the nodes peerID
+	initItem := queueItem{block: initBlock, peerID: myID}
+
+	return &pcState{
+		height:       initBlock.Height,
+		queue:        blockQueue{initBlock.Height: initItem},
+		chainID:      chainID,
+		draining:     false,
+		blocksSynced: 0,
+		context:      context,
+		tdState:      tdState,
 	}
 }
 
 // nextTwo returns the next two unverified blocks
-func (bq *blockQueue) nextTwo() (*queueItem, *queueItem, error) {
-	if first, ok := bq.queue[bq.height+1]; ok {
-		if second, ok := bq.queue[bq.height+2]; ok {
+func (state *pcState) nextTwo() (queueItem, queueItem, error) {
+	if first, ok := state.queue[state.height+1]; ok {
+		if second, ok := state.queue[state.height+2]; ok {
 			return first, second, nil
 		}
 	}
-	return nil, nil, fmt.Errorf("not found")
+	return queueItem{}, queueItem{}, fmt.Errorf("not found")
 }
 
-func (bq *blockQueue) empty() bool {
-	return len(bq.queue) == 0
+// synced returns true when only the last verified block remains in the queue
+func (state *pcState) synced() bool {
+	return len(state.queue) == 1
 }
 
-func (bq *blockQueue) advance() {
-	delete(bq.queue, bq.height)
-	bq.height++
+func (state *pcState) advance() {
+	delete(state.queue, state.height)
+	state.height++
+	state.blocksSynced++
 }
 
-func (bq *blockQueue) add(peerID p2p.ID, block *types.Block, height int64) error {
-	if _, ok := bq.queue[height]; ok {
+func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) error {
+	if _, ok := state.queue[height]; ok {
 		return fmt.Errorf("duplicate queue item")
 	}
-	bq.queue[height] = &queueItem{block: block, peerID: peerID}
+	state.queue[height] = queueItem{block: block, peerID: peerID}
 	return nil
 }
 
-func (bq *blockQueue) remove(peerID p2p.ID) {
-	for height, item := range bq.queue {
+// purgePeer moves all unprocessed blocks from the queue
+func (state *pcState) purgePeer(peerID p2p.ID) {
+	// what if height is less than state.height?
+	for height, item := range state.queue {
 		if item.peerID == peerID {
-			delete(bq.queue, height)
+			delete(state.queue, height)
 		}
 	}
 }
@@ -101,33 +121,20 @@ func (p pcFinished) Error() string {
 var noOp struct{} = struct{}{}
 
 // TODO: timeouts
-// XXX: Maybe merge this with the blockQueue structure
-type pcState struct {
-	chainID      string
-	blocksSynced int
-	draining     bool
-	bq           *blockQueue
-	tdState      tdState.State
-	context      processorContext
-}
-
-func (ps *pcState) String() string {
-	return fmt.Sprintf("queue: %d draining: %v, \n", len(ps.bq.queue), ps.draining)
-}
-
+// XXX: we are mutating state here, is that what we want?
 func pcHandle(event Event, state *pcState) (Event, *pcState, error) {
 	switch event := event.(type) {
 	case *bcBlockResponse:
-		err := state.bq.add(event.peerID, event.block, event.height)
+		err := state.enqueue(event.peerID, event.block, event.height)
 		if err != nil {
 			return pcDuplicateBlock{}, state, nil
 		}
 
 	case pcProcessBlock:
-		firstItem, secondItem, err := state.bq.nextTwo()
+		firstItem, secondItem, err := state.nextTwo()
 		if err != nil {
 			if state.draining {
-				return noOp, state, pcFinished{height: state.bq.height}
+				return noOp, state, pcFinished{height: state.height}
 			}
 			return noOp, state, nil
 		}
@@ -149,14 +156,14 @@ func pcHandle(event Event, state *pcState) (Event, *pcState, error) {
 		if err != nil {
 			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 		}
-		state.bq.advance()
-		state.blocksSynced++
+		state.advance()
 		return pcBlockProcessed{first.Height, firstItem.peerID}, state, nil
 	case *peerError:
-		state.bq.remove(event.peerID)
+		state.purgePeer(event.peerID)
+		// TODO: emit an event notifying the scheduler
 	case pcStop:
-		if state.bq.empty() {
-			return noOp, state, pcFinished{height: state.bq.height, blocksSynced: state.blocksSynced}
+		if state.synced() {
+			return noOp, state, pcFinished{height: state.height, blocksSynced: state.blocksSynced}
 		}
 		state.draining = true
 	}
@@ -164,15 +171,7 @@ func pcHandle(event Event, state *pcState) (Event, *pcState, error) {
 	return noOp, state, nil
 }
 
-func newProcessor(initBlock *types.Block, tdState tdState.State, chainID string, context processorContext) *Routine {
-	state := &pcState{
-		bq:           newBlockQueue(initBlock),
-		draining:     false,
-		blocksSynced: 0,
-		context:      context,
-		tdState:      tdState,
-	}
-
+func newProcessor(state *pcState) *Routine {
 	handlerFunc := func(event Event) (Event, error) {
 		event, nextState, err := pcHandle(event, state)
 		state = nextState
