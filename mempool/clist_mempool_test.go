@@ -574,7 +574,14 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 }
 
 // caller must close server
-func newRemoteApp(t *testing.T, addr string, app abci.Application) (clientCreator proxy.ClientCreator, server cmn.Service) {
+func newRemoteApp(
+	t *testing.T,
+	addr string,
+	app abci.Application,
+) (
+	clientCreator proxy.ClientCreator,
+	server cmn.Service,
+) {
 	clientCreator = proxy.NewRemoteClientCreator(addr, "socket", true)
 
 	// Start server
