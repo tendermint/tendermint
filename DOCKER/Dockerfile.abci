@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY Gopkg.toml /go/src/github.com/tendermint/abci/
 COPY Gopkg.lock /go/src/github.com/tendermint/abci/
-RUN make get_tools
+RUN make tools
 
 # see https://github.com/golang/dep/issues/1312
 RUN dep ensure -vendor-only
