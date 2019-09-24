@@ -13,16 +13,14 @@ type timeCheck struct {
 }
 
 func schedulerHandle(event Event) (Event, error) {
-	switch event.(type) {
-	case timeCheck:
+	if _, ok := event.(timeCheck); ok {
 		fmt.Println("scheduler handle timeCheck")
 	}
 	return noOp, nil
 }
 
 func processorHandle(event Event) (Event, error) {
-	switch event.(type) {
-	case timeCheck:
+	if _, ok := event.(timeCheck); ok {
 		fmt.Println("processor handle timeCheck")
 	}
 	return noOp, nil

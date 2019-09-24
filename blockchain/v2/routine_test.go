@@ -15,8 +15,7 @@ type eventA struct {
 var done = fmt.Errorf("done")
 
 func simpleHandler(event Event) (Event, error) {
-	switch event.(type) {
-	case eventA:
+	if _, ok := event.(eventA); ok {
 		return noOp, done
 	}
 	return noOp, nil
