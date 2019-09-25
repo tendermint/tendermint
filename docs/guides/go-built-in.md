@@ -109,11 +109,11 @@ func (KVStoreApplication) SetOption(req abcitypes.RequestSetOption) abcitypes.Re
 	return abcitypes.ResponseSetOption{}
 }
 
-func (KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
+func (KVStoreApplication) DeliverTx(tx []byte) abcitypes.ResponseDeliverTx {
 	return abcitypes.ResponseDeliverTx{Code: 0}
 }
 
-func (KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
+func (KVStoreApplication) CheckTx(tx []byte) abcitypes.ResponseCheckTx {
 	return abcitypes.ResponseCheckTx{Code: 0}
 }
 
