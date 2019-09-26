@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.32.5
+
+### Security
+
+[p2p] [TODO](hxxp://githublink) Fix for panic on nil public key send to a peer.
+
+
+
 ## v0.32.4
 
 *September 19, 2019*
