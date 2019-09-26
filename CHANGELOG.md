@@ -1,5 +1,15 @@
 # Changelog
 
+
+## v0.31.9
+
+### Security
+
+[p2p] [TODO](hxxp://githublink) Fix for panic on nil public key send to a peer.
+
+
+## v0.31.8
+
 *July 29, 2019*
 
 This releases fixes one bug in the PEX reactor and adds a `recover` to the Go's
