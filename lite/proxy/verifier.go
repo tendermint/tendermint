@@ -9,7 +9,13 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
-func NewVerifier(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger, cacheSize int) (*lite.DynamicVerifier, error) {
+func NewVerifier(
+	chainID,
+	rootDir string,
+	client lclient.SignStatusClient,
+	logger log.Logger,
+	cacheSize int,
+) (*lite.DynamicVerifier, error) {
 
 	logger = logger.With("module", "lite/proxy")
 	logger.Info("lite/proxy/NewVerifier()...", "chainID", chainID, "rootDir", rootDir, "client", client)
