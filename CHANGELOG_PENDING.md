@@ -1,4 +1,4 @@
-## v0.32.4
+## v0.32.5
 
 \*\*
 
@@ -21,11 +21,4 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
-- [rpc] \#3984 Add `MempoolClient` interface to `Client` interface
-- [rpc] \#3882 Add custom marshalers to proto messages to disable `omitempty`
-
 ### BUG FIXES:
-
-- [consensus] \#3908 Wait `timeout_commit` to pass even if `create_empty_blocks` is `false`
-- [mempool] \#3968 Fix memory loading error on 32-bit machines (@jon-certik)
