@@ -4,7 +4,7 @@
 
 ### Security
 
-[p2p] [TODO](hxxp://githublink) Fix for panic on nil public key send to a peer.
+- [p2p] [TODO](hxxp://githublink) Fix for panic on nil public key send to a peer
 
 
 
