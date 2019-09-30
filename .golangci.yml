@@ -14,6 +14,10 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - stylecheck
+    - funlen
+    - godox
+    - dogsled
+    - whitespace
 # linters-settings:
 #   govet:
 #     check-shadowing: true
@@ -45,4 +49,3 @@ linters:
 #     disabled-checks:
 #       - wrapperFunc
 #       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
-
