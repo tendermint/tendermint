@@ -1,12 +1,27 @@
 # Changelog
 
-
 ## v0.31.9
 
-### Security
+*September 30, 2019*
+
+This release fixes a major security vulnerability found in the `p2p` package.
+All clients are recommended to upgrade. See [TODO](hxxp://githublink) for
+details.
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for discovering
+and reporting this issue.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
 
 - [p2p] [TODO](hxxp://githublink) Fix for panic on nil public key send to a peer
 
+### BUG FIXES:
+
+- [node] [\#3716](https://github.com/tendermint/tendermint/issues/3716) Fix a bug where `nil` is recorded as node's address
+- [node] [\#3741](https://github.com/tendermint/tendermint/issues/3741) Fix profiler blocking the entire node
 
 ## v0.31.8
 
@@ -16,10 +31,10 @@ This releases fixes one bug in the PEX reactor and adds a `recover` to the Go's
 ABCI server, which allows it to properly cleanup.
 
 ### IMPROVEMENTS:
-- [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
+- [abci] [\#3809](https://github.com/tendermint/tendermint/issues/3809) Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
 
 ### BUG FIXES:
-- [p2p] \#3338 Prevent "sent next PEX request too soon" errors by not calling
+- [p2p] [\#3338](https://github.com/tendermint/tendermint/issues/3338) Prevent "sent next PEX request too soon" errors by not calling
   ensurePeers outside of ensurePeersRoutine
 
 ## v0.31.7
@@ -31,11 +46,11 @@ The regression caused the invalid committed txs to be proposed in blocks over an
 over again.
 
 ### BUG FIXES:
-- [mempool] \#3699 Remove all committed txs from the mempool.
+- [mempool] [\#3699](https://github.com/tendermint/tendermint/issues/3699) Remove all committed txs from the mempool.
     This reverts the change from v0.31.6 where we only remove valid txs from the mempool.
     Note this means malicious proposals can cause txs to be dropped from the
     mempools of other nodes by including them in blocks before they are valid.
-    See \#3322.
+    See [\#3322](https://github.com/tendermint/tendermint/issues/3322).
 
 ## v0.31.6
 
