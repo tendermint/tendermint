@@ -8,6 +8,51 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+type peerError struct {
+	priorityHigh
+	peerID p2p.ID
+}
+
+type pcDuplicateBlock struct {
+	priorityNormal
+}
+
+type bcBlockResponse struct {
+	priorityNormal
+	peerID p2p.ID
+	block  *types.Block
+	height int64
+}
+
+type pcBlockVerificationFailure struct {
+	priorityNormal
+}
+
+type pcBlockProcessed struct {
+	priorityNormal
+	height int64
+	peerID p2p.ID
+}
+
+type pcProcessBlock struct {
+	priorityNormal
+}
+
+type pcStop struct {
+	priorityNormal
+}
+
+type pcFinished struct {
+	priorityNormal
+	height       int64
+	blocksSynced int
+	state        tdState.State
+}
+
+func (p pcFinished) Error() string {
+	return "finished"
+}
+
 type queueItem struct {
 	block  *types.Block
 	peerID p2p.ID
@@ -74,6 +119,7 @@ func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) e
 	return nil
 }
 
+// XXX:  rename pcFSM
 // purgePeer moves all unprocessed blocks from the queue
 func (state *pcState) purgePeer(peerID p2p.ID) {
 	// what if height is less than state.height?
@@ -84,68 +130,22 @@ func (state *pcState) purgePeer(peerID p2p.ID) {
 	}
 }
 
-type peerError struct {
-	priorityHigh
-	peerID p2p.ID
-}
-
-type pcDuplicateBlock struct {
-	priorityNormal
-}
-
-type bcBlockResponse struct {
-	priorityNormal
-	peerID p2p.ID
-	block  *types.Block
-	height int64
-}
-
-type pcBlockVerificationFailure struct {
-	priorityNormal
-}
-
-type pcBlockProcessed struct {
-	priorityNormal
-	height int64
-	peerID p2p.ID
-}
-
-type pcProcessBlock struct {
-	priorityNormal
-}
-
-type pcStop struct {
-	priorityNormal
-}
-
-type pcFinished struct {
-	priorityNormal
-	height       int64
-	blocksSynced int
-	state        tdState.State
-}
-
-func (p pcFinished) Error() string {
-	return "finished"
-}
-
-// TODO: timeouts
-// XXX: we are mutating state here, is that what we want?
-func pcHandle(event Event, state *pcState) (Event, *pcState, error) {
+// Handle
+func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case *bcBlockResponse:
 		err := state.enqueue(event.peerID, event.block, event.height)
 		if err != nil {
-			return pcDuplicateBlock{}, state, nil
+			return pcDuplicateBlock{}, nil
 		}
 
 	case pcProcessBlock:
 		firstItem, secondItem, err := state.nextTwo()
 		if err != nil {
 			if state.draining {
-				return noOp, state, pcFinished{height: state.height}
+				return noOp, pcFinished{height: state.height}
 			}
-			return noOp, state, nil
+			return noOp, nil
 		}
 		first, second := firstItem.block, secondItem.block
 
@@ -156,7 +156,7 @@ func pcHandle(event Event, state *pcState) (Event, *pcState, error) {
 		err = state.context.verifyCommit(state.chainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
 			// XXX: maybe add peer and height field
-			return pcBlockVerificationFailure{}, state, nil
+			return pcBlockVerificationFailure{}, nil
 		}
 
 		state.context.saveBlock(first, firstParts, second.LastCommit)
@@ -166,26 +166,20 @@ func pcHandle(event Event, state *pcState) (Event, *pcState, error) {
 			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 		}
 		state.advance()
-		return pcBlockProcessed{height: first.Height, peerID: firstItem.peerID}, state, nil
+		return pcBlockProcessed{height: first.Height, peerID: firstItem.peerID}, nil
 	case *peerError:
 		state.purgePeer(event.peerID)
 		// TODO: emit an event notifying the scheduler
 	case pcStop:
 		if state.synced() {
-			return noOp, state, pcFinished{height: state.height, blocksSynced: state.blocksSynced}
+			return noOp, pcFinished{height: state.height, blocksSynced: state.blocksSynced}
 		}
 		state.draining = true
 	}
 
-	return noOp, state, nil
+	return noOp, nil
 }
 
 func newProcessor(state *pcState, queueSize int) *Routine {
-	handlerFunc := func(event Event) (Event, error) {
-		event, nextState, err := pcHandle(event, state)
-		state = nextState
-		return event, err
-	}
-
-	return newRoutine("processor", handlerFunc, queueSize)
+	return newRoutine("processor", state.handle, queueSize)
 }

@@ -38,10 +38,10 @@ func TestBlockAddition(t *testing.T) {
 		}
 	)
 
-	nextEvent, nextState, err := pcHandle(event, state)
+	nextEvent, err := state.handle(event)
 	assert.NoError(t, err, "expected no error")
 
-	assert.Equal(t, nextState, &pcState{
+	assert.Equal(t, state, &pcState{
 		draining:     false,
 		blocksSynced: 0,
 		height:       initHeight,
@@ -81,14 +81,22 @@ func TestProcessDuplicateBlock(t *testing.T) {
 		}
 	)
 
-	nextEvent, nextState, err := pcHandle(event, state)
+	nextEvent, err := state.handle(event)
 
 	assert.NoError(t, err, "expected no error")
-	assert.Equal(t, state, nextState, "expected state to go unchanged")
+	assert.Equal(t, state, &pcState{
+		height: initHeight,
+		queue: blockQueue{
+			initHeight: queueItem{block: initBlock, peerID: peerID},
+		},
+		draining:     false,
+		blocksSynced: 0,
+		context:      context,
+		tdState:      tdState,
+	}, "expected state to go unchanged")
 	assert.Equal(t, pcDuplicateBlock{}, nextEvent, "expected duplicate block event")
 }
 
-// Process
 func TestProcessSingleBlock(t *testing.T) {
 	var (
 		peerID         p2p.ID = "peer"
@@ -111,10 +119,19 @@ func TestProcessSingleBlock(t *testing.T) {
 		event = &pcProcessBlock{}
 	)
 
-	nextEvent, nextState, err := pcHandle(event, state)
+	nextEvent, err := state.handle(event)
 	assert.NoError(t, err, "expected no error")
 	assert.Equal(t, noOp, nextEvent, "expected noOp event")
-	assert.Equal(t, state, nextState, "expected state to go unchanged")
+	assert.Equal(t, state, &pcState{
+		height: initHeight,
+		queue: blockQueue{
+			initHeight: queueItem{block: initBlock, peerID: peerID},
+		},
+		draining:     false,
+		blocksSynced: 0,
+		context:      context,
+		tdState:      tdState,
+	}, "expected state to go unchanged")
 }
 
 func TestProcessBlockEmptyBlock(t *testing.T) {
@@ -142,19 +159,26 @@ func TestProcessBlockEmptyBlock(t *testing.T) {
 		}
 	)
 
-	nextEvent, nextState, err := pcHandle(event, state)
+	nextEvent, err := state.handle(event)
 
 	assert.NoError(t, err, "expected no error")
 	assert.Equal(t, noOp, nextEvent, "expected noOp event")
-	assert.Equal(t, state, nextState, "expected state to go unchanged")
+	assert.Equal(t, state, &pcState{
+		height: initHeight,
+		queue: blockQueue{
+			initHeight:     queueItem{block: initBlock, peerID: peerID},
+			nextNextHeight: queueItem{block: nextNextBlock, peerID: peerID},
+		},
+		draining:     false,
+		blocksSynced: 0,
+		context:      context,
+		tdState:      tdState,
+	}, "expected state to go unchanged")
 }
 
 // Test with verificationBL
 // Test with applicationBL
 
-/*
-The problem here is that the deep difference will compare the poiters and not the values
-*/
 func TestProcessAdvance(t *testing.T) {
 	var (
 		peerID         p2p.ID = "peer"
@@ -183,11 +207,13 @@ func TestProcessAdvance(t *testing.T) {
 		event = pcProcessBlock{}
 	)
 
-	nextEvent, nextState, err := pcHandle(event, state)
+	nextEvent, err := state.handle(event)
 
 	assert.NoError(t, err, "expected no error")
-	assert.Equal(t, pcBlockProcessed{height: nextHeight, peerID: peerID}, nextEvent, "expected the correct bcBlockProcessed event")
-	assert.Equal(t, &pcState{
+	assert.Equal(t, nextEvent, pcBlockProcessed{
+		height: nextHeight,
+		peerID: peerID}, "expected the correct bcBlockProcessed event")
+	assert.Equal(t, state, &pcState{
 		height: nextHeight,
 		queue: blockQueue{
 			nextHeight:     queueItem{block: nextBlock, peerID: peerID},
@@ -197,7 +223,7 @@ func TestProcessAdvance(t *testing.T) {
 		blocksSynced: 1,
 		context:      context,
 		tdState:      tdState,
-	}, nextState, "expected the state to have advanced")
+	}, "expected the state to have advanced")
 }
 
 func TestPeerError(t *testing.T) {
