@@ -70,7 +70,7 @@ var (
 	// objects
 	pubKey           crypto.PubKey
 	genDoc           *types.GenesisDoc // cache the genesis structure
-	addrBook         p2p.AddrBook
+	addrBook         p2p.AddrBook      // nolint: unused
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
