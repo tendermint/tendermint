@@ -180,6 +180,7 @@ func (n *Network) UpdateNumValidatorsForHeight(num int, height int64) {
 	if n.Height <= height {
 		n.NumValidators = num
 	}
+	n.updateHealth()
 }
 
 func (n *Network) GetHealthString() string {
