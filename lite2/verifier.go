@@ -9,7 +9,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func Verify(chainID string,
+// Verify checks whether we can trust newHeader based on lastHeader.
+//
+// For adjacent headers, it checks if lastVals are equal to those in newHeader
+// (also newVals).
+//
+// For non-adjacent headers, it checks if at least one correct validator has
+// signed newHeader (i.e., signed by more than 1/3 of the voting power).
+func Verify(
+	chainID string,
 	lastHeader *types.SignedHeader,
 	lastVals *types.ValidatorSet,
 	newHeader *types.SignedHeader,
@@ -18,11 +26,14 @@ func Verify(chainID string,
 	now time.Time,
 	trustLevel float32) error {
 
+	// Ensure last header can still be trusted.
 	expirationTime := lastHeader.Time.Add(trustingPeriod)
 	if !expirationTime.After(now) {
 		return errors.Errorf("last header has expired at %v (now: %v)",
 			expirationTime, now)
 	}
+
+	// Ensure new header is within trusting period.
 	if !newHeader.Time.Before(expirationTime) {
 		return errors.Errorf("expected new header %v to be within the trusting period, which ends at %v",
 			newHeader.Time, expirationTime)
@@ -47,7 +58,7 @@ func Verify(chainID string,
 		}
 	}
 
-	// Ensure that +2/3 of current validators signed correctly.
+	// Ensure that +2/3 of new validators signed correctly.
 	err := newVals.VerifyCommit(chainID, newHeader.Commit.BlockID, newHeader.Height, newHeader.Commit)
 	if err != nil {
 		return err
