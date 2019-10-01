@@ -19,14 +19,14 @@ import (
 const maxRestarts = 25
 
 type Node struct {
-	rpcAddr string
+	IsValidator bool  `json:"is_validator"` // validator or non-validator?
+	Online      bool  `json:"online"`
+	Height      int64 `json:"height"`
+	rpcAddr     string
+	Name        string `json:"name"`
 
-	IsValidator bool `json:"is_validator"` // validator or non-validator?
-	pubKey      crypto.PubKey
+	pubKey crypto.PubKey
 
-	Name         string  `json:"name"`
-	Online       bool    `json:"online"`
-	Height       int64   `json:"height"`
 	BlockLatency float64 `json:"block_latency" amino:"unsafe"` // ms, interval between block commits
 
 	// em holds the ws connection. Each eventMeter callback is called in a separate go-routine.
