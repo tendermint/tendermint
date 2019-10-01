@@ -1,8 +1,9 @@
-## v0.32.4
+## v0.32.5
 
 \*\*
 
 Special thanks to external contributors on this release:
+@erikgrinaker
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -19,10 +20,8 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [rpc] \#2010 Add NewHTTPWithClient and NewJSONRPCClientWithHTTPClient (note these and NewHTTP, NewJSONRPCClient functions panic if remote is invalid) (@gracenoah)
-- [rpc] \#3984 Add `MempoolClient` interface to `Client` interface
+- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Improved `tm-monitor` formatting of start time and avg tx throughput
 
 ### BUG FIXES:
 
-- [consensus] \#3908 Wait `timeout_commit` to pass even if `create_empty_blocks` is `false`
-- [mempool] \#3968 Fix memory loading error on 32-bit machines (@jon-certik)
+- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Refresh `tm-monitor` health when validator count is updated

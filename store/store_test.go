@@ -169,8 +169,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		block      *types.Block
 		parts      *types.PartSet
 		seenCommit *types.Commit
-		wantErr    bool
 		wantPanic  string
+		wantErr    bool
 
 		corruptBlockInDB      bool
 		corruptCommitInDB     bool
