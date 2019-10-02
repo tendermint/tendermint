@@ -1,6 +1,8 @@
 package lite
 
 import (
+	"time"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
@@ -108,13 +110,13 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 	return vote
 }
 
-func genHeader(chainID string, height int64, txs types.Txs,
+func genHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
 
 	return &types.Header{
 		ChainID:  chainID,
 		Height:   height,
-		Time:     tmtime.Now(),
+		Time:     bTime,
 		NumTxs:   int64(len(txs)),
 		TotalTxs: int64(len(txs)),
 		// LastBlockID
@@ -129,10 +131,10 @@ func genHeader(chainID string, height int64, txs types.Txs,
 }
 
 // GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
-func (pkz privKeys) GenSignedHeader(chainID string, height int64, txs types.Txs,
+func (pkz privKeys) GenSignedHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) *types.SignedHeader {
 
-	header := genHeader(chainID, height, txs, valset, nextValset, appHash, consHash, resHash)
+	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	return &types.SignedHeader{
 		Header: header,
 		Commit: pkz.signHeader(header, first, last),

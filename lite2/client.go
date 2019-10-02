@@ -17,6 +17,10 @@ type Client struct {
 	trustedVals   *types.ValidatorSet
 }
 
+func NewClient() *Client {
+	return &Client{}
+}
+
 func (c *Client) Verify(
 	newHeader *types.SignedHeader,
 	newVals *types.ValidatorSet,
