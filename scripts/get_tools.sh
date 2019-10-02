@@ -59,8 +59,6 @@ installFromGithub square/certstrap e27060a3643e814151e65b9807b6b06d169580a7
 # used to build tm-monitor & tm-bench binaries
 installFromGithub mitchellh/gox 51ed453898ca5579fea9ad1f08dff6b121d9f2e8
 
-## golangci-lint v1.13.2
-installFromGithub golangci/golangci-lint 7b2421d55194c9dc385eff7720a037aa9244ca3c cmd/golangci-lint
 
 ## make test_with_deadlock
 ## XXX: https://github.com/tendermint/tendermint/issues/3242
