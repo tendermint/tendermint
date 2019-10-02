@@ -26,7 +26,7 @@ type scPrunePeerEv struct {
 	reason error
 }
 
-type scSchedulerFailure struct {
+type scschedulerrFailure struct {
 	priorityHigh
 	peerID p2p.ID
 	time   time.Time
@@ -64,7 +64,7 @@ type scPeerError struct {
 }
 
 // XXX: make this fetal?
-type scScheduleFail struct {
+type scschedulerFail struct {
 	priorityHigh
 	reason error
 }
@@ -74,7 +74,7 @@ type tryPrunePeer struct {
 	time time.Time
 }
 
-type trySchedule struct {
+type tryscheduler struct {
 	priorityHigh
 	time time.Time
 }
@@ -149,14 +149,14 @@ func newScPeer(peerID p2p.ID) *scPeer {
 	}
 }
 
-// The schedule is a composite data structure which allows a scheduler to keep
-// track of which blocks have been scheduled into which state.
-type schedule struct {
+// The scheduler is a composite data structure which allows a schedulerr to keep
+// track of which blocks have been schedulerd into which state.
+type scheduler struct {
 	initHeight int64
 	// a list of blocks in which blockState
 	blockStates map[int64]blockState
 
-	// a map of peerID to schedule specific peer struct `scPeer` used to keep
+	// a map of peerID to scheduler specific peer struct `scPeer` used to keep
 	// track of peer specific state
 	peers map[p2p.ID]*scPeer
 
@@ -175,8 +175,8 @@ type schedule struct {
 	peerTimeout    time.Duration
 }
 
-func newSchedule(initHeight int64) *schedule {
-	sc := schedule{
+func newscheduler(initHeight int64) *scheduler {
+	sc := scheduler{
 		initHeight:     initHeight,
 		blockStates:    make(map[int64]blockState),
 		peers:          make(map[p2p.ID]*scPeer),
@@ -190,7 +190,7 @@ func newSchedule(initHeight int64) *schedule {
 	return &sc
 }
 
-func (sc *schedule) addPeer(peerID p2p.ID) error {
+func (sc *scheduler) addPeer(peerID p2p.ID) error {
 	if _, ok := sc.peers[peerID]; ok {
 		return fmt.Errorf("Cannot add duplicate peer %s", peerID)
 	}
@@ -198,7 +198,7 @@ func (sc *schedule) addPeer(peerID p2p.ID) error {
 	return nil
 }
 
-func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
+func (sc *scheduler) touchPeer(peerID p2p.ID, time time.Time) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
 		return fmt.Errorf("Couldn't find peer %s", peerID)
@@ -213,7 +213,7 @@ func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
 	return nil
 }
 
-func (sc *schedule) removePeer(peerID p2p.ID) error {
+func (sc *scheduler) removePeer(peerID p2p.ID) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
 		return fmt.Errorf("Couldn't find peer %s", peerID)
@@ -243,7 +243,7 @@ func (sc *schedule) removePeer(peerID p2p.ID) error {
 	return nil
 }
 
-func (sc *schedule) setPeerHeight(peerID p2p.ID, height int64) error {
+func (sc *scheduler) setPeerHeight(peerID p2p.ID, height int64) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
 		return fmt.Errorf("Can't find peer %s", peerID)
@@ -268,7 +268,7 @@ func (sc *schedule) setPeerHeight(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (sc *schedule) getStateAtHeight(height int64) blockState {
+func (sc *scheduler) getStateAtHeight(height int64) blockState {
 	if height < sc.initHeight {
 		return blockStateProcessed
 	} else if state, ok := sc.blockStates[height]; ok {
@@ -278,7 +278,7 @@ func (sc *schedule) getStateAtHeight(height int64) blockState {
 	}
 }
 
-func (sc *schedule) getPeersAtHeight(height int64) []*scPeer {
+func (sc *scheduler) getPeersAtHeight(height int64) []*scPeer {
 	peers := []*scPeer{}
 	for _, peer := range sc.peers {
 		if peer.height >= height {
@@ -289,7 +289,7 @@ func (sc *schedule) getPeersAtHeight(height int64) []*scPeer {
 	return peers
 }
 
-func (sc *schedule) peersInactiveSince(duration time.Duration, now time.Time) []p2p.ID {
+func (sc *scheduler) peersInactiveSince(duration time.Duration, now time.Time) []p2p.ID {
 	peers := []p2p.ID{}
 	for _, peer := range sc.peers {
 		if now.Sub(peer.lastTouched) > duration {
@@ -300,7 +300,7 @@ func (sc *schedule) peersInactiveSince(duration time.Duration, now time.Time) []
 	return peers
 }
 
-func (sc *schedule) peersSlowerThan(minSpeed int64) []p2p.ID {
+func (sc *scheduler) peersSlowerThan(minSpeed int64) []p2p.ID {
 	peers := []p2p.ID{}
 	for _, peer := range sc.peers {
 		if peer.lastRate < minSpeed {
@@ -311,11 +311,11 @@ func (sc *schedule) peersSlowerThan(minSpeed int64) []p2p.ID {
 	return peers
 }
 
-func (sc *schedule) setStateAtHeight(height int64, state blockState) {
+func (sc *scheduler) setStateAtHeight(height int64, state blockState) {
 	sc.blockStates[height] = state
 }
 
-func (sc *schedule) markReceived(peerID p2p.ID, height int64, size int64, now time.Time) error {
+func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now time.Time) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
 		return fmt.Errorf("Can't find peer %s", peerID)
@@ -346,7 +346,7 @@ func (sc *schedule) markReceived(peerID p2p.ID, height int64, size int64, now ti
 	return nil
 }
 
-func (sc *schedule) markPending(peerID p2p.ID, height int64, time time.Time) error {
+func (sc *scheduler) markPending(peerID p2p.ID, height int64, time time.Time) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
 		return fmt.Errorf("Can't find peer %s", peerID)
@@ -358,7 +358,7 @@ func (sc *schedule) markPending(peerID p2p.ID, height int64, time time.Time) err
 	}
 
 	if peer.state != peerStateReady {
-		return fmt.Errorf("Cannot schedule %d from %s in %s", height, peerID, peer.state)
+		return fmt.Errorf("Cannot scheduler %d from %s in %s", height, peerID, peer.state)
 	}
 
 	if height > peer.height {
@@ -375,7 +375,7 @@ func (sc *schedule) markPending(peerID p2p.ID, height int64, time time.Time) err
 	return nil
 }
 
-func (sc *schedule) markProcessed(height int64) error {
+func (sc *scheduler) markProcessed(height int64) error {
 	state := sc.getStateAtHeight(height)
 	if state != blockStateReceived {
 		return fmt.Errorf("Can't mark height %d received from block state %s", height, state)
@@ -389,8 +389,8 @@ func (sc *schedule) markProcessed(height int64) error {
 }
 
 // allBlockProcessed returns true if all blocks are in blockStateProcessed and
-// determines if the schedule has been completed
-func (sc *schedule) allBlocksProcessed() bool {
+// determines if the scheduler has been completed
+func (sc *scheduler) allBlocksProcessed() bool {
 	for _, state := range sc.blockStates {
 		if state != blockStateProcessed {
 			return false
@@ -400,7 +400,7 @@ func (sc *schedule) allBlocksProcessed() bool {
 }
 
 // highest block | state == blockStateNew
-func (sc *schedule) maxHeight() int64 {
+func (sc *scheduler) maxHeight() int64 {
 	var max int64 = 0
 	for height, state := range sc.blockStates {
 		if state == blockStateNew && height > max {
@@ -412,7 +412,7 @@ func (sc *schedule) maxHeight() int64 {
 }
 
 // lowest block | state == blockStateNew
-func (sc *schedule) minHeight() int64 {
+func (sc *scheduler) minHeight() int64 {
 	var min int64 = math.MaxInt64
 	for height, state := range sc.blockStates {
 		if state == blockStateNew && height < min {
@@ -423,7 +423,7 @@ func (sc *schedule) minHeight() int64 {
 	return min
 }
 
-func (sc *schedule) pendingFrom(peerID p2p.ID) []int64 {
+func (sc *scheduler) pendingFrom(peerID p2p.ID) []int64 {
 	heights := []int64{}
 	for height, pendingPeerID := range sc.pendingBlocks {
 		if pendingPeerID == peerID {
@@ -433,7 +433,7 @@ func (sc *schedule) pendingFrom(peerID p2p.ID) []int64 {
 	return heights
 }
 
-func (sc *schedule) selectPeer(peers []*scPeer) *scPeer {
+func (sc *scheduler) selectPeer(peers []*scPeer) *scPeer {
 	// FIXME: properPeerSelector
 	s := rand.NewSource(time.Now().Unix())
 	r := rand.New(s)
@@ -442,7 +442,7 @@ func (sc *schedule) selectPeer(peers []*scPeer) *scPeer {
 }
 
 // XXX: this duplicates the logic of peersInactiveSince and peersSlowerThan
-func (sc *schedule) prunablePeers(peerTimout time.Duration, minRecvRate int64, now time.Time) []p2p.ID {
+func (sc *scheduler) prunablePeers(peerTimout time.Duration, minRecvRate int64, now time.Time) []p2p.ID {
 	prunable := []p2p.ID{}
 	for peerID, peer := range sc.peers {
 		if now.Sub(peer.lastTouched) > peerTimout || peer.lastRate < minRecvRate {
@@ -453,7 +453,7 @@ func (sc *schedule) prunablePeers(peerTimout time.Duration, minRecvRate int64, n
 	return prunable
 }
 
-func (sc *schedule) numBlockInState(targetState blockState) uint32 {
+func (sc *scheduler) numBlockInState(targetState blockState) uint32 {
 	var num uint32 = 0
 	for _, state := range sc.blockStates {
 		if state == targetState {
@@ -466,7 +466,7 @@ func (sc *schedule) numBlockInState(targetState blockState) uint32 {
 // Handlers
 
 // XXX: This handler will probably get the block first and then pass it on to the processor
-func (sc *schedule) handleBlockResponse(event tmpBlockResponse) (Event, error) {
+func (sc *scheduler) handleBlockResponse(event tmpBlockResponse) (Event, error) {
 	err := sc.touchPeer(event.peerID, event.time)
 	if err != nil {
 		return scPeerError{peerID: event.peerID, reason: err}, nil
@@ -480,10 +480,10 @@ func (sc *schedule) handleBlockResponse(event tmpBlockResponse) (Event, error) {
 	return scBlockReceived{peerID: event.peerID, block: event.block}, nil
 }
 
-func (sc *schedule) handleBlockProcessed(event pcBlockProcessed) (Event, error) {
+func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error) {
 	err := sc.markProcessed(event.height)
 	if err != nil {
-		return scScheduleFail{reason: err}, nil // this should be fatal
+		return scschedulerFail{reason: err}, nil // this should be fatal
 	}
 
 	if sc.allBlocksProcessed() {
@@ -494,30 +494,30 @@ func (sc *schedule) handleBlockProcessed(event pcBlockProcessed) (Event, error) 
 }
 
 // XXX: unify types peerError
-func (sc *schedule) handlePeerError(event peerError) (Event, error) {
+func (sc *scheduler) handlePeerError(event peerError) (Event, error) {
 	err := sc.removePeer(event.peerID)
 	if err != nil {
-		return scScheduleFail{reason: err}, nil // xxx: bit extreme
+		return scschedulerFail{reason: err}, nil // xxx: bit extreme
 	}
 
 	return noOp, nil
 }
 
-func (sc *schedule) handleTryPrunePeer(event tryPrunePeer) (Event, error) {
+func (sc *scheduler) handleTryPrunePeer(event tryPrunePeer) (Event, error) {
 	prunablePeers := sc.prunablePeers(sc.peerTimeout, sc.minRecvRate, event.time)
 
 	if len(prunablePeers) > 0 {
 		peerID := prunablePeers[0]
 		err := sc.removePeer(peerID)
 		if err != nil {
-			return scScheduleFail{reason: err}, nil // xxx: should be fatal
+			return scschedulerFail{reason: err}, nil // xxx: should be fatal
 		}
 		return scPeerPruned{peerID: peerID}, nil
 	}
 	return noOp, nil
 }
 
-func (sc *schedule) handleTrySchedule(event trySchedule) (Event, error) {
+func (sc *scheduler) handleTryscheduler(event tryscheduler) (Event, error) {
 	pendingBlocks := sc.numBlockInState(blockStatePending)
 	receivedBlocks := sc.numBlockInState(blockStateReceived)
 	todo := math.Min(float64(sc.targetPending-pendingBlocks), float64(sc.targetReceived-receivedBlocks))
@@ -529,10 +529,14 @@ func (sc *schedule) handleTrySchedule(event trySchedule) (Event, error) {
 			bestPeer := sc.selectPeer(allPeers) // XXX: maybe this should return a p2p.ID
 			err := sc.markPending(bestPeer.peerID, height, event.time)
 			if err != nil {
-				return scScheduleFail{reason: err}, nil // XXX: peerError might be more appropriate
+				return scschedulerFail{reason: err}, nil // XXX: peerError might be more appropriate
 			}
 			return scBlockRequest{peerID: bestPeer.peerID, height: height}, nil
 		}
 	}
 	return noOp, nil
 }
+
+// TODO: handle status
+
+// TODO: handle
