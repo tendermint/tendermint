@@ -11,11 +11,20 @@ import (
 
 // Verify checks whether we can trust newHeader based on lastHeader.
 //
-// For adjacent headers, it checks if lastVals are equal to those in newHeader
-// (also newVals).
+// ## ADJACENT HEADERS
 //
-// For non-adjacent headers, it checks if at least one correct validator has
-// signed newHeader (i.e., signed by more than 1/3 of the voting power).
+// For adjacent headers, it also checks if lastVals are equal to those in
+// newHeader (also newVals).
+//
+// ## NON-ADJACENT HEADERS
+//
+// For non-adjacent headers, it also checks if at least one correct validator
+// has signed newHeader (i.e., signed by more than 1/3 of the voting power).
+//
+// trustlevel can be used if the user believes that relying on one correct
+// validator is not sufficient. However, in case of (frequent) changes in the
+// validator set, the higher the trustlevel is chosen, the more unlikely it
+// becomes that Verify returns nil for non-adjacent headers.
 func Verify(
 	chainID string,
 	lastHeader *types.SignedHeader,
