@@ -8,7 +8,81 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
+
+// Events
+
+// XXX: The handle API would be much simpler if it return a single event, an
+// Event, which embeds a terminationEvent if it wants to terminate the routine.
+
+type scFinishedEv struct {
+	priorityNormal
+}
+
+type scPrunePeerEv struct {
+	priorityHigh
+	peerID p2p.ID
+	reason error
+}
+
+type scSchedulerFailure struct {
+	priorityHigh
+	peerID p2p.ID
+	time   time.Time
+	reason error
+}
+
+// XXX: unify with bcBlockResponse
+type tmpBlockResponse struct {
+	priorityNormal
+	peerID p2p.ID
+	time   time.Time
+	height int64
+	size   int64
+	block  *types.Block
+}
+
+type scBlockRequest struct {
+	priorityNormal
+	peerID p2p.ID
+	height int64
+}
+
+type scBlockReceived struct {
+	priorityNormal
+	peerID p2p.ID
+	height int64
+	size   int64
+	block  *types.Block
+}
+
+type scPeerError struct {
+	priorityHigh
+	peerID p2p.ID
+	reason error
+}
+
+// XXX: make this fetal?
+type scScheduleFail struct {
+	priorityHigh
+	reason error
+}
+
+type tryPrunePeer struct {
+	priorityHigh
+	time time.Time
+}
+
+type trySchedule struct {
+	priorityHigh
+	time time.Time
+}
+
+type scPeerPruned struct {
+	priorityHigh
+	peerID p2p.ID
+}
 
 type blockState int
 
@@ -94,6 +168,11 @@ type schedule struct {
 
 	// the peerID of the peer which put the block in blockStateReceived
 	receivedBlocks map[int64]p2p.ID
+
+	targetPending  uint32 // the number of blocks we want in blockStatePending
+	targetReceived uint32 // the number of blocks we want in blockStateReceived
+	minRecvRate    int64
+	peerTimeout    time.Duration
 }
 
 func newSchedule(initHeight int64) *schedule {
@@ -382,4 +461,78 @@ func (sc *schedule) numBlockInState(targetState blockState) uint32 {
 		}
 	}
 	return num
+}
+
+// Handlers
+
+// XXX: This handler will probably get the block first and then pass it on to the processor
+func (sc *schedule) handleBlockResponse(event tmpBlockResponse) (Event, error) {
+	err := sc.touchPeer(event.peerID, event.time)
+	if err != nil {
+		return scPeerError{peerID: event.peerID, reason: err}, nil
+	}
+
+	err = sc.markReceived(event.peerID, event.block.Height, event.size, event.time)
+	if err != nil {
+		return scPeerError{peerID: event.peerID, reason: err}, nil
+	}
+
+	return scBlockReceived{peerID: event.peerID, block: event.block}, nil
+}
+
+func (sc *schedule) handleBlockProcessed(event pcBlockProcessed) (Event, error) {
+	err := sc.markProcessed(event.height)
+	if err != nil {
+		return scScheduleFail{reason: err}, nil // this should be fatal
+	}
+
+	if sc.allBlocksProcessed() {
+		return scFinishedEv{}, nil
+	}
+
+	return noOp, nil
+}
+
+// XXX: unify types peerError
+func (sc *schedule) handlePeerError(event peerError) (Event, error) {
+	err := sc.removePeer(event.peerID)
+	if err != nil {
+		return scScheduleFail{reason: err}, nil // xxx: bit extreme
+	}
+
+	return noOp, nil
+}
+
+func (sc *schedule) handleTryPrunePeer(event tryPrunePeer) (Event, error) {
+	prunablePeers := sc.prunablePeers(sc.peerTimeout, sc.minRecvRate, event.time)
+
+	if len(prunablePeers) > 0 {
+		peerID := prunablePeers[0]
+		err := sc.removePeer(peerID)
+		if err != nil {
+			return scScheduleFail{reason: err}, nil // xxx: should be fatal
+		}
+		return scPeerPruned{peerID: peerID}, nil
+	}
+	return noOp, nil
+}
+
+func (sc *schedule) handleTrySchedule(event trySchedule) (Event, error) {
+	pendingBlocks := sc.numBlockInState(blockStatePending)
+	receivedBlocks := sc.numBlockInState(blockStateReceived)
+	todo := math.Min(float64(sc.targetPending-pendingBlocks), float64(sc.targetReceived-receivedBlocks))
+	if todo > 0 {
+		height := sc.minHeight()
+
+		if sc.getStateAtHeight(height) == blockStateNew {
+			allPeers := sc.getPeersAtHeight(height)
+			bestPeer := sc.selectPeer(allPeers) // XXX: maybe this should return a p2p.ID
+			err := sc.markPending(bestPeer.peerID, height, event.time)
+			if err != nil {
+				return scScheduleFail{reason: err}, nil // XXX: peerError might be more appropriate
+			}
+			return scBlockRequest{peerID: bestPeer.peerID, height: height}, nil
+		}
+	}
+	return noOp, nil
 }
