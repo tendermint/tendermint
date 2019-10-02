@@ -51,9 +51,10 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 
 	pivot := (c.trustedHeader.Height + newHeader.Header.Height) / 2
 	pivotHeader := c.signedHeader(pivot)
-	pivotVals := c.validators(pivot)
-
 	c.storeSignedHeader(pivotHeader)
+
+	pivotVals := c.validators(pivot)
+	c.storeValidators(pivotVals)
 
 	if err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now); err != nil {
 		return c.bisection(pivotHeader, pivotVals, newHeader, newVals, now)
@@ -63,6 +64,10 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 }
 
 func (c *Client) storeSignedHeader(h *types.SignedHeader) {
+	// TODO: save to DB
+}
+
+func (c *Client) storeValidators(vals *types.ValidatorSet) {
 	// TODO: save to DB
 }
 
