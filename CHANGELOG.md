@@ -11,23 +11,12 @@ All clients are recommended to upgrade. See
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for discovering
 and reporting this issue.
 
-Special thanks to external contributors on this release:
-@erikgrinaker
-
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
 
 ### SECURITY:
 
 - [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Fix for panic on nil public key send to a peer
-
-### IMPROVEMENTS:
-
-- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Improved `tm-monitor` formatting of start time and avg tx throughput (@erikgrinaker)
-
-### BUG FIXES:
-
-- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Refresh `tm-monitor` health when validator count is updated (@erikgrinaker)
 
 ## v0.32.4
 
