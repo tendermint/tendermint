@@ -74,7 +74,7 @@ type tryPrunePeer struct {
 	time time.Time
 }
 
-type tryscheduler struct {
+type trySchedule struct {
 	priorityHigh
 	time time.Time
 }
@@ -175,7 +175,7 @@ type scheduler struct {
 	peerTimeout    time.Duration
 }
 
-func newscheduler(initHeight int64) *scheduler {
+func newScheduler(initHeight int64) *scheduler {
 	sc := scheduler{
 		initHeight:     initHeight,
 		blockStates:    make(map[int64]blockState),
@@ -517,7 +517,7 @@ func (sc *scheduler) handleTryPrunePeer(event tryPrunePeer) (Event, error) {
 	return noOp, nil
 }
 
-func (sc *scheduler) handleTryscheduler(event tryscheduler) (Event, error) {
+func (sc *scheduler) handleTrySchedule(event trySchedule) (Event, error) {
 	pendingBlocks := sc.numBlockInState(blockStatePending)
 	receivedBlocks := sc.numBlockInState(blockStateReceived)
 	todo := math.Min(float64(sc.targetPending-pendingBlocks), float64(sc.targetReceived-receivedBlocks))
@@ -537,6 +537,38 @@ func (sc *scheduler) handleTryscheduler(event tryscheduler) (Event, error) {
 	return noOp, nil
 }
 
-// TODO: handle status
+type bcStatusResponse struct {
+	priorityNormal
+	peerID p2p.ID
+	height int64
+}
 
-// TODO: handle
+func (sc *scheduler) handleStatusResponse(event bcStatusResponse) (Event, error) {
+	err := sc.setPeerHeight(event.peerID, event.height)
+	if err != nil {
+		return scPeerError{peerID: event.peerID, reason: err}, nil
+	}
+
+	return noOp, nil
+}
+
+func (sc *scheduler) handle(event Event) (Event, error) {
+	switch event := event.(type) {
+	case bcStatusResponse:
+		nextEvent, err := sc.handleStatusResponse(event)
+		return nextEvent, err
+	case trySchedule:
+		nextEvent, err := sc.handleTrySchedule(event)
+		return nextEvent, err
+	case tryPrunePeer:
+		nextEvent, err := sc.handleTryPrunePeer(event)
+		return nextEvent, err
+	case peerError:
+		nextEvent, err := sc.handlePeerError(event)
+		return nextEvent, err
+	case tmpBlockResponse:
+		nextEvent, err := sc.handleBlockResponse(event)
+		return nextEvent, err
+	}
+	return noOp, nil
+}
