@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"sync"
@@ -119,7 +120,7 @@ func (cli *socketClient) SetResponseCallback(resCb Callback) {
 
 //----------------------------------------
 
-func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
+func (cli *socketClient) sendRequestsRoutine(conn io.Writer) {
 
 	w := bufio.NewWriter(conn)
 	for {
@@ -151,7 +152,7 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 	}
 }
 
-func (cli *socketClient) recvResponseRoutine(conn net.Conn) {
+func (cli *socketClient) recvResponseRoutine(conn io.Reader) {
 
 	r := bufio.NewReader(conn) // Buffer reads
 	for {

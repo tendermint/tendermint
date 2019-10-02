@@ -422,14 +422,14 @@ func (pool *BlockPool) debug() string {
 //-------------------------------------
 
 type bpPeer struct {
+	didTimeout  bool
+	numPending  int32
+	height      int64
 	pool        *BlockPool
 	id          p2p.ID
 	recvMonitor *flow.Monitor
 
-	height     int64
-	numPending int32
-	timeout    *time.Timer
-	didTimeout bool
+	timeout *time.Timer
 
 	logger log.Logger
 }

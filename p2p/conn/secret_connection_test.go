@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -189,7 +188,7 @@ func TestConcurrentRead(t *testing.T) {
 	}
 }
 
-func writeLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, txt string, n int) {
+func writeLots(t *testing.T, wg *sync.WaitGroup, conn io.Writer, txt string, n int) {
 	defer wg.Done()
 	for i := 0; i < n; i++ {
 		_, err := conn.Write([]byte(txt))
@@ -200,7 +199,7 @@ func writeLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, txt string, n in
 	}
 }
 
-func readLots(t *testing.T, wg *sync.WaitGroup, conn net.Conn, n int) {
+func readLots(t *testing.T, wg *sync.WaitGroup, conn io.Reader, n int) {
 	readBuffer := make([]byte, dataMaxSize)
 	for i := 0; i < n; i++ {
 		_, err := conn.Read(readBuffer)

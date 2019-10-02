@@ -66,10 +66,13 @@ $ cd $KVSTORE_HOME
 ```
 
 Inside the example directory run:
+
 ```sh
 gradle init --dsl groovy --package io.example --project-name example --type java-application --test-framework junit
 ```
+
 This will create a new project for you. The tree of files should look like:
+
 ```sh
 $ tree
 .
@@ -108,13 +111,14 @@ Hello world.
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 
 ### 1.3.1 Compile .proto files
 
 Add the following piece to the top of the `build.gradle`:
+
 ```groovy
 buildscript {
     repositories {
@@ -127,6 +131,7 @@ buildscript {
 ```
 
 Enable the protobuf plugin in the `plugins` section of the `build.gradle`:
+
 ```groovy
 plugins {
     id 'com.google.protobuf' version '0.8.8'
@@ -134,6 +139,7 @@ plugins {
 ```
 
 Add the following code to `build.gradle`:
+
 ```groovy
 protobuf {
     protoc {
@@ -154,8 +160,8 @@ protobuf {
 
 Now we should be ready to compile the `*.proto` files.
 
-
 Copy the necessary `.proto` files to your project:
+
 ```sh
 mkdir -p \
   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/abci/types \
@@ -174,6 +180,7 @@ cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
 ```
 
 Add these dependencies to `build.gradle`:
+
 ```groovy
 dependencies {
     implementation 'io.grpc:grpc-protobuf:1.22.1'
@@ -183,10 +190,13 @@ dependencies {
 ```
 
 To generate all protobuf-type classes run:
+
 ```sh
 ./gradlew generateProto
 ```
+
 To verify that everything went smoothly, you can inspect the `build/generated/` directory:
+
 ```sh
 $ tree build/generated/
 build/generated/
@@ -215,6 +225,7 @@ The resulting `$KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIAp
 contains the abstract class `ABCIApplicationImplBase`, which is an interface we'll need to implement.
 
 Create `$KVSTORE_HOME/src/main/java/io/example/KVStoreApp.java` file with the following content:
+
 ```java
 package io.example;
 
@@ -223,7 +234,7 @@ import types.ABCIApplicationGrpc;
 import types.Types.*;
 
 class KVStoreApp extends ABCIApplicationGrpc.ABCIApplicationImplBase {
-    
+
     // methods implementation
 
 }
@@ -302,6 +313,7 @@ For the underlying key-value store we'll use
 [JetBrains Xodus](https://github.com/JetBrains/xodus), which is a transactional schema-less embedded high-performance database written in Java.
 
 `build.gradle`:
+
 ```groovy
 dependencies {
     implementation 'org.jetbrains.xodus:xodus-environment:1.3.91'
@@ -345,7 +357,7 @@ class KVStoreApp extends ABCIApplicationGrpc.ABCIApplicationImplBase {
 
 When Tendermint Core has decided on the block, it's transferred to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. `DeliverTx` are being transferred  asynchronously, but the
+`EndBlock` in the end. `DeliverTx` are being transferred asynchronously, but the
 responses are expected to come in order.
 
 ```java
@@ -358,6 +370,7 @@ public void beginBlock(RequestBeginBlock req, StreamObserver<ResponseBeginBlock>
     responseObserver.onCompleted();
 }
 ```
+
 Here we begin a new transaction, which will accumulate the block's transactions and open the corresponding store.
 
 ```java
@@ -469,6 +482,7 @@ Here we create a special object `Environment`, which knows where to store the ap
 Then we create and start the gRPC server to handle Tendermint Core requests.
 
 Create the `$KVSTORE_HOME/src/main/java/io/example/GrpcServer.java` file with the following content:
+
 ```java
 package io.example;
 
