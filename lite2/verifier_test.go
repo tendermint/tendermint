@@ -126,15 +126,16 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			tc := tc
 			err := Verify(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now, 0)
 
-			if tc.expErr != nil && assert.Error(t, err) {
+			switch {
+			case tc.expErr != nil && assert.Error(t, err):
 				assert.Equal(t, tc.expErr, err)
-			} else if tc.expErrText != "" {
+			case tc.expErrText != "":
 				assert.Contains(t, err.Error(), tc.expErrText)
-			} else {
+			default:
 				assert.NoError(t, err)
 			}
 		})
