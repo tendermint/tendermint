@@ -1,4 +1,10 @@
-# Overview
+---
+order: 1
+parent:
+  order: 5
+---
+
+# Networks
 
 Use [Docker Compose](./docker-compose.md) to spin up Tendermint testnets on your
 local machine.
