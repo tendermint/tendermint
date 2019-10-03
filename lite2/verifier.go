@@ -9,6 +9,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	// DefaultTrustLevel - new header can be trusted if at least one correct
+	// validator signed it.
+	DefaultTrustLevel = float32(0.33)
+)
+
 func Verify(
 	chainID string,
 	h1 *types.SignedHeader,
@@ -18,6 +24,10 @@ func Verify(
 	trustingPeriod time.Duration,
 	now time.Time,
 	trustLevel float32) error {
+
+	if trustLevel > 1 || trustLevel < 1/3 {
+		return errors.Errorf("trustLevel must be within [1/3, 1], given %v", trustLevel)
+	}
 
 	// Ensure last header can still be trusted.
 	expirationTime := h1.Time.Add(trustingPeriod)
