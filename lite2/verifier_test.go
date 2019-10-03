@@ -32,6 +32,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 		trustingPeriod time.Duration
 		now            time.Time
 		expErr         error
+		expErrText     string
 	}{
 		// same header -> no error
 		0: {
@@ -40,6 +41,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
+			"expected new header height 1 to be greater than one of old header 1",
 		},
 		// different chainID -> error
 		1: {
@@ -49,6 +51,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
+			"h2.ValidateBasic failed: signedHeader belongs to another chain 'different-chainID' not 'TestVerifyAdjusted'",
 		},
 		// 3/3 signed -> no error
 		2: {
@@ -58,6 +61,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
+			"",
 		},
 		// 2/3 signed -> no error
 		3: {
@@ -67,6 +71,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
+			"",
 		},
 		// 1/3 signed -> error
 		4: {
@@ -75,7 +80,8 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			nil,
+			types.ErrTooMuchChange{Got: 50.0, Needed: 93.00},
+			"",
 		},
 		// vals does not match with what we have -> error
 		5: {
@@ -85,6 +91,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
+			"to match those from new header",
 		},
 		// vals are inconsistent with newHeader -> error
 		6: {
@@ -94,6 +101,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
+			"to match those that were supplied",
 		},
 		// old header has expired -> error
 		7: {
@@ -103,6 +111,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			1 * time.Hour,
 			bTime.Add(1 * time.Hour),
 			nil,
+			"old header has expired",
 		},
 		// new header is too far into the future -> error
 		8: {
@@ -112,19 +121,21 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour), // not relevant
 			nil,
+			"to be within the trusting period",
 		},
 	}
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			tc := tc
 			err := Verify(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now, 0)
 
-			if tc.expErr == nil {
-				assert.NoError(t, err)
+			if tc.expErr != nil && assert.Error(t, err) {
+				assert.Equal(t, tc.expErr, err)
+			} else if tc.expErrText != "" {
+				assert.Contains(t, err.Error(), tc.expErrText)
 			} else {
-				if assert.Error(t, err) {
-					assert.Equal(t, tc.expErr, err)
-				}
+				assert.NoError(t, err)
 			}
 		})
 	}

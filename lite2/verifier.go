@@ -22,14 +22,12 @@ func Verify(
 	// Ensure last header can still be trusted.
 	expirationTime := h1.Time.Add(trustingPeriod)
 	if !expirationTime.After(now) {
-		return errors.Errorf("last header has expired at %v (now: %v)",
-			expirationTime, now)
+		return errors.Errorf("old header has expired at %v (now: %v)", expirationTime, now)
 	}
 
 	// Ensure new header is within trusting period.
 	if !h2.Time.Before(expirationTime) {
-		return errors.Errorf("expected new header %v to be within the trusting period, which ends at %v",
-			h2.Time, expirationTime)
+		return errNewHeaderTooFarIntoFuture{h2.Time, expirationTime}
 	}
 
 	if err := verifyNewHeaderAndVals(chainID, h2, h2Vals, h1, now); err != nil {
@@ -72,13 +70,13 @@ func verifyNewHeaderAndVals(
 	}
 
 	if h2.Height <= h1.Height {
-		return errors.Errorf("expected new header height %d to be greater than one of last header %d",
+		return errors.Errorf("expected new header height %d to be greater than one of old header %d",
 			h2.Height,
 			h1.Height)
 	}
 
 	if !h2.Time.After(h1.Time) {
-		return errors.Errorf("expected new header time %v to be after last header time %v",
+		return errors.Errorf("expected new header time %v to be after old header time %v",
 			h2.Time,
 			h1.Time)
 	}

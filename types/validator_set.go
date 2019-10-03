@@ -625,7 +625,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 	}
 
 	if got, needed := float32(talliedVotingPower), float32(vals.TotalVotingPower()*2/3); got <= needed {
-		return errTooMuchChange{got, needed}
+		return ErrTooMuchChange{Got: got, Needed: needed}
 	}
 
 	return nil
@@ -711,7 +711,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	}
 
 	if got, needed := float32(oldVotingPower), float32(oldVals.TotalVotingPower()*2/3); got <= needed {
-		return errTooMuchChange{got, needed}
+		return ErrTooMuchChange{Got: got, Needed: needed}
 	}
 	return nil
 }
@@ -762,7 +762,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 	}
 
 	if got, needed := float32(talliedVotingPower), float32(vals.TotalVotingPower())*trustLevel; got <= needed {
-		return errTooMuchChange{got, needed}
+		return ErrTooMuchChange{Got: got, Needed: needed}
 	}
 
 	return nil
@@ -785,18 +785,21 @@ func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockI
 //-----------------
 // ErrTooMuchChange
 
+// IsErrTooMuchChange returns true if err is related to changes in validator
+// set exceeding max limit.
 func IsErrTooMuchChange(err error) bool {
-	_, ok := errors.Cause(err).(errTooMuchChange)
+	_, ok := errors.Cause(err).(ErrTooMuchChange)
 	return ok
 }
 
-type errTooMuchChange struct {
-	got    float32
-	needed float32
+// ErrTooMuchChange indicates that changes in the validator set exceeded max limit.
+type ErrTooMuchChange struct {
+	Got    float32
+	Needed float32
 }
 
-func (e errTooMuchChange) Error() string {
-	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %.2f, needed more than %.2f", e.got, e.needed)
+func (e ErrTooMuchChange) Error() string {
+	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %.2f, needed more than %.2f", e.Got, e.Needed)
 }
 
 //----------------

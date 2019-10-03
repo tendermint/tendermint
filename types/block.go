@@ -722,27 +722,27 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 
 	// Make sure the header is consistent with the commit.
 	if sh.Header == nil {
-		return errors.New("SignedHeader missing header.")
+		return errors.New("signedHeader missing header")
 	}
 	if sh.Commit == nil {
-		return errors.New("SignedHeader missing commit (precommit votes).")
+		return errors.New("signedHeader missing commit (precommit votes)")
 	}
 
 	// Check ChainID.
 	if sh.ChainID != chainID {
-		return fmt.Errorf("Header belongs to another chain '%s' not '%s'",
+		return fmt.Errorf("signedHeader belongs to another chain '%s' not '%s'",
 			sh.ChainID, chainID)
 	}
 	// Check Height.
 	if sh.Commit.Height() != sh.Height {
-		return fmt.Errorf("SignedHeader header and commit height mismatch: %v vs %v",
+		return fmt.Errorf("signedHeader header and commit height mismatch: %v vs %v",
 			sh.Height, sh.Commit.Height())
 	}
 	// Check Hash.
 	hhash := sh.Hash()
 	chash := sh.Commit.BlockID.Hash
 	if !bytes.Equal(hhash, chash) {
-		return fmt.Errorf("SignedHeader commit signs block %X, header is block %X",
+		return fmt.Errorf("signedHeader commit signs block %X, header is block %X",
 			chash, hhash)
 	}
 	// ValidateBasic on the Commit.
