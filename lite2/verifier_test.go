@@ -234,7 +234,7 @@ func TestVerifyNonAdjustedHeaders(t *testing.T) {
 			lessThanOneThirdVals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			types.ErrTooMuchChange{Got: 20.0, Needed: 46.20},
+			types.ErrTooMuchChange{Got: 20.0, Needed: 46.666668},
 			"",
 		},
 	}

@@ -12,7 +12,7 @@ import (
 const (
 	// DefaultTrustLevel - new header can be trusted if at least one correct
 	// validator signed it.
-	DefaultTrustLevel = float32(0.33)
+	DefaultTrustLevel = float32(1) / float32(3)
 )
 
 func Verify(
