@@ -787,6 +787,7 @@ func (vals *ValidatorSet) verifyCommitBasic(commit *Commit, height int64, blockI
 
 // IsErrTooMuchChange returns true if err is related to changes in validator
 // set exceeding max limit.
+// TODO: remove
 func IsErrTooMuchChange(err error) bool {
 	_, ok := errors.Cause(err).(ErrTooMuchChange)
 	return ok

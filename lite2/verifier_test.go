@@ -120,8 +120,8 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			keys.ToValidators(10, 1),
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour), // not relevant
-			nil,
-			"to be within the trusting period",
+			ErrNewHeaderTooFarIntoFuture{bTime.Add(4 * time.Hour), bTime.Add(3 * time.Hour)},
+			"",
 		},
 	}
 

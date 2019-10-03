@@ -36,15 +36,15 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 	now time.Time) error {
 
 	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
-	switch {
-	case err == nil:
+	switch err.(type) {
+	case nil:
 		return nil
-	case IsErrNewHeaderTooFarIntoFuture(err):
+	case ErrNewHeaderTooFarIntoFuture:
 		// continue bisection
 		// if adjused headers, fail?
-	case types.IsErrTooMuchChange(err):
+	case types.ErrTooMuchChange:
 		// continue bisection
-	case err != nil:
+	default:
 		return err
 	}
 
