@@ -64,7 +64,7 @@ type scPeerError struct {
 }
 
 // XXX: make this fetal?
-type scschedulerFail struct {
+type scSchedulerFail struct {
 	priorityHigh
 	reason error
 }
@@ -483,7 +483,7 @@ func (sc *scheduler) handleBlockResponse(event tmpBlockResponse) (Event, error) 
 func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error) {
 	err := sc.markProcessed(event.height)
 	if err != nil {
-		return scschedulerFail{reason: err}, nil // this should be fatal
+		return scSchedulerFail{reason: err}, nil // this should be fatal
 	}
 
 	if sc.allBlocksProcessed() {
@@ -497,7 +497,7 @@ func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error)
 func (sc *scheduler) handlePeerError(event peerError) (Event, error) {
 	err := sc.removePeer(event.peerID)
 	if err != nil {
-		return scschedulerFail{reason: err}, nil // xxx: bit extreme
+		return scSchedulerFail{reason: err}, nil // xxx: bit extreme
 	}
 
 	return noOp, nil
@@ -510,7 +510,7 @@ func (sc *scheduler) handleTryPrunePeer(event tryPrunePeer) (Event, error) {
 		peerID := prunablePeers[0]
 		err := sc.removePeer(peerID)
 		if err != nil {
-			return scschedulerFail{reason: err}, nil // xxx: should be fatal
+			return scSchedulerFail{reason: err}, nil // xxx: should be fatal
 		}
 		return scPeerPruned{peerID: peerID}, nil
 	}
@@ -529,7 +529,7 @@ func (sc *scheduler) handleTrySchedule(event trySchedule) (Event, error) {
 			bestPeer := sc.selectPeer(allPeers) // XXX: maybe this should return a p2p.ID
 			err := sc.markPending(bestPeer.peerID, height, event.time)
 			if err != nil {
-				return scschedulerFail{reason: err}, nil // XXX: peerError might be more appropriate
+				return scSchedulerFail{reason: err}, nil // XXX: peerError might be more appropriate
 			}
 			return scBlockRequest{peerID: bestPeer.peerID, height: height}, nil
 		}
