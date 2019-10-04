@@ -6,20 +6,25 @@ linters:
   disable:
     - gocyclo
     - golint
-    - maligned
     - errcheck
-    - interfacer
     - unparam
     - lll
     - gochecknoglobals
     - gochecknoinits
     - stylecheck
+    - funlen
+    - godox
+    - whitespace
+
 issues:
   exclude-rules:
   - linters:
       - lll
     source: "https://"
-# linters-settings:
+
+linters-settings:
+  dogsled:
+    max-blank-identifiers: 3
 #   govet:
 #     check-shadowing: true
 #   golint:

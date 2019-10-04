@@ -364,16 +364,16 @@ func TestTx(t *testing.T) {
 
 	cases := []struct {
 		valid bool
-		hash  []byte
 		prove bool
+		hash  []byte
 	}{
 		// only valid if correct hash provided
-		{true, txHash, false},
-		{true, txHash, true},
-		{false, anotherTxHash, false},
-		{false, anotherTxHash, true},
-		{false, nil, false},
-		{false, nil, true},
+		{true, false, txHash},
+		{true, true, txHash},
+		{false, false, anotherTxHash},
+		{false, true, anotherTxHash},
+		{false, false, nil},
+		{false, true, nil},
 	}
 
 	for i, c := range GetClients() {
