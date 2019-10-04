@@ -163,7 +163,7 @@ spec:
         - |
           set -ex
 
-          go get github.com/tendermint/abci/cmd/counter
+          go get github.com/tendermint/tendermint/abci/cmd/counter
 
           rm -f /socks/app.sock # remove old socket
 
