@@ -1,0 +1,16 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "description": "Welcome to the Tendermint Core documentation!",
+  "main": "index.js",
+  "dependencies": {
+    "vuepress-theme-cosmos": "^1.0.13"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "serve": "vuepress dev",
+    "build": "vuepress build"
+  },
+  "author": "",
+  "license": "ISC"
+}
