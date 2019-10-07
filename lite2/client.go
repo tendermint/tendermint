@@ -3,11 +3,11 @@ package lite
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/store"
 	"github.com/tendermint/tendermint/types"
@@ -124,7 +124,7 @@ func NewClient(
 		trustedStore: trustedStore,
 		mode:         bisecting,
 		trustLevel:   DefaultTrustLevel,
-		logger:       log.NopLogger(),
+		logger:       log.NewNopLogger(),
 	}
 
 	for _, o := range options {
@@ -140,7 +140,7 @@ func NewClient(
 }
 
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
-	h, err := c.primary.SignedHeader(trustOptions.Height)
+	h, err := c.primary.SignedHeader(options.Height)
 	if err != nil {
 		return err
 	}
@@ -150,17 +150,17 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 		return errors.Wrap(err, "ValidateBasic failed")
 	}
 
-	if !bytes.Equal(h.Hash(), trustOptions.Hash) {
-		return fmt.Errorf("expected header's hash %X, but got %X", options.Hash, signedHeader.Hash())
+	if !bytes.Equal(h.Hash(), options.Hash) {
+		return errors.Errorf("expected header's hash %X, but got %X", options.Hash, h.Hash())
 	}
 
-	vals, err := c.primary.ValidatorSet(trustOptions.Height + 1)
+	vals, err := c.primary.ValidatorSet(options.Height + 1)
 	if err != nil {
 		return err
 	}
 
 	if !bytes.Equal(h.NextValidatorsHash, vals.Hash()) {
-		return fmt.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, vals.Hash())
+		return errors.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, vals.Hash())
 	}
 
 	// Persist header and vals.
@@ -168,7 +168,7 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to save trusted header")
 	}
-	err = c.trustedStore.SaveValidatorSet(vals)
+	err = c.trustedStore.SaveValidatorSet(vals, options.Height+1)
 	if err != nil {
 		return errors.Wrap(err, "failed to save trusted vals")
 	}
@@ -195,7 +195,7 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 		return err
 	}
 
-	c.VerifyHeader(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
+	return c.VerifyHeader(newHeader, newVals, now)
 }
 
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
@@ -208,7 +208,7 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 	newVals *types.ValidatorSet,
 	now time.Time) error {
 
-	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustOptions.Period, now, c.trustLevel)
+	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
 	switch err.(type) {
 	case nil:
 		return nil
