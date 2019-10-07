@@ -1,23 +1,16 @@
 package lite
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
 	"log"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/store"
-	dbs "github.com/tendermint/tendermint/lite2/store/db"
 	"github.com/tendermint/tendermint/types"
-)
-
-const (
-	loggerPath = "lite"
-	lvlDBFile  = "trusted.lvl"
-	dbName     = "trust-base"
 )
 
 // TrustOptions are the trust parameters needed for when a new light client
@@ -31,26 +24,15 @@ const (
 // registry of roots-of-trust (e.g. on the Cosmos Hub) seems likely in the
 // future.
 type TrustOptions struct {
-	// Required: only trust commits up to this old.
+	// Only trust commits up to this old.
 	// Should be equal to the unbonding period minus a configurable evidence
 	// submission synchrony bound.
-	TrustPeriod time.Duration
+	Period time.Duration
 
-	// Option 1: TrustHeight and TrustHash can both be provided
-	// to force the trusting of a particular height and hash.
-	// If the latest trusted height/hash is more recent, then this option is
-	// ignored.
-	TrustHeight int64
-	TrustHash   []byte
-
-	// Option 2: Callback can be set to implement a confirmation
-	// step if the trust store is uninitialized, or expired.
-	Callback func(height int64, hash []byte) error
-}
-
-// Option1 returns true if Option1 is selected.
-func (opts TrustOptions) Option1() bool {
-	return opts.TrustHeight > 0 && len(opts.TrustHash) > 0
+	// Height and Hash can both be provided to force the trusting of a
+	// particular height and hash.
+	Height int64
+	Hash   []byte
 }
 
 type mode int
@@ -103,12 +85,10 @@ func AlternativeSources(providers []provider.Provider) Option {
 }
 
 type Client struct {
-	chainID      string
-	trustOptions TrustOptions
-
-	mode       mode
-	trustLevel float32
-
+	chainID            string
+	trustingPeriod     time.Duration
+	mode               mode
+	trustLevel         float32
 	lastVerifiedHeight int64
 
 	// Primary provider of new headers.
@@ -119,7 +99,8 @@ type Client struct {
 	alternatives []provider.Provider
 
 	// Where trusted headers are stored.
-	trustedStore  store.Store
+	trustedStore store.Store
+
 	trustedHeader *types.SignedHeader
 	trustedVals   *types.ValidatorSet
 
@@ -129,36 +110,95 @@ type Client struct {
 // NewClient returns a new Client.
 //
 // If no trusted store is configured using TrustedStore option, goleveldb
-// database will be used.
-func NewClient(chainID string, trustOptions TrustOptions, primary provider.Provider,
-	options ...Option) *Client {
+// database will be used (./trusted.lvl).
+func NewClient(
+	chainID string,
+	trustOptions TrustOptions,
+	primary provider.Provider,
+	trustedStore store.Store,
+	options ...Option) (*Client, error) {
 
 	c := &Client{
 		chainID:      chainID,
-		trustOptions: trustOptions,
 		primary:      primary,
+		trustedStore: trustedStore,
+		mode:         bisecting,
+		trustLevel:   DefaultTrustLevel,
+		logger:       log.NopLogger(),
 	}
 
 	for _, o := range options {
 		o(c)
 	}
 
-	// Better to execute after to avoid unnecessary initialization.
-	if c.trustedStore == nil {
-		rootDir := "."
-		c.trustedStore = dbs.New(
-			dbm.NewDB(lvlDBFile, "goleveldb", rootDir), "",
-		)
+	err := c.initializeWithTrustOptions(trustOptions)
+	if err != nil {
+		return nil, err
 	}
 
-	return c
+	return c, nil
 }
 
-func (c *Client) Verify(
-	newHeader *types.SignedHeader,
-	newVals *types.ValidatorSet,
-	now time.Time) error {
+func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
+	h, err := c.primary.SignedHeader(trustOptions.Height)
+	if err != nil {
+		return err
+	}
 
+	// NOTE: Verify func will check if it's expired or not.
+	if err := h.ValidateBasic(c.chainID); err != nil {
+		return errors.Wrap(err, "ValidateBasic failed")
+	}
+
+	if !bytes.Equal(h.Hash(), trustOptions.Hash) {
+		return fmt.Errorf("expected header's hash %X, but got %X", options.Hash, signedHeader.Hash())
+	}
+
+	vals, err := c.primary.ValidatorSet(trustOptions.Height + 1)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(h.NextValidatorsHash, vals.Hash()) {
+		return fmt.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, vals.Hash())
+	}
+
+	// Persist header and vals.
+	err = c.trustedStore.SaveSignedHeader(h)
+	if err != nil {
+		return errors.Wrap(err, "failed to save trusted header")
+	}
+	err = c.trustedStore.SaveValidatorSet(vals)
+	if err != nil {
+		return errors.Wrap(err, "failed to save trusted vals")
+	}
+
+	c.trustedHeader = h
+	c.trustedVals = vals
+
+	return nil
+}
+
+// SetLogger sets a logger.
+func (c *Client) SetLogger(l log.Logger) {
+	c.logger = l
+}
+
+func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
+	// Request the header and the vals.
+	newHeader, err := c.primary.SignedHeader(height)
+	if err != nil {
+		return err
+	}
+	newVals, err := c.primary.ValidatorSet(height)
+	if err != nil {
+		return err
+	}
+
+	c.VerifyHeader(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
+}
+
+func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
 	return c.bisection(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
 }
 
@@ -168,7 +208,7 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 	newVals *types.ValidatorSet,
 	now time.Time) error {
 
-	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustOptions.TrustPeriod, now, c.trustLevel)
+	err := Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustOptions.Period, now, c.trustLevel)
 	switch err.(type) {
 	case nil:
 		return nil
@@ -187,33 +227,20 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 	}
 
 	pivot := (c.trustedHeader.Height + newHeader.Header.Height) / 2
-	pivotHeader := c.signedHeader(pivot)
-	c.storeSignedHeader(pivotHeader)
 
-	pivotVals := c.validators(pivot)
-	c.storeValidators(pivotVals)
+	pivotHeader, err := c.primary.SignedHeader(pivot)
+	if err != nil {
+		return err
+	}
+
+	pivotVals, err := c.primary.ValidatorSet(pivot)
+	if err != nil {
+		return err
+	}
 
 	if err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now); err != nil {
 		return c.bisection(pivotHeader, pivotVals, newHeader, newVals, now)
 	}
 
 	return errors.New("bisection failed. restart with different full-node?")
-}
-
-func (c *Client) storeSignedHeader(h *types.SignedHeader) {
-	// TODO: save to DB
-}
-
-func (c *Client) storeValidators(vals *types.ValidatorSet) {
-	// TODO: save to DB
-}
-
-func (c *Client) signedHeader(height int64) *types.SignedHeader {
-	// TODO: use provider
-	return nil
-}
-
-func (c *Client) validators(height int64) *types.ValidatorSet {
-	// TODO: use provider
-	return nil
 }
