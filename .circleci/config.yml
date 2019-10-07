@@ -99,7 +99,7 @@ jobs:
       - run_test:
           script_path: test/persist/test_failure_indices.sh
 
-  test_cover:
+  test_coverP:
     executor: golang
     parallelism: 4
     steps:
@@ -116,12 +116,39 @@ jobs:
           name: "Run tests"
           command: |
             export VERSION="$(git describe --tags --long | sed 's/v\(.*\)/\1/')"
-            export GO111MODULE=on
             mkdir -p /tmp/logs /tmp/workspace/profiles
-            for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
+            for pkg in $(go list ./... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
               go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - "profiles/*"
+      - store_artifacts:
+          path: /tmp/logs
+
+  test_cover:
+    executor: golang
+    steps:
+      - restore_cache:
+          name: "Restore source code cache"
+          keys:
+            - go-src-v1-{{ .Revision }}
+      - checkout
+      - restore_cache:
+          name: "Restore go module cache"
+          keys:
+            - go-mod-v2-{{ checksum "go.sum" }}
+      - run:
+          name: "Run tests"
+          command: |
+            export VERSION="$(git describe --tags --long | sed 's/v\(.*\)/\1/')"
+            mkdir -p /tmp/logs /tmp/workspace/profiles
+            # for pkg in $(go list ./... | circleci tests split --split-by=timings); do
+            #   id=$(basename "$pkg")
+              go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
+            # done
       - persist_to_workspace:
           root: /tmp/workspace
           paths:
@@ -413,6 +440,9 @@ workflows:
           requires:
             - setup_dependencies
       - test_cover:
+          requires:
+            - setup_dependencies
+      - test_coverP:
           requires:
             - setup_dependencies
       - test_persistence:
