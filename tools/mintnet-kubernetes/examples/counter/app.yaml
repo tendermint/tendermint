@@ -163,11 +163,11 @@ spec:
         - |
           set -ex
 
-          go get github.com/tendermint/tendermint/abci/cmd/counter
+          go get github.com/tendermint/tendermint
 
           rm -f /socks/app.sock # remove old socket
 
-          counter --serial --addr="unix:///socks/app.sock"
+          tendermint node --proxy_app=counter
         volumeMounts:
         - name: socksdir
           mountPath: /socks
