@@ -84,6 +84,12 @@ type scPeerPruned struct {
 	peerID p2p.ID
 }
 
+type bcStatusResponse struct {
+	priorityNormal
+	peerID p2p.ID
+	height int64
+}
+
 type blockState int
 
 const (
@@ -149,8 +155,9 @@ func newScPeer(peerID p2p.ID) *scPeer {
 	}
 }
 
-// The scheduler is a composite data structure which allows a schedulerr to keep
-// track of which blocks have been schedulerd into which state.
+// The scheduler keep track of the state of each block and each peer. The
+// scheduler will atempt to schedule new block requests with `trySchedule`
+// events and remove slow peers with `tryPrune` events.
 type scheduler struct {
 	initHeight int64
 	// a list of blocks in which blockState
@@ -171,7 +178,7 @@ type scheduler struct {
 
 	targetPending  uint32 // the number of blocks we want in blockStatePending
 	targetReceived uint32 // the number of blocks we want in blockStateReceived
-	minRecvRate    int64
+	minRecvRate    int64  // minimum receive rate from peer otherwise prune
 	peerTimeout    time.Duration
 }
 
@@ -535,12 +542,6 @@ func (sc *scheduler) handleTrySchedule(event trySchedule) (Event, error) {
 		}
 	}
 	return noOp, nil
-}
-
-type bcStatusResponse struct {
-	priorityNormal
-	peerID p2p.ID
-	height int64
 }
 
 func (sc *scheduler) handleStatusResponse(event bcStatusResponse) (Event, error) {

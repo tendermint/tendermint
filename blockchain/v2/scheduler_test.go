@@ -11,7 +11,7 @@ import (
 func TestschedulerInit(t *testing.T) {
 	var (
 		initHeight int64 = 5
-		sc               = newscheduler(initHeight)
+		sc               = newScheduler(initHeight)
 	)
 
 	assert.Equal(t, blockStateNew, sc.getStateAtHeight(initHeight))
@@ -24,7 +24,7 @@ func TestAddPeer(t *testing.T) {
 		initHeight int64  = 5
 		peerID     p2p.ID = "1"
 		peerIDTwo  p2p.ID = "2"
-		sc                = newscheduler(initHeight)
+		sc                = newScheduler(initHeight)
 	)
 
 	assert.Nil(t, sc.addPeer(peerID))
@@ -36,7 +36,7 @@ func TestTouchPeer(t *testing.T) {
 	var (
 		initHeight int64  = 5
 		peerID     p2p.ID = "1"
-		sc                = newscheduler(initHeight)
+		sc                = newScheduler(initHeight)
 		now               = time.Now()
 	)
 
@@ -60,7 +60,7 @@ func TestPeerHeight(t *testing.T) {
 		initHeight int64  = 5
 		peerID     p2p.ID = "1"
 		peerHeight int64  = 20
-		sc                = newscheduler(initHeight)
+		sc                = newScheduler(initHeight)
 	)
 
 	assert.NoError(t, sc.addPeer(peerID),
@@ -85,7 +85,7 @@ func TestTransitionPending(t *testing.T) {
 		peerID     p2p.ID = "1"
 		peerIDTwo  p2p.ID = "2"
 		peerHeight int64  = 20
-		sc                = newscheduler(initHeight)
+		sc                = newScheduler(initHeight)
 		now               = time.Now()
 	)
 
@@ -133,7 +133,7 @@ func TestTransitionReceived(t *testing.T) {
 		peerIDTwo  p2p.ID = "2"
 		peerHeight int64  = 20
 		blockSize  int64  = 1024
-		sc                = newscheduler(initHeight)
+		sc                = newScheduler(initHeight)
 		now               = time.Now()
 		receivedAt        = now.Add(1 * time.Second)
 	)
@@ -181,7 +181,7 @@ func TestTransitionProcessed(t *testing.T) {
 		peerID     p2p.ID = "1"
 		peerHeight int64  = 20
 		blockSize  int64  = 1024
-		sc                = newscheduler(initHeight)
+		sc                = newScheduler(initHeight)
 		now               = time.Now()
 		receivedAt        = now.Add(1 * time.Second)
 	)
@@ -215,7 +215,7 @@ func TestMinMaxHeight(t *testing.T) {
 		initHeight int64  = 5
 		peerID     p2p.ID = "1"
 		peerHeight int64  = 20
-		sc                = newscheduler(initHeight)
+		sc                = newScheduler(initHeight)
 		now               = time.Now()
 	)
 
@@ -247,7 +247,7 @@ func TestPeersSlowerThan(t *testing.T) {
 		peerID     p2p.ID = "1"
 		peerHeight int64  = 20
 		blockSize  int64  = 1024
-		sc                = newscheduler(initHeight)
+		sc                = newScheduler(initHeight)
 		now               = time.Now()
 		receivedAt        = now.Add(1 * time.Second)
 	)
