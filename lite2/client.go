@@ -29,7 +29,7 @@ type TrustOptions struct {
 	// submission synchrony bound.
 	Period time.Duration
 
-	// Height and Hash can both be provided to force the trusting of a
+	// Height and Hash must both be provided to force the trusting of a
 	// particular height and hash.
 	Height int64
 	Hash   []byte
@@ -42,6 +42,7 @@ const (
 	bisecting
 )
 
+// Option sets a parameter for the light client.
 type Option func(*Client)
 
 // SequentialVerification option can be used to instruct Verifier to
@@ -69,15 +70,8 @@ func BisectingVerification(trustLevel float32) Option {
 	}
 }
 
-// TrustedStore option can be used to change default store for trusted headers.
-func TrustedStore(s store.Store) Option {
-	return func(c *Client) {
-		c.trustedStore = s
-	}
-}
-
 // AlternativeSources option can be used to supply alternative providers, which
-// will be used for cross-checking the primary provider of new headers.
+// will be used for cross-checking the primary provider.
 func AlternativeSources(providers []provider.Provider) Option {
 	return func(c *Client) {
 		c.alternatives = providers
@@ -105,10 +99,7 @@ type Client struct {
 	logger log.Logger
 }
 
-// NewClient returns a new Client.
-//
-// If no trusted store is configured using TrustedStore option, goleveldb
-// database will be used (./trusted.lvl).
+// NewClient returns a new light client.
 func NewClient(
 	chainID string,
 	trustOptions TrustOptions,
@@ -137,9 +128,9 @@ func NewClient(
 	return c, nil
 }
 
-func (c *Client) crossCheckPrimary() {
-	// TODO: cross check primary with alternatives providers
-}
+// TODO: cross check primary with alternatives providers
+// func (c *Client) crossCheckPrimary() {
+// }
 
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	h, err := c.primary.SignedHeader(options.Height)
