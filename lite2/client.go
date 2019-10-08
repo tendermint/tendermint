@@ -85,11 +85,10 @@ func AlternativeSources(providers []provider.Provider) Option {
 }
 
 type Client struct {
-	chainID            string
-	trustingPeriod     time.Duration
-	mode               mode
-	trustLevel         float32
-	lastVerifiedHeight int64
+	chainID        string
+	trustingPeriod time.Duration
+	mode           mode
+	trustLevel     float32
 
 	// Primary provider of new headers.
 	primary provider.Provider
@@ -99,8 +98,7 @@ type Client struct {
 	alternatives []provider.Provider
 
 	// Where trusted headers are stored.
-	trustedStore store.Store
-
+	trustedStore  store.Store
 	trustedHeader *types.SignedHeader
 	trustedVals   *types.ValidatorSet
 
@@ -164,13 +162,9 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	}
 
 	// Persist header and vals.
-	err = c.trustedStore.SaveSignedHeader(h)
+	err = c.saveTrustedHeaderAndVals(h, vals)
 	if err != nil {
-		return errors.Wrap(err, "failed to save trusted header")
-	}
-	err = c.trustedStore.SaveValidatorSet(vals, options.Height+1)
-	if err != nil {
-		return errors.Wrap(err, "failed to save trusted vals")
+		return err
 	}
 
 	c.trustedHeader = h
@@ -199,7 +193,22 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 }
 
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	return c.bisection(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
+	err := c.bisection(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
+	if err != nil {
+		return err
+	}
+
+	nextVals, err := c.primary.ValidatorSet(newHeader.Height + 1)
+	if err != nil {
+		return err
+	}
+	err = c.saveTrustedHeaderAndVals(newHeader, nextVals)
+	if err != nil {
+		return err
+	}
+
+	c.trustedHeader = newHeader
+	c.trustedVals = nextVals
 }
 
 func (c *Client) bisection(lastHeader *types.SignedHeader,
@@ -243,4 +252,16 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 	}
 
 	return errors.New("bisection failed. restart with different full-node?")
+}
+
+func (c *Client) saveTrustedHeaderAndVals(h *types.SignedHeader, vals *types.ValidatorSet) error {
+	err = c.trustedStore.SaveSignedHeader(h)
+	if err != nil {
+		return errors.Wrap(err, "failed to save trusted header")
+	}
+	err = c.trustedStore.SaveValidatorSet(vals, options.Height+1)
+	if err != nil {
+		return errors.Wrap(err, "failed to save trusted vals")
+	}
+	return nil
 }
