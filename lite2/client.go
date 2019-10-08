@@ -234,7 +234,7 @@ func (c *Client) bisection(
 	case types.ErrTooMuchChange:
 		// continue bisection
 	default:
-		return err
+		return errors.Wrapf(err, "failed to bisect #%d and #%d headers", lastHeader.Height, newHeader.Height)
 	}
 
 	if newHeader.Height == c.trustedHeader.Height+1 {
@@ -254,8 +254,12 @@ func (c *Client) bisection(
 		return err
 	}
 
-	if err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now); err != nil {
-		return c.bisection(pivotHeader, pivotVals, newHeader, newVals, now)
+	if err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now); err == nil {
+		pivotVals2, err := c.primary.ValidatorSet(pivot + 1)
+		if err != nil {
+			return err
+		}
+		return c.bisection(pivotHeader, pivotVals2, newHeader, newVals, now)
 	}
 
 	return errors.New("bisection failed. restart with different full-node?")
