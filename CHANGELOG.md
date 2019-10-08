@@ -2,7 +2,7 @@
 
 ## v0.32.6
 
-*October XXX, 2019*
+*October 8, 2019*
 
 The previous patch was insufficient because the attacker could still find a way
 to submit a `nil` pubkey by constructing a `PubKeyMultisigThreshold` pubkey
