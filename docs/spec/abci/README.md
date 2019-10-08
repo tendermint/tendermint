@@ -1,5 +1,6 @@
 ---
 title: ABCI spec
+cards: true
 ---
 
 # ABCI spec
