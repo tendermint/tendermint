@@ -6,20 +6,21 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/binary"
-	"errors"
 	"io"
 	"math"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/nacl/box"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"golang.org/x/crypto/hkdf"
 )
 
 // 4 + 1024 == 1028 total frame size
@@ -123,12 +124,12 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
 
-	if remPubKey == nil {
-		return nil, errors.New("Peer sent a nil public key")
+	if _, ok := remPubKey.(ed25519.PubKeyEd25519); !ok {
+		return nil, errors.Errorf("expected ed25519 pubkey, got %T", remPubKey)
 	}
 
 	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
-		return nil, errors.New("Challenge verification failed")
+		return nil, errors.New("challenge verification failed")
 	}
 
 	// We've authorized.
@@ -210,7 +211,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	var frame = make([]byte, totalFrameSize)
 	_, err = aead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
 	if err != nil {
-		return n, errors.New("Failed to decrypt SecretConnection")
+		return n, errors.New("failed to decrypt SecretConnection")
 	}
 	incrNonce(sc.recvNonce)
 	// end decryption
