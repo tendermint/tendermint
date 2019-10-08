@@ -1,3 +1,9 @@
+---
+order: 1
+parent:
+  title: Developer Sessions
+  order: 7
+---
 # Developer Sessions
 
 The Tendermint Core developer call is comprised of both [Interchain
