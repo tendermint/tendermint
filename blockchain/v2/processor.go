@@ -26,6 +26,8 @@ type bcBlockResponse struct {
 
 type pcBlockVerificationFailure struct {
 	priorityNormal
+	peerID p2p.ID
+	height int64
 }
 
 type pcBlockProcessed struct {
@@ -45,8 +47,8 @@ type pcStop struct {
 type pcFinished struct {
 	priorityNormal
 	height       int64
-	blocksSynced int
-	state        tdState.State
+	blocksSynced int64
+	pcFSM        tdState.State
 }
 
 func (p pcFinished) Error() string {
@@ -64,24 +66,22 @@ type pcState struct {
 	height       int64
 	queue        blockQueue
 	chainID      string
-	blocksSynced int
+	blocksSynced int64
 	draining     bool
 	tdState      tdState.State
 	context      processorContext
 }
 
-func (ps *pcState) String() string {
-	return fmt.Sprintf("queue: %d draining: %v, \n", len(ps.queue), ps.draining)
+func (pcFSM *pcState) String() string {
+	return fmt.Sprintf("height: %d queue length: %d draining: %v blocks synced: %d",
+		pcFSM.height, len(pcFSM.queue), pcFSM.draining, pcFSM.blocksSynced)
 }
 
 // newPcState returns a pcState initialized with the last verified block enqueued
-func newPcState(initBlock *types.Block, tdState tdState.State, chainID string, context processorContext) *pcState {
-	var myID p2p.ID = "thispeersid" // XXX: this should be the nodes peerID
-	initItem := queueItem{block: initBlock, peerID: myID}
-
+func newPcState(initHeight int64, tdState tdState.State, chainID string, context processorContext) *pcState {
 	return &pcState{
-		height:       initBlock.Height,
-		queue:        blockQueue{initBlock.Height: initItem},
+		height:       initHeight,
+		queue:        blockQueue{},
 		chainID:      chainID,
 		draining:     false,
 		blocksSynced: 0,
@@ -91,59 +91,58 @@ func newPcState(initBlock *types.Block, tdState tdState.State, chainID string, c
 }
 
 // nextTwo returns the next two unverified blocks
-func (state *pcState) nextTwo() (queueItem, queueItem, error) {
-	if first, ok := state.queue[state.height+1]; ok {
-		if second, ok := state.queue[state.height+2]; ok {
+func (pcFSM *pcState) nextTwo() (queueItem, queueItem, error) {
+	if first, ok := pcFSM.queue[pcFSM.height+1]; ok {
+		if second, ok := pcFSM.queue[pcFSM.height+2]; ok {
 			return first, second, nil
 		}
 	}
 	return queueItem{}, queueItem{}, fmt.Errorf("not found")
 }
 
-// synced returns true when only the last verified block remains in the queue
-func (state *pcState) synced() bool {
-	return len(state.queue) == 1
+// synced returns true when at most the last verified block remains in the queue
+func (pcFSM *pcState) synced() bool {
+	return len(pcFSM.queue) <= 1
 }
 
-func (state *pcState) advance() {
-	delete(state.queue, state.height)
-	state.height++
-	state.blocksSynced++
+func (pcFSM *pcState) advance() {
+	pcFSM.height++
+	delete(pcFSM.queue, pcFSM.height)
+	pcFSM.blocksSynced++
 }
 
-func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) error {
-	if _, ok := state.queue[height]; ok {
+func (pcFSM *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) error {
+	if _, ok := pcFSM.queue[height]; ok {
 		return fmt.Errorf("duplicate queue item")
 	}
-	state.queue[height] = queueItem{block: block, peerID: peerID}
+	pcFSM.queue[height] = queueItem{block: block, peerID: peerID}
 	return nil
 }
 
-// XXX:  rename pcFSM
 // purgePeer moves all unprocessed blocks from the queue
-func (state *pcState) purgePeer(peerID p2p.ID) {
-	// what if height is less than state.height?
-	for height, item := range state.queue {
+func (pcFSM *pcState) purgePeer(peerID p2p.ID) {
+	// what if height is less than pcFSM.height?
+	for height, item := range pcFSM.queue {
 		if item.peerID == peerID {
-			delete(state.queue, height)
+			delete(pcFSM.queue, height)
 		}
 	}
 }
 
-// Handle
-func (state *pcState) handle(event Event) (Event, error) {
+// handle processes FSM events
+func (pcFSM *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case *bcBlockResponse:
-		err := state.enqueue(event.peerID, event.block, event.height)
+		err := pcFSM.enqueue(event.peerID, event.block, event.height)
 		if err != nil {
 			return pcDuplicateBlock{}, nil
 		}
 
 	case pcProcessBlock:
-		firstItem, secondItem, err := state.nextTwo()
+		firstItem, secondItem, err := pcFSM.nextTwo()
 		if err != nil {
-			if state.draining {
-				return noOp, pcFinished{height: state.height}
+			if pcFSM.draining {
+				return noOp, pcFinished{height: pcFSM.height}
 			}
 			return noOp, nil
 		}
@@ -153,33 +152,33 @@ func (state *pcState) handle(event Event) (Event, error) {
 		firstPartsHeader := firstParts.Header()
 		firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
 
-		err = state.context.verifyCommit(state.chainID, firstID, first.Height, second.LastCommit)
+		err = pcFSM.context.verifyCommit(pcFSM.chainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
-			// XXX: maybe add peer and height field
-			return pcBlockVerificationFailure{}, nil
+			return pcBlockVerificationFailure{peerID: firstItem.peerID, height: first.Height }, nil
 		}
 
-		state.context.saveBlock(first, firstParts, second.LastCommit)
+		pcFSM.context.saveBlock(first, firstParts, second.LastCommit)
 
-		state.tdState, err = state.context.applyBlock(state.tdState, firstID, first)
+		pcFSM.tdState, err = pcFSM.context.applyBlock(pcFSM.tdState, firstID, first)
 		if err != nil {
 			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 		}
-		state.advance()
+		pcFSM.advance()
 		return pcBlockProcessed{height: first.Height, peerID: firstItem.peerID}, nil
+
 	case *peerError:
-		state.purgePeer(event.peerID)
-		// TODO: emit an event notifying the scheduler
+		pcFSM.purgePeer(event.peerID)
+
 	case pcStop:
-		if state.synced() {
-			return noOp, pcFinished{height: state.height, blocksSynced: state.blocksSynced}
+		if pcFSM.synced() {
+			return noOp, pcFinished{height: pcFSM.height, blocksSynced: pcFSM.blocksSynced}
 		}
-		state.draining = true
+		pcFSM.draining = true
 	}
 
 	return noOp, nil
 }
 
-func newProcessor(state *pcState, queueSize int) *Routine {
-	return newRoutine("processor", state.handle, queueSize)
+func newProcessor(pcFSM *pcState, queueSize int) *Routine {
+	return newRoutine("processor", pcFSM.handle, queueSize)
 }

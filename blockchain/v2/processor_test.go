@@ -9,228 +9,287 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Block Response
-func TestBlockAddition(t *testing.T) {
-	var (
-		peerID         p2p.ID = "peer"
-		initHeight     int64  = 0
-		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
-		nextHeight            = initHeight + 1
-		nextBlock             = &types.Block{Header: types.Header{Height: nextHeight}}
-		tdState               = tdState.State{}
-		applicationBL         = []types.BlockID{}
-		verificationBL        = []types.BlockID{}
-		context               = newMockProcessorContext(verificationBL, applicationBL)
-		state                 = &pcState{
-			height: initHeight,
-			queue: blockQueue{
-				initHeight: queueItem{block: initBlock, peerID: peerID},
-			},
-			draining:     false,
-			blocksSynced: 0,
-			context:      context,
-			tdState:      tdState,
-		}
-		event = &bcBlockResponse{
-			peerID: peerID,
-			block:  nextBlock,
-			height: nextHeight,
-		}
-	)
-
-	nextEvent, err := state.handle(event)
-	assert.NoError(t, err, "expected no error")
-
-	assert.Equal(t, state, &pcState{
-		draining:     false,
-		blocksSynced: 0,
-		height:       initHeight,
-		queue: blockQueue{
-			initHeight: queueItem{block: initBlock, peerID: peerID},
-			nextHeight: queueItem{block: nextBlock, peerID: peerID},
-		},
-		context: context,
-		tdState: tdState,
-	}, "expected the addition of a new block to the queue")
-	assert.Equal(t, noOp, nextEvent, "expected noOp event")
+// bl is a test helper structure with short name and simple types. Its purpose is to help with test readability.
+type bl struct {
+	pid string
+	height int64
 }
 
-func TestProcessDuplicateBlock(t *testing.T) {
-	var (
-		peerID         p2p.ID = "peer"
-		initHeight     int64  = 0
-		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
-		tdState               = tdState.State{}
-		applicationBL         = []types.BlockID{}
-		verificationBL        = []types.BlockID{}
-		context               = newMockProcessorContext(verificationBL, applicationBL)
-		state                 = &pcState{
-			height: initHeight,
-			queue: blockQueue{
-				initHeight: queueItem{block: initBlock, peerID: peerID},
-			},
-			draining:     false,
-			blocksSynced: 0,
-			context:      context,
-			tdState:      tdState,
-		}
-		event = &bcBlockResponse{
-			peerID: peerID,
-			block:  initBlock,
-			height: initHeight,
-		}
-	)
-
-	nextEvent, err := state.handle(event)
-
-	assert.NoError(t, err, "expected no error")
-	assert.Equal(t, state, &pcState{
-		height: initHeight,
-		queue: blockQueue{
-			initHeight: queueItem{block: initBlock, peerID: peerID},
-		},
-		draining:     false,
-		blocksSynced: 0,
-		context:      context,
-		tdState:      tdState,
-	}, "expected state to go unchanged")
-	assert.Equal(t, pcDuplicateBlock{}, nextEvent, "expected duplicate block event")
+// params is a test structure used to create processor state.
+type params struct {
+	height int64
+	items []bl
+	blocksSynced int64
+	verBL []int64
+	appBL []int64
+	draining bool
 }
 
-func TestProcessSingleBlock(t *testing.T) {
-	var (
-		peerID         p2p.ID = "peer"
-		initHeight     int64  = 0
-		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
-		tdState               = tdState.State{}
-		applicationBL         = []types.BlockID{}
-		verificationBL        = []types.BlockID{}
-		context               = newMockProcessorContext(verificationBL, applicationBL)
-		state                 = &pcState{
-			height: initHeight,
-			queue: blockQueue{
-				initHeight: queueItem{block: initBlock, peerID: peerID},
-			},
-			draining:     false,
-			blocksSynced: 0,
-			context:      context,
-			tdState:      tdState,
-		}
-		event = &pcProcessBlock{}
-	)
-
-	nextEvent, err := state.handle(event)
-	assert.NoError(t, err, "expected no error")
-	assert.Equal(t, noOp, nextEvent, "expected noOp event")
-	assert.Equal(t, state, &pcState{
-		height: initHeight,
-		queue: blockQueue{
-			initHeight: queueItem{block: initBlock, peerID: peerID},
-		},
-		draining:     false,
-		blocksSynced: 0,
-		context:      context,
-		tdState:      tdState,
-	}, "expected state to go unchanged")
+// makePcBlock makes an empty block.
+func makePcBlock(height int64) *types.Block {
+	return &types.Block{Header: types.Header{Height: height}}
 }
 
-func TestProcessBlockEmptyBlock(t *testing.T) {
+// mst takes test parameters and creates a specific processor state. Name is kept short for test readability.
+func mst(p params) *pcState {
 	var (
-		peerID         p2p.ID = "peer"
-		initHeight     int64  = 0
-		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
 		tdState               = tdState.State{}
-		applicationBL         = []types.BlockID{}
-		verificationBL        = []types.BlockID{}
-		context               = newMockProcessorContext(verificationBL, applicationBL)
-		nextNextHeight        = initHeight + 2
-		nextNextBlock         = &types.Block{Header: types.Header{Height: nextNextHeight}}
-		event                 = pcProcessBlock{}
-		state                 = &pcState{
-			height: initHeight,
-			queue: blockQueue{
-				initHeight:     queueItem{block: initBlock, peerID: peerID},
-				nextNextHeight: queueItem{block: nextNextBlock, peerID: peerID},
-			},
-			draining:     false,
-			blocksSynced: 0,
-			context:      context,
-			tdState:      tdState,
-		}
+		context               = newMockProcessorContext(p.verBL, p.appBL)
 	)
+	state := newPcState(p.height, tdState, "test", context)
 
-	nextEvent, err := state.handle(event)
+	for _, item := range p.items {
+		_ = state.enqueue(p2p.ID(item.pid), makePcBlock(item.height), item.height)
+	}
 
-	assert.NoError(t, err, "expected no error")
-	assert.Equal(t, noOp, nextEvent, "expected noOp event")
-	assert.Equal(t, state, &pcState{
-		height: initHeight,
-		queue: blockQueue{
-			initHeight:     queueItem{block: initBlock, peerID: peerID},
-			nextNextHeight: queueItem{block: nextNextBlock, peerID: peerID},
-		},
-		draining:     false,
-		blocksSynced: 0,
-		context:      context,
-		tdState:      tdState,
-	}, "expected state to go unchanged")
+	state.blocksSynced = p.blocksSynced
+	state.draining = p.draining
+	return state
 }
 
-// Test with verificationBL
-// Test with applicationBL
-
-func TestProcessAdvance(t *testing.T) {
-	var (
-		peerID         p2p.ID = "peer"
-		initHeight     int64  = 0
-		initBlock             = &types.Block{Header: types.Header{Height: initHeight}}
-		tdState               = tdState.State{}
-		applicationBL         = []types.BlockID{}
-		verificationBL        = []types.BlockID{}
-		context               = newMockProcessorContext(verificationBL, applicationBL)
-		nextHeight            = initHeight + 1
-		nextBlock             = &types.Block{Header: types.Header{Height: nextHeight}}
-		nextNextHeight        = initHeight + 2
-		nextNextBlock         = &types.Block{Header: types.Header{Height: nextNextHeight}}
-		state                 = &pcState{
-			height: initHeight,
-			queue: blockQueue{
-				initHeight:     queueItem{block: initBlock, peerID: peerID},
-				nextHeight:     queueItem{block: nextBlock, peerID: peerID},
-				nextNextHeight: queueItem{block: nextNextBlock, peerID: peerID},
-			},
-			draining:     false,
-			blocksSynced: 0,
-			context:      context,
-			tdState:      tdState,
-		}
-		event = pcProcessBlock{}
-	)
-
-	nextEvent, err := state.handle(event)
-
-	assert.NoError(t, err, "expected no error")
-	assert.Equal(t, nextEvent, pcBlockProcessed{
-		height: nextHeight,
-		peerID: peerID}, "expected the correct bcBlockProcessed event")
-	assert.Equal(t, state, &pcState{
-		height: nextHeight,
-		queue: blockQueue{
-			nextHeight:     queueItem{block: nextBlock, peerID: peerID},
-			nextNextHeight: queueItem{block: nextNextBlock, peerID: peerID},
-		},
-		draining:     false,
-		blocksSynced: 1,
-		context:      context,
-		tdState:      tdState,
-	}, "expected the state to have advanced")
+func mBlockResponse(peerID p2p.ID, height int64) *bcBlockResponse {
+	return &bcBlockResponse{
+		peerID: peerID,
+		block:  makePcBlock(height),
+		height: height,
+	}
 }
 
-func TestPeerError(t *testing.T) {
-	// Test queue removal
+type pcFsmStepTestValues struct {
+	currentState *pcState
+	event        Event
+	wantState         *pcState
+	wantNextEvent Event
+	wantErr           error
+	wantPanic bool
+}
+
+type testFields struct {
+	name               string
+	steps              []pcFsmStepTestValues
+}
+
+func executeProcessorTests(t *testing.T, tests []testFields) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var state *pcState
+			for _, step := range tt.steps {
+				defer func() {
+					r := recover()
+					if (r != nil) != step.wantPanic {
+						t.Errorf("recover = %v, wantPanic = %v", r, step.wantPanic)
+					}
+				}()
+				// First step must always initialise the currentState as state.
+				if step.currentState != nil {
+					state = step.currentState
+				}
+				if state == nil {
+					panic("Bad (initial?) step")
+				}
+
+				nextEvent, err := state.handle(step.event)
+				t.Log(state)
+				assert.Equal(t, step.wantErr, err)
+				assert.Equal(t, step.wantState, state)
+				assert.Equal(t, step.wantNextEvent, nextEvent)
+				// Next step may use the wantedState as their currentState.
+				state = step.wantState
+			}})
+	}
+}
+
+func TestPcBlockResponse(t *testing.T) {
+	tests := []testFields{
+		{
+			name:               "add one block",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{}), event: mBlockResponse("P1", 1),
+					wantState: mst(params{items: []bl{{"P1", 1}}}), wantNextEvent: noOp,
+				},
+			},
+		},
+		{
+			name:               "add two blocks",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{}), event: mBlockResponse("P1", 3),
+					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: noOp,
+				},
+				{   // use previous wantState as currentState,
+					event: mBlockResponse("P1", 4),
+					wantState: mst(params{items: []bl{{"P1", 3}, {"P1", 4}}}), wantNextEvent: noOp,
+				},
+			},
+		},
+		{
+			name:               "add duplicate block from same peer",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{}), event: mBlockResponse("P1", 3),
+					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: noOp,
+				},
+				{   // use previous wantState as currentState,
+					event: mBlockResponse("P1", 3),
+					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: pcDuplicateBlock{},
+				},
+			},
+		},
+		{
+			name:               "add duplicate block from different peer",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{}), event: mBlockResponse("P1", 3),
+					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: noOp,
+				},
+				{   // use previous wantState as currentState,
+					event: mBlockResponse("P2", 3),
+					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: pcDuplicateBlock{},
+				},
+			},
+		},
+	}
+
+	executeProcessorTests(t, tests)
+}
+
+func TestPcProcessBlockSuccess(t *testing.T) {
+	tests := []testFields{
+		{
+			name:               "noop - no blocks over current height",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{}), event: pcProcessBlock{},
+					wantState: mst(params{}), wantNextEvent: noOp,
+				},
+			},
+		},
+		{
+			name:               "noop - high new blocks",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{height: 5, items: []bl{{"P1", 30}, {"P2", 31}}}), event: pcProcessBlock{},
+					wantState: mst(params{height: 5, items: []bl{{"P1", 30}, {"P2", 31}}}), wantNextEvent: noOp,
+				},
+			},
+		},
+		{
+			name:               "blocks H+1 and H+2 present",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}}), event: pcProcessBlock{},
+					wantState: mst(params{height: 1, items: []bl{{"P2", 2}}, blocksSynced: 1}),
+					wantNextEvent: pcBlockProcessed{height: 1, peerID: "P1"},
+				},
+			},
+		},
+	}
+
+	executeProcessorTests(t, tests)
+}
+
+func TestPcProcessBlockFailures(t *testing.T) {
+	tests := []testFields{
+		{
+			name:               "blocks H+1 and H+2 present - H+1 verification fails ",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}, verBL: []int64{1}}), event: pcProcessBlock{},
+					wantState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}, verBL: []int64{1}}),
+					wantNextEvent: pcBlockVerificationFailure{peerID: "P1", height: 1},
+				},
+			},
+		},
+		{
+			name:               "blocks H+1 and H+2 present - H+1 applyBlock fails ",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}, appBL: []int64{1}}), event: pcProcessBlock{},
+					wantState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}, appBL: []int64{1}}),
+					wantPanic: true,
+				},
+			},
+		},
+	}
+
+	executeProcessorTests(t, tests)
+}
+
+func TestPcPeerError(t *testing.T) {
+
+	tests := []testFields{
+		{
+			name:               "peer not present",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}}), event: &peerError{peerID: "P3"},
+					wantState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}}),
+					wantNextEvent: noOp,
+				},
+			},
+		},
+		{
+			name:               "some blocks are from errored peer",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{items: []bl{{"P1", 100}, {"P1", 99}, {"P2", 101}}}), event: &peerError{peerID: "P1"},
+					wantState: mst(params{items: []bl{{"P2", 101}}}),
+					wantNextEvent: noOp,
+				},
+			},
+		},
+		{
+			name:               "all blocks are from errored peer",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{items: []bl{{"P1", 100}, {"P1", 99}}}), event: &peerError{peerID: "P1"},
+					wantState: mst(params{}),
+					wantNextEvent: noOp,
+				},
+			},
+		},
+	}
+
+	executeProcessorTests(t, tests)
 }
 
 func TestStop(t *testing.T) {
-	// test with empty queue
-	// test with non empty queue
+	tests := []testFields{
+		{
+			name:               "no blocks",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{height: 100, items: []bl{}, blocksSynced: 100}), event: pcStop{},
+					wantState: mst(params{height: 100, items: []bl{}, blocksSynced: 100}),
+					wantNextEvent: noOp,
+					wantErr: pcFinished{height: 100, blocksSynced: 100},
+				},
+			},
+		},
+		{
+			name:               "maxHeight+1 block present",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{height: 100, items: []bl{{"P1", 101}}, blocksSynced: 100}), event: pcStop{},
+					wantState: mst(params{height: 100, items: []bl{{"P1", 101}}, blocksSynced: 100}),
+					wantNextEvent: noOp,
+					wantErr: pcFinished{height: 100, blocksSynced: 100},
+				},
+			},
+		},
+		{
+			name:               "more blocks present",
+			steps: []pcFsmStepTestValues{
+				{
+					currentState: mst(params{height: 100, items: []bl{{"P1", 101}, {"P1", 102}}, blocksSynced: 100}), event: pcStop{},
+					wantState: mst(params{height: 100, items: []bl{{"P1", 101}, {"P1", 102}}, blocksSynced: 100, draining: true}),
+					wantNextEvent: noOp,
+					wantErr: nil,
+				},
+			},
+		},
+	}
+
+	executeProcessorTests(t, tests)
 }
