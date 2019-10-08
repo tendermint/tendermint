@@ -137,6 +137,10 @@ func NewClient(
 	return c, nil
 }
 
+func (c *Client) crossCheckPrimary() {
+	// TODO: cross check primary with alternatives providers
+}
+
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	h, err := c.primary.SignedHeader(options.Height)
 	if err != nil {
@@ -193,9 +197,17 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 }
 
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	err := c.bisection(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
-	if err != nil {
-		return err
+	switch c.mode {
+	case sequential:
+		err := c.sequence(newHeader, newVals, now)
+		if err != nil {
+			return err
+		}
+	case bisecting:
+		err := c.bisection(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
+		if err != nil {
+			return err
+		}
 	}
 
 	nextVals, err := c.primary.ValidatorSet(newHeader.Height + 1)
@@ -209,9 +221,12 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 
 	c.trustedHeader = newHeader
 	c.trustedVals = nextVals
+
+	return nil
 }
 
-func (c *Client) bisection(lastHeader *types.SignedHeader,
+func (c *Client) bisection(
+	lastHeader *types.SignedHeader,
 	lastVals *types.ValidatorSet,
 	newHeader *types.SignedHeader,
 	newVals *types.ValidatorSet,
@@ -254,13 +269,39 @@ func (c *Client) bisection(lastHeader *types.SignedHeader,
 	return errors.New("bisection failed. restart with different full-node?")
 }
 
+func (c *Client) sequence(
+	newHeader *types.SignedHeader,
+	newVals *types.ValidatorSet,
+	now time.Time) error {
+
+	// Verify intermediate headers (if any)
+	lastHeader := c.trustedHeader
+	lastVals := c.trustedVals
+	for height := lastHeader.Height + 1; height < newHeader.Height; height++ {
+		interimHeader, err := c.primary.SignedHeader(height)
+		if err != nil {
+			return err
+		}
+		interimVals, err := c.primary.ValidatorSet(height)
+		if err != nil {
+			return err
+		}
+		err = Verify(c.chainID, lastHeader, lastVals, interimHeader, interimVals, c.trustingPeriod, now, c.trustLevel)
+		if err != nil {
+			return err
+		}
+		lastHeader = interimHeader
+		lastVals = interimVals
+	}
+
+	return Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
+}
+
 func (c *Client) saveTrustedHeaderAndVals(h *types.SignedHeader, vals *types.ValidatorSet) error {
-	err = c.trustedStore.SaveSignedHeader(h)
-	if err != nil {
+	if err := c.trustedStore.SaveSignedHeader(h); err != nil {
 		return errors.Wrap(err, "failed to save trusted header")
 	}
-	err = c.trustedStore.SaveValidatorSet(vals, options.Height+1)
-	if err != nil {
+	if err := c.trustedStore.SaveValidatorSet(vals, h.Height+1); err != nil {
 		return errors.Wrap(err, "failed to save trusted vals")
 	}
 	return nil
