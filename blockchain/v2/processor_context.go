@@ -54,7 +54,7 @@ func newMockProcessorContext(verificationBlackList []int64, applicationBlackList
 
 func (mpc *mockPContext) applyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error) {
 	for _, h := range mpc.applicationBL {
-		if int64(h) == block.Height {
+		if h == block.Height {
 			return state, fmt.Errorf("generic application error")
 		}
 	}
@@ -63,13 +63,12 @@ func (mpc *mockPContext) applyBlock(state state.State, blockID types.BlockID, bl
 
 func (mpc *mockPContext) verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
 	for _, h := range mpc.verificationBL {
-		if int64(h) == height {
-			return fmt.Errorf("generic verificaiton error")
+		if h == height {
+			return fmt.Errorf("generic verification error")
 		}
 	}
 	return nil
 }
 
 func (mpc *mockPContext) saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
-	return
 }

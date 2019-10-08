@@ -48,7 +48,6 @@ type pcFinished struct {
 	priorityNormal
 	height       int64
 	blocksSynced int64
-	pcFSM        tdState.State
 }
 
 func (p pcFinished) Error() string {
@@ -154,7 +153,7 @@ func (pcFSM *pcState) handle(event Event) (Event, error) {
 
 		err = pcFSM.context.verifyCommit(pcFSM.chainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
-			return pcBlockVerificationFailure{peerID: firstItem.peerID, height: first.Height }, nil
+			return pcBlockVerificationFailure{peerID: firstItem.peerID, height: first.Height}, nil
 		}
 
 		pcFSM.context.saveBlock(first, firstParts, second.LastCommit)
