@@ -1,6 +1,8 @@
 ---
 order: 1
+title: Overview
 parent:
+  title: Tendermint Spec
   order: 7
 ---
 
