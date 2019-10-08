@@ -14,7 +14,7 @@ details on `Events`, see the [ABCI](../spec/abci/abci.md) documentation.
 
 Let's take a look at the `[tx_index]` config section:
 
-```yaml
+```toml
 ##### transactions indexer configuration options #####
 [tx_index]
 
