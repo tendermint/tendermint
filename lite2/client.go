@@ -108,12 +108,13 @@ func NewClient(
 	options ...Option) (*Client, error) {
 
 	c := &Client{
-		chainID:      chainID,
-		primary:      primary,
-		trustedStore: trustedStore,
-		mode:         bisecting,
-		trustLevel:   DefaultTrustLevel,
-		logger:       log.NewNopLogger(),
+		chainID:        chainID,
+		trustingPeriod: trustOptions.Period,
+		mode:           bisecting,
+		trustLevel:     DefaultTrustLevel,
+		primary:        primary,
+		trustedStore:   trustedStore,
+		logger:         log.NewNopLogger(),
 	}
 
 	for _, o := range options {

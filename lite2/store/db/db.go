@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/go-amino"
 	dbm "github.com/tendermint/tm-db"
 
+	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 	"github.com/tendermint/tendermint/lite2/store"
 	"github.com/tendermint/tendermint/types"
 )
@@ -20,7 +21,9 @@ type dbs struct {
 // New returns a Store that wraps any DB (with an optional prefix in case you
 // want to use one DB with many light clients).
 func New(db dbm.DB, prefix string) store.Store {
-	return &dbs{db: db, prefix: prefix, cdc: amino.NewCodec()}
+	cdc := amino.NewCodec()
+	cryptoAmino.RegisterAmino(cdc)
+	return &dbs{db: db, prefix: prefix, cdc: cdc}
 }
 
 func (s *dbs) SaveSignedHeader(sh *types.SignedHeader) error {
