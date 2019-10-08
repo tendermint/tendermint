@@ -2,7 +2,7 @@
 order: 1
 parent:
   title: Developer Sessions
-  order: 7
+  order: 8
 ---
 # Developer Sessions
 

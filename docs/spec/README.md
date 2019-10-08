@@ -1,7 +1,7 @@
 ---
 order: 1
 parent:
-  order: 6
+  order: 7
 ---
 
 # Tendermint Spec
