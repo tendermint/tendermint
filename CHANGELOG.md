@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.32.6
+
+*October XXX, 2019*
+
+The previous patch was insufficient because the attacker could still find a way
+to submit a `nil` pubkey by constructing a `PubKeyMultisigThreshold` pubkey
+with `nil` subpubkeys for example.
+
+This release provides multiple fixes, which include recovering from panics when
+accepting new peers and only allowing `ed25519` pubkeys.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for pointing
+this out.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Only allow ed25519 pubkeys when connecting
+
 ## v0.32.5
 
 *October 1, 2019*
