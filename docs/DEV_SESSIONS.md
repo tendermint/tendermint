@@ -11,6 +11,7 @@ decision making process, technical information, update cycles etc.
 
 | Date           | Topic                                                       | Link(s)                                                                                                      |
 | -------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| October 2019   | ABCI Overview (2/2)                                         | TBD                                                                                                          |
 | October 2019   | ABCI Overview (1/2)                                         | [YouTube](https://www.youtube.com/watch?v=I3OnA8yCHl4&list=PLdQIb0qr3pnBbG5ZG-0gr3zM86_s8Rpqv)               |
 | September 2019 | IAVL+ Presentation                                          | [YouTube](https://www.youtube.com/watch?v=e5wwBaCTc9Y&list=PLdQIb0qr3pnBbG5ZG-0gr3zM86_s8Rpqv&index=2)       |
 | September 2019 | Tendermint Dev Session - Blockchain Reactor in TLA+         | [YouTube](https://www.youtube.com/watch?v=q0e0pEQ5aiY&list=PLdQIb0qr3pnBbG5ZG-0gr3zM86_s8Rpqv&index=3)       |
