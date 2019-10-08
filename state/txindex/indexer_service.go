@@ -29,7 +29,7 @@ func NewIndexerService(idr TxIndexer, eventBus *types.EventBus) *IndexerService 
 }
 
 // OnStart implements cmn.Service by subscribing for all transactions
-// and indexing them by tags.
+// and indexing them by events.
 func (is *IndexerService) OnStart() error {
 	// Use SubscribeUnbuffered here to ensure both subscriptions does not get
 	// cancelled due to not pulling messages fast enough. Cause this might

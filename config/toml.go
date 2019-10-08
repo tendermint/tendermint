@@ -345,22 +345,22 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "{{ .TxIndex.Indexer }}"
 
-# Comma-separated list of tags to index (by default the only tag is "tx.hash")
+# Comma-separated list of events to index (by default the only tag is "tx.hash")
 #
 # You can also index transactions by height by adding "tx.height" tag here.
 #
-# It's recommended to index only a subset of tags due to possible memory
+# It's recommended to index only a subset of events due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
-index_tags = "{{ .TxIndex.IndexTags }}"
+index_events = "{{ .TxIndex.IndexEvents }}"
 
-# When set to true, tells indexer to index all tags (predefined tags:
-# "tx.hash", "tx.height" and all tags from DeliverTx responses).
+# When set to true, tells indexer to index all events (predefined events:
+# "tx.hash", "tx.height" and all events from DeliverTx responses).
 #
-# Note this may be not desirable (see the comment above). IndexTags has a
-# precedence over IndexAllTags (i.e. when given both, IndexTags will be
+# Note this may be not desirable (see the comment above). IndexEvents has a
+# precedence over IndexAllEvents (i.e. when given both, IndexEvents will be
 # indexed).
-index_all_tags = {{ .TxIndex.IndexAllTags }}
+index_all_events = {{ .TxIndex.IndexAllEvents }}
 
 ##### instrumentation configuration options #####
 [instrumentation]

@@ -25,7 +25,7 @@ func BenchmarkTxSearch(b *testing.B) {
 	}
 
 	allowedTags := []string{"transfer.address", "transfer.amount"}
-	indexer := NewTxIndex(db, IndexTags(allowedTags))
+	indexer := NewTxIndex(db, IndexEvents(allowedTags))
 
 	for i := 0; i < 35000; i++ {
 		events := []abci.Event{

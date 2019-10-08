@@ -368,7 +368,7 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 //     "results": {
 //       "deliver_tx": [
 //         {
-//           "tags": [
+//           "events": [
 //             {
 //               "key": "YXBwLmNyZWF0b3I=",
 //               "value": "Q29zbW9zaGkgTmV0b3dva28="

@@ -97,7 +97,7 @@ func createConfig() *cfg.Config {
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	c.RPC.GRPCListenAddress = grpc
-	c.TxIndex.IndexTags = "app.creator,tx.height" // see kvstore application
+	c.TxIndex.IndexEvents = "app.creator,tx.height" // see kvstore application
 	return c
 }
 

@@ -66,7 +66,7 @@ func TestTxIndex(t *testing.T) {
 
 func TestTxSearch(t *testing.T) {
 	allowedTags := []string{"account.number", "account.owner", "account.date"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedTags))
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
@@ -86,9 +86,9 @@ func TestTxSearch(t *testing.T) {
 		{fmt.Sprintf("tx.hash = '%X'", hash), 1},
 		// search by exact match (one tag)
 		{"account.number = 1", 1},
-		// search by exact match (two tags)
+		// search by exact match (two events)
 		{"account.number = 1 AND account.owner = 'Ivan'", 1},
-		// search by exact match (two tags)
+		// search by exact match (two events)
 		{"account.number = 1 AND account.owner = 'Vlad'", 0},
 		{"account.owner = 'Vlad' AND account.number = 1", 0},
 		{"account.number >= 1 AND account.owner = 'Vlad'", 0},
@@ -133,7 +133,7 @@ func TestTxSearch(t *testing.T) {
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	allowedTags := []string{"account.number", "sender"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedTags))
 
 	// index tx using events indexing (composite key)
 	txResult1 := txResultWithEvents([]abci.Event{
@@ -203,7 +203,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	allowedTags := []string{"account.number"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedTags))
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
@@ -222,7 +222,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 
 func TestTxSearchMultipleTxs(t *testing.T) {
 	allowedTags := []string{"account.number", "account.number.id"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedTags))
 
 	// indexed first, but bigger height (to test the order of transactions)
 	txResult := txResultWithEvents([]abci.Event{
@@ -256,7 +256,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	err = indexer.Index(txResult3)
 	require.NoError(t, err)
 
-	// indexed fourth (to test we don't include txs with similar tags)
+	// indexed fourth (to test we don't include txs with similar events)
 	// https://github.com/tendermint/tendermint/issues/2908
 	txResult4 := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number.id"), Value: []byte("1")}}},
@@ -275,7 +275,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 }
 
 func TestIndexAllTags(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB(), IndexAllTags())
+	indexer := NewTxIndex(db.NewMemDB(), IndexAllEvents())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("owner"), Value: []byte("Ivan")}}},

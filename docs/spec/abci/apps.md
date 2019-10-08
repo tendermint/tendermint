@@ -148,7 +148,7 @@ not broadcasted to other peers and not included in a proposal block.
 `Data` contains the result of the CheckTx transaction execution, if any. It is
 semantically meaningless to Tendermint.
 
-`Tags` include any tags for the execution, though since the transaction has not
+`Events` include any Events for the execution, though since the transaction has not
 been committed yet, they are effectively ignored by Tendermint.
 
 ### DeliverTx
@@ -162,12 +162,12 @@ semantically meaningless to Tendermint.
 Both the `Code` and `Data` are included in a structure that is hashed into the
 `LastResultsHash` of the next block header.
 
-`Tags` include any tags for the execution, which Tendermint will use to index
+`Events` include any events for the execution, which Tendermint will use to index
 the transaction by. This allows transactions to be queried according to what
 events took place during their execution.
 
 See issue [#1007](https://github.com/tendermint/tendermint/issues/1007) for how
-the tags will be hashed into the next block header.
+the events will be hashed into the next block header.
 
 ## Validator Updates
 

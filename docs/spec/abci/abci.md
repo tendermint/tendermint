@@ -48,7 +48,7 @@ during the method's execution.
 Events can be used to index transactions and blocks according to what happened
 during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
-tag, only the value defined in `EndBlock` is used.
+event, only the value defined in `EndBlock` is used.
 
 Each event has a `type` which is meant to categorize the event for a particular
 `Response*` or tx. A `Response*` or tx may contain multiple events with duplicate
@@ -282,7 +282,7 @@ Commit are included in the header of the next block.
   - `ByzantineValidators ([]Evidence)`: List of evidence of
     validators that acted maliciously.
 - **Response**:
-  - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
+  - `Events ([]cmn.KVPair)`: Key-Value events for filtering and indexing
 - **Usage**:
   - Signals the beginning of a new block. Called prior to
     any DeliverTxs.
@@ -309,7 +309,7 @@ Commit are included in the header of the next block.
     be non-deterministic.
   - `GasWanted (int64)`: Amount of gas requested for transaction.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
-  - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
+  - `Events ([]cmn.KVPair)`: Key-Value events for filtering and indexing
     transactions (eg. by account).
   - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
@@ -337,7 +337,7 @@ Commit are included in the header of the next block.
     be non-deterministic.
   - `GasWanted (int64)`: Amount of gas requested for transaction.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
-  - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
+  - `Events ([]cmn.KVPair)`: Key-Value events for filtering and indexing
     transactions (eg. by account).
   - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
@@ -354,7 +354,7 @@ Commit are included in the header of the next block.
     voting power to 0 to remove).
   - `ConsensusParamUpdates (ConsensusParams)`: Changes to
     consensus-critical time, size, and other parameters.
-  - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
+  - `Events ([]cmn.KVPair)`: Key-Value events for filtering and indexing
 - **Usage**:
   - Signals the end of a block.
   - Called after all transactions, prior to each Commit.

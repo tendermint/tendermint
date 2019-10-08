@@ -27,31 +27,31 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
 type TxIndex struct {
-	store        dbm.DB
-	tagsToIndex  []string
-	indexAllTags bool
+	store          dbm.DB
+	eventsToIndex  []string
+	indexAllEvents bool
 }
 
 // NewTxIndex creates new KV indexer.
 func NewTxIndex(store dbm.DB, options ...func(*TxIndex)) *TxIndex {
-	txi := &TxIndex{store: store, tagsToIndex: make([]string, 0), indexAllTags: false}
+	txi := &TxIndex{store: store, eventsToIndex: make([]string, 0), indexAllEvents: false}
 	for _, o := range options {
 		o(txi)
 	}
 	return txi
 }
 
-// IndexTags is an option for setting which tags to index.
-func IndexTags(tags []string) func(*TxIndex) {
+// IndexEvents is an option for setting which events to index.
+func IndexEvents(events []string) func(*TxIndex) {
 	return func(txi *TxIndex) {
-		txi.tagsToIndex = tags
+		txi.eventsToIndex = events
 	}
 }
 
-// IndexAllTags is an option for indexing all tags.
-func IndexAllTags() func(*TxIndex) {
+// IndexAllEvents is an option for indexing all events.
+func IndexAllEvents() func(*TxIndex) {
 	return func(txi *TxIndex) {
-		txi.indexAllTags = true
+		txi.indexAllEvents = true
 	}
 }
 
@@ -91,7 +91,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		txi.indexEvents(result, hash, storeBatch)
 
 		// index tx by height
-		if txi.indexAllTags || cmn.StringInSlice(types.TxHeightKey, txi.tagsToIndex) {
+		if txi.indexAllEvents || cmn.StringInSlice(types.TxHeightKey, txi.eventsToIndex) {
 			storeBatch.Set(keyForHeight(result), hash)
 		}
 
@@ -121,7 +121,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	txi.indexEvents(result, hash, b)
 
 	// index tx by height
-	if txi.indexAllTags || cmn.StringInSlice(types.TxHeightKey, txi.tagsToIndex) {
+	if txi.indexAllEvents || cmn.StringInSlice(types.TxHeightKey, txi.eventsToIndex) {
 		b.Set(keyForHeight(result), hash)
 	}
 
@@ -150,7 +150,7 @@ func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.S
 			}
 
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			if txi.indexAllTags || cmn.StringInSlice(compositeTag, txi.tagsToIndex) {
+			if txi.indexAllEvents || cmn.StringInSlice(compositeTag, txi.eventsToIndex) {
 				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 			}
 		}
