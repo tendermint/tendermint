@@ -1,7 +1,3 @@
----
-description: Hello world
----
-
 # Methods and Types
 
 ## Overview
