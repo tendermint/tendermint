@@ -15,10 +15,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// TODO: consolidate 1,2,3,4
 func TestClientSequentialVerification1(t *testing.T) {
 	const (
-		chainID = "TestClientSequentialVerification1"
+		chainID = "sequential-test"
 	)
 
 	var (
@@ -30,15 +29,14 @@ func TestClientSequentialVerification1(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 4 * time.Hour,
-			Height: 1,
-			Hash:   header.Hash(),
-		},
-		mockp.New(
-			chainID,
+	testCases := []struct {
+		otherHeaders map[int64]*types.SignedHeader // all except ^
+		vals         map[int64]*types.ValidatorSet
+		initErr      bool
+		verifyErr    bool
+	}{
+		// good
+		{
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: header,
@@ -55,39 +53,11 @@ func TestClientSequentialVerification1(t *testing.T) {
 				3: vals,
 				4: vals,
 			},
-		),
-		dbs.New(dbm.NewMemDB(), ""),
-		SequentialVerification(),
-	)
-	require.NoError(t, err)
-
-	err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
-	assert.NoError(t, err)
-}
-
-func TestClientSequentialVerification2(t *testing.T) {
-	const (
-		chainID = "TestClientSequentialVerification2"
-	)
-
-	var (
-		keys = genPrivKeys(4)
-		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
-		vals     = keys.ToValidators(20, 10)
-		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
-			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
-	)
-
-	_, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 4 * time.Hour,
-			Height: 1,
-			Hash:   header.Hash(),
+			false,
+			false,
 		},
-		mockp.New(
-			chainID,
+		// bad: different first header
+		{
 			map[int64]*types.SignedHeader{
 				// different header
 				1: keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
@@ -96,37 +66,11 @@ func TestClientSequentialVerification2(t *testing.T) {
 			map[int64]*types.ValidatorSet{
 				1: vals,
 			},
-		),
-		dbs.New(dbm.NewMemDB(), ""),
-		SequentialVerification(),
-	)
-	assert.Error(t, err)
-	// TODO assert errors type or content?
-}
-
-func TestClientSequentialVerification3(t *testing.T) {
-	const (
-		chainID = "TestClientSequentialVerification3"
-	)
-
-	var (
-		keys = genPrivKeys(4)
-		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
-		vals     = keys.ToValidators(20, 10)
-		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
-			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
-	)
-
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 4 * time.Hour,
-			Height: 1,
-			Hash:   header.Hash(),
+			true,
+			false,
 		},
-		mockp.New(
-			chainID,
+		// bad: 1/3 signed interim header
+		{
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: header,
@@ -143,40 +87,11 @@ func TestClientSequentialVerification3(t *testing.T) {
 				3: vals,
 				4: vals,
 			},
-		),
-		dbs.New(dbm.NewMemDB(), ""),
-		SequentialVerification(),
-	)
-	require.NoError(t, err)
-
-	err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
-	assert.Error(t, err)
-	// TODO assert errors type or content?
-}
-
-func TestClientSequentialVerification4(t *testing.T) {
-	const (
-		chainID = "TestClientSequentialVerification4"
-	)
-
-	var (
-		keys = genPrivKeys(4)
-		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
-		vals     = keys.ToValidators(20, 10)
-		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
-			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
-	)
-
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 4 * time.Hour,
-			Height: 1,
-			Hash:   header.Hash(),
+			false,
+			true,
 		},
-		mockp.New(
-			chainID,
+		// bad: 1/3 signed last header
+		{
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: header,
@@ -193,15 +108,42 @@ func TestClientSequentialVerification4(t *testing.T) {
 				3: vals,
 				4: vals,
 			},
-		),
-		dbs.New(dbm.NewMemDB(), ""),
-		SequentialVerification(),
-	)
-	require.NoError(t, err)
+			false,
+			true,
+		},
+	}
 
-	err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
-	assert.Error(t, err)
-	// TODO assert errors type or content?
+	for _, tc := range testCases {
+		c, err := NewClient(
+			chainID,
+			TrustOptions{
+				Period: 4 * time.Hour,
+				Height: 1,
+				Hash:   header.Hash(),
+			},
+			mockp.New(
+				chainID,
+				tc.otherHeaders,
+				tc.vals,
+			),
+			dbs.New(dbm.NewMemDB(), ""),
+			SequentialVerification(),
+		)
+
+		if tc.initErr {
+			require.Error(t, err)
+			continue
+		} else {
+			require.NoError(t, err)
+		}
+
+		err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
+		if tc.verifyErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
 }
 
 // TODO consolidate 1 and 2?
