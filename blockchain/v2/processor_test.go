@@ -155,7 +155,7 @@ func TestPcBlockResponse(t *testing.T) {
 			name: "attempt to add block with height equal to state.height",
 			steps: []pcFsmStepTestValues{
 				{
-					currentState:mst(params{height: 2, items: []bl{{"P1", 3}}}), event: mBlockResponse("P1", 2),
+					currentState: mst(params{height: 2, items: []bl{{"P1", 3}}}), event: mBlockResponse("P1", 2),
 					wantState: mst(params{height: 2, items: []bl{{"P1", 3}}}), wantNextEvent: pcShortBlock{},
 				},
 			},
@@ -164,7 +164,7 @@ func TestPcBlockResponse(t *testing.T) {
 			name: "attempt to add block with height smaller than state.height",
 			steps: []pcFsmStepTestValues{
 				{
-					currentState:mst(params{height: 2, items: []bl{{"P1", 3}}}), event: mBlockResponse("P1", 1),
+					currentState: mst(params{height: 2, items: []bl{{"P1", 3}}}), event: mBlockResponse("P1", 1),
 					wantState: mst(params{height: 2, items: []bl{{"P1", 3}}}), wantNextEvent: pcShortBlock{},
 				},
 			},

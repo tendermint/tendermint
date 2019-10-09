@@ -66,7 +66,7 @@ type queueItem struct {
 type blockQueue map[int64]queueItem
 
 type pcState struct {
-	height       int64 // height of the last synced block
+	height       int64      // height of the last synced block
 	queue        blockQueue // blocks waiting to be processed
 	chainID      string
 	blocksSynced int64
