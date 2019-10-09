@@ -178,6 +178,14 @@ func (c *Client) SetLogger(l log.Logger) {
 	c.logger = l
 }
 
+// TrustedHeader returns a header at the given height or nil if no such header
+// exist. It returns an error if there are some issues with the trusted store,
+// although that should not happen normally. TODO mention how many headers will
+// be kept by the light client.
+func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
+	return c.trustedStore.SignedHeader(height)
+}
+
 // VerifyHeaderAtHeight fetches the header and validators at the given height
 // and calls VerifyHeader.
 func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
