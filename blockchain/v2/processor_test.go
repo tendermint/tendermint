@@ -9,8 +9,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// bl is a test helper structure with short name and simple types. Its purpose is to help with test readability.
-type bl struct {
+// pcBlock is a test helper structure with simple types. Its purpose is to help with test readability.
+type pcBlock struct {
 	pid    string
 	height int64
 }
@@ -18,7 +18,7 @@ type bl struct {
 // params is a test structure used to create processor state.
 type params struct {
 	height       int64
-	items        []bl
+	items        []pcBlock
 	blocksSynced int64
 	verBL        []int64
 	appBL        []int64
@@ -30,8 +30,8 @@ func makePcBlock(height int64) *types.Block {
 	return &types.Block{Header: types.Header{Height: height}}
 }
 
-// mst takes test parameters and creates a specific processor state. Name is kept short for test readability.
-func mst(p params) *pcState {
+// makeState takes test parameters and creates a specific processor state.
+func makeState(p *params) *pcState {
 	var (
 		tdState = tdState.State{}
 		context = newMockProcessorContext(p.verBL, p.appBL)
@@ -55,10 +55,10 @@ func mBlockResponse(peerID p2p.ID, height int64) *bcBlockResponse {
 	}
 }
 
-type pcFsmStepTestValues struct {
-	currentState  *pcState
+type pcFsmMakeStateValues struct {
+	currentState  *params
 	event         Event
-	wantState     *pcState
+	wantState     *params
 	wantNextEvent Event
 	wantErr       error
 	wantPanic     bool
@@ -66,7 +66,7 @@ type pcFsmStepTestValues struct {
 
 type testFields struct {
 	name  string
-	steps []pcFsmStepTestValues
+	steps []pcFsmMakeStateValues
 }
 
 func executeProcessorTests(t *testing.T, tests []testFields) {
@@ -81,9 +81,10 @@ func executeProcessorTests(t *testing.T, tests []testFields) {
 						t.Errorf("recover = %v, wantPanic = %v", r, step.wantPanic)
 					}
 				}()
+
 				// First step must always initialise the currentState as state.
 				if step.currentState != nil {
-					state = step.currentState
+					state = makeState(step.currentState)
 				}
 				if state == nil {
 					panic("Bad (initial?) step")
@@ -92,10 +93,10 @@ func executeProcessorTests(t *testing.T, tests []testFields) {
 				nextEvent, err := state.handle(step.event)
 				t.Log(state)
 				assert.Equal(t, step.wantErr, err)
-				assert.Equal(t, step.wantState, state)
+				assert.Equal(t, makeState(step.wantState), state)
 				assert.Equal(t, step.wantNextEvent, nextEvent)
 				// Next step may use the wantedState as their currentState.
-				state = step.wantState
+				state = makeState(step.wantState)
 			}
 		})
 	}
@@ -103,69 +104,70 @@ func executeProcessorTests(t *testing.T, tests []testFields) {
 
 func TestPcBlockResponse(t *testing.T) {
 	tests := []testFields{
+
 		{
 			name: "add one block",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{}), event: mBlockResponse("P1", 1),
-					wantState: mst(params{items: []bl{{"P1", 1}}}), wantNextEvent: noOp,
+					currentState: &params{}, event: mBlockResponse("P1", 1),
+					wantState: &params{items: []pcBlock{{"P1", 1}}}, wantNextEvent: noOp,
 				},
 			},
 		},
 		{
 			name: "add two blocks",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{}), event: mBlockResponse("P1", 3),
-					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: noOp,
+					currentState: &params{}, event: mBlockResponse("P1", 3),
+					wantState: &params{items: []pcBlock{{"P1", 3}}}, wantNextEvent: noOp,
 				},
 				{ // use previous wantState as currentState,
 					event:     mBlockResponse("P1", 4),
-					wantState: mst(params{items: []bl{{"P1", 3}, {"P1", 4}}}), wantNextEvent: noOp,
+					wantState: &params{items: []pcBlock{{"P1", 3}, {"P1", 4}}}, wantNextEvent: noOp,
 				},
 			},
 		},
 		{
 			name: "add duplicate block from same peer",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{}), event: mBlockResponse("P1", 3),
-					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: noOp,
+					currentState: &params{}, event: mBlockResponse("P1", 3),
+					wantState: &params{items: []pcBlock{{"P1", 3}}}, wantNextEvent: noOp,
 				},
 				{ // use previous wantState as currentState,
 					event:     mBlockResponse("P1", 3),
-					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: pcDuplicateBlock{},
+					wantState: &params{items: []pcBlock{{"P1", 3}}}, wantNextEvent: pcDuplicateBlock{},
 				},
 			},
 		},
 		{
 			name: "add duplicate block from different peer",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{}), event: mBlockResponse("P1", 3),
-					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: noOp,
+					currentState: &params{}, event: mBlockResponse("P1", 3),
+					wantState: &params{items: []pcBlock{{"P1", 3}}}, wantNextEvent: noOp,
 				},
 				{ // use previous wantState as currentState,
 					event:     mBlockResponse("P2", 3),
-					wantState: mst(params{items: []bl{{"P1", 3}}}), wantNextEvent: pcDuplicateBlock{},
+					wantState: &params{items: []pcBlock{{"P1", 3}}}, wantNextEvent: pcDuplicateBlock{},
 				},
 			},
 		},
 		{
 			name: "attempt to add block with height equal to state.height",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{height: 2, items: []bl{{"P1", 3}}}), event: mBlockResponse("P1", 2),
-					wantState: mst(params{height: 2, items: []bl{{"P1", 3}}}), wantNextEvent: pcShortBlock{},
+					currentState: &params{height: 2, items: []pcBlock{{"P1", 3}}}, event: mBlockResponse("P1", 2),
+					wantState: &params{height: 2, items: []pcBlock{{"P1", 3}}}, wantNextEvent: pcShortBlock{},
 				},
 			},
 		},
 		{
 			name: "attempt to add block with height smaller than state.height",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{height: 2, items: []bl{{"P1", 3}}}), event: mBlockResponse("P1", 1),
-					wantState: mst(params{height: 2, items: []bl{{"P1", 3}}}), wantNextEvent: pcShortBlock{},
+					currentState: &params{height: 2, items: []pcBlock{{"P1", 3}}}, event: mBlockResponse("P1", 1),
+					wantState: &params{height: 2, items: []pcBlock{{"P1", 3}}}, wantNextEvent: pcShortBlock{},
 				},
 			},
 		},
@@ -178,29 +180,50 @@ func TestPcProcessBlockSuccess(t *testing.T) {
 	tests := []testFields{
 		{
 			name: "noop - no blocks over current height",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{}), event: pcProcessBlock{},
-					wantState: mst(params{}), wantNextEvent: noOp,
+					currentState: &params{}, event: pcProcessBlock{},
+					wantState: &params{}, wantNextEvent: noOp,
 				},
 			},
 		},
 		{
 			name: "noop - high new blocks",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{height: 5, items: []bl{{"P1", 30}, {"P2", 31}}}), event: pcProcessBlock{},
-					wantState: mst(params{height: 5, items: []bl{{"P1", 30}, {"P2", 31}}}), wantNextEvent: noOp,
+					currentState: &params{height: 5, items: []pcBlock{{"P1", 30}, {"P2", 31}}}, event: pcProcessBlock{},
+					wantState: &params{height: 5, items: []pcBlock{{"P1", 30}, {"P2", 31}}}, wantNextEvent: noOp,
 				},
 			},
 		},
 		{
 			name: "blocks H+1 and H+2 present",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}}), event: pcProcessBlock{},
-					wantState:     mst(params{height: 1, items: []bl{{"P2", 2}}, blocksSynced: 1}),
+					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}}, event: pcProcessBlock{},
+					wantState:     &params{height: 1, items: []pcBlock{{"P2", 2}}, blocksSynced: 1},
 					wantNextEvent: pcBlockProcessed{height: 1, peerID: "P1"},
+				},
+			},
+		},
+		{
+			name: "blocks H+1 and H+2 present after draining",
+			steps: []pcFsmMakeStateValues{
+				{ // some contiguous blocks - on stop check draining is set
+					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}, {"P1", 4}}}, event: pcStop{},
+					wantState:     &params{items: []pcBlock{{"P1", 1}, {"P2", 2}, {"P1", 4}}, draining: true},
+					wantNextEvent: noOp,
+				},
+				{
+					event:         pcProcessBlock{},
+					wantState:     &params{height: 1, items: []pcBlock{{"P2", 2}, {"P1", 4}}, blocksSynced: 1, draining: true},
+					wantNextEvent: pcBlockProcessed{height: 1, peerID: "P1"},
+				},
+				{ // finish when H+1 or/and H+2 are missing
+					event:         pcProcessBlock{},
+					wantState:     &params{height: 1, items: []pcBlock{{"P2", 2}, {"P1", 4}}, blocksSynced: 1, draining: true},
+					wantNextEvent: noOp,
+					wantErr:       pcFinished{height: 1},
 				},
 			},
 		},
@@ -213,21 +236,20 @@ func TestPcProcessBlockFailures(t *testing.T) {
 	tests := []testFields{
 		{
 			name: "blocks H+1 and H+2 present - H+1 verification fails ",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}, verBL: []int64{1}}), event: pcProcessBlock{},
-					wantState:     mst(params{items: []bl{{"P1", 1}, {"P2", 2}}, verBL: []int64{1}}),
+					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}, verBL: []int64{1}}, event: pcProcessBlock{},
+					wantState:     &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}, verBL: []int64{1}},
 					wantNextEvent: pcBlockVerificationFailure{peerID: "P1", height: 1},
 				},
 			},
 		},
 		{
 			name: "blocks H+1 and H+2 present - H+1 applyBlock fails ",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}, appBL: []int64{1}}), event: pcProcessBlock{},
-					wantState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}, appBL: []int64{1}}),
-					wantPanic: true,
+					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}, appBL: []int64{1}}, event: pcProcessBlock{},
+					wantState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}, appBL: []int64{1}}, wantPanic: true,
 				},
 			},
 		},
@@ -240,30 +262,30 @@ func TestPcPeerError(t *testing.T) {
 	tests := []testFields{
 		{
 			name: "peer not present",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{items: []bl{{"P1", 1}, {"P2", 2}}}), event: &peerError{peerID: "P3"},
-					wantState:     mst(params{items: []bl{{"P1", 1}, {"P2", 2}}}),
+					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}}, event: &peerError{peerID: "P3"},
+					wantState:     &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}},
 					wantNextEvent: noOp,
 				},
 			},
 		},
 		{
 			name: "some blocks are from errored peer",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{items: []bl{{"P1", 100}, {"P1", 99}, {"P2", 101}}}), event: &peerError{peerID: "P1"},
-					wantState:     mst(params{items: []bl{{"P2", 101}}}),
+					currentState: &params{items: []pcBlock{{"P1", 100}, {"P1", 99}, {"P2", 101}}}, event: &peerError{peerID: "P1"},
+					wantState:     &params{items: []pcBlock{{"P2", 101}}},
 					wantNextEvent: noOp,
 				},
 			},
 		},
 		{
 			name: "all blocks are from errored peer",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{items: []bl{{"P1", 100}, {"P1", 99}}}), event: &peerError{peerID: "P1"},
-					wantState:     mst(params{}),
+					currentState: &params{items: []pcBlock{{"P1", 100}, {"P1", 99}}}, event: &peerError{peerID: "P1"},
+					wantState:     &params{},
 					wantNextEvent: noOp,
 				},
 			},
@@ -277,10 +299,10 @@ func TestStop(t *testing.T) {
 	tests := []testFields{
 		{
 			name: "no blocks",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{height: 100, items: []bl{}, blocksSynced: 100}), event: pcStop{},
-					wantState:     mst(params{height: 100, items: []bl{}, blocksSynced: 100}),
+					currentState: &params{height: 100, items: []pcBlock{}, blocksSynced: 100}, event: pcStop{},
+					wantState:     &params{height: 100, items: []pcBlock{}, blocksSynced: 100},
 					wantNextEvent: noOp,
 					wantErr:       pcFinished{height: 100, blocksSynced: 100},
 				},
@@ -288,10 +310,10 @@ func TestStop(t *testing.T) {
 		},
 		{
 			name: "maxHeight+1 block present",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{height: 100, items: []bl{{"P1", 101}}, blocksSynced: 100}), event: pcStop{},
-					wantState:     mst(params{height: 100, items: []bl{{"P1", 101}}, blocksSynced: 100}),
+					currentState: &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100}, event: pcStop{},
+					wantState:     &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100},
 					wantNextEvent: noOp,
 					wantErr:       pcFinished{height: 100, blocksSynced: 100},
 				},
@@ -299,10 +321,10 @@ func TestStop(t *testing.T) {
 		},
 		{
 			name: "more blocks present",
-			steps: []pcFsmStepTestValues{
+			steps: []pcFsmMakeStateValues{
 				{
-					currentState: mst(params{height: 100, items: []bl{{"P1", 101}, {"P1", 102}}, blocksSynced: 100}), event: pcStop{},
-					wantState:     mst(params{height: 100, items: []bl{{"P1", 101}, {"P1", 102}}, blocksSynced: 100, draining: true}),
+					currentState: &params{height: 100, items: []pcBlock{{"P1", 101}, {"P1", 102}}, blocksSynced: 100}, event: pcStop{},
+					wantState:     &params{height: 100, items: []pcBlock{{"P1", 101}, {"P1", 102}}, blocksSynced: 100, draining: true},
 					wantNextEvent: noOp,
 					wantErr:       nil,
 				},
