@@ -1,13 +1,13 @@
 module.exports = {
   theme: "cosmos",
-  locales: {
-    "/": {
-      lang: "en-US"
-    },
-    "/ru/": {
-      lang: "ru"
-    }
-  },
+  // locales: {
+  //   "/": {
+  //     lang: "en-US"
+  //   },
+  //   "/ru/": {
+  //     lang: "ru"
+  //   }
+  // },
   themeConfig: {
     docsRepo: "tendermint/tendermint",
     editLink: true,
@@ -20,7 +20,7 @@ module.exports = {
       children: [
         {
           title: "Riot Chat",
-          text: "Chat with Cosmos developers on Riot Chat.",
+          text: "Chat with Tendermint developers on Riot Chat.",
           highlighted: "500+ people chatting now"
         },
         {
@@ -64,7 +64,7 @@ module.exports = {
         }
       ],
       smallprint:
-        "The development of the Cosmos project is led primarily by Tendermint Inc., the for-profit entity which also maintains this website. Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit.",
+        "The development of the Tendermint project is led primarily by Tendermint Inc., the for-profit entity which also maintains this website. Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit.",
       links: [
         {
           title: "Documentation",
@@ -105,7 +105,7 @@ module.exports = {
             },
             {
               title: "Source code on GitHub",
-              url: "https://github.com/tendermint"
+              url: "https://github.com/tendermint/tendermint"
             },
             {
               title: "Careers at Tendermint",
