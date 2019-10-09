@@ -187,13 +187,9 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 	}
 
 	// Request the header and the vals.
-	newHeader, err := c.primary.SignedHeader(height)
+	newHeader, newVals, err := c.fetchHeaderAndValsAtHeight(height)
 	if err != nil {
-		return err
-	}
-	newVals, err := c.primary.ValidatorSet(height)
-	if err != nil {
-		return err
+		return nil
 	}
 
 	return c.VerifyHeader(newHeader, newVals, now)
@@ -227,12 +223,55 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return err
 	}
 
+	// Update trusted header and vals.
 	nextVals, err := c.primary.ValidatorSet(newHeader.Height + 1)
 	if err != nil {
 		return err
 	}
-
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
+}
+
+func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
+	// 1) Verify any intermediate headers.
+	var (
+		interimHeader *types.SignedHeader
+		nextVals      *types.ValidatorSet
+		err           error
+	)
+	for height := c.trustedHeader.Height + 1; height < newHeader.Height; height++ {
+		interimHeader, err = c.primary.SignedHeader(height)
+		if err != nil {
+			return errors.Wrapf(err, "failed to obtain the header #%d", height)
+		}
+
+		err = Verify(c.chainID, c.trustedHeader, c.trustedVals, interimHeader, c.trustedVals, c.trustingPeriod, now, c.trustLevel)
+		if err != nil {
+			return errors.Wrapf(err, "failed to verify the header #%d", height)
+		}
+
+		// Update trusted header and vals.
+		if height == newHeader.Height-1 {
+			nextVals = newVals
+		} else {
+			nextVals, err = c.primary.ValidatorSet(height + 1)
+			if err != nil {
+				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
+			}
+		}
+		if !bytes.Equal(interimHeader.NextValidatorsHash, nextVals.Hash()) {
+			return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
+				interimHeader.NextValidatorsHash,
+				nextVals.Hash(),
+				height)
+		}
+		err = c.updateTrustedHeaderAndVals(interimHeader, nextVals)
+		if err != nil {
+			return errors.Wrapf(err, "failed to update trusted state #%d", height)
+		}
+	}
+
+	// 2) Verify the new header.
+	return Verify(c.chainID, c.trustedHeader, c.trustedVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
 }
 
 func (c *Client) bisection(
@@ -247,85 +286,65 @@ func (c *Client) bisection(
 	case nil:
 		return nil
 	case ErrNewHeaderTooFarIntoFuture:
-		// continue bisection
-		// if adjused headers, fail?
+		// continue bisection if not adjacent
+		// otherwise fail
+		if lastHeader.Height == newHeader.Height+1 {
+			return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)
+		}
 	case types.ErrTooMuchChange:
 		// continue bisection
 	default:
-		return errors.Wrapf(err, "failed to bisect #%d and #%d headers", lastHeader.Height, newHeader.Height)
+		return errors.Wrapf(err, "failed to verify the header #%d ", newHeader.Height)
 	}
 
 	if newHeader.Height == c.trustedHeader.Height+1 {
 		// TODO: submit evidence here
-		return errors.New("adjacent headers that are not matching")
+		return errors.Errorf("adjacent headers (#%d and #%d) that are not matching", lastHeader.Height, newHeader.Height)
 	}
 
 	pivot := (c.trustedHeader.Height + newHeader.Header.Height) / 2
-
-	pivotHeader, err := c.primary.SignedHeader(pivot)
-	if err != nil {
-		return err
-	}
-
-	pivotVals, err := c.primary.ValidatorSet(pivot)
+	pivotHeader, pivotVals, err := c.fetchHeaderAndValsAtHeight(pivot)
 	if err != nil {
 		return err
 	}
 
 	if err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now); err == nil {
-		pivotVals2, err := c.primary.ValidatorSet(pivot + 1)
+		nextVals, err := c.primary.ValidatorSet(pivot + 1)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to obtain the vals #%d", pivot+1)
 		}
-		return c.bisection(pivotHeader, pivotVals2, newHeader, newVals, now)
+		if !bytes.Equal(pivotHeader.NextValidatorsHash, nextVals.Hash()) {
+			return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
+				pivotHeader.NextValidatorsHash,
+				nextVals.Hash(),
+				pivot)
+		}
+		return c.bisection(pivotHeader, nextVals, newHeader, newVals, now)
 	}
 
-	return errors.New("bisection failed. restart with different full-node?")
-}
-
-func (c *Client) sequence(
-	newHeader *types.SignedHeader,
-	newVals *types.ValidatorSet,
-	now time.Time) error {
-
-	// Verify intermediate headers (if any)
-	lastHeader := c.trustedHeader
-	lastVals := c.trustedVals
-	for height := lastHeader.Height + 1; height < newHeader.Height; height++ {
-		interimHeader, err := c.primary.SignedHeader(height)
-		if err != nil {
-			return err
-		}
-		interimVals, err := c.primary.ValidatorSet(height)
-		if err != nil {
-			return err
-		}
-		err = Verify(c.chainID, lastHeader, lastVals, interimHeader, interimVals, c.trustingPeriod, now, c.trustLevel)
-		if err != nil {
-			return err
-		}
-		lastHeader = interimHeader
-		lastVals = interimVals
-	}
-
-	return Verify(c.chainID, lastHeader, lastVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
+	return errors.New("bisection failed. Restart with different full-node?")
 }
 
 func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.ValidatorSet) error {
-	if err := c.saveTrustedHeaderAndVals(h, vals); err != nil {
-		return err
-	}
-	c.trustedHeader = h
-	c.trustedVals = vals
-	return nil
-}
-
-func (c *Client) saveTrustedHeaderAndVals(h *types.SignedHeader, vals *types.ValidatorSet) error {
 	if err := c.trustedStore.SaveSignedHeader(h); err != nil {
 		return errors.Wrap(err, "failed to save trusted header")
 	}
 	if err := c.trustedStore.SaveValidatorSet(vals, h.Height+1); err != nil {
 		return errors.Wrap(err, "failed to save trusted vals")
 	}
+	c.trustedHeader = h
+	c.trustedVals = vals
 	return nil
+}
+
+func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
+	h, err := c.primary.SignedHeader(height)
+	if err != nil {
+		return nil, nil, err
+	}
+	vals, err := c.primary.ValidatorSet(height)
+	if err != nil {
+		return nil, nil, err
+	}
+	return h, vals, nil
 }
