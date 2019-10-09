@@ -8,8 +8,12 @@
   },
   "devDependencies": {},
   "scripts": {
-    "serve": "vuepress dev",
-    "build": "vuepress build"
+    "preserve": "./pre.sh",
+    "serve": "trap 'exit 0' SIGINT; vuepress dev",
+    "postserve": "./post.sh",
+    "prebuild": "./pre.sh",
+    "build": "trap 'exit 0' SIGINT; vuepress build",
+    "postbuild": "./post.sh"
   },
   "author": "",
   "license": "ISC"
