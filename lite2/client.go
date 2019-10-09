@@ -99,9 +99,9 @@ type Client struct {
 	alternatives []provider.Provider
 
 	// Where trusted headers are stored.
-	trustedStore  store.Store
-	trustedHeader *types.SignedHeader
-	trustedVals   *types.ValidatorSet
+	trustedStore    store.Store
+	trustedHeader   *types.SignedHeader // H
+	trustedNextVals *types.ValidatorSet // H+1
 
 	logger log.Logger
 }
@@ -225,7 +225,7 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	case sequential:
 		err = c.sequence(newHeader, newVals, now)
 	case skipping:
-		err = c.bisection(c.trustedHeader, c.trustedVals, newHeader, newVals, now)
+		err = c.bisection(c.trustedHeader, c.trustedNextVals, newHeader, newVals, now)
 	}
 	if err != nil {
 		return err
@@ -252,7 +252,7 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 			return errors.Wrapf(err, "failed to obtain the header #%d", height)
 		}
 
-		err = Verify(c.chainID, c.trustedHeader, c.trustedVals, interimHeader, c.trustedVals, c.trustingPeriod, now, c.trustLevel)
+		err = Verify(c.chainID, c.trustedHeader, c.trustedNextVals, interimHeader, c.trustedNextVals, c.trustingPeriod, now, c.trustLevel)
 		if err != nil {
 			return errors.Wrapf(err, "failed to verify the header #%d", height)
 		}
@@ -279,7 +279,7 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 	}
 
 	// 2) Verify the new header.
-	return Verify(c.chainID, c.trustedHeader, c.trustedVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
+	return Verify(c.chainID, c.trustedHeader, c.trustedNextVals, newHeader, newVals, c.trustingPeriod, now, c.trustLevel)
 }
 
 func (c *Client) bisection(
@@ -341,7 +341,7 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.V
 		return errors.Wrap(err, "failed to save trusted vals")
 	}
 	c.trustedHeader = h
-	c.trustedVals = vals
+	c.trustedNextVals = vals
 	return nil
 }
 
