@@ -204,6 +204,7 @@ func TestClientSequentialVerification4(t *testing.T) {
 	// TODO assert errors type or content?
 }
 
+// TODO consolidate 1 and 2?
 func TestClientBisectingVerification1(t *testing.T) {
 	const (
 		chainID = "TestClientBisectingVerification1"
@@ -242,7 +243,7 @@ func TestClientBisectingVerification1(t *testing.T) {
 			},
 		),
 		dbs.New(dbm.NewMemDB(), ""),
-		BisectingVerification(DefaultTrustLevel),
+		SkippingVerification(DefaultTrustLevel),
 	)
 	require.NoError(t, err)
 
@@ -294,7 +295,7 @@ func TestClientBisectingVerification2(t *testing.T) {
 			},
 		),
 		dbs.New(dbm.NewMemDB(), ""),
-		BisectingVerification(DefaultTrustLevel),
+		SkippingVerification(DefaultTrustLevel),
 	)
 	require.NoError(t, err)
 	c.SetLogger(log.TestingLogger())
