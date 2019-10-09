@@ -9,15 +9,14 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/libs/log"
 	mockp "github.com/tendermint/tendermint/lite2/provider/mock"
 	dbs "github.com/tendermint/tendermint/lite2/store/db"
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestClientSequentialVerification1(t *testing.T) {
+func TestClient_SequentialVerification(t *testing.T) {
 	const (
-		chainID = "sequential-test"
+		chainID = "sequential-verification"
 	)
 
 	var (
@@ -146,10 +145,9 @@ func TestClientSequentialVerification1(t *testing.T) {
 	}
 }
 
-// TODO consolidate 1 and 2?
-func TestClientBisectingVerification1(t *testing.T) {
+func TestClient_SkippingVerification(t *testing.T) {
 	const (
-		chainID = "TestClientBisectingVerification1"
+		chainID = "skipping-verification"
 	)
 
 	var (
@@ -161,15 +159,18 @@ func TestClientBisectingVerification1(t *testing.T) {
 			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
 	)
 
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 4 * time.Hour,
-			Height: 1,
-			Hash:   header.Hash(),
-		},
-		mockp.New(
-			chainID,
+	// required for 2nd test case
+	newKeys := genPrivKeys(4)
+	newVals := newKeys.ToValidators(10, 1)
+
+	testCases := []struct {
+		otherHeaders map[int64]*types.SignedHeader // all except ^
+		vals         map[int64]*types.ValidatorSet
+		initErr      bool
+		verifyErr    bool
+	}{
+		// good
+		{
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: header,
@@ -183,42 +184,11 @@ func TestClientBisectingVerification1(t *testing.T) {
 				3: vals,
 				4: vals,
 			},
-		),
-		dbs.New(dbm.NewMemDB(), ""),
-		SkippingVerification(DefaultTrustLevel),
-	)
-	require.NoError(t, err)
-
-	err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
-	assert.NoError(t, err)
-}
-
-func TestClientBisectingVerification2(t *testing.T) {
-	const (
-		chainID = "TestClientBisectingVerification2"
-	)
-
-	var (
-		keys = genPrivKeys(4)
-		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
-		vals     = keys.ToValidators(20, 10)
-		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-		header   = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
-			[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys))
-	)
-
-	newKeys := genPrivKeys(4)
-	newVals := newKeys.ToValidators(10, 1)
-
-	c, err := NewClient(
-		chainID,
-		TrustOptions{
-			Period: 4 * time.Hour,
-			Height: 1,
-			Hash:   header.Hash(),
+			false,
+			false,
 		},
-		mockp.New(
-			chainID,
+		// good, val set changes 100% at height 2
+		{
 			map[int64]*types.SignedHeader{
 				// trusted header
 				1: header,
@@ -235,13 +205,39 @@ func TestClientBisectingVerification2(t *testing.T) {
 				3: newVals,
 				4: newVals,
 			},
-		),
-		dbs.New(dbm.NewMemDB(), ""),
-		SkippingVerification(DefaultTrustLevel),
-	)
-	require.NoError(t, err)
-	c.SetLogger(log.TestingLogger())
+			false,
+			false,
+		},
+	}
 
-	err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
-	assert.NoError(t, err)
+	for _, tc := range testCases {
+		c, err := NewClient(
+			chainID,
+			TrustOptions{
+				Period: 4 * time.Hour,
+				Height: 1,
+				Hash:   header.Hash(),
+			},
+			mockp.New(
+				chainID,
+				tc.otherHeaders,
+				tc.vals,
+			),
+			dbs.New(dbm.NewMemDB(), ""),
+			SkippingVerification(DefaultTrustLevel),
+		)
+		if tc.initErr {
+			require.Error(t, err)
+			continue
+		} else {
+			require.NoError(t, err)
+		}
+
+		err = c.VerifyHeaderAtHeight(3, bTime.Add(3*time.Hour))
+		if tc.verifyErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
 }
