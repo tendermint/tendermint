@@ -81,8 +81,8 @@ func AlternativeSources(providers []provider.Provider) Option {
 }
 
 // Client represents a light client, connected to a single chain, which gets
-// headers from the primary provider, verifies them either sequentially or by
-// skipping some and stores them in trusted store (usually, a local FS).
+// headers from a primary provider, verifies them either sequentially or by
+// skipping some and stores them in a trusted store (usually, a local FS).
 //
 // Default verification: SkippingVerification(DefaultTrustLevel)
 type Client struct {
@@ -138,10 +138,6 @@ func NewClient(
 
 	return c, nil
 }
-
-// TODO: cross check primary with alternatives providers
-// func (c *Client) crossCheckPrimary() {
-// }
 
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	// 1) Fetch and verify the header.
