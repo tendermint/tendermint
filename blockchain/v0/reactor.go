@@ -260,7 +260,7 @@ FOR_LOOP:
 		select {
 		case <-switchToConsensusTicker.C:
 			height, numPending, lenRequesters := bcR.pool.GetStatus()
-			outbound, inbound, _ := bcR.Switch.NumPeers()
+			outbound, inbound, _, _, _ := bcR.Switch.NumPeers()
 			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "total", lenRequesters,
 				"outbound", outbound, "inbound", inbound)
 			if bcR.pool.IsCaughtUp() {

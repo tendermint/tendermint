@@ -68,6 +68,8 @@ program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
+- [p2p] [\#4176](https://github.com/tendermint/tendermint/pull/4176) Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` to config for Improved Trusted Peering [ADR-050](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-050-improved-trusted-peering.md) (@dongsam)
+
 ### IMPROVEMENTS:
 
 - [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`

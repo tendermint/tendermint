@@ -505,6 +505,12 @@ type P2PConfig struct { //nolint: maligned
 	// Maximum number of outbound peers to connect to, excluding persistent peers
 	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
 
+	// Unconditional node id list to avoid limit of MaxNumInboundPeers, MaxNumOutboundPeers
+	UnconditionalPeerIDs string `mapstructure:"unconditional_peer_ids"`
+
+	// Maximum dial period seconds when exponential backoff for persistent peers, when value exist or not zero
+	PersistentPeersMaxDialPeriod time.Duration `mapstructure:"persistent_peers_max_dial_period"`
+
 	// Time to wait before flushing messages out on the connection
 	FlushThrottleTimeout time.Duration `mapstructure:"flush_throttle_timeout"`
 
@@ -548,25 +554,26 @@ type P2PConfig struct { //nolint: maligned
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:           "tcp://0.0.0.0:26656",
-		ExternalAddress:         "",
-		UPNP:                    false,
-		AddrBook:                defaultAddrBookPath,
-		AddrBookStrict:          true,
-		MaxNumInboundPeers:      40,
-		MaxNumOutboundPeers:     10,
-		FlushThrottleTimeout:    100 * time.Millisecond,
-		MaxPacketMsgPayloadSize: 1024,    // 1 kB
-		SendRate:                5120000, // 5 mB/s
-		RecvRate:                5120000, // 5 mB/s
-		PexReactor:              true,
-		SeedMode:                false,
-		AllowDuplicateIP:        false,
-		HandshakeTimeout:        20 * time.Second,
-		DialTimeout:             3 * time.Second,
-		TestDialFail:            false,
-		TestFuzz:                false,
-		TestFuzzConfig:          DefaultFuzzConnConfig(),
+		ListenAddress:                "tcp://0.0.0.0:26656",
+		ExternalAddress:              "",
+		UPNP:                         false,
+		AddrBook:                     defaultAddrBookPath,
+		AddrBookStrict:               true,
+		MaxNumInboundPeers:           40,
+		MaxNumOutboundPeers:          10,
+		PersistentPeersMaxDialPeriod: 60 * time.Second,
+		FlushThrottleTimeout:         100 * time.Millisecond,
+		MaxPacketMsgPayloadSize:      1024,    // 1 kB
+		SendRate:                     5120000, // 5 mB/s
+		RecvRate:                     5120000, // 5 mB/s
+		PexReactor:                   true,
+		SeedMode:                     false,
+		AllowDuplicateIP:             false,
+		HandshakeTimeout:             20 * time.Second,
+		DialTimeout:                  3 * time.Second,
+		TestDialFail:                 false,
+		TestFuzz:                     false,
+		TestFuzzConfig:               DefaultFuzzConnConfig(),
 	}
 }
 
@@ -595,6 +602,9 @@ func (cfg *P2PConfig) ValidateBasic() error {
 	}
 	if cfg.FlushThrottleTimeout < 0 {
 		return errors.New("flush_throttle_timeout can't be negative")
+	}
+	if cfg.PersistentPeersMaxDialPeriod < 0 {
+		return errors.New("persistent_peers_max_dial_period can't be negative")
 	}
 	if cfg.MaxPacketMsgPayloadSize < 0 {
 		return errors.New("max_packet_msg_payload_size can't be negative")
