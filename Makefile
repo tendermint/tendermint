@@ -154,6 +154,17 @@ lint:
 DESTINATION = ./index.html.md
 
 ###########################################################
+### Documentation
+
+build-docs:
+	@cd docs && \
+	while read p; do \
+		(git checkout $${p} && npm install && VUEPRESS_BASE="/docs/$${p}/" npm run build) ; \
+		mkdir -p ~/output/docs/$${p} ; \
+		cp -r .vuepress/dist/* ~/output/docs/$${p}/ ; \
+	done < versions ;
+
+###########################################################
 ### Docker image
 
 build-docker:
