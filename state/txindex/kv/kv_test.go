@@ -65,8 +65,8 @@ func TestTxIndex(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	allowedTags := []string{"account.number", "account.owner", "account.date"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedTags))
+	allowedEvents := []string{"account.number", "account.owner", "account.date"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedEvents))
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
@@ -84,7 +84,7 @@ func TestTxSearch(t *testing.T) {
 	}{
 		// search by hash
 		{fmt.Sprintf("tx.hash = '%X'", hash), 1},
-		// search by exact match (one tag)
+		// search by exact match (one event)
 		{"account.number = 1", 1},
 		// search by exact match (two events)
 		{"account.number = 1 AND account.owner = 'Ivan'", 1},
@@ -103,17 +103,17 @@ func TestTxSearch(t *testing.T) {
 		{"account.number >= 1", 1},
 		// search by range (upper bound)
 		{"account.number <= 5", 1},
-		// search using not allowed tag
+		// search using not allowed event
 		{"not_allowed = 'boom'", 0},
 		// search for not existing tx result
 		{"account.number >= 2 AND account.number <= 5", 0},
-		// search using not existing tag
+		// search using not existing event
 		{"account.date >= TIME 2013-05-03T14:45:00Z", 0},
 		// search using CONTAINS
 		{"account.owner CONTAINS 'an'", 1},
 		// search for non existing value using CONTAINS
 		{"account.owner CONTAINS 'Vlad'", 0},
-		// search using the wrong tag (of numeric type) using CONTAINS
+		// search using the wrong event (of numeric type) using CONTAINS
 		{"account.number CONTAINS 'Iv'", 0},
 	}
 
@@ -132,8 +132,8 @@ func TestTxSearch(t *testing.T) {
 }
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
-	allowedTags := []string{"account.number", "sender"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedTags))
+	allowedEvents := []string{"account.number", "sender"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedEvents))
 
 	// index tx using events indexing (composite key)
 	txResult1 := txResultWithEvents([]abci.Event{
@@ -144,7 +144,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	err := indexer.Index(txResult1)
 	require.NoError(t, err)
 
-	// index tx also using deprecated indexing (tag as key)
+	// index tx also using deprecated indexing (event as key)
 	txResult2 := txResultWithEvents(nil)
 	txResult2.Tx = types.Tx("HELLO WORLD 2")
 
@@ -174,20 +174,20 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 		{fmt.Sprintf("tx.hash = '%X'", hash1), []*types.TxResult{txResult1}},
 		// search by hash
 		{fmt.Sprintf("tx.hash = '%X'", hash2), []*types.TxResult{txResult2}},
-		// search by exact match (one tag)
+		// search by exact match (one event)
 		{"account.number = 1", []*types.TxResult{txResult1}},
 		{"account.number >= 1 AND account.number <= 5", []*types.TxResult{txResult1}},
 		// search by range (lower bound)
 		{"account.number >= 1", []*types.TxResult{txResult1}},
 		// search by range (upper bound)
 		{"account.number <= 5", []*types.TxResult{txResult1}},
-		// search using not allowed tag
+		// search using not allowed event
 		{"not_allowed = 'boom'", []*types.TxResult{}},
 		// search for not existing tx result
 		{"account.number >= 2 AND account.number <= 5", []*types.TxResult{}},
-		// search using not existing tag
+		// search using not existing event
 		{"account.date >= TIME 2013-05-03T14:45:00Z", []*types.TxResult{}},
-		// search by deprecated tag
+		// search by deprecated event
 		{"sender = 'addr1'", []*types.TxResult{txResult2}},
 	}
 

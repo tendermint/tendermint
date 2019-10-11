@@ -2,8 +2,7 @@
 
 Tendermint Core can be configured via a TOML file in
 `$TMHOME/config/config.toml`. Some of these parameters can be overridden by
-command-line flags. For most users, the options in the `##### main base
-configuration options #####` are intended to be modified while config options
+command-line flags. For most users, the options in the `##### main base configuration options #####` are intended to be modified while config options
 further below are intended for advance power users.
 
 ## Options
@@ -295,22 +294,22 @@ blocktime_iota = "1s"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
 
-# Comma-separated list of events to index (by default the only tag is "tx.hash")
+# Comma-separated list of events to index (by default the only event is "tx.hash")
 #
-# You can also index transactions by height by adding "tx.height" tag here.
+# You can also index transactions by height by adding "tx.height" event here.
 #
 # It's recommended to index only a subset of events due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
-index_tags = ""
+index_events = ""
 
 # When set to true, tells indexer to index all events (predefined events:
 # "tx.hash", "tx.height" and all events from DeliverTx responses).
 #
 # Note this may be not desirable (see the comment above). IndexEvents has a
-# precedence over IndexAllTags (i.e. when given both, IndexEvents will be
+# precedence over IndexAllEvents (i.e. when given both, IndexEvents will be
 # indexed).
-index_all_tags = false
+index_all_events = false
 
 ##### instrumentation configuration options #####
 [instrumentation]

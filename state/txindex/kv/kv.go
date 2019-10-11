@@ -253,7 +253,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool) {
 	for _, c := range conditions {
-		if c.Tag == types.TxHashKey {
+		if c.Event == types.TxHashKey {
 			decoded, err := hex.DecodeString(c.Operand.(string))
 			return decoded, err, true
 		}
@@ -264,7 +264,7 @@ func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool)
 // lookForHeight returns a height if there is an "height=X" condition.
 func lookForHeight(conditions []query.Condition) (height int64) {
 	for _, c := range conditions {
-		if c.Tag == types.TxHeightKey && c.Op == query.OpEqual {
+		if c.Event == types.TxHeightKey && c.Op == query.OpEqual {
 			return c.Operand.(int64)
 		}
 	}
@@ -333,9 +333,9 @@ func lookForRanges(conditions []query.Condition) (ranges queryRanges, indexes []
 	ranges = make(queryRanges)
 	for i, c := range conditions {
 		if isRangeOperation(c.Op) {
-			r, ok := ranges[c.Tag]
+			r, ok := ranges[c.Event]
 			if !ok {
-				r = queryRange{key: c.Tag}
+				r = queryRange{key: c.Event}
 			}
 			switch c.Op {
 			case query.OpGreater:
@@ -349,7 +349,7 @@ func lookForRanges(conditions []query.Condition) (ranges queryRanges, indexes []
 				r.includeUpperBound = true
 				r.upperBound = c.Operand
 			}
-			ranges[c.Tag] = r
+			ranges[c.Event] = r
 			indexes = append(indexes, i)
 		}
 	}
@@ -392,7 +392,7 @@ func (txi *TxIndex) match(c query.Condition, startKeyBz []byte, filteredHashes m
 		// XXX: startKey does not apply here.
 		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
 		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
-		it := dbm.IteratePrefix(txi.store, startKey(c.Tag))
+		it := dbm.IteratePrefix(txi.store, startKey(c.Event))
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
@@ -474,7 +474,7 @@ LOOP:
 				tmpHashes[string(it.Value())] = it.Value()
 			}
 
-			// XXX: passing time in a ABCI Tags is not yet implemented
+			// XXX: passing time in a ABCI Events is not yet implemented
 			// case time.Time:
 			// 	v := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
 			// 	if v == r.upperBound {
@@ -537,9 +537,9 @@ func keyForHeight(result *types.TxResult) []byte {
 
 func startKeyForCondition(c query.Condition, height int64) []byte {
 	if height > 0 {
-		return startKey(c.Tag, c.Operand, height)
+		return startKey(c.Event, c.Operand, height)
 	}
-	return startKey(c.Tag, c.Operand)
+	return startKey(c.Event, c.Operand)
 }
 
 func startKey(fields ...interface{}) []byte {

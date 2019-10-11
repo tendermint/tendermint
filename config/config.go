@@ -881,9 +881,9 @@ type TxIndexConfig struct {
 	//   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
 
-	// Comma-separated list of events to index (by default the only tag is "tx.hash")
+	// Comma-separated list of events to index (by default the only event is "tx.hash")
 	//
-	// You can also index transactions by height by adding "tx.height" tag here.
+	// You can also index transactions by height by adding "tx.height" event here.
 	//
 	// It's recommended to index only a subset of events due to possible memory
 	// bloat. This is, of course, depends on the indexer's DB and the volume of
