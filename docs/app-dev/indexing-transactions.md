@@ -1,3 +1,7 @@
+---
+order: 6
+---
+
 # Indexing Transactions
 
 Tendermint allows you to index transactions and later query or subscribe
