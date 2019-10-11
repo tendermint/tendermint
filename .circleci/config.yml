@@ -195,6 +195,9 @@ jobs:
       - run:
           name: "Build docs"
           command: make build-docs
+      - run:
+          name: "Sync to S3"
+          command: make sync-docs
 
   prepare_build:
     executor: golang
@@ -377,7 +380,15 @@ workflows:
   version: 2
   test-suite:
     jobs:
-      - deploy_docs
+      - deploy_docs:
+          context: tendermint-docs-staging
+          filters:
+            branches:
+              only:
+                - /.*/
+            tags:
+              ignore:
+                - /^v.*/
       - setup_dependencies
       - test_abci_apps:
           requires:
