@@ -389,6 +389,15 @@ workflows:
             tags:
               ignore:
                 - /^v.*/
+      - deploy_docs:
+          context: tendermint-docs
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v.*/
       - setup_dependencies
       - test_abci_apps:
           requires:
