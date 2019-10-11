@@ -184,7 +184,3 @@ func (state *pcState) handle(event Event) (Event, error) {
 
 	return noOp, nil
 }
-
-func newProcessor(state *pcState, queueSize int) *Routine {
-	return newRoutine("processor", state.handle, queueSize)
-}

@@ -14,12 +14,14 @@ type processorContext interface {
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
 }
 
+// nolint:unused
 type pContext struct {
 	store    *store.BlockStore
 	executor *state.BlockExecutor
 	state    *state.State
 }
 
+// nolint:unused
 func newProcessorContext(st *store.BlockStore, ex *state.BlockExecutor, s *state.State) *pContext {
 	return &pContext{
 		store:    st,
