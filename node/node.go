@@ -266,8 +266,14 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 	return indexerService, txIndexer, nil
 }
 
-func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc, eventBus types.BlockEventPublisher, proxyApp proxy.AppConns, consensusLogger log.Logger) error {
+func doHandshake(
+	stateDB dbm.DB,
+	state sm.State,
+	blockStore sm.BlockStore,
+	genDoc *types.GenesisDoc,
+	eventBus types.BlockEventPublisher,
+	proxyApp proxy.AppConns,
+	consensusLogger log.Logger) error {
 
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
