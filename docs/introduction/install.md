@@ -1,3 +1,7 @@
+---
+order: 3
+---
+
 # Install Tendermint
 
 The fastest and easiest way to install the `tendermint` binary
