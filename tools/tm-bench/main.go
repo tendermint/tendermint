@@ -12,6 +12,7 @@ import (
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/rpc/client"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
 )
 
@@ -133,7 +134,7 @@ Examples:
 	printStatistics(stats, outputFormat)
 }
 
-func latestBlockHeight(client tmrpc.Client) int64 {
+func latestBlockHeight(client client.StatusClient) int64 {
 	status, err := client.Status()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

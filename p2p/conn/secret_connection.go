@@ -7,21 +7,22 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/binary"
-	"errors"
 	"io"
 	"math"
 	"net"
 	"sync"
 	"time"
 
+	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/nacl/box"
 
-	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"golang.org/x/crypto/hkdf"
 )
 
 // 4 + 1024 == 1028 total frame size
@@ -133,6 +134,11 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
+
+	if _, ok := remPubKey.(ed25519.PubKeyEd25519); !ok {
+		return nil, errors.Errorf("expected ed25519 pubkey, got %T", remPubKey)
+	}
+
 	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
 		return nil, errors.New("challenge verification failed")
 	}
@@ -262,7 +268,7 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	return
 }
 
-func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
+func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
 
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
@@ -416,7 +422,7 @@ type authSigMessage struct {
 	Sig []byte
 }
 
-func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
+func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
 
 	// Send our info and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(

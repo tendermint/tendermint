@@ -144,7 +144,7 @@ func (s *SocketServer) waitForClose(closeConn chan error, connID int) {
 }
 
 // Read requests from conn and deal with them
-func (s *SocketServer) handleRequests(closeConn chan error, conn net.Conn, responses chan<- *types.Response) {
+func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, responses chan<- *types.Response) {
 	var count int
 	var bufReader = bufio.NewReader(conn)
 
@@ -215,7 +215,7 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 }
 
 // Pull responses from 'responses' and write them to conn.
-func (s *SocketServer) handleResponses(closeConn chan error, conn net.Conn, responses <-chan *types.Response) {
+func (s *SocketServer) handleResponses(closeConn chan error, conn io.Writer, responses <-chan *types.Response) {
 	var count int
 	var bufWriter = bufio.NewWriter(conn)
 	for {

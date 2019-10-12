@@ -61,11 +61,11 @@ func (o *Ton) Stop() {
 
 func (o *Ton) printHeader() {
 	n := o.monitor.Network
-	fmt.Fprintf(o.Output, "%v up %.2f%%\n", n.StartTime(), n.Uptime())
+	fmt.Fprintf(o.Output, "%v up %.2f%%\n", n.StartTime().Format(time.RFC1123Z), n.Uptime())
 	fmt.Println()
 	fmt.Fprintf(o.Output, "Height: %d\n", n.Height)
 	fmt.Fprintf(o.Output, "Avg block time: %.3f ms\n", n.AvgBlockTime)
-	fmt.Fprintf(o.Output, "Avg tx throughput: %.0f per sec\n", n.AvgTxThroughput)
+	fmt.Fprintf(o.Output, "Avg tx throughput: %.3f per sec\n", n.AvgTxThroughput)
 	fmt.Fprintf(o.Output, "Avg block latency: %.3f ms\n", n.AvgBlockLatency)
 	fmt.Fprintf(o.Output, "Active nodes: %d/%d (health: %s) Validators: %d\n", n.NumNodesMonitoredOnline, n.NumNodesMonitored, n.GetHealthString(), n.NumValidators)
 }
