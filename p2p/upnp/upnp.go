@@ -289,7 +289,7 @@ func soapRequest(url, function, message, domain string) (r *http.Response, err e
 }
 
 type statusInfo struct {
-	externalIpAddress string
+	externalIPAddress string
 }
 
 func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
@@ -332,9 +332,9 @@ func (n *upnpNAT) GetExternalAddress() (addr net.IP, err error) {
 	if err != nil {
 		return
 	}
-	addr = net.ParseIP(info.externalIpAddress)
+	addr = net.ParseIP(info.externalIPAddress)
 	if addr == nil {
-		err = fmt.Errorf("failed to parse IP: %v", info.externalIpAddress)
+		err = fmt.Errorf("failed to parse IP: %v", info.externalIPAddress)
 	}
 	return
 }

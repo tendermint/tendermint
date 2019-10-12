@@ -90,8 +90,8 @@ func NewRPCRequest(id jsonrpcid, method string, params json.RawMessage) RPCReque
 	}
 }
 
-func (req RPCRequest) String() string {
-	return fmt.Sprintf("[%s %s]", req.ID, req.Method)
+func (request RPCRequest) String() string {
+	return fmt.Sprintf("[%s %s]", request.ID, request.Method)
 }
 
 func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
@@ -201,11 +201,11 @@ func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCRes
 	}
 }
 
-func (resp RPCResponse) String() string {
-	if resp.Error == nil {
-		return fmt.Sprintf("[%s %v]", resp.ID, resp.Result)
+func (response RPCResponse) String() string {
+	if response.Error == nil {
+		return fmt.Sprintf("[%s %v]", response.ID, response.Result)
 	}
-	return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
+	return fmt.Sprintf("[%s %s]", response.ID, response.Error)
 }
 
 func RPCParseError(id jsonrpcid, err error) RPCResponse {

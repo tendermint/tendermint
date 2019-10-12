@@ -80,7 +80,7 @@ func waitForTxsOnReactors(t *testing.T, txs types.Txs, reactors []*Reactor) {
 		close(done)
 	}()
 
-	timer := time.After(TIMEOUT)
+	timer := time.After(Timeout)
 	select {
 	case <-timer:
 		t.Fatal("Timed out waiting for txs")
@@ -101,15 +101,15 @@ func waitForTxsOnReactor(t *testing.T, txs types.Txs, reactor *Reactor, reactorI
 	}
 }
 
-// ensure no txs on reactor after some timeout
-func ensureNoTxs(t *testing.T, reactor *Reactor, timeout time.Duration) {
-	time.Sleep(timeout) // wait for the txs in all mempools
+// ensure no txs on reactor after some Timeout
+func ensureNoTxs(t *testing.T, reactor *Reactor, Timeout time.Duration) {
+	time.Sleep(Timeout) // wait for the txs in all mempools
 	assert.Zero(t, reactor.mempool.Size())
 }
 
 const (
-	NUM_TXS = 1000
-	TIMEOUT = 120 * time.Second // ridiculously high because CircleCI is slow
+	NumTxs  = 1000
+	Timeout = 120 * time.Second // ridiculously high because CircleCI is slow
 )
 
 func TestReactorBroadcastTxMessage(t *testing.T) {
@@ -129,7 +129,7 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
-	txs := checkTxs(t, reactors[0].mempool, NUM_TXS, UnknownPeerID)
+	txs := checkTxs(t, reactors[0].mempool, NumTxs, UnknownPeerID)
 	waitForTxsOnReactors(t, txs, reactors)
 }
 
@@ -145,7 +145,7 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 
 	// send a bunch of txs to the first reactor's mempool, claiming it came from peer
 	// ensure peer gets no txs
-	checkTxs(t, reactors[0].mempool, NUM_TXS, 1)
+	checkTxs(t, reactors[0].mempool, NumTxs, 1)
 	ensureNoTxs(t, reactors[1], 100*time.Millisecond)
 }
 

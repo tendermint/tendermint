@@ -66,9 +66,9 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	SignerDialerEndpointTimeoutReadWrite(time.Millisecond)(dialerEndpoint)
 	SignerDialerEndpointConnRetries(retries)(dialerEndpoint)
 
-	chainId := cmn.RandStr(12)
+	chainID := cmn.RandStr(12)
 	mockPV := types.NewMockPV()
-	signerServer := NewSignerServer(dialerEndpoint, chainId, mockPV)
+	signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
 
 	err = signerServer.Start()
 	require.NoError(t, err)
