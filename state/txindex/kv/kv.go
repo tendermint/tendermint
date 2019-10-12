@@ -276,10 +276,10 @@ func lookForHeight(conditions []query.Condition) (height int64) {
 type queryRanges map[string]queryRange
 
 type queryRange struct {
-	key               string
 	lowerBound        interface{} // int || time.Time
-	includeLowerBound bool
 	upperBound        interface{} // int || time.Time
+	key               string
+	includeLowerBound bool
 	includeUpperBound bool
 }
 

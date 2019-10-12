@@ -1,9 +1,14 @@
+---
+order: 3
+---
+
 # Configuration
 
 Tendermint Core can be configured via a TOML file in
 `$TMHOME/config/config.toml`. Some of these parameters can be overridden by
-command-line flags. For most users, the options in the `##### main base configuration options #####` are intended to be modified while
-config options further below are intended for advance power users.
+command-line flags. For most users, the options in the `##### main base
+configuration options #####` are intended to be modified while config options
+further below are intended for advance power users.
 
 ## Options
 
@@ -15,6 +20,11 @@ like the file below, however, double check by inspecting the
 ```
 # This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
+
+# NOTE: Any path below can be absolute (e.g. "/var/myawesomeapp/data") or
+# relative to the home directory (e.g. "data"). The home directory is
+# "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
+# or --home cmd flag.
 
 ##### main base config options #####
 

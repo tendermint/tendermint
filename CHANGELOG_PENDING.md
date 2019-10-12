@@ -1,8 +1,9 @@
-## v0.32.5
+## v0.32.7
 
 \*\*
 
 Special thanks to external contributors on this release:
+@erikgrinaker
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -19,4 +20,8 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Improved `tm-monitor` formatting of start time and avg tx throughput (@erikgrinaker)
+
 ### BUG FIXES:
+
+- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Refresh `tm-monitor` health when validator count is updated (@erikgrinaker)

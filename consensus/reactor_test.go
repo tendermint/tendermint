@@ -640,19 +640,19 @@ func capture() {
 
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 	testCases := []struct {
-		testName               string
-		messageHeight          int64
-		messageRound           int
-		messageStep            cstypes.RoundStepType
-		messageLastCommitRound int
 		expectErr              bool
+		messageRound           int
+		messageLastCommitRound int
+		messageHeight          int64
+		testName               string
+		messageStep            cstypes.RoundStepType
 	}{
-		{"Valid Message", 0, 0, 0x01, 1, false},
-		{"Invalid Message", -1, 0, 0x01, 1, true},
-		{"Invalid Message", 0, -1, 0x01, 1, true},
-		{"Invalid Message", 0, 0, 0x00, 1, true},
-		{"Invalid Message", 0, 0, 0x00, 0, true},
-		{"Invalid Message", 1, 0, 0x01, 0, true},
+		{false, 0, 0, 0, "Valid Message", 0x01},
+		{true, -1, 0, 0, "Invalid Message", 0x01},
+		{true, 0, 0, -1, "Invalid Message", 0x01},
+		{true, 0, 0, 1, "Invalid Message", 0x00},
+		{true, 0, 0, 1, "Invalid Message", 0x00},
+		{true, 0, -2, 2, "Invalid Message", 0x01},
 	}
 
 	for _, tc := range testCases {
@@ -770,18 +770,18 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 	)
 
 	testCases := []struct {
-		testName      string
-		messageHeight int64
-		messageRound  int
-		messageType   types.SignedMsgType
-		messageIndex  int
 		expectErr     bool
+		messageRound  int
+		messageIndex  int
+		messageHeight int64
+		testName      string
+		messageType   types.SignedMsgType
 	}{
-		{"Valid Message", 0, 0, validSignedMsgType, 0, false},
-		{"Invalid Message", -1, 0, validSignedMsgType, 0, true},
-		{"Invalid Message", 0, -1, validSignedMsgType, 0, true},
-		{"Invalid Message", 0, 0, invalidSignedMsgType, 0, true},
-		{"Invalid Message", 0, 0, validSignedMsgType, -1, true},
+		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
+		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
+		{true, 0, -1, 0, "Invalid Message", validSignedMsgType},
+		{true, 0, 0, 0, "Invalid Message", invalidSignedMsgType},
+		{true, 0, 0, -1, "Invalid Message", validSignedMsgType},
 	}
 
 	for _, tc := range testCases {
@@ -815,18 +815,18 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	}
 
 	testCases := []struct {
-		testName       string
-		messageHeight  int64
+		expectErr      bool
 		messageRound   int
+		messageHeight  int64
+		testName       string
 		messageType    types.SignedMsgType
 		messageBlockID types.BlockID
-		expectErr      bool
 	}{
-		{"Valid Message", 0, 0, validSignedMsgType, validBlockID, false},
-		{"Invalid Message", -1, 0, validSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, -1, validSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, 0, invalidSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, 0, validSignedMsgType, invalidBlockID, true},
+		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
+		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID},
+		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID},
+		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID},
+		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID},
 	}
 
 	for _, tc := range testCases {
@@ -861,19 +861,19 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 	testBitArray := cmn.NewBitArray(1)
 
 	testCases := []struct {
-		testName       string
-		messageHeight  int64
+		expectErr      bool
 		messageRound   int
+		messageHeight  int64
+		testName       string
 		messageType    types.SignedMsgType
 		messageBlockID types.BlockID
 		messageVotes   *cmn.BitArray
-		expectErr      bool
 	}{
-		{"Valid Message", 0, 0, validSignedMsgType, validBlockID, testBitArray, false},
-		{"Invalid Message", -1, 0, validSignedMsgType, validBlockID, testBitArray, true},
-		{"Invalid Message", 0, -1, validSignedMsgType, validBlockID, testBitArray, true},
-		{"Invalid Message", 0, 0, invalidSignedMsgType, validBlockID, testBitArray, true},
-		{"Invalid Message", 0, 0, validSignedMsgType, invalidBlockID, testBitArray, true},
+		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID, testBitArray},
+		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
+		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
+		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID, testBitArray},
+		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID, testBitArray},
 	}
 
 	for _, tc := range testCases {
