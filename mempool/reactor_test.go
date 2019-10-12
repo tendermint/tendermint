@@ -101,9 +101,9 @@ func waitForTxsOnReactor(t *testing.T, txs types.Txs, reactor *Reactor, reactorI
 	}
 }
 
-// ensure no txs on reactor after some Timeout
-func ensureNoTxs(t *testing.T, reactor *Reactor, Timeout time.Duration) {
-	time.Sleep(Timeout) // wait for the txs in all mempools
+// ensure no txs on reactor after some timeout
+func ensureNoTxs(t *testing.T, reactor *Reactor, timeout time.Duration) {
+	time.Sleep(timeout) // wait for the txs in all mempools
 	assert.Zero(t, reactor.mempool.Size())
 }
 
