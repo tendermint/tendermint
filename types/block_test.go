@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"math"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -289,6 +291,16 @@ func TestHeaderHash(t *testing.T) {
 		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
 			assert.Equal(t, tc.expectHash, tc.header.Hash())
+
+			// We also make sure that all fields are hashed in struct order
+			if tc.header != nil && tc.expectHash != nil {
+				byteSlices := [][]byte{}
+				s := reflect.ValueOf(*tc.header)
+				for i := 0; i < s.NumField(); i++ {
+					byteSlices = append(byteSlices, cdcEncode(s.Field(i).Interface()))
+				}
+				assert.Equal(t, cmn.HexBytes(merkle.SimpleHashFromByteSlices(byteSlices)), tc.header.Hash())
+			}
 		})
 	}
 }
