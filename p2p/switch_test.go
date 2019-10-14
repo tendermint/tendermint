@@ -354,6 +354,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	scrapeMetrics := func() string {
 		resp, _ := http.Get(s.URL)
 		buf, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
 		return string(buf)
 	}
 
