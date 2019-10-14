@@ -70,7 +70,6 @@ var (
 	// objects
 	pubKey           crypto.PubKey
 	genDoc           *types.GenesisDoc // cache the genesis structure
-	addrBook         p2p.AddrBook
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
@@ -115,10 +114,6 @@ func SetPubKey(pk crypto.PubKey) {
 
 func SetGenesisDoc(doc *types.GenesisDoc) {
 	genDoc = doc
-}
-
-func SetAddrBook(book p2p.AddrBook) {
-	addrBook = book
 }
 
 func SetProxyAppQuery(appConn proxy.AppConnQuery) {

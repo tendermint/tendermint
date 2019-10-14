@@ -27,7 +27,7 @@ const (
 
 // WSClient is a WebSocket client. The methods of WSClient are safe for use by
 // multiple goroutines.
-type WSClient struct {
+type WSClient struct { // nolint: maligned
 	conn *websocket.Conn
 	cdc  *amino.Codec
 
