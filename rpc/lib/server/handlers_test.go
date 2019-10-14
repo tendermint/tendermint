@@ -192,6 +192,7 @@ func TestRPCNotificationInBatch(t *testing.T) {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
 		}
+		res.Body.Close()
 
 		var responses []types.RPCResponse
 		// try to unmarshal an array first
@@ -261,6 +262,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	err = c.ReadJSON(&resp)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
+	dialResp.Body.Close()
 }
 
 func newWSServer() *httptest.Server {
