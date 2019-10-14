@@ -475,7 +475,12 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 				Header: tc.shHeader,
 				Commit: tc.shCommit,
 			}
-			assert.Equal(t, tc.expectErr, sh.ValidateBasic(validSignedHeader.Header.ChainID) != nil, "Validate Basic had an unexpected result")
+			assert.Equal(
+				t,
+				tc.expectErr,
+				sh.ValidateBasic(validSignedHeader.Header.ChainID) != nil,
+				"Validate Basic had an unexpected result",
+			)
 		})
 	}
 }
