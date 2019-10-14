@@ -22,8 +22,8 @@ linters:
     - ineffassign
     - interfacer
     # - lll
-    - maligned
     - misspell
+    - maligned
     - nakedret
     # - prealloc
     - scopelint
