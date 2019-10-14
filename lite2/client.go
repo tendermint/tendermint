@@ -173,12 +173,21 @@ func (c *Client) SetLogger(l log.Logger) {
 	c.logger = l
 }
 
-// TrustedHeader returns a header at the given height or nil if no such header
-// exist. It returns an error if there are some issues with the trusted store,
-// although that should not happen normally. TODO mention how many headers will
-// be kept by the light client.
+// TrustedHeader returns a trusted header at the given height or nil if no such
+// header exist. It returns an error if there are some issues with the trusted
+// store, although that should not happen normally. TODO mention how many
+// headers will be kept by the light client.
 func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
 	return c.trustedStore.SignedHeader(height)
+}
+
+// LastTrustedHeight returns a last trusted height.
+func (c *Client) LastTrustedHeight() (int64, error) {
+	h, err := c.trustedStore.SignedHeader(height)
+	if err != nil {
+		return 0, err
+	}
+	return h.Height, nil
 }
 
 // VerifyHeaderAtHeight fetches the header and validators at the given height
@@ -192,7 +201,24 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 	// Request the header and the vals.
 	newHeader, newVals, err := c.fetchHeaderAndValsAtHeight(height)
 	if err != nil {
-		return nil
+		return err
+	}
+
+	return c.VerifyHeader(newHeader, newVals, now)
+}
+
+// VerifyNextHeader fetches the header and validators at the next (currently
+// trusted + 1) height and calls VerifyHeader.
+func (c *Client) VerifyNextHeader(now time.Time) error {
+	lastTrustedHeight, err := c.LastTrustedHeight()
+	if err != nil {
+		return errors.Wrap(err, "failed to get last trusted height")
+	}
+
+	// Request the header and the vals.
+	newHeader, newVals, err := c.fetchHeaderAndValsAtHeight(lastTrustedHeight + 1)
+	if err != nil {
+		return err
 	}
 
 	return c.VerifyHeader(newHeader, newVals, now)
@@ -343,11 +369,11 @@ func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.V
 func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, *types.ValidatorSet, error) {
 	h, err := c.primary.SignedHeader(height)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "failed to obtain the header #%d", height)
 	}
 	vals, err := c.primary.ValidatorSet(height)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
 	}
 	return h, vals, nil
 }
