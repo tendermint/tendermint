@@ -165,10 +165,11 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		err := memR.mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{
-			SenderID:      memR.ids.GetForPeer(src),
-			SenderAddress: src.ID(),
-		})
+		txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
+		if src != nil {
+			txInfo.SenderAddress = src.ID()
+		}
+		err := memR.mempool.CheckTxWithInfo(msg.Tx, nil, txInfo)
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", txID(msg.Tx), "err", err)
 		}
