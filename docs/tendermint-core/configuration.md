@@ -1,3 +1,7 @@
+---
+order: 3
+---
+
 # Configuration
 
 Tendermint Core can be configured via a TOML file in
