@@ -20,7 +20,7 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
-- [mempool] Include peer ID when logging rejected txns (@erikgrinaker)
+- [mempool] [\#4057](https://github.com/tendermint/tendermint/issues/4057) Include peer ID when logging rejected txns (@erikgrinaker)
 - [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Improved `tm-monitor` formatting of start time and avg tx throughput (@erikgrinaker)
 
 ### BUG FIXES:
