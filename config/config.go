@@ -140,7 +140,7 @@ func (cfg *Config) ValidateBasic() error {
 // BaseConfig
 
 // BaseConfig defines the base configuration for a Tendermint node
-type BaseConfig struct {
+type BaseConfig struct { //nolint: maligned
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -473,7 +473,7 @@ func (cfg RPCConfig) IsTLSEnabled() bool {
 // P2PConfig
 
 // P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
-type P2PConfig struct {
+type P2PConfig struct { //nolint: maligned
 	RootDir string `mapstructure:"home"`
 
 	// Address to listen for incoming connections

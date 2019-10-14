@@ -37,7 +37,6 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 func TestStateCopy(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	stateCopy := state.Copy()
@@ -68,7 +67,6 @@ func TestMakeGenesisStateNilValidators(t *testing.T) {
 func TestStateSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
@@ -84,7 +82,6 @@ func TestStateSaveLoad(t *testing.T) {
 func TestABCIResponsesSaveLoad1(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
@@ -110,7 +107,6 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 func TestABCIResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	cases := [...]struct {
@@ -181,7 +177,6 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 func TestValidatorSimpleSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	// Can't load anything for height 0.

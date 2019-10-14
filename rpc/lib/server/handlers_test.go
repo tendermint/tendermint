@@ -77,6 +77,7 @@ func TestRPCParams(t *testing.T) {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
 		}
+		res.Body.Close()
 
 		recv := new(types.RPCResponse)
 		assert.Nil(t, json.Unmarshal(blob, recv), "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
@@ -125,6 +126,7 @@ func TestJSONRPCID(t *testing.T) {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
 		}
+		res.Body.Close()
 
 		recv := new(types.RPCResponse)
 		err = json.Unmarshal(blob, recv)
@@ -150,6 +152,7 @@ func TestRPCNotification(t *testing.T) {
 	// Always expecting back a JSONRPCResponse
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
 	blob, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
 	require.Nil(t, err, "reading from the body should not give back an error")
 	require.Equal(t, len(blob), 0, "a notification SHOULD NOT be responded to by the server")
 }
@@ -189,6 +192,7 @@ func TestRPCNotificationInBatch(t *testing.T) {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
 		}
+		res.Body.Close()
 
 		var responses []types.RPCResponse
 		// try to unmarshal an array first
@@ -229,6 +233,7 @@ func TestUnknownRPCPath(t *testing.T) {
 
 	// Always expecting back a 404 error
 	require.Equal(t, http.StatusNotFound, res.StatusCode, "should always return 404")
+	res.Body.Close()
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -257,6 +262,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	err = c.ReadJSON(&resp)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
+	dialResp.Body.Close()
 }
 
 func newWSServer() *httptest.Server {
