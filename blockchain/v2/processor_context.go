@@ -21,7 +21,7 @@ type pContext struct {
 	state    *state.State
 }
 
-// nolint:unused
+// nolint:unused,deadcode
 func newProcessorContext(st *store.BlockStore, ex *state.BlockExecutor, s *state.State) *pContext {
 	return &pContext{
 		store:    st,
