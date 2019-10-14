@@ -33,7 +33,10 @@ import (
 // 		"response": {
 // 			"log": "exists",
 // 			"height": "0",
-// 			"proof": "010114FED0DAD959F36091AD761C922ABA3CBF1D8349990101020103011406AA2262E2F448242DF2C2607C3CDC705313EE3B0001149D16177BC71E445476174622EA559715C293740C",
+// 			"proof": "010114FED0DAD959F36091AD761C922ABA3CBF1" +
+//  						 "D8349990101020103011406AA2262E2F448242D" +
+//							 "F2C2607C3CDC705313EE3B0001149D16177BC71" +
+//							 "E445476174622EA559715C293740C",
 // 			"value": "61626364",
 // 			"key": "61626364",
 // 			"index": "-1",
@@ -53,7 +56,13 @@ import (
 // | data      | []byte | false   | true     | Data                                           |
 // | height    | int64  | 0       | false    | Height (0 means latest)                        |
 // | prove     | bool   | false   | false    | Includes proof if true                         |
-func ABCIQuery(ctx *rpctypes.Context, path string, data cmn.HexBytes, height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
+func ABCIQuery(
+	ctx *rpctypes.Context,
+	path string,
+	data cmn.HexBytes,
+	height int64,
+	prove bool,
+) (*ctypes.ResultABCIQuery, error) {
 	resQuery, err := proxyAppQuery.QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
