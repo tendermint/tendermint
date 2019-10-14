@@ -25,18 +25,19 @@ func Verify(
 	now time.Time,
 	trustLevel float32) error {
 
-	if trustLevel > 1 || trustLevel < 1/3 {
-		return errors.Errorf("trustLevel must be within [1/3, 1], given %v", trustLevel)
+	if err := ValidateTrustLevel(trustLevel); err != nil {
+		return err
 	}
 
 	// Ensure last header can still be trusted.
 	expirationTime := h1.Time.Add(trustingPeriod)
 	if !expirationTime.After(now) {
-		return errors.Errorf("old header has expired at %v (now: %v)", expirationTime, now)
+		return ErrOldHeaderExpired{expirationTime, now}
 	}
 
 	// Ensure new header is within trusting period.
 	if !h2.Time.Before(expirationTime) {
+		// TODO: send an evidence?
 		return ErrNewHeaderTooFarIntoFuture{h2.Time, expirationTime}
 	}
 
@@ -104,5 +105,15 @@ func verifyNewHeaderAndVals(
 		)
 	}
 
+	return nil
+}
+
+// ValidateTrustLevel checks that trustLevel is within the allowed range [1/3,
+// 1]. If not, it returns an error. 1/3 is the minimum amount of trust needed
+// which does not break the security model.
+func ValidateTrustLevel(lvl float32) error {
+	if lvl > MaxTrustLevel || lvl < MinTrustLevel {
+		return errors.Errorf("trustLevel must be within [1/3, 1], given %v", lvl)
+	}
 	return nil
 }

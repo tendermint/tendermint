@@ -2,7 +2,6 @@ package lite
 
 import (
 	"bytes"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -63,8 +62,8 @@ func SequentialVerification() Option {
 // validators & their respective voting power, required to trust a new header
 // (default: 1/3).
 func SkippingVerification(trustLevel float32) Option {
-	if trustLevel > 1 || trustLevel < 1/3 {
-		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
+	if err := ValidateTrustLevel(trustLevel); err != nil {
+		panic(err)
 	}
 	return func(c *Client) {
 		c.mode = skipping
