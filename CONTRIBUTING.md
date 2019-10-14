@@ -185,7 +185,7 @@ includes its continuous integration status using a badge in the `README.md`.
 
 ### RPC Testing
 
-If you contribute to the RPC endpoints it's important to document your changes in the [Swagger file](./docs/spec/rpc/swagger.yaml)
+If you contribute to the RPC endpoints it's important to document your changes in the [Swagger file](./rpc/swagger/swagger.yaml)
 To test your changes you should install `nodejs` and run:
 
 ```bash

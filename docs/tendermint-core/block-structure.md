@@ -1,3 +1,7 @@
+---
+order: 8
+---
+
 # Block Structure
 
 The tendermint consensus engine records all agreements by a
