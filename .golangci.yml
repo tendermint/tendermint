@@ -38,6 +38,8 @@ linters:
     # - whitespace
     # - wsl
     # - gocognit
+  disable:
+    - errcheck
 
 linters-settings:
   dogsled:
