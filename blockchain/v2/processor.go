@@ -21,12 +21,14 @@ type pcShortBlock struct {
 	priorityNormal
 }
 
+/*
 type bcBlockResponse struct {
 	priorityNormal
 	peerID p2p.ID
 	block  *types.Block
 	height int64
 }
+*/
 
 type pcBlockVerificationFailure struct {
 	priorityNormal
@@ -135,7 +137,7 @@ func (state *pcState) purgePeer(peerID p2p.ID) {
 // handle processes FSM events
 func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
-	case *bcBlockResponse:
+	case *scBlockReceived:
 		if event.height <= state.height {
 			return pcShortBlock{}, nil
 		}
