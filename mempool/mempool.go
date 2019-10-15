@@ -94,8 +94,8 @@ type TxInfo struct {
 	// SenderID is the internal peer ID used in the mempool to identify the
 	// sender, storing 2 bytes with each tx instead of 20 bytes for the p2p.ID.
 	SenderID uint16
-	// SenderAddress is the actual p2p.ID of the sender, used e.g. for logging.
-	SenderAddress p2p.ID
+	// SenderFullID is the actual p2p.ID of the sender, used e.g. for logging.
+	SenderFullID p2p.ID
 }
 
 //--------------------------------------------------------------------------------
