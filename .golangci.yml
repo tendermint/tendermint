@@ -30,8 +30,8 @@ linters:
     - staticcheck
     - structcheck
     # - stylecheck
-    - typecheck
     - unconvert
+    - typecheck
     # - unparam
     - unused
     - varcheck
