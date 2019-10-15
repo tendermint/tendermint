@@ -30,8 +30,8 @@ linters:
     - staticcheck
     - structcheck
     # - stylecheck
-    - unconvert
     - typecheck
+    - unconvert
     # - unparam
     - unused
     - varcheck
@@ -77,6 +77,3 @@ linters-settings:
 #     disabled-checks:
 #       - wrapperFunc
 #       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
-
-service:
-  golangci-lint-version: 1.19.x
