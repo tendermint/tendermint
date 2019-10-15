@@ -26,34 +26,47 @@ func NewAutoClient(base *Client, updatePeriod time.Duration) *AutoClient {
 		err:            make(chan error),
 	}
 	go c.autoUpdate()
+	return c
 }
 
 // TrustedHeaders returns a channel onto which new trusted headers are posted.
-func (c *Client) TrustedHeaders() <-chan *types.SignedHeader {
+func (c *AutoClient) TrustedHeaders() <-chan *types.SignedHeader {
 	return c.trustedHeaders
 }
 
 // Err returns a channel onto which errors are posted.
-func (c *Client) Err() <-chan error {
+func (c *AutoClient) Err() <-chan error {
 	return c.err
 }
 
 // Stop stops the client.
-func (c *Client) Stop() {
+func (c *AutoClient) Stop() {
 	close(c.quit)
 }
 
-func (c *Client) autoUpdate() {
+func (c *AutoClient) autoUpdate() {
+	lastTrustedHeight, err := c.base.LastTrustedHeight()
+	if err != nil {
+		c.err <- err
+		return
+	}
+
 	ticker := time.NewTicker(c.updatePeriod)
 	for {
 		select {
 		case <-ticker.C:
-			h, err := c.base.VerifyNextHeader()
+			err := c.base.VerifyHeaderAtHeight(lastTrustedHeight+1, time.Now())
+			if err != nil {
+				c.err <- err
+				continue
+			}
+			h, err := c.base.TrustedHeader(lastTrustedHeight + 1)
 			if err != nil {
 				c.err <- err
 				continue
 			}
 			c.trustedHeaders <- h
+			lastTrustedHeight = h.Height
 		case <-c.quit:
 			return
 		}

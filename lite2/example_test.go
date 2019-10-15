@@ -1,6 +1,7 @@
 package lite
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -15,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestExample(t *testing.T) {
+func TestExample_Client(t *testing.T) {
 	const (
 		chainID = "my-awesome-chain"
 	)
@@ -30,6 +31,11 @@ func TestExample(t *testing.T) {
 
 	/////////////////////////////////////////////////////////////////////////////
 
+	db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
+	if err != nil {
+		// return err
+		t.Fatal(err)
+	}
 	c, err := NewClient(
 		chainID,
 		TrustOptions{
@@ -38,18 +44,23 @@ func TestExample(t *testing.T) {
 			Hash:   header.Hash(),
 		},
 		httpp.New(chainID, "tcp://localhost:26657"),
-		dbs.New(dbm.NewGoLevelDB("lite-client-db", dbDir), ""),
+		dbs.New(db, ""),
 	)
 
-	h, err := c.VerifyNextHeader()
+	err = c.VerifyHeaderAtHeight(101, time.Now())
 	if err != nil {
-		// retry?
+		fmt.Println("retry?")
 	}
+
+	h, err := c.TrustedHeader(101)
+	if err != nil {
+		fmt.Println("retry?")
+	}
+	fmt.Println("got header", h)
 	// verify some data
 }
 
-func Test(t *testing.T) {
-
+func TestExample_AutoClient(t *testing.T) {
 	const (
 		chainID = "my-awesome-chain"
 	)
@@ -63,6 +74,12 @@ func Test(t *testing.T) {
 	header := (*types.SignedHeader)(nil)
 
 	/////////////////////////////////////////////////////////////////////////////
+
+	db, err := dbm.NewGoLevelDB("lite-client-db", dbDir)
+	if err != nil {
+		// return err
+		t.Fatal(err)
+	}
 
 	base, err := NewClient(
 		chainID,
@@ -72,7 +89,7 @@ func Test(t *testing.T) {
 			Hash:   header.Hash(),
 		},
 		httpp.New(chainID, "tcp://localhost:26657"),
-		dbs.New(dbm.NewGoLevelDB("lite-client-db", dbDir), ""),
+		dbs.New(db, ""),
 	)
 
 	c := NewAutoClient(base, 1*time.Second)
@@ -80,13 +97,15 @@ func Test(t *testing.T) {
 
 	select {
 	case h := <-c.TrustedHeaders():
+		fmt.Println("got header", h)
 		// verify some data
 	case err := <-c.Err():
-		switch errors.Cause(err) {
+		switch errors.Cause(err).(type) {
 		case ErrOldHeaderExpired:
 			// reobtain trust height and hash
 		default:
 			// try with another full node
+			fmt.Println("got error", err)
 		}
 	}
 }

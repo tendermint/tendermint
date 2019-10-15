@@ -112,7 +112,7 @@ func verifyNewHeaderAndVals(
 // 1]. If not, it returns an error. 1/3 is the minimum amount of trust needed
 // which does not break the security model.
 func ValidateTrustLevel(lvl float32) error {
-	if lvl > MaxTrustLevel || lvl < MinTrustLevel {
+	if lvl > 1 || lvl < float32(1)/float32(3) {
 		return errors.Errorf("trustLevel must be within [1/3, 1], given %v", lvl)
 	}
 	return nil

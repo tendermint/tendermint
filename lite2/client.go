@@ -183,7 +183,7 @@ func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
 
 // LastTrustedHeight returns a last trusted height.
 func (c *Client) LastTrustedHeight() (int64, error) {
-	h, err := c.trustedStore.SignedHeader(height)
+	h, err := c.trustedStore.LastSignedHeader()
 	if err != nil {
 		return 0, err
 	}
@@ -200,23 +200,6 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 
 	// Request the header and the vals.
 	newHeader, newVals, err := c.fetchHeaderAndValsAtHeight(height)
-	if err != nil {
-		return err
-	}
-
-	return c.VerifyHeader(newHeader, newVals, now)
-}
-
-// VerifyNextHeader fetches the header and validators at the next (currently
-// trusted + 1) height and calls VerifyHeader.
-func (c *Client) VerifyNextHeader(now time.Time) error {
-	lastTrustedHeight, err := c.LastTrustedHeight()
-	if err != nil {
-		return errors.Wrap(err, "failed to get last trusted height")
-	}
-
-	// Request the header and the vals.
-	newHeader, newVals, err := c.fetchHeaderAndValsAtHeight(lastTrustedHeight + 1)
 	if err != nil {
 		return err
 	}
