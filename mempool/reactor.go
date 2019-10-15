@@ -167,7 +167,7 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case *TxMessage:
 		txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
 		if src != nil {
-			txInfo.SenderFullID = src.ID()
+			txInfo.SenderP2PID = src.ID()
 		}
 		err := memR.mempool.CheckTxWithInfo(msg.Tx, nil, txInfo)
 		if err != nil {
