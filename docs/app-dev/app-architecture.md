@@ -1,3 +1,7 @@
+---
+order: 3
+---
+
 # Application Architecture Guide
 
 Here we provide a brief guide on the recommended architecture of a

@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.32.6
+
+*October 8, 2019*
+
+The previous patch was insufficient because the attacker could still find a way
+to submit a `nil` pubkey by constructing a `PubKeyMultisigThreshold` pubkey
+with `nil` subpubkeys for example.
+
+This release provides multiple fixes, which include recovering from panics when
+accepting new peers and only allowing `ed25519` pubkeys.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for pointing
+this out.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Only allow ed25519 pubkeys when connecting
+
+## v0.32.5
+
+*October 1, 2019*
+
+This release fixes a major security vulnerability found in the `p2p` package.
+All clients are recommended to upgrade. See
+[\#4030](https://github.com/tendermint/tendermint/issues/4030) for details.
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for discovering
+and reporting this issue.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Fix for panic on nil public key send to a peer
+
 ## v0.32.4
 
 *September 19, 2019*
@@ -22,9 +63,9 @@ program](https://hackerone.com/tendermint).
 - [deps] [\#3951](https://github.com/tendermint/tendermint/pull/3951) bump github.com/stretchr/testify from 1.3.0 to 1.4.0
 - [deps] [\#3945](https://github.com/tendermint/tendermint/pull/3945) bump github.com/gorilla/websocket from 1.2.0 to 1.4.1
 - [deps] [\#3948](https://github.com/tendermint/tendermint/pull/3948) bump github.com/libp2p/go-buffer-pool from 0.0.1 to 0.0.2
-- [deps] [\#3943](https://github.com/tendermint/tendermint/pull/3943) bump github.com/fortytw2/leaktest from 1.2.0 to 1.3.0 
-- [deps] [\#3939](https://github.com/tendermint/tendermint/pull/3939) bump github.com/rs/cors from 1.6.0 to 1.7.0 
-- [deps] [\#3937](https://github.com/tendermint/tendermint/pull/3937) bump github.com/magiconair/properties from 1.8.0 to 1.8.1 
+- [deps] [\#3943](https://github.com/tendermint/tendermint/pull/3943) bump github.com/fortytw2/leaktest from 1.2.0 to 1.3.0
+- [deps] [\#3939](https://github.com/tendermint/tendermint/pull/3939) bump github.com/rs/cors from 1.6.0 to 1.7.0
+- [deps] [\#3937](https://github.com/tendermint/tendermint/pull/3937) bump github.com/magiconair/properties from 1.8.0 to 1.8.1
 - [deps] [\#3947](https://github.com/tendermint/tendermint/pull/3947) update gogo/protobuf version from v1.2.1 to v1.3.0
 - [deps] [\#4001](https://github.com/tendermint/tendermint/pull/4001) bump github.com/tendermint/tm-db from 0.1.1 to 0.2.0
 
@@ -204,6 +245,66 @@ program](https://hackerone.com/tendermint).
 - [libs/db] [\#3718](https://github.com/tendermint/tendermint/issues/3718) Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
 - [node] [\#3716](https://github.com/tendermint/tendermint/issues/3716) Fix a bug where `nil` is recorded as node's address
 - [node] [\#3741](https://github.com/tendermint/tendermint/issues/3741) Fix profiler blocking the entire node
+
+## v0.31.10
+
+*October 8, 2019*
+
+The previous patch was insufficient because the attacker could still find a way
+to submit a `nil` pubkey by constructing a `PubKeyMultisigThreshold` pubkey
+with `nil` subpubkeys for example.
+
+This release provides multiple fixes, which include recovering from panics when
+accepting new peers and only allowing `ed25519` pubkeys.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for pointing
+this out.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Only allow ed25519 pubkeys when connecting
+
+## v0.31.9
+
+*October 1, 2019*
+
+This release fixes a major security vulnerability found in the `p2p` package.
+All clients are recommended to upgrade. See
+[\#4030](https://github.com/tendermint/tendermint/issues/4030) for details.
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for discovering
+and reporting this issue.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Fix for panic on nil public key send to a peer
+
+### BUG FIXES:
+
+- [node] [\#3716](https://github.com/tendermint/tendermint/issues/3716) Fix a bug where `nil` is recorded as node's address
+- [node] [\#3741](https://github.com/tendermint/tendermint/issues/3741) Fix profiler blocking the entire node
+
+## v0.31.8
+
+*July 29, 2019*
+
+This releases fixes one bug in the PEX reactor and adds a `recover` to the Go's
+ABCI server, which allows it to properly cleanup.
+
+### IMPROVEMENTS:
+- [abci] [\#3809](https://github.com/tendermint/tendermint/issues/3809) Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
+
+### BUG FIXES:
+- [p2p] [\#3338](https://github.com/tendermint/tendermint/issues/3338) Prevent "sent next PEX request too soon" errors by not calling
+  ensurePeers outside of ensurePeersRoutine
 
 ## v0.31.7
 

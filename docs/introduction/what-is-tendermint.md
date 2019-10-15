@@ -1,3 +1,7 @@
+---
+order: 4
+---
+
 # What is Tendermint?
 
 Tendermint is software for securely and consistently replicating an

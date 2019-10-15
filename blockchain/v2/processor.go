@@ -17,6 +17,10 @@ type pcDuplicateBlock struct {
 	priorityNormal
 }
 
+type pcShortBlock struct {
+	priorityNormal
+}
+
 type bcBlockResponse struct {
 	priorityNormal
 	peerID p2p.ID
@@ -26,6 +30,8 @@ type bcBlockResponse struct {
 
 type pcBlockVerificationFailure struct {
 	priorityNormal
+	peerID p2p.ID
+	height int64
 }
 
 type pcBlockProcessed struct {
@@ -45,8 +51,7 @@ type pcStop struct {
 type pcFinished struct {
 	priorityNormal
 	height       int64
-	blocksSynced int
-	state        tdState.State
+	blocksSynced int64
 }
 
 func (p pcFinished) Error() string {
@@ -61,27 +66,25 @@ type queueItem struct {
 type blockQueue map[int64]queueItem
 
 type pcState struct {
-	height       int64
-	queue        blockQueue
+	height       int64      // height of the last synced block
+	queue        blockQueue // blocks waiting to be processed
 	chainID      string
-	blocksSynced int
+	blocksSynced int64
 	draining     bool
 	tdState      tdState.State
 	context      processorContext
 }
 
-func (ps *pcState) String() string {
-	return fmt.Sprintf("queue: %d draining: %v, \n", len(ps.queue), ps.draining)
+func (state *pcState) String() string {
+	return fmt.Sprintf("height: %d queue length: %d draining: %v blocks synced: %d",
+		state.height, len(state.queue), state.draining, state.blocksSynced)
 }
 
 // newPcState returns a pcState initialized with the last verified block enqueued
-func newPcState(initBlock *types.Block, tdState tdState.State, chainID string, context processorContext) *pcState {
-	var myID p2p.ID = "thispeersid" // XXX: this should be the nodes peerID
-	initItem := queueItem{block: initBlock, peerID: myID}
-
+func newPcState(initHeight int64, tdState tdState.State, chainID string, context processorContext) *pcState {
 	return &pcState{
-		height:       initBlock.Height,
-		queue:        blockQueue{initBlock.Height: initItem},
+		height:       initHeight,
+		queue:        blockQueue{},
 		chainID:      chainID,
 		draining:     false,
 		blocksSynced: 0,
@@ -100,14 +103,14 @@ func (state *pcState) nextTwo() (queueItem, queueItem, error) {
 	return queueItem{}, queueItem{}, fmt.Errorf("not found")
 }
 
-// synced returns true when only the last verified block remains in the queue
+// synced returns true when at most the last verified block remains in the queue
 func (state *pcState) synced() bool {
-	return len(state.queue) == 1
+	return len(state.queue) <= 1
 }
 
 func (state *pcState) advance() {
-	delete(state.queue, state.height)
 	state.height++
+	delete(state.queue, state.height)
 	state.blocksSynced++
 }
 
@@ -119,7 +122,6 @@ func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) e
 	return nil
 }
 
-// XXX:  rename pcFSM
 // purgePeer moves all unprocessed blocks from the queue
 func (state *pcState) purgePeer(peerID p2p.ID) {
 	// what if height is less than state.height?
@@ -130,10 +132,13 @@ func (state *pcState) purgePeer(peerID p2p.ID) {
 	}
 }
 
-// Handle
+// handle processes FSM events
 func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case *bcBlockResponse:
+		if event.height <= state.height {
+			return pcShortBlock{}, nil
+		}
 		err := state.enqueue(event.peerID, event.block, event.height)
 		if err != nil {
 			return pcDuplicateBlock{}, nil
@@ -155,8 +160,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 
 		err = state.context.verifyCommit(state.chainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
-			// XXX: maybe add peer and height field
-			return pcBlockVerificationFailure{}, nil
+			return pcBlockVerificationFailure{peerID: firstItem.peerID, height: first.Height}, nil
 		}
 
 		state.context.saveBlock(first, firstParts, second.LastCommit)
@@ -167,9 +171,10 @@ func (state *pcState) handle(event Event) (Event, error) {
 		}
 		state.advance()
 		return pcBlockProcessed{height: first.Height, peerID: firstItem.peerID}, nil
+
 	case *peerError:
 		state.purgePeer(event.peerID)
-		// TODO: emit an event notifying the scheduler
+
 	case pcStop:
 		if state.synced() {
 			return noOp, pcFinished{height: state.height, blocksSynced: state.blocksSynced}
@@ -178,8 +183,4 @@ func (state *pcState) handle(event Event) (Event, error) {
 	}
 
 	return noOp, nil
-}
-
-func newProcessor(state *pcState, queueSize int) *Routine {
-	return newRoutine("processor", state.handle, queueSize)
 }

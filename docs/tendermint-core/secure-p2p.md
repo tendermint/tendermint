@@ -1,3 +1,7 @@
+---
+order: 12
+---
+
 # Secure P2P
 
 The Tendermint p2p protocol uses an authenticated encryption scheme

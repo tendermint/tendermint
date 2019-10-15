@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
-	"net"
 	"reflect"
 
 	"github.com/tendermint/tendermint/abci/types"
@@ -33,7 +33,7 @@ func main() {
 	}
 }
 
-func makeRequest(conn net.Conn, req *types.Request) (*types.Response, error) {
+func makeRequest(conn io.ReadWriter, req *types.Request) (*types.Response, error) {
 	var bufWriter = bufio.NewWriter(conn)
 
 	// Write desired request

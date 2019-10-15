@@ -65,11 +65,10 @@ func (rs RoundStepType) String() string {
 // NOTE: Not thread safe. Should only be manipulated by functions downstream
 // of the cs.receiveRoutine
 type RoundState struct {
-	Height                    int64               `json:"height"` // Height we are working on
-	Round                     int                 `json:"round"`
-	Step                      RoundStepType       `json:"step"`
 	StartTime                 time.Time           `json:"start_time"`
 	CommitTime                time.Time           `json:"commit_time"` // Subjective time when +2/3 precommits for Block at Round were found
+	Height                    int64               `json:"height"`      // Height we are working on
+	Round                     int                 `json:"round"`
 	Validators                *types.ValidatorSet `json:"validators"`
 	Proposal                  *types.Proposal     `json:"proposal"`
 	ProposalBlock             *types.Block        `json:"proposal_block"`
@@ -84,6 +83,7 @@ type RoundState struct {
 	CommitRound               int                 `json:"commit_round"` //
 	LastCommit                *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
 	LastValidators            *types.ValidatorSet `json:"last_validators"`
+	Step                      RoundStepType       `json:"step"`
 	TriggeredTimeoutPrecommit bool                `json:"triggered_timeout_precommit"`
 }
 

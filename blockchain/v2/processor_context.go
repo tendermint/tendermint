@@ -14,12 +14,14 @@ type processorContext interface {
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
 }
 
+// nolint:unused
 type pContext struct {
 	store    *store.BlockStore
 	executor *state.BlockExecutor
 	state    *state.State
 }
 
+// nolint:unused,deadcode
 func newProcessorContext(st *store.BlockStore, ex *state.BlockExecutor, s *state.State) *pContext {
 	return &pContext{
 		store:    st,
@@ -41,11 +43,11 @@ func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, see
 }
 
 type mockPContext struct {
-	applicationBL  []types.BlockID
-	verificationBL []types.BlockID
+	applicationBL  []int64
+	verificationBL []int64
 }
 
-func newMockProcessorContext(verificationBlackList []types.BlockID, applicationBlackList []types.BlockID) *mockPContext {
+func newMockProcessorContext(verificationBlackList []int64, applicationBlackList []int64) *mockPContext {
 	return &mockPContext{
 		applicationBL:  applicationBlackList,
 		verificationBL: verificationBlackList,
@@ -53,8 +55,8 @@ func newMockProcessorContext(verificationBlackList []types.BlockID, applicationB
 }
 
 func (mpc *mockPContext) applyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error) {
-	for _, blID := range mpc.applicationBL {
-		if blID.Equals(blockID) {
+	for _, h := range mpc.applicationBL {
+		if h == block.Height {
 			return state, fmt.Errorf("generic application error")
 		}
 	}
@@ -62,14 +64,13 @@ func (mpc *mockPContext) applyBlock(state state.State, blockID types.BlockID, bl
 }
 
 func (mpc *mockPContext) verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
-	for _, blID := range mpc.verificationBL {
-		if blID.Equals(blockID) {
-			return fmt.Errorf("generic verificaiton error")
+	for _, h := range mpc.verificationBL {
+		if h == height {
+			return fmt.Errorf("generic verification error")
 		}
 	}
 	return nil
 }
 
 func (mpc *mockPContext) saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
-	return
 }

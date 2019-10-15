@@ -1,20 +1,52 @@
-run:
-  deadline: 1m
-
 linters:
-  enable-all: true
-  disable:
-    - gocyclo
-    - golint
-    - maligned
-    - errcheck
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    # - errcheck
+    # - funlen
+    # - gochecknoglobals
+    # - gochecknoinits
+    - goconst
+    - gocritic
+    # - gocyclo
+    # - godox
+    - gofmt
+    - goimports
+    # - golint
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
     - interfacer
-    - unparam
-    - lll
-    - gochecknoglobals
-    - gochecknoinits
-    - stylecheck
-# linters-settings:
+    # - lll
+    - misspell
+    - maligned
+    - nakedret
+    - prealloc
+    - scopelint
+    - staticcheck
+    - structcheck
+    # - stylecheck
+    - typecheck
+    - unconvert
+    # - unparam
+    - unused
+    - varcheck
+    # - whitespace
+    # - wsl
+    # - gocognit
+  disable:
+    - errcheck
+
+linters-settings:
+  dogsled:
+    max-blank-identifiers: 3
+  maligned:
+    # print struct with more effective memory layout or not, false by default
+    suggest-new: true
 #   govet:
 #     check-shadowing: true
 #   golint:
@@ -46,3 +78,5 @@ linters:
 #       - wrapperFunc
 #       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
 
+service:
+  golangci-lint-version: 1.19.x

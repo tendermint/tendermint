@@ -490,7 +490,7 @@ func (r *PEXReactor) ensurePeers() {
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
 		if peersCount > 0 {
-			peer := peers[cmn.RandInt()%peersCount] // nolint: gas
+			peer := peers[cmn.RandInt()%peersCount]
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestAddrs(peer)
 		}
