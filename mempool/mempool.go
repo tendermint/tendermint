@@ -95,7 +95,7 @@ type TxInfo struct {
 	// sender, storing 2 bytes with each tx instead of 20 bytes for the p2p.ID.
 	SenderID uint16
 	// SenderFullID is the actual p2p.ID of the sender, used e.g. for logging.
-	SenderFullID p2p.ID
+	SenderP2PID p2p.ID
 }
 
 //--------------------------------------------------------------------------------
