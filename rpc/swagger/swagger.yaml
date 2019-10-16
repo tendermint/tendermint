@@ -451,7 +451,7 @@ paths:
       consumes:
         - application/json
       parameters:
-        - description: string of possible peers, bool arguement if they should be added as persistent
+        - description: string of possible peers, bool argument if they should be added as persistent
           in: body
           name: Array of peers to connect to & if they should be persistent
           required: true
@@ -2747,7 +2747,7 @@ definitions:
         type: Array
         items:
           type: "string"
-        example: ["deadbeefdeadbeef@192.168.1.2:26656"]
+        example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
   dialSeedsPost:
     type: object
     properties:
@@ -2755,4 +2755,4 @@ definitions:
         type: Array
         items:
           type: "string"
-        example: ["deadbeefdeadbeefdeadbeef@192.168.1.2:26656"]
+        example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
