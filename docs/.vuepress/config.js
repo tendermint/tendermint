@@ -121,12 +121,12 @@ module.exports = {
         children: [
           {
             title: "Developer Sessions",
-            path: "/DEV_SESSIONS"
+            path: "/DEV_SESSIONS.html"
           },
           {
             title: "RPC",
-            static: true,
-            path: "/rpc/"
+            path: "/rpc/",
+            static: true
           }
         ]
       }
