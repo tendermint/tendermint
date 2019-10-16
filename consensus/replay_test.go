@@ -228,15 +228,15 @@ func (e ReachedHeightToStopError) Error() string {
 
 // Write simulate WAL's crashing by sending an error to the panicCh and then
 // exiting the cs.receiveRoutine.
-func (w *crashingWAL) Write(m WALMessage) {
+func (w *crashingWAL) Write(m WALMessage) error {
 	if endMsg, ok := m.(EndHeightMessage); ok {
 		if endMsg.Height == w.heightToStop {
 			w.panicCh <- ReachedHeightToStopError{endMsg.Height}
 			runtime.Goexit()
-		} else {
-			w.next.Write(m)
+			return nil
 		}
-		return
+
+		return w.next.Write(m)
 	}
 
 	if w.msgIndex > w.lastPanickedForMsgIndex {
@@ -244,14 +244,15 @@ func (w *crashingWAL) Write(m WALMessage) {
 		_, file, line, _ := runtime.Caller(1)
 		w.panicCh <- WALWriteError{fmt.Sprintf("failed to write %T to WAL (fileline: %s:%d)", m, file, line)}
 		runtime.Goexit()
-	} else {
-		w.msgIndex++
-		w.next.Write(m)
+		return nil
 	}
+
+	w.msgIndex++
+	return w.next.Write(m)
 }
 
-func (w *crashingWAL) WriteSync(m WALMessage) {
-	w.Write(m)
+func (w *crashingWAL) WriteSync(m WALMessage) error {
+	return w.Write(m)
 }
 
 func (w *crashingWAL) FlushAndSync() error { return w.next.FlushAndSync() }

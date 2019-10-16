@@ -632,7 +632,10 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(mi)
 		case mi = <-cs.internalMsgQueue:
-			cs.wal.WriteSync(mi) // NOTE: fsync
+			err := cs.wal.WriteSync(mi) // NOTE: fsync
+			if err != nil {
+				panic(fmt.Sprintf("Failed to write %v msg to consensus wal due to %v. Check your FS and restart the node", mi, err))
+			}
 
 			if _, ok := mi.Msg.(*VoteMessage); ok {
 				// we actually want to simulate failing during
@@ -1313,7 +1316,10 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Either way, the ConsensusState should not be resumed until we
 	// successfully call ApplyBlock (ie. later here, or in Handshake after
 	// restart).
-	cs.wal.WriteSync(EndHeightMessage{height}) // NOTE: fsync
+	me := EndHeightMessage{height}
+	if err := cs.wal.WriteSync(me); err != nil { // NOTE: fsync
+		panic(fmt.Sprintf("Failed to write %v msg to consensus wal due to %v. Check your FS and restart the node", me, err))
+	}
 
 	fail.Fail() // XXX
 
