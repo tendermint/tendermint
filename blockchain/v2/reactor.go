@@ -69,6 +69,7 @@ func (r *Reactor) Start() {
 	}()
 }
 
+// XXX: How to make this deterministic?
 // XXX: Would it be possible here to provide some kind of type safety for the types
 // of events that each routine can produce and consume?
 func (r *Reactor) demux() {

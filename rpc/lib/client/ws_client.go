@@ -27,7 +27,7 @@ const (
 
 // WSClient is a WebSocket client. The methods of WSClient are safe for use by
 // multiple goroutines.
-type WSClient struct {
+type WSClient struct { // nolint: maligned
 	conn *websocket.Conn
 	cdc  *amino.Codec
 
@@ -252,7 +252,7 @@ func (c *WSClient) dial() error {
 		Proxy:   http.ProxyFromEnvironment,
 	}
 	rHeader := http.Header{}
-	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader)
+	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader) // nolint:bodyclose
 	if err != nil {
 		return err
 	}
