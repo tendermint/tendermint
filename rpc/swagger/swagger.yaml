@@ -431,11 +431,8 @@ paths:
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
-          type: object
-          properties:
-            Log:
-              type: string
-              x-example: "Dialing seeds in progress. See /net_info for details"
+          schema:
+            $ref: "#/definitions/dialResp"
         500:
           description: empty error
           schema:
@@ -456,17 +453,14 @@ paths:
           name: Array of peers to connect to & if they should be persistent
           required: true
           schema:
-            $ref: "#definitions/dialPeersPost"
+            $ref: "#/definitions/dialPeersPost"
       produces:
         - application/json
       responses:
         200:
           description: Dialing seeds in progress. See /net_info for details
-          type: object
-          properties:
-            Log:
-              type: string
-              x-example: "Dialing seeds in progress. See /net_info for details"
+          schema:
+            $ref: "#/definitions/dialResp"
         500:
           description: empty error
           schema:
@@ -2741,10 +2735,10 @@ definitions:
     type: object
     properties:
       Persistent:
-        type: bool
+        type: boolean
         example: false
       Peers:
-        type: Array
+        type: array
         items:
           type: "string"
         example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
@@ -2752,7 +2746,13 @@ definitions:
     type: object
     properties:
       Peers:
-        type: Array
+        type: array
         items:
           type: "string"
         example: ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+  dialResp:
+    type: object
+    properties:
+      Log:
+        type: string
+        x-example: "Dialing seeds in progress. See /net_info for details"
