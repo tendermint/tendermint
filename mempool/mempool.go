@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -90,9 +91,11 @@ type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
 // TxInfo are parameters that get passed when attempting to add a tx to the
 // mempool.
 type TxInfo struct {
-	// We don't use p2p.ID here because it's too big. The gain is to store max 2
-	// bytes with each tx to identify the sender rather than 20 bytes.
+	// SenderID is the internal peer ID used in the mempool to identify the
+	// sender, storing 2 bytes with each tx instead of 20 bytes for the p2p.ID.
 	SenderID uint16
+	// SenderP2PID is the actual p2p.ID of the sender, used e.g. for logging.
+	SenderP2PID p2p.ID
 }
 
 //--------------------------------------------------------------------------------
