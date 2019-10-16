@@ -19,6 +19,9 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
+	cstypes "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -631,4 +634,262 @@ func capture() {
 	trace := make([]byte, 10240000)
 	count := runtime.Stack(trace, true)
 	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
+}
+
+//-------------------------------------------------------------
+// Ensure basic validation of structs is functioning
+
+func TestNewRoundStepMessageValidateBasic(t *testing.T) {
+	testCases := []struct { // nolint: maligned
+		expectErr              bool
+		messageRound           int
+		messageLastCommitRound int
+		messageHeight          int64
+		testName               string
+		messageStep            cstypes.RoundStepType
+	}{
+		{false, 0, 0, 0, "Valid Message", 0x01},
+		{true, -1, 0, 0, "Invalid Message", 0x01},
+		{true, 0, 0, -1, "Invalid Message", 0x01},
+		{true, 0, 0, 1, "Invalid Message", 0x00},
+		{true, 0, 0, 1, "Invalid Message", 0x00},
+		{true, 0, -2, 2, "Invalid Message", 0x01},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewRoundStepMessage{
+				Height:          tc.messageHeight,
+				Round:           tc.messageRound,
+				Step:            tc.messageStep,
+				LastCommitRound: tc.messageLastCommitRound,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestNewValidBlockMessageValidateBasic(t *testing.T) {
+	testBitArray := cmn.NewBitArray(1)
+	testCases := []struct {
+		testName          string
+		messageHeight     int64
+		messageRound      int
+		messageBlockParts *cmn.BitArray
+		expectErr         bool
+	}{
+		{"Valid Message", 0, 0, testBitArray, false},
+		{"Invalid Message", -1, 0, testBitArray, true},
+		{"Invalid Message", 0, -1, testBitArray, true},
+		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewValidBlockMessage{
+				Height:     tc.messageHeight,
+				Round:      tc.messageRound,
+				BlockParts: tc.messageBlockParts,
+			}
+
+			message.BlockPartsHeader.Total = 1
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestProposalPOLMessageValidateBasic(t *testing.T) {
+	testBitArray := cmn.NewBitArray(1)
+	testCases := []struct {
+		testName                string
+		messageHeight           int64
+		messageProposalPOLRound int
+		messageProposalPOL      *cmn.BitArray
+		expectErr               bool
+	}{
+		{"Valid Message", 0, 0, testBitArray, false},
+		{"Invalid Message", -1, 0, testBitArray, true},
+		{"Invalid Message", 0, -1, testBitArray, true},
+		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := ProposalPOLMessage{
+				Height:           tc.messageHeight,
+				ProposalPOLRound: tc.messageProposalPOLRound,
+				ProposalPOL:      tc.messageProposalPOL,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestBlockPartMessageValidateBasic(t *testing.T) {
+	testPart := new(types.Part)
+	testPart.Proof.LeafHash = tmhash.Sum([]byte("leaf"))
+	testCases := []struct {
+		testName      string
+		messageHeight int64
+		messageRound  int
+		messagePart   *types.Part
+		expectErr     bool
+	}{
+		{"Valid Message", 0, 0, testPart, false},
+		{"Invalid Message", -1, 0, testPart, true},
+		{"Invalid Message", 0, -1, testPart, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := BlockPartMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Part:   tc.messagePart,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+
+	message := BlockPartMessage{Height: 0, Round: 0, Part: new(types.Part)}
+	message.Part.Index = -1
+
+	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+}
+
+func TestHasVoteMessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
+	)
+
+	testCases := []struct { // nolint: maligned
+		expectErr     bool
+		messageRound  int
+		messageIndex  int
+		messageHeight int64
+		testName      string
+		messageType   types.SignedMsgType
+	}{
+		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
+		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
+		{true, 0, -1, 0, "Invalid Message", validSignedMsgType},
+		{true, 0, 0, 0, "Invalid Message", invalidSignedMsgType},
+		{true, 0, 0, -1, "Invalid Message", validSignedMsgType},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := HasVoteMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Type:   tc.messageType,
+				Index:  tc.messageIndex,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
+	)
+
+	validBlockID := types.BlockID{}
+	invalidBlockID := types.BlockID{
+		Hash: cmn.HexBytes{},
+		PartsHeader: types.PartSetHeader{
+			Total: -1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
+
+	testCases := []struct { // nolint: maligned
+		expectErr      bool
+		messageRound   int
+		messageHeight  int64
+		testName       string
+		messageType    types.SignedMsgType
+		messageBlockID types.BlockID
+	}{
+		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
+		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID},
+		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID},
+		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID},
+		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := VoteSetMaj23Message{
+				Height:  tc.messageHeight,
+				Round:   tc.messageRound,
+				Type:    tc.messageType,
+				BlockID: tc.messageBlockID,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   types.SignedMsgType = 0x01
+		invalidSignedMsgType types.SignedMsgType = 0x03
+	)
+
+	validBlockID := types.BlockID{}
+	invalidBlockID := types.BlockID{
+		Hash: cmn.HexBytes{},
+		PartsHeader: types.PartSetHeader{
+			Total: -1,
+			Hash:  cmn.HexBytes{},
+		},
+	}
+	testBitArray := cmn.NewBitArray(1)
+
+	testCases := []struct { // nolint: maligned
+		expectErr      bool
+		messageRound   int
+		messageHeight  int64
+		testName       string
+		messageType    types.SignedMsgType
+		messageBlockID types.BlockID
+		messageVotes   *cmn.BitArray
+	}{
+		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID, testBitArray},
+		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
+		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
+		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID, testBitArray},
+		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID, testBitArray},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := VoteSetBitsMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Type:   tc.messageType,
+				// Votes:   tc.messageVotes,
+				BlockID: tc.messageBlockID,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
 }
