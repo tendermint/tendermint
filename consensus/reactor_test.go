@@ -672,61 +672,75 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 }
 
 func TestNewValidBlockMessageValidateBasic(t *testing.T) {
-	testBitArray := cmn.NewBitArray(1)
 	testCases := []struct {
-		testName          string
-		messageHeight     int64
-		messageRound      int
-		messageBlockParts *cmn.BitArray
-		expectErr         bool
+		malleateFn func(*NewValidBlockMessage)
+		expErr     string
 	}{
-		{"Valid Message", 0, 0, testBitArray, false},
-		{"Invalid Message", -1, 0, testBitArray, true},
-		{"Invalid Message", 0, -1, testBitArray, true},
-		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+		{func(msg *NewValidBlockMessage) {}, ""},
+		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "Negative Height"},
+		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "Negative Round"},
+		{
+			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 2 },
+			"BlockParts bit array size 1 not equal to BlockPartsHeader.Total 2",
+		},
+		{
+			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = cmn.NewBitArray(0) },
+			"Empty BlockParts",
+		},
+		{
+			func(msg *NewValidBlockMessage) { msg.BlockParts = cmn.NewBitArray(types.MaxBlockPartsCount + 1) },
+			"BlockParts bit array size 1601 not equal to BlockPartsHeader.Total 1",
+		},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := NewValidBlockMessage{
-				Height:     tc.messageHeight,
-				Round:      tc.messageRound,
-				BlockParts: tc.messageBlockParts,
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &NewValidBlockMessage{
+				Height: 1,
+				Round:  0,
+				BlockPartsHeader: types.PartSetHeader{
+					Total: 1,
+				},
+				BlockParts: cmn.NewBitArray(1),
 			}
 
-			message.BlockPartsHeader.Total = 1
-
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
 		})
 	}
 }
 
 func TestProposalPOLMessageValidateBasic(t *testing.T) {
-	testBitArray := cmn.NewBitArray(1)
 	testCases := []struct {
-		testName                string
-		messageHeight           int64
-		messageProposalPOLRound int
-		messageProposalPOL      *cmn.BitArray
-		expectErr               bool
+		malleateFn func(*ProposalPOLMessage)
+		expErr     string
 	}{
-		{"Valid Message", 0, 0, testBitArray, false},
-		{"Invalid Message", -1, 0, testBitArray, true},
-		{"Invalid Message", 0, -1, testBitArray, true},
-		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+		{func(msg *ProposalPOLMessage) {}, ""},
+		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "Negative Height"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "Negative ProposalPOLRound"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(0) }, "Empty ProposalPOL bit array"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(types.MaxVotesCount + 1) },
+			"ProposalPOL bit array is too big: 10001, max: 10000"},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := ProposalPOLMessage{
-				Height:           tc.messageHeight,
-				ProposalPOLRound: tc.messageProposalPOLRound,
-				ProposalPOL:      tc.messageProposalPOL,
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &ProposalPOLMessage{
+				Height:           1,
+				ProposalPOLRound: 1,
+				ProposalPOL:      cmn.NewBitArray(1),
 			}
 
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
 		})
 	}
 }
@@ -847,49 +861,43 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 }
 
 func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
-	const (
-		validSignedMsgType   types.SignedMsgType = 0x01
-		invalidSignedMsgType types.SignedMsgType = 0x03
-	)
-
-	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{
-		Hash: cmn.HexBytes{},
-		PartsHeader: types.PartSetHeader{
-			Total: -1,
-			Hash:  cmn.HexBytes{},
-		},
-	}
-	testBitArray := cmn.NewBitArray(1)
-
 	testCases := []struct { // nolint: maligned
-		expectErr      bool
-		messageRound   int
-		messageHeight  int64
-		testName       string
-		messageType    types.SignedMsgType
-		messageBlockID types.BlockID
-		messageVotes   *cmn.BitArray
+		malleateFn func(*VoteSetBitsMessage)
+		expErr     string
 	}{
-		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID, testBitArray},
-		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID, testBitArray},
+		{func(msg *VoteSetBitsMessage) {}, ""},
+		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "Negative Height"},
+		{func(msg *VoteSetBitsMessage) { msg.Round = -1 }, "Negative Round"},
+		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "Invalid Type"},
+		{func(msg *VoteSetBitsMessage) {
+			msg.BlockID = types.BlockID{
+				Hash: cmn.HexBytes{},
+				PartsHeader: types.PartSetHeader{
+					Total: -1,
+					Hash:  cmn.HexBytes{},
+				},
+			}
+		}, "Wrong BlockID: Wrong PartsHeader: Negative Total"},
+		{func(msg *VoteSetBitsMessage) { msg.Votes = cmn.NewBitArray(types.MaxVotesCount + 1) },
+			"Votes bit array is too big: 10001, max: 10000"},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := VoteSetBitsMessage{
-				Height: tc.messageHeight,
-				Round:  tc.messageRound,
-				Type:   tc.messageType,
-				// Votes:   tc.messageVotes,
-				BlockID: tc.messageBlockID,
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &VoteSetBitsMessage{
+				Height:  1,
+				Round:   0,
+				Type:    0x01,
+				Votes:   cmn.NewBitArray(1),
+				BlockID: types.BlockID{},
 			}
 
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
 		})
 	}
 }
