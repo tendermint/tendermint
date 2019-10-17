@@ -1458,6 +1458,9 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 			m.BlockParts.Size(),
 			m.BlockPartsHeader.Total)
 	}
+	if m.BlockParts.Size() > types.MaxBlockPartsCount {
+		return errors.Errorf("BlockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
+	}
 	return nil
 }
 
@@ -1503,6 +1506,9 @@ func (m *ProposalPOLMessage) ValidateBasic() error {
 	}
 	if m.ProposalPOL.Size() == 0 {
 		return errors.New("Empty ProposalPOL bit array")
+	}
+	if m.ProposalPOL.Size() > types.MaxVotesCount {
+		return errors.Errorf("ProposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
 	}
 	return nil
 }
@@ -1647,6 +1653,9 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}
 	// NOTE: Votes.Size() can be zero if the node does not have any
+	if m.Votes.Size() > types.MaxVotesCount {
+		return fmt.Errorf("Votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
+	}
 	return nil
 }
 

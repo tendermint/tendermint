@@ -11,6 +11,12 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+const (
+	// MaxVotesCount is the maximum votes count. Used in ValidateBasic funcs for
+	// protection against DOS attacks.
+	MaxVotesCount = 10000
+)
+
 // UNSTABLE
 // XXX: duplicate of p2p.ID to avoid dependence between packages.
 // Perhaps we can have a minimal types package containing this (and other things?)
