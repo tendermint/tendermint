@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.31.11
+
+*October 18, 2019*
+
+This security release fixes a vulnerability found in the `consensus` package,
+where an attacker could construct a `BlockPartMessage` message in such a way
+that it will lead to consensus failure. A few similar issues have been
+identified and fixed here.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [elvishacker](https://hackerone.com/elvishacker) for finding
+and reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+  - [consensus] Modify `WAL#Write` and `WAL#WriteSync` to return an error if
+    they fail to write a message
+
+### SECURITY:
+
+- [consensus] Validate incoming messages more throughly
+
 ## v0.31.10
 
 *October 8, 2019*
