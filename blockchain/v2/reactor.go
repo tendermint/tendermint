@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -24,11 +25,30 @@ func processorHandle(event Event) (Event, error) {
 		fmt.Println("processor handle timeCheck")
 	}
 	return noOp, nil
-
 }
 
+/*
+	# What should we test
+
+	# How should we test
+		* Table based
+		* Input Events
+		* Assess reactor state
+			* maxPeerHeight
+				* from scheduler
+			* syncHeight
+				* from processor
+			* BlockSynced
+				* from processor
+			* numActivePeers
+				* from scheduler
+	# How should we share state?
+	* Option A: The FSMs (scheduler, processor, ...) export an API for secure access to their state
+	* Option B:Routines output events which get consumed by a reporter
+*/
+
 type Reactor struct {
-	events    chan Event
+	events    chan Event // XXX: Rename eventsFromPeers
 	stopDemux chan struct{}
 	scheduler *Routine
 	processor *Routine
@@ -61,36 +81,99 @@ func (r *Reactor) Start() {
 
 	<-r.scheduler.ready()
 	<-r.processor.ready()
-
-	go func() {
-		for t := range r.ticker.C {
-			r.events <- timeCheck{time: t}
-		}
-	}()
 }
 
-// XXX: How to make this deterministic?
-// XXX: Would it be possible here to provide some kind of type safety for the types
-// of events that each routine can produce and consume?
 func (r *Reactor) demux() {
+	var (
+		processBlockFreq = 1 * time.Second
+		doProcessBlockCh = make(chan struct{}, 1)
+		doProcessBlockTk = time.NewTicker(processFreq * time.Second)
+
+		pruneFreq = 1 * time.Second
+		doPruneCh = make(chan struct{}, 1)
+		doPruneTk = time.NewTicker(pruneFreq * time.Second)
+
+		scheduleFreq = 1 * time.Second
+		doScheduleCh = make(chan struct{}, 1)
+		doScheduleTk = time.NewTicker(scheduleFreq * time.Second)
+	)
+
 	for {
 		select {
+		// Pacers: send at most per freequency but don't saturate
+		case _ <- doProcessBlockTk.C:
+			select {
+			case doProcessBlockCh <- struct{}{}:
+			default:
+			}
+		case _ <- doPruneTk.C:
+			select {
+			case doPruneCh <- struct{}{}:
+			default:
+			}
+		case _ <- doPruneTk.C:
+			select {
+			case doPruneCh <- struct{}{}:
+			default:
+			}
+
+		// Tickers: perform tasks periodically
+		case _ <- doScheduleTickerCh:
+			r.scheduler.send(trySchedule{time: time.Now()})
+		case _ <- doPrunePeerCh:
+			r.scheduler.send(tryPrunePeer{time: time.Now()})
+		case _ <- doProcessBlockCh:
+			r.processor.send(pcProcessBlock{})
+
+		// Events from peers
 		case event := <-r.events:
-			// XXX: check for backpressure
-			r.scheduler.send(event)
-			r.processor.send(event)
+			switch event := event.(type) {
+			case bcStatusResponse, bcBlockRequestMessage:
+				r.setMaxPeerHeight(event.height)
+				// XXX: check for backpressure
+				r.scheduler.send(event)
+			}
+
+		// Incremental events form scheduler
+		case event := <-r.scheduler.next():
+			switch event := event.(type) {
+			case *scBlockReceived:
+				r.processor.send(event)
+			case scPeerError:
+				r.processor.send(event)
+				r.swReporter.Report(behaviour.BadMessage(event.peerID, event.reason))
+			case scBlockRequest:
+				sent := r.io.sendBlockRequest(event.peerID, event.height)
+				if !sent {
+					// backpressure
+				}
+			}
+
+		// Incremental events from processor
+		case event := <-r.processor.next():
+			// io.handle reportPeerError
+			switch event := event.(type) {
+			case pcBlockProcessed:
+				r.setSyncHeight(event.height)
+			case pcBlockVerificationFailure:
+				r.scheduler.send(event)
+			}
+
+		// Terminal events from scheduler
+		case err := <-r.scheduler.final():
+			r.logger.Info(fmt.Sprintf("scheduler final %s", err))
+			// send the processor stop?
+
+		// Terminal event from processor
+		case err := <-r.processor.final():
+			r.logger.Info(fmt.Sprintf("processor final %s", err))
+			if event.(pcFinished) {
+				r.io.switchToConsensus(event.state, event.blocksSynced)
+				// Stop the demuxer here?
+			}
 		case <-r.stopDemux:
 			r.logger.Info("demuxing stopped")
 			return
-		case event := <-r.scheduler.next():
-			r.processor.send(event)
-		case event := <-r.processor.next():
-			r.scheduler.send(event)
-		case err := <-r.scheduler.final():
-			r.logger.Info(fmt.Sprintf("scheduler final %s", err))
-		case err := <-r.processor.final():
-			r.logger.Info(fmt.Sprintf("processor final %s", err))
-			// XXX: switch to consensus
 		}
 	}
 }
