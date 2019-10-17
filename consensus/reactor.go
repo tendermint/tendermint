@@ -1453,6 +1453,9 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 	if err := m.BlockPartsHeader.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
 	}
+	if m.BlockParts.Size() == 0 {
+		return errors.New("Empty BlockParts")
+	}
 	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
 		return fmt.Errorf("BlockParts bit array size %d not equal to BlockPartsHeader.Total %d",
 			m.BlockParts.Size(),
