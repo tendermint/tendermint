@@ -35,10 +35,10 @@ client if they have two-thirds of the private keys from the last root-of-trust.
 ===
 
 TODO:
-- documentation
-- auto update (will need a mutex to avoid races)
+- better documentation
 - cross-checking primary using alternative providers (will need a mutex to avoid races)
 - how many headers to store
 - evidence handling and submission
+- proxy webserver
 */
 package lite
