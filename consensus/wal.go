@@ -210,7 +210,9 @@ type WALSearchOptions struct {
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
-func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+func (wal *baseWAL) SearchForEndHeight(
+	height int64,
+	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	var (
 		msg *TimedWALMessage
 		gr  *auto.GroupReader
@@ -355,7 +357,10 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	length := binary.BigEndian.Uint32(b)
 
 	if length > maxMsgSizeBytes {
-		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)}
+		return nil, DataCorruptionError{fmt.Errorf(
+			"length %d exceeded maximum possible value of %d bytes",
+			length,
+			maxMsgSizeBytes)}
 	}
 
 	data := make([]byte, length)

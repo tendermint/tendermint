@@ -21,7 +21,7 @@ linters:
     - govet
     - ineffassign
     - interfacer
-    # - lll
+    - lll
     - misspell
     - maligned
     - nakedret
@@ -40,6 +40,12 @@ linters:
     # - gocognit
   disable:
     - errcheck
+
+issues:
+  exclude-rules:
+  - linters:
+      - lll
+    source: "https://"
 
 linters-settings:
   dogsled:

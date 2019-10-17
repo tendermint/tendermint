@@ -303,7 +303,8 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	now := time.Now()
 	minInterval := r.minReceiveRequestInterval()
 	if now.Sub(lastReceived) < minInterval {
-		return fmt.Errorf("peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
+		return fmt.Errorf(
+			"peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
 			src.ID(),
 			lastReceived,
 			now,

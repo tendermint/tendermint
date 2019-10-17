@@ -44,7 +44,13 @@ type Mempool interface {
 	// Update informs the mempool that the given txs were committed and can be discarded.
 	// NOTE: this should be called *after* block is committed by consensus.
 	// NOTE: unsafe; Lock/Unlock must be managed by caller
-	Update(blockHeight int64, blockTxs types.Txs, deliverTxResponses []*abci.ResponseDeliverTx, newPreFn PreCheckFunc, newPostFn PostCheckFunc) error
+	Update(
+		blockHeight int64,
+		blockTxs types.Txs,
+		deliverTxResponses []*abci.ResponseDeliverTx,
+		newPreFn PreCheckFunc,
+		newPostFn PostCheckFunc,
+	) error
 
 	// FlushAppConn flushes the mempool connection to ensure async reqResCb calls are
 	// done. E.g. from CheckTx.

@@ -317,7 +317,11 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 func TestReactorVotingPowerChange(t *testing.T) {
 	nVals := 4
 	logger := log.TestingLogger()
-	css, cleanup := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	css, cleanup := randConsensusNet(
+		nVals,
+		"consensus_voting_power_changes_test",
+		newMockTickerFunc(true),
+		newPersistentKVStore)
 	defer cleanup()
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nVals)
 	defer stopConsensusNet(logger, reactors, eventBuses)
@@ -348,7 +352,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
@@ -360,7 +367,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
@@ -372,14 +382,22 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, _, _, cleanup := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+	css, _, _, cleanup := randConsensusNetWithPeers(
+		nVals,
+		nPeers,
+		"consensus_val_set_changes_test",
+		newMockTickerFunc(true),
+		newPersistentKVStoreWithPath)
 
 	defer cleanup()
 	logger := log.TestingLogger()
@@ -440,7 +458,10 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 
 	if css[nVals].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Errorf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[nVals].GetRoundState().LastValidators.TotalVotingPower())
+		t.Errorf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[nVals].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	//---------------------------------------------------------------------------
@@ -570,7 +591,10 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP
 			} else {
-				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block with no new validators. Skipping", "height", newBlock.Height)
+				css[j].Logger.Debug(
+					"waitForBlockWithUpdatedValsAndValidateIt: Got block with no new validators. Skipping",
+					"height",
+					newBlock.Height)
 			}
 		}
 
@@ -582,7 +606,10 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 // expects high synchrony!
 func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	if block.LastCommit.Size() != len(activeVals) {
-		return fmt.Errorf("Commit size doesn't match number of active validators. Got %d, expected %d", block.LastCommit.Size(), len(activeVals))
+		return fmt.Errorf(
+			"Commit size doesn't match number of active validators. Got %d, expected %d",
+			block.LastCommit.Size(),
+			len(activeVals))
 	}
 
 	for _, vote := range block.LastCommit.Precommits {

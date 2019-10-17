@@ -414,7 +414,10 @@ func (c *WSClient) writeRoutine() {
 		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit():
-			if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			if err := c.conn.WriteMessage(
+				websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+			); err != nil {
 				c.Logger.Error("failed to write message", "err", err)
 			}
 			return

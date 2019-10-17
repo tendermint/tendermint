@@ -379,7 +379,10 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 // 'updates' should be a list of proper validator changes, i.e. they have been verified
 // by processChanges for duplicates and invalid values.
 // No changes are made to the validator set 'vals'.
-func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVotingPower int64, numNewValidators int, err error) {
+func verifyUpdates(
+	updates []*Validator,
+	vals *ValidatorSet,
+) (updatedTotalVotingPower int64, numNewValidators int, err error) {
 
 	updatedTotalVotingPower = vals.TotalVotingPower()
 

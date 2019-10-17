@@ -54,7 +54,8 @@ func TestRPCParams(t *testing.T) {
 		// bad
 		{`{"jsonrpc": "2.0", "id": "0"}`, "Method not found", types.JSONRPCStringID("0")},
 		{`{"jsonrpc": "2.0", "method": "y", "id": "0"}`, "Method not found", types.JSONRPCStringID("0")},
-		{`{"method": "c", "id": "0", "params": a}`, "invalid character", types.JSONRPCStringID("")}, // id not captured in JSON parsing failures
+		// id not captured in JSON parsing failures
+		{`{"method": "c", "id": "0", "params": a}`, "invalid character", types.JSONRPCStringID("")},
 		{`{"method": "c", "id": "0", "params": ["a"]}`, "got 1", types.JSONRPCStringID("0")},
 		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "invalid character", types.JSONRPCStringID("0")},
 		{`{"method": "c", "id": "0", "params": [1, 1]}`, "of type string", types.JSONRPCStringID("0")},
@@ -253,7 +254,12 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	}
 
 	// check basic functionality works
-	req, err := types.MapToRequest(amino.NewCodec(), types.JSONRPCStringID("TestWebsocketManager"), "c", map[string]interface{}{"s": "a", "i": 10})
+	req, err := types.MapToRequest(
+		amino.NewCodec(),
+		types.JSONRPCStringID("TestWebsocketManager"),
+		"c",
+		map[string]interface{}{"s": "a", "i": 10},
+	)
 	require.NoError(t, err)
 	err = c.WriteJSON(req)
 	require.NoError(t, err)
