@@ -135,7 +135,7 @@ func TestWALWrite(t *testing.T) {
 	}
 	err = wal.Write(msg)
 	if assert.Error(t, err) {
-		assert.Equal(t, "msg is too big: 1048593 bytes, max: 1048576 bytes", err.Error())
+		assert.Contains(t, err.Error(), "msg is too big")
 	}
 }
 
