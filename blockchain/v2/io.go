@@ -1,64 +1,60 @@
 package v2
 
-import "github.com/tendermint/tendermint/p2p"
+import (
+	"fmt"
 
-/*
-Mocking out IO
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/state"
+)
 
-	* Should we include an IO routine?
-	* Advantage: We Can Mock it out for integration tests
-
-	What would the IO routine do?
-		* sendStatusRequest
-		* sendBlockRequest
-		* reportPeerError
-*/
-
-/*
-Dependencies:
-* switch:
-	Reactor("CONSENSUS")
-	Peers().Get(peerID)
-	sendBlockRequest
-		Switch.Peers()(peerID)
-
-*/
-type io struct {
+type iIo interface {
+	sendBlockRequest(peerID p2p.ID, height int64) error
+	switchToConsensus(state state.State, blocksSynced int)
+	broadcastStatusRequest(height int64)
 }
 
-func (i *io) sendBlockRequest(peerID p2p.ID, height int64) error {
-	peer := bcR.Switch.Peers().Get(peerID)
+type switchIo struct {
+	sw p2p.Switch
+}
+
+const (
+	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
+	BlockchainChannel = byte(0x40)
+)
+
+type bcStatusRequestMessage struct {
+	Height int64
+}
+
+type consensusReactor interface {
+	// for when we switch from blockchain reactor and fast sync to
+	// the consensus machine
+	SwitchToConsensus(state.State, int)
+}
+
+func (sio *switchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
+	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
-		return errNilPeerForBlockRequest
+		return fmt.Errorf("peer not found")
 	}
 
-	msgBytes := cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{height})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{Height: height})
 	queued := peer.TrySend(BlockchainChannel, msgBytes)
 	if !queued {
-		return errSendQueueFull
+		return fmt.Errorf("send queue full")
 	}
 	return nil
 }
 
-func (i *io) sendStatusRequest() {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.store.Height()})
-	i.Switch.Broadcast(BlockchainChannel, msgBytes)
-}
-
-func (bcR *BlockchainReactor) switchToConsensus() {
-	conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
+func (sio *switchIo) switchToConsensus(state state.State, blocksSynced int) {
+	conR, ok := sio.sw.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
-		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced)
-		bcR.eventsFromFSMCh <- bcFsmMessage{event: syncFinishedEv}
+		conR.SwitchToConsensus(state, blocksSynced)
 	}
-	// else {
-	// Should only happen during testing.
-	// }
 }
 
-// XXX: Broadcast status?
-// XXX: should take a height instead of
-func (bcR *BlockchainReactor) sendStatusRequest() {
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.store.Height()})
-	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
+func (sio *switchIo) broadcastStatusRequest(height int64) {
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{height})
+	// XXX: maybe we should use an io specific peer list here
+	sio.sw.Broadcast(BlockchainChannel, msgBytes)
 }

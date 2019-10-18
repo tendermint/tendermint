@@ -2,11 +2,18 @@ package v2
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/state"
 )
+
+type bcBlockRequestMessage struct {
+	priorityNormal
+	Height int64 // XXX: could this be private?
+}
 
 type timeCheck struct {
 	priorityHigh
@@ -27,26 +34,6 @@ func processorHandle(event Event) (Event, error) {
 	return noOp, nil
 }
 
-/*
-	# What should we test
-
-	# How should we test
-		* Table based
-		* Input Events
-		* Assess reactor state
-			* maxPeerHeight
-				* from scheduler
-			* syncHeight
-				* from processor
-			* BlockSynced
-				* from processor
-			* numActivePeers
-				* from scheduler
-	# How should we share state?
-	* Option A: The FSMs (scheduler, processor, ...) export an API for secure access to their state
-	* Option B:Routines output events which get consumed by a reporter
-*/
-
 type Reactor struct {
 	events    chan Event // XXX: Rename eventsFromPeers
 	stopDemux chan struct{}
@@ -54,6 +41,14 @@ type Reactor struct {
 	processor *Routine
 	ticker    *time.Ticker
 	logger    log.Logger
+
+	mtx           sync.RWMutex
+	maxPeerHeight int64
+	syncHeight    int64
+
+	swReporter *behaviour.SwitchReporter
+	io         iIo
+	state      state.State
 }
 
 func NewReactor(bufferSize int) *Reactor {
@@ -65,6 +60,33 @@ func NewReactor(bufferSize int) *Reactor {
 		ticker:    time.NewTicker(1 * time.Second),
 		logger:    log.NewNopLogger(),
 	}
+}
+
+// State
+func (r *Reactor) setMaxPeerHeight(height int64) {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+	if height > r.maxPeerHeight {
+		r.maxPeerHeight = height
+	}
+}
+
+func (r *Reactor) MaxPeerHeight() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+	return r.maxPeerHeight
+}
+
+func (r *Reactor) setSyncHeight(height int64) {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+	r.syncHeight = height
+}
+
+func (r *Reactor) SyncHeight() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+	return r.syncHeight
 }
 
 // nolint:unused
@@ -87,50 +109,52 @@ func (r *Reactor) demux() {
 	var (
 		processBlockFreq = 1 * time.Second
 		doProcessBlockCh = make(chan struct{}, 1)
-		doProcessBlockTk = time.NewTicker(processFreq * time.Second)
+		doProcessBlockTk = time.NewTicker(processBlockFreq * time.Second)
 
-		pruneFreq = 1 * time.Second
-		doPruneCh = make(chan struct{}, 1)
-		doPruneTk = time.NewTicker(pruneFreq * time.Second)
+		prunePeerFreq = 1 * time.Second
+		doPrunePeerCh = make(chan struct{}, 1)
+		doPrunePeerTk = time.NewTicker(prunePeerFreq * time.Second)
 
 		scheduleFreq = 1 * time.Second
 		doScheduleCh = make(chan struct{}, 1)
 		doScheduleTk = time.NewTicker(scheduleFreq * time.Second)
+		// XXX: add broadcastStatusRequest
 	)
 
 	for {
 		select {
 		// Pacers: send at most per freequency but don't saturate
-		case _ <- doProcessBlockTk.C:
+		case <-doProcessBlockTk.C:
 			select {
 			case doProcessBlockCh <- struct{}{}:
 			default:
 			}
-		case _ <- doPruneTk.C:
+		case <-doPrunePeerTk.C:
 			select {
-			case doPruneCh <- struct{}{}:
+			case doPrunePeerCh <- struct{}{}:
 			default:
 			}
-		case _ <- doPruneTk.C:
+		case <-doScheduleTk.C:
 			select {
-			case doPruneCh <- struct{}{}:
+			case doScheduleCh <- struct{}{}:
 			default:
 			}
 
 		// Tickers: perform tasks periodically
-		case _ <- doScheduleTickerCh:
+		case <-doScheduleCh:
 			r.scheduler.send(trySchedule{time: time.Now()})
-		case _ <- doPrunePeerCh:
+		case <-doPrunePeerCh:
 			r.scheduler.send(tryPrunePeer{time: time.Now()})
-		case _ <- doProcessBlockCh:
+		case <-doProcessBlockCh:
 			r.processor.send(pcProcessBlock{})
 
 		// Events from peers
 		case event := <-r.events:
 			switch event := event.(type) {
-			case bcStatusResponse, bcBlockRequestMessage:
+			case bcStatusResponse:
 				r.setMaxPeerHeight(event.height)
-				// XXX: check for backpressure
+				r.scheduler.send(event)
+			case bcBlockRequestMessage:
 				r.scheduler.send(event)
 			}
 
@@ -141,12 +165,9 @@ func (r *Reactor) demux() {
 				r.processor.send(event)
 			case scPeerError:
 				r.processor.send(event)
-				r.swReporter.Report(behaviour.BadMessage(event.peerID, event.reason))
+				r.swReporter.Report(behaviour.BadMessage(event.peerID, "scPeerError"))
 			case scBlockRequest:
-				sent := r.io.sendBlockRequest(event.peerID, event.height)
-				if !sent {
-					// backpressure
-				}
+				r.io.sendBlockRequest(event.peerID, event.height)
 			}
 
 		// Incremental events from processor
@@ -155,6 +176,7 @@ func (r *Reactor) demux() {
 			switch event := event.(type) {
 			case pcBlockProcessed:
 				r.setSyncHeight(event.height)
+				r.scheduler.send(event)
 			case pcBlockVerificationFailure:
 				r.scheduler.send(event)
 			}
@@ -165,11 +187,12 @@ func (r *Reactor) demux() {
 			// send the processor stop?
 
 		// Terminal event from processor
-		case err := <-r.processor.final():
-			r.logger.Info(fmt.Sprintf("processor final %s", err))
-			if event.(pcFinished) {
-				r.io.switchToConsensus(event.state, event.blocksSynced)
-				// Stop the demuxer here?
+		case event := <-r.processor.final():
+			r.logger.Info(fmt.Sprintf("processor final %s", event))
+			event, ok := event.(pcFinished)
+			if ok {
+				// TODO
+				//r.io.switchToConsensus(r.state, event.blocksSynced)
 			}
 		case <-r.stopDemux:
 			r.logger.Info("demuxing stopped")
@@ -193,6 +216,7 @@ func (r *Reactor) Stop() {
 func (r *Reactor) Receive(event Event) {
 	// XXX: decode and serialize write events
 	// TODO: backpressure
+	// what about send block?
 	r.events <- event
 }
 
