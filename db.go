@@ -32,7 +32,7 @@ const (
 	//   - may be faster is some use-cases (random reads - indexer)
 	//   - use boltdb build tag (go build -tags boltdb)
 	BoltDBBackend DBBackendType = "boltdb"
-	// RocksDBBackend represents rocksdb (uses Stumble fork github.com/stumble/gorocksdb of the tecbot wrapper)
+	// RocksDBBackend represents rocksdb (uses github.com/tecbot/gorocksdb)
 	//   - EXPERIMENTAL
 	//   - requires gcc
 	//   - use rocksdb build tag (go build -tags rocksdb)
