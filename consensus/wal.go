@@ -20,7 +20,7 @@ import (
 
 const (
 	// must be greater than types.BlockPartSizeBytes + a few bytes
-	maxMsgSizeBytes = 1024 * 1024 // 1MB
+	maxMsgSizeBytes = types.BlockPartSizeBytes * 2
 
 	// how often the WAL should be sync'd during period sync'ing
 	walDefaultFlushInterval = 2 * time.Second
