@@ -16,7 +16,7 @@ const (
 	BlockPartSizeBytes = 65536 // 64kB
 
 	// MaxBlockPartsCount is the maximum count of block parts.
-	MaxBlockPartsCount = MaxBlockSizeBytes / BlockPartSizeBytes
+	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 )
 
 // ConsensusParams contains consensus critical parameters that determine the
