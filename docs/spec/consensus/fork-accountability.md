@@ -187,7 +187,7 @@ Validators:
 Execution:
 * for the main chain F behaves nicely
 * F coordinates to sign a block B that is different from the one on the main chain.
-* the lite clients obtains B and trusts at as it is signed by more and 2/3 of the voting power.
+* the lite clients obtains B and trusts at as it is signed by more than 2/3 of the voting power.
 
 Consequences:
 
@@ -251,11 +251,11 @@ Consequences:
 Only in case they signed something which conflicts with the application this can be used against them. Otherwise they do not do anything incorrect.
 * This case is not covered by the report https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing as it only assumes at most 2/3 of faulty validators.
 
-**Q:** do we need to define a special kind of attack for the case where a validator sign arbitrarily state? It seems that detecting such attack requires different mechanism that would require as an evidence a sequence of blocks that lead to that state. This might be very tricky to implement.
+**Q:** do we need to define a special kind of attack for the case where a validator sign arbitrarily state? It seems that detecting such attack requires a different mechanism that would require as an evidence a sequence of blocks that led to that state. This might be very tricky to implement.
 
 ### Back to the past
 
-In this kind of attacks faulty validators take advantage of the fact that they did not sign messages in some of the past rounds. Due to the asynchronous network in which Tendermint operates, we cannot easily differentiate between such an attack and delayed message. This kind of attack can be used at both full nodes and lite clients.
+In this kind of attack, faulty validators take advantage of the fact that they did not sign messages in some of the past rounds. Due to the asynchronous network in which Tendermint operates, we cannot easily differentiate between such an attack and delayed message. This kind of attack can be used at both full nodes and lite clients.
 
 #### Scenario 5:
 
@@ -271,7 +271,7 @@ Validators:
 Execution:
 
 * in a round *r* of height *h* we have C1 precommitting a value A,
-* C2  precommits nil,
+* C2 precommits nil,
 * F does not send any message
 * *q* precommits nil.
 * In some round *r' > r*, F and *q* and C2 commit some other value B different from A.
@@ -283,7 +283,7 @@ Consequences:
 
 * Only a single faulty validator that previously precommited nil did equivocation, while the other 1/3 of faulty validators actually executed an attack that has exactly the same sequence of messages as part of amnesia attack. Detecting this kind of attack boil down to mechanisms for equivocation and amnesia.
 
-**Q:** should we keep this as a separate kind of attack? It seems that equivocation, amnesia and phantom validators are the only kind of attack we need to support and this gives us security also in other cases. This would not be surprising as equivocation and amnesia are attacks that followed from the protocol and phantom attack is not really an attack to Tendermint but more to the Proof of stake module.
+**Q:** should we keep this as a separate kind of attack? It seems that equivocation, amnesia and phantom validators are the only kind of attack we need to support and this gives us security also in other cases. This would not be surprising as equivocation and amnesia are attacks that followed from the protocol and phantom attack is not really an attack to Tendermint but more to the Proof of Stake module.
 
 ### Phantom validators
 
@@ -296,19 +296,19 @@ Validators:
 
 Execution:
 
-* There is a fork, and there exists two different headers for height *h + k*, with different validator sets:
+* There is a fork, and there exist two different headers for height *h + k*, with different validator sets:
   - VS2 on the main chain
   - forged header VS2', signed by F (and others)
 
 * a lite client has a trust in a header for height *h* (and the corresponding validator set VS1).
-* As part of bisection header verification, it verifies header at height *h + k* with new validator set VS2'.
+* As part of bisection header verification, it verifies the header at height *h + k* with new validator set VS2'.
 
 Consequences:
 
 * To detect this, a node needs to see both, the forged header and the canonical header from the chain.
 * If this is the case, detecting these kind of attacks is easy as it just requires verifying if processes are signing messages in heights in which they are not part of the validator set.  
 
-**Remark.** We can have phantom-validator-based attacks as a follow up of equivocation or amnesia based attack where forked state contains validators that are not part of the validator set at the main chain. In this case, they keep signing messages contributed to a forked chain (the wrong branch) although they are not part of the validator set on the main chain. This attack can also be used to attack full node during a period of time he is eclipsed.
+**Remark.** We can have phantom-validator-based attacks as a follow up of equivocation or amnesia based attack where forked state contains validators that are not part of the validator set at the main chain. In this case, they keep signing messages contributed to a forked chain (the wrong branch) although they are not part of the validator set on the main chain. This attack can also be used to attack full node during a period of time it is eclipsed.
 
 ### Lunatic validator
 
@@ -316,4 +316,4 @@ Lunatic validator agrees to sign commit messages for arbitrary application state
 Note that detecting this behavior require application knowledge. Detecting this behavior can probably be done by
 referring to the block before the one in which height happen.  
 
-**Q:** can we say that in this case a validator ignore to check if proposed value is valid before voting for it?
+**Q:** can we say that in this case a validator declines to check if a proposed value is valid before voting for it?
