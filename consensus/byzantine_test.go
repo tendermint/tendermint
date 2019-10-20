@@ -206,7 +206,15 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Stat
 	}
 }
 
-func sendProposalAndParts(height int64, round int, cs *State, peer p2p.Peer, proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
+func sendProposalAndParts(
+	height int64,
+	round int,
+	cs *State,
+	peer p2p.Peer,
+	proposal *types.Proposal,
+	blockHash []byte,
+	parts *types.PartSet,
+) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
 	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))

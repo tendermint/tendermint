@@ -175,7 +175,12 @@ func TestValUpdates(t *testing.T) {
 
 }
 
-func makeApplyBlock(t *testing.T, kvstore types.Application, heightInt int, diff []types.ValidatorUpdate, txs ...[]byte) {
+func makeApplyBlock(
+	t *testing.T,
+	kvstore types.Application,
+	heightInt int,
+	diff []types.ValidatorUpdate,
+	txs ...[]byte) {
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")

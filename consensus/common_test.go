@@ -77,7 +77,10 @@ func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 	}
 }
 
-func (vs *validatorStub) signVote(voteType types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+func (vs *validatorStub) signVote(
+	voteType types.SignedMsgType,
+	hash []byte,
+	header types.PartSetHeader) (*types.Vote, error) {
 	addr := vs.PrivValidator.GetPubKey().Address()
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,
@@ -101,7 +104,11 @@ func signVote(vs *validatorStub, voteType types.SignedMsgType, hash []byte, head
 	return v
 }
 
-func signVotes(voteType types.SignedMsgType, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
+func signVotes(
+	voteType types.SignedMsgType,
+	hash []byte,
+	header types.PartSetHeader,
+	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
 		votes[i] = signVote(vs, voteType, hash, header)
@@ -148,7 +155,12 @@ func startTestRound(cs *State, height int64, round int) {
 }
 
 // Create proposal block from cs1 but sign it with vs.
-func decideProposal(cs1 *State, vs *validatorStub, height int64, round int) (proposal *types.Proposal, block *types.Block) {
+func decideProposal(
+	cs1 *State,
+	vs *validatorStub,
+	height int64,
+	round int,
+) (proposal *types.Proposal, block *types.Block) {
 	cs1.mtx.Lock()
 	block, blockParts := cs1.createProposalBlock()
 	validRound := cs1.ValidRound
@@ -173,7 +185,13 @@ func addVotes(to *State, votes ...*types.Vote) {
 	}
 }
 
-func signAddVotes(to *State, voteType types.SignedMsgType, hash []byte, header types.PartSetHeader, vss ...*validatorStub) {
+func signAddVotes(
+	to *State,
+	voteType types.SignedMsgType,
+	hash []byte,
+	header types.PartSetHeader,
+	vss ...*validatorStub,
+) {
 	votes := signVotes(voteType, hash, header, vss...)
 	addVotes(to, votes...)
 }
@@ -208,7 +226,15 @@ func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, bloc
 	}
 }
 
-func validatePrecommit(t *testing.T, cs *State, thisRound, lockRound int, privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
+func validatePrecommit(
+	t *testing.T,
+	cs *State,
+	thisRound,
+	lockRound int,
+	privVal *validatorStub,
+	votedBlockHash,
+	lockedBlockHash []byte,
+) {
 	precommits := cs.Votes.Precommits(thisRound)
 	address := privVal.GetPubKey().Address()
 	var vote *types.Vote
@@ -228,17 +254,34 @@ func validatePrecommit(t *testing.T, cs *State, thisRound, lockRound int, privVa
 
 	if lockedBlockHash == nil {
 		if cs.LockedRound != lockRound || cs.LockedBlock != nil {
-			panic(fmt.Sprintf("Expected to be locked on nil at round %d. Got locked at round %d with block %v", lockRound, cs.LockedRound, cs.LockedBlock))
+			panic(fmt.Sprintf(
+				"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
+				lockRound,
+				cs.LockedRound,
+				cs.LockedBlock))
 		}
 	} else {
 		if cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash) {
-			panic(fmt.Sprintf("Expected block to be locked on round %d, got %d. Got locked block %X, expected %X", lockRound, cs.LockedRound, cs.LockedBlock.Hash(), lockedBlockHash))
+			panic(fmt.Sprintf(
+				"Expected block to be locked on round %d, got %d. Got locked block %X, expected %X",
+				lockRound,
+				cs.LockedRound,
+				cs.LockedBlock.Hash(),
+				lockedBlockHash))
 		}
 	}
 
 }
 
-func validatePrevoteAndPrecommit(t *testing.T, cs *State, thisRound, lockRound int, privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
+func validatePrevoteAndPrecommit(
+	t *testing.T,
+	cs *State,
+	thisRound,
+	lockRound int,
+	privVal *validatorStub,
+	votedBlockHash,
+	lockedBlockHash []byte,
+) {
 	// verify the prevote
 	validatePrevote(t, cs, thisRound, privVal, votedBlockHash)
 	// verify precommit
@@ -273,12 +316,23 @@ func newState(state sm.State, pv types.PrivValidator, app abci.Application) *Sta
 	return newStateWithConfig(config, state, pv, app)
 }
 
-func newStateWithConfig(thisConfig *cfg.Config, state sm.State, pv types.PrivValidator, app abci.Application) *State {
+func newStateWithConfig(
+	thisConfig *cfg.Config,
+	state sm.State,
+	pv types.PrivValidator,
+	app abci.Application,
+) *State {
 	blockDB := dbm.NewMemDB()
 	return newStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockDB)
 }
 
-func newStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.State, pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *State {
+func newStateWithConfigAndBlockStore(
+	thisConfig *cfg.Config,
+	state sm.State,
+	pv types.PrivValidator,
+	app abci.Application,
+	blockDB dbm.DB,
+) *State {
 	// Get BlockStore
 	blockStore := store.NewBlockStore(blockDB)
 
@@ -597,7 +651,13 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func(string) abci.Application) ([]*State, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
+func randConsensusNetWithPeers(
+	nValidators,
+	nPeers int,
+	testName string,
+	tickerFunc func() TimeoutTicker,
+	appFunc func(string) abci.Application,
+) ([]*State, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
 	logger := consensusLogger()
@@ -631,7 +691,8 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
-			state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version. If don't do this, replay test will fail
+			// simulate handshake, receive app version. If don't do this, replay test will fail
+			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 		//sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above

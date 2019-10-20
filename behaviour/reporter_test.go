@@ -131,9 +131,24 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 		}{
 			{"1", []bh.PeerBehaviour{bh.ConsensusVote("1", "")}},
 			{"2", []bh.PeerBehaviour{bh.ConsensusVote("2", ""), bh.ConsensusVote("2", ""), bh.ConsensusVote("2", "")}},
-			{"3", []bh.PeerBehaviour{bh.BlockPart("3", ""), bh.ConsensusVote("3", ""), bh.BlockPart("3", ""), bh.ConsensusVote("3", "")}},
-			{"4", []bh.PeerBehaviour{bh.ConsensusVote("4", ""), bh.ConsensusVote("4", ""), bh.ConsensusVote("4", ""), bh.ConsensusVote("4", "")}},
-			{"5", []bh.PeerBehaviour{bh.BlockPart("5", ""), bh.ConsensusVote("5", ""), bh.BlockPart("5", ""), bh.ConsensusVote("5", "")}},
+			{
+				"3",
+				[]bh.PeerBehaviour{bh.BlockPart("3", ""),
+					bh.ConsensusVote("3", ""),
+					bh.BlockPart("3", ""),
+					bh.ConsensusVote("3", "")}},
+			{
+				"4",
+				[]bh.PeerBehaviour{bh.ConsensusVote("4", ""),
+					bh.ConsensusVote("4", ""),
+					bh.ConsensusVote("4", ""),
+					bh.ConsensusVote("4", "")}},
+			{
+				"5",
+				[]bh.PeerBehaviour{bh.BlockPart("5", ""),
+					bh.ConsensusVote("5", ""),
+					bh.BlockPart("5", ""),
+					bh.ConsensusVote("5", "")}},
 		}
 	)
 

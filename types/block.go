@@ -355,7 +355,8 @@ type Header struct {
 	NextValidatorsHash cmn.HexBytes `json:"next_validators_hash"` // validators for the next block
 	ConsensusHash      cmn.HexBytes `json:"consensus_hash"`       // consensus params for current block
 	AppHash            cmn.HexBytes `json:"app_hash"`             // state after txs from the previous block
-	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
+	// root hash of all results from the txs from the previous block
+	LastResultsHash cmn.HexBytes `json:"last_results_hash"`
 
 	// consensus info
 	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block

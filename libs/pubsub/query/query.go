@@ -120,26 +120,36 @@ func (q *Query) Conditions() []Condition {
 			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
-					panic(fmt.Sprintf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)", err, number))
+					panic(fmt.Sprintf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)",
+						err,
+						number))
 				}
 				conditions = append(conditions, Condition{tag, op, value})
 			} else {
 				value, err := strconv.ParseInt(number, 10, 64)
 				if err != nil {
-					panic(fmt.Sprintf("got %v while trying to parse %s as int64 (should never happen if the grammar is correct)", err, number))
+					panic(fmt.Sprintf("got %v while trying to parse %s as int64 (should never happen if the grammar is correct)",
+						err,
+						number))
 				}
 				conditions = append(conditions, Condition{tag, op, value})
 			}
 		case ruletime:
 			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf("got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)", err, buffer[begin:end]))
+				panic(fmt.Sprintf(
+					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)",
+					err,
+					buffer[begin:end]))
 			}
 			conditions = append(conditions, Condition{tag, op, value})
 		case ruledate:
 			value, err := time.Parse("2006-01-02", buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf("got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)", err, buffer[begin:end]))
+				panic(fmt.Sprintf(
+					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)",
+					err,
+					buffer[begin:end]))
 			}
 			conditions = append(conditions, Condition{tag, op, value})
 		}
@@ -199,7 +209,10 @@ func (q *Query) Matches(events map[string][]string) bool {
 			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
-					panic(fmt.Sprintf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)", err, number))
+					panic(fmt.Sprintf(
+						"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)",
+						err,
+						number))
 				}
 				if !match(tag, op, reflect.ValueOf(value), events) {
 					return false
@@ -207,7 +220,10 @@ func (q *Query) Matches(events map[string][]string) bool {
 			} else {
 				value, err := strconv.ParseInt(number, 10, 64)
 				if err != nil {
-					panic(fmt.Sprintf("got %v while trying to parse %s as int64 (should never happen if the grammar is correct)", err, number))
+					panic(fmt.Sprintf(
+						"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)",
+						err,
+						number))
 				}
 				if !match(tag, op, reflect.ValueOf(value), events) {
 					return false
@@ -216,7 +232,10 @@ func (q *Query) Matches(events map[string][]string) bool {
 		case ruletime:
 			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf("got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)", err, buffer[begin:end]))
+				panic(fmt.Sprintf(
+					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)",
+					err,
+					buffer[begin:end]))
 			}
 			if !match(tag, op, reflect.ValueOf(value), events) {
 				return false
@@ -224,7 +243,10 @@ func (q *Query) Matches(events map[string][]string) bool {
 		case ruledate:
 			value, err := time.Parse("2006-01-02", buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf("got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)", err, buffer[begin:end]))
+				panic(fmt.Sprintf(
+					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)",
+					err,
+					buffer[begin:end]))
 			}
 			if !match(tag, op, reflect.ValueOf(value), events) {
 				return false

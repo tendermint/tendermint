@@ -488,7 +488,13 @@ func deepcpVote(vote *types.Vote) (res *types.Vote) {
 	return
 }
 
-func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *types.Vote, chainID string) types.DuplicateVoteEvidence {
+func newEvidence(
+	t *testing.T,
+	val *privval.FilePV,
+	vote *types.Vote,
+	vote2 *types.Vote,
+	chainID string,
+) types.DuplicateVoteEvidence {
 	var err error
 	deepcpVote2 := deepcpVote(vote2)
 	deepcpVote2.Signature, err = val.Key.PrivKey.Sign(deepcpVote2.SignBytes(chainID))
@@ -501,7 +507,11 @@ func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *typ
 	}
 }
 
-func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.DuplicateVoteEvidence, fakes []types.DuplicateVoteEvidence) {
+func makeEvidences(
+	t *testing.T,
+	val *privval.FilePV,
+	chainID string,
+) (ev types.DuplicateVoteEvidence, fakes []types.DuplicateVoteEvidence) {
 	vote := &types.Vote{
 		ValidatorAddress: val.Key.Address,
 		ValidatorIndex:   0,

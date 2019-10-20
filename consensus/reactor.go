@@ -137,8 +137,9 @@ func (conR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			RecvMessageCapacity: maxMsgSize,
 		},
 		{
-			ID:                  DataChannel, // maybe split between gossiping current block and catchup stuff
-			Priority:            10,          // once we gossip the whole block there's nothing left to send until next height or round
+			ID: DataChannel, // maybe split between gossiping current block and catchup stuff
+			// once we gossip the whole block there's nothing left to send until next height or round
+			Priority:            10,
 			SendQueueCapacity:   100,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: maxMsgSize,
@@ -670,7 +671,12 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *Reactor) gossipVotesForHeight(logger log.Logger, rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
+func (conR *Reactor) gossipVotesForHeight(
+	logger log.Logger,
+	rs *cstypes.RoundState,
+	prs *cstypes.PeerRoundState,
+	ps *PeerState,
+) bool {
 
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
@@ -1119,7 +1125,13 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValida
 		NOTE: This is wrong, 'round' could change.
 		e.g. if orig round is not the same as block LastCommit round.
 		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
-			panic(fmt.Sprintf("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
+			panic(fmt.Sprintf(
+				"Conflicting CatchupCommitRound. Height: %v,
+				Orig: %v,
+				New: %v",
+				height,
+				ps.CatchupCommitRound,
+				round))
 		}
 	*/
 	if ps.PRS.CatchupCommitRound == round {
@@ -1211,7 +1223,12 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 }
 
 func (ps *PeerState) setHasVote(height int64, round int, msgType types.SignedMsgType, index int) {
-	logger := ps.logger.With("peerH/R", fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round), "H/R", fmt.Sprintf("%d/%d", height, round))
+	logger := ps.logger.With(
+		"peerH/R",
+		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+		"H/R",
+		fmt.Sprintf("%d/%d", height, round),
+	)
 	logger.Debug("setHasVote", "type", msgType, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.

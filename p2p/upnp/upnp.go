@@ -27,7 +27,12 @@ type upnpNAT struct {
 // protocol is either "udp" or "tcp"
 type NAT interface {
 	GetExternalAddress() (addr net.IP, err error)
-	AddPortMapping(protocol string, externalPort, internalPort int, description string, timeout int) (mappedExternalPort int, err error)
+	AddPortMapping(
+		protocol string,
+		externalPort,
+		internalPort int,
+		description string,
+		timeout int) (mappedExternalPort int, err error)
 	DeletePortMapping(protocol string, externalPort, internalPort int) (err error)
 }
 
@@ -254,7 +259,8 @@ func combineURL(rootURL, subURL string) string {
 
 func soapRequest(url, function, message, domain string) (r *http.Response, err error) {
 	fullMessage := "<?xml version=\"1.0\" ?>" +
-		"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n" +
+		"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
+		"s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n" +
 		"<s:Body>" + message + "</s:Body></s:Envelope>"
 
 	req, err := http.NewRequest("POST", url, strings.NewReader(fullMessage))
@@ -339,7 +345,12 @@ func (n *upnpNAT) GetExternalAddress() (addr net.IP, err error) {
 	return
 }
 
-func (n *upnpNAT) AddPortMapping(protocol string, externalPort, internalPort int, description string, timeout int) (mappedExternalPort int, err error) {
+func (n *upnpNAT) AddPortMapping(
+	protocol string,
+	externalPort,
+	internalPort int,
+	description string,
+	timeout int) (mappedExternalPort int, err error) {
 	// A single concatenation would break ARM compilation.
 	message := "<u:AddPortMapping xmlns:u=\"urn:" + n.urnDomain + ":service:WANIPConnection:1\">\r\n" +
 		"<NewRemoteHost></NewRemoteHost><NewExternalPort>" + strconv.Itoa(externalPort)

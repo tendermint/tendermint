@@ -67,7 +67,13 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	logger := log.TestingLogger()
 	state, _ := sm.LoadStateFromDBOrGenesisFile(stateDB, consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
-	cs := newStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewApplication(), blockDB)
+	cs := newStateWithConfigAndBlockStore(
+		consensusReplayConfig,
+		state,
+		privValidator,
+		kvstore.NewApplication(),
+		blockDB,
+	)
 	cs.SetLogger(logger)
 
 	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
@@ -147,7 +153,13 @@ LOOP:
 		stateDB := blockDB
 		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		privValidator := loadPrivValidator(consensusReplayConfig)
-		cs := newStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewApplication(), blockDB)
+		cs := newStateWithConfigAndBlockStore(
+			consensusReplayConfig,
+			state,
+			privValidator,
+			kvstore.NewApplication(),
+			blockDB,
+		)
 		cs.SetLogger(logger)
 
 		// start sending transactions
@@ -256,7 +268,9 @@ func (w *crashingWAL) WriteSync(m WALMessage) {
 
 func (w *crashingWAL) FlushAndSync() error { return w.next.FlushAndSync() }
 
-func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+func (w *crashingWAL) SearchForEndHeight(
+	height int64,
+	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return w.next.SearchForEndHeight(height, options)
 }
 
@@ -296,7 +310,12 @@ var modes = []uint{0, 1, 2}
 func TestSimulateValidatorsChange(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, genDoc, config, cleanup := randConsensusNetWithPeers(nVals, nPeers, "replay_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+	css, genDoc, config, cleanup := randConsensusNetWithPeers(
+		nVals,
+		nPeers,
+		"replay_test",
+		newMockTickerFunc(true),
+		newPersistentKVStoreWithPath)
 	sim.Config = config
 	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
 	sim.CleanupFunc = cleanup
@@ -585,7 +604,8 @@ func tempWALWithData(data []byte) string {
 	return walFile.Name()
 }
 
-// Make some blocks. Start a fresh app and apply nBlocks blocks. Then restart the app and sync it up with the remaining blocks
+// Make some blocks. Start a fresh app and apply nBlocks blocks.
+// Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint, testValidatorsChange bool) {
 	var chain []*types.Block
 	var commits []*types.Commit
@@ -631,7 +651,8 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	latestAppHash := state.AppHash
 
 	// make a new client creator
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
+	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
+		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
 
 	clientCreator2 := proxy.NewLocalClientCreator(kvstoreApp)
 	if nBlocks > 0 {
@@ -663,7 +684,10 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 	// the app hash should be synced up
 	if !bytes.Equal(latestAppHash, res.LastBlockAppHash) {
-		t.Fatalf("Expected app hashes to match after handshake/replay. got %X, expected %X", res.LastBlockAppHash, latestAppHash)
+		t.Fatalf(
+			"Expected app hashes to match after handshake/replay. got %X, expected %X",
+			res.LastBlockAppHash,
+			latestAppHash)
 	}
 
 	expectedBlocksToSync := numBlocks - nBlocks
@@ -728,9 +752,17 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 
 }
 
-func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, nBlocks int, mode uint) sm.State {
+func buildTMStateFromChain(
+	config *cfg.Config,
+	stateDB dbm.DB,
+	state sm.State,
+	chain []*types.Block,
+	nBlocks int,
+	mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
-	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
+	clientCreator := proxy.NewLocalClientCreator(
+		kvstore.NewPersistentKVStoreApplication(
+			filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -853,7 +885,12 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 
 	lastCommit := types.NewCommit(types.BlockID{}, nil)
 	if height > 1 {
-		vote, _ := types.MakeVote(lastBlock.Header.Height, lastBlockMeta.BlockID, state.Validators, privVal, lastBlock.Header.ChainID)
+		vote, _ := types.MakeVote(
+			lastBlock.Header.Height,
+			lastBlockMeta.BlockID,
+			state.Validators,
+			privVal,
+			lastBlock.Header.ChainID)
 		voteCommitSig := vote.CommitSig()
 		lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{voteCommitSig})
 	}
@@ -994,7 +1031,10 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 }
 
 // fresh state and mock store
-func stateAndStore(config *cfg.Config, pubKey crypto.PubKey, appVersion version.Protocol) (dbm.DB, sm.State, *mockBlockStore) {
+func stateAndStore(
+	config *cfg.Config,
+	pubKey crypto.PubKey,
+	appVersion version.Protocol) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion

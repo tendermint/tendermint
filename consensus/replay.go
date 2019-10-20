@@ -290,7 +290,14 @@ func (h *Handshaker) ReplayBlocks(
 ) ([]byte, error) {
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
-	h.logger.Info("ABCI Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
+	h.logger.Info(
+		"ABCI Replay Blocks",
+		"appHeight",
+		appBlockHeight,
+		"storeHeight",
+		storeBlockHeight,
+		"stateHeight",
+		stateBlockHeight)
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
@@ -405,7 +412,12 @@ func (h *Handshaker) ReplayBlocks(
 		appBlockHeight, storeBlockHeight, stateBlockHeight))
 }
 
-func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int64, mutateState bool) ([]byte, error) {
+func (h *Handshaker) replayBlocks(
+	state sm.State,
+	proxyApp proxy.AppConns,
+	appBlockHeight,
+	storeBlockHeight int64,
+	mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
 	//
