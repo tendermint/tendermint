@@ -67,7 +67,7 @@ func ParseLogLevel(lvl string, logger log.Logger, defaultLogLevelValue string) (
 				option = log.AllowNoneWith("module", module)
 			default:
 				return nil,
-					fmt.Errorf("Expected either \"info\", \"debug\", \"error\" or \"none\" log level, given %s (pair %s, list %s)",
+					fmt.Errorf("expected either \"info\", \"debug\", \"error\" or \"none\" log level, given %s (pair %s, list %s)",
 						level,
 						item,
 						list,

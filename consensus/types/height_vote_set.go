@@ -16,8 +16,8 @@ type RoundVoteSet struct {
 }
 
 var (
-	GotVoteFromUnwantedRoundError = errors.New(
-		"Peer has sent a vote that does not match our round for more than one round",
+	ErrGotVoteFromUnwantedRound = errors.New(
+		"peer has sent a vote that does not match our round for more than one round",
 	)
 )
 
@@ -124,7 +124,7 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			hvs.peerCatchupRounds[peerID] = append(rndz, vote.Round)
 		} else {
 			// punish peer
-			err = GotVoteFromUnwantedRoundError
+			err = ErrGotVoteFromUnwantedRound
 			return
 		}
 	}
