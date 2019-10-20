@@ -124,7 +124,7 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			hvs.peerCatchupRounds[peerID] = append(rndz, vote.Round)
 		} else {
 			// punish peer
-			err = ErrGotVoteFromUnwantedRound
+			err = GotVoteFromUnwantedRoundError
 			return
 		}
 	}
@@ -180,7 +180,7 @@ func (hvs *HeightVoteSet) getVoteSet(round int, voteType types.SignedMsgType) *t
 // TODO: implement ability to remove peers too
 func (hvs *HeightVoteSet) SetPeerMaj23(
 	round int,
-	type_ types.SignedMsgType,
+	voteType types.SignedMsgType,
 	peerID p2p.ID,
 	blockID types.BlockID,
 ) error {
