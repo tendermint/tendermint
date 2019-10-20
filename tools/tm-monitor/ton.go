@@ -67,7 +67,12 @@ func (o *Ton) printHeader() {
 	fmt.Fprintf(o.Output, "Avg block time: %.3f ms\n", n.AvgBlockTime)
 	fmt.Fprintf(o.Output, "Avg tx throughput: %.3f per sec\n", n.AvgTxThroughput)
 	fmt.Fprintf(o.Output, "Avg block latency: %.3f ms\n", n.AvgBlockLatency)
-	fmt.Fprintf(o.Output, "Active nodes: %d/%d (health: %s) Validators: %d\n", n.NumNodesMonitoredOnline, n.NumNodesMonitored, n.GetHealthString(), n.NumValidators)
+	fmt.Fprintf(o.Output,
+		"Active nodes: %d/%d (health: %s) Validators: %d\n",
+		n.NumNodesMonitoredOnline,
+		n.NumNodesMonitored,
+		n.GetHealthString(),
+		n.NumValidators)
 }
 
 func (o *Ton) printTable() {

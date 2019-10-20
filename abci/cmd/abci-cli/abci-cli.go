@@ -111,16 +111,28 @@ func Execute() error {
 }
 
 func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&flagAddress, "address", "", "tcp://0.0.0.0:26658", "address of application socket")
+	RootCmd.PersistentFlags().StringVarP(&flagAddress,
+		"address",
+		"",
+		"tcp://0.0.0.0:26658",
+		"address of application socket")
 	RootCmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "either socket or grpc")
-	RootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "print the command and results as if it were a console session")
+	RootCmd.PersistentFlags().BoolVarP(&flagVerbose,
+		"verbose",
+		"v",
+		false,
+		"print the command and results as if it were a console session")
 	RootCmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "set the logger level")
 }
 
 func addQueryFlags() {
 	queryCmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "path to prefix query with")
 	queryCmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "height to query the blockchain at")
-	queryCmd.PersistentFlags().BoolVarP(&flagProve, "prove", "", false, "whether or not to return a merkle proof of the query result")
+	queryCmd.PersistentFlags().BoolVarP(&flagProve,
+		"prove",
+		"",
+		false,
+		"whether or not to return a merkle proof of the query result")
 }
 
 func addCounterFlags() {

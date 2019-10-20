@@ -266,8 +266,14 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 	return indexerService, txIndexer, nil
 }
 
-func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc, eventBus types.BlockEventPublisher, proxyApp proxy.AppConns, consensusLogger log.Logger) error {
+func doHandshake(
+	stateDB dbm.DB,
+	state sm.State,
+	blockStore sm.BlockStore,
+	genDoc *types.GenesisDoc,
+	eventBus types.BlockEventPublisher,
+	proxyApp proxy.AppConns,
+	consensusLogger log.Logger) error {
 
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
@@ -400,7 +406,15 @@ func createConsensusReactor(config *cfg.Config,
 	return consensusReactor, consensusState
 }
 
-func createTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p2p.NodeKey, proxyApp proxy.AppConns) (*p2p.MultiplexTransport, []p2p.PeerFilterFunc) {
+func createTransport(
+	config *cfg.Config,
+	nodeInfo p2p.NodeInfo,
+	nodeKey *p2p.NodeKey,
+	proxyApp proxy.AppConns,
+) (
+	*p2p.MultiplexTransport,
+	[]p2p.PeerFilterFunc,
+) {
 	var (
 		mConnConfig = p2p.MConnConfig(config.P2P)
 		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
@@ -839,7 +853,6 @@ func (n *Node) ConfigureRPC() {
 	pubKey := n.privValidator.GetPubKey()
 	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
-	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
 	rpccore.SetConsensusReactor(n.consensusReactor)
@@ -1115,7 +1128,10 @@ var (
 // database, or creates one using the given genesisDocProvider and persists the
 // result to the database. On success this also returns the genesis doc loaded
 // through the given provider.
-func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (sm.State, *types.GenesisDoc, error) {
+func LoadStateFromDBOrGenesisDocProvider(
+	stateDB dbm.DB,
+	genesisDocProvider GenesisDocProvider,
+) (sm.State, *types.GenesisDoc, error) {
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {

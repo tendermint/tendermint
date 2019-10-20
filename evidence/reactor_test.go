@@ -75,8 +75,13 @@ func waitForEvidence(t *testing.T, evs types.EvidenceList, reactors []*EvidenceR
 }
 
 // wait for all evidence on a single evpool
-func _waitForEvidence(t *testing.T, wg *sync.WaitGroup, evs types.EvidenceList, reactorIdx int, reactors []*EvidenceReactor) {
-
+func _waitForEvidence(
+	t *testing.T,
+	wg *sync.WaitGroup,
+	evs types.EvidenceList,
+	reactorIdx int,
+	reactors []*EvidenceReactor,
+) {
 	evpool := reactors[reactorIdx].evpool
 	for len(evpool.PendingEvidence(-1)) != len(evs) {
 		time.Sleep(time.Millisecond * 100)

@@ -349,7 +349,10 @@ func hasSmallOrder(pubKey [32]byte) bool {
 	return isSmallOrderPoint
 }
 
-func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, sendSecret *[aeadKeySize]byte, challenge *[32]byte) {
+func deriveSecretAndChallenge(
+	dhSecret *[32]byte,
+	locIsLeast bool,
+) (recvSecret, sendSecret *[aeadKeySize]byte, challenge *[32]byte) {
 	hash := sha256.New
 	hkdf := hkdf.New(hash, dhSecret[:], nil, []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN"))
 	// get enough data for 2 aead keys, and a 32 byte challenge

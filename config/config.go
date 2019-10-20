@@ -140,7 +140,7 @@ func (cfg *Config) ValidateBasic() error {
 // BaseConfig
 
 // BaseConfig defines the base configuration for a Tendermint node
-type BaseConfig struct {
+type BaseConfig struct { //nolint: maligned
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -371,13 +371,15 @@ type RPCConfig struct {
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
 	// and the CA's certificate.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSCertFile string `mapstructure:"tls_cert_file"`
 
 	// The path to a file containing matching private key that is used to create the HTTPS server.
 	// Migth be either absolute path or path related to tendermint's config directory.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
 }
 
@@ -471,7 +473,7 @@ func (cfg RPCConfig) IsTLSEnabled() bool {
 // P2PConfig
 
 // P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
-type P2PConfig struct {
+type P2PConfig struct { //nolint: maligned
 	RootDir string `mapstructure:"home"`
 
 	// Address to listen for incoming connections
@@ -814,7 +816,8 @@ func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
 	) * time.Nanosecond
 }
 
-// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
+// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits
+// for a single block (ie. a commit).
 func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
 	return t.Add(cfg.TimeoutCommit)
 }
@@ -878,7 +881,8 @@ type TxIndexConfig struct {
 	//
 	// Options:
 	//   1) "null"
-	//   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   2) "kv" (default) - the simplest possible indexer,
+	//      backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
 
 	// Comma-separated list of tags to index (by default the only tag is "tx.hash")
