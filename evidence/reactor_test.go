@@ -80,7 +80,7 @@ func _waitForEvidence(
 	wg *sync.WaitGroup,
 	evs types.EvidenceList,
 	reactorIdx int,
-	reactors []*EvidenceReactor,
+	reactors []*Reactor,
 ) {
 	evpool := reactors[reactorIdx].evpool
 	for len(evpool.PendingEvidence(-1)) != len(evs) {
