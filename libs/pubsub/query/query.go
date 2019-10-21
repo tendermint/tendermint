@@ -84,74 +84,103 @@ const (
 
 // Conditions returns a list of conditions.
 func (q *Query) Conditions() []Condition {
-	conditions := make([]Condition, 0)
+	var (
+		eventAttr string
+		op        Operator
+	)
 
+	conditions := make([]Condition, 0)
 	buffer, begin, end := q.parser.Buffer, 0, 0
 
-	var tag string
-	var op Operator
-
-	// tokens must be in the following order: tag ("tx.gas") -> operator ("=") -> operand ("7")
+	// tokens must be in the following order: event attribute ("tx.gas") -> operator ("=") -> operand ("7")
 	for _, token := range q.parser.Tokens() {
 		switch token.pegRule {
-
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
+
 		case ruletag:
-			tag = buffer[begin:end]
+			eventAttr = buffer[begin:end]
+
 		case rulele:
 			op = OpLessEqual
+
 		case rulege:
 			op = OpGreaterEqual
+
 		case rulel:
 			op = OpLess
+
 		case ruleg:
 			op = OpGreater
+
 		case ruleequal:
 			op = OpEqual
+
 		case rulecontains:
 			op = OpContains
+
 		case rulevalue:
 			// strip single quotes from value (i.e. "'NewBlock'" -> "NewBlock")
 			valueWithoutSingleQuotes := buffer[begin+1 : end-1]
-			conditions = append(conditions, Condition{tag, op, valueWithoutSingleQuotes})
+			conditions = append(conditions, Condition{eventAttr, op, valueWithoutSingleQuotes})
+
 		case rulenumber:
 			number := buffer[begin:end]
 			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
-					panic(fmt.Sprintf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)",
+					fmt.Printf(
+						"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)\n",
 						err,
-						number))
+						number,
+					)
+
+					return []Condition{}
 				}
-				conditions = append(conditions, Condition{tag, op, value})
+
+				conditions = append(conditions, Condition{eventAttr, op, value})
 			} else {
 				value, err := strconv.ParseInt(number, 10, 64)
 				if err != nil {
-					panic(fmt.Sprintf("got %v while trying to parse %s as int64 (should never happen if the grammar is correct)",
+					fmt.Printf(
+						"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)\n",
 						err,
-						number))
+						number,
+					)
+
+					return []Condition{}
 				}
-				conditions = append(conditions, Condition{tag, op, value})
+
+				conditions = append(conditions, Condition{eventAttr, op, value})
 			}
+
 		case ruletime:
 			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf(
-					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)",
+				fmt.Printf(
+					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)\n",
 					err,
-					buffer[begin:end]))
+					buffer[begin:end],
+				)
+
+				return []Condition{}
 			}
-			conditions = append(conditions, Condition{tag, op, value})
+
+			conditions = append(conditions, Condition{eventAttr, op, value})
+
 		case ruledate:
 			value, err := time.Parse("2006-01-02", buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf(
-					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)",
+				fmt.Printf(
+					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)\n",
 					err,
-					buffer[begin:end]))
+					buffer[begin:end],
+				)
+
+				return []Condition{}
 			}
-			conditions = append(conditions, Condition{tag, op, value})
+
+			conditions = append(conditions, Condition{eventAttr, op, value})
 		}
 	}
 
