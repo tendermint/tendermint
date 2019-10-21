@@ -177,17 +177,31 @@ func (c *Client) SetLogger(l log.Logger) {
 // header exist. It returns an error if there are some issues with the trusted
 // store, although that should not happen normally. TODO mention how many
 // headers will be kept by the light client.
+//
+// 0 - the latest.
+// height must be >= 0.
 func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
+	if height == 0 {
+		var err error
+		height, err = c.LastTrustedHeight()
+		if err != nil {
+			return nil, err
+		}
+		if height == -1 {
+			return nil, errors.New("empty trust store")
+		}
+	}
+
 	return c.trustedStore.SignedHeader(height)
 }
 
 // LastTrustedHeight returns a last trusted height.
 func (c *Client) LastTrustedHeight() (int64, error) {
-	h, err := c.trustedStore.LastSignedHeader()
+	h, err := c.trustedStore.LastSignedHeaderHeight()
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
-	return h.Height, nil
+	return h, nil
 }
 
 // VerifyHeaderAtHeight fetches the header and validators at the given height

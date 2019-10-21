@@ -17,8 +17,7 @@ type Store interface {
 	// SignedHeader returns the SignedHeader that corresponds to the given
 	// height.
 	//
-	// 0 - the latest.
-	// height must be >= 0.
+	// height must be > 0.
 	//
 	// If the store is empty and the latest SignedHeader is requested, an error
 	// is returned.
@@ -26,8 +25,7 @@ type Store interface {
 
 	// ValidatorSet returns the ValidatorSet that corresponds to height.
 	//
-	// 0 - the latest.
-	// height must be >= 0.
+	// height must be > 0.
 	//
 	// If the store is empty and the latest ValidatorSet is requested, an error
 	// is returned.
