@@ -198,86 +198,114 @@ func (q *Query) Matches(events map[string][]string) bool {
 		return false
 	}
 
+	var (
+		eventAttr string
+		op        Operator
+	)
+
 	buffer, begin, end := q.parser.Buffer, 0, 0
 
-	var tag string
-	var op Operator
-
 	// tokens must be in the following order:
-	// tag ("tx.gas") -> operator ("=") -> operand ("7")
+	// event attribute ("tx.gas") -> operator ("=") -> operand ("7")
 	for _, token := range q.parser.Tokens() {
 		switch token.pegRule {
-
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
+
 		case ruletag:
-			tag = buffer[begin:end]
+			eventAttr = buffer[begin:end]
+
 		case rulele:
 			op = OpLessEqual
+
 		case rulege:
 			op = OpGreaterEqual
+
 		case rulel:
 			op = OpLess
+
 		case ruleg:
 			op = OpGreater
+
 		case ruleequal:
 			op = OpEqual
+
 		case rulecontains:
 			op = OpContains
+
 		case rulevalue:
 			// strip single quotes from value (i.e. "'NewBlock'" -> "NewBlock")
 			valueWithoutSingleQuotes := buffer[begin+1 : end-1]
 
-			// see if the triplet (tag, operator, operand) matches any tag
+			// see if the triplet (event attribute, operator, operand) matches any event
 			// "tx.gas", "=", "7", { "tx.gas": 7, "tx.ID": "4AE393495334" }
-			if !match(tag, op, reflect.ValueOf(valueWithoutSingleQuotes), events) {
+			if !match(eventAttr, op, reflect.ValueOf(valueWithoutSingleQuotes), events) {
 				return false
 			}
+
 		case rulenumber:
 			number := buffer[begin:end]
 			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
-					panic(fmt.Sprintf(
-						"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)",
+					fmt.Printf(
+						"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)\n",
 						err,
-						number))
+						number,
+					)
+
+					return false
 				}
-				if !match(tag, op, reflect.ValueOf(value), events) {
+
+				if !match(eventAttr, op, reflect.ValueOf(value), events) {
 					return false
 				}
 			} else {
 				value, err := strconv.ParseInt(number, 10, 64)
 				if err != nil {
-					panic(fmt.Sprintf(
-						"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)",
+					fmt.Printf(
+						"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)\n",
 						err,
-						number))
+						number,
+					)
+
+					return false
 				}
-				if !match(tag, op, reflect.ValueOf(value), events) {
+
+				if !match(eventAttr, op, reflect.ValueOf(value), events) {
 					return false
 				}
 			}
+
 		case ruletime:
 			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf(
-					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)",
+				fmt.Printf(
+					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)\n",
 					err,
-					buffer[begin:end]))
-			}
-			if !match(tag, op, reflect.ValueOf(value), events) {
+					buffer[begin:end],
+				)
+
 				return false
 			}
+
+			if !match(eventAttr, op, reflect.ValueOf(value), events) {
+				return false
+			}
+
 		case ruledate:
 			value, err := time.Parse("2006-01-02", buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf(
-					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)",
+				fmt.Printf(
+					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)\n",
 					err,
-					buffer[begin:end]))
+					buffer[begin:end],
+				)
+
+				return false
 			}
-			if !match(tag, op, reflect.ValueOf(value), events) {
+
+			if !match(eventAttr, op, reflect.ValueOf(value), events) {
 				return false
 			}
 		}
