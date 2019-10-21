@@ -24,8 +24,11 @@ func TestMatches(t *testing.T) {
 		matches bool
 	}{
 		{"tm.events.type='NewBlock'", map[string][]string{"tm.events.type": {"NewBlock"}}, false, true},
-
 		{"tx.gas > 7", map[string][]string{"tx.gas": {"8"}}, false, true},
+		{"transfer.amount > 7", map[string][]string{"transfer.amount": {"8stake"}}, false, true},
+		{"transfer.amount > 7", map[string][]string{"transfer.amount": {"8.045stake"}}, false, true},
+		{"transfer.amount > 7.043", map[string][]string{"transfer.amount": {"8.045stake"}}, false, true},
+		{"transfer.amount > 8.045", map[string][]string{"transfer.amount": {"8.045stake"}}, false, false},
 		{"tx.gas > 7 AND tx.gas < 9", map[string][]string{"tx.gas": {"8"}}, false, true},
 		{"body.weight >= 3.5", map[string][]string{"body.weight": {"3.5"}}, false, true},
 		{"account.balance < 1000.0", map[string][]string{"account.balance": {"900"}}, false, true},
@@ -47,7 +50,6 @@ func TestMatches(t *testing.T) {
 		},
 		{"tx.date = DATE 2017-01-01", map[string][]string{"tx.date": {txDate}}, false, true},
 		{"tx.date = DATE 2018-01-01", map[string][]string{"tx.date": {txDate}}, false, false},
-
 		{
 			"tx.time >= TIME 2013-05-03T14:45:00Z",
 			map[string][]string{"tx.time": {time.Now().Format(query.TimeLayout)}},
@@ -55,7 +57,6 @@ func TestMatches(t *testing.T) {
 			true,
 		},
 		{"tx.time = TIME 2013-05-03T14:45:00Z", map[string][]string{"tx.time": {txTime}}, false, false},
-
 		{"abci.owner.name CONTAINS 'Igor'", map[string][]string{"abci.owner.name": {"Igor,Ivan"}}, false, true},
 		{"abci.owner.name CONTAINS 'Igor'", map[string][]string{"abci.owner.name": {"Pavel,Ivan"}}, false, false},
 

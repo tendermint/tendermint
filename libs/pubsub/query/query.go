@@ -11,9 +11,14 @@ package query
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+)
+
+var (
+	numRegex = regexp.MustCompile(`([0-9\.]+)`)
 )
 
 // Query holds the query string and the query parser.
@@ -346,7 +351,7 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 			v, err = time.Parse(DateLayout, value)
 		}
 		if err != nil {
-			fmt.Printf("failed to convert value %v from tag to time.Time: %v\n", value, err)
+			fmt.Printf("failed to convert value %v from event attribute to time.Time: %v\n", value, err)
 			return false
 		}
 
@@ -364,13 +369,15 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		}
 
 	case reflect.Float64:
-		operandFloat64 := operand.Interface().(float64)
 		var v float64
 
+		operandFloat64 := operand.Interface().(float64)
+		matchedValue := numRegex.FindString(value)
+
 		// try our best to convert value from tags to float64
-		v, err := strconv.ParseFloat(value, 64)
+		v, err := strconv.ParseFloat(matchedValue, 64)
 		if err != nil {
-			fmt.Printf("failed to convert value %v from tag to float64: %v\n", value, err)
+			fmt.Printf("failed to convert value %v from event attribute to float64: %v\n", matchedValue, err)
 			return false
 		}
 
@@ -388,13 +395,16 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		}
 
 	case reflect.Int64:
-		operandInt := operand.Interface().(int64)
 		var v int64
+
+		operandInt := operand.Interface().(int64)
+		matchedValue := numRegex.FindString(value)
+
 		// if value looks like float, we try to parse it as float
-		if strings.ContainsAny(value, ".") {
-			v1, err := strconv.ParseFloat(value, 64)
+		if strings.ContainsAny(matchedValue, ".") {
+			v1, err := strconv.ParseFloat(matchedValue, 64)
 			if err != nil {
-				fmt.Printf("failed to convert value %v from tag to float64: %v\n", value, err)
+				fmt.Printf("failed to convert value %v from event attribute to float64: %v\n", matchedValue, err)
 				return false
 			}
 
@@ -402,9 +412,9 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		} else {
 			var err error
 			// try our best to convert value from tags to int64
-			v, err = strconv.ParseInt(value, 10, 64)
+			v, err = strconv.ParseInt(matchedValue, 10, 64)
 			if err != nil {
-				fmt.Printf("failed to convert value %v from tag to int64: %v\n", value, err)
+				fmt.Printf("failed to convert value %v from event attribute to int64: %v\n", matchedValue, err)
 				return false
 			}
 		}
