@@ -53,7 +53,7 @@ type pcStop struct {
 type pcFinished struct {
 	priorityNormal
 	height       int64
-	blocksSynced int64
+	blocksSynced int
 }
 
 func (p pcFinished) Error() string {
@@ -71,7 +71,7 @@ type pcState struct {
 	height       int64      // height of the last synced block
 	queue        blockQueue // blocks waiting to be processed
 	chainID      string
-	blocksSynced int64
+	blocksSynced int
 	draining     bool
 	tdState      tdState.State
 	context      processorContext

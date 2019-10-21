@@ -19,7 +19,7 @@ type pcBlock struct {
 type params struct {
 	height       int64
 	items        []pcBlock
-	blocksSynced int64
+	blocksSynced int
 	verBL        []int64
 	appBL        []int64
 	draining     bool

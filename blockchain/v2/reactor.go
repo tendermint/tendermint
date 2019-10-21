@@ -20,6 +20,7 @@ type timeCheck struct {
 	time time.Time
 }
 
+// TODO: replace with real implementation
 func schedulerHandle(event Event) (Event, error) {
 	if _, ok := event.(timeCheck); ok {
 		fmt.Println("scheduler handle timeCheck")
@@ -27,6 +28,7 @@ func schedulerHandle(event Event) (Event, error) {
 	return noOp, nil
 }
 
+// TODO: replace with real processor
 func processorHandle(event Event) (Event, error) {
 	if _, ok := event.(timeCheck); ok {
 		fmt.Println("processor handle timeCheck")
@@ -83,6 +85,7 @@ func (r *Reactor) setSyncHeight(height int64) {
 	r.syncHeight = height
 }
 
+// XXX: align this with state.State
 func (r *Reactor) SyncHeight() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
@@ -101,6 +104,7 @@ func (r *Reactor) Start() {
 	go r.processor.start()
 	go r.demux()
 
+	// XXX: we can probably get rid of this
 	<-r.scheduler.ready()
 	<-r.processor.ready()
 }
@@ -118,9 +122,13 @@ func (r *Reactor) demux() {
 		scheduleFreq = 1 * time.Second
 		doScheduleCh = make(chan struct{}, 1)
 		doScheduleTk = time.NewTicker(scheduleFreq * time.Second)
-		// XXX: add broadcastStatusRequest
+
+		statusFreq = 1 * time.Second
+		doStatusCh = make(chan struct{}, 1)
+		doStatusTk = time.NewTicker(statusFreq * time.Second)
 	)
 
+	// XXX: Extract timers to make testing atemporal
 	for {
 		select {
 		// Pacers: send at most per freequency but don't saturate
@@ -139,6 +147,11 @@ func (r *Reactor) demux() {
 			case doScheduleCh <- struct{}{}:
 			default:
 			}
+		case <-doStatusTk.C:
+			select {
+			case doStatusCh <- struct{}{}:
+			default:
+			}
 
 		// Tickers: perform tasks periodically
 		case <-doScheduleCh:
@@ -147,6 +160,8 @@ func (r *Reactor) demux() {
 			r.scheduler.send(tryPrunePeer{time: time.Now()})
 		case <-doProcessBlockCh:
 			r.processor.send(pcProcessBlock{})
+		case <-doStatusCh:
+			r.io.broadcastStatusRequest(r.SyncHeight())
 
 		// Events from peers
 		case event := <-r.events:
@@ -189,10 +204,9 @@ func (r *Reactor) demux() {
 		// Terminal event from processor
 		case event := <-r.processor.final():
 			r.logger.Info(fmt.Sprintf("processor final %s", event))
-			event, ok := event.(pcFinished)
+			msg, ok := event.(pcFinished)
 			if ok {
-				// TODO
-				//r.io.switchToConsensus(r.state, event.blocksSynced)
+				r.io.switchToConsensus(r.state, msg.blocksSynced)
 			}
 		case <-r.stopDemux:
 			r.logger.Info("demuxing stopped")
