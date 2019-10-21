@@ -193,9 +193,8 @@ func (c *Client) LastTrustedHeight() (int64, error) {
 // VerifyHeaderAtHeight fetches the header and validators at the given height
 // and calls VerifyHeader.
 func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
-	// Skip verification if we're at more recent height.
-	if c.trustedHeader.Height >= height {
-		return nil
+	if c.trustedHeader.Height >= height { // if we're at more recent height.
+		return errors.Errorf("height #%d is already trusted (last: #%d)", height, c.trustedHeader.Height)
 	}
 
 	// Request the header and the vals.
@@ -219,9 +218,8 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) error {
 // intermediate headers will be requested. See the specification for the
 // algorithm.
 func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.ValidatorSet, now time.Time) error {
-	// Skip verification if we're at more recent height.
-	if c.trustedHeader.Height >= newHeader.Height {
-		return nil
+	if c.trustedHeader.Height >= newHeader.Height { // if we're at more recent height.
+		return errors.Errorf("height #%d is already trusted (last: #%d)", newHeader.Height, c.trustedHeader.Height)
 	}
 
 	var err error
