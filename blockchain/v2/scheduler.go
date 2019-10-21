@@ -456,7 +456,7 @@ func (sc *scheduler) allBlocksProcessed() bool {
 	if numBlocks == 0 {
 		return true
 	}
-	processed := sc.numBlockInState(blockStateProcessed)
+	processed := sc.numBlocksInState(blockStateProcessed)
 	return (processed == uint32(numBlocks-1) && sc.blockStates[numBlocks+sc.initHeight] == blockStateReceived) ||
 		processed == uint32(numBlocks)
 }

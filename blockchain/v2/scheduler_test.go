@@ -113,6 +113,7 @@ func TestScAddPeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			if err := sc.addPeer(tt.args.peerID); (err != nil) != tt.wantErr {
@@ -169,6 +170,7 @@ func TestScTouchPeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			if err := sc.touchPeer(tt.args.peerID, tt.args.time); (err != nil) != tt.wantErr {
@@ -262,6 +264,7 @@ func TestScPeersInactiveSince(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// peersInactiveSince should not mutate the scheduler
@@ -356,6 +359,7 @@ func TestScPeersSlowerThan(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// peersSlowerThan should not mutate the scheduler
@@ -410,6 +414,7 @@ func TestScPrunablePeers(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// peersSlowerThan should not mutate the scheduler
@@ -542,6 +547,7 @@ func TestScRemovePeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			if err := sc.removePeer(tt.args.peerID); (err != nil) != tt.wantErr {
@@ -619,6 +625,7 @@ func TestScSetPeerHeight(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			if err := sc.setPeerHeight(tt.args.peerID, tt.args.height); (err != nil) != tt.wantErr {
@@ -692,6 +699,7 @@ func TestScGetPeersAtHeight(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// getPeersAtHeight should not mutate the scheduler
@@ -809,6 +817,7 @@ func TestScMarkPending(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			if err := sc.markPending(tt.args.peerID, tt.args.height, tt.args.tm); (err != nil) != tt.wantErr {
@@ -931,6 +940,7 @@ func TestScMarkReceived(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			if err := sc.markReceived(tt.args.peerID, tt.args.height, tt.args.size, now.Add(time.Second)); (err != nil) != tt.wantErr {
@@ -991,6 +1001,7 @@ func TestScMarkProcessed(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			if err := sc.markProcessed(tt.args.height); (err != nil) != tt.wantErr {
@@ -1066,6 +1077,7 @@ func TestScAllBlocksProcessed(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// allBlocksProcessed() should not mutate the scheduler
@@ -1148,6 +1160,7 @@ func TestScMinMaxHeights(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// minHeight() and maxHeign() should not mutate the scheduler
@@ -1249,6 +1262,7 @@ func TestScSelectPeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// selectPeer should not mutate the scheduler
@@ -1338,6 +1352,7 @@ func TestScNumBlockInState(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			// numBlockInState() should not mutate the scheduler
@@ -1446,6 +1461,7 @@ func TestScHandleBlockResponse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			event, err := sc.handleBlockResponse(tt.args.event)
@@ -1513,6 +1529,7 @@ func TestScHandleBlockProcessed(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			event, err := sc.handleBlockProcessed(tt.args.event)
@@ -1589,6 +1606,7 @@ func TestScHandleBlockVerificationFailure(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			event, err := sc.handleBlockProcessError(tt.args.event)
@@ -1635,6 +1653,7 @@ func TestScHandleAddNewPeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			event, err := sc.handleAddNewPeer(tt.args.event)
@@ -1690,6 +1709,7 @@ func TestScHandlePeerError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			event, err := sc.handlePeerError(tt.args.event)
@@ -1787,6 +1807,7 @@ func TestScHandleTryPrunePeer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			event, err := sc.handleTryPrunePeer(tt.args.event)
@@ -1880,6 +1901,7 @@ func TestHandleTrySchedule(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			event, err := sc.handleTrySchedule(tt.args.event)
@@ -1946,6 +1968,7 @@ func TestScHandleStatusResponse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
 			event, err := sc.handleStatusResponse(tt.args.event)
@@ -2093,6 +2116,7 @@ func TestScHandle(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			var sc *scheduler
 			for _, step := range tt.steps {
