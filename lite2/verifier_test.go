@@ -113,16 +113,6 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			nil,
 			"old header has expired",
 		},
-		// new header is too far into the future -> error
-		8: {
-			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(4*time.Hour), nil, vals, vals,
-				[]byte("app_hash"), []byte("cons_hash"), []byte("results_hash"), 0, len(keys)),
-			keys.ToValidators(10, 1),
-			3 * time.Hour,
-			bTime.Add(2 * time.Hour), // not relevant
-			ErrNewHeaderTooFarIntoFuture{bTime.Add(4 * time.Hour), bTime.Add(3 * time.Hour)},
-			"",
-		},
 	}
 
 	for i, tc := range testCases {

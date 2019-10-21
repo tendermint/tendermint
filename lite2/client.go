@@ -297,12 +297,6 @@ func (c *Client) bisection(
 	switch err.(type) {
 	case nil:
 		return nil
-	case ErrNewHeaderTooFarIntoFuture:
-		// continue bisection if not adjacent
-		// otherwise fail
-		if lastHeader.Height == newHeader.Height+1 {
-			return errors.Wrapf(err, "failed to verify the header #%d", newHeader.Height)
-		}
 	case types.ErrTooMuchChange:
 		// continue bisection
 	default:

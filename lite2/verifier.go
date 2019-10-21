@@ -35,12 +35,6 @@ func Verify(
 		return ErrOldHeaderExpired{expirationTime, now}
 	}
 
-	// Ensure new header is within trusting period.
-	if !h2.Time.Before(expirationTime) {
-		// TODO: send an evidence?
-		return ErrNewHeaderTooFarIntoFuture{h2.Time, expirationTime}
-	}
-
 	if err := verifyNewHeaderAndVals(chainID, h2, h2Vals, h1, now); err != nil {
 		return err
 	}
