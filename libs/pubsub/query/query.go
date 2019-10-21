@@ -358,7 +358,8 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 			v, err = time.Parse(DateLayout, value)
 		}
 		if err != nil {
-			panic(fmt.Sprintf("failed to convert value %v from tag to time.Time: %v", value, err))
+			fmt.Printf("failed to convert value %v from tag to time.Time: %v\n", value, err)
+			return false
 		}
 
 		switch op {
@@ -381,7 +382,8 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		// try our best to convert value from tags to float64
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			panic(fmt.Sprintf("failed to convert value %v from tag to float64: %v", value, err))
+			fmt.Printf("failed to convert value %v from tag to float64: %v\n", value, err)
+			return false
 		}
 
 		switch op {
@@ -404,17 +406,21 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		if strings.ContainsAny(value, ".") {
 			v1, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				panic(fmt.Sprintf("failed to convert value %v from tag to float64: %v", value, err))
+				fmt.Printf("failed to convert value %v from tag to float64: %v\n", value, err)
+				return false
 			}
+
 			v = int64(v1)
 		} else {
 			var err error
 			// try our best to convert value from tags to int64
 			v, err = strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				panic(fmt.Sprintf("failed to convert value %v from tag to int64: %v", value, err))
+				fmt.Printf("failed to convert value %v from tag to int64: %v\n", value, err)
+				return false
 			}
 		}
+
 		switch op {
 		case OpLessEqual:
 			return v <= operandInt
@@ -437,7 +443,8 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		}
 
 	default:
-		panic(fmt.Sprintf("unknown kind of operand %v", operand.Kind()))
+		fmt.Printf("unknown kind of operand %v\n", operand.Kind())
+		return false
 	}
 
 	return false
