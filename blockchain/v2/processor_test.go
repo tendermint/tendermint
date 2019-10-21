@@ -51,7 +51,6 @@ func mBlockResponse(peerID p2p.ID, height int64) *scBlockReceived {
 	return &scBlockReceived{
 		peerID: peerID,
 		block:  makePcBlock(height),
-		height: height,
 	}
 }
 

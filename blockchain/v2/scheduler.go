@@ -70,7 +70,6 @@ type scBlockRequest struct {
 type scBlockReceived struct {
 	priorityNormal
 	peerID p2p.ID
-	height int64
 	block  *types.Block
 }
 
@@ -344,7 +343,7 @@ func (sc *scheduler) peersInactiveSince(duration time.Duration, now time.Time) [
 }
 
 func (sc *scheduler) peersSlowerThan(minSpeed int64) map[p2p.ID]struct{} {
-	peers := make(map[p2p.ID]struct{}, 0)
+	peers := make(map[p2p.ID]struct{})
 	for peerID, peer := range sc.peers {
 		if peer.state != peerStateReady {
 			continue
@@ -396,7 +395,7 @@ func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now t
 
 	// This may divide by zero - needs to measure every 10s blocks (see v0 and v1),
 	// for now changed to nsecs.
-	peer.lastRate = size / int64(now.Sub(pendingTime).Nanoseconds())
+	peer.lastRate = size / now.Sub(pendingTime).Nanoseconds()
 
 	sc.setStateAtHeight(height, blockStateReceived)
 	delete(sc.pendingBlocks, height)
@@ -507,7 +506,7 @@ func (sc *scheduler) selectPeer(height int64) (p2p.ID, error) {
 
 	// create a map from number of pending requests to a list
 	// of peers having that number of pending requests.
-	pendingFrom := make(map[int][]p2p.ID, 0)
+	pendingFrom := make(map[int][]p2p.ID)
 	for _, peerID := range peers {
 		numPending := len(sc.pendingFrom(peerID))
 		pendingFrom[numPending] = append(pendingFrom[numPending], peerID)

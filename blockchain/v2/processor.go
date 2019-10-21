@@ -139,10 +139,13 @@ func (state *pcState) purgePeer(peerID p2p.ID) {
 func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case *scBlockReceived:
-		if event.height <= state.height {
+		if event.block == nil {
+			return noOp, nil
+		}
+		if event.block.Height <= state.height {
 			return pcShortBlock{}, nil
 		}
-		err := state.enqueue(event.peerID, event.block, event.height)
+		err := state.enqueue(event.peerID, event.block, event.block.Height)
 		if err != nil {
 			return pcDuplicateBlock{}, nil
 		}

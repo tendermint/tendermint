@@ -2,26 +2,25 @@ package v2
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/types"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 type scTestParams struct {
-	peers            map[string]*scPeer
-	initHeight       int64
-	allB             []int64
-	pending          map[int64]p2p.ID
-	pendingTime      map[int64]time.Time
-	received         map[int64]p2p.ID
-	processed        map[int64]struct{}
-	peerTimeout      time.Duration
-	maxBlockPoolSize uint32
-	minRecvRate      int64
+	peers       map[string]*scPeer
+	initHeight  int64
+	allB        []int64
+	pending     map[int64]p2p.ID
+	pendingTime map[int64]time.Time
+	received    map[int64]p2p.ID
+	processed   map[int64]struct{}
+	peerTimeout time.Duration
+	minRecvRate int64
 }
 
 func newTestScheduler(params scTestParams) *scheduler {
@@ -1054,7 +1053,7 @@ func TestScAllBlocksProcessed(t *testing.T) {
 			wantResult: false,
 		},
 		{
-			name: "only Processed blocks plus heighest is received",
+			name: "only Processed blocks plus highest is received",
 			fields: scTestParams{
 				peers:     map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
 				allB:      []int64{1, 2, 3, 4},
@@ -1375,15 +1374,15 @@ func checkScResults(t *testing.T, wantErr bool, err error, wantEvent Event, even
 		t.Errorf("error = %v, wantErr %v", err, wantErr)
 		return
 	}
-	switch wantEvent.(type) {
+	switch wantEvent := wantEvent.(type) {
 	case scPeerError:
-		assert.Equal(t, wantEvent.(scPeerError).peerID, event.(scPeerError).peerID)
-		assert.Equal(t, wantEvent.(scPeerError).reason != nil, event.(scPeerError).reason != nil)
+		assert.Equal(t, wantEvent.peerID, event.(scPeerError).peerID)
+		assert.Equal(t, wantEvent.reason != nil, event.(scPeerError).reason != nil)
 	case scBlockReceived:
-		assert.Equal(t, event.(scBlockReceived).peerID, wantEvent.(scBlockReceived).peerID)
-		assert.Equal(t, event.(scBlockReceived).block, wantEvent.(scBlockReceived).block)
+		assert.Equal(t, wantEvent.peerID, event.(scBlockReceived).peerID)
+		assert.Equal(t, wantEvent.block, event.(scBlockReceived).block)
 	case scSchedulerFail:
-		assert.Equal(t, wantEvent.(scSchedulerFail).reason != nil, event.(scSchedulerFail).reason != nil)
+		assert.Equal(t, wantEvent.reason != nil, event.(scSchedulerFail).reason != nil)
 	default:
 		assert.Equal(t, wantEvent, event)
 	}
