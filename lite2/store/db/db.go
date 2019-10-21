@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -91,7 +92,7 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 		}
 	}
 
-	return -1, nil
+	return -1, errors.New("no headers found")
 }
 
 func (s *dbs) shKey(height int64) []byte {

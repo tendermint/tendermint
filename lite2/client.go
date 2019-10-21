@@ -28,8 +28,8 @@ type TrustOptions struct {
 	// submission synchrony bound.
 	Period time.Duration
 
-	// Height and Hash must both be provided to force the trusting of a
-	// particular height and hash.
+	// Header's Height and Hash must both be provided to force the trusting of a
+	// particular header.
 	Height int64
 	Hash   []byte
 }
@@ -181,14 +181,15 @@ func (c *Client) SetLogger(l log.Logger) {
 // 0 - the latest.
 // height must be >= 0.
 func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
+	if height < 0 {
+		return errors.New("negative height")
+	}
+
 	if height == 0 {
 		var err error
 		height, err = c.LastTrustedHeight()
 		if err != nil {
 			return nil, err
-		}
-		if height == -1 {
-			return nil, errors.New("empty trust store")
 		}
 	}
 
@@ -197,11 +198,7 @@ func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
 
 // LastTrustedHeight returns a last trusted height.
 func (c *Client) LastTrustedHeight() (int64, error) {
-	h, err := c.trustedStore.LastSignedHeaderHeight()
-	if err != nil {
-		return -1, err
-	}
-	return h, nil
+	return c.trustedStore.LastSignedHeaderHeight()
 }
 
 // VerifyHeaderAtHeight fetches the header and validators at the given height

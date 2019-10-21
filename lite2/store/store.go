@@ -33,6 +33,6 @@ type Store interface {
 
 	// LastSignedHeaderHeight returns the last SignedHeader height.
 	//
-	// If the store is empty, -1 is returned.
+	// If the store is empty, an error is returned.
 	LastSignedHeaderHeight() (int64, error)
 }
