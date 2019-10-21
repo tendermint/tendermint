@@ -125,7 +125,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				tc.otherHeaders,
 				tc.vals,
 			),
-			dbs.New(dbm.NewMemDB(), ""),
+			dbs.New(dbm.NewMemDB(), chainID),
 			SequentialVerification(),
 		)
 
@@ -223,7 +223,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				tc.otherHeaders,
 				tc.vals,
 			),
-			dbs.New(dbm.NewMemDB(), ""),
+			dbs.New(dbm.NewMemDB(), chainID),
 			SkippingVerification(DefaultTrustLevel),
 		)
 		if tc.initErr {

@@ -44,7 +44,7 @@ func TestExample_Client(t *testing.T) {
 			Hash:   header.Hash(),
 		},
 		httpp.New(chainID, "tcp://localhost:26657"),
-		dbs.New(db, ""),
+		dbs.New(db, chainID),
 	)
 
 	err = c.VerifyHeaderAtHeight(101, time.Now())
@@ -89,7 +89,7 @@ func TestExample_AutoClient(t *testing.T) {
 			Hash:   header.Hash(),
 		},
 		httpp.New(chainID, "tcp://localhost:26657"),
-		dbs.New(db, ""),
+		dbs.New(db, chainID),
 	)
 
 	c := NewAutoClient(base, 1*time.Second)
