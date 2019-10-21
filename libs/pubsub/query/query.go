@@ -129,26 +129,24 @@ func (q *Query) Conditions() []Condition {
 			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
-					fmt.Printf(
-						"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)\n",
-						err,
-						number,
+					panic(
+						fmt.Sprintf(
+							"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)",
+							err, number,
+						),
 					)
-
-					return []Condition{}
 				}
 
 				conditions = append(conditions, Condition{eventAttr, op, value})
 			} else {
 				value, err := strconv.ParseInt(number, 10, 64)
 				if err != nil {
-					fmt.Printf(
-						"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)\n",
-						err,
-						number,
+					panic(
+						fmt.Sprintf(
+							"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)",
+							err, number,
+						),
 					)
-
-					return []Condition{}
 				}
 
 				conditions = append(conditions, Condition{eventAttr, op, value})
@@ -157,13 +155,12 @@ func (q *Query) Conditions() []Condition {
 		case ruletime:
 			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
-				fmt.Printf(
-					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)\n",
-					err,
-					buffer[begin:end],
+				panic(
+					fmt.Sprintf(
+						"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)",
+						err, buffer[begin:end],
+					),
 				)
-
-				return []Condition{}
 			}
 
 			conditions = append(conditions, Condition{eventAttr, op, value})
@@ -171,13 +168,12 @@ func (q *Query) Conditions() []Condition {
 		case ruledate:
 			value, err := time.Parse("2006-01-02", buffer[begin:end])
 			if err != nil {
-				fmt.Printf(
-					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)\n",
-					err,
-					buffer[begin:end],
+				panic(
+					fmt.Sprintf(
+						"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)",
+						err, buffer[begin:end],
+					),
 				)
-
-				return []Condition{}
 			}
 
 			conditions = append(conditions, Condition{eventAttr, op, value})
