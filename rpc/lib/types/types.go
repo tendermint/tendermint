@@ -56,7 +56,7 @@ type RPCRequest struct {
 }
 
 // UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
-func (request *RPCRequest) UnmarshalJSON(data []byte) error {
+func (req *RPCRequest) UnmarshalJSON(data []byte) error {
 	unsafeReq := &struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      interface{}     `json:"id"`
@@ -67,9 +67,9 @@ func (request *RPCRequest) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	request.JSONRPC = unsafeReq.JSONRPC
-	request.Method = unsafeReq.Method
-	request.Params = unsafeReq.Params
+	req.JSONRPC = unsafeReq.JSONRPC
+	req.Method = unsafeReq.Method
+	req.Params = unsafeReq.Params
 	if unsafeReq.ID == nil {
 		return nil
 	}
@@ -77,7 +77,7 @@ func (request *RPCRequest) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	request.ID = id
+	req.ID = id
 	return nil
 }
 
@@ -90,8 +90,8 @@ func NewRPCRequest(id jsonrpcid, method string, params json.RawMessage) RPCReque
 	}
 }
 
-func (request RPCRequest) String() string {
-	return fmt.Sprintf("[%s %s]", request.ID, request.Method)
+func (req RPCRequest) String() string {
+	return fmt.Sprintf("[%s %s]", req.ID, req.Method)
 }
 
 func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
@@ -153,7 +153,7 @@ type RPCResponse struct {
 }
 
 // UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
-func (response *RPCResponse) UnmarshalJSON(data []byte) error {
+func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	unsafeResp := &struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      interface{}     `json:"id"`
@@ -164,9 +164,9 @@ func (response *RPCResponse) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	response.JSONRPC = unsafeResp.JSONRPC
-	response.Error = unsafeResp.Error
-	response.Result = unsafeResp.Result
+	resp.JSONRPC = unsafeResp.JSONRPC
+	resp.Error = unsafeResp.Error
+	resp.Result = unsafeResp.Result
 	if unsafeResp.ID == nil {
 		return nil
 	}
@@ -174,7 +174,7 @@ func (response *RPCResponse) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	response.ID = id
+	resp.ID = id
 	return nil
 }
 
@@ -201,11 +201,11 @@ func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCRes
 	}
 }
 
-func (response RPCResponse) String() string {
-	if response.Error == nil {
-		return fmt.Sprintf("[%s %v]", response.ID, response.Result)
+func (resp RPCResponse) String() string {
+	if resp.Error == nil {
+		return fmt.Sprintf("[%s %v]", resp.ID, resp.Result)
 	}
-	return fmt.Sprintf("[%s %s]", response.ID, response.Error)
+	return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
 }
 
 func RPCParseError(id jsonrpcid, err error) RPCResponse {
