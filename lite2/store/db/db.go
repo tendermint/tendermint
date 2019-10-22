@@ -79,8 +79,8 @@ func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 
 func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 	itr := s.db.ReverseIterator(
-		shKey(1),
-		append(shKey(1<<63-1), byte(0x00)),
+		s.shKey(1),
+		append(s.shKey(1<<63-1), byte(0x00)),
 	)
 	defer itr.Close()
 
@@ -88,7 +88,7 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 		key := itr.Key()
 		_, height, ok := parseShKey(key)
 		if ok {
-			return height
+			return height, nil
 		}
 	}
 
@@ -115,7 +115,7 @@ func parseKey(key []byte) (part string, prefix string, height int64, ok bool) {
 	heightStr := string(submatch[3])
 	heightInt, err := strconv.Atoi(heightStr)
 	if err != nil {
-		return "", 0, "", false
+		return "", "", 0, false
 	}
 	height = int64(heightInt)
 	ok = true // good!

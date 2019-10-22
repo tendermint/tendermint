@@ -182,7 +182,7 @@ func (c *Client) SetLogger(l log.Logger) {
 // height must be >= 0.
 func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
 	if height < 0 {
-		return errors.New("negative height")
+		return nil, errors.New("negative height")
 	}
 
 	if height == 0 {
