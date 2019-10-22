@@ -105,7 +105,7 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 		lastHeight := res.BlockMetas[len(res.BlockMetas)-1].Height
 		if c.lc.LastTrustedHeight() < lastHeight {
 			if err := c.lc.VerifyHeaderAtHeight(lastHeight, time.Now()); err != nil {
-				return errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", lastHeight)
+				return nil, errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", lastHeight)
 			}
 		}
 	}
@@ -148,17 +148,24 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 			res.BlockMeta.Header.Hash, res.Block.Hash)
 	}
 
+	// Update the light client if we're behind.
+	if c.lc.LastTrustedHeight() < res.Block.Height {
+		if err := c.lc.VerifyHeaderAtHeight(res.Block.Height, time.Now()); err != nil {
+			return nil, errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", res.Block.Height)
+		}
+	}
+
 	// Verify block.
 	h, err := c.lc.TrustedHeader(res.Block.Height)
 	if err != nil {
-		return nil, errors.Wrapf(err, "TrustedHeader(%d)", meta.Header.Height)
+		return nil, errors.Wrapf(err, "TrustedHeader(%d)", res.Block.Height)
 	}
 	if !bytes.Equal(res.Block.Hash, h.Hash) {
 		return nil, errors.Errorf("Block#Header %X does not match with trusted header %X",
-			meta.Header.Hash, h.Hash)
+			res.Block.Hash, h.Hash)
 	}
 
-	return resBlock, nil
+	return res, nil
 }
 
 func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
@@ -166,7 +173,34 @@ func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 }
 
 func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
-	return c.next.Commit(height)
+	res, err := c.next.Commit(height)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate res.
+	if err := res.SignedHeader.ValidateBasic(); err != nil {
+		return nil, err
+	}
+
+	// Update the light client if we're behind.
+	if c.lc.LastTrustedHeight() < res.Height {
+		if err := c.lc.VerifyHeaderAtHeight(res.Height, time.Now()); err != nil {
+			return nil, errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", res.Height)
+		}
+	}
+
+	// Verify commit.
+	h, err := c.lc.TrustedHeader(res.Height)
+	if err != nil {
+		return nil, errors.Wrapf(err, "TrustedHeader(%d)", res.Height)
+	}
+	if !bytes.Equal(res.Hash, h.Hash) {
+		return nil, errors.Errorf("header %X does not match with trusted header %X",
+			res.Hash, h.Hash)
+	}
+
+	return res, nil
 }
 
 // Tx calls rpcclient#Tx method and then verifies the proof if such was
@@ -185,7 +219,7 @@ func (c *Client) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	// Update the light client if we're behind.
 	if c.lc.LastTrustedHeight() < res.Height {
 		if err := c.lc.VerifyHeaderAtHeight(res.Height, time.Now()); err != nil {
-			return errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", res.Height)
+			return nil, errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", res.Height)
 		}
 	}
 
