@@ -11,7 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	lrpc "github.com/tendermint/tendermint/lite2/rpc"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 )
@@ -21,7 +21,7 @@ type Proxy struct {
 	Addr   string // TCP address to listen on, ":http" if empty
 	Config *rpcserver.Config
 	Codec  *amino.Codec
-	Client rpcclient.Client
+	Client *lrpc.Client
 	Logger log.Logger
 }
 

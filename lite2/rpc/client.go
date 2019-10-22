@@ -3,6 +3,8 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,6 +14,7 @@ import (
 	lite "github.com/tendermint/tendermint/lite2"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -64,10 +67,7 @@ func (c *Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQu
 }
 
 func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-
-	res, err := GetWithProofOptions(w.prt, path, data, opts, w.Client, w.cert)
-	return res, err
-	return c.next.ABCIQueryWithOptions(path, data, opts)
+	return GetWithProofOptions(c.prt, path, data, opts, w.Client, w.cert)
 }
 
 func (c *Client) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
@@ -285,14 +285,13 @@ func (c *Client) updateLiteClientIfNeededTo(height int64) error {
 	return nil
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
 func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 	c.prt.RegisterOpDecoder(typ, dec)
 }
 
 // SubscribeWS subscribes for events using the given query and remote address as
 // a subscriber, but does not verify responses (UNSAFE)!
+// TODO: verify data
 func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
 	out, err := c.next.Subscribe(context.Background(), ctx.RemoteAddr(), query)
 	if err != nil {
@@ -303,7 +302,7 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 		for {
 			select {
 			case resultEvent := <-out:
-				// XXX(melekes) We should have a switch here that performs a validation
+				// We should have a switch here that performs a validation
 				// depending on the event's type.
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
@@ -311,7 +310,9 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))
-			case <-w.Client.Quit():
+			case <-c.next.Quit():
+				return
+			case <-c.Quit():
 				return
 			}
 		}
@@ -322,8 +323,8 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
-func (w Wrapper) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
-	err := w.Client.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
+func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
+	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -332,8 +333,8 @@ func (w Wrapper) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Res
 
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
-func (w Wrapper) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
-	err := w.Client.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
+func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
+	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
 	if err != nil {
 		return nil, err
 	}
