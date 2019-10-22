@@ -1,9 +1,13 @@
 package proxy
 
 import (
+	"errors"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -13,45 +17,47 @@ import (
 func RPCRoutes(c rpcclient.Client) map[string]*rpcserver.RPCFunc {
 	return map[string]*rpcserver.RPCFunc{
 		// Subscribe/unsubscribe are reserved for websocket events.
-		"subscribe":       rpcserver.NewWSRPCFunc(c.(Wrapper).SubscribeWS, "query"),
-		"unsubscribe":     rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeWS, "query"),
-		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.(Wrapper).UnsubscribeAllWS, ""),
+		"subscribe":       rpcserver.NewWSRPCFunc(c.Subscribe, "query"),
+		"unsubscribe":     rpcserver.NewWSRPCFunc(c.Unsubscribe, "query"),
+		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAll, ""),
 
 		// info API
-		"health":               rpc.NewRPCFunc(makeHealthFunc(c), ""),
-		"status":               rpc.NewRPCFunc(makeStatusFunc(c), ""),
-		"net_info":             rpc.NewRPCFunc(makeNetInfoFunc(c), ""),
-		"blockchain":           rpc.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
-		"genesis":              rpc.NewRPCFunc(makeGenesisFunc(c), ""),
-		"block":                rpc.NewRPCFunc(makeBlockFunc(c), "height"),
-		"block_results":        rpc.NewRPCFunc(makeBlockResultsFunc(c), "height"),
-		"commit":               rpc.NewRPCFunc(makeCommitFunc(c), "height"),
-		"tx":                   rpc.NewRPCFunc(makeTxFunc(c), "hash,prove"),
-		"tx_search":            rpc.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page"),
-		"validators":           rpc.NewRPCFunc(makeValidatorsFunc(c), "height"),
-		"dump_consensus_state": rpc.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),
-		"consensus_state":      rpc.NewRPCFunc(makeConsensusStateFunc(c), ""),
-		"consensus_params":     rpc.NewRPCFunc(makeConsensusParamsFunc(c), "height"),
-		"unconfirmed_txs":      rpc.NewRPCFunc(makeUnconfirmedTxsFunc(c), "limit"),
-		"num_unconfirmed_txs":  rpc.NewRPCFunc(makeNumUnconfirmedTxsFunc(c), ""),
+		"health":               rpcserver.NewRPCFunc(makeHealthFunc(c), ""),
+		"status":               rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
+		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), ""),
+		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
+		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
+		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
+		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
+		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
+		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
+		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page"),
+		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height"),
+		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),
+		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), ""),
+		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height"),
+		"unconfirmed_txs":      rpcserver.NewRPCFunc(makeUnconfirmedTxsFunc(c), "limit"),
+		"num_unconfirmed_txs":  rpcserver.NewRPCFunc(makeNumUnconfirmedTxsFunc(c), ""),
 
 		// tx broadcast API
-		"broadcast_tx_commit": rpc.NewRPCFunc(makeBroadcastTxCommitFunc(c), "tx"),
-		"broadcast_tx_sync":   rpc.NewRPCFunc(makeBroadcastTxSyncFunc(c), "tx"),
-		"broadcast_tx_async":  rpc.NewRPCFunc(makeBroadcastTxAsyncFunc(c), "tx"),
+		"broadcast_tx_commit": rpcserver.NewRPCFunc(makeBroadcastTxCommitFunc(c), "tx"),
+		"broadcast_tx_sync":   rpcserver.NewRPCFunc(makeBroadcastTxSyncFunc(c), "tx"),
+		"broadcast_tx_async":  rpcserver.NewRPCFunc(makeBroadcastTxAsyncFunc(c), "tx"),
 
 		// abci API
-		"abci_query": rpc.NewRPCFunc(makeABCIQueryFunc(c), "path,data,height,prove"),
-		"abci_info":  rpc.NewRPCFunc(makeABCIInfoFunc(c), ""),
+		"abci_query": rpcserver.NewRPCFunc(makeABCIQueryFunc(c), "path,data,height,prove"),
+		"abci_info":  rpcserver.NewRPCFunc(makeABCIInfoFunc(c), ""),
 
 		// evidence API
-		"broadcast_evidence": rpc.NewRPCFunc(makeBroadcastEvidenceFunc(c), "evidence"),
+		"broadcast_evidence": rpcserver.NewRPCFunc(makeBroadcastEvidenceFunc(c), "evidence"),
 	}
 }
 
 func makeHealthFunc(c client.StatusClient) func(ctx *rpctypes.Context) (*ctypes.ResultHealth, error) {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultHealth, error) {
-		return c.Health()
+		// TODO: Client does not expose Health?
+		// return c.Health()
+		return nil, errors.New("not implemented")
 	}
 }
 
@@ -61,7 +67,7 @@ func makeStatusFunc(c client.StatusClient) func(ctx *rpctypes.Context) (*ctypes.
 	}
 }
 
-func makeNetInfoFunc(c rpcclient.Client) func(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
+func makeNetInfoFunc(c rpcclient.Client) func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error) {
 	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error) {
 		return c.NetInfo()
 	}
@@ -129,7 +135,9 @@ func makeConsensusStateFunc(c rpcclient.Client) func(ctx *rpctypes.Context) (*ct
 
 func makeConsensusParamsFunc(c rpcclient.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
-		return c.ConsensusParams(height)
+		// TODO: Client does not expose Health?
+		// return c.ConsensusParams(height)
+		return nil, errors.New("not implemented")
 	}
 }
 

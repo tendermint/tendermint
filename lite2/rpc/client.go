@@ -64,6 +64,9 @@ func (c *Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQu
 }
 
 func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+
+	res, err := GetWithProofOptions(w.prt, path, data, opts, w.Client, w.cert)
+	return res, err
 	return c.next.ABCIQueryWithOptions(path, data, opts)
 }
 
@@ -280,4 +283,161 @@ func (c *Client) updateLiteClientIfNeededTo(height int64) error {
 		}
 	}
 	return nil
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
+	c.prt.RegisterOpDecoder(typ, dec)
+}
+
+// SubscribeWS subscribes for events using the given query and remote address as
+// a subscriber, but does not verify responses (UNSAFE)!
+func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
+	out, err := c.next.Subscribe(context.Background(), ctx.RemoteAddr(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		for {
+			select {
+			case resultEvent := <-out:
+				// XXX(melekes) We should have a switch here that performs a validation
+				// depending on the event's type.
+				ctx.WSConn.TryWriteRPCResponse(
+					rpctypes.NewRPCSuccessResponse(
+						ctx.WSConn.Codec(),
+						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						resultEvent,
+					))
+			case <-w.Client.Quit():
+				return
+			}
+		}
+	}()
+
+	return &ctypes.ResultSubscribe{}, nil
+}
+
+// UnsubscribeWS calls original client's Unsubscribe using remote address as a
+// subscriber.
+func (w Wrapper) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
+	err := w.Client.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultUnsubscribe{}, nil
+}
+
+// UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
+// as a subscriber.
+func (w Wrapper) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
+	err := w.Client.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultUnsubscribe{}, nil
+}
+
+// GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
+// XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
+func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts rpcclient.ABCIQueryOptions,
+	node rpcclient.Client, cert lite.Verifier) (
+	*ctypes.ResultABCIQuery, error) {
+	opts.Prove = true
+	res, err := node.ABCIQueryWithOptions(path, key, opts)
+	if err != nil {
+		return nil, err
+	}
+	resp := res.Response
+
+	// Validate the response, e.g. height.
+	if resp.IsErr() {
+		err = cmn.NewError("Query error for key %d: %d", key, resp.Code)
+		return nil, err
+	}
+
+	if len(resp.Key) == 0 || resp.Proof == nil {
+		return nil, lerr.ErrEmptyTree()
+	}
+	if resp.Height == 0 {
+		return nil, cmn.NewError("Height returned is zero")
+	}
+
+	// AppHash for height H is in header H+1
+	signedHeader, err := GetCertifiedCommit(resp.Height+1, node, cert)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate the proof against the certified header to ensure data integrity.
+	if resp.Value != nil {
+		// Value exists
+		// XXX How do we encode the key into a string...
+		storeName, err := parseQueryStorePath(path)
+		if err != nil {
+			return nil, err
+		}
+		kp := merkle.KeyPath{}
+		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
+		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
+		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, kp.String(), resp.Value)
+		if err != nil {
+			return nil, errors.Wrap(err, "Couldn't verify value proof")
+		}
+		return &ctypes.ResultABCIQuery{Response: resp}, nil
+	} else {
+		// Value absent
+		// Validate the proof against the certified header to ensure data integrity.
+		// XXX How do we encode the key into a string...
+		err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
+		if err != nil {
+			return nil, errors.Wrap(err, "Couldn't verify absence proof")
+		}
+		return &ctypes.ResultABCIQuery{Response: resp}, nil
+	}
+}
+
+func parseQueryStorePath(path string) (storeName string, err error) {
+	if !strings.HasPrefix(path, "/") {
+		return "", fmt.Errorf("expected path to start with /")
+	}
+
+	paths := strings.SplitN(path[1:], "/", 3)
+	switch {
+	case len(paths) != 3:
+		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+	case paths[0] != "store":
+		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+	case paths[2] != "key":
+		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+	}
+
+	return paths[1], nil
+}
+
+// GetWithProof will query the key on the given node, and verify it has
+// a valid proof, as defined by the Verifier.
+//
+// If there is any error in checking, returns an error.
+func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
+	cert lite.Verifier) (
+	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
+
+	if reqHeight < 0 {
+		err = cmn.NewError("Height cannot be negative")
+		return
+	}
+
+	res, err := GetWithProofOptions(prt, "/key", key,
+		rpcclient.ABCIQueryOptions{Height: reqHeight, Prove: true},
+		node, cert)
+	if err != nil {
+		return
+	}
+
+	resp := res.Response
+	val, height = resp.Value, resp.Height
+	return val, height, proof, err
 }

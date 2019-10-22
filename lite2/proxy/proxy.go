@@ -10,6 +10,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
@@ -37,8 +38,8 @@ func (p *Proxy) ListenAndServe() error {
 	return rpcserver.StartHTTPServer(
 		listener,
 		mux,
-		logger,
-		config,
+		p.Logger,
+		p.Config,
 	)
 }
 
@@ -71,16 +72,17 @@ func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
 	rpcserver.RegisterRPCFuncs(mux, r, p.Codec, p.Logger)
 
 	// 2) Allow websocket connections.
-	wm := rpcserver.NewWebsocketManager(r, cdc,
+	wmLogger := p.Logger.With("protocol", "websocket")
+	wm := rpcserver.NewWebsocketManager(r, p.Codec,
 		rpcserver.OnDisconnect(func(remoteAddr string) {
-			err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+			err := p.Client.UnsubscribeAll(context.Background(), remoteAddr)
 			if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
 				wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 			}
 		}),
-		rpcserver.ReadLimit(config.MaxBodyBytes),
+		rpcserver.ReadLimit(p.Config.MaxBodyBytes),
 	)
-	wm.SetLogger(p.Logger.With("protocol", "websocket"))
+	wm.SetLogger(wmLogger)
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
 	// 3) Start a client.
