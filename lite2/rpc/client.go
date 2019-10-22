@@ -129,8 +129,36 @@ func (c *Client) Genesis() (*ctypes.ResultGenesis, error) {
 	return c.next.Genesis()
 }
 
+// Block calls rpcclient#Block and then verifies the result.
 func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
-	return c.next.Block(height)
+	res, err := c.next.Block(height)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate res.
+	if err := res.BlockMeta.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	if err := res.Block.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(res.BlockMeta.Header.Hash, res.Block.Hash) {
+		return nil, errors.Errorf("BlockMeta#Header %X does not match with Block %X",
+			res.BlockMeta.Header.Hash, res.Block.Hash)
+	}
+
+	// Verify block.
+	h, err := c.lc.TrustedHeader(res.Block.Height)
+	if err != nil {
+		return nil, errors.Wrapf(err, "TrustedHeader(%d)", meta.Header.Height)
+	}
+	if !bytes.Equal(res.Block.Hash, h.Hash) {
+		return nil, errors.Errorf("Block#Header %X does not match with trusted header %X",
+			meta.Header.Hash, h.Hash)
+	}
+
+	return resBlock, nil
 }
 
 func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
