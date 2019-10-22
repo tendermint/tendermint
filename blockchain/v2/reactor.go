@@ -1,18 +1,29 @@
 package v2
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
+	"github.com/tendermint/tendermint/types"
 )
 
 type bcBlockRequestMessage struct {
 	priorityNormal
 	Height int64 // XXX: could this be private?
+}
+
+func (m *bcBlockRequestMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	return nil
 }
 
 type timeCheck struct {
@@ -51,6 +62,7 @@ type Reactor struct {
 	swReporter *behaviour.SwitchReporter
 	io         iIo
 	state      state.State
+	store      *store.BlockStore
 }
 
 func NewReactor(bufferSize int) *Reactor {
@@ -227,13 +239,87 @@ func (r *Reactor) Stop() {
 	r.logger.Info("reactor stopped")
 }
 
-func (r *Reactor) Receive(event Event) {
-	// XXX: decode and serialize write events
-	// TODO: backpressure
-	// what about send block?
-	r.events <- event
+const (
+	// NOTE: keep up to date with bcBlockResponseMessage
+	bcBlockResponseMessagePrefixSize   = 4
+	bcBlockResponseMessageFieldKeySize = 1
+	maxMsgSize                         = types.MaxBlockSizeBytes +
+		bcBlockResponseMessagePrefixSize +
+		bcBlockResponseMessageFieldKeySize
+)
+
+// BlockchainMessage is a generic message for this reactor.
+type BlockchainMessage interface {
+	ValidateBasic() error
 }
 
-func (r *Reactor) AddPeer() {
-	// TODO: add peer event and send to demuxer
+func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+	}
+	err = cdc.UnmarshalBinaryBare(bz, &msg)
+	return
+}
+
+func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+	msg, err := decodeMsg(msgBytes)
+	if err != nil {
+		r.logger.Error("error decoding message",
+			"src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		_ = r.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+		return
+	}
+
+	if err = msg.ValidateBasic(); err != nil {
+		r.logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+		_ = r.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+		return
+	}
+
+	r.logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+
+	switch msg := msg.(type) {
+	case *bcBlockRequestMessage:
+		block := r.store.LoadBlock(msg.Height)
+		if block != nil {
+			if err = r.io.sendBlockToPeer(block, src.ID()); err != nil {
+				r.logger.Error("Could not send block message to peer: ", err)
+			}
+		} else {
+			r.logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
+			if err = r.io.sendBlockNotFound(msg.Height, src.ID()); err != nil {
+				r.logger.Error("Couldn't send block not found: ", err)
+			}
+		}
+	case *bcStatusRequestMessage:
+		if err := r.io.sendStatusResponse(r.SyncHeight(), src.ID()); err != nil {
+			r.logger.Error("Could not send status message to peer", "src", src)
+		}
+	default:
+		// Forward to state machines
+		// r.events <- msg
+	}
+}
+
+func (r *Reactor) AddPeer(peer p2p.Peer) {
+	err := r.io.sendStatusResponse(r.SyncHeight(), peer.ID())
+	if err != nil {
+		r.logger.Error("Could not send status message to peer new", "src", peer.ID, "height", r.SyncHeight())
+	}
+	r.events <- addNewPeer{peerID: peer.ID()}
+}
+
+type bcRemovePeer struct {
+	priorityHigh
+	peerID p2p.ID
+	reason interface{}
+}
+
+func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	event := bcRemovePeer{
+		peerID: peer.ID(),
+		reason: reason,
+	}
+
+	r.events <- event
 }

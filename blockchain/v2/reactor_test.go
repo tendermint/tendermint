@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -42,7 +43,8 @@ func TestReactor(t *testing.T) {
 	}
 
 	for _, event := range script {
-		reactor.Receive(event)
+		fmt.Println(event)
+		//TODO reactor.Receive(event)
 	}
 	reactor.Stop()
 }

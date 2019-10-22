@@ -34,7 +34,7 @@ type bcBlockResponse struct {
 	priorityNormal
 	time   time.Time
 	peerID p2p.ID
-	height int64
+	height int64 // isn't the height in the block?
 	size   int64
 	block  *types.Block
 }
