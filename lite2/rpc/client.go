@@ -66,8 +66,62 @@ func (c *Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQu
 	return c.ABCIQueryWithOptions(path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
+// GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
+// XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
 func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	return GetWithProofOptions(c.prt, path, data, opts, w.Client, w.cert)
+	res, err := c.next.ABCIQueryWithOptions(path, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	resp := res.Response
+
+	// Validate the response.
+	if resp.IsErr() {
+		return nil, errors.Errorf("err response code: %v", resp.Code)
+	}
+	if len(resp.Key) == 0 || resp.Proof == nil {
+		return nil, errors.New("empty tree")
+	}
+	if resp.Height <= 0 {
+		return nil, errors.New("negative or zero height")
+	}
+
+	// Update the light client if we're behind.
+	if err := c.updateLiteClientIfNeededTo(resp.Height + 1); err != nil {
+		return nil, err
+	}
+
+	// AppHash for height H is in header H+1.
+	h, err := c.lc.TrustedHeader(resp.Height + 1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "TrustedHeader(%d)", resp.Height+1)
+	}
+
+	// Validate the value proof against the trusted header.
+	if resp.Value != nil {
+		// Value exists
+		// XXX How do we encode the key into a string...
+		storeName, err := parseQueryStorePath(path)
+		if err != nil {
+			return nil, err
+		}
+		kp := merkle.KeyPath{}
+		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
+		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
+		err = c.prt.VerifyValue(resp.Proof, h.AppHash, kp.String(), resp.Value)
+		if err != nil {
+			return nil, errors.Wrap(err, "verify value proof")
+		}
+		return &ctypes.ResultABCIQuery{Response: resp}, nil
+	}
+
+	// OR validate the ansence proof against the trusted header.
+	// XXX How do we encode the key into a string...
+	err = c.prt.VerifyAbsence(resp.Proof, h.AppHash, string(resp.Key))
+	if err != nil {
+		return nil, errors.Wrap(err, "verify absence proof")
+	}
+	return &ctypes.ResultABCIQuery{Response: resp}, nil
 }
 
 func (c *Client) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
@@ -310,8 +364,6 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))
-			case <-c.next.Quit():
-				return
 			case <-c.Quit():
 				return
 			}
@@ -341,65 +393,6 @@ func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscr
 	return &ctypes.ResultUnsubscribe{}, nil
 }
 
-// GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
-// XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
-func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts rpcclient.ABCIQueryOptions,
-	node rpcclient.Client, cert lite.Verifier) (
-	*ctypes.ResultABCIQuery, error) {
-	opts.Prove = true
-	res, err := node.ABCIQueryWithOptions(path, key, opts)
-	if err != nil {
-		return nil, err
-	}
-	resp := res.Response
-
-	// Validate the response, e.g. height.
-	if resp.IsErr() {
-		err = cmn.NewError("Query error for key %d: %d", key, resp.Code)
-		return nil, err
-	}
-
-	if len(resp.Key) == 0 || resp.Proof == nil {
-		return nil, lerr.ErrEmptyTree()
-	}
-	if resp.Height == 0 {
-		return nil, cmn.NewError("Height returned is zero")
-	}
-
-	// AppHash for height H is in header H+1
-	signedHeader, err := GetCertifiedCommit(resp.Height+1, node, cert)
-	if err != nil {
-		return nil, err
-	}
-
-	// Validate the proof against the certified header to ensure data integrity.
-	if resp.Value != nil {
-		// Value exists
-		// XXX How do we encode the key into a string...
-		storeName, err := parseQueryStorePath(path)
-		if err != nil {
-			return nil, err
-		}
-		kp := merkle.KeyPath{}
-		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
-		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
-		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, kp.String(), resp.Value)
-		if err != nil {
-			return nil, errors.Wrap(err, "Couldn't verify value proof")
-		}
-		return &ctypes.ResultABCIQuery{Response: resp}, nil
-	} else {
-		// Value absent
-		// Validate the proof against the certified header to ensure data integrity.
-		// XXX How do we encode the key into a string...
-		err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
-		if err != nil {
-			return nil, errors.Wrap(err, "Couldn't verify absence proof")
-		}
-		return &ctypes.ResultABCIQuery{Response: resp}, nil
-	}
-}
-
 func parseQueryStorePath(path string) (storeName string, err error) {
 	if !strings.HasPrefix(path, "/") {
 		return "", fmt.Errorf("expected path to start with /")
@@ -416,29 +409,4 @@ func parseQueryStorePath(path string) (storeName string, err error) {
 	}
 
 	return paths[1], nil
-}
-
-// GetWithProof will query the key on the given node, and verify it has
-// a valid proof, as defined by the Verifier.
-//
-// If there is any error in checking, returns an error.
-func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
-	cert lite.Verifier) (
-	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
-
-	if reqHeight < 0 {
-		err = cmn.NewError("Height cannot be negative")
-		return
-	}
-
-	res, err := GetWithProofOptions(prt, "/key", key,
-		rpcclient.ABCIQueryOptions{Height: reqHeight, Prove: true},
-		node, cert)
-	if err != nil {
-		return
-	}
-
-	resp := res.Response
-	val, height = resp.Value, resp.Height
-	return val, height, proof, err
 }
