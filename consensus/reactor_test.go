@@ -607,7 +607,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	if block.LastCommit.Size() != len(activeVals) {
 		return fmt.Errorf(
-			"Commit size doesn't match number of active validators. Got %d, expected %d",
+			"commit size doesn't match number of active validators. Got %d, expected %d",
 			block.LastCommit.Size(),
 			len(activeVals),
 		)
