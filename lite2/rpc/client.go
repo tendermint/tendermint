@@ -2,18 +2,24 @@ package rpc
 
 import (
 	"bytes"
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/merkle"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	lite "github.com/tendermint/tendermint/lite2"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Client is an RPC client, which uses lite#Client to verify data (if it can be
 // proved!).
 type Client struct {
+	cmn.BaseService
+
 	next rpcclient.Client
 	lc   *lite.Client
 	prt  *merkle.ProofRuntime
@@ -23,10 +29,25 @@ var _ rpcclient.Client = (*Client)(nil)
 
 // NewClient returns a new client.
 func NewClient(next rpcclient.Client, lc *lite.Client) *Client {
-	return &Client{
+	c := &Client{
 		next: next,
 		lc:   lc,
 		prt:  defaultProofRuntime(),
+	}
+	c.BaseService = *cmn.NewBaseService(nil, "Client", c)
+	return c
+}
+
+func (c *Client) OnStart() error {
+	if !c.next.IsRunning() {
+		return c.next.Start()
+	}
+	return nil
+}
+
+func (c *Client) OnStop() {
+	if c.next.IsRunning() {
+		c.next.Stop()
 	}
 }
 
@@ -42,7 +63,7 @@ func (c *Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQu
 	return c.ABCIQueryWithOptions(path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
-func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (c *Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	return c.next.ABCIQueryWithOptions(path, data, opts)
 }
 
@@ -102,8 +123,12 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 
 	// Update the light client if we're behind.
 	if len(res.BlockMetas) > 0 {
-		lastHeight := res.BlockMetas[len(res.BlockMetas)-1].Height
-		if c.lc.LastTrustedHeight() < lastHeight {
+		lastHeight := res.BlockMetas[len(res.BlockMetas)-1].Header.Height
+		lastTrustedHeight, err := c.lc.LastTrustedHeight()
+		if err != nil {
+			return nil, errors.Wrap(err, "LastTrustedHeight")
+		}
+		if lastTrustedHeight < lastHeight {
 			if err := c.lc.VerifyHeaderAtHeight(lastHeight, time.Now()); err != nil {
 				return nil, errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", lastHeight)
 			}
@@ -116,9 +141,9 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 		if err != nil {
 			return nil, errors.Wrapf(err, "TrustedHeader(%d)", meta.Header.Height)
 		}
-		if !bytes.Equal(meta.Header.Hash, h.Hash) {
+		if !bytes.Equal(meta.Header.Hash(), h.Hash()) {
 			return nil, errors.Errorf("BlockMeta#Header %X does not match with trusted header %X",
-				meta.Header.Hash, h.Hash)
+				meta.Header.Hash(), h.Hash())
 		}
 	}
 
@@ -143,13 +168,17 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 	if err := res.Block.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	if !bytes.Equal(res.BlockMeta.Header.Hash, res.Block.Hash) {
+	if !bytes.Equal(res.BlockMeta.Header.Hash(), res.Block.Hash()) {
 		return nil, errors.Errorf("BlockMeta#Header %X does not match with Block %X",
-			res.BlockMeta.Header.Hash, res.Block.Hash)
+			res.BlockMeta.Header.Hash(), res.Block.Hash())
 	}
 
 	// Update the light client if we're behind.
-	if c.lc.LastTrustedHeight() < res.Block.Height {
+	lastTrustedHeight, err := c.lc.LastTrustedHeight()
+	if err != nil {
+		return nil, errors.Wrap(err, "LastTrustedHeight")
+	}
+	if lastTrustedHeight < res.Block.Height {
 		if err := c.lc.VerifyHeaderAtHeight(res.Block.Height, time.Now()); err != nil {
 			return nil, errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", res.Block.Height)
 		}
@@ -160,9 +189,9 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "TrustedHeader(%d)", res.Block.Height)
 	}
-	if !bytes.Equal(res.Block.Hash, h.Hash) {
+	if !bytes.Equal(res.Block.Hash(), h.Hash()) {
 		return nil, errors.Errorf("Block#Header %X does not match with trusted header %X",
-			res.Block.Hash, h.Hash)
+			res.Block.Hash(), h.Hash())
 	}
 
 	return res, nil
@@ -179,12 +208,16 @@ func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	}
 
 	// Validate res.
-	if err := res.SignedHeader.ValidateBasic(); err != nil {
+	if err := res.SignedHeader.ValidateBasic(c.lc.ChainID()); err != nil {
 		return nil, err
 	}
 
 	// Update the light client if we're behind.
-	if c.lc.LastTrustedHeight() < res.Height {
+	lastTrustedHeight, err := c.lc.LastTrustedHeight()
+	if err != nil {
+		return nil, errors.Wrap(err, "LastTrustedHeight")
+	}
+	if lastTrustedHeight < res.Height {
 		if err := c.lc.VerifyHeaderAtHeight(res.Height, time.Now()); err != nil {
 			return nil, errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", res.Height)
 		}
@@ -195,9 +228,9 @@ func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "TrustedHeader(%d)", res.Height)
 	}
-	if !bytes.Equal(res.Hash, h.Hash) {
+	if !bytes.Equal(res.Hash(), h.Hash()) {
 		return nil, errors.Errorf("header %X does not match with trusted header %X",
-			res.Hash, h.Hash)
+			res.Hash(), h.Hash())
 	}
 
 	return res, nil
@@ -212,12 +245,16 @@ func (c *Client) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 
 	// Validate res.
-	if res.Height <= 0 || res.Proof == nil {
+	if res.Height <= 0 {
 		return nil, errors.Errorf("invalid ResultTx: %v", res)
 	}
 
 	// Update the light client if we're behind.
-	if c.lc.LastTrustedHeight() < res.Height {
+	lastTrustedHeight, err := c.lc.LastTrustedHeight()
+	if err != nil {
+		return nil, errors.Wrap(err, "LastTrustedHeight")
+	}
+	if lastTrustedHeight < res.Height {
 		if err := c.lc.VerifyHeaderAtHeight(res.Height, time.Now()); err != nil {
 			return nil, errors.Wrapf(err, "VerifyHeaderAtHeight(%d)", res.Height)
 		}
@@ -241,4 +278,17 @@ func (c *Client) Validators(height *int64) (*ctypes.ResultValidators, error) {
 
 func (c *Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return c.next.BroadcastEvidence(ev)
+}
+
+func (c *Client) Subscribe(ctx context.Context, subscriber, query string,
+	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
+	return c.next.Subscribe(ctx, subscriber, query, outCapacity...)
+}
+
+func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) error {
+	return c.next.Unsubscribe(ctx, subscriber, query)
+}
+
+func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
+	return c.next.UnsubscribeAll(ctx, subscriber)
 }

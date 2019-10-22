@@ -1,4 +1,4 @@
-package proxy
+package rpc
 
 import (
 	"github.com/tendermint/tendermint/crypto/merkle"

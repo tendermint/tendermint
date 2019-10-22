@@ -201,6 +201,11 @@ func (c *Client) LastTrustedHeight() (int64, error) {
 	return c.trustedStore.LastSignedHeaderHeight()
 }
 
+// ChainID returns a chain ID.
+func (c *Client) ChainID() string {
+	return c.chainID
+}
+
 // VerifyHeaderAtHeight fetches the header and validators at the given height
 // and calls VerifyHeader.
 //
