@@ -331,10 +331,10 @@ func match(tag string, op Operator, operand reflect.Value, events map[string][]s
 	return false
 }
 
-// matchValue will attempt to match a string value against an operation an
-// operand. A boolean is returned representing the match result. It will panic
-// if an error occurs or if the operand is invalid.
-func matchValue(value string, op Operator, operand reflect.Value) bool {
+// matchValue will attempt to match a string value against an operator an
+// operand. A boolean is returned representing the match result. It will return
+// an error if the value cannot be parsed and matched against the operand type.
+func matchValue(value string, op Operator, operand reflect.Value) (bool, error) {
 	switch operand.Kind() {
 	case reflect.Struct: // time
 		operandAsTime := operand.Interface().(time.Time)
@@ -351,21 +351,20 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 			v, err = time.Parse(DateLayout, value)
 		}
 		if err != nil {
-			fmt.Printf("failed to convert value %v from event attribute to time.Time: %v\n", value, err)
-			return false
+			return false, fmt.Errorf("failed to convert value %v from event attribute to time.Time: %w", value, err)
 		}
 
 		switch op {
 		case OpLessEqual:
-			return v.Before(operandAsTime) || v.Equal(operandAsTime)
+			return (v.Before(operandAsTime) || v.Equal(operandAsTime)), nil
 		case OpGreaterEqual:
-			return v.Equal(operandAsTime) || v.After(operandAsTime)
+			return (v.Equal(operandAsTime) || v.After(operandAsTime)), nil
 		case OpLess:
-			return v.Before(operandAsTime)
+			return v.Before(operandAsTime), nil
 		case OpGreater:
-			return v.After(operandAsTime)
+			return v.After(operandAsTime), nil
 		case OpEqual:
-			return v.Equal(operandAsTime)
+			return v.Equal(operandAsTime), nil
 		}
 
 	case reflect.Float64:
@@ -377,21 +376,20 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		// try our best to convert value from tags to float64
 		v, err := strconv.ParseFloat(filteredValue, 64)
 		if err != nil {
-			fmt.Printf("failed to convert value %v from event attribute to float64: %v\n", filteredValue, err)
-			return false
+			return false, fmt.Errorf("failed to convert value %v from event attribute to float64: %w", filteredValue, err)
 		}
 
 		switch op {
 		case OpLessEqual:
-			return v <= operandFloat64
+			return v <= operandFloat64, nil
 		case OpGreaterEqual:
-			return v >= operandFloat64
+			return v >= operandFloat64, nil
 		case OpLess:
-			return v < operandFloat64
+			return v < operandFloat64, nil
 		case OpGreater:
-			return v > operandFloat64
+			return v > operandFloat64, nil
 		case OpEqual:
-			return v == operandFloat64
+			return v == operandFloat64, nil
 		}
 
 	case reflect.Int64:
@@ -404,8 +402,7 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		if strings.ContainsAny(filteredValue, ".") {
 			v1, err := strconv.ParseFloat(filteredValue, 64)
 			if err != nil {
-				fmt.Printf("failed to convert value %v from event attribute to float64: %v\n", filteredValue, err)
-				return false
+				return false, fmt.Errorf("failed to convert value %v from event attribute to float64: %w", filteredValue, err)
 			}
 
 			v = int64(v1)
@@ -414,36 +411,34 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 			// try our best to convert value from tags to int64
 			v, err = strconv.ParseInt(filteredValue, 10, 64)
 			if err != nil {
-				fmt.Printf("failed to convert value %v from event attribute to int64: %v\n", filteredValue, err)
-				return false
+				return false, fmt.Errorf("failed to convert value %v from event attribute to int64: %w", filteredValue, err)
 			}
 		}
 
 		switch op {
 		case OpLessEqual:
-			return v <= operandInt
+			return v <= operandInt, nil
 		case OpGreaterEqual:
-			return v >= operandInt
+			return v >= operandInt, nil
 		case OpLess:
-			return v < operandInt
+			return v < operandInt, nil
 		case OpGreater:
-			return v > operandInt
+			return v > operandInt, nil
 		case OpEqual:
-			return v == operandInt
+			return v == operandInt, nil
 		}
 
 	case reflect.String:
 		switch op {
 		case OpEqual:
-			return value == operand.String()
+			return value == operand.String(), nil
 		case OpContains:
-			return strings.Contains(value, operand.String())
+			return strings.Contains(value, operand.String()), nil
 		}
 
 	default:
-		fmt.Printf("unknown kind of operand %v\n", operand.Kind())
-		return false
+		return false, fmt.Errorf("unknown kind of operand %v\n", operand.Kind())
 	}
 
-	return false
+	return false, nil
 }
