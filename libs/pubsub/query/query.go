@@ -375,9 +375,9 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		filteredValue := numRegex.FindString(value)
 
 		// try our best to convert value from tags to float64
-		v, err := strconv.ParseFloat(matchedValue, 64)
+		v, err := strconv.ParseFloat(filteredValue, 64)
 		if err != nil {
-			fmt.Printf("failed to convert value %v from event attribute to float64: %v\n", matchedValue, err)
+			fmt.Printf("failed to convert value %v from event attribute to float64: %v\n", filteredValue, err)
 			return false
 		}
 
@@ -398,13 +398,13 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		var v int64
 
 		operandInt := operand.Interface().(int64)
-		matchedValue := numRegex.FindString(value)
+		filteredValue := numRegex.FindString(value)
 
 		// if value looks like float, we try to parse it as float
-		if strings.ContainsAny(matchedValue, ".") {
-			v1, err := strconv.ParseFloat(matchedValue, 64)
+		if strings.ContainsAny(filteredValue, ".") {
+			v1, err := strconv.ParseFloat(filteredValue, 64)
 			if err != nil {
-				fmt.Printf("failed to convert value %v from event attribute to float64: %v\n", matchedValue, err)
+				fmt.Printf("failed to convert value %v from event attribute to float64: %v\n", filteredValue, err)
 				return false
 			}
 
@@ -412,9 +412,9 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		} else {
 			var err error
 			// try our best to convert value from tags to int64
-			v, err = strconv.ParseInt(matchedValue, 10, 64)
+			v, err = strconv.ParseInt(filteredValue, 10, 64)
 			if err != nil {
-				fmt.Printf("failed to convert value %v from event attribute to int64: %v\n", matchedValue, err)
+				fmt.Printf("failed to convert value %v from event attribute to int64: %v\n", filteredValue, err)
 				return false
 			}
 		}
