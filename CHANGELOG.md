@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.32.7
+
+*October 23, 2019*
+
+Special thanks to external contributors on this release: @PSalant726
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- `cmn.Task` interface
+  - [common] [\#3262](https://github.com/tendermint/tendermint/issues/3262) Make each `golangci-lint` linter pass
+
 ## v0.32.6
 
 *October 8, 2019*
