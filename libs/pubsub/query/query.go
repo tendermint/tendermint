@@ -372,7 +372,7 @@ func matchValue(value string, op Operator, operand reflect.Value) bool {
 		var v float64
 
 		operandFloat64 := operand.Interface().(float64)
-		matchedValue := numRegex.FindString(value)
+		filteredValue := numRegex.FindString(value)
 
 		// try our best to convert value from tags to float64
 		v, err := strconv.ParseFloat(matchedValue, 64)
