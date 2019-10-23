@@ -119,7 +119,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 		}
 	}
 	if found {
-		return fmt.Errorf("wAL should not contain #ENDHEIGHT %d", csHeight)
+		return fmt.Errorf("wal should not contain #ENDHEIGHT %d", csHeight)
 	}
 
 	// Search for last height marker.
