@@ -689,7 +689,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 		},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockParts = cmn.NewBitArray(types.MaxBlockPartsCount + 1) },
-			"BlockParts bit array size 1601 not equal to BlockPartsHeader.Total 1",
+			"BlockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
 		},
 	}
 
