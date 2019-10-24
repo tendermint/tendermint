@@ -461,7 +461,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 		}
 
 	default:
-		return false, fmt.Errorf("unknown kind of operand %v\n", operand.Kind())
+		return false, fmt.Errorf("unknown kind of operand %v", operand.Kind())
 	}
 
 	return false, nil
