@@ -182,13 +182,14 @@ func (q *Query) Conditions() []Condition {
 
 // Matches returns true if the query matches against any event in the given set
 // of events, false otherwise. For each event, a match exists if the query is
-// matched against *any* value in a slice of values.
+// matched against *any* value in a slice of values. An error is returned if
+// any attempted event match returns an error.
 //
 // For example, query "name=John" matches events = {"name": ["John", "Eric"]}.
 // More examples could be found in parser_test.go and query_test.go.
-func (q *Query) Matches(events map[string][]string) bool {
+func (q *Query) Matches(events map[string][]string) (bool, error) {
 	if len(events) == 0 {
-		return false
+		return false, nil
 	}
 
 	var (
@@ -232,8 +233,13 @@ func (q *Query) Matches(events map[string][]string) bool {
 
 			// see if the triplet (event attribute, operator, operand) matches any event
 			// "tx.gas", "=", "7", { "tx.gas": 7, "tx.ID": "4AE393495334" }
-			if !match(eventAttr, op, reflect.ValueOf(valueWithoutSingleQuotes), events) {
-				return false
+			match, err := match(eventAttr, op, reflect.ValueOf(valueWithoutSingleQuotes), events)
+			if err != nil {
+				return false, err
+			}
+
+			if !match {
+				return false, nil
 			}
 
 		case rulenumber:
@@ -241,94 +247,96 @@ func (q *Query) Matches(events map[string][]string) bool {
 			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
-					fmt.Printf(
-						"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)\n",
-						err,
-						number,
-					)
-
-					return false
+					return false, fmt.Errorf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)", err, number)
 				}
 
-				if !match(eventAttr, op, reflect.ValueOf(value), events) {
-					return false
+				match, err := match(eventAttr, op, reflect.ValueOf(value), events)
+				if err != nil {
+					return false, err
+				}
+
+				if !match {
+					return false, nil
 				}
 			} else {
 				value, err := strconv.ParseInt(number, 10, 64)
 				if err != nil {
-					fmt.Printf(
-						"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)\n",
-						err,
-						number,
-					)
-
-					return false
+					return false, fmt.Errorf("got %v while trying to parse %s as int64 (should never happen if the grammar is correct)", err, number)
 				}
 
-				if !match(eventAttr, op, reflect.ValueOf(value), events) {
-					return false
+				match, err := match(eventAttr, op, reflect.ValueOf(value), events)
+				if err != nil {
+					return false, err
+				}
+
+				if !match {
+					return false, nil
 				}
 			}
 
 		case ruletime:
 			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
-				fmt.Printf(
-					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)\n",
-					err,
-					buffer[begin:end],
-				)
-
-				return false
+				return false, fmt.Errorf("got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)", err, buffer[begin:end])
 			}
 
-			if !match(eventAttr, op, reflect.ValueOf(value), events) {
-				return false
+			match, err := match(eventAttr, op, reflect.ValueOf(value), events)
+			if err != nil {
+				return false, err
+			}
+
+			if !match {
+				return false, nil
 			}
 
 		case ruledate:
 			value, err := time.Parse("2006-01-02", buffer[begin:end])
 			if err != nil {
-				fmt.Printf(
-					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)\n",
-					err,
-					buffer[begin:end],
-				)
-
-				return false
+				return false, fmt.Errorf("got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)", err, buffer[begin:end])
 			}
 
-			if !match(eventAttr, op, reflect.ValueOf(value), events) {
-				return false
+			match, err := match(eventAttr, op, reflect.ValueOf(value), events)
+			if err != nil {
+				return false, err
+			}
+
+			if !match {
+				return false, nil
 			}
 		}
 	}
 
-	return true
+	return true, nil
 }
 
-// match returns true if the given triplet (tag, operator, operand) matches any
-// value in an event for that key.
+// match returns true if the given triplet (attribute, operator, operand) matches
+// any value in an event for that attribute. If any match fails with an error,
+// that error is returned.
 //
 // First, it looks up the key in the events and if it finds one, tries to compare
 // all the values from it to the operand using the operator.
 //
 // "tx.gas", "=", "7", {"tx": [{"gas": 7, "ID": "4AE393495334"}]}
-func match(tag string, op Operator, operand reflect.Value, events map[string][]string) bool {
+func match(attr string, op Operator, operand reflect.Value, events map[string][]string) (bool, error) {
 	// look up the tag from the query in tags
-	values, ok := events[tag]
+	values, ok := events[attr]
 	if !ok {
-		return false
+		return false, nil
 	}
 
 	for _, value := range values {
 		// return true if any value in the set of the event's values matches
-		if matchValue(value, op, operand) {
-			return true
+		match, err := matchValue(value, op, operand)
+		if err != nil {
+			return false, err
+		}
+
+		if match {
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 // matchValue will attempt to match a string value against an operator an
