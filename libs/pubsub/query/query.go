@@ -247,7 +247,11 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
-					return false, fmt.Errorf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)", err, number)
+					err = fmt.Errorf(
+						"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)",
+						err, number,
+					)
+					return false, err
 				}
 
 				match, err := match(eventAttr, op, reflect.ValueOf(value), events)
@@ -261,7 +265,11 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 			} else {
 				value, err := strconv.ParseInt(number, 10, 64)
 				if err != nil {
-					return false, fmt.Errorf("got %v while trying to parse %s as int64 (should never happen if the grammar is correct)", err, number)
+					err = fmt.Errorf(
+						"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)",
+						err, number,
+					)
+					return false, err
 				}
 
 				match, err := match(eventAttr, op, reflect.ValueOf(value), events)
@@ -277,7 +285,11 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 		case ruletime:
 			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
-				return false, fmt.Errorf("got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)", err, buffer[begin:end])
+				err = fmt.Errorf(
+					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)",
+					err, buffer[begin:end],
+				)
+				return false, err
 			}
 
 			match, err := match(eventAttr, op, reflect.ValueOf(value), events)
@@ -292,7 +304,11 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 		case ruledate:
 			value, err := time.Parse("2006-01-02", buffer[begin:end])
 			if err != nil {
-				return false, fmt.Errorf("got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)", err, buffer[begin:end])
+				err = fmt.Errorf(
+					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)",
+					err, buffer[begin:end],
+				)
+				return false, err
 			}
 
 			match, err := match(eventAttr, op, reflect.ValueOf(value), events)
