@@ -209,7 +209,7 @@ func (q *Query) Matches(events map[string][]string) bool {
 				foundEvent := false
 
 			loop:
-				for k, _ := range events {
+				for k := range events {
 					if strings.Index(k, tag) == 0 {
 						foundEvent = true
 						break loop
