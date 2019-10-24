@@ -21,15 +21,6 @@ type pcShortBlock struct {
 	priorityNormal
 }
 
-/*
-type bcBlockResponse struct {
-	priorityNormal
-	peerID p2p.ID
-	block  *types.Block
-	height int64
-}
-*/
-
 type pcBlockVerificationFailure struct {
 	priorityNormal
 	height       int64
