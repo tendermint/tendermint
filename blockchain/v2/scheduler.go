@@ -476,9 +476,9 @@ func (sc *scheduler) allBlocksProcessed() bool {
 	return sc.height >= sc.maxHeight()
 }
 
-// returns max peer height
+// returns max peer height or the last processed block, i.e. sc.height
 func (sc *scheduler) maxHeight() int64 {
-	max := sc.initHeight
+	max := sc.height - 1
 	for _, peer := range sc.peers {
 		if peer.state != peerStateReady {
 			continue

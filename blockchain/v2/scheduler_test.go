@@ -87,13 +87,92 @@ func newTestScheduler(params scTestParams) *scheduler {
 	return sc
 }
 
-func TestSchedulerInit(t *testing.T) {
+func TestScInit(t *testing.T) {
 	var (
 		initHeight int64 = 5
 		sc               = newScheduler(initHeight)
 	)
 	assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(initHeight))
 	assert.Equal(t, blockStateUnknown, sc.getStateAtHeight(initHeight+1))
+}
+
+func TestScMaxHeights(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		sc      scheduler
+		wantMax int64
+	}{
+		{
+			name:    "no peers",
+			sc:      scheduler{height: 11},
+			wantMax: 10,
+		},
+		{
+			name: "one ready peer",
+			sc: scheduler{
+				initHeight: 2,
+				height:     3,
+				peers:      map[p2p.ID]*scPeer{"P1": {height: 6, state: peerStateReady}},
+			},
+			wantMax: 6,
+		},
+		{
+			name: "ready and removed peers",
+			sc: scheduler{
+				height: 1,
+				peers: map[p2p.ID]*scPeer{
+					"P1": {height: 4, state: peerStateReady},
+					"P2": {height: 10, state: peerStateRemoved}},
+			},
+			wantMax: 4,
+		},
+		{
+			name: "removed peers",
+			sc: scheduler{
+				height: 1,
+				peers: map[p2p.ID]*scPeer{
+					"P1": {height: 4, state: peerStateRemoved},
+					"P2": {height: 10, state: peerStateRemoved}},
+			},
+			wantMax: 0,
+		},
+		{
+			name: "new peers",
+			sc: scheduler{
+				height: 1,
+				peers: map[p2p.ID]*scPeer{
+					"P1": {height: -1, state: peerStateNew},
+					"P2": {height: -1, state: peerStateNew}},
+			},
+			wantMax: 0,
+		},
+		{
+			name: "mixed peers",
+			sc: scheduler{
+				height: 1,
+				peers: map[p2p.ID]*scPeer{
+					"P1": {height: -1, state: peerStateNew},
+					"P2": {height: 10, state: peerStateReady},
+					"P3": {height: 20, state: peerStateRemoved},
+					"P4": {height: 22, state: peerStateReady},
+				},
+			},
+			wantMax: 22,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			// maxHeight() should not mutate the scheduler
+			wantSc := tt.sc
+
+			resMax := tt.sc.maxHeight()
+			assert.Equal(t, tt.wantMax, resMax)
+			assert.Equal(t, wantSc, tt.sc)
+		})
+	}
 }
 
 func TestScAddPeer(t *testing.T) {
@@ -112,7 +191,7 @@ func TestScAddPeer(t *testing.T) {
 			name:       "add first peer",
 			fields:     scTestParams{},
 			args:       args{peerID: "P1"},
-			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {height: -1}}},
+			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {height: -1, state: peerStateNew}}},
 		},
 		{
 			name:       "add second peer",
@@ -1157,20 +1236,18 @@ func TestScAllBlocksProcessed(t *testing.T) {
 	}
 }
 
-func TestScMinMaxHeights(t *testing.T) {
+func TestScNextHeightToSchedule(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
-		name    string
-		fields  scTestParams
-		wantMin int64
-		wantMax int64
+		name       string
+		fields     scTestParams
+		wantHeight int64
 	}{
 		{
-			name:    "no blocks",
-			fields:  scTestParams{initHeight: 10, height: 11},
-			wantMin: -1,
-			wantMax: 10,
+			name:       "no blocks",
+			fields:     scTestParams{initHeight: 10, height: 11},
+			wantHeight: -1,
 		},
 		{
 			name: "only New blocks",
@@ -1180,8 +1257,7 @@ func TestScMinMaxHeights(t *testing.T) {
 				peers:      map[string]*scPeer{"P1": {height: 6, state: peerStateReady}},
 				allB:       []int64{3, 4, 5, 6},
 			},
-			wantMin: 3,
-			wantMax: 6,
+			wantHeight: 3,
 		},
 		{
 			name: "only Pending blocks",
@@ -1192,8 +1268,7 @@ func TestScMinMaxHeights(t *testing.T) {
 				pending:     map[int64]p2p.ID{1: "P1", 2: "P1", 3: "P1", 4: "P1"},
 				pendingTime: map[int64]time.Time{1: now, 2: now, 3: now, 4: now},
 			},
-			wantMin: -1,
-			wantMax: 4,
+			wantHeight: -1,
 		},
 		{
 			name: "only Received blocks",
@@ -1203,8 +1278,7 @@ func TestScMinMaxHeights(t *testing.T) {
 				allB:     []int64{1, 2, 3, 4},
 				received: map[int64]p2p.ID{1: "P1", 2: "P1", 3: "P1", 4: "P1"},
 			},
-			wantMin: -1,
-			wantMax: 4,
+			wantHeight: -1,
 		},
 		{
 			name: "only Processed blocks",
@@ -1213,8 +1287,7 @@ func TestScMinMaxHeights(t *testing.T) {
 				peers:  map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
 				allB:   []int64{1, 2, 3, 4},
 			},
-			wantMin: 1,
-			wantMax: 4,
+			wantHeight: 1,
 		},
 		{
 			name: "mixed block states",
@@ -1225,8 +1298,7 @@ func TestScMinMaxHeights(t *testing.T) {
 				pending:     map[int64]p2p.ID{2: "P1"},
 				pendingTime: map[int64]time.Time{2: now},
 			},
-			wantMin: 1,
-			wantMax: 4,
+			wantHeight: 1,
 		},
 	}
 
@@ -1234,16 +1306,13 @@ func TestScMinMaxHeights(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
-			// nextHeightToSchedule() and maxHeight() should not mutate the scheduler
+			// nextHeightToSchedule() should not mutate the scheduler
 			wantSc := sc
 
 			resMin := sc.nextHeightToSchedule()
-			assert.Equal(t, tt.wantMin, resMin)
+			assert.Equal(t, tt.wantHeight, resMin)
 			assert.Equal(t, wantSc, sc)
 
-			resMax := sc.maxHeight()
-			assert.Equal(t, tt.wantMax, resMax)
-			assert.Equal(t, wantSc, sc)
 		})
 	}
 }
