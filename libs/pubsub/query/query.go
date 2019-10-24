@@ -73,6 +73,8 @@ const (
 	OpEqual
 	// "CONTAINS"; used to check if a string contains a certain sub string.
 	OpContains
+	// "EXISTS"; used to check whether an event has taken place
+	OpExists
 )
 
 const (
@@ -92,7 +94,7 @@ func (q *Query) Conditions() []Condition {
 	var op Operator
 
 	// tokens must be in the following order: tag ("tx.gas") -> operator ("=") -> operand ("7")
-	for _, token := range q.parser.Tokens() {
+	for token := range q.parser.Tokens() {
 		switch token.pegRule {
 
 		case rulePegText:
@@ -176,7 +178,7 @@ func (q *Query) Matches(events map[string][]string) bool {
 
 	// tokens must be in the following order:
 	// tag ("tx.gas") -> operator ("=") -> operand ("7")
-	for _, token := range q.parser.Tokens() {
+	for token := range q.parser.Tokens() {
 		switch token.pegRule {
 
 		case rulePegText:
@@ -195,6 +197,28 @@ func (q *Query) Matches(events map[string][]string) bool {
 			op = OpEqual
 		case rulecontains:
 			op = OpContains
+		case ruleexists:
+			op = OpExists
+			if strings.Contains(tag, ".") {
+				// Searching for a full "type.attribute" event.
+				_, ok := events[tag]
+				if !ok {
+					return false
+				}
+			} else {
+				foundEvent := false
+
+			loop:
+				for k, _ := range events {
+					if strings.Index(k, tag) == 0 {
+						foundEvent = true
+						break loop
+					}
+				}
+				if !foundEvent {
+					return false
+				}
+			}
 		case rulevalue:
 			// strip single quotes from value (i.e. "'NewBlock'" -> "NewBlock")
 			valueWithoutSingleQuotes := buffer[begin+1 : end-1]

@@ -97,6 +97,26 @@ func TestMatches(t *testing.T) {
 			false,
 			false,
 		},
+		{"slash EXISTS",
+			map[string][]string{"slash.reason" : {"missing_signature"}, "slash.power": {"6000"}},
+			false,
+			true,
+		},
+		{"slash EXISTS",
+			map[string][]string{"transfer.recipient" : {"cosmos1gu6y2a0ffteesyeyeesk23082c6998xyzmt9mz"}, "transfer.sender": {"cosmos1crje20aj4gxdtyct7z3knxqry2jqt2fuaey6u5"}},
+			false,
+			false,
+		},
+		{"slash.reason EXISTS AND slash.power > 1000",
+			map[string][]string{"slash.reason" : {"missing_signature"}, "slash.power": {"6000"}},
+			false,
+			true,
+		},
+		{"slash.reason EXISTS",
+			map[string][]string{"transfer.recipient" : {"cosmos1gu6y2a0ffteesyeyeesk23082c6998xyzmt9mz"}, "transfer.sender": {"cosmos1crje20aj4gxdtyct7z3knxqry2jqt2fuaey6u5"}},
+			false,
+			false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -104,7 +124,6 @@ func TestMatches(t *testing.T) {
 		if !tc.err {
 			require.Nil(t, err)
 		}
-
 		require.NotNil(t, q, "Query '%s' should not be nil", tc.s)
 
 		if tc.matches {
