@@ -410,7 +410,7 @@ func (state *state) send(msg interface{}, events map[string][]string) error {
 
 		match, err := q.Matches(events)
 		if err != nil {
-			return fmt.Errorf("failed to match against query %s: %w", q.String(), err)
+			return errors.Wrapf(err, "failed to match against query %s", q.String())
 		}
 
 		if match {
