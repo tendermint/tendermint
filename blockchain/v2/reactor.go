@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -47,36 +46,41 @@ func processorHandle(event Event) (Event, error) {
 	return noOp, nil
 }
 
+type blockLoader interface {
+	LoadBlock(height int64) *types.Block
+}
+
 type Reactor struct {
 	events    chan Event // XXX: Rename eventsFromPeers
 	stopDemux chan struct{}
 	scheduler *Routine
 	processor *Routine
-	ticker    *time.Ticker
 	logger    log.Logger
 
 	mtx           sync.RWMutex
 	maxPeerHeight int64
 	syncHeight    int64
 
-	swReporter *behaviour.SwitchReporter
-	io         iIo
-	state      state.State
-	store      *store.BlockStore
+	reporter behaviour.Reporter
+	io       iIo
+	state    state.State
+	store    blockLoader
 }
 
-func NewReactor(bufferSize int) *Reactor {
+func NewReactor(state state.State, store blockLoader, reporter behaviour.Reporter, bufferSize int) *Reactor {
 	return &Reactor{
 		events:    make(chan Event, bufferSize),
 		stopDemux: make(chan struct{}),
 		scheduler: newRoutine("scheduler", schedulerHandle, bufferSize),
 		processor: newRoutine("processor", processorHandle, bufferSize),
-		ticker:    time.NewTicker(1 * time.Second),
+		state:     state,
+		store:     store,
+		reporter:  reporter,
 		logger:    log.NewNopLogger(),
 	}
 }
 
-// State
+// Stat
 func (r *Reactor) setMaxPeerHeight(height int64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -91,6 +95,7 @@ func (r *Reactor) MaxPeerHeight() int64 {
 	return r.maxPeerHeight
 }
 
+// XXX: we should use reactor.state.LastBlockHeight
 func (r *Reactor) setSyncHeight(height int64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -192,7 +197,7 @@ func (r *Reactor) demux() {
 				r.processor.send(event)
 			case scPeerError:
 				r.processor.send(event)
-				r.swReporter.Report(behaviour.BadMessage(event.peerID, "scPeerError"))
+				r.reporter.Report(behaviour.BadMessage(event.peerID, "scPeerError"))
 			case scBlockRequest:
 				r.io.sendBlockRequest(event.peerID, event.height)
 			}
@@ -230,7 +235,6 @@ func (r *Reactor) demux() {
 func (r *Reactor) Stop() {
 	r.logger.Info("reactor stopping")
 
-	r.ticker.Stop()
 	r.scheduler.stop()
 	r.processor.stop()
 	close(r.stopDemux)
@@ -266,13 +270,13 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	if err != nil {
 		r.logger.Error("error decoding message",
 			"src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
-		_ = r.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
 	if err = msg.ValidateBasic(); err != nil {
 		r.logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		_ = r.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
@@ -297,6 +301,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 	default:
 		// Forward to state machines
+		// TODO: consolidate types
 		// r.events <- msg
 	}
 }

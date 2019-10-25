@@ -1,8 +1,15 @@
 package v2
 
 import (
-	"fmt"
+	"net"
 	"testing"
+
+	"github.com/tendermint/tendermint/behaviour"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/conn"
+	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/types"
 )
 
 /*
@@ -31,20 +38,61 @@ import (
 		* Completion on sync blocks
 */
 
+type mockPeer struct {
+	cmn.Service
+}
+
+func (mp mockPeer) FlushStop()           {}
+func (mp mockPeer) ID() p2p.ID           { return "foo" }
+func (mp mockPeer) RemoteIP() net.IP     { return net.IP{} }
+func (mp mockPeer) RemoteAddr() net.Addr { return &net.TCPAddr{IP: mp.RemoteIP(), Port: 8800} }
+
+func (mp mockPeer) IsOutbound() bool   { return true }
+func (mp mockPeer) IsPersistent() bool { return true }
+func (mp mockPeer) CloseConn() error   { return nil }
+
+func (mp mockPeer) NodeInfo() p2p.NodeInfo {
+	return p2p.DefaultNodeInfo{
+		ID_:        "",
+		ListenAddr: "",
+	}
+}
+func (mp mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
+func (mp mockPeer) SocketAddr() *p2p.NetAddress   { return &p2p.NetAddress{} }
+
+func (mp mockPeer) Send(byte, []byte) bool    { return true }
+func (mp mockPeer) TrySend(byte, []byte) bool { return true }
+
+func (mp mockPeer) Set(string, interface{}) {}
+func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
+
+type mockLoader struct {
+	blocks map[int64]*types.Block
+}
+
+func (ml *mockLoader) LoadBlock(height int64) *types.Block {
+	return ml.blocks[height]
+}
+
 func TestReactor(t *testing.T) {
 	var (
+		chID       = byte(0x40)
 		bufferSize = 10
-		reactor    = NewReactor(bufferSize)
+		loader     = &mockLoader{}
+		state      = state.State{}
+		peer       = mockPeer{}
+		reporter   = behaviour.NewMockReporter()
+		reactor    = NewReactor(state, loader, reporter, bufferSize)
 	)
 
+	// How do we serialize events to work with Receive?
 	reactor.Start()
-	script := []Event{
-		// TODO
+	script := [][]byte{
+		cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{Height: 1}),
 	}
 
 	for _, event := range script {
-		fmt.Println(event)
-		//TODO reactor.Receive(event)
+		reactor.Receive(chID, peer, event)
 	}
 	reactor.Stop()
 }
