@@ -435,7 +435,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 			// try our best to convert value from tags to int64
 			v, err = strconv.ParseInt(filteredValue, 10, 64)
 			if err != nil {
-				return false, fmt.Errorf("failed to convert value %v from event attribute to int64: %w", filteredValue, err)
+				return false, errors.Wrapf(err, "failed to convert value %v from event attribute to int64", filteredValue)
 			}
 		}
 
