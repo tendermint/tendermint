@@ -426,7 +426,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 		if strings.ContainsAny(filteredValue, ".") {
 			v1, err := strconv.ParseFloat(filteredValue, 64)
 			if err != nil {
-				return false, fmt.Errorf("failed to convert value %v from event attribute to float64: %w", filteredValue, err)
+				return false, errors.Wrapf(err, "failed to convert value %v from event attribute to float64", filteredValue)
 			}
 
 			v = int64(v1)
