@@ -375,7 +375,7 @@ func matchValue(value string, op Operator, operand reflect.Value) (bool, error) 
 			v, err = time.Parse(DateLayout, value)
 		}
 		if err != nil {
-			return false, fmt.Errorf("failed to convert value %v from event attribute to time.Time: %w", value, err)
+			return false, errors.Wrapf(err, "failed to convert value %v from event attribute to time.Time", value)
 		}
 
 		switch op {
