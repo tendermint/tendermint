@@ -36,10 +36,9 @@ package pubsub
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"sync"
 
+	"github.com/pkg/errors"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
