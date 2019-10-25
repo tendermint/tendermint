@@ -89,8 +89,9 @@ const (
 	TimeLayout = time.RFC3339
 )
 
-// Conditions returns a list of conditions.
-func (q *Query) Conditions() []Condition {
+// Conditions returns a list of conditions. It returns an error if there is any
+// error with the provided grammar in the Query.
+func (q *Query) Conditions() ([]Condition, error) {
 	var (
 		eventAttr string
 		op        Operator
@@ -136,20 +137,22 @@ func (q *Query) Conditions() []Condition {
 			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
-					panic(fmt.Sprintf(
+					err = fmt.Errorf(
 						"got %v while trying to parse %s as float64 (should never happen if the grammar is correct)",
 						err, number,
-					))
+					)
+					return nil, err
 				}
 
 				conditions = append(conditions, Condition{eventAttr, op, value})
 			} else {
 				value, err := strconv.ParseInt(number, 10, 64)
 				if err != nil {
-					panic(fmt.Sprintf(
+					err = fmt.Errorf(
 						"got %v while trying to parse %s as int64 (should never happen if the grammar is correct)",
 						err, number,
-					))
+					)
+					return nil, err
 				}
 
 				conditions = append(conditions, Condition{eventAttr, op, value})
@@ -158,10 +161,11 @@ func (q *Query) Conditions() []Condition {
 		case ruletime:
 			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf(
+				err = fmt.Errorf(
 					"got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)",
 					err, buffer[begin:end],
-				))
+				)
+				return nil, err
 			}
 
 			conditions = append(conditions, Condition{eventAttr, op, value})
@@ -169,17 +173,18 @@ func (q *Query) Conditions() []Condition {
 		case ruledate:
 			value, err := time.Parse("2006-01-02", buffer[begin:end])
 			if err != nil {
-				panic(fmt.Sprintf(
+				err = fmt.Errorf(
 					"got %v while trying to parse %s as time.Time / '2006-01-02' (should never happen if the grammar is correct)",
 					err, buffer[begin:end],
-				))
+				)
+				return nil, err
 			}
 
 			conditions = append(conditions, Condition{eventAttr, op, value})
 		}
 	}
 
-	return conditions
+	return conditions, nil
 }
 
 // Matches returns true if the query matches against any event in the given set
