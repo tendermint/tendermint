@@ -172,6 +172,8 @@ func TestConditions(t *testing.T) {
 		q, err := query.New(tc.s)
 		require.Nil(t, err)
 
-		assert.Equal(t, tc.conditions, q.Conditions())
+		c, err := q.Conditions()
+		require.NoError(t, err)
+		assert.Equal(t, tc.conditions, c)
 	}
 }
