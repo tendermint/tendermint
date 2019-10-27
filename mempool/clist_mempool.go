@@ -310,7 +310,7 @@ func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
 // External callers of CheckTx, like the RPC, can also pass an externalCb through here that is called
 // when all other response processing is complete.
 //
-// Used in CheckTxWithInfo to record PeerID who sent us the tx.
+// Used in CheckTx to record PeerID who sent us the tx.
 func (mem *CListMempool) reqResCb(
 	tx []byte,
 	peerID uint16,

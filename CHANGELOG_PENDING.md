@@ -20,6 +20,7 @@ program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
+- [mempool] Added TxInfo parameter to CheckTx(), and removed CheckTxWithInfo() (@erikgrinaker)
 - [mempool] [\#4057](https://github.com/tendermint/tendermint/issues/4057) Include peer ID when logging rejected txns (@erikgrinaker)
 - [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Improved `tm-monitor` formatting of start time and avg tx throughput (@erikgrinaker)
 - [p2p] [\#3991](https://github.com/tendermint/tendermint/issues/3991) Log "has been established or dialed" as debug log instead of Error for connected peers (@whunmr)
