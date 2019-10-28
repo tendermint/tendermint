@@ -13,24 +13,22 @@ type processorContext interface {
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
 }
 
-// nolint:unused
 type pContext struct {
-	store    blockStore
-	executor blockApplier // TODO: rename applier
-	state    state.State
+	store   blockStore
+	applier blockApplier
+	state   state.State
 }
 
-// nolint:unused,deadcode
 func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContext {
 	return &pContext{
-		store:    st,
-		executor: ex,
-		state:    s,
+		store:   st,
+		applier: ex,
+		state:   s,
 	}
 }
 
 func (pc *pContext) applyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error) {
-	state, err := pc.executor.ApplyBlock(state, blockID, block)
+	state, err := pc.applier.ApplyBlock(state, blockID, block)
 	return state, err
 }
 
