@@ -33,10 +33,10 @@ func makePcBlock(height int64) *types.Block {
 // makeState takes test parameters and creates a specific processor state.
 func makeState(p *params) *pcState {
 	var (
-		tdState = tdState.State{}
+		tdState = tdState.State{LastBlockHeight: p.height}
 		context = newMockProcessorContext(p.verBL, p.appBL)
 	)
-	state := newPcState(p.height, tdState, "test", context)
+	state := newPcState(tdState, context)
 
 	for _, item := range p.items {
 		_ = state.enqueue(p2p.ID(item.pid), makePcBlock(item.height), item.height)
@@ -223,7 +223,7 @@ func TestPcProcessBlockSuccess(t *testing.T) {
 					event:         pcProcessBlock{},
 					wantState:     &params{height: 1, items: []pcBlock{{"P2", 2}, {"P1", 4}}, blocksSynced: 1, draining: true},
 					wantNextEvent: noOp,
-					wantErr:       pcFinished{height: 1},
+					wantErr:       pcFinished{tdState: tdState.State{LastBlockHeight: 1}, blocksSynced: 1},
 				},
 			},
 		},
@@ -304,7 +304,7 @@ func TestStop(t *testing.T) {
 					currentState: &params{height: 100, items: []pcBlock{}, blocksSynced: 100}, event: pcStop{},
 					wantState:     &params{height: 100, items: []pcBlock{}, blocksSynced: 100},
 					wantNextEvent: noOp,
-					wantErr:       pcFinished{height: 100, blocksSynced: 100},
+					wantErr:       pcFinished{tdState: tdState.State{LastBlockHeight: 100}, blocksSynced: 100},
 				},
 			},
 		},
@@ -315,7 +315,7 @@ func TestStop(t *testing.T) {
 					currentState: &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100}, event: pcStop{},
 					wantState:     &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100},
 					wantNextEvent: noOp,
-					wantErr:       pcFinished{height: 100, blocksSynced: 100},
+					wantErr:       pcFinished{tdState: tdState.State{LastBlockHeight: 100}, blocksSynced: 100},
 				},
 			},
 		},

@@ -60,6 +60,7 @@ func (mpc *mockPContext) applyBlock(state state.State, blockID types.BlockID, bl
 			return state, fmt.Errorf("generic application error")
 		}
 	}
+	state.LastBlockHeight = block.Height
 	return state, nil
 }
 

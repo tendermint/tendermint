@@ -21,6 +21,7 @@ type pcShortBlock struct {
 	priorityNormal
 }
 
+// XXX: Remove this?
 /*
 type bcBlockResponse struct {
 	priorityNormal
@@ -54,6 +55,7 @@ type pcFinished struct {
 	priorityNormal
 	height       int64
 	blocksSynced int
+	tdState      tdState.State
 }
 
 func (p pcFinished) Error() string {
@@ -68,9 +70,7 @@ type queueItem struct {
 type blockQueue map[int64]queueItem
 
 type pcState struct {
-	height       int64      // height of the last synced block
 	queue        blockQueue // blocks waiting to be processed
-	chainID      string
 	blocksSynced int
 	draining     bool
 	tdState      tdState.State
@@ -79,26 +79,24 @@ type pcState struct {
 
 func (state *pcState) String() string {
 	return fmt.Sprintf("height: %d queue length: %d draining: %v blocks synced: %d",
-		state.height, len(state.queue), state.draining, state.blocksSynced)
+		state.height(), len(state.queue), state.draining, state.blocksSynced)
 }
 
 // newPcState returns a pcState initialized with the last verified block enqueued
-func newPcState(initHeight int64, tdState tdState.State, chainID string, context processorContext) *pcState {
+func newPcState(initState tdState.State, context processorContext) *pcState {
 	return &pcState{
-		height:       initHeight,
 		queue:        blockQueue{},
-		chainID:      chainID,
 		draining:     false,
 		blocksSynced: 0,
 		context:      context,
-		tdState:      tdState,
+		tdState:      initState,
 	}
 }
 
 // nextTwo returns the next two unverified blocks
 func (state *pcState) nextTwo() (queueItem, queueItem, error) {
-	if first, ok := state.queue[state.height+1]; ok {
-		if second, ok := state.queue[state.height+2]; ok {
+	if first, ok := state.queue[state.height()+1]; ok {
+		if second, ok := state.queue[state.height()+2]; ok {
 			return first, second, nil
 		}
 	}
@@ -110,18 +108,16 @@ func (state *pcState) synced() bool {
 	return len(state.queue) <= 1
 }
 
-func (state *pcState) advance() {
-	state.height++
-	delete(state.queue, state.height)
-	state.blocksSynced++
-}
-
 func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) error {
 	if _, ok := state.queue[height]; ok {
 		return fmt.Errorf("duplicate queue item")
 	}
 	state.queue[height] = queueItem{block: block, peerID: peerID}
 	return nil
+}
+
+func (state *pcState) height() int64 {
+	return state.tdState.LastBlockHeight
 }
 
 // purgePeer moves all unprocessed blocks from the queue
@@ -138,7 +134,7 @@ func (state *pcState) purgePeer(peerID p2p.ID) {
 func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case *scBlockReceived:
-		if event.height <= state.height {
+		if event.height <= state.height() {
 			return pcShortBlock{}, nil
 		}
 		err := state.enqueue(event.peerID, event.block, event.height)
@@ -150,7 +146,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 		firstItem, secondItem, err := state.nextTwo()
 		if err != nil {
 			if state.draining {
-				return noOp, pcFinished{height: state.height}
+				return noOp, pcFinished{tdState: state.tdState, blocksSynced: state.blocksSynced}
 			}
 			return noOp, nil
 		}
@@ -160,7 +156,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 		firstPartsHeader := firstParts.Header()
 		firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
 
-		err = state.context.verifyCommit(state.chainID, firstID, first.Height, second.LastCommit)
+		err = state.context.verifyCommit(state.tdState.ChainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
 			return pcBlockVerificationFailure{peerID: firstItem.peerID, height: first.Height}, nil
 		}
@@ -171,7 +167,10 @@ func (state *pcState) handle(event Event) (Event, error) {
 		if err != nil {
 			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 		}
-		state.advance()
+
+		delete(state.queue, first.Height)
+		state.blocksSynced++
+
 		return pcBlockProcessed{height: first.Height, peerID: firstItem.peerID}, nil
 
 	case *peerError:
@@ -179,7 +178,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 
 	case pcStop:
 		if state.synced() {
-			return noOp, pcFinished{height: state.height, blocksSynced: state.blocksSynced}
+			return noOp, pcFinished{tdState: state.tdState, blocksSynced: state.blocksSynced}
 		}
 		state.draining = true
 	}

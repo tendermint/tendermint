@@ -25,11 +25,6 @@ func (m *bcBlockRequestMessage) ValidateBasic() error {
 	return nil
 }
 
-type timeCheck struct {
-	priorityHigh
-	time time.Time
-}
-
 type blockStore interface {
 	LoadBlock(height int64) *types.Block
 	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
@@ -48,7 +43,6 @@ type Reactor struct {
 
 	reporter behaviour.Reporter
 	io       iIo
-	state    state.State
 	store    blockStore
 }
 
@@ -56,26 +50,23 @@ type blockApplier interface {
 	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
 }
 
+// XXX: unify naming in this package around tdState
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
 func NewReactor(state state.State, store blockStore, reporter behaviour.Reporter, blockApplier blockApplier, bufferSize int) *Reactor {
-	// we need an executor
-	// XXX: should we use state.LastblockHeight or store.Height()?
 	pContext := newProcessorContext(store, blockApplier, state)
 	scheduler := newScheduler(state.LastBlockHeight)
-	processor := newPcState(state.LastBlockHeight, state, state.ChainID, pContext)
+	processor := newPcState(state, pContext)
 	return &Reactor{
 		events:    make(chan Event, bufferSize),
 		stopDemux: make(chan struct{}),
 		scheduler: newRoutine("scheduler", scheduler.handle, bufferSize),
 		processor: newRoutine("processor", processor.handle, bufferSize),
-		state:     state,
 		store:     store,
 		reporter:  reporter,
 		logger:    log.NewNopLogger(),
 	}
 }
 
-// Stat
 func (r *Reactor) setMaxPeerHeight(height int64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -90,14 +81,12 @@ func (r *Reactor) MaxPeerHeight() int64 {
 	return r.maxPeerHeight
 }
 
-// XXX: we should use reactor.state.LastBlockHeight
 func (r *Reactor) setSyncHeight(height int64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	r.syncHeight = height
 }
 
-// XXX: align this with state.State
 func (r *Reactor) SyncHeight() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
@@ -115,10 +104,6 @@ func (r *Reactor) Start() {
 	go r.scheduler.start()
 	go r.processor.start()
 	go r.demux()
-
-	// XXX: we can probably get rid of this
-	<-r.scheduler.ready()
-	<-r.processor.ready()
 }
 
 func (r *Reactor) demux() {
@@ -218,7 +203,7 @@ func (r *Reactor) demux() {
 			r.logger.Info(fmt.Sprintf("processor final %s", event))
 			msg, ok := event.(pcFinished)
 			if ok {
-				r.io.switchToConsensus(r.state, msg.blocksSynced)
+				r.io.switchToConsensus(msg.tdState, msg.blocksSynced)
 			}
 		case <-r.stopDemux:
 			r.logger.Info("demuxing stopped")
@@ -294,10 +279,9 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		if err := r.io.sendStatusResponse(r.SyncHeight(), src.ID()); err != nil {
 			r.logger.Error("Could not send status message to peer", "src", src)
 		}
-	default:
+	case Event:
 		// Forward to state machines
-		// TODO: consolidate types
-		// r.events <- msg
+		r.events <- msg
 	}
 }
 
