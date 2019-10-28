@@ -102,9 +102,6 @@ func (q *Query) Conditions() ([]Condition, error) {
 	conditions := make([]Condition, 0)
 	buffer, begin, end := q.parser.Buffer, 0, 0
 
-	var tag string
-	var op Operator
-
 	// tokens must be in the following order: tag ("tx.gas") -> operator ("=") -> operand ("7")
 	for token := range q.parser.Tokens() {
 		switch token.pegRule {
@@ -241,24 +238,24 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 			op = OpContains
 		case ruleexists:
 			op = OpExists
-			if strings.Contains(tag, ".") {
+			if strings.Contains(eventAttr, ".") {
 				// Searching for a full "type.attribute" event.
-				_, ok := events[tag]
+				_, ok := events[eventAttr]
 				if !ok {
-					return false
+					return false, nil
 				}
 			} else {
 				foundEvent := false
 
 			loop:
-				for k := range events {
-					if strings.Index(k, tag) == 0 {
+				for compositeTag := range events {
+					if strings.Index(compositeTag, eventAttr) == 0 {
 						foundEvent = true
 						break loop
 					}
 				}
 				if !foundEvent {
-					return false
+					return false,nil
 				}
 			}
 
