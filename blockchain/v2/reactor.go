@@ -30,24 +30,9 @@ type timeCheck struct {
 	time time.Time
 }
 
-// TODO: replace with real implementation
-func schedulerHandle(event Event) (Event, error) {
-	if _, ok := event.(timeCheck); ok {
-		fmt.Println("scheduler handle timeCheck")
-	}
-	return noOp, nil
-}
-
-// TODO: replace with real processor
-func processorHandle(event Event) (Event, error) {
-	if _, ok := event.(timeCheck); ok {
-		fmt.Println("processor handle timeCheck")
-	}
-	return noOp, nil
-}
-
-type blockLoader interface {
+type blockStore interface {
 	LoadBlock(height int64) *types.Block
+	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
 }
 
 type Reactor struct {
@@ -64,15 +49,25 @@ type Reactor struct {
 	reporter behaviour.Reporter
 	io       iIo
 	state    state.State
-	store    blockLoader
+	store    blockStore
 }
 
-func NewReactor(state state.State, store blockLoader, reporter behaviour.Reporter, bufferSize int) *Reactor {
+type blockApplier interface {
+	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
+}
+
+// XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
+func NewReactor(state state.State, store blockStore, reporter behaviour.Reporter, blockApplier blockApplier, bufferSize int) *Reactor {
+	// we need an executor
+	// XXX: should we use state.LastblockHeight or store.Height()?
+	pContext := newProcessorContext(store, blockApplier, state)
+	scheduler := newScheduler(state.LastBlockHeight)
+	processor := newPcState(state.LastBlockHeight, state, state.ChainID, pContext)
 	return &Reactor{
 		events:    make(chan Event, bufferSize),
 		stopDemux: make(chan struct{}),
-		scheduler: newRoutine("scheduler", schedulerHandle, bufferSize),
-		processor: newRoutine("processor", processorHandle, bufferSize),
+		scheduler: newRoutine("scheduler", scheduler.handle, bufferSize),
+		processor: newRoutine("processor", processor.handle, bufferSize),
 		state:     state,
 		store:     store,
 		reporter:  reporter,

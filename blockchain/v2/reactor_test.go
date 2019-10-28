@@ -66,23 +66,36 @@ func (mp mockPeer) TrySend(byte, []byte) bool { return true }
 func (mp mockPeer) Set(string, interface{}) {}
 func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
 
-type mockLoader struct {
+type mockBlockStore struct {
 	blocks map[int64]*types.Block
 }
 
-func (ml *mockLoader) LoadBlock(height int64) *types.Block {
+func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
 	return ml.blocks[height]
+}
+
+func (ml *mockBlockStore) SaveBlock(block *types.Block, part *types.PartSet, commit *types.Commit) {
+	ml.blocks[block.Height] = block
+}
+
+type mockBlockApplier struct {
+}
+
+// XXX: Add whitelist/blacklist?
+func (mba *mockBlockApplier) ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error) {
+	return state, nil
 }
 
 func TestReactor(t *testing.T) {
 	var (
 		chID       = byte(0x40)
 		bufferSize = 10
-		loader     = &mockLoader{}
+		loader     = &mockBlockStore{}
+		applier    = &mockBlockApplier{}
 		state      = state.State{}
 		peer       = mockPeer{}
 		reporter   = behaviour.NewMockReporter()
-		reactor    = NewReactor(state, loader, reporter, bufferSize)
+		reactor    = NewReactor(state, loader, reporter, applier, bufferSize)
 	)
 
 	// How do we serialize events to work with Receive?

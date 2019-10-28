@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -16,13 +15,13 @@ type processorContext interface {
 
 // nolint:unused
 type pContext struct {
-	store    *store.BlockStore
-	executor *state.BlockExecutor
-	state    *state.State
+	store    blockStore
+	executor blockApplier // TODO: rename applier
+	state    state.State
 }
 
 // nolint:unused,deadcode
-func newProcessorContext(st *store.BlockStore, ex *state.BlockExecutor, s *state.State) *pContext {
+func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContext {
 	return &pContext{
 		store:    st,
 		executor: ex,
@@ -31,7 +30,8 @@ func newProcessorContext(st *store.BlockStore, ex *state.BlockExecutor, s *state
 }
 
 func (pc *pContext) applyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error) {
-	return pc.executor.ApplyBlock(state, blockID, block)
+	state, err := pc.executor.ApplyBlock(state, blockID, block)
+	return state, err
 }
 
 func (pc *pContext) verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
