@@ -67,7 +67,11 @@ func TestThresholdMultisigValidCases(t *testing.T) {
 		)
 		require.NoError(
 			t,
-			multisignature.AddSignatureFromPubKey(tc.signatures[tc.signingIndices[tc.k]], tc.pubkeys[tc.signingIndices[tc.k]], tc.pubkeys),
+			multisignature.AddSignatureFromPubKey(
+				tc.signatures[tc.signingIndices[tc.k]],
+				tc.pubkeys[tc.signingIndices[tc.k]],
+				tc.pubkeys,
+			),
 		)
 		require.True(
 			t,

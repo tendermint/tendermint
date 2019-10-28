@@ -150,7 +150,9 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 //         "precommits": [
 //           {
 //             "signature": {
-//               "data": "12C0D8893B8A38224488DC1DE6270DF76BB1A5E9DB1C68577706A6A97C6EC34FFD12339183D5CA8BC2F46148773823DE905B7F6F5862FD564038BB7AE03BF50D",
+//               "data": "12C0D8893B8A38224488DC1DE6270DF76BB1A5E9DB" +
+//											 "1C68577706A6A97C6EC34FFD12339183D5CA8BC2F4" +
+//											 "6148773823DE905B7F6F5862FD564038BB7AE03BF50D",
 //               "type": "ed25519"
 //             },
 //             "block_id": {
@@ -267,7 +269,9 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 //       "precommits": [
 //         {
 //           "signature": {
-//             "data": "00970429FEC652E9E21D106A90AE8C5413759A7488775CEF4A3F44DC46C7F9D941070E4FBE9ED54DF247FA3983359A0C3A238D61DE55C75C9116D72ABC9CF50F",
+//             "data": "00970429FEC652E9E21D106A90AE8C5413759A74887" +
+//                     "75CEF4A3F44DC46C7F9D941070E4FBE9ED54DF247FA" +
+//                     "3983359A0C3A238D61DE55C75C9116D72ABC9CF50F",
 //             "type": "ed25519"
 //           },
 //           "block_id": {

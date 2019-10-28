@@ -4,11 +4,13 @@ Package privval provides different implementations of the types.PrivValidator.
 
 FilePV
 
-FilePV is the simplest implementation and developer default. It uses one file for the private key and another to store state.
+FilePV is the simplest implementation and developer default.
+It uses one file for the private key and another to store state.
 
 SignerListenerEndpoint
 
-SignerListenerEndpoint establishes a connection to an external process, like a Key Management Server (KMS), using a socket.
+SignerListenerEndpoint establishes a connection to an external process,
+like a Key Management Server (KMS), using a socket.
 SignerListenerEndpoint listens for the external KMS process to dial in.
 SignerListenerEndpoint takes a listener, which determines the type of connection
 (ie. encrypted over tcp, or unencrypted over unix).

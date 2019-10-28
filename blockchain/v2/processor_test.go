@@ -47,8 +47,8 @@ func makeState(p *params) *pcState {
 	return state
 }
 
-func mBlockResponse(peerID p2p.ID, height int64) *scBlockReceived {
-	return &scBlockReceived{
+func mBlockResponse(peerID p2p.ID, height int64) *bcBlockResponse {
+	return &bcBlockResponse{
 		peerID: peerID,
 		block:  makePcBlock(height),
 		height: height,

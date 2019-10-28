@@ -21,7 +21,7 @@ linters:
     - govet
     - ineffassign
     - interfacer
-    # - lll
+    - lll
     - misspell
     - maligned
     - nakedret
@@ -40,6 +40,12 @@ linters:
     # - gocognit
   disable:
     - errcheck
+
+issues:
+  exclude-rules:
+  - linters:
+      - lll
+    source: "https://"
 
 linters-settings:
   dogsled:
@@ -77,6 +83,3 @@ linters-settings:
 #     disabled-checks:
 #       - wrapperFunc
 #       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
-
-service:
-  golangci-lint-version: 1.19.x
