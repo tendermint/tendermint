@@ -73,7 +73,7 @@ const (
 	OpEqual
 	// "CONTAINS"; used to check if a string contains a certain sub string.
 	OpContains
-	// "EXISTS"; used to check whether an event has taken place
+	// "EXISTS"; used to check if a certain event attribute is present.
 	OpExists
 )
 
