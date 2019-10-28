@@ -33,6 +33,7 @@ go get github.com/tendermint/tendermint
 cd $GOPATH/src/github.com/tendermint/tendermint
 make tools
 make install_abci
+make install
 ```
 
 Now you should have the `abci-cli` installed; you'll see a couple of
