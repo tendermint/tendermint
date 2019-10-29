@@ -259,7 +259,7 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 					}
 				}
 				if !foundEvent {
-					return false,nil
+					return false, nil
 				}
 			}
 
