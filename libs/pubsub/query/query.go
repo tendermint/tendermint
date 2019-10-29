@@ -129,6 +129,10 @@ func (q *Query) Conditions() ([]Condition, error) {
 		case rulecontains:
 			op = OpContains
 
+		case ruleexists:
+			op = OpExists
+			conditions = append(conditions, Condition{eventAttr, op, nil})
+
 		case rulevalue:
 			// strip single quotes from value (i.e. "'NewBlock'" -> "NewBlock")
 			valueWithoutSingleQuotes := buffer[begin+1 : end-1]

@@ -197,6 +197,12 @@ func TestConditions(t *testing.T) {
 				{Tag: "tx.time", Op: query.OpGreaterEqual, Operand: txTime},
 			},
 		},
+		{
+			s: "slashing EXISTS",
+			conditions: []query.Condition{
+				{Tag: "slashing", Op: query.OpExists},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
