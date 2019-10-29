@@ -888,37 +888,6 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 }
 
 func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
-<<<<<<< HEAD
-	const (
-		validSignedMsgType   types.SignedMsgType = 0x01
-		invalidSignedMsgType types.SignedMsgType = 0x03
-	)
-
-	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{
-		Hash: cmn.HexBytes{},
-		PartsHeader: types.PartSetHeader{
-			Total: -1,
-			Hash:  cmn.HexBytes{},
-		},
-	}
-	testBitArray := cmn.NewBitArray(1)
-
-	testCases := []struct { // nolint: maligned
-		expectErr      bool
-		messageRound   int
-		messageHeight  int64
-		testName       string
-		messageType    types.SignedMsgType
-		messageBlockID types.BlockID
-		messageVotes   *cmn.BitArray
-	}{
-		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID, testBitArray},
-		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID, testBitArray},
-=======
 	testCases := []struct { // nolint: maligned
 		malleateFn func(*VoteSetBitsMessage)
 		expErr     string
@@ -938,7 +907,6 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		}, "Wrong BlockID: Wrong PartsHeader: Negative Total"},
 		{func(msg *VoteSetBitsMessage) { msg.Votes = cmn.NewBitArray(types.MaxVotesCount + 1) },
 			"Votes bit array is too big: 10001, max: 10000"},
->>>>>>> 564d6a20... cs: test new limits
 	}
 
 	for i, tc := range testCases {
