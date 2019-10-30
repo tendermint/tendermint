@@ -21,20 +21,11 @@ type pcShortBlock struct {
 	priorityNormal
 }
 
-// XXX: Remove this?
-/*
-type bcBlockResponse struct {
-	priorityNormal
-	peerID p2p.ID
-	block  *types.Block
-	height int64
-}
-*/
-
 type pcBlockVerificationFailure struct {
 	priorityNormal
-	peerID p2p.ID
-	height int64
+	height       int64
+	firstPeerID  p2p.ID
+	secondPeerID p2p.ID
 }
 
 type pcBlockProcessed struct {
@@ -134,10 +125,13 @@ func (state *pcState) purgePeer(peerID p2p.ID) {
 func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case *scBlockReceived:
-		if event.height <= state.height() {
+		if event.block == nil {
+			return noOp, nil
+		}
+		if event.block.Height <= state.height() {
 			return pcShortBlock{}, nil
 		}
-		err := state.enqueue(event.peerID, event.block, event.height)
+		err := state.enqueue(event.peerID, event.block, event.block.Height)
 		if err != nil {
 			return pcDuplicateBlock{}, nil
 		}
@@ -158,7 +152,11 @@ func (state *pcState) handle(event Event) (Event, error) {
 
 		err = state.context.verifyCommit(state.tdState.ChainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
-			return pcBlockVerificationFailure{peerID: firstItem.peerID, height: first.Height}, nil
+			state.purgePeer(firstItem.peerID)
+			state.purgePeer(secondItem.peerID)
+			return pcBlockVerificationFailure{
+					height: first.Height, firstPeerID: firstItem.peerID, secondPeerID: secondItem.peerID},
+				nil
 		}
 
 		state.context.saveBlock(first, firstParts, second.LastCommit)

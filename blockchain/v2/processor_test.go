@@ -51,7 +51,6 @@ func mBlockResponse(peerID p2p.ID, height int64) *scBlockReceived {
 	return &scBlockReceived{
 		peerID: peerID,
 		block:  makePcBlock(height),
-		height: height,
 	}
 }
 
@@ -235,21 +234,40 @@ func TestPcProcessBlockSuccess(t *testing.T) {
 func TestPcProcessBlockFailures(t *testing.T) {
 	tests := []testFields{
 		{
-			name: "blocks H+1 and H+2 present - H+1 verification fails ",
+			name: "blocks H+1 and H+2 present from different peers - H+1 verification fails ",
 			steps: []pcFsmMakeStateValues{
 				{
 					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}, verBL: []int64{1}}, event: pcProcessBlock{},
-					wantState:     &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}, verBL: []int64{1}},
-					wantNextEvent: pcBlockVerificationFailure{peerID: "P1", height: 1},
+					wantState:     &params{items: []pcBlock{}, verBL: []int64{1}},
+					wantNextEvent: pcBlockVerificationFailure{height: 1, firstPeerID: "P1", secondPeerID: "P2"},
 				},
 			},
 		},
 		{
-			name: "blocks H+1 and H+2 present - H+1 applyBlock fails ",
+			name: "blocks H+1 and H+2 present from same peer - H+1 applyBlock fails ",
 			steps: []pcFsmMakeStateValues{
 				{
 					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}, appBL: []int64{1}}, event: pcProcessBlock{},
-					wantState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}}, appBL: []int64{1}}, wantPanic: true,
+					wantState: &params{items: []pcBlock{}, appBL: []int64{1}}, wantPanic: true,
+				},
+			},
+		},
+		{
+			name: "blocks H+1 and H+2 present from same peers - H+1 verification fails ",
+			steps: []pcFsmMakeStateValues{
+				{
+					currentState: &params{items: []pcBlock{{"P1", 1}, {"P1", 2}, {"P2", 3}}, verBL: []int64{1}}, event: pcProcessBlock{},
+					wantState:     &params{items: []pcBlock{{"P2", 3}}, verBL: []int64{1}},
+					wantNextEvent: pcBlockVerificationFailure{height: 1, firstPeerID: "P1", secondPeerID: "P1"},
+				},
+			},
+		},
+		{
+			name: "blocks H+1 and H+2 present from different peers - H+1 applyBlock fails ",
+			steps: []pcFsmMakeStateValues{
+				{
+					currentState: &params{items: []pcBlock{{"P1", 1}, {"P2", 2}, {"P2", 3}}, appBL: []int64{1}}, event: pcProcessBlock{},
+					wantState: &params{items: []pcBlock{{"P2", 3}}, appBL: []int64{1}}, wantPanic: true,
 				},
 			},
 		},
