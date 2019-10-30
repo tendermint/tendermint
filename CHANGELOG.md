@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.32.7
+
+*October 18, 2019*
+
+This security release fixes a vulnerability found in the `consensus` package,
+where an attacker could construct a `BlockPartMessage` message in such a way
+that it will lead to consensus failure. A few similar issues have been
+identified and fixed here.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [elvishacker](https://hackerone.com/elvishacker) for finding
+and reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+  - [consensus] Modify `WAL#Write` and `WAL#WriteSync` to return an error if
+    they fail to write a message
+
+### SECURITY:
+
+- [consensus] Validate incoming messages more throughly
+
 ## v0.32.6
 
 *October 8, 2019*
@@ -245,6 +272,33 @@ program](https://hackerone.com/tendermint).
 - [libs/db] [\#3718](https://github.com/tendermint/tendermint/issues/3718) Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
 - [node] [\#3716](https://github.com/tendermint/tendermint/issues/3716) Fix a bug where `nil` is recorded as node's address
 - [node] [\#3741](https://github.com/tendermint/tendermint/issues/3741) Fix profiler blocking the entire node
+
+## v0.31.11
+
+*October 18, 2019*
+
+This security release fixes a vulnerability found in the `consensus` package,
+where an attacker could construct a `BlockPartMessage` message in such a way
+that it will lead to consensus failure. A few similar issues have been
+identified and fixed here.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [elvishacker](https://hackerone.com/elvishacker) for finding
+and reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+  - [consensus] Modify `WAL#Write` and `WAL#WriteSync` to return an error if
+    they fail to write a message
+
+### SECURITY:
+
+- [consensus] Validate incoming messages more throughly
 
 ## v0.31.10
 
