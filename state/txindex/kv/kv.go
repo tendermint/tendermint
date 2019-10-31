@@ -180,9 +180,9 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 	} else if ok {
 		res, err := txi.Get(hash)
 		if res == nil {
-			return []*types.TxResult{}, nil
+			return []*types.TxResult{}, errors.Wrap(err, "error while retrieving the result")
 		}
-		return []*types.TxResult{res}, errors.Wrap(err, "error while retrieving the result")
+		return []*types.TxResult{res}, nil
 	}
 
 	// conditions to skip because they're handled before "everything else"
