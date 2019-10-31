@@ -87,13 +87,6 @@ program](https://hackerone.com/tendermint).
 This release fixes a major security vulnerability found in the `p2p` package.
 All clients are recommended to upgrade. See
 [\#4030](https://github.com/tendermint/tendermint/issues/4030) for details.
-=======
-*September 30, 2019*
-
-This release fixes a major security vulnerability found in the `p2p` package.
-All clients are recommended to upgrade. See [TODO](hxxp://githublink) for
-details.
-
 
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for discovering
 and reporting this issue.
