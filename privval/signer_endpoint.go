@@ -122,7 +122,6 @@ func (se *signerEndpoint) WriteMessage(msg SignerMessage) (err error) {
 
 	// Reset read deadline
 	deadline := time.Now().Add(se.timeoutReadWrite)
-	
 	err = se.conn.SetWriteDeadline(deadline)
 	if err != nil {
 		return
