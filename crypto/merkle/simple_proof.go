@@ -9,7 +9,10 @@ import (
 )
 
 const (
-	maxAunts = 100
+	// MaxAunts is the maximum number of aunts that can be included in a SimpleProof.
+	// This corresponds to a tree of size 2^100, which should be sufficient for all conceivable purposes.
+	// This maximum helps prevent Denial-of-Service attacks by limitting the size of the proofs.
+	MaxAunts = 100
 )
 
 // SimpleProof represents a simple Merkle proof.
@@ -114,8 +117,8 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 }
 
 // ValidateBasic performs basic validation.
-// NOTE: - it expects LeafHash and Aunts of tmhash.Size size
-//			 - it expects no more than 100 aunts
+// NOTE: it expects the LeafHash and the elements of Aunts to be of size tmhash.Size,
+// and it expects at most MaxAunts elements in Aunts.
 func (sp *SimpleProof) ValidateBasic() error {
 	if sp.Total < 0 {
 		return errors.New("negative Total")
@@ -126,8 +129,8 @@ func (sp *SimpleProof) ValidateBasic() error {
 	if len(sp.LeafHash) != tmhash.Size {
 		return errors.Errorf("expected LeafHash size to be %d, got %d", tmhash.Size, len(sp.LeafHash))
 	}
-	if len(sp.Aunts) > maxAunts {
-		return errors.Errorf("expected no more than %d aunts, got %d", maxAunts, len(sp.Aunts))
+	if len(sp.Aunts) > MaxAunts {
+		return errors.Errorf("expected no more than %d aunts, got %d", MaxAunts, len(sp.Aunts))
 	}
 	for i, auntHash := range sp.Aunts {
 		if len(auntHash) != tmhash.Size {
