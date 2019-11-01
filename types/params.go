@@ -15,7 +15,7 @@ const (
 	// BlockPartSizeBytes is the size of one block part.
 	BlockPartSizeBytes = 65536 // 64kB
 
-	// MaxBlockPartsCount is the maximum count of block parts.
+	// MaxBlockPartsCount is the maximum number of block parts.
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
 )
 

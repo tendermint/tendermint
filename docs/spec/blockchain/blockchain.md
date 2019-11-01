@@ -434,6 +434,8 @@ All votes must have a valid signature from the corresponding validator.
 The sum total of the voting power of the validators that voted
 must be greater than 2/3 of the total voting power of the complete validator set.
 
+The number of votes in a commit is limited to 10000 (see `types.MaxVotesCount`).
+
 ### Vote
 
 A vote is a signed message broadcast in the consensus for a particular block at a particular height and round.
