@@ -55,8 +55,10 @@ Let's start a kvstore application.
 abci-cli kvstore
 ```
 
-In another terminal, we can start Tendermint. If you have never run
-Tendermint before, use:
+In another terminal, we can start Tendermint. You should already have the 
+Tendermint binary installed. If not, follow the steps from 
+[here](../introduction/install.md). If you have never run Tendermint 
+before, use:
 
 ```
 tendermint init
