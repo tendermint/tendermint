@@ -20,6 +20,7 @@ import (
 
 const (
 	// amino overhead + time.Time + max consensus msg size
+	// TODO: Can we clarify better where 24 comes from precisely?
 	maxMsgSizeBytes = maxMsgSize + 24
 
 	// how often the WAL should be sync'd during period sync'ing
