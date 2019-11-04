@@ -155,7 +155,9 @@ See details of SimpleProof, below.
 ### MakeParts
 
 Encode an object using Amino and slice it into parts.
-Tendermint uses a part size of 65536 bytes.
+Tendermint uses a part size of 65536 bytes, and allows a maximum of 1601 parts
+(see `types.MaxBlockPartsCount`). This corresponds to the hard-coded block size
+limit of 100MB.
 
 ```go
 func MakeParts(block Block) []Part
@@ -288,7 +290,9 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 }
 ```
 
-The number of aunts is limited to 100 (`maxAunts`) to protect the node against DOS attacks.
+The number of aunts is limited to 100 (`MaxAunts`) to protect the node against DOS attacks.
+This limits the tree size to 2^100 leaves, which should be sufficient for any
+conceivable purpose.
 
 ### IAVL+ Tree
 
