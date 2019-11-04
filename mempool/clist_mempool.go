@@ -209,11 +209,7 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
-func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
-	return mem.CheckTxWithInfo(tx, cb, TxInfo{SenderID: UnknownPeerID})
-}
-
-func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) (err error) {
+func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) (err error) {
 	mem.proxyMtx.Lock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.proxyMtx.Unlock()
@@ -314,7 +310,7 @@ func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
 // External callers of CheckTx, like the RPC, can also pass an externalCb through here that is called
 // when all other response processing is complete.
 //
-// Used in CheckTxWithInfo to record PeerID who sent us the tx.
+// Used in CheckTx to record PeerID who sent us the tx.
 func (mem *CListMempool) reqResCb(
 	tx []byte,
 	peerID uint16,

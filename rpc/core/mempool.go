@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	mempl "github.com/tendermint/tendermint/mempool"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/types"
@@ -73,7 +74,8 @@ import (
 // |-----------+------+---------+----------+-----------------|
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	err := mempool.CheckTx(tx, nil)
+	err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
+
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +139,7 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 	resCh := make(chan *abci.Response, 1)
 	err := mempool.CheckTx(tx, func(res *abci.Response) {
 		resCh <- res
-	})
+	}, mempl.TxInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +239,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	checkTxResCh := make(chan *abci.Response, 1)
 	err = mempool.CheckTx(tx, func(res *abci.Response) {
 		checkTxResCh <- res
-	})
+	}, mempl.TxInfo{})
 	if err != nil {
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
