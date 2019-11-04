@@ -5,6 +5,11 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+)
+
+const (
+	maxAunts = 100
 )
 
 // SimpleProof represents a simple Merkle proof.
@@ -106,6 +111,30 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 %s}`,
 		indent, sp.Aunts,
 		indent)
+}
+
+// ValidateBasic performs basic validation.
+// NOTE: - it expects LeafHash and Aunts of tmhash.Size size
+//			 - it expects no more than 100 aunts
+func (sp *SimpleProof) ValidateBasic() error {
+	if sp.Total < 0 {
+		return errors.New("negative Total")
+	}
+	if sp.Index < 0 {
+		return errors.New("negative Index")
+	}
+	if len(sp.LeafHash) != tmhash.Size {
+		return errors.Errorf("expected LeafHash size to be %d, got %d", tmhash.Size, len(sp.LeafHash))
+	}
+	if len(sp.Aunts) > maxAunts {
+		return errors.Errorf("expected no more than %d aunts, got %d", maxAunts, len(sp.Aunts))
+	}
+	for i, auntHash := range sp.Aunts {
+		if len(auntHash) != tmhash.Size {
+			return errors.Errorf("expected Aunts#%d size to be %d, got %d", i, tmhash.Size, len(auntHash))
+		}
+	}
+	return nil
 }
 
 // Use the leafHash and innerHashes to get the root merkle hash.

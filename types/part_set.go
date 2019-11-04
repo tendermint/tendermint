@@ -26,10 +26,13 @@ type Part struct {
 // ValidateBasic performs basic validation.
 func (part *Part) ValidateBasic() error {
 	if part.Index < 0 {
-		return errors.New("Negative Index")
+		return errors.New("negative Index")
 	}
 	if len(part.Bytes) > BlockPartSizeBytes {
-		return fmt.Errorf("Too big (max: %d)", BlockPartSizeBytes)
+		return errors.Errorf("too big: %d bytes, max: %d", len(part.Bytes), BlockPartSizeBytes)
+	}
+	if err := part.Proof.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "wrong Proof")
 	}
 	return nil
 }
