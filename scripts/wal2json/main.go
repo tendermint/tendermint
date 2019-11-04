@@ -56,8 +56,8 @@ func main() {
 			_, err = os.Stdout.Write([]byte("\n"))
 		}
 		if err == nil {
-			if end, ok := msg.Msg.(cs.EndHeightMessage); ok {
-				_, err = os.Stdout.Write([]byte(fmt.Sprintf("ENDHEIGHT %d\n", end.Height))) // nolint: errcheck, gas
+			if endMsg, ok := msg.Msg.(cs.EndHeightMessage); ok {
+				_, err = os.Stdout.Write([]byte(fmt.Sprintf("ENDHEIGHT %d\n", endMsg.Height))) // nolint: errcheck, gas
 			}
 		}
 		if err != nil {

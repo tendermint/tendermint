@@ -103,7 +103,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		storeBatch.Set(hash, rawBytes)
 	}
 
-	storeBatch.Write()
+	storeBatch.WriteSync()
 	return nil
 }
 
@@ -132,7 +132,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	}
 
 	b.Set(hash, rawBytes)
-	b.Write()
+	b.WriteSync()
 
 	return nil
 }
@@ -168,7 +168,10 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 	filteredHashes := make(map[string][]byte)
 
 	// get a list of conditions (like "tx.height > 5")
-	conditions := q.Conditions()
+	conditions, err := q.Conditions()
+	if err != nil {
+		return nil, errors.Wrap(err, "error during parsing conditions from query")
+	}
 
 	// if there is a hash condition, return the result immediately
 	hash, err, ok := lookForHash(conditions)
