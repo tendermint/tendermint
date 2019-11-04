@@ -15,13 +15,7 @@ import (
 type Mempool interface {
 	// CheckTx executes a new transaction against the application to determine
 	// its validity and whether it should be added to the mempool.
-	CheckTx(tx types.Tx, callback func(*abci.Response)) error
-
-	// CheckTxWithInfo performs the same operation as CheckTx, but with extra
-	// meta data about the tx.
-	// Currently this metadata is the peer who sent it, used to prevent the tx
-	// from being gossiped back to them.
-	CheckTxWithInfo(tx types.Tx, callback func(*abci.Response), txInfo TxInfo) error
+	CheckTx(tx types.Tx, callback func(*abci.Response), txInfo TxInfo) error
 
 	// ReapMaxBytesMaxGas reaps transactions from the mempool up to maxBytes
 	// bytes total with the condition that the total gasWanted must be less than
