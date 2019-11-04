@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -312,7 +313,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
 	mempool := node.Mempool()
-	_ = mempool.CheckTx(tx, nil)
+	_ = mempool.CheckTx(tx, nil, mempl.TxInfo{})
 
 	for i, c := range GetClients() {
 		mc, ok := c.(client.MempoolClient)
@@ -333,7 +334,7 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
 	mempool := node.Mempool()
-	_ = mempool.CheckTx(tx, nil)
+	_ = mempool.CheckTx(tx, nil, mempl.TxInfo{})
 	mempoolSize := mempool.Size()
 
 	for i, c := range GetClients() {
