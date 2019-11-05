@@ -8,6 +8,7 @@ module.exports = {
   //     lang: "ru"
   //   }
   // },
+  base: process.env.VUEPRESS_BASE,
   themeConfig: {
     docsRepo: "tendermint/tendermint",
     editLink: true,
