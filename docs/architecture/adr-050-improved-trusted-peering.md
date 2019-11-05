@@ -2,6 +2,7 @@
 
 ## Changelog
 * 22-10-2019: Initial draft
+* 05-11-2019: Modify `maximum_dial_period` to `persistent_peers_maximum_dial_period`
 
 ## Context
 
@@ -15,17 +16,17 @@ This is happening because of two reasons, exponential backoff and absence of unc
 ## Decision
 
 We would like to suggest solving this problem by introducing two parameters in `config.toml`, `wildcard_peer_ids` and 
-`maximum_dial_period`. 
+`persistent_peers_maximum_dial_period`. 
 
 1) `wildcard_peer_ids`
 
 A node operator inputs list of ids of peers which are allowed to be connected by both inbound or outbound regardless of 
 `max_num_inbound_peers` or `max_num_outbound_peers` of user's node reached or not.
 
-2) `maximum_dial_period`
+2) `persistent_peers_maximum_dial_period`
 
-Terms between each dial to each persistent peer will not exceed `maximum_dial_period` during exponential backoff. 
-Therefore, `dial_period` = min(`maximum_dial_period`, exponential_backoff_dial_period)
+Terms between each dial to each persistent peer will not exceed `persistent_peers_maximum_dial_period` during exponential backoff. 
+Therefore, `dial_period` = min(`persistent_peers_maximum_dial_period`, exponential_backoff_dial_period)
 
 Alternative approach
 
@@ -44,7 +45,7 @@ Proposed
 
 A node operator can configure two new parameters in `config.toml` so that he/she can assure that tendermint will allow connection
 from/to peers in `wildcard_peer_ids`. Also he/she can assure that every persistent peer will be dialed at least once in every 
-`maximum_dial_period` term. It achieves more stable and persistent peering for trusted peers.
+`persistent_peers_maximum_dial_period` term. It achieves more stable and persistent peering for trusted peers.
 
 ### Negative
 
