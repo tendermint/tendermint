@@ -60,8 +60,7 @@ func RegisterAmino(cdc *amino.Codec) {
 		secp256k1.PrivKeyAminoName, nil)
 }
 
-// RegisterAccountTypeCodec registers an external account type defined in
-// another module for the internal ModuleCdc.
+// RegisterAccountTypeCodec registers an external key type to allow decoding it from bytes
 func RegisterKeyType(o interface{}, name string) {
 	cdc.RegisterConcrete(o, name, nil)
 }
