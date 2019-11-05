@@ -212,7 +212,8 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 	var proof types.TxProof
 	// if there's no tx in the results array, we don't need to loop through the apiResults array
 	for i := 0; i < len(apiResults); i++ {
-		r := results[skipCount+i]
+		// show transactions in the latest-first order
+		r := results[totalCount-1-skipCount-i]
 		height := r.Height
 		index := r.Index
 
