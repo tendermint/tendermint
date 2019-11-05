@@ -15,6 +15,7 @@ test/logs
 coverage.txt
 docs/_build
 docs/dist
+docs/.vuepress/dist
 *.log
 abci-cli
 docs/node_modules/
