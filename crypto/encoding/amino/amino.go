@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
-// cdc defines the codec to decode crypto keys
 var cdc = amino.NewCodec()
 
 // nameTable is used to map public key concrete types back
