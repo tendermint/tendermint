@@ -252,8 +252,8 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 				foundEvent := false
 
 			loop:
-				for compositeTag := range events {
-					if strings.Index(compositeTag, eventAttr) == 0 {
+				for compositeKey := range events {
+					if strings.Index(compositeKey, eventAttr) == 0 {
 						foundEvent = true
 						break loop
 					}
