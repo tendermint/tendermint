@@ -10,7 +10,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
-var cdc = amino.NewCodec()
+// AminoCdc defines the codec to decode crypto keys
+var AminoCdc = amino.NewCodec()
 
 // nameTable is used to map public key concrete types back
 // to their registered amino names. This should eventually be handled
@@ -25,7 +26,7 @@ func init() {
 	// TODO: Remove above note when
 	// https://github.com/tendermint/go-amino/issues/9
 	// is resolved
-	RegisterAmino(cdc)
+	RegisterAmino(AminoCdc)
 
 	// TODO: Have amino provide a way to go from concrete struct to route directly.
 	// Its currently a private API
@@ -61,11 +62,11 @@ func RegisterAmino(cdc *amino.Codec) {
 }
 
 func PrivKeyFromBytes(privKeyBytes []byte) (privKey crypto.PrivKey, err error) {
-	err = cdc.UnmarshalBinaryBare(privKeyBytes, &privKey)
+	err = AminoCdc.UnmarshalBinaryBare(privKeyBytes, &privKey)
 	return
 }
 
 func PubKeyFromBytes(pubKeyBytes []byte) (pubKey crypto.PubKey, err error) {
-	err = cdc.UnmarshalBinaryBare(pubKeyBytes, &pubKey)
+	err = AminoCdc.UnmarshalBinaryBare(pubKeyBytes, &pubKey)
 	return
 }

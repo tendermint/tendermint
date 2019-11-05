@@ -18,7 +18,7 @@ type byter interface {
 
 func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	// Marshal to binary bytes.
-	bz, err := cdc.MarshalBinaryBare(src)
+	bz, err := AminoCdc.MarshalBinaryBare(src)
 	require.Nil(t, err, "%+v", err)
 	if byterSrc, ok := src.(byter); ok {
 		// Make sure this is compatible with current (Bytes()) encoding.
@@ -28,13 +28,13 @@ func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	assert.Equal(t, size, len(bz), "Amino binary size mismatch")
 
 	// Unmarshal.
-	err = cdc.UnmarshalBinaryBare(bz, dst)
+	err = AminoCdc.UnmarshalBinaryBare(bz, dst)
 	require.Nil(t, err, "%+v", err)
 }
 
 func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) {
 	// Marshal to JSON bytes.
-	js, err := cdc.MarshalJSON(src)
+	js, err := AminoCdc.MarshalJSON(src)
 	require.Nil(t, err, "%+v", err)
 	if isNil {
 		assert.Equal(t, string(js), `null`)
@@ -43,14 +43,14 @@ func checkAminoJSON(t *testing.T, src interface{}, dst interface{}, isNil bool) 
 		assert.Contains(t, string(js), `"value":`)
 	}
 	// Unmarshal.
-	err = cdc.UnmarshalJSON(js, dst)
+	err = AminoCdc.UnmarshalJSON(js, dst)
 	require.Nil(t, err, "%+v", err)
 }
 
 // ExamplePrintRegisteredTypes refers to unknown identifier: PrintRegisteredTypes
 //nolint:govet
 func ExamplePrintRegisteredTypes() {
-	cdc.PrintTypes(os.Stdout)
+	AminoCdc.PrintTypes(os.Stdout)
 	// Output: | Type | Name | Prefix | Length | Notes |
 	//| ---- | ---- | ------ | ----- | ------ |
 	//| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
@@ -140,7 +140,7 @@ func TestPubkeyAminoName(t *testing.T) {
 		{multisig.PubKeyMultisigThreshold{}, multisig.PubKeyMultisigThresholdAminoRoute, true},
 	}
 	for i, tc := range tests {
-		got, found := PubkeyAminoName(cdc, tc.key)
+		got, found := PubkeyAminoName(AminoCdc, tc.key)
 		require.Equal(t, tc.found, found, "not equal on tc %d", i)
 		if tc.found {
 			require.Equal(t, tc.want, got, "not equal on tc %d", i)
