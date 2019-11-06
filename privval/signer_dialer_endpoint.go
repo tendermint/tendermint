@@ -28,7 +28,7 @@ func SignerDialerEndpointConnRetries(retries int) SignerServiceEndpointOption {
 
 // SignerDialerEndpointRetryWaitInterval sets the retry wait interval to a custom value
 func SignerDialerEndpointRetryWaitInterval(retryWaitInterval time.Duration) SignerServiceEndpointOption {
-	return func(ss *SignerDialerEndpoint) { ss.retryWait = retryWaitInterval }
+	return func(ss *SignerDialerEndpoint) { ss.retryWait = interval }
 }
 
 // SignerDialerEndpoint dials using its dialer and responds to any
