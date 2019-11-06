@@ -1,7 +1,6 @@
 package v2
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -19,24 +18,13 @@ type iIo interface {
 }
 
 type switchIo struct {
-	sw p2p.Switch
+	sw *p2p.Switch
 }
 
 const (
 	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
 	BlockchainChannel = byte(0x40)
 )
-
-type bcStatusRequestMessage struct {
-	Height int64
-}
-
-func (m *bcStatusRequestMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	return nil
-}
 
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
@@ -86,12 +74,10 @@ func (sio *switchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	return nil
 }
 
-// XXX: We'll have to register these messages with the codec
-type bcNoBlockResponseMessage struct {
-	Height int64
-}
-
 func (sio *switchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
+	if sio.sw == nil {
+		return fmt.Errorf("the switch is not initialized")
+	}
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")

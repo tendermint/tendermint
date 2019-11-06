@@ -8,6 +8,6 @@ import (
 var cdc = amino.NewCodec()
 
 func init() {
-	//RegisterBlockchainMessages(cdc)
+	RegisterBlockchainMessages(cdc)
 	types.RegisterBlockAmino(cdc)
 }

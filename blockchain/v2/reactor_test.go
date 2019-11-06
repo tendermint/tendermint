@@ -1,15 +1,29 @@
 package v2
 
 import (
-	"net"
-	"testing"
-
+	"fmt"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
+	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
-	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/proxy"
+	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
+	dbm "github.com/tendermint/tm-db"
+	"net"
+	"os"
+	"sort"
+	"sync"
+	"testing"
+	"time"
 )
 
 /*
@@ -40,10 +54,11 @@ import (
 
 type mockPeer struct {
 	cmn.Service
+	id p2p.ID
 }
 
 func (mp mockPeer) FlushStop()           {}
-func (mp mockPeer) ID() p2p.ID           { return "foo" }
+func (mp mockPeer) ID() p2p.ID           { return mp.id }
 func (mp mockPeer) RemoteIP() net.IP     { return net.IP{} }
 func (mp mockPeer) RemoteAddr() net.Addr { return &net.TCPAddr{IP: mp.RemoteIP(), Port: 8800} }
 
@@ -82,30 +97,456 @@ type mockBlockApplier struct {
 }
 
 // XXX: Add whitelist/blacklist?
-func (mba *mockBlockApplier) ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error) {
+func (mba *mockBlockApplier) ApplyBlock(state sm.State, blockID types.BlockID, block *types.Block) (sm.State, error) {
+	state.LastBlockHeight++
 	return state, nil
 }
 
-func TestReactor(t *testing.T) {
+type mockBlockVerifier struct{}
+
+func (mbv *mockBlockVerifier) VerifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
+	return nil
+}
+
+type mockSwitchIo struct {
+	mtx                 sync.Mutex
+	switchedToConsensus bool
+	numStatusResponse   int
+	numBlockResponse    int
+	numNoBlockResponse  int
+}
+
+func (sio *mockSwitchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
+	return nil
+}
+
+func (sio *mockSwitchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
+	sio.mtx.Lock()
+	defer sio.mtx.Unlock()
+	sio.numStatusResponse++
+	return nil
+}
+
+func (sio *mockSwitchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
+	sio.mtx.Lock()
+	defer sio.mtx.Unlock()
+	sio.numBlockResponse++
+	return nil
+}
+
+func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
+	sio.mtx.Lock()
+	defer sio.mtx.Unlock()
+	sio.numNoBlockResponse++
+	return nil
+}
+
+func (sio *mockSwitchIo) switchToConsensus(state sm.State, blocksSynced int) {
+	sio.mtx.Lock()
+	defer sio.mtx.Unlock()
+	sio.switchedToConsensus = true
+}
+
+func (sio *mockSwitchIo) hasSwitchedToConsensus() bool {
+	sio.mtx.Lock()
+	defer sio.mtx.Unlock()
+	return sio.switchedToConsensus
+}
+
+func (sio *mockSwitchIo) broadcastStatusRequest(height int64) {
+}
+
+type testReactorParams struct {
+	logger      log.Logger
+	genDoc      *types.GenesisDoc
+	privVals    []types.PrivValidator
+	startHeight int64
+	bufferSize  int
+	mockV       bool
+	mockA       bool
+}
+
+func newTestReactor(p testReactorParams) *Reactor {
+	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
+	reporter := behaviour.NewMockReporter()
+
+	var ver blockVerifier
+	var appl blockApplier
+
+	if p.mockV {
+		ver = &mockBlockVerifier{}
+	} else {
+		ver = state.Validators
+	}
+
+	if p.mockA {
+		appl = &mockBlockApplier{}
+	} else {
+		app := &testApp{}
+		cc := proxy.NewLocalClientCreator(app)
+		proxyApp := proxy.NewAppConns(cc)
+		err := proxyApp.Start()
+		if err != nil {
+			panic(errors.Wrap(err, "error start app"))
+		}
+		db := dbm.NewMemDB()
+		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+		sm.SaveState(db, state)
+	}
+
+	r := NewReactor(state, store, reporter, ver, appl, p.bufferSize)
+	logger := log.TestingLogger()
+	r.setLogger(logger)
+	r.SetLogger(logger.With("module", "blockchain"))
+
+	return r
+}
+
+func TestReactorTerminationScenarios(t *testing.T) {
 	var (
-		chID       = byte(0x40)
-		bufferSize = 10
-		loader     = &mockBlockStore{}
-		applier    = &mockBlockApplier{}
-		state      = state.State{}
-		peer       = mockPeer{}
-		reporter   = behaviour.NewMockReporter()
-		reactor    = NewReactor(state, loader, reporter, applier, bufferSize)
+		channelID = byte(0x40)
 	)
 
-	// How do we serialize events to work with Receive?
-	reactor.Start()
-	script := [][]byte{
-		cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{Height: 1}),
+	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+	refStore, _, _ := newReactorStore(genDoc, privVals, 20)
+
+	params := testReactorParams{
+		logger:      log.TestingLogger(),
+		genDoc:      genDoc,
+		privVals:    privVals,
+		startHeight: 10,
+		bufferSize:  100,
+		mockV:       false,
+		mockA:       true,
 	}
 
-	for _, event := range script {
-		reactor.Receive(chID, peer, event)
+	type testEvent struct {
+		evType string
+		peer   string
+		event  interface{}
 	}
-	reactor.Stop()
+
+	tests := []struct {
+		name   string
+		params testReactorParams
+		msgs   []testEvent
+	}{
+		{
+			name:   "simple termination on max peer height - one peer",
+			params: params,
+			msgs: []testEvent{
+				{"AddPeer", "P1", nil},
+				{"Receive", "P1", bcStatusResponseMessage{Height: 13}},
+				{"BlockReq", "", nil},
+				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(11)}},
+				{"BlockReq", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(12)}},
+				{"Process", "", nil},
+				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(13)}},
+				{"Process", "", nil},
+			},
+		},
+		{
+			name:   "simple termination on max peer height - two peers",
+			params: params,
+			msgs: []testEvent{
+				{"AddPeer", "P1", nil},
+				{"AddPeer", "P2", nil},
+				{"Receive", "P1", bcStatusResponseMessage{Height: 13}},
+				{"Receive", "P2", bcStatusResponseMessage{Height: 15}},
+				{"BlockReq", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(11)}},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(12)}},
+				{"Process", "", nil},
+				{"BlockReq", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P1", bcBlockResponseMessage{refStore.LoadBlock(13)}},
+				{"Process", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(14)}},
+				{"Process", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(15)}},
+				{"Process", "", nil},
+			},
+		},
+		{
+			name:   "termination on max peer height - two peers, noBlock error",
+			params: params,
+			msgs: []testEvent{
+				{"AddPeer", "P1", nil},
+				{"AddPeer", "P2", nil},
+				{"Receive", "P1", bcStatusResponseMessage{Height: 13}},
+				{"Receive", "P2", bcStatusResponseMessage{Height: 15}},
+				{"BlockReq", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P1", bcNoBlockResponseMessage{11}},
+				{"BlockReq", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(12)}},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(11)}},
+				{"Process", "", nil},
+				{"BlockReq", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(13)}},
+				{"Process", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(14)}},
+				{"Process", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(15)}},
+				{"Process", "", nil},
+			},
+		},
+		{
+			name:   "termination on max peer height - two peers, remove one peer",
+			params: params,
+			msgs: []testEvent{
+				{"AddPeer", "P1", nil},
+				{"AddPeer", "P2", nil},
+				{"Receive", "P1", bcStatusResponseMessage{Height: 13}},
+				{"Receive", "P2", bcStatusResponseMessage{Height: 15}},
+				{"BlockReq", "", nil},
+				{"BlockReq", "", nil},
+				{"RemovePeer", "P1", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(12)}},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(11)}},
+				{"Process", "", nil},
+				{"BlockReq", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(13)}},
+				{"Process", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(14)}},
+				{"Process", "", nil},
+				{"BlockReq", "", nil},
+				{"Receive", "P2", bcBlockResponseMessage{refStore.LoadBlock(15)}},
+				{"Process", "", nil},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			reactor := newTestReactor(params)
+			reactor.Start()
+			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
+			reactor.io = mockSwitch
+			// time for go routines to start
+			time.Sleep(time.Millisecond)
+
+			for i := 0; i < len(tt.msgs); i++ {
+				step := tt.msgs[i]
+				switch step.evType {
+				case "AddPeer":
+					reactor.AddPeer(mockPeer{id: p2p.ID(step.peer)})
+				case "RemovePeer":
+					reactor.RemovePeer(mockPeer{id: p2p.ID(step.peer)}, fmt.Errorf("some error"))
+				case "Receive":
+					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(step.event))
+				case "BlockReq":
+					reactor.scheduler.send(trySchedule{time: time.Now()})
+				case "Process":
+					reactor.processor.send(pcProcessBlock{})
+				}
+				// time for messages to propagate between routines
+				time.Sleep(time.Millisecond)
+			}
+
+			time.Sleep(20 * time.Millisecond)
+			assert.True(t, mockSwitch.hasSwitchedToConsensus())
+
+			reactor.Stop()
+		})
+	}
+}
+
+func TestReactorHelperMode(t *testing.T) {
+	var (
+		channelID = byte(0x40)
+	)
+
+	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+
+	params := testReactorParams{
+		logger:      log.TestingLogger(),
+		genDoc:      genDoc,
+		privVals:    privVals,
+		startHeight: 20,
+		bufferSize:  100,
+		mockV:       false,
+		mockA:       true,
+	}
+
+	type testEvent struct {
+		peer  string
+		event interface{}
+	}
+
+	tests := []struct {
+		name   string
+		params testReactorParams
+		msgs   []testEvent
+	}{
+		{
+			name:   "status request",
+			params: params,
+			msgs: []testEvent{
+				{"P1", bcStatusRequestMessage{}},
+				{"P1", bcBlockRequestMessage{Height: 13}},
+				{"P1", bcBlockRequestMessage{Height: 20}},
+				{"P1", bcBlockRequestMessage{Height: 22}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			reactor := newTestReactor(params)
+			reactor.Start()
+			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
+			reactor.io = mockSwitch
+			// time for go routines to start
+			time.Sleep(time.Millisecond)
+
+			for i := 0; i < len(tt.msgs); i++ {
+				step := tt.msgs[i]
+				switch ev := step.event.(type) {
+				case bcStatusRequestMessage:
+					old := mockSwitch.numStatusResponse
+					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
+				case bcBlockRequestMessage:
+					if ev.Height > params.startHeight {
+						old := mockSwitch.numNoBlockResponse
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
+					} else {
+						old := mockSwitch.numBlockResponse
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
+					}
+				}
+			}
+			time.Sleep(time.Millisecond)
+
+			reactor.Stop()
+		})
+	}
+}
+
+//----------------------------------------------
+// utility funcs
+
+func makeTxs(height int64) (txs []types.Tx) {
+	for i := 0; i < 10; i++ {
+		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
+	}
+	return txs
+}
+
+func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+	return block
+}
+
+type testApp struct {
+	abci.BaseApplication
+}
+
+func makeVote(header *types.Header, blockID types.BlockID, valset *types.ValidatorSet, privVal types.PrivValidator) *types.Vote {
+	addr := privVal.GetPubKey().Address()
+	idx, _ := valset.GetByAddress(addr)
+	vote := &types.Vote{
+		ValidatorAddress: addr,
+		ValidatorIndex:   idx,
+		Height:           header.Height,
+		Round:            1,
+		Timestamp:        tmtime.Now(),
+		Type:             types.PrecommitType,
+		BlockID:          blockID,
+	}
+
+	_ = privVal.SignVote(header.ChainID, vote)
+
+	return vote
+}
+
+func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+	validators := make([]types.GenesisValidator, numValidators)
+	privValidators := make([]types.PrivValidator, numValidators)
+	for i := 0; i < numValidators; i++ {
+		val, privVal := types.RandValidator(randPower, minPower)
+		validators[i] = types.GenesisValidator{
+			PubKey: val.PubKey,
+			Power:  val.VotingPower,
+		}
+		privValidators[i] = privVal
+	}
+	sort.Sort(types.PrivValidatorsByAddress(privValidators))
+
+	return &types.GenesisDoc{
+		GenesisTime: tmtime.Now(),
+		ChainID:     chainID,
+		Validators:  validators,
+	}, privValidators
+}
+
+func newReactorStore(
+	genDoc *types.GenesisDoc,
+	privVals []types.PrivValidator,
+	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
+	if len(privVals) != 1 {
+		panic("only support one validator")
+	}
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	if err != nil {
+		panic(errors.Wrap(err, "error start app"))
+	}
+
+	stateDB := dbm.NewMemDB()
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+
+	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+	if err != nil {
+		panic(errors.Wrap(err, "error constructing state from genesis file"))
+	}
+
+	db := dbm.NewMemDB()
+	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
+		mock.Mempool{}, sm.MockEvidencePool{})
+	sm.SaveState(db, state)
+
+	// add blocks in
+	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
+		lastCommit := types.NewCommit(types.BlockID{}, nil)
+		if blockHeight > 1 {
+			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
+			lastBlock := blockStore.LoadBlock(blockHeight - 1)
+
+			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0]).CommitSig()
+			lastCommit = types.NewCommit(lastBlockMeta.BlockID, []*types.CommitSig{vote})
+		}
+
+		thisBlock := makeBlock(blockHeight, state, lastCommit)
+
+		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
+
+		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		if err != nil {
+			panic(errors.Wrap(err, "error apply block"))
+		}
+
+		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
+	}
+	return blockStore, state, blockExec
 }

@@ -23,10 +23,18 @@ type tryPrunePeer struct {
 	time time.Time
 }
 
+func (e tryPrunePeer) String() string {
+	return fmt.Sprintf(": %v", e.time)
+}
+
 // ticker event for scheduling block requests
 type trySchedule struct {
 	priorityHigh
 	time time.Time
+}
+
+func (e trySchedule) String() string {
+	return fmt.Sprintf(": %v", e.time)
 }
 
 // blockResponse message received from a peer
@@ -34,9 +42,16 @@ type bcBlockResponse struct {
 	priorityNormal
 	time   time.Time
 	peerID p2p.ID
-	height int64 // isn't the height in the block?
 	size   int64
 	block  *types.Block
+}
+
+// blockNoResponse message received from a peer
+type bcNoBlockResponse struct {
+	priorityNormal
+	time   time.Time
+	peerID p2p.ID
+	height int64
 }
 
 // statusResponse message received from a peer
@@ -78,6 +93,10 @@ type scPeerError struct {
 	priorityHigh
 	peerID p2p.ID
 	reason error
+}
+
+func (e scPeerError) String() string {
+	return fmt.Sprintf("scPeerError - peerID %s, err %s", e.peerID, e.reason)
 }
 
 // scheduler removed a set of peers (timed out or slow peer)
@@ -214,6 +233,9 @@ func newScheduler(initHeight int64) *scheduler {
 		pendingBlocks:  make(map[int64]p2p.ID),
 		pendingTime:    make(map[int64]time.Time),
 		receivedBlocks: make(map[int64]p2p.ID),
+		targetPending:  10,                              // TODO - pass as param
+		peerTimeout:    time.Duration(15 * time.Second), // TODO - pass as param
+		minRecvRate:    0,                               //int64(7680), TODO - pass as param
 	}
 
 	return &sc
@@ -411,7 +433,8 @@ func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now t
 	}
 
 	pendingTime, ok := sc.pendingTime[height]
-	if !ok || now.Sub(pendingTime) <= 0 {
+	subVal := now.Sub(pendingTime)
+	if !ok || subVal <= 0 {
 		return fmt.Errorf("clock error: block %d received at %s but requested at %s",
 			height, pendingTime, now)
 	}
@@ -573,6 +596,23 @@ func (sc *scheduler) handleBlockResponse(event bcBlockResponse) (Event, error) {
 	return scBlockReceived{peerID: event.peerID, block: event.block}, nil
 }
 
+func (sc *scheduler) handleNoBlockResponse(event bcNoBlockResponse) (Event, error) {
+	if len(sc.peers) == 0 {
+		return noOp, nil
+	}
+
+	peer, ok := sc.peers[event.peerID]
+	if !ok || peer.state == peerStateRemoved {
+		return noOp, nil
+	}
+	// The peer may have been just removed due to errors, low speed or timeouts.
+	_ = sc.removePeer(event.peerID)
+
+	return scPeerError{peerID: event.peerID,
+		reason: fmt.Errorf("peer %v with height %d claims no block for %d",
+			event.peerID, peer.height, event.height)}, nil
+}
+
 func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error) {
 	if event.height != sc.height {
 		panic(fmt.Sprintf("processed height %d but expected height %d", event.height, sc.height))
@@ -621,6 +661,19 @@ func (sc *scheduler) handleAddNewPeer(event addNewPeer) (Event, error) {
 
 // XXX: unify types peerError
 func (sc *scheduler) handlePeerError(event peerError) (Event, error) {
+	err := sc.removePeer(event.peerID)
+	if err != nil {
+		// XXX - It is possible that the removePeer fails here for legitimate reasons
+		// for example if a peer timeout or error was handled just before this.
+		return scSchedulerFail{reason: err}, nil
+	}
+	if sc.allBlocksProcessed() {
+		return scFinishedEv{}, nil
+	}
+	return noOp, nil
+}
+
+func (sc *scheduler) handleRemovePeer(event bcRemovePeer) (Event, error) {
 	err := sc.removePeer(event.peerID)
 	if err != nil {
 		// XXX - It is possible that the removePeer fails here for legitimate reasons
@@ -690,11 +743,17 @@ func (sc *scheduler) handle(event Event) (Event, error) {
 	case bcBlockResponse:
 		nextEvent, err := sc.handleBlockResponse(event)
 		return nextEvent, err
+	case bcNoBlockResponse:
+		nextEvent, err := sc.handleNoBlockResponse(event)
+		return nextEvent, err
 	case trySchedule:
 		nextEvent, err := sc.handleTrySchedule(event)
 		return nextEvent, err
 	case addNewPeer:
 		nextEvent, err := sc.handleAddNewPeer(event)
+		return nextEvent, err
+	case bcRemovePeer:
+		nextEvent, err := sc.handleRemovePeer(event)
 		return nextEvent, err
 	case tryPrunePeer:
 		nextEvent, err := sc.handleTryPrunePeer(event)

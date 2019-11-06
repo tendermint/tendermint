@@ -3,21 +3,23 @@ package v2
 import (
 	"errors"
 	"fmt"
-	"sync"
-	"time"
-
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/behaviour"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"sync"
+	"time"
 )
 
+//-------------------------------------
+
 type bcBlockRequestMessage struct {
-	priorityNormal
-	Height int64 // XXX: could this be private?
+	Height int64
 }
 
+// ValidateBasic performs basic validation.
 func (m *bcBlockRequestMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
@@ -25,12 +27,86 @@ func (m *bcBlockRequestMessage) ValidateBasic() error {
 	return nil
 }
 
+func (m *bcBlockRequestMessage) String() string {
+	return fmt.Sprintf("[bcBlockRequestMessage %v]", m.Height)
+}
+
+type bcNoBlockResponseMessage struct {
+	Height int64
+}
+
+// ValidateBasic performs basic validation.
+func (m *bcNoBlockResponseMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	return nil
+}
+
+func (m *bcNoBlockResponseMessage) String() string {
+	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", m.Height)
+}
+
+//-------------------------------------
+
+type bcBlockResponseMessage struct {
+	Block *types.Block
+}
+
+// ValidateBasic performs basic validation.
+func (m *bcBlockResponseMessage) ValidateBasic() error {
+	return m.Block.ValidateBasic()
+}
+
+func (m *bcBlockResponseMessage) String() string {
+	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
+}
+
+//-------------------------------------
+
+type bcStatusRequestMessage struct {
+	Height int64
+}
+
+// ValidateBasic performs basic validation.
+func (m *bcStatusRequestMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	return nil
+}
+
+func (m *bcStatusRequestMessage) String() string {
+	return fmt.Sprintf("[bcStatusRequestMessage %v]", m.Height)
+}
+
+//-------------------------------------
+
+type bcStatusResponseMessage struct {
+	Height int64
+}
+
+// ValidateBasic performs basic validation.
+func (m *bcStatusResponseMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	return nil
+}
+
+func (m *bcStatusResponseMessage) String() string {
+	return fmt.Sprintf("[bcStatusResponseMessage %v]", m.Height)
+}
+
 type blockStore interface {
 	LoadBlock(height int64) *types.Block
 	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
 }
 
+// Reactor handles fast sync protocol.
 type Reactor struct {
+	p2p.BaseReactor
+
 	events    chan Event // XXX: Rename eventsFromPeers
 	stopDemux chan struct{}
 	scheduler *Routine
@@ -50,12 +126,19 @@ type blockApplier interface {
 	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
 }
 
+type blockVerifier interface {
+	VerifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
+}
+
+// NewReactor creates a new reactor instance.
 // XXX: unify naming in this package around tdState
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
-func NewReactor(state state.State, store blockStore, reporter behaviour.Reporter, blockApplier blockApplier, bufferSize int) *Reactor {
-	pContext := newProcessorContext(store, blockApplier, state)
+func NewReactor(state state.State, store blockStore, reporter behaviour.Reporter,
+	blockVerifier blockVerifier, blockApplier blockApplier, bufferSize int) *Reactor {
 	scheduler := newScheduler(state.LastBlockHeight)
+	pContext := newProcessorContext(store, blockVerifier, blockApplier, state)
 	processor := newPcState(state, pContext)
+
 	return &Reactor{
 		events:    make(chan Event, bufferSize),
 		stopDemux: make(chan struct{}),
@@ -67,6 +150,12 @@ func NewReactor(state state.State, store blockStore, reporter behaviour.Reporter
 	}
 }
 
+// SetSwitch implements Reactor interface.
+func (r *Reactor) SetSwitch(sw *p2p.Switch) {
+	r.Switch = sw
+	r.io = &switchIo{r.Switch}
+}
+
 func (r *Reactor) setMaxPeerHeight(height int64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -75,18 +164,13 @@ func (r *Reactor) setMaxPeerHeight(height int64) {
 	}
 }
 
-func (r *Reactor) MaxPeerHeight() int64 {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-	return r.maxPeerHeight
-}
-
 func (r *Reactor) setSyncHeight(height int64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	r.syncHeight = height
 }
 
+// SyncHeight returns the height to which the reactor has synced.
 func (r *Reactor) SyncHeight() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
@@ -100,6 +184,7 @@ func (r *Reactor) setLogger(logger log.Logger) {
 	r.processor.setLogger(logger)
 }
 
+// Start implements cmn.Service interface
 func (r *Reactor) Start() {
 	go r.scheduler.start()
 	go r.processor.start()
@@ -108,21 +193,21 @@ func (r *Reactor) Start() {
 
 func (r *Reactor) demux() {
 	var (
-		processBlockFreq = 1 * time.Second
+		processBlockFreq = 20 * time.Millisecond
 		doProcessBlockCh = make(chan struct{}, 1)
-		doProcessBlockTk = time.NewTicker(processBlockFreq * time.Second)
+		doProcessBlockTk = time.NewTicker(processBlockFreq)
 
-		prunePeerFreq = 1 * time.Second
+		prunePeerFreq = 15 * time.Second
 		doPrunePeerCh = make(chan struct{}, 1)
-		doPrunePeerTk = time.NewTicker(prunePeerFreq * time.Second)
+		doPrunePeerTk = time.NewTicker(prunePeerFreq)
 
-		scheduleFreq = 1 * time.Second
+		scheduleFreq = 20 * time.Millisecond
 		doScheduleCh = make(chan struct{}, 1)
-		doScheduleTk = time.NewTicker(scheduleFreq * time.Second)
+		doScheduleTk = time.NewTicker(scheduleFreq)
 
-		statusFreq = 1 * time.Second
+		statusFreq = 10 * time.Second
 		doStatusCh = make(chan struct{}, 1)
-		doStatusTk = time.NewTicker(statusFreq * time.Second)
+		doStatusTk = time.NewTicker(statusFreq)
 	)
 
 	// XXX: Extract timers to make testing atemporal
@@ -166,20 +251,23 @@ func (r *Reactor) demux() {
 			case bcStatusResponse:
 				r.setMaxPeerHeight(event.height)
 				r.scheduler.send(event)
-			case bcBlockRequestMessage:
+
+			case addNewPeer, bcRemovePeer, bcBlockResponse, bcNoBlockResponse:
 				r.scheduler.send(event)
 			}
 
 		// Incremental events form scheduler
 		case event := <-r.scheduler.next():
 			switch event := event.(type) {
-			case *scBlockReceived:
+			case scBlockReceived:
 				r.processor.send(event)
 			case scPeerError:
 				r.processor.send(event)
 				r.reporter.Report(behaviour.BadMessage(event.peerID, "scPeerError"))
 			case scBlockRequest:
 				r.io.sendBlockRequest(event.peerID, event.height)
+			case scFinishedEv:
+				r.processor.send(event)
 			}
 
 		// Incremental events from processor
@@ -212,6 +300,7 @@ func (r *Reactor) demux() {
 	}
 }
 
+// Stop implements cmn.Service interface.
 func (r *Reactor) Stop() {
 	r.logger.Info("reactor stopping")
 
@@ -237,6 +326,16 @@ type BlockchainMessage interface {
 	ValidateBasic() error
 }
 
+// RegisterBlockchainMessages registers the fast sync messages for amino encoding.
+func RegisterBlockchainMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*BlockchainMessage)(nil), nil)
+	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/blockchain/BlockRequest", nil)
+	cdc.RegisterConcrete(&bcBlockResponseMessage{}, "tendermint/blockchain/BlockResponse", nil)
+	cdc.RegisterConcrete(&bcNoBlockResponseMessage{}, "tendermint/blockchain/NoBlockResponse", nil)
+	cdc.RegisterConcrete(&bcStatusResponseMessage{}, "tendermint/blockchain/StatusResponse", nil)
+	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/blockchain/StatusRequest", nil)
+}
+
 func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
 	if len(bz) > maxMsgSize {
 		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
@@ -245,11 +344,12 @@ func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
 	return
 }
 
+// Receive implements Reactor by handling different message types.
 func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		r.logger.Error("error decoding message",
-			"src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+			"src", src.ID(), "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
@@ -260,9 +360,14 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	r.logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+	r.logger.Debug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
+	case *bcStatusRequestMessage:
+		if err := r.io.sendStatusResponse(r.SyncHeight(), src.ID()); err != nil {
+			r.logger.Error("Could not send status message to peer", "src", src)
+		}
+
 	case *bcBlockRequestMessage:
 		block := r.store.LoadBlock(msg.Height)
 		if block != nil {
@@ -271,20 +376,29 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 		} else {
 			r.logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
-			if err = r.io.sendBlockNotFound(msg.Height, src.ID()); err != nil {
+			peerID := src.ID()
+			if err = r.io.sendBlockNotFound(msg.Height, peerID); err != nil {
 				r.logger.Error("Couldn't send block not found: ", err)
 			}
 		}
-	case *bcStatusRequestMessage:
-		if err := r.io.sendStatusResponse(r.SyncHeight(), src.ID()); err != nil {
-			r.logger.Error("Could not send status message to peer", "src", src)
+
+	case *bcStatusResponseMessage:
+		r.events <- bcStatusResponse{peerID: src.ID(), height: msg.Height}
+
+	case *bcBlockResponseMessage:
+		r.events <- bcBlockResponse{
+			peerID: src.ID(),
+			block:  msg.Block,
+			size:   int64(len(msgBytes)),
+			time:   time.Now(),
 		}
-	case Event:
-		// Forward to state machines
-		r.events <- msg
+
+	case *bcNoBlockResponseMessage:
+		r.events <- bcNoBlockResponse{peerID: src.ID(), height: msg.Height, time: time.Now()}
 	}
 }
 
+// AddPeer implements Reactor interface
 func (r *Reactor) AddPeer(peer p2p.Peer) {
 	err := r.io.sendStatusResponse(r.SyncHeight(), peer.ID())
 	if err != nil {
@@ -299,11 +413,11 @@ type bcRemovePeer struct {
 	reason interface{}
 }
 
+// RemovePeer implements Reactor interface.
 func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	event := bcRemovePeer{
 		peerID: peer.ID(),
 		reason: reason,
 	}
-
 	r.events <- event
 }

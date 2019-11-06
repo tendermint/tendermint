@@ -124,7 +124,13 @@ func (state *pcState) purgePeer(peerID p2p.ID) {
 // handle processes FSM events
 func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
-	case *scBlockReceived:
+	case scFinishedEv:
+		if state.synced() {
+			return noOp, pcFinished{tdState: state.tdState, blocksSynced: state.blocksSynced}
+		}
+		state.draining = true
+
+	case scBlockReceived:
 		if event.block == nil {
 			return noOp, nil
 		}

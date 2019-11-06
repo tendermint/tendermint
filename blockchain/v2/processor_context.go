@@ -14,16 +14,18 @@ type processorContext interface {
 }
 
 type pContext struct {
-	store   blockStore
-	applier blockApplier
-	state   state.State
+	store    blockStore
+	verifier blockVerifier
+	applier  blockApplier
+	state    state.State
 }
 
-func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContext {
+func newProcessorContext(st blockStore, ver blockVerifier, ex blockApplier, s state.State) *pContext {
 	return &pContext{
-		store:   st,
-		applier: ex,
-		state:   s,
+		store:    st,
+		verifier: ver,
+		applier:  ex,
+		state:    s,
 	}
 }
 
@@ -33,7 +35,8 @@ func (pc *pContext) applyBlock(state state.State, blockID types.BlockID, block *
 }
 
 func (pc *pContext) verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error {
-	return pc.state.Validators.VerifyCommit(chainID, blockID, height, commit)
+	//return pc.state.Validators.VerifyCommit(chainID, blockID, height, commit)
+	return pc.verifier.VerifyCommit(chainID, blockID, height, commit)
 }
 
 func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
