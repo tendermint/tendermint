@@ -21,11 +21,11 @@ func TestGoLevelDBNewGoLevelDB(t *testing.T) {
 
 	// Test we can open the db twice for reading only
 	ro1, err := NewGoLevelDBWithOpts(name, "", &opt.Options{ReadOnly: true})
+	require.Nil(t, err)
 	defer ro1.Close()
-	require.Nil(t, err)
 	ro2, err := NewGoLevelDBWithOpts(name, "", &opt.Options{ReadOnly: true})
-	defer ro2.Close()
 	require.Nil(t, err)
+	defer ro2.Close()
 }
 
 func BenchmarkGoLevelDBRandomReadsWrites(b *testing.B) {

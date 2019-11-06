@@ -32,27 +32,27 @@ func IteratePrefixStripped(db DB, prefix []byte) Iterator {
 //----------------------------------------
 // prefixDB
 
-type prefixDB struct {
+type PrefixDB struct {
 	mtx    sync.Mutex
 	prefix []byte
 	db     DB
 }
 
 // NewPrefixDB lets you namespace multiple DBs within a single DB.
-func NewPrefixDB(db DB, prefix []byte) *prefixDB {
-	return &prefixDB{
+func NewPrefixDB(db DB, prefix []byte) *PrefixDB {
+	return &PrefixDB{
 		prefix: prefix,
 		db:     db,
 	}
 }
 
 // Implements atomicSetDeleter.
-func (pdb *prefixDB) Mutex() *sync.Mutex {
+func (pdb *PrefixDB) Mutex() *sync.Mutex {
 	return &(pdb.mtx)
 }
 
 // Implements DB.
-func (pdb *prefixDB) Get(key []byte) []byte {
+func (pdb *PrefixDB) Get(key []byte) []byte {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -62,7 +62,7 @@ func (pdb *prefixDB) Get(key []byte) []byte {
 }
 
 // Implements DB.
-func (pdb *prefixDB) Has(key []byte) bool {
+func (pdb *PrefixDB) Has(key []byte) bool {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -70,7 +70,7 @@ func (pdb *prefixDB) Has(key []byte) bool {
 }
 
 // Implements DB.
-func (pdb *prefixDB) Set(key []byte, value []byte) {
+func (pdb *PrefixDB) Set(key []byte, value []byte) {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -79,7 +79,7 @@ func (pdb *prefixDB) Set(key []byte, value []byte) {
 }
 
 // Implements DB.
-func (pdb *prefixDB) SetSync(key []byte, value []byte) {
+func (pdb *PrefixDB) SetSync(key []byte, value []byte) {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -87,7 +87,7 @@ func (pdb *prefixDB) SetSync(key []byte, value []byte) {
 }
 
 // Implements DB.
-func (pdb *prefixDB) Delete(key []byte) {
+func (pdb *PrefixDB) Delete(key []byte) {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -95,7 +95,7 @@ func (pdb *prefixDB) Delete(key []byte) {
 }
 
 // Implements DB.
-func (pdb *prefixDB) DeleteSync(key []byte) {
+func (pdb *PrefixDB) DeleteSync(key []byte) {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -103,7 +103,7 @@ func (pdb *prefixDB) DeleteSync(key []byte) {
 }
 
 // Implements DB.
-func (pdb *prefixDB) Iterator(start, end []byte) Iterator {
+func (pdb *PrefixDB) Iterator(start, end []byte) Iterator {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -126,7 +126,7 @@ func (pdb *prefixDB) Iterator(start, end []byte) Iterator {
 }
 
 // Implements DB.
-func (pdb *prefixDB) ReverseIterator(start, end []byte) Iterator {
+func (pdb *PrefixDB) ReverseIterator(start, end []byte) Iterator {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -149,7 +149,7 @@ func (pdb *prefixDB) ReverseIterator(start, end []byte) Iterator {
 // Implements DB.
 // Panics if the underlying DB is not an
 // atomicSetDeleter.
-func (pdb *prefixDB) NewBatch() Batch {
+func (pdb *PrefixDB) NewBatch() Batch {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -158,28 +158,28 @@ func (pdb *prefixDB) NewBatch() Batch {
 
 /* NOTE: Uncomment to use memBatch instead of prefixBatch
 // Implements atomicSetDeleter.
-func (pdb *prefixDB) SetNoLock(key []byte, value []byte) {
+func (pdb *PrefixDB) SetNoLock(key []byte, value []byte) {
 	pdb.db.(atomicSetDeleter).SetNoLock(pdb.prefixed(key), value)
 }
 
 // Implements atomicSetDeleter.
-func (pdb *prefixDB) SetNoLockSync(key []byte, value []byte) {
+func (pdb *PrefixDB) SetNoLockSync(key []byte, value []byte) {
 	pdb.db.(atomicSetDeleter).SetNoLockSync(pdb.prefixed(key), value)
 }
 
 // Implements atomicSetDeleter.
-func (pdb *prefixDB) DeleteNoLock(key []byte) {
+func (pdb *PrefixDB) DeleteNoLock(key []byte) {
 	pdb.db.(atomicSetDeleter).DeleteNoLock(pdb.prefixed(key))
 }
 
 // Implements atomicSetDeleter.
-func (pdb *prefixDB) DeleteNoLockSync(key []byte) {
+func (pdb *PrefixDB) DeleteNoLockSync(key []byte) {
 	pdb.db.(atomicSetDeleter).DeleteNoLockSync(pdb.prefixed(key))
 }
 */
 
 // Implements DB.
-func (pdb *prefixDB) Close() {
+func (pdb *PrefixDB) Close() {
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
 
@@ -187,7 +187,7 @@ func (pdb *prefixDB) Close() {
 }
 
 // Implements DB.
-func (pdb *prefixDB) Print() {
+func (pdb *PrefixDB) Print() {
 	fmt.Printf("prefix: %X\n", pdb.prefix)
 
 	itr := pdb.Iterator(nil, nil)
@@ -200,7 +200,7 @@ func (pdb *prefixDB) Print() {
 }
 
 // Implements DB.
-func (pdb *prefixDB) Stats() map[string]string {
+func (pdb *PrefixDB) Stats() map[string]string {
 	stats := make(map[string]string)
 	stats["prefixdb.prefix.string"] = string(pdb.prefix)
 	stats["prefixdb.prefix.hex"] = fmt.Sprintf("%X", pdb.prefix)
@@ -211,7 +211,7 @@ func (pdb *prefixDB) Stats() map[string]string {
 	return stats
 }
 
-func (pdb *prefixDB) prefixed(key []byte) []byte {
+func (pdb *PrefixDB) prefixed(key []byte) []byte {
 	return append(cp(pdb.prefix), key...)
 }
 
@@ -275,14 +275,13 @@ func newPrefixIterator(prefix, start, end []byte, source Iterator) *prefixIterat
 			source: source,
 			valid:  false,
 		}
-	} else {
-		return &prefixIterator{
-			prefix: prefix,
-			start:  start,
-			end:    end,
-			source: source,
-			valid:  true,
-		}
+	}
+	return &prefixIterator{
+		prefix: prefix,
+		start:  start,
+		end:    end,
+		source: source,
+		valid:  true,
 	}
 }
 

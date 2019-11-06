@@ -19,7 +19,7 @@ func TestRemoteDB(t *testing.T) {
 	srv, err := grpcdb.NewServer(cert, key)
 	require.Nil(t, err)
 	defer srv.Stop()
-	go func() {
+	go func() { //nolint:staticcheck
 		if err := srv.Serve(ln); err != nil {
 			t.Fatalf("BindServer: %v", err)
 		}

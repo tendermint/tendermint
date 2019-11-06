@@ -18,7 +18,7 @@ func cleanupDBDir(dir, name string) {
 	}
 }
 
-func testBackendGetSetDelete(t *testing.T, backend DBBackendType) {
+func testBackendGetSetDelete(t *testing.T, backend BackendType) {
 	// Default
 	dirname, err := ioutil.TempDir("", fmt.Sprintf("test_backend_%s_", backend))
 	require.Nil(t, err)
@@ -163,7 +163,7 @@ func TestDBIterator(t *testing.T) {
 	}
 }
 
-func testDBIterator(t *testing.T, backend DBBackendType) {
+func testDBIterator(t *testing.T, backend BackendType) {
 	name := fmt.Sprintf("test_%x", randStr(12))
 	dir := os.TempDir()
 	db := NewDB(name, backend, dir)

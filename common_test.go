@@ -63,7 +63,7 @@ func checkValuePanics(t *testing.T, itr Iterator) {
 	assert.Panics(t, func() { itr.Value() }, "checkValuePanics expected panic but didn't")
 }
 
-func newTempDB(t *testing.T, backend DBBackendType) (db DB, dbDir string) {
+func newTempDB(t *testing.T, backend BackendType) (db DB, dbDir string) {
 	dirname, err := ioutil.TempDir("", "db_common_test")
 	require.Nil(t, err)
 	return NewDB("testdb", backend, dirname), dirname
@@ -211,8 +211,8 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 			idx := int64(rand.Int()) % numItems // nolint:gosec testing file, so accepting weak random number generator
 			internal[idx]++
 			val := internal[idx]
-			idxBytes := int642Bytes(int64(idx))
-			valBytes := int642Bytes(int64(val))
+			idxBytes := int642Bytes(idx)
+			valBytes := int642Bytes(val)
 			//fmt.Printf("Set %X -> %X\n", idxBytes, valBytes)
 			db.Set(idxBytes, valBytes)
 		}
@@ -221,7 +221,7 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 		{
 			idx := int64(rand.Int()) % numItems // nolint:gosec testing file, so accepting weak random number generator
 			valExp := internal[idx]
-			idxBytes := int642Bytes(int64(idx))
+			idxBytes := int642Bytes(idx)
 			valBytes := db.Get(idxBytes)
 			//fmt.Printf("Get %X -> %X\n", idxBytes, valBytes)
 			if valExp == 0 {

@@ -58,12 +58,12 @@ var _ protodb.DBServer = (*server)(nil)
 //  * fsdb
 //  * memdB
 //  * leveldb
-// See https://godoc.org/github.com/tendermint/tendermint/libs/db#DBBackendType
+// See https://godoc.org/github.com/tendermint/tendermint/libs/db#BackendType
 func (s *server) Init(ctx context.Context, in *protodb.Init) (*protodb.Entity, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.db = db.NewDB(in.Name, db.DBBackendType(in.Type), in.Dir)
+	s.db = db.NewDB(in.Name, db.BackendType(in.Type), in.Dir)
 	return &protodb.Entity{CreatedAt: time.Now().Unix()}, nil
 }
 
