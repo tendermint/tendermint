@@ -63,6 +63,8 @@ func RegisterAmino(cdc *amino.Codec) {
 // RegisterKeyType registers an external key type to allow decoding it from bytes
 func RegisterKeyType(o interface{}, name string) {
 	cdc.RegisterConcrete(o, name, nil)
+
+	nameTable[reflect.TypeOf(o)] = name
 }
 
 // PrivKeyFromBytes unmarshals private key bytes and returns a PrivKey
