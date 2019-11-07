@@ -847,9 +847,9 @@ func TestScGetPeersAtHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
-			// getPeersAtHeight should not mutate the scheduler
+			// getPeersAtHeightOrAbove should not mutate the scheduler
 			wantSc := sc
-			res := sc.getPeersAtHeight(tt.args.height)
+			res := sc.getPeersAtHeightOrAbove(tt.args.height)
 			sort.Sort(PeerByID(res))
 			assert.Equal(t, tt.wantResult, res)
 			assert.Equal(t, wantSc, sc)

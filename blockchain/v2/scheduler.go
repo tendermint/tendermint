@@ -336,7 +336,7 @@ func (sc *scheduler) getStateAtHeight(height int64) blockState {
 	}
 }
 
-func (sc *scheduler) getPeersAtHeight(height int64) []p2p.ID {
+func (sc *scheduler) getPeersAtHeightOrAbove(height int64) []p2p.ID {
 	peers := make([]p2p.ID, 0)
 	for _, peer := range sc.peers {
 		if peer.state != peerStateReady {
@@ -517,7 +517,7 @@ func (sc *scheduler) pendingFrom(peerID p2p.ID) []int64 {
 }
 
 func (sc *scheduler) selectPeer(height int64) (p2p.ID, error) {
-	peers := sc.getPeersAtHeight(height)
+	peers := sc.getPeersAtHeightOrAbove(height)
 	if len(peers) == 0 {
 		return "", fmt.Errorf("cannot find peer for height %d", height)
 	}
