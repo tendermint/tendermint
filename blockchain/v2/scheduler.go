@@ -351,7 +351,7 @@ func (sc *scheduler) getPeersAtHeight(height int64) []p2p.ID {
 }
 
 func (sc *scheduler) peersInactiveSince(duration time.Duration, now time.Time) []p2p.ID {
-	peers := make([]p2p.ID, 0)
+	peers := []p2p.ID{}
 	for _, peer := range sc.peers {
 		if peer.state != peerStateReady {
 			continue
@@ -360,25 +360,28 @@ func (sc *scheduler) peersInactiveSince(duration time.Duration, now time.Time) [
 			peers = append(peers, peer.peerID)
 		}
 	}
+
+	sort.Sort(PeerByID(peers))
 	return peers
 }
 
-func (sc *scheduler) peersSlowerThan(minSpeed int64) map[p2p.ID]struct{} {
-	peers := make(map[p2p.ID]struct{})
+func (sc *scheduler) peersSlowerThan(minSpeed int64) []p2p.ID {
+	peers := []p2p.ID{}
 	for peerID, peer := range sc.peers {
 		if peer.state != peerStateReady {
 			continue
 		}
 		if peer.lastRate < minSpeed {
-			peers[peerID] = struct{}{}
+			peers = append(peers, peerID)
 		}
 	}
+
+	sort.Sort(PeerByID(peers))
 	return peers
 }
 
-// XXX: this duplicates the logic of peersInactiveSince and peersSlowerThan
 func (sc *scheduler) prunablePeers(peerTimout time.Duration, minRecvRate int64, now time.Time) []p2p.ID {
-	prunable := make([]p2p.ID, 0)
+	prunable := []p2p.ID{}
 	for peerID, peer := range sc.peers {
 		if peer.state != peerStateReady {
 			continue

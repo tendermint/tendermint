@@ -395,60 +395,60 @@ func TestScPeersSlowerThan(t *testing.T) {
 		name       string
 		fields     scTestParams
 		args       args
-		wantResult map[p2p.ID]struct{}
+		wantResult []p2p.ID
 	}{
 		{
 			name:       "no peers",
 			fields:     scTestParams{peers: map[string]*scPeer{}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
+			wantResult: []p2p.ID{},
 		},
 		{
 			name:       "one Ready faster peer",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastRate: 101}}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
+			wantResult: []p2p.ID{},
 		},
 		{
 			name:       "one Ready equal peer",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastRate: 100}}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
+			wantResult: []p2p.ID{},
 		},
 		{
 			name:       "one Ready slow peer",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateReady, lastRate: 99}}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{"P1": {}},
+			wantResult: []p2p.ID{"P1"},
 		},
 		{
 			name:       "one Removed faster peer",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateRemoved, lastRate: 101}}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
+			wantResult: []p2p.ID{},
 		}, {
 			name:       "one Removed equal peer",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateRemoved, lastRate: 100}}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
+			wantResult: []p2p.ID{},
 		},
 		{
 			name:       "one Removed slow peer",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateRemoved, lastRate: 99}}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
+			wantResult: []p2p.ID{},
 		},
 		{
 			name:       "one New peer",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateNew}}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
+			wantResult: []p2p.ID{},
 		},
 		{
 			name:       "one New peer",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {state: peerStateNew}}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{},
+			wantResult: []p2p.ID{},
 		},
 		{
 			name: "mixed peers",
@@ -463,7 +463,7 @@ func TestScPeersSlowerThan(t *testing.T) {
 				"P8": {state: peerStateReady, lastRate: 99},
 			}},
 			args:       args{minSpeed: 100},
-			wantResult: map[p2p.ID]struct{}{"P5": {}, "P8": {}},
+			wantResult: []p2p.ID{"P5", "P8"},
 		},
 	}
 
