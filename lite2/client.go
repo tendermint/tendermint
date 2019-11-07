@@ -12,9 +12,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// TrustOptions are the trust parameters needed for when a new light client
-// connects to the network or when a light client that has been offline for
-// longer than the unbonding period connects to the network.
+// TrustOptions are the trust parameters needed when a new light client
+// connects to the network or when an existing light client that has been
+// offline for longer than the trusting period connects to the network.
 //
 // The expectation is the user will get this information from a trusted source
 // like a validator, a friend, or a secure website. A more user friendly
@@ -23,9 +23,14 @@ import (
 // registry of roots-of-trust (e.g. on the Cosmos Hub) seems likely in the
 // future.
 type TrustOptions struct {
-	// Only trust commits up to this old.
-	// Should be equal to the unbonding period minus a configurable evidence
-	// submission synchrony bound.
+	// tp: trusting period.
+	//
+	// Should be significantly less than the unbonding period (e.g. unbonding
+	// period = 3 weeks, trusting period = 2 weeks).
+	//
+	// More specifically, trusting period + time needed to check headers + time
+	// needed to report and punish misbehavior should be less than the unbonding
+	// period.
 	Period time.Duration
 
 	// Header's Height and Hash must both be provided to force the trusting of a
