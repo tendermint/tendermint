@@ -165,10 +165,6 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 		return err
 	}
 
-	if !bytes.Equal(h.NextValidatorsHash, vals.Hash()) {
-		return errors.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, vals.Hash())
-	}
-
 	// 3) Persist both of them and continue.
 	return c.updateTrustedHeaderAndVals(h, vals)
 }
@@ -263,12 +259,6 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(newHeader.NextValidatorsHash, nextVals.Hash()) {
-		return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
-			newHeader.NextValidatorsHash,
-			nextVals.Hash(),
-			newHeader.Height+1)
-	}
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
 }
 
@@ -298,12 +288,6 @@ func (c *Client) sequence(newHeader *types.SignedHeader, newVals *types.Validato
 			if err != nil {
 				return errors.Wrapf(err, "failed to obtain the vals #%d", height+1)
 			}
-		}
-		if !bytes.Equal(interimHeader.NextValidatorsHash, nextVals.Hash()) {
-			return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
-				interimHeader.NextValidatorsHash,
-				nextVals.Hash(),
-				height)
 		}
 		err = c.updateTrustedHeaderAndVals(interimHeader, nextVals)
 		if err != nil {
@@ -373,6 +357,10 @@ func (c *Client) bisection(
 }
 
 func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.ValidatorSet) error {
+	if !bytes.Equal(h.NextValidatorsHash, vals.Hash()) {
+		return errors.Errorf("expected next validator's hash %X, but got %X", h.NextValidatorsHash, vals.Hash())
+	}
+
 	if err := c.trustedStore.SaveSignedHeader(h); err != nil {
 		return errors.Wrap(err, "failed to save trusted header")
 	}

@@ -47,7 +47,8 @@ func Verify(
 			)
 		}
 	} else {
-		// Ensure that +1/3 or more of last trusted validators signed correctly.
+		// Ensure that +`trustLevel` (default 1/3) or more of last trusted
+		// validators signed correctly.
 		err := h1NextVals.VerifyCommitTrusting(chainID, h2.Commit.BlockID, h2.Height, h2.Commit, trustLevel)
 		if err != nil {
 			return err
