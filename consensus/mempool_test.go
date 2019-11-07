@@ -99,7 +99,7 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 	for i := start; i < end; i++ {
 		txBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil)
+		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil, mempl.TxInfo{})
 		if err != nil {
 			panic(fmt.Sprintf("Error after CheckTx: %v", err))
 		}
@@ -159,7 +159,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 				return
 			}
 			checkTxRespCh <- struct{}{}
-		})
+		}, mempl.TxInfo{})
 		if err != nil {
 			t.Errorf("Error after CheckTx: %v", err)
 			return

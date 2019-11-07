@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	// MaxVotesCount is the maximum votes count. Used in ValidateBasic funcs for
-	// protection against DOS attacks.
+	// MaxVotesCount is the maximum number of votes in a set. Used in ValidateBasic funcs for
+	// protection against DOS attacks. Note this implies a corresponding equal limit to
+	// the number of validators.
 	MaxVotesCount = 10000
 )
 
