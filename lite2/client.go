@@ -263,6 +263,12 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	if err != nil {
 		return err
 	}
+	if !bytes.Equal(newHeader.NextValidatorsHash, nextVals.Hash()) {
+		return errors.Errorf("expected next validator's hash %X, but got %X (height #%d)",
+			newHeader.NextValidatorsHash,
+			nextVals.Hash(),
+			newHeader.Height+1)
+	}
 	return c.updateTrustedHeaderAndVals(newHeader, nextVals)
 }
 
