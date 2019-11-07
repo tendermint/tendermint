@@ -96,11 +96,11 @@ type scSchedulerFail struct {
 type blockState int
 
 const (
-	blockStateUnknown blockState = iota
-	blockStateNew
-	blockStatePending
-	blockStateReceived
-	blockStateProcessed
+	blockStateUnknown   blockState = iota // signifies that no known peer has this block
+	blockStateNew                         // signifies that a peer has reported having this block
+	blockStatePending                     // signifies that that this not has been requested from a peer
+	blockStateReceived                    // signifies that this block has been received by a peer
+	blockStateProcessed                   // signifies that this block has been validated and processed
 )
 
 func (e blockState) String() string {
