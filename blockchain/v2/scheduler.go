@@ -116,7 +116,7 @@ func (e blockState) String() string {
 	case blockStateProcessed:
 		return "Processed"
 	default:
-		return fmt.Sprintf("unknown blockState: %d", e)
+		return fmt.Sprintf("invalid blockState: %d", e)
 	}
 }
 
