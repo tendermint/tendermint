@@ -343,7 +343,16 @@ func (c *Client) bisection(
 		return err
 	}
 
-	if err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now); err == nil {
+	// left branch
+	{
+		err := c.bisection(lastHeader, lastVals, pivotHeader, pivotVals, now)
+		if err != nil {
+			return errors.Wrapf(err, "bisection of #%d and #%d", lastHeader.Height, pivot)
+		}
+	}
+
+	// right branch
+	{
 		nextVals, err := c.primary.ValidatorSet(pivot + 1)
 		if err != nil {
 			return errors.Wrapf(err, "failed to obtain the vals #%d", pivot+1)
@@ -354,10 +363,13 @@ func (c *Client) bisection(
 				nextVals.Hash(),
 				pivot)
 		}
-		return c.bisection(pivotHeader, nextVals, newHeader, newVals, now)
+		err = c.bisection(pivotHeader, nextVals, newHeader, newVals, now)
+		if err != nil {
+			return errors.Wrapf(err, "bisection of #%d and #%d", lastHeader.Height, pivot)
+		}
 	}
 
-	return errors.New("bisection failed. Restart with different full-node?")
+	return nil
 }
 
 func (c *Client) updateTrustedHeaderAndVals(h *types.SignedHeader, vals *types.ValidatorSet) error {
