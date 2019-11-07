@@ -2,10 +2,12 @@ package cryptoAmino
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/multisig"
@@ -146,4 +148,76 @@ func TestPubkeyAminoName(t *testing.T) {
 			require.Equal(t, tc.want, got, "not equal on tc %d", i)
 		}
 	}
+}
+
+var _ crypto.PrivKey = TestPriv{}
+var _ crypto.PubKey = TestPub{}
+var testCdc = amino.NewCodec()
+
+type TestPriv []byte
+
+func (privkey TestPriv) PubKey() crypto.PubKey { return TestPub{} }
+func (privkey TestPriv) Bytes() []byte {
+	return testCdc.MustMarshalBinaryBare(privkey)
+}
+func (privkey TestPriv) Sign(msg []byte) ([]byte, error)  { return []byte{}, nil }
+func (privkey TestPriv) Equals(other crypto.PrivKey) bool { return true }
+
+type TestPub []byte
+
+func (key TestPub) Address() crypto.Address { return crypto.Address{} }
+func (key TestPub) Bytes() []byte {
+	return testCdc.MustMarshalBinaryBare(key)
+}
+func (key TestPub) VerifyBytes(msg []byte, sig []byte) bool { return true }
+func (key TestPub) Equals(other crypto.PubKey) bool         { return true }
+
+var (
+	privAminoName = "registerTest/Priv"
+	pubAminoName  = "registerTest/Pub"
+)
+
+func TestRegisterKeyType(t *testing.T) {
+	RegisterAmino(testCdc)
+	testCdc.RegisterConcrete(TestPriv{}, privAminoName, nil)
+	testCdc.RegisterConcrete(TestPub{}, pubAminoName, nil)
+
+	pub := TestPub{0x1}
+	priv := TestPriv{0x2}
+
+	// Check to make sure key cannot be decoded before registering
+	_, err := PrivKeyFromBytes(priv.Bytes())
+	require.Error(t, err)
+	_, err = PubKeyFromBytes(pub.Bytes())
+	require.Error(t, err)
+
+	// Check that name is not registered
+	_, found := PubkeyAminoName(testCdc, pub)
+	require.False(t, found)
+
+	// Register key types
+	RegisterKeyType(TestPriv{}, privAminoName)
+	RegisterKeyType(TestPub{}, pubAminoName)
+
+	// Name should exist after registering
+	name, found := PubkeyAminoName(testCdc, pub)
+	require.True(t, found)
+	require.Equal(t, name, pubAminoName)
+
+	// Decode keys using the encoded bytes from encoding with the other codec
+	decodedPriv, err := PrivKeyFromBytes(priv.Bytes())
+	require.NoError(t, err)
+	require.Equal(t, priv, decodedPriv)
+
+	decodedPub, err := PubKeyFromBytes(pub.Bytes())
+	require.NoError(t, err)
+	require.Equal(t, pub, decodedPub)
+
+	// Reset module codec after testing
+	cdc = amino.NewCodec()
+	nameTable = make(map[reflect.Type]string, 3)
+	RegisterAmino(cdc)
+	nameTable[reflect.TypeOf(ed25519.PubKeyEd25519{})] = ed25519.PubKeyAminoName
+	nameTable[reflect.TypeOf(secp256k1.PubKeySecp256k1{})] = secp256k1.PubKeyAminoName
+	nameTable[reflect.TypeOf(multisig.PubKeyMultisigThreshold{})] = multisig.PubKeyMultisigThresholdAminoRoute
 }
