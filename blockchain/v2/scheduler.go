@@ -160,10 +160,9 @@ func (p scPeer) String() string {
 
 func newScPeer(peerID p2p.ID) *scPeer {
 	return &scPeer{
-		peerID:      peerID,
-		state:       peerStateNew,
-		height:      -1,
-		lastTouched: time.Time{},
+		peerID: peerID,
+		state:  peerStateNew,
+		height: -1,
 	}
 }
 
@@ -280,7 +279,7 @@ func (sc *scheduler) removePeer(peerID p2p.ID) error {
 		}
 	}
 	for h := range sc.blockStates {
-		if maxPeerHeight < h {
+		if h > maxPeerHeight {
 			delete(sc.blockStates, h)
 		}
 	}
@@ -486,7 +485,7 @@ func (sc *scheduler) maxHeight() int64 {
 		if peer.state != peerStateReady {
 			continue
 		}
-		if max < peer.height {
+		if peer.height > max {
 			max = peer.height
 		}
 	}
