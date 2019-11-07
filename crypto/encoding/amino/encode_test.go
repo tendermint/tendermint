@@ -150,27 +150,27 @@ func TestPubkeyAminoName(t *testing.T) {
 	}
 }
 
-var _ crypto.PrivKey = TestPriv{}
-var _ crypto.PubKey = TestPub{}
+var _ crypto.PrivKey = testPriv{}
+var _ crypto.PubKey = testPub{}
 var testCdc = amino.NewCodec()
 
-type TestPriv []byte
+type testPriv []byte
 
-func (privkey TestPriv) PubKey() crypto.PubKey { return TestPub{} }
-func (privkey TestPriv) Bytes() []byte {
+func (privkey testPriv) PubKey() crypto.PubKey { return testPub{} }
+func (privkey testPriv) Bytes() []byte {
 	return testCdc.MustMarshalBinaryBare(privkey)
 }
-func (privkey TestPriv) Sign(msg []byte) ([]byte, error)  { return []byte{}, nil }
-func (privkey TestPriv) Equals(other crypto.PrivKey) bool { return true }
+func (privkey testPriv) Sign(msg []byte) ([]byte, error)  { return []byte{}, nil }
+func (privkey testPriv) Equals(other crypto.PrivKey) bool { return true }
 
-type TestPub []byte
+type testPub []byte
 
-func (key TestPub) Address() crypto.Address { return crypto.Address{} }
-func (key TestPub) Bytes() []byte {
+func (key testPub) Address() crypto.Address { return crypto.Address{} }
+func (key testPub) Bytes() []byte {
 	return testCdc.MustMarshalBinaryBare(key)
 }
-func (key TestPub) VerifyBytes(msg []byte, sig []byte) bool { return true }
-func (key TestPub) Equals(other crypto.PubKey) bool         { return true }
+func (key testPub) VerifyBytes(msg []byte, sig []byte) bool { return true }
+func (key testPub) Equals(other crypto.PubKey) bool         { return true }
 
 var (
 	privAminoName = "registerTest/Priv"
@@ -179,11 +179,11 @@ var (
 
 func TestRegisterKeyType(t *testing.T) {
 	RegisterAmino(testCdc)
-	testCdc.RegisterConcrete(TestPriv{}, privAminoName, nil)
-	testCdc.RegisterConcrete(TestPub{}, pubAminoName, nil)
+	testCdc.RegisterConcrete(testPriv{}, privAminoName, nil)
+	testCdc.RegisterConcrete(testPub{}, pubAminoName, nil)
 
-	pub := TestPub{0x1}
-	priv := TestPriv{0x2}
+	pub := testPub{0x1}
+	priv := testPriv{0x2}
 
 	// Check to make sure key cannot be decoded before registering
 	_, err := PrivKeyFromBytes(priv.Bytes())
@@ -196,8 +196,8 @@ func TestRegisterKeyType(t *testing.T) {
 	require.False(t, found)
 
 	// Register key types
-	RegisterKeyType(TestPriv{}, privAminoName)
-	RegisterKeyType(TestPub{}, pubAminoName)
+	RegisterKeyType(testPriv{}, privAminoName)
+	RegisterKeyType(testPub{}, pubAminoName)
 
 	// Name should exist after registering
 	name, found := PubkeyAminoName(testCdc, pub)
