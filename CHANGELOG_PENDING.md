@@ -29,6 +29,7 @@ program](https://hackerone.com/tendermint).
 - [p2p] [\#3991](https://github.com/tendermint/tendermint/issues/3991) Log "has been established or dialed" as debug log instead of Error for connected peers (@whunmr)
 - [rpc] [\#4077](https://github.com/tendermint/tendermint/pull/4077) Added support for `EXISTS` clause to the Websocket query interface. 
 - [crypto] Add `RegisterKeyType` to amino to allow external key types registration (@austinabell)
+- [privval] Add `SignerDialerEndpointRetryWaitInterval` option (@cosmostuba)
 
 ### BUG FIXES:
 
