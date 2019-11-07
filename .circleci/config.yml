@@ -297,10 +297,6 @@ jobs:
     machine:
       image: ubuntu-1604:201903-01
     steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
       - checkout
       - attach_workspace:
           at: /tmp/workspace
