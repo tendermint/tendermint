@@ -157,12 +157,11 @@ DESTINATION = ./index.html.md
 ### Documentation
 
 build-docs:
-	@cd docs && \
+	cd docs && \
 	while read p; do \
 		(git checkout $${p} && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
 		mkdir -p ~/output/$${p} ; \
 		cp -r .vuepress/dist/* ~/output/$${p}/ ; \
-		echo "<a href='$${p}'>$${p}</a>" >> ~/output/index.html ; \
 	done < versions ;
 
 sync-docs:

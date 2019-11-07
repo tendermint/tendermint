@@ -373,20 +373,11 @@ workflows:
   test-suite:
     jobs:
       - deploy_docs:
-          context: tendermint-docs-staging
-          filters:
-            branches:
-              only:
-                - /.*/
-            tags:
-              ignore:
-                - /^v.*/
-      - deploy_docs:
           context: tendermint-docs
           filters:
             branches:
-              ignore:
-                - /.*/
+              only:
+                - master
             tags:
               only:
                 - /^v.*/
