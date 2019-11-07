@@ -156,6 +156,10 @@ func (c *Client) ConsensusState() (*ctypes.ResultConsensusState, error) {
 	return c.next.ConsensusState()
 }
 
+func (c *Client) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
+	return c.next.ConsensusParams(height)
+}
+
 func (c *Client) Health() (*ctypes.ResultHealth, error) {
 	return c.next.Health()
 }

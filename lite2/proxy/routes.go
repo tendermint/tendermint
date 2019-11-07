@@ -128,7 +128,7 @@ func makeConsensusStateFunc(c *lrpc.Client) func(ctx *rpctypes.Context) (*ctypes
 
 func makeConsensusParamsFunc(c *lrpc.Client) func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
-		return c.ConsensusParams()
+		return c.ConsensusParams(height)
 	}
 }
 
