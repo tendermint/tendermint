@@ -320,10 +320,6 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
@@ -453,3 +449,4 @@ workflows:
             branches:
               only:
                 - /v[0-9]+\.[0-9]+/
+                - master
