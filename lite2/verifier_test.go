@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -80,7 +81,7 @@ func TestVerifyAdjustedHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			types.ErrTooMuchChange{Got: 50.0, Needed: 93.00},
+			types.ErrTooMuchChange{Got: 50, Needed: 93},
 			"",
 		},
 		// vals does not match with what we have -> error
@@ -194,7 +195,7 @@ func TestVerifyNonAdjustedHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			types.ErrTooMuchChange{Got: 50.0, Needed: 93.00},
+			types.ErrTooMuchChange{Got: 50, Needed: 93},
 			"",
 		},
 		// 3/3 new vals signed, 2/3 old vals present -> no error
@@ -224,7 +225,7 @@ func TestVerifyNonAdjustedHeaders(t *testing.T) {
 			lessThanOneThirdVals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			types.ErrTooMuchChange{Got: 20.0, Needed: 46.666668},
+			types.ErrTooMuchChange{Got: 20, Needed: 46},
 			"",
 		},
 	}
@@ -243,5 +244,34 @@ func TestVerifyNonAdjustedHeaders(t *testing.T) {
 				assert.NoError(t, err)
 			}
 		})
+	}
+}
+
+func TestValidateTrustLevel(t *testing.T) {
+	testCases := []struct {
+		lvl   cmn.Fraction
+		valid bool
+	}{
+		// valid
+		0: {cmn.Fraction{Numerator: 1, Denominator: 1}, true},
+		1: {cmn.Fraction{Numerator: 1, Denominator: 3}, true},
+		2: {cmn.Fraction{Numerator: 2, Denominator: 3}, true},
+		3: {cmn.Fraction{Numerator: 3, Denominator: 3}, true},
+		4: {cmn.Fraction{Numerator: 4, Denominator: 5}, true},
+
+		// invalid
+		5: {cmn.Fraction{Numerator: 6, Denominator: 5}, false},
+		6: {cmn.Fraction{Numerator: -1, Denominator: 3}, false},
+		7: {cmn.Fraction{Numerator: 0, Denominator: 1}, false},
+		8: {cmn.Fraction{Numerator: -1, Denominator: -3}, false},
+	}
+
+	for _, tc := range testCases {
+		err := ValidateTrustLevel(tc.lvl)
+		if !tc.valid {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
 	}
 }

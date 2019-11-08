@@ -6,13 +6,14 @@ import (
 
 	"github.com/pkg/errors"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
 )
 
-const (
-	// DefaultTrustLevel - new header can be trusted if at least one correct
+var (
+	// DefaultTrustLevel - new header can be trusted if at least one correct old
 	// validator signed it.
-	DefaultTrustLevel = float32(1) / float32(3)
+	DefaultTrustLevel = cmn.Fraction{Numerator: 1, Denominator: 3}
 )
 
 func Verify(
@@ -23,7 +24,7 @@ func Verify(
 	h2Vals *types.ValidatorSet,
 	trustingPeriod time.Duration,
 	now time.Time,
-	trustLevel float32) error {
+	trustLevel cmn.Fraction) error {
 
 	if err := ValidateTrustLevel(trustLevel); err != nil {
 		return err
@@ -47,8 +48,7 @@ func Verify(
 			)
 		}
 	} else {
-		// Ensure that +`trustLevel` (default 1/3) or more of last trusted
-		// validators signed correctly.
+		// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
 		err := h1NextVals.VerifyCommitTrusting(chainID, h2.Commit.BlockID, h2.Height, h2.Commit, trustLevel)
 		if err != nil {
 			return err
@@ -106,8 +106,9 @@ func verifyNewHeaderAndVals(
 // ValidateTrustLevel checks that trustLevel is within the allowed range [1/3,
 // 1]. If not, it returns an error. 1/3 is the minimum amount of trust needed
 // which does not break the security model.
-func ValidateTrustLevel(lvl float32) error {
-	if lvl > 1 || lvl < float32(1)/float32(3) {
+func ValidateTrustLevel(lvl cmn.Fraction) error {
+	if lvl.Numerator*3 < lvl.Denominator || // < 1/3
+		lvl.Numerator > lvl.Denominator { // > 1
 		return errors.Errorf("trustLevel must be within [1/3, 1], given %v", lvl)
 	}
 	return nil

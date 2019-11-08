@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/store"
@@ -63,10 +64,9 @@ func SequentialVerification() Option {
 // bisection algorithm from the specification is used for finding the minimal
 // "trust path".
 //
-// trustLevel - maximum change between two not consecutive headers in terms of
-// validators & their respective voting power, required to trust a new header
-// (default: 1/3).
-func SkippingVerification(trustLevel float32) Option {
+// trustLevel - fraction of the old validator set (in terms of voting power),
+// which must sign the new header in order for us to trust it.
+func SkippingVerification(trustLevel cmn.Fraction) Option {
 	if err := ValidateTrustLevel(trustLevel); err != nil {
 		panic(err)
 	}
@@ -93,7 +93,7 @@ type Client struct {
 	chainID        string
 	trustingPeriod time.Duration // see TrustOptions.Period
 	mode           mode
-	trustLevel     float32
+	trustLevel     cmn.Fraction
 
 	// Primary provider of new headers.
 	primary provider.Provider

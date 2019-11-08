@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // MaxTotalVotingPower - the maximum allowed total voting power.
@@ -624,7 +625,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		// }
 	}
 
-	if got, needed := float32(talliedVotingPower), float32(vals.TotalVotingPower()*2/3); got <= needed {
+	if got, needed := talliedVotingPower, vals.TotalVotingPower()*2/3; got <= needed {
 		return ErrTooMuchChange{Got: got, Needed: needed}
 	}
 
@@ -710,7 +711,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// }
 	}
 
-	if got, needed := float32(oldVotingPower), float32(oldVals.TotalVotingPower()*2/3); got <= needed {
+	if got, needed := oldVotingPower, oldVals.TotalVotingPower()*2/3; got <= needed {
 		return ErrTooMuchChange{Got: got, Needed: needed}
 	}
 	return nil
@@ -721,9 +722,10 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 // NOTE the given validators do not necessarily correspond to the validator set
 // for this commit, but there may be some intersection.
 func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
-	height int64, commit *Commit, trustLevel float32) error {
+	height int64, commit *Commit, trustLevel cmn.Fraction) error {
 
-	if trustLevel > 1 || trustLevel < 1/3 {
+	if trustLevel.Numerator*3 < trustLevel.Denominator || // < 1/3
+		trustLevel.Numerator > trustLevel.Denominator { // > 1
 		panic(fmt.Sprintf("trustLevel must be within [1/3, 1], given %v", trustLevel))
 	}
 
@@ -761,7 +763,7 @@ func (vals *ValidatorSet) VerifyCommitTrusting(chainID string, blockID BlockID,
 		}
 	}
 
-	if got, needed := float32(talliedVotingPower), float32(vals.TotalVotingPower())*trustLevel; got <= needed {
+	if got, needed := talliedVotingPower, (vals.TotalVotingPower()*trustLevel.Numerator)/trustLevel.Denominator; got <= needed {
 		return ErrTooMuchChange{Got: got, Needed: needed}
 	}
 
@@ -795,12 +797,12 @@ func IsErrTooMuchChange(err error) bool {
 
 // ErrTooMuchChange indicates that changes in the validator set exceeded max limit.
 type ErrTooMuchChange struct {
-	Got    float32
-	Needed float32
+	Got    int64
+	Needed int64
 }
 
 func (e ErrTooMuchChange) Error() string {
-	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %.2f, needed more than %.2f", e.Got, e.Needed)
+	return fmt.Sprintf("invalid commit -- insufficient old voting power: got %d, needed more than %d", e.Got, e.Needed)
 }
 
 //----------------
