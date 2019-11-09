@@ -64,29 +64,11 @@ To build and serve the documentation locally, run:
 
 ```
 # from this directory
-npm install -g vuepress
-```
-
-NOTE: the command may require `sudo`.
-
-then change the following line in the `.vuepress/config.js`:
-
-```
-base: "/docs/",
-```
-
-to:
-
-```
-base: "/",
-```
-
-Finally, go up one directory to the root of the repo and run:
-
-```
-# from root of repo
-vuepress build docs
-cd dist/docs
+npm install -g vuepress # this command may require `sudo`
+npm install
+export VUEPRESS_BASE="/"
+vuepress build
+cd .vuepress/dist
 python -m SimpleHTTPServer 8080
 ```
 
