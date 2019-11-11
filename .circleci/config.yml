@@ -381,6 +381,12 @@ workflows:
             tags:
               only:
                 - /^v.*/
+      - deploy_docs:
+          context: tendermint-docs-staging
+          filters:
+            branches:
+              only:
+                - docs-theme-latest
       - setup_dependencies
       - test_abci_apps:
           requires:
