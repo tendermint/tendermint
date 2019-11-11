@@ -62,10 +62,6 @@ func RegisterAmino(cdc *amino.Codec) {
 
 // RegisterKeyType registers an external key type to allow decoding it from bytes
 func RegisterKeyType(o interface{}, name string) {
-	if _, exists := nameTable[reflect.TypeOf(o)]; exists {
-		return
-	}
-
 	cdc.RegisterConcrete(o, name, nil)
 	nameTable[reflect.TypeOf(o)] = name
 }
