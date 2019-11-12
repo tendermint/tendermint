@@ -42,7 +42,7 @@ func Verify(
 
 	if h2.Height == h1.Height+1 {
 		if !bytes.Equal(h2.ValidatorsHash, h1NextVals.Hash()) {
-			return errors.Errorf("expected our validators (%X) to match those from new header (%X)",
+			return errors.Errorf("expected old header validators (%X) to match those from new header (%X)",
 				h1NextVals.Hash(),
 				h2.ValidatorsHash,
 			)
@@ -108,7 +108,8 @@ func verifyNewHeaderAndVals(
 // which does not break the security model.
 func ValidateTrustLevel(lvl cmn.Fraction) error {
 	if lvl.Numerator*3 < lvl.Denominator || // < 1/3
-		lvl.Numerator > lvl.Denominator { // > 1
+		lvl.Numerator > lvl.Denominator || // > 1
+		lvl.Denominator == 0 {
 		return errors.Errorf("trustLevel must be within [1/3, 1], given %v", lvl)
 	}
 	return nil

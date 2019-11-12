@@ -2,7 +2,8 @@ package common
 
 import "fmt"
 
-// A Fraction in terms of a numerator divided by a denominator.
+// Fraction defined in terms of a numerator divided by a denominator in int64
+// format.
 type Fraction struct {
 	// The portion of the denominator in the faction, e.g. 2 in 2/3.
 	Numerator int64

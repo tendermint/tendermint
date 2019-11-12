@@ -2,6 +2,7 @@ package lite
 
 import (
 	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -40,10 +41,10 @@ type TrustOptions struct {
 	Hash   []byte
 }
 
-type mode int
+type mode byte
 
 const (
-	sequential mode = iota
+	sequential mode = iota + 1
 	skipping
 )
 
@@ -55,7 +56,7 @@ type Option func(*Client)
 // albeit more secure.
 func SequentialVerification() Option {
 	return func(c *Client) {
-		c.mode = sequential
+		c.verificationMode = sequential
 	}
 }
 
@@ -73,7 +74,7 @@ func SkippingVerification(trustLevel cmn.Fraction) Option {
 		panic(err)
 	}
 	return func(c *Client) {
-		c.mode = skipping
+		c.verificationMode = skipping
 		c.trustLevel = trustLevel
 	}
 }
@@ -92,10 +93,10 @@ func AlternativeSources(providers []provider.Provider) Option {
 //
 // Default verification: SkippingVerification(DefaultTrustLevel)
 type Client struct {
-	chainID        string
-	trustingPeriod time.Duration // see TrustOptions.Period
-	mode           mode
-	trustLevel     cmn.Fraction
+	chainID          string
+	trustingPeriod   time.Duration // see TrustOptions.Period
+	verificationMode mode
+	trustLevel       cmn.Fraction
 
 	// Primary provider of new headers.
 	primary provider.Provider
@@ -125,13 +126,13 @@ func NewClient(
 	options ...Option) (*Client, error) {
 
 	c := &Client{
-		chainID:        chainID,
-		trustingPeriod: trustOptions.Period,
-		mode:           skipping,
-		trustLevel:     DefaultTrustLevel,
-		primary:        primary,
-		trustedStore:   trustedStore,
-		logger:         log.NewNopLogger(),
+		chainID:          chainID,
+		trustingPeriod:   trustOptions.Period,
+		verificationMode: skipping,
+		trustLevel:       DefaultTrustLevel,
+		primary:          primary,
+		trustedStore:     trustedStore,
+		logger:           log.NewNopLogger(),
 	}
 
 	for _, o := range options {
@@ -178,7 +179,7 @@ func (c *Client) SetLogger(l log.Logger) {
 
 // TrustedHeader returns a trusted header at the given height or nil if no such
 // header exist. It returns an error if there are some issues with the trusted
-// store, although that should not happen normally. TODO mention how many
+// store, although that should not happen normally. TODO: mention how many
 // headers will be kept by the light client.
 //
 // 0 - the latest.
@@ -204,7 +205,7 @@ func (c *Client) LastTrustedHeight() (int64, error) {
 	return c.trustedStore.LastSignedHeaderHeight()
 }
 
-// ChainID returns a chain ID.
+// ChainID returns the chain ID.
 func (c *Client) ChainID() string {
 	return c.chainID
 }
@@ -246,11 +247,13 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 	}
 
 	var err error
-	switch c.mode {
+	switch c.verificationMode {
 	case sequential:
 		err = c.sequence(newHeader, newVals, now)
 	case skipping:
 		err = c.bisection(c.trustedHeader, c.trustedNextVals, newHeader, newVals, now)
+	default:
+		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 	}
 	if err != nil {
 		return err

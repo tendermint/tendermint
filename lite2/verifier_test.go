@@ -260,10 +260,12 @@ func TestValidateTrustLevel(t *testing.T) {
 		4: {cmn.Fraction{Numerator: 4, Denominator: 5}, true},
 
 		// invalid
-		5: {cmn.Fraction{Numerator: 6, Denominator: 5}, false},
-		6: {cmn.Fraction{Numerator: -1, Denominator: 3}, false},
-		7: {cmn.Fraction{Numerator: 0, Denominator: 1}, false},
-		8: {cmn.Fraction{Numerator: -1, Denominator: -3}, false},
+		5:  {cmn.Fraction{Numerator: 6, Denominator: 5}, false},
+		6:  {cmn.Fraction{Numerator: -1, Denominator: 3}, false},
+		7:  {cmn.Fraction{Numerator: 0, Denominator: 1}, false},
+		8:  {cmn.Fraction{Numerator: -1, Denominator: -3}, false},
+		9:  {cmn.Fraction{Numerator: 0, Denominator: 0}, false},
+		10: {cmn.Fraction{Numerator: 1, Denominator: 0}, false},
 	}
 
 	for _, tc := range testCases {

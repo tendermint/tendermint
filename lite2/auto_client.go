@@ -52,6 +52,8 @@ func (c *AutoClient) autoUpdate() {
 	}
 
 	ticker := time.NewTicker(c.updatePeriod)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:

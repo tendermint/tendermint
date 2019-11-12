@@ -405,11 +405,11 @@ func parseQueryStorePath(path string) (storeName string, err error) {
 	paths := strings.SplitN(path[1:], "/", 3)
 	switch {
 	case len(paths) != 3:
-		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+		return "", errors.New("expected format like /store/<storeName>/key")
 	case paths[0] != "store":
-		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+		return "", errors.New("expected format like /store/<storeName>/key")
 	case paths[2] != "key":
-		return "", fmt.Errorf("expected format like /store/<storeName>/key")
+		return "", errors.New("expected format like /store/<storeName>/key")
 	}
 
 	return paths[1], nil
