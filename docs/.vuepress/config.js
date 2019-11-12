@@ -37,7 +37,7 @@ module.exports = {
       }
     },
     footer: {
-      logo: "logo-bw.svg",
+      logo: "/logo-bw.svg",
       textLink: {
         text: "tendermint.com",
         url: "https://tendermint.com"
