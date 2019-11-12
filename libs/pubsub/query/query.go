@@ -80,6 +80,8 @@ const (
 	OpEqual
 	// "CONTAINS"; used to check if a string contains a certain sub string.
 	OpContains
+	// "EXISTS"; used to check if a certain event attribute is present.
+	OpExists
 )
 
 const (
@@ -100,8 +102,8 @@ func (q *Query) Conditions() ([]Condition, error) {
 	conditions := make([]Condition, 0)
 	buffer, begin, end := q.parser.Buffer, 0, 0
 
-	// tokens must be in the following order: event attribute ("tx.gas") -> operator ("=") -> operand ("7")
-	for _, token := range q.parser.Tokens() {
+	// tokens must be in the following order: tag ("tx.gas") -> operator ("=") -> operand ("7")
+	for token := range q.parser.Tokens() {
 		switch token.pegRule {
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
@@ -126,6 +128,10 @@ func (q *Query) Conditions() ([]Condition, error) {
 
 		case rulecontains:
 			op = OpContains
+
+		case ruleexists:
+			op = OpExists
+			conditions = append(conditions, Condition{eventAttr, op, nil})
 
 		case rulevalue:
 			// strip single quotes from value (i.e. "'NewBlock'" -> "NewBlock")
@@ -207,8 +213,9 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 	buffer, begin, end := q.parser.Buffer, 0, 0
 
 	// tokens must be in the following order:
-	// event attribute ("tx.gas") -> operator ("=") -> operand ("7")
-	for _, token := range q.parser.Tokens() {
+
+	// tag ("tx.gas") -> operator ("=") -> operand ("7")
+	for token := range q.parser.Tokens() {
 		switch token.pegRule {
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
@@ -233,6 +240,28 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 
 		case rulecontains:
 			op = OpContains
+		case ruleexists:
+			op = OpExists
+			if strings.Contains(eventAttr, ".") {
+				// Searching for a full "type.attribute" event.
+				_, ok := events[eventAttr]
+				if !ok {
+					return false, nil
+				}
+			} else {
+				foundEvent := false
+
+			loop:
+				for compositeKey := range events {
+					if strings.Index(compositeKey, eventAttr) == 0 {
+						foundEvent = true
+						break loop
+					}
+				}
+				if !foundEvent {
+					return false, nil
+				}
+			}
 
 		case rulevalue:
 			// strip single quotes from value (i.e. "'NewBlock'" -> "NewBlock")
