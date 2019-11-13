@@ -31,14 +31,5 @@ Subjectivity](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak
 NOTE: Tendermint provides a somewhat different (stronger) light client model
 than Bitcoin under eclipse, since the eclipsing node(s) can only fool the light
 client if they have two-thirds of the private keys from the last root-of-trust.
-
-===
-
-TODO:
-- better documentation
-- cross-checking primary using alternative providers (will need a mutex to avoid races)
-- how many headers to store
-- evidence handling and submission
-- proxy webserver
 */
 package lite

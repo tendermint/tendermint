@@ -246,6 +246,12 @@ func (c *Client) VerifyHeader(newHeader *types.SignedHeader, newVals *types.Vali
 		return errors.Errorf("height #%d is already trusted (last: #%d)", newHeader.Height, c.trustedHeader.Height)
 	}
 
+	if len(c.alternatives) > 0 {
+		if err := c.compareNewHeaderWithRandomAlternative(newHeader); err != nil {
+			return err
+		}
+	}
+
 	var err error
 	switch c.verificationMode {
 	case sequential:
@@ -387,4 +393,27 @@ func (c *Client) fetchHeaderAndValsAtHeight(height int64) (*types.SignedHeader, 
 		return nil, nil, errors.Wrapf(err, "failed to obtain the vals #%d", height)
 	}
 	return h, vals, nil
+}
+
+func (c *Client) compareNewHeaderWithRandomAlternative(h *types.SignedHeader) error {
+	// 1. Pick an alternative provider.
+	p := c.alternatives[cmn.RandIntn(len(c.alternatives))]
+
+	// 2. Fetch the header.
+	altHeader, err := p.SignedHeader(h.Height)
+	if err != nil {
+		return errors.Wrapf(err,
+			"failed to obtain header #%d from alternative provider %v", h.Height, p)
+	}
+
+	// 3. Compare hashes.
+	if !bytes.Equal(h.Hash(), altHeader.Hash()) {
+		// TODO: One of the providers is lying. Send the evidence to fork
+		// accountability server.
+		return errors.Errorf(
+			"new header hash %X does not match one from alternative provider %X",
+			h.Hash(), altHeader.Hash())
+	}
+
+	return nil
 }
