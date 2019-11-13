@@ -2,7 +2,7 @@
 
 ## v0.32.8
 
-*November 13, 2019
+*November 13, 2019*
 
 Special thanks to external contributors on this release: @erikgrinaker, @guagualvcha, @hsyis, @cosmostuba, @whunmr, @austinabell
 
