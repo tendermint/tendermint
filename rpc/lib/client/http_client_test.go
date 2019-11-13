@@ -12,7 +12,7 @@ func TestHTTPClientMakeHTTPDialer(t *testing.T) {
 	for _, f := range remote {
 		protocol, address, err := parseRemoteAddr(f)
 		require.NoError(t, err)
-		conn := makeHTTPDialer(f)
+		dialFn := makeHTTPDialer(f)
 
 		addr, err := conn(protocol, address)
 		require.NoError(t, err)
