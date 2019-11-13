@@ -162,6 +162,7 @@ build-docs:
 		(git checkout $${p} && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
 		mkdir -p ~/output/$${p} ; \
 		cp -r .vuepress/dist/* ~/output/$${p}/ ; \
+		cp ~/output/$${p}/index.html ~/output ; \
 	done < versions ;
 
 sync-docs:
