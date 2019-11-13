@@ -297,8 +297,10 @@ Commit are included in the header of the next block.
 - **Request**:
   - `Tx ([]byte)`: The request transaction bytes
   - `Type (CheckTxType)`: What type of `CheckTx` request is this? At present,
-    there are two possible values: `CheckTx_New` (the default, which says
-    that a full check is required), and `CheckTx_Recheck` (when the mempool is
+    there are three possible values: `CheckTx_Untrusted` (the default, which says
+    that a full check is required), `CheckTx_Trusted` (when the interface is called by the app,
+    it indicates the app can skip some checks since this check is initiated by itself,
+    it should have done some checks of this tx), and `CheckTx_Recheck` (when the mempool is
     initiating a normal recheck of a transaction).
 - **Response**:
   - `Code (uint32)`: Response code
