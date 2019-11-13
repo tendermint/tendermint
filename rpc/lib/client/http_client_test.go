@@ -14,7 +14,7 @@ func TestHTTPClientMakeHTTPDialer(t *testing.T) {
 		require.NoError(t, err)
 		dialFn := makeHTTPDialer(f)
 
-		addr, err := conn(protocol, address)
+		addr, err := dialFn(protocol, address)
 		require.NoError(t, err)
 		require.NotNil(t, addr)
 	}
