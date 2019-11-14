@@ -20,9 +20,6 @@ program](https://hackerone.com/tendermint).
 - Blockchain Protocol
   - [abci] \#2521 Remove TotalTxs and NumTxs from Header
 
-- Instrumentation
-  - [metrics] Remove `consensus_total_txs` metric
-
 ### FEATURES:
 
 ### IMPROVEMENTS:
