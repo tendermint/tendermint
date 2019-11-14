@@ -80,10 +80,8 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	var (
 		hash      = sha256.New
 		hdkfState = new([32]byte)
+		locPubKey = locPrivKey.PubKey()
 	)
-
-	hkdfInit := hkdf.New(hash, []byte("INIT_HANDSHAKE"), nil, []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
-	locPubKey := locPrivKey.PubKey()
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
@@ -99,6 +97,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Sort by lexical order.
 	loEphPub, hiEphPub := sort32(locEphPub, remEphPub)
 
+	hkdfInit := hkdf.New(hash, []byte("INIT_HANDSHAKE"), nil, []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
 	if _, err := io.ReadFull(hkdfInit, hdkfState[:]); err != nil {
 		return nil, err
 	}
