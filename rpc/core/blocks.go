@@ -124,11 +124,14 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 		return nil, err
 	}
 
-	res := &ctypes.ResultBlockResults{
-		Height:  height,
-		Results: results,
-	}
-	return res, nil
+	return &ctypes.ResultBlockResults{
+		Height:                height,
+		TxsResults:            results.DeliverTxs,
+		BeginBlockEvents:      results.BeginBlock.Events,
+		EndBlockEvents:        results.EndBlock.Events,
+		ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
+		ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
+	}, nil
 }
 
 func getHeight(currentHeight int64, heightPtr *int64) (int64, error) {
