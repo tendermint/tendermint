@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
+
 	amino "github.com/tendermint/go-amino"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -52,7 +53,6 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 		return nil, errors.Wrap(err, "failed to encode params")
 	}
 
-	// log.Info(Fmt("URI request to %v (%v): %v", c.address, method, values))
 	resp, err := c.client.PostForm(c.address+"/"+method, values)
 	if err != nil {
 		return nil, errors.Wrap(err, "PostForm failed")

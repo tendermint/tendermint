@@ -81,7 +81,7 @@ func unmarshalResponseBytesArray(
 
 	for i := 0; i < len(responses); i++ {
 		if err := cdc.UnmarshalJSON(responses[i].Result, results[i]); err != nil {
-			return nil, errors.Wrap(err, "error unmarshalling result")
+			return nil, errors.Wrapf(err, "error unmarshalling #%d result", i)
 		}
 	}
 

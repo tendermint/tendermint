@@ -155,7 +155,6 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	if isIntString && expectingInt {
 		qarg := `"` + arg + `"`
-		// jsonStringToArg
 		rv, err := jsonStringToArg(cdc, rt, qarg)
 		if err != nil {
 			return rv, err, false

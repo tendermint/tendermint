@@ -156,7 +156,7 @@ func (c *JSONRPCClient) sendBatch(requests []*jsonRPCBufferedRequest) ([]interfa
 		return nil, errors.Wrap(err, "failed to read response body")
 	}
 
-	// collect ids to check them in unmarshalResponseBytesArray
+	// collect ids to check responses IDs in unmarshalResponseBytesArray
 	ids := make([]types.JSONRPCIntID, len(requests))
 	for i, req := range requests {
 		ids[i] = req.request.ID.(types.JSONRPCIntID)
