@@ -78,7 +78,7 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 
 	blockMeta := blockStore.LoadBlockMeta(height)
 	block := blockStore.LoadBlock(height)
-	return &ctypes.ResultBlock{BlockMeta: blockMeta, Block: block}, nil
+	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
 // Commit gets block commit at a given height.

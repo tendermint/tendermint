@@ -1162,7 +1162,7 @@ definitions:
             x-example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
         type: object
     type: object
-  BlockMetaHeader:
+  BlockHeader:
     required:
       - "version"
       - "chain_id"
@@ -1230,7 +1230,7 @@ definitions:
         type: string
         x-example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
     type: object
-  BlockMetaId:
+  BlockId:
     required:
       - "hash"
       - "parts"
@@ -1254,10 +1254,13 @@ definitions:
   BlockMeta:
     type: object
     properties:
+      block_size:
+        type: number
+        x-example: 1000000
       block_id:
-        $ref: "#/definitions/BlockMetaId"
+        $ref: "#/definitions/BlockId"
       header:
-        $ref: "#/definitions/BlockMetaHeader"
+        $ref: "#/definitions/BlockHeader"
   Blockchain:
     type: object
     required:
@@ -1317,7 +1320,7 @@ definitions:
     type: object
     properties:
       header:
-        $ref: "#/definitions/BlockMetaHeader"
+        $ref: "#/definitions/BlockHeader"
       data:
         type: array
         items:
@@ -1361,8 +1364,8 @@ definitions:
   BlockComplete:
     type: object
     properties:
-      block_meta:
-        $ref: "#/definitions/BlockMeta"
+      block_id:
+        $ref: "#/definitions/BlockID"
       block:
         $ref: "#/definitions/Block"
   BlockResponse:

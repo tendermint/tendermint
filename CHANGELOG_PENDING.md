@@ -11,6 +11,7 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 - CLI/RPC/Config
+  - [rpc] \#3188 Remove `BlockMeta` in `ResultBlock` in favor of `BlockId` for `/block`
   - [rpc] `/block_results` response format updated (see RPC docs for details)
     ```
     {
@@ -51,6 +52,7 @@ program](https://hackerone.com/tendermint).
 - [rpc] [\#4077](https://github.com/tendermint/tendermint/pull/4077) Added support for `EXISTS` clause to the Websocket query interface.
 - [privval] Add `SignerDialerEndpointRetryWaitInterval` option (@cosmostuba)
 - [crypto] Add `RegisterKeyType` to amino to allow external key types registration (@austinabell)
+- [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
 - [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
 
 ### BUG FIXES:
