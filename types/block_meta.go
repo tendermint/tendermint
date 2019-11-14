@@ -1,13 +1,13 @@
 package types
 
-// BlockMeta contains meta information about a block - ID, Size, and Header.
+// BlockMeta contains meta information.
 type BlockMeta struct {
-	BlockID   BlockID `json:"block_id"`   // the block hash and partsethash
-	BlockSize uint    `json:"block_size"` // The size of the block
-	Header    Header  `json:"header"`     // The block's Header
+	BlockID   BlockID `json:"block_id"`
+	BlockSize uint    `json:"block_size"`
+	Header    Header  `json:"header"`
 }
 
-// NewBlockMeta returns a new BlockMeta from the block and its blockParts.
+// NewBlockMeta returns a new BlockMeta.
 func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {
 	return &BlockMeta{
 		BlockID:   BlockID{block.Hash(), blockParts.Header()},
