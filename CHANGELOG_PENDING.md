@@ -32,6 +32,9 @@ program](https://hackerone.com/tendermint).
 - Go API
   - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) `Query#(Matches|Conditions)` returns an error.
 
+- P2P Protocol
+  - [p2p] [\3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
+
 ### FEATURES:
 
 ### IMPROVEMENTS:
