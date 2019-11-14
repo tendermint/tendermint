@@ -14,7 +14,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-cmn/db"
+	dbm "github.com/tendermint/tm-db"
 )
 
 // for testing
@@ -82,14 +82,14 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	ensureNewRound(newRoundCh, height, round) // first round at first height
 	ensureNewEventOnChannel(newBlockCh)       // first block gets committed
 
-	height = height + 1 // moving to the next height
+	height++ // moving to the next height
 	round = 0
 
 	ensureNewRound(newRoundCh, height, round) // first round at next height
 	deliverTxsRange(cs, 0, 1)                 // we deliver txs, but dont set a proposal so we get the next round
 	ensureNewTimeout(timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
 
-	round = round + 1                         // moving to the next round
+	round++                                   // moving to the next round
 	ensureNewRound(newRoundCh, height, round) // wait for the next round
 	ensureNewEventOnChannel(newBlockCh)       // now we can commit the block
 }
@@ -99,7 +99,7 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 	for i := start; i < end; i++ {
 		txBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil)
+		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil, mempl.TxInfo{})
 		if err != nil {
 			panic(fmt.Sprintf("Error after CheckTx: %v", err))
 		}
@@ -159,7 +159,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 				return
 			}
 			checkTxRespCh <- struct{}{}
-		})
+		}, mempl.TxInfo{})
 		if err != nil {
 			t.Errorf("Error after CheckTx: %v", err)
 			return

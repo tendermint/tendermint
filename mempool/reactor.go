@@ -165,8 +165,11 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		peerID := memR.ids.GetForPeer(src)
-		err := memR.mempool.CheckTxWithInfo(msg.Tx, nil, TxInfo{SenderID: peerID})
+		txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
+		if src != nil {
+			txInfo.SenderP2PID = src.ID()
+		}
+		err := memR.mempool.CheckTx(msg.Tx, nil, txInfo)
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", txID(msg.Tx), "err", err)
 		}
@@ -263,8 +266,9 @@ func RegisterMempoolMessages(cdc *amino.Codec) {
 }
 
 func (memR *Reactor) decodeMsg(bz []byte) (msg MempoolMessage, err error) {
-	if l := len(bz); l > memR.config.MaxMsgBytes {
-		return msg, ErrTxTooLarge{memR.config.MaxMsgBytes, l}
+	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
+	if l := len(bz); l > maxMsgSize {
+		return msg, ErrTxTooLarge{maxMsgSize, l}
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -282,8 +286,8 @@ func (m *TxMessage) String() string {
 	return fmt.Sprintf("[TxMessage %v]", m.Tx)
 }
 
-// calcMaxTxSize returns the max size of Tx
+// calcMaxMsgSize returns the max size of TxMessage
 // account for amino overhead of TxMessage
-func calcMaxTxSize(maxMsgSize int) int {
-	return maxMsgSize - aminoOverheadForTxMessage
+func calcMaxMsgSize(maxTxSize int) int {
+	return maxTxSize + aminoOverheadForTxMessage
 }

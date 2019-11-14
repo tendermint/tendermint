@@ -54,7 +54,7 @@ Each event has a `type` which is meant to categorize the event for a particular
 `Response*` or tx. A `Response*` or tx may contain multiple events with duplicate
 `type` values, where each distinct entry is meant to categorize attributes for a
 particular event. Every key and value in an event's attributes must be UTF-8
-encoded strings along with the even type itself.
+encoded strings along with the event type itself.
 
 Example:
 

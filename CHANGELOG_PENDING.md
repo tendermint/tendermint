@@ -1,8 +1,9 @@
-## v0.32.2
+## v0.32.8
 
 \*\*
 
 Special thanks to external contributors on this release:
+@erikgrinaker
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -14,21 +15,25 @@ program](https://hackerone.com/tendermint).
 - Apps
 
 - Go API
-  - [libs] \#3811 Remove `db` from libs in favor of `https://github.com/tendermint/tm-cmn`
+  - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) `Query#(Matches|Conditions)` returns an error.
 
 ### FEATURES:
 
 ### IMPROVEMENTS:
 
-- [p2p] \#3834 Do not write 'Couldn't connect to any seeds' error log if there are no seeds in config file
-- [abci] \#3809 Recover from application panics in `server/socket_server.go` to allow socket cleanup (@ruseinov)
-- [rpc] \#2252 Add `/broadcast_evidence` endpoint to submit double signing and other types of evidence
-- [rpc] \#3818 Make `max_body_bytes` and `max_header_bytes` configurable
-- [p2p] \#3664 p2p/conn: reuse buffer when write/read from secret connection
-- [mempool] \#3826 Make `max_msg_bytes` configurable
-- [blockchain] \#3561 Add early version of the new blockchain reactor, which is supposed to be more modular and testable compared to the old version. To try it, you'll have to change `version` in the config file, [here](https://github.com/tendermint/tendermint/blob/master/config/toml.go#L303) NOTE: It's not ready for a production yet. For further information, see [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-043-blockchain-riri-org.md)
+- [mempool] [\#4083](https://github.com/tendermint/tendermint/pull/4083) Added TxInfo parameter to CheckTx(), and removed CheckTxWithInfo() (@erikgrinaker)
+- [mempool] [\#4057](https://github.com/tendermint/tendermint/issues/4057) Include peer ID when logging rejected txns (@erikgrinaker)
+- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Improved `tm-monitor` formatting of start time and avg tx throughput (@erikgrinaker)
+- [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) No longer panic in `Query#(Matches|Conditions)` preferring to return an error instead.
+- [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) Strip out non-numeric characters when attempting to match numeric values.
+- [p2p] [\#3991](https://github.com/tendermint/tendermint/issues/3991) Log "has been established or dialed" as debug log instead of Error for connected peers (@whunmr)
+- [rpc] [\#4077](https://github.com/tendermint/tendermint/pull/4077) Added support for `EXISTS` clause to the Websocket query interface. 
+- [privval] Add `SignerDialerEndpointRetryWaitInterval` option (@cosmostuba)
+- [crypto] Add `RegisterKeyType` to amino to allow external key types registration (@austinabell)
 
 ### BUG FIXES:
 
-- [p2p] [\#3644](https://github.com/tendermint/tendermint/pull/3644) Fix error logging for connection stop (@defunctzombie)
-- [rpc] \#3813 Return err if page is incorrect (less than 0 or greater than total pages)
+- [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Refresh `tm-monitor` health when validator count is updated (@erikgrinaker)
+- [state] [\#4104](https://github.com/tendermint/tendermint/pull/4104) txindex/kv: Fsync data to disk immediately after receiving it (@guagualvcha)
+- [state] [\#4095](https://github.com/tendermint/tendermint/pull/4095) txindex/kv: Return an error if there's one when the user searches for a tx (hash=X) (@hsyis)
+- [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)

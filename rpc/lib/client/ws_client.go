@@ -27,19 +27,13 @@ const (
 
 // WSClient is a WebSocket client. The methods of WSClient are safe for use by
 // multiple goroutines.
-type WSClient struct {
-	cmn.BaseService
-
+type WSClient struct { // nolint: maligned
 	conn *websocket.Conn
 	cdc  *amino.Codec
 
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
 	Dialer   func(string, string) (net.Conn, error)
-
-	// Time between sending a ping and receiving a pong. See
-	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
-	PingPongLatencyTimer metrics.Timer
 
 	// Single user facing channel to read RPCResponses from, closed only when the client is being stopped.
 	ResponsesCh chan types.RPCResponse
@@ -53,14 +47,17 @@ type WSClient struct {
 	reconnectAfter  chan error            // reconnect requests
 	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
 
+	// Maximum reconnect attempts (0 or greater; default: 25).
+	maxReconnectAttempts int
+
+	// Support both ws and wss protocols
+	protocol string
+
 	wg sync.WaitGroup
 
 	mtx            sync.RWMutex
 	sentLastPingAt time.Time
 	reconnecting   bool
-
-	// Maximum reconnect attempts (0 or greater; default: 25).
-	maxReconnectAttempts int
 
 	// Time allowed to write a message to the server. 0 means block until operation succeeds.
 	writeWait time.Duration
@@ -71,15 +68,22 @@ type WSClient struct {
 	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
 
-	// Support both ws and wss protocols
-	protocol string
+	cmn.BaseService
+
+	// Time between sending a ping and receiving a pong. See
+	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
+	PingPongLatencyTimer metrics.Timer
 }
 
 // NewWSClient returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
+// The function panics if the provided address is invalid.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
-	protocol, addr, dialer := makeHTTPDialer(remoteAddr)
+	protocol, addr, err := toClientAddrAndParse(remoteAddr)
+	if err != nil {
+		panic(fmt.Sprintf("invalid remote %s: %s", remoteAddr, err))
+	}
 	// default to ws protocol, unless wss is explicitly specified
 	if protocol != "wss" {
 		protocol = "ws"
@@ -88,7 +92,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	c := &WSClient{
 		cdc:                  amino.NewCodec(),
 		Address:              addr,
-		Dialer:               dialer,
+		Dialer:               makeHTTPDialer(remoteAddr),
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),
 
@@ -248,7 +252,7 @@ func (c *WSClient) dial() error {
 		Proxy:   http.ProxyFromEnvironment,
 	}
 	rHeader := http.Header{}
-	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader)
+	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader) // nolint:bodyclose
 	if err != nil {
 		return err
 	}
@@ -410,7 +414,10 @@ func (c *WSClient) writeRoutine() {
 		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit():
-			if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			if err := c.conn.WriteMessage(
+				websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+			); err != nil {
 				c.Logger.Error("failed to write message", "err", err)
 			}
 			return

@@ -23,7 +23,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -45,12 +45,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-cmn/db"
+	dbm "github.com/tendermint/tm-db"
 )
-
-// CustomReactorNamePrefix is a prefix for all custom reactors to prevent
-// clashes with built-in reactors.
-const CustomReactorNamePrefix = "CUSTOM_"
 
 //------------------------------------------------------------------------------
 
@@ -144,11 +140,26 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 // Option sets a parameter for the node.
 type Option func(*Node)
 
-// CustomReactors allows you to add custom reactors to the node's Switch.
+// CustomReactors allows you to add custom reactors (name -> p2p.Reactor) to
+// the node's Switch.
+//
+// WARNING: using any name from the below list of the existing reactors will
+// result in replacing it with the custom one.
+//
+//  - MEMPOOL
+//  - BLOCKCHAIN
+//  - CONSENSUS
+//  - EVIDENCE
+//  - PEX
 func CustomReactors(reactors map[string]p2p.Reactor) Option {
 	return func(n *Node) {
 		for name, reactor := range reactors {
-			n.sw.AddReactor(CustomReactorNamePrefix+name, reactor)
+			if existingReactor := n.sw.Reactor(name); existingReactor != nil {
+				n.sw.Logger.Info("Replacing existing reactor with a custom one",
+					"name", name, "existing", existingReactor, "custom", reactor)
+				n.sw.RemoveReactor(name, existingReactor)
+			}
+			n.sw.AddReactor(name, reactor)
 		}
 	}
 }
@@ -235,11 +246,12 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 		if err != nil {
 			return nil, nil, err
 		}
-		if config.TxIndex.IndexTags != "" {
+		switch {
+		case config.TxIndex.IndexTags != "":
 			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
-		} else if config.TxIndex.IndexAllTags {
+		case config.TxIndex.IndexAllTags:
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
-		} else {
+		default:
 			txIndexer = kv.NewTxIndex(store)
 		}
 	default:
@@ -254,8 +266,14 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 	return indexerService, txIndexer, nil
 }
 
-func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc, eventBus *types.EventBus, proxyApp proxy.AppConns, consensusLogger log.Logger) error {
+func doHandshake(
+	stateDB dbm.DB,
+	state sm.State,
+	blockStore sm.BlockStore,
+	genDoc *types.GenesisDoc,
+	eventBus types.BlockEventPublisher,
+	proxyApp proxy.AppConns,
+	consensusLogger log.Logger) error {
 
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
@@ -266,9 +284,7 @@ func doHandshake(stateDB dbm.DB, state sm.State, blockStore sm.BlockStore,
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logger,
-	consensusLogger log.Logger) {
-
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -284,7 +300,6 @@ func logNodeStartupInfo(state sm.State, privValidator types.PrivValidator, logge
 		)
 	}
 
-	pubKey := privValidator.GetPubKey()
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
 	if state.Validators.HasAddress(addr) {
@@ -391,7 +406,15 @@ func createConsensusReactor(config *cfg.Config,
 	return consensusReactor, consensusState
 }
 
-func createTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p2p.NodeKey, proxyApp proxy.AppConns) (*p2p.MultiplexTransport, []p2p.PeerFilterFunc) {
+func createTransport(
+	config *cfg.Config,
+	nodeInfo p2p.NodeInfo,
+	nodeKey *p2p.NodeKey,
+	proxyApp proxy.AppConns,
+) (
+	*p2p.MultiplexTransport,
+	[]p2p.PeerFilterFunc,
+) {
 	var (
 		mConnConfig = p2p.MConnConfig(config.P2P)
 		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
@@ -448,7 +471,7 @@ func createTransport(config *cfg.Config, nodeInfo p2p.NodeInfo, nodeKey *p2p.Nod
 }
 
 func createSwitch(config *cfg.Config,
-	transport *p2p.MultiplexTransport,
+	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
@@ -589,7 +612,13 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
-	logNodeStartupInfo(state, privValidator, logger, consensusLogger)
+	pubKey := privValidator.GetPubKey()
+	if pubKey == nil {
+		// TODO: GetPubKey should return errors - https://github.com/tendermint/tendermint/issues/3602
+		return nil, errors.New("could not retrieve public key from private validator")
+	}
+
+	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -824,7 +853,6 @@ func (n *Node) ConfigureRPC() {
 	pubKey := n.privValidator.GetPubKey()
 	rpccore.SetPubKey(pubKey)
 	rpccore.SetGenesisDoc(n.genesisDoc)
-	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
 	rpccore.SetConsensusReactor(n.consensusReactor)
@@ -1100,7 +1128,10 @@ var (
 // database, or creates one using the given genesisDocProvider and persists the
 // result to the database. On success this also returns the genesis doc loaded
 // through the given provider.
-func LoadStateFromDBOrGenesisDocProvider(stateDB dbm.DB, genesisDocProvider GenesisDocProvider) (sm.State, *types.GenesisDoc, error) {
+func LoadStateFromDBOrGenesisDocProvider(
+	stateDB dbm.DB,
+	genesisDocProvider GenesisDocProvider,
+) (sm.State, *types.GenesisDoc, error) {
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {
@@ -1146,29 +1177,13 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	var listener net.Listener
-
-	protocol, address := cmn.ProtocolAndAddress(listenAddr)
-	ln, err := net.Listen(protocol, address)
+	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
-		return nil, err
-	}
-	switch protocol {
-	case "unix":
-		listener = privval.NewUnixListener(ln)
-	case "tcp":
-		// TODO: persist this key so external signer
-		// can actually authenticate us
-		listener = privval.NewTCPListener(ln, ed25519.GenPrivKey())
-	default:
-		return nil, fmt.Errorf(
-			"wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
-			protocol,
-		)
+		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 
-	pvsc := privval.NewSignerValidatorEndpoint(logger.With("module", "privval"), listener)
-	if err := pvsc.Start(); err != nil {
+	pvsc, err := privval.NewSignerClient(pve)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to start private validator")
 	}
 

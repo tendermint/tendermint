@@ -102,7 +102,15 @@ func TestSub(t *testing.T) {
 		require.Nil(t, err)
 
 		got, _ := json.Marshal(bA.Sub(o))
-		require.Equal(t, tc.expectedBA, string(got), "%s minus %s doesn't equal %s", tc.initBA, tc.subtractingBA, tc.expectedBA)
+		require.Equal(
+			t,
+			tc.expectedBA,
+			string(got),
+			"%s minus %s doesn't equal %s",
+			tc.initBA,
+			tc.subtractingBA,
+			tc.expectedBA,
+		)
 	}
 }
 
@@ -232,6 +240,7 @@ func TestJSONMarshalUnmarshal(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.bA.String(), func(t *testing.T) {
 			bz, err := json.Marshal(tc.bA)
 			require.NoError(t, err)

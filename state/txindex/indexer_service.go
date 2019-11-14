@@ -35,7 +35,10 @@ func (is *IndexerService) OnStart() error {
 	// cancelled due to not pulling messages fast enough. Cause this might
 	// sometimes happen when there are no other subscribers.
 
-	blocksHeaderSub, err := is.eventBus.SubscribeUnbuffered(context.Background(), subscriber, types.EventQueryNewBlockHeader)
+	blockHeadersSub, err := is.eventBus.SubscribeUnbuffered(
+		context.Background(),
+		subscriber,
+		types.EventQueryNewBlockHeader)
 	if err != nil {
 		return err
 	}
@@ -47,7 +50,7 @@ func (is *IndexerService) OnStart() error {
 
 	go func() {
 		for {
-			msg := <-blocksHeaderSub.Out()
+			msg := <-blockHeadersSub.Out()
 			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
 			batch := NewBatch(eventDataHeader.NumTxs)
 			for i := int64(0); i < eventDataHeader.NumTxs; i++ {

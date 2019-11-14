@@ -30,6 +30,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// nolint:gocritic
 package secp256k1
 
 import (
@@ -40,7 +41,9 @@ import (
 
 /*
 #include "libsecp256k1/include/secp256k1.h"
-extern int secp256k1_ext_scalar_mul(const secp256k1_context* ctx, const unsigned char *point, const unsigned char *scalar);
+extern int secp256k1_ext_scalar_mul(const secp256k1_context* ctx,
+	const unsigned char *point,
+	const unsigned char *scalar);
 */
 import "C"
 

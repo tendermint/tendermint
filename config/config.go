@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -139,7 +140,7 @@ func (cfg *Config) ValidateBasic() error {
 // BaseConfig
 
 // BaseConfig defines the base configuration for a Tendermint node
-type BaseConfig struct {
+type BaseConfig struct { //nolint: maligned
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -370,13 +371,15 @@ type RPCConfig struct {
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
 	// and the CA's certificate.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSCertFile string `mapstructure:"tls_cert_file"`
 
 	// The path to a file containing matching private key that is used to create the HTTPS server.
 	// Migth be either absolute path or path related to tendermint's config directory.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
 }
 
@@ -385,7 +388,7 @@ func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
 		ListenAddress:          "tcp://127.0.0.1:26657",
 		CORSAllowedOrigins:     []string{},
-		CORSAllowedMethods:     []string{"HEAD", "GET", "POST"},
+		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
 		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 		GRPCListenAddress:      "",
 		GRPCMaxOpenConnections: 900,
@@ -470,7 +473,7 @@ func (cfg RPCConfig) IsTLSEnabled() bool {
 // P2PConfig
 
 // P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
-type P2PConfig struct {
+type P2PConfig struct { //nolint: maligned
 	RootDir string `mapstructure:"home"`
 
 	// Address to listen for incoming connections
@@ -637,7 +640,7 @@ type MempoolConfig struct {
 	Size        int    `mapstructure:"size"`
 	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
 	CacheSize   int    `mapstructure:"cache_size"`
-	MaxMsgBytes int    `mapstructure:"max_msg_bytes"`
+	MaxTxBytes  int    `mapstructure:"max_tx_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -651,7 +654,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Size:        5000,
 		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
 		CacheSize:   10000,
-		MaxMsgBytes: 1024 * 1024, // 1MB
+		MaxTxBytes:  1024 * 1024, // 1MB
 	}
 }
 
@@ -684,8 +687,8 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.CacheSize < 0 {
 		return errors.New("cache_size can't be negative")
 	}
-	if cfg.MaxMsgBytes < 0 {
-		return errors.New("max_msg_bytes can't be negative")
+	if cfg.MaxTxBytes < 0 {
+		return errors.New("max_tx_bytes can't be negative")
 	}
 	return nil
 }
@@ -813,7 +816,8 @@ func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
 	) * time.Nanosecond
 }
 
-// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
+// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits
+// for a single block (ie. a commit).
 func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
 	return t.Add(cfg.TimeoutCommit)
 }
@@ -877,7 +881,8 @@ type TxIndexConfig struct {
 	//
 	// Options:
 	//   1) "null"
-	//   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   2) "kv" (default) - the simplest possible indexer,
+	//      backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
 
 	// Comma-separated list of tags to index (by default the only tag is "tx.hash")

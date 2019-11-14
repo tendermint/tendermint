@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-cmn/db"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -121,8 +121,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 
 	for _, ev := range req.ByzantineValidators {
-		switch ev.Type {
-		case tmtypes.ABCIEvidenceTypeDuplicateVote:
+		if ev.Type == tmtypes.ABCIEvidenceTypeDuplicateVote {
 			// decrease voting power by 1
 			if ev.TotalVotingPower == 0 {
 				continue
@@ -199,7 +198,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	}
 
 	// update
-	return app.updateValidator(types.Ed25519ValidatorUpdate(pubkey, int64(power)))
+	return app.updateValidator(types.Ed25519ValidatorUpdate(pubkey, power))
 }
 
 // add, update, or remove a validator

@@ -2,15 +2,15 @@ package types
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/crypto/merkle"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // MaxTotalVotingPower - the maximum allowed total voting power.
@@ -52,6 +52,8 @@ type ValidatorSet struct {
 // the new ValidatorSet will have an empty list of Validators.
 // The addresses of validators in `valz` must be unique otherwise the
 // function panics.
+// Note the validator set size has an implied limit equal to that of the MaxVotesCount -
+// commits by a validator set larger than this will fail validation.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	vals := &ValidatorSet{}
 	err := vals.updateWithChangeSet(valz, false)
@@ -121,7 +123,7 @@ func (vals *ValidatorSet) RescalePriorities(diffMax int64) {
 	ratio := (diff + diffMax - 1) / diffMax
 	if diff > diffMax {
 		for _, val := range vals.Validators {
-			val.ProposerPriority = val.ProposerPriority / ratio
+			val.ProposerPriority /= ratio
 		}
 	}
 }
@@ -379,7 +381,10 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 // 'updates' should be a list of proper validator changes, i.e. they have been verified
 // by processChanges for duplicates and invalid values.
 // No changes are made to the validator set 'vals'.
-func verifyUpdates(updates []*Validator, vals *ValidatorSet) (updatedTotalVotingPower int64, numNewValidators int, err error) {
+func verifyUpdates(
+	updates []*Validator,
+	vals *ValidatorSet,
+) (updatedTotalVotingPower int64, numNewValidators int, err error) {
 
 	updatedTotalVotingPower = vals.TotalVotingPower()
 
@@ -525,7 +530,7 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 // The 'allowDeletes' flag is set to false by NewValidatorSet() and to true by UpdateWithChangeSet().
 func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool) error {
 
-	if len(changes) <= 0 {
+	if len(changes) == 0 {
 		return nil
 	}
 
@@ -681,13 +686,13 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 			continue
 		}
 		if precommit.Height != height {
-			return cmn.NewError("Blocks don't match - %d vs %d", round, precommit.Round)
+			return errors.Errorf("Blocks don't match - %d vs %d", round, precommit.Round)
 		}
 		if precommit.Round != round {
-			return cmn.NewError("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
+			return errors.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
 		if precommit.Type != PrecommitType {
-			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
+			return errors.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
 		// See if this validator is in oldVals.
 		oldIdx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
@@ -699,7 +704,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		// Validate signature.
 		precommitSignBytes := commit.VoteSignBytes(chainID, idx)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return cmn.NewError("Invalid commit -- invalid signature: %v", precommit)
+			return errors.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {
@@ -721,15 +726,8 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 // ErrTooMuchChange
 
 func IsErrTooMuchChange(err error) bool {
-	switch err_ := err.(type) {
-	case cmn.Error:
-		_, ok := err_.Data().(errTooMuchChange)
-		return ok
-	case errTooMuchChange:
-		return true
-	default:
-		return false
-	}
+	_, ok := errors.Cause(err).(errTooMuchChange)
+	return ok
 }
 
 type errTooMuchChange struct {
