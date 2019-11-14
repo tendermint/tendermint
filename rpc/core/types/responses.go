@@ -9,7 +9,6 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -38,8 +37,12 @@ type ResultCommit struct {
 
 // ABCI results from a block
 type ResultBlockResults struct {
-	Height  int64                `json:"height"`
-	Results *state.ABCIResponses `json:"results"`
+	Height                int64                     `json:"height"`
+	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
+	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
+	EndBlockEvents        []abci.Event              `json:"end_block_events"`
+	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
+	ConsensusParamUpdates *abci.ConsensusParams     `json:"consensus_param_updates"`
 }
 
 // NewResultCommit is a helper to initialize the ResultCommit with
