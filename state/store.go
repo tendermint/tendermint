@@ -122,8 +122,8 @@ type ABCIResponses struct {
 
 // NewABCIResponses returns a new ABCIResponses
 func NewABCIResponses(block *types.Block) *ABCIResponses {
-	resDeliverTxs := make([]*abci.ResponseDeliverTx, block.NumTxs)
-	if block.NumTxs == 0 {
+	resDeliverTxs := make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
+	if len(block.Data.Txs) == 0 {
 		// This makes Amino encoding/decoding consistent.
 		resDeliverTxs = nil
 	}

@@ -1168,8 +1168,6 @@ definitions:
       - "chain_id"
       - "height"
       - "time"
-      - "num_txs"
-      - "total_txs"
       - "last_block_id"
       - "last_commit_hash"
       - "data_hash"
@@ -1202,12 +1200,6 @@ definitions:
       time:
         type: string
         x-example: "2019-04-22T17:01:51.701356223Z"
-      num_txs:
-        type: string
-        x-example: "2"
-      total_txs:
-        type: string
-        x-example: "3"
       last_block_id:
         $ref: "#/definitions/BlockID"
       last_commit_hash:
@@ -1596,8 +1588,6 @@ definitions:
                   - "chain_id"
                   - "height"
                   - "time"
-                  - "num_txs"
-                  - "total_txs"
                   - "last_block_id"
                   - "last_commit_hash"
                   - "data_hash"
@@ -1630,12 +1620,6 @@ definitions:
                   time:
                     type: "string"
                     example: "2019-04-22T17:01:51.701356223Z"
-                  num_txs:
-                    type: "string"
-                    example: "2"
-                  total_txs:
-                    type: "string"
-                    example: "3"
                   last_block_id:
                     required:
                       - "hash"

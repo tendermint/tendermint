@@ -44,11 +44,9 @@ func (tm2pb) Header(header *Header) abci.Header {
 			Block: header.Version.Block.Uint64(),
 			App:   header.Version.App.Uint64(),
 		},
-		ChainID:  header.ChainID,
-		Height:   header.Height,
-		Time:     header.Time,
-		NumTxs:   header.NumTxs,
-		TotalTxs: header.TotalTxs,
+		ChainID: header.ChainID,
+		Height:  header.Height,
+		Time:    header.Time,
 
 		LastBlockId: TM2PB.BlockID(header.LastBlockID),
 
