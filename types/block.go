@@ -18,7 +18,7 @@ import (
 
 const (
 	// MaxHeaderBytes is a maximum header size (including amino overhead).
-	MaxHeaderBytes int64 = 653
+	MaxHeaderBytes int64 = 632
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -62,22 +62,6 @@ func (b *Block) ValidateBasic() error {
 	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
-
-	newTxs := int64(len(b.Data.Txs))
-	if b.NumTxs != newTxs {
-		return fmt.Errorf("Wrong Header.NumTxs. Expected %v, got %v",
-			newTxs,
-			b.NumTxs,
-		)
-	}
-
-	// TODO: fix tests so we can do this
-	/*if b.TotalTxs < b.NumTxs {
-		return fmt.Errorf("Header.TotalTxs (%d) is less than Header.NumTxs (%d)", b.TotalTxs, b.NumTxs)
-	}*/
-	if b.TotalTxs < 0 {
-		return errors.New("Negative Header.TotalTxs")
-	}
 
 	if err := b.LastBlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong Header.LastBlockID: %v", err)
@@ -336,12 +320,10 @@ func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
 // - /docs/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
-	Version  version.Consensus `json:"version"`
-	ChainID  string            `json:"chain_id"`
-	Height   int64             `json:"height"`
-	Time     time.Time         `json:"time"`
-	NumTxs   int64             `json:"num_txs"`
-	TotalTxs int64             `json:"total_txs"`
+	Version version.Consensus `json:"version"`
+	ChainID string            `json:"chain_id"`
+	Height  int64             `json:"height"`
+	Time    time.Time         `json:"time"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
@@ -367,7 +349,7 @@ type Header struct {
 // Call this after MakeBlock to complete the Header.
 func (h *Header) Populate(
 	version version.Consensus, chainID string,
-	timestamp time.Time, lastBlockID BlockID, totalTxs int64,
+	timestamp time.Time, lastBlockID BlockID,
 	valHash, nextValHash []byte,
 	consensusHash, appHash, lastResultsHash []byte,
 	proposerAddress Address,
@@ -376,7 +358,6 @@ func (h *Header) Populate(
 	h.ChainID = chainID
 	h.Time = timestamp
 	h.LastBlockID = lastBlockID
-	h.TotalTxs = totalTxs
 	h.ValidatorsHash = valHash
 	h.NextValidatorsHash = nextValHash
 	h.ConsensusHash = consensusHash
@@ -400,8 +381,6 @@ func (h *Header) Hash() cmn.HexBytes {
 		cdcEncode(h.ChainID),
 		cdcEncode(h.Height),
 		cdcEncode(h.Time),
-		cdcEncode(h.NumTxs),
-		cdcEncode(h.TotalTxs),
 		cdcEncode(h.LastBlockID),
 		cdcEncode(h.LastCommitHash),
 		cdcEncode(h.DataHash),
@@ -425,8 +404,6 @@ func (h *Header) StringIndented(indent string) string {
 %s  ChainID:        %v
 %s  Height:         %v
 %s  Time:           %v
-%s  NumTxs:         %v
-%s  TotalTxs:       %v
 %s  LastBlockID:    %v
 %s  LastCommit:     %v
 %s  Data:           %v
@@ -442,8 +419,6 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.ChainID,
 		indent, h.Height,
 		indent, h.Time,
-		indent, h.NumTxs,
-		indent, h.TotalTxs,
 		indent, h.LastBlockID,
 		indent, h.LastCommitHash,
 		indent, h.DataHash,

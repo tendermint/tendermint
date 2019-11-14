@@ -233,9 +233,9 @@ func TestAppCalls(t *testing.T) {
 		blockResults, err := c.BlockResults(&txh)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.Equal(txh, blockResults.Height)
-		if assert.Equal(1, len(blockResults.Results.DeliverTx)) {
+		if assert.Equal(1, len(blockResults.TxsResults)) {
 			// check success code
-			assert.EqualValues(0, blockResults.Results.DeliverTx[0].Code)
+			assert.EqualValues(0, blockResults.TxsResults[0].Code)
 		}
 
 		// check blockchain info, now that we know there is info

@@ -28,16 +28,16 @@ func TestNodeStartStop(t *testing.T) {
 }
 
 func TestNodeNewBlockReceived(t *testing.T) {
-	blockCh := make(chan tmtypes.Header, 100)
+	blockCh := make(chan *tmtypes.Block, 100)
 	n, emMock := startValidatorNode(t)
 	defer n.Stop()
 	n.SendBlocksTo(blockCh)
 
-	blockHeader := tmtypes.Header{Height: 5}
-	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlockHeader{Header: blockHeader})
+	block := &tmtypes.Block{Header: tmtypes.Header{Height: 5}}
+	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlock{Block: block})
 
 	assert.Equal(t, int64(5), n.Height)
-	assert.Equal(t, blockHeader, <-blockCh)
+	assert.Equal(t, block, <-blockCh)
 }
 
 func TestNodeNewBlockLatencyReceived(t *testing.T) {
