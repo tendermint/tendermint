@@ -37,6 +37,7 @@ type Client struct {
 	client.StatusClient
 	client.EventsClient
 	client.EvidenceClient
+	client.MempoolClient
 	cmn.Service
 }
 
@@ -89,7 +90,10 @@ func (c Client) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQue
 	return c.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (c Client) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (c Client) ABCIQueryWithOptions(
+	path string,
+	data cmn.HexBytes,
+	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
 }
 

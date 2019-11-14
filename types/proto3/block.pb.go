@@ -3,9 +3,11 @@
 
 package proto3
 
-import proto "github.com/gogo/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/gogo/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type PartSetHeader struct {
 	Total                int32    `protobuf:"varint,1,opt,name=Total,proto3" json:"Total,omitempty"`
@@ -30,7 +32,7 @@ func (m *PartSetHeader) Reset()         { *m = PartSetHeader{} }
 func (m *PartSetHeader) String() string { return proto.CompactTextString(m) }
 func (*PartSetHeader) ProtoMessage()    {}
 func (*PartSetHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_1ca6cebf74619a45, []int{0}
+	return fileDescriptor_760f4d5ceb2a11f0, []int{0}
 }
 func (m *PartSetHeader) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PartSetHeader.Unmarshal(m, b)
@@ -38,8 +40,8 @@ func (m *PartSetHeader) XXX_Unmarshal(b []byte) error {
 func (m *PartSetHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PartSetHeader.Marshal(b, m, deterministic)
 }
-func (dst *PartSetHeader) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PartSetHeader.Merge(dst, src)
+func (m *PartSetHeader) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PartSetHeader.Merge(m, src)
 }
 func (m *PartSetHeader) XXX_Size() int {
 	return xxx_messageInfo_PartSetHeader.Size(m)
@@ -66,7 +68,7 @@ func (m *PartSetHeader) GetHash() []byte {
 
 type BlockID struct {
 	Hash                 []byte         `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	PartsHeader          *PartSetHeader `protobuf:"bytes,2,opt,name=PartsHeader" json:"PartsHeader,omitempty"`
+	PartsHeader          *PartSetHeader `protobuf:"bytes,2,opt,name=PartsHeader,proto3" json:"PartsHeader,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -76,7 +78,7 @@ func (m *BlockID) Reset()         { *m = BlockID{} }
 func (m *BlockID) String() string { return proto.CompactTextString(m) }
 func (*BlockID) ProtoMessage()    {}
 func (*BlockID) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_1ca6cebf74619a45, []int{1}
+	return fileDescriptor_760f4d5ceb2a11f0, []int{1}
 }
 func (m *BlockID) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BlockID.Unmarshal(m, b)
@@ -84,8 +86,8 @@ func (m *BlockID) XXX_Unmarshal(b []byte) error {
 func (m *BlockID) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BlockID.Marshal(b, m, deterministic)
 }
-func (dst *BlockID) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockID.Merge(dst, src)
+func (m *BlockID) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockID.Merge(m, src)
 }
 func (m *BlockID) XXX_Size() int {
 	return xxx_messageInfo_BlockID.Size(m)
@@ -112,14 +114,14 @@ func (m *BlockID) GetPartsHeader() *PartSetHeader {
 
 type Header struct {
 	// basic block info
-	Version  *Version   `protobuf:"bytes,1,opt,name=Version" json:"Version,omitempty"`
+	Version  *Version   `protobuf:"bytes,1,opt,name=Version,proto3" json:"Version,omitempty"`
 	ChainID  string     `protobuf:"bytes,2,opt,name=ChainID,proto3" json:"ChainID,omitempty"`
 	Height   int64      `protobuf:"varint,3,opt,name=Height,proto3" json:"Height,omitempty"`
-	Time     *Timestamp `protobuf:"bytes,4,opt,name=Time" json:"Time,omitempty"`
+	Time     *Timestamp `protobuf:"bytes,4,opt,name=Time,proto3" json:"Time,omitempty"`
 	NumTxs   int64      `protobuf:"varint,5,opt,name=NumTxs,proto3" json:"NumTxs,omitempty"`
 	TotalTxs int64      `protobuf:"varint,6,opt,name=TotalTxs,proto3" json:"TotalTxs,omitempty"`
 	// prev block info
-	LastBlockID *BlockID `protobuf:"bytes,7,opt,name=LastBlockID" json:"LastBlockID,omitempty"`
+	LastBlockID *BlockID `protobuf:"bytes,7,opt,name=LastBlockID,proto3" json:"LastBlockID,omitempty"`
 	// hashes of block data
 	LastCommitHash []byte `protobuf:"bytes,8,opt,name=LastCommitHash,proto3" json:"LastCommitHash,omitempty"`
 	DataHash       []byte `protobuf:"bytes,9,opt,name=DataHash,proto3" json:"DataHash,omitempty"`
@@ -141,7 +143,7 @@ func (m *Header) Reset()         { *m = Header{} }
 func (m *Header) String() string { return proto.CompactTextString(m) }
 func (*Header) ProtoMessage()    {}
 func (*Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_1ca6cebf74619a45, []int{2}
+	return fileDescriptor_760f4d5ceb2a11f0, []int{2}
 }
 func (m *Header) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Header.Unmarshal(m, b)
@@ -149,8 +151,8 @@ func (m *Header) XXX_Unmarshal(b []byte) error {
 func (m *Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Header.Marshal(b, m, deterministic)
 }
-func (dst *Header) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Header.Merge(dst, src)
+func (m *Header) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Header.Merge(m, src)
 }
 func (m *Header) XXX_Size() int {
 	return xxx_messageInfo_Header.Size(m)
@@ -285,7 +287,7 @@ func (m *Version) Reset()         { *m = Version{} }
 func (m *Version) String() string { return proto.CompactTextString(m) }
 func (*Version) ProtoMessage()    {}
 func (*Version) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_1ca6cebf74619a45, []int{3}
+	return fileDescriptor_760f4d5ceb2a11f0, []int{3}
 }
 func (m *Version) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Version.Unmarshal(m, b)
@@ -293,8 +295,8 @@ func (m *Version) XXX_Unmarshal(b []byte) error {
 func (m *Version) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Version.Marshal(b, m, deterministic)
 }
-func (dst *Version) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Version.Merge(dst, src)
+func (m *Version) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Version.Merge(m, src)
 }
 func (m *Version) XXX_Size() int {
 	return xxx_messageInfo_Version.Size(m)
@@ -336,7 +338,7 @@ func (m *Timestamp) Reset()         { *m = Timestamp{} }
 func (m *Timestamp) String() string { return proto.CompactTextString(m) }
 func (*Timestamp) ProtoMessage()    {}
 func (*Timestamp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_block_1ca6cebf74619a45, []int{4}
+	return fileDescriptor_760f4d5ceb2a11f0, []int{4}
 }
 func (m *Timestamp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Timestamp.Unmarshal(m, b)
@@ -344,8 +346,8 @@ func (m *Timestamp) XXX_Unmarshal(b []byte) error {
 func (m *Timestamp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Timestamp.Marshal(b, m, deterministic)
 }
-func (dst *Timestamp) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Timestamp.Merge(dst, src)
+func (m *Timestamp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Timestamp.Merge(m, src)
 }
 func (m *Timestamp) XXX_Size() int {
 	return xxx_messageInfo_Timestamp.Size(m)
@@ -378,9 +380,9 @@ func init() {
 	proto.RegisterType((*Timestamp)(nil), "proto3.Timestamp")
 }
 
-func init() { proto.RegisterFile("types/proto3/block.proto", fileDescriptor_block_1ca6cebf74619a45) }
+func init() { proto.RegisterFile("types/proto3/block.proto", fileDescriptor_760f4d5ceb2a11f0) }
 
-var fileDescriptor_block_1ca6cebf74619a45 = []byte{
+var fileDescriptor_760f4d5ceb2a11f0 = []byte{
 	// 451 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x53, 0x5f, 0x6f, 0xd3, 0x30,
 	0x10, 0x57, 0x68, 0xda, 0xae, 0x97, 0x76, 0x1d, 0x27, 0x40, 0x16, 0x4f, 0x55, 0x04, 0xa8, 0xbc,

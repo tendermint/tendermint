@@ -35,11 +35,41 @@ type HTTPClient interface {
 	SetCodec(*amino.Codec)
 }
 
-// TODO: Deprecate support for IP:PORT or /path/to/socket
-func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (net.Conn, error)) {
-	// protocol to use for http operations, to support both http and https
-	clientProtocol := protoHTTP
+// protocol - client's protocol (for example, "http", "https", "wss", "ws", "tcp")
+// trimmedS - rest of the address (for example, "192.0.2.1:25", "[2001:db8::1]:80") with "/" replaced with "."
+func toClientAddrAndParse(remoteAddr string) (network string, trimmedS string, err error) {
+	protocol, address, err := parseRemoteAddr(remoteAddr)
+	if err != nil {
+		return "", "", err
+	}
 
+	// protocol to use for http operations, to support both http and https
+	var clientProtocol string
+	// default to http for unknown protocols (ex. tcp)
+	switch protocol {
+	case protoHTTP, protoHTTPS, protoWS, protoWSS:
+		clientProtocol = protocol
+	default:
+		clientProtocol = protoHTTP
+	}
+
+	// replace / with . for http requests (kvstore domain)
+	trimmedAddress := strings.Replace(address, "/", ".", -1)
+	return clientProtocol, trimmedAddress, nil
+}
+
+func toClientAddress(remoteAddr string) (string, error) {
+	clientProtocol, trimmedAddress, err := toClientAddrAndParse(remoteAddr)
+	if err != nil {
+		return "", err
+	}
+	return clientProtocol + "://" + trimmedAddress, nil
+}
+
+// network - name of the network (for example, "tcp", "unix")
+// s - rest of the address (for example, "192.0.2.1:25", "[2001:db8::1]:80")
+// TODO: Deprecate support for IP:PORT or /path/to/socket
+func parseRemoteAddr(remoteAddr string) (network string, s string, err error) {
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
 	switch {
@@ -49,38 +79,44 @@ func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (ne
 	case len(parts) == 2:
 		protocol, address = parts[0], parts[1]
 	default:
-		// return a invalid message
-		msg := fmt.Sprintf("Invalid addr: %s", remoteAddr)
-		return clientProtocol, msg, func(_ string, _ string) (net.Conn, error) {
-			return nil, errors.New(msg)
-		}
+		return "", "", fmt.Errorf("invalid addr: %s", remoteAddr)
 	}
 
-	// accept http as an alias for tcp and set the client protocol
+	return protocol, address, nil
+}
+
+func makeErrorDialer(err error) func(string, string) (net.Conn, error) {
+	return func(_ string, _ string) (net.Conn, error) {
+		return nil, err
+	}
+}
+
+func makeHTTPDialer(remoteAddr string) func(string, string) (net.Conn, error) {
+	protocol, address, err := parseRemoteAddr(remoteAddr)
+	if err != nil {
+		return makeErrorDialer(err)
+	}
+
+	// accept http(s) as an alias for tcp
 	switch protocol {
 	case protoHTTP, protoHTTPS:
-		clientProtocol = protocol
 		protocol = protoTCP
-	case protoWS, protoWSS:
-		clientProtocol = protocol
 	}
 
-	// replace / with . for http requests (kvstore domain)
-	trimmedAddress := strings.Replace(address, "/", ".", -1)
-	return clientProtocol, trimmedAddress, func(proto, addr string) (net.Conn, error) {
+	return func(proto, addr string) (net.Conn, error) {
 		return net.Dial(protocol, address)
 	}
 }
 
+// DefaultHTTPClient is used to create an http client with some default parameters.
 // We overwrite the http.Client.Dial so we can do http over tcp or unix.
 // remoteAddr should be fully featured (eg. with tcp:// or unix://)
-func makeHTTPClient(remoteAddr string) (string, *http.Client) {
-	protocol, address, dialer := makeHTTPDialer(remoteAddr)
-	return protocol + "://" + address, &http.Client{
+func DefaultHTTPClient(remoteAddr string) *http.Client {
+	return &http.Client{
 		Transport: &http.Transport{
 			// Set to true to prevent GZIP-bomb DoS attacks
 			DisableCompression: true,
-			Dial:               dialer,
+			Dial:               makeHTTPDialer(remoteAddr),
 		},
 	}
 }
@@ -124,9 +160,23 @@ var _ JSONRPCCaller = (*JSONRPCRequestBatch)(nil)
 
 // NewJSONRPCClient returns a JSONRPCClient pointed at the given address.
 func NewJSONRPCClient(remote string) *JSONRPCClient {
-	address, client := makeHTTPClient(remote)
+	return NewJSONRPCClientWithHTTPClient(remote, DefaultHTTPClient(remote))
+}
+
+// NewJSONRPCClientWithHTTPClient returns a JSONRPCClient pointed at the given address using a custom http client
+// The function panics if the provided client is nil or remote is invalid.
+func NewJSONRPCClientWithHTTPClient(remote string, client *http.Client) *JSONRPCClient {
+	if client == nil {
+		panic("nil http.Client provided")
+	}
+
+	clientAddress, err := toClientAddress(remote)
+	if err != nil {
+		panic(fmt.Sprintf("invalid remote %s: %s", remote, err))
+	}
+
 	return &JSONRPCClient{
-		address: address,
+		address: clientAddress,
 		client:  client,
 		id:      types.JSONRPCStringID("jsonrpc-client-" + cmn.RandStr(8)),
 		cdc:     amino.NewCodec(),
@@ -241,7 +291,11 @@ func (b *JSONRPCRequestBatch) Send() ([]interface{}, error) {
 
 // Call enqueues a request to call the given RPC method with the specified
 // parameters, in the same way that the `JSONRPCClient.Call` function would.
-func (b *JSONRPCRequestBatch) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+func (b *JSONRPCRequestBatch) Call(
+	method string,
+	params map[string]interface{},
+	result interface{},
+) (interface{}, error) {
 	request, err := types.MapToRequest(b.client.cdc, b.client.id, method, params)
 	if err != nil {
 		return nil, err
@@ -259,11 +313,15 @@ type URIClient struct {
 	cdc     *amino.Codec
 }
 
+// The function panics if the provided remote is invalid.
 func NewURIClient(remote string) *URIClient {
-	address, client := makeHTTPClient(remote)
+	clientAddress, err := toClientAddress(remote)
+	if err != nil {
+		panic(fmt.Sprintf("invalid remote %s: %s", remote, err))
+	}
 	return &URIClient{
-		address: address,
-		client:  client,
+		address: clientAddress,
+		client:  DefaultHTTPClient(remote),
 		cdc:     amino.NewCodec(),
 	}
 }
@@ -297,7 +355,12 @@ func (c *URIClient) SetCodec(cdc *amino.Codec) {
 
 //------------------------------------------------
 
-func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, expectedID types.JSONRPCStringID, result interface{}) (interface{}, error) {
+func unmarshalResponseBytes(
+	cdc *amino.Codec,
+	responseBytes []byte,
+	expectedID types.JSONRPCStringID,
+	result interface{},
+) (interface{}, error) {
 	// Read response.  If rpc/core/types is imported, the result will unmarshal
 	// into the correct type.
 	// log.Notice("response", "response", string(responseBytes))
@@ -323,7 +386,12 @@ func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, expectedID t
 	return result, nil
 }
 
-func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expectedID types.JSONRPCStringID, results []interface{}) ([]interface{}, error) {
+func unmarshalResponseBytesArray(
+	cdc *amino.Codec,
+	responseBytes []byte,
+	expectedID types.JSONRPCStringID,
+	results []interface{},
+) ([]interface{}, error) {
 	var (
 		err       error
 		responses []types.RPCResponse
@@ -336,10 +404,15 @@ func unmarshalResponseBytesArray(cdc *amino.Codec, responseBytes []byte, expecte
 	// and unsuccessful responses.
 
 	if len(results) != len(responses) {
-		return nil, errors.Errorf("expected %d result objects into which to inject responses, but got %d", len(responses), len(results))
+		return nil, errors.Errorf(
+			"expected %d result objects into which to inject responses, but got %d",
+			len(responses),
+			len(results),
+		)
 	}
 
 	for i, response := range responses {
+		response := response
 		// From the JSON-RPC 2.0 spec:
 		//  id: It MUST be the same as the value of the id member in the Request Object.
 		if err := validateResponseID(&response, expectedID); err != nil {

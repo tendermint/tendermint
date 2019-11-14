@@ -85,7 +85,7 @@ func (n *Network) NewBlock(b tmtypes.Header) {
 	} else {
 		n.AvgBlockTime = 0.0
 	}
-	n.txThroughputMeter.Mark(int64(b.NumTxs))
+	n.txThroughputMeter.Mark(b.NumTxs)
 	n.AvgTxThroughput = n.txThroughputMeter.Rate1()
 }
 
@@ -180,6 +180,7 @@ func (n *Network) UpdateNumValidatorsForHeight(num int, height int64) {
 	if n.Height <= height {
 		n.NumValidators = num
 	}
+	n.updateHealth()
 }
 
 func (n *Network) GetHealthString() string {

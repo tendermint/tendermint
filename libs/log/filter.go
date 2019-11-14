@@ -72,10 +72,14 @@ func (l *filter) Error(msg string, keyvals ...interface{}) {
 //     logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"))
 //		 logger.With("module", "crypto").Info("Hello") # produces "I... Hello module=crypto"
 //
-//     logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
+//     logger = log.NewFilter(logger, log.AllowError(),
+//				log.AllowInfoWith("module", "crypto"),
+// 				log.AllowNoneWith("user", "Sam"))
 //		 logger.With("module", "crypto", "user", "Sam").Info("Hello") # returns nil
 //
-//     logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
+//     logger = log.NewFilter(logger,
+// 				log.AllowError(),
+// 				log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
 //		 logger.With("user", "Sam").With("module", "crypto").Info("Hello") # produces "I... Hello module=crypto user=Sam"
 func (l *filter) With(keyvals ...interface{}) Logger {
 	keyInAllowedKeyvals := false

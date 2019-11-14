@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -113,13 +114,13 @@ func testOutboundPeerConn(
 	var pc peerConn
 	conn, err := testDial(addr, config)
 	if err != nil {
-		return pc, cmn.ErrorWrap(err, "Error creating peer")
+		return pc, errors.Wrap(err, "Error creating peer")
 	}
 
 	pc, err = testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
-			return pc, cmn.ErrorWrap(err, cerr.Error())
+			return pc, errors.Wrap(err, cerr.Error())
 		}
 		return pc, err
 	}
@@ -127,7 +128,7 @@ func testOutboundPeerConn(
 	// ensure dialed ID matches connection ID
 	if addr.ID != pc.ID() {
 		if cerr := conn.Close(); cerr != nil {
-			return pc, cmn.ErrorWrap(err, cerr.Error())
+			return pc, errors.Wrap(err, cerr.Error())
 		}
 		return pc, ErrSwitchAuthenticationFailure{addr, pc.ID()}
 	}

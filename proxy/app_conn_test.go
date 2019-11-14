@@ -147,7 +147,7 @@ func TestInfo(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	if string(resInfo.Data) != "{\"size\":0}" {
+	if resInfo.Data != "{\"size\":0}" {
 		t.Error("Expected ResponseInfo with one element '{\"size\":0}' but got something else")
 	}
 }

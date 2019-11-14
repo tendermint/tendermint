@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -95,6 +96,7 @@ func TestPartSetHeaderValidateBasic(t *testing.T) {
 		{"Invalid Hash", func(psHeader *PartSetHeader) { psHeader.Hash = make([]byte, 1) }, true},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			data := cmn.RandBytes(testPartSize * 100)
 			ps := NewPartSetFromData(data, testPartSize)
@@ -114,9 +116,17 @@ func TestPartValidateBasic(t *testing.T) {
 		{"Good Part", func(pt *Part) {}, false},
 		{"Negative index", func(pt *Part) { pt.Index = -1 }, true},
 		{"Too big part", func(pt *Part) { pt.Bytes = make([]byte, BlockPartSizeBytes+1) }, true},
+		{"Too big proof", func(pt *Part) {
+			pt.Proof = merkle.SimpleProof{
+				Total:    1,
+				Index:    1,
+				LeafHash: make([]byte, 1024*1024),
+			}
+		}, true},
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			data := cmn.RandBytes(testPartSize * 100)
 			ps := NewPartSetFromData(data, testPartSize)

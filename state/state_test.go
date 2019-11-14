@@ -37,7 +37,6 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 func TestStateCopy(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	stateCopy := state.Copy()
@@ -68,7 +67,6 @@ func TestMakeGenesisStateNilValidators(t *testing.T) {
 func TestStateSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
@@ -84,7 +82,6 @@ func TestStateSaveLoad(t *testing.T) {
 func TestABCIResponsesSaveLoad1(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
@@ -110,7 +107,6 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 func TestABCIResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	cases := [...]struct {
@@ -181,7 +177,6 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 func TestValidatorSimpleSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
 	assert := assert.New(t)
 
 	// Can't load anything for height 0.
@@ -383,7 +378,11 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 		// https://github.com/cwgoes/tm-proposer-idris
 		// and inferred to generalize to N-1
 		bound := N - 1
-		require.True(t, abs <= bound, fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq))
+		require.True(
+			t,
+			abs <= bound,
+			fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq),
+		)
 	}
 }
 
@@ -568,7 +567,13 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	expectedVal1Prio -= totalPower      // 1, val1 proposer
 
 	assert.EqualValues(t, expectedVal1Prio, updatedVal1.ProposerPriority)
-	assert.EqualValues(t, expectedVal2Prio, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
+	assert.EqualValues(
+		t,
+		expectedVal2Prio,
+		updatedVal2.ProposerPriority,
+		"unexpected proposer priority for validator: %v",
+		updatedVal2,
+	)
 
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 	require.NoError(t, err)
@@ -591,8 +596,20 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	expectedVal1Prio2 := expectedVal1Prio + val1VotingPower // 1 + 10 == 11
 	expectedVal1Prio2 -= totalPower                         // -9, val1 proposer
 
-	assert.EqualValues(t, expectedVal1Prio2, updatedVal1.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
-	assert.EqualValues(t, expectedVal2Prio2, updatedVal2.ProposerPriority, "unexpected proposer priority for validator: %v", updatedVal2)
+	assert.EqualValues(
+		t,
+		expectedVal1Prio2,
+		updatedVal1.ProposerPriority,
+		"unexpected proposer priority for validator: %v",
+		updatedVal2,
+	)
+	assert.EqualValues(
+		t,
+		expectedVal2Prio2,
+		updatedVal2.ProposerPriority,
+		"unexpected proposer priority for validator: %v",
+		updatedVal2,
+	)
 
 	// no changes in voting power and both validators have same voting power
 	// -> proposers should alternate:
@@ -621,7 +638,13 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 		updatedState, err := sm.UpdateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
 		assert.NoError(t, err)
 		// alternate (and cyclic priorities):
-		assert.NotEqual(t, updatedState.Validators.Proposer.Address, updatedState.NextValidators.Proposer.Address, "iter: %v", i)
+		assert.NotEqual(
+			t,
+			updatedState.Validators.Proposer.Address,
+			updatedState.NextValidators.Proposer.Address,
+			"iter: %v",
+			i,
+		)
 		assert.Equal(t, oldState.Validators.Proposer.Address, updatedState.NextValidators.Proposer.Address, "iter: %v", i)
 
 		_, updatedVal1 = updatedState.NextValidators.GetByAddress(val1PubKey.Address())
@@ -645,10 +668,14 @@ func TestLargeGenesisValidator(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
 
-	genesisVotingPower := int64(types.MaxTotalVotingPower / 1000)
+	genesisVotingPower := types.MaxTotalVotingPower / 1000
 	genesisPubKey := ed25519.GenPrivKey().PubKey()
 	// fmt.Println("genesis addr: ", genesisPubKey.Address())
-	genesisVal := &types.Validator{Address: genesisPubKey.Address(), PubKey: genesisPubKey, VotingPower: genesisVotingPower}
+	genesisVal := &types.Validator{
+		Address:     genesisPubKey.Address(),
+		PubKey:      genesisPubKey,
+		VotingPower: genesisVotingPower,
+	}
 	// reset state validators to above validator
 	state.Validators = types.NewValidatorSet([]*types.Validator{genesisVal})
 	state.NextValidators = state.Validators

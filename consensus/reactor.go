@@ -137,8 +137,9 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 			RecvMessageCapacity: maxMsgSize,
 		},
 		{
-			ID:                  DataChannel, // maybe split between gossiping current block and catchup stuff
-			Priority:            10,          // once we gossip the whole block there's nothing left to send until next height or round
+			ID: DataChannel, // maybe split between gossiping current block and catchup stuff
+			// once we gossip the whole block there's nothing left to send until next height or round
+			Priority:            10,
 			SendQueueCapacity:   100,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: maxMsgSize,
@@ -670,7 +671,11 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) gossipVotesForHeight(logger log.Logger, rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
+func (conR *ConsensusReactor) gossipVotesForHeight(
+	logger log.Logger,
+	rs *cstypes.RoundState,
+	prs *cstypes.PeerRoundState,
+	ps *PeerState) bool {
 
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
@@ -1119,7 +1124,13 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValida
 		NOTE: This is wrong, 'round' could change.
 		e.g. if orig round is not the same as block LastCommit round.
 		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
-			panic(fmt.Sprintf("Conflicting CatchupCommitRound. Height: %v, Orig: %v, New: %v", height, ps.CatchupCommitRound, round))
+			panic(fmt.Sprintf(
+				"Conflicting CatchupCommitRound. Height: %v,
+				Orig: %v,
+				New: %v",
+				height,
+				ps.CatchupCommitRound,
+				round))
 		}
 	*/
 	if ps.PRS.CatchupCommitRound == round {
@@ -1211,7 +1222,11 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 }
 
 func (ps *PeerState) setHasVote(height int64, round int, type_ types.SignedMsgType, index int) {
-	logger := ps.logger.With("peerH/R", fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round), "H/R", fmt.Sprintf("%d/%d", height, round))
+	logger := ps.logger.With(
+		"peerH/R",
+		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+		"H/R",
+		fmt.Sprintf("%d/%d", height, round))
 	logger.Debug("setHasVote", "type", type_, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
@@ -1453,10 +1468,16 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 	if err := m.BlockPartsHeader.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong BlockPartsHeader: %v", err)
 	}
+	if m.BlockParts.Size() == 0 {
+		return errors.New("Empty BlockParts")
+	}
 	if m.BlockParts.Size() != m.BlockPartsHeader.Total {
 		return fmt.Errorf("BlockParts bit array size %d not equal to BlockPartsHeader.Total %d",
 			m.BlockParts.Size(),
 			m.BlockPartsHeader.Total)
+	}
+	if m.BlockParts.Size() > types.MaxBlockPartsCount {
+		return errors.Errorf("BlockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
 	}
 	return nil
 }
@@ -1503,6 +1524,9 @@ func (m *ProposalPOLMessage) ValidateBasic() error {
 	}
 	if m.ProposalPOL.Size() == 0 {
 		return errors.New("Empty ProposalPOL bit array")
+	}
+	if m.ProposalPOL.Size() > types.MaxVotesCount {
+		return errors.Errorf("ProposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
 	}
 	return nil
 }
@@ -1647,6 +1671,9 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 		return fmt.Errorf("Wrong BlockID: %v", err)
 	}
 	// NOTE: Votes.Size() can be zero if the node does not have any
+	if m.Votes.Size() > types.MaxVotesCount {
+		return fmt.Errorf("Votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
+	}
 	return nil
 }
 

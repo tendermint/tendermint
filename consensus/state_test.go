@@ -107,7 +107,10 @@ func TestStateProposerSelection2(t *testing.T) {
 		addr := vss[(i+round)%len(vss)].GetPubKey().Address()
 		correctProposer := addr
 		if !bytes.Equal(prop.Address, correctProposer) {
-			panic(fmt.Sprintf("expected RoundState.Validators.GetProposer() to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
+			panic(fmt.Sprintf(
+				"expected RoundState.Validators.GetProposer() to be validator %d. Got %X",
+				(i+2)%len(vss),
+				prop.Address))
 		}
 
 		rs := cs1.GetRoundState()
@@ -189,7 +192,7 @@ func TestStateBadProposal(t *testing.T) {
 	if len(stateHash) == 0 {
 		stateHash = make([]byte, 32)
 	}
-	stateHash[0] = byte((stateHash[0] + 1) % 255)
+	stateHash[0] = (stateHash[0] + 1) % 255
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
@@ -364,7 +367,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	// lets add one for a different block
 	hash := make([]byte, len(theBlockHash))
 	copy(hash, theBlockHash)
-	hash[0] = byte((hash[0] + 1) % 255)
+	hash[0] = (hash[0] + 1) % 255
 	signAddVotes(cs1, types.PrecommitType, hash, thePartSetHeader, vs2)
 	ensurePrecommit(voteCh, height, round) // precommit
 
@@ -432,7 +435,10 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and are the proposer
 	if !bytes.Equal(rs.ProposalBlock.Hash(), rs.LockedBlock.Hash()) {
-		panic(fmt.Sprintf("Expected proposal block to be locked block. Got %v, Expected %v", rs.ProposalBlock, rs.LockedBlock))
+		panic(fmt.Sprintf(
+			"Expected proposal block to be locked block. Got %v, Expected %v",
+			rs.ProposalBlock,
+			rs.LockedBlock))
 	}
 
 	ensurePrevote(voteCh, height, round) // prevote
@@ -446,7 +452,12 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash) // precommit nil but be locked on proposal
 
-	signAddVotes(cs1, types.PrecommitType, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2) // NOTE: conflicting precommits at same height
+	signAddVotes(
+		cs1,
+		types.PrecommitType,
+		hash,
+		rs.ProposalBlock.MakePartSet(partSize).Header(),
+		vs2) // NOTE: conflicting precommits at same height
 	ensurePrecommit(voteCh, height, round)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
@@ -486,7 +497,12 @@ func TestStateLockNoPOL(t *testing.T) {
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash) // precommit nil but locked on proposal
 
-	signAddVotes(cs1, types.PrecommitType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2) // NOTE: conflicting precommits at same height
+	signAddVotes(
+		cs1,
+		types.PrecommitType,
+		propBlock.Hash(),
+		propBlock.MakePartSet(partSize).Header(),
+		vs2) // NOTE: conflicting precommits at same height
 	ensurePrecommit(voteCh, height, round)
 }
 
@@ -1330,7 +1346,10 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 
 	ensureNewTimeout(timeoutProposeCh, height+1, round, cs1.config.Propose(round).Nanoseconds())
 	rs = cs1.GetRoundState()
-	assert.False(t, rs.TriggeredTimeoutPrecommit, "triggeredTimeoutPrecommit should be false at the beginning of each round")
+	assert.False(
+		t,
+		rs.TriggeredTimeoutPrecommit,
+		"triggeredTimeoutPrecommit should be false at the beginning of each round")
 }
 
 func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
@@ -1382,7 +1401,10 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	ensureNewProposal(proposalCh, height+1, 0)
 
 	rs = cs1.GetRoundState()
-	assert.False(t, rs.TriggeredTimeoutPrecommit, "triggeredTimeoutPrecommit should be false at the beginning of each height")
+	assert.False(
+		t,
+		rs.TriggeredTimeoutPrecommit,
+		"triggeredTimeoutPrecommit should be false at the beginning of each height")
 }
 
 //------------------------------------------------------------------------------------------

@@ -1,5 +1,7 @@
 # tm-bench
 
+**Deprecation Warning**: please use [tm-load-test](https://github.com/interchainio/tm-load-test)
+
 Tendermint blockchain benchmarking tool:
 
 - [https://github.com/tendermint/tendermint/tree/master/tools/tm-bench](https://github.com/tendermint/tendermint/tree/master/tools/tm-bench)

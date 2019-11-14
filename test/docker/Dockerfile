@@ -1,4 +1,4 @@
-FROM golang:1.12
+FROM golang:1.13
 
 # Add testing deps for curl
 RUN echo 'deb http://httpredir.debian.org/debian testing main non-free contrib' >> /etc/apt/sources.list
@@ -19,7 +19,7 @@ COPY . $REPO
 
 # Install the vendored dependencies
 # docker caching prevents reinstall on code change!
-RUN make get_tools
+RUN make tools
 
 # install ABCI CLI
 RUN make install_abci
