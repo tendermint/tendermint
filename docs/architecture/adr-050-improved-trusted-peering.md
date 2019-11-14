@@ -7,7 +7,7 @@
 ## Context
 
 When `max_num_inbound_peers` or `max_num_outbound_peers` of a node is reached, the node cannot spare more slots to any peer 
-by inbound or outbound. Therefore, after certain period of disconnection, any important peering can be lost indefinitely 
+by inbound or outbound. Therefore, after a certain period of disconnection, any important peering can be lost indefinitely 
 because all slots consumed by other peers, and the node stop trying to dial the peer anymore.
 
 This is happening because of two reasons, exponential backoff and absence of unconditional peering feature for trusted peers.
