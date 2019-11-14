@@ -1261,6 +1261,9 @@ definitions:
         $ref: "#/definitions/BlockId"
       header:
         $ref: "#/definitions/BlockHeader"
+      number_txs:
+        type: number
+        x-example: 0
   Blockchain:
     type: object
     required:
