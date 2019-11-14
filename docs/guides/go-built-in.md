@@ -1,4 +1,10 @@
-# 1 Guide Assumptions
+---
+order: 2
+---
+
+# Creating a built-in application in Go
+
+## Guide assumptions
 
 This guide is designed for beginners who want to get started with a Tendermint
 Core application from scratch. It does not assume that you have any prior
@@ -17,7 +23,7 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
-# 1 Creating a built-in application in Go
+## Built-in app vs external app
 
 Running your application inside the same process as Tendermint Core will give
 you the best possible performance.
@@ -78,7 +84,7 @@ Hello, Tendermint Core
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 
@@ -219,7 +225,7 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 When Tendermint Core has decided on the block, it's transfered to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered  asynchronously, but the
+`EndBlock` in the end. DeliverTx are being transfered asynchronously, but the
 responses are expected to come in order.
 
 ```
@@ -446,6 +452,13 @@ defer db.Close()
 app := NewKVStoreApplication(db)
 ```
 
+For **Windows** users, restarting this app will make badger throw an error as it requires value log to be truncated. For more information on this, visit [here](https://github.com/dgraph-io/badger/issues/744).
+This can be avoided by setting the truncate option to true, like this:
+
+```go
+db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
+```
+
 Then we use it to create a Tendermint Core `Node` instance:
 
 ```go
@@ -628,3 +641,10 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 
 "dGVuZGVybWludA==" and "cm9ja3M=" are the base64-encoding of the ASCII of
 "tendermint" and "rocks" accordingly.
+
+## Outro
+
+I hope everything went smoothly and your first, but hopefully not the last,
+Tendermint Core application is up and running. If not, please [open an issue on
+Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
+deeper, read [the docs](https://tendermint.com/docs/).

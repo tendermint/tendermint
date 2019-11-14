@@ -1,26 +1,58 @@
-run:
-  deadline: 1m
-
 linters:
-  enable-all: true
-  disable:
-    - gocyclo
-    - golint
-    - maligned
-    - errcheck
-    - staticcheck
-    - interfacer
-    - unconvert
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    # - errcheck
+    # - funlen
+    # - gochecknoglobals
+    # - gochecknoinits
     - goconst
-    - unparam
-    - nakedret
-    - lll
-    - gochecknoglobals
     - gocritic
-    - gochecknoinits
+    # - gocyclo
+    # - godox
+    - gofmt
+    - goimports
+    # - golint
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    - lll
+    - misspell
+    - maligned
+    - nakedret
+    - prealloc
     - scopelint
-    - stylecheck
-# linters-settings:
+    - staticcheck
+    - structcheck
+    # - stylecheck
+    - typecheck
+    - unconvert
+    # - unparam
+    - unused
+    - varcheck
+    # - whitespace
+    # - wsl
+    # - gocognit
+  disable:
+    - errcheck
+
+issues:
+  exclude-rules:
+  - linters:
+      - lll
+    source: "https://"
+
+linters-settings:
+  dogsled:
+    max-blank-identifiers: 3
+  maligned:
+    # print struct with more effective memory layout or not, false by default
+    suggest-new: true
 #   govet:
 #     check-shadowing: true
 #   golint:
@@ -31,9 +63,6 @@ linters:
 #     suggest-new: true
 #   dupl:
 #     threshold: 100
-#   goconst:
-#     min-len: 2
-#     min-occurrences: 2
 #   depguard:
 #     list-type: blacklist
 #     packages:

@@ -23,8 +23,10 @@ import (
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
-// RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
-// "result" is the interface on which the result objects are registered, and is popualted with every RPCResponse
+// RegisterRPCFuncs adds a route for each function in the funcMap,
+// as well as general jsonrpc and websocket handlers for all functions.
+// "result" is the interface on which the result objects are registered,
+// and is popualted with every RPCResponse
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, cdc *amino.Codec, logger log.Logger) {
 	// HTTP endpoints
 	for funcName, rpcFunc := range funcMap {
@@ -103,7 +105,13 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(types.JSONRPCStringID(""), errors.Wrap(err, "error reading request body")))
+			WriteRPCResponseHTTP(
+				w,
+				types.RPCInvalidRequestError(
+					types.JSONRPCStringID(""),
+					errors.Wrap(err, "error reading request body"),
+				),
+			)
 			return
 		}
 		// if its an empty request (like from a browser),
@@ -122,21 +130,33 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			// next, try to unmarshal as a single request
 			var request types.RPCRequest
 			if err := json.Unmarshal(b, &request); err != nil {
-				WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "error unmarshalling request")))
+				WriteRPCResponseHTTP(
+					w,
+					types.RPCParseError(
+						types.JSONRPCStringID(""),
+						errors.Wrap(err, "error unmarshalling request"),
+					),
+				)
 				return
 			}
 			requests = []types.RPCRequest{request}
 		}
 
 		for _, request := range requests {
+			request := request
 			// A Notification is a Request object without an "id" member.
 			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
 			if request.ID == types.JSONRPCStringID("") {
-				logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
+				logger.Debug(
+					"HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)",
+				)
 				continue
 			}
 			if len(r.URL.Path) > 1 {
-				responses = append(responses, types.RPCInvalidRequestError(request.ID, errors.Errorf("path %s is invalid", r.URL.Path)))
+				responses = append(
+					responses,
+					types.RPCInvalidRequestError(request.ID, errors.Errorf("path %s is invalid", r.URL.Path)),
+				)
 				continue
 			}
 			rpcFunc, ok := funcMap[request.Method]
@@ -149,7 +169,10 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
 				if err != nil {
-					responses = append(responses, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "error converting json params to arguments")))
+					responses = append(
+						responses,
+						types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "error converting json params to arguments")),
+					)
 					continue
 				}
 				args = append(args, fnArgs...)
@@ -171,8 +194,8 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 
 func handleInvalidJSONRPCPaths(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Since the pattern "/" matches all paths not matched by other registered patterns we check whether the path is indeed
-		// "/", otherwise return a 404 error
+		// Since the pattern "/" matches all paths not matched by other registered patterns,
+		//  we check whether the path is indeed "/", otherwise return a 404 error
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
@@ -182,7 +205,12 @@ func handleInvalidJSONRPCPaths(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func mapParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params map[string]json.RawMessage, argsOffset int) ([]reflect.Value, error) {
+func mapParamsToArgs(
+	rpcFunc *RPCFunc,
+	cdc *amino.Codec,
+	params map[string]json.RawMessage,
+	argsOffset int,
+) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(rpcFunc.argNames))
 	for i, argName := range rpcFunc.argNames {
 		argType := rpcFunc.args[i+argsOffset]
@@ -202,7 +230,12 @@ func mapParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params map[string]json.
 	return values, nil
 }
 
-func arrayParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params []json.RawMessage, argsOffset int) ([]reflect.Value, error) {
+func arrayParamsToArgs(
+	rpcFunc *RPCFunc,
+	cdc *amino.Codec,
+	params []json.RawMessage,
+	argsOffset int,
+) ([]reflect.Value, error) {
 	if len(rpcFunc.argNames) != len(params) {
 		return nil, errors.Errorf("expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
@@ -271,7 +304,13 @@ func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, cdc, r)
 		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(types.JSONRPCStringID(""), errors.Wrap(err, "error converting http params to arguments")))
+			WriteRPCResponseHTTP(
+				w,
+				types.RPCInvalidParamsError(
+					types.JSONRPCStringID(""),
+					errors.Wrap(err, "error converting http params to arguments"),
+				),
+			)
 			return
 		}
 		args = append(args, fnArgs...)
@@ -339,13 +378,14 @@ func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Val
 func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error, bool) {
 	if rt.Kind() == reflect.Ptr {
 		rv_, err, ok := nonJSONStringToArg(cdc, rt.Elem(), arg)
-		if err != nil {
+		switch {
+		case err != nil:
 			return reflect.Value{}, err, false
-		} else if ok {
+		case ok:
 			rv := reflect.New(rt.Elem())
 			rv.Elem().Set(rv_)
 			return rv, nil, true
-		} else {
+		default:
 			return reflect.Value{}, nil, false
 		}
 	} else {
@@ -361,7 +401,16 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	var expectingString, expectingByteSlice, expectingInt bool
 	switch rt.Kind() {
-	case reflect.Int, reflect.Uint, reflect.Int8, reflect.Uint8, reflect.Int16, reflect.Uint16, reflect.Int32, reflect.Uint32, reflect.Int64, reflect.Uint64:
+	case reflect.Int,
+		reflect.Uint,
+		reflect.Int8,
+		reflect.Uint8,
+		reflect.Int16,
+		reflect.Uint16,
+		reflect.Int32,
+		reflect.Uint32,
+		reflect.Int64,
+		reflect.Uint64:
 		expectingInt = true
 	case reflect.String:
 		expectingString = true
@@ -375,9 +424,9 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 		rv, err := jsonStringToArg(cdc, rt, qarg)
 		if err != nil {
 			return rv, err, false
-		} else {
-			return rv, nil, true
 		}
+
+		return rv, nil, true
 	}
 
 	if isHexString {
@@ -395,7 +444,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 		if rt.Kind() == reflect.String {
 			return reflect.ValueOf(string(value)), nil, true
 		}
-		return reflect.ValueOf([]byte(value)), nil, true
+		return reflect.ValueOf(value), nil, true
 	}
 
 	if isQuotedString && expectingByteSlice {
@@ -448,6 +497,9 @@ type wsConnection struct {
 	// Send pings to server with this period. Must be less than readWait, but greater than zero.
 	pingPeriod time.Duration
 
+	// Maximum message size.
+	readLimit int64
+
 	// callback which is called upon disconnect
 	onDisconnect func(remoteAddr string)
 
@@ -467,7 +519,6 @@ func NewWSConnection(
 	cdc *amino.Codec,
 	options ...func(*wsConnection),
 ) *wsConnection {
-	baseConn.SetReadLimit(maxBodyBytes)
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,
@@ -481,6 +532,7 @@ func NewWSConnection(
 	for _, option := range options {
 		option(wsc)
 	}
+	wsc.baseConn.SetReadLimit(wsc.readLimit)
 	wsc.BaseService = *cmn.NewBaseService(nil, "wsConnection", wsc)
 	return wsc
 }
@@ -522,6 +574,14 @@ func ReadWait(readWait time.Duration) func(*wsConnection) {
 func PingPeriod(pingPeriod time.Duration) func(*wsConnection) {
 	return func(wsc *wsConnection) {
 		wsc.pingPeriod = pingPeriod
+	}
+}
+
+// ReadLimit sets the maximum size for reading message.
+// It should only be used in the constructor - not Goroutine-safe.
+func ReadLimit(readLimit int64) func(*wsConnection) {
+	return func(wsc *wsConnection) {
+		wsc.readLimit = readLimit
 	}
 }
 
@@ -648,7 +708,9 @@ func (wsc *wsConnection) readRoutine() {
 			// A Notification is a Request object without an "id" member.
 			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
 			if request.ID == types.JSONRPCStringID("") {
-				wsc.Logger.Debug("WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
+				wsc.Logger.Debug(
+					"WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)",
+				)
 				continue
 			}
 
@@ -664,7 +726,9 @@ func (wsc *wsConnection) readRoutine() {
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
 				if err != nil {
-					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "error converting json params to arguments")))
+					wsc.WriteRPCResponse(
+						types.RPCInternalError(request.ID, errors.Wrap(err, "error converting json params to arguments")),
+					)
 					continue
 				}
 				args = append(args, fnArgs...)
@@ -724,12 +788,10 @@ func (wsc *wsConnection) writeRoutine() {
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-			} else {
-				if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-					wsc.Logger.Error("Failed to write response", "err", err)
-					wsc.Stop()
-					return
-				}
+			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
+				wsc.Logger.Error("Failed to write response", "err", err)
+				wsc.Stop()
+				return
 			}
 		case <-wsc.Quit():
 			return
@@ -762,7 +824,11 @@ type WebsocketManager struct {
 
 // NewWebsocketManager returns a new WebsocketManager that passes a map of
 // functions, connection options and logger to new WS connections.
-func NewWebsocketManager(funcMap map[string]*RPCFunc, cdc *amino.Codec, wsConnOptions ...func(*wsConnection)) *WebsocketManager {
+func NewWebsocketManager(
+	funcMap map[string]*RPCFunc,
+	cdc *amino.Codec,
+	wsConnOptions ...func(*wsConnection),
+) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
 		cdc:     cdc,

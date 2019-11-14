@@ -10,65 +10,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Get block headers for minHeight <= height <= maxHeight.
+// BlockchainInfo gets block headers for minHeight <= height <= maxHeight.
 // Block headers are returned in descending order (highest first).
-//
-// ```shell
-// curl 'localhost:26657/blockchain?minHeight=10&maxHeight=10'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// info, err := client.BlockchainInfo(10, 10)
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"error": "",
-// 	"result": {
-// 		"block_metas": [
-// 			{
-// 				"header": {
-// 					"app_hash": "",
-// 					"chain_id": "test-chain-6UTNIN",
-// 					"height": "10",
-// 					"time": "2017-05-29T15:05:53.877Z",
-// 					"num_txs": "0",
-// 					"last_block_id": {
-// 						"parts": {
-// 							"hash": "3C78F00658E06744A88F24FF97A0A5011139F34A",
-// 							"total": "1"
-// 						},
-// 						"hash": "F70588DAB36BDA5A953D548A16F7D48C6C2DFD78"
-// 					},
-// 					"last_commit_hash": "F31CC4282E50B3F2A58D763D233D76F26D26CABE",
-// 					"data_hash": "",
-// 					"validators_hash": "9365FC80F234C967BD233F5A3E2AB2F1E4B0E5AA"
-// 				},
-// 				"block_id": {
-// 					"parts": {
-// 						"hash": "277A4DBEF91483A18B85F2F5677ABF9694DFA40F",
-// 						"total": "1"
-// 					},
-// 					"hash": "96B1D2F2D201BA4BC383EB8224139DB1294944E5"
-// 				}
-// 			}
-// 		],
-// 		"last_height": "5493"
-// 	},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
-// ```
-//
-// <aside class="notice">Returns at most 20 items.</aside>
+// More: https://tendermint.com/rpc/#/Info/blockchain
 func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 
 	// maximum 20 block metas
@@ -122,111 +66,9 @@ func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
 	return min, max, nil
 }
 
-// Get block at a given height.
+// Block gets block at a given height.
 // If no height is provided, it will fetch the latest block.
-//
-// ```shell
-// curl 'localhost:26657/block?height=10'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// info, err := client.Block(10)
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-//   "error": "",
-//   "result": {
-//     "block": {
-//       "last_commit": {
-//         "precommits": [
-//           {
-//             "signature": {
-//               "data": "12C0D8893B8A38224488DC1DE6270DF76BB1A5E9DB1C68577706A6A97C6EC34FFD12339183D5CA8BC2F46148773823DE905B7F6F5862FD564038BB7AE03BF50D",
-//               "type": "ed25519"
-//             },
-//             "block_id": {
-//               "parts": {
-//                 "hash": "3C78F00658E06744A88F24FF97A0A5011139F34A",
-//                 "total": "1"
-//               },
-//               "hash": "F70588DAB36BDA5A953D548A16F7D48C6C2DFD78"
-//             },
-//             "type": "2",
-//             "round": "0",
-//             "height": "9",
-//             "validator_index": "0",
-//             "validator_address": "E89A51D60F68385E09E716D353373B11F8FACD62"
-//           }
-//         ],
-//         "blockID": {
-//           "parts": {
-//             "hash": "3C78F00658E06744A88F24FF97A0A5011139F34A",
-//             "total": "1"
-//           },
-//           "hash": "F70588DAB36BDA5A953D548A16F7D48C6C2DFD78"
-//         }
-//       },
-//       "data": {
-//         "txs": []
-//       },
-//       "header": {
-//         "app_hash": "",
-//         "chain_id": "test-chain-6UTNIN",
-//         "height": "10",
-//         "time": "2017-05-29T15:05:53.877Z",
-//         "num_txs": "0",
-//         "last_block_id": {
-//           "parts": {
-//             "hash": "3C78F00658E06744A88F24FF97A0A5011139F34A",
-//             "total": "1"
-//           },
-//           "hash": "F70588DAB36BDA5A953D548A16F7D48C6C2DFD78"
-//         },
-//         "last_commit_hash": "F31CC4282E50B3F2A58D763D233D76F26D26CABE",
-//         "data_hash": "",
-//         "validators_hash": "9365FC80F234C967BD233F5A3E2AB2F1E4B0E5AA"
-//       }
-//     },
-//     "block_meta": {
-//       "header": {
-//         "app_hash": "",
-//         "chain_id": "test-chain-6UTNIN",
-//         "height": "10",
-//         "time": "2017-05-29T15:05:53.877Z",
-//         "num_txs": "0",
-//         "last_block_id": {
-//           "parts": {
-//             "hash": "3C78F00658E06744A88F24FF97A0A5011139F34A",
-//             "total": "1"
-//           },
-//           "hash": "F70588DAB36BDA5A953D548A16F7D48C6C2DFD78"
-//         },
-//         "last_commit_hash": "F31CC4282E50B3F2A58D763D233D76F26D26CABE",
-//         "data_hash": "",
-//         "validators_hash": "9365FC80F234C967BD233F5A3E2AB2F1E4B0E5AA"
-//       },
-//       "block_id": {
-//         "parts": {
-//           "hash": "277A4DBEF91483A18B85F2F5677ABF9694DFA40F",
-//           "total": "1"
-//         },
-//         "hash": "96B1D2F2D201BA4BC383EB8224139DB1294944E5"
-//       }
-//     }
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
-// }
-// ```
+// More: https://tendermint.com/rpc/#/Info/block
 func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
@@ -239,81 +81,9 @@ func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error)
 	return &ctypes.ResultBlock{BlockMeta: blockMeta, Block: block}, nil
 }
 
-// Get block commit at a given height.
+// Commit gets block commit at a given height.
 // If no height is provided, it will fetch the commit for the latest block.
-//
-// ```shell
-// curl 'localhost:26657/commit?height=11'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// info, err := client.Commit(11)
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-//   "error": "",
-//   "result": {
-//     "canonical": true,
-//     "commit": {
-//       "precommits": [
-//         {
-//           "signature": {
-//             "data": "00970429FEC652E9E21D106A90AE8C5413759A7488775CEF4A3F44DC46C7F9D941070E4FBE9ED54DF247FA3983359A0C3A238D61DE55C75C9116D72ABC9CF50F",
-//             "type": "ed25519"
-//           },
-//           "block_id": {
-//             "parts": {
-//               "hash": "9E37CBF266BC044A779E09D81C456E653B89E006",
-//               "total": "1"
-//             },
-//             "hash": "CC6E861E31CA4334E9888381B4A9137D1458AB6A"
-//           },
-//           "type": "2",
-//           "round": "0",
-//           "height": "11",
-//           "validator_index": "0",
-//           "validator_address": "E89A51D60F68385E09E716D353373B11F8FACD62"
-//         }
-//       ],
-//       "blockID": {
-//         "parts": {
-//           "hash": "9E37CBF266BC044A779E09D81C456E653B89E006",
-//           "total": "1"
-//         },
-//         "hash": "CC6E861E31CA4334E9888381B4A9137D1458AB6A"
-//       }
-//     },
-//     "header": {
-//       "app_hash": "",
-//       "chain_id": "test-chain-6UTNIN",
-//       "height": "11",
-//       "time": "2017-05-29T15:05:54.893Z",
-//       "num_txs": "0",
-//       "last_block_id": {
-//         "parts": {
-//           "hash": "277A4DBEF91483A18B85F2F5677ABF9694DFA40F",
-//           "total": "1"
-//         },
-//         "hash": "96B1D2F2D201BA4BC383EB8224139DB1294944E5"
-//       },
-//       "last_commit_hash": "3CE0C9727CE524BA9CB7C91E28F08E2B94001087",
-//       "data_hash": "",
-//       "validators_hash": "9365FC80F234C967BD233F5A3E2AB2F1E4B0E5AA"
-//     }
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
-// }
-// ```
+// More: https://tendermint.com/rpc/#/Info/commit
 func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
@@ -341,49 +111,7 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 // Results are for the height of the block containing the txs.
 // Thus response.results.deliver_tx[5] is the results of executing
 // getBlock(h).Txs[5]
-//
-// ```shell
-// curl 'localhost:26657/block_results?height=10'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// info, err := client.BlockResults(10)
-// ```
-//
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-//   "jsonrpc": "2.0",
-//   "id": "",
-//   "result": {
-//     "height": "39",
-//     "results": {
-//       "deliver_tx": [
-//         {
-//           "tags": [
-//             {
-//               "key": "YXBwLmNyZWF0b3I=",
-//               "value": "Q29zbW9zaGkgTmV0b3dva28="
-//             }
-//           ]
-//         }
-//       ],
-//       "end_block": {
-//         "validator_updates": null
-//       },
-//       "begin_block": {}
-//     }
-//   }
-// }
-// ```
+// More: https://tendermint.com/rpc/#/Info/block_results
 func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)

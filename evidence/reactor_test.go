@@ -11,10 +11,10 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 // evidenceLogger is a TestingLogger which uses a different
@@ -75,8 +75,13 @@ func waitForEvidence(t *testing.T, evs types.EvidenceList, reactors []*EvidenceR
 }
 
 // wait for all evidence on a single evpool
-func _waitForEvidence(t *testing.T, wg *sync.WaitGroup, evs types.EvidenceList, reactorIdx int, reactors []*EvidenceReactor) {
-
+func _waitForEvidence(
+	t *testing.T,
+	wg *sync.WaitGroup,
+	evs types.EvidenceList,
+	reactorIdx int,
+	reactors []*EvidenceReactor,
+) {
 	evpool := reactors[reactorIdx].evpool
 	for len(evpool.PendingEvidence(-1)) != len(evs) {
 		time.Sleep(time.Millisecond * 100)
@@ -203,6 +208,7 @@ func TestEvidenceListMessageValidationBasic(t *testing.T) {
 		}, true},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			evListMsg := &EvidenceListMessage{}
 			n := 3

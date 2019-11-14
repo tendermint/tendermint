@@ -11,6 +11,13 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+const (
+	// MaxVotesCount is the maximum number of votes in a set. Used in ValidateBasic funcs for
+	// protection against DOS attacks. Note this implies a corresponding equal limit to
+	// the number of validators.
+	MaxVotesCount = 10000
+)
+
 // UNSTABLE
 // XXX: duplicate of p2p.ID to avoid dependence between packages.
 // Perhaps we can have a minimal types package containing this (and other things?)
@@ -173,7 +180,8 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Ensure that the signer has the right address.
 	if !bytes.Equal(valAddr, lookupAddr) {
 		return false, errors.Wrapf(ErrVoteInvalidValidatorAddress,
-			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)\nEnsure the genesis file is correct across all validators.",
+			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)\n"+
+				"Ensure the genesis file is correct across all validators.",
 			valAddr, lookupAddr, valIndex)
 	}
 
@@ -214,7 +222,11 @@ func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok b
 
 // Assumes signature is valid.
 // If conflicting vote exists, returns it.
-func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower int64) (added bool, conflicting *Vote) {
+func (voteSet *VoteSet) addVerifiedVote(
+	vote *Vote,
+	blockKey string,
+	votingPower int64,
+) (added bool, conflicting *Vote) {
 	valIndex := vote.ValidatorIndex
 
 	// Already exists in voteSet.votes?
@@ -434,7 +446,7 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
-			voteStrings[i] = "nil-Vote"
+			voteStrings[i] = nilVoteStr
 		} else {
 			voteStrings[i] = vote.String()
 		}
@@ -499,7 +511,7 @@ func (voteSet *VoteSet) voteStrings() []string {
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
-			voteStrings[i] = "nil-Vote"
+			voteStrings[i] = nilVoteStr
 		} else {
 			voteStrings[i] = vote.String()
 		}

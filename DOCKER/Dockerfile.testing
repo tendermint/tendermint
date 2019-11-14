@@ -1,5 +1,4 @@
-FROM golang:1.12
-
+FROM golang:latest
 
 # Grab deps (jq, hexdump, xxd, killall)
 RUN apt-get update && \
@@ -15,4 +14,3 @@ VOLUME /go
 
 EXPOSE 26656
 EXPOSE 26657
-

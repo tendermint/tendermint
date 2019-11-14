@@ -10,8 +10,19 @@ import (
 
 func TestEmptyQueryMatchesAnything(t *testing.T) {
 	q := query.Empty{}
-	assert.True(t, q.Matches(map[string][]string{}))
-	assert.True(t, q.Matches(map[string][]string{"Asher": {"Roth"}}))
-	assert.True(t, q.Matches(map[string][]string{"Route": {"66"}}))
-	assert.True(t, q.Matches(map[string][]string{"Route": {"66"}, "Billy": {"Blue"}}))
+
+	testCases := []struct {
+		query map[string][]string
+	}{
+		{map[string][]string{}},
+		{map[string][]string{"Asher": {"Roth"}}},
+		{map[string][]string{"Route": {"66"}}},
+		{map[string][]string{"Route": {"66"}, "Billy": {"Blue"}}},
+	}
+
+	for _, tc := range testCases {
+		match, err := q.Matches(tc.query)
+		assert.Nil(t, err)
+		assert.True(t, match)
+	}
 }

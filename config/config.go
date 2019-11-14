@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -64,6 +65,7 @@ type Config struct {
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -76,6 +78,7 @@ func DefaultConfig() *Config {
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
+		FastSync:        DefaultFastSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -89,6 +92,7 @@ func TestConfig() *Config {
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
+		FastSync:        TestFastSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -120,6 +124,9 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [mempool] section")
 	}
+	if err := cfg.FastSync.ValidateBasic(); err != nil {
+		return errors.Wrap(err, "Error in [fastsync] section")
+	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return errors.Wrap(err, "Error in [consensus] section")
 	}
@@ -133,7 +140,7 @@ func (cfg *Config) ValidateBasic() error {
 // BaseConfig
 
 // BaseConfig defines the base configuration for a Tendermint node
-type BaseConfig struct {
+type BaseConfig struct { //nolint: maligned
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -151,7 +158,7 @@ type BaseConfig struct {
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
-	FastSync bool `mapstructure:"fast_sync"`
+	FastSyncMode bool `mapstructure:"fast_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -216,7 +223,7 @@ func DefaultBaseConfig() BaseConfig {
 		LogLevel:           DefaultPackageLogLevels(),
 		LogFormat:          LogFormatPlain,
 		ProfListenAddress:  "",
-		FastSync:           true,
+		FastSyncMode:       true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
@@ -228,7 +235,7 @@ func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
 	cfg.ProxyApp = "kvstore"
-	cfg.FastSync = false
+	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
 	return cfg
 }
@@ -351,6 +358,12 @@ type RPCConfig struct {
 	// See https://github.com/tendermint/tendermint/issues/3435
 	TimeoutBroadcastTxCommit time.Duration `mapstructure:"timeout_broadcast_tx_commit"`
 
+	// Maximum size of request body, in bytes
+	MaxBodyBytes int64 `mapstructure:"max_body_bytes"`
+
+	// Maximum size of request header, in bytes
+	MaxHeaderBytes int `mapstructure:"max_header_bytes"`
+
 	// The path to a file containing certificate that is used to create the HTTPS server.
 	// Migth be either absolute path or path related to tendermint's config directory.
 	//
@@ -358,13 +371,15 @@ type RPCConfig struct {
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
 	// and the CA's certificate.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSCertFile string `mapstructure:"tls_cert_file"`
 
 	// The path to a file containing matching private key that is used to create the HTTPS server.
 	// Migth be either absolute path or path related to tendermint's config directory.
 	//
-	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
 }
 
@@ -373,7 +388,7 @@ func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
 		ListenAddress:          "tcp://127.0.0.1:26657",
 		CORSAllowedOrigins:     []string{},
-		CORSAllowedMethods:     []string{"HEAD", "GET", "POST"},
+		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
 		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 		GRPCListenAddress:      "",
 		GRPCMaxOpenConnections: 900,
@@ -384,6 +399,9 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxSubscriptionClients:    100,
 		MaxSubscriptionsPerClient: 5,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
+
+		MaxBodyBytes:   int64(1000000), // 1MB
+		MaxHeaderBytes: 1 << 20,        // same as the net/http default
 
 		TLSCertFile: "",
 		TLSKeyFile:  "",
@@ -417,6 +435,12 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout_broadcast_tx_commit can't be negative")
 	}
+	if cfg.MaxBodyBytes < 0 {
+		return errors.New("max_body_bytes can't be negative")
+	}
+	if cfg.MaxHeaderBytes < 0 {
+		return errors.New("max_header_bytes can't be negative")
+	}
 	return nil
 }
 
@@ -449,7 +473,7 @@ func (cfg RPCConfig) IsTLSEnabled() bool {
 // P2PConfig
 
 // P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
-type P2PConfig struct {
+type P2PConfig struct { //nolint: maligned
 	RootDir string `mapstructure:"home"`
 
 	// Address to listen for incoming connections
@@ -616,6 +640,7 @@ type MempoolConfig struct {
 	Size        int    `mapstructure:"size"`
 	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
 	CacheSize   int    `mapstructure:"cache_size"`
+	MaxTxBytes  int    `mapstructure:"max_tx_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -629,6 +654,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Size:        5000,
 		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
 		CacheSize:   10000,
+		MaxTxBytes:  1024 * 1024, // 1MB
 	}
 }
 
@@ -661,7 +687,42 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.CacheSize < 0 {
 		return errors.New("cache_size can't be negative")
 	}
+	if cfg.MaxTxBytes < 0 {
+		return errors.New("max_tx_bytes can't be negative")
+	}
 	return nil
+}
+
+//-----------------------------------------------------------------------------
+// FastSyncConfig
+
+// FastSyncConfig defines the configuration for the Tendermint fast sync service
+type FastSyncConfig struct {
+	Version string `mapstructure:"version"`
+}
+
+// DefaultFastSyncConfig returns a default configuration for the fast sync service
+func DefaultFastSyncConfig() *FastSyncConfig {
+	return &FastSyncConfig{
+		Version: "v0",
+	}
+}
+
+// TestFastSyncConfig returns a default configuration for the fast sync.
+func TestFastSyncConfig() *FastSyncConfig {
+	return DefaultFastSyncConfig()
+}
+
+// ValidateBasic performs basic validation.
+func (cfg *FastSyncConfig) ValidateBasic() error {
+	switch cfg.Version {
+	case "v0":
+		return nil
+	case "v1":
+		return nil
+	default:
+		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -755,7 +816,8 @@ func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
 	) * time.Nanosecond
 }
 
-// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
+// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits
+// for a single block (ie. a commit).
 func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
 	return t.Add(cfg.TimeoutCommit)
 }
@@ -819,7 +881,8 @@ type TxIndexConfig struct {
 	//
 	// Options:
 	//   1) "null"
-	//   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   2) "kv" (default) - the simplest possible indexer,
+	//      backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
 
 	// Comma-separated list of tags to index (by default the only tag is "tx.hash")

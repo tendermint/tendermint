@@ -77,7 +77,10 @@ func (c *Local) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQue
 	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
 }
 
-func (c *Local) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (c *Local) ABCIQueryWithOptions(
+	path string,
+	data cmn.HexBytes,
+	opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(c.ctx, path, data, opts.Height, opts.Prove)
 }
 
@@ -157,7 +160,15 @@ func (c *Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.R
 	return core.TxSearch(c.ctx, query, prove, page, perPage)
 }
 
-func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
+func (c *Local) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	return core.BroadcastEvidence(c.ctx, ev)
+}
+
+func (c *Local) Subscribe(
+	ctx context.Context,
+	subscriber,
+	query string,
+	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse query")
@@ -178,7 +189,11 @@ func (c *Local) Subscribe(ctx context.Context, subscriber, query string, outCapa
 	return outc, nil
 }
 
-func (c *Local) eventsRoutine(sub types.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
+func (c *Local) eventsRoutine(
+	sub types.Subscription,
+	subscriber string,
+	q tmpubsub.Query,
+	outc chan<- ctypes.ResultEvent) {
 	for {
 		select {
 		case msg := <-sub.Out():

@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
-	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	dbm "github.com/tendermint/tm-db"
 
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -76,7 +76,12 @@ func (evpool *EvidencePool) Update(block *types.Block, state sm.State) {
 
 	// sanity check
 	if state.LastBlockHeight != block.Height {
-		panic(fmt.Sprintf("Failed EvidencePool.Update sanity check: got state.Height=%d with block.Height=%d", state.LastBlockHeight, block.Height))
+		panic(
+			fmt.Sprintf("Failed EvidencePool.Update sanity check: got state.Height=%d with block.Height=%d",
+				state.LastBlockHeight,
+				block.Height,
+			),
+		)
 	}
 
 	// update the state
