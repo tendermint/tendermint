@@ -77,19 +77,20 @@ type SecretConnection struct {
 // Caller should call conn.Close()
 // See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*SecretConnection, error) {
+	var (
+		hash      = sha256.New
+		hdkfState = new([32]byte)
+	)
 
-	hash := sha256.New
-	hdkf_state := new([32]byte)
 	hkdfInit := hkdf.New(hash, []byte("INIT_HANDSHAKE"), nil, []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
-
 	locPubKey := locPrivKey.PubKey()
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
 
 	// Write local ephemeral pubkey and receive one too.
-	// NOTE: every 32-byte string is accepted as a Curve25519 public key
-	// (see DJB's Curve25519 paper: http://cr.yp.to/ecdh/curve25519-20060209.pdf)
+	// NOTE: every 32-byte string is accepted as a Curve25519 public key (see
+	// DJB's Curve25519 paper: http://cr.yp.to/ecdh/curve25519-20060209.pdf)
 	remEphPub, err := shareEphPubKey(conn, locEphPub)
 	if err != nil {
 		return nil, err
@@ -98,20 +99,19 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Sort by lexical order.
 	loEphPub, hiEphPub := sort32(locEphPub, remEphPub)
 
-	if _, err := io.ReadFull(hkdfInit, hdkf_state[:]); err != nil {
+	if _, err := io.ReadFull(hkdfInit, hdkfState[:]); err != nil {
 		return nil, err
 	}
 
-	hkdfLoEphPub := hkdf.New(hash, loEphPub[:], hdkf_state[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
-
-	if _, err := io.ReadFull(hkdfLoEphPub, hdkf_state[:]); err != nil {
+	hkdfLoEphPub := hkdf.New(hash, loEphPub[:], hdkfState[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
+	if _, err := io.ReadFull(hkdfLoEphPub, hdkfState[:]); err != nil {
 		return nil, err
 	}
 
-	hkdfHiEphPub := hkdf.New(hash, hiEphPub[:], hdkf_state[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
+	hkdfHiEphPub := hkdf.New(hash, hiEphPub[:], hdkfState[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
 
-	// Check if the local ephemeral public key
-	// was the least, lexicographically sorted.
+	// Check if the local ephemeral public key was the least, lexicographically
+	// sorted.
 	locIsLeast := bytes.Equal(locEphPub[:], loEphPub[:])
 
 	// Compute common diffie hellman secret using X25519.
@@ -119,19 +119,19 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.ReadFull(hkdfHiEphPub, hdkf_state[:]); err != nil {
+	if _, err := io.ReadFull(hkdfHiEphPub, hdkfState[:]); err != nil {
 		return nil, err
 	}
 
-	hkdfSecret := hkdf.New(hash, dhSecret[:], hdkf_state[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
-
-	if _, err := io.ReadFull(hkdfSecret, hdkf_state[:]); err != nil {
+	hkdfSecret := hkdf.New(hash, dhSecret[:], hdkfState[:], []byte("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"))
+	if _, err := io.ReadFull(hkdfSecret, hdkfState[:]); err != nil {
 		return nil, err
 	}
 
-	// generate the secret used for receiving, sending, challenge via HKDF-SHA2
-	// on the transcript state (which itself also uses HKDF-SHA2 to derive a key from the dhSecret)
-	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(hdkf_state, locIsLeast)
+	// Generate the secret used for receiving, sending, challenge via HKDF-SHA2
+	// on the transcript state (which itself also uses HKDF-SHA2 to derive a key
+	// from the dhSecret).
+	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(hdkfState, locIsLeast)
 
 	sendAead, err := chacha20poly1305.New(sendSecret[:])
 	if err != nil {
@@ -141,7 +141,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	if err != nil {
 		return nil, errors.New("invalid receive SecretConnection Key")
 	}
-	// Construct SecretConnection.
+
 	sc := &SecretConnection{
 		conn:       conn,
 		recvBuffer: nil,
@@ -161,11 +161,9 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
-
 	if _, ok := remPubKey.(ed25519.PubKeyEd25519); !ok {
 		return nil, errors.Errorf("expected ed25519 pubkey, got %T", remPubKey)
 	}
-
 	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
 		return nil, errors.New("challenge verification failed")
 	}
