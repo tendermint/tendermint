@@ -18,7 +18,7 @@ program](https://hackerone.com/tendermint).
   - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) `Query#(Matches|Conditions)` returns an error.
 
 - Blockchain Protocol
-  - [abci] \#2521 Remove TotalTxs and NumTxs from Header
+  - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
 
 ### FEATURES:
 
@@ -33,6 +33,7 @@ program](https://hackerone.com/tendermint).
 - [rpc] [\#4077](https://github.com/tendermint/tendermint/pull/4077) Added support for `EXISTS` clause to the Websocket query interface.
 - [privval] Add `SignerDialerEndpointRetryWaitInterval` option (@cosmostuba)
 - [crypto] Add `RegisterKeyType` to amino to allow external key types registration (@austinabell)
+- [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
 
 ### BUG FIXES:
 
