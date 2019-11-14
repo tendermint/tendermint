@@ -78,11 +78,11 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 		arg := GetParam(r, name)
 		// log.Notice("param to arg", "argType", argType, "name", name, "arg", arg)
 
-		if "" == arg {
+		if arg == "" {
 			continue
 		}
 
-		v, err, ok := nonJSONStringToArg(cdc, argType, arg)
+		v, ok, err := nonJSONStringToArg(cdc, argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -110,18 +110,18 @@ func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Val
 	return rv, nil
 }
 
-func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error, bool) {
+func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, bool, error) {
 	if rt.Kind() == reflect.Ptr {
-		rv1, err, ok := nonJSONStringToArg(cdc, rt.Elem(), arg)
+		rv1, ok, err := nonJSONStringToArg(cdc, rt.Elem(), arg)
 		switch {
 		case err != nil:
-			return reflect.Value{}, err, false
+			return reflect.Value{}, false, err
 		case ok:
 			rv := reflect.New(rt.Elem())
 			rv.Elem().Set(rv1)
-			return rv, nil, true
+			return rv, true, nil
 		default:
-			return reflect.Value{}, nil, false
+			return reflect.Value{}, false, nil
 		}
 	} else {
 		return _nonJSONStringToArg(cdc, rt, arg)
@@ -129,7 +129,7 @@ func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.
 }
 
 // NOTE: rt.Kind() isn't a pointer.
-func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error, bool) {
+func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, bool, error) {
 	isIntString := RE_INT.Match([]byte(arg))
 	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
 	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
@@ -157,39 +157,39 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 		qarg := `"` + arg + `"`
 		rv, err := jsonStringToArg(cdc, rt, qarg)
 		if err != nil {
-			return rv, err, false
+			return rv, false, err
 		}
 
-		return rv, nil, true
+		return rv, true, nil
 	}
 
 	if isHexString {
 		if !expectingString && !expectingByteSlice {
 			err := errors.Errorf("got a hex string arg, but expected '%s'",
 				rt.Kind().String())
-			return reflect.ValueOf(nil), err, false
+			return reflect.ValueOf(nil), false, err
 		}
 
 		var value []byte
 		value, err := hex.DecodeString(arg[2:])
 		if err != nil {
-			return reflect.ValueOf(nil), err, false
+			return reflect.ValueOf(nil), false, err
 		}
 		if rt.Kind() == reflect.String {
-			return reflect.ValueOf(string(value)), nil, true
+			return reflect.ValueOf(string(value)), true, nil
 		}
-		return reflect.ValueOf(value), nil, true
+		return reflect.ValueOf(value), true, nil
 	}
 
 	if isQuotedString && expectingByteSlice {
 		v := reflect.New(reflect.TypeOf(""))
 		err := cdc.UnmarshalJSON([]byte(arg), v.Interface())
 		if err != nil {
-			return reflect.ValueOf(nil), err, false
+			return reflect.ValueOf(nil), false, err
 		}
 		v = v.Elem()
-		return reflect.ValueOf([]byte(v.String())), nil, true
+		return reflect.ValueOf([]byte(v.String())), true, nil
 	}
 
-	return reflect.ValueOf(nil), nil, false
+	return reflect.ValueOf(nil), false, nil
 }

@@ -58,7 +58,7 @@ type RPCRequest struct {
 }
 
 // UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
-func (request *RPCRequest) UnmarshalJSON(data []byte) error {
+func (req *RPCRequest) UnmarshalJSON(data []byte) error {
 	unsafeReq := &struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      interface{}     `json:"id,omitempty"`
@@ -69,9 +69,9 @@ func (request *RPCRequest) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	request.JSONRPC = unsafeReq.JSONRPC
-	request.Method = unsafeReq.Method
-	request.Params = unsafeReq.Params
+	req.JSONRPC = unsafeReq.JSONRPC
+	req.Method = unsafeReq.Method
+	req.Params = unsafeReq.Params
 	if unsafeReq.ID == nil {
 		return nil
 	}
@@ -79,7 +79,7 @@ func (request *RPCRequest) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	request.ID = id
+	req.ID = id
 	return nil
 }
 
@@ -97,37 +97,39 @@ func (req RPCRequest) String() string {
 }
 
 func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
-	var params_ = make(map[string]json.RawMessage, len(params))
+	var paramsMap = make(map[string]json.RawMessage, len(params))
 	for name, value := range params {
 		valueJSON, err := cdc.MarshalJSON(value)
 		if err != nil {
 			return RPCRequest{}, err
 		}
-		params_[name] = valueJSON
+		paramsMap[name] = valueJSON
 	}
-	payload, err := json.Marshal(params_) // NOTE: Amino doesn't handle maps yet.
+
+	payload, err := json.Marshal(paramsMap) // NOTE: Amino doesn't handle maps yet.
 	if err != nil {
 		return RPCRequest{}, err
 	}
-	request := NewRPCRequest(id, method, payload)
-	return request, nil
+
+	return NewRPCRequest(id, method, payload), nil
 }
 
 func ArrayToRequest(cdc *amino.Codec, id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
-	var params_ = make([]json.RawMessage, len(params))
+	var paramsMap = make([]json.RawMessage, len(params))
 	for i, value := range params {
 		valueJSON, err := cdc.MarshalJSON(value)
 		if err != nil {
 			return RPCRequest{}, err
 		}
-		params_[i] = valueJSON
+		paramsMap[i] = valueJSON
 	}
-	payload, err := json.Marshal(params_) // NOTE: Amino doesn't handle maps yet.
+
+	payload, err := json.Marshal(paramsMap) // NOTE: Amino doesn't handle maps yet.
 	if err != nil {
 		return RPCRequest{}, err
 	}
-	request := NewRPCRequest(id, method, payload)
-	return request, nil
+
+	return NewRPCRequest(id, method, payload), nil
 }
 
 //----------------------------------------
@@ -155,7 +157,7 @@ type RPCResponse struct {
 }
 
 // UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
-func (response *RPCResponse) UnmarshalJSON(data []byte) error {
+func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	unsafeResp := &struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      interface{}     `json:"id,omitempty"`
@@ -166,9 +168,9 @@ func (response *RPCResponse) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	response.JSONRPC = unsafeResp.JSONRPC
-	response.Error = unsafeResp.Error
-	response.Result = unsafeResp.Result
+	resp.JSONRPC = unsafeResp.JSONRPC
+	resp.Error = unsafeResp.Error
+	resp.Result = unsafeResp.Result
 	if unsafeResp.ID == nil {
 		return nil
 	}
@@ -176,7 +178,7 @@ func (response *RPCResponse) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	response.ID = id
+	resp.ID = id
 	return nil
 }
 
