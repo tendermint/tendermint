@@ -55,10 +55,9 @@ type State struct {
 	ChainID string
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	LastBlockHeight  int64
-	LastBlockTotalTx int64
-	LastBlockID      types.BlockID
-	LastBlockTime    time.Time
+	LastBlockHeight int64
+	LastBlockID     types.BlockID
+	LastBlockTime   time.Time
 
 	// LastValidators is used to validate block.LastCommit.
 	// Validators are persisted to the database separately every time they change,
@@ -89,10 +88,9 @@ func (state State) Copy() State {
 		Version: state.Version,
 		ChainID: state.ChainID,
 
-		LastBlockHeight:  state.LastBlockHeight,
-		LastBlockTotalTx: state.LastBlockTotalTx,
-		LastBlockID:      state.LastBlockID,
-		LastBlockTime:    state.LastBlockTime,
+		LastBlockHeight: state.LastBlockHeight,
+		LastBlockID:     state.LastBlockID,
+		LastBlockTime:   state.LastBlockTime,
 
 		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
