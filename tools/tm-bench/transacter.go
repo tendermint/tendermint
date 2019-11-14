@@ -72,7 +72,7 @@ func (t *transacter) Start() error {
 	rand.Seed(time.Now().Unix())
 
 	for i := 0; i < t.Connections; i++ {
-		c, _, err := connect(t.Target)
+		c, _, err := connect(t.Target) // nolint:bodyclose
 		if err != nil {
 			return err
 		}

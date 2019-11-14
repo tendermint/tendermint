@@ -12,14 +12,18 @@ See it here: https://github.com/tendermint/tendermint/tree/master/rpc/lib
 
 ## Configuration
 
-RPC can be configured by tuning parameters under `[rpc]` table in the `$TMHOME/config/config.toml` file or by using the `--rpc.X` command-line flags.
+RPC can be configured by tuning parameters under `[rpc]` table in the `$TMHOME/config/config.toml` file
+or by using the `--rpc.X` command-line flags.
 
-Default rpc listen address is `tcp://0.0.0.0:26657`. To set another address,  set the `laddr` config parameter to desired value.
-CORS (Cross-Origin Resource Sharing) can be enabled by setting `cors_allowed_origins`, `cors_allowed_methods`, `cors_allowed_headers` config parameters.
+Default rpc listen address is `tcp://0.0.0.0:26657`.
+To set another address, set the `laddr` config parameter to desired value.
+CORS (Cross-Origin Resource Sharing) can be enabled by setting
+`cors_allowed_origins`, `cors_allowed_methods`, `cors_allowed_headers` config parameters.
 
 ## Arguments
 
-Arguments which expect strings or byte arrays may be passed as quoted strings, like `"abc"` or as `0x`-prefixed strings, like `0x616263`.
+Arguments which expect strings or byte arrays may be passed as quoted strings,
+like `"abc"` or as `0x`-prefixed strings, like `0x616263`.
 
 ## URI/HTTP
 
@@ -58,7 +62,9 @@ JSONRPC requests can be POST'd to the root RPC endpoint via HTTP (e.g. `http://l
 
 ## JSONRPC/websockets
 
-JSONRPC requests can be made via websocket. The websocket endpoint is at `/websocket`, e.g. `localhost:26657/websocket`.  Asynchronous RPC functions like event `subscribe` and `unsubscribe` are only available via websockets.
+JSONRPC requests can be made via websocket.
+The websocket endpoint is at `/websocket`, e.g. `localhost:26657/websocket`.
+Asynchronous RPC functions like event `subscribe` and `unsubscribe` are only available via websockets.
 
 
 ## More Examples

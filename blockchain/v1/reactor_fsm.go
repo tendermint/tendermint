@@ -162,10 +162,12 @@ var (
 	errNoTallerPeer           = errors.New("fast sync timed out on waiting for a peer taller than this node")
 
 	// reported eventually to the switch
-	errPeerLowersItsHeight             = errors.New("fast sync peer reports a height lower than previous")            // handle return
-	errNoPeerResponseForCurrentHeights = errors.New("fast sync timed out on peer block response for current heights") // handle return
-	errNoPeerResponse                  = errors.New("fast sync timed out on peer block response")                     // xx
-	errBadDataFromPeer                 = errors.New("fast sync received block from wrong peer or block is bad")       // xx
+	// handle return
+	errPeerLowersItsHeight = errors.New("fast sync peer reports a height lower than previous")
+	// handle return
+	errNoPeerResponseForCurrentHeights = errors.New("fast sync timed out on peer block response for current heights")
+	errNoPeerResponse                  = errors.New("fast sync timed out on peer block response")               // xx
+	errBadDataFromPeer                 = errors.New("fast sync received block from wrong peer or block is bad") // xx
 	errDuplicateBlock                  = errors.New("fast sync received duplicate block from peer")
 	errBlockVerificationFailure        = errors.New("fast sync block verification failure")              // xx
 	errSlowPeer                        = errors.New("fast sync peer is not sending us data fast enough") // xx

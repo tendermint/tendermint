@@ -1,3 +1,7 @@
+---
+order: 11
+---
+
 # Metrics
 
 Tendermint can report and serve the Prometheus metrics, which in their turn can
@@ -15,7 +19,7 @@ Listen address can be changed in the config file (see
 The following metrics are available:
 
 | **Name**                                | **Type**  | **Since** | **Tags**       | **Description**                                                 |
-|-----------------------------------------|-----------|-----------|----------------|-----------------------------------------------------------------|
+| --------------------------------------- | --------- | --------- | -------------- | --------------------------------------------------------------- |
 | consensus\_height                       | Gauge     | 0.21.0    |                | Height of the chain                                             |
 | consensus\_validators                   | Gauge     | 0.21.0    |                | Number of validators                                            |
 | consensus\_validators\_power            | Gauge     | 0.21.0    |                | Total voting power of all validators                            |

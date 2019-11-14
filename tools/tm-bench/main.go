@@ -12,6 +12,7 @@ import (
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/rpc/client"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
 )
 
@@ -21,6 +22,8 @@ func main() {
 	var durationInt, txsRate, connections, txSize int
 	var verbose bool
 	var outputFormat, broadcastTxMethod string
+	var usage = "tm-bench [-c 1] [-T 10] [-r 1000] [-s 250]" +
+		" [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]"
 
 	flagSet := flag.NewFlagSet("tm-bench", flag.ExitOnError)
 	flagSet.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
@@ -28,14 +31,20 @@ func main() {
 	flagSet.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
 	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes, must be greater than or equal to 40.")
 	flagSet.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
-	flagSet.StringVar(&broadcastTxMethod, "broadcast-tx-method", "async", "Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)")
+	flagSet.StringVar(
+		&broadcastTxMethod,
+		"broadcast-tx-method",
+		"async",
+		"Broadcast method: async (no guarantees; fastest),"+
+			" sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)",
+	)
 	flagSet.BoolVar(&verbose, "v", false, "Verbose output")
 
 	flagSet.Usage = func() {
 		fmt.Println(`Tendermint blockchain benchmarking tool.
 
 Usage:
-	tm-bench [-c 1] [-T 10] [-r 1000] [-s 250] [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]
+	` + usage + `
 
 Examples:
 	tm-bench localhost:26657`)
@@ -133,7 +142,7 @@ Examples:
 	printStatistics(stats, outputFormat)
 }
 
-func latestBlockHeight(client tmrpc.Client) int64 {
+func latestBlockHeight(client client.StatusClient) int64 {
 	status, err := client.Status()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

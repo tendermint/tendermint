@@ -155,7 +155,9 @@ See details of SimpleProof, below.
 ### MakeParts
 
 Encode an object using Amino and slice it into parts.
-Tendermint uses a part size of 65536 bytes.
+Tendermint uses a part size of 65536 bytes, and allows a maximum of 1601 parts
+(see `types.MaxBlockPartsCount`). This corresponds to the hard-coded block size
+limit of 100MB.
 
 ```go
 func MakeParts(block Block) []Part
@@ -288,9 +290,13 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 }
 ```
 
+The number of aunts is limited to 100 (`MaxAunts`) to protect the node against DOS attacks.
+This limits the tree size to 2^100 leaves, which should be sufficient for any
+conceivable purpose.
+
 ### IAVL+ Tree
 
-Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/master/docs/clients/lite/specification.md)
+Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/ae77f0080a724b159233bd9b289b2e91c0de21b5/docs/interfaces/lite/specification.md)
 
 ## JSON
 

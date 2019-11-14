@@ -126,7 +126,9 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 	var taskResultChz = make([]TaskResultCh, len(tasks)) // To return.
 	var taskDoneCh = make(chan bool, len(tasks))         // A "wait group" channel, early abort if any true received.
 	var numPanics = new(int32)                           // Keep track of panics to set ok=false later.
-	ok = true                                            // We will set it to false iff any tasks panic'd or returned abort.
+
+	// We will set it to false iff any tasks panic'd or returned abort.
+	ok = true
 
 	// Start all tasks in parallel in separate goroutines.
 	// When the task is complete, it will appear in the

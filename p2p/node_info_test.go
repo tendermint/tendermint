@@ -31,7 +31,11 @@ func TestNodeInfoValidate(t *testing.T) {
 		malleateNodeInfo func(*DefaultNodeInfo)
 		expectErr        bool
 	}{
-		{"Too Many Channels", func(ni *DefaultNodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, true}, // nolint: gocritic
+		{
+			"Too Many Channels",
+			func(ni *DefaultNodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, // nolint: gocritic
+			true,
+		},
 		{"Duplicate Channel", func(ni *DefaultNodeInfo) { ni.Channels = dupChannels }, true},
 		{"Good Channels", func(ni *DefaultNodeInfo) { ni.Channels = ni.Channels[:5] }, false},
 
