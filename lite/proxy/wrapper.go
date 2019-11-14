@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"fmt"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 
@@ -165,7 +164,7 @@ func (w Wrapper) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 				ctx.WSConn.TryWriteRPCResponse(
 					rpctypes.NewRPCSuccessResponse(
 						ctx.WSConn.Codec(),
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						ctx.JSONReq.ID,
 						resultEvent,
 					))
 			case <-w.Client.Quit():
