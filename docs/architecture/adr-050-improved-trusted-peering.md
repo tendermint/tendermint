@@ -15,10 +15,10 @@ This is happening because of two reasons, exponential backoff and absence of unc
 
 ## Decision
 
-We would like to suggest solving this problem by introducing two parameters in `config.toml`, `wildcard_peer_ids` and 
+We would like to suggest solving this problem by introducing two parameters in `config.toml`, `unconditional_peer_ids` and 
 `persistent_peers_max_dial_period`. 
 
-1) `wildcard_peer_ids`
+1) `unconditional_peer_ids`
 
 A node operator inputs list of ids of peers which are allowed to be connected by both inbound or outbound regardless of 
 `max_num_inbound_peers` or `max_num_outbound_peers` of user's node reached or not.
@@ -30,10 +30,10 @@ Therefore, `dial_period` = min(`persistent_peers_max_dial_period`, exponential_b
 
 Alternative approach
 
-Persistent_peers is only for outbound, therefore it is not enough to cover the full utility of `wildcard_peer_ids`. 
+Persistent_peers is only for outbound, therefore it is not enough to cover the full utility of `unconditional_peer_ids`. 
 @creamers158(https://github.com/Creamers158) suggested putting id-only items into persistent_peers to be handled as 
-`wildcard_peer_ids`, but it needs very complicated struct exception for different structure of items in persistent_peers.
-Therefore we decided to have `wildcard_peer_ids` to independently cover this use-case.
+`unconditional_peer_ids`, but it needs very complicated struct exception for different structure of items in persistent_peers.
+Therefore we decided to have `unconditional_peer_ids` to independently cover this use-case.
 
 ## Status
 
@@ -44,7 +44,7 @@ Proposed
 ### Positive
 
 A node operator can configure two new parameters in `config.toml` so that he/she can assure that tendermint will allow connections
-from/to peers in `wildcard_peer_ids`. Also he/she can assure that every persistent peer will be dialed at least once in every 
+from/to peers in `unconditional_peer_ids`. Also he/she can assure that every persistent peer will be dialed at least once in every 
 `persistent_peers_max_dial_period` term. It achieves more stable and persistent peering for trusted peers.
 
 ### Negative
