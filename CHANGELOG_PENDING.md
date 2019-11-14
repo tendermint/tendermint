@@ -11,6 +11,21 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 - CLI/RPC/Config
+  - [rpc] `/block_results` response format updated (see RPC docs for details)
+    ```
+    {
+      "jsonrpc": "2.0",
+      "id": "",
+      "result": {
+        "height": "2109",
+        "txs_results": null,
+        "begin_block_events": null,
+        "end_block_events": null,
+        "validator_updates": null,
+        "consensus_param_updates": null
+      }
+    }
+    ```
 
 - Apps
 
