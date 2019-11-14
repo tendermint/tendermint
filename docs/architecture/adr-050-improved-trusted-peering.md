@@ -43,7 +43,7 @@ Proposed
 
 ### Positive
 
-A node operator can configure two new parameters in `config.toml` so that he/she can assure that tendermint will allow connection
+A node operator can configure two new parameters in `config.toml` so that he/she can assure that tendermint will allow connections
 from/to peers in `wildcard_peer_ids`. Also he/she can assure that every persistent peer will be dialed at least once in every 
 `persistent_peers_max_dial_period` term. It achieves more stable and persistent peering for trusted peers.
 
