@@ -52,21 +52,22 @@ func (is *IndexerService) OnStart() error {
 		for {
 			msg := <-blockHeadersSub.Out()
 			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
+			height := eventDataHeader.Header.Height
 			batch := NewBatch(eventDataHeader.NumTxs)
 			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
 				msg2 := <-txsSub.Out()
 				txResult := msg2.Data().(types.EventDataTx).TxResult
 				if err = batch.Add(&txResult); err != nil {
 					is.Logger.Error("Can't add tx to batch",
-						"height", eventDataHeader.Header.Height,
+						"height", height,
 						"index", txResult.Index,
 						"err", err)
 				}
 			}
 			if err = is.idr.AddBatch(batch); err != nil {
-				is.Logger.Error("Failed to index block", "height", eventDataHeader.Header.Height, "err", err)
+				is.Logger.Error("Failed to index block", "height", height, "err", err)
 			} else {
-				is.Logger.Info("Indexed block", "height", eventDataHeader.Header.Height)
+				is.Logger.Info("Indexed block", "height", height)
 			}
 		}
 	}()

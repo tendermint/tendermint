@@ -17,6 +17,12 @@ program](https://hackerone.com/tendermint).
 - Go API
   - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) `Query#(Matches|Conditions)` returns an error.
 
+- Blockchain Protocol
+  - [abci] \#2521 Remove TotalTxs and NumTxs from Header
+
+- Instrumentation
+  - [metrics] Remove `consensus_total_txs` metric
+
 ### FEATURES:
 
 ### IMPROVEMENTS:
@@ -27,7 +33,7 @@ program](https://hackerone.com/tendermint).
 - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) No longer panic in `Query#(Matches|Conditions)` preferring to return an error instead.
 - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) Strip out non-numeric characters when attempting to match numeric values.
 - [p2p] [\#3991](https://github.com/tendermint/tendermint/issues/3991) Log "has been established or dialed" as debug log instead of Error for connected peers (@whunmr)
-- [rpc] [\#4077](https://github.com/tendermint/tendermint/pull/4077) Added support for `EXISTS` clause to the Websocket query interface. 
+- [rpc] [\#4077](https://github.com/tendermint/tendermint/pull/4077) Added support for `EXISTS` clause to the Websocket query interface.
 - [privval] Add `SignerDialerEndpointRetryWaitInterval` option (@cosmostuba)
 - [crypto] Add `RegisterKeyType` to amino to allow external key types registration (@austinabell)
 

@@ -33,7 +33,6 @@ The following metrics are available:
 | consensus\_block\_parts                 | counter   | on dev    | peer\_id       | number of blockparts transmitted by peer                        |
 | consensus\_latest\_block\_height        | gauge     | on dev    |                | /status sync\_info number                                       |
 | consensus\_fast\_syncing                | gauge     | on dev    |                | either 0 (not fast syncing) or 1 (syncing)                      |
-| consensus\_total\_txs                   | Gauge     | 0.21.0    |                | Total number of transactions committed                          |
 | consensus\_block\_size\_bytes           | Gauge     | 0.21.0    |                | Block size in bytes                                             |
 | p2p\_peers                              | Gauge     | 0.21.0    |                | Number of peers node's connected to                             |
 | p2p\_peer\_receive\_bytes\_total        | counter   | on dev    | peer\_id, chID | number of bytes per channel received from a given peer          |

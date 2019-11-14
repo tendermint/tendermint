@@ -222,6 +222,7 @@ func (blockExec *BlockExecutor) Commit(
 	blockExec.logger.Info(
 		"Committed state",
 		"height", block.Height,
+		"txs", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
 	)
 
