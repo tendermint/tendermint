@@ -70,13 +70,22 @@ func (b *EventBus) NumClientSubscriptions(clientID string) int {
 	return b.pubsub.NumClientSubscriptions(clientID)
 }
 
-func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error) {
+func (b *EventBus) Subscribe(
+	ctx context.Context,
+	subscriber string,
+	query tmpubsub.Query,
+	outCapacity ...int,
+) (Subscription, error) {
 	return b.pubsub.Subscribe(ctx, subscriber, query, outCapacity...)
 }
 
 // This method can be used for a local consensus explorer and synchronous
 // testing. Do not use for for public facing / untrusted subscriptions!
-func (b *EventBus) SubscribeUnbuffered(ctx context.Context, subscriber string, query tmpubsub.Query) (Subscription, error) {
+func (b *EventBus) SubscribeUnbuffered(
+	ctx context.Context,
+	subscriber string,
+	query tmpubsub.Query,
+) (Subscription, error) {
 	return b.pubsub.SubscribeUnbuffered(ctx, subscriber, query)
 }
 
@@ -215,7 +224,12 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 //-----------------------------------------------------------------------------
 type NopEventBus struct{}
 
-func (NopEventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
+func (NopEventBus) Subscribe(
+	ctx context.Context,
+	subscriber string,
+	query tmpubsub.Query,
+	out chan<- interface{},
+) error {
 	return nil
 }
 

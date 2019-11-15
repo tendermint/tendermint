@@ -115,20 +115,20 @@ func saveState(db dbm.DB, state State, key []byte) {
 // of the various ABCI calls during block processing.
 // It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
-	DeliverTx  []*abci.ResponseDeliverTx `json:"deliver_tx"`
+	DeliverTxs []*abci.ResponseDeliverTx `json:"deliver_txs"`
 	EndBlock   *abci.ResponseEndBlock    `json:"end_block"`
 	BeginBlock *abci.ResponseBeginBlock  `json:"begin_block"`
 }
 
 // NewABCIResponses returns a new ABCIResponses
 func NewABCIResponses(block *types.Block) *ABCIResponses {
-	resDeliverTxs := make([]*abci.ResponseDeliverTx, block.NumTxs)
-	if block.NumTxs == 0 {
+	resDeliverTxs := make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
+	if len(block.Data.Txs) == 0 {
 		// This makes Amino encoding/decoding consistent.
 		resDeliverTxs = nil
 	}
 	return &ABCIResponses{
-		DeliverTx: resDeliverTxs,
+		DeliverTxs: resDeliverTxs,
 	}
 }
 
@@ -138,7 +138,7 @@ func (arz *ABCIResponses) Bytes() []byte {
 }
 
 func (arz *ABCIResponses) ResultsHash() []byte {
-	results := types.NewResults(arz.DeliverTx)
+	results := types.NewResults(arz.DeliverTxs)
 	return results.Hash()
 }
 
@@ -165,8 +165,11 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 
 // SaveABCIResponses persists the ABCIResponses to the database.
 // This is useful in case we crash after app.Commit and before s.Save().
-// Responses are indexed by height so they can also be loaded later to produce Merkle proofs.
-func saveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
+// Responses are indexed by height so they can also be loaded later to produce
+// Merkle proofs.
+//
+// Exposed for testing.
+func SaveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
 	db.SetSync(calcABCIResponsesKey(height), abciResponses.Bytes())
 }
 
@@ -194,21 +197,12 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 		lastStoredHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
 		valInfo2 := loadValidatorsInfo(db, lastStoredHeight)
 		if valInfo2 == nil || valInfo2.ValidatorSet == nil {
-			// TODO (melekes): remove the below if condition in the 0.33 major
-			// release and just panic. Old chains might panic otherwise if they
-			// haven't saved validators at intermediate (%valSetCheckpointInterval)
-			// height yet.
-			// https://github.com/tendermint/tendermint/issues/3543
-			valInfo2 = loadValidatorsInfo(db, valInfo.LastHeightChanged)
-			lastStoredHeight = valInfo.LastHeightChanged
-			if valInfo2 == nil || valInfo2.ValidatorSet == nil {
-				panic(
-					fmt.Sprintf("Couldn't find validators at height %d (height %d was originally requested)",
-						lastStoredHeight,
-						height,
-					),
-				)
-			}
+			panic(
+				fmt.Sprintf("Couldn't find validators at height %d (height %d was originally requested)",
+					lastStoredHeight,
+					height,
+				),
+			)
 		}
 		valInfo2.ValidatorSet.IncrementProposerPriority(int(height - lastStoredHeight)) // mutate
 		valInfo = valInfo2

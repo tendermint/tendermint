@@ -134,7 +134,8 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 				// remaining fields:
 				0x2a,                                                                // (field_number << 3) | wire_type
 				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1, // timestamp
-				0x32,                                                                               // (field_number << 3) | wire_type
+				// (field_number << 3) | wire_type
+				0x32,
 				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64}, // chainID
 		},
 	}
@@ -278,7 +279,9 @@ func TestVoteValidateBasic(t *testing.T) {
 		{"Good Vote", func(v *Vote) {}, false},
 		{"Negative Height", func(v *Vote) { v.Height = -1 }, true},
 		{"Negative Round", func(v *Vote) { v.Round = -1 }, true},
-		{"Invalid BlockID", func(v *Vote) { v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}} }, true},
+		{"Invalid BlockID", func(v *Vote) {
+			v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}}
+		}, true},
 		{"Invalid Address", func(v *Vote) { v.ValidatorAddress = make([]byte, 1) }, true},
 		{"Invalid ValidatorIndex", func(v *Vote) { v.ValidatorIndex = -1 }, true},
 		{"Invalid Signature", func(v *Vote) { v.Signature = nil }, true},

@@ -35,12 +35,12 @@ func calculateStatistics(
 	}
 
 	var (
-		numBlocksPerSec = make(map[int64]int64)
-		numTxsPerSec    = make(map[int64]int64)
+		numBlocksPerSec = make(map[int]int)
+		numTxsPerSec    = make(map[int]int)
 	)
 
 	// because during some seconds blocks won't be created...
-	for i := int64(0); i < int64(duration); i++ {
+	for i := 0; i < duration; i++ {
 		numBlocksPerSec[i] = 0
 		numTxsPerSec[i] = 0
 	}
@@ -67,13 +67,13 @@ func calculateStatistics(
 		numBlocksPerSec[sec]++
 
 		// increase number of txs for that second
-		numTxsPerSec[sec] += blockMeta.Header.NumTxs
-		logger.Debug(fmt.Sprintf("%d txs at block height %d", blockMeta.Header.NumTxs, blockMeta.Header.Height))
+		numTxsPerSec[sec] += blockMeta.NumTxs
+		logger.Debug(fmt.Sprintf("%d txs at block height %d", blockMeta.NumTxs, blockMeta.Header.Height))
 	}
 
-	for i := int64(0); i < int64(duration); i++ {
-		stats.BlocksThroughput.Update(numBlocksPerSec[i])
-		stats.TxsThroughput.Update(numTxsPerSec[i])
+	for i := 0; i < duration; i++ {
+		stats.BlocksThroughput.Update(int64(numBlocksPerSec[i]))
+		stats.TxsThroughput.Update(int64(numTxsPerSec[i]))
 	}
 
 	return stats, nil
@@ -107,8 +107,8 @@ func getBlockMetas(client tmrpc.Client, minHeight int64, timeStart, timeEnd time
 	return blockMetas, nil
 }
 
-func secondsSinceTimeStart(timeStart, timePassed time.Time) int64 {
-	return int64(math.Round(timePassed.Sub(timeStart).Seconds()))
+func secondsSinceTimeStart(timeStart, timePassed time.Time) int {
+	return int(math.Round(timePassed.Sub(timeStart).Seconds()))
 }
 
 func printStatistics(stats *statistics, outputFormat string) {

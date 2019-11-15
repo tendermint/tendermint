@@ -198,14 +198,22 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{}, map[int64]tPBlocks{}),
 		},
 		{
-			name:       "delete the shortest of two peers without blocks",
-			pool:       makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 120}}, map[int64]tPBlocks{}),
+			name: "delete the shortest of two peers without blocks",
+			pool: makeBlockPool(
+				testBcR,
+				100,
+				[]BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 120}},
+				map[int64]tPBlocks{}),
 			args:       args{"P1", nil},
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{{ID: "P2", Height: 120}}, map[int64]tPBlocks{}),
 		},
 		{
-			name:       "delete the tallest of two peers without blocks",
-			pool:       makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 120}}, map[int64]tPBlocks{}),
+			name: "delete the tallest of two peers without blocks",
+			pool: makeBlockPool(
+				testBcR,
+				100,
+				[]BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 120}},
+				map[int64]tPBlocks{}),
 			args:       args{"P2", nil},
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 100}}, map[int64]tPBlocks{}),
 		},
@@ -308,8 +316,12 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 			expnumPendingBlockRequests: 2,
 		},
 		{
-			name:               "n peers - send n*maxRequestsPerPeer block requests",
-			pool:               makeBlockPool(testBcR, 10, []BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 100}}, map[int64]tPBlocks{}),
+			name: "n peers - send n*maxRequestsPerPeer block requests",
+			pool: makeBlockPool(
+				testBcR,
+				10,
+				[]BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 100}},
+				map[int64]tPBlocks{}),
 			maxRequestsPerPeer: 2,
 			expRequests:        map[int64]bool{10: true, 11: true},
 			expPeerResults: []testPeerResult{

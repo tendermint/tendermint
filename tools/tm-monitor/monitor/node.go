@@ -35,7 +35,7 @@ type Node struct {
 	// rpcClient is an client for making RPC calls to TM
 	rpcClient rpc_client.HTTPClient
 
-	blockCh        chan<- tmtypes.Header
+	blockCh        chan<- *tmtypes.Block
 	blockLatencyCh chan<- float64
 	disconnectCh   chan<- bool
 
@@ -53,7 +53,11 @@ func NewNode(rpcAddr string, options ...func(*Node)) *Node {
 	return NewNodeWithEventMeterAndRpcClient(rpcAddr, em, rpcClient, options...)
 }
 
-func NewNodeWithEventMeterAndRpcClient(rpcAddr string, em eventMeter, rpcClient rpc_client.HTTPClient, options ...func(*Node)) *Node {
+func NewNodeWithEventMeterAndRpcClient(
+	rpcAddr string,
+	em eventMeter,
+	rpcClient rpc_client.HTTPClient,
+	options ...func(*Node)) *Node {
 	n := &Node{
 		rpcAddr:                  rpcAddr,
 		em:                       em,
@@ -79,7 +83,7 @@ func SetCheckIsValidatorInterval(d time.Duration) func(n *Node) {
 	}
 }
 
-func (n *Node) SendBlocksTo(ch chan<- tmtypes.Header) {
+func (n *Node) SendBlocksTo(ch chan<- *tmtypes.Block) {
 	n.blockCh = ch
 }
 
@@ -103,7 +107,7 @@ func (n *Node) Start() error {
 	}
 
 	n.em.RegisterLatencyCallback(latencyCallback(n))
-	err := n.em.Subscribe(tmtypes.EventQueryNewBlockHeader.String(), newBlockCallback(n))
+	err := n.em.Subscribe(tmtypes.EventQueryNewBlock.String(), newBlockCallback(n))
 	if err != nil {
 		return err
 	}
@@ -128,10 +132,10 @@ func (n *Node) Stop() {
 // implements eventmeter.EventCallbackFunc
 func newBlockCallback(n *Node) em.EventCallbackFunc {
 	return func(metric *em.EventMetric, data interface{}) {
-		block := data.(tmtypes.TMEventData).(tmtypes.EventDataNewBlockHeader).Header
+		block := data.(tmtypes.TMEventData).(tmtypes.EventDataNewBlock).Block
 
 		n.Height = block.Height
-		n.logger.Info("new block", "height", block.Height, "numTxs", block.NumTxs)
+		n.logger.Info("new block", "height", block.Height)
 
 		if n.blockCh != nil {
 			n.blockCh <- block

@@ -27,6 +27,9 @@ type State struct {
 }
 ```
 
+Note there is a hard-coded limit of 10000 validators. This is inherited from the
+limit on the number of votes in a commit.
+
 ### Result
 
 ```go

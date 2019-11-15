@@ -19,6 +19,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -236,7 +237,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// send a tx
-	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil); err != nil {
+	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempl.TxInfo{}); err != nil {
 		t.Error(err)
 	}
 
@@ -317,7 +318,11 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 func TestReactorVotingPowerChange(t *testing.T) {
 	nVals := 4
 	logger := log.TestingLogger()
-	css, cleanup := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	css, cleanup := randConsensusNet(
+		nVals,
+		"consensus_voting_power_changes_test",
+		newMockTickerFunc(true),
+		newPersistentKVStore)
 	defer cleanup()
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nVals)
 	defer stopConsensusNet(logger, reactors, eventBuses)
@@ -348,7 +353,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
@@ -360,7 +368,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
@@ -372,14 +383,22 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, _, _, cleanup := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+	css, _, _, cleanup := randConsensusNetWithPeers(
+		nVals,
+		nPeers,
+		"consensus_val_set_changes_test",
+		newMockTickerFunc(true),
+		newPersistentKVStoreWithPath)
 
 	defer cleanup()
 	logger := log.TestingLogger()
@@ -440,7 +459,10 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 
 	if css[nVals].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Errorf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[nVals].GetRoundState().LastValidators.TotalVotingPower())
+		t.Errorf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[nVals].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	//---------------------------------------------------------------------------
@@ -510,7 +532,7 @@ func waitForAndValidateBlock(
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
 		for _, tx := range txs {
-			err := assertMempool(css[j].txNotifier).CheckTx(tx, nil)
+			err := assertMempool(css[j].txNotifier).CheckTx(tx, nil, mempl.TxInfo{})
 			assert.Nil(t, err)
 		}
 	}, css)
@@ -570,7 +592,10 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP
 			} else {
-				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block with no new validators. Skipping", "height", newBlock.Height)
+				css[j].Logger.Debug(
+					"waitForBlockWithUpdatedValsAndValidateIt: Got block with no new validators. Skipping",
+					"height",
+					newBlock.Height)
 			}
 		}
 
@@ -582,7 +607,10 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 // expects high synchrony!
 func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	if block.LastCommit.Size() != len(activeVals) {
-		return fmt.Errorf("Commit size doesn't match number of active validators. Got %d, expected %d", block.LastCommit.Size(), len(activeVals))
+		return fmt.Errorf(
+			"Commit size doesn't match number of active validators. Got %d, expected %d",
+			block.LastCommit.Size(),
+			len(activeVals))
 	}
 
 	for _, vote := range block.LastCommit.Precommits {
@@ -639,7 +667,7 @@ func capture() {
 // Ensure basic validation of structs is functioning
 
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
+	testCases := []struct { // nolint: maligned
 		expectErr              bool
 		messageRound           int
 		messageLastCommitRound int
@@ -671,67 +699,82 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 }
 
 func TestNewValidBlockMessageValidateBasic(t *testing.T) {
-	testBitArray := cmn.NewBitArray(1)
 	testCases := []struct {
-		testName          string
-		messageHeight     int64
-		messageRound      int
-		messageBlockParts *cmn.BitArray
-		expectErr         bool
+		malleateFn func(*NewValidBlockMessage)
+		expErr     string
 	}{
-		{"Valid Message", 0, 0, testBitArray, false},
-		{"Invalid Message", -1, 0, testBitArray, true},
-		{"Invalid Message", 0, -1, testBitArray, true},
-		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+		{func(msg *NewValidBlockMessage) {}, ""},
+		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "Negative Height"},
+		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "Negative Round"},
+		{
+			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 2 },
+			"BlockParts bit array size 1 not equal to BlockPartsHeader.Total 2",
+		},
+		{
+			func(msg *NewValidBlockMessage) { msg.BlockPartsHeader.Total = 0; msg.BlockParts = cmn.NewBitArray(0) },
+			"Empty BlockParts",
+		},
+		{
+			func(msg *NewValidBlockMessage) { msg.BlockParts = cmn.NewBitArray(types.MaxBlockPartsCount + 1) },
+			"BlockParts bit array size 1602 not equal to BlockPartsHeader.Total 1",
+		},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := NewValidBlockMessage{
-				Height:     tc.messageHeight,
-				Round:      tc.messageRound,
-				BlockParts: tc.messageBlockParts,
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &NewValidBlockMessage{
+				Height: 1,
+				Round:  0,
+				BlockPartsHeader: types.PartSetHeader{
+					Total: 1,
+				},
+				BlockParts: cmn.NewBitArray(1),
 			}
 
-			message.BlockPartsHeader.Total = 1
-
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
 		})
 	}
 }
 
 func TestProposalPOLMessageValidateBasic(t *testing.T) {
-	testBitArray := cmn.NewBitArray(1)
 	testCases := []struct {
-		testName                string
-		messageHeight           int64
-		messageProposalPOLRound int
-		messageProposalPOL      *cmn.BitArray
-		expectErr               bool
+		malleateFn func(*ProposalPOLMessage)
+		expErr     string
 	}{
-		{"Valid Message", 0, 0, testBitArray, false},
-		{"Invalid Message", -1, 0, testBitArray, true},
-		{"Invalid Message", 0, -1, testBitArray, true},
-		{"Invalid Message", 0, 0, cmn.NewBitArray(0), true},
+		{func(msg *ProposalPOLMessage) {}, ""},
+		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "Negative Height"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "Negative ProposalPOLRound"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(0) }, "Empty ProposalPOL bit array"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = cmn.NewBitArray(types.MaxVotesCount + 1) },
+			"ProposalPOL bit array is too big: 10001, max: 10000"},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := ProposalPOLMessage{
-				Height:           tc.messageHeight,
-				ProposalPOLRound: tc.messageProposalPOLRound,
-				ProposalPOL:      tc.messageProposalPOL,
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &ProposalPOLMessage{
+				Height:           1,
+				ProposalPOLRound: 1,
+				ProposalPOL:      cmn.NewBitArray(1),
 			}
 
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
 		})
 	}
 }
 
 func TestBlockPartMessageValidateBasic(t *testing.T) {
 	testPart := new(types.Part)
+	testPart.Proof.LeafHash = tmhash.Sum([]byte("leaf"))
 	testCases := []struct {
 		testName      string
 		messageHeight int64
@@ -769,7 +812,7 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 		invalidSignedMsgType types.SignedMsgType = 0x03
 	)
 
-	testCases := []struct {
+	testCases := []struct { // nolint: maligned
 		expectErr     bool
 		messageRound  int
 		messageIndex  int
@@ -814,7 +857,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		},
 	}
 
-	testCases := []struct {
+	testCases := []struct { // nolint: maligned
 		expectErr      bool
 		messageRound   int
 		messageHeight  int64
@@ -845,49 +888,43 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 }
 
 func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
-	const (
-		validSignedMsgType   types.SignedMsgType = 0x01
-		invalidSignedMsgType types.SignedMsgType = 0x03
-	)
-
-	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{
-		Hash: cmn.HexBytes{},
-		PartsHeader: types.PartSetHeader{
-			Total: -1,
-			Hash:  cmn.HexBytes{},
-		},
-	}
-	testBitArray := cmn.NewBitArray(1)
-
-	testCases := []struct {
-		expectErr      bool
-		messageRound   int
-		messageHeight  int64
-		testName       string
-		messageType    types.SignedMsgType
-		messageBlockID types.BlockID
-		messageVotes   *cmn.BitArray
+	testCases := []struct { // nolint: maligned
+		malleateFn func(*VoteSetBitsMessage)
+		expErr     string
 	}{
-		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID, testBitArray},
-		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID, testBitArray},
-		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID, testBitArray},
+		{func(msg *VoteSetBitsMessage) {}, ""},
+		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "Negative Height"},
+		{func(msg *VoteSetBitsMessage) { msg.Round = -1 }, "Negative Round"},
+		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "Invalid Type"},
+		{func(msg *VoteSetBitsMessage) {
+			msg.BlockID = types.BlockID{
+				Hash: cmn.HexBytes{},
+				PartsHeader: types.PartSetHeader{
+					Total: -1,
+					Hash:  cmn.HexBytes{},
+				},
+			}
+		}, "Wrong BlockID: Wrong PartsHeader: Negative Total"},
+		{func(msg *VoteSetBitsMessage) { msg.Votes = cmn.NewBitArray(types.MaxVotesCount + 1) },
+			"Votes bit array is too big: 10001, max: 10000"},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := VoteSetBitsMessage{
-				Height: tc.messageHeight,
-				Round:  tc.messageRound,
-				Type:   tc.messageType,
-				// Votes:   tc.messageVotes,
-				BlockID: tc.messageBlockID,
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &VoteSetBitsMessage{
+				Height:  1,
+				Round:   0,
+				Type:    0x01,
+				Votes:   cmn.NewBitArray(1),
+				BlockID: types.BlockID{},
 			}
 
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
 		})
 	}
 }
