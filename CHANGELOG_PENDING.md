@@ -37,6 +37,8 @@ program](https://hackerone.com/tendermint).
     id=1 method=/abci_query
     id=1 result=...
     ```
+    * ID is unique for each request;
+    * Request.ID is now optional. Notification is a Request without an ID. Previously ID="" or ID=0 were considered as notifications.
 
 - Apps
 
@@ -65,9 +67,6 @@ program](https://hackerone.com/tendermint).
 - [crypto] Add `RegisterKeyType` to amino to allow external key types registration (@austinabell)
 - [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
 - [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
-- [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) Generate unique ID for each request.
-  * Request.ID is now optional. Notification is a Request without an ID.
-    Previously "" or 0 were considered as notifications.
 
 ### BUG FIXES:
 
@@ -76,3 +75,4 @@ program](https://hackerone.com/tendermint).
 - [state] [\#4095](https://github.com/tendermint/tendermint/pull/4095) txindex/kv: Return an error if there's one when the user searches for a tx (hash=X) (@hsyis)
 - [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
 - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) JSONRPCClient: validate that Response.ID matches Request.ID
+- [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
