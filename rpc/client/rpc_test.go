@@ -225,17 +225,17 @@ func TestAppCalls(t *testing.T) {
 		// and we can even check the block is added
 		block, err := c.Block(&apph)
 		require.Nil(err, "%d: %+v", i, err)
-		appHash := block.BlockMeta.Header.AppHash
+		appHash := block.Block.Header.AppHash
 		assert.True(len(appHash) > 0)
-		assert.EqualValues(apph, block.BlockMeta.Header.Height)
+		assert.EqualValues(apph, block.Block.Header.Height)
 
 		// now check the results
 		blockResults, err := c.BlockResults(&txh)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.Equal(txh, blockResults.Height)
-		if assert.Equal(1, len(blockResults.Results.DeliverTx)) {
+		if assert.Equal(1, len(blockResults.TxsResults)) {
 			// check success code
-			assert.EqualValues(0, blockResults.Results.DeliverTx[0].Code)
+			assert.EqualValues(0, blockResults.TxsResults[0].Code)
 		}
 
 		// check blockchain info, now that we know there is info
@@ -245,9 +245,9 @@ func TestAppCalls(t *testing.T) {
 		if assert.Equal(1, len(info.BlockMetas)) {
 			lastMeta := info.BlockMetas[0]
 			assert.EqualValues(apph, lastMeta.Header.Height)
-			bMeta := block.BlockMeta
-			assert.Equal(bMeta.Header.AppHash, lastMeta.Header.AppHash)
-			assert.Equal(bMeta.BlockID, lastMeta.BlockID)
+			blockData := block.Block
+			assert.Equal(blockData.Header.AppHash, lastMeta.Header.AppHash)
+			assert.Equal(block.BlockID, lastMeta.BlockID)
 		}
 
 		// and get the corresponding commit with the same apphash

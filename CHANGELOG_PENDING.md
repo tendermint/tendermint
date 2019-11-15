@@ -11,11 +11,33 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 - CLI/RPC/Config
+  - [rpc] \#3188 Remove `BlockMeta` in `ResultBlock` in favor of `BlockId` for `/block`
+  - [rpc] `/block_results` response format updated (see RPC docs for details)
+    ```
+    {
+      "jsonrpc": "2.0",
+      "id": "",
+      "result": {
+        "height": "2109",
+        "txs_results": null,
+        "begin_block_events": null,
+        "end_block_events": null,
+        "validator_updates": null,
+        "consensus_param_updates": null
+      }
+    }
+    ```
 
 - Apps
 
 - Go API
   - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) `Query#(Matches|Conditions)` returns an error.
+
+- Blockchain Protocol
+  - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
+
+- P2P Protocol
+  - [p2p] [\3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
 
 ### FEATURES:
 
@@ -31,9 +53,12 @@ program](https://hackerone.com/tendermint).
 - [privval] Add `SignerDialerEndpointRetryWaitInterval` option (@cosmostuba)
 - [crypto] Add `RegisterKeyType` to amino to allow external key types registration (@austinabell)
 - [mempool] [\#3990](https://github.com/tendermint/tendermint/pull/3990) Modify the checkTxType 'CheckTx_New' to two types 'CheckTx_Trusted' and 'CheckTx_Untrusted' to let the app handle them differently (@james-ray)
+- [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
+- [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
 
 ### BUG FIXES:
 
 - [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Refresh `tm-monitor` health when validator count is updated (@erikgrinaker)
 - [state] [\#4104](https://github.com/tendermint/tendermint/pull/4104) txindex/kv: Fsync data to disk immediately after receiving it (@guagualvcha)
 - [state] [\#4095](https://github.com/tendermint/tendermint/pull/4095) txindex/kv: Return an error if there's one when the user searches for a tx (hash=X) (@hsyis)
+- [rpc/lib] [\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)

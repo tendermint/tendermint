@@ -298,7 +298,6 @@ ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
     Header header = req.getHeader();
     byte[] prevAppHash = header.getAppHash().toByteArray();
     long prevHeight = header.getHeight();
-    long numTxs = header.getNumTxs();
 
     // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
 

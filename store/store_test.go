@@ -155,7 +155,6 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	header1 := types.Header{
 		Height:  1,
-		NumTxs:  100,
 		ChainID: "block_test",
 		Time:    tmtime.Now(),
 	}

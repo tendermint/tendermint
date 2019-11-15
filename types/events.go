@@ -73,6 +73,7 @@ type EventDataNewBlock struct {
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
+	NumTxs           int64                   `json:"number_txs"` // Number of txs in a block
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
