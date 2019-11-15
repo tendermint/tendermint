@@ -79,7 +79,6 @@ func TestRPCParams(t *testing.T) {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
 		}
-		res.Body.Close()
 
 		recv := new(types.RPCResponse)
 		assert.Nil(t, json.Unmarshal(blob, recv), "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
