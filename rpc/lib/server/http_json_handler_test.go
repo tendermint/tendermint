@@ -65,6 +65,7 @@ func TestRPCParams(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		res := rec.Result()
+		defer res.Body.Close()
 		// Always expecting back a JSONRPCResponse
 		assert.True(t, statusOK(res.StatusCode), "#%d: should always return 2XX", i)
 		blob, err := ioutil.ReadAll(res.Body)
@@ -72,7 +73,6 @@ func TestRPCParams(t *testing.T) {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
 		}
-		res.Body.Close()
 
 		recv := new(types.RPCResponse)
 		assert.Nil(t, json.Unmarshal(blob, recv), "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
