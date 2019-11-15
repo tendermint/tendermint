@@ -146,7 +146,7 @@ We consider the following use case:
 
 This can be used in several settings:
   - someone tells the lite client that application data that is relevant for it can be read in the block of height *k*.
-  - the lite clients wants the latest state. It asks a full nude for the current height, and uses the response for *k*.
+  - the lite clients wants the latest state. It asks a full node for the current height, and uses the response for *k*.
 
 
 ## Details

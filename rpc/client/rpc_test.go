@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -224,17 +225,17 @@ func TestAppCalls(t *testing.T) {
 		// and we can even check the block is added
 		block, err := c.Block(&apph)
 		require.Nil(err, "%d: %+v", i, err)
-		appHash := block.BlockMeta.Header.AppHash
+		appHash := block.Block.Header.AppHash
 		assert.True(len(appHash) > 0)
-		assert.EqualValues(apph, block.BlockMeta.Header.Height)
+		assert.EqualValues(apph, block.Block.Header.Height)
 
 		// now check the results
 		blockResults, err := c.BlockResults(&txh)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.Equal(txh, blockResults.Height)
-		if assert.Equal(1, len(blockResults.Results.DeliverTx)) {
+		if assert.Equal(1, len(blockResults.TxsResults)) {
 			// check success code
-			assert.EqualValues(0, blockResults.Results.DeliverTx[0].Code)
+			assert.EqualValues(0, blockResults.TxsResults[0].Code)
 		}
 
 		// check blockchain info, now that we know there is info
@@ -244,9 +245,9 @@ func TestAppCalls(t *testing.T) {
 		if assert.Equal(1, len(info.BlockMetas)) {
 			lastMeta := info.BlockMetas[0]
 			assert.EqualValues(apph, lastMeta.Header.Height)
-			bMeta := block.BlockMeta
-			assert.Equal(bMeta.Header.AppHash, lastMeta.Header.AppHash)
-			assert.Equal(bMeta.BlockID, lastMeta.BlockID)
+			blockData := block.Block
+			assert.Equal(blockData.Header.AppHash, lastMeta.Header.AppHash)
+			assert.Equal(block.BlockID, lastMeta.BlockID)
 		}
 
 		// and get the corresponding commit with the same apphash
@@ -312,7 +313,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
 	mempool := node.Mempool()
-	_ = mempool.CheckTx(tx, nil)
+	_ = mempool.CheckTx(tx, nil, mempl.TxInfo{})
 
 	for i, c := range GetClients() {
 		mc, ok := c.(client.MempoolClient)
@@ -333,7 +334,7 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
 	mempool := node.Mempool()
-	_ = mempool.CheckTx(tx, nil)
+	_ = mempool.CheckTx(tx, nil, mempl.TxInfo{})
 	mempoolSize := mempool.Size()
 
 	for i, c := range GetClients() {
@@ -364,16 +365,16 @@ func TestTx(t *testing.T) {
 
 	cases := []struct {
 		valid bool
-		hash  []byte
 		prove bool
+		hash  []byte
 	}{
 		// only valid if correct hash provided
-		{true, txHash, false},
-		{true, txHash, true},
-		{false, anotherTxHash, false},
-		{false, anotherTxHash, true},
-		{false, nil, false},
-		{false, nil, true},
+		{true, false, txHash},
+		{true, true, txHash},
+		{false, false, anotherTxHash},
+		{false, true, anotherTxHash},
+		{false, false, nil},
+		{false, true, nil},
 	}
 
 	for i, c := range GetClients() {
@@ -488,7 +489,13 @@ func deepcpVote(vote *types.Vote) (res *types.Vote) {
 	return
 }
 
-func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *types.Vote, chainID string) types.DuplicateVoteEvidence {
+func newEvidence(
+	t *testing.T,
+	val *privval.FilePV,
+	vote *types.Vote,
+	vote2 *types.Vote,
+	chainID string,
+) types.DuplicateVoteEvidence {
 	var err error
 	vote2_ := deepcpVote(vote2)
 	vote2_.Signature, err = val.Key.PrivKey.Sign(vote2_.SignBytes(chainID))
@@ -501,7 +508,11 @@ func newEvidence(t *testing.T, val *privval.FilePV, vote *types.Vote, vote2 *typ
 	}
 }
 
-func makeEvidences(t *testing.T, val *privval.FilePV, chainID string) (ev types.DuplicateVoteEvidence, fakes []types.DuplicateVoteEvidence) {
+func makeEvidences(
+	t *testing.T,
+	val *privval.FilePV,
+	chainID string,
+) (ev types.DuplicateVoteEvidence, fakes []types.DuplicateVoteEvidence) {
 	vote := &types.Vote{
 		ValidatorAddress: val.Key.Address,
 		ValidatorIndex:   0,

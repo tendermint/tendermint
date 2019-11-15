@@ -154,6 +154,26 @@ lint:
 DESTINATION = ./index.html.md
 
 ###########################################################
+### Documentation
+
+build-docs:
+	cd docs && \
+	while read p; do \
+		(git checkout $${p} && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
+		mkdir -p ~/output/$${p} ; \
+		cp -r .vuepress/dist/* ~/output/$${p}/ ; \
+		cp ~/output/$${p}/index.html ~/output ; \
+	done < versions ;
+
+sync-docs:
+	cd ~/output && \
+	echo "role_arn = ${DEPLOYMENT_ROLE_ARN}" >> /root/.aws/config ; \
+	echo "CI job = ${CIRCLE_BUILD_URL}" >> version.html ; \
+	aws s3 sync . s3://${WEBSITE_BUCKET} --profile terraform --delete ; \
+	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*" ;
+.PHONY: sync-docs
+
+###########################################################
 ### Docker image
 
 build-docker:
@@ -227,7 +247,7 @@ contract-tests:
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
- 	get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt rpc-docs build-linux localnet-start \
+ 	get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
  	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all \
  	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
 	build_c-amazonlinux

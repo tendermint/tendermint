@@ -136,12 +136,28 @@ func TestSwitches(t *testing.T) {
 	s1.Broadcast(byte(0x01), ch1Msg)
 	s1.Broadcast(byte(0x02), ch2Msg)
 
-	assertMsgReceivedWithTimeout(t, ch0Msg, byte(0x00), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
-	assertMsgReceivedWithTimeout(t, ch1Msg, byte(0x01), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
-	assertMsgReceivedWithTimeout(t, ch2Msg, byte(0x02), s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t,
+		ch0Msg,
+		byte(0x00),
+		s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t,
+		ch1Msg,
+		byte(0x01),
+		s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t,
+		ch2Msg,
+		byte(0x02),
+		s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 }
 
-func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
+func assertMsgReceivedWithTimeout(
+	t *testing.T,
+	msgBytes []byte,
+	channel byte,
+	reactor *TestReactor,
+	checkPeriod,
+	timeout time.Duration,
+) {
 	ticker := time.NewTicker(checkPeriod)
 	for {
 		select {
@@ -358,6 +374,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 		}
 		defer resp.Body.Close()
 		buf, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
 		return string(buf)
 	}
 

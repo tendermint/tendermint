@@ -43,7 +43,10 @@ func TestResponses(t *testing.T) {
 
 		d := RPCParseError(jsonid, errors.New("Hello world"))
 		e, _ := json.Marshal(d)
-		f := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32700,"message":"Parse error. Invalid JSON","data":"Hello world"}}`, tt.expected)
+		f := fmt.Sprintf(
+			`{"jsonrpc":"2.0","id":%v,"error":{"code":-32700,"message":"Parse error. Invalid JSON","data":"Hello world"}}`,
+			tt.expected,
+		)
 		assert.Equal(f, string(e))
 
 		g := RPCMethodNotFoundError(jsonid)
@@ -58,7 +61,10 @@ func TestUnmarshallResponses(t *testing.T) {
 	cdc := amino.NewCodec()
 	for _, tt := range responseTests {
 		response := &RPCResponse{}
-		err := json.Unmarshal([]byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)), response)
+		err := json.Unmarshal(
+			[]byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)),
+			response,
+		)
 		assert.Nil(err)
 		a := NewRPCSuccessResponse(cdc, tt.id, &SampleResult{"hello"})
 		assert.Equal(*response, a)

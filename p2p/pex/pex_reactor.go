@@ -303,7 +303,8 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	now := time.Now()
 	minInterval := r.minReceiveRequestInterval()
 	if now.Sub(lastReceived) < minInterval {
-		return fmt.Errorf("peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
+		return fmt.Errorf(
+			"peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
 			src.ID(),
 			lastReceived,
 			now,
@@ -367,7 +368,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 				err := r.dialPeer(addr)
 				if err != nil {
 					switch err.(type) {
-					case errMaxAttemptsToDial, errTooEarlyToDial:
+					case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
 						r.Logger.Debug(err.Error(), "addr", addr)
 					default:
 						r.Logger.Error(err.Error(), "addr", addr)
@@ -490,7 +491,7 @@ func (r *PEXReactor) ensurePeers() {
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
 		if peersCount > 0 {
-			peer := peers[cmn.RandInt()%peersCount] // nolint: gas
+			peer := peers[cmn.RandInt()%peersCount]
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestAddrs(peer)
 		}
@@ -589,7 +590,9 @@ func (r *PEXReactor) dialSeeds() {
 		// dial a random seed
 		seedAddr := r.seedAddrs[i]
 		err := r.Switch.DialPeerWithAddress(seedAddr)
-		if err == nil {
+
+		switch err.(type) {
+		case nil, p2p.ErrCurrentlyDialingOrExistingAddress:
 			return
 		}
 		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
@@ -675,7 +678,7 @@ func (r *PEXReactor) crawlPeers(addrs []*p2p.NetAddress) {
 		err := r.dialPeer(addr)
 		if err != nil {
 			switch err.(type) {
-			case errMaxAttemptsToDial, errTooEarlyToDial:
+			case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
 				r.Logger.Debug(err.Error(), "addr", addr)
 			default:
 				r.Logger.Error(err.Error(), "addr", addr)
