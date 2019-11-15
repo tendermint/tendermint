@@ -130,7 +130,7 @@ module.exports = {
           },
           {
             title: "RPC",
-            path: "/rpc/",
+            path: "/master/rpc/",
             static: true
           }
         ]
