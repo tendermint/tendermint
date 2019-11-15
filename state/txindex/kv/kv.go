@@ -27,14 +27,14 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
 type TxIndex struct {
-	store          dbm.DB
-	eventsToIndex  []string
-	indexAllEvents bool
+	store                dbm.DB
+	compositeKeysToIndex []string
+	indexAllEvents       bool
 }
 
 // NewTxIndex creates new KV indexer.
 func NewTxIndex(store dbm.DB, options ...func(*TxIndex)) *TxIndex {
-	txi := &TxIndex{store: store, eventsToIndex: make([]string, 0), indexAllEvents: false}
+	txi := &TxIndex{store: store, compositeKeysToIndex: make([]string, 0), indexAllEvents: false}
 	for _, o := range options {
 		o(txi)
 	}
@@ -44,7 +44,7 @@ func NewTxIndex(store dbm.DB, options ...func(*TxIndex)) *TxIndex {
 // IndexEvents is an option for setting which events to index.
 func IndexEvents(events []string) func(*TxIndex) {
 	return func(txi *TxIndex) {
-		txi.eventsToIndex = events
+		txi.compositeKeysToIndex = events
 	}
 }
 
@@ -91,7 +91,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		txi.indexEvents(result, hash, storeBatch)
 
 		// index tx by height
-		if txi.indexAllEvents || cmn.StringInSlice(types.TxHeightKey, txi.eventsToIndex) {
+		if txi.indexAllEvents || cmn.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
 			storeBatch.Set(keyForHeight(result), hash)
 		}
 
@@ -121,7 +121,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	txi.indexEvents(result, hash, b)
 
 	// index tx by height
-	if txi.indexAllEvents || cmn.StringInSlice(types.TxHeightKey, txi.eventsToIndex) {
+	if txi.indexAllEvents || cmn.StringInSlice(types.TxHeightKey, txi.compositeKeysToIndex) {
 		b.Set(keyForHeight(result), hash)
 	}
 
@@ -150,7 +150,7 @@ func (txi *TxIndex) indexEvents(result *types.TxResult, hash []byte, store dbm.S
 			}
 
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			if txi.indexAllEvents || cmn.StringInSlice(compositeTag, txi.eventsToIndex) {
+			if txi.indexAllEvents || cmn.StringInSlice(compositeTag, txi.compositeKeysToIndex) {
 				store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 			}
 		}
@@ -260,7 +260,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool) {
 	for _, c := range conditions {
-		if c.Event == types.TxHashKey {
+		if c.CompositeKey == types.TxHashKey {
 			decoded, err := hex.DecodeString(c.Operand.(string))
 			return decoded, err, true
 		}
@@ -271,7 +271,7 @@ func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool)
 // lookForHeight returns a height if there is an "height=X" condition.
 func lookForHeight(conditions []query.Condition) (height int64) {
 	for _, c := range conditions {
-		if c.Event == types.TxHeightKey && c.Op == query.OpEqual {
+		if c.CompositeKey == types.TxHeightKey && c.Op == query.OpEqual {
 			return c.Operand.(int64)
 		}
 	}
@@ -340,9 +340,9 @@ func lookForRanges(conditions []query.Condition) (ranges queryRanges, indexes []
 	ranges = make(queryRanges)
 	for i, c := range conditions {
 		if isRangeOperation(c.Op) {
-			r, ok := ranges[c.Event]
+			r, ok := ranges[c.CompositeKey]
 			if !ok {
-				r = queryRange{key: c.Event}
+				r = queryRange{key: c.CompositeKey}
 			}
 			switch c.Op {
 			case query.OpGreater:
@@ -356,7 +356,7 @@ func lookForRanges(conditions []query.Condition) (ranges queryRanges, indexes []
 				r.includeUpperBound = true
 				r.upperBound = c.Operand
 			}
-			ranges[c.Event] = r
+			ranges[c.CompositeKey] = r
 			indexes = append(indexes, i)
 		}
 	}
@@ -404,7 +404,7 @@ func (txi *TxIndex) match(
 		// XXX: startKey does not apply here.
 		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
 		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
-		it := dbm.IteratePrefix(txi.store, startKey(c.Event))
+		it := dbm.IteratePrefix(txi.store, startKey(c.CompositeKey))
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
@@ -554,9 +554,9 @@ func keyForHeight(result *types.TxResult) []byte {
 
 func startKeyForCondition(c query.Condition, height int64) []byte {
 	if height > 0 {
-		return startKey(c.Event, c.Operand, height)
+		return startKey(c.CompositeKey, c.Operand, height)
 	}
-	return startKey(c.Event, c.Operand)
+	return startKey(c.CompositeKey, c.Operand)
 }
 
 func startKey(fields ...interface{}) []byte {

@@ -65,8 +65,8 @@ func TestTxIndex(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	allowedEvents := []string{"account.number", "account.owner", "account.date"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedEvents))
+	allowedKeys := []string{"account.number", "account.owner", "account.date"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
@@ -84,11 +84,11 @@ func TestTxSearch(t *testing.T) {
 	}{
 		// search by hash
 		{fmt.Sprintf("tx.hash = '%X'", hash), 1},
-		// search by exact match (one event)
+		// search by exact match (one key)
 		{"account.number = 1", 1},
-		// search by exact match (two events)
+		// search by exact match (two keys)
 		{"account.number = 1 AND account.owner = 'Ivan'", 1},
-		// search by exact match (two events)
+		// search by exact match (two keys)
 		{"account.number = 1 AND account.owner = 'Vlad'", 0},
 		{"account.owner = 'Vlad' AND account.number = 1", 0},
 		{"account.number >= 1 AND account.owner = 'Vlad'", 0},
@@ -103,17 +103,17 @@ func TestTxSearch(t *testing.T) {
 		{"account.number >= 1", 1},
 		// search by range (upper bound)
 		{"account.number <= 5", 1},
-		// search using not allowed event
+		// search using not allowed key
 		{"not_allowed = 'boom'", 0},
 		// search for not existing tx result
 		{"account.number >= 2 AND account.number <= 5", 0},
-		// search using not existing event
+		// search using not existing key
 		{"account.date >= TIME 2013-05-03T14:45:00Z", 0},
 		// search using CONTAINS
 		{"account.owner CONTAINS 'an'", 1},
 		// search for non existing value using CONTAINS
 		{"account.owner CONTAINS 'Vlad'", 0},
-		// search using the wrong event (of numeric type) using CONTAINS
+		// search using the wrong key (of numeric type) using CONTAINS
 		{"account.number CONTAINS 'Iv'", 0},
 	}
 
@@ -132,8 +132,8 @@ func TestTxSearch(t *testing.T) {
 }
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
-	allowedEvents := []string{"account.number", "sender"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedEvents))
+	allowedKeys := []string{"account.number", "sender"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
 	// index tx using events indexing (composite key)
 	txResult1 := txResultWithEvents([]abci.Event{
@@ -174,20 +174,20 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 		{fmt.Sprintf("tx.hash = '%X'", hash1), []*types.TxResult{txResult1}},
 		// search by hash
 		{fmt.Sprintf("tx.hash = '%X'", hash2), []*types.TxResult{txResult2}},
-		// search by exact match (one event)
+		// search by exact match (one key)
 		{"account.number = 1", []*types.TxResult{txResult1}},
 		{"account.number >= 1 AND account.number <= 5", []*types.TxResult{txResult1}},
 		// search by range (lower bound)
 		{"account.number >= 1", []*types.TxResult{txResult1}},
 		// search by range (upper bound)
 		{"account.number <= 5", []*types.TxResult{txResult1}},
-		// search using not allowed event
+		// search using not allowed key
 		{"not_allowed = 'boom'", []*types.TxResult{}},
 		// search for not existing tx result
 		{"account.number >= 2 AND account.number <= 5", []*types.TxResult{}},
-		// search using not existing event
+		// search using not existing key
 		{"account.date >= TIME 2013-05-03T14:45:00Z", []*types.TxResult{}},
-		// search by deprecated event
+		// search by deprecated key
 		{"sender = 'addr1'", []*types.TxResult{txResult2}},
 	}
 
@@ -202,8 +202,8 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 }
 
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
-	allowedTags := []string{"account.number"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedTags))
+	allowedKeys := []string{"account.number"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []cmn.KVPair{{Key: []byte("number"), Value: []byte("1")}}},
@@ -221,8 +221,8 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {
-	allowedTags := []string{"account.number", "account.number.id"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedTags))
+	allowedKeys := []string{"account.number", "account.number.id"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexEvents(allowedKeys))
 
 	// indexed first, but bigger height (to test the order of transactions)
 	txResult := txResultWithEvents([]abci.Event{

@@ -875,7 +875,7 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 // TxIndexConfig
 
 // TxIndexConfig defines the configuration for the transaction indexer,
-// including events to index.
+// including compositeKeys to index.
 type TxIndexConfig struct {
 	// What indexer to use for transactions
 	//
@@ -885,30 +885,30 @@ type TxIndexConfig struct {
 	//      backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
 
-	// Comma-separated list of events to index (by default the only event is "tx.hash")
+	// Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
 	//
-	// You can also index transactions by height by adding "tx.height" event here.
+	// You can also index transactions by height by adding "tx.height" key here.
 	//
-	// It's recommended to index only a subset of events due to possible memory
+	// It's recommended to index only a subset of keys due to possible memory
 	// bloat. This is, of course, depends on the indexer's DB and the volume of
 	// transactions.
-	IndexEvents string `mapstructure:"index_events"`
+	IndexKeys string `mapstructure:"index_keys"`
 
-	// When set to true, tells indexer to index all events (predefined events:
-	// "tx.hash", "tx.height" and all events from DeliverTx responses).
+	// When set to true, tells indexer to index all compositeKeys (predefined keys:
+	// "tx.hash", "tx.height" and all keys from DeliverTx responses).
 	//
-	// Note this may be not desirable (see the comment above). IndexEvents has a
-	// precedence over IndexAllEvents (i.e. when given both, IndexEvents will be
+	// Note this may be not desirable (see the comment above). IndexKeys has a
+	// precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
 	// indexed).
-	IndexAllEvents bool `mapstructure:"index_all_events"`
+	IndexAllKeys bool `mapstructure:"index_all_keys"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
-		Indexer:        "kv",
-		IndexEvents:    "",
-		IndexAllEvents: false,
+		Indexer:      "kv",
+		IndexKeys:    "",
+		IndexAllKeys: false,
 	}
 }
 

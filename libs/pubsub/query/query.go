@@ -32,9 +32,9 @@ type Query struct {
 // Condition represents a single condition within a query and consists of event
 // (e.g. "tx.gas"), operator (e.g. "=") and operand (e.g. "7").
 type Condition struct {
-	Event   string
-	Op      Operator
-	Operand interface{}
+	CompositeKey string
+	Op           Operator
+	Operand      interface{}
 }
 
 // New parses the given string and returns a query or error if the string is

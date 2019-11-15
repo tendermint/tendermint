@@ -8,9 +8,9 @@ Tendermint allows you to index transactions and later query or subscribe
 to their results.
 
 Events can be used to index transactions and blocks according to what happened
-during their execution. Note that the set of events returned for a block from
+during their execution. Note that the set of keys returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
-event, only the value defined in `EndBlock` is used.
+key, only the value defined in `EndBlock` is used.
 
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
@@ -29,22 +29,22 @@ Let's take a look at the `[tx_index]` config section:
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
 
-# Comma-separated list of events to index (by default the only event is "tx.hash")
+# Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
 #
-# You can also index transactions by height by adding "tx.height" event here.
+# You can also index transactions by height by adding "tx.height" key here.
 #
-# It's recommended to index only a subset of events due to possible memory
+# It's recommended to index only a subset of keys due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
-index_tags = ""
+index_keys = ""
 
-# When set to true, tells indexer to index all events (predefined events:
-# "tx.hash", "tx.height" and all events from DeliverTx responses).
+# When set to true, tells indexer to index all compositeKeys (predefined keys:
+# "tx.hash", "tx.height" and all keys from DeliverTx responses).
 #
-# Note this may be not desirable (see the comment above). IndexEvents has a
-# precedence over IndexAllTags (i.e. when given both, IndexEvents will be
+# Note this may be not desirable (see the comment above). Indexkeys has a
+# precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
 # indexed).
-index_all_tags = false
+index_all_keys = false
 ```
 
 By default, Tendermint will index all transactions by their respective
@@ -100,17 +100,17 @@ on query syntax and other options.
 
 ## Subscribing to Transactions
 
-Clients can subscribe to transactions with the given tags via Websocket by providing
+Clients can subscribe to transactions with the given tags via WebSocket by providing
 a query to `/subscribe` RPC endpoint.
 
 ```json
 {
-    "jsonrpc": "2.0",
-    "method": "subscribe",
-    "id": "0",
-    "params": {
-        "query": "account.name='igor'"
-    }
+  "jsonrpc": "2.0",
+  "method": "subscribe",
+  "id": "0",
+  "params": {
+    "query": "account.name='igor'"
+  }
 }
 ```
 

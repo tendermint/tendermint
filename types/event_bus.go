@@ -165,7 +165,7 @@ func (b *EventBus) PublishEventValidBlock(data EventDataRoundState) error {
 }
 
 // PublishEventTx publishes tx event with events from Result. Note it will add
-// predefined events (EventTypeKey, TxHashKey). Existing events with the same names
+// predefined keys (EventTypeKey, TxHashKey). Existing events with the same names
 // will be overwritten.
 func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	// no explicit deadline for publishing events
@@ -173,7 +173,7 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 
 	events := b.validateAndStringifyEvents(data.Result.Events, b.Logger.With("tx", data.Tx))
 
-	// add predefined events
+	// add predefined compositeKeys
 	events[EventTypeKey] = append(events[EventTypeKey], EventTx)
 	events[TxHashKey] = append(events[TxHashKey], fmt.Sprintf("%X", data.Tx.Hash()))
 	events[TxHeightKey] = append(events[TxHeightKey], fmt.Sprintf("%d", data.Height))
