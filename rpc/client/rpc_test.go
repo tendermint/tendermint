@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
@@ -28,7 +29,9 @@ import (
 
 func getHTTPClient() *client.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	return client.NewHTTP(rpcAddr, "/websocket")
+	c := client.NewHTTP(rpcAddr, "/websocket")
+	c.SetLogger(log.TestingLogger())
+	return c
 }
 
 func getLocalClient() *client.Local {

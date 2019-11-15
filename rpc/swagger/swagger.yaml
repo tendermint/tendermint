@@ -918,11 +918,11 @@ definitions:
     type: object
     properties:
       id:
-        type: string
-        x-example: ""
+        type: number
+        example: 0
       jsonrpc:
         type: string
-        x-example: "2.0"
+        example: "2.0"
   EmptyResponse:
     description: Empty Response
     allOf:
@@ -1414,8 +1414,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         type: "object"
         required:
@@ -1590,8 +1590,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "signed_header"
@@ -1779,8 +1779,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "block_height"
@@ -1827,8 +1827,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         type: "object"
         required:
@@ -1935,8 +1935,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "round_state"
@@ -2280,8 +2280,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "round_state"
@@ -2351,8 +2351,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         type: "object"
         required:
@@ -2416,8 +2416,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "n_txs"
@@ -2453,8 +2453,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "n_txs"
@@ -2491,8 +2491,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "txs"
@@ -2594,8 +2594,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "hash"
@@ -2655,8 +2655,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "response"
@@ -2727,8 +2727,8 @@ definitions:
             type: "object"
         type: "object"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       jsonrpc:
         type: "string"
         example: "2.0"
@@ -2745,8 +2745,8 @@ definitions:
         type: "string"
         example: ""
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       jsonrpc:
         type: "string"
         example: "2.0"
@@ -2808,8 +2808,8 @@ definitions:
             type: "object"
         type: "object"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       jsonrpc:
         type: "string"
         example: "2.0"
@@ -2825,8 +2825,8 @@ definitions:
         type: "string"
         example: "2.0"
       id:
-        type: "string"
-        example: ""
+        type: "number"
+        example: 0
       result:
         required:
           - "code"

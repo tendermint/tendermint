@@ -17,7 +17,7 @@ method via Websocket.
 {
     "jsonrpc": "2.0",
     "method": "subscribe",
-    "id": "0",
+    "id": 0,
     "params": {
         "query": "tm.event='NewBlock'"
     }
@@ -44,7 +44,7 @@ Response:
 ```
 {
     "jsonrpc": "2.0",
-    "id": "0#event",
+    "id": 0,
     "result": {
         "query": "tm.event='ValidatorSetUpdates'",
         "data": {
