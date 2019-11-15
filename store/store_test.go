@@ -155,7 +155,6 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	header1 := types.Header{
 		Height:  1,
-		NumTxs:  100,
 		ChainID: "block_test",
 		Time:    tmtime.Now(),
 	}
@@ -169,8 +168,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		block      *types.Block
 		parts      *types.PartSet
 		seenCommit *types.Commit
-		wantErr    bool
 		wantPanic  string
+		wantErr    bool
 
 		corruptBlockInDB      bool
 		corruptCommitInDB     bool

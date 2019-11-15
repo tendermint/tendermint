@@ -114,26 +114,24 @@ func (m *BlockID) GetPartsHeader() *PartSetHeader {
 
 type Header struct {
 	// basic block info
-	Version  *Version   `protobuf:"bytes,1,opt,name=Version,proto3" json:"Version,omitempty"`
-	ChainID  string     `protobuf:"bytes,2,opt,name=ChainID,proto3" json:"ChainID,omitempty"`
-	Height   int64      `protobuf:"varint,3,opt,name=Height,proto3" json:"Height,omitempty"`
-	Time     *Timestamp `protobuf:"bytes,4,opt,name=Time,proto3" json:"Time,omitempty"`
-	NumTxs   int64      `protobuf:"varint,5,opt,name=NumTxs,proto3" json:"NumTxs,omitempty"`
-	TotalTxs int64      `protobuf:"varint,6,opt,name=TotalTxs,proto3" json:"TotalTxs,omitempty"`
+	Version *Version   `protobuf:"bytes,1,opt,name=Version,proto3" json:"Version,omitempty"`
+	ChainID string     `protobuf:"bytes,2,opt,name=ChainID,proto3" json:"ChainID,omitempty"`
+	Height  int64      `protobuf:"varint,3,opt,name=Height,proto3" json:"Height,omitempty"`
+	Time    *Timestamp `protobuf:"bytes,4,opt,name=Time,proto3" json:"Time,omitempty"`
 	// prev block info
-	LastBlockID *BlockID `protobuf:"bytes,7,opt,name=LastBlockID,proto3" json:"LastBlockID,omitempty"`
+	LastBlockID *BlockID `protobuf:"bytes,5,opt,name=LastBlockID,proto3" json:"LastBlockID,omitempty"`
 	// hashes of block data
-	LastCommitHash []byte `protobuf:"bytes,8,opt,name=LastCommitHash,proto3" json:"LastCommitHash,omitempty"`
-	DataHash       []byte `protobuf:"bytes,9,opt,name=DataHash,proto3" json:"DataHash,omitempty"`
+	LastCommitHash []byte `protobuf:"bytes,6,opt,name=LastCommitHash,proto3" json:"LastCommitHash,omitempty"`
+	DataHash       []byte `protobuf:"bytes,7,opt,name=DataHash,proto3" json:"DataHash,omitempty"`
 	// hashes from the app output from the prev block
-	ValidatorsHash     []byte `protobuf:"bytes,10,opt,name=ValidatorsHash,proto3" json:"ValidatorsHash,omitempty"`
-	NextValidatorsHash []byte `protobuf:"bytes,11,opt,name=NextValidatorsHash,proto3" json:"NextValidatorsHash,omitempty"`
-	ConsensusHash      []byte `protobuf:"bytes,12,opt,name=ConsensusHash,proto3" json:"ConsensusHash,omitempty"`
-	AppHash            []byte `protobuf:"bytes,13,opt,name=AppHash,proto3" json:"AppHash,omitempty"`
-	LastResultsHash    []byte `protobuf:"bytes,14,opt,name=LastResultsHash,proto3" json:"LastResultsHash,omitempty"`
+	ValidatorsHash     []byte `protobuf:"bytes,8,opt,name=ValidatorsHash,proto3" json:"ValidatorsHash,omitempty"`
+	NextValidatorsHash []byte `protobuf:"bytes,9,opt,name=NextValidatorsHash,proto3" json:"NextValidatorsHash,omitempty"`
+	ConsensusHash      []byte `protobuf:"bytes,10,opt,name=ConsensusHash,proto3" json:"ConsensusHash,omitempty"`
+	AppHash            []byte `protobuf:"bytes,11,opt,name=AppHash,proto3" json:"AppHash,omitempty"`
+	LastResultsHash    []byte `protobuf:"bytes,12,opt,name=LastResultsHash,proto3" json:"LastResultsHash,omitempty"`
 	// consensus info
-	EvidenceHash         []byte   `protobuf:"bytes,15,opt,name=EvidenceHash,proto3" json:"EvidenceHash,omitempty"`
-	ProposerAddress      []byte   `protobuf:"bytes,16,opt,name=ProposerAddress,proto3" json:"ProposerAddress,omitempty"`
+	EvidenceHash         []byte   `protobuf:"bytes,13,opt,name=EvidenceHash,proto3" json:"EvidenceHash,omitempty"`
+	ProposerAddress      []byte   `protobuf:"bytes,14,opt,name=ProposerAddress,proto3" json:"ProposerAddress,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -189,20 +187,6 @@ func (m *Header) GetTime() *Timestamp {
 		return m.Time
 	}
 	return nil
-}
-
-func (m *Header) GetNumTxs() int64 {
-	if m != nil {
-		return m.NumTxs
-	}
-	return 0
-}
-
-func (m *Header) GetTotalTxs() int64 {
-	if m != nil {
-		return m.TotalTxs
-	}
-	return 0
 }
 
 func (m *Header) GetLastBlockID() *BlockID {

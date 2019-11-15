@@ -51,13 +51,19 @@ func init() {
 		"Prefix the directory name for each node with (node results in node0, node1, ...)")
 
 	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate-persistent-peers", true,
-		"Update config of each node with the list of persistent peers build using either hostname-prefix or starting-ip-address")
+		"Update config of each node with the list of persistent peers build using either"+
+			" hostname-prefix or"+
+			" starting-ip-address")
 	TestnetFilesCmd.Flags().StringVar(&hostnamePrefix, "hostname-prefix", "node",
 		"Hostname prefix (\"node\" results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&hostnameSuffix, "hostname-suffix", "",
-		"Hostname suffix (\".xyz.com\" results in persistent peers list ID0@node0.xyz.com:26656, ID1@node1.xyz.com:26656, ...)")
+		"Hostname suffix ("+
+			"\".xyz.com\""+
+			" results in persistent peers list ID0@node0.xyz.com:26656, ID1@node1.xyz.com:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting-ip-address", "",
-		"Starting IP address (\"192.168.0.1\" results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
+		"Starting IP address ("+
+			"\"192.168.0.1\""+
+			" results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
 	TestnetFilesCmd.Flags().StringArrayVar(&hostnames, "hostname", []string{},
 		"Manually override all hostnames of validators and non-validators (use --hostname multiple times for multiple hosts)")
 	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 26656,

@@ -79,11 +79,6 @@ var _ AddrBook = (*addrBook)(nil)
 type addrBook struct {
 	cmn.BaseService
 
-	// immutable after creation
-	filePath          string
-	routabilityStrict bool
-	key               string // random prefix for bucket placement
-
 	// accessed concurrently
 	mtx        sync.Mutex
 	rand       *cmn.Rand
@@ -94,6 +89,11 @@ type addrBook struct {
 	bucketsNew []map[string]*knownAddress
 	nOld       int
 	nNew       int
+
+	// immutable after creation
+	filePath          string
+	key               string // random prefix for bucket placement
+	routabilityStrict bool
 
 	wg sync.WaitGroup
 }
@@ -819,9 +819,9 @@ func (a *addrBook) groupKey(na *p2p.NetAddress) string {
 // doubleSha256 calculates sha256(sha256(b)) and returns the resulting bytes.
 func doubleSha256(b []byte) []byte {
 	hasher := sha256.New()
-	hasher.Write(b) // nolint: errcheck, gas
+	hasher.Write(b) // nolint:errcheck
 	sum := hasher.Sum(nil)
 	hasher.Reset()
-	hasher.Write(sum) // nolint: errcheck, gas
+	hasher.Write(sum) // nolint:errcheck
 	return hasher.Sum(nil)
 }

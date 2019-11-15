@@ -79,14 +79,14 @@ func TestReader(t *testing.T) {
 	status[5] = nextStatus(r.Monitor) // Timeout
 	start = status[0].Start
 
-	// Active, Start, Duration, Idle, Bytes, Samples, InstRate, CurRate, AvgRate, PeakRate, BytesRem, TimeRem, Progress
+	// Active, Bytes, Samples, InstRate, CurRate, AvgRate, PeakRate, BytesRem, Start, Duration, Idle, TimeRem, Progress
 	want := []Status{
-		{true, start, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		{true, start, _100ms, 0, 10, 1, 100, 100, 100, 100, 0, 0, 0},
-		{true, start, _200ms, _100ms, 20, 2, 100, 100, 100, 100, 0, 0, 0},
-		{true, start, _300ms, _200ms, 20, 3, 0, 90, 67, 100, 0, 0, 0},
-		{false, start, _300ms, 0, 20, 3, 0, 0, 67, 100, 0, 0, 0},
-		{false, start, _300ms, 0, 20, 3, 0, 0, 67, 100, 0, 0, 0},
+		{start, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true},
+		{start, 10, 1, 100, 100, 100, 100, 0, _100ms, 0, 0, 0, true},
+		{start, 20, 2, 100, 100, 100, 100, 0, _200ms, _100ms, 0, 0, true},
+		{start, 20, 3, 0, 90, 67, 100, 0, _300ms, _200ms, 0, 0, true},
+		{start, 20, 3, 0, 0, 67, 100, 0, _300ms, 0, 0, 0, false},
+		{start, 20, 3, 0, 0, 67, 100, 0, _300ms, 0, 0, 0, false},
 	}
 	for i, s := range status {
 		s := s
@@ -138,11 +138,12 @@ func TestWriter(t *testing.T) {
 	status := []Status{w.Status(), nextStatus(w.Monitor)}
 	start = status[0].Start
 
-	// Active, Start, Duration, Idle, Bytes, Samples, InstRate, CurRate, AvgRate, PeakRate, BytesRem, TimeRem, Progress
+	// Active, Bytes, Samples, InstRate, CurRate, AvgRate, PeakRate, BytesRem, Start, Duration, Idle, TimeRem, Progress
 	want := []Status{
-		{true, start, _400ms, 0, 80, 4, 200, 200, 200, 200, 20, _100ms, 80000},
-		{true, start, _500ms, _100ms, 100, 5, 200, 200, 200, 200, 0, 0, 100000},
+		{start, 80, 4, 200, 200, 200, 200, 20, _400ms, 0, _100ms, 80000, true},
+		{start, 100, 5, 200, 200, 200, 200, 0, _500ms, _100ms, 0, 100000, true},
 	}
+
 	for i, s := range status {
 		s := s
 		if !statusesAreEqual(&s, &want[i]) {

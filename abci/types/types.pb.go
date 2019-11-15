@@ -2241,26 +2241,24 @@ func (m *Event) GetAttributes() []common.KVPair {
 
 type Header struct {
 	// basic block info
-	Version  Version   `protobuf:"bytes,1,opt,name=version,proto3" json:"version"`
-	ChainID  string    `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
-	Height   int64     `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
-	Time     time.Time `protobuf:"bytes,4,opt,name=time,proto3,stdtime" json:"time"`
-	NumTxs   int64     `protobuf:"varint,5,opt,name=num_txs,json=numTxs,proto3" json:"num_txs,omitempty"`
-	TotalTxs int64     `protobuf:"varint,6,opt,name=total_txs,json=totalTxs,proto3" json:"total_txs,omitempty"`
+	Version Version   `protobuf:"bytes,1,opt,name=version,proto3" json:"version"`
+	ChainID string    `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	Height  int64     `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
+	Time    time.Time `protobuf:"bytes,4,opt,name=time,proto3,stdtime" json:"time"`
 	// prev block info
-	LastBlockId BlockID `protobuf:"bytes,7,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
+	LastBlockId BlockID `protobuf:"bytes,5,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
 	// hashes of block data
-	LastCommitHash []byte `protobuf:"bytes,8,opt,name=last_commit_hash,json=lastCommitHash,proto3" json:"last_commit_hash,omitempty"`
-	DataHash       []byte `protobuf:"bytes,9,opt,name=data_hash,json=dataHash,proto3" json:"data_hash,omitempty"`
+	LastCommitHash []byte `protobuf:"bytes,6,opt,name=last_commit_hash,json=lastCommitHash,proto3" json:"last_commit_hash,omitempty"`
+	DataHash       []byte `protobuf:"bytes,7,opt,name=data_hash,json=dataHash,proto3" json:"data_hash,omitempty"`
 	// hashes from the app output from the prev block
-	ValidatorsHash     []byte `protobuf:"bytes,10,opt,name=validators_hash,json=validatorsHash,proto3" json:"validators_hash,omitempty"`
-	NextValidatorsHash []byte `protobuf:"bytes,11,opt,name=next_validators_hash,json=nextValidatorsHash,proto3" json:"next_validators_hash,omitempty"`
-	ConsensusHash      []byte `protobuf:"bytes,12,opt,name=consensus_hash,json=consensusHash,proto3" json:"consensus_hash,omitempty"`
-	AppHash            []byte `protobuf:"bytes,13,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
-	LastResultsHash    []byte `protobuf:"bytes,14,opt,name=last_results_hash,json=lastResultsHash,proto3" json:"last_results_hash,omitempty"`
+	ValidatorsHash     []byte `protobuf:"bytes,8,opt,name=validators_hash,json=validatorsHash,proto3" json:"validators_hash,omitempty"`
+	NextValidatorsHash []byte `protobuf:"bytes,9,opt,name=next_validators_hash,json=nextValidatorsHash,proto3" json:"next_validators_hash,omitempty"`
+	ConsensusHash      []byte `protobuf:"bytes,10,opt,name=consensus_hash,json=consensusHash,proto3" json:"consensus_hash,omitempty"`
+	AppHash            []byte `protobuf:"bytes,11,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
+	LastResultsHash    []byte `protobuf:"bytes,12,opt,name=last_results_hash,json=lastResultsHash,proto3" json:"last_results_hash,omitempty"`
 	// consensus info
-	EvidenceHash         []byte   `protobuf:"bytes,15,opt,name=evidence_hash,json=evidenceHash,proto3" json:"evidence_hash,omitempty"`
-	ProposerAddress      []byte   `protobuf:"bytes,16,opt,name=proposer_address,json=proposerAddress,proto3" json:"proposer_address,omitempty"`
+	EvidenceHash         []byte   `protobuf:"bytes,13,opt,name=evidence_hash,json=evidenceHash,proto3" json:"evidence_hash,omitempty"`
+	ProposerAddress      []byte   `protobuf:"bytes,14,opt,name=proposer_address,json=proposerAddress,proto3" json:"proposer_address,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2325,20 +2323,6 @@ func (m *Header) GetTime() time.Time {
 		return m.Time
 	}
 	return time.Time{}
-}
-
-func (m *Header) GetNumTxs() int64 {
-	if m != nil {
-		return m.NumTxs
-	}
-	return 0
-}
-
-func (m *Header) GetTotalTxs() int64 {
-	if m != nil {
-		return m.TotalTxs
-	}
-	return 0
 }
 
 func (m *Header) GetLastBlockId() BlockID {
@@ -4743,12 +4727,6 @@ func (this *Header) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.Time.Equal(that1.Time) {
-		return false
-	}
-	if this.NumTxs != that1.NumTxs {
-		return false
-	}
-	if this.TotalTxs != that1.TotalTxs {
 		return false
 	}
 	if !this.LastBlockId.Equal(&that1.LastBlockId) {
@@ -7429,65 +7407,63 @@ func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.ProposerAddress)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.ProposerAddress)))
 		i--
-		dAtA[i] = 0x1
-		i--
-		dAtA[i] = 0x82
+		dAtA[i] = 0x72
 	}
 	if len(m.EvidenceHash) > 0 {
 		i -= len(m.EvidenceHash)
 		copy(dAtA[i:], m.EvidenceHash)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.EvidenceHash)))
 		i--
-		dAtA[i] = 0x7a
+		dAtA[i] = 0x6a
 	}
 	if len(m.LastResultsHash) > 0 {
 		i -= len(m.LastResultsHash)
 		copy(dAtA[i:], m.LastResultsHash)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.LastResultsHash)))
 		i--
-		dAtA[i] = 0x72
+		dAtA[i] = 0x62
 	}
 	if len(m.AppHash) > 0 {
 		i -= len(m.AppHash)
 		copy(dAtA[i:], m.AppHash)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.AppHash)))
 		i--
-		dAtA[i] = 0x6a
+		dAtA[i] = 0x5a
 	}
 	if len(m.ConsensusHash) > 0 {
 		i -= len(m.ConsensusHash)
 		copy(dAtA[i:], m.ConsensusHash)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.ConsensusHash)))
 		i--
-		dAtA[i] = 0x62
+		dAtA[i] = 0x52
 	}
 	if len(m.NextValidatorsHash) > 0 {
 		i -= len(m.NextValidatorsHash)
 		copy(dAtA[i:], m.NextValidatorsHash)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.NextValidatorsHash)))
 		i--
-		dAtA[i] = 0x5a
+		dAtA[i] = 0x4a
 	}
 	if len(m.ValidatorsHash) > 0 {
 		i -= len(m.ValidatorsHash)
 		copy(dAtA[i:], m.ValidatorsHash)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.ValidatorsHash)))
 		i--
-		dAtA[i] = 0x52
+		dAtA[i] = 0x42
 	}
 	if len(m.DataHash) > 0 {
 		i -= len(m.DataHash)
 		copy(dAtA[i:], m.DataHash)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.DataHash)))
 		i--
-		dAtA[i] = 0x4a
+		dAtA[i] = 0x3a
 	}
 	if len(m.LastCommitHash) > 0 {
 		i -= len(m.LastCommitHash)
 		copy(dAtA[i:], m.LastCommitHash)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.LastCommitHash)))
 		i--
-		dAtA[i] = 0x42
+		dAtA[i] = 0x32
 	}
 	{
 		size, err := m.LastBlockId.MarshalToSizedBuffer(dAtA[:i])
@@ -7498,17 +7474,7 @@ func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i = encodeVarintTypes(dAtA, i, uint64(size))
 	}
 	i--
-	dAtA[i] = 0x3a
-	if m.TotalTxs != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.TotalTxs))
-		i--
-		dAtA[i] = 0x30
-	}
-	if m.NumTxs != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.NumTxs))
-		i--
-		dAtA[i] = 0x28
-	}
+	dAtA[i] = 0x2a
 	n35, err35 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Time, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Time):])
 	if err35 != nil {
 		return 0, err35
@@ -8580,14 +8546,6 @@ func NewPopulatedHeader(r randyTypes, easy bool) *Header {
 	}
 	v37 := github_com_gogo_protobuf_types.NewPopulatedStdTime(r, easy)
 	this.Time = *v37
-	this.NumTxs = int64(r.Int63())
-	if r.Intn(2) == 0 {
-		this.NumTxs *= -1
-	}
-	this.TotalTxs = int64(r.Int63())
-	if r.Intn(2) == 0 {
-		this.TotalTxs *= -1
-	}
 	v38 := NewPopulatedBlockID(r, easy)
 	this.LastBlockId = *v38
 	v39 := r.Intn(100)
@@ -8636,7 +8594,7 @@ func NewPopulatedHeader(r randyTypes, easy bool) *Header {
 		this.ProposerAddress[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
-		this.XXX_unrecognized = randUnrecognizedTypes(r, 17)
+		this.XXX_unrecognized = randUnrecognizedTypes(r, 15)
 	}
 	return this
 }
@@ -9801,12 +9759,6 @@ func (m *Header) Size() (n int) {
 	}
 	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.Time)
 	n += 1 + l + sovTypes(uint64(l))
-	if m.NumTxs != 0 {
-		n += 1 + sovTypes(uint64(m.NumTxs))
-	}
-	if m.TotalTxs != 0 {
-		n += 1 + sovTypes(uint64(m.TotalTxs))
-	}
 	l = m.LastBlockId.Size()
 	n += 1 + l + sovTypes(uint64(l))
 	l = len(m.LastCommitHash)
@@ -9843,7 +9795,7 @@ func (m *Header) Size() (n int) {
 	}
 	l = len(m.ProposerAddress)
 	if l > 0 {
-		n += 2 + l + sovTypes(uint64(l))
+		n += 1 + l + sovTypes(uint64(l))
 	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
@@ -14857,44 +14809,6 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 			}
 			iNdEx = postIndex
 		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumTxs", wireType)
-			}
-			m.NumTxs = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.NumTxs |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 6:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TotalTxs", wireType)
-			}
-			m.TotalTxs = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.TotalTxs |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastBlockId", wireType)
 			}
@@ -14927,7 +14841,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 8:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastCommitHash", wireType)
 			}
@@ -14961,7 +14875,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				m.LastCommitHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 9:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DataHash", wireType)
 			}
@@ -14995,7 +14909,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				m.DataHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 10:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ValidatorsHash", wireType)
 			}
@@ -15029,7 +14943,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				m.ValidatorsHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 11:
+		case 9:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NextValidatorsHash", wireType)
 			}
@@ -15063,7 +14977,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				m.NextValidatorsHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 12:
+		case 10:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ConsensusHash", wireType)
 			}
@@ -15097,7 +15011,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				m.ConsensusHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 13:
+		case 11:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field AppHash", wireType)
 			}
@@ -15131,7 +15045,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				m.AppHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 14:
+		case 12:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastResultsHash", wireType)
 			}
@@ -15165,7 +15079,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				m.LastResultsHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 15:
+		case 13:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EvidenceHash", wireType)
 			}
@@ -15199,7 +15113,7 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				m.EvidenceHash = []byte{}
 			}
 			iNdEx = postIndex
-		case 16:
+		case 14:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ProposerAddress", wireType)
 			}
