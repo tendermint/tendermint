@@ -11,6 +11,7 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 - CLI/RPC/Config
+  - [rpc] \#3471 Paginate `/validators` response (default: 30 vals per page)
   - [rpc] \#3188 Remove `BlockMeta` in `ResultBlock` in favor of `BlockId` for `/block`
   - [rpc] `/block_results` response format updated (see RPC docs for details)
     ```
@@ -32,6 +33,7 @@ program](https://hackerone.com/tendermint).
 
 - Go API
   - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) `Query#(Matches|Conditions)` returns an error.
+  - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
 
 - Blockchain Protocol
   - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
