@@ -193,33 +193,34 @@ We consider the following set-up:
 we will write ```totalVotingPower(V)``` for ```votingpower_in(V,V)```, which returns the total voting power in V.
 We further use the function ```signers(Commit)``` that returns the set of validators that signed the Commit.
 
-**CheckSupport.** The following function checks whether we can trust the header h2 based on header h1 following the trusting period method.
+**CheckSupport.** The following function checks whether we can trust the header h2 based on header h1 following the trusting period method. Time constraint is
+captured by the `hasExpired` function that depends on trusted period (`tp`) and a parameter `Delta` that denotes minimum duration of header so it is
+not considered expired.
 
 ```go
+  func hasExpired(h) {
+    if h.Header.bfttime + tp - Delta < now { // Observation 1
+      return true
+  }
+
+  // basic validation (function `verify`) has already been called on h2
   func CheckSupport(h1,h2,trustlevel) bool {
-    if h1.Header.bfttime + tp < now { // Observation 1
-      return false // old header was once trusted but it is expired
-    }  
+    if hasExpired(h1) then return false //old header was once trusted but it is expired
+
     vp_all := totalVotingPower(h1.Header.NextV)
-      // total sum of voting power of validators in h2
+    // total sum of voting power of validators in h1
 
     if h2.Header.height == h1.Header.height + 1 {
-      // specific check for adjacent headers; everything must be
-      // properly signed.
-      // also check that h2.Header.V == h1.Header.NextV
-      // Plus the following check that 2/3 of the voting power
-      // in h1 signed h2
-      return (votingpower_in(signers(h2.Commit),h1.Header.NextV) >
-              2/3 * vp_all)
-        // signing validators are more than two third in h1.
-    }
+        // specific check for adjacent headers
+        if h1.Header.NextV == h2.Header.V then
+            return hasExpired(h2)
+        }
+     }
 
-    return (votingpower_in(signers(h2.Commit),h1.Header.NextV) >
-            max(1/3,trustlevel) * vp_all)
-      // get validators in h1 that signed h2
-      // sum of voting powers in h1 of
-      // validators that signed h2
-      // is more than a third in h1
+     // validators that signed h2 are more than a third of voting power in h1
+     if (votingpower_in(signers(h2.Commit),h1.Header.NextV) > max(1/3,trustlevel) * vp_all) {
+        return hasExpired(h2)
+     }
   }
 ```
 
@@ -257,28 +258,60 @@ Towards Lite Client Completeness:
 
 
 ```go
+func verify(h) {
+  if hasExpired(h) return false
+
+  vp_all := totalVotingPower(h.Header.V) // total sum of voting power of validators in h
+
+  if votingpower_in(signers(h.Commit),h.Header.V) > 2/3 * vp_all {
+        return hasExpired(h)
+  } else {
+        return false
+  }
+}
+
 func Bisection(h1,h2,trustlevel) bool{
-  if CheckSupport(h1,h2,trustlevel) {
-    return true
-  }
-  if h2.Header.height == h1.Header.height + 1 {
-    // we have adjacent headers that are not matching (failed
-    // the CheckSupport)
-    // we could submit evidence here
-    return false
-  }
-  pivot := (h1.Header.height + h2.Header.height) / 2
-  hp := Commit(pivot)
-    // ask a full node for header of height pivot
-  Store(hp)  
-    // store header hp locally
-  if Bisection(h1,hp,trustlevel) {
-    // only check right branch if hp is trusted
-    // (otherwise a lot of unnecessary computation may be done)
-    return Bisection(hp,h2,trustlevel)
-  }
-  else {
-    return false
+  th := h1 // th is trusted header
+  while th.Header.Height <= h2.Header.height do {
+       // try to move trusted header forward with stored headers
+       // we assume here that iteration will be done in order of header heights
+       ih := th
+       for all stored headers h s.t ih.Header.Height < h.Header.height < h2.Header.height do {
+            if CheckSupport(th,h,trustlevel) {
+                th = h
+            } else if h.Header.height == th.Header.height + 1 {
+                return false // fail to verify succesive headers!
+            } else break // for
+        }
+
+        if CheckSupport(th,h2,trustlevel) {
+            return hasExpired(h2)
+        }
+
+        if h2.Header.height == th.Header.height + 1 {
+            // we have adjacent headers that are not matching (failed the CheckSupport)
+            // we could submit evidence here
+            return false
+        }
+
+        // try to move th
+        endHeight = h2.Header.height
+        foundPivot = false
+        while(!foundPivot) {
+            pivot := (th.Header.height + endHeight) / 2
+            hp := Commit(pivot)
+            if !verify(hp) return false
+            Store(hp)
+
+            if CheckSupport(th,hd,trustlevel) {
+                th = hd
+                foundPivot = true
+            } else if pivot.Header.height == th.Header.height + 1 {
+                return false // fail to verify succesive headers!
+            }
+
+            endHeight = pivot
+        }
   }
 }
 ```  
