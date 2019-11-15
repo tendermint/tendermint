@@ -75,16 +75,20 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 	// We need this list to keep the ordering.
 	vset := pkz.ToValidators(1, 0)
 
+	blockID := types.BlockID{
+		Hash:        header.Hash(),
+		PartsHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
+	}
+
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
-		vote := makeVote(header, vset, pkz[i])
+		vote := makeVote(header, vset, pkz[i], blockID)
 		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
 	}
-	blockID := types.BlockID{Hash: header.Hash()}
-	return types.NewCommit(blockID, commitSigs)
+	return types.NewCommit(header.Height, 1, blockID, commitSigs)
 }
 
-func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey) *types.Vote {
+func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey, blockID types.BlockID) *types.Vote {
 	addr := key.PubKey().Address()
 	idx, _ := valset.GetByAddress(addr)
 	vote := &types.Vote{
@@ -94,7 +98,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 		Round:            1,
 		Timestamp:        tmtime.Now(),
 		Type:             types.PrecommitType,
-		BlockID:          types.BlockID{Hash: header.Hash()},
+		BlockID:          blockID,
 	}
 	// Sign it
 	signBytes := vote.SignBytes(header.ChainID)

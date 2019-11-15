@@ -30,6 +30,8 @@ const (
 	// Uvarint length of Data.Txs:          4 bytes
 	// Data.Txs field:                      1 byte
 	MaxAminoOverheadForBlock int64 = 11
+
+	nilCommitSigStr string = "nil-CommitSig"
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -73,7 +75,7 @@ func (b *Block) ValidateBasic() error {
 			return errors.New("nil LastCommit")
 		}
 		if err := b.LastCommit.ValidateBasic(); err != nil {
-			return fmt.Errorf("wrong LastCommit")
+			return fmt.Errorf("wrong LastCommit: %v", err)
 		}
 	}
 	if err := ValidateHash(b.LastCommitHash); err != nil {
@@ -434,27 +436,92 @@ func (h *Header) StringIndented(indent string) string {
 
 //-------------------------------------
 
-// CommitSig is a vote included in a Commit.
-// For now, it is identical to a vote,
-// but in the future it will contain fewer fields
-// to eliminate the redundancy in commits.
-// See https://github.com/tendermint/tendermint/issues/1648.
-type CommitSig Vote
+// BlockIDFlag indicates which BlockID the signature is for.
+type BlockIDFlag byte
 
-// String returns the underlying Vote.String()
-func (cs *CommitSig) String() string {
-	return cs.toVote().String()
+const (
+	// BlockIDFlagAbsent - vote is not included in the Commit.Precommits.
+	BlockIDFlagAbsent BlockIDFlag = iota + 1
+	// BlockIDFlagCommit - voted for the Commit.BlockID.
+	BlockIDFlagCommit
+	// BlockIDFlagNil - voted for nil.
+	BlockIDFlagNil
+)
+
+// CommitSig is a part of the Vote included in a Commit.
+type CommitSig struct {
+	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
+	ValidatorAddress Address     `json:"validator_address"`
+	Timestamp        time.Time   `json:"timestamp"`
+	Signature        []byte      `json:"signature"`
 }
 
-// toVote converts the CommitSig to a vote.
-// TODO: deprecate for #1648. Converting to Vote will require
-// access to ValidatorSet.
-func (cs *CommitSig) toVote() *Vote {
-	if cs == nil {
-		return nil
+// NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
+func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) *CommitSig {
+	return &CommitSig{
+		BlockIDFlag:      BlockIDFlagCommit,
+		ValidatorAddress: valAddr,
+		Timestamp:        ts,
+		Signature:        signature,
 	}
-	v := Vote(*cs)
-	return &v
+}
+
+func (cs *CommitSig) String() string {
+	if cs == nil {
+		return nilCommitSigStr
+	}
+
+	return fmt.Sprintf("CommitSig{%X by %X on %v @ %s}",
+		cmn.Fingerprint(cs.Signature),
+		cmn.Fingerprint(cs.ValidatorAddress),
+		cs.BlockIDFlag,
+		CanonicalTime(cs.Timestamp))
+}
+
+// BlockID returns the Commit's BlockID if CommitSig indicates signing,
+// otherwise - empty BlockID.
+func (cs *CommitSig) BlockID(commitBlockID BlockID) BlockID {
+	var blockID BlockID
+	switch cs.BlockIDFlag {
+	case BlockIDFlagAbsent:
+		blockID = BlockID{}
+	case BlockIDFlagCommit:
+		blockID = commitBlockID
+	case BlockIDFlagNil:
+		blockID = BlockID{}
+	default:
+		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", cs.BlockIDFlag))
+	}
+	return blockID
+}
+
+// ValidateBasic performs basic validation.
+func (cs *CommitSig) ValidateBasic() error {
+	switch cs.BlockIDFlag {
+	case BlockIDFlagAbsent:
+	case BlockIDFlagCommit:
+	case BlockIDFlagNil:
+	default:
+		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
+	}
+
+	if len(cs.ValidatorAddress) != crypto.AddressSize {
+		return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
+			crypto.AddressSize,
+			len(cs.ValidatorAddress),
+		)
+	}
+
+	// NOTE: Timestamp validation is subtle and handled elsewhere.
+
+	if len(cs.Signature) == 0 {
+		return errors.New("signature is missing")
+	}
+	if len(cs.Signature) > MaxSignatureSize {
+		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
+	}
+
+	return nil
 }
 
 //-------------------------------------
@@ -462,37 +529,37 @@ func (cs *CommitSig) toVote() *Vote {
 // Commit contains the evidence that a block was committed by a set of validators.
 // NOTE: Commit is empty for height 1, but never nil.
 type Commit struct {
-	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
-	// Any peer with a block can gossip precommits by index with a peer without recalculating the
-	// active ValidatorSet.
+	// NOTE: The Precommits are in order of address to preserve the bonded
+	// ValidatorSet order.
+	// Any peer with a block can gossip precommits by index with a peer without
+	// recalculating the active ValidatorSet.
+	Height     int64        `json:"height"`
+	Round      int          `json:"round"`
 	BlockID    BlockID      `json:"block_id"`
 	Precommits []*CommitSig `json:"precommits"`
 
-	// memoized in first call to corresponding method
-	// NOTE: can't memoize in constructor because constructor
-	// isn't used for unmarshaling
-	height   int64
-	round    int
+	// Memoized in first call to corresponding method.
+	// NOTE: can't memoize in constructor because constructor isn't used for
+	// unmarshaling.
 	hash     cmn.HexBytes
 	bitArray *cmn.BitArray
 }
 
-// NewCommit returns a new Commit with the given blockID and precommits.
-// TODO: memoize ValidatorSet in constructor so votes can be easily reconstructed
-// from CommitSig after #1648.
-func NewCommit(blockID BlockID, precommits []*CommitSig) *Commit {
+// NewCommit returns a new Commit.
+func NewCommit(height int64, round int, blockID BlockID, precommits []*CommitSig) *Commit {
 	return &Commit{
+		Height:     height,
+		Round:      round,
 		BlockID:    blockID,
 		Precommits: precommits,
 	}
 }
 
-// Construct a VoteSet from the Commit and validator set. Panics
-// if precommits from the commit can't be added to the voteset.
+// CommitToVoteSet constructs a VoteSet from the Commit and validator set.
+// Panics if precommits from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
-	height, round, typ := commit.Height(), commit.Round(), PrecommitType
-	voteSet := NewVoteSet(chainID, height, round, typ, vals)
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, PrecommitType, vals)
 	for idx, precommit := range commit.Precommits {
 		if precommit == nil {
 			continue
@@ -514,16 +581,11 @@ func (commit *Commit) GetVote(valIdx int) *Vote {
 		return nil
 	}
 
-	// NOTE: this commitSig might be for a nil blockID,
-	// so we can't just use commit.BlockID here.
-	// For #1648, CommitSig will need to indicate what BlockID it's for !
-	blockID := commitSig.BlockID
-	commit.memoizeHeightRound()
 	return &Vote{
 		Type:             PrecommitType,
-		Height:           commit.height,
-		Round:            commit.round,
-		BlockID:          blockID,
+		Height:           commit.Height,
+		Round:            commit.Round,
+		BlockID:          commitSig.BlockID(commit.BlockID),
 		Timestamp:        commitSig.Timestamp,
 		ValidatorAddress: commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
@@ -539,43 +601,26 @@ func (commit *Commit) VoteSignBytes(chainID string, valIdx int) []byte {
 	return commit.GetVote(valIdx).SignBytes(chainID)
 }
 
-// memoizeHeightRound memoizes the height and round of the commit using
-// the first non-nil vote.
-// Should be called before any attempt to access `commit.height` or `commit.round`.
-func (commit *Commit) memoizeHeightRound() {
-	if len(commit.Precommits) == 0 {
-		return
-	}
-	if commit.height > 0 {
-		return
-	}
-	for _, precommit := range commit.Precommits {
-		if precommit != nil {
-			commit.height = precommit.Height
-			commit.round = precommit.Round
-			return
-		}
-	}
-}
-
-// Height returns the height of the commit
-func (commit *Commit) Height() int64 {
-	commit.memoizeHeightRound()
-	return commit.height
-}
-
-// Round returns the round of the commit
-func (commit *Commit) Round() int {
-	commit.memoizeHeightRound()
-	return commit.round
-}
-
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
+// Implements VoteSetReader.
 func (commit *Commit) Type() byte {
 	return byte(PrecommitType)
 }
 
+// GetHeight returns height of the commit.
+// Implements VoteSetReader.
+func (commit *Commit) GetHeight() int64 {
+	return commit.Height
+}
+
+// GetRound returns height of the commit.
+// Implements VoteSetReader.
+func (commit *Commit) GetRound() int {
+	return commit.Round
+}
+
 // Size returns the number of votes in the commit
+// Implements VoteSetReader.
 func (commit *Commit) Size() int {
 	if commit == nil {
 		return 0
@@ -584,6 +629,7 @@ func (commit *Commit) Size() int {
 }
 
 // BitArray returns a BitArray of which validators voted in this commit
+// Implements VoteSetReader.
 func (commit *Commit) BitArray() *cmn.BitArray {
 	if commit.bitArray == nil {
 		commit.bitArray = cmn.NewBitArray(len(commit.Precommits))
@@ -604,6 +650,7 @@ func (commit *Commit) GetByIndex(valIdx int) *Vote {
 }
 
 // IsCommit returns true if there is at least one vote.
+// Implements VoteSetReader.
 func (commit *Commit) IsCommit() bool {
 	return len(commit.Precommits) != 0
 }
@@ -611,36 +658,29 @@ func (commit *Commit) IsCommit() bool {
 // ValidateBasic performs basic validation that doesn't involve state data.
 // Does not actually check the cryptographic signatures.
 func (commit *Commit) ValidateBasic() error {
+	if commit.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if commit.Round < 0 {
+		return errors.New("negative Round")
+	}
+
 	if commit.BlockID.IsZero() {
 		return errors.New("commit cannot be for nil block")
 	}
+
 	if len(commit.Precommits) == 0 {
 		return errors.New("no precommits in commit")
 	}
-	height, round := commit.Height(), commit.Round()
-
-	// Validate the precommits.
-	for _, precommit := range commit.Precommits {
-		// It's OK for precommits to be missing.
-		if precommit == nil {
+	for i, precommit := range commit.Precommits {
+		if precommit == nil { // It's OK for precommits to be missing.
 			continue
 		}
-		// Ensure that all votes are precommits.
-		if precommit.Type != PrecommitType {
-			return fmt.Errorf("invalid commit vote. Expected precommit, got %v",
-				precommit.Type)
-		}
-		// Ensure that all heights are the same.
-		if precommit.Height != height {
-			return fmt.Errorf("invalid commit precommit height. Expected %v, got %v",
-				height, precommit.Height)
-		}
-		// Ensure that all rounds are the same.
-		if precommit.Round != round {
-			return fmt.Errorf("invalid commit precommit round. Expected %v, got %v",
-				round, precommit.Round)
+		if err := precommit.ValidateBasic(); err != nil {
+			return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
 		}
 	}
+
 	return nil
 }
 
@@ -669,10 +709,14 @@ func (commit *Commit) StringIndented(indent string) string {
 		precommitStrings[i] = precommit.String()
 	}
 	return fmt.Sprintf(`Commit{
+%s  Height:     %d
+%s  Round:      %d
 %s  BlockID:    %v
 %s  Precommits:
 %s    %v
 %s}#%v`,
+		indent, commit.Height,
+		indent, commit.Round,
 		indent, commit.BlockID,
 		indent,
 		indent, strings.Join(precommitStrings, "\n"+indent+"    "),
@@ -695,7 +739,6 @@ type SignedHeader struct {
 // sure to use a Verifier to validate the signatures actually provide a
 // significantly strong proof for this header's validity.
 func (sh SignedHeader) ValidateBasic(chainID string) error {
-
 	// Make sure the header is consistent with the commit.
 	if sh.Header == nil {
 		return errors.New("signedHeader missing header")
@@ -710,9 +753,9 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 			sh.ChainID, chainID)
 	}
 	// Check Height.
-	if sh.Commit.Height() != sh.Height {
+	if sh.Commit.Height != sh.Height {
 		return fmt.Errorf("signedHeader header and commit height mismatch: %v vs %v",
-			sh.Height, sh.Commit.Height())
+			sh.Height, sh.Commit.Height)
 	}
 	// Check Hash.
 	hhash := sh.Hash()

@@ -1013,7 +1013,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	case cs.Height == 1:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(types.BlockID{}, nil)
+		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()

@@ -62,8 +62,27 @@ func (vote *Vote) CommitSig() *CommitSig {
 	if vote == nil {
 		return nil
 	}
-	cs := CommitSig(*vote)
-	return &cs
+
+	var blockIDFlag BlockIDFlag
+	switch {
+	case vote.BlockID.IsComplete():
+		blockIDFlag = BlockIDFlagCommit
+	case vote.BlockID.IsZero():
+		blockIDFlag = BlockIDFlagNil
+	// TODO: differentiate between empty and absent votes
+	// https://github.com/tendermint/tendermint/issues/3591
+	// case vote.IsAbsent():
+	// 	blockIDFlag = BlockIDFlagAbsent
+	default:
+		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
+	}
+
+	return &CommitSig{
+		BlockIDFlag:      blockIDFlag,
+		ValidatorAddress: vote.ValidatorAddress,
+		Timestamp:        vote.Timestamp,
+		Signature:        vote.Signature,
+	}
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {

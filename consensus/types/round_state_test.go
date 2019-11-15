@@ -54,7 +54,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 			Txs: txs,
 		},
 		Evidence:   types.EvidenceData{},
-		LastCommit: types.NewCommit(blockID, precommits),
+		LastCommit: types.NewCommit(1, 0, blockID, precommits),
 	}
 	parts := block.MakePartSet(4096)
 	// Random Proposal

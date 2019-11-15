@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -124,7 +123,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
-	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(1024)
+	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
 	assert.Equal(t, 3, partSet.Total())
 }
@@ -167,23 +166,29 @@ func TestBlockString(t *testing.T) {
 }
 
 func makeBlockIDRandom() BlockID {
-	blockHash := make([]byte, tmhash.Size)
-	partSetHash := make([]byte, tmhash.Size)
+	var (
+		blockHash   = make([]byte, tmhash.Size)
+		partSetHash = make([]byte, tmhash.Size)
+	)
 	rand.Read(blockHash)   //nolint: gosec
 	rand.Read(partSetHash) //nolint: gosec
-	blockPartsHeader := PartSetHeader{123, partSetHash}
-	return BlockID{blockHash, blockPartsHeader}
+	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 
 func makeBlockID(hash []byte, partSetSize int, partSetHash []byte) BlockID {
+	var (
+		h   = make([]byte, tmhash.Size)
+		psH = make([]byte, tmhash.Size)
+	)
+	copy(h, hash)
+	copy(psH, partSetHash)
 	return BlockID{
-		Hash: hash,
+		Hash: h,
 		PartsHeader: PartSetHeader{
 			Total: partSetSize,
-			Hash:  partSetHash,
+			Hash:  psH,
 		},
 	}
-
 }
 
 var nilBytes []byte
@@ -205,8 +210,8 @@ func TestCommit(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	assert.Equal(t, h-1, commit.Height())
-	assert.Equal(t, 1, commit.Round())
+	assert.Equal(t, h-1, commit.Height)
+	assert.Equal(t, 1, commit.Round)
 	assert.Equal(t, PrecommitType, SignedMsgType(commit.Type()))
 	if commit.Size() <= 0 {
 		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
@@ -228,9 +233,8 @@ func TestCommitValidateBasic(t *testing.T) {
 		{"Random Commit", func(com *Commit) {}, false},
 		{"Nil precommit", func(com *Commit) { com.Precommits[0] = nil }, false},
 		{"Incorrect signature", func(com *Commit) { com.Precommits[0].Signature = []byte{0} }, false},
-		{"Incorrect type", func(com *Commit) { com.Precommits[0].Type = PrevoteType }, true},
-		{"Incorrect height", func(com *Commit) { com.Precommits[0].Height = int64(100) }, true},
-		{"Incorrect round", func(com *Commit) { com.Precommits[0].Round = 100 }, true},
+		{"Incorrect height", func(com *Commit) { com.Height = int64(-100) }, true},
+		{"Incorrect round", func(com *Commit) { com.Round = -100 }, true},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -444,63 +448,6 @@ func TestCommitToVoteSet(t *testing.T) {
 	}
 }
 
-func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
-	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
-	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
-	blockID3 := makeBlockID([]byte("blockhash3"), 10000, []byte("partshash"))
-
-	height := int64(3)
-	round := 1
-
-	type commitVoteTest struct {
-		blockIDs      []BlockID
-		numVotes      []int // must sum to numValidators
-		numValidators int
-		valid         bool
-	}
-
-	testCases := []commitVoteTest{
-		{[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true},
-		{[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true},
-		{[]BlockID{blockID, blockID2, blockID3}, []int{1, 1, 1}, 3, false},
-		{[]BlockID{blockID, blockID2, blockID3}, []int{3, 1, 1}, 5, false},
-		{[]BlockID{blockID, {}}, []int{67, 33}, 100, true},
-		{[]BlockID{blockID, blockID2, {}}, []int{10, 5, 5}, 20, false},
-	}
-
-	for _, tc := range testCases {
-		voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, tc.numValidators, 1)
-
-		vi := 0
-		for n := range tc.blockIDs {
-			for i := 0; i < tc.numVotes[n]; i++ {
-				addr := vals[vi].GetPubKey().Address()
-				vote := &Vote{
-					ValidatorAddress: addr,
-					ValidatorIndex:   vi,
-					Height:           height - 1,
-					Round:            round,
-					Type:             PrecommitType,
-					BlockID:          tc.blockIDs[n],
-					Timestamp:        tmtime.Now(),
-				}
-
-				_, err := signAddVote(vals[vi], vote, voteSet)
-				assert.NoError(t, err)
-				vi++
-			}
-		}
-		if tc.valid {
-			commit := voteSet.MakeCommit() // panics without > 2/3 valid votes
-			assert.NotNil(t, commit)
-			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, commit)
-			assert.Nil(t, err)
-		} else {
-			assert.Panics(t, func() { voteSet.MakeCommit() })
-		}
-	}
-}
-
 func TestSignedHeaderValidateBasic(t *testing.T) {
 	commit := randCommit()
 	chainID := "𠜎"
@@ -508,7 +455,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 	h := Header{
 		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
 		ChainID:            chainID,
-		Height:             commit.Height(),
+		Height:             commit.Height,
 		Time:               timestamp,
 		LastBlockID:        commit.BlockID,
 		LastCommitHash:     commit.Hash(),

@@ -452,7 +452,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) 
 		Round:                 rs.Round,
 		Step:                  rs.Step,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
-		LastCommitRound:       rs.LastCommit.Round(),
+		LastCommitRound:       rs.LastCommit.GetRound(),
 	}
 	return
 }
@@ -805,7 +805,7 @@ OUTER_LOOP:
 				commit := conR.conS.LoadCommit(prs.Height)
 				peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 					Height:  prs.Height,
-					Round:   commit.Round(),
+					Round:   commit.Round,
 					Type:    types.PrecommitType,
 					BlockID: commit.BlockID,
 				}))
@@ -1053,7 +1053,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 		return nil, false
 	}
 
-	height, round, type_, size := votes.Height(), votes.Round(), types.SignedMsgType(votes.Type()), votes.Size()
+	height, round, votesType, size := votes.GetHeight(), votes.GetRound(), types.SignedMsgType(votes.Type()), votes.Size()
 
 	// Lazily set data using 'votes'.
 	if votes.IsCommit() {
@@ -1061,7 +1061,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	}
 	ps.ensureVoteBitArrays(height, size)
 
-	psVotes := ps.getVoteBitArray(height, round, type_)
+	psVotes := ps.getVoteBitArray(height, round, votesType)
 	if psVotes == nil {
 		return nil, false // Not something worth sending
 	}
@@ -1071,14 +1071,14 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	return nil, false
 }
 
-func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.SignedMsgType) *cmn.BitArray {
-	if !types.IsVoteTypeValid(type_) {
+func (ps *PeerState) getVoteBitArray(height int64, round int, votesType types.SignedMsgType) *cmn.BitArray {
+	if !types.IsVoteTypeValid(votesType) {
 		return nil
 	}
 
 	if ps.PRS.Height == height {
 		if ps.PRS.Round == round {
-			switch type_ {
+			switch votesType {
 			case types.PrevoteType:
 				return ps.PRS.Prevotes
 			case types.PrecommitType:
@@ -1086,7 +1086,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 			}
 		}
 		if ps.PRS.CatchupCommitRound == round {
-			switch type_ {
+			switch votesType {
 			case types.PrevoteType:
 				return nil
 			case types.PrecommitType:
@@ -1094,7 +1094,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 			}
 		}
 		if ps.PRS.ProposalPOLRound == round {
-			switch type_ {
+			switch votesType {
 			case types.PrevoteType:
 				return ps.PRS.ProposalPOL
 			case types.PrecommitType:
@@ -1105,7 +1105,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int, type_ types.Signed
 	}
 	if ps.PRS.Height == height+1 {
 		if ps.PRS.LastCommitRound == round {
-			switch type_ {
+			switch votesType {
 			case types.PrevoteType:
 				return nil
 			case types.PrecommitType:
@@ -1223,16 +1223,16 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int, type_ types.SignedMsgType, index int) {
+func (ps *PeerState) setHasVote(height int64, round int, voteType types.SignedMsgType, index int) {
 	logger := ps.logger.With(
 		"peerH/R",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
 		"H/R",
 		fmt.Sprintf("%d/%d", height, round))
-	logger.Debug("setHasVote", "type", type_, "index", index)
+	logger.Debug("setHasVote", "type", voteType, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
-	psVotes := ps.getVoteBitArray(height, round, type_)
+	psVotes := ps.getVoteBitArray(height, round, voteType)
 	if psVotes != nil {
 		psVotes.SetIndex(index, true)
 	}

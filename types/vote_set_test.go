@@ -522,16 +522,28 @@ func TestMakeCommit(t *testing.T) {
 		}
 	}
 
+	// The 9th voted for nil.
+	{
+		addr := privValidators[8].GetPubKey().Address()
+		vote := withValidator(voteProto, addr, 8)
+		vote.BlockID = BlockID{}
+
+		_, err := signAddVote(privValidators[8], vote, voteSet)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
 	commit := voteSet.MakeCommit()
 
-	// Commit should have 10 elements
-	if len(commit.Precommits) != 10 {
-		t.Errorf("commit Precommits should have the same number of precommits as validators")
+	// Commit should have 8 elements
+	if len(commit.Precommits) != 8 {
+		t.Errorf("expected commit to only include %d votes for committed block, but got %d elems",
+			8, len(commit.Precommits))
 	}
 
 	// Ensure that Commit precommits are ordered.
 	if err := commit.ValidateBasic(); err != nil {
 		t.Errorf("error in Commit.ValidateBasic(): %v", err)
 	}
-
 }
