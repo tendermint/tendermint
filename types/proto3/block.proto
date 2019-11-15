@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto3;
+package tendermint.types.proto3;
 option go_package = "github.com/tendermint/tendermint/types/proto3";
 
 message PartSetHeader {
