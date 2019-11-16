@@ -314,7 +314,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 		if existing.Equals(blockID) {
 			return nil // Nothing to do
 		}
-		return fmt.Errorf("SetPeerMaj23: Received conflicting blockID from peer %v. Got %v, expected %v",
+		return fmt.Errorf("setPeerMaj23: Received conflicting blockID from peer %v. Got %v, expected %v",
 			peerID, blockID, existing)
 	}
 	voteSet.peerMaj23s[peerID] = blockID

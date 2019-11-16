@@ -76,10 +76,10 @@ func SimpleProofsFromMap(m map[string][]byte) (rootHash []byte, proofs map[strin
 func (sp *SimpleProof) Verify(rootHash []byte, leaf []byte) error {
 	leafHash := leafHash(leaf)
 	if sp.Total < 0 {
-		return errors.New("Proof total must be positive")
+		return errors.New("proof total must be positive")
 	}
 	if sp.Index < 0 {
-		return errors.New("Proof index cannot be negative")
+		return errors.New("proof index cannot be negative")
 	}
 	if !bytes.Equal(sp.LeafHash, leafHash) {
 		return errors.Errorf("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)

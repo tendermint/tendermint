@@ -113,7 +113,7 @@ func newSchedule(initHeight int64) *schedule {
 
 func (sc *schedule) addPeer(peerID p2p.ID) error {
 	if _, ok := sc.peers[peerID]; ok {
-		return fmt.Errorf("Cannot add duplicate peer %s", peerID)
+		return fmt.Errorf("cannot add duplicate peer %s", peerID)
 	}
 	sc.peers[peerID] = newScPeer(peerID)
 	return nil
@@ -122,11 +122,11 @@ func (sc *schedule) addPeer(peerID p2p.ID) error {
 func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
-		return fmt.Errorf("Couldn't find peer %s", peerID)
+		return fmt.Errorf("couldn't find peer %s", peerID)
 	}
 
 	if peer.state == peerStateRemoved {
-		return fmt.Errorf("Tried to touch peer in peerStateRemoved")
+		return fmt.Errorf("tried to touch peer in peerStateRemoved")
 	}
 
 	peer.lastTouched = time
@@ -137,11 +137,11 @@ func (sc *schedule) touchPeer(peerID p2p.ID, time time.Time) error {
 func (sc *schedule) removePeer(peerID p2p.ID) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
-		return fmt.Errorf("Couldn't find peer %s", peerID)
+		return fmt.Errorf("couldn't find peer %s", peerID)
 	}
 
 	if peer.state == peerStateRemoved {
-		return fmt.Errorf("Tried to remove peer %s in peerStateRemoved", peerID)
+		return fmt.Errorf("tried to remove peer %s in peerStateRemoved", peerID)
 	}
 
 	for height, pendingPeerID := range sc.pendingBlocks {
@@ -168,15 +168,15 @@ func (sc *schedule) removePeer(peerID p2p.ID) error {
 func (sc *schedule) setPeerHeight(peerID p2p.ID, height int64) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
-		return fmt.Errorf("Can't find peer %s", peerID)
+		return fmt.Errorf("can't find peer %s", peerID)
 	}
 
 	if peer.state == peerStateRemoved {
-		return fmt.Errorf("Cannot set peer height for a peer in peerStateRemoved")
+		return fmt.Errorf("cannot set peer height for a peer in peerStateRemoved")
 	}
 
 	if height < peer.height {
-		return fmt.Errorf("Cannot move peer height lower. from %d to %d", peer.height, height)
+		return fmt.Errorf("cannot move peer height lower. from %d to %d", peer.height, height)
 	}
 
 	peer.height = height
@@ -240,20 +240,20 @@ func (sc *schedule) setStateAtHeight(height int64, state blockState) {
 func (sc *schedule) markReceived(peerID p2p.ID, height int64, size int64, now time.Time) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
-		return fmt.Errorf("Can't find peer %s", peerID)
+		return fmt.Errorf("can't find peer %s", peerID)
 	}
 
 	if peer.state == peerStateRemoved {
-		return fmt.Errorf("Cannot receive blocks from removed peer %s", peerID)
+		return fmt.Errorf("cannot receive blocks from removed peer %s", peerID)
 	}
 
 	if state := sc.getStateAtHeight(height); state != blockStatePending || sc.pendingBlocks[height] != peerID {
-		return fmt.Errorf("Received block %d from peer %s without being requested", height, peerID)
+		return fmt.Errorf("received block %d from peer %s without being requested", height, peerID)
 	}
 
 	pendingTime, ok := sc.pendingTime[height]
 	if !ok || now.Sub(pendingTime) <= 0 {
-		return fmt.Errorf("Clock error. Block %d received at %s but requested at %s",
+		return fmt.Errorf("clock error. Block %d received at %s but requested at %s",
 			height, pendingTime, now)
 	}
 
@@ -271,20 +271,20 @@ func (sc *schedule) markReceived(peerID p2p.ID, height int64, size int64, now ti
 func (sc *schedule) markPending(peerID p2p.ID, height int64, time time.Time) error {
 	peer, ok := sc.peers[peerID]
 	if !ok {
-		return fmt.Errorf("Can't find peer %s", peerID)
+		return fmt.Errorf("can't find peer %s", peerID)
 	}
 
 	state := sc.getStateAtHeight(height)
 	if state != blockStateNew {
-		return fmt.Errorf("Block %d should be in blockStateNew but was %s", height, state)
+		return fmt.Errorf("block %d should be in blockStateNew but was %s", height, state)
 	}
 
 	if peer.state != peerStateReady {
-		return fmt.Errorf("Cannot schedule %d from %s in %s", height, peerID, peer.state)
+		return fmt.Errorf("cannot schedule %d from %s in %s", height, peerID, peer.state)
 	}
 
 	if height > peer.height {
-		return fmt.Errorf("Cannot request height %d from peer %s who is at height %d",
+		return fmt.Errorf("cannot request height %d from peer %s who is at height %d",
 			height, peerID, peer.height)
 	}
 
@@ -300,7 +300,7 @@ func (sc *schedule) markPending(peerID p2p.ID, height int64, time time.Time) err
 func (sc *schedule) markProcessed(height int64) error {
 	state := sc.getStateAtHeight(height)
 	if state != blockStateReceived {
-		return fmt.Errorf("Can't mark height %d received from block state %s", height, state)
+		return fmt.Errorf("can't mark height %d received from block state %s", height, state)
 	}
 
 	delete(sc.receivedBlocks, height)

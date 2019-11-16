@@ -319,14 +319,14 @@ FOR_LOOP:
 				if peer != nil {
 					// NOTE: we've already removed the peer's request, but we
 					// still need to clean up the rest.
-					bcR.Switch.StopPeerForError(peer, fmt.Errorf("BlockchainReactor validation error: %v", err))
+					bcR.Switch.StopPeerForError(peer, fmt.Errorf("blockchainReactor validation error: %v", err))
 				}
 				peerID2 := bcR.pool.RedoRequest(second.Height)
 				peer2 := bcR.Switch.Peers().Get(peerID2)
 				if peer2 != nil && peer2 != peer {
 					// NOTE: we've already removed the peer's request, but we
 					// still need to clean up the rest.
-					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("BlockchainReactor validation error: %v", err))
+					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("blockchainReactor validation error: %v", err))
 				}
 				continue FOR_LOOP
 			} else {
@@ -387,7 +387,7 @@ func RegisterBlockchainMessages(cdc *amino.Codec) {
 
 func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -402,7 +402,7 @@ type bcBlockRequestMessage struct {
 // ValidateBasic performs basic validation.
 func (m *bcBlockRequestMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	return nil
 }
@@ -418,7 +418,7 @@ type bcNoBlockResponseMessage struct {
 // ValidateBasic performs basic validation.
 func (m *bcNoBlockResponseMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	return nil
 }
@@ -451,7 +451,7 @@ type bcStatusRequestMessage struct {
 // ValidateBasic performs basic validation.
 func (m *bcStatusRequestMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	return nil
 }
@@ -469,7 +469,7 @@ type bcStatusResponseMessage struct {
 // ValidateBasic performs basic validation.
 func (m *bcStatusResponseMessage) ValidateBasic() error {
 	if m.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
 	return nil
 }

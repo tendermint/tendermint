@@ -80,7 +80,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	}, mempl.TxInfo{})
 	if err != nil {
 		logger.Error("Error on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
+		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
 	}
 	checkTxResMsg := <-checkTxResCh
 	checkTxRes := checkTxResMsg.GetCheckTx()
@@ -117,7 +117,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 			Hash:      tx.Hash(),
 		}, err
 	case <-time.After(config.TimeoutBroadcastTxCommit):
-		err = errors.New("Timed out waiting for tx to be included in a block")
+		err = errors.New("timed out waiting for tx to be included in a block")
 		logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,

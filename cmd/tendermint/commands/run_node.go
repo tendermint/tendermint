@@ -70,7 +70,7 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			n, err := nodeProvider(config, logger)
 			if err != nil {
-				return fmt.Errorf("Failed to create node: %v", err)
+				return fmt.Errorf("failed to create node: %v", err)
 			}
 
 			// Stop upon receiving SIGTERM or CTRL-C.
@@ -81,7 +81,7 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 			})
 
 			if err := n.Start(); err != nil {
-				return fmt.Errorf("Failed to start node: %v", err)
+				return fmt.Errorf("failed to start node: %v", err)
 			}
 			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 

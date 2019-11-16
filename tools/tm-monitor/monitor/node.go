@@ -50,10 +50,10 @@ func NewNode(rpcAddr string, options ...func(*Node)) *Node {
 	em := em.NewEventMeter(rpcAddr, UnmarshalEvent)
 	rpcClient := rpc_client.NewURIClient(rpcAddr) // HTTP client by default
 	rpcClient.SetCodec(cdc)
-	return NewNodeWithEventMeterAndRpcClient(rpcAddr, em, rpcClient, options...)
+	return NewNodeWithEventMeterAndRPCClient(rpcAddr, em, rpcClient, options...)
 }
 
-func NewNodeWithEventMeterAndRpcClient(
+func NewNodeWithEventMeterAndRPCClient(
 	rpcAddr string,
 	em eventMeter,
 	rpcClient rpc_client.HTTPClient,
@@ -184,7 +184,7 @@ func (n *Node) RestartEventMeterBackoff() error {
 		attempt++
 
 		if attempt > maxRestarts {
-			return errors.New("Reached max restarts")
+			return errors.New("reached max restarts")
 		}
 	}
 }
