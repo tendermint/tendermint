@@ -118,7 +118,7 @@ func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *D
 		voteA = vote2
 		voteB = vote1
 	}
-	return DuplicateVoteEvidence{
+	return &DuplicateVoteEvidence{
 		PubKey: pubkey,
 		VoteA:  voteA,
 		VoteB:  voteB,
