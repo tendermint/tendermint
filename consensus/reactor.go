@@ -1672,7 +1672,7 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 	}
 	// NOTE: Votes.Size() can be zero if the node does not have any
 	if m.Votes.Size() > types.MaxVotesCount {
-		return fmt.Errorf("Votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
+		return fmt.Errorf("votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
 	}
 	return nil
 }
