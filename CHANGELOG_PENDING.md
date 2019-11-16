@@ -52,7 +52,12 @@ program](https://hackerone.com/tendermint).
 - P2P Protocol
   - [p2p] [\3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
 
-- \#3986 Prefix protobuf types. ABCI types are prefixed with `tendermint`. API endpoint changes from `/types.ABCIApplication/SERVICE` to `/tendermint.types.ABCIApplication/SERVICE`.
+- [proto] [\#3986](https://github.com/tendermint/tendermint/pull/3986) Prefix protobuf types to avoid name conflicts.
+  - ABCI becomes `tendermint.abci.types` with the new API endpoint `/tendermint.abci.types.ABCIApplication/`
+  - core_grpc becomes `tendermint.rpc.grpc` with the new API endpoint `/tendermint.rpc.grpc.BroadcastAPI/`
+  - merkle becomes `tendermint.crypto.merkle`
+  - libs.common becomes `tendermint.libs.common`
+  - proto3 becomes `tendermint.types.proto3`
 
 ### FEATURES:
 
