@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -102,6 +103,27 @@ type DuplicateVoteEvidence struct {
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
+
+// NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
+// two conflicting votes. If one of the votes is nil, evidence returned is nil as well
+func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
+	var voteA, voteB *Vote
+	if vote1 == nil || vote2 == nil {
+		return nil
+	}
+	if strings.Compare(vote1.BlockID.Key(), vote2.BlockID.Key()) == -1 {
+		voteA = vote1
+		voteB = vote2
+	} else {
+		voteA = vote2
+		voteB = vote1
+	}
+	return DuplicateVoteEvidence{
+		PubKey: pubkey,
+		VoteA:  voteA,
+		VoteB:  voteB,
+	}
+}
 
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
@@ -208,6 +230,10 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	}
 	if err := dve.VoteB.ValidateBasic(); err != nil {
 		return fmt.Errorf("Invalid VoteB: %v", err)
+	}
+	// Enforce Votes are lexicographically sorted on blockID
+	if strings.Compare(dve.VoteA.BlockID.Key(), dve.VoteB.BlockID.Key()) >= 0 {
+		return errors.New("Duplicate Votes in invalid order")
 	}
 	return nil
 }
