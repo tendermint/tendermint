@@ -233,7 +233,7 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	}
 	// Enforce Votes are lexicographically sorted on blockID
 	if strings.Compare(dve.VoteA.BlockID.Key(), dve.VoteB.BlockID.Key()) >= 0 {
-		return errors.New("Duplicate Votes in invalid order")
+		return errors.New("duplicate votes in invalid order")
 	}
 	return nil
 }
