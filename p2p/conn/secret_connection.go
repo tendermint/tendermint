@@ -299,7 +299,7 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 		func(_ int) (val interface{}, abort bool, err error) {
 			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(conn, locEphPub)
 			if err1 != nil {
-				return nil, false, err1 // abort
+				return nil, true, err1 // abort
 			}
 			return nil, false, nil
 		},
@@ -309,7 +309,6 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 			if err2 != nil {
 				return nil, true, err2 // abort
 			}
-
 			return _remEphPub, false, nil
 		},
 	)
