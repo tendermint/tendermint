@@ -157,5 +157,6 @@ Additional documentation is found [here](/docs/tools).
 
 - [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
 - [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
-- [Original Whitepaper](https://cosmos.network/resources/whitepaper)
+- [Original Whitepaper](https://github.com/tendermint/spec)
+   - You can find the link at the bottom of the readme
 - [Blog](https://blog.cosmos.network/tendermint/home)
