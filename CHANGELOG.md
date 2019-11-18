@@ -1,3 +1,15 @@
+# Changelog
+
+## 0.3
+
+**2019-11-18**
+
+Special thanks to external contributors on this release:
+
+### BREAKING CHANGES
+
+- [\#26](https://github.com/tendermint/tm-db/pull/26/files) Rename `DBBackendtype` to `BackendType`
+
 ## 0.2
 
 **2019-09-19**
