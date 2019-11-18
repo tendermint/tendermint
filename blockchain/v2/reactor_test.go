@@ -174,14 +174,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
 	reporter := behaviour.NewMockReporter()
 
-	var ver blockVerifier
 	var appl blockApplier
-
-	if p.mockV {
-		ver = &mockBlockVerifier{}
-	} else {
-		ver = state.Validators
-	}
 
 	if p.mockA {
 		appl = &mockBlockApplier{}
@@ -198,7 +191,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		sm.SaveState(db, state)
 	}
 
-	r := newReactor(state, store, reporter, ver, appl, p.bufferSize)
+	r := newReactor(state, store, reporter, appl, p.bufferSize)
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 

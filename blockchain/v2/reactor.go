@@ -134,9 +134,9 @@ type blockVerifier interface {
 // XXX: unify naming in this package around tdState
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
 func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
-	blockVerifier blockVerifier, blockApplier blockApplier, bufferSize int) *BlockchainReactor {
+	blockApplier blockApplier, bufferSize int) *BlockchainReactor {
 	scheduler := newScheduler(state.LastBlockHeight, time.Now())
-	pContext := newProcessorContext(store, blockVerifier, blockApplier, state)
+	pContext := newProcessorContext(store, blockApplier, state)
 	processor := newPcState(pContext)
 
 	return &BlockchainReactor{
@@ -153,7 +153,7 @@ func newReactor(state state.State, store blockStore, reporter behaviour.Reporter
 // NewBlockchainReactor creates a new reactor instance.
 func NewBlockchainReactor(state state.State, blockApplier blockApplier, store blockStore, fastSync bool) *BlockchainReactor {
 	reporter := behaviour.NewMockReporter()
-	return newReactor(state, store, reporter, state.Validators, blockApplier, 1000)
+	return newReactor(state, store, reporter, blockApplier, 1000)
 }
 
 // SetSwitch implements Reactor interface.
