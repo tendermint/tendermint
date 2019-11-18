@@ -101,10 +101,11 @@ func (m *bcStatusResponseMessage) String() string {
 type blockStore interface {
 	LoadBlock(height int64) *types.Block
 	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
+	Height() int64
 }
 
-// Reactor handles fast sync protocol.
-type Reactor struct {
+// BlockchainReactor handles fast sync protocol.
+type BlockchainReactor struct {
 	p2p.BaseReactor
 
 	events    chan Event // XXX: Rename eventsFromPeers
@@ -130,16 +131,15 @@ type blockVerifier interface {
 	VerifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
 }
 
-// NewReactor creates a new reactor instance.
 // XXX: unify naming in this package around tdState
 // XXX: V1 stores a copy of state as initialState, which is never mutated. Is that nessesary?
-func NewReactor(state state.State, store blockStore, reporter behaviour.Reporter,
-	blockVerifier blockVerifier, blockApplier blockApplier, bufferSize int) *Reactor {
-	scheduler := newScheduler(state.LastBlockHeight)
+func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
+	blockVerifier blockVerifier, blockApplier blockApplier, bufferSize int) *BlockchainReactor {
+	scheduler := newScheduler(state.LastBlockHeight, time.Now())
 	pContext := newProcessorContext(store, blockVerifier, blockApplier, state)
-	processor := newPcState(state, pContext)
+	processor := newPcState(pContext)
 
-	return &Reactor{
+	return &BlockchainReactor{
 		events:    make(chan Event, bufferSize),
 		stopDemux: make(chan struct{}),
 		scheduler: newRoutine("scheduler", scheduler.handle, bufferSize),
@@ -150,13 +150,19 @@ func NewReactor(state state.State, store blockStore, reporter behaviour.Reporter
 	}
 }
 
+// NewBlockchainReactor creates a new reactor instance.
+func NewBlockchainReactor(state state.State, blockApplier blockApplier, store blockStore, fastSync bool) *BlockchainReactor {
+	reporter := behaviour.NewMockReporter()
+	return newReactor(state, store, reporter, state.Validators, blockApplier, 1000)
+}
+
 // SetSwitch implements Reactor interface.
-func (r *Reactor) SetSwitch(sw *p2p.Switch) {
+func (r *BlockchainReactor) SetSwitch(sw *p2p.Switch) {
 	r.Switch = sw
 	r.io = &switchIo{r.Switch}
 }
 
-func (r *Reactor) setMaxPeerHeight(height int64) {
+func (r *BlockchainReactor) setMaxPeerHeight(height int64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	if height > r.maxPeerHeight {
@@ -164,34 +170,39 @@ func (r *Reactor) setMaxPeerHeight(height int64) {
 	}
 }
 
-func (r *Reactor) setSyncHeight(height int64) {
+func (r *BlockchainReactor) setSyncHeight(height int64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	r.syncHeight = height
 }
 
-// SyncHeight returns the height to which the reactor has synced.
-func (r *Reactor) SyncHeight() int64 {
+// SyncHeight returns the height to which the BlockchainReactor has synced.
+func (r *BlockchainReactor) SyncHeight() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 	return r.syncHeight
 }
 
-// nolint:unused
-func (r *Reactor) setLogger(logger log.Logger) {
+// SetLogger sets the logger of the reactor.
+func (r *BlockchainReactor) SetLogger(logger log.Logger) {
 	r.logger = logger
 	r.scheduler.setLogger(logger)
 	r.processor.setLogger(logger)
 }
 
 // Start implements cmn.Service interface
-func (r *Reactor) Start() {
+func (r *BlockchainReactor) Start() error {
+	r.reporter = behaviour.NewSwitcReporter(r.BaseReactor.Switch)
 	go r.scheduler.start()
 	go r.processor.start()
 	go r.demux()
+	return nil
 }
 
-func (r *Reactor) demux() {
+func (r *BlockchainReactor) demux() {
+	var lastRate = 0.0
+	var lastHundred = time.Now()
+
 	var (
 		processBlockFreq = 20 * time.Millisecond
 		doProcessBlockCh = make(chan struct{}, 1)
@@ -268,6 +279,7 @@ func (r *Reactor) demux() {
 				r.io.sendBlockRequest(event.peerID, event.height)
 			case scFinishedEv:
 				r.processor.send(event)
+				r.scheduler.stop()
 			}
 
 		// Incremental events from processor
@@ -276,6 +288,12 @@ func (r *Reactor) demux() {
 			switch event := event.(type) {
 			case pcBlockProcessed:
 				r.setSyncHeight(event.height)
+				if r.syncHeight%100 == 0 {
+					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
+					r.logger.Info("Fast Syncc Rate", "height", r.syncHeight,
+						"max_peer_height", r.maxPeerHeight, "blocks/s", lastRate)
+					lastHundred = time.Now()
+				}
 				r.scheduler.send(event)
 			case pcBlockVerificationFailure:
 				r.scheduler.send(event)
@@ -301,7 +319,7 @@ func (r *Reactor) demux() {
 }
 
 // Stop implements cmn.Service interface.
-func (r *Reactor) Stop() {
+func (r *BlockchainReactor) Stop() error {
 	r.logger.Info("reactor stopping")
 
 	r.scheduler.stop()
@@ -310,6 +328,7 @@ func (r *Reactor) Stop() {
 	close(r.events)
 
 	r.logger.Info("reactor stopped")
+	return nil
 }
 
 const (
@@ -345,7 +364,7 @@ func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
 }
 
 // Receive implements Reactor by handling different message types.
-func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		r.logger.Error("error decoding message",
@@ -364,7 +383,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *bcStatusRequestMessage:
-		if err := r.io.sendStatusResponse(r.SyncHeight(), src.ID()); err != nil {
+		if err := r.io.sendStatusResponse(r.store.Height(), src.ID()); err != nil {
 			r.logger.Error("Could not send status message to peer", "src", src)
 		}
 
@@ -399,8 +418,8 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 }
 
 // AddPeer implements Reactor interface
-func (r *Reactor) AddPeer(peer p2p.Peer) {
-	err := r.io.sendStatusResponse(r.SyncHeight(), peer.ID())
+func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
+	err := r.io.sendStatusResponse(r.store.Height(), peer.ID())
 	if err != nil {
 		r.logger.Error("Could not send status message to peer new", "src", peer.ID, "height", r.SyncHeight())
 	}
@@ -414,10 +433,23 @@ type bcRemovePeer struct {
 }
 
 // RemovePeer implements Reactor interface.
-func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+func (r *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	event := bcRemovePeer{
 		peerID: peer.ID(),
 		reason: reason,
 	}
 	r.events <- event
+}
+
+// GetChannels implements Reactor
+func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
+	return []*p2p.ChannelDescriptor{
+		{
+			ID:                  BlockchainChannel,
+			Priority:            10,
+			SendQueueCapacity:   2000,
+			RecvBufferCapacity:  50 * 4096,
+			RecvMessageCapacity: maxMsgSize,
+		},
+	}
 }

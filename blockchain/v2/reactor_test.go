@@ -85,6 +85,10 @@ type mockBlockStore struct {
 	blocks map[int64]*types.Block
 }
 
+func (ml *mockBlockStore) Height() int64 {
+	return int64(len(ml.blocks))
+}
+
 func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
 	return ml.blocks[height]
 }
@@ -166,7 +170,7 @@ type testReactorParams struct {
 	mockA       bool
 }
 
-func newTestReactor(p testReactorParams) *Reactor {
+func newTestReactor(p testReactorParams) *BlockchainReactor {
 	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
 	reporter := behaviour.NewMockReporter()
 
@@ -194,9 +198,8 @@ func newTestReactor(p testReactorParams) *Reactor {
 		sm.SaveState(db, state)
 	}
 
-	r := NewReactor(state, store, reporter, ver, appl, p.bufferSize)
+	r := newReactor(state, store, reporter, ver, appl, p.bufferSize)
 	logger := log.TestingLogger()
-	r.setLogger(logger)
 	r.SetLogger(logger.With("module", "blockchain"))
 
 	return r
@@ -332,13 +335,13 @@ func TestReactorTerminationScenarios(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reactor := newTestReactor(params)
 			reactor.Start()
+			reactor.reporter = behaviour.NewMockReporter()
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
 			// time for go routines to start
 			time.Sleep(time.Millisecond)
 
-			for i := 0; i < len(tt.msgs); i++ {
-				step := tt.msgs[i]
+			for _, step := range tt.msgs {
 				switch step.evType {
 				case "AddPeer":
 					reactor.AddPeer(mockPeer{id: p2p.ID(step.peer)})

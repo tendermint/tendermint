@@ -62,9 +62,8 @@ type blockQueue map[int64]queueItem
 
 type pcState struct {
 	queue        blockQueue // blocks waiting to be processed
-	blocksSynced int
 	draining     bool
-	tdState      tdState.State
+	blocksSynced int
 	context      processorContext
 }
 
@@ -74,13 +73,12 @@ func (state *pcState) String() string {
 }
 
 // newPcState returns a pcState initialized with the last verified block enqueued
-func newPcState(initState tdState.State, context processorContext) *pcState {
+func newPcState(context processorContext) *pcState {
 	return &pcState{
 		queue:        blockQueue{},
 		draining:     false,
 		blocksSynced: 0,
 		context:      context,
-		tdState:      initState,
 	}
 }
 
@@ -108,7 +106,7 @@ func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) e
 }
 
 func (state *pcState) height() int64 {
-	return state.tdState.LastBlockHeight
+	return state.context.tdState().LastBlockHeight
 }
 
 // purgePeer moves all unprocessed blocks from the queue
@@ -126,7 +124,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 	switch event := event.(type) {
 	case scFinishedEv:
 		if state.synced() {
-			return noOp, pcFinished{tdState: state.tdState, blocksSynced: state.blocksSynced}
+			return noOp, pcFinished{tdState: state.context.tdState(), blocksSynced: state.blocksSynced}
 		}
 		state.draining = true
 
@@ -143,10 +141,11 @@ func (state *pcState) handle(event Event) (Event, error) {
 		}
 
 	case pcProcessBlock:
+		tdState := state.context.tdState()
 		firstItem, secondItem, err := state.nextTwo()
 		if err != nil {
 			if state.draining {
-				return noOp, pcFinished{tdState: state.tdState, blocksSynced: state.blocksSynced}
+				return noOp, pcFinished{tdState: tdState, blocksSynced: state.blocksSynced}
 			}
 			return noOp, nil
 		}
@@ -156,7 +155,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 		firstPartsHeader := firstParts.Header()
 		firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
 
-		err = state.context.verifyCommit(state.tdState.ChainID, firstID, first.Height, second.LastCommit)
+		err = state.context.verifyCommit(tdState.ChainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
 			state.purgePeer(firstItem.peerID)
 			state.purgePeer(secondItem.peerID)
@@ -167,8 +166,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 
 		state.context.saveBlock(first, firstParts, second.LastCommit)
 
-		state.tdState, err = state.context.applyBlock(state.tdState, firstID, first)
-		if err != nil {
+		if err := state.context.applyBlock(firstID, first); err != nil {
 			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 		}
 
@@ -182,7 +180,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 
 	case pcStop:
 		if state.synced() {
-			return noOp, pcFinished{tdState: state.tdState, blocksSynced: state.blocksSynced}
+			return noOp, pcFinished{tdState: state.context.tdState(), blocksSynced: state.blocksSynced}
 		}
 		state.draining = true
 	}

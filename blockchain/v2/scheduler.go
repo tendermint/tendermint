@@ -72,6 +72,7 @@ type addNewPeer struct {
 // all blocks have been processed
 type scFinishedEv struct {
 	priorityNormal
+	reason string
 }
 
 // send a blockRequest message
@@ -196,6 +197,8 @@ type scheduler struct {
 	// in Processed state.
 	height int64
 
+	lastAdvance time.Time
+	syncTimeout time.Duration
 	// a map of peerID to scheduler specific peer struct `scPeer` used to keep
 	// track of peer specific state
 	peers       map[p2p.ID]*scPeer
@@ -224,18 +227,20 @@ func (sc scheduler) String() string {
 		sc.initHeight, sc.blockStates, sc.peers, sc.pendingBlocks, sc.pendingTime, sc.receivedBlocks)
 }
 
-func newScheduler(initHeight int64) *scheduler {
+func newScheduler(initHeight int64, startTime time.Time) *scheduler {
 	sc := scheduler{
 		initHeight:     initHeight,
+		lastAdvance:    startTime,
+		syncTimeout:    60 * time.Second,
 		height:         initHeight + 1,
 		blockStates:    make(map[int64]blockState),
 		peers:          make(map[p2p.ID]*scPeer),
 		pendingBlocks:  make(map[int64]p2p.ID),
 		pendingTime:    make(map[int64]time.Time),
 		receivedBlocks: make(map[int64]p2p.ID),
-		targetPending:  10,                              // TODO - pass as param
-		peerTimeout:    time.Duration(15 * time.Second), // TODO - pass as param
-		minRecvRate:    0,                               //int64(7680), TODO - pass as param
+		targetPending:  10,               // TODO - pass as param
+		peerTimeout:    15 * time.Second, // TODO - pass as param
+		minRecvRate:    0,                //int64(7680), TODO - pass as param
 	}
 
 	return &sc
@@ -433,8 +438,7 @@ func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now t
 	}
 
 	pendingTime, ok := sc.pendingTime[height]
-	subVal := now.Sub(pendingTime)
-	if !ok || subVal <= 0 {
+	if !ok || now.Sub(pendingTime) <= 0 {
 		return fmt.Errorf("clock error: block %d received at %s but requested at %s",
 			height, pendingTime, now)
 	}
@@ -482,6 +486,7 @@ func (sc *scheduler) markPending(peerID p2p.ID, height int64, time time.Time) er
 }
 
 func (sc *scheduler) markProcessed(height int64) error {
+	sc.lastAdvance = time.Now()
 	state := sc.getStateAtHeight(height)
 	if state != blockStateReceived {
 		return fmt.Errorf("cannot mark height %d received from block state %s", height, state)
@@ -496,6 +501,9 @@ func (sc *scheduler) markProcessed(height int64) error {
 }
 
 func (sc *scheduler) allBlocksProcessed() bool {
+	if len(sc.peers) == 0 {
+		return false
+	}
 	return sc.height >= sc.maxHeight()
 }
 
@@ -626,7 +634,7 @@ func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error)
 	}
 
 	if sc.allBlocksProcessed() {
-		return scFinishedEv{}, nil
+		return scFinishedEv{reason: "processed all blocks"}, nil
 	}
 
 	return noOp, nil
@@ -645,7 +653,7 @@ func (sc *scheduler) handleBlockProcessError(event pcBlockVerificationFailure) (
 	}
 
 	if sc.allBlocksProcessed() {
-		return scFinishedEv{}, nil
+		return scFinishedEv{reason: "error on last block"}, nil
 	}
 
 	return noOp, nil
@@ -668,7 +676,7 @@ func (sc *scheduler) handlePeerError(event peerError) (Event, error) {
 		return scSchedulerFail{reason: err}, nil
 	}
 	if sc.allBlocksProcessed() {
-		return scFinishedEv{}, nil
+		return scFinishedEv{reason: "handle peer error"}, nil
 	}
 	return noOp, nil
 }
@@ -681,7 +689,7 @@ func (sc *scheduler) handleRemovePeer(event bcRemovePeer) (Event, error) {
 		return scSchedulerFail{reason: err}, nil
 	}
 	if sc.allBlocksProcessed() {
-		return scFinishedEv{}, nil
+		return scFinishedEv{reason: "removed peer"}, nil
 	}
 	return noOp, nil
 }
@@ -701,7 +709,7 @@ func (sc *scheduler) handleTryPrunePeer(event tryPrunePeer) (Event, error) {
 
 	// If all blocks are processed we should finish even some peers were pruned.
 	if sc.allBlocksProcessed() {
-		return scFinishedEv{}, nil
+		return scFinishedEv{reason: "after try prune"}, nil
 	}
 
 	return scPeersPruned{peers: prunablePeers}, nil
@@ -710,6 +718,10 @@ func (sc *scheduler) handleTryPrunePeer(event tryPrunePeer) (Event, error) {
 
 // TODO - Schedule multiple block requests
 func (sc *scheduler) handleTrySchedule(event trySchedule) (Event, error) {
+
+	if time.Now().Sub(sc.lastAdvance) > sc.syncTimeout {
+		return scFinishedEv{reason: "timeout, no advance"}, nil
+	}
 
 	nextHeight := sc.nextHeightToSchedule()
 	if nextHeight == -1 {

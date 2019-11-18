@@ -34,9 +34,9 @@ func makePcBlock(height int64) *types.Block {
 func makeState(p *params) *pcState {
 	var (
 		tdState = tdState.State{LastBlockHeight: p.height}
-		context = newMockProcessorContext(p.verBL, p.appBL)
+		context = newMockProcessorContext(tdState, p.verBL, p.appBL)
 	)
-	state := newPcState(tdState, context)
+	state := newPcState(context)
 
 	for _, item := range p.items {
 		_ = state.enqueue(p2p.ID(item.pid), makePcBlock(item.height), item.height)
@@ -103,7 +103,6 @@ func executeProcessorTests(t *testing.T, tests []testFields) {
 
 func TestPcBlockResponse(t *testing.T) {
 	tests := []testFields{
-
 		{
 			name: "add one block",
 			steps: []pcFsmMakeStateValues{

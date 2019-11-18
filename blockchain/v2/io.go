@@ -51,7 +51,7 @@ func (sio *switchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponse{height: height})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{Height: height})
 	peer.Send(BlockchainChannel, msgBytes)
 
 	return nil
@@ -66,7 +66,7 @@ func (sio *switchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	if block == nil {
 		return fmt.Errorf("nil block")
 	}
-	msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponse{block: block})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block})
 	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
 		return fmt.Errorf("peer queue full")
 	}
