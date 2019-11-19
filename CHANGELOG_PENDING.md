@@ -53,6 +53,7 @@ program](https://hackerone.com/tendermint).
 - Blockchain Protocol
 
   - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
+  - [types] [\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
 
 - P2P Protocol
   - [p2p][\3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
