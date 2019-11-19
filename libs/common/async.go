@@ -2,6 +2,8 @@ package common
 
 import (
 	"sync/atomic"
+
+	"github.com/pkg/errors"
 )
 
 //----------------------------------------
