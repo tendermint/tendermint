@@ -1411,7 +1411,8 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// restart).
 	endMsg := EndHeightMessage{height}
 	if err := cs.wal.WriteSync(endMsg); err != nil { // NOTE: fsync
-		panic(fmt.Sprintf("Failed to write %v msg to consensus wal due to %v. Check your FS and restart the node", endMsg, err))
+		panic(fmt.Sprintf("Failed to write %v msg to consensus wal due to %v. Check your FS and restart the node",
+			endMsg, err))
 	}
 
 	fail.Fail() // XXX
@@ -1617,12 +1618,9 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, err
 			if bytes.Equal(vote.ValidatorAddress, addr) {
 				cs.Logger.Error(
 					"Found conflicting vote from ourselves. Did you unsafe_reset a validator?",
-					"height",
-					vote.Height,
-					"round",
-					vote.Round,
-					"type",
-					vote.Type)
+					"height", vote.Height,
+					"round", vote.Round,
+					"type", vote.Type)
 				return added, err
 			}
 			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
@@ -1647,14 +1645,10 @@ func (cs *ConsensusState) addVote(
 	peerID p2p.ID) (added bool, err error) {
 	cs.Logger.Debug(
 		"addVote",
-		"voteHeight",
-		vote.Height,
-		"voteType",
-		vote.Type,
-		"valIndex",
-		vote.ValidatorIndex,
-		"csHeight",
-		cs.Height)
+		"voteHeight", vote.Height,
+		"voteType", vote.Type,
+		"valIndex", vote.ValidatorIndex,
+		"csHeight", cs.Height)
 
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
