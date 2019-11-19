@@ -167,14 +167,15 @@ func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time 
 	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Precommits))
 	totalVotingPower := int64(0)
 
-	for i, commitSig := range commit.Precommits {
-		if commitSig != nil {
-			_, validator := validators.GetByAddress(commitSig.ValidatorAddress)
-			// If there's no condition, TestValidateBlockCommit panics; not needed normally.
-			if validator != nil {
-				totalVotingPower += validator.VotingPower
-				weightedTimes[i] = tmtime.NewWeightedTime(commitSig.Timestamp, validator.VotingPower)
-			}
+	for i, precommit := range commit.Precommits {
+		if precommit.BlockIDFlag == types.BlockIDFlagAbsent {
+			continue
+		}
+		_, validator := validators.GetByAddress(precommit.ValidatorAddress)
+		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
+		if validator != nil {
+			totalVotingPower += validator.VotingPower
+			weightedTimes[i] = tmtime.NewWeightedTime(precommit.Timestamp, validator.VotingPower)
 		}
 	}
 

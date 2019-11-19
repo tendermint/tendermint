@@ -70,7 +70,10 @@ func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 
 // signHeader properly signs the header with all keys from first to last exclusive.
 func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Commit {
-	commitSigs := make([]*types.CommitSig, len(pkz))
+	commitSigs := make([]types.CommitSig, len(pkz))
+	for i := 0; i < len(pkz); i++ {
+		commitSigs[i] = types.CommitSig{BlockIDFlag: types.BlockIDFlagAbsent}
+	}
 
 	// We need this list to keep the ordering.
 	vset := pkz.ToValidators(1, 0)
@@ -85,6 +88,7 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 		vote := makeVote(header, vset, pkz[i], blockID)
 		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
 	}
+
 	return types.NewCommit(header.Height, 1, blockID, commitSigs)
 }
 

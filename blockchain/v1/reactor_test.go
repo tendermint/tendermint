@@ -115,7 +115,7 @@ func newBlockchainReactor(
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
 			vote := makeVote(&lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0])
-			lastCommit = types.NewCommit(vote.Height, vote.Round, lastBlockMeta.BlockID, []*types.CommitSig{vote.CommitSig()})
+			lastCommit = types.NewCommit(vote.Height, vote.Round, lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
 		thisBlock := makeBlock(blockHeight, state, lastCommit)

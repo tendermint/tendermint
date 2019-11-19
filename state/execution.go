@@ -334,13 +334,13 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 	}
 
 	for i, val := range lastValSet.Validators {
-		var vote *types.CommitSig
-		if i < len(block.LastCommit.Precommits) {
-			vote = block.LastCommit.Precommits[i]
+		if i >= len(block.LastCommit.Precommits) {
+			continue
 		}
+		cs := block.LastCommit.Precommits[i]
 		voteInfo := abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: vote != nil,
+			SignedLastBlock: cs.BlockIDFlag != types.BlockIDFlagAbsent,
 		}
 		voteInfos[i] = voteInfo
 	}

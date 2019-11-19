@@ -54,21 +54,21 @@ type Vote struct {
 	ValidatorAddress Address       `json:"validator_address"`
 	ValidatorIndex   int           `json:"validator_index"`
 	Signature        []byte        `json:"signature"`
-
-	// true if vote is for another block (not the one with majority of votes)
-	absent bool `json:"absent"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
-func (vote *Vote) CommitSig() *CommitSig {
+func (vote *Vote) CommitSig() CommitSig {
 	if vote == nil {
-		return nil
+		return CommitSig{
+			BlockIDFlag:      BlockIDFlagAbsent,
+			ValidatorAddress: []byte{},
+			Timestamp:        time.Time{},
+			Signature:        []byte{},
+		}
 	}
 
 	var blockIDFlag BlockIDFlag
 	switch {
-	case vote.absent:
-		blockIDFlag = BlockIDFlagAbsent
 	case vote.BlockID.IsComplete():
 		blockIDFlag = BlockIDFlagCommit
 	case vote.BlockID.IsZero():
@@ -77,7 +77,7 @@ func (vote *Vote) CommitSig() *CommitSig {
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}
 
-	return &CommitSig{
+	return CommitSig{
 		BlockIDFlag:      blockIDFlag,
 		ValidatorAddress: vote.ValidatorAddress,
 		Timestamp:        vote.Timestamp,
@@ -86,11 +86,7 @@ func (vote *Vote) CommitSig() *CommitSig {
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	v := vote.Copy()
-	if vote.absent {
-		v.BlockID = BlockID{}
-	}
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, v))
+	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
 	if err != nil {
 		panic(err)
 	}
@@ -106,6 +102,7 @@ func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
 	}
+
 	var typeString string
 	switch vote.Type {
 	case PrevoteType:

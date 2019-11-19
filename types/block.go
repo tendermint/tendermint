@@ -30,8 +30,6 @@ const (
 	// Uvarint length of Data.Txs:          4 bytes
 	// Data.Txs field:                      1 byte
 	MaxAminoOverheadForBlock int64 = 11
-
-	nilCommitSigStr string = "nil-CommitSig"
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -457,8 +455,8 @@ type CommitSig struct {
 }
 
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
-func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) *CommitSig {
-	return &CommitSig{
+func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
+	return CommitSig{
 		BlockIDFlag:      BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
 		Timestamp:        ts,
@@ -466,11 +464,7 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) *Comm
 	}
 }
 
-func (cs *CommitSig) String() string {
-	if cs == nil {
-		return nilCommitSigStr
-	}
-
+func (cs CommitSig) String() string {
 	return fmt.Sprintf("CommitSig{%X by %X on %v @ %s}",
 		cmn.Fingerprint(cs.Signature),
 		cmn.Fingerprint(cs.ValidatorAddress),
@@ -480,7 +474,7 @@ func (cs *CommitSig) String() string {
 
 // BlockID returns the Commit's BlockID if CommitSig indicates signing,
 // otherwise - empty BlockID.
-func (cs *CommitSig) BlockID(commitBlockID BlockID) BlockID {
+func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
 	var blockID BlockID
 	switch cs.BlockIDFlag {
 	case BlockIDFlagAbsent:
@@ -496,7 +490,7 @@ func (cs *CommitSig) BlockID(commitBlockID BlockID) BlockID {
 }
 
 // ValidateBasic performs basic validation.
-func (cs *CommitSig) ValidateBasic() error {
+func (cs CommitSig) ValidateBasic() error {
 	switch cs.BlockIDFlag {
 	case BlockIDFlagAbsent:
 	case BlockIDFlagCommit:
@@ -505,18 +499,18 @@ func (cs *CommitSig) ValidateBasic() error {
 		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
 	}
 
-	if len(cs.ValidatorAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
-			crypto.AddressSize,
-			len(cs.ValidatorAddress),
-		)
-	}
+	// if len(cs.ValidatorAddress) != crypto.AddressSize {
+	// 	return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
+	// 		crypto.AddressSize,
+	// 		len(cs.ValidatorAddress),
+	// 	)
+	// }
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
-	if len(cs.Signature) == 0 {
-		return errors.New("signature is missing")
-	}
+	// if len(cs.Signature) == 0 {
+	// 	return errors.New("signature is missing")
+	// }
 	if len(cs.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
@@ -533,10 +527,10 @@ type Commit struct {
 	// ValidatorSet order.
 	// Any peer with a block can gossip precommits by index with a peer without
 	// recalculating the active ValidatorSet.
-	Height     int64        `json:"height"`
-	Round      int          `json:"round"`
-	BlockID    BlockID      `json:"block_id"`
-	Precommits []*CommitSig `json:"precommits"`
+	Height     int64       `json:"height"`
+	Round      int         `json:"round"`
+	BlockID    BlockID     `json:"block_id"`
+	Precommits []CommitSig `json:"precommits"`
 
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
@@ -546,7 +540,7 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int, blockID BlockID, precommits []*CommitSig) *Commit {
+func NewCommit(height int64, round int, blockID BlockID, precommits []CommitSig) *Commit {
 	return &Commit{
 		Height:     height,
 		Round:      round,
@@ -561,8 +555,8 @@ func NewCommit(height int64, round int, blockID BlockID, precommits []*CommitSig
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, PrecommitType, vals)
 	for idx, precommit := range commit.Precommits {
-		if precommit == nil {
-			continue
+		if precommit.BlockIDFlag == BlockIDFlagAbsent {
+			continue // OK, some precommits can be missing.
 		}
 		added, err := voteSet.AddVote(commit.GetVote(idx))
 		if !added || err != nil {
@@ -577,10 +571,6 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 // Panics if valIdx >= commit.Size().
 func (commit *Commit) GetVote(valIdx int) *Vote {
 	commitSig := commit.Precommits[valIdx]
-	if commitSig == nil {
-		return nil
-	}
-
 	return &Vote{
 		Type:             PrecommitType,
 		Height:           commit.Height,
@@ -636,7 +626,7 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 		for i, precommit := range commit.Precommits {
 			// TODO: need to check the BlockID otherwise we could be counting conflicts,
 			// not just the one with +2/3 !
-			commit.bitArray.SetIndex(i, precommit != nil)
+			commit.bitArray.SetIndex(i, precommit.BlockIDFlag != BlockIDFlagAbsent)
 		}
 	}
 	return commit.bitArray
@@ -673,8 +663,8 @@ func (commit *Commit) ValidateBasic() error {
 		return errors.New("no precommits in commit")
 	}
 	for i, precommit := range commit.Precommits {
-		if precommit == nil { // It's OK for precommits to be missing.
-			continue
+		if precommit.BlockIDFlag == BlockIDFlagAbsent {
+			continue // OK, some precommits can be missing.
 		}
 		if err := precommit.ValidateBasic(); err != nil {
 			return fmt.Errorf("wrong CommitSig #%d: %v", i, err)

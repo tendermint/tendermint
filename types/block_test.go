@@ -232,7 +232,6 @@ func TestCommitValidateBasic(t *testing.T) {
 		expectErr      bool
 	}{
 		{"Random Commit", func(com *Commit) {}, false},
-		{"Nil precommit", func(com *Commit) { com.Precommits[0] = nil }, false},
 		{"Incorrect signature", func(com *Commit) { com.Precommits[0].Signature = []byte{0} }, false},
 		{"Incorrect height", func(com *Commit) { com.Height = int64(-100) }, true},
 		{"Incorrect round", func(com *Commit) { com.Round = -100 }, true},
@@ -449,12 +448,8 @@ func TestCommitToVoteSet(t *testing.T) {
 	}
 }
 
-func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
-	var (
-		blockID  = makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
-		blockID2 = makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
-		blockID3 = makeBlockID([]byte("blockhash3"), 10000, []byte("partshash"))
-	)
+func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
+	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 
 	const (
 		height = int64(3)
@@ -469,12 +464,7 @@ func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
 	}
 
 	testCases := []commitVoteTest{
-		{[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true},
-		// {[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true},
-		// {[]BlockID{blockID, blockID2, blockID3}, []int{1, 1, 1}, 3, false},
-		// {[]BlockID{blockID, blockID2, blockID3}, []int{3, 1, 1}, 5, false},
-		// {[]BlockID{blockID, {}}, []int{67, 33}, 100, true},
-		// {[]BlockID{blockID, blockID2, {}}, []int{10, 5, 5}, 20, false},
+		{[]BlockID{blockID, {}}, []int{67, 33}, 100, true},
 	}
 
 	for _, tc := range testCases {
@@ -492,10 +482,6 @@ func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
 					Type:             PrecommitType,
 					BlockID:          tc.blockIDs[n],
 					Timestamp:        tmtime.Now(),
-				}
-
-				if n > 0 {
-					vote.absent = true
 				}
 
 				added, err := signAddVote(vals[vi], vote, voteSet)

@@ -614,7 +614,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	talliedVotingPower := int64(0)
 
 	for idx, precommit := range commit.Precommits {
-		if precommit == nil {
+		if precommit.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.
 		}
 		_, val := vals.GetByIndex(idx)
@@ -683,9 +683,10 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	seen := map[int]bool{}
 
 	for idx, precommit := range commit.Precommits {
-		if precommit == nil {
-			continue
+		if precommit.BlockIDFlag == BlockIDFlagAbsent {
+			continue // OK, some precommits can be missing.
 		}
+
 		// See if this validator is in oldVals.
 		oldIdx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
 		if val == nil || seen[oldIdx] {

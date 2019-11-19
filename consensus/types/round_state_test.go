@@ -16,7 +16,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	// Random validators
 	nval, ntxs := 100, 100
 	vset, _ := types.RandValidatorSet(nval, 1)
-	precommits := make([]*types.CommitSig, nval)
+	precommits := make([]types.CommitSig, nval)
 	blockID := types.BlockID{
 		Hash: cmn.RandBytes(20),
 		PartsHeader: types.PartSetHeader{

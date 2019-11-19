@@ -293,12 +293,6 @@ func (voteSet *VoteSet) addVerifiedVote(
 					voteSet.votes[i] = vote
 				}
 			}
-			// Set absent flag on votes not for maj23
-			for i, vote := range votesByBlock.votes {
-				if vote == nil && voteSet.votes[i] != nil {
-					voteSet.votes[i].absent = true
-				}
-			}
 		}
 	}
 
@@ -569,7 +563,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	}
 
 	// For every validator, get the precommit
-	commitSigs := make([]*CommitSig, len(voteSet.votes))
+	commitSigs := make([]CommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
 		commitSigs[i] = v.CommitSig()
 	}
