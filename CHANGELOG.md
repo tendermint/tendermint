@@ -6,7 +6,9 @@
 
 Special thanks to external contributors on this release: @erikgrinaker, @guagualvcha, @hsyis, @cosmostuba, @whunmr, @austinabell
 
-Friendly reminder, we have a bug bounty program.
+Friendly reminder, we have a [bug bounty
+program.](https://hackerone.com/tendermint).
+
 
 ### BREAKING CHANGES:
 
