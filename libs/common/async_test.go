@@ -1,12 +1,12 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -125,20 +125,21 @@ func TestParallelRecover(t *testing.T) {
 	// Verify task #0, #1, #2.
 	checkResult(t, taskResultSet, 0, 0, nil, nil)
 	checkResult(t, taskResultSet, 1, 1, errors.New("some error"), nil)
-	checkResult(t, taskResultSet, 2, nil, nil, 2)
+	checkResult(t, taskResultSet, 2, nil, nil, errors.Errorf("panic in task %v", 2).Error())
 }
 
 // Wait for result
-func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int, val interface{}, err error, pnk interface{}) {
+func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int,
+	val interface{}, err error, pnk interface{}) {
 	taskResult, ok := taskResultSet.LatestResult(index)
 	taskName := fmt.Sprintf("Task #%v", index)
 	assert.True(t, ok, "TaskResultCh unexpectedly closed for %v", taskName)
 	assert.Equal(t, val, taskResult.Value, taskName)
 	switch {
 	case err != nil:
-		assert.Equal(t, err, taskResult.Error, taskName)
+		assert.Equal(t, err.Error(), taskResult.Error.Error(), taskName)
 	case pnk != nil:
-		assert.Equal(t, pnk, taskResult.Error.(Error).Data(), taskName)
+		assert.Equal(t, pnk, taskResult.Error.Error(), taskName)
 	default:
 		assert.Nil(t, taskResult.Error, taskName)
 	}

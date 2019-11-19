@@ -2,6 +2,8 @@ package common
 
 import (
 	"sync/atomic"
+
+	"github.com/pkg/errors"
 )
 
 //----------------------------------------
@@ -142,7 +144,7 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 				if pnk := recover(); pnk != nil {
 					atomic.AddInt32(numPanics, 1)
 					// Send panic to taskResultCh.
-					taskResultCh <- TaskResult{nil, ErrorWrap(pnk, "Panic in task")}
+					taskResultCh <- TaskResult{nil, errors.Errorf("panic in task %v", pnk)}
 					// Closing taskResultCh lets trs.Wait() work.
 					close(taskResultCh)
 					// Decrement waitgroup.
