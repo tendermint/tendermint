@@ -165,7 +165,12 @@ func (m *Monitor) Stop() {
 }
 
 // main loop where we listen for events from the node
-func (m *Monitor) listen(nodeName string, blockCh <-chan tmtypes.Header, blockLatencyCh <-chan float64, disconnectCh <-chan bool, quit <-chan struct{}) {
+func (m *Monitor) listen(
+	nodeName string,
+	blockCh <-chan tmtypes.Header,
+	blockLatencyCh <-chan float64,
+	disconnectCh <-chan bool,
+	quit <-chan struct{}) {
 	logger := m.logger.With("node", nodeName)
 
 	for {

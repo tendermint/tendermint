@@ -20,13 +20,33 @@ func TestGenesisBad(t *testing.T) {
 		[]byte(`{}`),    // empty
 		[]byte(`{"chain_id":"mychain","validators":[{}]}`), // invalid validator
 		// missing pub_key type
-		[]byte(`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		[]byte(
+			`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`,
+		),
 		// missing chain_id
-		[]byte(`{"validators":[{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		[]byte(
+			`{"validators":[` +
+				`{"pub_key":{` +
+				`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
+				`},"power":"10","name":""}` +
+				`]}`,
+		),
 		// too big chain_id
-		[]byte(`{"chain_id": "Lorem ipsum dolor sit amet, consectetuer adipiscing", "validators": [{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		[]byte(
+			`{"chain_id": "Lorem ipsum dolor sit amet, consectetuer adipiscing", "validators": [` +
+				`{"pub_key":{` +
+				`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
+				`},"power":"10","name":""}` +
+				`]}`,
+		),
 		// wrong address
-		[]byte(`{"chain_id":"mychain", "validators":[{"address": "A", "pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		[]byte(
+			`{"chain_id":"mychain", "validators":[` +
+				`{"address": "A", "pub_key":{` +
+				`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
+				`},"power":"10","name":""}` +
+				`]}`,
+		),
 	}
 
 	for _, testCase := range testCases {
@@ -37,7 +57,13 @@ func TestGenesisBad(t *testing.T) {
 
 func TestGenesisGood(t *testing.T) {
 	// test a good one by raw json
-	genDocBytes := []byte(`{"genesis_time":"0001-01-01T00:00:00Z","chain_id":"test-chain-QDKdJr","consensus_params":null,"validators":[{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}],"app_hash":"","app_state":{"account_owner": "Bob"}}`)
+	genDocBytes := []byte(
+		`{"genesis_time":"0001-01-01T00:00:00Z","chain_id":"test-chain-QDKdJr","consensus_params":null,"validators":[` +
+			`{"pub_key":{` +
+			`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
+			`},"power":"10","name":""}` +
+			`],"app_hash":"","app_state":{"account_owner": "Bob"}}`,
+	)
 	_, err := GenesisDocFromJSON(genDocBytes)
 	assert.NoError(t, err, "expected no error for good genDoc json")
 

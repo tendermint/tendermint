@@ -237,7 +237,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// send a tx
-	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil); err != nil {
+	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempl.TxInfo{}); err != nil {
 		t.Error(err)
 	}
 
@@ -318,7 +318,11 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 func TestReactorVotingPowerChange(t *testing.T) {
 	nVals := 4
 	logger := log.TestingLogger()
-	css, cleanup := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentKVStore)
+	css, cleanup := randConsensusNet(
+		nVals,
+		"consensus_voting_power_changes_test",
+		newMockTickerFunc(true),
+		newPersistentKVStore)
 	defer cleanup()
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nVals)
 	defer stopConsensusNet(logger, reactors, eventBuses)
@@ -349,7 +353,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
@@ -361,7 +368,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
@@ -373,14 +383,22 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, _, _, cleanup := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStoreWithPath)
+	css, _, _, cleanup := randConsensusNetWithPeers(
+		nVals,
+		nPeers,
+		"consensus_val_set_changes_test",
+		newMockTickerFunc(true),
+		newPersistentKVStoreWithPath)
 
 	defer cleanup()
 	logger := log.TestingLogger()
@@ -441,7 +459,10 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
 
 	if css[nVals].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Errorf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[nVals].GetRoundState().LastValidators.TotalVotingPower())
+		t.Errorf(
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower,
+			css[nVals].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	//---------------------------------------------------------------------------
@@ -511,7 +532,7 @@ func waitForAndValidateBlock(
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
 		for _, tx := range txs {
-			err := assertMempool(css[j].txNotifier).CheckTx(tx, nil)
+			err := assertMempool(css[j].txNotifier).CheckTx(tx, nil, mempl.TxInfo{})
 			assert.Nil(t, err)
 		}
 	}, css)
@@ -571,7 +592,10 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP
 			} else {
-				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block with no new validators. Skipping", "height", newBlock.Height)
+				css[j].Logger.Debug(
+					"waitForBlockWithUpdatedValsAndValidateIt: Got block with no new validators. Skipping",
+					"height",
+					newBlock.Height)
 			}
 		}
 
@@ -583,7 +607,10 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 // expects high synchrony!
 func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	if block.LastCommit.Size() != len(activeVals) {
-		return fmt.Errorf("Commit size doesn't match number of active validators. Got %d, expected %d", block.LastCommit.Size(), len(activeVals))
+		return fmt.Errorf(
+			"Commit size doesn't match number of active validators. Got %d, expected %d",
+			block.LastCommit.Size(),
+			len(activeVals))
 	}
 
 	for _, vote := range block.LastCommit.Precommits {
@@ -640,20 +667,20 @@ func capture() {
 // Ensure basic validation of structs is functioning
 
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		testName               string
-		messageHeight          int64
-		messageRound           int
-		messageStep            cstypes.RoundStepType
-		messageLastCommitRound int
+	testCases := []struct { // nolint: maligned
 		expectErr              bool
+		messageRound           int
+		messageLastCommitRound int
+		messageHeight          int64
+		testName               string
+		messageStep            cstypes.RoundStepType
 	}{
-		{"Valid Message", 0, 0, 0x01, 1, false},
-		{"Invalid Message", -1, 0, 0x01, 1, true},
-		{"Invalid Message", 0, -1, 0x01, 1, true},
-		{"Invalid Message", 0, 0, 0x00, 1, true},
-		{"Invalid Message", 0, 0, 0x00, 0, true},
-		{"Invalid Message", 1, 0, 0x01, 0, true},
+		{false, 0, 0, 0, "Valid Message", 0x01},
+		{true, -1, 0, 0, "Invalid Message", 0x01},
+		{true, 0, 0, -1, "Invalid Message", 0x01},
+		{true, 0, 0, 1, "Invalid Message", 0x00},
+		{true, 0, 0, 1, "Invalid Message", 0x00},
+		{true, 0, -2, 2, "Invalid Message", 0x01},
 	}
 
 	for _, tc := range testCases {
@@ -785,19 +812,19 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 		invalidSignedMsgType types.SignedMsgType = 0x03
 	)
 
-	testCases := []struct {
-		testName      string
-		messageHeight int64
-		messageRound  int
-		messageType   types.SignedMsgType
-		messageIndex  int
+	testCases := []struct { // nolint: maligned
 		expectErr     bool
+		messageRound  int
+		messageIndex  int
+		messageHeight int64
+		testName      string
+		messageType   types.SignedMsgType
 	}{
-		{"Valid Message", 0, 0, validSignedMsgType, 0, false},
-		{"Invalid Message", -1, 0, validSignedMsgType, 0, true},
-		{"Invalid Message", 0, -1, validSignedMsgType, 0, true},
-		{"Invalid Message", 0, 0, invalidSignedMsgType, 0, true},
-		{"Invalid Message", 0, 0, validSignedMsgType, -1, true},
+		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
+		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
+		{true, 0, -1, 0, "Invalid Message", validSignedMsgType},
+		{true, 0, 0, 0, "Invalid Message", invalidSignedMsgType},
+		{true, 0, 0, -1, "Invalid Message", validSignedMsgType},
 	}
 
 	for _, tc := range testCases {
@@ -830,19 +857,19 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		},
 	}
 
-	testCases := []struct {
-		testName       string
-		messageHeight  int64
+	testCases := []struct { // nolint: maligned
+		expectErr      bool
 		messageRound   int
+		messageHeight  int64
+		testName       string
 		messageType    types.SignedMsgType
 		messageBlockID types.BlockID
-		expectErr      bool
 	}{
-		{"Valid Message", 0, 0, validSignedMsgType, validBlockID, false},
-		{"Invalid Message", -1, 0, validSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, -1, validSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, 0, invalidSignedMsgType, validBlockID, true},
-		{"Invalid Message", 0, 0, validSignedMsgType, invalidBlockID, true},
+		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
+		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID},
+		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID},
+		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID},
+		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID},
 	}
 
 	for _, tc := range testCases {
@@ -861,7 +888,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 }
 
 func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
-	testCases := []struct { // nolint: maligned
+	testCases := []struct {
 		malleateFn func(*VoteSetBitsMessage)
 		expErr     string
 	}{

@@ -37,7 +37,13 @@ func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bo
 	return voteSet.AddVote(vote)
 }
 
-func MakeVote(height int64, blockID BlockID, valSet *ValidatorSet, privVal PrivValidator, chainID string) (*Vote, error) {
+func MakeVote(
+	height int64,
+	blockID BlockID,
+	valSet *ValidatorSet,
+	privVal PrivValidator,
+	chainID string,
+) (*Vote, error) {
 	addr := privVal.GetPubKey().Address()
 	idx, _ := valSet.GetByAddress(addr)
 	vote := &Vote{

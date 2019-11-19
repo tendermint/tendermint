@@ -67,6 +67,11 @@ func WriteConfigFile(configFilePath string, config *Config) {
 const defaultConfigTemplate = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
+# NOTE: Any path below can be absolute (e.g. "/var/myawesomeapp/data") or
+# relative to the home directory (e.g. "data"). The home directory is
+# "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
+# or --home cmd flag.
+
 ##### main base config options #####
 
 # TCP or UNIX socket address of the ABCI application,
@@ -203,12 +208,14 @@ max_header_bytes = {{ .RPC.MaxHeaderBytes }}
 # If the certificate is signed by a certificate authority,
 # the certFile should be the concatenation of the server's certificate, any intermediates,
 # and the CA's certificate.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# Otherwise, HTTP server is run.
 tls_cert_file = "{{ .RPC.TLSCertFile }}"
 
 # The path to a file containing matching private key that is used to create the HTTPS server.
 # Migth be either absolute path or path related to tendermint's config directory.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
 ##### peer to peer configuration options #####

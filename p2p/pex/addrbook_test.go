@@ -349,10 +349,22 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 	// compute some slack to protect against small differences due to rounding:
 	slack := int(math.Round(float64(100) / float64(len(selection))))
 	if got > expected+slack {
-		t.Fatalf("got more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
+		t.Fatalf(
+			"got more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)",
+			got,
+			expected,
+			good,
+			len(selection),
+		)
 	}
 	if got < expected-slack {
-		t.Fatalf("got fewer good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
+		t.Fatalf(
+			"got fewer good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)",
+			got,
+			expected,
+			good,
+			len(selection),
+		)
 	}
 }
 

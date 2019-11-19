@@ -268,7 +268,7 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	return
 }
 
-func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
+func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
 
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
@@ -349,7 +349,10 @@ func hasSmallOrder(pubKey [32]byte) bool {
 	return isSmallOrderPoint
 }
 
-func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, sendSecret *[aeadKeySize]byte, challenge *[32]byte) {
+func deriveSecretAndChallenge(
+	dhSecret *[32]byte,
+	locIsLeast bool,
+) (recvSecret, sendSecret *[aeadKeySize]byte, challenge *[32]byte) {
 	hash := sha256.New
 	hkdf := hkdf.New(hash, dhSecret[:], nil, []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN"))
 	// get enough data for 2 aead keys, and a 32 byte challenge
@@ -422,7 +425,7 @@ type authSigMessage struct {
 	Sig []byte
 }
 
-func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
+func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
 
 	// Send our info and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(

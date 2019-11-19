@@ -78,7 +78,7 @@ Sessions](/docs/DEV_SESSIONS.md) and read some [Architectural Decision
 Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
 
 Learn more by reading the code and comparing it to the
-[specification](https://github.com/tendermint/tendermint/tree/develop/docs/spec).
+[specification](https://github.com/tendermint/tendermint/tree/master/docs/spec).
 
 ## Versioning
 

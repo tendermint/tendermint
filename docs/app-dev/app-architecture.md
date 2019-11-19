@@ -1,3 +1,7 @@
+---
+order: 3
+---
+
 # Application Architecture Guide
 
 Here we provide a brief guide on the recommended architecture of a
@@ -47,4 +51,4 @@ See the following for more extensive documentation:
 - [Interchain Standard for the Light-Client REST API](https://github.com/cosmos/cosmos-sdk/pull/1028)
 - [Tendermint RPC Docs](https://tendermint.com/rpc/)
 - [Tendermint in Production](../tendermint-core/running-in-production.md)
-- [ABCI spec](./abci-spec.md)
+- [ABCI spec](https://github.com/tendermint/spec/tree/95cf253b6df623066ff7cd4074a94e7a3f147c7a/spec/abci)

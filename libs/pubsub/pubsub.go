@@ -36,8 +36,9 @@ package pubsub
 
 import (
 	"context"
-	"errors"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
@@ -68,7 +69,7 @@ var (
 // allows event types to repeat themselves with the same set of keys and
 // different values.
 type Query interface {
-	Matches(events map[string][]string) bool
+	Matches(events map[string][]string) (bool, error)
 	String() string
 }
 
@@ -146,7 +147,11 @@ func (s *Server) BufferCapacity() int {
 // outCapacity can be used to set a capacity for Subscription#Out channel (1 by
 // default). Panics if outCapacity is less than or equal to zero. If you want
 // an unbuffered channel, use SubscribeUnbuffered.
-func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, outCapacity ...int) (*Subscription, error) {
+func (s *Server) Subscribe(
+	ctx context.Context,
+	clientID string,
+	query Query,
+	outCapacity ...int) (*Subscription, error) {
 	outCap := 1
 	if len(outCapacity) > 0 {
 		if outCapacity[0] <= 0 {
@@ -330,7 +335,9 @@ loop:
 		case sub:
 			state.add(cmd.clientID, cmd.query, cmd.subscription)
 		case pub:
-			state.send(cmd.msg, cmd.events)
+			if err := state.send(cmd.msg, cmd.events); err != nil {
+				s.Logger.Error("Error querying for events", "err", err)
+			}
 		}
 	}
 }
@@ -397,10 +404,16 @@ func (state *state) removeAll(reason error) {
 	}
 }
 
-func (state *state) send(msg interface{}, events map[string][]string) {
+func (state *state) send(msg interface{}, events map[string][]string) error {
 	for qStr, clientSubscriptions := range state.subscriptions {
 		q := state.queries[qStr].q
-		if q.Matches(events) {
+
+		match, err := q.Matches(events)
+		if err != nil {
+			return errors.Wrapf(err, "failed to match against query %s", q.String())
+		}
+
+		if match {
 			for clientID, subscription := range clientSubscriptions {
 				if cap(subscription.out) == 0 {
 					// block on unbuffered channel
@@ -416,4 +429,6 @@ func (state *state) send(msg interface{}, events map[string][]string) {
 			}
 		}
 	}
+
+	return nil
 }

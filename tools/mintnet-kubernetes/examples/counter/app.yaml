@@ -163,11 +163,11 @@ spec:
         - |
           set -ex
 
-          go get github.com/tendermint/abci/cmd/counter
+          go get github.com/tendermint/tendermint/abci/cmd/abci-cli
 
           rm -f /socks/app.sock # remove old socket
 
-          counter --serial --addr="unix:///socks/app.sock"
+          abci-cli counter --serial=true --address="unix:///socks/app.sock"
         volumeMounts:
         - name: socksdir
           mountPath: /socks

@@ -27,7 +27,8 @@ import (
 // WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
 // stripped down version of node (proxy app, event bus, consensus state) with a
 // persistent kvstore application and special consensus wal instance
-// (byteBufferWAL) and waits until numBlocks are created. If the node fails to produce given numBlocks, it returns an error.
+// (byteBufferWAL) and waits until numBlocks are created.
+// If the node fails to produce given numBlocks, it returns an error.
 func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	config := getConfig(t)
 
@@ -199,7 +200,9 @@ func (w *byteBufferWAL) WriteSync(m WALMessage) error {
 
 func (w *byteBufferWAL) FlushAndSync() error { return nil }
 
-func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+func (w *byteBufferWAL) SearchForEndHeight(
+	height int64,
+	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 

@@ -1,3 +1,7 @@
+---
+order: 2
+---
+
 # Using ABCI-CLI
 
 To facilitate testing and debugging of ABCI servers and simple apps, we
