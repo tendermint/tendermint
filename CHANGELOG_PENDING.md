@@ -3,7 +3,7 @@
 \*\*
 
 Special thanks to external contributors on this release:
-@erikgrinaker, @PSalant726
+@erikgrinaker, @PSalant726, @gchaincl
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -70,3 +70,4 @@ program](https://hackerone.com/tendermint).
 - [rpc/lib][\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
 - [rpc][\#4141](https://github.com/tendermint/tendermint/pull/4141) JSONRPCClient: validate that Response.ID matches Request.ID
 - [rpc][\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
+- [types][\4164](https://github.com/tendermint/tendermint/pull/4164) Prevent temporary power overflows on validator updates
