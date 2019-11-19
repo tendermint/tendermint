@@ -59,7 +59,11 @@ program](https://hackerone.com/tendermint).
 
 ## v0.32.6
 
+<<<<<<< HEAD
 _October 8, 2019_
+=======
+*October 8, 2019*
+>>>>>>> origin/v0.32
 
 The previous patch was insufficient because the attacker could still find a way
 to submit a `nil` pubkey by constructing a `PubKeyMultisigThreshold` pubkey
@@ -82,7 +86,11 @@ program](https://hackerone.com/tendermint).
 
 ## v0.32.5
 
+<<<<<<< HEAD
 _September 30, 2019_
+=======
+*September 30, 2019*
+>>>>>>> origin/v0.32
 
 This release fixes a major security vulnerability found in the `p2p` package.
 All clients are recommended to upgrade. See [TODO](hxxp://githublink) for
@@ -96,7 +104,11 @@ program](https://hackerone.com/tendermint).
 
 ### SECURITY:
 
+<<<<<<< HEAD
 - [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Fix for panic on nil public key send to a peer
+=======
+- [p2p] [TODO](hxxp://githublink) Fix for panic on nil public key send to a peer
+>>>>>>> origin/v0.32
 
 ## v0.32.4
 
