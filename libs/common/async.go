@@ -119,7 +119,7 @@ func (trs *TaskResultSet) FirstError() error {
 // Parallel
 
 // Run tasks in parallel, with ability to abort early.
-// Returns ok=false if any of the tasks returned abort=true.
+// Returns ok=false iff any of the tasks returned abort=true.
 // NOTE: Do not implement quit features here.  Instead, provide convenient
 // concurrent quit-like primitives, passed implicitly via Task closures. (e.g.
 // it's not Parallel's concern how you quit/abort your tasks).
@@ -143,8 +143,7 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 				if pnk := recover(); pnk != nil {
 					atomic.AddInt32(numPanics, 1)
 					// Send panic to taskResultCh.
-					err := errors.Errorf("task %v", pnk)
-					taskResultCh <- TaskResult{nil, errors.Wrap(err, "panic")}
+					taskResultCh <- TaskResult{nil, errors.Errorf("panic in task %v", pnk)}
 					// Closing taskResultCh lets trs.Wait() work.
 					close(taskResultCh)
 					// Decrement waitgroup.

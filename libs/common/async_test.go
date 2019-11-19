@@ -125,7 +125,7 @@ func TestParallelRecover(t *testing.T) {
 	// Verify task #0, #1, #2.
 	checkResult(t, taskResultSet, 0, 0, nil, nil)
 	checkResult(t, taskResultSet, 1, 1, errors.New("some error"), nil)
-	checkResult(t, taskResultSet, 2, nil, nil, errors.Wrap(errors.Errorf("task %v", 2), "panic").Error())
+	checkResult(t, taskResultSet, 2, nil, nil, errors.Errorf("panic in task %v", 2).Error())
 }
 
 // Wait for result
@@ -137,7 +137,6 @@ func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int,
 	assert.Equal(t, val, taskResult.Value, taskName)
 	switch {
 	case err != nil:
-		fmt.Println(err, taskResult.Error)
 		assert.Equal(t, err.Error(), taskResult.Error.Error(), taskName)
 	case pnk != nil:
 		assert.Equal(t, pnk, taskResult.Error.Error(), taskName)
