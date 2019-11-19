@@ -130,7 +130,7 @@ func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.
 
 // NOTE: rt.Kind() isn't a pointer.
 func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, bool, error) {
-	isIntString := RE_INT.Match([]byte(arg))
+	isIntString := ReInt.Match([]byte(arg))
 	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
 	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
 

@@ -141,5 +141,13 @@ module.exports = {
     anchor: {
       permalinkSymbol: ""
     }
-  }
+  },
+  plugins: [
+    [
+      "@vuepress/google-analytics",
+      {
+        ga: "UA-51029217-11"
+      }
+    ]
+  ],
 };

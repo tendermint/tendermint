@@ -41,7 +41,7 @@ func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 // UnsafeDialSeeds dials the given seeds (comma-separated id@IP:PORT).
 func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialSeeds, error) {
 	if len(seeds) == 0 {
-		return &ctypes.ResultDialSeeds{}, errors.New("No seeds provided")
+		return &ctypes.ResultDialSeeds{}, errors.New("no seeds provided")
 	}
 	logger.Info("DialSeeds", "seeds", seeds)
 	if err := p2pPeers.DialPeersAsync(seeds); err != nil {
@@ -54,7 +54,7 @@ func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialS
 // optionally making them persistent.
 func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
 	if len(peers) == 0 {
-		return &ctypes.ResultDialPeers{}, errors.New("No peers provided")
+		return &ctypes.ResultDialPeers{}, errors.New("no peers provided")
 	}
 	logger.Info("DialPeers", "peers", peers, "persistent", persistent)
 	if persistent {

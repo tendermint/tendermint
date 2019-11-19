@@ -3,7 +3,7 @@
 \*\*
 
 Special thanks to external contributors on this release:
-@erikgrinaker
+@erikgrinaker, @PSalant726
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -45,6 +45,7 @@ program](https://hackerone.com/tendermint).
 - Go API
   - [libs/pubsub] [\#4070](https://github.com/tendermint/tendermint/pull/4070) `Query#(Matches|Conditions)` returns an error.
   - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
+  - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
 
 - Blockchain Protocol
   - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
@@ -68,6 +69,7 @@ program](https://hackerone.com/tendermint).
 - [crypto] Add `RegisterKeyType` to amino to allow external key types registration (@austinabell)
 - [rpc] \#3188 Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
 - [types] \#2521 Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
+- [docs] [\#4111](https://github.com/tendermint/tendermint/issues/4111) Replaced dead whitepaper link in README.md
 
 ### BUG FIXES:
 

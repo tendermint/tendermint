@@ -27,10 +27,10 @@ import (
 // Errors
 
 var (
-	ErrInvalidProposalSignature = errors.New("Error invalid proposal signature")
-	ErrInvalidProposalPOLRound  = errors.New("Error invalid proposal POL round")
-	ErrAddingVote               = errors.New("Error adding vote")
-	ErrVoteHeightMismatch       = errors.New("Error vote height mismatch")
+	ErrInvalidProposalSignature = errors.New("error invalid proposal signature")
+	ErrInvalidProposalPOLRound  = errors.New("error invalid proposal POL round")
+	ErrAddingVote               = errors.New("error adding vote")
+	ErrVoteHeightMismatch       = errors.New("error vote height mismatch")
 )
 
 //-----------------------------------------------------------------------------
@@ -969,8 +969,8 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	cs.wal.FlushAndSync()
 
 	// Make proposal
-	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
+	propBlockID := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 
 		// send proposal and block parts on internal msg queue
