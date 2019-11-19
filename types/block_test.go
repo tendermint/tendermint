@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -445,6 +446,74 @@ func TestCommitToVoteSet(t *testing.T) {
 		vote3bz := cdc.MustMarshalBinaryBare(vote3)
 		assert.Equal(t, vote1bz, vote2bz)
 		assert.Equal(t, vote1bz, vote3bz)
+	}
+}
+
+func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
+	var (
+		blockID  = makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
+		blockID2 = makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
+		blockID3 = makeBlockID([]byte("blockhash3"), 10000, []byte("partshash"))
+	)
+
+	const (
+		height = int64(3)
+		round  = 0
+	)
+
+	type commitVoteTest struct {
+		blockIDs      []BlockID
+		numVotes      []int // must sum to numValidators
+		numValidators int
+		valid         bool
+	}
+
+	testCases := []commitVoteTest{
+		{[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true},
+		// {[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true},
+		// {[]BlockID{blockID, blockID2, blockID3}, []int{1, 1, 1}, 3, false},
+		// {[]BlockID{blockID, blockID2, blockID3}, []int{3, 1, 1}, 5, false},
+		// {[]BlockID{blockID, {}}, []int{67, 33}, 100, true},
+		// {[]BlockID{blockID, blockID2, {}}, []int{10, 5, 5}, 20, false},
+	}
+
+	for _, tc := range testCases {
+		voteSet, valSet, vals := randVoteSet(height-1, round, PrecommitType, tc.numValidators, 1)
+
+		vi := 0
+		for n := range tc.blockIDs {
+			for i := 0; i < tc.numVotes[n]; i++ {
+				addr := vals[vi].GetPubKey().Address()
+				vote := &Vote{
+					ValidatorAddress: addr,
+					ValidatorIndex:   vi,
+					Height:           height - 1,
+					Round:            round,
+					Type:             PrecommitType,
+					BlockID:          tc.blockIDs[n],
+					Timestamp:        tmtime.Now(),
+				}
+
+				if n > 0 {
+					vote.absent = true
+				}
+
+				added, err := signAddVote(vals[vi], vote, voteSet)
+				assert.NoError(t, err)
+				assert.True(t, added)
+
+				vi++
+			}
+		}
+
+		if tc.valid {
+			commit := voteSet.MakeCommit() // panics without > 2/3 valid votes
+			assert.NotNil(t, commit)
+			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, commit)
+			assert.Nil(t, err)
+		} else {
+			assert.Panics(t, func() { voteSet.MakeCommit() })
+		}
 	}
 }
 

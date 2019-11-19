@@ -536,10 +536,9 @@ func TestMakeCommit(t *testing.T) {
 
 	commit := voteSet.MakeCommit()
 
-	// Commit should have 8 elements
-	if len(commit.Precommits) != 8 {
-		t.Errorf("expected commit to only include %d votes for committed block, but got %d elems",
-			8, len(commit.Precommits))
+	// Commit should have 10 elements
+	if len(commit.Precommits) != 10 {
+		t.Errorf("expected commit to include %d elems, got %d", 10, len(commit.Precommits))
 	}
 
 	// Ensure that Commit precommits are ordered.

@@ -293,6 +293,12 @@ func (voteSet *VoteSet) addVerifiedVote(
 					voteSet.votes[i] = vote
 				}
 			}
+			// Set absent flag on votes not for maj23
+			for i, vote := range votesByBlock.votes {
+				if vote == nil && voteSet.votes[i] != nil {
+					voteSet.votes[i].absent = true
+				}
+			}
 		}
 	}
 
@@ -563,13 +569,9 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	}
 
 	// For every validator, get the precommit
-	commitSigs := make([]*CommitSig, 0, len(voteSet.votes))
-	for _, v := range voteSet.votes {
-		// Do not include votes for another blocks (see ADR-25).
-		// Only allow votes either for nil or maj23 block.
-		if v == nil || v.BlockID.Equals(*voteSet.maj23) {
-			commitSigs = append(commitSigs, v.CommitSig())
-		}
+	commitSigs := make([]*CommitSig, len(voteSet.votes))
+	for i, v := range voteSet.votes {
+		commitSigs[i] = v.CommitSig()
 	}
 
 	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)

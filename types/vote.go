@@ -54,10 +54,12 @@ type Vote struct {
 	ValidatorAddress Address       `json:"validator_address"`
 	ValidatorIndex   int           `json:"validator_index"`
 	Signature        []byte        `json:"signature"`
+
+	// true if vote is for another block (not the one with majority of votes)
+	absent bool `json:"absent"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
-// If the Vote is nil, the CommitSig will be nil.
 func (vote *Vote) CommitSig() *CommitSig {
 	if vote == nil {
 		return nil
@@ -65,14 +67,12 @@ func (vote *Vote) CommitSig() *CommitSig {
 
 	var blockIDFlag BlockIDFlag
 	switch {
+	case vote.absent:
+		blockIDFlag = BlockIDFlagAbsent
 	case vote.BlockID.IsComplete():
 		blockIDFlag = BlockIDFlagCommit
 	case vote.BlockID.IsZero():
 		blockIDFlag = BlockIDFlagNil
-	// TODO: differentiate between empty and absent votes
-	// https://github.com/tendermint/tendermint/issues/3591
-	// case vote.IsAbsent():
-	// 	blockIDFlag = BlockIDFlagAbsent
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}
@@ -86,7 +86,11 @@ func (vote *Vote) CommitSig() *CommitSig {
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
+	v := vote.Copy()
+	if vote.absent {
+		v.BlockID = BlockID{}
+	}
+	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, v))
 	if err != nil {
 		panic(err)
 	}
