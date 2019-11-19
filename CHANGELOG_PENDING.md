@@ -48,6 +48,7 @@ program](https://hackerone.com/tendermint).
 
 - Blockchain Protocol
   - [abci] \#2521 Remove `TotalTxs` and `NumTxs` from `Header`
+  - [types] [\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
 
 - P2P Protocol
   - [p2p] [\3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
@@ -70,7 +71,6 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
-- [types] [\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
 - [tools] [\#4023](https://github.com/tendermint/tendermint/issues/4023) Refresh `tm-monitor` health when validator count is updated (@erikgrinaker)
 - [state] [\#4104](https://github.com/tendermint/tendermint/pull/4104) txindex/kv: Fsync data to disk immediately after receiving it (@guagualvcha)
 - [state] [\#4095](https://github.com/tendermint/tendermint/pull/4095) txindex/kv: Return an error if there's one when the user searches for a tx (hash=X) (@hsyis)
