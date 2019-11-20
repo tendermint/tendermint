@@ -354,6 +354,21 @@ func TestValidatorSetTotalVotingPowerPanicsOnOverflow(t *testing.T) {
 	assert.Panics(t, shouldPanic)
 }
 
+func TestValidatorSetShouldNotErrorOnTemporalOverflow(t *testing.T) {
+	// Updating the validator set might trigger an Overflow error during the update process
+	valSet := NewValidatorSet([]*Validator{
+		{Address: []byte("b"), VotingPower: MaxTotalVotingPower - 1, ProposerPriority: 0},
+		{Address: []byte("a"), VotingPower: 1, ProposerPriority: 0},
+	})
+
+	err := valSet.UpdateWithChangeSet([]*Validator{
+		{Address: []byte("b"), VotingPower: 1, ProposerPriority: 0},
+		{Address: []byte("a"), VotingPower: MaxTotalVotingPower - 1, ProposerPriority: 0},
+	})
+
+	assert.NoError(t, err)
+}
+
 func TestAvgProposerPriority(t *testing.T) {
 	// Create Validator set without calling IncrementProposerPriority:
 	tcs := []struct {
