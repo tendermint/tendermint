@@ -59,20 +59,18 @@ check_tools:
 certstrap: $(CERTSTRAP)
 $(CERTSTRAP):
 	@echo "Get Certstrap"
-	@go get github.com/square/certstrap@338204a88c4349b1c135eac1e8c14c693ad007da
+	@go get github.com/square/certstrap@v1.2.0
 
 protobuf: $(PROTOBUF)
 $(PROTOBUF):
 	@echo "Get Protobuf"
-	## protobuf v1.3.0
-	@go get github.com/gogo/protobuf/protoc-gen-gogo@0ca988a254f991240804bf9821f3450d87ccbb1b
+	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
 
+# used to build tm-monitor binaries
 gox: $(GOX)
 $(GOX):
 	@echo "Get Gox"
-# used to build tm-monitor binaries
-	## gox v1.0.1
-	@go get github.com/mitchellh/gox@d8caaff5a9dc98f4cfa1fcce6e7265a04689f641
+	@go get github.com/mitchellh/gox@v1.0.1
 
 goodman: $(GOODMAN)
 $(GOODMAN):
