@@ -26,7 +26,7 @@ A node operator inputs list of ids of peers which are allowed to be connected by
 2) `persistent_peers_max_dial_period`
 
 Terms between each dial to each persistent peer will not exceed `persistent_peers_max_dial_period` during exponential backoff. 
-Therefore, `dial_period` = min(`persistent_peers_max_dial_period`, exponential_backoff_dial_period)
+Therefore, `dial_period` = min(`persistent_peers_max_dial_period`, `exponential_backoff_dial_period`)
 
 Alternative approach
 
