@@ -67,9 +67,9 @@ func createValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter
 	}
 	stubs["status"] = ctypes.ResultStatus{ValidatorInfo: ctypes.ValidatorInfo{PubKey: pubKey}}
 	cdc := amino.NewCodec()
-	rpcClientMock := &mock.RpcClient{Stubs: stubs}
+	rpcClientMock := &mock.RPCClient{Stubs: stubs}
 	rpcClientMock.SetCodec(cdc)
 
-	n = monitor.NewNodeWithEventMeterAndRpcClient("tcp://127.0.0.1:26657", emMock, rpcClientMock)
+	n = monitor.NewNodeWithEventMeterAndRPCClient("tcp://127.0.0.1:26657", emMock, rpcClientMock)
 	return
 }

@@ -99,7 +99,7 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 	for i := start; i < end; i++ {
 		txBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil)
+		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil, mempl.TxInfo{})
 		if err != nil {
 			panic(fmt.Sprintf("Error after CheckTx: %v", err))
 		}
@@ -123,7 +123,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 		select {
 		case msg := <-newBlockCh:
 			blockEvent := msg.Data().(types.EventDataNewBlock)
-			nTxs += int(blockEvent.Block.Header.NumTxs)
+			nTxs += len(blockEvent.Block.Txs)
 		case <-ticker.C:
 			panic("Timed out waiting to commit blocks with transactions")
 		}
@@ -159,9 +159,9 @@ func TestMempoolRmBadTx(t *testing.T) {
 				return
 			}
 			checkTxRespCh <- struct{}{}
-		})
+		}, mempl.TxInfo{})
 		if err != nil {
-			t.Errorf("Error after CheckTx: %v", err)
+			t.Errorf("error after CheckTx: %v", err)
 			return
 		}
 
@@ -182,7 +182,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-checkTxRespCh:
 		// success
 	case <-ticker:
-		t.Errorf("Timed out waiting for tx to return")
+		t.Errorf("timed out waiting for tx to return")
 		return
 	}
 
@@ -192,7 +192,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	case <-emptyMempoolCh:
 		// success
 	case <-ticker:
-		t.Errorf("Timed out waiting for tx to be removed")
+		t.Errorf("timed out waiting for tx to be removed")
 		return
 	}
 }

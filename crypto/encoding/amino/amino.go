@@ -1,4 +1,4 @@
-package cryptoAmino
+package cryptoamino
 
 import (
 	"reflect"
@@ -60,11 +60,19 @@ func RegisterAmino(cdc *amino.Codec) {
 		secp256k1.PrivKeyAminoName, nil)
 }
 
+// RegisterKeyType registers an external key type to allow decoding it from bytes
+func RegisterKeyType(o interface{}, name string) {
+	cdc.RegisterConcrete(o, name, nil)
+	nameTable[reflect.TypeOf(o)] = name
+}
+
+// PrivKeyFromBytes unmarshals private key bytes and returns a PrivKey
 func PrivKeyFromBytes(privKeyBytes []byte) (privKey crypto.PrivKey, err error) {
 	err = cdc.UnmarshalBinaryBare(privKeyBytes, &privKey)
 	return
 }
 
+// PubKeyFromBytes unmarshals public key bytes and returns a PubKey
 func PubKeyFromBytes(pubKeyBytes []byte) (pubKey crypto.PubKey, err error) {
 	err = cdc.UnmarshalBinaryBare(pubKeyBytes, &pubKey)
 	return

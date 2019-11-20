@@ -21,19 +21,19 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 
 	// Validate basic info.
 	if block.Version != state.Version.Consensus {
-		return fmt.Errorf("Wrong Block.Header.Version. Expected %v, got %v",
+		return fmt.Errorf("wrong Block.Header.Version. Expected %v, got %v",
 			state.Version.Consensus,
 			block.Version,
 		)
 	}
 	if block.ChainID != state.ChainID {
-		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v",
+		return fmt.Errorf("wrong Block.Header.ChainID. Expected %v, got %v",
 			state.ChainID,
 			block.ChainID,
 		)
 	}
 	if block.Height != state.LastBlockHeight+1 {
-		return fmt.Errorf("Wrong Block.Header.Height. Expected %v, got %v",
+		return fmt.Errorf("wrong Block.Header.Height. Expected %v, got %v",
 			state.LastBlockHeight+1,
 			block.Height,
 		)
@@ -41,47 +41,39 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 
 	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
-		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v",
+		return fmt.Errorf("wrong Block.Header.LastBlockID.  Expected %v, got %v",
 			state.LastBlockID,
 			block.LastBlockID,
 		)
 	}
 
-	newTxs := int64(len(block.Data.Txs))
-	if block.TotalTxs != state.LastBlockTotalTx+newTxs {
-		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v",
-			state.LastBlockTotalTx+newTxs,
-			block.TotalTxs,
-		)
-	}
-
 	// Validate app info
 	if !bytes.Equal(block.AppHash, state.AppHash) {
-		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v",
+		return fmt.Errorf("wrong Block.Header.AppHash.  Expected %X, got %v",
 			state.AppHash,
 			block.AppHash,
 		)
 	}
 	if !bytes.Equal(block.ConsensusHash, state.ConsensusParams.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v",
+		return fmt.Errorf("wrong Block.Header.ConsensusHash.  Expected %X, got %v",
 			state.ConsensusParams.Hash(),
 			block.ConsensusHash,
 		)
 	}
 	if !bytes.Equal(block.LastResultsHash, state.LastResultsHash) {
-		return fmt.Errorf("Wrong Block.Header.LastResultsHash.  Expected %X, got %v",
+		return fmt.Errorf("wrong Block.Header.LastResultsHash.  Expected %X, got %v",
 			state.LastResultsHash,
 			block.LastResultsHash,
 		)
 	}
 	if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
+		return fmt.Errorf("wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
 			state.Validators.Hash(),
 			block.ValidatorsHash,
 		)
 	}
 	if !bytes.Equal(block.NextValidatorsHash, state.NextValidators.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v",
+		return fmt.Errorf("wrong Block.Header.NextValidatorsHash.  Expected %X, got %v",
 			state.NextValidators.Hash(),
 			block.NextValidatorsHash,
 		)
@@ -90,7 +82,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	// Validate block LastCommit.
 	if block.Height == 1 {
 		if len(block.LastCommit.Precommits) != 0 {
-			return errors.New("Block at height 1 can't have LastCommit precommits")
+			return errors.New("block at height 1 can't have LastCommit precommits")
 		}
 	} else {
 		if len(block.LastCommit.Precommits) != state.LastValidators.Size() {
@@ -106,7 +98,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	// Validate block Time
 	if block.Height > 1 {
 		if !block.Time.After(state.LastBlockTime) {
-			return fmt.Errorf("Block time %v not greater than last block time %v",
+			return fmt.Errorf("block time %v not greater than last block time %v",
 				block.Time,
 				state.LastBlockTime,
 			)
@@ -114,7 +106,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 
 		medianTime := MedianTime(block.LastCommit, state.LastValidators)
 		if !block.Time.Equal(medianTime) {
-			return fmt.Errorf("Invalid block time. Expected %v, got %v",
+			return fmt.Errorf("invalid block time. Expected %v, got %v",
 				medianTime,
 				block.Time,
 			)
@@ -122,7 +114,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	} else if block.Height == 1 {
 		genesisTime := state.LastBlockTime
 		if !block.Time.Equal(genesisTime) {
-			return fmt.Errorf("Block time %v is not equal to genesis time %v",
+			return fmt.Errorf("block time %v is not equal to genesis time %v",
 				block.Time,
 				genesisTime,
 			)
@@ -152,7 +144,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	// a legit address and a known validator.
 	if len(block.ProposerAddress) != crypto.AddressSize ||
 		!state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf("Block.Header.ProposerAddress, %X, is not a validator",
+		return fmt.Errorf("block.Header.ProposerAddress, %X, is not a validator",
 			block.ProposerAddress,
 		)
 	}
@@ -171,7 +163,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	evidenceAge := height - evidence.Height()
 	maxAge := state.ConsensusParams.Evidence.MaxAge
 	if evidenceAge > maxAge {
-		return fmt.Errorf("Evidence from height %d is too old. Min height is %d",
+		return fmt.Errorf("evidence from height %d is too old. Min height is %d",
 			evidence.Height(), height-maxAge)
 	}
 
@@ -191,7 +183,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 	height, addr := ev.Height(), ev.Address()
 	_, val := valset.GetByAddress(addr)
 	if val == nil {
-		return fmt.Errorf("Address %X was not a validator at height %d", addr, height)
+		return fmt.Errorf("address %X was not a validator at height %d", addr, height)
 	}
 
 	if err := evidence.Verify(state.ChainID, val.PubKey); err != nil {

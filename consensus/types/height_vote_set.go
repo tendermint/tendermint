@@ -16,8 +16,9 @@ type RoundVoteSet struct {
 }
 
 var (
-	GotVoteFromUnwantedRoundError = errors.New(
-		"Peer has sent a vote that does not match our round for more than one round")
+	ErrGotVoteFromUnwantedRound = errors.New(
+		"peer has sent a vote that does not match our round for more than one round",
+	)
 )
 
 /*
@@ -123,7 +124,7 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			hvs.peerCatchupRounds[peerID] = append(rndz, vote.Round)
 		} else {
 			// punish peer
-			err = GotVoteFromUnwantedRoundError
+			err = ErrGotVoteFromUnwantedRound
 			return
 		}
 	}
@@ -158,18 +159,18 @@ func (hvs *HeightVoteSet) POLInfo() (polRound int, polBlockID types.BlockID) {
 	return -1, types.BlockID{}
 }
 
-func (hvs *HeightVoteSet) getVoteSet(round int, type_ types.SignedMsgType) *types.VoteSet {
+func (hvs *HeightVoteSet) getVoteSet(round int, voteType types.SignedMsgType) *types.VoteSet {
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
 		return nil
 	}
-	switch type_ {
+	switch voteType {
 	case types.PrevoteType:
 		return rvs.Prevotes
 	case types.PrecommitType:
 		return rvs.Precommits
 	default:
-		panic(fmt.Sprintf("Unexpected vote type %X", type_))
+		panic(fmt.Sprintf("Unexpected vote type %X", voteType))
 	}
 }
 
@@ -179,15 +180,15 @@ func (hvs *HeightVoteSet) getVoteSet(round int, type_ types.SignedMsgType) *type
 // TODO: implement ability to remove peers too
 func (hvs *HeightVoteSet) SetPeerMaj23(
 	round int,
-	type_ types.SignedMsgType,
+	voteType types.SignedMsgType,
 	peerID p2p.ID,
 	blockID types.BlockID) error {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	if !types.IsVoteTypeValid(type_) {
-		return fmt.Errorf("SetPeerMaj23: Invalid vote type %v", type_)
+	if !types.IsVoteTypeValid(voteType) {
+		return fmt.Errorf("setPeerMaj23: Invalid vote type %X", voteType)
 	}
-	voteSet := hvs.getVoteSet(round, type_)
+	voteSet := hvs.getVoteSet(round, voteType)
 	if voteSet == nil {
 		return nil // something we don't know about yet
 	}

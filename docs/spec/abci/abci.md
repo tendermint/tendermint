@@ -393,9 +393,6 @@ Commit are included in the header of the next block.
     For heights > 1, it's the weighted median of the timestamps of the valid
     votes in the block.LastCommit.
     For height == 1, it's genesis time.
-  - `NumTxs (int32)`: Number of transactions in the block
-  - `TotalTxs (int64)`: Total number of transactions in the blockchain until
-    now
   - `LastBlockID (BlockID)`: Hash of the previous (parent) block
   - `LastCommitHash ([]byte)`: Hash of the previous block's commit
   - `ValidatorsHash ([]byte)`: Hash of the validator set for this block

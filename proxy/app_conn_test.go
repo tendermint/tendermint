@@ -145,7 +145,7 @@ func TestInfo(t *testing.T) {
 
 	resInfo, err := proxy.InfoSync(RequestInfo)
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Errorf("unexpected error: %v", err)
 	}
 	if resInfo.Data != "{\"size\":0}" {
 		t.Error("Expected ResponseInfo with one element '{\"size\":0}' but got something else")

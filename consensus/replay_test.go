@@ -23,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
@@ -104,7 +105,7 @@ func sendTxs(ctx context.Context, cs *ConsensusState) {
 			return
 		default:
 			tx := []byte{byte(i)}
-			assertMempool(cs.txNotifier).CheckTx(tx, nil)
+			assertMempool(cs.txNotifier).CheckTx(tx, nil, mempl.TxInfo{})
 			i++
 		}
 	}
@@ -238,15 +239,15 @@ func (e ReachedHeightToStopError) Error() string {
 
 // Write simulate WAL's crashing by sending an error to the panicCh and then
 // exiting the cs.receiveRoutine.
-func (w *crashingWAL) Write(m WALMessage) {
+func (w *crashingWAL) Write(m WALMessage) error {
 	if endMsg, ok := m.(EndHeightMessage); ok {
 		if endMsg.Height == w.heightToStop {
 			w.panicCh <- ReachedHeightToStopError{endMsg.Height}
 			runtime.Goexit()
-		} else {
-			w.next.Write(m)
+			return nil
 		}
-		return
+
+		return w.next.Write(m)
 	}
 
 	if w.msgIndex > w.lastPanickedForMsgIndex {
@@ -254,14 +255,15 @@ func (w *crashingWAL) Write(m WALMessage) {
 		_, file, line, _ := runtime.Caller(1)
 		w.panicCh <- WALWriteError{fmt.Sprintf("failed to write %T to WAL (fileline: %s:%d)", m, file, line)}
 		runtime.Goexit()
-	} else {
-		w.msgIndex++
-		w.next.Write(m)
+		return nil
 	}
+
+	w.msgIndex++
+	return w.next.Write(m)
 }
 
-func (w *crashingWAL) WriteSync(m WALMessage) {
-	w.Write(m)
+func (w *crashingWAL) WriteSync(m WALMessage) error {
+	return w.Write(m)
 }
 
 func (w *crashingWAL) FlushAndSync() error { return w.next.FlushAndSync() }
@@ -343,7 +345,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
 	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
-	err := assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil)
+	err := assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ := css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
@@ -368,7 +370,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
 	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil)
+	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -393,12 +395,12 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
 	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx2, nil)
+	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx2, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
 	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil)
+	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -426,7 +428,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx2, nil)
+	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx2, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 
 	rs = css[0].GetRoundState()
@@ -456,7 +458,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	height++
 	incrementHeight(vss...)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx3, nil)
+	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx3, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() //changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -546,8 +548,8 @@ func TestMockProxyApp(t *testing.T) {
 
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(sm.ABCIResponses)
-		abciResWithEmptyDeliverTx.DeliverTx = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.DeliverTx = append(abciResWithEmptyDeliverTx.DeliverTx, &abci.ResponseDeliverTx{})
+		abciResWithEmptyDeliverTx.DeliverTxs = make([]*abci.ResponseDeliverTx, 0)
+		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
 		bytes := cdc.MustMarshalBinaryBare(abciResWithEmptyDeliverTx)
@@ -560,7 +562,7 @@ func TestMockProxyApp(t *testing.T) {
 		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
 
 		abciRes := new(sm.ABCIResponses)
-		abciRes.DeliverTx = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTx))
+		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
 		// Execute transactions and get hash.
 		proxyCb := func(req *abci.Request, res *abci.Response) {
 			if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
@@ -574,7 +576,7 @@ func TestMockProxyApp(t *testing.T) {
 					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 					invalidTxs++
 				}
-				abciRes.DeliverTx[txIndex] = txRes
+				abciRes.DeliverTxs[txIndex] = txRes
 				txIndex++
 			}
 		}
@@ -930,7 +932,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		return nil, nil, err
 	}
 	if !found {
-		return nil, nil, fmt.Errorf("WAL does not contain height %d", height)
+		return nil, nil, fmt.Errorf("wal does not contain height %d", height)
 	}
 	defer gr.Close() // nolint: errcheck
 

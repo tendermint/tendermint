@@ -1,12 +1,12 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,9 +16,9 @@ func TestParallel(t *testing.T) {
 	var counter = new(int32)
 	var tasks = make([]Task, 100*1000)
 	for i := 0; i < len(tasks); i++ {
-		tasks[i] = func(i int) (res interface{}, err error, abort bool) {
+		tasks[i] = func(i int) (res interface{}, abort bool, err error) {
 			atomic.AddInt32(counter, 1)
-			return -1 * i, nil, false
+			return -1 * i, false, nil
 		}
 	}
 
@@ -60,25 +60,25 @@ func TestParallelAbort(t *testing.T) {
 
 	// Create tasks.
 	var tasks = []Task{
-		func(i int) (res interface{}, err error, abort bool) {
+		func(i int) (res interface{}, abort bool, err error) {
 			assert.Equal(t, i, 0)
 			flow1 <- struct{}{}
-			return 0, nil, false
+			return 0, false, nil
 		},
-		func(i int) (res interface{}, err error, abort bool) {
+		func(i int) (res interface{}, abort bool, err error) {
 			assert.Equal(t, i, 1)
 			flow2 <- <-flow1
-			return 1, errors.New("some error"), false
+			return 1, false, errors.New("some error")
 		},
-		func(i int) (res interface{}, err error, abort bool) {
+		func(i int) (res interface{}, abort bool, err error) {
 			assert.Equal(t, i, 2)
 			flow3 <- <-flow2
-			return 2, nil, true
+			return 2, true, nil
 		},
-		func(i int) (res interface{}, err error, abort bool) {
+		func(i int) (res interface{}, abort bool, err error) {
 			assert.Equal(t, i, 3)
 			<-flow4
-			return 3, nil, false
+			return 3, false, nil
 		},
 	}
 
@@ -107,13 +107,13 @@ func TestParallelRecover(t *testing.T) {
 
 	// Create tasks.
 	var tasks = []Task{
-		func(i int) (res interface{}, err error, abort bool) {
-			return 0, nil, false
+		func(i int) (res interface{}, abort bool, err error) {
+			return 0, false, nil
 		},
-		func(i int) (res interface{}, err error, abort bool) {
-			return 1, errors.New("some error"), false
+		func(i int) (res interface{}, abort bool, err error) {
+			return 1, false, errors.New("some error")
 		},
-		func(i int) (res interface{}, err error, abort bool) {
+		func(i int) (res interface{}, abort bool, err error) {
 			panic(2)
 		},
 	}
@@ -125,20 +125,21 @@ func TestParallelRecover(t *testing.T) {
 	// Verify task #0, #1, #2.
 	checkResult(t, taskResultSet, 0, 0, nil, nil)
 	checkResult(t, taskResultSet, 1, 1, errors.New("some error"), nil)
-	checkResult(t, taskResultSet, 2, nil, nil, 2)
+	checkResult(t, taskResultSet, 2, nil, nil, errors.Errorf("panic in task %v", 2).Error())
 }
 
 // Wait for result
-func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int, val interface{}, err error, pnk interface{}) {
+func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int,
+	val interface{}, err error, pnk interface{}) {
 	taskResult, ok := taskResultSet.LatestResult(index)
 	taskName := fmt.Sprintf("Task #%v", index)
 	assert.True(t, ok, "TaskResultCh unexpectedly closed for %v", taskName)
 	assert.Equal(t, val, taskResult.Value, taskName)
 	switch {
 	case err != nil:
-		assert.Equal(t, err, taskResult.Error, taskName)
+		assert.Equal(t, err.Error(), taskResult.Error.Error(), taskName)
 	case pnk != nil:
-		assert.Equal(t, pnk, taskResult.Error.(Error).Data(), taskName)
+		assert.Equal(t, pnk, taskResult.Error.Error(), taskName)
 	default:
 		assert.Nil(t, taskResult.Error, taskName)
 	}

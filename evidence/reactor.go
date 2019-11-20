@@ -218,7 +218,7 @@ func RegisterEvidenceMessages(cdc *amino.Codec) {
 
 func decodeMsg(bz []byte) (msg EvidenceMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
@@ -235,7 +235,7 @@ type EvidenceListMessage struct {
 func (m *EvidenceListMessage) ValidateBasic() error {
 	for i, ev := range m.Evidence {
 		if err := ev.ValidateBasic(); err != nil {
-			return fmt.Errorf("Invalid evidence (#%d): %v", i, err)
+			return fmt.Errorf("invalid evidence (#%d): %v", i, err)
 		}
 	}
 	return nil

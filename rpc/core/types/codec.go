@@ -1,4 +1,4 @@
-package core_types
+package coretypes
 
 import (
 	amino "github.com/tendermint/go-amino"

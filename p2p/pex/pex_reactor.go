@@ -145,7 +145,7 @@ func (r *PEXReactor) OnStart() error {
 	if err != nil {
 		return err
 	} else if numOnline == 0 && r.book.Empty() {
-		return errors.New("Address book is empty and couldn't resolve any seed nodes")
+		return errors.New("address book is empty and couldn't resolve any seed nodes")
 	}
 
 	r.seedAddrs = seedAddrs
@@ -368,7 +368,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 				err := r.dialPeer(addr)
 				if err != nil {
 					switch err.(type) {
-					case errMaxAttemptsToDial, errTooEarlyToDial:
+					case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
 						r.Logger.Debug(err.Error(), "addr", addr)
 					default:
 						r.Logger.Error(err.Error(), "addr", addr)
@@ -590,7 +590,9 @@ func (r *PEXReactor) dialSeeds() {
 		// dial a random seed
 		seedAddr := r.seedAddrs[i]
 		err := r.Switch.DialPeerWithAddress(seedAddr)
-		if err == nil {
+
+		switch err.(type) {
+		case nil, p2p.ErrCurrentlyDialingOrExistingAddress:
 			return
 		}
 		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
@@ -676,7 +678,7 @@ func (r *PEXReactor) crawlPeers(addrs []*p2p.NetAddress) {
 		err := r.dialPeer(addr)
 		if err != nil {
 			switch err.(type) {
-			case errMaxAttemptsToDial, errTooEarlyToDial:
+			case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
 				r.Logger.Debug(err.Error(), "addr", addr)
 			default:
 				r.Logger.Error(err.Error(), "addr", addr)
@@ -743,7 +745,7 @@ func RegisterPexMessage(cdc *amino.Codec) {
 
 func decodeMsg(bz []byte) (msg PexMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
+		return msg, fmt.Errorf("msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return

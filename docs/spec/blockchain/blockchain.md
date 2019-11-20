@@ -29,7 +29,7 @@ type Block struct {
 }
 ```
 
-Note the `LastCommit` is the set of  votes that committed the last block.
+Note the `LastCommit` is the set of votes that committed the last block.
 
 ## Header
 
@@ -43,8 +43,6 @@ type Header struct {
 	ChainID  string
 	Height   int64
 	Time     Time
-	NumTxs   int64
-	TotalTxs int64
 
 	// prev block info
 	LastBlockID BlockID
@@ -78,7 +76,6 @@ type Version struct {
     App     uint64
 }
 ```
-
 
 ## BlockID
 
@@ -265,24 +262,6 @@ if block.Header.Height == 1 {
 
 See the section on [BFT time](../consensus/bft-time.md) for more details.
 
-### NumTxs
-
-```go
-block.Header.NumTxs == len(block.Txs.Txs)
-```
-
-Number of transactions included in the block.
-
-### TotalTxs
-
-```go
-block.Header.TotalTxs == prevBlock.Header.TotalTxs + block.Header.NumTxs
-```
-
-The cumulative sum of all transactions included in this blockchain.
-
-The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
-
 ### LastBlockID
 
 LastBlockID is the previous block's BlockID:
@@ -433,6 +412,8 @@ All votes must be for the previous block.
 All votes must have a valid signature from the corresponding validator.
 The sum total of the voting power of the validators that voted
 must be greater than 2/3 of the total voting power of the complete validator set.
+
+The number of votes in a commit is limited to 10000 (see `types.MaxVotesCount`).
 
 ### Vote
 

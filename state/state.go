@@ -55,10 +55,9 @@ type State struct {
 	ChainID string
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	LastBlockHeight  int64
-	LastBlockTotalTx int64
-	LastBlockID      types.BlockID
-	LastBlockTime    time.Time
+	LastBlockHeight int64
+	LastBlockID     types.BlockID
+	LastBlockTime   time.Time
 
 	// LastValidators is used to validate block.LastCommit.
 	// Validators are persisted to the database separately every time they change,
@@ -89,10 +88,9 @@ func (state State) Copy() State {
 		Version: state.Version,
 		ChainID: state.ChainID,
 
-		LastBlockHeight:  state.LastBlockHeight,
-		LastBlockTotalTx: state.LastBlockTotalTx,
-		LastBlockID:      state.LastBlockID,
-		LastBlockTime:    state.LastBlockTime,
+		LastBlockHeight: state.LastBlockHeight,
+		LastBlockID:     state.LastBlockID,
+		LastBlockTime:   state.LastBlockTime,
 
 		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
@@ -152,7 +150,7 @@ func (state State) MakeBlock(
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
-		timestamp, state.LastBlockID, state.LastBlockTotalTx+block.NumTxs,
+		timestamp, state.LastBlockID,
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		state.ConsensusParams.Hash(), state.AppHash, state.LastResultsHash,
 		proposerAddress,
@@ -200,11 +198,11 @@ func MakeGenesisStateFromFile(genDocFile string) (State, error) {
 func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 	genDocJSON, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't read GenesisDoc file: %v", err)
+		return nil, fmt.Errorf("couldn't read GenesisDoc file: %v", err)
 	}
 	genDoc, err := types.GenesisDocFromJSON(genDocJSON)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading GenesisDoc: %v", err)
+		return nil, fmt.Errorf("error reading GenesisDoc: %v", err)
 	}
 	return genDoc, nil
 }
@@ -213,7 +211,7 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return State{}, fmt.Errorf("Error in genesis file: %v", err)
+		return State{}, fmt.Errorf("error in genesis file: %v", err)
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
