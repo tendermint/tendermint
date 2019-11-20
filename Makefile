@@ -158,6 +158,7 @@ DESTINATION = ./index.html.md
 
 build-docs:
 	cd docs && \
+	// TODO: add clone process for spec repo
 	while read p; do \
 		(git checkout $${p} && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
 		mkdir -p ~/output/$${p} ; \
