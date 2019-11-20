@@ -1268,14 +1268,14 @@ definitions:
   BlockMeta:
     type: object
     properties:
+      block_id:
+        $ref: "#/definitions/BlockId"
       block_size:
         type: number
         x-example: 1000000
-      block_id:
-        $ref: "#/definitions/BlockId"
       header:
         $ref: "#/definitions/BlockHeader"
-      number_txs:
+      num_txs:
         type: string
         example: "54"
   Blockchain:
