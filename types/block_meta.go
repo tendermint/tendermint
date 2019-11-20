@@ -5,7 +5,7 @@ type BlockMeta struct {
 	BlockID   BlockID `json:"block_id"`
 	BlockSize int     `json:"block_size"`
 	Header    Header  `json:"header"`
-	NumTxs    int     `json:"number_txs"`
+	NumTxs    int     `json:"num_txs"`
 }
 
 // NewBlockMeta returns a new BlockMeta.
