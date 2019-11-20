@@ -224,7 +224,7 @@ func (m *Monitor) updateNumValidatorLoop() {
 		m.mtx.Lock()
 		nodesCount := len(m.Nodes)
 		m.mtx.Unlock()
-		if 0 == nodesCount {
+		if nodesCount == 0 {
 			time.Sleep(m.numValidatorsUpdateInterval)
 			continue
 		}

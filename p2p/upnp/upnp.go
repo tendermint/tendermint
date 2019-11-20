@@ -109,7 +109,7 @@ func Discover() (nat NAT, err error) {
 			return
 		}
 	}
-	err = errors.New("UPnP port discovery failed")
+	err = errors.New("upnp port discovery failed")
 	return nat, err
 }
 
@@ -219,17 +219,17 @@ func getServiceURL(rootURL string) (url, urnDomain string, err error) {
 	}
 	a := &root.Device
 	if !strings.Contains(a.DeviceType, "InternetGatewayDevice:1") {
-		err = errors.New("No InternetGatewayDevice")
+		err = errors.New("no InternetGatewayDevice")
 		return
 	}
 	b := getChildDevice(a, "WANDevice:1")
 	if b == nil {
-		err = errors.New("No WANDevice")
+		err = errors.New("no WANDevice")
 		return
 	}
 	c := getChildDevice(b, "WANConnectionDevice:1")
 	if c == nil {
-		err = errors.New("No WANConnectionDevice")
+		err = errors.New("no WANConnectionDevice")
 		return
 	}
 	d := getChildService(c, "WANIPConnection:1")
@@ -239,7 +239,7 @@ func getServiceURL(rootURL string) (url, urnDomain string, err error) {
 		d = getChildService(b, "WANIPConnection:1")
 
 		if d == nil {
-			err = errors.New("No WANIPConnection")
+			err = errors.New("no WANIPConnection")
 			return
 		}
 	}
@@ -287,7 +287,7 @@ func soapRequest(url, function, message, domain string) (r *http.Response, err e
 
 	if r.StatusCode >= 400 {
 		// log.Stderr(function, r.StatusCode)
-		err = errors.New("Error " + strconv.Itoa(r.StatusCode) + " for " + function)
+		err = errors.New("error " + strconv.Itoa(r.StatusCode) + " for " + function)
 		r = nil
 		return
 	}
@@ -295,7 +295,7 @@ func soapRequest(url, function, message, domain string) (r *http.Response, err e
 }
 
 type statusInfo struct {
-	externalIpAddress string
+	externalIPAddress string
 }
 
 func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
@@ -338,9 +338,9 @@ func (n *upnpNAT) GetExternalAddress() (addr net.IP, err error) {
 	if err != nil {
 		return
 	}
-	addr = net.ParseIP(info.externalIpAddress)
+	addr = net.ParseIP(info.externalIPAddress)
 	if addr == nil {
-		err = fmt.Errorf("Failed to parse IP: %v", info.externalIpAddress)
+		err = fmt.Errorf("failed to parse IP: %v", info.externalIPAddress)
 	}
 	return
 }

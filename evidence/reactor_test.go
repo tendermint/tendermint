@@ -66,7 +66,7 @@ func waitForEvidence(t *testing.T, evs types.EvidenceList, reactors []*EvidenceR
 		close(done)
 	}()
 
-	timer := time.After(TIMEOUT)
+	timer := time.After(Timeout)
 	select {
 	case <-timer:
 		t.Fatal("Timed out waiting for evidence")
@@ -115,8 +115,8 @@ func sendEvidence(t *testing.T, evpool *EvidencePool, valAddr []byte, n int) typ
 }
 
 var (
-	NUM_EVIDENCE = 10
-	TIMEOUT      = 120 * time.Second // ridiculously high because CircleCI is slow
+	NumEvidence = 10
+	Timeout     = 120 * time.Second // ridiculously high because CircleCI is slow
 )
 
 func TestReactorBroadcastEvidence(t *testing.T) {
@@ -127,7 +127,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	stateDBs := make([]dbm.DB, N)
 	valAddr := []byte("myval")
 	// we need validators saved for heights at least as high as we have evidence for
-	height := int64(NUM_EVIDENCE) + 10
+	height := int64(NumEvidence) + 10
 	for i := 0; i < N; i++ {
 		stateDBs[i] = initializeValidatorState(valAddr, height)
 	}
@@ -145,7 +145,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// send a bunch of valid evidence to the first reactor's evpool
 	// and wait for them all to be received in the others
-	evList := sendEvidence(t, reactors[0].evpool, valAddr, NUM_EVIDENCE)
+	evList := sendEvidence(t, reactors[0].evpool, valAddr, NumEvidence)
 	waitForEvidence(t, evList, reactors)
 }
 
@@ -161,8 +161,8 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	config := cfg.TestConfig()
 
 	valAddr := []byte("myval")
-	height1 := int64(NUM_EVIDENCE) + 10
-	height2 := int64(NUM_EVIDENCE) / 2
+	height1 := int64(NumEvidence) + 10
+	height2 := int64(NumEvidence) / 2
 
 	// DB1 is ahead of DB2
 	stateDB1 := initializeValidatorState(valAddr, height1)
@@ -185,10 +185,10 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	peer.Set(types.PeerStateKey, ps)
 
 	// send a bunch of valid evidence to the first reactor's evpool
-	evList := sendEvidence(t, reactors[0].evpool, valAddr, NUM_EVIDENCE)
+	evList := sendEvidence(t, reactors[0].evpool, valAddr, NumEvidence)
 
 	// only ones less than the peers height should make it through
-	waitForEvidence(t, evList[:NUM_EVIDENCE/2], reactors[1:2])
+	waitForEvidence(t, evList[:NumEvidence/2], reactors[1:2])
 
 	// peers should still be connected
 	peers := reactors[1].Switch.Peers().List()

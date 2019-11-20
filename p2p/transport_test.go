@@ -237,7 +237,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 			// Fast peer connected.
 		case <-time.After(50 * time.Millisecond):
 			// We error if the fast peer didn't succeed.
-			errc <- fmt.Errorf("Fast peer timed out")
+			errc <- fmt.Errorf("fast peer timed out")
 		}
 
 		sc, err := upgradeSecretConn(c, 20*time.Millisecond, ed25519.GenPrivKey())
@@ -592,7 +592,7 @@ func (a *testTransportAddr) String() string  { return "test.local:1234" }
 type testTransportConn struct{}
 
 func (c *testTransportConn) Close() error {
-	return fmt.Errorf("Close() not implemented")
+	return fmt.Errorf("close() not implemented")
 }
 
 func (c *testTransportConn) LocalAddr() net.Addr {
@@ -604,21 +604,21 @@ func (c *testTransportConn) RemoteAddr() net.Addr {
 }
 
 func (c *testTransportConn) Read(_ []byte) (int, error) {
-	return -1, fmt.Errorf("Read() not implemented")
+	return -1, fmt.Errorf("read() not implemented")
 }
 
 func (c *testTransportConn) SetDeadline(_ time.Time) error {
-	return fmt.Errorf("SetDeadline() not implemented")
+	return fmt.Errorf("setDeadline() not implemented")
 }
 
 func (c *testTransportConn) SetReadDeadline(_ time.Time) error {
-	return fmt.Errorf("SetReadDeadline() not implemented")
+	return fmt.Errorf("setReadDeadline() not implemented")
 }
 
 func (c *testTransportConn) SetWriteDeadline(_ time.Time) error {
-	return fmt.Errorf("SetWriteDeadline() not implemented")
+	return fmt.Errorf("setWriteDeadline() not implemented")
 }
 
 func (c *testTransportConn) Write(_ []byte) (int, error) {
-	return -1, fmt.Errorf("Write() not implemented")
+	return -1, fmt.Errorf("write() not implemented")
 }

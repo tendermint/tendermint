@@ -71,7 +71,7 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 //------------------------------------------------------------------
 // Connects switches via arbitrary net.Conn. Used for testing.
 
-const TEST_HOST = "localhost"
+const TestHost = "localhost"
 
 // MakeConnectedSwitches returns n switches, connected according to the connect func.
 // If connect==Connect2Switches, the switches will be fully connected.
@@ -84,7 +84,7 @@ func MakeConnectedSwitches(cfg *config.P2PConfig,
 ) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TEST_HOST, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {

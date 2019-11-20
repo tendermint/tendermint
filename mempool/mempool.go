@@ -112,7 +112,7 @@ func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
 		aminoOverhead := types.ComputeAminoOverhead(tx, 1)
 		txSize := int64(len(tx)) + aminoOverhead
 		if txSize > maxBytes {
-			return fmt.Errorf("Tx size (including amino overhead) is too big: %d, max: %d",
+			return fmt.Errorf("tx size (including amino overhead) is too big: %d, max: %d",
 				txSize, maxBytes)
 		}
 		return nil
