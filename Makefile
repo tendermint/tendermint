@@ -71,19 +71,6 @@ install_abci:
 dist:
 	@BUILD_TAGS=$(BUILD_TAGS) sh -c "'$(CURDIR)/scripts/dist.sh'"
 
-#For ABCI and libs
-get_protoc:
-	@# https://github.com/google/protobuf/releases
-	curl -L https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz | tar xvz && \
-		cd protobuf-3.6.1 && \
-		DIST_LANG=cpp ./configure && \
-		make && \
-		make check && \
-		sudo make install && \
-		sudo ldconfig && \
-		cd .. && \
-		rm -rf protobuf-3.6.1
-
 go-mod-cache: go.sum
 	@echo "--> Download go modules to local cache"
 	@go mod download
@@ -247,7 +234,7 @@ contract-tests:
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
- 	get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
+ 	protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
  	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all \
  	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
 	build_c-amazonlinux
