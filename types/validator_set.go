@@ -399,13 +399,14 @@ func verifyUpdates(
 			// Updated validator, add the difference in power to the total.
 			updatedTotalVotingPower += valUpdate.VotingPower - val.VotingPower
 		}
-		overflow := updatedTotalVotingPower > MaxTotalVotingPower
-		if overflow {
-			err = fmt.Errorf(
-				"failed to add/update validator %v, total voting power would exceed the max allowed %v",
-				valUpdate, MaxTotalVotingPower)
-			return 0, 0, err
-		}
+	}
+
+	overflow := updatedTotalVotingPower > MaxTotalVotingPower
+	if overflow {
+		err = fmt.Errorf(
+			"failed to add/update validator, total voting power would exceed the max allowed %v",
+			MaxTotalVotingPower)
+		return 0, 0, err
 	}
 
 	return updatedTotalVotingPower, numNewValidators, nil
