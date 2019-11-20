@@ -351,8 +351,8 @@ the same results as for the Go version.
 ## Bounties
 
 Want to write the counter app in your favorite language?! We'd be happy
-to add you to our [ecosystem](https://tendermint.com/ecosystem)! We're
-also offering [bounties](https://hackerone.com/tendermint/) for
+to add you to our [ecosystem](https://github.com/tendermint/awesome#ecosystem)! We're
+also offering [grants](https://github.com/interchainio/funding) for
 implementations in new languages!
 
 The `abci-cli` is designed strictly for testing and debugging. In a real
