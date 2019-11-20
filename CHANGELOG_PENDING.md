@@ -43,6 +43,8 @@ program](https://hackerone.com/tendermint).
 
 - Apps
 
+- [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/interchainio/tm-load-test)
+
 - Go API
 
   - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
