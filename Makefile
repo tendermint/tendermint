@@ -158,9 +158,9 @@ DESTINATION = ./index.html.md
 
 build-docs:
 	cd docs && \
-	// TODO: add clone process for spec repo
 	while read p; do \
 		(git checkout $${p} && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
+		git clone https://github.com/tendermint/spec.git specRepo && cp -r specRepo/spec . && rm -rf specRepo && \
 		mkdir -p ~/output/$${p} ; \
 		cp -r .vuepress/dist/* ~/output/$${p}/ ; \
 		cp ~/output/$${p}/index.html ~/output ; \
