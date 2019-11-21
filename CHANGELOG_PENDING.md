@@ -3,7 +3,7 @@
 \*\*
 
 Special thanks to external contributors on this release:
-@erikgrinaker, @PSalant726, @gchaincl
+@erikgrinaker, @PSalant726, @gchaincl, @gregzaitsev
 
 Friendly reminder, we have a [bug bounty
 program](https://hackerone.com/tendermint).
@@ -73,3 +73,4 @@ program](https://hackerone.com/tendermint).
 - [rpc][\#4141](https://github.com/tendermint/tendermint/pull/4141) JSONRPCClient: validate that Response.ID matches Request.ID
 - [rpc][\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
 - [types][\4164](https://github.com/tendermint/tendermint/pull/4164) Prevent temporary power overflows on validator updates
+- [cs] \#4069 Don't panic when block meta is not found in store (@gregzaitsev)
