@@ -501,8 +501,8 @@ OUTER_LOOP:
 			if prs.ProposalBlockParts == nil {
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					logger.Error("Failed to load block meta", 
-						"height", prs.Height, "blockstoreHeight", conR.conS.blockStore.Height())
+					heightLogger.Error("Failed to load block meta",
+						"blockstoreHeight", conR.conS.blockStore.Height())
 					time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 				} else {
 					ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
