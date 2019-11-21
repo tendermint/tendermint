@@ -59,6 +59,7 @@ program](https://hackerone.com/tendermint).
 
   - [rpc/client] \#3471 `Validators` now requires two more args: `page` and `perPage`
   - [libs/common] \#3262 Make error the last parameter of `Task` (@PSalant726)
+  - [cs/types] \#3262 Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
   - [libs/common] \#3862 Remove `errors.go` from `libs/common`
 
 - Blockchain Protocol
