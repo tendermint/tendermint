@@ -40,7 +40,7 @@ RoundState defines the internal consensus state. It contains height, round, roun
 a proposal and proposal block for the current round, locked round and block (if some block is being locked), set of
 received votes and last commit and last validators set.
 
-```golang
+```go
 type RoundState struct {
 	Height             int64
 	Round              int
@@ -96,11 +96,13 @@ type PeerRoundState struct {
 
 ## Receive method of Consensus reactor
 
-The entry point of the Consensus reactor is a receive method. When a message is received from a peer p,
-normally the peer round state is updated correspondingly, and some messages
-are passed for further processing, for example to ConsensusState service. We now specify the processing of messages
-in the receive method of Consensus reactor for each message type. In the following message handler, `rs` and `prs` denote
-`RoundState` and `PeerRoundState`, respectively.
+The entry point of the Consensus reactor is a receive method. When a message is
+received from a peer p, normally the peer round state is updated
+correspondingly, and some messages are passed for further processing, for
+example to ConsensusState service. We now specify the processing of messages in
+the receive method of Consensus reactor for each message type. In the following
+message handler, `rs` and `prs` denote `RoundState` and `PeerRoundState`,
+respectively.
 
 ### NewRoundStepMessage handler
 
@@ -134,12 +136,15 @@ handleMessage(msg):
 ```
 handleMessage(msg):
     if prs.Height != msg.Height then return
-    
+
     if prs.Round != msg.Round && !msg.IsCommit then return
-    
+
     prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
     prs.ProposalBlockParts = msg.BlockParts
 ```
+
+The number of block parts is limited to 1601 (`types.MaxBlockPartsCount`) to
+protect the node against DOS attacks.
 
 ### HasVoteMessage handler
 
@@ -179,6 +184,9 @@ handleMessage(msg):
     prs.ProposalPOL = msg.ProposalPOL
 ```
 
+The number of votes is limited to 10000 (`types.MaxVotesCount`) to protect the
+node against DOS attacks.
+
 ### BlockPartMessage handler
 
 ```
@@ -202,6 +210,9 @@ handleMessage(msg):
 handleMessage(msg):
     Update prs for the bit-array of votes peer claims to have for the msg.BlockID
 ```
+
+The number of votes is limited to 10000 (`types.MaxVotesCount`) to protect the
+node against DOS attacks.
 
 ## Gossip Data Routine
 
@@ -338,7 +349,7 @@ BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`
 
 ## Broadcast routine
 
-The Broadcast routine subscribes to an internal event bus to receive new round steps and votes messages, and broadcasts messages to peers upon receiving those 
+The Broadcast routine subscribes to an internal event bus to receive new round steps and votes messages, and broadcasts messages to peers upon receiving those
 events.
 It broadcasts `NewRoundStepMessage` or `CommitStepMessage` upon new round state event. Note that
 broadcasting these messages does not depend on the PeerRoundState; it is sent on the StateChannel.

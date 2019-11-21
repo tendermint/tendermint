@@ -43,8 +43,6 @@ type Header struct {
 	ChainID  string
 	Height   int64
 	Time     Time
-	NumTxs   int64
-	TotalTxs int64
 
 	// prev block info
 	LastBlockID BlockID
@@ -168,7 +166,7 @@ See the [signature spec](./encoding.md#key-types) for more.
 
 EvidenceData is a simple wrapper for a list of evidence:
 
-```go
+```
 type EvidenceData struct {
     Evidence []Evidence
 }
@@ -188,6 +186,8 @@ type DuplicateVoteEvidence struct {
 	VoteB  Vote
 }
 ```
+
+Votes are lexicographically sorted on `BlockID`.
 
 See the [pubkey spec](./encoding.md#key-types) for more.
 
@@ -263,24 +263,6 @@ if block.Header.Height == 1 {
 ```
 
 See the section on [BFT time](../consensus/bft-time.md) for more details.
-
-### NumTxs
-
-```go
-block.Header.NumTxs == len(block.Txs.Txs)
-```
-
-Number of transactions included in the block.
-
-### TotalTxs
-
-```go
-block.Header.TotalTxs == prevBlock.Header.TotalTxs + block.Header.NumTxs
-```
-
-The cumulative sum of all transactions included in this blockchain.
-
-The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 
 ### LastBlockID
 
@@ -432,6 +414,8 @@ All votes must be for the previous block.
 All votes must have a valid signature from the corresponding validator.
 The sum total of the voting power of the validators that voted
 must be greater than 2/3 of the total voting power of the complete validator set.
+
+The number of votes in a commit is limited to 10000 (see `types.MaxVotesCount`).
 
 ### Vote
 
