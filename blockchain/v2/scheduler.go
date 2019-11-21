@@ -96,7 +96,7 @@ type scSchedulerFail struct {
 type blockState int
 
 const (
-	blockStateUnknown   blockState = iota // indicates that no known peer has this block
+	blockStateUnknown   blockState = iota // no known peer has this block
 	blockStateNew                         // indicates that a peer has reported having this block
 	blockStatePending                     // indicates that this block has been requested from a peer
 	blockStateReceived                    // indicates that this block has been received by a peer
