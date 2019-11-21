@@ -501,10 +501,7 @@ OUTER_LOOP:
 			if prs.ProposalBlockParts == nil {
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
-					// Per issue 4069 comment: If a block is not found, the consensus reactor should not crash since 
-					// this does not affect the ability to participate in consensus. Instead it should wait for the 
-					// gossipSleepDuration and continue.
-					logger.Debug("Block not found in store", "height", prs.Height)
+					logger.Debug("Block meta not found in store", "height", prs.Height)
 					time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 				} else {
 					ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
